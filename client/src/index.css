@@ -1,0 +1,487 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --sat: env(safe-area-inset-top, 0px);
+  --sab: env(safe-area-inset-bottom, 0px);
+}
+
+body {
+  margin: 0;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: #533114; /* Match app theme for overscroll */
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+/* Globally hide scrollbars */
+::-webkit-scrollbar {
+  display: none;
+}
+
+* {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New', monospace;
+}
+
+/* ── Buttons ── */
+.btn {
+  @apply px-4 py-2 sm:px-5 sm:py-2.5 rounded-lg font-bold text-[10px] sm:text-xs uppercase tracking-widest transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 active:scale-95 text-center;
+}
+
+.btn-primary {
+  @apply bg-primary-600 text-white hover:bg-primary-700 focus:ring-primary-500 shadow-md hover:shadow-lg;
+}
+
+.btn-secondary {
+  @apply bg-secondary-500 text-white hover:bg-secondary-600 focus:ring-secondary-400 shadow-md hover:shadow-lg;
+}
+
+.btn-outline {
+  @apply border-2 border-primary-300 bg-white text-primary-700 hover:bg-primary-50 focus:ring-primary-400;
+}
+
+.btn-danger {
+  @apply bg-red-600 text-white hover:bg-red-700 focus:ring-red-500 shadow-md;
+}
+
+.btn-green {
+  @apply bg-green-600 text-white hover:bg-green-700 focus:ring-green-500 shadow-md;
+}
+
+/* ── Inputs ── */
+.input {
+  @apply w-full py-2.5 px-4 border border-primary-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400 focus:border-primary-400 transition-all duration-200 bg-white;
+}
+
+.input-container {
+  @apply relative w-full flex items-center;
+}
+
+.input-with-icon {
+  @apply pl-12 pr-4 !important;
+  padding-left: 3rem !important;
+}
+
+.input-with-icon-right {
+  @apply pr-12 pl-4 !important;
+  padding-right: 3rem !important;
+}
+
+.input-with-both-icons {
+  @apply pl-12 pr-12 !important;
+  padding-left: 3rem !important;
+  padding-right: 3rem !important;
+}
+
+.input-icon {
+  @apply absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none z-10 flex items-center justify-center;
+}
+
+.input-icon-right {
+  @apply absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 z-10 flex items-center justify-center;
+}
+
+/* ── Cards ── */
+.card {
+  @apply bg-white rounded-2xl sm:rounded-3xl shadow-sm border border-primary-100 hover:shadow-xl hover:shadow-primary-100/20 transition-all duration-500 overflow-hidden;
+}
+
+/* ── Navigation ── */
+.nav-link {
+  @apply px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200;
+}
+
+.nav-link-active {
+  @apply bg-primary-100 text-primary-800 font-semibold;
+}
+
+.nav-link-inactive {
+  @apply text-primary-700/70 hover:text-primary-800 hover:bg-primary-50;
+}
+
+/* ── Loading ── */
+.loading-spinner {
+  @apply animate-spin rounded-full h-8 w-8 border-2 border-primary-200 border-t-primary-600;
+}
+
+/* ── Layout ── */
+.container-custom {
+  @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+}
+
+@layer utilities {
+  .animate-slide-up {
+    animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  @keyframes slideUp {
+    from {
+      transform: translateY(20px);
+      opacity: 0;
+    }
+
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+
+  .animate-fade-in {
+    animation: fadeIn 0.3s ease both;
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(-8px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  .blob-animation {
+    animation: blobMove 8s ease-in-out infinite;
+  }
+
+  @keyframes blobMove {
+
+    0%,
+    100% {
+      transform: translate(0, 0) scale(1);
+    }
+
+    33% {
+      transform: translate(20px, -20px) scale(1.05);
+    }
+
+    66% {
+      transform: translate(-15px, 10px) scale(0.95);
+    }
+  }
+  .animate-spin-slow {
+    animation: spin 8s linear infinite;
+  }
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* ── Text Gradient ── */
+.text-gradient {
+  @apply bg-gradient-to-r from-primary-600 to-primary-800 bg-clip-text text-transparent;
+}
+
+/* ── Utilities ── */
+.hover-lift {
+  @apply transition-transform duration-200 hover:-translate-y-0.5;
+}
+
+.glass {
+  @apply bg-white/80 backdrop-blur-sm border border-primary-100/40;
+}
+
+/* ── Scroll Progress Bar ── */
+.scroll-progress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #7a5c3e, #b8895a);
+  z-index: 9999;
+  transition: width 0.1s ease;
+}
+
+/* ── Glass Morphism ── */
+.glass-morphism {
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* ── Stable Header ── */
+.header-stable {
+  @apply flex flex-col justify-center;
+  min-height: 80px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.header-scrolled {
+  @apply py-3 shadow-xl shadow-primary-900/5 bg-white/95 backdrop-blur-xl border-b border-primary-100/50;
+  min-height: 80px;
+  /* Keep height consistent to prevent layout shift */
+}
+
+.header-default {
+  @apply py-5 bg-white border-b border-transparent;
+  min-height: 80px;
+}
+
+/* ══════════════════════════════════════════
+   MOBILE COMPACT GLOBAL OVERRIDES
+   Applied at < 640px to tighten ALL pages
+   ══════════════════════════════════════════ */
+@media (max-width: 639px) {
+
+  /* Container: tighter horizontal padding */
+  .container-custom {
+    @apply px-3.5 !important;
+    padding-top: var(--sat);
+  }
+
+  /* Full screen fill */
+  .min-h-screen {
+    min-height: 100dvh !important;
+  }
+
+  /* Typography - tighter & smaller */
+  h1 {
+    @apply text-xl !important;
+  }
+
+  h2 {
+    @apply text-xl !important;
+  }
+
+  h3 {
+    @apply text-lg !important;
+  }
+
+  h4 {
+    @apply text-base !important;
+  }
+
+  p {
+    @apply text-[10px] leading-relaxed !important;
+  }
+
+  /* Buttons - slimmer */
+  .btn {
+    @apply py-2 px-4 text-[0.7rem] !important;
+    letter-spacing: 0.05em !important;
+    border-radius: 0.75rem !important;
+  }
+
+  .btn-lg {
+    @apply py-2.5 !important;
+  }
+
+  .btn-sm {
+    @apply py-1.5 px-3 text-[0.6rem] !important;
+  }
+
+  /* Inputs - slimmer */
+  .input {
+    @apply py-2 text-xs !important;
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+    border-radius: 0.75rem !important;
+  }
+
+  .input-with-icon {
+    @apply pl-12 !important;
+    padding-left: 3rem !important;
+  }
+
+  .input-with-icon-right {
+    @apply pr-12 !important;
+    padding-right: 3rem !important;
+  }
+
+  .input-with-both-icons {
+    @apply pl-12 pr-12 !important;
+    padding-left: 3rem !important;
+    padding-right: 3rem !important;
+  }
+
+  .input-icon {
+    @apply left-4 !important;
+  }
+
+  .input-icon-right {
+    @apply right-4 !important;
+  }
+
+  /* Spacing - significantly reduced */
+  /* Target space-y utilities */
+  [class*="space-y-24"],
+  [class*="space-y-20"] {
+    @apply space-y-8 !important;
+  }
+
+  [class*="space-y-16"],
+  [class*="space-y-12"] {
+    @apply space-y-6 !important;
+  }
+
+  [class*="space-y-10"],
+  [class*="space-y-8"] {
+    @apply space-y-4 !important;
+  }
+
+  /* Target gap utilities */
+  [class*="gap-12"],
+  [class*="gap-10"],
+  [class*="gap-8"] {
+    @apply gap-3 !important;
+  }
+
+  /* Padding - crushed, but preserve specific side padding if needed */
+  /* We use more specific selectors to avoid hitting pl- and pr- unnecessarily */
+  .p-20,
+  .p-16,
+  .p-12,
+  .py-20,
+  .py-16,
+  .py-12,
+  .px-20,
+  .px-16,
+  .px-12,
+  .p-14,
+  .py-14,
+  .px-14 {
+    @apply p-4 !important;
+  }
+
+  .p-10,
+  .p-8,
+  .p-6,
+  .py-10,
+  .py-8,
+  .py-6,
+  .px-10,
+  .px-8,
+  .px-6 {
+    @apply p-2 !important;
+  }
+
+  /* Rounding - softened for small screens */
+  .rounded-\[3rem\],
+  .rounded-\[40px\],
+  .rounded-\[32px\] {
+    @apply rounded-2xl !important;
+  }
+
+  /* Force 2 columns on mobile if they were 3+ for better fit */
+  .grid-cols-3,
+  .grid-cols-4,
+  .grid-cols-5 {
+    @apply grid-cols-2 !important;
+  }
+
+  /* Cards - tighter */
+  .card {
+    @apply p-4 !important;
+    border-radius: 1rem !important;
+  }
+
+  /* Table Compacting */
+  table {
+    @apply text-[10px] !important;
+  }
+
+  th,
+  td {
+    @apply p-2 !important;
+  }
+
+  /* Dashboard Specific */
+  .stat-card-value {
+    @apply text-2xl !important;
+  }
+
+  /* ── Mobile App Specifics ── */
+  * {
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+
+  .mobile-nav-active {
+    @apply animate-bounce shadow-[0_0_20px_rgba(83,49,20,0.3)];
+  }
+
+  /* Compact Grids for small stats */
+  .grid-compact {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+    gap: 0.5rem;
+  }
+
+  /* Touch Feedback */
+  .btn:active, 
+  .card-interactive:active {
+    transform: scale(0.96);
+    transition: transform 0.1s ease;
+  }
+
+  /* Hide Desktop only elements */
+  .desktop-only {
+    display: none !important;
+  }
+
+  /* Bottom Nav Safe Area */
+  nav.fixed.bottom-0 {
+    padding-bottom: calc(0.75rem + var(--sab)) !important;
+    height: auto !important;
+  }
+
+  /* Prevent logo text overlap on tiny screens */
+  .logo-text {
+    display: none;
+  }
+}
+
+@media (min-width: 640px) {
+  .mobile-only {
+    display: none !important;
+  }
+}
+
+/* ── Custom Animations for Mobile App Feel ── */
+@keyframes slide-up-soft {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+.animate-slide-up-soft {
+  animation: slide-up-soft 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes scale-in {
+  from { transform: scale(0.95); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+.animate-scale-in {
+  animation: scale-in 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}

@@ -1,0 +1,33 @@
+# Dependencies
+node_modules/
+client/node_modules/
+
+# Environment variables - NEVER commit these!
+.env
+.env.local
+.env.production
+.env.*.local
+
+# Build output
+client/build/
+
+# Logs
+*.log
+npm-debug.log*
+error.log
+error2.log
+
+# Temp files
+tmp/
+tmp_*.js
+test-db.js
+test-output.txt
+test-login.js
+test-auth.html
+test-authservice.js
+LATEST_OTP.txt
+query
+
+# OS files
+.DS_Store
+Thumbs.db

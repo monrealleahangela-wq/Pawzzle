@@ -1,0 +1,215 @@
+const axios = require('axios');
+const Order = require('../models/Order');
+const Store = require('../models/Store');
+const Product = require('../models/Product');
+const Pet = require('../models/Pet');
+const StockSyncService = require('../services/stockSyncService');
+const { createNotification } = require('./notificationController');
+
+const PAYMONGO_SECRET_KEY = process.env.PAYMONGO_SECRET_KEY;
+const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
+
+/**
+ * Create a PayMongo Checkout Session
+ */
+const createCheckoutSession = async (req, res) => {
+    try {
+        const { orderId } = req.params;
+        const order = await Order.findById(orderId).populate('customer');
+
+        if (!order) {
+            return res.status(404).json({ message: 'Order not found' });
+        }
+
+        if (order.status === 'cancelled') {
+            return res.status(400).json({ message: 'Cannot pay for a canceled order' });
+        }
+
+        if (order.customer._id.toString() !== req.user.id && req.user.role !== 'super_admin') {
+            return res.status(403).json({ message: 'Access denied' });
+        }
+
+        // PayMongo expects amount in centavos
+        const amountInCentavos = Math.round(order.totalAmount * 100);
+
+        const data = {
+            data: {
+                attributes: {
+                    send_email_receipt: true,
+                    show_description: true,
+                    show_line_items: true,
+                    description: `Payment for Order #${order.orderNumber}`,
+                    line_items: order.items.map(item => ({
+                        amount: Math.round(item.price * 100),
+                        currency: 'PHP',
+                        name: item.name,
+                        quantity: item.quantity
+                    })),
+                    payment_method_types: ['card', 'gcash', 'paymaya', 'dob', 'dob_ubp'],
+                    success_url: `${FRONTEND_URL}/orders/${order._id}?payment=success`,
+                    cancel_url: `${FRONTEND_URL}/checkout?payment=cancelled`,
+                    reference_number: order.orderNumber
+                }
+            }
+        };
+
+        // Add shipping fee if applicable
+        if (order.shippingFee > 0) {
+            data.data.attributes.line_items.push({
+                amount: Math.round(order.shippingFee * 100),
+                currency: 'PHP',
+                name: 'Shipping Fee',
+                quantity: 1
+            });
+        }
+
+        const response = await axios.post('https://api.paymongo.com/v1/checkout_sessions', data, {
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Basic ${Buffer.from(PAYMONGO_SECRET_KEY + ':').toString('base64')}`
+            }
+        });
+
+        const session = response.data.data;
+
+        // Save session info to order
+        order.paymentDetails = {
+            sessionId: session.id,
+            checkoutUrl: session.attributes.checkout_url
+        };
+        await order.save();
+
+        res.json({
+            checkoutUrl: session.attributes.checkout_url
+        });
+    } catch (error) {
+        console.error('PayMongo Create Session Error:', error.response?.data || error.message);
+        res.status(500).json({
+            message: 'Failed to create payment session',
+            error: error.response?.data?.errors?.[0]?.detail || error.message
+        });
+    }
+};
+
+/**
+ * Handle PayMongo Webhook
+ */
+const handleWebhook = async (req, res) => {
+    try {
+        const event = req.body.data;
+        const eventType = event.attributes.type;
+
+        console.log('🔔 Received PayMongo Webhook Event:', eventType);
+
+        if (eventType === 'checkout_session.payment.paid') {
+            const checkoutSession = event.attributes.data;
+            const orderNumber = checkoutSession.attributes.reference_number;
+            const paymentData = checkoutSession.attributes.payments[0];
+
+            const order = await Order.findOne({ orderNumber });
+
+            if (order) {
+                if (order.status === 'cancelled') {
+                    console.log(`⚠️ Received payment for cancelled order #${order.orderNumber}. Marking as paid but keeping cancelled status.`);
+                    order.paymentStatus = 'paid';
+                    order.paymentMethod = paymentData.attributes.source.type;
+                    order.paymentDetails = {
+                        ...order.paymentDetails,
+                        paymentId: paymentData.id,
+                        amountPaid: paymentData.attributes.amount / 100,
+                        transactionDate: new Date(paymentData.attributes.paid_at * 1000)
+                    };
+                    await order.save();
+                    return res.sendStatus(200);
+                }
+
+                order.paymentStatus = 'paid';
+                order.status = 'confirmed'; // Automatically confirm order on payment
+                order.paymentMethod = paymentData.attributes.source.type; // e.g., 'gcash', 'card'
+                order.paymentDetails = {
+                    ...order.paymentDetails,
+                    paymentId: paymentData.id,
+                    amountPaid: paymentData.attributes.amount / 100,
+                    transactionDate: new Date(paymentData.attributes.paid_at * 1000)
+                };
+
+                // Deduct stock and update pet availability
+                for (const item of order.items) {
+                    if (item.itemType === 'product') {
+                        try {
+                            const product = await Product.findById(item.itemId);
+                            if (product) {
+                                const sellerStore = await Store.findOne({ owner: product.addedBy });
+                                if (sellerStore) {
+                                    await StockSyncService.reduceStockOnOrder(item.itemId, item.quantity, sellerStore._id);
+                                } else {
+                                    product.stockQuantity -= item.quantity;
+                                    await product.save();
+                                }
+                            }
+                        } catch (stockError) {
+                            console.error(`❌ Stock deduction failed for order ${order._id}:`, stockError.message);
+                        }
+                    } else if (item.itemType === 'pet') {
+                        await Pet.findByIdAndUpdate(item.itemId, { isAvailable: false });
+                    }
+                }
+
+                // Calculate 10% Platform Fee
+                const platformFee = Number((order.totalAmount * 0.10).toFixed(2));
+                const netAmount = Number((order.totalAmount - platformFee).toFixed(2));
+
+                order.platformFee = platformFee;
+                order.netAmount = netAmount;
+
+                await order.save();
+
+                // Increment store balance and revenue
+                if (order.store) {
+                    await Store.findByIdAndUpdate(order.store, {
+                        $inc: {
+                            'balance': netAmount,
+                            'stats.totalRevenue': order.totalAmount,
+                            'stats.totalPlatformFees': platformFee
+                        }
+                    });
+                    console.log(`💰 Store balance updated (${netAmount}), Fee: ${platformFee} for order #${order.orderNumber}`);
+                }
+
+                // Notify store owner
+                await createNotification({
+                    recipient: order.addedBy,
+                    sender: order.customer,
+                    type: 'order_status',
+                    title: 'Order Paid',
+                    message: `Order #${order.orderNumber} has been paid via ${order.paymentMethod}.`,
+                    relatedId: order._id,
+                    relatedModel: 'Order'
+                });
+
+                console.log(`✅ Order #${orderNumber} marked as PAID`);
+            }
+        } else if (eventType === 'checkout_session.payment.failed' || eventType === 'payment.failed') {
+            const checkoutSession = event.attributes.data;
+            // The data structure for payment.failed might be slightly different, but PayMongo usually includes the reference or we can find it in the resource
+            const orderNumber = checkoutSession.attributes.reference_number || (checkoutSession.attributes.external_id);
+
+            const order = await Order.findOne({ orderNumber });
+            if (order) {
+                order.paymentStatus = 'failed';
+                await order.save();
+                console.log(`❌ Order #${orderNumber} marked as PAYMENT FAILED`);
+            }
+        }
+
+        res.sendStatus(200);
+    } catch (error) {
+        console.error('PayMongo Webhook Error:', error.message);
+        res.status(500).json({ message: 'Webhook processing failed' });
+    }
+};
+
+module.exports = {
+    createCheckoutSession,
+    handleWebhook
+};

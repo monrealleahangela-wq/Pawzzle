@@ -1,0 +1,166 @@
+const mongoose = require('mongoose');
+
+const storeSchema = new mongoose.Schema({
+  owner: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
+  },
+  name: {
+    type: String,
+    required: true,
+    trim: true
+  },
+  slug: {
+    type: String,
+    required: true,
+    unique: true
+  },
+  description: {
+    type: String,
+    required: true,
+    maxlength: 2000
+  },
+  logo: {
+    type: String
+  },
+  coverImage: {
+    type: String
+  },
+  businessType: {
+    type: String,
+    enum: ['pet_store', 'breeder', 'shelter', 'veterinary', 'grooming', 'training', 'other'],
+    required: true
+  },
+  legalStructure: {
+    type: String,
+    enum: ['single_proprietorship', 'partnership', 'corporation', 'cooperative', 'other'],
+    default: 'single_proprietorship'
+  },
+  yearsInBusiness: {
+    type: Number,
+    default: 0
+  },
+  numberOfEmployees: {
+    type: Number,
+    default: 1
+  },
+  hasPhysicalStore: {
+    type: Boolean,
+    default: true
+  },
+  contactInfo: {
+    phone: { type: String, required: true },
+    email: { type: String, required: true },
+    website: String,
+    address: {
+      street: { type: String, required: true },
+      barangay: { type: String, required: true },
+      city: { type: String, required: true },
+      state: { type: String, required: true },
+      zipCode: { type: String, required: true },
+      country: { type: String, required: true },
+      coordinates: {
+        lat: { type: Number },
+        lng: { type: Number }
+      }
+    }
+  },
+  socialMedia: {
+    facebook: String,
+    instagram: String,
+    twitter: String,
+    youtube: String
+  },
+  businessHours: {
+    monday: { open: String, close: String, closed: { type: Boolean, default: false } },
+    tuesday: { open: String, close: String, closed: { type: Boolean, default: false } },
+    wednesday: { open: String, close: String, closed: { type: Boolean, default: false } },
+    thursday: { open: String, close: String, closed: { type: Boolean, default: false } },
+    friday: { open: String, close: String, closed: { type: Boolean, default: false } },
+    saturday: { open: String, close: String, closed: { type: Boolean, default: false } },
+    sunday: { open: String, close: String, closed: { type: Boolean, default: false } }
+  },
+  specialties: [{
+    type: String,
+    enum: ['dogs', 'cats', 'birds', 'fish', 'reptiles', 'small_animals', 'exotic_pets']
+  }],
+  services: [{
+    name: { type: String, required: true },
+    description: String,
+    price: Number
+  }],
+  ratings: {
+    average: { type: Number, default: 0, min: 0, max: 5 },
+    count: { type: Number, default: 0 }
+  },
+  verificationStatus: {
+    type: String,
+    enum: ['verified', 'pending', 'suspended'],
+    default: 'verified'
+  },
+  isActive: {
+    type: Boolean,
+    default: true
+  },
+  featured: {
+    type: Boolean,
+    default: false
+  },
+  subscriptionTier: {
+    type: String,
+    enum: ['basic', 'premium', 'enterprise'],
+    default: 'basic'
+  },
+  subscriptionExpires: Date,
+  stats: {
+    totalPets: { type: Number, default: 0 },
+    totalProducts: { type: Number, default: 0 },
+    totalOrders: { type: Number, default: 0 },
+    totalRevenue: { type: Number, default: 0 },
+    totalPlatformFees: { type: Number, default: 0 }
+  },
+  balance: {
+    type: Number,
+    default: 0,
+    min: 0
+  },
+  payoutMethods: [{
+    type: {
+      type: String,
+      enum: ['gcash', 'maya', 'bank_transfer'],
+      required: true
+    },
+    accountName: { type: String, required: true },
+    accountNumber: { type: String, required: true },
+    bankName: String,
+    isDefault: { type: Boolean, default: false }
+  }],
+  createdAt: {
+    type: Date,
+    default: Date.now
+  },
+  updatedAt: {
+    type: Date,
+    default: Date.now
+  },
+  isDeleted: {
+    type: Boolean,
+    default: false
+  }
+});
+
+// Generate slug from store name and update timestamp
+storeSchema.pre('save', function (next) {
+  if (this.isModified('name')) {
+    const name = this.name || 'store';
+    this.slug = name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '') + '-' + Date.now();
+  }
+  this.updatedAt = Date.now();
+  next();
+});
+
+module.exports = mongoose.model('Store', storeSchema);
