@@ -5,8 +5,10 @@ client/node_modules/
 # Environment variables - NEVER commit these!
 .env
 .env.local
-.env.production
 .env.*.local
+# Allow .env.production for frontend (only contains public backend URL)
+!client/.env.production
+
 
 # Build output
 client/build/
