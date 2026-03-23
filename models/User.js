@@ -66,10 +66,10 @@ const userSchema = new mongoose.Schema({
     trim: true
   },
   address: {
-    street: { type: String, required: true },
-    city: { type: String, required: true },
-    province: { type: String, required: true },
-    barangay: { type: String, required: true },
+    street: { type: String, required: false },
+    city: { type: String, required: false },
+    province: { type: String, required: false },
+    barangay: { type: String, required: false },
     state: String,
     zipCode: String,
     country: String
