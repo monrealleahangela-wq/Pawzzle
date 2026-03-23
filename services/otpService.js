@@ -34,7 +34,7 @@ const sendWithResend = async (to, subject, html) => {
         'Authorization': `Bearer ${apiKey}`
       },
       body: JSON.stringify({
-        from: 'Pawzzle <onboarding@resend.dev>',
+        from: 'Pawzzle <hello@pawzzle.io>',
         to: [to],
         subject: subject,
         html: html
@@ -151,7 +151,7 @@ const sendRegistrationOTP = async (email, otp, firstName) => {
     return true;
   } catch (error) {
     console.error('❌ Error sending registration OTP email:', error.message);
-    return true; 
+    return false; // Return false so we catch real errors in production
   }
 };
 
