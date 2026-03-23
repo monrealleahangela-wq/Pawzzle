@@ -31,25 +31,26 @@ const createTransporter = async () => {
   // Use Real Credentials if BOTH email and pass have been modified from defaults
   if (!isUserDefault && !isPassDefault) {
     console.log(`🚀 Using REAL email service: ${process.env.EMAIL_SERVICE || 'gmail'} (${process.env.EMAIL_USER})`);
+    
+    // Check if we are using Hostinger or Gmail
+    const isHostinger = process.env.EMAIL_SERVICE === 'hostinger' || process.env.EMAIL_USER.endsWith('@pawzzle.io');
+    
     return {
       transporter: nodemailer.createTransport({
-        host: 'smtp.gmail.com',
+        host: isHostinger ? 'smtp.hostinger.com' : 'smtp.gmail.com',
         port: 465,
         secure: true,
         auth: {
           user: process.env.EMAIL_USER,
           pass: process.env.EMAIL_PASS
         },
-        // Deep Debugging: Show us the full story 🕵️‍♂️
         debug: true,
         logger: true,
         connectionTimeout: 30000,
         greetingTimeout: 30000,
         socketTimeout: 30000,
-        // The Secret Key: Force IPv4 to avoid ENETUNREACH on Render!
         family: 4,
         tls: {
-          // Bypasses certain certificate check delays on cloud providers
           rejectUnauthorized: false
         }
       }),
