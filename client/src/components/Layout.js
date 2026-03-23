@@ -324,7 +324,7 @@ const Layout = () => {
           className={`sticky top-0 z-50 header-stable ${isScrolled ? 'header-scrolled' : 'header-default'}`}
         >
           <div className="container-custom">
-            <div className="flex justify-between items-center gap-6">
+            <div className="flex justify-between items-center gap-2 sm:gap-6">
               {/* Mobile Only: Logo */}
               <Link
                 to={!user ? '/landing' : user?.role === 'customer' ? '/home' : user?.role === 'super_admin' ? '/superadmin/dashboard' : '/admin/dashboard'}
@@ -350,7 +350,7 @@ const Layout = () => {
               {/* Header Actions */}
               <div className="flex items-center space-x-2 sm:space-x-4 shrink-0 ml-auto">
                 {/* Search Toggle for Mobile */}
-                <div className="sm:hidden">
+                <div className="sm:hidden max-w-[140px] xs:max-w-[180px]">
                   <GlobalSearch isScrolled={isScrolled} />
                 </div>
                 {/* Cart for customers */}

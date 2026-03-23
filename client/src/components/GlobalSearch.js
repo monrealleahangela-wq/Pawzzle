@@ -90,7 +90,7 @@ const GlobalSearch = ({ isScrolled }) => {
             <div className={`relative flex items-center transition-all duration-300 ${isOpen ? 'scale-105' : ''}`}>
                 <Search 
                     size={16} 
-                    className={`absolute left-4 z-10 pointer-events-none transition-colors ${isScrolled ? 'text-primary-600' : 'text-white/70'}`} 
+                    className={`absolute left-3 sm:left-4 z-10 pointer-events-none transition-colors ${isScrolled ? 'text-primary-600' : 'text-white/70'}`} 
                 />
                 <input
                     type="text"
@@ -101,14 +101,14 @@ const GlobalSearch = ({ isScrolled }) => {
                     }}
                     onFocus={() => setIsOpen(true)}
                     placeholder="Search pets, products..."
-                    className={`w-full pl-14 pr-14 py-2.5 rounded-full text-[11px] font-medium outline-none transition-all duration-300 border input-with-both-icons ${isScrolled
+                    className={`w-full pl-9 sm:pl-14 pr-9 sm:pr-14 py-2.5 rounded-full text-[11px] font-medium outline-none transition-all duration-300 border input-with-both-icons ${isScrolled
                         ? 'bg-slate-50 border-slate-200 text-slate-900 focus:bg-white focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500'
                         : 'bg-white/10 border-white/20 text-white placeholder-white/50 focus:bg-white focus:text-slate-900 focus:border-white'
                         }`}
                 />
                 <button
                     onClick={() => setShowFilters(!showFilters)}
-                    className={`absolute right-3 p-1 rounded-md transition-colors ${isScrolled ? 'text-primary-400 hover:text-primary-600' : 'text-white/40 hover:text-white'
+                    className={`absolute right-2.5 sm:right-3 p-1 rounded-md transition-colors ${isScrolled ? 'text-primary-400 hover:text-primary-600' : 'text-white/40 hover:text-white'
                         }`}
                 >
                     <Filter size={16} />
