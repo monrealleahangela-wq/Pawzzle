@@ -86,8 +86,8 @@ const GlobalSearch = ({ isScrolled }) => {
     const totalCount = results.pets.length + results.products.length + results.services.length + results.stores.length;
 
     return (
-        <div ref={searchRef} className="relative w-full max-w-sm lg:max-w-md">
-            <div className={`relative flex items-center transition-all duration-300 ${isOpen ? 'scale-105' : ''}`}>
+        <div ref={searchRef} className="relative w-full max-w-[200px] xs:max-w-sm lg:max-w-md">
+            <div className={`relative flex items-center transition-all duration-300 ${isOpen ? 'sm:scale-105' : ''}`}>
                 <Search 
                     size={16} 
                     className={`absolute left-3 sm:left-4 z-10 pointer-events-none transition-colors ${isScrolled ? 'text-primary-600' : 'text-white/70'}`} 
@@ -101,8 +101,8 @@ const GlobalSearch = ({ isScrolled }) => {
                     }}
                     onFocus={() => setIsOpen(true)}
                     placeholder="Search pets, products..."
-                    className={`w-full pl-9 sm:pl-14 pr-9 sm:pr-14 py-2.5 rounded-full text-[11px] font-medium outline-none transition-all duration-300 border input-with-both-icons ${isScrolled
-                        ? 'bg-slate-50 border-slate-200 text-slate-900 focus:bg-white focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500'
+                    className={`w-full pl-10 sm:pl-14 pr-10 sm:pr-14 py-2.5 rounded-full text-[11px] font-medium outline-none transition-all duration-300 border input-with-both-icons ${isScrolled
+                        ? 'bg-slate-50 border-slate-200 text-slate-900 focus:bg-white focus:border-primary-500'
                         : 'bg-white/10 border-white/20 text-white placeholder-white/50 focus:bg-white focus:text-slate-900 focus:border-white'
                         }`}
                 />
@@ -176,7 +176,7 @@ const GlobalSearch = ({ isScrolled }) => {
                                     {results.pets.map(pet => (
                                         <button key={pet._id} onClick={() => { navigate(`/pets/${pet._id}`); setIsOpen(false); }} className="w-full flex items-center gap-3 p-2 hover:bg-slate-50 rounded-2xl transition-all group text-left">
                                             <div className="w-10 h-10 bg-slate-100 rounded-xl overflow-hidden group-hover:scale-110 transition-transform">
-                                                {pet.images?.[0] ? <img src={pet.images[0]} className="w-full h-full object-cover" /> : <Heart className="h-full w-full p-2 text-primary-200" />}
+                                                {pet.images?.[0] ? <img src={getImageUrl(pet.images[0])} className="w-full h-full object-cover" /> : <Heart className="h-full w-full p-2 text-primary-200" />}
                                             </div>
                                             <div className="flex-1 min-w-0">
                                                 <p className="text-[10px] font-black text-slate-900 uppercase truncate">{pet.name}</p>
@@ -194,7 +194,7 @@ const GlobalSearch = ({ isScrolled }) => {
                                     {results.products.map(prod => (
                                         <button key={prod._id} onClick={() => { navigate(`/products/${prod._id}`); setIsOpen(false); }} className="w-full flex items-center gap-3 p-2 hover:bg-slate-50 rounded-2xl transition-all group text-left">
                                             <div className="w-10 h-10 bg-slate-100 rounded-xl overflow-hidden group-hover:scale-110 transition-transform">
-                                                {prod.images?.[0] ? <img src={prod.images[0]} className="w-full h-full object-cover" /> : <Package className="h-full w-full p-2 text-secondary-200" />}
+                                                {prod.images?.[0] ? <img src={getImageUrl(prod.images[0])} className="w-full h-full object-cover" /> : <Package className="h-full w-full p-2 text-secondary-200" />}
                                             </div>
                                             <div className="flex-1 min-w-0">
                                                 <p className="text-[10px] font-black text-slate-900 uppercase truncate">{prod.name}</p>
