@@ -41,7 +41,13 @@ passport.use(new GoogleStrategy({
             username,
             avatar: profile.photos?.[0]?.value || '',
             role: 'customer',
-            isActive: true
+            isActive: true,
+            address: {
+                street: 'Not provided',
+                city: 'Not provided',
+                province: 'Not provided',
+                barangay: 'Not provided'
+            }
         });
         await user.save();
         return done(null, user);
