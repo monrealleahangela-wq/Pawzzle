@@ -40,11 +40,18 @@ const createTransporter = async () => {
           user: process.env.EMAIL_USER,
           pass: process.env.EMAIL_PASS
         },
-        connectionTimeout: 15000,
-        greetingTimeout: 15000,
+        // Deep Debugging: Show us the full story 🕵️‍♂️
+        debug: true,
+        logger: true,
+        connectionTimeout: 30000,
+        greetingTimeout: 30000,
         socketTimeout: 30000,
         // The Secret Key: Force IPv4 to avoid ENETUNREACH on Render!
-        family: 4
+        family: 4,
+        tls: {
+          // Bypasses certain certificate check delays on cloud providers
+          rejectUnauthorized: false
+        }
       }),
       fromEmail: process.env.EMAIL_USER,
       isEthereal: false
