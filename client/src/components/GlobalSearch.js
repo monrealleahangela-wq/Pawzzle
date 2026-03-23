@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Search, Filter, X, ChevronRight, Navigation, MapPin, Heart, Package, Scissors, Store as StoreIcon } from 'lucide-react';
-import { petService, productService, serviceService, storeService } from '../services/apiService';
+import { petService, productService, serviceService, storeService, getImageUrl } from '../services/apiService';
 
 const GlobalSearch = ({ isScrolled }) => {
     const [isOpen, setIsOpen] = useState(false);
