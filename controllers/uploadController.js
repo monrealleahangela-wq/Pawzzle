@@ -1,21 +1,20 @@
-const path = require('path');
-const fs = require('fs');
+const { cloudinary } = require('../middleware/upload');
 
-// Upload single image
+// Upload single image to Cloudinary
 const uploadImage = async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ message: 'No image file provided' });
     }
 
-    // Generate URL for the uploaded image
-    const imageUrl = `/uploads/images/${req.file.filename}`;
+    // Cloudinary returns the URL directly in req.file.path
+    const imageUrl = req.file.path;
 
     res.json({
       message: 'Image uploaded successfully',
       url: imageUrl,
       imageUrl: imageUrl,
-      filename: req.file.filename,
+      publicId: req.file.filename,
       originalName: req.file.originalname,
       size: req.file.size
     });
@@ -25,15 +24,15 @@ const uploadImage = async (req, res) => {
   }
 };
 
-// Upload multiple images
+// Upload multiple images to Cloudinary
 const uploadMultipleImages = async (req, res) => {
   try {
     if (!req.files || req.files.length === 0) {
       return res.status(400).json({ message: 'No image files provided' });
     }
 
-    // Generate URLs for all uploaded images
-    const imageUrls = req.files.map(file => `/uploads/images/${file.filename}`);
+    // Cloudinary returns the URL directly in each file's .path
+    const imageUrls = req.files.map(file => file.path);
 
     res.json({
       message: 'Images uploaded successfully',
@@ -41,6 +40,7 @@ const uploadMultipleImages = async (req, res) => {
       imageUrls: imageUrls,
       files: req.files.map(file => ({
         filename: file.filename,
+        url: file.path,
         originalName: file.originalname,
         size: file.size
       }))
@@ -51,21 +51,19 @@ const uploadMultipleImages = async (req, res) => {
   }
 };
 
-// Delete image
+// Delete image from Cloudinary by public_id
 const deleteImage = async (req, res) => {
   try {
     const { filename } = req.params;
-    const filePath = path.join(__dirname, '..', 'uploads', 'images', filename);
 
-    // Check if file exists
-    if (!fs.existsSync(filePath)) {
-      return res.status(404).json({ message: 'Image not found' });
+    // filename here is the Cloudinary public_id (e.g. "pawzzle/abc123")
+    const result = await cloudinary.uploader.destroy(filename);
+
+    if (result.result === 'ok') {
+      res.json({ message: 'Image deleted successfully' });
+    } else {
+      res.status(404).json({ message: 'Image not found or already deleted' });
     }
-
-    // Delete file
-    fs.unlinkSync(filePath);
-
-    res.json({ message: 'Image deleted successfully' });
   } catch (error) {
     console.error('Image delete error:', error);
     res.status(500).json({ message: 'Failed to delete image' });
