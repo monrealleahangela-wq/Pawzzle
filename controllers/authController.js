@@ -123,22 +123,9 @@ const sendRegisterOTP = async (req, res) => {
       });
     }
 
-    // Fallback: Try sending OTP via SMS
-    console.log('🔄 Attemping SMS fallback for:', phone);
-    const smsSent = await otpService.sendSMS_OTP(phone, otp);
-
-    if (smsSent) {
-      return res.json({
-        success: true,
-        message: 'Email delivery failed. Verification code sent to your phone via SMS.',
-        deliveryMethod: 'sms',
-        phone
-      });
-    }
-
-    // Both failed
+    // Email failed
     res.status(500).json({
-      message: 'Failed to deliver verification code via email and SMS. Please verify your contact details and try again.'
+      message: 'Failed to send verification code. Please check your email address and try again.'
     });
   } catch (error) {
     console.error('Send registration OTP error:', error);
@@ -256,20 +243,7 @@ const resendRegisterOTP = async (req, res) => {
       });
     }
 
-    // Fallback: Try resending via SMS
-    const phone = storedData.userData.phone;
-    console.log('🔄 Resend: Attemping SMS fallback for:', phone);
-    const smsSent = await otpService.sendSMS_OTP(phone, otp);
-
-    if (smsSent) {
-      return res.json({
-        success: true,
-        message: 'Email delivery failed. New verification code sent to your phone via SMS.',
-        deliveryMethod: 'sms'
-      });
-    }
-
-    res.status(500).json({ message: 'Failed to resend verification code via email and SMS' });
+    res.status(500).json({ message: 'Failed to resend verification code. Please try again later.' });
   } catch (error) {
     console.error('Resend registration OTP error:', error);
     res.status(500).json({ message: 'Server error' });
@@ -531,21 +505,7 @@ const requestPasswordResetOTP = async (req, res) => {
       });
     }
 
-    // Fallback: Try SMS (if phone exists)
-    if (user.phone) {
-      console.log('🔄 Reset: Attemping SMS fallback for:', user.phone);
-      const smsSent = await otpService.sendSMS_OTP(user.phone, otp);
-      if (smsSent) {
-        return res.json({
-          success: true,
-          message: 'Email delivery failed. Reset code sent to your phone via SMS.',
-          deliveryMethod: 'sms',
-          phone: user.phone
-        });
-      }
-    }
-
-    res.status(500).json({ message: 'Failed to deliver reset code via email and SMS.' });
+    res.status(500).json({ message: 'Failed to send reset code. Please check your email address and try again.' });
   } catch (error) {
     console.error('Request password reset OTP error:', error);
     res.status(500).json({ message: 'Server error' });
@@ -626,19 +586,7 @@ const resendPasswordResetOTP = async (req, res) => {
       });
     }
 
-    // Fallback: Try SMS
-    if (user.phone) {
-      const smsSent = await otpService.sendSMS_OTP(user.phone, otp);
-      if (smsSent) {
-        return res.json({
-          success: true,
-          message: 'Email delivery failed. New reset code sent to your phone via SMS.',
-          deliveryMethod: 'sms'
-        });
-      }
-    }
-
-    res.status(500).json({ message: 'Failed to resend reset code via email and SMS' });
+    res.status(500).json({ message: 'Failed to resend reset code. Please try again later.' });
   } catch (error) {
     console.error('Resend password reset OTP error:', error);
     res.status(500).json({ message: 'Server error' });
