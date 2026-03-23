@@ -336,24 +336,24 @@ const AdminPets = () => {
                       </div>
 
                       {/* Price + Action row */}
-                      <div className="mt-auto pt-4 border-t border-slate-50 flex items-center justify-between gap-4">
-                        <span className="text-xl font-black text-slate-900 tracking-tighter">
+                      <div className="mt-auto pt-4 border-t border-slate-50 flex items-center justify-between gap-2">
+                        <span className="text-lg sm:text-xl font-black text-slate-900 tracking-tighter truncate">
                           ₱{(pet.price || 0).toLocaleString()}
                         </span>
-                        <div className="flex gap-2 shrink-0">
+                        <div className="flex gap-1.5 shrink-0">
                           <button 
                             onClick={() => handleEditPet(pet._id)}
-                            className="p-3 bg-slate-900 text-white rounded-xl hover:bg-rose-500 transition-all shadow-lg active:scale-95"
+                            className="p-2 sm:p-3 bg-slate-900 text-white rounded-xl hover:bg-rose-500 transition-all shadow-lg active:scale-95"
                             title="Edit Pet"
                           >
-                            <Edit className="h-4 w-4" />
+                            <Edit className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                           </button>
                           <button 
                             onClick={() => handleDeletePet(pet._id)}
-                            className="p-3 bg-rose-50 text-rose-500 rounded-xl hover:bg-rose-500 hover:text-white transition-all border border-rose-100 active:scale-95"
+                            className="p-2 sm:p-3 bg-rose-50 text-rose-500 rounded-xl hover:bg-rose-500 hover:text-white transition-all border border-rose-100 active:scale-95"
                             title="Delete Pet"
                           >
-                            <Trash2 className="h-4 w-4" />
+                            <Trash2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                           </button>
                         </div>
                       </div>
