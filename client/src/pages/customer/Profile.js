@@ -663,7 +663,7 @@ const Profile = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] pb-12 sm:pb-20">
+    <div className="min-h-screen bg-[#F8FAFC] pb-12 sm:pb-20 overflow-x-hidden">
       {/* Premium Header/Banner - Compacted */}
       <div className="relative h-24 sm:h-48 w-full overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-slate-800 to-primary-900"></div>
@@ -671,11 +671,11 @@ const Profile = () => {
         <div className="absolute bottom-0 left-0 right-0 h-16 sm:h-32 bg-gradient-to-t from-[#F8FAFC] to-transparent"></div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8 -mt-12 sm:-mt-24 relative z-10">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 sm:gap-8">
+      <div className="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8 -mt-12 sm:-mt-24 relative z-10 w-full overflow-hidden">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 sm:gap-8 w-full">
 
           {/* Sidebar / Stats - High Density */}
-          <div className="lg:col-span-4 space-y-3 sm:space-y-6">
+          <div className="lg:col-span-4 space-y-3 sm:space-y-6 min-w-0 w-full overflow-hidden">
             {/* User Card - Slimmed */}
             <div className="bg-white/90 backdrop-blur-xl rounded-2xl sm:rounded-[2.5rem] shadow-xl shadow-slate-200/40 border border-white p-3 sm:p-8 group overflow-hidden">
               <div className="relative flex items-center lg:flex-col lg:items-center gap-3 lg:gap-0">
@@ -747,7 +747,7 @@ const Profile = () => {
 
             {/* Navigation Menu - High Density */}
             <div className="space-y-2">
-              <div className="bg-white/80 backdrop-blur-md rounded-xl sm:rounded-[2rem] shadow-xl shadow-slate-200/20 border border-white p-1 flex lg:block overflow-x-auto no-scrollbar scroll-smooth">
+              <div className="bg-white/80 backdrop-blur-md rounded-xl sm:rounded-[2rem] shadow-xl shadow-slate-200/20 border border-white p-1 flex lg:block overflow-x-auto no-scrollbar scroll-smooth w-full">
                 {[
                   { id: 'overview', icon: TrendingUp, label: 'Activity' },
                   { id: 'details', icon: User, label: 'Profile' },
@@ -758,7 +758,7 @@ const Profile = () => {
                   <button
                     key={item.id}
                     onClick={() => setActiveTab(item.id)}
-                    className={`flex items-center gap-1.5 whitespace-nowrap px-3 sm:px-6 py-2 sm:py-4 rounded-lg sm:rounded-2xl font-black text-[9px] sm:text-xs transition-all duration-300 group flex-1 justify-center ${activeTab === item.id
+                    className={`flex items-center gap-1.5 whitespace-nowrap px-3 sm:px-6 py-2 sm:py-4 rounded-lg sm:rounded-2xl font-black text-[9px] sm:text-xs transition-all duration-300 group ${activeTab === item.id
                       ? 'bg-slate-900 text-white shadow-lg'
                       : 'text-slate-400 hover:bg-white hover:text-slate-900'
                       }`}
@@ -785,7 +785,7 @@ const Profile = () => {
           </div>
 
           {/* Main Content Area - High Density */}
-          <div className="lg:col-span-8">
+          <div className="lg:col-span-8 min-w-0 w-full">
             <div className="bg-white/90 backdrop-blur-2xl rounded-2xl sm:rounded-[2.5rem] shadow-xl shadow-slate-200/40 border border-white min-h-[400px] sm:min-h-[600px] p-3 sm:p-10 overflow-hidden relative">
 
               {/* Decorative gradient corner */}

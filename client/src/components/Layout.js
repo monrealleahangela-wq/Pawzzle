@@ -245,7 +245,7 @@ const Layout = () => {
   const bottomNavItems = getBottomNavItems();
 
   return (
-    <div className="min-h-screen bg-primary-50 transition-colors duration-500 flex flex-col lg:flex-row">
+    <div className="min-h-screen bg-primary-50 transition-colors duration-500 flex flex-col lg:flex-row overflow-x-hidden">
       {/* Scroll Progress */}
       <div
         className="scroll-progress"
@@ -511,7 +511,7 @@ const Layout = () => {
       </div>
 
       {/* Bottom Navigation for Mobile */}
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-100 px-2 py-3 z-[60] flex justify-around items-center shadow-[0_-8px_30px_rgb(0,0,0,0.04)] backdrop-blur-xl bg-white/90">
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-100 px-2 pt-3 pb-[calc(1.25rem+env(safe-area-inset-bottom))] z-[60] flex justify-around items-center shadow-[0_-8px_30px_rgb(0,0,0,0.04)] backdrop-blur-xl bg-white/90">
         {bottomNavItems.map((item) => {
           const Icon = item.icon;
           const active = isActivePath(item.path);
