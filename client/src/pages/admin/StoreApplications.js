@@ -59,7 +59,9 @@ const StoreApplications = () => {
       setSelectedApplication(null);
       fetchApplications();
     } catch (error) {
-      toast.error('Failed to process application');
+      console.error('Process application error:', error);
+      const errorMsg = error.response?.data?.error || error.response?.data?.message || 'Failed to process application';
+      toast.error(errorMsg);
     }
   };
 
