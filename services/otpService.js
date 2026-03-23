@@ -1,6 +1,10 @@
 const nodemailer = require('nodemailer');
 const fs = require('fs');
 const path = require('path');
+const dns = require('dns');
+
+// Fix for connection issues on some cloud networks (like Render)
+dns.setServers(['8.8.8.8', '8.8.4.4']);
 
 // Log OTP to a file for easy retrieval during development
 const logOTPToFile = (type, email, otp) => {
@@ -29,7 +33,9 @@ const createTransporter = async () => {
     console.log(`🚀 Using REAL email service: ${process.env.EMAIL_SERVICE || 'gmail'} (${process.env.EMAIL_USER})`);
     return {
       transporter: nodemailer.createTransport({
-        service: process.env.EMAIL_SERVICE || 'gmail',
+        host: 'smtp.gmail.com',
+        port: 465,
+        secure: true,
         auth: {
           user: process.env.EMAIL_USER,
           pass: process.env.EMAIL_PASS
