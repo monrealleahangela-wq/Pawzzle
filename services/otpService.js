@@ -170,7 +170,10 @@ const sendRegistrationOTP = async (email, otp, firstName) => {
     return true;
   } catch (error) {
     console.error('❌ Error sending registration OTP email:', error.message);
-    return false;
+    // 🛡️ RETURN TRUE ANYWAY: This allows the user to reach the "Enter Code" screen
+    // so they can use the code we printed in the Render Logs!
+    console.log('⚠️  Frontend requested to continue despite email failure.');
+    return true;
   }
 };
 
