@@ -249,7 +249,7 @@ const reviewApplication = async (req, res) => {
       const store = new Store({
         owner: application.applicant,
         name: application.businessName,
-        description: application.businessDescription,
+        description: application.businessDescription || 'A new store on Pawzzle.',
         logo: application.storeLogoUrl,
         businessType: application.businessType,
         legalStructure: application.legalStructure,
@@ -259,7 +259,14 @@ const reviewApplication = async (req, res) => {
         contactInfo: {
           phone: application.contactInfo.phone,
           email: application.contactInfo.email,
-          address: application.contactInfo.address
+          address: {
+            street: application.contactInfo.address.street || '',
+            barangay: application.contactInfo.address.barangay || '',
+            city: application.contactInfo.address.city || '',
+            state: application.contactInfo.address.province || application.contactInfo.address.state || 'Cavite',
+            zipCode: application.contactInfo.address.zipCode || '4102',
+            country: application.contactInfo.address.country || 'PH'
+          }
         },
         socialMedia: application.socialMedia,
         payoutMethods: [
