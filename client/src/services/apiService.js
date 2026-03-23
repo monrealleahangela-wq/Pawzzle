@@ -1,5 +1,13 @@
 import axios from 'axios';
 
+// Utility for image URLs
+export const getImageUrl = (path) => {
+  if (!path || typeof path !== 'string') return null;
+  if (path.startsWith('http') || path.startsWith('data:')) return path;
+  const baseUrl = (process.env.REACT_APP_API_URL || `${window.location.origin}/api`).replace('/api', '');
+  return `${baseUrl}/${path.startsWith('/') ? path.slice(1) : path}`;
+};
+
 // The "Golden Solution": Automatically use the current domain for API requests
 const API_BASE_URL = process.env.REACT_APP_API_URL || `${window.location.origin}/api`;
 
@@ -323,11 +331,5 @@ export const supportService = {
   updateMessageStatus: (id, data) => api.patch(`/support/${id}`, data)
 };
 
-export const getImageUrl = (path) => {
-  if (!path || typeof path !== 'string') return null;
-  if (path.startsWith('http') || path.startsWith('data:')) return path;
-  const baseUrl = API_BASE_URL.replace('/api', '');
-  return `${baseUrl}/${path.startsWith('/') ? path.slice(1) : path}`;
-};
 
 export default api;
