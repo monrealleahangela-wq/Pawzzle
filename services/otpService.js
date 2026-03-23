@@ -129,6 +129,11 @@ const sendRegistrationOTP = async (email, otp, firstName) => {
   try {
     const { transporter, fromEmail, isEthereal } = await createTransporter();
 
+    // 🔑 EMERGENCY LOG: Print OTP to console in case email delivery is blocked!
+    console.log('-------------------------------------------');
+    console.log(`🔑 REGISTRATION OTP for ${email}: [ ${otp} ]`);
+    console.log('-------------------------------------------');
+
     // Always log to file for convenience
     logOTPToFile('REGISTRATION_OTP_EMAIL', email, otp);
 
@@ -208,6 +213,11 @@ const sendPasswordResetOTP = async (email, otp) => {
 const sendLoginOTP = async (email, otp, firstName) => {
   try {
     const { transporter, fromEmail, isEthereal } = await createTransporter();
+
+    // 🛡️ EMERGENCY LOG: Print 2FA OTP to console!
+    console.log('-------------------------------------------');
+    console.log(`🛡️ LOGIN 2FA OTP for ${email}: [ ${otp} ]`);
+    console.log('-------------------------------------------');
 
     logOTPToFile('LOGIN_2FA_OTP', email, otp);
 
