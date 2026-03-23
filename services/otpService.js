@@ -112,7 +112,7 @@ const wrapInTemplate = (title, body) => `
       <h1 style="margin:0;color:#ffffff;font-size:28px;font-weight:900;letter-spacing:-1px;text-transform:uppercase;">PAWZZLE</h1>
       <p style="margin:6px 0 0;color:rgba(255,255,255,0.8);font-size:11px;font-weight:700;letter-spacing:3px;text-transform:uppercase;">${title}</p>
     </div>
-    <div style="padding:36px 32px;">\${body}</div>
+    <div style="padding:36px 32px;">${body}</div>
     <div style="padding:20px 32px;background:#f8fafc;border-top:1px solid #e2e8f0;text-align:center;">
       <p style="margin:0;color:#94a3b8;font-size:11px;font-weight:600;">This is an automated message from Pawzzle Pet Platform</p>
       <p style="margin:4px 0 0;color:#cbd5e1;font-size:10px;">© ${new Date().getFullYear()} Pawzzle. All rights reserved.</p>
@@ -125,21 +125,21 @@ const wrapInTemplate = (title, body) => `
 // Send Registration OTP email
 const sendRegistrationOTP = async (email, otp, firstName) => {
   try {
-    // 🔑 EMERGENCY LOG: Print OTP to console in case email delivery is blocked!
+    // 🔑 EMERGENCY LOG
     console.log('-------------------------------------------');
-    console.log(`🔑 REGISTRATION OTP for \${email}: [ \${otp} ]`);
+    console.log(`🔑 REGISTRATION OTP for ${email}: [ ${otp} ]`);
     console.log('-------------------------------------------');
 
     logOTPToFile('REGISTRATION_OTP_EMAIL', email, otp);
 
     const bodyHtml = wrapInTemplate('Email Verification', `
-      <p style="font-size:15px;color:#334155;margin:0 0 8px;font-weight:600;">Hello \${firstName || 'there'},</p>
+      <p style="font-size:15px;color:#334155;margin:0 0 8px;font-weight:600;">Hello ${firstName || 'there'},</p>
       <p style="font-size:14px;color:#64748b;margin:0 0 28px;line-height:1.6;">
         Welcome to Pawzzle! Please verify your email address by entering the code below to complete your registration.
       </p>
       <div style="background:#f1f5f9;border:2px dashed #cbd5e1;border-radius:16px;padding:24px;text-align:center;margin:0 0 28px;">
         <p style="margin:0 0 8px;color:#94a3b8;font-size:10px;font-weight:800;letter-spacing:3px;text-transform:uppercase;">Your Verification Code</p>
-        <div style="font-size:36px;font-weight:900;color:#1e293b;letter-spacing:8px;font-family:monospace;">\${otp}</div>
+        <div style="font-size:36px;font-weight:900;color:#1e293b;letter-spacing:8px;font-family:monospace;">${otp}</div>
       </div>
     `);
 
@@ -147,20 +147,20 @@ const sendRegistrationOTP = async (email, otp, firstName) => {
     if (sent) return true;
 
     const { transporter, fromEmail } = await createTransporter();
-    await transporter.sendMail({ from: \`"Pawzzle" <\${fromEmail}>\`, to: email, subject: '🔐 Verify Your Pawzzle Account', html: bodyHtml });
+    await transporter.sendMail({ from: `"Pawzzle" <${fromEmail}>`, to: email, subject: '🔐 Verify Your Pawzzle Account', html: bodyHtml });
     return true;
   } catch (error) {
     console.error('❌ Error sending registration OTP email:', error.message);
-    return true; // Bypass to allow manual verification
+    return true; 
   }
 };
 
 const sendPasswordResetOTP = async (email, otp) => {
   try {
-    const bodyHtml = wrapInTemplate('Password Reset', \`
+    const bodyHtml = wrapInTemplate('Password Reset', `
       <p style="font-size:15px;color:#334155;margin:0 0 8px;font-weight:600;">Password Reset Request</p>
-      <div style="font-size:36px;font-weight:900;color:#1e293b;letter-spacing:8px;font-family:monospace;">\${otp}</div>
-    \`);
+      <div style="font-size:36px;font-weight:900;color:#1e293b;letter-spacing:8px;font-family:monospace;">${otp}</div>
+    `);
     await sendWithResend(email, '🔑 Reset Your Pawzzle Password', bodyHtml);
     return true;
   } catch (error) { return false; }
@@ -168,22 +168,21 @@ const sendPasswordResetOTP = async (email, otp) => {
 
 const sendLoginOTP = async (email, otp, firstName) => {
   try {
-    // 🛡️ EMERGENCY LOG
     console.log('-------------------------------------------');
-    console.log(\`🛡️ LOGIN 2FA OTP for \${email}: [ \${otp} ]\`);
+    console.log(`🛡️ LOGIN 2FA OTP for ${email}: [ ${otp} ]`);
     console.log('-------------------------------------------');
     
-    const bodyHtml = wrapInTemplate('2FA Verification', \`
+    const bodyHtml = wrapInTemplate('2FA Verification', `
       <p style="font-size:15px;color:#334155;margin:0 0 8px;font-weight:600;">Login Verification</p>
-      <div style="font-size:36px;font-weight:900;color:#6d7c45;letter-spacing:8px;font-family:monospace;">\${otp}</div>
-    \`);
+      <div style="font-size:36px;font-weight:900;color:#6d7c45;letter-spacing:8px;font-family:monospace;">${otp}</div>
+    `);
     await sendWithResend(email, '🛡 Pawzzle Login Verification Code', bodyHtml);
     return true;
   } catch (error) { return true; }
 };
 
 const sendSMS_OTP = async (phoneNumber, otp) => {
-  console.log(\`║  📱 SMS CODE: \${otp} ║\`);
+  console.log(`║  📱 SMS CODE: ${otp} ║`);
   return true;
 };
 
