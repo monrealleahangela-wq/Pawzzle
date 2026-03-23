@@ -148,7 +148,11 @@ const issueTokenAndRedirect = (req, res) => {
       defaultFrontend = `${protocol}://${host}`;
     }
 
-    const frontendUrl = process.env.FRONTEND_URL || defaultFrontend;
+    // Prioritize the dynamic host if FRONTEND_URL is set to localhost but we're on a live site
+    let frontendUrl = process.env.FRONTEND_URL;
+    if (!frontendUrl || (frontendUrl.includes('localhost') && !host.includes('localhost'))) {
+      frontendUrl = defaultFrontend;
+    }
     
     res.redirect(`${frontendUrl}/oauth-callback?token=${token}&user=${encodeURIComponent(userData)}`);
   } catch (err) {
