@@ -139,13 +139,23 @@ const issueTokenAndRedirect = (req, res) => {
 
     const protocol = req.headers['x-forwarded-proto'] || 'http';
     const host = req.headers.host;
-    const defaultFrontend = `${protocol}://${host.replace(':5000', ':3000')}`;
+    
+    // Dynamic determination of frontend URL
+    let defaultFrontend = `${protocol}://${host.replace(':5000', ':3000')}`;
+    
+    // If we're on a production domain like pawzzle.io, ensure we don't accidentally use :3000
+    if (host.includes('pawzzle.io') || !host.includes('localhost')) {
+      defaultFrontend = `${protocol}://${host}`;
+    }
+
     const frontendUrl = process.env.FRONTEND_URL || defaultFrontend;
     
     res.redirect(`${frontendUrl}/oauth-callback?token=${token}&user=${encodeURIComponent(userData)}`);
   } catch (err) {
     console.error('OAuth redirect error:', err);
-    res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/login?error=oauth_failed`);
+    // Use dynamic host for error redirect too
+    const fallbackHost = req.headers.host ? `${req.headers['x-forwarded-proto'] || 'http'}://${req.headers.host}` : 'https://pawzzle.io';
+    res.redirect(`${process.env.FRONTEND_URL || fallbackHost}/login?error=oauth_failed`);
   }
 };
 
