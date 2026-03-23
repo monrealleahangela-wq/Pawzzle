@@ -324,7 +324,7 @@ export const supportService = {
 };
 
 export const getImageUrl = (path) => {
-  if (!path) return null;
+  if (!path || typeof path !== 'string') return null;
   if (path.startsWith('http') || path.startsWith('data:')) return path;
   const baseUrl = API_BASE_URL.replace('/api', '');
   return `${baseUrl}/${path.startsWith('/') ? path.slice(1) : path}`;
