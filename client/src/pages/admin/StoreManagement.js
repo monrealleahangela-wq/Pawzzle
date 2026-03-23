@@ -378,8 +378,9 @@ const StoreManagement = () => {
                       </div>
                     </div>
                     <GoogleMap
-                      address={`${store.contactInfo?.address?.street}, ${store.contactInfo?.address?.city}, ${store.contactInfo?.address?.state}`}
+                      address={`${store.contactInfo?.address?.street}, ${store.contactInfo?.address?.barangay}, ${store.contactInfo?.address?.city}, ${store.contactInfo?.address?.state}`}
                       storeName={store.name}
+                      coordinates={store.contactInfo?.address?.coordinates}
                       onCoordinatesUpdate={handleCoordinatesUpdate}
                       className="w-full"
                     />

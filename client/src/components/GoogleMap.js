@@ -1,14 +1,28 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ExternalLink, Navigation, MapPin, Maximize2 } from 'lucide-react';
 
-const GoogleMap = ({ address, storeName, onCoordinatesUpdate, className = '' }) => {
-  const [coordinates, setCoordinates] = useState(null);
+const GoogleMap = ({ address, storeName, onCoordinatesUpdate, coordinates: propCoordinates, className = '' }) => {
+  const [coordinates, setCoordinates] = useState(propCoordinates || null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const mapRef = useRef(null);
 
+  // Sync with prop coordinates
+  useEffect(() => {
+    if (propCoordinates) {
+      setCoordinates({
+        lat: propCoordinates.lat,
+        lon: propCoordinates.lng || propCoordinates.lon
+      });
+      setLoading(false);
+    }
+  }, [propCoordinates]);
+
   // Geocode address using free Nominatim API (OpenStreetMap)
   useEffect(() => {
+    // If we already have accurate coordinates from props or a previous search, don't re-geocode
+    if (propCoordinates) return;
+    
     if (!address) {
       setError('No address provided');
       setLoading(false);
@@ -18,7 +32,6 @@ const GoogleMap = ({ address, storeName, onCoordinatesUpdate, className = '' }) 
     const geocodeAddress = async () => {
       try {
         setLoading(true);
-        // Better geocoding: ensure it's in Philippines and try to clean it
         const cleanAddress = address.trim();
         const query = cleanAddress.toLowerCase().includes('philippines') 
           ? cleanAddress 
@@ -47,7 +60,6 @@ const GoogleMap = ({ address, storeName, onCoordinatesUpdate, className = '' }) 
           }
           setError(null);
         } else {
-          // If first try fails, try without exact block/lot if present
           if (query.includes('blk') || query.includes('lot')) {
              const fallbackQuery = query.replace(/blk\s*\d+|lot\s*\d+/gi, '').trim().replace(/^,\s*/, '');
              const fbResponse = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(fallbackQuery)}&limit=1`);
@@ -73,7 +85,7 @@ const GoogleMap = ({ address, storeName, onCoordinatesUpdate, className = '' }) 
     };
 
     geocodeAddress();
-  }, [address]);
+  }, [address, propCoordinates]);
 
   const getDirectionsUrl = () => {
     if (!address) return '#';
