@@ -105,34 +105,44 @@ app.use('/api/staff', require('./routes/staff'));
 app.use('/api/customers', require('./routes/customers'));
 
 // Serve static files from React app
-const buildPath = path.join(__dirname, 'client/build');
-const isProduction = process.env.NODE_ENV && process.env.NODE_ENV.toLowerCase() === 'production';
+const buildPaths = [
+  path.join(__dirname, 'client/build'),
+  path.join(__dirname, 'client/dist'),
+  path.join(__dirname, 'build'),
+  path.join(__dirname, 'dist')
+];
 
-console.log(`🚀 Server Mode: ${isProduction ? 'PRODUCTION' : 'DEVELOPMENT'}`);
+let buildPath = buildPaths.find(p => require('fs').existsSync(p));
+
+const isProduction = process.env.NODE_ENV && process.env.NODE_ENV.toLowerCase() === 'production';
+console.log(`🚀 Mode: ${isProduction ? 'PRODUCTION' : 'DEVELOPMENT'}`);
+console.log(`📂 Working Dir: ${process.cwd()}`);
 
 if (isProduction) {
-  // Serve uploaded images statically
   app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
   
-  // Verify and serve build folder
-  if (require('fs').existsSync(buildPath)) {
-    console.log('✅ Serving frontend from:', buildPath);
+  if (buildPath) {
+    console.log('✅ Found build folder at:', buildPath);
     app.use(express.static(buildPath));
-    
     app.get('*', (req, res) => {
       res.sendFile(path.join(buildPath, 'index.html'));
     });
   } else {
-    console.log('⚠️ Warning: Build folder not found at', buildPath);
-    // Fallback message for easier debugging
+    // List files to find where they went!
+    const filesInRoot = require('fs').readdirSync(__dirname);
+    console.log('❌ Build folder NOT found. Files in root:', filesInRoot.join(', '));
+    if (require('fs').existsSync(path.join(__dirname, 'client'))) {
+      const clientFiles = require('fs').readdirSync(path.join(__dirname, 'client'));
+      console.log('📂 Files in client folder:', clientFiles.join(', '));
+    }
+    
     app.get('/', (req, res) => {
-      res.status(200).send('Server is running, but frontend build was not found.');
+      res.status(200).send('Server is running, but UI build folder was not found. Please check logs.');
     });
   }
 } else {
-  // Basic route for development if someone hits the root
   app.get('/', (req, res) => {
-    res.send('API is running in development mode. Use npm run dev to start both.');
+    res.send('API is running. If you are on Render, set NODE_ENV to production.');
   });
 }
 
