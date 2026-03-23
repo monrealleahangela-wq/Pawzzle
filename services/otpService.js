@@ -38,8 +38,8 @@ const createTransporter = async () => {
     return {
       transporter: nodemailer.createTransport({
         host: isHostinger ? 'smtp.hostinger.com' : 'smtp.gmail.com',
-        port: 465,
-        secure: true,
+        port: isHostinger ? 587 : 465,
+        secure: isHostinger ? false : true, // Gmail uses 465/SSL, Hostinger can use 587/TLS
         auth: {
           user: process.env.EMAIL_USER,
           pass: process.env.EMAIL_PASS
@@ -51,6 +51,8 @@ const createTransporter = async () => {
         socketTimeout: 30000,
         family: 4,
         tls: {
+          // Required for port 587
+          ciphers: 'SSLv3',
           rejectUnauthorized: false
         }
       }),
