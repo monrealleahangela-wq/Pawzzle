@@ -43,7 +43,9 @@ app.use(passport.initialize());
 mongoose.connect(process.env.MONGODB_URI)
   .then(() => {
     console.log('✅ MongoDB connected successfully');
-    console.log('📧 Database URI:', process.env.MONGODB_URI);
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('📧 Database URI:', process.env.MONGODB_URI);
+    }
 
     // Check if users exist
     const User = require('./models/User');
@@ -62,7 +64,9 @@ mongoose.connect(process.env.MONGODB_URI)
   })
   .catch((error) => {
     console.error('❌ MongoDB connection error:', error);
-    console.log('📧 Attempted to connect to:', process.env.MONGODB_URI);
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('📧 Attempted to connect to:', process.env.MONGODB_URI);
+    }
   });
 
 // Routes - Admin routes first to prevent conflicts

@@ -21,6 +21,7 @@ error2.log
 
 # Temp files
 tmp/
+uploads/
 tmp_*.js
 test-db.js
 test-output.txt
@@ -29,6 +30,8 @@ test-auth.html
 test-authservice.js
 LATEST_OTP.txt
 query
+error.log
+error2.log
 
 # OS files
 .DS_Store
