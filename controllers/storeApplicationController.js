@@ -256,14 +256,15 @@ const reviewApplication = async (req, res) => {
         yearsInBusiness: application.yearsInBusiness,
         numberOfEmployees: application.numberOfEmployees,
         hasPhysicalStore: application.hasPhysicalStore,
+        slug: application.businessName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') + '-' + Date.now(),
         contactInfo: {
           phone: application.contactInfo.phone,
           email: application.contactInfo.email,
           address: {
-            street: application.contactInfo.address.street || '',
-            barangay: application.contactInfo.address.barangay || '',
-            city: application.contactInfo.address.city || '',
-            state: application.contactInfo.address.province || application.contactInfo.address.state || 'Cavite',
+            street: application.contactInfo.address.street || 'N/A',
+            barangay: application.contactInfo.address.barangay || 'N/A',
+            city: application.contactInfo.address.city || 'N/A',
+            state: application.contactInfo.address.province || application.contactInfo.address.state || 'N/A',
             zipCode: application.contactInfo.address.zipCode || '4102',
             country: application.contactInfo.address.country || 'PH'
           }
