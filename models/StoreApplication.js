@@ -27,11 +27,11 @@ const storeApplicationSchema = new mongoose.Schema({
     },
     issueDate: {
       type: Date,
-      required: true
+      required: false
     },
     expiryDate: {
       type: Date,
-      required: true
+      required: false
     },
     documentUrl: {
       type: String,
@@ -98,10 +98,10 @@ const storeApplicationSchema = new mongoose.Schema({
     twitter: String
   },
   references: [{
-    name: { type: String, required: true },
-    business: { type: String, required: true },
-    phone: { type: String, required: true },
-    email: { type: String, required: true }
+    name: { type: String, required: false },
+    business: { type: String, required: false },
+    phone: { type: String, required: false },
+    email: { type: String, required: false }
   }],
   certifications: [{
     name: { type: String, required: true },
