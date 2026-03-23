@@ -40,9 +40,11 @@ const createTransporter = async () => {
           user: process.env.EMAIL_USER,
           pass: process.env.EMAIL_PASS
         },
-        // Add timeout to prevent hanging
-        connectionTimeout: 10000,
-        greetingTimeout: 10000
+        connectionTimeout: 15000,
+        greetingTimeout: 15000,
+        socketTimeout: 30000,
+        // The Secret Key: Force IPv4 to avoid ENETUNREACH on Render!
+        family: 4
       }),
       fromEmail: process.env.EMAIL_USER,
       isEthereal: false
