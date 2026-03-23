@@ -104,18 +104,35 @@ app.use('/api/payouts', require('./routes/payout'));
 app.use('/api/staff', require('./routes/staff'));
 app.use('/api/customers', require('./routes/customers'));
 
-// Serve uploaded images statically
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
-
 // Serve static files from React app
-if (process.env.NODE_ENV === 'production') {
-  // Serve uploaded images statically in production
+const buildPath = path.join(__dirname, 'client/build');
+const isProduction = process.env.NODE_ENV && process.env.NODE_ENV.toLowerCase() === 'production';
+
+console.log(`🚀 Server Mode: ${isProduction ? 'PRODUCTION' : 'DEVELOPMENT'}`);
+
+if (isProduction) {
+  // Serve uploaded images statically
   app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
-
-  app.use(express.static(path.join(__dirname, 'client/build')));
-
-  app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, 'client/build', 'index.html'));
+  
+  // Verify and serve build folder
+  if (require('fs').existsSync(buildPath)) {
+    console.log('✅ Serving frontend from:', buildPath);
+    app.use(express.static(buildPath));
+    
+    app.get('*', (req, res) => {
+      res.sendFile(path.join(buildPath, 'index.html'));
+    });
+  } else {
+    console.log('⚠️ Warning: Build folder not found at', buildPath);
+    // Fallback message for easier debugging
+    app.get('/', (req, res) => {
+      res.status(200).send('Server is running, but frontend build was not found.');
+    });
+  }
+} else {
+  // Basic route for development if someone hits the root
+  app.get('/', (req, res) => {
+    res.send('API is running in development mode. Use npm run dev to start both.');
   });
 }
 
