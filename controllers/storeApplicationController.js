@@ -5,14 +5,17 @@ const Store = require('../models/Store');
 const multer = require('multer');
 const path = require('path');
 const { createNotification } = require('./notificationController');
+const { CloudinaryStorage } = require('multer-storage-cloudinary');
+const cloudinary = require('cloudinary').v2;
 
 // Configure multer for file uploads
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, 'uploads/documents/');
-  },
-  filename: function (req, file, cb) {
-    cb(null, Date.now() + '-' + file.originalname);
+// Configure Cloudinary storage for documents
+const storage = new CloudinaryStorage({
+  cloudinary,
+  params: {
+    folder: 'pawzzle/documents',
+    resource_type: 'auto',
+    allowed_formats: ['jpeg', 'jpg', 'png', 'pdf', 'doc', 'docx']
   }
 });
 
@@ -24,7 +27,7 @@ const upload = multer({
     const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
     const mimetype = allowedTypes.test(file.mimetype);
 
-    if (mimetype && extname) {
+    if (mimetype || extname) {
       return cb(null, true);
     } else {
       cb(new Error('Only document and image files are allowed'));
@@ -84,38 +87,38 @@ const submitApplication = async (req, res) => {
       if (req.files.licenseDocument) {
         applicationData.businessLicense = {
           ...applicationData.businessLicense,
-          documentUrl: req.files.licenseDocument[0].path
+          documentUrl: req.files.licenseDocument[0].path || req.files.licenseDocument[0].secure_url
         };
       }
       if (req.files.insuranceDocument) {
         applicationData.insurance = {
           ...applicationData.insurance,
-          documentUrl: req.files.insuranceDocument[0].path
+          documentUrl: req.files.insuranceDocument[0].path || req.files.insuranceDocument[0].secure_url
         };
       }
       if (req.files.certificationDocuments) {
         applicationData.certifications = (applicationData.certifications || []).map((cert, index) => ({
           ...cert,
-          documentUrl: req.files.certificationDocuments[index]?.path
+          documentUrl: req.files.certificationDocuments[index]?.path || req.files.certificationDocuments[index]?.secure_url
         }));
       }
       if (req.files.governmentId) {
-        applicationData.governmentIdUrl = req.files.governmentId[0].path;
+        applicationData.governmentIdUrl = req.files.governmentId[0].path || req.files.governmentId[0].secure_url;
       }
       if (req.files.businessRegistration) {
-        applicationData.businessRegistrationUrl = req.files.businessRegistration[0].path;
+        applicationData.businessRegistrationUrl = req.files.businessRegistration[0].path || req.files.businessRegistration[0].secure_url;
       }
       if (req.files.birRegistration) {
-        applicationData.birRegistrationUrl = req.files.birRegistration[0].path;
+        applicationData.birRegistrationUrl = req.files.birRegistration[0].path || req.files.birRegistration[0].secure_url;
       }
       if (req.files.barangayClearance) {
-        applicationData.barangayClearanceUrl = req.files.barangayClearance[0].path;
+        applicationData.barangayClearanceUrl = req.files.barangayClearance[0].path || req.files.barangayClearance[0].secure_url;
       }
       if (req.files.storeLogo) {
-        applicationData.storeLogoUrl = req.files.storeLogo[0].path;
+        applicationData.storeLogoUrl = req.files.storeLogo[0].path || req.files.storeLogo[0].secure_url;
       }
       if (req.files.mayorsPermit) {
-        applicationData.mayorsPermitUrl = req.files.mayorsPermit[0].path;
+        applicationData.mayorsPermitUrl = req.files.mayorsPermit[0].path || req.files.mayorsPermit[0].secure_url;
       }
     }
 

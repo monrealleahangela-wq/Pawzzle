@@ -1,6 +1,7 @@
 const multer = require('multer');
 const { CloudinaryStorage } = require('multer-storage-cloudinary');
 const cloudinary = require('cloudinary').v2;
+const path = require('path');
 
 // Configure Cloudinary
 cloudinary.config({
@@ -55,6 +56,32 @@ const uploadMulti = multer({
   fileFilter
 });
 
+// Cloudinary storage for documents (PDF, Doc)
+const documentStorage = new CloudinaryStorage({
+  cloudinary,
+  params: {
+    folder: 'pawzzle/documents',
+    resource_type: 'auto', // Support PDF, DOCX, etc.
+    allowed_formats: ['jpeg', 'jpg', 'png', 'pdf', 'doc', 'docx']
+  }
+});
+
+// Configure multer for documents
+const uploadDoc = multer({
+  storage: documentStorage,
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = /jpeg|jpg|png|pdf|doc|docx/;
+    const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+    const mimetype = allowedTypes.test(file.mimetype);
+    if (mimetype || extname) {
+      return cb(null, true);
+    } else {
+      cb(new Error('Only images, PDFs, and Word documents are allowed'));
+    }
+  }
+});
+
 // Middleware exports
 const uploadSingle = upload.single('image');
 const uploadMultiple = uploadMulti.array('images', 10);
@@ -76,5 +103,6 @@ module.exports = {
   cloudinary,
   uploadSingle,
   uploadMultiple,
+  uploadDoc,
   handleUploadError
 };
