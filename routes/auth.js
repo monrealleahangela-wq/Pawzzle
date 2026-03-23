@@ -137,7 +137,11 @@ const issueTokenAndRedirect = (req, res) => {
       authProvider: user.authProvider
     });
 
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    const protocol = req.headers['x-forwarded-proto'] || 'http';
+    const host = req.headers.host;
+    const defaultFrontend = `${protocol}://${host.replace(':5000', ':3000')}`;
+    const frontendUrl = process.env.FRONTEND_URL || defaultFrontend;
+    
     res.redirect(`${frontendUrl}/oauth-callback?token=${token}&user=${encodeURIComponent(userData)}`);
   } catch (err) {
     console.error('OAuth redirect error:', err);
