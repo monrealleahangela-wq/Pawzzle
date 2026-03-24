@@ -189,7 +189,7 @@ const Services = () => {
         <div className="absolute bottom-[-10%] left-[-10%] w-[400px] h-[400px] bg-secondary-50 rounded-full blur-[100px] blob-animation" style={{ animationDelay: '-2s' }} />
       </div>
 
-      <div className="flex flex-col md:flex-row justify-between items-end gap-4 md:gap-6">
+      <div className="flex flex-col md:flex-row justify-between items-center sm:items-end gap-4 md:gap-6 text-center sm:text-left">
         <div className="space-y-1">
           <h1 className="text-3xl md:text-5xl font-black text-slate-900 tracking-tight">Professional Services</h1>
           <p className="text-base md:text-lg text-slate-500 font-medium tracking-tight">World-class care for your beloved family members</p>
@@ -371,9 +371,9 @@ const Services = () => {
           <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center">
             <Calendar className="h-10 w-10 text-slate-300" />
           </div>
-          <div className="text-center">
-            <h3 className="text-2xl font-black text-slate-800">Available Soon</h3>
-            <p className="text-slate-500 max-w-xs mx-auto">We're expanding our service network. Please check back later or try another category.</p>
+          <div className="text-center px-6">
+            <h3 className="text-xl sm:text-2xl font-black text-slate-800 uppercase tracking-tight">Available Soon</h3>
+            <p className="text-xs sm:text-base text-slate-500 max-w-xs mx-auto font-medium">We're expanding our service network. Please check back later or try another category.</p>
           </div>
           <button
             onClick={() => setSelectedCategory('all')}
