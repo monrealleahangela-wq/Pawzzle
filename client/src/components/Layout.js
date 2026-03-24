@@ -399,9 +399,9 @@ const Layout = () => {
                 {/* Mobile Menu Icon (Drawer Trigger) */}
                 <button
                   onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                  className={`lg:hidden p-2.5 rounded-xl transition-colors text-primary-600 hover:bg-primary-50 bg-white border border-slate-100 shadow-sm ml-1 flex-shrink-0`}
+                  className={`lg:hidden p-2.5 rounded-xl transition-colors text-slate-900 hover:bg-primary-50 bg-white border-2 border-slate-200 shadow-md ml-1 flex-shrink-0`}
                 >
-                  {isMobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+                  {isMobileMenuOpen ? <X className="h-6 w-6 stroke-[2.5px]" /> : <Menu className="h-6 w-6 stroke-[2.5px]" />}
                 </button>
               </div>
             </div>
