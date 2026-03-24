@@ -281,7 +281,7 @@ const FloatingChatManager = ({ currentUser }) => {
             ${isMinimized ? 'bottom-32 sm:bottom-6 h-14' : 'bottom-0 sm:bottom-6 sm:right-6 h-[70vh] sm:h-[600px] sm:w-96'}
             right-0 left-0 sm:left-auto bg-white rounded-t-3xl sm:rounded-lg shadow-2xl z-[70] flex flex-col`}
           style={{ 
-            transform: window.innerWidth < 640 ? `translateY(${dragY}px)` : 'none',
+            transform: `translateY(${dragY}px)`,
             opacity: isDragging ? 0.9 : 1
           }}
         >

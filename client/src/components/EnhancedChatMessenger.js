@@ -393,7 +393,7 @@ const EnhancedChatMessenger = ({
       className={`flex flex-col h-full bg-white transition-transform duration-300 ease-out 
         ${!isEmbedded ? 'rounded-t-[2.5rem] sm:rounded-[40px] shadow-2xl max-w-2xl w-full h-[75vh] sm:h-[700px] overflow-hidden border border-white/20' : ''}`}
       style={{ 
-        transform: (!isEmbedded && window.innerWidth < 640) ? `translateY(${dragY}px)` : 'none'
+        transform: `translateY(${dragY}px)`
       }}
     >
       {/* Drag Handle */}
