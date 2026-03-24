@@ -349,7 +349,7 @@ const FloatingChatManager = ({ currentUser }) => {
                       return (
                         <div
                           key={message._id}
-                          className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'}`}
+                          className={`flex flex-col ${isOwnMessage ? 'items-end' : 'items-start'}`}
                         >
                           <div className={`max-w-[85%] px-3 py-2 rounded-2xl shadow-sm ${isSystem
                             ? 'mx-auto bg-gray-100 text-gray-500 text-[10px] w-full text-center italic'
@@ -362,7 +362,6 @@ const FloatingChatManager = ({ currentUser }) => {
                                 {message.sender?.firstName || 'User'}
                               </p>
                             )}
-
                             {isImage ? (
                               <img
                                 src={message.content}
@@ -374,14 +373,12 @@ const FloatingChatManager = ({ currentUser }) => {
                             ) : (
                               <p className="text-sm leading-relaxed">{message.content}</p>
                             )}
-
-                            {!isSystem && (
-                              <p className={`text-[8px] mt-1 font-bold uppercase tracking-tighter ${isOwnMessage ? 'text-primary-200' : 'text-gray-400'
-                                }`}>
-                                {formatTime(message.createdAt || message.timestamp)}
-                              </p>
-                            )}
                           </div>
+                          {!isSystem && (
+                            <p className={`text-[7px] mt-1 font-black uppercase tracking-widest ${isOwnMessage ? 'text-right pr-1' : 'text-left pl-1'} text-gray-400 opacity-60`}>
+                              {formatTime(message.createdAt || message.timestamp)}
+                            </p>
+                          )}
                         </div>
                       );
                     })}

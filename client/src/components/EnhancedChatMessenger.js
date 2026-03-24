@@ -286,9 +286,6 @@ const EnhancedChatMessenger = ({
               <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
                 {message.sender?.firstName || 'User'}
               </span>
-              <span className="text-[9px] text-slate-300">
-                {formatTime(message.createdAt)}
-              </span>
             </div>
           )}
 
@@ -310,13 +307,18 @@ const EnhancedChatMessenger = ({
               <p className="text-sm font-medium leading-relaxed">{message.content}</p>
             )}
           </div>
+          {!isSystemMessage && (
+            <p className={`text-[7px] mt-1 font-black uppercase tracking-widest ${isOwnMessage ? 'text-right pr-1' : 'text-left pl-1'} text-slate-400 opacity-60`}>
+              {formatTime(message.createdAt)}
+            </p>
+          )}
         </div>
       </div>
     );
   };
 
   const messengerContent = (
-    <div className={`flex flex-col h-full bg-white ${!isEmbedded && 'rounded-[40px] shadow-2xl max-w-2xl w-full h-[700px] overflow-hidden border border-white/20'}`}>
+    <div className={`flex flex-col h-full bg-white ${!isEmbedded && 'rounded-[2rem] sm:rounded-[40px] shadow-2xl max-w-2xl w-full h-full max-h-[85vh] sm:h-[700px] overflow-hidden border border-white/20'}`}>
       {!isEmbedded && (
         <div className="p-6 bg-neutral-900 text-white flex items-center justify-between">
           <div className="flex items-center gap-4">
@@ -397,8 +399,10 @@ const EnhancedChatMessenger = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-neutral-900/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4 font-sans">
-      {messengerContent}
+    <div className="fixed inset-0 bg-neutral-900/60 backdrop-blur-sm flex items-end sm:items-center justify-center z-[100] p-4 sm:p-6 font-sans">
+      <div className="w-full max-w-2xl pb-24 sm:pb-0">
+        {messengerContent}
+      </div>
 
       {/* Report Modal */}
       {showReportModal && (
