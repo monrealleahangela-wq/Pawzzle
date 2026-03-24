@@ -7,7 +7,11 @@ const StockSyncService = require('../services/stockSyncService');
 const { createNotification } = require('./notificationController');
 
 const PAYMONGO_SECRET_KEY = process.env.PAYMONGO_SECRET_KEY;
-const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
+const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER;
+let FRONTEND_URL = process.env.FRONTEND_URL;
+if (!FRONTEND_URL || FRONTEND_URL.includes('localhost')) {
+    FRONTEND_URL = isProduction ? 'https://pawzzle.io' : 'http://localhost:3000';
+}
 
 /**
  * Create a PayMongo Checkout Session
