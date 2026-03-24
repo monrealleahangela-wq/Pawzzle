@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { MessageSquare, X, Minimize2, Maximize2, Send, Search, User, Clock, Check, Camera, Image as ImageIcon } from 'lucide-react';
+import { MessageSquare, X, Minimize2, Maximize2, Send, Search, User, Clock, Check, Camera, Image as ImageIcon, ChevronLeft } from 'lucide-react';
 import { chatService } from '../services/chatService';
 import { toast } from 'react-toastify';
 
@@ -410,10 +410,10 @@ const FloatingChatManager = ({ currentUser }) => {
                     <div className="flex items-center space-x-2">
                       <button
                         onClick={() => setShowChatWindow(false)}
-                        className="p-2 sm:p-2.5 bg-gray-200 text-slate-700 rounded-xl hover:bg-rose-500 hover:text-white transition-all shadow-sm group"
+                        className="p-2 sm:p-2.5 bg-gray-200 text-slate-700 rounded-xl hover:bg-gray-300 transition-all shadow-sm group"
                         title="Back to conversations"
                       >
-                        <X className="h-5 w-5 group-hover:rotate-90 transition-transform" />
+                        <ChevronLeft className="h-5 w-5 group-hover:-translate-x-1 transition-transform" />
                       </button>
                       <div className="flex flex-col">
                         <div className="flex items-center gap-2">
@@ -432,10 +432,18 @@ const FloatingChatManager = ({ currentUser }) => {
                         </p>
                       </div>
                     </div>
+                    {/* Add Close Button */}
+                    <button
+                      onClick={() => setIsOpen(false)}
+                      className="p-2 sm:p-2.5 bg-gray-200 text-slate-700 rounded-xl hover:bg-rose-500 hover:text-white transition-all shadow-sm group"
+                      title="Close Chat Bubble"
+                    >
+                      <X className="h-5 w-5 group-hover:rotate-90 transition-transform" />
+                    </button>
                   </div>
 
                   {/* Messages */}
-                  <div className="flex-1 overflow-y-auto p-3 space-y-3 bg-gray-50/50">
+                  <div className="flex-1 overflow-y-auto p-3 space-y-3 bg-gray-50/50 overscroll-contain touch-pan-y">
                     {messages.map((message) => {
                       const senderId = message.sender?._id || message.sender;
                       const isOwnMessage = senderId === (currentUser?._id || currentUser?.id);
