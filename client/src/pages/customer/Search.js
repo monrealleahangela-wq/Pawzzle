@@ -85,7 +85,7 @@ const Search = () => {
 
   const performSearch = async (searchTerm, cityOverride = null) => {
     if (!searchTerm.trim()) {
-      setResults({ pets: [], products: [], services: [] });
+      setResults({ pets: [], products: [], services: [], stores: [] });
       return;
     }
 
@@ -216,10 +216,10 @@ const Search = () => {
     };
 
     // Apply location filters to all types
-    filtered.pets = applyLocationFilter(results.pets);
-    filtered.products = applyLocationFilter(results.products);
-    filtered.services = applyLocationFilter(results.services);
-    filtered.stores = applyLocationFilter(results.stores, true);
+    filtered.pets = applyLocationFilter(results.pets || []);
+    filtered.products = applyLocationFilter(results.products || []);
+    filtered.services = applyLocationFilter(results.services || []);
+    filtered.stores = applyLocationFilter(results.stores || [], true);
 
     // Apply category filter
     if (filters.category) {
@@ -530,7 +530,7 @@ const Search = () => {
             >
               <option value="">All Regions</option>
               {CAVITE_CITIES.map(c => (
-                <option key={c.value} value={c.value}>{c.label}</option>
+                <option key={c.value} value={c.label}>{c.label}</option>
               ))}
             </select>
           </div>
