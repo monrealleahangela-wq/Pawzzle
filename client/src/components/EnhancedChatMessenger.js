@@ -26,6 +26,9 @@ const EnhancedChatMessenger = ({
   const [showReportModal, setShowReportModal] = useState(false);
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
+  const [dragY, setDragY] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
+  const [startY, setStartY] = useState(0);
 
   useEffect(() => {
     if ((isOpen || isEmbedded) && existingConversationId) {
@@ -214,6 +217,29 @@ const EnhancedChatMessenger = ({
     return new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
+  // Mobile dragging logic
+  const handleTouchStart = (e) => {
+    if (window.innerWidth >= 640) return;
+    setStartY(e.touches[0].clientY);
+    setIsDragging(true);
+  };
+
+  const handleTouchMove = (e) => {
+    if (!isDragging || window.innerWidth >= 640) return;
+    const currentY = e.touches[0].clientY;
+    const deltaY = currentY - startY;
+    if (deltaY > 0) setDragY(deltaY);
+  };
+
+  const handleTouchEnd = () => {
+    if (!isDragging || window.innerWidth >= 640) return;
+    setIsDragging(false);
+    if (dragY > 150) {
+      onClose();
+    }
+    setDragY(0);
+  };
+
   const getOnlineStatus = (lastSeen) => {
     if (!lastSeen) return { isOnline: false, text: 'Last seen unknown' };
     const now = new Date();
@@ -348,9 +374,27 @@ const EnhancedChatMessenger = ({
   };
 
   const messengerContent = (
-    <div className={`flex flex-col h-full bg-white ${!isEmbedded && 'rounded-[2rem] sm:rounded-[40px] shadow-2xl max-w-2xl w-full h-full max-h-[85vh] sm:h-[700px] overflow-hidden border border-white/20'}`}>
+    <div 
+      className={`flex flex-col h-full bg-white transition-transform duration-300 ease-out 
+        ${!isEmbedded ? 'rounded-t-[2.5rem] sm:rounded-[40px] shadow-2xl max-w-2xl w-full h-[75vh] sm:h-[700px] overflow-hidden border border-white/20' : ''}`}
+      style={{ 
+        transform: (!isEmbedded && window.innerWidth < 640) ? `translateY(${dragY}px)` : 'none'
+      }}
+    >
+      {/* Drag Handle for Mobile */}
       {!isEmbedded && (
-        <div className="p-6 bg-neutral-900 text-white flex items-center justify-between">
+        <div 
+          className="sm:hidden w-full pt-4 pb-2 flex justify-center cursor-grab active:cursor-grabbing bg-neutral-900"
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+        >
+          <div className="w-12 h-1.5 bg-white/30 rounded-full" />
+        </div>
+      )}
+
+      {!isEmbedded && (
+        <div className="px-6 py-4 bg-neutral-900 text-white flex items-center justify-between">
           <div className="flex items-center gap-4">
             <div className="w-14 h-14 bg-primary-500 rounded-2xl flex items-center justify-center font-black text-xl shadow-lg rotate-3 uppercase">
               {pet?.name?.[0] || 'P'}
@@ -431,8 +475,8 @@ const EnhancedChatMessenger = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-neutral-900/60 backdrop-blur-sm flex items-end sm:items-center justify-center z-[100] p-4 sm:p-6 font-sans">
-      <div className="w-full max-w-2xl mb-32 sm:mb-0">
+    <div className={`fixed inset-0 ${isDragging ? 'bg-neutral-900/40' : 'bg-neutral-900/60'} backdrop-blur-[2px] flex items-end sm:items-center justify-center z-[100] sm:p-6 font-sans transition-colors duration-300`}>
+      <div className="w-full max-w-2xl">
         {messengerContent}
       </div>
 

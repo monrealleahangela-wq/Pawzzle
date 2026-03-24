@@ -19,6 +19,10 @@ const FloatingChatManager = ({ currentUser }) => {
   const [lastRefresh, setLastRefresh] = useState(Date.now());
   const fileInputRef = React.useRef(null);
   const messagesEndRef = React.useRef(null);
+  const dragRef = React.useRef(null);
+  const [dragY, setDragY] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
+  const [startY, setStartY] = useState(0);
 
   useEffect(() => {
     if (currentUser) {
@@ -167,6 +171,32 @@ const FloatingChatManager = ({ currentUser }) => {
     }
   };
 
+  // Dragging logic for mobile bottom sheet
+  const handleTouchStart = (e) => {
+    if (window.innerWidth >= 640) return; // Only for mobile
+    setStartY(e.touches[0].clientY);
+    setIsDragging(true);
+  };
+
+  const handleTouchMove = (e) => {
+    if (!isDragging || window.innerWidth >= 640) return;
+    const currentY = e.touches[0].clientY;
+    const deltaY = currentY - startY;
+    if (deltaY > 0) {
+      setDragY(deltaY);
+    }
+  };
+
+  const handleTouchEnd = () => {
+    if (!isDragging || window.innerWidth >= 640) return;
+    setIsDragging(false);
+    if (dragY > 150) {
+      setIsOpen(false);
+      setShowChatWindow(false);
+    }
+    setDragY(0);
+  };
+
   const formatTime = (timestamp) => {
     const date = new Date(timestamp);
     const now = new Date();
@@ -231,9 +261,27 @@ const FloatingChatManager = ({ currentUser }) => {
 
       {/* Chat Manager Window */}
       {isOpen && (
-        <div className="fixed bottom-32 right-4 left-4 sm:left-auto sm:bottom-6 sm:right-6 w-auto sm:w-96 h-[500px] sm:h-[600px] bg-white rounded-lg shadow-2xl z-[70] flex flex-col">
+        <div 
+          className={`fixed transition-all duration-300 ease-out sm:transition-none overflow-hidden
+            ${isMinimized ? 'bottom-32 sm:bottom-6 h-14' : 'bottom-0 sm:bottom-6 sm:right-6 h-[70vh] sm:h-[600px] sm:w-96'}
+            right-0 left-0 sm:left-auto bg-white rounded-t-3xl sm:rounded-lg shadow-2xl z-[70] flex flex-col`}
+          style={{ 
+            transform: window.innerWidth < 640 ? `translateY(${dragY}px)` : 'none',
+            opacity: isDragging ? 0.9 : 1
+          }}
+        >
+          {/* Draggable Handle for Mobile */}
+          <div 
+            className="sm:hidden w-full pt-3 pb-1 flex justify-center cursor-grab active:cursor-grabbing bg-primary-800"
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+          >
+            <div className="w-12 h-1.5 bg-white/30 rounded-full" />
+          </div>
+
           {/* Header */}
-          <div className="flex items-center justify-between p-4 border-b bg-primary-800 text-white rounded-t-lg">
+          <div className="flex items-center justify-between p-4 border-b bg-primary-800 text-white sm:rounded-t-lg">
             <div className="flex items-center space-x-2">
               <MessageSquare className="h-5 w-5" />
               <h3 className="font-semibold">Messages</h3>

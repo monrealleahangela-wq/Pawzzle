@@ -388,7 +388,7 @@ const Layout = () => {
 
                     <button
                       onClick={handleLogout}
-                      className="p-2 bg-white border border-slate-100 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 hover:border-rose-100 transition-all shadow-sm group"
+                      className="hidden sm:flex p-2 bg-white border border-slate-100 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 hover:border-rose-100 transition-all shadow-sm group"
                       title="Sign Out"
                     >
                       <LogOut className="h-4 w-4 group-hover:rotate-12 transition-transform" />
