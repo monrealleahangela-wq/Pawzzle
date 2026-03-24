@@ -318,12 +318,7 @@ const FloatingChatManager = ({ currentUser }) => {
               )}
             </div>
             <div className="flex items-center space-x-2">
-              <button
-                onClick={() => setIsMinimized(!isMinimized)}
-                className="p-1 hover:bg-primary-700/50 rounded transition-colors"
-              >
-                {isMinimized ? <Maximize2 className="h-4 w-4" /> : <Minimize2 className="h-4 w-4" />}
-              </button>
+
               <button
                 onClick={() => setIsOpen(false)}
                 className="p-2 sm:p-2.5 bg-white/10 hover:bg-white/20 rounded-xl transition-all border border-white/10 group"
