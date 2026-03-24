@@ -57,7 +57,7 @@ const NotificationBell = () => {
             </button>
 
             {isOpen && (
-                <div className="absolute right-0 mt-3 w-80 sm:w-96 bg-white rounded-2xl shadow-2xl border border-slate-100 z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                <div className="fixed left-4 right-4 top-[80px] sm:absolute sm:inset-auto sm:right-0 sm:top-full sm:mt-3 sm:w-96 bg-white rounded-2xl shadow-2xl border border-slate-100 z-[100] overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
                     <div className="p-4 border-b border-slate-50 flex items-center justify-between bg-slate-50/50">
                         <h3 className="font-black text-xs uppercase tracking-widest text-slate-900">Notifications</h3>
                         {unreadCount > 0 && (
@@ -70,7 +70,7 @@ const NotificationBell = () => {
                         )}
                     </div>
 
-                    <div className="max-h-[400px] overflow-y-auto custom-scrollbar">
+                    <div className="max-h-[60vh] sm:max-h-[400px] overflow-y-auto custom-scrollbar">
                         {notifications.length === 0 ? (
                             <div className="p-8 text-center">
                                 <Bell className="h-8 w-8 text-slate-200 mx-auto mb-3" />
