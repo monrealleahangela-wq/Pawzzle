@@ -217,28 +217,43 @@ const EnhancedChatMessenger = ({
     return new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
-  // Mobile dragging logic
-  const handleTouchStart = (e) => {
-    if (window.innerWidth >= 640) return;
-    setStartY(e.touches[0].clientY);
+  // Dragging logic for both mobile and desktop
+  const handleDragStart = (e) => {
+    const clientY = e.type === 'touchstart' ? e.touches[0].clientY : e.clientY;
+    setStartY(clientY);
     setIsDragging(true);
   };
 
-  const handleTouchMove = (e) => {
-    if (!isDragging || window.innerWidth >= 640) return;
-    const currentY = e.touches[0].clientY;
-    const deltaY = currentY - startY;
+  const handleDragMove = (e) => {
+    if (!isDragging) return;
+    const clientY = e.type === 'touchmove' ? e.touches[0].clientY : e.clientY;
+    const deltaY = clientY - startY;
     if (deltaY > 0) setDragY(deltaY);
   };
 
-  const handleTouchEnd = () => {
-    if (!isDragging || window.innerWidth >= 640) return;
+  const handleDragEnd = () => {
+    if (!isDragging) return;
     setIsDragging(false);
     if (dragY > 150) {
       onClose();
     }
     setDragY(0);
   };
+
+  useEffect(() => {
+    if (isDragging) {
+      window.addEventListener('mousemove', handleDragMove);
+      window.addEventListener('mouseup', handleDragEnd);
+      window.addEventListener('touchmove', handleDragMove);
+      window.addEventListener('touchend', handleDragEnd);
+    }
+    return () => {
+      window.removeEventListener('mousemove', handleDragMove);
+      window.removeEventListener('mouseup', handleDragEnd);
+      window.removeEventListener('touchmove', handleDragMove);
+      window.removeEventListener('touchend', handleDragEnd);
+    };
+  }, [isDragging, dragY, startY]);
 
   const getOnlineStatus = (lastSeen) => {
     if (!lastSeen) return { isOnline: false, text: 'Last seen unknown' };
@@ -381,16 +396,17 @@ const EnhancedChatMessenger = ({
         transform: (!isEmbedded && window.innerWidth < 640) ? `translateY(${dragY}px)` : 'none'
       }}
     >
-      {/* Drag Handle for Mobile */}
+      {/* Drag Handle */}
       {!isEmbedded && (
         <div 
-          className="sm:hidden w-full pt-4 pb-2 flex flex-col items-center cursor-grab active:cursor-grabbing bg-neutral-900 touch-none"
-          onTouchStart={handleTouchStart}
-          onTouchMove={handleTouchMove}
-          onTouchEnd={handleTouchEnd}
+          className="w-full pt-4 pb-2 flex flex-col items-center cursor-grab active:cursor-grabbing bg-neutral-900 touch-none select-none"
+          onMouseDown={handleDragStart}
+          onTouchStart={handleDragStart}
         >
           <div className="w-12 h-1.5 bg-white/30 rounded-full mb-1" />
-          <p className="text-[8px] font-black uppercase text-white/50 tracking-widest">Pull down to close</p>
+          <p className="text-[8px] font-black uppercase text-white/50 tracking-widest">
+            {window.innerWidth < 640 ? 'Pull down to close' : 'Drag to close'}
+          </p>
         </div>
       )}
 

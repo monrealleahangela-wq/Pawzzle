@@ -171,24 +171,24 @@ const FloatingChatManager = ({ currentUser }) => {
     }
   };
 
-  // Dragging logic for mobile bottom sheet
-  const handleTouchStart = (e) => {
-    if (window.innerWidth >= 640) return; // Only for mobile
-    setStartY(e.touches[0].clientY);
+  // Dragging logic for both mobile and desktop
+  const handleDragStart = (e) => {
+    const clientY = e.type === 'touchstart' ? e.touches[0].clientY : e.clientY;
+    setStartY(clientY);
     setIsDragging(true);
   };
 
-  const handleTouchMove = (e) => {
-    if (!isDragging || window.innerWidth >= 640) return;
-    const currentY = e.touches[0].clientY;
-    const deltaY = currentY - startY;
+  const handleDragMove = (e) => {
+    if (!isDragging) return;
+    const clientY = e.type === 'touchmove' ? e.touches[0].clientY : e.clientY;
+    const deltaY = clientY - startY;
     if (deltaY > 0) {
       setDragY(deltaY);
     }
   };
 
-  const handleTouchEnd = () => {
-    if (!isDragging || window.innerWidth >= 640) return;
+  const handleDragEnd = () => {
+    if (!isDragging) return;
     setIsDragging(false);
     if (dragY > 150) {
       setIsOpen(false);
@@ -196,6 +196,21 @@ const FloatingChatManager = ({ currentUser }) => {
     }
     setDragY(0);
   };
+
+  useEffect(() => {
+    if (isDragging) {
+      window.addEventListener('mousemove', handleDragMove);
+      window.addEventListener('mouseup', handleDragEnd);
+      window.addEventListener('touchmove', handleDragMove);
+      window.addEventListener('touchend', handleDragEnd);
+    }
+    return () => {
+      window.removeEventListener('mousemove', handleDragMove);
+      window.removeEventListener('mouseup', handleDragEnd);
+      window.removeEventListener('touchmove', handleDragMove);
+      window.removeEventListener('touchend', handleDragEnd);
+    };
+  }, [isDragging, dragY, startY]);
 
   const formatTime = (timestamp) => {
     const date = new Date(timestamp);
@@ -270,15 +285,16 @@ const FloatingChatManager = ({ currentUser }) => {
             opacity: isDragging ? 0.9 : 1
           }}
         >
-          {/* Draggable Handle for Mobile */}
+          {/* Draggable Handle */}
           <div 
-            className="sm:hidden w-full pt-3 pb-2 flex flex-col items-center cursor-grab active:cursor-grabbing bg-primary-800 touch-none"
-            onTouchStart={handleTouchStart}
-            onTouchMove={handleTouchMove}
-            onTouchEnd={handleTouchEnd}
+            className="w-full pt-3 pb-2 flex flex-col items-center cursor-grab active:cursor-grabbing bg-primary-800 touch-none select-none"
+            onMouseDown={handleDragStart}
+            onTouchStart={handleDragStart}
           >
             <div className="w-12 h-1.5 bg-white/30 rounded-full mb-1" />
-            <p className="text-[8px] font-black uppercase text-white/50 tracking-widest">Pull down to close</p>
+            <p className="text-[8px] font-black uppercase text-white/50 tracking-widest">
+              {window.innerWidth < 640 ? 'Pull down to close' : 'Drag to close'}
+            </p>
           </div>
 
           {/* Header */}
@@ -394,9 +410,10 @@ const FloatingChatManager = ({ currentUser }) => {
                     <div className="flex items-center space-x-2">
                       <button
                         onClick={() => setShowChatWindow(false)}
-                        className="p-1 hover:bg-gray-200 rounded transition-colors"
+                        className="p-2 sm:p-2.5 bg-gray-200 text-slate-700 rounded-xl hover:bg-rose-500 hover:text-white transition-all shadow-sm group"
+                        title="Back to conversations"
                       >
-                        <X className="h-4 w-4" />
+                        <X className="h-5 w-5 group-hover:rotate-90 transition-transform" />
                       </button>
                       <div className="flex flex-col">
                         <div className="flex items-center gap-2">

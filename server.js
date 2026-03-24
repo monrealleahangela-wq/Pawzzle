@@ -63,10 +63,11 @@ mongoose.connect(process.env.MONGODB_URI)
       });
   })
   .catch((error) => {
-    console.error('❌ MongoDB connection error:', error);
-    if (process.env.NODE_ENV !== 'production') {
+    console.error('❌ MongoDB connection error:', error.message);
+    if (!isProduction) {
       console.log('📧 Attempted to connect to:', process.env.MONGODB_URI);
     }
+    // Don't kill the server here - let it listen anyway so Render can at least check the port!
   });
 
 // Routes - Admin routes first to prevent conflicts
@@ -146,7 +147,14 @@ if (isProduction) {
   });
 }
 
+// Ensure we prioritize Render's PORT environment variable
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+const server = app.listen(PORT, '0.0.0.0', () => {
+    console.log(`✅ Server is running on port ${PORT}`);
+    console.log(`🌐 Bound to 0.0.0.0 for deployment visibility`);
+});
+
+server.on('error', (err) => {
+    console.error('❌ Server startup error:', err);
+    process.exit(1);
 });

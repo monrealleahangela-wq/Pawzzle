@@ -47,10 +47,10 @@ const Bookings = () => {
   const [formStep, setFormStep] = useState(1);
 
   const stepMeta = [
-    { num: 1, label: 'Service', icon: '🛎' },
-    { num: 2, label: 'Schedule', icon: '📅' },
-    { num: 3, label: 'Your Pet', icon: '🐾' },
-    { num: 4, label: 'Confirm', icon: '✅' },
+    { num: 1, label: 'Service', icon: <Bell className="h-4 w-4" /> },
+    { num: 2, label: 'Schedule', icon: <Calendar className="h-4 w-4" /> },
+    { num: 3, label: 'Your Pet', icon: <Activity className="h-4 w-4" /> },
+    { num: 4, label: 'Confirm', icon: <ShieldCheck className="h-4 w-4" /> },
   ];
 
   const canAdvance = (step) => {
@@ -449,30 +449,35 @@ const Bookings = () => {
         <div className="max-w-4xl mx-auto space-y-6 animate-card-appear pb-24 px-1 sm:px-0">
 
           {/* ── Dark Form Hero ── */}
-          <div className="relative bg-slate-900 rounded-[2.5rem] p-6 sm:p-10 overflow-hidden text-white border border-white/5 shadow-2xl">
-            <div className="absolute top-0 right-0 w-52 h-52 bg-primary-600/10 rounded-full blur-[80px] pointer-events-none" />
-            <div className="absolute bottom-0 left-0 w-32 h-32 bg-secondary-600/10 rounded-full blur-[60px] pointer-events-none" />
+          <div className="relative bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-[2.5rem] p-6 sm:p-10 overflow-hidden text-white border border-white/10 shadow-2xl">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-primary-500/10 rounded-full blur-[90px] pointer-events-none" />
+            <div className="absolute bottom-0 left-0 w-40 h-40 bg-secondary-500/10 rounded-full blur-[70px] pointer-events-none" />
             <div className="relative z-10 flex items-start gap-5">
-              <button onClick={() => { handleBackToBookings(); setFormStep(1); }}
-                className="p-3 bg-white/10 hover:bg-white/20 rounded-xl transition-all shrink-0 border border-white/10">
-                <ArrowLeft className="h-4 w-4" />
+              <button 
+                onClick={() => { handleBackToBookings(); setFormStep(1); }}
+                className="p-3 bg-white/10 hover:bg-primary-500 hover:text-white rounded-xl transition-all shrink-0 border border-white/10 active:scale-90 group"
+              >
+                <ArrowLeft className="h-5 w-5 group-hover:-translate-x-1 transition-transform" />
               </button>
               <div className="flex-1 min-w-0">
-                <p className="text-[9px] font-black text-primary-400 uppercase tracking-[0.35em] mb-1">Service Appointment</p>
-                <h2 className="text-2xl sm:text-4xl font-black uppercase tracking-tighter leading-none mb-3">
-                  Book <span className="italic text-primary-400">{selectedService.name}</span>
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-1.5 h-1.5 rounded-full bg-primary-500 animate-pulse" />
+                  <p className="text-[9px] font-black text-primary-400 uppercase tracking-[0.4em]">Service Appointment</p>
+                </div>
+                <h2 className="text-2xl sm:text-4xl font-black uppercase tracking-tighter leading-none mb-4">
+                  Book <span className="italic text-primary-400 drop-shadow-sm">{selectedService.name}</span>
                 </h2>
                 <div className="flex flex-wrap gap-3">
-                  <span className="flex items-center gap-1.5 px-3 py-1.5 bg-white/10 rounded-xl border border-white/10 text-[9px] font-black uppercase tracking-widest">
-                    <Clock className="h-3 w-3 text-primary-400" /> {selectedService.duration || '—'} min
-                  </span>
-                  <span className="flex items-center gap-1.5 px-3 py-1.5 bg-white/10 rounded-xl border border-white/10 text-[9px] font-black uppercase tracking-widest">
-                    <DollarSign className="h-3 w-3 text-emerald-400" /> ₱{selectedService.price?.toLocaleString()}
-                  </span>
+                  <div className="flex items-center gap-2 px-3 py-2 bg-white/5 backdrop-blur-md rounded-xl border border-white/10 text-[9px] font-black uppercase tracking-widest group hover:bg-white/10 transition-all font-black">
+                    <Clock className="h-3.5 w-3.5 text-primary-400 group-hover:rotate-12 transition-transform" /> {selectedService.duration || '—'} MIN
+                  </div>
+                  <div className="flex items-center gap-2 px-3 py-2 bg-white/5 backdrop-blur-md rounded-xl border border-white/10 text-[9px] font-black uppercase tracking-widest group hover:bg-white/10 transition-all font-black">
+                    <DollarSign className="h-3.5 w-3.5 text-emerald-400 group-hover:scale-110 transition-transform" /> ₱{selectedService.price?.toLocaleString()}
+                  </div>
                   {selectedService.homeServiceAvailable && (
-                    <span className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/20 rounded-xl border border-emerald-500/30 text-emerald-400 text-[9px] font-black uppercase tracking-widest">
-                      <MapPin className="h-3 w-3" /> Home Service Available
-                    </span>
+                    <div className="flex items-center gap-2 px-3 py-2 bg-emerald-500/10 backdrop-blur-md rounded-xl border border-emerald-500/20 text-emerald-400 text-[9px] font-black uppercase tracking-widest font-black">
+                      <MapPin className="h-3.5 w-3.5 animate-bounce-slow" /> HOME SERVICE
+                    </div>
                   )}
                 </div>
               </div>
@@ -480,21 +485,40 @@ const Bookings = () => {
           </div>
 
           {/* ── Step Progress ── */}
-          <div className="bg-white rounded-[2rem] border border-slate-100 p-5 shadow-sm">
-            <div className="flex items-center">
+          <div className="bg-white/80 backdrop-blur-xl rounded-[2.5rem] border border-white shadow-xl shadow-slate-200/50 p-6 sm:p-8">
+            <div className="flex items-center justify-between">
               {stepMeta.map((step, idx) => (
                 <React.Fragment key={step.num}>
-                  <div className="flex flex-col items-center gap-1.5 cursor-pointer" onClick={() => formStep > step.num && setFormStep(step.num)}>
-                    <div className={`w-10 h-10 rounded-2xl flex items-center justify-center text-sm font-black border-2 transition-all ${formStep === step.num ? 'bg-slate-900 text-white border-slate-900 scale-110 shadow-xl' :
+                  <div 
+                    className="flex flex-col items-center gap-3 transition-all duration-500 relative"
+                    onClick={() => formStep > step.num && setFormStep(step.num)}
+                  >
+                    <div className={`w-12 h-12 rounded-[1.25rem] flex items-center justify-center transition-all duration-500 border-2 ${
+                      formStep === step.num ? 'bg-slate-900 text-white border-slate-900 scale-110 shadow-[0_0_20px_rgba(15,23,42,0.3)]' :
                       formStep > step.num ? 'bg-primary-600 text-white border-primary-600' :
-                        'bg-slate-50 text-slate-300 border-slate-100'
-                      }`}>{formStep > step.num ? '✓' : step.icon}</div>
-                    <span className={`text-[8px] font-black uppercase tracking-widest hidden sm:block ${formStep >= step.num ? 'text-slate-700' : 'text-slate-300'
-                      }`}>{step.label}</span>
+                      'bg-slate-50 text-slate-300 border-slate-100'
+                    }`}>
+                      {formStep > step.num ? <ShieldCheck className="h-5 w-5" /> : step.icon}
+                    </div>
+                    <div className="flex flex-col items-center">
+                      <span className={`text-[8px] font-black uppercase tracking-[0.2em] transition-colors duration-300 ${
+                        formStep >= step.num ? 'text-slate-900' : 'text-slate-300'
+                      }`}>
+                        Step 0{step.num}
+                      </span>
+                      <span className={`text-[9px] font-bold uppercase tracking-tight hidden sm:block transition-colors duration-300 ${
+                        formStep >= step.num ? 'text-slate-500' : 'text-slate-300'
+                      }`}>
+                        {step.label}
+                      </span>
+                    </div>
                   </div>
                   {idx < stepMeta.length - 1 && (
-                    <div className="flex-1 h-0.5 mx-2 rounded-full overflow-hidden bg-slate-100">
-                      <div className={`h-full rounded-full transition-all duration-500 ${formStep > step.num ? 'bg-primary-500 w-full' : 'w-0'}`} />
+                    <div className="flex-1 h-1 mx-4 rounded-full bg-slate-100 relative overflow-hidden">
+                      <div 
+                        className="absolute inset-0 bg-primary-500 transition-all duration-700 ease-out"
+                        style={{ width: formStep > step.num ? '100%' : '0%' }}
+                      />
                     </div>
                   )}
                 </React.Fragment>
@@ -514,43 +538,57 @@ const Bookings = () => {
                     <h3 className="text-2xl font-black text-slate-900 uppercase tracking-tighter mb-2">{selectedService.name}</h3>
                     <p className="text-sm text-slate-500 leading-relaxed mb-6">{selectedService.description || 'Professional pet service by vetted specialists.'}</p>
 
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                       {[
-                        { label: 'Duration', value: `${selectedService.duration || '—'} min`, icon: Clock },
+                        { label: 'Duration', value: `${selectedService.duration || '—'} MIN`, icon: Clock },
                         { label: 'Price', value: `₱${selectedService.price?.toLocaleString()}`, icon: DollarSign },
                         { label: 'Provider', value: selectedService.store?.name || 'Elite Partner', icon: Store },
                         { label: 'Location', value: selectedService.store?.contactInfo?.address?.city || 'Local Hub', icon: MapPin },
-                        { label: 'Home Visit', value: selectedService.homeServiceAvailable ? 'Available' : 'In-Store Only', icon: Phone },
+                        { label: 'Home Visit', value: selectedService.homeServiceAvailable ? 'Available' : 'In-Store', icon: Phone },
                         { label: 'Clients', value: 'Vetted', icon: User },
                       ].map(({ label, value, icon: Icon }) => (
-                        <div key={label} className="bg-slate-50/80 rounded-2xl p-4 border border-slate-100">
-                          <div className="flex items-center gap-2 mb-1.5">
-                            <Icon className="h-3.5 w-3.5 text-primary-500" />
-                            <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">{label}</span>
+                        <div key={label} className="group bg-white/40 backdrop-blur-md rounded-3xl p-5 border border-white/60 shadow-sm hover:shadow-xl hover:shadow-slate-200/50 hover:-translate-y-1 transition-all duration-300">
+                          <div className="flex items-center gap-2.5 mb-2.5">
+                            <div className="w-8 h-8 rounded-xl bg-primary-50 flex items-center justify-center group-hover:bg-primary-500 transition-colors duration-300">
+                              <Icon className="h-4 w-4 text-primary-500 group-hover:text-white transition-colors duration-300" />
+                            </div>
+                            <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none">{label}</span>
                           </div>
-                          <p className="text-[11px] font-black text-slate-900 uppercase tracking-tight truncate">{value}</p>
+                          <p className="text-[11px] font-black text-slate-900 uppercase tracking-tight truncate leading-none">{value}</p>
                         </div>
                       ))}
                     </div>
 
                     {/* Requirements Section */}
                     {selectedService.requirements && (
-                      <div className="mt-8 p-6 bg-amber-50 rounded-3xl border border-amber-100/50">
-                        <div className="flex items-center gap-3 mb-4">
-                          <ShieldCheck className="h-5 w-5 text-amber-600" />
-                          <h4 className="text-[11px] font-black text-amber-900 uppercase tracking-widest">Customer Requirements</h4>
+                      <div className="mt-10 p-7 bg-white/50 backdrop-blur-sm rounded-[2rem] border border-amber-200/40 relative overflow-hidden group">
+                        <div className="absolute top-0 right-0 w-24 h-24 bg-amber-500/5 rounded-full blur-2xl -mr-12 -mt-12 transition-all duration-700 group-hover:scale-150" />
+                        
+                        <div className="flex items-center gap-4 mb-6 relative z-10">
+                          <div className="w-10 h-10 rounded-2xl bg-amber-50 flex items-center justify-center border border-amber-100/50 shadow-sm">
+                            <ShieldCheck className="h-5 w-5 text-amber-600" />
+                          </div>
+                          <div>
+                            <h4 className="text-[10px] font-black text-amber-900 uppercase tracking-widest leading-none mb-1">Customer Requirements</h4>
+                            <p className="text-[8px] font-bold text-amber-700/60 uppercase tracking-tight italic">Essential details for verification</p>
+                          </div>
                         </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 relative z-10">
                           {selectedService.requirements.split(',').map((req, i) => (
-                            <div key={i} className="flex items-start gap-3 bg-white/50 p-3 rounded-xl">
-                              <CheckCircle className="h-3.5 w-3.5 text-amber-500 shrink-0 mt-0.5" />
-                              <span className="text-[10px] font-bold text-slate-700 leading-tight uppercase tracking-tight">{req.trim()}</span>
+                            <div key={i} className="flex items-center gap-3 bg-white/40 p-3.5 rounded-2xl border border-white/60 shadow-sm hover:translate-x-1 transition-all duration-300">
+                              <CheckCircle className="h-4 w-4 text-emerald-500 shrink-0" />
+                              <span className="text-[9px] font-black text-slate-800 uppercase tracking-tight">{req.trim()}</span>
                             </div>
                           ))}
                         </div>
-                        <p className="mt-4 text-[9px] font-bold text-amber-700/70 uppercase tracking-widest italic flex items-center gap-2">
-                          <AlertCircle className="h-3 w-3" /> Please present these documents to staff upon arrival for verification.
-                        </p>
+                        
+                        <div className="mt-6 flex items-start gap-2.5 p-3.5 bg-amber-500/5 rounded-xl border border-amber-500/10 relative z-10">
+                          <AlertCircle className="h-3.5 w-3.5 text-amber-600 shrink-0 mt-0.5" />
+                          <p className="text-[8px] font-bold text-amber-900/70 uppercase tracking-wide leading-relaxed">
+                            Please present these documents to our staff upon arrival to ensure a smooth check-in process.
+                          </p>
+                        </div>
                       </div>
                     )}
                   </div>
@@ -632,14 +670,20 @@ const Bookings = () => {
 
                 <div className="space-y-4">
                   {/* Time + availability */}
-                  <div className="bg-white rounded-[2.5rem] border border-slate-100 p-4 sm:p-6 shadow-sm">
-                    <p className="text-[9px] font-black text-primary-600 uppercase tracking-[0.3em] mb-4">Pick a Time</p>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                      <div>
-                        <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-2">Start Time *</label>
-                        <input type="time" name="startTime" value={bookingForm.startTime}
-                          onChange={handleFormChange} required
-                          className="w-full px-4 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl text-sm font-black text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-300 transition-all" />
+                  <div className="bg-white/80 backdrop-blur-xl rounded-[2.5rem] border border-white shadow-xl shadow-slate-200/50 p-6 sm:p-8">
+                    <div className="flex items-center gap-2 mb-6">
+                      <div className="w-1.5 h-1.5 rounded-full bg-primary-500 animate-pulse" />
+                      <p className="text-[9px] font-black text-primary-600 uppercase tracking-[0.3em] leading-none">Pick a Time</p>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                      <div className="group">
+                        <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-2 px-1 group-focus-within:text-primary-500 transition-colors uppercase tracking-[0.2em]">Start Time *</label>
+                        <div className="relative">
+                          <Clock className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300 group-focus-within:text-primary-500 transition-colors" />
+                          <input type="time" name="startTime" value={bookingForm.startTime}
+                            onChange={handleFormChange} required
+                            className="w-full pl-11 pr-4 py-4 bg-white/50 backdrop-blur-md border border-slate-100 rounded-[1.25rem] text-[13px] font-black text-slate-900 uppercase tracking-tight focus:outline-none focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 focus:bg-white transition-all shadow-sm" />
+                        </div>
                       </div>
 
                       {bookingForm.bookingDate && (
@@ -669,15 +713,18 @@ const Bookings = () => {
                     </div>
 
                     {selectedService.homeServiceAvailable && (
-                      <div className="mt-5 p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                        <label className="flex items-center gap-3 cursor-pointer">
-                          <div className={`w-12 h-6 rounded-full transition-colors relative ${bookingForm.isHomeService ? 'bg-primary-600' : 'bg-slate-200'}`}
+                      <div className="mt-8 p-5 bg-white/40 backdrop-blur-md rounded-[2rem] border border-white shadow-sm hover:shadow-xl hover:shadow-slate-200/50 transition-all duration-300">
+                        <label className="flex items-center gap-4 cursor-pointer group">
+                          <div className={`w-14 h-7 rounded-full transition-all duration-500 relative ring-4 ring-offset-2 ${bookingForm.isHomeService ? 'bg-primary-600 ring-primary-100' : 'bg-slate-200 ring-transparent'}`}
                             onClick={() => handleFormChange({ target: { name: 'isHomeService', type: 'checkbox', checked: !bookingForm.isHomeService } })}>
-                            <div className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-all ${bookingForm.isHomeService ? 'left-7' : 'left-1'}`} />
+                            <div className={`absolute top-1 w-5 h-5 bg-white rounded-full shadow-lg transition-all duration-500 ${bookingForm.isHomeService ? 'left-8' : 'left-1'}`} />
                           </div>
                           <div>
-                            <p className="text-[10px] font-black text-slate-900 uppercase tracking-wider">Request Home Service</p>
-                            <p className="text-[8px] text-slate-400 font-bold">Our specialist will come to your location</p>
+                            <div className="flex items-center gap-2 mb-0.5">
+                              <MapPin className={`h-3 w-3 ${bookingForm.isHomeService ? 'text-primary-500' : 'text-slate-400'}`} />
+                              <p className="text-[10px] font-black text-slate-900 uppercase tracking-wider">Request Home Service</p>
+                            </div>
+                            <p className="text-[8px] text-slate-400 font-bold uppercase tracking-tight italic">Our specialist will come to your location</p>
                           </div>
                         </label>
                       </div>
@@ -685,20 +732,26 @@ const Bookings = () => {
                   </div>
 
                   {bookingForm.isHomeService && (
-                    <div className="bg-white rounded-[2.5rem] border border-slate-100 p-5 sm:p-7 shadow-sm animate-card-appear">
-                      <p className="text-[9px] font-black text-primary-600 uppercase tracking-[0.3em] mb-4">Service Address</p>
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div className="bg-white/80 backdrop-blur-xl rounded-[2.5rem] border border-white shadow-xl shadow-slate-200/50 p-6 sm:p-8 animate-card-appear">
+                      <div className="flex items-center gap-2 mb-6">
+                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                        <p className="text-[9px] font-black text-emerald-600 uppercase tracking-[0.3em] leading-none">Service Address</p>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
                         {[
-                          { label: 'Street', name: 'serviceAddress.street', placeholder: '123 Paws Ave.' },
-                          { label: 'City', name: 'serviceAddress.city', placeholder: 'Dasmariñas' },
-                          { label: 'Province', name: 'serviceAddress.province', placeholder: 'Cavite' },
-                        ].map(({ label, name, placeholder }) => (
-                          <div key={name}>
-                            <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">{label} *</label>
-                            <input type="text" name={name}
-                              value={name.split('.').reduce((o, k) => (o || {})[k], bookingForm)}
-                              onChange={handleFormChange} placeholder={placeholder} required
-                              className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-sm font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary-500/20 transition-all" />
+                          { label: 'Street', name: 'serviceAddress.street', placeholder: '123 Paws Ave.', icon: MapPin },
+                          { label: 'City', name: 'serviceAddress.city', placeholder: 'Dasmariñas', icon: Building },
+                          { label: 'Province', name: 'serviceAddress.province', placeholder: 'Cavite', icon: ShieldCheck },
+                        ].map(({ label, name, placeholder, icon: Icon }) => (
+                          <div key={name} className="group">
+                            <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-2 px-1 group-focus-within:text-emerald-500 transition-colors uppercase tracking-[0.2em]">{label} *</label>
+                            <div className="relative">
+                               <Icon className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300 group-focus-within:text-emerald-500 transition-colors" />
+                               <input type="text" name={name}
+                                value={name.split('.').reduce((o, k) => (o || {})[k], bookingForm)}
+                                onChange={handleFormChange} placeholder={placeholder} required
+                                className="w-full pl-11 pr-4 py-4 bg-white/40 backdrop-blur-md border border-slate-100 rounded-[1.25rem] text-[13px] font-black text-slate-900 uppercase tracking-tight focus:outline-none focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 focus:bg-white transition-all shadow-sm placeholder:text-slate-300" />
+                            </div>
                           </div>
                         ))}
                       </div>
@@ -731,31 +784,34 @@ const Bookings = () => {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                     {[
-                      { label: 'Pet Name', name: 'pet.name', type: 'text', placeholder: 'e.g. Max', required: true },
-                      { label: 'Pet Type', name: 'pet.type', type: 'text', placeholder: 'e.g. Dog, Cat', required: true },
-                      { label: 'Breed', name: 'pet.breed', type: 'text', placeholder: 'e.g. Bulldog', required: true },
-                      { label: 'Age (years)', name: 'pet.age', type: 'number', placeholder: '1', required: true },
-                      { label: 'Weight (kg)', name: 'pet.weight', type: 'number', placeholder: '5.0', required: true, step: '0.1' },
-                    ].map(({ label, name, type, placeholder, required, step }) => {
+                      { label: 'Pet Name', name: 'pet.name', type: 'text', placeholder: 'e.g. Max', required: true, icon: User },
+                      { label: 'Pet Type', name: 'pet.type', type: 'text', placeholder: 'e.g. Dog, Cat', required: true, icon: Heart },
+                      { label: 'Breed', name: 'pet.breed', type: 'text', placeholder: 'e.g. Bulldog', required: true, icon: Activity },
+                      { label: 'Age (years)', name: 'pet.age', type: 'number', placeholder: '1', required: true, icon: Clock },
+                      { label: 'Weight (kg)', name: 'pet.weight', type: 'number', placeholder: '5.0', required: true, step: '0.1', icon: TrendingUp },
+                    ].map(({ label, name, type, placeholder, required, step, icon: Icon }) => {
                       const val = name.split('.').reduce((o, k) => (o || {})[k], bookingForm);
                       return (
-                        <div key={name}>
-                          <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">{label}{required && ' *'}</label>
-                          <input type={type} name={name} value={val} onChange={handleFormChange}
-                            placeholder={placeholder} required={required} step={step}
-                            className="w-full px-4 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl text-sm font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:bg-white transition-all" />
+                        <div key={name} className="group">
+                          <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1.5 px-1 group-focus-within:text-primary-500 transition-colors uppercase tracking-[0.2em]">{label}{required && ' *'}</label>
+                          <div className="relative">
+                            <Icon className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300 group-focus-within:text-primary-500 transition-colors" />
+                            <input type={type} name={name} value={val} onChange={handleFormChange}
+                              placeholder={placeholder} required={required} step={step}
+                              className="w-full pl-11 pr-4 py-4 bg-white/40 backdrop-blur-md border border-slate-100 rounded-[1.25rem] text-[13px] font-black text-slate-900 uppercase tracking-tight focus:outline-none focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 focus:bg-white transition-all shadow-sm" />
+                          </div>
                         </div>
                       );
                     })}
                   </div>
 
-                  <div className="mt-5">
-                    <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">Special Notes (Optional)</label>
+                  <div className="mt-8">
+                    <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-2 px-1">Special Notes (Optional)</label>
                     <textarea name="notes" value={bookingForm.notes} onChange={handleFormChange} rows={3}
                       placeholder="e.g. Sensitive skin, allergic to latex, needs extra calming…"
-                      className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-sm font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary-500/20 transition-all resize-none" />
+                      className="w-full px-5 py-5 bg-white/40 backdrop-blur-md border border-slate-100 rounded-[1.5rem] text-[13px] font-black text-slate-900 uppercase tracking-tight focus:outline-none focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 focus:bg-white transition-all resize-none shadow-sm placeholder:text-slate-300" />
                   </div>
                 </div>
 
@@ -784,34 +840,52 @@ const Bookings = () => {
                   <div className="p-6 sm:p-8 space-y-5">
                     {/* Service block */}
                     <div>
-                      <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-3">Service</p>
-                      <div className="flex items-center gap-4 p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                        <div className="w-12 h-12 bg-primary-600 rounded-xl flex items-center justify-center text-white text-lg shrink-0">🛎</div>
-                        <div>
-                          <p className="text-sm font-black text-slate-900 uppercase">{selectedService.name}</p>
-                          <p className="text-[9px] font-bold text-slate-400">{selectedService.store?.name} · ₱{selectedService.price?.toLocaleString()} · {selectedService.duration} min</p>
+                      <div className="flex items-center gap-2 mb-3 px-1">
+                        <div className="w-1.5 h-1.5 rounded-full bg-primary-500" />
+                        <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none">Selected Service</p>
+                      </div>
+                      <div className="flex items-center gap-4 p-5 bg-white/40 backdrop-blur-md rounded-3xl border border-white/60 shadow-sm group hover:shadow-xl hover:shadow-slate-200/50 transition-all duration-300">
+                        <div className="w-14 h-14 bg-primary-600 rounded-2xl flex items-center justify-center text-white text-lg shrink-0 shadow-lg shadow-primary-200 group-hover:rotate-6 transition-transform">
+                          <Bell className="h-6 w-6" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[13px] font-black text-slate-900 uppercase tracking-tight mb-0.5">{selectedService.name}</p>
+                          <div className="flex items-center gap-3">
+                            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wide">{selectedService.store?.name}</p>
+                            <div className="w-1 h-1 rounded-full bg-slate-200" />
+                            <p className="text-[10px] font-black text-emerald-600 uppercase tracking-tight">₱{selectedService.price?.toLocaleString()}</p>
+                          </div>
                         </div>
                       </div>
                     </div>
 
                     {/* Schedule block */}
                     <div>
-                      <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-3">Schedule</p>
-                      <div className="grid grid-cols-2 gap-3">
-                        <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                          <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1 flex items-center gap-1"><Calendar className="h-3 w-3" /> Date</p>
-                          <p className="text-[11px] font-black text-slate-900 uppercase">
-                            {bookingForm.bookingDate ? new Date(bookingForm.bookingDate).toLocaleDateString('en-PH', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
+                      <div className="flex items-center gap-2 mb-3 px-1">
+                        <div className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
+                        <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none">Schedule Details</p>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="p-5 bg-white/40 backdrop-blur-md rounded-3xl border border-white/60 shadow-sm group hover:bg-white/60 transition-all">
+                          <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-1.5">
+                            <Calendar className="h-3 w-3 text-indigo-500" /> Date
+                          </p>
+                          <p className="text-[11px] font-black text-slate-900 uppercase tracking-tight">
+                            {bookingForm.bookingDate ? new Date(bookingForm.bookingDate).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
                           </p>
                         </div>
-                        <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                          <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1 flex items-center gap-1"><Clock className="h-3 w-3" /> Time</p>
-                          <p className="text-[11px] font-black text-slate-900 uppercase">{bookingForm.startTime || '—'}</p>
+                        <div className="p-5 bg-white/40 backdrop-blur-md rounded-3xl border border-white/60 shadow-sm group hover:bg-white/60 transition-all">
+                          <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-1.5">
+                            <Clock className="h-3 w-3 text-indigo-500" /> Time
+                          </p>
+                          <p className="text-[11px] font-black text-slate-900 uppercase tracking-tight">{bookingForm.startTime || '—'}</p>
                         </div>
                         {bookingForm.isHomeService && (
-                          <div className="col-span-2 p-4 bg-emerald-50 rounded-2xl border border-emerald-100">
-                            <p className="text-[8px] font-black text-emerald-600 uppercase tracking-widest mb-1 flex items-center gap-1"><MapPin className="h-3 w-3" /> Home Service Address</p>
-                            <p className="text-[11px] font-black text-slate-900 uppercase">
+                          <div className="col-span-2 p-5 bg-emerald-500/5 backdrop-blur-md rounded-3xl border border-emerald-500/20 shadow-sm">
+                            <p className="text-[8px] font-black text-emerald-600 uppercase tracking-widest mb-2 flex items-center gap-1.5">
+                              <MapPin className="h-3 w-3" /> Home Service Address
+                            </p>
+                            <p className="text-[11px] font-black text-slate-900 uppercase leading-relaxed">
                               {bookingForm.serviceAddress.street}, {bookingForm.serviceAddress.city}, {bookingForm.serviceAddress.province}
                             </p>
                           </div>

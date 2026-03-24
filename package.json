@@ -40,6 +40,9 @@
     "spa",
     "roles"
   ],
+  "engines": {
+    "node": ">=20.0.0"
+  },
   "author": "PetStore Platform",
   "license": "MIT"
 }
