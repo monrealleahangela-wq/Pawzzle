@@ -503,15 +503,15 @@ const Layout = () => {
         )}
 
         {/* Main content Area Scrollable */}
-        <main className="container-custom py-6 pb-24 lg:pb-6">
+        <main className="container-custom py-6 pb-40 lg:pb-6">
           <div className="w-full">
             <Outlet />
           </div>
         </main>
       </div>
 
-      {/* Bottom Navigation for Mobile */}
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-100 px-2 pt-3 pb-[calc(1.25rem+env(safe-area-inset-bottom))] z-[60] flex justify-around items-center shadow-[0_-8px_30px_rgb(0,0,0,0.04)] backdrop-blur-xl bg-white/90">
+      {/* Floating Bottom Navigation for Mobile */}
+      <nav className="lg:hidden fixed bottom-6 left-1/2 -translate-x-1/2 w-[92%] max-w-lg bg-white/90 backdrop-blur-2xl border border-white/20 px-2 py-3 rounded-[2.5rem] z-[60] flex justify-around items-center shadow-[0_15px_50px_rgba(0,0,0,0.15)] ring-1 ring-black/5">
         {bottomNavItems.map((item) => {
           const Icon = item.icon;
           const active = isActivePath(item.path);
@@ -521,7 +521,7 @@ const Layout = () => {
               to={item.path}
               className={`flex flex-col items-center gap-1.5 px-3 py-1 rounded-2xl transition-all ${active ? 'text-primary-600 scale-110' : 'text-slate-400'}`}
             >
-              <div className={`relative p-1.5 rounded-xl transition-all ${active ? 'bg-primary-50' : ''}`}>
+              <div className={`relative p-2 rounded-[1.2rem] transition-all ${active ? 'bg-primary-50 shadow-sm' : ''}`}>
                 <Icon className={`h-5 w-5 ${active ? 'stroke-[2.5px]' : 'stroke-2'}`} />
                 {item.label === 'Cart' && getTotalItems() > 0 && (
                   <span className="absolute -top-1 -right-1 bg-secondary-500 text-white text-[8px] rounded-full h-4 w-4 flex items-center justify-center font-bold shadow-lg">

@@ -246,8 +246,8 @@ const Products = () => {
       <div className="flex flex-col space-y-4">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-3 sm:gap-6 bg-white p-4 rounded-3xl border border-slate-100 shadow-sm">
           <div className="space-y-1">
-            <h1 className="text-xl sm:text-5xl font-black text-slate-900 tracking-tight uppercase">Supply Chain</h1>
-            <p className="text-[9px] sm:text-lg text-slate-400 font-bold uppercase tracking-widest hidden sm:block">Grade-A Provisioning for Elite Companions</p>
+            <h1 className="text-xl sm:text-5xl font-black text-slate-900 tracking-tight uppercase">Pet Shop</h1>
+            <p className="text-[9px] sm:text-lg text-slate-400 font-bold uppercase tracking-widest hidden sm:block">Premium supplies for your beloved pets</p>
           </div>
 
           <form onSubmit={handleSearch} className="w-full md:w-auto flex gap-2">
@@ -255,14 +255,14 @@ const Products = () => {
               <Search className="input-icon h-4 w-4 text-slate-400" />
               <input
                 type="text"
-                placeholder="PROCURING BRAND..."
+                placeholder="SEARCH BRANDS..."
                 className="input input-with-icon border-none rounded-xl text-[10px] sm:text-sm font-bold uppercase tracking-widest bg-slate-50 focus:ring-2 focus:ring-primary-500/20 transition-all"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
             <button type="submit" className="bg-slate-900 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg active:scale-95 transition-all">
-              EXECUTE
+              SEARCH
             </button>
           </form>
         </div>
@@ -277,7 +277,7 @@ const Products = () => {
           >
             <div className="flex items-center gap-2">
               <Filter className="h-4 w-4 text-primary-600" />
-              <span className="text-[10px] font-black text-slate-900 uppercase tracking-widest">Global Filters {Object.values(filters).filter(Boolean).length > 0 && `[${Object.values(filters).filter(Boolean).length}]`}</span>
+              <span className="text-[10px] font-black text-slate-900 uppercase tracking-widest">Filters</span>
             </div>
             <ArrowRight className={`h-4 w-4 transition-transform ${showMobileFilters ? 'rotate-90' : ''}`} />
           </button>
@@ -286,7 +286,7 @@ const Products = () => {
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-2">
                 <Filter className="h-4 w-4 text-primary-600" />
-                <h3 className="font-black text-slate-900 text-[10px] uppercase tracking-widest">Constraints</h3>
+                <h3 className="font-black text-slate-900 text-[10px] uppercase tracking-widest">Filter By</h3>
               </div>
               <button
                 onClick={() => {
@@ -305,14 +305,14 @@ const Products = () => {
 
             <div className="space-y-4">
               <div className="space-y-1.5">
-                <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Geo-Zone</label>
+                <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Location</label>
                 <div className="flex flex-col gap-2">
                   <select
                     className="w-full px-3 py-2 bg-slate-50 rounded-xl text-[10px] font-black uppercase tracking-tight border-none focus:ring-2 focus:ring-primary-500/10"
                     value={filters.city}
                     onChange={(e) => handleFilterChange('city', e.target.value)}
                   >
-                    <option value="">Global Fleet</option>
+                    <option value="">All Areas</option>
                     {CAVITE_CITIES.map(c => (
                       <option key={c.value} value={c.value}>{c.label}</option>
                     ))}
@@ -325,7 +325,7 @@ const Products = () => {
                       }`}
                   >
                     <Navigation className="h-3 w-3" />
-                    GPS LOCAL
+                    NEAR ME
                   </button>
                 </div>
               </div>
@@ -338,14 +338,14 @@ const Products = () => {
                   onChange={(e) => handleFilterChange('category', e.target.value)}
                 >
                   <option value="">All Types</option>
-                  <option value="food">Sustenance</option>
-                  <option value="toys">Engagement</option>
-                  <option value="accessories">Equipment</option>
+                  <option value="food">Food</option>
+                  <option value="toys">Toys</option>
+                  <option value="accessories">Accessories</option>
                 </select>
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Valuation</label>
+                <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Price Range</label>
                 <select
                   value={filters.minPrice ? `${filters.minPrice}-${filters.maxPrice}` : ''}
                   onChange={(e) => {
@@ -355,10 +355,10 @@ const Products = () => {
                   }}
                   className="w-full px-3 py-2 bg-slate-50 rounded-xl text-[10px] font-black uppercase tracking-tight border-none"
                 >
-                  <option value="">Any Tier</option>
-                  <option value="0-500">Tier I (&lt;₱500)</option>
-                  <option value="500-1000">Tier II (₱1K)</option>
-                  <option value="1000-5000">Tier III (₱5K)</option>
+                  <option value="">Any Price</option>
+                  <option value="0-500">Under ₱500</option>
+                  <option value="500-1000">Up to ₱1,000</option>
+                  <option value="1000-5000">Over ₱1,000</option>
                 </select>
               </div>
 
@@ -373,7 +373,7 @@ const Products = () => {
                     />
                     <div className="w-8 h-4.5 bg-slate-200 rounded-full peer peer-checked:bg-primary-600 transition-all after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-3.5 after:w-3.5 after:transition-all peer-checked:after:translate-x-3.5"></div>
                   </div>
-                  <span className="text-[10px] font-black text-slate-900 uppercase tracking-widest">Ready-to-Ship</span>
+                  <span className="text-[10px] font-black text-slate-900 uppercase tracking-widest">In Stock Only</span>
                 </label>
               </div>
 
@@ -382,7 +382,7 @@ const Products = () => {
                   onClick={() => setShowMobileFilters(false)}
                   className="w-full bg-slate-900 text-white py-3 rounded-xl text-[10px] font-black uppercase tracking-widest mt-2"
                 >
-                  Verify Context
+                  Apply Filters
                 </button>
               )}
             </div>
@@ -394,8 +394,8 @@ const Products = () => {
           {products.length === 0 ? (
             <div className="card border-dashed border-2 bg-slate-50/50 flex flex-col items-center justify-center py-12 text-center">
               <Package className="h-8 w-8 text-slate-300 mb-3" />
-              <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest">Stock Depleted</h3>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tight mt-1 mb-4">No matching assets in local database</p>
+              <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest">No Products Found</h3>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tight mt-1 mb-4">Try adjusting your filters</p>
               <button
                 onClick={() => setFilters({
                   category: '', brand: '', suitableFor: '',
@@ -403,7 +403,7 @@ const Products = () => {
                 })}
                 className="text-[10px] font-black text-primary-600 uppercase tracking-widest underline"
               >
-                Flush All Context
+                Clear All Filters
               </button>
             </div>
           ) : (
@@ -430,10 +430,10 @@ const Products = () => {
 
                     <div className="absolute top-3 right-3 flex flex-col gap-1.5">
                       <span className={`px-2.5 py-1 rounded-xl text-[8px] font-black uppercase tracking-wider shadow-sm backdrop-blur-md border border-white/20 ${product.stockQuantity > 5 ? 'bg-emerald-500/90 text-white' : 'bg-rose-500/90 text-white'}`}>
-                        {product.stockQuantity > 5 ? 'IN_STOCK' : 'LOW_STOCK'}
+                        {product.stockQuantity > 5 ? 'IN STOCK' : 'LOW STOCK'}
                       </span>
                       <span className="px-2.5 py-1 bg-slate-900/90 backdrop-blur-md rounded-xl text-[8px] font-black uppercase tracking-widest text-white border border-white/10 shadow-sm">
-                        QUALIFIED
+                        VERIFIED
                       </span>
                     </div>
                   </div>
@@ -441,7 +441,7 @@ const Products = () => {
                   <div className="p-4 flex-1 flex flex-col relative z-10">
                     <div className="mb-3">
                       <p className="text-[8px] font-black text-slate-400 uppercase tracking-[0.25em] leading-none mb-1.5 truncate">
-                        {product.brand || 'Consumable Grade'}
+                        {product.brand || 'Product'}
                       </p>
                       <h3 className="text-[13px] sm:text-xl font-black text-slate-900 leading-tight uppercase truncate group-hover:text-primary-600 transition-colors">
                         {product.name}
@@ -468,14 +468,14 @@ const Products = () => {
                         <Link
                           to={`/products/${product._id}`}
                           className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center bg-slate-50 hover:bg-slate-200 rounded-lg sm:rounded-xl transition-colors shadow-sm"
-                          title="View Intelligence"
+                          title="View Details"
                         >
                           <Eye className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-slate-600" />
                         </Link>
                         <button
                           onClick={() => handleAddToCart(product)}
                           className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center bg-slate-100 text-slate-600 rounded-lg sm:rounded-xl hover:bg-slate-200 transition-all active:scale-90 shadow-sm"
-                          title="Add to Registry"
+                          title="Add to Cart"
                         >
                           <ShoppingCart className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                         </button>

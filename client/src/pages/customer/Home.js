@@ -197,9 +197,9 @@ const Home = () => {
             </div>
 
             <h1 className="text-3xl sm:text-7xl font-black tracking-tighter leading-[0.88] uppercase">
-              <span className="text-gradient-shimmer">Supreme</span>
+              <span className="text-gradient-shimmer">Find Your</span>
               <br />
-              <span className="bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent italic">Companions</span>
+              <span className="bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent italic">Best Friend</span>
             </h1>
 
             <p className="text-[9px] sm:text-base text-slate-500 max-w-sm mx-auto font-bold leading-relaxed uppercase tracking-tight opacity-80">
@@ -209,10 +209,10 @@ const Home = () => {
 
             <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 justify-center pt-1">
               <Link to="/pets" className="group px-8 py-3.5 bg-slate-900 text-white rounded-2xl text-[9px] sm:text-xs font-black uppercase tracking-widest shadow-xl shadow-slate-200 hover:bg-primary-700 active:scale-95 transition-all flex items-center justify-center gap-2">
-                Explore Fleet <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-1 transition-transform" />
+                Find Pets <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-1 transition-transform" />
               </Link>
               <Link to="/products" className="px-8 py-3.5 bg-white/80 border border-slate-200 text-slate-800 rounded-2xl text-[9px] sm:text-xs font-black uppercase tracking-widest hover:border-slate-900 hover:bg-white active:scale-95 transition-all">
-                Procure Gear
+                Shop Now
               </Link>
             </div>
           </div>
@@ -259,9 +259,9 @@ const Home = () => {
       <section className="space-y-4">
         <div className="flex items-end justify-between px-1">
           <div>
-            <p className="text-[9px] font-black text-secondary-600 uppercase tracking-[0.35em] mb-1">Local Intelligence</p>
+            <p className="text-[9px] font-black text-secondary-600 uppercase tracking-[0.35em] mb-1">Nearby Shops</p>
             <h2 className="text-xl sm:text-4xl font-black text-slate-900 uppercase tracking-tighter leading-none">
-              Nearby <span className="italic text-secondary-600">Bases</span>
+              Pet Shops <span className="italic text-secondary-600">Near You</span>
             </h2>
           </div>
           <button
@@ -270,7 +270,7 @@ const Home = () => {
             className="group flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-xl text-[8px] font-black uppercase tracking-widest hover:bg-secondary-600 active:scale-95 transition-all shadow-lg"
           >
             <Navigation className={`h-3 w-3 ${nearMeLoading ? 'animate-spin' : ''}`} />
-            {nearMeLoading ? 'Scanning...' : 'Scan Proximity'}
+            {nearMeLoading ? 'Finding...' : 'Find Nearby'}
           </button>
         </div>
 
@@ -327,9 +327,9 @@ const Home = () => {
       <section className="space-y-4">
         <div className="flex items-end justify-between px-1">
           <div>
-            <p className="text-[9px] font-black text-primary-600 uppercase tracking-[0.35em] mb-1">Live Roster</p>
+            <p className="text-[9px] font-black text-primary-600 uppercase tracking-[0.35em] mb-1">New Arrivals</p>
             <h2 className="text-xl sm:text-4xl font-black text-slate-900 uppercase tracking-tighter leading-none">
-              Available <span className="italic text-primary-600">Units</span>
+              Pets for <span className="italic text-primary-600">Adoption</span>
             </h2>
           </div>
           <Link to="/pets" className="group text-[9px] font-black text-slate-500 uppercase tracking-widest hover:text-slate-900 transition-colors flex items-center gap-1">
@@ -404,7 +404,7 @@ const Home = () => {
 
                 <div className="flex justify-between items-center mt-auto pt-2 border-t border-slate-50">
                   <div>
-                    <p className="text-[7px] font-black text-slate-400 uppercase tracking-widest">Valuation</p>
+                    <p className="text-[7px] font-black text-slate-400 uppercase tracking-widest">Pricing</p>
                     <p className="text-sm sm:text-xl font-black text-slate-900 tracking-tighter leading-none">₱{pet.price?.toLocaleString()}</p>
                   </div>
                   <Link to={`/pets/${pet._id}`}
@@ -466,9 +466,9 @@ const Home = () => {
       {/* ── Features Bento ── */}
       <section className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         {[
-          { icon: Crown, title: 'Elite Pedigree', desc: 'Only verified and health-checked animals enter our platform.', color: 'primary' },
+          { icon: Crown, title: 'Healthy Pets', desc: 'Only verified and health-checked animals enter our platform.', color: 'primary' },
           { icon: Shield, title: '100% Secure', desc: 'Safe transactions and buyer-first policies on every order.', color: 'emerald' },
-          { icon: Zap, title: 'Instant Booking', desc: 'Schedule grooming, vet visits, and walks in seconds.', color: 'amber' },
+          { icon: Zap, title: 'Easy Booking', desc: 'Schedule grooming, vet visits, and walks in seconds.', color: 'amber' },
         ].map(({ icon: Icon, title, desc, color }, i) => (
           <div key={i} className={`bg-white rounded-[2.5rem] border border-slate-100 p-6 sm:p-8 relative overflow-hidden card-interactive shadow-sm animate-card-appear`}
             style={{ animationDelay: `${i * 0.12}s` }}>
@@ -512,7 +512,7 @@ const Home = () => {
             <div className="flex flex-col sm:flex-row gap-3 justify-center pt-2">
               <Link to={isAuthenticated ? '/pets' : '/register'}
                 className="group px-10 py-4 bg-primary-600 text-white rounded-2xl text-[9px] sm:text-xs font-black uppercase tracking-widest hover:bg-primary-500 active:scale-95 transition-all shadow-xl shadow-primary-900/40 flex items-center justify-center gap-2">
-                {isAuthenticated ? 'New Arrivals' : 'Initialize Account'}
+                {isAuthenticated ? 'See New Pets' : 'Create Account'}
                 <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-1 transition-transform" />
               </Link>
               {!isAuthenticated && (

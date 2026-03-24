@@ -189,7 +189,7 @@ const GoogleMap = ({ address, storeName, onCoordinatesUpdate, coordinates: propC
           className="flex-1 flex items-center justify-center gap-3 px-8 py-5 bg-primary-600 text-white rounded-[1.8rem] font-black uppercase tracking-[0.2em] text-[10px] hover:bg-primary-500 transition-all shadow-xl shadow-primary-900/10 hover:shadow-primary-600/20 hover:-translate-y-0.5 active:scale-95"
         >
           <Navigation className="h-4 w-4" />
-          Deploy Navigator
+          Open Directions
         </a>
         <a
           href={getViewOnMapUrl()}
@@ -198,7 +198,7 @@ const GoogleMap = ({ address, storeName, onCoordinatesUpdate, coordinates: propC
           className="flex-1 sm:flex-[0.6] flex items-center justify-center gap-3 px-8 py-5 bg-slate-900 text-white rounded-[1.8rem] font-black uppercase tracking-[0.2em] text-[10px] hover:bg-black transition-all shadow-xl hover:-translate-y-0.5 active:scale-95"
         >
           <ExternalLink className="h-4 w-4" />
-          Full Grid
+          View on Map
         </a>
       </div>
     </div>

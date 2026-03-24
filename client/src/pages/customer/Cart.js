@@ -136,17 +136,17 @@ const Cart = () => {
       <div className="max-w-7xl mx-auto px-2 sm:px-8 py-4 sm:py-8 flex flex-col md:flex-row justify-between items-start md:items-end gap-3 mb-2 px-2">
         <div className="space-y-0.5">
           <h1 className="text-2xl sm:text-6xl font-black text-slate-900 tracking-tighter uppercase leading-[0.9]">
-            Manifest <br />
-            <span className="text-primary-600 italic">Review</span>
+            Your Shopping <br />
+            <span className="text-primary-600 italic">Cart</span>
           </h1>
-          <p className="text-[9px] sm:text-lg text-slate-400 font-bold uppercase tracking-tight opacity-70">Verify payloads before final deployment</p>
+          <p className="text-[9px] sm:text-lg text-slate-400 font-bold uppercase tracking-tight opacity-70">Review items before checkout</p>
         </div>
         <div className="flex gap-1.5 w-full md:w-auto">
           <button onClick={handleSelectAll} className="flex-1 md:flex-none px-4 py-2.5 bg-white border border-slate-100 rounded-xl text-[9px] font-black uppercase tracking-widest text-slate-500 shadow-sm transition-all active:scale-95">
             Select All
           </button>
           <button onClick={clearCart} className="flex-1 md:flex-none px-4 py-2.5 bg-rose-50 rounded-xl text-[9px] font-black uppercase tracking-widest text-rose-600 transition-all active:scale-95">
-            Flush
+            Clear Cart
           </button>
         </div>
       </div>
@@ -211,7 +211,7 @@ const Cart = () => {
         <div className="hidden lg:block">
           <div className="bg-slate-900 rounded-[3rem] p-10 sticky top-10 shadow-2xl relative overflow-hidden text-white">
             <div className="absolute top-0 right-0 w-64 h-64 bg-primary-600/10 rounded-full blur-[100px] -mr-32 -mt-32"></div>
-            <h2 className="text-3xl font-black uppercase tracking-tighter mb-10 italic border-b border-white/10 pb-4 relative z-10">Final Tally</h2>
+            <h2 className="text-3xl font-black uppercase tracking-tighter mb-10 italic border-b border-white/10 pb-4 relative z-10">Order Summary</h2>
             <div className="space-y-6 mb-12 relative z-10">
               <div className="flex justify-between items-center"><span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Payload Value</span><span className="text-xl font-black text-white">₱{totalPrice.toLocaleString()}</span></div>
               <div className="flex justify-between items-center"><span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Selected Assets</span><span className="text-xl font-black text-primary-400">{selectedItems.length} UNITS</span></div>
@@ -223,7 +223,7 @@ const Cart = () => {
               onClick={handleCheckout}
               className="w-full py-5 bg-white text-slate-900 rounded-[2rem] text-sm font-black uppercase tracking-[0.2em] block text-center shadow-2xl hover:bg-primary-50 transition-all active:scale-95 relative z-10"
             >
-              Execute Checkout
+              Checkout Now
             </button>
           </div>
         </div>

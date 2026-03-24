@@ -73,7 +73,7 @@ const PetDetail = () => {
     <div className="max-w-6xl mx-auto space-y-4 sm:space-y-8 px-2 sm:px-6 animate-fade-in pb-12">
       <Link to="/pets" className="inline-flex items-center text-[10px] sm:text-sm font-black text-slate-400 hover:text-primary-600 uppercase tracking-widest transition-all">
         <ArrowLeft className="h-3 w-3 mr-1.5" />
-        Back to Fleet
+        Back to Pets
       </Link>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-10">
@@ -155,12 +155,12 @@ const PetDetail = () => {
 
           <div className="grid grid-cols-2 gap-2 sm:gap-4">
             {[
-              { label: 'Classification', value: pet.species },
-              { label: 'Breed Spec', value: pet.breed },
-              { label: 'Maturity', value: `${pet.age} ${pet.ageUnit}` },
+              { label: 'Species', value: pet.species },
+              { label: 'Breed', value: pet.breed },
+              { label: 'Age', value: `${pet.age} ${pet.ageUnit}` },
               { label: 'Gender', value: pet.gender },
-              { label: 'Magnitude', value: pet.size },
-              { label: 'Vetting', value: pet.vaccinationStatus.replace('_', ' ') }
+              { label: 'Pet Size', value: pet.size },
+              { label: 'Health Status', value: pet.vaccinationStatus.replace('_', ' ') }
             ].map((stat, i) => (
               <div key={i} className="bg-slate-50 p-3 sm:p-4 rounded-2xl border border-slate-100 flex flex-col justify-center">
                 <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-0.5">{stat.label}</p>
@@ -180,7 +180,7 @@ const PetDetail = () => {
           <div className="bg-slate-900 p-4 sm:p-8 rounded-[2.5rem] shadow-2xl relative overflow-hidden group">
             <div className="absolute top-0 right-0 w-32 h-32 bg-primary-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
 
-            <h3 className="text-white text-[10px] sm:text-base font-black uppercase tracking-widest mb-4 sm:mb-6 relative z-10 italic">Execute Acquisition</h3>
+            <h3 className="text-white text-[10px] sm:text-base font-black uppercase tracking-widest mb-4 sm:mb-6 relative z-10 italic">Inquire for Adoption</h3>
 
             <div className="flex flex-col gap-2 relative z-10">
               <button
@@ -194,9 +194,9 @@ const PetDetail = () => {
                 {pet.status === 'available' ? (
                   <>
                     <MessageSquare className="h-5 w-5" />
-                    Inquire / Message Seller
+                    Chat with seller
                   </>
-                ) : pet.status === 'reserved' ? 'Asset Reserved' : 'Asset Adopted'}
+                ) : pet.status === 'reserved' ? 'Reserved' : 'Adopted'}
               </button>
             </div>
           </div>
