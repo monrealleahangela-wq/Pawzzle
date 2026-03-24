@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { bookingService, serviceService, voucherService } from '../../services/apiService';
 import { toast } from 'react-toastify';
-import { Clock, User, MapPin, Phone, Mail, DollarSign, CheckCircle, XCircle, AlertCircle, Filter, Search, Calendar, ArrowLeft, ChevronLeft, ChevronRight, Store, X, Activity, ShieldCheck, TrendingUp, Tag, Ticket } from 'lucide-react';
+import { Clock, User, MapPin, Phone, Mail, DollarSign, CheckCircle, XCircle, AlertCircle, Filter, Search, Calendar, ArrowLeft, ChevronLeft, ChevronRight, Store, X, Activity, ShieldCheck, TrendingUp, Tag, Ticket, Bell, Building, Heart } from 'lucide-react';
 
 const Bookings = () => {
   const [bookings, setBookings] = useState([]);
