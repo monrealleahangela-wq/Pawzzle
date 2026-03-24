@@ -17,6 +17,12 @@ body {
   min-height: 100dvh;
 }
 
+body.chat-modal-open #mobile-bottom-nav {
+  transform: translate(-50%, 150%) !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
 /* Globally hide scrollbars */
 ::-webkit-scrollbar {
   display: none;

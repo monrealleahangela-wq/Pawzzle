@@ -25,6 +25,15 @@ const FloatingChatManager = ({ currentUser }) => {
   const [startY, setStartY] = useState(0);
 
   useEffect(() => {
+    if (isOpen && !isMinimized) {
+      document.body.classList.add('chat-modal-open');
+    } else {
+      document.body.classList.remove('chat-modal-open');
+    }
+    return () => document.body.classList.remove('chat-modal-open');
+  }, [isOpen, isMinimized]);
+
+  useEffect(() => {
     if (currentUser) {
       fetchConversations();
       fetchUnreadCount();
@@ -329,7 +338,7 @@ const FloatingChatManager = ({ currentUser }) => {
             <>
               {!showChatWindow ? (
                 /* Conversations List */
-                <div className="flex-1 flex flex-col">
+                <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
                   {/* Search */}
                   <div className="p-3 border-b">
                     <div className="relative">
@@ -404,7 +413,7 @@ const FloatingChatManager = ({ currentUser }) => {
                 </div>
               ) : (
                 /* Chat Window */
-                <div className="flex-1 flex flex-col">
+                <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
                   {/* Chat Header */}
                   <div className="p-3 border-b bg-gray-50 flex items-center justify-between">
                     <div className="flex items-center space-x-2">

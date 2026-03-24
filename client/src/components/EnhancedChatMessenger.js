@@ -31,6 +31,15 @@ const EnhancedChatMessenger = ({
   const [startY, setStartY] = useState(0);
 
   useEffect(() => {
+    if (isOpen && !isEmbedded) {
+      document.body.classList.add('chat-modal-open');
+    } else {
+      document.body.classList.remove('chat-modal-open');
+    }
+    return () => document.body.classList.remove('chat-modal-open');
+  }, [isOpen, isEmbedded]);
+
+  useEffect(() => {
     if ((isOpen || isEmbedded) && existingConversationId) {
       setConversationId(existingConversationId);
       loadMessages(existingConversationId);
@@ -390,7 +399,7 @@ const EnhancedChatMessenger = ({
 
   const messengerContent = (
     <div 
-      className={`flex flex-col h-full bg-white transition-transform duration-300 ease-out 
+      className={`flex flex-col h-full bg-white transition-transform duration-300 ease-out min-h-0
         ${!isEmbedded ? 'rounded-t-[2.5rem] sm:rounded-[40px] shadow-2xl max-w-2xl w-full h-[75vh] sm:h-[700px] overflow-hidden border border-white/20' : ''}`}
       style={{ 
         transform: `translateY(${dragY}px)`
@@ -449,7 +458,7 @@ const EnhancedChatMessenger = ({
 
       {renderAdoptionStatus()}
 
-      <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-slate-50/50 no-scrollbar">
+      <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-slate-50/50 no-scrollbar overscroll-contain touch-pan-y">
         {!adoptionRequest && !isSeller && !isAdmin && conversationId && pet && (
           <div className="bg-white border border-primary-100 p-8 rounded-[32px] text-center space-y-6 mx-4 shadow-sm">
             <div className="w-20 h-20 bg-primary-50 rounded-full flex items-center justify-center mx-auto">
