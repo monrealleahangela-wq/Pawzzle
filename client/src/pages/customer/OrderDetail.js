@@ -19,11 +19,21 @@ const OrderDetail = () => {
   useEffect(() => {
     const queryParams = new URLSearchParams(location.search);
     if (queryParams.get('payment') === 'success') {
-      toast.success('Payment successful! Your order is being processed.');
+      toast.success('Payment authorized. Verifying payment status...');
+      paymentService.verifyPayment(id).then(res => {
+        if (res.data.status === 'paid') {
+          toast.success('Payment successfully verified!');
+          fetchOrder(); // Reload the order fully
+        } else {
+          toast.info('Payment is still processing. Check back soon.');
+        }
+      }).catch(err => {
+        console.error('Payment verification error', err);
+      });
     } else if (queryParams.get('payment') === 'cancelled') {
       toast.warning('Payment was cancelled.');
     }
-  }, [location.search]);
+  }, [location.search, id]);
 
   useEffect(() => {
     fetchOrder();
@@ -292,6 +302,30 @@ const OrderDetail = () => {
                 >
                   <CheckCircle className="h-4 w-4 group-hover:scale-110 transition-transform" />
                   Confirm Payment (Admin)
+                </button>
+              )}
+
+              {/* Manual Refresh Status Button if Pending */}
+              {order.paymentStatus !== 'paid' && order.status !== 'cancelled' && order.paymentDetails?.sessionId && (
+                <button
+                  onClick={async () => {
+                    const toastId = toast.loading('Verifying payment with PayMongo...');
+                    try {
+                      const res = await paymentService.verifyPayment(order._id);
+                      if (res.data.status === 'paid') {
+                        toast.update(toastId, { render: 'Payment verified successfully!', type: 'success', isLoading: false, autoClose: 3000 });
+                        fetchOrder();
+                      } else {
+                        toast.update(toastId, { render: 'Payment is still pending on PayMongo.', type: 'info', isLoading: false, autoClose: 3000 });
+                      }
+                    } catch (error) {
+                      toast.update(toastId, { render: 'Failed to verify payment status.', type: 'error', isLoading: false, autoClose: 3000 });
+                    }
+                  }}
+                  className="w-full mt-2 py-3 bg-slate-100 text-slate-600 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-slate-200 transition-all shadow-sm flex items-center justify-center gap-2 group border border-slate-200"
+                >
+                  <AlertCircle className="h-4 w-4 group-hover:rotate-180 transition-transform duration-500" />
+                  Refresh Payment Status
                 </button>
               )}
 

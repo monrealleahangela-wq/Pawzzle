@@ -213,7 +213,129 @@ const handleWebhook = async (req, res) => {
     }
 };
 
+/**
+ * Verify payment directly with PayMongo API
+ */
+const verifyPayment = async (req, res) => {
+    try {
+        const { orderId } = req.params;
+        const order = await Order.findById(orderId);
+
+        if (!order) {
+            return res.status(404).json({ message: 'Order not found' });
+        }
+
+        if (order.paymentStatus === 'paid') {
+            return res.json({ status: 'paid', order });
+        }
+
+        if (!order.paymentDetails || !order.paymentDetails.sessionId) {
+            return res.status(400).json({ message: 'No payment session found for this order' });
+        }
+
+        const response = await axios.get(`https://api.paymongo.com/v1/checkout_sessions/${order.paymentDetails.sessionId}`, {
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Basic ${Buffer.from(PAYMONGO_SECRET_KEY + ':').toString('base64')}`
+            }
+        });
+
+        const session = response.data.data;
+        const payments = session.attributes.payments;
+
+        if (payments && payments.length > 0) {
+            const successfulPayment = payments.find(p => p.attributes.status === 'paid');
+            
+            if (successfulPayment) {
+                console.log(`🔍 Manual verification confirmed payment for order #${order.orderNumber}`);
+                
+                if (order.status === 'cancelled') {
+                    order.paymentStatus = 'paid';
+                    order.paymentMethod = successfulPayment.attributes.source.type;
+                    order.paymentDetails = {
+                        ...order.paymentDetails,
+                        paymentId: successfulPayment.id,
+                        amountPaid: successfulPayment.attributes.amount / 100,
+                        transactionDate: new Date(successfulPayment.attributes.paid_at * 1000)
+                    };
+                    await order.save();
+                    return res.json({ status: 'paid', message: 'Paid but order was already cancelled', order });
+                }
+
+                order.paymentStatus = 'paid';
+                order.status = 'confirmed'; 
+                order.paymentMethod = successfulPayment.attributes.source.type;
+                order.paymentDetails = {
+                    ...order.paymentDetails,
+                    paymentId: successfulPayment.id,
+                    amountPaid: successfulPayment.attributes.amount / 100,
+                    transactionDate: new Date(successfulPayment.attributes.paid_at * 1000)
+                };
+
+                for (const item of order.items) {
+                    if (item.itemType === 'product') {
+                        try {
+                            const product = await Product.findById(item.itemId);
+                            if (product) {
+                                const sellerStore = await Store.findOne({ owner: product.addedBy });
+                                if (sellerStore) {
+                                    await StockSyncService.reduceStockOnOrder(item.itemId, item.quantity, sellerStore._id);
+                                } else {
+                                    product.stockQuantity -= item.quantity;
+                                    await product.save();
+                                }
+                            }
+                        } catch (stockError) {
+                            console.error(`❌ Stock deduction failed for order ${order._id}:`, stockError.message);
+                        }
+                    } else if (item.itemType === 'pet') {
+                        await Pet.findByIdAndUpdate(item.itemId, { isAvailable: false });
+                    }
+                }
+
+                const platformFee = Number((order.totalAmount * 0.10).toFixed(2));
+                const netAmount = Number((order.totalAmount - platformFee).toFixed(2));
+
+                order.platformFee = platformFee;
+                order.netAmount = netAmount;
+
+                await order.save();
+
+                if (order.store) {
+                    await Store.findByIdAndUpdate(order.store, {
+                        $inc: {
+                            'balance': netAmount,
+                            'stats.totalRevenue': order.totalAmount,
+                            'stats.totalPlatformFees': platformFee
+                        }
+                    });
+                    console.log(`💰 Store balance updated (${netAmount}) for order #${order.orderNumber} via manual verification`);
+                }
+
+                await createNotification({
+                    recipient: order.addedBy,
+                    sender: order.customer,
+                    type: 'order_status',
+                    title: 'Order Paid',
+                    message: `Order #${order.orderNumber} has been paid via ${order.paymentMethod}.`,
+                    relatedId: order._id,
+                    relatedModel: 'Order'
+                });
+
+                return res.json({ status: 'paid', order });
+            }
+        }
+
+        return res.json({ status: order.paymentStatus, message: 'Payment still pending on PayMongo' });
+
+    } catch (error) {
+        console.error('Verify Payment Error:', error.response?.data || error.message);
+        res.status(500).json({ message: 'Failed to verify payment with provider', error: error.message });
+    }
+};
+
 module.exports = {
     createCheckoutSession,
-    handleWebhook
+    handleWebhook,
+    verifyPayment
 };

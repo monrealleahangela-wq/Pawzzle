@@ -286,7 +286,8 @@ export const adoptionService = {
 
 // Payment services
 export const paymentService = {
-  createCheckoutSession: (orderId) => api.post(`/payment/create-checkout-session/${orderId}`)
+  createCheckoutSession: (orderId) => api.post(`/payment/create-checkout-session/${orderId}`),
+  verifyPayment: (orderId) => api.get(`/payment/verify/${orderId}`)
 };
 
 // Voucher services (Customer)
