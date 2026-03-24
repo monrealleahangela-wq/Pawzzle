@@ -70,7 +70,7 @@ const PetDetail = () => {
   }
 
   return (
-    <div className="max-w-6xl mx-auto space-y-4 sm:space-y-8 px-2 sm:px-6 animate-fade-in pb-12">
+    <div className="max-w-6xl mx-auto space-y-4 sm:space-y-8 px-2 sm:px-6 animate-fade-in pb-60">
       <Link to="/pets" className="inline-flex items-center text-[10px] sm:text-sm font-black text-slate-400 hover:text-primary-600 uppercase tracking-widest transition-all">
         <ArrowLeft className="h-3 w-3 mr-1.5" />
         Back to Pets

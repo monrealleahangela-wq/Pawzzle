@@ -400,7 +400,7 @@ const EnhancedChatMessenger = ({
 
   return (
     <div className="fixed inset-0 bg-neutral-900/60 backdrop-blur-sm flex items-end sm:items-center justify-center z-[100] p-4 sm:p-6 font-sans">
-      <div className="w-full max-w-2xl pb-24 sm:pb-0">
+      <div className="w-full max-w-2xl mb-32 sm:mb-0">
         {messengerContent}
       </div>
 

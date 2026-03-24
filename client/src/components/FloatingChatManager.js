@@ -202,7 +202,7 @@ const FloatingChatManager = ({ currentUser }) => {
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
-          className="fixed bottom-24 right-4 sm:bottom-6 sm:right-6 bg-primary-700 text-white rounded-full p-4 shadow-lg hover:bg-primary-800 transition-all duration-300 z-[70] group"
+          className="fixed bottom-32 right-4 sm:bottom-6 sm:right-6 bg-primary-700 text-white rounded-full p-4 shadow-lg hover:bg-primary-800 transition-all duration-300 z-[70] group"
         >
           <MessageSquare className="h-6 w-6" />
           {unreadCount > 0 && (
@@ -218,7 +218,7 @@ const FloatingChatManager = ({ currentUser }) => {
 
       {/* Chat Manager Window */}
       {isOpen && (
-        <div className="fixed bottom-24 right-4 left-4 sm:left-auto sm:bottom-6 sm:right-6 w-auto sm:w-96 h-[500px] sm:h-[600px] bg-white rounded-lg shadow-2xl z-[70] flex flex-col">
+        <div className="fixed bottom-32 right-4 left-4 sm:left-auto sm:bottom-6 sm:right-6 w-auto sm:w-96 h-[500px] sm:h-[600px] bg-white rounded-lg shadow-2xl z-[70] flex flex-col">
           {/* Header */}
           <div className="flex items-center justify-between p-4 border-b bg-primary-800 text-white rounded-t-lg">
             <div className="flex items-center space-x-2">
