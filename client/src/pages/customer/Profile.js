@@ -830,8 +830,22 @@ const Profile = () => {
                     </h4>
                     <div className="divide-y divide-slate-50 border-t border-slate-50">
                       {ordersLoading ? (
-                        <div className="py-8 flex items-center justify-center text-slate-300">
-                          <p className="font-black text-[10px] uppercase tracking-widest animate-pulse">Syncing Intel...</p>
+                        <div className="py-4 space-y-4">
+                          {[1, 2, 3].map(i => (
+                            <div key={i} className="flex items-center justify-between p-2">
+                              <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 sm:w-12 sm:h-12 skeleton rounded-lg shrink-0" />
+                                <div className="space-y-2">
+                                  <div className="h-3 w-32 skeleton" />
+                                  <div className="h-2 w-20 skeleton" />
+                                </div>
+                              </div>
+                              <div className="text-right space-y-2">
+                                <div className="h-3 w-16 skeleton" />
+                                <div className="h-2 w-12 skeleton" />
+                              </div>
+                            </div>
+                          ))}
                         </div>
                       ) : (orders.length > 0 || bookings.length > 0 || adoptions.length > 0) ? (
                         <>
@@ -1300,6 +1314,24 @@ const Profile = () => {
                                application.status === 'rejected' ? `Your application was rejected. Reason: ${application.rejectionReason}` :
                                'Your application is currently being verified by our administrators. Typical wait time is 24-48 hours.'}
                             </p>
+                             {/* Verification Progress Bar */}
+                             {application.status !== 'approved' && application.status !== 'rejected' && (
+                               <div className="space-y-2 mb-8 animate-in fade-in slide-in-from-top-4 duration-1000">
+                                 <div className="flex justify-between items-end">
+                                   <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Verification Strength</p>
+                                   <p className="text-xs font-black text-amber-600 italic">Level {Math.floor((application.verificationScore || 0) / 20) + 1}</p>
+                                 </div>
+                                 <div className="h-3 bg-slate-100 rounded-full overflow-hidden p-0.5 border border-slate-50">
+                                   <div 
+                                     className="h-full bg-gradient-to-r from-amber-500 to-primary-600 rounded-full transition-all duration-[2000ms] shadow-sm relative overflow-hidden"
+                                     style={{ width: `${Math.max(15, application.verificationScore || 25)}%` }}
+                                   >
+                                     <div className="absolute inset-0 bg-white/20 animate-pulse" />
+                                   </div>
+                                 </div>
+                                 <p className="text-[7px] font-bold text-slate-400 uppercase tracking-tight">Complete more profile details to increase approval probability.</p>
+                               </div>
+                             )}
                             {application.status === 'rejected' && (
                               <button onClick={() => setShowUpgradeForm(true)} className="px-8 py-3 bg-slate-900 text-white rounded-xl font-black uppercase tracking-widest text-xs">
                                 Edit & Re-submit

@@ -181,6 +181,31 @@ code {
   .animate-spin-slow {
     animation: spin 8s linear infinite;
   }
+
+  .skeleton {
+    @apply relative overflow-hidden bg-slate-200 rounded-lg;
+  }
+
+  .skeleton::after {
+    @apply absolute inset-0;
+    content: "";
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(255, 255, 255, 0.4),
+      transparent
+    );
+    animation: skeleton-shimmer 1.5s infinite;
+  }
+
+  @keyframes skeleton-shimmer {
+    0% {
+      transform: translateX(-100%);
+    }
+    100% {
+      transform: translateX(100%);
+    }
+  }
 }
 
 @keyframes spin {

@@ -164,9 +164,18 @@ const GlobalSearch = ({ isScrolled }) => {
             {isOpen && searchQuery.length > 2 && !showFilters && (
                 <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-slate-100 rounded-3xl shadow-2xl overflow-hidden z-[60] animate-slide-up">
                     {loading ? (
-                        <div className="p-8 text-center">
-                            <div className="w-6 h-6 border-2 border-primary-600 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
-                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Scanning Grid...</p>
+                        <div className="p-2 space-y-4">
+                            {[1, 2, 3].map(i => (
+                                <div key={i} className="flex items-center gap-3 p-2">
+                                    <div className="w-10 h-10 skeleton rounded-xl shrink-0" />
+                                    <div className="flex-1 space-y-2">
+                                        <div className="h-3 w-2/3 skeleton" />
+                                        <div className="h-2 w-1/3 skeleton" />
+                                    </div>
+                                    <div className="h-3 w-12 skeleton" />
+                                </div>
+                            ))}
+                            <p className="text-center text-[8px] font-black text-slate-300 uppercase tracking-widest py-2">Scanning Network...</p>
                         </div>
                     ) : totalCount > 0 ? (
                         <div className="max-h-[60vh] overflow-y-auto p-2 space-y-4">
@@ -250,9 +259,14 @@ const GlobalSearch = ({ isScrolled }) => {
                             </button>
                         </div>
                     ) : (
-                        <div className="p-8 text-center">
-                            <Search className="h-8 w-8 text-slate-200 mx-auto mb-2" />
-                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Zero Matches Found</p>
+                        <div className="p-12 text-center space-y-4">
+                            <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-2 border border-slate-100">
+                                <Search className="h-10 w-10 text-slate-200" />
+                            </div>
+                            <div className="space-y-1">
+                                <p className="text-[10px] font-black text-slate-900 uppercase tracking-widest">Nothing Sniffed Out</p>
+                                <p className="text-[8px] font-bold text-slate-400 uppercase tracking-tighter">Try adjusting your filters or search terms.</p>
+                            </div>
                         </div>
                     )}
                 </div>
