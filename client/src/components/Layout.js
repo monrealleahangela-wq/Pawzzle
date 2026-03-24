@@ -461,15 +461,6 @@ const Layout = () => {
                   }, [])}
                 </div>
 
-                <div className="mt-8 pt-8 border-t border-slate-100">
-                  <button
-                    onClick={handleLogout}
-                    className="w-full flex items-center gap-4 p-4 rounded-2xl bg-rose-50 text-rose-600 font-black text-xs uppercase tracking-widest hover:bg-rose-100 transition-all mb-10"
-                  >
-                    <LogOut className="h-5 w-5" />
-                    <span>Sign Out</span>
-                  </button>
-                </div>
               </div>
             </div>
           )}
