@@ -348,9 +348,9 @@ const Layout = () => {
               </div>
 
               {/* Header Actions */}
-              <div className="flex items-center space-x-2 sm:space-x-4 shrink-0 ml-auto">
+              <div className="flex items-center gap-1.5 sm:gap-4 ml-auto min-w-0 justify-end">
                 {/* Search Toggle for Mobile */}
-                <div className="sm:hidden max-w-[140px] xs:max-w-[180px]">
+                <div className="sm:hidden flex-1 min-w-[80px] max-w-[140px]">
                   <GlobalSearch isScrolled={isScrolled} />
                 </div>
                 {/* Cart for customers */}
@@ -399,9 +399,9 @@ const Layout = () => {
                 {/* Mobile Menu Icon (Drawer Trigger) */}
                 <button
                   onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                  className={`lg:hidden p-2.5 rounded-xl transition-colors text-slate-900 hover:bg-primary-50 bg-white border-2 border-slate-200 shadow-md ml-1 flex-shrink-0`}
+                  className={`lg:hidden p-2 sm:p-2.5 rounded-xl transition-colors text-slate-900 hover:bg-primary-50 bg-white border-2 border-slate-200 shadow-md ml-0.5 sm:ml-1 flex-shrink-0`}
                 >
-                  {isMobileMenuOpen ? <X className="h-6 w-6 stroke-[2.5px]" /> : <Menu className="h-6 w-6 stroke-[2.5px]" />}
+                  {isMobileMenuOpen ? <X className="h-5 w-5 sm:h-6 sm:w-6 stroke-[2.5px]" /> : <Menu className="h-5 w-5 sm:h-6 sm:w-6 stroke-[2.5px]" />}
                 </button>
               </div>
             </div>
