@@ -895,19 +895,24 @@ const Bookings = () => {
 
                     {/* Pet block */}
                     <div>
-                      <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-3">Pet Profile</p>
-                      <div className="grid grid-cols-3 gap-2">
+                      <div className="flex items-center gap-2 mb-3 px-1">
+                        <div className="w-1.5 h-1.5 rounded-full bg-slate-900" />
+                        <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none">Pet Profile</p>
+                      </div>
+                      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
                         {[
-                          ['Name', bookingForm.pet.name],
-                          ['Type', bookingForm.pet.type],
-                          ['Breed', bookingForm.pet.breed],
-                          ['Age', `${bookingForm.pet.age} yr`],
-                          ['Weight', `${bookingForm.pet.weight} kg`],
-                          ['Notes', bookingForm.notes || 'None'],
-                        ].map(([k, v]) => (
-                          <div key={k} className="p-3 bg-slate-50 rounded-xl border border-slate-100">
-                            <p className="text-[7px] font-black text-slate-400 uppercase tracking-widest mb-0.5">{k}</p>
-                            <p className="text-[10px] font-black text-slate-900 uppercase truncate">{v}</p>
+                          ['Name', bookingForm.pet.name, User],
+                          ['Type', bookingForm.pet.type, Heart],
+                          ['Breed', bookingForm.pet.breed, Activity],
+                          ['Age', `${bookingForm.pet.age} yr`, Clock],
+                          ['Weight', `${bookingForm.pet.weight} kg`, TrendingUp],
+                          ['Notes', bookingForm.notes || 'None', ShieldCheck],
+                        ].map(([k, v, Icon]) => (
+                          <div key={k} className="p-4 bg-white/40 backdrop-blur-md rounded-2xl border border-white/60 shadow-sm group hover:bg-white/60 transition-all">
+                            <p className="text-[7px] font-black text-slate-400 uppercase tracking-widest mb-1.5 flex items-center gap-1.5">
+                               <Icon className="h-2.5 w-2.5" /> {k}
+                            </p>
+                            <p className="text-[10px] font-black text-slate-900 uppercase truncate tracking-tight">{v}</p>
                           </div>
                         ))}
                       </div>
@@ -916,25 +921,32 @@ const Bookings = () => {
                     {/* Voucher section */}
                     <div className="pt-8 border-t border-slate-100">
                       <div className="flex items-center justify-between mb-4">
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">Promotional Voucher</p>
+                        <div>
+                           <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] mb-1">Promotional Voucher</p>
+                           <p className="text-[8px] text-slate-400 font-bold uppercase tracking-tight italic">Unlock sanctuary exclusive deals</p>
+                        </div>
                         {appliedVoucher && (
-                          <span className="px-2 py-1 bg-emerald-50 text-emerald-600 rounded-lg text-[8px] font-black uppercase tracking-widest">Active</span>
+                          <span className="px-3 py-1.5 bg-emerald-500/10 text-emerald-600 rounded-full text-[8px] font-black uppercase tracking-widest flex items-center gap-1.5 animate-pulse">
+                             <Ticket className="h-3 w-3" /> ACTIVE DISCOUNT
+                          </span>
                         )}
                       </div>
                       
                       <div className="space-y-4">
                         <div className="flex gap-3 relative">
                           <div className="relative flex-1 group">
-                             <Tag className={`absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 transition-colors ${appliedVoucher ? 'text-emerald-500' : 'text-slate-400 group-focus-within:text-primary-500'}`} />
+                             <div className={`absolute left-5 top-1/2 -translate-y-1/2 h-4 w-4 transition-all duration-300 ${appliedVoucher ? 'text-emerald-500 scale-110' : 'text-slate-300 group-focus-within:text-primary-500'}`}>
+                                <Tag className="h-full w-full" />
+                             </div>
                              <input
                               type="text"
-                              placeholder="SECRET CODE..."
-                              className={`w-full !pl-16 pr-4 py-4 bg-slate-50 border-2 rounded-2xl outline-none transition-all font-black text-xs uppercase tracking-[0.2em] ${appliedVoucher 
-                                ? 'border-emerald-200 bg-emerald-50 text-emerald-700' 
-                                : 'border-transparent focus:border-primary-500 focus:bg-white text-slate-900 placeholder:text-slate-400'
+                               placeholder="SECRET CODE..."
+                              className={`w-full !pl-16 pr-5 py-5 bg-slate-50 border-2 rounded-[1.5rem] outline-none transition-all font-black text-xs uppercase tracking-[0.25em] shadow-sm ${appliedVoucher 
+                                ? 'border-emerald-500/20 bg-emerald-50 text-emerald-700' 
+                                : 'border-slate-50 bg-slate-50/50 focus:border-primary-500/20 focus:bg-white text-slate-900 placeholder:text-slate-300'
                               }`}
                               value={voucherCode}
-                              onChange={(e) => setVoucherCode(e.target.value.toUpperCase())}
+                               onChange={(e) => setVoucherCode(e.target.value.toUpperCase())}
                               disabled={appliedVoucher || isVerifyingVoucher}
                             />
                           </div>
@@ -942,12 +954,18 @@ const Bookings = () => {
                             type="button"
                             onClick={appliedVoucher ? () => { setAppliedVoucher(null); setVoucherCode(''); } : handleApplyVoucher}
                             disabled={isVerifyingVoucher}
-                            className={`px-8 py-4 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all shadow-lg active:scale-95 ${appliedVoucher
-                              ? 'bg-rose-100 text-rose-700 hover:bg-rose-600 hover:text-white'
-                              : 'bg-slate-900 text-white hover:bg-primary-600 shadow-slate-200'
+                            className={`px-10 py-5 rounded-[1.5rem] text-[10px] font-black uppercase tracking-[0.25em] transition-all shadow-xl active:scale-95 flex items-center justify-center min-w-[120px] ${appliedVoucher
+                              ? 'bg-rose-500 text-white hover:bg-rose-600 shadow-rose-200/50'
+                              : 'bg-primary-700 text-white hover:bg-primary-800 shadow-primary-200/50'
                               }`}
                           >
-                            {isVerifyingVoucher ? '...' : appliedVoucher ? 'Eject' : 'Apply'}
+                            {isVerifyingVoucher ? (
+                              <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                            ) : appliedVoucher ? (
+                              'EJECT'
+                            ) : (
+                              'APPLY'
+                            )}
                           </button>
                         </div>
 
