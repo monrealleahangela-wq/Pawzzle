@@ -181,12 +181,25 @@ const FloatingChatManager = ({ currentUser }) => {
     return `${diffDays}d ago`;
   };
 
-  // Helper to get the other participant's name
+  const getOnlineStatus = (lastSeen) => {
+    if (!lastSeen) return null;
+    const now = new Date();
+    const lastActive = new Date(lastSeen);
+    const diffMs = now - lastActive;
+    const diffMins = Math.floor(diffMs / 60000);
+
+    if (diffMins < 2) return { isOnline: true, text: 'Online' };
+    if (diffMins < 60) return { isOnline: false, text: `Active ${diffMins}m ago` };
+    if (diffMins < 1440) return { isOnline: false, text: `Active ${Math.floor(diffMins / 60)}h ago` };
+    return { isOnline: false, text: `Active ${Math.floor(diffMins / 1440)}d ago` };
+  };
+
+  // Helper to get the other participant
   const getOtherParticipant = (conversation) => {
-    const other = conversation.participants?.find(
-      p => (p.user?._id || p.user) !== currentUser?.id
-    );
-    return other?.user?.firstName || 'Unknown';
+    if (!conversation?.participants) return null;
+    return conversation.participants.find(
+      p => (p.user?._id || p.user) !== (currentUser?._id || currentUser?.id)
+    )?.user;
   };
 
   const filteredConversations = conversations.filter(conv =>
@@ -282,8 +295,13 @@ const FloatingChatManager = ({ currentUser }) => {
                             className="p-3 hover:bg-gray-50 cursor-pointer transition-colors"
                           >
                             <div className="flex items-start space-x-3">
-                              <div className="w-10 h-10 bg-primary-600 rounded-full flex items-center justify-center text-white font-bold flex-shrink-0">
-                                {conversation.pet?.name?.[0]?.toUpperCase() || getOtherParticipant(conversation)?.[0]?.toUpperCase() || 'C'}
+                              <div className="relative flex-shrink-0">
+                                <div className="w-10 h-10 bg-primary-600 rounded-full flex items-center justify-center text-white font-bold">
+                                  {conversation.pet?.name?.[0]?.toUpperCase() || getOtherParticipant(conversation)?.firstName?.[0]?.toUpperCase() || 'C'}
+                                </div>
+                                {getOnlineStatus(getOtherParticipant(conversation)?.lastSeen)?.isOnline && (
+                                  <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 border-2 border-white rounded-full"></div>
+                                )}
                               </div>
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center justify-between mb-1">
@@ -299,8 +317,11 @@ const FloatingChatManager = ({ currentUser }) => {
                                 </p>
                                 <div className="flex items-center space-x-2 mt-1">
                                   <span className="text-xs text-gray-500">
-                                    {getOtherParticipant(conversation)}
+                                    {getOtherParticipant(conversation)?.firstName || 'Unknown'}
                                   </span>
+                                  {getOtherParticipant(conversation)?.lastSeen && (
+                                    <span className="text-[10px] text-gray-400">• {getOnlineStatus(getOtherParticipant(conversation).lastSeen).text}</span>
+                                  )}
                                   {conversation.unreadCount > 0 && (
                                     <span className="bg-primary-700 text-white text-xs px-2 py-0.5 rounded-full">
                                       {conversation.unreadCount}
@@ -327,12 +348,20 @@ const FloatingChatManager = ({ currentUser }) => {
                       >
                         <X className="h-4 w-4" />
                       </button>
-                      <div>
-                        <p className="font-semibold text-gray-900">
-                          {selectedConversation?.pet?.name || 'Chat'}
-                        </p>
-                        <p className="text-xs text-gray-600">
-                          {getOtherParticipant(selectedConversation)}
+                      <div className="flex flex-col">
+                        <div className="flex items-center gap-2">
+                          <p className="font-semibold text-gray-900 leading-none">
+                            {selectedConversation?.pet?.name || 'Chat'}
+                          </p>
+                          {getOnlineStatus(getOtherParticipant(selectedConversation)?.lastSeen)?.isOnline && (
+                            <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+                          )}
+                        </div>
+                        <p className="text-[10px] text-gray-500 mt-1 uppercase font-bold tracking-wider">
+                          {getOtherParticipant(selectedConversation)?.firstName || 'User'}
+                          {getOtherParticipant(selectedConversation)?.lastSeen && (
+                            <span className="ml-1 opacity-60">• {getOnlineStatus(getOtherParticipant(selectedConversation).lastSeen).text}</span>
+                          )}
                         </p>
                       </div>
                     </div>

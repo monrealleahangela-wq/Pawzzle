@@ -125,6 +125,10 @@ const userSchema = new mongoose.Schema({
   twoFactorSecret: {
     type: String,
     default: null
+  },
+  lastSeen: {
+    type: Date,
+    default: Date.now
   }
 });
 

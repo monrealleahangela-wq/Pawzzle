@@ -41,6 +41,12 @@ const authenticate = async (req, res, next) => {
     }
 
     req.user = user;
+    
+    // Update lastSeen asynchronously (don't wait for it)
+    User.findByIdAndUpdate(user._id, { lastSeen: Date.now() }).catch(err => 
+      console.error('Error updating lastSeen:', err)
+    );
+
     console.log('Authentication successful');
     next();
   } catch (error) {

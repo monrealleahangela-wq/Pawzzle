@@ -21,7 +21,7 @@ const EnhancedChatMessenger = ({
   const [isLoading, setIsLoading] = useState(false);
   const [adoptionRequest, setAdoptionRequest] = useState(null);
   const [conversationId, setConversationId] = useState(null);
-  const [onlineStatus, setOnlineStatus] = useState('online');
+  const [onlineStatus, setOnlineStatus] = useState({ isOnline: false, text: 'Connecting...' });
   const [isSeller, setIsSeller] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
   const messagesEndRef = useRef(null);
@@ -102,7 +102,24 @@ const EnhancedChatMessenger = ({
   const loadMessages = async (convId) => {
     try {
       const response = await chatService.getMessages(convId);
-      setMessages(response.data.messages || []);
+      const messagesData = response.data.messages || [];
+      setMessages(messagesData);
+      
+      // Update online status from the other participant
+      if (messagesData.length > 0) {
+        const otherParticipant = messagesData.find(m => {
+          const sId = m.sender?._id || m.sender;
+          const currentId = currentUser?._id || currentUser?.id;
+          return sId !== currentId;
+        })?.sender;
+        
+        if (otherParticipant?.lastSeen) {
+          setOnlineStatus(getOnlineStatus(otherParticipant.lastSeen));
+        }
+      } else if (seller?.lastSeen) {
+        setOnlineStatus(getOnlineStatus(seller.lastSeen));
+      }
+
       await chatService.markAsRead(convId);
     } catch (error) {
       console.error('Error loading messages:', error);
@@ -195,6 +212,19 @@ const EnhancedChatMessenger = ({
 
   const formatTime = (timestamp) => {
     return new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
+
+  const getOnlineStatus = (lastSeen) => {
+    if (!lastSeen) return { isOnline: false, text: 'Last seen unknown' };
+    const now = new Date();
+    const lastActive = new Date(lastSeen);
+    const diffMs = now - lastActive;
+    const diffMins = Math.floor(diffMs / 60000);
+
+    if (diffMins < 2) return { isOnline: true, text: 'Online' };
+    if (diffMins < 60) return { isOnline: false, text: `Active ${diffMins}m ago` };
+    if (diffMins < 1440) return { isOnline: false, text: `Active ${Math.floor(diffMins / 60)}h ago` };
+    return { isOnline: false, text: `Active ${Math.floor(diffMins / 1440)}d ago` };
   };
 
   const handleCancelRequest = async () => {
@@ -327,9 +357,11 @@ const EnhancedChatMessenger = ({
             </div>
             <div>
               <h3 className="text-lg font-black tracking-tight">{pet?.name || 'Inquiry'}</h3>
-              <div className="flex items-center gap-2 text-primary-400 text-[10px] font-black uppercase tracking-widest">
-                <div className="w-1.5 h-1.5 rounded-full bg-primary-500 animate-pulse" />
-                {onlineStatus}
+              <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest transition-all">
+                <div className={`w-1.5 h-1.5 rounded-full ${onlineStatus.isOnline ? 'bg-secondary-500 animate-pulse' : 'bg-slate-400'}`} />
+                <span className={onlineStatus.isOnline ? 'text-secondary-400' : 'text-slate-400'}>
+                  {onlineStatus.text}
+                </span>
               </div>
             </div>
           </div>

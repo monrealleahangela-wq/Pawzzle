@@ -20,7 +20,7 @@ const getConversations = async (req, res) => {
       let storeId = req.user.store;
       
       const conversations = await Conversation.find(filter)
-        .populate('participants.user', 'firstName lastName email role')
+        .populate('participants.user', 'firstName lastName email role lastSeen')
         .populate('pet', 'name breed species images price addedBy store')
         .sort({ updatedAt: -1 });
 
@@ -55,7 +55,7 @@ const getConversations = async (req, res) => {
 
     // For customers and super admins, show all their conversations
     const conversations = await Conversation.find(filter)
-      .populate('participants.user', 'firstName lastName email role')
+      .populate('participants.user', 'firstName lastName email role lastSeen')
       .populate('pet', 'name breed species images price')
       .sort({ updatedAt: -1 });
 
@@ -93,7 +93,7 @@ const getAdminChats = async (req, res) => {
       let storeId = req.user.store;
 
       const conversations = await Conversation.find(filter)
-        .populate('participants.user', 'firstName lastName email role')
+        .populate('participants.user', 'firstName lastName email role lastSeen')
         .populate('pet', 'name breed species images price addedBy store')
         .sort({ updatedAt: -1 });
 
@@ -129,7 +129,7 @@ const getAdminChats = async (req, res) => {
 
     // For Super Admin or other roles (though this is an admin route)
     const conversations = await Conversation.find(filter)
-      .populate('participants.user', 'firstName lastName email role')
+      .populate('participants.user', 'firstName lastName email role lastSeen')
       .populate('pet', 'name breed species images price addedBy')
       .sort({ updatedAt: -1 });
 
@@ -172,7 +172,7 @@ const getMessages = async (req, res) => {
     }
 
     const messages = await Message.find({ conversation: conversationId })
-      .populate('sender', 'firstName lastName role')
+      .populate('sender', 'firstName lastName role lastSeen')
       .sort({ createdAt: 1 });
 
     res.json({ messages });
@@ -221,7 +221,7 @@ const sendMessage = async (req, res) => {
     await message.save();
 
     // Populate sender info before returning
-    await message.populate('sender', 'firstName lastName role');
+    await message.populate('sender', 'firstName lastName role lastSeen');
 
     res.status(201).json({ message });
   } catch (error) {
@@ -248,7 +248,7 @@ const createConversation = async (req, res) => {
     if (participantIds && participantIds.length > 0) {
       for (const id of participantIds) {
         if (id === req.user._id.toString()) continue; // skip self
-        const user = await User.findById(id).select('role');
+        const user = await User.findById(id).select('role lastSeen');
         if (user) {
           participants.push({ user: id, role: user.role });
         }
@@ -265,7 +265,7 @@ const createConversation = async (req, res) => {
       });
 
       if (existing) {
-        await existing.populate('participants.user', 'firstName lastName email role');
+        await existing.populate('participants.user', 'firstName lastName email role lastSeen');
         await existing.populate('pet', 'name breed species images price');
         return res.json({ conversation: existing });
       }
@@ -279,7 +279,7 @@ const createConversation = async (req, res) => {
     });
 
     await conversation.save();
-    await conversation.populate('participants.user', 'firstName lastName email role');
+    await conversation.populate('participants.user', 'firstName lastName email role lastSeen');
     await conversation.populate('pet', 'name breed species images price');
 
     res.status(201).json({ conversation });
