@@ -384,12 +384,13 @@ const EnhancedChatMessenger = ({
       {/* Drag Handle for Mobile */}
       {!isEmbedded && (
         <div 
-          className="sm:hidden w-full pt-4 pb-2 flex justify-center cursor-grab active:cursor-grabbing bg-neutral-900"
+          className="sm:hidden w-full pt-4 pb-2 flex flex-col items-center cursor-grab active:cursor-grabbing bg-neutral-900 touch-none"
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
         >
-          <div className="w-12 h-1.5 bg-white/30 rounded-full" />
+          <div className="w-12 h-1.5 bg-white/30 rounded-full mb-1" />
+          <p className="text-[8px] font-black uppercase text-white/50 tracking-widest">Pull down to close</p>
         </div>
       )}
 
@@ -419,8 +420,12 @@ const EnhancedChatMessenger = ({
                 <AlertCircle className="h-5 w-5" />
               </button>
             )}
-            <button onClick={onClose} className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors">
-              <X className="h-5 w-5" />
+            <button 
+              onClick={onClose} 
+              className="w-11 h-11 rounded-xl bg-white/10 flex items-center justify-center hover:bg-white/20 transition-all border border-white/10 group"
+              title="Close Chat"
+            >
+              <X className="h-6 w-6 text-white group-hover:scale-110 transition-transform" />
             </button>
           </div>
         </div>

@@ -1013,6 +1013,18 @@ const Profile = () => {
                           <p className="text-sm sm:text-lg font-black text-slate-900 px-1 py-1 uppercase leading-none">{user.address?.barangay || '--'}</p>
                         )}
                       </div>
+                      <div className="space-y-1">
+                        <label className="text-[8px] sm:text-xs font-black text-slate-300 uppercase tracking-widest block ml-1">Province</label>
+                        <p className="text-sm sm:text-lg font-black text-slate-400 px-1 py-1 uppercase leading-none italic opacity-60">Cavite</p>
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[8px] sm:text-xs font-black text-slate-300 uppercase tracking-widest block ml-1">ZIP Code</label>
+                        {isEditing ? (
+                          <input type="text" value={formData.address.zipCode} onChange={(e) => handleAddressChange('zipCode', e.target.value)} className="w-full px-4 py-3 sm:px-5 sm:py-4 bg-slate-50 border-2 border-slate-50 rounded-xl sm:rounded-2xl focus:border-primary-500 focus:bg-white outline-none font-bold text-sm sm:text-base transition-all" placeholder="4100" />
+                        ) : (
+                          <p className="text-sm sm:text-lg font-black text-slate-900 px-1 py-1 leading-none">{user.address?.zipCode || '--'}</p>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>

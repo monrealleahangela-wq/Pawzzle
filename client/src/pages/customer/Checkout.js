@@ -658,18 +658,6 @@ const Checkout = () => {
                 </div>
               ) : (
                 <form className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Street Address</label>
-                    <input
-                      type="text"
-                      required
-                      className="input"
-                      value={shippingAddress.street}
-                      onChange={(e) => handleAddressChange('street', e.target.value)}
-                    />
-                  </div>
-                  ...
-
                   {deliveryMethod === 'delivery' ? (
                     <>
                       <div>

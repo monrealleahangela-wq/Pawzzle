@@ -433,6 +433,25 @@ const Register = () => {
                     </select>
                   </div>
                 </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Province</label>
+                    <div className="w-full px-4 py-4 bg-slate-100 border border-slate-100 rounded-2xl font-medium text-slate-500">
+                      Cavite
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">ZIP Code</label>
+                    <input
+                      type="text"
+                      value={formData.address.zipCode}
+                      onChange={(e) => handleAddressChange('zipCode', e.target.value)}
+                      className="w-full px-4 py-4 bg-white/50 border border-slate-100 rounded-2xl focus:border-primary-500 outline-none transition-all font-medium"
+                      placeholder="4100"
+                      required
+                    />
+                  </div>
+                </div>
               </div>
             </div>
 

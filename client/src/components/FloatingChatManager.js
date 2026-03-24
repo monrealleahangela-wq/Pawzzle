@@ -272,12 +272,13 @@ const FloatingChatManager = ({ currentUser }) => {
         >
           {/* Draggable Handle for Mobile */}
           <div 
-            className="sm:hidden w-full pt-3 pb-1 flex justify-center cursor-grab active:cursor-grabbing bg-primary-800"
+            className="sm:hidden w-full pt-3 pb-2 flex flex-col items-center cursor-grab active:cursor-grabbing bg-primary-800 touch-none"
             onTouchStart={handleTouchStart}
             onTouchMove={handleTouchMove}
             onTouchEnd={handleTouchEnd}
           >
-            <div className="w-12 h-1.5 bg-white/30 rounded-full" />
+            <div className="w-12 h-1.5 bg-white/30 rounded-full mb-1" />
+            <p className="text-[8px] font-black uppercase text-white/50 tracking-widest">Pull down to close</p>
           </div>
 
           {/* Header */}
@@ -300,9 +301,10 @@ const FloatingChatManager = ({ currentUser }) => {
               </button>
               <button
                 onClick={() => setIsOpen(false)}
-                className="p-1 hover:bg-primary-700/50 rounded transition-colors"
+                className="p-2 sm:p-2.5 bg-white/10 hover:bg-white/20 rounded-xl transition-all border border-white/10 group"
+                title="Close Chat"
               >
-                <X className="h-4 w-4" />
+                <X className="h-5 w-5 sm:h-6 sm:w-6 text-white group-hover:scale-110 transition-transform" />
               </button>
             </div>
           </div>
