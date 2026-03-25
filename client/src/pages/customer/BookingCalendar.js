@@ -11,8 +11,8 @@ const BookingCalendar = () => {
 
   useEffect(() => {
     fetchBookings();
-    // Set up real-time updates
-    const interval = setInterval(fetchBookings, 30000); // Update every 30 seconds
+    // Set up real-time updates (poll every 5 seconds for near real-time sync)
+    const interval = setInterval(fetchBookings, 5000); 
     return () => clearInterval(interval);
   }, []);
 

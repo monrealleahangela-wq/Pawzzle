@@ -262,11 +262,22 @@ const Bookings = () => {
     setCalendarMonth(new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + 1));
   };
 
-  // Fetch service bookings when service or month changes
+  // Fetch service bookings when service or month changes, and via polling for real-time calendar updates
   useEffect(() => {
+    let intervalId;
     if (selectedService && showBookingForm) {
+      // Immediate fetch
       fetchServiceBookings(selectedService._id, calendarMonth.getMonth(), calendarMonth.getFullYear());
+      
+      // Poll every 5 seconds for near real-time sync with other customers
+      intervalId = setInterval(() => {
+        fetchServiceBookings(selectedService._id, calendarMonth.getMonth(), calendarMonth.getFullYear());
+      }, 5000);
     }
+    
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+    };
   }, [selectedService, calendarMonth, showBookingForm]);
 
   const getStatusColor = (status) => {
