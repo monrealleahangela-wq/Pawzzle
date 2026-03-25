@@ -187,7 +187,7 @@ const Bookings = () => {
     return existingBookings.filter(booking => {
       const bDate = new Date(booking.bookingDate);
       const bDateString = `${bDate.getFullYear()}-${String(bDate.getMonth() + 1).padStart(2, '0')}-${String(bDate.getDate()).padStart(2, '0')}`;
-      return bDateString === dateString;
+      return bDateString === dateString && ['confirmed', 'pending', 'processing'].includes(booking.status);
     }).length;
   };
 
@@ -213,8 +213,8 @@ const Bookings = () => {
 
   const isDateFullyBooked = (day) => {
     const count = getBookingCountForDate(day);
-    // Dynamic fully booked logic: use maxPetsPerSession if available, else default to 8
-    const maxLimit = selectedService?.maxPetsPerSession ? selectedService.maxPetsPerSession * 8 : 8;
+    // Dynamic fully booked logic: if maxPetsPerSession is 1, block after 1 booking. Otherwise use the 8-slot threshold.
+    const maxLimit = (selectedService?.maxPetsPerSession === 1) ? 1 : (selectedService?.maxPetsPerSession ? selectedService.maxPetsPerSession * 8 : 8);
     return count >= maxLimit;
   };
 
@@ -653,9 +653,9 @@ const Bookings = () => {
                           onClick={() => handleDateClick(day)}
                           disabled={isPast || isFullyBooked}
                           className={`relative h-9 sm:h-11 rounded-xl text-[10px] sm:text-[11px] font-black flex items-center justify-center transition-all ${isSelected ? 'bg-slate-900 text-white shadow-xl scale-110 z-10' :
-                            isPast ? 'text-slate-200 cursor-not-allowed' :
-                              isFullyBooked ? 'bg-rose-50 text-rose-400 cursor-not-allowed ring-1 ring-rose-100' :
-                                bookingCount > 0 ? 'bg-amber-50 text-amber-700 ring-1 ring-amber-100 hover:bg-amber-100' :
+                            isPast ? 'text-slate-200 cursor-not-allowed opacity-50' :
+                              isFullyBooked ? 'bg-rose-500 text-white shadow-lg z-10' :
+                                bookingCount > 0 ? 'bg-amber-400 text-white shadow-md' :
                                   'hover:bg-primary-50 text-slate-700 hover:text-primary-600'
                             }`}>
                           {day}
