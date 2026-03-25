@@ -11,7 +11,8 @@ const {
   getUserCredentials,
   getAdminSettings,
   updateAdminSettings,
-  toggleUserStatus
+  toggleUserStatus,
+  getActivityLogs
 } = require('../controllers/userController');
 const { authenticate, adminOrStaff, superAdminOnly } = require('../middleware/auth');
 const { storeAdminOnly } = require('../middleware/storeAuth');
@@ -26,6 +27,7 @@ const updateUserValidation = [
 ];
 
 // Protected routes
+router.get('/activity-logs', authenticate, getActivityLogs);
 router.get('/', authenticate, getAllUsers);
 router.get('/:id', authenticate, getUserById);
 router.get('/:id/credentials', authenticate, superAdminOnly, getUserCredentials);

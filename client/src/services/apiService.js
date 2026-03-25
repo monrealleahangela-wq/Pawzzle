@@ -186,7 +186,8 @@ export const userService = {
   getUserCredentials: (id) => api.get(`/users/${id}/credentials`),
   toggleUserStatus: (id, data) => api.patch(`/users/${id}/toggle-status`, data),
   getAdminSettings: () => api.get('/users/admin/settings'),
-  updateAdminSettings: (settings) => api.put('/users/admin/settings', settings)
+  updateAdminSettings: (settings) => api.put('/users/admin/settings', settings),
+  getActivityLogs: () => api.get('/users/activity-logs')
 };
 
 // Service services

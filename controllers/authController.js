@@ -8,6 +8,7 @@ const dns = require('dns').promises;
 const Store = require('../models/Store');
 const path = require('path');
 const fs = require('fs');
+const ActivityLog = require('../models/ActivityLog');
 
 // Enhanced DNS Resolver with Public Fallbacks (Google/Cloudflare)
 const dnsResolver = new (require('dns').promises.Resolver)();
@@ -370,6 +371,15 @@ const login = async (req, res) => {
         role: user.role, avatar: user.avatar, store: user.store
       }
     });
+    
+    // Log the successful login Activity
+    await ActivityLog.create({
+      user: user._id,
+      action: 'Account Login',
+      details: 'Successfully authenticated session via standard sign-in',
+      ipAddress: req.ip
+    });
+
   } catch (error) {
     console.error('Login error:', error);
     res.status(500).json({ message: 'Server error during login' });
@@ -458,6 +468,13 @@ const changePassword = async (req, res) => {
     user.password = newPassword;
     await user.save();
 
+    await ActivityLog.create({
+      user: user._id,
+      action: 'Password Changed',
+      details: 'User voluntarily changed account password',
+      ipAddress: req.ip
+    });
+
     res.json({ message: 'Password changed successfully' });
   } catch (error) {
     console.error('Change password error:', error);
@@ -545,6 +562,13 @@ const verifyOTPAndResetPassword = async (req, res) => {
     await User.findByIdAndUpdate(user._id, { password: hashedPassword });
 
     otpStore.delete(`reset_${email}`);
+    
+    await ActivityLog.create({
+      user: user._id,
+      action: 'Password Reset',
+      details: 'Password was successfully reset using OTP verification',
+      ipAddress: req.ip
+    });
 
     res.json({ success: true, message: 'Password reset successful', email });
   } catch (error) {
@@ -659,6 +683,13 @@ const verify2FA = async (req, res) => {
         phone: user.phone, address: user.address,
         role: user.role, avatar: user.avatar, store: user.store
       }
+    });
+
+    await ActivityLog.create({
+      user: user._id,
+      action: 'Account Login',
+      details: 'Successfully authenticated session via 2FA',
+      ipAddress: req.ip
     });
   } catch (error) {
     console.error('Verify 2FA error:', error);

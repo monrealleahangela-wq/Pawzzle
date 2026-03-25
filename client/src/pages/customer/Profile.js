@@ -143,6 +143,8 @@ const Profile = () => {
     totalAdoptions: 0
   });
   const [toggling2FA, setToggling2FA] = useState(false);
+  const [activityLogs, setActivityLogs] = useState([]);
+  const [showActivityModal, setShowActivityModal] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -179,14 +181,17 @@ const Profile = () => {
 
     try {
       if (user.role === 'customer') {
-        const [ordersRes, bookingsRes, adoptionsRes] = await Promise.all([
+        const [ordersRes, bookingsRes, adoptionsRes, logsRes] = await Promise.all([
           orderService.getAllOrders({ limit: 5 }),
           bookingService.getCustomerBookings({ limit: 5 }),
-          adoptionService.getMyRequests().catch(() => ({ data: { requests: [] } }))
+          adoptionService.getMyRequests().catch(() => ({ data: { requests: [] } })),
+          userService.getActivityLogs().catch(() => ({ data: { logs: [] } }))
         ]);
         setOrders(ordersRes.data?.orders || []);
         setBookings(bookingsRes.data?.bookings || []);
         setAdoptions(adoptionsRes.data?.requests || []);
+        try { setActivityLogs(typeof logsRes !== 'undefined' ? (logsRes?.data?.logs || []) : []); } catch(e){}
+        setActivityLogs(logsRes?.data?.logs || []);
 
         // Populate stats from pagination totals
         setStats({
@@ -198,15 +203,18 @@ const Profile = () => {
         });
       } else if (user.role === 'admin') {
         // Fetch Admin-specific data with multi-tenant isolation
-        const [ordersRes, bookingsRes, adoptionsRes, dssRes] = await Promise.all([
+        const [ordersRes, bookingsRes, adoptionsRes, dssRes, logsRes] = await Promise.all([
           adminOrderService.getAllOrders({ limit: 5 }),
           adminBookingService.getAllBookings({ limit: 5 }),
           adoptionService.getMyRequests().catch(() => ({ data: { requests: [] } })),
-          dssService.getAdminInsights().catch(() => ({ data: {} }))
+          dssService.getAdminInsights().catch(() => ({ data: {} })),
+          userService.getActivityLogs().catch(() => ({ data: { logs: [] } }))
         ]);
         setOrders(ordersRes.data?.orders || []);
         setBookings(bookingsRes.data?.bookings || []);
         setAdoptions(adoptionsRes.data?.requests || []);
+        try { setActivityLogs(typeof logsRes !== 'undefined' ? (logsRes?.data?.logs || []) : []); } catch(e){}
+        setActivityLogs(logsRes?.data?.logs || []);
 
         // Use live stats from DSS instead of stale store object
         if (dssRes.data?.overview) {
@@ -228,14 +236,17 @@ const Profile = () => {
         }
       } else if (user.role === 'super_admin') {
         // Super admins see global activity
-        const [ordersRes, bookingsRes, adoptionsRes] = await Promise.all([
+        const [ordersRes, bookingsRes, adoptionsRes, logsRes] = await Promise.all([
           orderService.getAllOrders({ limit: 5 }),
           bookingService.getAllBookings({ limit: 5 }),
-          adoptionService.getMyRequests().catch(() => ({ data: { requests: [] } }))
+          adoptionService.getMyRequests().catch(() => ({ data: { requests: [] } })),
+          userService.getActivityLogs().catch(() => ({ data: { logs: [] } }))
         ]);
         setOrders(ordersRes.data?.orders || []);
         setBookings(bookingsRes.data?.bookings || []);
         setAdoptions(adoptionsRes.data?.requests || []);
+        try { setActivityLogs(typeof logsRes !== 'undefined' ? (logsRes?.data?.logs || []) : []); } catch(e){}
+        setActivityLogs(logsRes?.data?.logs || []);
       }
     } catch (error) {
       console.error('Error fetching activity data:', error);
@@ -1162,9 +1173,7 @@ const Profile = () => {
                           <p className="text-[8px] sm:text-sm text-slate-400 font-bold uppercase tracking-tight opacity-70 leading-none">Recent login activity</p>
                         </div>
                       </div>
-                      <button className="px-3 py-1.5 sm:px-6 sm:py-2.5 bg-slate-900 text-white rounded-lg sm:rounded-xl font-black text-[8px] sm:text-xs uppercase tracking-widest hover:bg-primary-600 transition-all">
-                        Review
-                      </button>
+                      <button onClick={() => setShowActivityModal(true)} className="px-3 py-1.5 sm:px-6 sm:py-2.5 bg-slate-900 text-white rounded-lg sm:rounded-xl font-black text-[8px] sm:text-xs uppercase tracking-widest hover:bg-primary-600 transition-all">Review Logs</button>
                     </div>
                   </div>
 
@@ -1580,12 +1589,58 @@ const Profile = () => {
         </div>
       </div>
 
-      <PlatformFeedbackModal
-        isOpen={showFeedbackModal}
-        onClose={() => setShowFeedbackModal(false)}
+      
+      <PlatformFeedbackModal 
+        isOpen={showFeedbackModal} 
+        onClose={() => setShowFeedbackModal(false)} 
       />
+
+      {/* Activity Logs Modal */}
+      {showActivityModal && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-[2rem] p-6 sm:p-8 w-full max-w-2xl max-h-[85vh] overflow-y-auto shadow-2xl animate-fade-in relative border border-slate-100">
+            <button onClick={() => setShowActivityModal(false)} className="absolute top-6 right-6 w-8 h-8 flex items-center justify-center rounded-full bg-slate-50 text-slate-400 hover:text-slate-900 transition-colors">
+              <X className="h-4 w-4" />
+            </button>
+            <div className="flex items-center gap-4 mb-4">
+              <div className="w-12 h-12 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-600">
+                <ShieldCheck className="h-6 w-6" />
+              </div>
+              <div>
+                <h3 className="text-xl sm:text-2xl font-black text-slate-900 uppercase tracking-tighter">Security Log</h3>
+                <p className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-widest leading-none">Your account activity trail</p>
+              </div>
+            </div>
+
+            <div className="space-y-4 relative">
+              <div className="absolute left-[15px] top-4 bottom-4 w-px bg-slate-100" />
+              {activityLogs && activityLogs.length > 0 ? activityLogs.map((log, index) => (
+                <div key={log._id || index} className="relative pl-10 pr-4 py-4 bg-slate-50/50 hover:bg-white rounded-2xl border border-transparent hover:border-slate-100 transition-all group">
+                  <div className="absolute left-[11px] top-[26px] w-2.5 h-2.5 rounded-full bg-white border-2 border-indigo-200 group-hover:border-indigo-500 transition-colors z-10 shadow-sm" />
+                  
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-1">
+                    <span className="text-[10px] sm:text-xs font-black text-slate-900 uppercase tracking-widest">{log.action || 'System Event'}</span>
+                    <span className="text-[8px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-widest">{new Date(log.createdAt).toLocaleString()}</span>
+                  </div>
+                  <p className="text-xs sm:text-sm text-slate-500 font-medium">{log.details || 'No additional details provided'}</p>
+                  {log.ipAddress && (
+                     <div className="mt-2 text-[8px] font-bold text-slate-300 uppercase tracking-widest px-2 py-0.5 bg-slate-100/50 rounded inline-block">
+                       IP: {log.ipAddress}
+                     </div>
+                  )}
+                </div>
+              )) : (
+                <div className="pl-10 py-8 text-slate-400 text-sm font-bold uppercase tracking-widest">
+                  No activity logs found.
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
 
 export default Profile;
+

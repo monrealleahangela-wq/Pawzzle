@@ -1,5 +1,6 @@
 const { validationResult } = require('express-validator');
 const User = require('../models/User');
+const ActivityLog = require('../models/ActivityLog');
 
 // Get all users (Admin only)
 const getAllUsers = async (req, res) => {
@@ -201,6 +202,13 @@ const updateUser = async (req, res) => {
 
     await user.save();
 
+    await ActivityLog.create({
+      user: user._id,
+      action: 'Updated Profile',
+      details: 'Updated account settings or personal info',
+      ipAddress: req.ip
+    });
+
     const updatedUser = await User.findById(user._id).select('-password').populate('store');
 
     res.json({
@@ -365,6 +373,21 @@ const updateAdminSettings = async (req, res) => {
   }
 };
 
+// Get user activity logs
+const getActivityLogs = async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit) || 20;
+    const logs = await ActivityLog.find({ user: req.user.id })
+      .sort({ createdAt: -1 })
+      .limit(limit);
+
+    res.json({ logs });
+  } catch (error) {
+    console.error('Get activity logs error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
 module.exports = {
   getAllUsers,
   getUserById,
@@ -373,5 +396,6 @@ module.exports = {
   getUserCredentials,
   toggleUserStatus,
   getAdminSettings,
-  updateAdminSettings
+  updateAdminSettings,
+  getActivityLogs
 };
