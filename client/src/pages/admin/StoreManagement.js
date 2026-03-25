@@ -42,7 +42,13 @@ const StoreManagement = () => {
   useEffect(() => {
     setCities(getCitiesByProvince('cavite'));
     if (store?.contactInfo?.address?.city) {
-      setBarangays(getBarangaysByCity(store.contactInfo.address.city));
+      // Find the city object by label to get its correct value/code
+      const cityObj = getCitiesByProvince('cavite').find(c => c.label === store.contactInfo.address.city);
+      if (cityObj) {
+        setBarangays(getBarangaysByCity(cityObj.value));
+      } else {
+        setBarangays([]);
+      }
     }
   }, [store?.contactInfo?.address?.city]);
 
@@ -338,7 +344,7 @@ const StoreManagement = () => {
                           >
                             <option value="">Select Barangay</option>
                             {barangays.map((brgy) => (
-                              <option key={brgy} value={brgy}>{brgy}</option>
+                              <option key={brgy.value || brgy} value={brgy.label || brgy}>{brgy.label || brgy}</option>
                             ))}
                           </select>
                         </div>
