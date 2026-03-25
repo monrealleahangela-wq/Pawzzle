@@ -317,7 +317,17 @@ const StoreManagement = () => {
                     {/* Location Intel */}
                     <div className="md:col-span-2 mt-4 pt-8 border-t border-slate-100">
                       <h3 className="text-2xl font-black text-slate-900 mb-6 uppercase tracking-tighter">Address Details</h3>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                        <div className="space-y-2">
+                          <label className="text-xs font-black text-slate-400 uppercase tracking-widest">Province / State</label>
+                          <select
+                            value={store.contactInfo?.address?.state || 'Cavite'}
+                            onChange={(e) => handleAddressChange('state', e.target.value)}
+                            className="w-full px-6 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:border-indigo-500 focus:bg-white outline-none font-bold transition-all appearance-none"
+                          >
+                            <option value="Cavite">Cavite</option>
+                          </select>
+                        </div>
                         <div className="space-y-2">
                           <label className="text-xs font-black text-slate-400 uppercase tracking-widest">City / Municipality</label>
                           <select
@@ -348,7 +358,7 @@ const StoreManagement = () => {
                             ))}
                           </select>
                         </div>
-                        <div className="md:col-span-2 space-y-2">
+                        <div className="md:col-span-3 space-y-2">
                           <label className="text-xs font-black text-slate-400 uppercase tracking-widest">Street Address / Block / Lot</label>
                           <input
                             type="text"
@@ -433,7 +443,7 @@ const StoreManagement = () => {
                       </div>
                     </div>
                     <GoogleMap
-                      address={`${store.contactInfo?.address?.street}, ${store.contactInfo?.address?.barangay}, ${store.contactInfo?.address?.city}, ${store.contactInfo?.address?.state}`}
+                      address={`${store.contactInfo?.address?.street || ''}, ${store.contactInfo?.address?.barangay || ''}, ${store.contactInfo?.address?.city || ''}, ${store.contactInfo?.address?.state || 'Cavite'}`}
                       storeName={store.name}
                       coordinates={store.contactInfo?.address?.coordinates}
                       onCoordinatesUpdate={handleCoordinatesUpdate}
