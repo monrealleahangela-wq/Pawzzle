@@ -1285,8 +1285,8 @@ const Bookings = () => {
       {/* Booking Details Modal */}
       {selectedBooking && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xl z-[100] flex items-center justify-center p-4 animate-fade-in">
-          <div className="bg-white w-full max-w-3xl rounded-[3.5rem] overflow-hidden shadow-[0_50px_100px_-20px_rgba(0,0,0,0.5)] animate-slide-up border border-white/20">
-            <header className="bg-slate-900 p-10 sm:p-12 text-white flex justify-between items-start relative overflow-hidden">
+          <div className="bg-white w-full max-w-3xl rounded-[3.5rem] overflow-hidden shadow-[0_50px_100px_-20px_rgba(0,0,0,0.5)] animate-slide-up border border-white/20 flex flex-col max-h-[90vh]">
+            <header className="shrink-0 bg-slate-900 p-10 sm:p-12 text-white flex justify-between items-start relative overflow-hidden">
               <div className="absolute top-0 right-0 p-12 opacity-10 blur-3xl pointer-events-none">
                 <ShieldCheck className="w-64 h-64 text-primary-500" />
               </div>
@@ -1311,7 +1311,7 @@ const Bookings = () => {
               </button>
             </header>
 
-            <div className="p-10 sm:p-14 space-y-12 max-h-[60vh] overflow-y-auto no-scrollbar scroll-smooth">
+            <div className="flex-1 p-10 sm:p-14 space-y-12 overflow-y-auto no-scrollbar scroll-smooth">
               {/* Status Tracker */}
               <div className="relative pt-4 pb-12">
                 <div className="absolute left-[5%] right-[5%] top-1/2 -translate-y-1/2 h-1 bg-slate-100 rounded-full" />
@@ -1437,7 +1437,7 @@ const Bookings = () => {
               </div>
             </div>
 
-            <footer className="p-10 sm:p-14 bg-slate-50 border-t border-slate-100 flex flex-wrap gap-6 relative z-10">
+            <footer className="shrink-0 p-10 sm:p-14 bg-slate-50 border-t border-slate-100 flex flex-wrap gap-6 relative z-10">
               {selectedBooking.status === 'pending' && (
                 <button
                   onClick={() => handleCancelBooking(selectedBooking._id)}
@@ -1460,8 +1460,8 @@ const Bookings = () => {
       {/* Voucher Selection Modal */}
       {showVoucherModal && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4 z-[100] animate-fade-in text-slate-900">
-          <div className="bg-white rounded-[3rem] max-w-lg w-full shadow-2xl overflow-hidden animate-slide-up">
-            <div className="p-8 border-b border-slate-100 flex items-center justify-between">
+          <div className="bg-white rounded-[3rem] max-w-lg w-full shadow-2xl overflow-hidden animate-slide-up flex flex-col max-h-[90vh]">
+            <div className="shrink-0 p-8 border-b border-slate-100 flex items-center justify-between">
               <div>
                 <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tighter">Your <span className="text-primary-600 italic">Vouchers</span></h2>
                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Select a claimed discount</p>
@@ -1471,7 +1471,7 @@ const Bookings = () => {
               </button>
             </div>
 
-            <div className="p-8 space-y-4 max-h-[60vh] overflow-y-auto no-scrollbar">
+            <div className="flex-1 p-8 space-y-4 overflow-y-auto no-scrollbar">
               {myVouchers.length > 0 ? (
                 myVouchers.map((mv) => (
                   <button
@@ -1507,7 +1507,7 @@ const Bookings = () => {
               )}
             </div>
 
-            <div className="p-8 bg-slate-50 border-t border-slate-100">
+            <div className="shrink-0 p-8 bg-slate-50 border-t border-slate-100">
                 <button 
                     onClick={() => navigate('/vouchers')}
                     className="w-full py-4 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl hover:bg-primary-600 transition-all"

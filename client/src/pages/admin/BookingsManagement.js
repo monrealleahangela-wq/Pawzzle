@@ -270,8 +270,8 @@ const BookingsManagement = () => {
       {/* Booking Details Modal */}
       {selectedBooking && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[100] flex items-center justify-center p-4 animate-in fade-in duration-300">
-          <div className="bg-white w-full max-w-2xl rounded-3xl overflow-hidden shadow-2xl animate-in slide-in-from-bottom-8 duration-500 border border-slate-200">
-            <header className="bg-slate-900 p-6 sm:p-8 text-white flex justify-between items-start relative overflow-hidden">
+          <div className="bg-white w-full max-w-2xl rounded-3xl overflow-hidden shadow-2xl animate-in slide-in-from-bottom-8 duration-500 border border-slate-200 flex flex-col max-h-[90vh]">
+            <header className="shrink-0 bg-slate-900 p-6 sm:p-8 text-white flex justify-between items-start relative overflow-hidden">
               <div className="absolute top-0 right-0 p-12 opacity-10 blur-3xl pointer-events-none">
                 <ShieldCheck className="w-64 h-64 text-primary-500" />
               </div>
@@ -296,7 +296,7 @@ const BookingsManagement = () => {
               </button>
             </header>
 
-            <div className="p-6 sm:p-8 space-y-8 max-h-[70vh] overflow-y-auto no-scrollbar scroll-smooth">
+            <div className="flex-1 p-6 sm:p-8 space-y-8 overflow-y-auto no-scrollbar scroll-smooth">
               {/* Status Tracker */}
               <div className="relative pt-4 pb-12">
                 <div className="absolute left-[5%] right-[5%] top-1/2 -translate-y-1/2 h-1 bg-slate-100 rounded-full" />
@@ -437,7 +437,7 @@ const BookingsManagement = () => {
             </div>
 
             {/* Actions */}
-            <footer className="p-6 sm:p-8 bg-slate-50 border-t border-slate-100 flex flex-wrap gap-4 relative z-10">
+            <footer className="shrink-0 p-6 sm:p-8 bg-slate-50 border-t border-slate-100 flex flex-wrap gap-4 relative z-10">
               {(user?.role === 'admin' || user?.role === 'staff') && selectedBooking.status !== 'completed' && selectedBooking.status !== 'cancelled' && (
                 <button
                   onClick={() => {
