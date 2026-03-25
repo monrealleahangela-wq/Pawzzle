@@ -772,7 +772,7 @@ const ProductInventory = () => {
             <header className="p-6 border-b border-slate-50 bg-white flex items-center justify-between">
               <div className="flex items-center gap-4">
                 <div className="p-3 bg-emerald-50 text-emerald-600 rounded-2xl"><Activity className="h-6 w-6" /></div>
-                <h3 className="text-2xl font-black uppercase tracking-tighter">Stock Operations</h3>
+                <h3 className="text-2xl font-black uppercase tracking-tighter">Update Stock</h3>
               </div>
               <button onClick={() => setShowInventoryModal(false)} className="p-3 bg-slate-50 text-slate-400 rounded-xl hover:bg-rose-50 hover:text-rose-600 transition-all"><X className="h-5 w-5" /></button>
             </header>
@@ -800,7 +800,7 @@ const ProductInventory = () => {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-3">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Delta Vector</label>
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Action</label>
                   <div className="grid grid-cols-3 gap-1.5 p-1.5 bg-white border border-slate-100 rounded-2xl shadow-inner">
                     {['add', 'subtract', 'set'].map(op => (
                       <button key={op} type="button" onClick={() => setInventoryForm(p => ({ ...p, operation: op }))} className={`py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${inventoryForm.operation === op ? 'bg-slate-900 text-white shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}>
@@ -810,18 +810,18 @@ const ProductInventory = () => {
                   </div>
                 </div>
                 <div className="space-y-3">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Quantity Log</label>
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Quantity</label>
                   <input type="number" required value={inventoryForm.quantity} onChange={e => setInventoryForm(p => ({ ...p, quantity: e.target.value }))} className="w-full px-6 py-5 bg-white border border-slate-100 rounded-3xl text-2xl font-black outline-none focus:ring-4 focus:ring-primary-600/5" placeholder="0" />
                 </div>
               </div>
 
               <div className="space-y-3">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Authorization Memo</label>
-                <input type="text" value={inventoryForm.notes} onChange={e => setInventoryForm(p => ({ ...p, notes: e.target.value }))} className="w-full px-8 py-5 bg-white border border-slate-100 rounded-3xl text-[11px] font-medium outline-none shadow-inner" placeholder="E.G. RESTOCK_BATCH_42, DAMAGE_SURVEY..." />
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Reason for Update</label>
+                <input type="text" value={inventoryForm.notes} onChange={e => setInventoryForm(p => ({ ...p, notes: e.target.value }))} className="w-full px-8 py-5 bg-white border border-slate-100 rounded-3xl text-[11px] font-medium outline-none shadow-inner" placeholder="E.G. NEW DELIVERY, DAMAGED ITEM, INVENTORY COUNT..." />
               </div>
 
               <button disabled={submitting} type="submit" className="w-full py-6 bg-emerald-600 text-white rounded-[2rem] text-[11px] font-black uppercase tracking-[0.3em] hover:bg-slate-900 transition-all shadow-xl shadow-emerald-100 flex items-center justify-center gap-4 active:scale-95 disabled:opacity-50">
-                {submitting ? 'EXECUTING_DELTA...' : 'COMMIT STOCK OPERATION'}
+                {submitting ? 'Saving...' : 'Save Changes'}
                 <ChevronRight className="h-5 w-5" />
               </button>
             </form>
