@@ -802,9 +802,13 @@ const ProductInventory = () => {
                 <div className="space-y-3">
                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Action</label>
                   <div className="grid grid-cols-3 gap-1.5 p-1.5 bg-white border border-slate-100 rounded-2xl shadow-inner">
-                    {['add', 'subtract', 'set'].map(op => (
-                      <button key={op} type="button" onClick={() => setInventoryForm(p => ({ ...p, operation: op }))} className={`py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${inventoryForm.operation === op ? 'bg-slate-900 text-white shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}>
-                        {op}
+                    {[
+                      { value: 'add', label: 'ADD STOCK' },
+                      { value: 'subtract', label: 'REDUCE STOCK' },
+                      { value: 'set', label: 'SET TOTAL' }
+                    ].map(op => (
+                      <button key={op.value} type="button" onClick={() => setInventoryForm(p => ({ ...p, operation: op.value }))} className={`py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${inventoryForm.operation === op.value ? 'bg-slate-900 text-white shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}>
+                        {op.label}
                       </button>
                     ))}
                   </div>
