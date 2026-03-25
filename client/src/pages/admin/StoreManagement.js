@@ -71,7 +71,10 @@ const StoreManagement = () => {
       ...prev,
       contactInfo: {
         ...prev.contactInfo,
-        address: { ...prev.contactInfo?.address, [field]: value }
+        address: { 
+          ...(prev.contactInfo?.address || {}), 
+          [field]: value 
+        }
       }
     }));
   };
@@ -304,6 +307,52 @@ const StoreManagement = () => {
                     <div className="md:col-span-2 space-y-2">
                       <label className="text-xs font-black text-slate-400 uppercase tracking-widest">About the Store</label>
                       <textarea name="description" value={store.description || ''} onChange={handleInputChange} rows={5} className="w-full px-6 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:border-indigo-500 focus:bg-white outline-none font-bold transition-all resize-none" placeholder="Tell customers about your pet shop..."></textarea>
+                    </div>
+                    {/* Location Intel */}
+                    <div className="md:col-span-2 mt-4 pt-8 border-t border-slate-100">
+                      <h3 className="text-2xl font-black text-slate-900 mb-6 uppercase tracking-tighter">Address Details</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div className="space-y-2">
+                          <label className="text-xs font-black text-slate-400 uppercase tracking-widest">City / Municipality</label>
+                          <select
+                            value={store.contactInfo?.address?.city || ''}
+                            onChange={(e) => {
+                              handleAddressChange('city', e.target.value);
+                              handleAddressChange('barangay', ''); // reset barangay on city change
+                            }}
+                            className="w-full px-6 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:border-indigo-500 focus:bg-white outline-none font-bold transition-all appearance-none"
+                          >
+                            <option value="">Select City</option>
+                            {cities.map((city) => (
+                              <option key={city.value} value={city.label}>{city.label}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-xs font-black text-slate-400 uppercase tracking-widest">Barangay</label>
+                          <select
+                            value={store.contactInfo?.address?.barangay || ''}
+                            onChange={(e) => handleAddressChange('barangay', e.target.value)}
+                            disabled={!store.contactInfo?.address?.city}
+                            className="w-full px-6 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:border-indigo-500 focus:bg-white outline-none font-bold transition-all appearance-none disabled:opacity-50 cursor-pointer"
+                          >
+                            <option value="">Select Barangay</option>
+                            {barangays.map((brgy) => (
+                              <option key={brgy} value={brgy}>{brgy}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="md:col-span-2 space-y-2">
+                          <label className="text-xs font-black text-slate-400 uppercase tracking-widest">Street Address / Block / Lot</label>
+                          <input
+                            type="text"
+                            value={store.contactInfo?.address?.street || ''}
+                            onChange={(e) => handleAddressChange('street', e.target.value)}
+                            className="w-full px-6 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:border-indigo-500 focus:bg-white outline-none font-bold transition-all"
+                            placeholder="e.g. Blk 13 Lot 17, Main Street, Village Name"
+                          />
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
