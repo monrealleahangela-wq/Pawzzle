@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import { serviceService } from '../../services/apiService';
+import { serviceService, getImageUrl } from '../../services/apiService';
 import { getCitiesByProvince } from '../../constants/locationConstants';
 import { useAuth } from '../../contexts/AuthContext';
 import { Calendar, Clock, DollarSign, MapPin, Users, Star, ChevronRight, Store, Filter, Navigation } from 'lucide-react';
@@ -270,15 +270,27 @@ const Services = () => {
             className="card group p-0 flex flex-col h-full hover:shadow-2xl hover:shadow-primary-200/50 transition-all duration-500 animate-slide-up"
             style={{ animationDelay: `${idx * 0.1}s` }}
           >
-            {/* Top accent bar */}
-            <div className="h-1.5 sm:h-2 w-full bg-gradient-to-r from-primary-500 to-secondary-500 rounded-t-xl sm:rounded-t-[23px] opacity-70 group-hover:opacity-100 transition-all duration-500" />
+            {/* Top accent bar or Image */}
+            {service.images?.[0] ? (
+              <div className="h-32 sm:h-48 w-full relative overflow-hidden shrink-0">
+                <img src={getImageUrl(service.images[0])} alt={service.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></div>
+                <span className="absolute bottom-3 left-4 text-[8px] sm:text-[10px] font-black uppercase tracking-widest text-white bg-primary-600/90 px-3 py-1 rounded-full backdrop-blur-md">
+                  {service.category}
+                </span>
+              </div>
+            ) : (
+              <div className="h-1.5 sm:h-2 w-full shrink-0 bg-gradient-to-r from-primary-500 to-secondary-500 rounded-t-xl sm:rounded-t-[23px] opacity-70 group-hover:opacity-100 transition-all duration-500" />
+            )}
 
-            <div className="p-4 sm:p-8 flex flex-col h-full space-y-3 sm:space-y-6">
+            <div className="p-4 sm:p-8 flex flex-col flex-1 space-y-3 sm:space-y-6">
               <div className="flex flex-col sm:flex-row justify-between items-start gap-1 sm:gap-0">
                 <div className="space-y-0.5 sm:space-y-1 w-full sm:w-auto">
-                  <span className="text-[8px] sm:text-[10px] font-black uppercase tracking-[0.1em] sm:tracking-[0.2em] text-primary-500">
-                    {service.category}
-                  </span>
+                  {!service.images?.[0] && (
+                    <span className="text-[8px] sm:text-[10px] font-black uppercase tracking-[0.1em] sm:tracking-[0.2em] text-primary-500">
+                      {service.category}
+                    </span>
+                  )}
                   <h3 className="text-sm sm:text-2xl font-black text-slate-900 leading-tight group-hover:text-primary-600 transition-colors truncate sm:whitespace-normal">
                     {service.name}
                   </h3>

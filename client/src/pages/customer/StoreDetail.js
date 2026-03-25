@@ -421,8 +421,12 @@ const StoreDetail = () => {
                 <div className="grid grid-cols-1 gap-2 sm:gap-6 animate-fade-in px-1">
                   {services.length > 0 ? services.map(service => (
                     <div key={service._id} className="group p-3 sm:p-8 bg-white rounded-xl sm:rounded-[2.5rem] border border-slate-100 shadow-sm flex items-center gap-3 sm:gap-10 hover:shadow-xl transition-all">
-                      <div className="w-12 h-12 sm:w-32 sm:h-32 shrink-0 bg-primary-50 rounded-lg sm:rounded-[2rem] flex items-center justify-center text-primary-600">
-                        <Scissors className="h-5 w-5 sm:h-12 sm:w-12" />
+                      <div className="w-12 h-12 sm:w-32 sm:h-32 shrink-0 bg-primary-50 rounded-lg sm:rounded-[2rem] flex items-center justify-center text-primary-600 overflow-hidden relative border border-slate-100">
+                        {service.images?.[0] ? (
+                          <img src={getImageUrl(service.images[0])} alt={service.name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                        ) : (
+                          <Scissors className="h-5 w-5 sm:h-12 sm:w-12" />
+                        )}
                       </div>
                       <div className="flex-1 min-w-0">
                         <h4 className="text-[11px] sm:text-2xl font-black text-slate-900 uppercase truncate leading-tight">{service.name}</h4>

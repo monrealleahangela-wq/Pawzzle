@@ -355,10 +355,16 @@ const Search = () => {
     <Link key={service._id} to={`/services/${service._id}`} className="block group animate-slide-up">
       <div className="bg-white rounded-2xl sm:rounded-[32px] shadow-sm hover:shadow-2xl hover:shadow-primary-200/50 transition-all duration-500 overflow-hidden border border-slate-100 group-hover:border-primary-100 h-full flex flex-col">
         <div className="h-32 sm:h-48 bg-gradient-to-br from-primary-600 to-secondary-500 flex items-center justify-center relative overflow-hidden">
-          <Scissors className="h-10 w-10 text-white/40 absolute -right-3 -bottom-3 rotate-12 scale-150" />
-          <div className="relative z-10 w-12 h-12 sm:w-16 sm:h-16 bg-white/20 backdrop-blur-md rounded-xl sm:rounded-2xl flex items-center justify-center border border-white/30">
-            <Scissors className="h-6 w-6 sm:h-8 sm:w-8 text-white" />
-          </div>
+          {service.images?.[0] ? (
+            <img src={service.images[0]} alt={service.name} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
+          ) : (
+            <>
+              <Scissors className="h-10 w-10 text-white/40 absolute -right-3 -bottom-3 rotate-12 scale-150" />
+              <div className="relative z-10 w-12 h-12 sm:w-16 sm:h-16 bg-white/20 backdrop-blur-md rounded-xl sm:rounded-2xl flex items-center justify-center border border-white/30">
+                <Scissors className="h-6 w-6 sm:h-8 sm:w-8 text-white" />
+              </div>
+            </>
+          )}
         </div>
         <div className="p-3 sm:p-5 flex-1 flex flex-col">
           <h3 className="text-xs sm:text-base font-black text-slate-900 group-hover:text-primary-600 transition-colors uppercase tracking-tight truncate mb-1">{service.name}</h3>
@@ -673,8 +679,12 @@ const Search = () => {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-6">
                     {filteredResults.services.map((service) => (
                       <Link key={service._id} to={`/bookings?service=${service._id}`} className="group flex items-center gap-3 sm:gap-6 bg-white rounded-xl sm:rounded-[2rem] p-2.5 sm:p-6 border border-slate-100 shadow-sm transition-all hover:shadow-lg">
-                        <div className="w-12 h-12 sm:w-20 sm:h-20 bg-primary-50 rounded-lg sm:rounded-2xl flex items-center justify-center text-primary-600 shrink-0">
-                          <Scissors className="h-6 w-6 sm:h-10 sm:w-10" />
+                        <div className="w-12 h-12 sm:w-20 sm:h-20 bg-primary-50 rounded-lg sm:rounded-2xl flex items-center justify-center text-primary-600 shrink-0 overflow-hidden border border-slate-100">
+                          {service.images?.[0] ? (
+                            <img src={service.images[0]} alt={service.name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                          ) : (
+                            <Scissors className="h-6 w-6 sm:h-10 sm:w-10" />
+                          )}
                         </div>
                         <div className="flex-1 min-w-0">
                           <h4 className="text-[11px] sm:text-xl font-black text-slate-900 uppercase truncate leading-tight">{service.name}</h4>
@@ -760,8 +770,12 @@ const Search = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-6 px-1">
               {filteredResults.services.map((service) => (
                 <Link key={service._id} to={`/bookings?service=${service._id}`} className="group flex items-center gap-3 sm:gap-6 bg-white rounded-xl sm:rounded-[2rem] p-2.5 sm:p-6 border border-slate-100 shadow-sm transition-all hover:shadow-lg">
-                  <div className="w-12 h-12 sm:w-20 sm:h-20 bg-primary-50 rounded-lg sm:rounded-2xl flex items-center justify-center text-primary-600 shrink-0">
-                    <Scissors className="h-6 w-6 sm:h-10 sm:w-10" />
+                  <div className="w-12 h-12 sm:w-20 sm:h-20 bg-primary-50 rounded-lg sm:rounded-2xl flex items-center justify-center text-primary-600 shrink-0 overflow-hidden border border-slate-100">
+                    {service.images?.[0] ? (
+                      <img src={service.images[0]} alt={service.name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                    ) : (
+                      <Scissors className="h-6 w-6 sm:h-10 sm:w-10" />
+                    )}
                   </div>
                   <div className="flex-1 min-w-0">
                     <h4 className="text-[11px] sm:text-xl font-black text-slate-900 uppercase truncate leading-tight">{service.name}</h4>

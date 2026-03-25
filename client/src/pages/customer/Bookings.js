@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { bookingService, serviceService, voucherService } from '../../services/apiService';
+import { bookingService, serviceService, voucherService, getImageUrl } from '../../services/apiService';
 import { toast } from 'react-toastify';
 import { Clock, User, MapPin, Phone, Mail, DollarSign, CheckCircle, XCircle, AlertCircle, Filter, Search, Calendar, ArrowLeft, ChevronLeft, ChevronRight, Store, X, Activity, ShieldCheck, TrendingUp, Tag, Ticket, Bell, Building, Heart } from 'lucide-react';
 
@@ -532,7 +532,11 @@ const Bookings = () => {
             {formStep === 1 && (
               <div className="space-y-4 animate-card-appear">
                 <div className="bg-white rounded-[2.5rem] border border-slate-100 p-6 sm:p-8 shadow-sm relative overflow-hidden">
-                  <div className="absolute top-0 right-0 w-32 h-32 bg-primary-50 rounded-bl-[3rem] pointer-events-none" />
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-primary-50 rounded-bl-[3rem] pointer-events-none overflow-hidden">
+                    {selectedService?.images?.[0] && (
+                      <img src={getImageUrl(selectedService.images[0])} alt={selectedService.name} className="w-full h-full object-cover opacity-20 mix-blend-multiply" />
+                    )}
+                  </div>
                   <div className="relative z-10">
                     <p className="text-[9px] font-black text-primary-600 uppercase tracking-[0.3em] mb-3">Service Details</p>
                     <h3 className="text-2xl font-black text-slate-900 uppercase tracking-tighter mb-2">{selectedService.name}</h3>

@@ -220,8 +220,8 @@ const GlobalSearch = ({ isScrolled }) => {
                                     <h5 className="px-3 py-1 text-[8px] font-black text-slate-400 uppercase tracking-widest">Services</h5>
                                     {results.services.map(service => (
                                         <button key={service._id} onClick={() => { navigate(`/services/${service._id}`); setIsOpen(false); }} className="w-full flex items-center gap-3 p-2 hover:bg-slate-50 rounded-2xl transition-all group text-left">
-                                            <div className="w-10 h-10 bg-primary-50 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
-                                                <Scissors size={18} className="text-primary-600" />
+                                            <div className="w-10 h-10 bg-primary-50 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform overflow-hidden">
+                                                {service.images?.[0] ? <img src={getImageUrl(service.images[0])} className="w-full h-full object-cover" /> : <Scissors size={18} className="text-primary-600" />}
                                             </div>
                                             <div className="flex-1 min-w-0">
                                                 <p className="text-[10px] font-black text-slate-900 uppercase truncate">{service.name}</p>
