@@ -5,6 +5,46 @@ const Store = require('../models/Store');
 const Voucher = require('../models/Voucher');
 const { createNotification } = require('./notificationController');
 
+// Auto-cancels bookings that are still pending and whose date has passed
+const autoCancelExpiredBookings = async (filterBase = {}) => {
+  try {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const expiredQuery = {
+      ...filterBase,
+      status: 'pending',
+      bookingDate: { $lt: today }
+    };
+
+    const expiredBookings = await Booking.find(expiredQuery);
+    if (expiredBookings.length > 0) {
+      const ids = expiredBookings.map(b => b._id);
+      
+      await Booking.updateMany(
+        { _id: { $in: ids } },
+        { 
+          $set: { 
+            status: 'cancelled', 
+            adminNotes: 'Automatically cancelled by system: scheduled date passed without confirmation.' 
+          } 
+        }
+      );
+
+      // Revert voucher usage if any
+      for (const booking of expiredBookings) {
+        if (booking.voucher) {
+          await Voucher.findByIdAndUpdate(booking.voucher, { $inc: { usedCount: -1 } });
+        }
+      }
+
+      console.log(`🕒 Auto-cancelled ${expiredBookings.length} expired pending bookings`);
+    }
+  } catch (error) {
+    console.error('Auto-cancel bookings error:', error);
+  }
+};
+
 // Create a new booking
 const createBooking = async (req, res) => {
   try {
@@ -129,6 +169,9 @@ const getCustomerBookings = async (req, res) => {
     let filter = { customer: req.user._id };
     if (status) filter.status = status;
 
+    // Run auto-cleanup for this customer's expired bookings
+    await autoCancelExpiredBookings({ customer: req.user._id });
+
     const skip = (page - 1) * limit;
     const bookings = await Booking.find(filter)
       .populate('service', 'name category duration')
@@ -179,6 +222,9 @@ const getStoreBookings = async (req, res) => {
     if (req.user.role === 'admin' && store.owner.toString() !== req.user._id.toString()) {
       return res.status(403).json({ message: 'You can only view bookings for your own store' });
     }
+
+    // Run auto-cleanup for this store's expired bookings
+    await autoCancelExpiredBookings({ store: req.params.storeId });
 
     const skip = (page - 1) * limit;
     const bookings = await Booking.find(filter)
@@ -409,6 +455,9 @@ const getAllBookings = async (req, res) => {
     }
 
     console.log('🔍 Filter being used:', filter);
+
+    // Run auto-cleanup for this filtered context
+    await autoCancelExpiredBookings(filter);
 
     const bookings = await Booking.find(filter)
       .populate('customer', 'firstName lastName email phone')

@@ -1,5 +1,46 @@
 const Booking = require('../models/Booking');
 const Store = require('../models/Store');
+const Voucher = require('../models/Voucher');
+
+// Auto-cancels bookings that are still pending and whose date has passed
+const autoCancelExpiredBookings = async (filterBase = {}) => {
+  try {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const expiredQuery = {
+      ...filterBase,
+      status: 'pending',
+      bookingDate: { $lt: today }
+    };
+
+    const expiredBookings = await Booking.find(expiredQuery);
+    if (expiredBookings.length > 0) {
+      const ids = expiredBookings.map(b => b._id);
+      
+      await Booking.updateMany(
+        { _id: { $in: ids } },
+        { 
+          $set: { 
+            status: 'cancelled', 
+            adminNotes: 'Automatically cancelled by system: scheduled date passed without confirmation.' 
+          } 
+        }
+      );
+
+      // Revert voucher usage if any
+      for (const booking of expiredBookings) {
+        if (booking.voucher) {
+          await Voucher.findByIdAndUpdate(booking.voucher, { $inc: { usedCount: -1 } });
+        }
+      }
+
+      console.log(`🕒 [ADMIN] Auto-cancelled ${expiredBookings.length} expired pending bookings`);
+    }
+  } catch (error) {
+    console.error('Auto-cancel bookings error:', error);
+  }
+};
 
 // Admin-only function for getting bookings with multi-tenant isolation
 const getAllAdminBookings = async (req, res) => {
@@ -47,6 +88,9 @@ const getAllAdminBookings = async (req, res) => {
         { customerPhone: new RegExp(search, 'i') }
       ];
     }
+
+    // Run auto-cleanup within this admin's scope
+    await autoCancelExpiredBookings(filter);
 
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
