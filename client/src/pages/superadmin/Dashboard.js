@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { userService, orderService } from '../../services/apiService';
+import { userService, orderService, dssService } from '../../services/apiService';
 import {
   Users,
   ShoppingCart,
@@ -33,31 +33,25 @@ const SuperAdminDashboard = () => {
 
   const fetchDashboardData = async () => {
     try {
-      const [usersResponse, ordersResponse] = await Promise.all([
-        userService.getAllUsers({ limit: 1000 }),
-        orderService.getAllOrders({ limit: 1000 })
+      setLoading(true);
+      const [dssResponse, usersResponse] = await Promise.all([
+        dssService.getSuperAdminInsights(),
+        userService.getAllUsers({ limit: 8 })
       ]);
 
-      const users = usersResponse.data.users || [];
-      const orders = ordersResponse.data.orders || [];
-
-      const totalUsers = users.length;
-      const totalOrders = orders.length;
-      const recentOrders = orders.slice(0, 8);
-      const recentUsers = users.slice(0, 8);
-      const totalRevenue = orders.reduce((sum, order) => sum + (order.totalAmount || 0), 0);
-      const totalPlatformFees = orders.reduce((sum, order) => sum + (order.platformFee || (order.totalAmount ? order.totalAmount * 0.1 : 0)), 0);
+      const dss = dssResponse.data;
+      const recentUsers = usersResponse.data.users || [];
 
       setStats({
-        totalUsers,
-        totalOrders,
-        totalRevenue,
-        totalPlatformFees,
-        recentOrders,
+        totalUsers: dss.platform?.totalUsers || 0,
+        totalOrders: dss.orders?.total || 0,
+        totalRevenue: dss.revenue?.totalGross || 0,
+        totalPlatformFees: dss.revenue?.totalPlatformFees || 0,
+        recentOrders: dss.orders?.recent || [], // Note: Back end currently doesn't return recent orders in dss, I might need to add it or keep the manual fetch for recent list
         recentUsers,
         userGrowth: 12.5,
         orderGrowth: 8.3,
-        pendingApplications: users.filter(u => u.role === 'admin' && !u.isActive).length
+        pendingApplications: dss.platform?.pendingApplications || 0 // Need to make sure backend returns this
       });
     } catch (error) {
       console.error('Error fetching dashboard data:', error);

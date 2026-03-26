@@ -4,6 +4,7 @@ const Store = require('../models/Store');
 const Product = require('../models/Product');
 const Pet = require('../models/Pet');
 const StockSyncService = require('../services/stockSyncService');
+const RevenueService = require('../services/revenueService');
 const { createNotification } = require('./notificationController');
 
 const PAYMONGO_SECRET_KEY = process.env.PAYMONGO_SECRET_KEY;
@@ -159,26 +160,8 @@ const handleWebhook = async (req, res) => {
                     }
                 }
 
-                // Calculate 10% Platform Fee
-                const platformFee = Number((order.totalAmount * 0.10).toFixed(2));
-                const netAmount = Number((order.totalAmount - platformFee).toFixed(2));
-
-                order.platformFee = platformFee;
-                order.netAmount = netAmount;
-
-                await order.save();
-
-                // Increment store balance and revenue
-                if (order.store) {
-                    await Store.findByIdAndUpdate(order.store, {
-                        $inc: {
-                            'balance': netAmount,
-                            'stats.totalRevenue': order.totalAmount,
-                            'stats.totalPlatformFees': platformFee
-                        }
-                    });
-                    console.log(`💰 Store balance updated (${netAmount}), Fee: ${platformFee} for order #${order.orderNumber}`);
-                }
+                // Record revenue and update store stats via central service
+                await RevenueService.recordPayment('order', order._id);
 
                 // Notify store owner
                 await createNotification({
@@ -293,25 +276,8 @@ const verifyPayment = async (req, res) => {
                     }
                 }
 
-                const platformFee = Number((order.totalAmount * 0.10).toFixed(2));
-                const netAmount = Number((order.totalAmount - platformFee).toFixed(2));
-
-                order.platformFee = platformFee;
-                order.netAmount = netAmount;
-
-                await order.save();
-
-                if (order.store) {
-                    await Store.findByIdAndUpdate(order.store, {
-                        $inc: {
-                            'balance': netAmount,
-                            'stats.totalRevenue': order.totalAmount,
-                            'stats.totalPlatformFees': platformFee
-                        }
-                    });
-                    console.log(`💰 Store balance updated (${netAmount}) for order #${order.orderNumber} via manual verification`);
-                }
-
+                // Record revenue and update store stats via central service
+                await RevenueService.recordPayment('order', order._id);
                 await createNotification({
                     recipient: order.addedBy,
                     sender: order.customer,

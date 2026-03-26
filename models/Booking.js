@@ -108,6 +108,10 @@ const bookingSchema = new mongoose.Schema({
     type: Number,
     default: 0
   },
+  isRevenueRecorded: {
+    type: Boolean,
+    default: false
+  },
   notes: {
     type: String,
     default: ''

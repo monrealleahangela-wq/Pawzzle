@@ -20,6 +20,8 @@ const Dashboard = () => {
     totalOrders: 0,
     totalAdoptions: 0,
     totalBookings: 0,
+    netEarnings: 0,
+    availableBalance: 0,
     recentOrders: [],
     lowStockProducts: [],
     recommendations: []
@@ -52,6 +54,8 @@ const Dashboard = () => {
         totalOrders: ordersRes.status === 'fulfilled' ? (ordersRes.value.data.pagination?.totalOrders || 0) : 0,
         totalAdoptions: adoptionsRes.status === 'fulfilled' ? (adoptionsRes.value.data.requests?.length || 0) : 0,
         totalBookings: bookingsRes.status === 'fulfilled' ? (bookingsRes.value.data.pagination?.total || bookingsRes.value.data.pagination?.totalBookings || 0) : 0,
+        netEarnings: dssRes.status === 'fulfilled' ? (dssRes.value.data.overview?.totalRevenue || 0) : 0,
+        availableBalance: dssRes.status === 'fulfilled' ? (dssRes.value.data.overview?.availableBalance || 0) : 0,
         recentOrders: ordersRes.status === 'fulfilled' ? (ordersRes.value.data.orders || []) : [],
         lowStockProducts: alertsRes.status === 'fulfilled' ? (alertsRes.value.data.alerts || []) : [],
         recommendations: dssRes.status === 'fulfilled' ? (dssRes.value.data.recommendations || []).slice(0, 3) : []
@@ -133,13 +137,14 @@ const Dashboard = () => {
       </header>
 
       {/* Stats */}
-      <div className="relative z-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+      <div className="relative z-10 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {[
           { label: 'Total Pets', value: stats.totalPets, icon: Heart, color: 'rose', link: '/admin/pets', sub: 'In Store' },
           { label: 'Total Products', value: stats.totalProducts, icon: Package, color: 'amber', link: '/admin/products', sub: 'Active' },
           { label: 'Total Orders', value: stats.totalOrders, icon: ShoppingCart, color: 'indigo', link: '/admin/orders', sub: 'Completed' },
           { label: 'Total Bookings', value: stats.totalBookings, icon: Calendar, color: 'emerald', link: '/admin/bookings', sub: 'Scheduled' },
-          { label: 'Messages', value: stats.totalAdoptions, icon: Activity, color: 'primary', link: '/admin/chat', sub: 'Recent' }
+          { label: 'Net Earnings', value: `₱${stats.netEarnings.toLocaleString()}`, icon: TrendingUp, color: 'primary', link: '/admin/insights', sub: 'Paid' },
+          { label: 'Balance', value: `₱${stats.availableBalance.toLocaleString()}`, icon: Shield, color: 'emerald', link: '/admin/payouts', sub: 'Available' }
         ].map((stat, i) => (
           <Link
             key={i}

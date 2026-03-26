@@ -157,6 +157,7 @@ export const adminBookingService = {
   getBookingById: (id) => api.get(`/admin/bookings/${id}`),
   updateBookingStatus: (bookingId, status) => api.put(`/admin/bookings/${bookingId}/status`, { status }),
   updatePaymentMethod: (bookingId, paymentMethod) => api.put(`/admin/bookings/${bookingId}/payment-method`, { paymentMethod }),
+  confirmPayment: (bookingId) => api.put(`/admin/bookings/${bookingId}/confirm-payment`),
   cancelBooking: (bookingId) => api.put(`/admin/bookings/${bookingId}/cancel`)
 };
 

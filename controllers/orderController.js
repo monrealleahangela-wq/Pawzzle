@@ -4,6 +4,7 @@ const Pet = require('../models/Pet');
 const Product = require('../models/Product');
 const Store = require('../models/Store');
 const StockSyncService = require('../services/stockSyncService');
+const RevenueService = require('../services/revenueService');
 const { createNotification } = require('./notificationController');
 const User = require('../models/User');
 const Voucher = require('../models/Voucher');
@@ -326,19 +327,9 @@ const updateOrderStatus = async (req, res) => {
       }
     }
 
-    // 3. REVERSE financial impact if cancelled after payment
-    if (status === 'cancelled' && oldStatus !== 'cancelled' && order.paymentStatus === 'paid' && order.store) {
-      const platformFee = order.platformFee || Number((order.totalAmount * 0.10).toFixed(2));
-      const netAmount = order.netAmount || Number((order.totalAmount - platformFee).toFixed(2));
-
-      await Store.findByIdAndUpdate(order.store, {
-        $inc: {
-          'balance': -netAmount,
-          'stats.totalRevenue': -order.totalAmount,
-          'stats.totalPlatformFees': -platformFee
-        }
-      });
-      console.log(`💰 Store balance REVERSED (-${netAmount}) for order #${order._id} due to cancellation.`);
+    // 3. REVERSE revenue if cancelled after payment
+    if (status === 'cancelled' && oldStatus !== 'cancelled' && order.isRevenueRecorded) {
+      await RevenueService.reversePayment('order', order._id);
     }
 
     if (status === 'delivered') {
@@ -425,19 +416,9 @@ const cancelOrder = async (req, res) => {
       }
     }
 
-    // REVERSE financial impact if cancelled after payment
-    if (order.paymentStatus === 'paid' && order.store) {
-      const platformFee = order.platformFee || Number((order.totalAmount * 0.10).toFixed(2));
-      const netAmount = order.netAmount || Number((order.totalAmount - platformFee).toFixed(2));
-
-      await Store.findByIdAndUpdate(order.store, {
-        $inc: {
-          'balance': -netAmount,
-          'stats.totalRevenue': -order.totalAmount,
-          'stats.totalPlatformFees': -platformFee
-        }
-      });
-      console.log(`💰 Store balance REVERSED (-${netAmount}) for order #${order._id} due to customer cancellation.`);
+    // REVERSE revenue if cancelled after payment
+    if (order.isRevenueRecorded) {
+      await RevenueService.reversePayment('order', order._id);
     }
 
     // Decrement voucher usage if order is cancelled
@@ -518,26 +499,8 @@ const confirmOrderPayment = async (req, res) => {
       }
     }
 
-    // Calculate 10% Platform Fee
-    const platformFee = Number((order.totalAmount * 0.10).toFixed(2));
-    const netAmount = Number((order.totalAmount - platformFee).toFixed(2));
-
-    order.platformFee = platformFee;
-    order.netAmount = netAmount;
-
-    await order.save();
-
-    // Increment store balance and revenue
-    if (order.store) {
-      await Store.findByIdAndUpdate(order.store, {
-        $inc: {
-          'balance': netAmount,
-          'stats.totalRevenue': order.totalAmount, // Gross revenue tracked
-          'stats.totalPlatformFees': platformFee
-        }
-      });
-      console.log(`💰 Store balance updated manually (${netAmount}), Fee: ${platformFee} for order #${order._id}`);
-    }
+    // Record revenue and update store stats via central service
+    await RevenueService.recordPayment('order', order._id);
 
     res.json({
       message: 'Payment confirmed successfully',

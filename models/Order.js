@@ -62,6 +62,10 @@ const orderSchema = new mongoose.Schema({
     type: Number,
     default: 0
   },
+  isRevenueRecorded: {
+    type: Boolean,
+    default: false
+  },
   voucher: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Voucher'

@@ -358,17 +358,23 @@ const getAdminInsights = async (req, res) => {
         const storeId = store._id;
 
         // 1. Core Analytics: Revenue & Orders
-        const orders = await Order.find({ store: storeId, isDeleted: { $ne: true } });
-        const bookings = await Booking.find({ store: storeId, isDeleted: { $ne: true } });
-        
-        const orderRevenue = orders.filter(o => o.status === 'delivered').reduce((s, o) => s + (o.totalAmount || 0), 0);
-        const bookingRevenue = bookings.filter(b => b.status === 'completed').reduce((s, b) => s + (b.totalPrice || 0), 0);
-        
-        const totalRevenue = orderRevenue + bookingRevenue;
+        const [orders, bookings] = await Promise.all([
+            Order.find({ store: storeId, isDeleted: { $ne: true } }),
+            Booking.find({ store: storeId, isDeleted: { $ne: true } })
+        ]);
 
-        // 2. Product Sales History & Performance
+        const orderRevenue = orders.filter(o => o.paymentStatus === 'paid').reduce((s, o) => s + (o.totalAmount || 0), 0);
+        const bookingRevenue = bookings.filter(b => b.paymentStatus === 'paid').reduce((s, b) => s + (b.totalPrice || 0), 0);
+        
+        const totalGrossRevenue = orderRevenue + bookingRevenue;
+
+        const orderNet = orders.filter(o => o.paymentStatus === 'paid').reduce((s, o) => s + (o.netAmount || 0), 0);
+        const bookingNet = bookings.filter(b => b.paymentStatus === 'paid').reduce((s, b) => s + (b.netAmount || 0), 0);
+        const totalNetEarnings = orderNet + bookingNet;
+
+        // 2. Product Sales History & Performance (Filter by PAID)
         const productPerformance = await Order.aggregate([
-            { $match: { store: storeId, status: 'delivered', isDeleted: { $ne: true } } },
+            { $match: { store: storeId, paymentStatus: 'paid', isDeleted: { $ne: true } } },
             { $unwind: '$items' },
             {
                 $group: {
@@ -551,7 +557,9 @@ const getAdminInsights = async (req, res) => {
                 isStaff: req.user.role === 'staff'
             },
             overview: {
-                totalRevenue,
+                totalGross: totalGrossRevenue,
+                totalRevenue: totalNetEarnings, // Store/Seller Net Earnings
+                availableBalance: store.balance,
                 totalOrders: orders.length,
                 activeProducts: allProducts.filter(p => !p.isDeleted).length,
                 activePets: allPets.filter(p => p.status === 'available').length,
@@ -601,19 +609,30 @@ const getSuperAdminInsights = async (req, res) => {
         const storeFilter = { isDeleted: { $ne: true }, owner: { $nin: superAdminIds } };
         const totalStores = await Store.countDocuments(storeFilter);
         const activeStores = await Store.countDocuments({ ...storeFilter, isActive: true });
+        const pendingApplications = await Store.countDocuments({ ...storeFilter, isActive: false });
 
-        // Revenue
-        const allOrders = await Order.find({ isDeleted: { $ne: true } });
-        const platformRevenue = allOrders.filter(o => o.status === 'delivered').reduce((s, o) => s + (o.totalAmount || 0), 0);
-        const allBookings = await Booking.find({ isDeleted: { $ne: true } });
-        const bookingRevenue = allBookings.filter(b => b.status === 'completed').reduce((s, b) => s + (b.totalPrice || 0), 0);
+        // Revenue from PAID transactions
+        const allOrders = await Order.find({ paymentStatus: 'paid', isDeleted: { $ne: true } })
+            .sort({ createdAt: -1 })
+            .populate('customer', 'firstName lastName');
+        const recentOrders = allOrders.slice(0, 8);
+        
+        const allBookings = await Booking.find({ paymentStatus: 'paid', isDeleted: { $ne: true } });
+        
+        const platformRevenue = allOrders.reduce((s, o) => s + (o.totalAmount || 0), 0);
+        const bookingRevenue = allBookings.reduce((s, b) => s + (b.totalPrice || 0), 0);
+        const totalGrossRevenue = platformRevenue + bookingRevenue;
+
+        const orderFees = allOrders.reduce((s, o) => s + (o.platformFee || 0), 0);
+        const bookingFees = allBookings.reduce((s, b) => s + (b.platformFee || 0), 0);
+        const totalPlatformIncome = orderFees + bookingFees;
 
         // Monthly platform revenue
         const sixMonthsAgo = new Date();
         sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
         const monthlyRevenue = await Order.aggregate([
-            { $match: { createdAt: { $gte: sixMonthsAgo }, status: 'delivered', isDeleted: { $ne: true } } },
-            { $group: { _id: { month: { $month: '$createdAt' }, year: { $year: '$createdAt' } }, revenue: { $sum: '$totalAmount' }, orders: { $sum: 1 } } },
+            { $match: { createdAt: { $gte: sixMonthsAgo }, paymentStatus: 'paid', isDeleted: { $ne: true } } },
+            { $group: { _id: { month: { $month: '$createdAt' }, year: { $year: '$createdAt' } }, revenue: { $sum: '$totalAmount' }, fees: { $sum: '$platformFee' }, orders: { $sum: 1 } } },
             { $sort: { '_id.year': 1, '_id.month': 1 } }
         ]);
 
@@ -703,21 +722,25 @@ const getSuperAdminInsights = async (req, res) => {
                 totalAdmins,
                 totalStores,
                 activeStores,
+                pendingApplications,
                 totalPets,
                 totalProducts,
                 totalReviews,
                 avgRating: avgPlatformRating[0]?.avg?.toFixed(1) || 0
             },
             revenue: {
+                totalGross: totalGrossRevenue,
+                totalPlatformFees: totalPlatformIncome,
                 totalOrderRevenue: platformRevenue,
                 totalBookingRevenue: bookingRevenue,
-                combined: platformRevenue + bookingRevenue
+                combined: totalGrossRevenue
             },
             orders: {
                 total: allOrders.length,
                 delivered: deliveredOrders,
                 cancelled: cancelledOrders,
-                fulfillmentRate: parseFloat(fulfillmentRate)
+                fulfillmentRate: parseFloat(fulfillmentRate),
+                recent: recentOrders
             },
             adoptions: {
                 total: totalAdoptions,

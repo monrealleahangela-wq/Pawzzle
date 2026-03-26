@@ -3,6 +3,7 @@ const Store = require('../models/Store');
 const Pet = require('../models/Pet');
 const Product = require('../models/Product');
 const Order = require('../models/Order');
+const Booking = require('../models/Booking');
 const Service = require('../models/Service');
 
 // Get all stores (public)
@@ -330,26 +331,33 @@ const getStoreDashboard = async (req, res) => {
 
     const allItemIds = [...petIds, ...productIds];
 
-    // Get store statistics
-    const [petCount, productCount, recentOrders, revenue] = await Promise.all([
+    // Get store statistics from PAID transactions
+    const [petCount, productCount, recentOrders, orderRevenue, bookingRevenue] = await Promise.all([
       Pet.countDocuments({ store: store._id, isDeleted: { $ne: true } }),
       Product.countDocuments({ store: store._id, isDeleted: { $ne: true } }),
-      Order.find({ 'items.itemId': { $in: allItemIds } })
+      Order.find({ store: store._id, isDeleted: { $ne: true } })
         .sort({ createdAt: -1 })
         .limit(5)
         .populate('customer', 'firstName lastName'),
       Order.aggregate([
-        { $match: { 'items.itemId': { $in: allItemIds }, status: 'delivered', isDeleted: { $ne: true } } },
-        { $group: { _id: null, total: { $sum: '$totalAmount' } } }
+        { $match: { store: store._id, paymentStatus: 'paid', isDeleted: { $ne: true } } },
+        { $group: { _id: null, total: { $sum: '$netAmount' } } }
+      ]),
+      Booking.aggregate([
+        { $match: { store: store._id, paymentStatus: 'paid', isDeleted: { $ne: true } } },
+        { $group: { _id: null, total: { $sum: '$netAmount' } } }
       ])
     ]);
+
+    const totalNetEarnings = (orderRevenue[0]?.total || 0) + (bookingRevenue[0]?.total || 0);
 
     const dashboardData = {
       stats: {
         totalPets: petCount,
         totalProducts: productCount,
-        totalOrders: await Order.countDocuments({ 'items.itemId': { $in: allItemIds } }),
-        totalRevenue: revenue.length > 0 ? revenue[0].total : 0
+        totalOrders: await Order.countDocuments({ store: store._id, isDeleted: { $ne: true } }),
+        totalRevenue: totalNetEarnings, // Net earnings for the store
+        availableBalance: store.balance // Current balance for payout
       },
       recentOrders,
       store

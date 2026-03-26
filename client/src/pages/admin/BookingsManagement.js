@@ -72,6 +72,23 @@ const BookingsManagement = () => {
     }
   };
 
+  const confirmBookingPayment = async (bookingId) => {
+    if (user?.role === 'super_admin') {
+      toast.error('Super admins can only view bookings');
+      return;
+    }
+    try {
+      await adminBookingService.confirmPayment(bookingId);
+      toast.success('Payment confirmed and revenue recorded');
+      fetchBookings();
+      if (selectedBooking && selectedBooking._id === bookingId) {
+        setSelectedBooking(prev => ({ ...prev, isRevenueRecorded: true, paymentStatus: 'paid' }));
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to confirm payment');
+    }
+  };
+
   const analytics = useMemo(() => {
     const total = bookings.length;
     const pending = bookings.filter(b => b.status === 'pending').length;
@@ -382,17 +399,16 @@ const BookingsManagement = () => {
                 </div>
               </div>
 
-              {/* Notes & Price */}
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch pt-2">
                 <div className="lg:col-span-12">
-                  <div className="bg-primary-600 rounded-[2rem] p-6 text-white shadow-xl shadow-primary-100 flex items-center justify-between group overflow-hidden relative">
+                  <div className={`${selectedBooking.isRevenueRecorded ? 'bg-primary-600 shadow-primary-100' : 'bg-slate-800 shadow-slate-200'} rounded-[2rem] p-6 text-white shadow-xl flex items-center justify-between group overflow-hidden relative`}>
                     <div className="absolute top-[-50%] right-[-10%] w-48 h-48 bg-white/10 rounded-full blur-2xl" />
                     <div className="relative z-10">
                       <label className="text-[8px] font-black text-primary-100 uppercase tracking-[0.3em] block mb-1 opacity-70">Booking Price (NET)</label>
                       <span className="text-3xl font-black tracking-tighter">₱{selectedBooking.totalPrice?.toLocaleString()}</span>
                     </div>
-                    <div className="relative z-10 bg-white/20 px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest border border-white/20">
-                      PAID
+                    <div className={`relative z-10 ${selectedBooking.isRevenueRecorded ? 'bg-white/20 text-white' : 'bg-amber-500 text-white'} px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest border border-white/20`}>
+                      {selectedBooking.isRevenueRecorded ? 'PAID & RECORDED' : 'AWAITING PAYMENT'}
                     </div>
                   </div>
                 </div>
@@ -438,6 +454,14 @@ const BookingsManagement = () => {
 
             {/* Actions */}
             <footer className="shrink-0 p-6 sm:p-8 bg-slate-50 border-t border-slate-100 flex flex-wrap gap-4 relative z-10">
+              {(user?.role === 'admin' || user?.role === 'staff') && !selectedBooking.isRevenueRecorded && selectedBooking.status !== 'cancelled' && (
+                <button
+                  onClick={() => confirmBookingPayment(selectedBooking._id)}
+                  className="px-6 py-4 bg-emerald-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-700 transition-all active:scale-[0.98] shadow-lg shadow-emerald-900/10 flex items-center gap-2"
+                >
+                  <ShieldCheck className="h-4 w-4" /> Confirm Payment
+                </button>
+              )}
               {(user?.role === 'admin' || user?.role === 'staff') && selectedBooking.status !== 'completed' && selectedBooking.status !== 'cancelled' && (
                 <button
                   onClick={() => {

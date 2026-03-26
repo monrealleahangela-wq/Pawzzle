@@ -10,7 +10,8 @@ const {
   getBookingById,
   updateBookingStatus,
   updatePaymentMethod,
-  cancelBooking
+  cancelBooking,
+  confirmBookingPayment
 } = require('../controllers/bookingController');
 const { authenticate, adminOrStaff } = require('../middleware/auth');
 
@@ -27,6 +28,7 @@ const updatePaymentMethodValidation = [
 router.get('/', authenticate, adminOrStaff, getAllAdminBookings);
 router.put('/:id/status', authenticate, adminOrStaff, updateBookingStatusValidation, updateBookingStatus);
 router.put('/:id/payment-method', authenticate, adminOrStaff, updatePaymentMethodValidation, updatePaymentMethod);
+router.put('/:id/confirm-payment', authenticate, adminOrStaff, confirmBookingPayment);
 router.put('/:id/cancel', authenticate, adminOrStaff, cancelBooking);
 
 module.exports = router;

@@ -3,6 +3,7 @@ const Booking = require('../models/Booking');
 const Service = require('../models/Service');
 const Store = require('../models/Store');
 const Voucher = require('../models/Voucher');
+const RevenueService = require('../services/revenueService');
 const { createNotification } = require('./notificationController');
 
 // Auto-cancels bookings that are still pending and whose date has passed
@@ -275,40 +276,13 @@ const updateBookingStatus = async (req, res) => {
     if (adminNotes) booking.adminNotes = adminNotes;
 
     // Financial Impact Handling
-    if (status === 'completed' && oldStatus !== 'completed') {
-      const platformFee = Number((booking.totalPrice * 0.10).toFixed(2));
-      const netAmount = Number((booking.totalPrice - platformFee).toFixed(2));
-      
-      booking.platformFee = platformFee;
-      booking.netAmount = netAmount;
-      booking.paymentStatus = 'paid';
-
-      if (booking.store) {
-        await Store.findByIdAndUpdate(booking.store._id, {
-          $inc: {
-            'balance': netAmount,
-            'stats.totalRevenue': booking.totalPrice,
-            'stats.totalPlatformFees': platformFee
-          }
-        });
-        console.log(`💰 Store balance updated (+${netAmount}) for booking #${booking._id}`);
-      }
-    } else if (status === 'cancelled' && oldStatus === 'completed') {
-      // Reverse revenue if a completed booking is cancelled
-      const platformFee = booking.platformFee || Number((booking.totalPrice * 0.10).toFixed(2));
-      const netAmount = booking.netAmount || Number((booking.totalPrice - platformFee).toFixed(2));
-
-      if (booking.store) {
-        await Store.findByIdAndUpdate(booking.store._id, {
-          $inc: {
-            'balance': -netAmount,
-            'stats.totalRevenue': -booking.totalPrice,
-            'stats.totalPlatformFees': -platformFee
-          }
-        });
-        console.log(`💰 Store balance REVERSED (-${netAmount}) for booking #${booking._id}`);
-        booking.paymentStatus = 'refunded';
-      }
+    if (status === 'completed' && oldStatus !== 'completed' && !booking.isRevenueRecorded) {
+      // Automatically record revenue if marked as completed (assuming it's paid in person if not already paid)
+      await RevenueService.recordPayment('booking', booking._id);
+    } else if (status === 'cancelled' && oldStatus !== 'cancelled' && booking.isRevenueRecorded) {
+      // Reverse revenue if a recorded booking is cancelled
+      await RevenueService.reversePayment('booking', booking._id);
+      booking.paymentStatus = 'refunded';
     }
 
     // Decrement voucher usage if booking is cancelled
@@ -513,6 +487,46 @@ const getCalendarBookings = async (req, res) => {
   }
 };
 
+// Confirm booking payment (Admin only)
+const confirmBookingPayment = async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.id).populate('store');
+    if (!booking) {
+      return res.status(404).json({ message: 'Booking not found' });
+    }
+
+    if (booking.status === 'cancelled') {
+        return res.status(400).json({ message: 'Cannot confirm payment for a cancelled booking' });
+    }
+
+    if (booking.isRevenueRecorded) {
+      return res.status(400).json({ message: 'Booking is already marked as paid' });
+    }
+
+    // Record revenue and update store stats via central service
+    await RevenueService.recordPayment('booking', booking._id);
+
+    res.json({
+      message: 'Payment confirmed successfully',
+      booking: await Booking.findById(booking._id).populate('customer', 'firstName lastName email phone').populate('service', 'name category')
+    });
+
+    // Notify customer about payment confirmation
+    await createNotification({
+      recipient: booking.customer,
+      sender: req.user._id,
+      type: 'booking_status',
+      title: 'Booking Payment Confirmed',
+      message: `Your payment for booking for ${booking.service?.name || 'service'} has been confirmed.`,
+      relatedId: booking._id,
+      relatedModel: 'Booking'
+    });
+  } catch (error) {
+    console.error('Confirm booking payment error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
 module.exports = {
   createBooking,
   getCustomerBookings,
@@ -521,5 +535,6 @@ module.exports = {
   getCalendarBookings,
   updateBookingStatus,
   updatePaymentMethod,
-  cancelBooking
+  cancelBooking,
+  confirmBookingPayment
 };
