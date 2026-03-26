@@ -8,13 +8,29 @@ import {
     ToggleLeft,
     ToggleRight,
     Calendar,
-    PhilippinePeso,
     Tag,
     Clock,
     AlertCircle,
     CheckCircle2,
     X
 } from 'lucide-react';
+
+const PhilippinePeso = ({ className }) => (
+  <svg 
+    xmlns="http://www.w3.org/2000/svg" 
+    viewBox="0 0 24 24" 
+    fill="none" 
+    stroke="currentColor" 
+    strokeWidth="2" 
+    strokeLinecap="round" 
+    strokeLinejoin="round" 
+    className={className}
+  >
+    <path d="M20 11H4" />
+    <path d="M20 7H4" />
+    <path d="M7 21V4a5 5 0 0 1 5 5c0 2.2-1.8 3-5 3Z" />
+  </svg>
+);
 import { toast } from 'react-toastify';
 import { adminVoucherService } from '../../services/apiService';
 
