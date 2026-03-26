@@ -157,20 +157,27 @@ const createStaff = async (req, res) => {
         const isHashed = staff.password.startsWith('$2a$') || staff.password.startsWith('$2b$');
         console.log(`✅ [StaffDebug] Saved. Hashed result: ${isHashed ? 'YES' : 'RAW (ERROR!)'} | Prefix: ${staff.password.substring(0, 4)}`);
 
-        // 📧 Send Invitation Email (Background Task)
+        // 📧 Send Invitation Email (Force await on production to prevent premature termination)
         console.log(`📧 Dispatching email to: ${cleanEmail}`);
-        sendStaffInvitation(cleanEmail, tempPassword, cleanFirstName).catch(emailErr => {
-            console.error('❌ [BackgroundEmail] Failed:', emailErr);
-        });
-
-        // Response is sent immediately while email sends in background
+        let emailSent = false;
+        try {
+            await sendStaffInvitation(cleanEmail, tempPassword, cleanFirstName);
+            emailSent = true;
+            console.log(`✅ [Email] Successfully sent to: ${cleanEmail}`);
+        } catch (emailErr) {
+            console.error('❌ [Email Task] Failed:', emailErr);
+        }
 
         const staffObj = staff.toObject();
         delete staffObj.password;
 
         res.status(201).json({ 
-            message: 'Staff account invited successfully. An email with credentials has been sent.', 
-            staff: staffObj 
+            message: emailSent 
+                ? 'Staff account invited successfully. An email with credentials has been sent.' 
+                : 'Staff account created, but the invitation email failed to send. Please ensure the mail server is configured correctly online.', 
+            staff: staffObj,
+            emailSent: emailSent,
+            fallbackPassword: emailSent ? null : tempPassword // Provide fallback if email completely fails
         });
     } catch (error) {
         console.error('createStaff error details:', error);
