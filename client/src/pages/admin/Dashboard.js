@@ -9,7 +9,7 @@ import {
   adminBookingService,
   dssService
 } from '../../services/apiService';
-import { Heart, Package, ShoppingCart, Plus, Calendar, RefreshCw, Activity, ArrowUp, ChevronRight, AlertCircle, ShoppingBag, Shield, Brain, Sparkles } from 'lucide-react';
+import { Heart, Package, ShoppingCart, Plus, Calendar, RefreshCw, Activity, ArrowUp, ChevronRight, AlertCircle, ShoppingBag, Shield, Brain, Sparkles, TrendingUp } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 
 const Dashboard = () => {
