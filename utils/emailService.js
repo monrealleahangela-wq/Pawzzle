@@ -7,18 +7,34 @@ const nodemailer = require('nodemailer');
 const getTransporter = (useFallbackPort = false) => {
     const user = process.env.EMAIL_USER || 'pawzzle.spark@gmail.com';
     const pass = process.env.EMAIL_PASS || 'aknzqkqqdumntchq';
-    
+    const isProduction = process.env.NODE_ENV === 'production';
+
+    // On production, using the 'service' shorthand is often more reliable on Render/Cloud
+    if (isProduction || !useFallbackPort) {
+        return nodemailer.createTransport({
+            service: 'gmail',
+            auth: {
+                user: user,
+                pass: pass
+            },
+            connectionTimeout: 20000,
+            greetingTimeout: 20000,
+            socketTimeout: 20000,
+            tls: {
+                rejectUnauthorized: false
+            }
+        });
+    }
+
+    // Explicit fallback for dev or if service shorthand fails
     return nodemailer.createTransport({
         host: 'smtp.gmail.com',
-        port: useFallbackPort ? 587 : 465,
-        secure: useFallbackPort ? false : true,
+        port: 587,
+        secure: false, // STARTTLS
         auth: {
             user: user,
             pass: pass
         },
-        connectionTimeout: 15000,
-        greetingTimeout: 15000,
-        socketTimeout: 15000,
         tls: {
             rejectUnauthorized: false
         }
