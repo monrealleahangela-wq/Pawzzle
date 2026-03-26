@@ -24,7 +24,15 @@ const Dashboard = () => {
     availableBalance: 0,
     recentOrders: [],
     lowStockProducts: [],
-    recommendations: []
+    recommendations: [],
+    growth: {
+      pets: 0,
+      products: 0,
+      orders: 0,
+      bookings: 0,
+      revenue: 0,
+      balance: 0
+    }
   });
   const [loading, setLoading] = useState(true);
   const [refreshingRole, setRefreshingRole] = useState(false);
@@ -43,7 +51,7 @@ const Dashboard = () => {
         adoptionService.getMyRequests(),
         adminBookingService.getAllBookings({ limit: 1, page: 1 }),
         inventoryService.adminGetAlerts(),
-        dssService.getAdminInsights()
+        user?.role === 'staff' ? dssService.getStaffInsights() : dssService.getAdminInsights()
       ]);
 
       const [petsRes, productsRes, ordersRes, adoptionsRes, bookingsRes, alertsRes, dssRes] = fetchResults;
@@ -58,7 +66,8 @@ const Dashboard = () => {
         availableBalance: dssRes.status === 'fulfilled' ? (dssRes.value.data.overview?.availableBalance || 0) : 0,
         recentOrders: ordersRes.status === 'fulfilled' ? (ordersRes.value.data.orders || []) : [],
         lowStockProducts: alertsRes.status === 'fulfilled' ? (alertsRes.value.data.alerts || []) : [],
-        recommendations: dssRes.status === 'fulfilled' ? (dssRes.value.data.recommendations || []).slice(0, 3) : []
+        recommendations: dssRes.status === 'fulfilled' ? (dssRes.value.data.recommendations || []).slice(0, 3) : [],
+        growth: dssRes.status === 'fulfilled' ? (dssRes.value.data.overview?.growth || {}) : {}
       });
     } catch (error) {
     } finally {
@@ -139,13 +148,13 @@ const Dashboard = () => {
       {/* Stats */}
       <div className="relative z-10 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {[
-          { label: 'Total Pets', value: stats.totalPets, icon: Heart, color: 'rose', link: '/admin/pets', sub: 'In Store' },
-          { label: 'Total Products', value: stats.totalProducts, icon: Package, color: 'amber', link: '/admin/products', sub: 'Active' },
-          { label: 'Total Orders', value: stats.totalOrders, icon: ShoppingCart, color: 'indigo', link: '/admin/orders', sub: 'Completed' },
-          { label: 'Total Bookings', value: stats.totalBookings, icon: Calendar, color: 'emerald', link: '/admin/bookings', sub: 'Scheduled' },
-          { label: 'Net Earnings', value: `₱${stats.netEarnings.toLocaleString()}`, icon: TrendingUp, color: 'primary', link: '/admin/insights', sub: 'Paid' },
-          { label: 'Balance', value: `₱${stats.availableBalance.toLocaleString()}`, icon: Shield, color: 'emerald', link: '/admin/payouts', sub: 'Available' }
-        ].map((stat, i) => (
+          { label: 'Total Pets', value: stats.totalPets, icon: Heart, color: 'rose', link: '/admin/pets', sub: 'In Store', growth: stats.growth.pets, show: ['admin', 'super_admin'].includes(user?.role) || ['inventory_staff', 'general'].includes(user?.staffType) },
+          { label: 'Total Products', value: stats.totalProducts, icon: Package, color: 'amber', link: '/admin/products', sub: 'Active', growth: stats.growth.products, show: ['admin', 'super_admin'].includes(user?.role) || ['inventory_staff', 'general'].includes(user?.staffType) },
+          { label: 'Total Orders', value: stats.totalOrders, icon: ShoppingCart, color: 'indigo', link: '/admin/orders', sub: 'Completed', growth: stats.growth.orders, show: ['admin', 'super_admin'].includes(user?.role) || ['order_staff', 'general'].includes(user?.staffType) },
+          { label: 'Total Bookings', value: stats.totalBookings, icon: Calendar, color: 'emerald', link: '/admin/bookings', sub: 'Scheduled', growth: stats.growth.bookings, show: ['admin', 'super_admin'].includes(user?.role) || ['service_staff', 'order_staff', 'general'].includes(user?.staffType) },
+          { label: 'Net Earnings', value: `₱${stats.netEarnings.toLocaleString()}`, icon: TrendingUp, color: 'primary', link: '/admin/insights', sub: 'Paid', growth: stats.growth.revenue, show: ['admin', 'super_admin'].includes(user?.role) },
+          { label: 'Balance', value: `₱${stats.availableBalance.toLocaleString()}`, icon: Shield, color: 'emerald', link: '/admin/payouts', sub: 'Available', growth: stats.growth.balance, show: ['admin', 'super_admin'].includes(user?.role) }
+        ].filter(s => s.show).map((stat, i) => (
           <Link
             key={i}
             to={stat.link}
@@ -169,9 +178,9 @@ const Dashboard = () => {
                   <span className="text-4xl font-black text-slate-900 tracking-tighter leading-none">{stat.value}</span>
                   <p className="text-[9px] font-bold text-slate-300 uppercase tracking-widest mb-1">{stat.sub}</p>
                 </div>
-                <div className="flex items-center gap-1 text-[10px] font-black text-emerald-500 mb-1">
-                  <ArrowUp className="h-3 w-3" />
-                  <span>+12%</span>
+                <div className={`flex items-center gap-1 text-[10px] font-black mb-1 ${stat.growth >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                  <ArrowUp className={`h-3 w-3 transition-transform ${stat.growth < 0 ? 'rotate-180' : ''}`} />
+                  <span>{stat.growth >= 0 ? '+' : ''}{stat.growth}%</span>
                 </div>
               </div>
             </div>
@@ -181,62 +190,64 @@ const Dashboard = () => {
 
       <div className="relative z-10 grid grid-cols-1 xl:grid-cols-12 gap-6 pb-20">
         {/* Recent Orders */}
-        <div className="xl:col-span-8 bg-white rounded-[3rem] border border-slate-100 p-8 shadow-xl shadow-slate-200/50 flex flex-col">
-          <div className="flex items-center justify-between mb-10">
-            <div className="flex items-center gap-4">
-              <div className="w-1.5 h-8 bg-primary-600 rounded-full" />
-              <div>
-                <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight">Recent Orders</h2>
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Customer Purchase History</p>
+        {(['admin', 'super_admin'].includes(user?.role) || ['order_staff', 'general'].includes(user?.staffType)) && (
+          <div className="xl:col-span-8 bg-white rounded-[3rem] border border-slate-100 p-8 shadow-xl shadow-slate-200/50 flex flex-col">
+            <div className="flex items-center justify-between mb-10">
+              <div className="flex items-center gap-4">
+                <div className="w-1.5 h-8 bg-primary-600 rounded-full" />
+                <div>
+                  <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight">Recent Orders</h2>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Customer Purchase History</p>
+                </div>
               </div>
+              <Link to="/admin/orders" className="group flex items-center gap-2 px-6 py-3 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-primary-600 transition-all">
+                View All <ChevronRight className="h-3 w-3 group-hover:translate-x-1 transition-transform" />
+              </Link>
             </div>
-            <Link to="/admin/orders" className="group flex items-center gap-2 px-6 py-3 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-primary-600 transition-all">
-              View All <ChevronRight className="h-3 w-3 group-hover:translate-x-1 transition-transform" />
-            </Link>
-          </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {stats.recentOrders.length > 0 ? stats.recentOrders.map(order => (
-              <Link to={`/admin/orders?id=${order._id}`} key={order._id} className="group flex items-center justify-between p-4 bg-slate-50 rounded-[1.8rem] border border-transparent hover:border-primary-100 hover:bg-white hover:shadow-xl transition-all">
-                <div className="flex items-center gap-5 min-w-0">
-                  <div className="w-14 h-14 rounded-2xl bg-white border border-slate-100 flex items-center justify-center shrink-0 group-hover:bg-primary-600 transition-colors shadow-sm">
-                    <ShoppingBag className="h-6 w-6 text-slate-400 group-hover:text-white transition-colors" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-[12px] font-black text-slate-900 uppercase tracking-tight mb-1">#{order.orderNumber.slice(-8).toUpperCase()}</p>
-                    <div className="flex items-center gap-3">
-                      <p className="text-[11px] font-black text-primary-600 tracking-tight">₱{order.totalAmount?.toLocaleString()}</p>
-                      <div className="w-1 h-1 rounded-full bg-slate-300" />
-                      <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">
-                        {new Date(order.createdAt).toLocaleDateString()}
-                      </p>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {stats.recentOrders.length > 0 ? stats.recentOrders.map(order => (
+                <Link to={`/admin/orders?id=${order._id}`} key={order._id} className="group flex items-center justify-between p-4 bg-slate-50 rounded-[1.8rem] border border-transparent hover:border-primary-100 hover:bg-white hover:shadow-xl transition-all">
+                  <div className="flex items-center gap-5 min-w-0">
+                    <div className="w-14 h-14 rounded-2xl bg-white border border-slate-100 flex items-center justify-center shrink-0 group-hover:bg-primary-600 transition-colors shadow-sm">
+                      <ShoppingBag className="h-6 w-6 text-slate-400 group-hover:text-white transition-colors" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-[12px] font-black text-slate-900 uppercase tracking-tight mb-1">#{order.orderNumber.slice(-8).toUpperCase()}</p>
+                      <div className="flex items-center gap-3">
+                        <p className="text-[11px] font-black text-primary-600 tracking-tight">₱{order.totalAmount?.toLocaleString()}</p>
+                        <div className="w-1 h-1 rounded-full bg-slate-300" />
+                        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">
+                          {new Date(order.createdAt).toLocaleDateString()}
+                        </p>
+                      </div>
                     </div>
                   </div>
+                  <div className="flex flex-col items-end gap-2">
+                    <span className={`px-4 py-1.5 rounded-xl text-[8px] font-black uppercase tracking-widest border-2 ${order.status === 'delivered' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
+                      order.status === 'processing' ? 'bg-blue-50 text-blue-600 border-blue-100' :
+                        'bg-amber-50 text-amber-600 border-amber-100'
+                      }`}>
+                      {order.status}
+                    </span>
+                  </div>
+                </Link>
+              )) : (
+                <div className="col-span-2 flex flex-col items-center justify-center py-20 opacity-30">
+                  <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mb-4">
+                    <Activity className="h-8 w-8 text-slate-400" />
+                  </div>
+                  <p className="text-[11px] font-black text-slate-400 uppercase tracking-[0.3em]">No orders yet</p>
                 </div>
-                <div className="flex flex-col items-end gap-2">
-                  <span className={`px-4 py-1.5 rounded-xl text-[8px] font-black uppercase tracking-widest border-2 ${order.status === 'delivered' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
-                    order.status === 'processing' ? 'bg-blue-50 text-blue-600 border-blue-100' :
-                      'bg-amber-50 text-amber-600 border-amber-100'
-                    }`}>
-                    {order.status}
-                  </span>
-                </div>
-              </Link>
-            )) : (
-              <div className="col-span-2 flex flex-col items-center justify-center py-20 opacity-30">
-                <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mb-4">
-                  <Activity className="h-8 w-8 text-slate-400" />
-                </div>
-                <p className="text-[11px] font-black text-slate-400 uppercase tracking-[0.3em]">No orders yet</p>
-              </div>
-            )}
+              )}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Management & Alerts */}
         <div className="xl:col-span-4 space-y-6">
           {/* Intelligence Briefing */}
-          {stats.recommendations.length > 0 && (
+          {stats.recommendations.length > 0 && (['admin', 'super_admin'].includes(user?.role) || user?.staffType === 'general') && (
             <div className="bg-white rounded-[3rem] p-8 border border-slate-100 shadow-xl relative overflow-hidden group">
               <div className="flex items-center gap-3 mb-6">
                 <div className="p-2 bg-primary-50 text-primary-600 rounded-xl">
@@ -268,11 +279,11 @@ const Dashboard = () => {
 
             <div className="space-y-3 relative z-10">
               {[
-                { to: "/admin/insights", label: "Strategic Intelligence", icon: Brain, desc: "AI-powered store insights" },
-                { to: "/admin/pets", label: "Add New Pet", icon: Plus, desc: "List a pet for adoption" },
-                { to: "/admin/products", label: "Add New Product", icon: Package, desc: "Add item to your store" },
-                { to: "/admin/bookings", label: "Manage Bookings", icon: Calendar, desc: "View scheduled services" },
-              ].map((action, i) => (
+                { to: "/admin/insights", label: "Strategic Intelligence", icon: Brain, desc: "AI-powered store insights", show: ['admin', 'super_admin'].includes(user?.role) || user?.staffType === 'general' },
+                { to: "/admin/pets", label: "Add New Pet", icon: Plus, desc: "List a pet for adoption", show: ['admin', 'super_admin'].includes(user?.role) || ['inventory_staff', 'general'].includes(user?.staffType) },
+                { to: "/admin/products", label: "Add New Product", icon: Package, desc: "Add item to your store", show: ['admin', 'super_admin'].includes(user?.role) || ['inventory_staff', 'general'].includes(user?.staffType) },
+                { to: "/admin/bookings", label: "Manage Bookings", icon: Calendar, desc: "View scheduled services", show: ['admin', 'super_admin'].includes(user?.role) || ['service_staff', 'order_staff', 'general'].includes(user?.staffType) },
+              ].filter(action => action.show).map((action, i) => (
                 <Link key={i} to={action.to} className="group/btn flex items-center gap-4 p-4 bg-white/5 hover:bg-white/15 rounded-2xl transition-all active:scale-[0.98]">
                   <div className="w-12 h-12 bg-white/10 rounded-xl flex items-center justify-center shrink-0 group-hover/btn:bg-primary-600 transition-colors">
                     <action.icon className="h-5 w-5 text-white" />
@@ -288,7 +299,7 @@ const Dashboard = () => {
           </div>
 
           {/* Low Stock Alert */}
-          {stats.lowStockProducts.length > 0 ? (
+          {(['admin', 'super_admin'].includes(user?.role) || ['inventory_staff', 'general'].includes(user?.staffType)) && stats.lowStockProducts.length > 0 ? (
             <div className="bg-rose-500 rounded-[3rem] p-8 text-white shadow-xl shadow-rose-200/50 relative overflow-hidden">
               <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.2),transparent)] pointer-events-none" />
 
@@ -316,7 +327,7 @@ const Dashboard = () => {
                 </Link>
               </div>
             </div>
-          ) : (
+          ) : (['admin', 'super_admin'].includes(user?.role) || ['inventory_staff', 'general'].includes(user?.staffType)) && (
             <div className="bg-emerald-500 rounded-[3rem] p-8 text-white shadow-xl shadow-emerald-200/50 flex flex-col items-center justify-center text-center">
               <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center mb-4">
                 <Shield className="h-8 w-8" />
