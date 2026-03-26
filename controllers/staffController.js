@@ -48,7 +48,13 @@ const createStaff = async (req, res) => {
     try {
         console.log('--- 🚀 CREATE STAFF API HIT 🚀 ---');
         const { firstName, lastName, email, username, password, staffType, phone, storeId } = req.body;
-        console.log(`Payload: ${JSON.stringify({ firstName, lastName, email, username, staffType, phone, storeId })}`);
+        
+        const cleanFirstName = firstName ? firstName.trim() : '';
+        const cleanLastName = lastName ? lastName.trim() : '';
+        const cleanEmail = email ? email.trim().toLowerCase() : '';
+        const cleanUsername = username ? username.trim() : '';
+        
+        console.log(`Payload: ${JSON.stringify({ firstName: cleanFirstName, lastName: cleanLastName, email: cleanEmail, username: cleanUsername, staffType, phone, storeId })}`);
 
         const creatorId = req.user._id || req.user.id;
         console.log(`Creator ID: ${creatorId}`);
@@ -98,14 +104,14 @@ const createStaff = async (req, res) => {
         console.log(`Staff type validated: ${staffType}`);
 
         const existingUser = await User.findOne({
-            $or: [{ email }, { username }],
+            $or: [{ email: cleanEmail }, { username: cleanUsername }],
             isDeleted: false
         });
 
         if (existingUser) {
-            console.log(`❌ CONFLICT: User with email/username already exists: ${email}/${username}`);
+            console.log(`❌ CONFLICT: User with email/username already exists: ${cleanEmail}/${cleanUsername}`);
             return res.status(409).json({
-                message: existingUser.email === email
+                message: existingUser.email === cleanEmail
                     ? 'Email is already registered. Please use a different one.'
                     : 'Username is already taken. Please use a different one.'
             });
@@ -129,10 +135,10 @@ const createStaff = async (req, res) => {
         }
 
         const staff = new User({
-            firstName,
-            lastName,
-            email,
-            username,
+            firstName: cleanFirstName,
+            lastName: cleanLastName,
+            email: cleanEmail,
+            username: cleanUsername,
             password: tempPassword,
             phone: phone || '',
             role: 'staff',
@@ -140,17 +146,20 @@ const createStaff = async (req, res) => {
             store: targetStoreId,
             createdBy: req.user._id,
             isActive: true,
-            isFirstLogin: true, // 🛡️ Enforce first-login change
+            requiresPasswordChange: true, // 🛡️ Enforce first-login change
             address: staffAddress
         });
 
-        console.log('💾 Saving staff to database...');
+        console.log(`[StaffDebug] Attempting to save staff ${cleanEmail} with password: ${tempPassword}`);
         await staff.save();
-        console.log(`✅ Staff saved! ID: ${staff._id}`);
+        
+        // Use a more accurate prefix check (bcryptjs uses $2a$ or $2b$)
+        const isHashed = staff.password.startsWith('$2a$') || staff.password.startsWith('$2b$');
+        console.log(`✅ [StaffDebug] Saved. Hashed result: ${isHashed ? 'YES' : 'RAW (ERROR!)'} | Prefix: ${staff.password.substring(0, 4)}`);
 
         // 📧 Send Invitation Email (Background Task)
-        console.log(`📧 Dispatching email to: ${email}`);
-        sendStaffInvitation(email, tempPassword, firstName).catch(emailErr => {
+        console.log(`📧 Dispatching email to: ${cleanEmail}`);
+        sendStaffInvitation(cleanEmail, tempPassword, cleanFirstName).catch(emailErr => {
             console.error('❌ [BackgroundEmail] Failed:', emailErr);
         });
 

@@ -345,9 +345,17 @@ const login = async (req, res) => {
     }
 
     const isMatch = await user.comparePassword(password);
+    
+    // Detailed debug logs for password failures
     if (!isMatch) {
+      const isActuallyHashed = user.password && (user.password.startsWith('$2a$') || user.password.startsWith('$2b$'));
+      console.log(`[AuthDebug] 🔴 Login FAILED for ${email || user.username}`);
+      console.log(`[AuthDebug] Details: UserExists: true, IsHashedInDB: ${isActuallyHashed}, DB_Prefix: ${user.password ? user.password.substring(0, 4) : 'NONE'}, Input_Len: ${password ? password.length : 0}`);
+      
       return res.status(401).json({ message: 'Incorrect password' });
     }
+    
+    console.log(`[AuthDebug] 🟢 Login SUCCESS for ${email || user.username}`);
 
     // 🛡️ Check if 2FA is enabled
     if (user.twoFactorEnabled) {
