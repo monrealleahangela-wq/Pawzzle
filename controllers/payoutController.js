@@ -129,6 +129,7 @@ const getAllPayoutRequests = async (req, res) => {
         const payouts = await Payout.find(filter)
             .populate('store', 'name logo')
             .populate('owner', 'firstName lastName email')
+            .populate('processedBy', 'firstName lastName')
             .sort({ requestedAt: -1 });
 
         res.json(payouts);

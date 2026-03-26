@@ -3,8 +3,9 @@ import { toast } from 'react-toastify';
 import { payoutService } from '../../services/apiService';
 import {
     Wallet, Clock, CheckCircle, XCircle, ChevronDown, AlertTriangle,
-    RefreshCw, ExternalLink, Filter, Building
+    RefreshCw, ExternalLink, Filter, Building, Printer
 } from 'lucide-react';
+import { generatePayoutReceipt } from '../../utils/payoutReceiptGenerator';
 
 const STATUS_COLORS = {
     pending: 'bg-amber-50 text-amber-700 border-amber-200',
@@ -172,6 +173,17 @@ const AdminPayouts = () => {
                                             )}
 
                                             {/* Actions */}
+                                            {payout.status === 'completed' && (
+                                                <div className="pt-2 border-t border-slate-200 mt-2">
+                                                    <button
+                                                        onClick={() => generatePayoutReceipt(payout)}
+                                                        className="w-full flex items-center justify-center gap-2 py-3 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 transition-all shadow-sm"
+                                                    >
+                                                        <Printer className="h-3.5 w-3.5" /> Download / Print Receipt
+                                                    </button>
+                                                </div>
+                                            )}
+
                                             {(payout.status === 'pending' || payout.status === 'processing') && (
                                                 <div className="space-y-3">
                                                     <textarea
