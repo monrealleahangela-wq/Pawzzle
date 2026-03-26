@@ -326,21 +326,21 @@ const StorePayout = () => {
                                             <p className="text-slate-400 text-xs">{new Date(p.requestedAt).toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: 'numeric' })} · {p.payoutMethod?.type?.replace('_', ' ')} · {p.payoutMethod?.accountNumber}</p>
                                             {p.adminNotes && <p className="text-slate-500 text-xs italic mt-0.5">"{p.adminNotes}"</p>}
                                         </div>
-                                        <div className="flex flex-col items-end gap-2">
-                                            <div className="flex items-center gap-3">
-                                                <p className="font-black text-slate-900 text-base shrink-0">₱{p.amount.toLocaleString()}</p>
-                                                <span className={`px-2.5 py-1 rounded-lg border text-[10px] font-black uppercase tracking-widest flex items-center gap-1 shrink-0 ${STATUS_STYLES[p.status]}`}>
+                                        <div className="flex flex-col items-end gap-2 shrink-0">
+                                            <p className="font-black text-slate-900 text-base leading-none">₱{p.amount.toLocaleString()}</p>
+                                            <div className="flex flex-col items-center gap-1.5 mt-1">
+                                                <span className={`px-4 py-1 rounded-full border-2 text-[8px] font-black uppercase tracking-[0.2em] flex items-center gap-1.5 ${STATUS_STYLES[p.status]}`}>
                                                     <Icon className="h-3 w-3" />{p.status}
                                                 </span>
+                                                {p.status === 'completed' && (
+                                                    <button
+                                                        onClick={() => generatePayoutReceipt(p)}
+                                                        className="flex items-center gap-1 px-3 py-1.5 bg-white text-slate-600 rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-slate-900 hover:text-white transition-all shadow-sm border border-slate-100"
+                                                    >
+                                                        <Printer className="h-3.5 w-3.5" /> RECEIPT
+                                                    </button>
+                                                )}
                                             </div>
-                                            {p.status === 'completed' && (
-                                                <button
-                                                    onClick={() => generatePayoutReceipt(p)}
-                                                    className="flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-primary-600 hover:text-primary-700 transition-colors"
-                                                >
-                                                    <Printer className="h-3 w-3" /> Receipt
-                                                </button>
-                                            )}
                                         </div>
                                     </div>
                                 );

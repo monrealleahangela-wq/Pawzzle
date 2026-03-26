@@ -1,5 +1,5 @@
-import { jsPDF } from 'jspdf';
-import 'jspdf-autotable';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 /**
  * Generates a printable PDF receipt for a completed payout.
@@ -70,7 +70,7 @@ export const generatePayoutReceipt = (payout) => {
     const grossAmount = payout.amount / 0.9;
     const platformFee = grossAmount * 0.1;
     
-    doc.autoTable({
+    const table = autoTable(doc, {
         startY: 75,
         head: [['DESCRIPTION', 'DETAILS', 'AMOUNT']],
         body: [
@@ -89,7 +89,7 @@ export const generatePayoutReceipt = (payout) => {
     });
 
     // Payout Method Section
-    const tableFinalY = doc.lastAutoTable.finalY + 15;
+    const tableFinalY = (doc.lastAutoTable?.finalY || 150) + 15;
     
     doc.setFontSize(10);
     doc.setFont('helvetica', 'bold');

@@ -179,7 +179,7 @@ const AdminPayouts = () => {
                                                         onClick={() => generatePayoutReceipt(payout)}
                                                         className="w-full flex items-center justify-center gap-2 py-3 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 transition-all shadow-sm"
                                                     >
-                                                        <Printer className="h-3.5 w-3.5" /> Download / Print Receipt
+                                                        <Printer className="h-3.5 w-3.5" /> DOWNLOAD / PRINT RECEIPT
                                                     </button>
                                                 </div>
                                             )}
