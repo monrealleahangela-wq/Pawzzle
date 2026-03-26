@@ -10,7 +10,7 @@ import {
   Trash2,
   Search,
   Box,
-  DollarSign,
+  PhilippinePeso,
   X,
   Activity,
   Image as ImageIcon,
@@ -439,7 +439,7 @@ const ProductInventory = () => {
                 { label: 'Total Products', value: summary.totalItems, icon: Box, color: 'primary' },
                 { label: 'Low Stock Items', value: summary.lowStockItems, icon: AlertTriangle, color: 'amber' },
                 { label: 'Out of Stock', value: summary.outOfStockItems, icon: TrendingDown, color: 'rose' },
-                { label: 'Total Inventory Value', value: `₱${summary.totalValue?.toLocaleString()}`, icon: DollarSign, color: 'emerald' }
+                { label: 'Total Inventory Value', value: `₱${summary.totalValue?.toLocaleString()}`, icon: PhilippinePeso, color: 'emerald' }
               ].map((stat, idx) => (
                 <div key={idx} className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm group hover:shadow-lg hover:border-primary-100 transition-all">
                   <div className={`w-10 h-10 rounded-xl bg-${stat.color}-50 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}>
@@ -622,7 +622,7 @@ const ProductInventory = () => {
                     <div className="space-y-2">
                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Sale Price (₱)</label>
                       <div className="relative">
-                        <DollarSign className="absolute left-6 top-1/2 -translate-y-1/2 h-5 w-5 text-primary-600" />
+                        <PhilippinePeso className="absolute left-6 top-1/2 -translate-y-1/2 h-5 w-5 text-primary-600" />
                         <input type="number" required value={productForm.price} onChange={e => setProductForm(p => ({ ...p, price: e.target.value }))} className="w-full pl-16 pr-8 py-5 bg-slate-50 border border-slate-100 rounded-3xl text-xl font-black outline-none focus:ring-4 focus:ring-primary-600/5" placeholder="0.00" />
                       </div>
                     </div>

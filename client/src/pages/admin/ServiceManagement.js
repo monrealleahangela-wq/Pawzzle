@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import {
-  Plus, Edit2, Trash2, Clock, DollarSign, Home, MapPin, Package, Users, Shield,
+  Plus, Edit2, Trash2, Clock, PhilippinePeso, Home, MapPin, Package, Users, Shield,
   Zap, Activity, ChevronRight, X, Target, ArrowUpRight, Info, Image as ImageIcon,
   CheckCircle, AlertTriangle, Star, Briefcase, Settings, Calendar
 } from 'lucide-react';
@@ -192,7 +192,7 @@ const ServiceManagement = () => {
           { label: 'Active Services', value: services.filter(s => s.isActive).length, icon: Activity, color: 'emerald' },
           { label: 'Total Services', value: services.length, icon: Package, color: 'primary' },
           { label: 'Home Service', value: services.filter(s => s.homeServiceAvailable).length, icon: Home, color: 'indigo' },
-          { label: 'Total Revenue', value: `₱${services.reduce((a, b) => a + (b.price || 0), 0).toLocaleString()}`, icon: DollarSign, color: 'amber' }
+          { label: 'Total Revenue', value: `₱${services.reduce((a, b) => a + (b.price || 0), 0).toLocaleString()}`, icon: PhilippinePeso, color: 'amber' }
         ].map((stat, idx) => (
           <div key={idx} className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm group hover:shadow-lg hover:border-indigo-100 transition-all">
             <div className={`w-10 h-10 rounded-xl bg-${stat.color}-50 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}>
@@ -333,7 +333,7 @@ const ServiceManagement = () => {
                         <div className="space-y-2">
                           <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Base Price (₱)</label>
                           <div className="relative">
-                            <DollarSign className="absolute left-5 top-1/2 -translate-y-1/2 h-5 w-5 text-indigo-600" />
+                            <PhilippinePeso className="absolute left-5 top-1/2 -translate-y-1/2 h-5 w-5 text-indigo-600" />
                             <input type="number" required value={formData.price} onChange={e => setFormData(p => ({ ...p, price: parseFloat(e.target.value) || 0 }))}
                               className="w-full pl-14 pr-6 py-5 bg-slate-50 border border-slate-100 rounded-3xl text-xl font-black outline-none focus:ring-4 focus:ring-indigo-500/10" placeholder="0" />
                           </div>

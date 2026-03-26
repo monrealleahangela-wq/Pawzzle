@@ -8,7 +8,7 @@ import {
     ToggleLeft,
     ToggleRight,
     Calendar,
-    DollarSign,
+    PhilippinePeso,
     Tag,
     Clock,
     AlertCircle,
@@ -196,7 +196,7 @@ const VoucherManagement = () => {
 
                             <div className="space-y-4 mb-8">
                                 <div className="flex items-center gap-3 text-slate-500">
-                                    <DollarSign className="h-4 w-4" />
+                                    <PhilippinePeso className="h-4 w-4" />
                                     <span className="text-[11px] font-bold uppercase tracking-tight">Min. Purchase: ₱{voucher.minPurchase}</span>
                                 </div>
                                 <div className="flex items-center gap-3 text-slate-500">
