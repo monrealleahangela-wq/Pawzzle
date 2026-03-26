@@ -39,7 +39,7 @@ const TYPE_STYLES = {
 
 const defaultForm = {
     firstName: '', lastName: '', email: '', username: '',
-    password: '', staffType: 'order_staff', phone: ''
+    staffType: 'order_staff', phone: ''
 };
 
 const StaffManagement = () => {
@@ -106,8 +106,8 @@ const StaffManagement = () => {
                 });
                 toast.success('Staff updated successfully');
             } else {
-                await staffService.create(form);
-                toast.success('Staff account created successfully');
+                const res = await staffService.create(form);
+                toast.success(res.data.message || 'Staff account created successfully');
             }
             setShowModal(false);
             fetchStaff();
@@ -417,9 +417,35 @@ const StaffManagement = () => {
                             {/* Contact fields */}
                             {!editingStaff && (
                                 <>
+                                    <div className="bg-primary-50 rounded-2xl p-4 border border-primary-100 flex items-start gap-3 mb-2">
+                                        <AlertCircle className="h-4 w-4 text-primary-600 mt-0.5" />
+                                        <p className="text-[10px] font-bold text-primary-700 leading-relaxed uppercase tracking-widest">
+                                            The system will automatically generate a <span className="underline">secure random password</span> and send it to the staff's email.
+                                        </p>
+                                    </div>
+                                    
+                                    <div>
+                                        <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Invitation Email *</label>
+                                        <input
+                                            type="email"
+                                            value={form.email}
+                                            onChange={e => {
+                                                const email = e.target.value;
+                                                setForm(f => ({ 
+                                                    ...f, 
+                                                    email, 
+                                                    username: f.username || email.split('@')[0] 
+                                                }));
+                                            }}
+                                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-900 focus:outline-none focus:border-primary-400"
+                                            required
+                                            placeholder="e.g. staff@example.com"
+                                        />
+                                    </div>
+
                                     <div className="grid grid-cols-2 gap-3">
                                         <div>
-                                            <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Username *</label>
+                                            <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Username (Generated)</label>
                                             <input
                                                 type="text"
                                                 value={form.username}
@@ -429,7 +455,7 @@ const StaffManagement = () => {
                                             />
                                         </div>
                                         <div>
-                                            <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Phone</label>
+                                            <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Phone (Optional)</label>
                                             <input
                                                 type="text"
                                                 value={form.phone}
@@ -437,28 +463,6 @@ const StaffManagement = () => {
                                                 className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-900 focus:outline-none focus:border-primary-400"
                                             />
                                         </div>
-                                    </div>
-                                    <div>
-                                        <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Email *</label>
-                                        <input
-                                            type="email"
-                                            value={form.email}
-                                            onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
-                                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-900 focus:outline-none focus:border-primary-400"
-                                            required
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Initial Password *</label>
-                                        <input
-                                            type="password"
-                                            value={form.password}
-                                            onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
-                                            placeholder="Min. 6 characters"
-                                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-900 focus:outline-none focus:border-primary-400"
-                                            required={!editingStaff}
-                                            minLength={6}
-                                        />
                                     </div>
                                 </>
                             )}

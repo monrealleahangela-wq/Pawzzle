@@ -368,7 +368,8 @@ const login = async (req, res) => {
         id: user._id, username: user.username, email: user.email,
         firstName: user.firstName, lastName: user.lastName,
         phone: user.phone, address: user.address,
-        role: user.role, avatar: user.avatar, store: user.store
+        role: user.role, avatar: user.avatar, store: user.store,
+        requiresPasswordChange: user.requiresPasswordChange
       }
     });
     
@@ -466,6 +467,7 @@ const changePassword = async (req, res) => {
     if (!isMatch) return res.status(400).json({ message: 'Current password is incorrect' });
 
     user.password = newPassword;
+    user.requiresPasswordChange = false;
     await user.save();
 
     await ActivityLog.create({

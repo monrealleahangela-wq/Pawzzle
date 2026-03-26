@@ -1,6 +1,8 @@
 const User = require('../models/User');
 const Store = require('../models/Store');
 const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
+const { sendStaffInvitation } = require('../utils/emailService');
 
 /**
  * Get all staff under the current admin's store
@@ -46,49 +48,49 @@ const createStaff = async (req, res) => {
     try {
         const { firstName, lastName, email, username, password, staffType, phone, storeId } = req.body;
 
-        if (!firstName || !lastName || !email || !username || !password || !staffType) {
-            return res.status(400).json({ message: 'All required fields must be provided' });
+        if (!firstName || !lastName || !email || !username || !staffType) {
+            return res.status(400).json({ message: 'Missing required staff fields' });
         }
+
+        // Generate temporary password if not provided
+        const tempPassword = password || crypto.randomBytes(6).toString('hex');
 
         // Determine target store
         let targetStoreId = storeId || req.user.store;
         if (!targetStoreId) {
             const adminStore = await Store.findOne({ owner: req.user._id });
             if (!adminStore) {
-                return res.status(400).json({ message: 'You must have at least one store to create staff' });
+                return res.status(400).json({ message: 'Admin must own a store to hire staff' });
             }
             targetStoreId = adminStore._id;
         }
 
-        // Verify ownership if not super admin
+        // Verify ownership/permission if not super admin
         if (req.user.role !== 'super_admin') {
             const isOwner = await Store.findOne({ _id: targetStoreId, owner: req.user._id });
-            if (!isOwner) {
-                return res.status(403).json({ message: 'You do not own this store' });
-            }
+            if (!isOwner) return res.status(403).json({ message: 'Store access denied' });
         }
 
         const validTypes = ['order_staff', 'inventory_staff', 'service_staff'];
         if (!validTypes.includes(staffType)) {
-            return res.status(400).json({ message: 'Invalid staff type' });
+            return res.status(400).json({ message: 'Invalid staff specialization' });
         }
 
-        // Check for duplicate email / username
         const existing = await User.findOne({ $or: [{ email }, { username }] });
         if (existing) {
-            return res.status(409).json({ message: 'Email or username already in use' });
+            return res.status(409).json({ message: 'Credentials already registered' });
         }
 
         const store = await Store.findById(targetStoreId);
-
-        let staffAddress = { street: 'N/A', city: 'N/A', province: 'Cavite', barangay: 'N/A' };
+        let staffAddress = { street: 'N/A', city: 'N/A', province: 'Cavite', barangay: 'N/A', country: 'PH' };
         if (store?.contactInfo?.address) {
             staffAddress = {
                 street: store.contactInfo.address.street || 'N/A',
                 city: store.contactInfo.address.city || 'N/A',
                 province: store.contactInfo.address.state || store.contactInfo.address.province || 'Cavite',
                 barangay: store.contactInfo.address.barangay || 'N/A',
-                zipCode: store.contactInfo.address.zipCode || ''
+                zipCode: store.contactInfo.address.zipCode || '',
+                country: 'PH'
             };
         }
 
@@ -97,25 +99,37 @@ const createStaff = async (req, res) => {
             lastName,
             email,
             username,
-            password,
+            password: tempPassword,
             phone: phone || '',
             role: 'staff',
             staffType,
             store: targetStoreId,
             createdBy: req.user._id,
             isActive: true,
+            requiresPasswordChange: true, // 🛡️ Enforce first-login change
             address: staffAddress
         });
 
         await staff.save();
 
+        // 📧 Send Invitation Email
+        try {
+            await sendStaffInvitation(email, tempPassword, firstName);
+        } catch (emailErr) {
+            console.error('Failed to send staff welcome email:', emailErr.message);
+            // We still proceed since account is created
+        }
+
         const staffObj = staff.toObject();
         delete staffObj.password;
 
-        res.status(201).json({ message: 'Staff account created successfully', staff: staffObj });
+        res.status(201).json({ 
+            message: 'Staff account invited successfully. An email with credentials has been sent.', 
+            staff: staffObj 
+        });
     } catch (error) {
         console.error('createStaff error:', error);
-        res.status(500).json({ message: 'Server error', error: error.message });
+        res.status(500).json({ message: 'Staff creation failed' });
     }
 };
 

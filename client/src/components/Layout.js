@@ -37,6 +37,7 @@ import {
 import FloatingChatManager from './FloatingChatManager';
 import GlobalSearch from './GlobalSearch';
 import NotificationBell from './NotificationBell';
+import PasswordChangeModal from './auth/PasswordChangeModal';
 
 const Layout = () => {
   const { user, logout, loading, isAuthenticated } = useAuth();
@@ -532,6 +533,9 @@ const Layout = () => {
       {user?.role === 'customer' && (
         <FloatingChatManager currentUser={user} />
       )}
+
+      {/* Mandatory Password Change enforcement */}
+      <PasswordChangeModal />
     </div>
   );
 };
