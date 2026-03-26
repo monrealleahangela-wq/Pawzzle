@@ -235,6 +235,42 @@ const StoreApplication = () => {
             </div>
           </div>
 
+          {(application.status === 'rejected' || application.status === 'requires_more_info') && (
+            <div className={`p-8 rounded-[2rem] border animate-slide-up ${application.status === 'rejected' ? 'bg-rose-50 border-rose-100' : 'bg-orange-50 border-orange-100'}`}>
+               <div className="flex items-center gap-3 mb-4">
+                 <div className={`p-2 rounded-lg ${application.status === 'rejected' ? 'bg-rose-600 text-white' : 'bg-orange-600 text-white'}`}>
+                   <AlertCircle className="h-5 w-5" />
+                 </div>
+                 <h4 className={`text-sm font-black uppercase tracking-widest ${application.status === 'rejected' ? 'text-rose-900' : 'text-orange-900'}`}>
+                   {application.status === 'rejected' ? 'Application Rejected' : 'Additional Information Required'}
+                 </h4>
+               </div>
+               
+               {application.rejectionReason && (
+                 <div className="space-y-2 mb-4">
+                   <p className="text-[10px] font-black text-rose-400 uppercase tracking-widest leading-none">Primary Reason</p>
+                   <p className="text-sm font-bold text-slate-800 leading-relaxed bg-white/50 p-4 rounded-xl border border-rose-50">{application.rejectionReason}</p>
+                 </div>
+               )}
+
+               {application.reviewNotes && (
+                 <div className="space-y-2">
+                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">Reviewer Feedback</p>
+                   <p className="text-xs font-bold text-slate-600 leading-relaxed bg-white/50 p-4 rounded-xl border border-slate-100">{application.reviewNotes}</p>
+                 </div>
+               )}
+
+               {application.status === 'rejected' && (
+                 <button 
+                   onClick={() => setApplication(null)}
+                   className="mt-6 px-8 py-3 bg-rose-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-900 transition-all shadow-lg"
+                 >
+                   Re-apply with Corrected Documents
+                 </button>
+               )}
+            </div>
+          )}
+
           <div className="space-y-6 pt-10 border-t border-slate-50">
             <h3 className="text-[10px] font-black text-slate-900 uppercase tracking-[0.2em] flex items-center gap-2">
               <Mail className="h-3 w-3 text-primary-500" /> Operational Hub

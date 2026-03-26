@@ -76,13 +76,14 @@ const sendRegisterOTP = async (req, res) => {
       });
     }
 
-    // Check if user already exists (Ignore soft-deleted accounts)
-    const existingUser = await User.findOne({ 
-      $or: [{ email }, { username }], 
-      isDeleted: false 
-    });
+    const existingEmail = await User.findOne({ email, isDeleted: false });
+    if (existingEmail) {
+      return res.status(400).json({ message: 'Email address is already in use' });
+    }
+
+    const existingUser = await User.findOne({ username, isDeleted: false });
     if (existingUser) {
-      return res.status(400).json({ message: 'User with this email or username already exists' });
+      return res.status(400).json({ message: 'Username is already taken' });
     }
 
     // Only super admin can create admin accounts
@@ -163,16 +164,16 @@ const verifyRegisterOTP = async (req, res) => {
     }
 
     // OTP verified — create the user
-    const { userData } = storedData;
-
-    // Double-check user doesn't exist (race condition guard, ignore soft-deleted)
-    const existingUser = await User.findOne({ 
-      $or: [{ email: userData.email }, { username: userData.username }],
-      isDeleted: false
-    });
-    if (existingUser) {
+    const existingEmail = await User.findOne({ email: userData.email, isDeleted: false });
+    if (existingEmail) {
       otpStore.delete(`reg_${email}`);
-      return res.status(400).json({ message: 'User already exists' });
+      return res.status(400).json({ message: 'Email is already in use' });
+    }
+
+    const existingUsername = await User.findOne({ username: userData.username, isDeleted: false });
+    if (existingUsername) {
+      otpStore.delete(`reg_${email}`);
+      return res.status(400).json({ message: 'Username is already taken' });
     }
 
     const user = new User(userData);
@@ -267,12 +268,14 @@ const register = async (req, res) => {
 
     const { username, email, password, firstName, lastName, phone, address, role } = req.body;
 
-    const existingUser = await User.findOne({ 
-      $or: [{ email }, { username }],
-      isDeleted: false
-    });
-    if (existingUser) {
-      return res.status(400).json({ message: 'User with this email or username already exists' });
+    const existingEmail = await User.findOne({ email, isDeleted: false });
+    if (existingEmail) {
+      return res.status(400).json({ message: 'Email address is already in use' });
+    }
+
+    const existingUsername = await User.findOne({ username, isDeleted: false });
+    if (existingUsername) {
+      return res.status(400).json({ message: 'Username is already taken' });
     }
 
     if (role === 'admin' || role === 'super_admin') {

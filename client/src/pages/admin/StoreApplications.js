@@ -33,6 +33,20 @@ const StoreApplications = () => {
   });
   const [selectedApplication, setSelectedApplication] = useState(null);
   const [showReviewModal, setShowReviewModal] = useState(false);
+  const [reviewForm, setReviewForm] = useState({
+    status: '',
+    reviewNotes: '',
+    rejectionReason: ''
+  });
+
+  const REJECTION_REASONS = [
+    'Incomplete Documentation',
+    'Invalid Business License',
+    'Verification Failed',
+    'Business Type Not Supported',
+    'Duplicate Application',
+    'Vague Business Description'
+  ];
 
   useEffect(() => {
     fetchApplications();
@@ -177,7 +191,7 @@ const StoreApplications = () => {
                     className="flex-1 py-4 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-primary-600 transition-all shadow-xl flex items-center justify-center gap-2"
                   >
                     <Eye className="h-3.5 w-3.5" />
-                    {['approved', 'rejected'].includes(app.status) ? 'View Application' : 'Review Application'}
+                    {['approved', 'rejected', 'requires_more_info'].includes(app.status) ? 'View Application' : 'Review Application'}
                   </button>
                 </div>
               </div>
@@ -470,30 +484,81 @@ const StoreApplications = () => {
               </div>
             </div>
 
-            {['approved', 'rejected'].includes(selectedApplication.status) ? (
-              <div className="p-8 bg-slate-50 border-t border-slate-100 relative z-10 text-center">
-                <div className="flex items-center justify-center gap-2 text-slate-400">
+            {['approved', 'rejected', 'requires_more_info'].includes(selectedApplication.status) ? (
+              <div className="p-10 bg-slate-50 border-t border-slate-100 relative z-10 space-y-4">
+                <div className="flex items-center justify-center gap-2 text-slate-400 mb-4">
                   <Shield className="h-4 w-4" />
                   <span className="text-[10px] font-black uppercase tracking-[0.4em]">Review Complete</span>
                 </div>
+                {selectedApplication.rejectionReason && (
+                  <div className="p-6 bg-rose-50 border border-rose-100 rounded-3xl">
+                    <p className="text-[10px] font-black text-rose-600 uppercase tracking-widest mb-2">Rejection Reason</p>
+                    <p className="text-sm font-bold text-rose-900">{selectedApplication.rejectionReason}</p>
+                  </div>
+                )}
+                {selectedApplication.reviewNotes && (
+                  <div className="p-6 bg-white border border-slate-100 rounded-3xl">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Review Notes</p>
+                    <p className="text-sm font-bold text-slate-900">{selectedApplication.reviewNotes}</p>
+                  </div>
+                )}
               </div>
             ) : (
-              <div className="p-8 bg-slate-50 border-t border-slate-100 relative z-10 flex gap-4">
-                <button
-                  onClick={() => handleReview(selectedApplication._id, 'approved', 'Application approved and store access granted.')}
-                  className="flex-[2] py-5 bg-slate-900 text-white rounded-[1.5rem] text-[10px] font-black uppercase tracking-[0.2em] hover:bg-emerald-600 transition-all shadow-xl flex items-center justify-center gap-2"
-                >
-                  <Check className="h-4 w-4" /> Approve Application
-                </button>
-                <button
-                  onClick={() => {
-                    const reason = prompt('Please enter rejection reason:');
-                    if (reason) handleReview(selectedApplication._id, 'rejected', 'Application rejected.', reason);
-                  }}
-                  className="flex-1 py-5 bg-white border border-rose-200 text-rose-600 rounded-[1.5rem] text-[10px] font-black uppercase tracking-[0.2em] hover:bg-rose-600 hover:text-white transition-all shadow-sm flex items-center justify-center gap-2"
-                >
-                  <X className="h-4 w-4" /> Reject Application
-                </button>
+              <div className="p-10 bg-white border-t border-slate-100 relative z-10 space-y-8 shadow-[0_-20px_50px_rgba(0,0,0,0.05)]">
+                <div>
+                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 block">Review Intelligence Notes</label>
+                   <textarea 
+                     className="w-full h-24 bg-slate-50 border border-slate-100 rounded-3xl p-6 text-sm font-bold outline-none focus:border-primary-500 transition-all"
+                     placeholder="Technical observations or internal notes..."
+                     value={reviewForm.reviewNotes}
+                     onChange={(e) => setReviewForm(prev => ({ ...prev, reviewNotes: e.target.value }))}
+                   />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <button
+                    onClick={() => handleReview(selectedApplication._id, 'approved', reviewForm.reviewNotes)}
+                    className="py-6 bg-slate-900 text-white rounded-[2rem] text-[10px] font-black uppercase tracking-[0.2em] hover:bg-emerald-600 transition-all shadow-xl flex items-center justify-center gap-3"
+                  >
+                    <Check className="h-4 w-4" /> Finalize Approval
+                  </button>
+                  <div className="relative group/reject">
+                    <button
+                      onClick={() => {
+                        if (!reviewForm.rejectionReason) {
+                          toast.warning('Please select or specify a rejection reason');
+                          return;
+                        }
+                        handleReview(selectedApplication._id, 'rejected', reviewForm.reviewNotes, reviewForm.rejectionReason);
+                      }}
+                      className="w-full py-6 bg-rose-600 text-white rounded-[2rem] text-[10px] font-black uppercase tracking-[0.2em] hover:bg-rose-700 transition-all shadow-xl flex items-center justify-center gap-3"
+                    >
+                      <X className="h-4 w-4" /> Reject Protocol
+                    </button>
+                  </div>
+                </div>
+
+                <div className="bg-rose-50/50 p-8 rounded-[2.5rem] border border-rose-100/50">
+                  <label className="text-[10px] font-black text-rose-400 uppercase tracking-widest mb-4 block">Rejection Feedback Control</label>
+                  <div className="flex flex-wrap gap-2 mb-4">
+                    {REJECTION_REASONS.map(reason => (
+                      <button 
+                        key={reason}
+                        onClick={() => setReviewForm(prev => ({ ...prev, rejectionReason: reason }))}
+                        className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest border transition-all ${reviewForm.rejectionReason === reason ? 'bg-rose-600 border-rose-600 text-white' : 'bg-white border-rose-100 text-rose-600 hover:bg-rose-50'}`}
+                      >
+                        {reason}
+                      </button>
+                    ))}
+                  </div>
+                  <input 
+                    type="text"
+                    className="w-full bg-white border border-rose-100 rounded-2xl px-6 py-4 text-sm font-bold placeholder:text-rose-200 outline-none focus:border-rose-400"
+                    placeholder="Provide a custom rejection reason if 'Other'..."
+                    value={reviewForm.rejectionReason}
+                    onChange={(e) => setReviewForm(prev => ({ ...prev, rejectionReason: e.target.value }))}
+                  />
+                </div>
               </div>
             )}
           </div>

@@ -76,9 +76,14 @@ const createStaff = async (req, res) => {
             return res.status(400).json({ message: 'Invalid staff specialization' });
         }
 
-        const existing = await User.findOne({ $or: [{ email }, { username }] });
-        if (existing) {
-            return res.status(409).json({ message: 'Credentials already registered' });
+        const existingEmail = await User.findOne({ email, isDeleted: false });
+        if (existingEmail) {
+            return res.status(409).json({ message: 'Email is already registered to an active account' });
+        }
+
+        const existingUser = await User.findOne({ username, isDeleted: false });
+        if (existingUser) {
+            return res.status(409).json({ message: 'Username is already taken' });
         }
 
         const store = await Store.findById(targetStoreId);
