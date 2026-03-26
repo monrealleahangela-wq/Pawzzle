@@ -7,15 +7,17 @@ import {
   CheckCircle, AlertTriangle, Star, Briefcase, Settings, Calendar
 } from 'lucide-react';
 
+import { serviceService, adminServiceService, uploadService, getImageUrl } from '../../services/apiService';
+
 const PhilippinePeso = ({ className }) => (
-  <svg 
-    xmlns="http://www.w3.org/2000/svg" 
-    viewBox="0 0 24 24" 
-    fill="none" 
-    stroke="currentColor" 
-    strokeWidth="2" 
-    strokeLinecap="round" 
-    strokeLinejoin="round" 
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
     className={className}
   >
     <path d="M20 11H4" />
@@ -23,7 +25,6 @@ const PhilippinePeso = ({ className }) => (
     <path d="M7 21V4a5 5 0 0 1 5 5c0 2.2-1.8 3-5 3Z" />
   </svg>
 );
-import { serviceService, adminServiceService, uploadService, getImageUrl } from '../../services/apiService';
 
 const ServiceManagement = () => {
   const [services, setServices] = useState([]);

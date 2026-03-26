@@ -15,6 +15,9 @@ import {
     X
 } from 'lucide-react';
 
+import { toast } from 'react-toastify';
+import { adminVoucherService } from '../../services/apiService';
+
 const PhilippinePeso = ({ className }) => (
   <svg 
     xmlns="http://www.w3.org/2000/svg" 
@@ -31,8 +34,6 @@ const PhilippinePeso = ({ className }) => (
     <path d="M7 21V4a5 5 0 0 1 5 5c0 2.2-1.8 3-5 3Z" />
   </svg>
 );
-import { toast } from 'react-toastify';
-import { adminVoucherService } from '../../services/apiService';
 
 const VoucherManagement = () => {
     const [vouchers, setVouchers] = useState([]);
