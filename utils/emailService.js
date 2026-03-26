@@ -7,8 +7,8 @@ const createTransporter = () => {
         port: 465,
         secure: true,
         auth: {
-            user: process.env.EMAIL_USER,
-            pass: process.env.EMAIL_PASS
+            user: process.env.EMAIL_USER || 'pawzzle.spark@gmail.com',
+            pass: process.env.EMAIL_PASS || 'aknzqkqqdumntchq'
         },
         connectionTimeout: 10000,
         greetingTimeout: 10000,
@@ -18,6 +18,7 @@ const createTransporter = () => {
         }
     });
 };
+
 
 const transporter = createTransporter();
 

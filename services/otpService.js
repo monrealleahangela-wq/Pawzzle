@@ -57,11 +57,14 @@ const sendWithResend = async (to, subject, html) => {
 
 // Create reusable transporter (Nodemailer Fallback)
 const createTransporter = async () => {
-  const isUserDefault = process.env.EMAIL_USER === 'your-email@gmail.com' || !process.env.EMAIL_USER;
-  const isPassDefault = process.env.EMAIL_PASS === 'your-app-password' || !process.env.EMAIL_PASS;
+  const user = process.env.EMAIL_USER || 'pawzzle.spark@gmail.com';
+  const pass = process.env.EMAIL_PASS || 'aknzqkqqdumntchq';
+
+  const isUserDefault = user === 'your-email@gmail.com';
+  const isPassDefault = pass === 'your-app-password';
 
   if (!isUserDefault && !isPassDefault) {
-    const isHostinger = process.env.EMAIL_SERVICE === 'hostinger' || (process.env.EMAIL_USER && process.env.EMAIL_USER.endsWith('@pawzzle.io'));
+    const isHostinger = process.env.EMAIL_SERVICE === 'hostinger' || user.endsWith('@pawzzle.io');
     
     return {
       transporter: nodemailer.createTransport({
@@ -69,8 +72,8 @@ const createTransporter = async () => {
         port: isHostinger ? 587 : 465,
         secure: isHostinger ? false : true,
         auth: {
-          user: process.env.EMAIL_USER,
-          pass: process.env.EMAIL_PASS
+          user: user,
+          pass: pass
         },
         debug: true,
         logger: true,
@@ -83,7 +86,7 @@ const createTransporter = async () => {
           rejectUnauthorized: false
         }
       }),
-      fromEmail: process.env.EMAIL_USER,
+      fromEmail: user,
       isEthereal: false
     };
   }
