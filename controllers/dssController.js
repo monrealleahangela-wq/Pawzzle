@@ -332,25 +332,25 @@ const getAdminInsights = async (req, res) => {
         const { storeId: queryStoreId } = req.query;
         let store;
         
+        // Block staff from central admin dashboard stats (Financials)
         if (req.user.role === 'staff') {
-            if (req.user.store) {
-                store = await Store.findById(req.user.store);
-            } else {
-                return res.status(403).json({ message: 'Staff account not assigned to a store.' });
+            return res.status(403).json({ 
+                message: 'Access denied. Staff should use the Staff DSS endpoint.',
+                redirect: '/staff/dashboard' 
+            });
+        }
+
+        // Admin or Super Admin
+        if (queryStoreId) {
+            store = await Store.findOne({ _id: queryStoreId });
+            // Verify ownership if not super admin
+            if (req.user.role !== 'super_admin' && store && store.owner.toString() !== req.user._id.toString()) {
+                return res.status(403).json({ message: 'Access denied to this store' });
             }
         } else {
-            // Admin or Super Admin
-            if (queryStoreId) {
-                store = await Store.findOne({ _id: queryStoreId });
-                // Verify ownership if not super admin
-                if (req.user.role !== 'super_admin' && store && store.owner.toString() !== req.user._id.toString()) {
-                    return res.status(403).json({ message: 'Access denied to this store' });
-                }
-            } else {
-                store = await Store.findOne({ owner: req.user._id });
-                if (!store && req.user.store) {
-                    store = await Store.findById(req.user.store);
-                }
+            store = await Store.findOne({ owner: req.user._id });
+            if (!store && req.user.store) {
+                store = await Store.findById(req.user.store);
             }
         }
 
@@ -533,28 +533,10 @@ const getAdminInsights = async (req, res) => {
             { $sort: { '_id.year': 1, '_id.month': 1 } }
         ]);
 
-        // 8. Role-Based Tailoring (Requirement)
-        let filteredRecommendations = recommendations;
-        if (req.user.role === 'staff') {
-            switch (req.user.staffType) {
-                case 'inventory_staff':
-                    filteredRecommendations = recommendations.filter(r => ['restock', 'demand'].includes(r.type));
-                    break;
-                case 'order_staff':
-                    filteredRecommendations = recommendations.filter(r => ['demand', 'promotion'].includes(r.type));
-                    break;
-                case 'service_staff':
-                    // Service staff might just see general alerts or booking trends
-                    filteredRecommendations = recommendations.filter(r => r.type === 'demand');
-                    break;
-            }
-        }
-
         res.json({
             roleProfile: {
                 role: req.user.role,
-                staffType: req.user.staffType,
-                isStaff: req.user.role === 'staff'
+                isStaff: false
             },
             overview: {
                 totalGross: totalGrossRevenue,
@@ -566,7 +548,7 @@ const getAdminInsights = async (req, res) => {
                 avgRating: parseFloat(avgRating)
             },
             salesHistory: {
-                topSelling: req.user.role === 'staff' && req.user.staffType === 'service_staff' ? [] : topSelling,
+                topSelling,
                 categoryTrends
             },
             inventory: {
@@ -575,14 +557,14 @@ const getAdminInsights = async (req, res) => {
                     low: allProducts.filter(p => p.stockQuantity <= 20 && p.stockQuantity > 0).length,
                     out: allProducts.filter(p => p.stockQuantity === 0).length
                 },
-                slowMoving: req.user.role === 'staff' && req.user.staffType === 'order_staff' ? [] : slowMoving.map(p => ({ id: p._id, name: p.name, stock: p.stockQuantity, category: p.category })),
-                needsRestock: req.user.role === 'staff' && req.user.staffType === 'service_staff' ? [] : needsRestock.map(p => ({ id: p._id, name: p.name, stock: p.stockQuantity, category: p.category }))
+                slowMoving: slowMoving.map(p => ({ id: p._id, name: p.name, stock: p.stockQuantity, category: p.category })),
+                needsRestock: needsRestock.map(p => ({ id: p._id, name: p.name, stock: p.stockQuantity, category: p.category }))
             },
             customers: {
-                patterns: req.user.role === 'staff' && req.user.staffType === 'inventory_staff' ? [] : customerPatterns
+                patterns: customerPatterns
             },
-            recommendations: filteredRecommendations,
-            monthlyRevenue: req.user.role === 'staff' && req.user.staffType === 'inventory_staff' ? [] : monthlyRevenue,
+            recommendations,
+            monthlyRevenue,
             bookings: {
                 total: bookings.length,
                 completed: bookings.filter(b => b.status === 'completed').length
@@ -592,6 +574,146 @@ const getAdminInsights = async (req, res) => {
 
     } catch (error) {
         console.error('Admin DSS error:', error);
+        res.status(500).json({ message: 'Server error', error: error.message });
+    }
+};
+
+// ===== STAFF DECISION SUPPORT SYSTEM (DSS) =====
+const getStaffInsights = async (req, res) => {
+    try {
+        if (req.user.role !== 'staff' && req.user.role !== 'admin' && req.user.role !== 'super_admin') {
+            return res.status(403).json({ message: 'Access restricted to Staff.' });
+        }
+
+        const storeId = req.user.store;
+        if (!storeId) return res.status(400).json({ message: 'Staff account not linked to any store.' });
+
+        const staffType = req.user.staffType || 'general';
+
+        // 1. Fetch relevant datasets based on accessibility
+        const [orders, bookings, products, pets] = await Promise.all([
+            Order.find({ store: storeId, isDeleted: { $ne: true } }),
+            Booking.find({ store: storeId, isDeleted: { $ne: true } }),
+            Product.find({ store: storeId, isDeleted: { $ne: true } }),
+            Pet.find({ store: storeId, isDeleted: { $ne: true } })
+        ]);
+
+        const dssData = {
+            roleInfo: {
+                type: staffType,
+                storeId
+            },
+            criticalAlerts: [],
+            recommendations: [],
+            actionItems: []
+        };
+
+        // 2. Specialized Decision Support Logic
+        
+        // --- INVENTORY STAFF DSS ---
+        if (staffType === 'inventory_staff' || staffType === 'general' || req.user.role === 'admin') {
+            const lowStockProducts = products.filter(p => p.stockQuantity <= 5 && p.isActive);
+            const midStockProducts = products.filter(p => p.stockQuantity > 5 && p.stockQuantity <= 15);
+            
+            // Intelligence: Restock priority
+            lowStockProducts.forEach(p => {
+                dssData.criticalAlerts.push({
+                    type: 'restock_critical',
+                    title: 'Immediate Restock Required',
+                    target: p.name,
+                    reason: `Critical stock level: ${p.stockQuantity} remaining.`,
+                    actionUrl: `/inventory/edit/${p._id}`
+                });
+            });
+
+            // Strategy: Predict dead stock
+            const ninetyDaysAgo = new Date();
+            ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+            const deadStock = products.filter(p => p.createdAt < ninetyDaysAgo && p.stockQuantity > 20);
+            if (deadStock.length > 0) {
+                dssData.recommendations.push({
+                    type: 'inventory_optimization',
+                    title: 'Slow Moving Inventory Detected',
+                    message: `${deadStock.length} items haven't moved in 90 days. Recommend clearing shelf space or bundle promo.`,
+                    priority: 'medium'
+                });
+            }
+
+            dssData.inventorySummary = {
+                critical: lowStockProducts.length,
+                warning: midStockProducts.length,
+                healthy: products.filter(p => p.stockQuantity > 15).length
+            };
+        }
+
+        // --- ORDER STAFF DSS ---
+        if (staffType === 'order_staff' || staffType === 'general' || req.user.role === 'admin') {
+            const pendingOrders = orders.filter(o => ['pending', 'confirmed'].includes(o.status));
+            const processingOrders = orders.filter(o => o.status === 'processing');
+            
+            // Intelligence: Order Latency
+            const twentyFourHoursAgo = new Date();
+            twentyFourHoursAgo.getHours() - 24;
+            const delayedOrders = pendingOrders.filter(o => o.createdAt < twentyFourHoursAgo);
+            
+            if (delayedOrders.length > 0) {
+                dssData.criticalAlerts.push({
+                    type: 'order_delay',
+                    title: 'Shipping Latency Detected',
+                    target: `${delayedOrders.length} Orders`,
+                    reason: `Orders are exceeding 24h response time. Expected SLA at risk.`,
+                    actionUrl: '/admin/orders?status=pending'
+                });
+            }
+
+            dssData.orderSummary = {
+                toProcess: pendingOrders.length,
+                inProgress: processingOrders.length,
+                shippedToday: orders.filter(o => o.status === 'shipped' && o.updatedAt > new Date().setHours(0,0,0,0)).length
+            };
+        }
+
+        // --- SERVICE STAFF DSS ---
+        if (staffType === 'service_staff' || staffType === 'general' || req.user.role === 'admin') {
+            const upcoming = bookings.filter(b => b.status === 'confirmed' || b.status === 'pending');
+            const today = new Date().setHours(0,0,0,0);
+            const tomorrow = new Date();
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            tomorrow.setHours(0,0,0,0);
+
+            const bookingsToday = upcoming.filter(b => new Date(b.date).getTime() === today);
+            
+            // Intelligence: Schedule Density
+            if (bookingsToday.length > 8) {
+                dssData.recommendations.push({
+                    type: 'capacity',
+                    title: 'Peak Volume Detected Today',
+                    message: `Schedule is 90% full. Recommend cross-training available inventory staff for front-desk support.`,
+                    priority: 'high'
+                });
+            }
+
+            // Specific Intelligence: Pet Health Concerns during services
+            const petsNeedingAttention = pets.filter(p => p.healthStatus === 'needs_attention');
+            if (petsNeedingAttention.length > 0) {
+                dssData.criticalAlerts.push({
+                    type: 'health_alert',
+                    title: 'Special Care Required',
+                    target: `${petsNeedingAttention.length} Pets in Store`,
+                    reason: `Medical history flags detected. Ensure service staff applies safety protocols.`,
+                    actionUrl: '/admin/pets'
+                });
+            }
+
+            dssData.serviceSummary = {
+                todayCount: bookingsToday.length,
+                pendingRequests: bookings.filter(b => b.status === 'pending').length
+            };
+        }
+
+        res.json(dssData);
+    } catch (error) {
+        console.error('Staff DSS error:', error);
         res.status(500).json({ message: 'Server error', error: error.message });
     }
 };
@@ -766,5 +888,6 @@ const getSuperAdminInsights = async (req, res) => {
 module.exports = {
     getCustomerInsights,
     getAdminInsights,
+    getStaffInsights,
     getSuperAdminInsights
 };
