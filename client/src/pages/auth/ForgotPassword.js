@@ -268,13 +268,20 @@ const ForgotPassword = () => {
                     <div className="input-container group">
                       <Lock className="input-icon h-5 w-5" />
                       <input
-                        type="password"
+                        type={showPassword ? 'text' : 'password'}
                         value={confirmPassword}
                         onChange={(e) => setConfirmPassword(e.target.value)}
-                        className="input input-with-icon w-full py-4 bg-white/50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 outline-none transition-all font-medium text-slate-700"
+                        className="input input-with-both-icons w-full py-4 bg-white/50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 outline-none transition-all font-medium text-slate-700"
                         placeholder="Repeat new password"
                         required
                       />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="input-icon-right pointer-events-auto hover:text-primary-500 transition-colors"
+                      >
+                        {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                      </button>
                     </div>
                   </div>
                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tight px-1">
