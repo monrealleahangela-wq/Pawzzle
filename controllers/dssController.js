@@ -335,8 +335,8 @@ const getAdminInsights = async (req, res) => {
         // Block staff from central admin dashboard stats (Financials)
         if (req.user.role === 'staff') {
             return res.status(403).json({ 
-                message: 'Access denied. Staff should use the Staff DSS endpoint.',
-                redirect: '/staff/dashboard' 
+                message: 'Access Restricted. You are only allowed to see Staff Intelligence.',
+                redirectUrl: '/staff/intelligence'
             });
         }
 
@@ -586,17 +586,23 @@ const getStaffInsights = async (req, res) => {
         }
 
         const storeId = req.user.store;
-        if (!storeId) return res.status(400).json({ message: 'Staff account not linked to any store.' });
+        if (!storeId) {
+            console.log(`[DSS] Staff ${req.user.email} (ID: ${req.user._id}) has no store ID assigned!`);
+            return res.status(400).json({ message: 'Staff account not linked to any store. Please contact your admin.' });
+        }
 
         const staffType = req.user.staffType || 'general';
+        console.log(`[DSS] Loading Insights for Store: ${storeId} | StaffType: ${staffType}`);
 
         // 1. Fetch relevant datasets based on accessibility
         const [orders, bookings, products, pets] = await Promise.all([
-            Order.find({ store: storeId, isDeleted: { $ne: true } }),
-            Booking.find({ store: storeId, isDeleted: { $ne: true } }),
-            Product.find({ store: storeId, isDeleted: { $ne: true } }),
-            Pet.find({ store: storeId, isDeleted: { $ne: true } })
+            Order.find({ store: storeId, isDeleted: { $ne: true } }).lean(),
+            Booking.find({ store: storeId, isDeleted: { $ne: true } }).lean(),
+            Product.find({ store: storeId, isDeleted: { $ne: true } }).lean(),
+            Pet.find({ store: storeId, isDeleted: { $ne: true } }).lean()
         ]);
+
+        console.log(`[DSS] Found: ${orders.length} orders, ${bookings.length} bookings, ${products.length} products, ${pets.length} pets.`);
 
         const dssData = {
             roleInfo: {
@@ -647,41 +653,38 @@ const getStaffInsights = async (req, res) => {
         }
 
         // --- ORDER STAFF DSS ---
-        if (staffType === 'order_staff' || staffType === 'general' || req.user.role === 'admin') {
+        if (staffType === 'order_staff' || staffType === 'general' || ['admin', 'super_admin'].includes(req.user.role)) {
             const pendingOrders = orders.filter(o => ['pending', 'confirmed'].includes(o.status));
             const processingOrders = orders.filter(o => o.status === 'processing');
             
-            // Intelligence: Order Latency
+            // Intelligence: Order Latency (Orders older than 24 hours)
             const twentyFourHoursAgo = new Date();
-            twentyFourHoursAgo.getHours() - 24;
-            const delayedOrders = pendingOrders.filter(o => o.createdAt < twentyFourHoursAgo);
+            twentyFourHoursAgo.setHours(twentyFourHoursAgo.getHours() - 24);
+            const delayedOrders = pendingOrders.filter(o => new Date(o.createdAt) < twentyFourHoursAgo);
             
             if (delayedOrders.length > 0) {
                 dssData.criticalAlerts.push({
                     type: 'order_delay',
                     title: 'Shipping Latency Detected',
-                    target: `${delayedOrders.length} Orders`,
-                    reason: `Orders are exceeding 24h response time. Expected SLA at risk.`,
-                    actionUrl: '/admin/orders?status=pending'
+                    target: `${delayedOrders.length} Delayed Orders`,
+                    reason: `These orders have been in pending/confirmed status for more than 24 hours.`,
+                    actionUrl: '/admin/orders'
                 });
             }
 
             dssData.orderSummary = {
                 toProcess: pendingOrders.length,
                 inProgress: processingOrders.length,
-                shippedToday: orders.filter(o => o.status === 'shipped' && o.updatedAt > new Date().setHours(0,0,0,0)).length
+                shippedToday: orders.filter(o => o.status === 'shipped' && new Date(o.updatedAt).setHours(0,0,0,0) === new Date().setHours(0,0,0,0)).length
             };
         }
 
         // --- SERVICE STAFF DSS ---
-        if (staffType === 'service_staff' || staffType === 'general' || req.user.role === 'admin') {
+        if (staffType === 'service_staff' || staffType === 'general' || ['admin', 'super_admin'].includes(req.user.role)) {
             const upcoming = bookings.filter(b => b.status === 'confirmed' || b.status === 'pending');
-            const today = new Date().setHours(0,0,0,0);
-            const tomorrow = new Date();
-            tomorrow.setDate(tomorrow.getDate() + 1);
-            tomorrow.setHours(0,0,0,0);
-
-            const bookingsToday = upcoming.filter(b => new Date(b.date).getTime() === today);
+            const todayNum = new Date().setHours(0,0,0,0);
+            
+            const bookingsToday = upcoming.filter(b => b.date && new Date(b.date).setHours(0,0,0,0) === todayNum);
             
             // Intelligence: Schedule Density
             if (bookingsToday.length > 8) {
