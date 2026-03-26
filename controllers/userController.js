@@ -249,6 +249,41 @@ const deleteUser = async (req, res) => {
   }
 };
 
+// Delete own account (Soft delete)
+const deleteMyAccount = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    // Super admins should use the regular deleteUser or avoid self-deletion via UI
+    if (user.role === 'super_admin') {
+      return res.status(400).json({ message: 'Super administrators cannot delete their own account through this endpoint.' });
+    }
+
+    // Soft delete the user
+    user.isDeleted = true;
+    user.isActive = false;
+    user.deactivationReason = 'Account closed by user.';
+    user.deactivatedAt = new Date();
+    
+    // We keep the email and username for audit but the partial index 
+    // in models/User.js allows new users to reuse them.
+    await user.save();
+
+    await ActivityLog.create({
+      user: user._id,
+      action: 'Account Deleted',
+      details: 'User initiated self-account closure (Soft Delete)',
+      ipAddress: req.ip
+    });
+
+    res.json({ message: 'Your account has been successfully closed. We hope to see you again!' });
+  } catch (error) {
+    console.error('deleteMyAccount error:', error);
+    res.status(500).json({ message: 'Failed to delete account' });
+  }
+};
+
 // Toggle user active status (Super Admin only)
 const toggleUserStatus = async (req, res) => {
   try {
@@ -393,6 +428,7 @@ module.exports = {
   getUserById,
   updateUser,
   deleteUser,
+  deleteMyAccount,
   getUserCredentials,
   toggleUserStatus,
   getAdminSettings,

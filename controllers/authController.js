@@ -76,8 +76,11 @@ const sendRegisterOTP = async (req, res) => {
       });
     }
 
-    // Check if user already exists
-    const existingUser = await User.findOne({ $or: [{ email }, { username }] });
+    // Check if user already exists (Ignore soft-deleted accounts)
+    const existingUser = await User.findOne({ 
+      $or: [{ email }, { username }], 
+      isDeleted: false 
+    });
     if (existingUser) {
       return res.status(400).json({ message: 'User with this email or username already exists' });
     }
@@ -162,8 +165,11 @@ const verifyRegisterOTP = async (req, res) => {
     // OTP verified — create the user
     const { userData } = storedData;
 
-    // Double-check user doesn't exist (race condition guard)
-    const existingUser = await User.findOne({ $or: [{ email: userData.email }, { username: userData.username }] });
+    // Double-check user doesn't exist (race condition guard, ignore soft-deleted)
+    const existingUser = await User.findOne({ 
+      $or: [{ email: userData.email }, { username: userData.username }],
+      isDeleted: false
+    });
     if (existingUser) {
       otpStore.delete(`reg_${email}`);
       return res.status(400).json({ message: 'User already exists' });
@@ -261,7 +267,10 @@ const register = async (req, res) => {
 
     const { username, email, password, firstName, lastName, phone, address, role } = req.body;
 
-    const existingUser = await User.findOne({ $or: [{ email }, { username }] });
+    const existingUser = await User.findOne({ 
+      $or: [{ email }, { username }],
+      isDeleted: false
+    });
     if (existingUser) {
       return res.status(400).json({ message: 'User with this email or username already exists' });
     }
@@ -315,7 +324,8 @@ const login = async (req, res) => {
     const { email, password } = req.body; // Actually this could be email or username 
 
     const user = await User.findOne({
-      $or: [{ email: email }, { username: email }]
+      $or: [{ email: email }, { username: email }],
+      isDeleted: false
     }).populate('store');
 
     if (!user) {
@@ -499,7 +509,7 @@ const requestPasswordResetOTP = async (req, res) => {
       return res.status(400).json({ message: emailValidation.reason });
     }
 
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ email, isDeleted: false });
     if (!user) {
       return res.status(404).json({ message: 'No account found with this email address.' });
     }
@@ -554,7 +564,7 @@ const verifyOTPAndResetPassword = async (req, res) => {
       return res.status(400).json({ message: 'Invalid reset code. Please try again.' });
     }
 
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ email, isDeleted: false });
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
@@ -588,7 +598,7 @@ const resendPasswordResetOTP = async (req, res) => {
       return res.status(400).json({ message: 'Email is required' });
     }
 
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ email, isDeleted: false });
     if (!user) {
       return res.status(404).json({ message: 'No account found with this email address.' });
     }

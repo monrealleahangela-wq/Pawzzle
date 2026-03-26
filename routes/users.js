@@ -37,6 +37,13 @@ router.put('/:id', authenticate, updateUserValidation, updateUser);
 router.get('/admin/settings', authenticate, adminOrStaff, getAdminSettings);
 router.put('/admin/settings', authenticate, adminOrStaff, updateAdminSettings);
 
+// General user routes
+router.delete('/me', authenticate, (req, res, next) => {
+  // We'll implement deleteMyAccount in userController
+  const { deleteMyAccount } = require('../controllers/userController');
+  deleteMyAccount(req, res);
+});
+
 // Super Admin only routes
 router.delete('/:id', authenticate, superAdminOnly, deleteUser);
 router.patch('/:id/toggle-status', authenticate, superAdminOnly, toggleUserStatus);

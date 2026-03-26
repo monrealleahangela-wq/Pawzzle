@@ -5,7 +5,6 @@ const userSchema = new mongoose.Schema({
   username: {
     type: String,
     required: true,
-    unique: true,
     trim: true,
     minlength: 3,
     maxlength: 50
@@ -13,7 +12,6 @@ const userSchema = new mongoose.Schema({
   email: {
     type: String,
     required: true,
-    unique: true,
     trim: true,
     lowercase: true
   },
@@ -134,6 +132,18 @@ const userSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   }
+});
+
+// Enforce unique email/username ONLY for non-deleted accounts
+// This allows reusing emails from soft-deleted accounts
+userSchema.index({ email: 1 }, { 
+  unique: true, 
+  partialFilterExpression: { isDeleted: false } 
+});
+
+userSchema.index({ username: 1 }, { 
+  unique: true, 
+  partialFilterExpression: { isDeleted: false } 
 });
 
 // Hash password before saving (only for local auth)

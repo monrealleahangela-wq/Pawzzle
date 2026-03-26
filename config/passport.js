@@ -13,8 +13,11 @@ passport.use(new GoogleStrategy({
         const email = profile.emails?.[0]?.value;
         if (!email) return done(new Error('No email returned from Google'), null);
 
-        // Check if user already exists (by googleId or email)
-        let user = await User.findOne({ $or: [{ googleId: profile.id }, { email }] });
+        // Check if active user already exists (by googleId or email, ignoring soft-deleted)
+        let user = await User.findOne({ 
+            $or: [{ googleId: profile.id }, { email }],
+            isDeleted: false
+        });
 
         if (user) {
             // Link Google if they registered via email before
