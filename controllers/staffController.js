@@ -46,45 +46,71 @@ const getMyStaff = async (req, res) => {
  */
 const createStaff = async (req, res) => {
     try {
+        console.log('--- 🚀 CREATE STAFF API HIT 🚀 ---');
         const { firstName, lastName, email, username, password, staffType, phone, storeId } = req.body;
+        console.log(`Payload: ${JSON.stringify({ firstName, lastName, email, username, staffType, phone, storeId })}`);
+
+        const creatorId = req.user._id || req.user.id;
+        console.log(`Creator ID: ${creatorId}`);
 
         if (!firstName || !lastName || !email || !username || !staffType) {
+            console.log('❌ Missing required staff fields');
             return res.status(400).json({ message: 'Missing required staff fields' });
         }
 
         // Generate temporary password if not provided
         const tempPassword = password || crypto.randomBytes(6).toString('hex');
+        console.log(`🔑 Generated Temp Password: ${tempPassword}`);
 
         // Determine target store
         let targetStoreId = storeId || req.user.store;
         if (!targetStoreId) {
+            console.log('Attempting to find admin\'s default store...');
             const adminStore = await Store.findOne({ owner: req.user._id });
             if (!adminStore) {
+                console.log('❌ Admin must own a store to hire staff');
                 return res.status(400).json({ message: 'Admin must own a store to hire staff' });
             }
             targetStoreId = adminStore._id;
+            console.log(`Default store found: ${targetStoreId}`);
+        } else {
+            console.log(`Target store provided: ${targetStoreId}`);
         }
 
         // Verify ownership/permission if not super admin
         if (req.user.role !== 'super_admin') {
+            console.log(`Checking store ownership for admin (${req.user._id}) and store (${targetStoreId})...`);
             const isOwner = await Store.findOne({ _id: targetStoreId, owner: req.user._id });
-            if (!isOwner) return res.status(403).json({ message: 'Store access denied' });
+            if (!isOwner) {
+                console.log('❌ Store access denied for this admin');
+                return res.status(403).json({ message: 'Store access denied' });
+            }
+            console.log('✅ Admin owns the target store.');
+        } else {
+            console.log('User is super_admin, skipping store ownership check.');
         }
 
         const validTypes = ['order_staff', 'inventory_staff', 'service_staff'];
         if (!validTypes.includes(staffType)) {
+            console.log(`❌ INVALID STAFF TYPE: ${staffType}`);
             return res.status(400).json({ message: 'Invalid staff specialization' });
         }
+        console.log(`Staff type validated: ${staffType}`);
 
-        const existingEmail = await User.findOne({ email, isDeleted: false });
-        if (existingEmail) {
-            return res.status(409).json({ message: 'Email is already registered to an active account' });
-        }
+        const existingUser = await User.findOne({
+            $or: [{ email }, { username }],
+            isDeleted: false
+        });
 
-        const existingUser = await User.findOne({ username, isDeleted: false });
         if (existingUser) {
-            return res.status(409).json({ message: 'Username is already taken' });
+            console.log(`❌ CONFLICT: User with email/username already exists: ${email}/${username}`);
+            return res.status(409).json({
+                message: existingUser.email === email
+                    ? 'Email is already registered. Please use a different one.'
+                    : 'Username is already taken. Please use a different one.'
+            });
         }
+        console.log('✅ Email and Username are unique.');
 
         const store = await Store.findById(targetStoreId);
         let staffAddress = { street: 'N/A', city: 'N/A', province: 'Cavite', barangay: 'N/A', country: 'PH' };
@@ -97,6 +123,9 @@ const createStaff = async (req, res) => {
                 zipCode: store.contactInfo.address.zipCode || '',
                 country: 'PH'
             };
+            console.log('Staff address derived from store contact info.');
+        } else {
+            console.log('Using default staff address.');
         }
 
         const staff = new User({
@@ -111,19 +140,21 @@ const createStaff = async (req, res) => {
             store: targetStoreId,
             createdBy: req.user._id,
             isActive: true,
-            requiresPasswordChange: true, // 🛡️ Enforce first-login change
+            isFirstLogin: true, // 🛡️ Enforce first-login change
             address: staffAddress
         });
 
+        console.log('💾 Saving staff to database...');
         await staff.save();
+        console.log(`✅ Staff saved! ID: ${staff._id}`);
 
-        // 📧 Send Invitation Email
-        try {
-            await sendStaffInvitation(email, tempPassword, firstName);
-        } catch (emailErr) {
-            console.error('Failed to send staff welcome email:', emailErr.message);
-            // We still proceed since account is created
-        }
+        // 📧 Send Invitation Email (Background Task)
+        console.log(`📧 Dispatching email to: ${email}`);
+        sendStaffInvitation(email, tempPassword, firstName).catch(emailErr => {
+            console.error('❌ [BackgroundEmail] Failed:', emailErr);
+        });
+
+        // Response is sent immediately while email sends in background
 
         const staffObj = staff.toObject();
         delete staffObj.password;
@@ -133,8 +164,12 @@ const createStaff = async (req, res) => {
             staff: staffObj 
         });
     } catch (error) {
-        console.error('createStaff error:', error);
-        res.status(500).json({ message: 'Staff creation failed' });
+        console.error('createStaff error details:', error);
+        res.status(500).json({ 
+            message: 'Staff creation failed', 
+            error: error.message,
+            details: error.code === 11000 ? 'Database conflict (duplicate identity)' : 'Internal server error'
+        });
     }
 };
 

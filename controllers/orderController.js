@@ -118,12 +118,12 @@ const createOrder = async (req, res) => {
       if (item.itemType === 'pet') {
         itemDoc = await Pet.findById(item.itemId);
         if (!itemDoc || !itemDoc.isAvailable) {
-          return res.status(400).json({ message: `Pet ${item.itemId} is not available` });
+          return res.status(400).json({ message: `Pet "${itemDoc?.name || item.itemId}" is not available` });
         }
       } else if (item.itemType === 'product') {
         itemDoc = await Product.findById(item.itemId);
         if (!itemDoc || !itemDoc.isActive || itemDoc.stockQuantity < item.quantity) {
-          return res.status(400).json({ message: `Product ${item.itemId} is not available or insufficient stock` });
+          return res.status(400).json({ message: `Product "${itemDoc?.name || item.itemId}" is not available or has insufficient stock` });
         }
 
         // Stock will be reduced only when the seller confirms the order in updateOrderStatus

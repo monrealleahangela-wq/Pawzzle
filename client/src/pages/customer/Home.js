@@ -4,6 +4,7 @@ import { petService, productService, storeService, getImageUrl } from '../../ser
 import { Heart, Package, Star, ArrowRight, Sparkles, TrendingUp, Users, ShoppingBag, Shield, Zap, MapPin, Crown, ChevronRight, Clock, Navigation, Building } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { useAuth } from '../../contexts/AuthContext';
+import { useCart } from '../../contexts/CartContext';
 import { CardLoader } from '../../components/ui/LoadingSpinner';
 
 /* ── Animated counter hook ── */
@@ -65,6 +66,7 @@ const calculateDistance = (lat1, lon1, lat2, lon2) => {
 const Home = () => {
   const location = useLocation();
   const { user, isAuthenticated } = useAuth();
+  const { addToCart } = useCart();
   const [featuredPets, setFeaturedPets] = useState([]);
   const [featuredProducts, setFeaturedProducts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -451,6 +453,27 @@ const Home = () => {
                   <span className={`absolute top-2 right-2 px-2 py-0.5 rounded-lg text-[7px] font-black uppercase tracking-wider backdrop-blur-md border border-white/20 shadow-sm ${product.stockQuantity > 5 ? 'bg-emerald-500/90 text-white' : 'bg-rose-500/90 text-white'}`}>
                     {product.stockQuantity > 5 ? 'In Stock' : 'Low'}
                   </span>
+                  
+                  {/* Quick Add to Cart Button */}
+                  <button
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      addToCart({
+                        itemId: product._id,
+                        itemType: 'product',
+                        name: product.name,
+                        price: product.price,
+                        image: product.images?.[0],
+                        quantity: 1,
+                        store: product.store
+                      });
+                      toast.success(`${product.name} added to cart!`);
+                    }}
+                    className="absolute bottom-2 right-2 p-2 bg-white/90 backdrop-blur-md border border-slate-100 rounded-xl text-slate-800 hover:bg-primary-600 hover:text-white hover:border-primary-600 active:scale-90 transition-all shadow-lg opacity-0 group-hover:opacity-100 translate-y-2 group-hover:translate-y-0 transition-all duration-300"
+                  >
+                    <ShoppingBag className="h-3 w-3" />
+                  </button>
                 </div>
                 <div className="px-2 pb-2 flex-1 flex flex-col">
                   <p className="text-[7px] font-black text-slate-400 uppercase tracking-widest mb-0.5 truncate">{product.category}</p>
