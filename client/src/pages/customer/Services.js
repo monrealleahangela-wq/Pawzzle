@@ -329,40 +329,41 @@ const Services = () => {
                 </div>
               </div>
 
-              {/* Store Identifier - Hidden on small mobile */}
-              {service.store && (
-                <div className="hidden sm:flex items-center gap-3 p-3 bg-slate-50 rounded-2xl border border-slate-100 group-hover:bg-primary-50 group-hover:border-primary-100 transition-all">
-                  <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shadow-sm">
-                    <Store className="h-5 w-5 text-primary-600" />
+              {/* Bottom Fixed Section */}
+              <div className="mt-auto space-y-4 pt-4">
+                {/* Store Identifier - Hidden on small mobile */}
+                {service.store && (
+                  <div className="hidden sm:flex items-center gap-3 p-3 bg-slate-50 rounded-2xl border border-slate-100 group-hover:bg-primary-50 group-hover:border-primary-100 transition-all">
+                    <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shadow-sm">
+                      <Store className="h-5 w-5 text-primary-600" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[10px] font-black text-slate-900 uppercase truncate leading-tight">
+                        {service.store.name}
+                      </p>
+                      <a
+                        href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+                          `${service.store.contactInfo?.address?.street || ''}, ${service.store.contactInfo?.address?.barangay || ''}, ${service.store.contactInfo?.address?.city || ''}, ${service.store.contactInfo?.address?.state || ''}`
+                        )}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-[9px] font-bold text-slate-500 hover:text-primary-600 transition-colors uppercase flex items-center gap-1 group/addr"
+                      >
+                        <MapPin className="h-2.5 w-2.5 text-primary-400 group-hover/addr:text-primary-600 transition-colors" />
+                        <span className="truncate">
+                          {[
+                            service.store.contactInfo?.address?.street,
+                            service.store.contactInfo?.address?.barangay,
+                            service.store.contactInfo?.address?.city,
+                            service.store.contactInfo?.address?.state
+                          ].filter(Boolean).join(', ') || 'Cavite Operating Zone'}
+                        </span>
+                      </a>
+                    </div>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[10px] font-black text-slate-900 uppercase truncate leading-tight">
-                      {service.store.name}
-                    </p>
-                    <a
-                      href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-                        `${service.store.contactInfo?.address?.street || ''}, ${service.store.contactInfo?.address?.barangay || ''}, ${service.store.contactInfo?.address?.city || ''}, ${service.store.contactInfo?.address?.state || ''}`
-                      )}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-[9px] font-bold text-slate-500 hover:text-primary-600 transition-colors uppercase flex items-center gap-1 group/addr"
-                    >
-                      <MapPin className="h-2.5 w-2.5 text-primary-400 group-hover/addr:text-primary-600 transition-colors" />
-                      <span className="truncate">
-                        {[
-                          service.store.contactInfo?.address?.street,
-                          service.store.contactInfo?.address?.barangay,
-                          service.store.contactInfo?.address?.city,
-                          service.store.contactInfo?.address?.state
-                        ].filter(Boolean).join(', ') || 'Cavite Operating Zone'}
-                      </span>
-                    </a>
-                  </div>
-                </div>
-              )}
+                )}
 
-              {/* Enhanced Footer Button */}
-              <div className="pt-1 sm:pt-2 mt-auto">
+                {/* Enhanced Footer Button */}
                 <button
                   onClick={() => handleBookService(service._id)}
                   className="btn btn-primary w-full py-2 sm:py-4 text-[9px] sm:text-xs font-black uppercase tracking-widest shadow-md sm:shadow-lg shadow-primary-100 group/btn overflow-hidden"
