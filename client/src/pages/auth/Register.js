@@ -249,6 +249,7 @@ const Register = () => {
                     const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
                     handleOtpChange(index, pasted);
                   }}
+                  autoComplete="one-time-code"
                   className={`w-12 h-14 sm:w-14 sm:h-16 text-center text-xl sm:text-2xl font-black rounded-2xl border-2 outline-none transition-all duration-300
                     ${digit
                       ? 'border-primary-500 bg-primary-50 text-primary-700 shadow-lg shadow-primary-100'
@@ -322,7 +323,7 @@ const Register = () => {
             <p className="text-slate-500 font-medium">Create your premium pet-care profile</p>
           </div>
 
-          <form className="space-y-8" onSubmit={handleSubmit}>
+          <form className="space-y-8" onSubmit={handleSubmit} autoComplete="off">
             {/* Identity Grid */}
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
@@ -334,6 +335,7 @@ const Register = () => {
                     placeholder="Jane"
                     value={formData.firstName}
                     onChange={handleChange}
+                    autoComplete="off"
                   />
                 </div>
                 <div className="space-y-2">
@@ -344,6 +346,7 @@ const Register = () => {
                     placeholder="Doe"
                     value={formData.lastName}
                     onChange={handleChange}
+                    autoComplete="off"
                   />
                 </div>
               </div>
@@ -358,6 +361,7 @@ const Register = () => {
                     placeholder="janedoe_care"
                     value={formData.username}
                     onChange={handleChange}
+                    autoComplete="off"
                   />
                 </div>
               </div>
@@ -386,6 +390,7 @@ const Register = () => {
                     placeholder="09123456789"
                     value={formData.phone}
                     onChange={handleChange}
+                    autoComplete="off"
                   />
                 </div>
               </div>
@@ -404,6 +409,7 @@ const Register = () => {
                     className="w-full px-4 py-4 bg-white/50 border border-slate-100 rounded-2xl focus:border-primary-500 outline-none transition-all font-medium"
                     placeholder="123 Luxury Lane"
                     required
+                    autoComplete="off"
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
@@ -449,6 +455,7 @@ const Register = () => {
                       className="w-full px-4 py-4 bg-white/50 border border-slate-100 rounded-2xl focus:border-primary-500 outline-none transition-all font-medium"
                       placeholder="4100"
                       required
+                      autoComplete="off"
                     />
                   </div>
                 </div>

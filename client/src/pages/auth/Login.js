@@ -194,7 +194,7 @@ const Login = () => {
 
           {/* Form */}
           {!twoFactorRequired ? (
-            <form className="space-y-6" onSubmit={handleSubmit}>
+            <form className="space-y-6" onSubmit={handleSubmit} autoComplete="off">
               <div className="space-y-4">
                 <div className="space-y-2">
                   <label className="text-xs font-black uppercase tracking-widest text-slate-400 ml-1">Email or Username</label>
@@ -206,6 +206,7 @@ const Login = () => {
                       placeholder="email@example.com or username"
                       value={formData.email}
                       onChange={handleChange}
+                      autoComplete="off"
                     />
                   </div>
                 </div>
