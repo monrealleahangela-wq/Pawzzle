@@ -587,14 +587,12 @@ const getStaffInsights = async (req, res) => {
 
         const storeId = req.user.store;
         if (!storeId) {
-            console.log(`[DSS] Staff ${req.user.email} (ID: ${req.user._id}) has no store ID assigned!`);
-            return res.status(400).json({ message: 'Staff account not linked to any store. Please contact your admin.' });
+            return res.status(400).json({ message: 'Staff account not linked to any store.' });
         }
 
         const staffType = req.user.staffType || 'general';
-        console.log(`[DSS] Loading Insights for Store: ${storeId} | StaffType: ${staffType}`);
 
-        // 1. Fetch relevant datasets based on accessibility
+        // 1. Fetch relevant datasets
         const [orders, bookings, products, pets] = await Promise.all([
             Order.find({ store: storeId, isDeleted: { $ne: true } }).lean(),
             Booking.find({ store: storeId, isDeleted: { $ne: true } }).lean(),
@@ -602,119 +600,71 @@ const getStaffInsights = async (req, res) => {
             Pet.find({ store: storeId, isDeleted: { $ne: true } }).lean()
         ]);
 
-        console.log(`[DSS] Found: ${orders.length} orders, ${bookings.length} bookings, ${products.length} products, ${pets.length} pets.`);
+        const recommendations = [];
+        const criticalAlerts = [];
 
-        const dssData = {
-            roleInfo: {
-                type: staffType,
-                storeId
-            },
-            criticalAlerts: [],
-            recommendations: [],
-            actionItems: []
-        };
-
-        // 2. Specialized Decision Support Logic
-        
-        // --- INVENTORY STAFF DSS ---
-        if (staffType === 'inventory_staff' || staffType === 'general' || req.user.role === 'admin') {
-            const lowStockProducts = products.filter(p => p.stockQuantity <= 5 && p.isActive);
-            const midStockProducts = products.filter(p => p.stockQuantity > 5 && p.stockQuantity <= 15);
-            
-            // Intelligence: Restock priority
-            lowStockProducts.forEach(p => {
-                dssData.criticalAlerts.push({
-                    type: 'restock_critical',
-                    title: 'Immediate Restock Required',
-                    target: p.name,
-                    reason: `Critical stock level: ${p.stockQuantity} remaining.`,
-                    actionUrl: `/inventory/edit/${p._id}`
-                });
+        // --- INVENTORY LOGIC ---
+        const lowStock = products.filter(p => (p.stockQuantity <= 5 || p.stockQuantity < (p.minStockThreshold || 10)) && p.isActive);
+        lowStock.forEach(p => {
+            recommendations.push({
+                type: 'restock',
+                title: 'Restock Required',
+                productName: p.name,
+                message: `${p.name} is running low (${p.stockQuantity} remaining).`,
+                priority: p.stockQuantity <= 3 ? 'critical' : 'high',
+                daysUntilOut: 'Unknown',
+                velocity: 'N/A'
             });
+        });
 
-            // Strategy: Predict dead stock
-            const ninetyDaysAgo = new Date();
-            ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
-            const deadStock = products.filter(p => p.createdAt < ninetyDaysAgo && p.stockQuantity > 20);
-            if (deadStock.length > 0) {
-                dssData.recommendations.push({
-                    type: 'inventory_optimization',
-                    title: 'Slow Moving Inventory Detected',
-                    message: `${deadStock.length} items haven't moved in 90 days. Recommend clearing shelf space or bundle promo.`,
-                    priority: 'medium'
-                });
-            }
-
-            dssData.inventorySummary = {
-                critical: lowStockProducts.length,
-                warning: midStockProducts.length,
-                healthy: products.filter(p => p.stockQuantity > 15).length
-            };
+        // --- ORDER LOGIC ---
+        const pendingOrders = orders.filter(o => ['pending', 'confirmed'].includes(o.status));
+        const twentyFourHoursAgo = new Date();
+        twentyFourHoursAgo.setHours(twentyFourHoursAgo.getHours() - 24);
+        const delayedOrders = pendingOrders.filter(o => new Date(o.createdAt) < twentyFourHoursAgo);
+        
+        if (delayedOrders.length > 0) {
+            criticalAlerts.push({
+                type: 'order_delay',
+                title: 'Fulfillment Latency',
+                message: `${delayedOrders.length} orders are delayed past 24 hours.`
+            });
         }
 
-        // --- ORDER STAFF DSS ---
-        if (staffType === 'order_staff' || staffType === 'general' || ['admin', 'super_admin'].includes(req.user.role)) {
-            const pendingOrders = orders.filter(o => ['pending', 'confirmed'].includes(o.status));
-            const processingOrders = orders.filter(o => o.status === 'processing');
-            
-            // Intelligence: Order Latency (Orders older than 24 hours)
-            const twentyFourHoursAgo = new Date();
-            twentyFourHoursAgo.setHours(twentyFourHoursAgo.getHours() - 24);
-            const delayedOrders = pendingOrders.filter(o => new Date(o.createdAt) < twentyFourHoursAgo);
-            
-            if (delayedOrders.length > 0) {
-                dssData.criticalAlerts.push({
-                    type: 'order_delay',
-                    title: 'Shipping Latency Detected',
-                    target: `${delayedOrders.length} Delayed Orders`,
-                    reason: `These orders have been in pending/confirmed status for more than 24 hours.`,
-                    actionUrl: '/admin/orders'
-                });
-            }
+        // --- SERVICE LOGIC ---
+        const bookingsPending = bookings.filter(b => b.status === 'pending');
 
-            dssData.orderSummary = {
-                toProcess: pendingOrders.length,
-                inProgress: processingOrders.length,
-                shippedToday: orders.filter(o => o.status === 'shipped' && new Date(o.updatedAt).setHours(0,0,0,0) === new Date().setHours(0,0,0,0)).length
-            };
-        }
-
-        // --- SERVICE STAFF DSS ---
-        if (staffType === 'service_staff' || staffType === 'general' || ['admin', 'super_admin'].includes(req.user.role)) {
-            const upcoming = bookings.filter(b => b.status === 'confirmed' || b.status === 'pending');
-            const todayNum = new Date().setHours(0,0,0,0);
-            
-            const bookingsToday = upcoming.filter(b => b.date && new Date(b.date).setHours(0,0,0,0) === todayNum);
-            
-            // Intelligence: Schedule Density
-            if (bookingsToday.length > 8) {
-                dssData.recommendations.push({
-                    type: 'capacity',
-                    title: 'Peak Volume Detected Today',
-                    message: `Schedule is 90% full. Recommend cross-training available inventory staff for front-desk support.`,
-                    priority: 'high'
-                });
-            }
-
-            // Specific Intelligence: Pet Health Concerns during services
-            const petsNeedingAttention = pets.filter(p => p.healthStatus === 'needs_attention');
-            if (petsNeedingAttention.length > 0) {
-                dssData.criticalAlerts.push({
-                    type: 'health_alert',
-                    title: 'Special Care Required',
-                    target: `${petsNeedingAttention.length} Pets in Store`,
-                    reason: `Medical history flags detected. Ensure service staff applies safety protocols.`,
-                    actionUrl: '/admin/pets'
-                });
-            }
-
-            dssData.serviceSummary = {
-                todayCount: bookingsToday.length,
-                pendingRequests: bookings.filter(b => b.status === 'pending').length
-            };
-        }
-
-        res.json(dssData);
+        // Compatible Structure for AdminDSS.js
+        res.json({
+            roleProfile: {
+                role: req.user.role,
+                isStaff: true,
+                staffType
+            },
+            overview: {
+                totalRevenue: 0, // Staff don't see financial data usually
+                totalOrders: orders.length,
+                totalBookings: bookings.length,
+                activeProducts: products.length,
+                activePets: pets.length
+            },
+            inventory: {
+                levels: {
+                    healthy: products.filter(p => p.stockQuantity > 20).length,
+                    low: products.filter(p => p.stockQuantity <= 20 && p.stockQuantity > 0).length,
+                    out: products.filter(p => p.stockQuantity === 0).length
+                }
+            },
+            salesHistory: {
+                topSelling: [],
+                categoryTrends: {}
+            },
+            customers: { patterns: [] },
+            recommendations,
+            criticalAlerts,
+            monthlyRevenue: [],
+            conversionRate: 0
+        });
     } catch (error) {
         console.error('Staff DSS error:', error);
         res.status(500).json({ message: 'Server error', error: error.message });

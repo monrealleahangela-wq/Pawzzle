@@ -10,7 +10,10 @@ import {
     RefreshCw, Filter, Layers, ZapOff, ClipboardCheck
 } from 'lucide-react';
 
+import { useAuth } from '../../contexts/AuthContext';
+
 const AdminDSS = () => {
+    const { user } = useAuth();
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState('inventory');
@@ -20,7 +23,9 @@ const AdminDSS = () => {
     const fetchInsights = async () => {
         try {
             setLoading(true);
-            const res = await dssService.getAdminInsights();
+            const res = user?.role === 'staff' 
+                ? await dssService.getStaffInsights() 
+                : await dssService.getAdminInsights();
             setData(res.data);
         } catch (err) {
             toast.error('Failed to load store intelligence');
