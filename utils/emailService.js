@@ -71,8 +71,9 @@ const sendStaffInvitation = async (email, password, firstName) => {
         </div>
     `);
 
+    const fromUser = process.env.EMAIL_USER || 'pawzzle.spark@gmail.com';
     const mailOptions = {
-        from: `"Pawzzle Staff Management" <${process.env.EMAIL_USER}>`,
+        from: `"Pawzzle Staff Management" <${fromUser}>`,
         to: email,
         subject: '🔐 Welcome to Pawzzle! Your Staff Account Access Details',
         html: bodyHtml
@@ -80,8 +81,31 @@ const sendStaffInvitation = async (email, password, firstName) => {
 
     try {
         console.log(`[EmailService] Inviting staff: ${email}...`);
+        
+        // Use Resend as primary fallback if configured (bypasses Render's port blocks)
+        if (process.env.RESEND_API_KEY) {
+            const response = await fetch('https://api.resend.com/emails', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${process.env.RESEND_API_KEY}`
+                },
+                body: JSON.stringify({
+                    from: `Pawzzle Staff <hello@pawzzle.io>`, // Required Resend domain format
+                    to: [email],
+                    subject: mailOptions.subject,
+                    html: mailOptions.html
+                })
+            });
+            if (response.ok) {
+                console.log(`[EmailService] SUCCESS: Invitation sent to ${email} via RESEND`);
+                return await response.json();
+            }
+        }
+        
+        // Standard SMTP if Resend is missing
         const info = await transporter.sendMail(mailOptions);
-        console.log(`[EmailService] SUCCESS: Invitation sent to ${email}`);
+        console.log(`[EmailService] SUCCESS: Invitation sent to ${email} via SMTP`);
         return info;
     } catch (err) {
         console.error(`[EmailService] FAILED to send to ${email}:`, err.message);
