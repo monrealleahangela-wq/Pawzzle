@@ -91,7 +91,11 @@ const getPayoutHistory = async (req, res) => {
         const store = await Store.findOne({ owner: req.user._id });
         if (!store) return res.status(404).json({ message: 'Store not found' });
 
-        const payouts = await Payout.find({ store: store._id }).sort({ requestedAt: -1 });
+        const payouts = await Payout.find({ store: store._id })
+            .populate('store', 'name logo')
+            .populate('owner', 'firstName lastName email')
+            .populate('processedBy', 'firstName lastName')
+            .sort({ requestedAt: -1 });
         res.json(payouts);
     } catch (error) {
         console.error('Get payout history error:', error);

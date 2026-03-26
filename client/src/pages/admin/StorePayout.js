@@ -3,8 +3,9 @@ import { toast } from 'react-toastify';
 import { payoutService } from '../../services/apiService';
 import {
     Wallet, Plus, Trash2, Clock, CheckCircle, XCircle,
-    RefreshCw, CreditCard, Landmark, Smartphone, BadgeCheck
+    RefreshCw, CreditCard, Landmark, Smartphone, BadgeCheck, Printer
 } from 'lucide-react';
+import { generatePayoutReceipt } from '../../utils/payoutReceiptGenerator';
 
 const METHOD_ICONS = { gcash: Smartphone, maya: Smartphone, bank_transfer: Landmark };
 const METHOD_COLORS = { gcash: 'text-blue-500', maya: 'text-green-500', bank_transfer: 'text-slate-600' };
@@ -325,10 +326,22 @@ const StorePayout = () => {
                                             <p className="text-slate-400 text-xs">{new Date(p.requestedAt).toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: 'numeric' })} · {p.payoutMethod?.type?.replace('_', ' ')} · {p.payoutMethod?.accountNumber}</p>
                                             {p.adminNotes && <p className="text-slate-500 text-xs italic mt-0.5">"{p.adminNotes}"</p>}
                                         </div>
-                                        <p className="font-black text-slate-900 text-base shrink-0">₱{p.amount.toLocaleString()}</p>
-                                        <span className={`px-2.5 py-1 rounded-lg border text-[10px] font-black uppercase tracking-widest flex items-center gap-1 shrink-0 ${STATUS_STYLES[p.status]}`}>
-                                            <Icon className="h-3 w-3" />{p.status}
-                                        </span>
+                                        <div className="flex flex-col items-end gap-2">
+                                            <div className="flex items-center gap-3">
+                                                <p className="font-black text-slate-900 text-base shrink-0">₱{p.amount.toLocaleString()}</p>
+                                                <span className={`px-2.5 py-1 rounded-lg border text-[10px] font-black uppercase tracking-widest flex items-center gap-1 shrink-0 ${STATUS_STYLES[p.status]}`}>
+                                                    <Icon className="h-3 w-3" />{p.status}
+                                                </span>
+                                            </div>
+                                            {p.status === 'completed' && (
+                                                <button
+                                                    onClick={() => generatePayoutReceipt(p)}
+                                                    className="flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-primary-600 hover:text-primary-700 transition-colors"
+                                                >
+                                                    <Printer className="h-3 w-3" /> Receipt
+                                                </button>
+                                            )}
+                                        </div>
                                     </div>
                                 );
                             })
