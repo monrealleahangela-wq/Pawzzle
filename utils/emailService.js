@@ -2,40 +2,26 @@ const nodemailer = require('nodemailer');
 
 /**
  * Robust Transporter Factory
- * Tries to use Port 465 (SSL) by default, but provides configuration for fallback
+ * Prioritizes Port 587 (STARTTLS) which is more reliable on cloud hosts like Render.
  */
-const getTransporter = (useFallbackPort = false) => {
+const getTransporter = (useLegacySsl = false) => {
     const user = process.env.EMAIL_USER || 'pawzzle.spark@gmail.com';
     const pass = process.env.EMAIL_PASS || 'aknzqkqqdumntchq';
-    const isProduction = process.env.NODE_ENV === 'production';
-
-    // On production, using the 'service' shorthand is often more reliable on Render/Cloud
-    if (isProduction || !useFallbackPort) {
-        return nodemailer.createTransport({
-            service: 'gmail',
-            auth: {
-                user: user,
-                pass: pass
-            },
-            connectionTimeout: 20000,
-            greetingTimeout: 20000,
-            socketTimeout: 20000,
-            tls: {
-                rejectUnauthorized: false
-            }
-        });
-    }
-
-    // Explicit fallback for dev or if service shorthand fails
+    
     return nodemailer.createTransport({
         host: 'smtp.gmail.com',
-        port: 587,
-        secure: false, // STARTTLS
+        port: useLegacySsl ? 465 : 587,
+        secure: useLegacySsl, // true for 465, false for 587
         auth: {
             user: user,
             pass: pass
         },
+        // Aggressive timeouts for cloud environments
+        connectionTimeout: 20000,
+        greetingTimeout: 20000,
+        socketTimeout: 20000,
         tls: {
+            // Do not fail on invalid certificates (helpful for some cloud interceptors)
             rejectUnauthorized: false
         }
     });
@@ -45,16 +31,16 @@ const wrapInTemplate = (title, body) => `
 <!DOCTYPE html>
 <html>
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
-<body style="margin:0;padding:0;background-color:#f8fafc;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;">
-  <div style="max-width:520px;margin:40px auto;background:#ffffff;border-radius:24px;overflow:hidden;box-shadow:0 10px 40px rgba(0,0,0,0.08);">
-    <div style="background:linear-gradient(135deg,#6d7c45 0%,#8fa75a 50%,#a3b86c 100%);padding:40px 32px;text-align:center;">
-      <h1 style="margin:0;color:#ffffff;font-size:32px;font-weight:900;letter-spacing:-1px;text-transform:uppercase;">PAWZZLE</h1>
-      <p style="margin:8px 0 0;color:rgba(255,255,255,0.9);font-size:11px;font-weight:700;letter-spacing:4px;text-transform:uppercase;">${title}</p>
+<body style="margin:0;padding:0;background-color:#f4f7f5;font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+  <div style="max-width:560px;margin:30px auto;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 8px 30px rgba(0,0,0,0.05);border:1px solid #eef2ef;">
+    <div style="background:linear-gradient(135deg,#6d7c45 0%,#8fa75a 100%);padding:45px 20px;text-align:center;">
+      <h1 style="margin:0;color:#ffffff;font-size:30px;font-weight:800;letter-spacing:-1px;text-transform:uppercase;">PAWZZLE</h1>
+      <p style="margin:10px 0 0;color:rgba(255,255,255,0.8);font-size:12px;font-weight:700;letter-spacing:3px;text-transform:uppercase;">${title}</p>
     </div>
-    <div style="padding:40px 32px;">${body}</div>
-    <div style="padding:24px 32px;background:#f8fafc;border-top:1px solid #f1f5f9;text-align:center;">
-      <p style="margin:0;color:#94a3b8;font-size:11px;font-weight:600;">Automated Message — Pawzzle Platform</p>
-      <p style="margin:4px 0 0;color:#cbd5e1;font-size:10px;">© ${new Date().getFullYear()} Pawzzle. All rights reserved.</p>
+    <div style="padding:40px 35px;">${body}</div>
+    <div style="padding:25px;background:#fafbf9;border-top:1px solid #f0f4ef;text-align:center;">
+      <p style="margin:0;color:#9ca3af;font-size:11px;font-weight:600;">Pawzzle Pet Management System • Auto-Generated Message</p>
+      <p style="margin:5px 0 0;color:#d1d5db;font-size:10px;">© ${new Date().getFullYear()} Pawzzle. All rights reserved.</p>
     </div>
   </div>
 </body>
@@ -62,77 +48,78 @@ const wrapInTemplate = (title, body) => `
 `;
 
 const sendStaffInvitation = async (email, password, firstName) => {
-    const loginUrl = `${process.env.CLIENT_URL || 'http://localhost:3000'}/login`;
+    const loginUrl = `${process.env.CLIENT_URL || 'https://pawzzle.io'}/login`;
     
-    const bodyHtml = wrapInTemplate('Team Invitation', `
-        <p style="font-size:16px;color:#334155;margin:0 0 12px;font-weight:700;">Welcome, ${firstName}!</p>
-        <p style="font-size:14px;color:#64748b;margin:0 0 28px;line-height:1.7;">
-            You have been added as a staff member on the Pawzzle platform. Use the credentials below to access your professional dashboard:
+    const bodyHtml = wrapInTemplate('Team Access Credentials', `
+        <h2 style="font-size:18px;color:#1a1a1a;margin:0 0 15px;font-weight:700;">Hello ${firstName},</h2>
+        <p style="font-size:15px;color:#4b5563;margin:0 0 25px;line-height:1.6;">
+            A staff account has been successfully created for you. You can now access your management dashboard using the temporary credentials provided below.
         </p>
-        <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:20px;padding:32px;text-align:center;margin:0 0 28px;">
-            <p style="margin:0 0 10px;color:#94a3b8;font-size:10px;font-weight:800;letter-spacing:3px;text-transform:uppercase;">Account Password</p>
-            <div style="font-size:36px;font-weight:900;color:#6d7c45;letter-spacing:2px;font-family:monospace;">${password}</div>
+        <div style="background:#f9fafb;border:2px solid #6d7c45;border-radius:12px;padding:25px;text-align:center;margin:0 0 25px;">
+            <p style="margin:0 0 10px;color:#6b7280;font-size:10px;font-weight:800;letter-spacing:2px;text-transform:uppercase;">Temporary Password</p>
+            <div style="font-size:34px;font-weight:900;color:#6d7c45;letter-spacing:3px;font-family:'Courier New',Courier,monospace;">${password}</div>
         </div>
-        <div style="background:#fff7ed;border-radius:12px;padding:16px;margin:0 0 32px;border-left:4px solid #f97316;">
-            <p style="font-size:12px;color:#c2410c;font-weight:700;margin:0;">⚠️ Security Notice: You will be prompted to change this password on your first login.</p>
+        <div style="background:#fffbeb;border-radius:10px;padding:15px;margin:0 0 30px;border-left:5px solid #f59e0b;">
+            <p style="font-size:12px;color:#92400e;font-weight:600;margin:0;">🔒 Action Required: You will be asked to set a permanent password immediately upon your first sign-in.</p>
         </div>
         <div style="text-align:center;">
-            <a href="${loginUrl}" style="display:inline-block;background:#6d7c45;color:#ffffff;padding:18px 40px;border-radius:14px;text-decoration:none;font-weight:800;font-size:13px;text-transform:uppercase;letter-spacing:1px;box-shadow:0 10px 20px -5px rgba(109,124,69,0.4);">Access Dashboard</a>
+            <a href="${loginUrl}" style="display:inline-block;background:#6d7c45;color:#ffffff;padding:18px 45px;border-radius:10px;text-decoration:none;font-weight:700;font-size:14px;text-transform:uppercase;letter-spacing:1px;box-shadow:0 10px 20px -5px rgba(109,124,69,0.3);">Login to Pawzzle</a>
         </div>
     `);
 
     const fromUser = process.env.EMAIL_USER || 'pawzzle.spark@gmail.com';
     const mailOptions = {
-        from: `"Pawzzle Staff Management" <${fromUser}>`,
+        from: `"Pawzzle Management" <${fromUser}>`,
         to: email,
-        subject: '🔐 Access Details: Your New Pawzzle Staff Account',
+        subject: '🔐 Account Invitation: Pawzzle Staff Members',
         html: bodyHtml
     };
 
-    // Try Resend API first (Most reliable on cloud hosts)
-    if (process.env.RESEND_API_KEY) {
-        try {
-            const response = await fetch('https://api.resend.com/emails', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${process.env.RESEND_API_KEY}`
-                },
-                body: JSON.stringify({
-                    from: `Pawzzle Staff <hello@pawzzle.io>`,
-                    to: [email],
-                    subject: mailOptions.subject,
-                    html: mailOptions.html
-                })
-            });
-            if (response.ok) {
-                console.log(`[EmailService] SUCCESS: Sent to ${email} via Resend API`);
-                return await response.json();
-            }
-        } catch (resendErr) {
-            console.error(`[EmailService] Resend API failed:`, resendErr.message);
-        }
-    }
-
-    // Fallback 1: SMTP Port 465 (SSL)
+    // 1. Primary Attempt: Port 587 (STARTTLS) - Most reliable on Render/Cloud
     try {
+        console.log(`[EmailService] Attempting delivery to ${email} via Port 587...`);
         const transporter = getTransporter(false);
         const info = await transporter.sendMail(mailOptions);
-        console.log(`[EmailService] SUCCESS: Sent to ${email} via SMTP (Port 465)`);
+        console.log(`[EmailService] Delivery SUCCESS via Port 587`);
         return info;
-    } catch (smtp465Err) {
-        console.warn(`[EmailService] SMTP Port 465 failed, trying fallback Port 587...`);
+    } catch (err587) {
+        console.warn(`[EmailService] Port 587 failed: ${err587.message}. Retrying via Port 465...`);
         
-        // Fallback 2: SMTP Port 587 (STARTTLS)
+        // 2. Secondary Attempt: Port 465 (SSL)
         try {
-            const transporterFallback = getTransporter(true);
-            const info = await transporterFallback.sendMail(mailOptions);
-            console.log(`[EmailService] SUCCESS: Sent to ${email} via SMTP (Port 587)`);
+            const transporter465 = getTransporter(true);
+            const info = await transporter465.sendMail(mailOptions);
+            console.log(`[EmailService] Delivery SUCCESS via Port 465`);
             return info;
-        } catch (smtp587Err) {
-            console.error(`[EmailService] ALL EMAIL METHODS FAILED for ${email}`);
-            console.error(`Details: ${smtp587Err.message}`);
-            throw new Error(`Email delivery blocked by network or invalid credentials.`);
+        } catch (err465) {
+            console.error(`[EmailService] SMTP delivery failed completely for ${email}`);
+            
+            // 3. Final Attempt: HTTP API (Resend) - Bypass all network port blocks
+            if (process.env.RESEND_API_KEY) {
+                try {
+                    console.log(`[EmailService] Attempting HTTP delivery via Resend...`);
+                    const response = await fetch('https://api.resend.com/emails', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${process.env.RESEND_API_KEY}`
+                        },
+                        body: JSON.stringify({
+                            from: 'Pawzzle <hello@pawzzle.io>',
+                            to: [email],
+                            subject: mailOptions.subject,
+                            html: mailOptions.html
+                        })
+                    });
+                    if (response.ok) {
+                        return await response.json();
+                    }
+                } catch (resendErr) {
+                    console.error(`[EmailService] Resend API failed: ${resendErr.message}`);
+                }
+            }
+            
+            throw new Error(`Email delivery blocked. SMTP 587 error: ${err587.message}. SMTP 465 error: ${err465.message}`);
         }
     }
 };
@@ -140,3 +127,4 @@ const sendStaffInvitation = async (email, password, firstName) => {
 module.exports = {
     sendStaffInvitation
 };
+
