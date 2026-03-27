@@ -121,23 +121,23 @@ const FeedbackManagement = () => {
                         </select>
                     </div>
                     <div className="md:col-span-4 relative group">
-                        <div className="absolute left-5 top-1/2 -translate-y-1/2 flex items-center">
+                        <div className="absolute left-8 top-1/2 -translate-y-1/2 flex items-center">
                             <Search className="h-4 w-4 text-slate-500 group-focus-within:text-indigo-500 transition-colors" />
                         </div>
                         <input
                             type="text" placeholder=""
                             value={filter.search} onChange={(e) => handleFilterChange('search', e.target.value)}
-                            className="w-full pl-14 pr-4 py-3.5 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500/50 placeholder:text-slate-600 transition-all font-sans"
+                            className="w-full pl-20 pr-4 py-3.5 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500/50 placeholder:text-slate-600 transition-all font-sans"
                         />
                     </div>
                     <div className="md:col-span-4 relative">
-                        <div className="absolute left-5 top-1/2 -translate-y-1/2 flex items-center">
+                        <div className="absolute left-8 top-1/2 -translate-y-1/2 flex items-center">
                             <Zap className="h-4 w-4 text-emerald-500" />
                         </div>
                         <select
                             value={filter.status}
                             onChange={(e) => handleFilterChange('status', e.target.value)}
-                            className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-2xl pl-14 pr-6 py-3.5 outline-none focus:ring-2 focus:ring-emerald-500/50 appearance-none transition-all cursor-pointer font-sans"
+                            className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-2xl pl-20 pr-6 py-3.5 outline-none focus:ring-2 focus:ring-emerald-500/50 appearance-none transition-all cursor-pointer font-sans"
                         >
                             <option value="" className="bg-slate-900 text-white font-black">ANY STATUS</option>
                             <option value="pending" className="bg-slate-900 text-white font-black">PENDING</option>
