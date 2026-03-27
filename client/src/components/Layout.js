@@ -267,7 +267,7 @@ const Layout = () => {
       />
 
       {/* Sidebar - Desktop Only with Premium Deep Brown Palette */}
-      <aside className={`hidden lg:flex fixed left-0 top-0 h-full w-20 hover:w-64 bg-[#2D1B14] z-[60] flex-col transition-all duration-300 group shadow-2xl overflow-hidden border-r border-white/5`}>
+      <aside className={`hidden lg:flex fixed left-0 top-0 h-full w-20 hover:w-64 bg-[#2D1B14] z-[120] flex-col transition-all duration-300 group shadow-2xl overflow-hidden border-r border-white/5`}>
         {/* Sidebar Logo Area */}
         <Link
           to={!user ? '/landing' : user?.role === 'customer' ? '/home' : user?.role === 'super_admin' ? '/superadmin/dashboard' : '/admin/dashboard'}
@@ -327,7 +327,7 @@ const Layout = () => {
       {/* Main Content Area - Stable Header with Centered HUD Pill */}
       <div className="flex-1 lg:pl-20 transition-all duration-500 w-full min-w-0 bg-[#F8F7F4]">
         {/* Header */}
-        <header className={`header-stable transition-all duration-300 ${isScrolled ? 'header-scrolled shadow-lg' : 'header-default pt-4 pb-0'}`}>
+        <header className={`header-stable !bg-transparent !border-none !shadow-none transition-all duration-300 ${isScrolled ? 'pt-2' : 'pt-4'}`}>
           <div className="container-custom">
             <div className="flex justify-between items-center bg-white rounded-3xl p-3 shadow-xl shadow-slate-200/50 border border-slate-50 gap-4">
               {/* Mobile Only: Logo */}
