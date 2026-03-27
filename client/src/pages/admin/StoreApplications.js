@@ -511,7 +511,7 @@ const StoreApplications = () => {
               </div>
             </div>
 
-            {['approved', 'rejected', 'requires_more_info'].includes(selectedApplication.status) ? (
+            {['approved', 'rejected'].includes(selectedApplication.status) ? (
               <div className="p-10 bg-slate-50 border-t border-slate-100 relative z-10 space-y-4">
                 <div className="flex items-center justify-center gap-2 text-slate-400 mb-4">
                   <Shield className="h-4 w-4" />
