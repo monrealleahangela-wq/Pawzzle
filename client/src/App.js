@@ -1,6 +1,6 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { ToastContainer } from 'react-toastify';
+import { ToastContainer, Slide } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import './styles/Global.css';
 
@@ -178,7 +178,7 @@ function App() {
                 {/* 404 Route */}
                 <Route path="*" element={<NotFound />} />
               </Routes>
-              <ToastContainer position="top-right" autoClose={3000} />
+              <ToastContainer position="top-right" autoClose={3000} transition={Slide} />
             </div>
           </Router>
         </CartProvider>

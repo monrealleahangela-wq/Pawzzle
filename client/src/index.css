@@ -266,6 +266,41 @@ code {
   @apply py-5 bg-white border-b border-transparent;
 }
 
+/* ── Custom Toast Styling ── */
+.Toastify__toast {
+  @apply rounded-2xl shadow-2xl border border-white/10 backdrop-blur-xl transition-all duration-300;
+  font-family: 'Inter', sans-serif;
+  padding: 12px 20px;
+}
+
+.Toastify__toast--success {
+  @apply bg-emerald-500/95 text-white;
+}
+
+.Toastify__toast--error {
+  @apply bg-rose-500/95 text-white;
+}
+
+.Toastify__toast--info {
+  @apply bg-primary-600/95 text-white;
+}
+
+.Toastify__toast--warning {
+  @apply bg-amber-500/95 text-white;
+}
+
+.Toastify__toast-body {
+  @apply text-[10px] font-black uppercase tracking-widest leading-relaxed;
+}
+
+.Toastify__progress-bar {
+  @apply opacity-30;
+}
+
+.Toastify__close-button {
+  @apply text-white opacity-50 hover:opacity-100 transition-opacity;
+}
+
 /* ══════════════════════════════════════════
    MOBILE COMPACT GLOBAL OVERRIDES
    Applied at < 640px to tighten ALL pages
