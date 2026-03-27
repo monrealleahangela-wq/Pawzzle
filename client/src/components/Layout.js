@@ -266,8 +266,8 @@ const Layout = () => {
         style={{ width: `${scrollProgress}%` }}
       />
 
-      {/* Sidebar - Desktop Only */}
-      <aside className={`hidden lg:flex fixed left-0 top-0 h-full w-20 hover:w-64 bg-primary-800 z-[60] flex-col transition-all duration-300 group shadow-2xl overflow-hidden border-r border-white/5`}>
+      {/* Sidebar - Desktop Only with Premium Deep Brown Palette */}
+      <aside className={`hidden lg:flex fixed left-0 top-0 h-full w-20 hover:w-64 bg-[#2D1B14] z-[60] flex-col transition-all duration-300 group shadow-2xl overflow-hidden border-r border-white/5`}>
         {/* Sidebar Logo Area */}
         <Link
           to={!user ? '/landing' : user?.role === 'customer' ? '/home' : user?.role === 'super_admin' ? '/superadmin/dashboard' : '/admin/dashboard'}
@@ -287,41 +287,34 @@ const Layout = () => {
         </Link>
 
         {/* Sidebar Navigation */}
-        <nav className="flex-1 px-4 py-4 space-y-2 overflow-y-auto scrollbar-thin scrollbar-thumb-white/20 hover:scrollbar-thumb-white/40">
+        <nav className="flex-1 px-4 py-4 space-y-2 overflow-y-auto no-scrollbar scroll-smooth">
           {navItems.map((item, idx) => {
             if (item.type === 'label') {
               return (
-                <div key={`label-${idx}`} className="pt-4 pb-1 pl-3 transition-opacity duration-300">
-                  <span className={`text-[9px] font-black text-primary-400/80 uppercase tracking-[0.2em] whitespace-nowrap transition-all opacity-0 group-hover:opacity-100 hidden group-hover:block`}>{item.label}</span>
+                <div key={`label-${idx}`} className="pt-6 pb-2 pl-3 transition-opacity duration-300">
+                  <span className={`text-[9px] font-black text-amber-100/30 uppercase tracking-[0.3em] whitespace-nowrap transition-all opacity-0 group-hover:opacity-100 hidden group-hover:block`}>{item.label}</span>
                   <div className={`h-px w-6 bg-white/10 mt-1 block group-hover:hidden ml-1`} />
                 </div>
               );
             }
-
+ 
             const Icon = item.icon;
             const active = isActivePath(item.path);
             return (
               <Link
                 key={item.path}
                 to={item.path}
-                className={`flex items-center gap-4 p-3 rounded-xl transition-all duration-300 relative ${active
-                  ? 'bg-primary-600 text-white shadow-lg shadow-primary-900/40'
-                  : 'text-primary-100 hover:bg-white/10 hover:text-white'
+                className={`flex items-center gap-4 p-3 rounded-2xl transition-all duration-300 relative ${active
+                  ? 'bg-amber-600/10 text-amber-500 shadow-xl shadow-black/20'
+                  : 'text-amber-50/40 hover:bg-white/5 hover:text-white'
                   }`}
               >
                 <div className="w-6 h-6 flex items-center justify-center flex-shrink-0">
                   <Icon className="h-5 w-5" />
                 </div>
-                <span className={`text-sm font-bold tracking-wide opacity-0 group-hover:opacity-100 transition-all duration-300 whitespace-nowrap`}>
+                <span className={`text-[11px] font-black uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-all duration-300 whitespace-nowrap`}>
                   {item.label}
                 </span>
-
-                {/* Tooltip on hover when collapsed */}
-                {!isScrolled && (
-                  <div className="absolute left-full ml-4 px-3 py-1 bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest rounded-md opacity-0 pointer-events-none group-hover:hidden transition-opacity">
-                    {item.label}
-                  </div>
-                )}
               </Link>
             );
           })}
@@ -331,14 +324,12 @@ const Layout = () => {
         <div className="p-4 border-t border-white/5 h-16" />
       </aside>
 
-      {/* Main Content Area */}
-      <div className="flex-1 lg:pl-20 transition-all duration-500 w-full min-w-0">
+      {/* Main Content Area - Stable Header with Centered HUD Pill */}
+      <div className="flex-1 lg:pl-20 transition-all duration-500 w-full min-w-0 bg-[#F8F7F4]">
         {/* Header */}
-        <header
-          className={`header-stable ${isScrolled ? 'header-scrolled' : 'header-default'}`}
-        >
+        <header className={`header-stable transition-all duration-300 ${isScrolled ? 'header-scrolled shadow-lg' : 'header-default pt-4 pb-0'}`}>
           <div className="container-custom">
-            <div className="flex justify-between items-center gap-2 sm:gap-6">
+            <div className="flex justify-between items-center bg-white rounded-3xl p-3 shadow-xl shadow-slate-200/50 border border-slate-50 gap-4">
               {/* Mobile Only: Logo */}
               <Link
                 to={!user ? '/landing' : user?.role === 'customer' ? '/home' : user?.role === 'super_admin' ? '/superadmin/dashboard' : '/admin/dashboard'}
@@ -363,61 +354,37 @@ const Layout = () => {
                 </div>
               </div>
 
-              {/* Header Actions */}
-              <div className="flex items-center gap-1.5 sm:gap-4 ml-auto min-w-0 justify-end">
-                {/* Search Toggle for Mobile */}
-                <div className="sm:hidden flex-1 min-w-[80px] max-w-[140px]">
-                  <GlobalSearch isScrolled={isScrolled} />
-                </div>
-                {/* Cart for customers */}
-                {user?.role === 'customer' && (
-                  <Link
-                    to="/cart"
-                    className={`relative p-2.5 rounded-xl transition-all duration-300 hover:scale-110 text-slate-600 hover:bg-slate-100 shadow-sm border border-slate-100 bg-white mr-2`}
-                  >
-                    <ShoppingCart className="h-5 w-5" />
-                    {getTotalItems() > 0 && (
-                      <span className="absolute -top-1 -right-1 bg-secondary-500 text-white text-[10px] rounded-full h-5 w-5 flex items-center justify-center font-bold animate-bounce shadow-lg">
-                        {getTotalItems()}
-                      </span>
+              {/* UTILITY MODULE: Right Aligned Actions */}
+              <div className="flex items-center gap-2 group-actions pr-1">
+                <NotificationBell />
+                
+                <Link
+                  to="/profile"
+                  className="p-1 px-1.5 bg-[#2D1B14] text-white rounded-xl shadow-xl hover:bg-amber-600 transition-all flex items-center justify-center shrink-0"
+                  title="View Profile"
+                >
+                  <div className="w-8 h-8 rounded-lg overflow-hidden flex items-center justify-center text-[11px] font-black tracking-tighter">
+                    {user?.avatar || user?.profilePicture ? (
+                      <img src={user?.avatar || user?.profilePicture} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      user?.firstName?.[0]?.toUpperCase() || 'P'
                     )}
-                  </Link>
-                )}
-
-                {user && (
-                   <div className="flex items-center gap-2 sm:gap-4 ml-1">
-                    <NotificationBell />
- 
-                    <Link
-                      to="/profile"
-                      className="p-1 border border-slate-100 bg-slate-900 text-white rounded-xl shadow-lg hover:bg-primary-600 transition-all group shrink-0"
-                      title="View Profile"
-                    >
-                      <div className="w-8 h-8 rounded-lg overflow-hidden flex items-center justify-center text-[10px] font-black tracking-tighter">
-                        {user?.avatar || user?.profilePicture ? (
-                          <img src={user?.avatar || user?.profilePicture} alt="" className="w-full h-full object-cover" />
-                        ) : (
-                          user?.firstName?.[0]?.toUpperCase()
-                        )}
-                      </div>
-                    </Link>
- 
-                    <button
-                      onClick={handleLogout}
-                      className="hidden lg:flex p-3 bg-white border border-slate-100 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 hover:border-rose-100 transition-all shadow-sm group"
-                      title="Sign Out"
-                    >
-                      <LogOut className="h-4 w-4 group-hover:rotate-12 transition-transform" />
-                    </button>
                   </div>
-                )}
-
-                {/* Mobile Menu Icon (Drawer Trigger) */}
+                </Link>
+ 
+                <button
+                  onClick={handleLogout}
+                  className="hidden lg:flex p-3 bg-white border border-slate-100 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 hover:border-rose-100 transition-all shadow-sm flex items-center justify-center shrink-0"
+                >
+                  <LogOut className="h-4 w-4" />
+                </button>
+ 
+                {/* Mobile Menu Icon */}
                 <button
                   onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                  className={`lg:hidden p-2 sm:p-2.5 rounded-xl transition-colors text-slate-900 hover:bg-primary-50 bg-white border-2 border-slate-200 shadow-md ml-0.5 sm:ml-1 flex-shrink-0`}
+                  className="lg:hidden p-3 bg-slate-50 rounded-xl text-slate-900 border border-slate-100"
                 >
-                  {isMobileMenuOpen ? <X className="h-5 w-5 sm:h-6 sm:w-6 stroke-[2.5px]" /> : <Menu className="h-5 w-5 sm:h-6 sm:w-6 stroke-[2.5px]" />}
+                  <Menu className="h-5 w-5" />
                 </button>
               </div>
             </div>
