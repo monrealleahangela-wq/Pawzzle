@@ -356,8 +356,8 @@ const Layout = () => {
                 </span>
               </Link>
 
-              {/* Global Search Bar - Hidden on mobile if not needed, or condensed */}
-              <div className="hidden sm:flex flex-1 max-w-2xl mx-auto">
+              {/* Global Search Bar - Refined Right-Aligned Positioning */}
+              <div className="hidden sm:flex flex-1 justify-end items-center px-4">
                 <GlobalSearch isScrolled={isScrolled} />
               </div>
 
