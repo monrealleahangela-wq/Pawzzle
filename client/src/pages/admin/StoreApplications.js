@@ -130,13 +130,13 @@ const StoreApplications = () => {
       <div className="bg-slate-900 p-2 rounded-[2.5rem] shadow-xl border border-white/5 relative z-10">
         <div className="grid grid-cols-1 md:grid-cols-12 gap-2">
           <div className="md:col-span-8 relative group">
-            <div className="absolute left-8 top-1/2 -translate-y-1/2 flex items-center gap-3">
+            <div className="absolute left-10 top-1/2 -translate-y-1/2 flex items-center">
               <Search className="h-4 w-4 text-slate-500 group-focus-within:text-primary-500 transition-colors" />
             </div>
             <input
               type="text"
               placeholder="QUERY APPLICATIONS: STORE NAME, APPLICANT, REF..."
-              className="w-full pl-20 pr-4 py-5 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-3xl outline-none focus:ring-2 focus:ring-primary-500/50 placeholder:text-slate-600 transition-all"
+              className="w-full pl-24 pr-4 py-5 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-3xl outline-none focus:ring-2 focus:ring-primary-500/50 placeholder:text-slate-600 transition-all"
               onChange={(e) => {
                 // Implement local search filter if needed, or update parent filters
                 const query = e.target.value.toLowerCase();
@@ -145,13 +145,13 @@ const StoreApplications = () => {
             />
           </div>
           <div className="md:col-span-4 relative">
-             <div className="absolute left-8 top-1/2 -translate-y-1/2">
+             <div className="absolute left-10 top-1/2 -translate-y-1/2">
                 <Activity className="h-4 w-4 text-primary-500" />
              </div>
              <select
                 value={filters.status}
                 onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value }))}
-                className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-3xl pl-20 pr-10 py-5 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer"
+                className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-3xl pl-24 pr-10 py-5 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer"
              >
                 <option value="" className="bg-slate-900 text-white font-black">ALL STATUSES</option>
                 <option value="pending" className="bg-slate-900 text-white font-black">PENDING</option>
