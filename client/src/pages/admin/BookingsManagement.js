@@ -207,12 +207,12 @@ const BookingsManagement = () => {
                 onChange={(e) => setFilterStatus(e.target.value)}
                 className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-[2.5rem] pl-32 pr-10 py-5 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer font-sans"
              >
-                <option value="all" className="bg-slate-900 text-white font-black">ST: ALL STATUSES</option>
-                <option value="pending" className="bg-slate-900 text-white font-black">ST: PENDING</option>
-                <option value="confirmed" className="bg-slate-900 text-white font-black">ST: CONFIRMED</option>
-                <option value="in_progress" className="bg-slate-900 text-white font-black">ST: IN PROGRESS</option>
-                <option value="completed" className="bg-slate-900 text-white font-black">ST: COMPLETED</option>
-                <option value="cancelled" className="bg-slate-900 text-white font-black text-rose-400">ST: CANCELLED</option>
+                <option value="all" className="bg-slate-900 text-white font-black">ALL STATUSES</option>
+                <option value="pending" className="bg-slate-900 text-white font-black">PENDING</option>
+                <option value="confirmed" className="bg-slate-900 text-white font-black">CONFIRMED</option>
+                <option value="in_progress" className="bg-slate-900 text-white font-black">IN PROGRESS</option>
+                <option value="completed" className="bg-slate-900 text-white font-black">COMPLETED</option>
+                <option value="cancelled" className="bg-slate-900 text-white font-black text-rose-400">CANCELLED</option>
              </select>
           </div>
         </div>

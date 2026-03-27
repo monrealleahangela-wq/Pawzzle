@@ -245,9 +245,9 @@ const ServiceManagement = () => {
               value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)}
               className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-[2.5rem] pl-32 pr-10 py-5 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer font-sans"
             >
-              <option value="" className="bg-slate-900 text-white font-black">ST: ALL SERVICES: VIEW ALL</option>
+              <option value="" className="bg-slate-900 text-white font-black">ALL SERVICES: VIEW ALL</option>
               {categories.map(c => (
-                <option key={c.value} value={c.value} className="bg-slate-900 text-white font-black">CAT: {c.label.toUpperCase()}</option>
+                <option key={c.value} value={c.value} className="bg-slate-900 text-white font-black">{c.label.toUpperCase()}</option>
               ))}
             </select>
             <ChevronDown className="absolute right-6 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500 pointer-events-none" />

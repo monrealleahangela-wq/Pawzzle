@@ -301,13 +301,13 @@ const StoreManagement = () => {
                     <div className="space-y-2">
                       <label className="text-xs font-black text-slate-400 uppercase tracking-widest">Business Type</label>
                       <select name="businessType" value={store.businessType || ''} onChange={handleInputChange} className="w-full px-6 py-5 bg-slate-50 border-2 border-slate-100 rounded-3xl focus:border-indigo-500 focus:bg-white outline-none font-bold transition-all appearance-none">
-                        <option value="pet_store">ST: PET RETAIL STORE</option>
-                        <option value="breeder">ST: LICENSED BREEDER</option>
-                        <option value="shelter">ST: RESCUE / SHELTER</option>
-                        <option value="veterinary">ST: MEDICAL / VET CLINIC</option>
-                        <option value="grooming">ST: GROOMING & SPA</option>
-                        <option value="training">ST: TRAINING ACADEMY</option>
-                        <option value="other">ST: BOUTIQUE SERVICES</option>
+                        <option value="pet_store">PET RETAIL STORE</option>
+                        <option value="breeder">LICENSED BREEDER</option>
+                        <option value="shelter">RESCUE / SHELTER</option>
+                        <option value="veterinary">MEDICAL / VET CLINIC</option>
+                        <option value="grooming">GROOMING & SPA</option>
+                        <option value="training">TRAINING ACADEMY</option>
+                        <option value="other">BOUTIQUE SERVICES</option>
                       </select>
                     </div>
                     <div className="md:col-span-2 space-y-2">
@@ -338,7 +338,7 @@ const StoreManagement = () => {
                             }}
                             className="w-full px-6 py-5 bg-slate-50 border-2 border-slate-100 rounded-3xl focus:border-indigo-500 focus:bg-white outline-none font-bold transition-all appearance-none"
                           >
-                            <option value="">ST: SELECT CITY</option>
+                            <option value="">SELECT CITY</option>
                             {cities.map((city) => (
                               <option key={city.value} value={city.label}>{city.label}</option>
                             ))}
@@ -352,7 +352,7 @@ const StoreManagement = () => {
                             disabled={!store.contactInfo?.address?.city}
                             className="w-full px-6 py-5 bg-slate-50 border-2 border-slate-100 rounded-3xl focus:border-indigo-500 focus:bg-white outline-none font-bold transition-all appearance-none disabled:opacity-50 cursor-pointer"
                           >
-                            <option value="">ST: SELECT BARANGAY</option>
+                            <option value="">SELECT BARANGAY</option>
                             {barangays.map((brgy) => (
                               <option key={brgy.value || brgy} value={brgy.label || brgy}>{brgy.label || brgy}</option>
                             ))}

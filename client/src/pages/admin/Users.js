@@ -102,10 +102,10 @@ const AdminUsers = () => {
               value={filters.role}
               onChange={(e) => handleFilterChange('role', e.target.value)}
             >
-              <option value="">ST: ALL ROLES</option>
-              <option value="super_admin">ST: SUPER ADMIN</option>
-              <option value="admin">ST: ADMIN</option>
-              <option value="customer">ST: CUSTOMER</option>
+              <option value="">ALL ROLES</option>
+              <option value="super_admin">SUPER ADMIN</option>
+              <option value="admin">ADMIN</option>
+              <option value="customer">CUSTOMER</option>
             </select>
           </div>
 
@@ -116,9 +116,9 @@ const AdminUsers = () => {
               value={filters.isActive}
               onChange={(e) => handleFilterChange('isActive', e.target.value)}
             >
-              <option value="">ST: ALL STATUS</option>
-              <option value="true">ST: ACTIVE ONLY</option>
-              <option value="false">ST: INACTIVE</option>
+              <option value="">ALL STATUS</option>
+              <option value="true">ACTIVE ONLY</option>
+              <option value="false">INACTIVE</option>
             </select>
           </div>
         </div>

@@ -181,10 +181,10 @@ const ActivityHistory = () => {
                             value={filterType} onChange={(e) => setFilterType(e.target.value)}
                             className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-[2.5rem] pl-32 pr-10 py-5 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer font-sans"
                         >
-                            <option value="all" className="bg-slate-900 text-white font-black">ST: ALL EVENTS</option>
-                            <option value="user" className="bg-slate-900 text-white font-black">ST: USER EVENTS</option>
-                            <option value="pet" className="bg-slate-900 text-white font-black">ST: PET CATALOG</option>
-                            <option value="order" className="bg-slate-900 text-white font-black">ST: TRANSACTION LOG</option>
+                            <option value="all" className="bg-slate-900 text-white font-black">ALL EVENTS</option>
+                            <option value="user" className="bg-slate-900 text-white font-black">USER EVENTS</option>
+                            <option value="pet" className="bg-slate-900 text-white font-black">PET CATALOG</option>
+                            <option value="order" className="bg-slate-900 text-white font-black">TRANSACTION LOG</option>
                         </select>
                         <ChevronDown className="absolute right-6 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500 pointer-events-none" />
                     </div>
@@ -196,10 +196,10 @@ const ActivityHistory = () => {
                             value={dateRange} onChange={(e) => setDateRange(e.target.value)}
                             className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-[2.5rem] pl-32 pr-10 py-5 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer font-sans"
                         >
-                            <option value="" className="bg-slate-900 text-white font-black">ST: ALL TIME</option>
-                            <option value="today" className="bg-slate-900 text-white font-black">ST: TODAY</option>
-                            <option value="week" className="bg-slate-900 text-white font-black">ST: THIS WEEK</option>
-                            <option value="month" className="bg-slate-900 text-white font-black">ST: THIS MONTH</option>
+                            <option value="" className="bg-slate-900 text-white font-black">ALL TIME</option>
+                            <option value="today" className="bg-slate-900 text-white font-black">TODAY</option>
+                            <option value="week" className="bg-slate-900 text-white font-black">THIS WEEK</option>
+                            <option value="month" className="bg-slate-900 text-white font-black">THIS MONTH</option>
                         </select>
                         <ChevronDown className="absolute right-6 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500 pointer-events-none" />
                     </div>

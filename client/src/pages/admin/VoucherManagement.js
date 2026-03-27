@@ -294,8 +294,8 @@ const VoucherManagement = () => {
                                         onChange={(e) => setFormData({ ...formData, discountType: e.target.value })}
                                         className="w-full px-6 py-5 bg-slate-50 border border-slate-100 rounded-3xl outline-none focus:ring-1 focus:ring-primary-500 font-bold text-slate-900"
                                     >
-                                        <option value="percentage">ST: PERCENTAGE (%)</option>
-                                        <option value="fixed">ST: FIXED AMOUNT (₱)</option>
+                                        <option value="percentage">PERCENTAGE (%)</option>
+                                        <option value="fixed">FIXED AMOUNT (₱)</option>
                                     </select>
                                 </div>
                                 <div className="space-y-2">

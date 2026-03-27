@@ -272,7 +272,7 @@ const AdminPets = () => {
                   <label className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] px-1">{label}</label>
                   <select value={filters[field]} onChange={e => handleFilterChange(field, e.target.value)}
                     className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-3xl text-[10px] font-black uppercase tracking-widest outline-none appearance-none focus:ring-2 focus:ring-primary-600/10">
-                    <option value="">ST: ALL</option>
+                    <option value="">ALL</option>
                     {options.map(o => typeof o === 'string'
                       ? <option key={o} value={o}>{o.toUpperCase()}</option>
                       : <option key={o.v} value={o.v}>{o.l}</option>
@@ -574,7 +574,7 @@ const AdminPets = () => {
                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Unit</label>
                       <select value={petForm.ageUnit} onChange={e => setPetForm(p => ({ ...p, ageUnit: e.target.value }))}
                         className="w-full px-3 py-5 bg-slate-900 text-white rounded-3xl text-[10px] font-black uppercase outline-none appearance-none cursor-pointer text-center">
-                        <option value="years">ST: YRS</option><option value="months">ST: MOS</option>
+                        <option value="years">YRS</option><option value="months">MOS</option>
                       </select>
                     </div>
                   </div>

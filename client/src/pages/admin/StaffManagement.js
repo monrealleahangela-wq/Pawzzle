@@ -251,9 +251,9 @@ const StaffManagement = () => {
                                 value={filterType} onChange={(e) => setFilterType(e.target.value)}
                                 className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-[2.5rem] pl-32 pr-10 py-5 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer font-sans"
                             >
-                                <option value="" className="bg-slate-900 text-white font-black">ST: ALL ROLES: VIEW ALL</option>
+                                <option value="" className="bg-slate-900 text-white font-black">ALL ROLES: VIEW ALL</option>
                                 {STAFF_TYPES.map(t => (
-                                    <option key={t.id} value={t.id} className="bg-slate-900 text-white font-black">RL: {t.label.toUpperCase()}</option>
+                                    <option key={t.id} value={t.id} className="bg-slate-900 text-white font-black">{t.label.toUpperCase()}</option>
                                 ))}
                             </select>
                             <ChevronDown className="absolute right-6 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500 pointer-events-none" />

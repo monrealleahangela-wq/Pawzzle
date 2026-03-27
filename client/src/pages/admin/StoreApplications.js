@@ -151,12 +151,12 @@ const StoreApplications = () => {
                 onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value }))}
                 className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black tracking-widest rounded-[2.5rem] pl-32 pr-10 py-5 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer"
              >
-                <option value="" className="bg-slate-900 text-white font-black uppercase tracking-widest italic">ST: ALL STATUSES</option>
-                 <option value="pending" className="bg-slate-900 text-white font-black">ST: PENDING</option>
-                 <option value="under_review" className="bg-slate-900 text-white font-black">ST: UNDER REVIEW</option>
-                 <option value="requires_more_info" className="bg-slate-900 text-white font-black">ST: NEED INFO</option>
-                 <option value="approved" className="bg-slate-900 text-white font-black">ST: APPROVED</option>
-                 <option value="rejected" className="bg-slate-900 text-white font-black">ST: REJECTED</option>
+                <option value="" className="bg-slate-900 text-white font-black uppercase tracking-widest italic">ALL STATUSES</option>
+                 <option value="pending" className="bg-slate-900 text-white font-black">PENDING</option>
+                 <option value="under_review" className="bg-slate-900 text-white font-black">UNDER REVIEW</option>
+                 <option value="requires_more_info" className="bg-slate-900 text-white font-black">NEED INFO</option>
+                 <option value="approved" className="bg-slate-900 text-white font-black">APPROVED</option>
+                 <option value="rejected" className="bg-slate-900 text-white font-black">REJECTED</option>
              </select>
              <ChevronRight className="absolute right-6 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500 pointer-events-none rotate-90" />
           </div>

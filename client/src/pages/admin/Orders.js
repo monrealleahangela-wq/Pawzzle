@@ -139,7 +139,7 @@ const AdminOrders = () => {
               value={filters.status}
               onChange={(e) => handleFilterChange('status', e.target.value)}
             >
-              <option value="" className="bg-slate-900 text-white font-black">ST: ALL STATUSES</option>
+              <option value="" className="bg-slate-900 text-white font-black">ALL STATUSES</option>
               {['pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled'].map(s => (
                 <option key={s} value={s} className="bg-slate-900 text-white font-black">{s.toUpperCase()}</option>
               ))}

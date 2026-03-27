@@ -212,10 +212,10 @@ const AccountManagement = () => {
               value={filters.role} onChange={(e) => handleFilterChange('role', e.target.value)}
               className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-[2.5rem] pl-32 pr-10 py-5 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer font-sans"
             >
-              <option value="" className="bg-slate-900 text-white font-black">ST: ALL ROLES</option>
-              <option value="super_admin" className="bg-slate-900 text-white font-black">ST: MASTER ADMIN</option>
-              <option value="admin" className="bg-slate-900 text-white font-black">ST: STORE OWNER</option>
-              <option value="customer" className="bg-slate-900 text-white font-black">ST: CUSTOMER</option>
+              <option value="" className="bg-slate-900 text-white font-black">ALL ROLES</option>
+              <option value="super_admin" className="bg-slate-900 text-white font-black">MASTER ADMIN</option>
+              <option value="admin" className="bg-slate-900 text-white font-black">STORE OWNER</option>
+              <option value="customer" className="bg-slate-900 text-white font-black">CUSTOMER</option>
             </select>
           </div>
           <div className="md:col-span-3 relative">
@@ -226,9 +226,9 @@ const AccountManagement = () => {
               value={filters.isActive} onChange={(e) => handleFilterChange('isActive', e.target.value)}
               className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-[2.5rem] pl-32 pr-10 py-5 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer font-sans"
             >
-              <option value="" className="bg-slate-900 text-white font-black">ST: ANY STATUS</option>
-              <option value="true" className="bg-slate-900 text-white font-black">ST: ACTIVE</option>
-              <option value="false" className="bg-slate-900 text-white font-black">ST: DISABLED</option>
+              <option value="" className="bg-slate-900 text-white font-black">ANY STATUS</option>
+              <option value="true" className="bg-slate-900 text-white font-black">ACTIVE</option>
+              <option value="false" className="bg-slate-900 text-white font-black">DISABLED</option>
             </select>
           </div>
           <div className="md:col-span-2 relative">
@@ -239,10 +239,10 @@ const AccountManagement = () => {
               value={filters.dateRange} onChange={(e) => handleFilterChange('dateRange', e.target.value)}
               className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-[2.5rem] pl-32 pr-10 py-5 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer font-sans"
             >
-              <option value="" className="bg-slate-900 text-white font-black">ST: ALL TIME</option>
-              <option value="today" className="bg-slate-900 text-white font-black">ST: TODAY</option>
-              <option value="week" className="bg-slate-900 text-white font-black">ST: THIS WEEK</option>
-              <option value="month" className="bg-slate-900 text-white font-black">ST: THIS MONTH</option>
+              <option value="" className="bg-slate-900 text-white font-black">ALL TIME</option>
+              <option value="today" className="bg-slate-900 text-white font-black">TODAY</option>
+              <option value="week" className="bg-slate-900 text-white font-black">THIS WEEK</option>
+              <option value="month" className="bg-slate-900 text-white font-black">THIS MONTH</option>
             </select>
           </div>
         </div>

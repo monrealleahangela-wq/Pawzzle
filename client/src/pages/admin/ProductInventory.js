@@ -381,7 +381,7 @@ const ProductInventory = () => {
                             value={productFilters.category} onChange={(e) => setProductFilters(prev => ({ ...prev, category: e.target.value }))}
                             className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-[2.5rem] pl-32 pr-10 py-5 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer font-sans"
                         >
-                            <option value="" className="bg-slate-900 text-white font-black">ST: ALL CATEGORIES: VIEW ALL</option>
+                            <option value="" className="bg-slate-900 text-white font-black">ALL CATEGORIES: VIEW ALL</option>
                             {categories.map(c => <option key={c.value} value={c.value} className="bg-slate-900 text-white font-black">{c.label.toUpperCase()}</option>)}
                         </select>
                         <ChevronDown className="absolute right-6 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-500 pointer-events-none" />
@@ -819,7 +819,7 @@ const ProductInventory = () => {
                 <div className="space-y-3">
                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Select Product</label>
                   <select required value={inventoryForm.productId} onChange={e => setInventoryForm(p => ({ ...p, productId: e.target.value }))} className="w-full px-6 py-5 bg-white border border-slate-100 rounded-[2.5rem] text-[12px] font-black uppercase outline-none focus:ring-4 focus:ring-primary-600/5 appearance-none">
-                    <option value="">ST: SELECT PRODUCT...</option>
+                    <option value="">SELECT PRODUCT...</option>
                     {products.map(p => <option key={p._id} value={p._id}>{p.name.toUpperCase()}</option>)}
                   </select>
                 </div>

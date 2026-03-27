@@ -195,12 +195,12 @@ const BookingHistory = () => {
                             value={filters.status} onChange={(e) => handleFilterChange('status', e.target.value)}
                             className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-[2.5rem] pl-32 pr-10 py-5 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer font-sans"
                         >
-                            <option value="" className="bg-slate-900 text-white font-black">ST: ALL STATUSES</option>
-                            <option value="pending" className="bg-slate-900 text-white font-black hover:bg-primary-600">ST: PENDING</option>
-                            <option value="confirmed" className="bg-slate-900 text-white font-black hover:bg-primary-600">ST: CONFIRMED</option>
-                            <option value="completed" className="bg-slate-900 text-white font-black hover:bg-primary-600">ST: COMPLETED</option>
-                            <option value="cancelled" className="bg-slate-900 text-white font-black hover:bg-primary-600">ST: CANCELLED</option>
-                            <option value="no_show" className="bg-slate-900 text-white font-black hover:bg-primary-600">ST: NO SHOW</option>
+                            <option value="" className="bg-slate-900 text-white font-black">ALL STATUSES</option>
+                            <option value="pending" className="bg-slate-900 text-white font-black hover:bg-primary-600">PENDING</option>
+                            <option value="confirmed" className="bg-slate-900 text-white font-black hover:bg-primary-600">CONFIRMED</option>
+                            <option value="completed" className="bg-slate-900 text-white font-black hover:bg-primary-600">COMPLETED</option>
+                            <option value="cancelled" className="bg-slate-900 text-white font-black hover:bg-primary-600">CANCELLED</option>
+                            <option value="no_show" className="bg-slate-900 text-white font-black hover:bg-primary-600">NO SHOW</option>
                         </select>
                     </div>
                 </div>
