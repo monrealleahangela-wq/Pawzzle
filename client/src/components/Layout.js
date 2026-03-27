@@ -325,32 +325,28 @@ const Layout = () => {
       </aside>
 
       {/* Main Content Area - Stable Header with Centered HUD Pill */}
-      <div className="flex-1 lg:pl-20 transition-all duration-500 w-full min-w-0 bg-[#F8F7F4]">
-        {/* Header */}
-        <header className={`header-stable !bg-transparent !border-none !shadow-none transition-all duration-300 ${isScrolled ? 'pt-2' : 'pt-4'}`}>
-          <div className="container-custom">
-            <div className="flex justify-between items-center bg-white rounded-3xl p-3 shadow-xl shadow-slate-200/50 border border-slate-50 gap-4">
+      <div className="flex-1 lg:pl-20 transition-all duration-500 w-full min-w-0 bg-[#F8F7F4] pt-24">
+        {/* Header - Fixed to ensure it persists on scroll */}
+        <header className={`fixed top-0 left-0 lg:left-20 right-0 z-[110] transition-all duration-300 pointer-events-none ${isScrolled ? 'pt-2' : 'pt-4'}`}>
+          <div className="container-custom pointer-events-auto">
+            <div className="flex justify-between items-center bg-white/95 backdrop-blur-md rounded-3xl p-3 shadow-2xl shadow-slate-200/50 border border-slate-50 gap-4">
               {/* Mobile Only: Logo */}
               <Link
                 to={!user ? '/landing' : user?.role === 'customer' ? '/home' : user?.role === 'super_admin' ? '/superadmin/dashboard' : '/admin/dashboard'}
                 className="flex lg:hidden items-center space-x-2 group shrink-0"
               >
                 <div className="relative">
-                  <img
-                    src="/images/logo.png"
-                    alt="Logo"
-                    className="h-8 w-auto object-contain transition-all duration-500 group-hover:scale-110 drop-shadow-xl"
-                  />
+                  <img src="/images/logo.png" className="h-8 w-auto object-contain transition-all duration-500 group-hover:scale-110 drop-shadow-xl" />
                 </div>
                 <span className={`text-lg font-black tracking-tighter text-primary-600 logo-text sm:inline`}>
                   PAWZZLE
                 </span>
               </Link>
 
-              {/* Global Search Bar - Compact & Centered Pill Layout */}
+              {/* COMPACT HUD PILL: Global Search Center Stage */}
               <div className="hidden sm:flex flex-1 justify-center items-center px-4">
-                <div className="w-full max-w-[240px]">
-                  <GlobalSearch isScrolled={isScrolled} />
+                <div className="w-full max-w-[280px] hover:scale-105 transition-transform duration-300">
+                  <GlobalSearch isScrolled={true} />
                 </div>
               </div>
 
