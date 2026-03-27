@@ -5,7 +5,7 @@ import {
     Brain, TrendingUp, DollarSign, Activity, Sparkles,
     Flame, Zap, Heart, Users, Building, Shield, ChevronRight,
     PieChart, BarChart3, Globe2, Layers, Info, CheckCircle2,
-    Briefcase, Star
+    Briefcase, Star, Settings
 } from 'lucide-react';
 
 const SuperAdminDSS = () => {
