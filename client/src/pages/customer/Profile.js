@@ -1257,7 +1257,7 @@ const Profile = () => {
                                <div className="space-y-2 mb-8 animate-in fade-in slide-in-from-top-4 duration-1000">
                                  <div className="flex justify-between items-end">
                                    <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Verification Strength</p>
-                                   <p className="text-xs font-black text-amber-600 italic">Level {Math.floor((application.verificationScore || 0) / 20) + 1}</p>
+                                   <p className="text-xs font-black text-amber-600 italic">Level {application.verificationLevel || 1}</p>
                                  </div>
                                  <div className="h-3 bg-slate-100 rounded-full overflow-hidden p-0.5 border border-slate-50">
                                    <div 

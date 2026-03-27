@@ -853,6 +853,7 @@ const getSuperAdminInsights = async (req, res) => {
         ]);
 
         // --- NEW: HI-FI DSS METRICS (Throughput, Velocity, Dynamics) ---
+        const now = new Date();
         const last24h = new Date(now.getTime() - (24 * 60 * 60 * 1000));
         const prev24h = new Date(now.getTime() - (48 * 60 * 60 * 1000));
         const sevenDaysAgo = new Date(now.getTime() - (7 * 24 * 60 * 60 * 1000));

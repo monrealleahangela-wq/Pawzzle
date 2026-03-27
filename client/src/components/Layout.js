@@ -254,7 +254,7 @@ const Layout = () => {
       />
 
       {/* Sidebar - Desktop Only */}
-      <aside className={`hidden lg:flex fixed left-0 top-0 h-full ${user?.role === 'super_admin' ? 'w-64' : 'w-20 hover:w-64'} bg-primary-800 z-[60] flex-col transition-all duration-300 group shadow-2xl overflow-hidden border-r border-white/5`}>
+      <aside className={`hidden lg:flex fixed left-0 top-0 h-full w-20 hover:w-64 bg-primary-800 z-[60] flex-col transition-all duration-300 group shadow-2xl overflow-hidden border-r border-white/5`}>
         {/* Sidebar Logo Area */}
         <Link
           to={!user ? '/landing' : user?.role === 'customer' ? '/home' : user?.role === 'super_admin' ? '/superadmin/dashboard' : '/admin/dashboard'}
@@ -274,13 +274,13 @@ const Layout = () => {
         </Link>
 
         {/* Sidebar Navigation */}
-        <nav className="flex-1 px-4 py-4 space-y-2 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+        <nav className="flex-1 px-4 py-4 space-y-2 overflow-y-auto scrollbar-thin scrollbar-thumb-white/20 hover:scrollbar-thumb-white/40">
           {navItems.map((item, idx) => {
             if (item.type === 'label') {
               return (
                 <div key={`label-${idx}`} className="pt-4 pb-1 pl-3 transition-opacity duration-300">
-                  <span className={`text-[9px] font-black text-primary-400/80 uppercase tracking-[0.2em] whitespace-nowrap transition-all ${user?.role === 'super_admin' ? 'opacity-100 block' : 'opacity-0 group-hover:opacity-100 hidden group-hover:block'}`}>{item.label}</span>
-                  <div className={`h-px w-6 bg-white/10 mt-1 ${user?.role === 'super_admin' ? 'hidden' : 'block group-hover:hidden'} ml-1`} />
+                  <span className={`text-[9px] font-black text-primary-400/80 uppercase tracking-[0.2em] whitespace-nowrap transition-all opacity-0 group-hover:opacity-100 hidden group-hover:block`}>{item.label}</span>
+                  <div className={`h-px w-6 bg-white/10 mt-1 block group-hover:hidden ml-1`} />
                 </div>
               );
             }
@@ -299,7 +299,7 @@ const Layout = () => {
                 <div className="w-6 h-6 flex items-center justify-center flex-shrink-0">
                   <Icon className="h-5 w-5" />
                 </div>
-                <span className={`text-sm font-bold tracking-wide ${user?.role === 'super_admin' ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} transition-all duration-300 whitespace-nowrap`}>
+                <span className={`text-sm font-bold tracking-wide opacity-0 group-hover:opacity-100 transition-all duration-300 whitespace-nowrap`}>
                   {item.label}
                 </span>
 

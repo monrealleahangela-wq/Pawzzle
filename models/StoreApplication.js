@@ -193,6 +193,16 @@ const storeApplicationSchema = new mongoose.Schema({
     type: Date,
     default: Date.now
   }
+}, {
+  toJSON: { virtuals: true },
+  toObject: { virtuals: true }
+});
+
+// Verification Level Virtual
+storeApplicationSchema.virtual('verificationLevel').get(function() {
+  const score = this.verificationScore || 0;
+  if (score === 0) return 1;
+  return Math.min(5, Math.floor(score / 20) + 1);
 });
 
 // Update timestamp on save
@@ -206,23 +216,27 @@ storeApplicationSchema.methods.calculateVerificationScore = function () {
   let score = 0;
   const checks = this.verificationChecks;
 
-  // License verification (30 points)
-  if (checks.licenseValid) score += 30;
+  // License verification (20 points)
+  if (checks.licenseValid) score += 20;
 
   // Tax ID verification (20 points)
   if (checks.taxIdValid) score += 20;
 
-  // Insurance verification (20 points)
-  if (checks.insuranceValid) score += 20;
+  // Government ID (15 points)
+  if (this.governmentIdUrl) score += 15;
 
-  // Certifications verification (15 points)
-  if (checks.certificationsValid) score += 15;
+  // Business Registration Documents (15 points)
+  if (this.businessRegistrationUrl || this.birRegistrationUrl || this.mayorsPermitUrl) score += 15;
 
-  // References verification (10 points)
+  // Insurance verification (10 points)
+  if (checks.insuranceValid) score += 10;
+
+  // Professional References (10 points)
   if (checks.referencesValid) score += 10;
 
-  // Business registration (5 points)
-  if (checks.businessRegistered) score += 5;
+  // Digital Identity (Store Logo & Description) (10 points)
+  if (this.storeLogoUrl) score += 5;
+  if (this.businessDescription && this.businessDescription.length > 50) score += 5;
 
   this.verificationScore = score;
   return score;
@@ -260,8 +274,8 @@ storeApplicationSchema.methods.autoVerify = function () {
     checks.referencesValid = true;
   }
 
-  // Business registration (simplified check)
-  if (this.businessLicense.number && this.businessLicense.issuingAuthority) {
+  // Business registration: Check if at least one major business doc is present
+  if (this.businessRegistrationUrl || this.birRegistrationUrl || this.mayorsPermitUrl) {
     checks.businessRegistered = true;
   }
 

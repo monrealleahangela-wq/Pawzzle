@@ -179,7 +179,10 @@ const StoreApplications = () => {
 
                   <div className="grid grid-cols-2 gap-6 mb-8">
                     <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                      <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Trust Score</p>
+                      <div className="flex justify-between items-start mb-1.5">
+                        <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Trust Index</p>
+                        <span className="text-[8px] font-black text-primary-600 italic">Level {app.verificationLevel || 1}</span>
+                      </div>
                       <div className="flex items-end gap-2">
                         <p className={`text-2xl font-black tracking-tighter leading-none ${getScoreColor(app.verificationScore)}`}>{app.verificationScore}%</p>
                         <TrendingUp className={`h-4 w-4 mb-1 ${getScoreColor(app.verificationScore)}`} />
