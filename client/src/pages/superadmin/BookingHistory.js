@@ -182,7 +182,7 @@ const BookingHistory = () => {
                             <Search className="h-4 w-4 text-slate-500 group-focus-within:text-primary-500 transition-colors" />
                         </div>
                         <input
-                            type="text" placeholder="QUERY BOOKINGS: NAME, EMAIL, ID..."
+                            type="text" placeholder=""
                             value={filters.search} onChange={(e) => handleFilterChange('search', e.target.value)}
                             className="w-full pl-14 pr-4 py-3.5 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl outline-none focus:ring-2 focus:ring-primary-500/50 placeholder:text-slate-600 transition-all font-sans"
                         />

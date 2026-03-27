@@ -136,7 +136,7 @@ const StoreApplications = () => {
             </div>
             <input
               type="text"
-              placeholder="QUERY APPLICATIONS: STORE NAME, APPLICANT, REF..."
+              placeholder=""
               className="w-full pl-14 pr-4 py-3.5 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl outline-none focus:ring-2 focus:ring-primary-500/50 placeholder:text-slate-600 transition-all font-sans"
               value={filters.search}
               onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
@@ -606,7 +606,7 @@ const StoreApplications = () => {
                   <input 
                     type="text"
                     className="w-full bg-white border border-rose-100 rounded-2xl px-6 py-4 text-sm font-bold placeholder:text-rose-200 outline-none focus:border-rose-400"
-                    placeholder="Decision context or custom reason..."
+                    placeholder=""
                     value={reviewForm.rejectionReason}
                     onChange={(e) => setReviewForm(prev => ({ ...prev, rejectionReason: e.target.value }))}
                   />
