@@ -100,8 +100,8 @@ const ActivityHistory = () => {
 
     const filteredActivities = useMemo(() => {
         return allActivities.filter(activity => {
-            const matchesSearch = activity.detail.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                activity.label.toLowerCase().includes(searchTerm.toLowerCase());
+            const matchesSearch = activity.detail.toLowerCase().includes(submittedSearch.toLowerCase()) ||
+                activity.label.toLowerCase().includes(submittedSearch.toLowerCase());
             const matchesFilter = filterType === 'all' || activity.type === filterType;
 
             let matchesDate = true;
@@ -121,37 +121,30 @@ const ActivityHistory = () => {
 
             return matchesSearch && matchesFilter && matchesDate;
         });
-    }, [allActivities, searchTerm, filterType, dateRange]);
+    }, [allActivities, submittedSearch, filterType, dateRange]);
 
-    if (loading) {
+    if (loading && allActivities.length === 0) {
         return (
-            <div className="flex flex-col items-center justify-center h-screen gap-6 bg-slate-50/50">
-                <div className="relative">
-                    <div className="w-16 h-16 border-4 border-slate-100 border-t-indigo-600 rounded-full animate-spin"></div>
-                    <Zap className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-6 w-6 text-indigo-600 animate-pulse" />
+            <div className="flex flex-col items-center justify-center h-64 gap-4">
+                <div className="w-12 h-1 bg-slate-100 rounded-full overflow-hidden">
+                    <div className="h-full bg-indigo-600 animate-[loading_1s_infinite_ease-in-out] w-1/2"></div>
                 </div>
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.4em]">Compiling Activity Log...</p>
+                <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">Auditing Platform History...</span>
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen bg-slate-50/30 p-4 lg:p-8 space-y-8 pb-32">
-            {/* Header */}
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 border-b border-slate-100 pb-8">
+        <div className="space-y-6 pb-20">
+            {/* Activity Hub Header */}
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 border-b border-slate-100 pb-6">
                 <div>
-                    <Link to="/superadmin/system-analytics" className="inline-flex items-center text-[10px] font-black text-slate-400 hover:text-indigo-600 uppercase tracking-[0.2em] mb-4 transition-colors">
-                        <ArrowLeft className="h-3 w-3 mr-2" />
-                        Back to Analytics
-                    </Link>
-                    <div className="flex items-center gap-3 mb-2">
-                        <div className="p-2 bg-indigo-600 text-white rounded-2xl shadow-lg">
-                            <Zap className="h-4 w-4" />
-                        </div>
-                        <span className="text-[10px] font-black text-indigo-600 uppercase tracking-[0.4em]">Audit Protocol</span>
+                    <div className="flex items-center gap-2 mb-2">
+                        <Package className="h-3 w-3 text-indigo-600" />
+                        <span className="text-[9px] font-black text-indigo-600 uppercase tracking-[0.4em]">SYSTEM MONITOR : LEDGER</span>
                     </div>
-                    <h1 className="text-4xl sm:text-6xl font-black text-slate-900 uppercase tracking-tighter leading-none mb-2">
-                        Activity <span className="text-indigo-600 italic">History</span>
+                    <h1 className="text-3xl font-black text-slate-900 uppercase tracking-tighter leading-none mb-2">
+                        Activity <br /> <span className="text-indigo-600 italic">History</span>
                     </h1>
                     <p className="text-[11px] font-bold text-slate-400 uppercase tracking-[0.3em]">Complete immutable platform event log</p>
                 </div>
@@ -170,28 +163,30 @@ const ActivityHistory = () => {
             <div className="bg-slate-900 p-2 rounded-[1.5rem] shadow-xl border border-slate-800">
                 <div className="grid grid-cols-1 md:grid-cols-12 gap-2">
                     <form onSubmit={handleSearchSubmit} className="md:col-span-5 relative group">
-            <div className="absolute left-5 top-1/2 -translate-y-1/2 flex items-center">
-              <Search className="h-4 w-4 text-slate-500 group-focus-within:text-primary-500 transition-colors" />
-            </div>
-            <input
-                            type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
+                        <div className="absolute left-5 top-1/2 -translate-y-1/2 flex items-center">
+                            <Search className="h-4 w-4 text-slate-500 group-focus-within:text-primary-500 transition-colors" />
+                        </div>
+                        <input
+                            type="text" 
+                            value={searchQuery} 
+                            onChange={(e) => setSearchQuery(e.target.value)}
                             placeholder="QUERY AUDIT LOG: USER, EVENT, TIMESTAMP..."
-                            className="w-full pl-14 pr-4 py-3.5.5 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl outline-none focus:ring-2 focus:ring-primary-500/50 placeholder:text-slate-600 transition-all font-sans"
+                            className="w-full pl-14 pr-24 py-3.5 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl outline-none focus:ring-2 focus:ring-primary-500/50 placeholder:text-slate-600 transition-all font-sans"
                         />
-            <button 
-              type="submit"
-              className="absolute right-2 top-1/2 -translate-y-1/2 px-4 py-1.5 bg-indigo-600 text-white text-[9px] font-black uppercase tracking-widest rounded-lg hover:bg-indigo-700 transition-all opacity-0 group-focus-within:opacity-100"
-            >
-              SEARCH
-            </button>
-          </form>
+                        <button 
+                            type="submit"
+                            className="absolute right-2 top-1/2 -translate-y-1/2 px-4 py-1.5 bg-indigo-600 text-white text-[9px] font-black uppercase tracking-widest rounded-lg hover:bg-indigo-700 transition-all opacity-0 group-focus-within:opacity-100"
+                        >
+                            SEARCH
+                        </button>
+                    </form>
                     <div className="md:col-span-4 relative">
                         <div className="absolute left-5 top-1/2 -translate-y-1/2">
                             <Target className="h-3.5 w-3.5 text-primary-500" />
                         </div>
                         <select
                             value={filterType} onChange={(e) => setFilterType(e.target.value)}
-                            className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-2xl pl-14 pr-10 py-3.5.5 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer font-sans"
+                            className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-2xl pl-14 pr-10 py-3.5 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer font-sans"
                         >
                             <option value="all" className="bg-slate-900 text-white font-black">ALL EVENTS</option>
                             <option value="user" className="bg-slate-900 text-white font-black">USER EVENTS</option>
@@ -206,7 +201,7 @@ const ActivityHistory = () => {
                         </div>
                         <select
                             value={dateRange} onChange={(e) => setDateRange(e.target.value)}
-                            className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-2xl pl-20 pr-10 py-3.5.5 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer font-sans"
+                            className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-2xl pl-20 pr-10 py-3.5 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer font-sans"
                         >
                             <option value="" className="bg-slate-900 text-white font-black">ALL TIME</option>
                             <option value="today" className="bg-slate-900 text-white font-black">TODAY</option>
@@ -217,7 +212,6 @@ const ActivityHistory = () => {
                     </div>
                 </div>
             </div>
-
 
             {/* Activity List */}
             <div className="bg-white border border-slate-100 rounded-[3rem] overflow-hidden shadow-sm">
@@ -278,7 +272,7 @@ const ActivityHistory = () => {
                                 </tr>
                             )) : (
                                 <tr>
-                                    <td colSpan="3" className="px-8 py-3.52 text-center">
+                                    <td colSpan="3" className="px-8 py-8 text-center">
                                         <div className="flex flex-col items-center gap-4">
                                             <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center text-slate-200">
                                                 <Filter className="h-8 w-8" />
