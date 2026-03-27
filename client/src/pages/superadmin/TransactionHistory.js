@@ -17,7 +17,9 @@ import {
   Zap,
   Globe,
   PieChart,
-  ArrowRight
+  ArrowRight,
+  Shield,
+  ChevronDown
 } from 'lucide-react';
 
 const TransactionHistory = () => {

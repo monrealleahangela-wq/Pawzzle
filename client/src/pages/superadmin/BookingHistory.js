@@ -20,7 +20,8 @@ import {
     ShieldCheck,
     Globe,
     ArrowRight,
-    Briefcase
+    Briefcase,
+    ChevronDown
 } from 'lucide-react';
 
 const BookingHistory = () => {

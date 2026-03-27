@@ -17,7 +17,9 @@ import {
     Smile,
     Bug,
     Zap,
-    Sparkles
+    Sparkles,
+    Shield,
+    ChevronDown
 } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { reviewService } from '../../services/apiService';

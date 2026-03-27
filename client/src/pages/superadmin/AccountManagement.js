@@ -19,7 +19,8 @@ import {
   Target,
   Globe,
   MoreVertical,
-  UserPlus
+  UserPlus,
+  ChevronDown
 } from 'lucide-react';
 
 const AccountManagement = () => {

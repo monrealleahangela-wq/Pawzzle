@@ -13,7 +13,8 @@ import {
     ArrowLeft,
     Calendar,
     Filter,
-    RefreshCw
+    RefreshCw,
+    ChevronDown
 } from 'lucide-react';
 
 const ActivityHistory = () => {
@@ -141,34 +142,37 @@ const ActivityHistory = () => {
                     </div>
                 </div>
             </div>
-
-            {/* Filters & Search */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-                <div className="lg:col-span-8 relative group">
-                    <Search className="absolute left-6 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400 group-focus-within:text-indigo-600 transition-colors" />
-                    <input
-                        type="text"
-                        placeholder="Search activities, users, or events..."
-                        className="w-full !pl-20 pr-6 py-5 bg-white border border-slate-100 rounded-[2rem] text-sm font-bold text-slate-900 placeholder:text-slate-300 focus:outline-none focus:ring-4 focus:ring-indigo-500/5 focus:border-indigo-200 transition-all shadow-sm"
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                    />
-                </div>
-                <div className="lg:col-span-4 flex gap-2">
-                    {['all', 'user', 'pet', 'order'].map(type => (
-                        <button
-                            key={type}
-                            onClick={() => setFilterType(type)}
-                            className={`flex-1 px-4 py-5 rounded-[1.5rem] text-[10px] font-black uppercase tracking-widest transition-all ${filterType === type
-                                    ? 'bg-slate-900 text-white shadow-xl translate-y-[-2px]'
-                                    : 'bg-white border border-slate-100 text-slate-400 hover:bg-slate-50'
-                                }`}
+            {/* Audit HUD Filter - High Contrast & Always Visible */}
+            <div className="bg-slate-900 p-2 rounded-[2.5rem] shadow-xl border border-slate-800">
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-2">
+                    <div className="md:col-span-8 relative group">
+                        <div className="absolute left-6 top-1/2 -translate-y-1/2 flex items-center gap-3">
+                            <Search className="h-4 w-4 text-slate-500 group-focus-within:text-primary-500 transition-colors" />
+                        </div>
+                        <input
+                            type="text" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
+                            placeholder="QUERY AUDIT LOG: USER, EVENT, TIMESTAMP..."
+                            className="w-full pl-16 pr-4 py-5 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-3xl outline-none focus:ring-2 focus:ring-primary-500/50 placeholder:text-slate-600 transition-all font-sans"
+                        />
+                    </div>
+                    <div className="md:col-span-4 relative">
+                        <div className="absolute left-6 top-1/2 -translate-y-1/2">
+                            <Target className="h-3.5 w-3.5 text-primary-500" />
+                        </div>
+                        <select
+                            value={filterType} onChange={(e) => setFilterType(e.target.value)}
+                            className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-3xl pl-16 pr-10 py-5 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer font-sans"
                         >
-                            {type === 'all' ? 'All' : type + 's'}
-                        </button>
-                    ))}
+                            <option value="all" className="bg-slate-900 text-white font-black">ALL EVENTS: VIEW ALL</option>
+                            <option value="user" className="bg-slate-900 text-white font-black">TYP: USER EVENTS</option>
+                            <option value="pet" className="bg-slate-900 text-white font-black">TYP: PET CATALOG</option>
+                            <option value="order" className="bg-slate-900 text-white font-black">TYP: TRANSACTION LOG</option>
+                        </select>
+                        <ChevronDown className="absolute right-6 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500 pointer-events-none" />
+                    </div>
                 </div>
             </div>
+
 
             {/* Activity List */}
             <div className="bg-white border border-slate-100 rounded-[3rem] overflow-hidden shadow-sm">

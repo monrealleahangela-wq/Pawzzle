@@ -4,7 +4,7 @@ import { archiveService } from '../../services/apiService';
 import {
     Archive, RotateCcw, Trash2, Search, Shield, Heart, Package,
     Scissors, Building, Users, Calendar, ShoppingBag, ChevronRight,
-    AlertTriangle, X, Filter
+    AlertTriangle, X, Filter, ChevronDown
 } from 'lucide-react';
 
 const typeConfig = {

@@ -24,7 +24,8 @@ import {
   Globe,
   Download,
   ShoppingCart,
-  Zap
+  Zap,
+  Shield
 } from 'lucide-react';
 import GoogleMap from '../../components/GoogleMap';
 import ReviewSection from '../../components/ReviewSection';
@@ -300,11 +301,19 @@ const StoreDetail = () => {
 
             <div className="flex-1 space-y-1 text-center md:text-left">
               <div className="flex flex-wrap items-center justify-center md:justify-start gap-1.5">
-                <span className="px-2 py-0.5 bg-primary-600 text-white rounded-full text-[7px] sm:text-[10px] font-black uppercase tracking-widest shadow-lg">
-                  Official
-                </span>
-                <span className={`px-2 py-0.5 rounded-full text-[7px] sm:text-[10px] font-black uppercase tracking-widest ${isStoreOpen() ? 'bg-emerald-500 text-white' : 'bg-slate-200 text-slate-600'}`}>
-                  {isStoreOpen() ? 'Live' : 'Off'}
+                {store.verificationStatus === 'verified' && (
+                  <span className="px-2 py-0.5 bg-primary-600 text-white rounded-full text-[7px] sm:text-[10px] font-black uppercase tracking-widest shadow-lg flex items-center gap-1">
+                    <Shield className="h-2 w-2 sm:h-3 sm:w-3 fill-white/20" /> Official
+                  </span>
+                )}
+                {store.verificationStatus === 'pending' && (
+                  <span className="px-2 py-0.5 bg-amber-500 text-white rounded-full text-[7px] sm:text-[10px] font-black uppercase tracking-widest shadow-lg">
+                    Pending
+                  </span>
+                )}
+                <span className={`px-2 py-0.5 rounded-full text-[7px] sm:text-[10px] font-black uppercase tracking-widest flex items-center gap-1 shadow-lg transition-all ${isStoreOpen() ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white'}`}>
+                  <div className={`w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full bg-white ${isStoreOpen() ? 'animate-pulse' : ''}`} />
+                  {isStoreOpen() ? 'Online' : 'Offline'}
                 </span>
               </div>
               <h1 className="text-xl sm:text-5xl md:text-6xl font-black text-slate-900 tracking-tighter leading-tight uppercase truncate max-w-full">

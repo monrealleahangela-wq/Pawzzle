@@ -13,7 +13,9 @@ import {
     HelpCircle,
     Mail,
     ShieldAlert,
-    Send
+    Send,
+    Shield,
+    ChevronDown
 } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { supportService, userService, getImageUrl } from '../../services/apiService';
