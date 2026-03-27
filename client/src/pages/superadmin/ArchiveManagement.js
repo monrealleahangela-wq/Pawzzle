@@ -153,14 +153,14 @@ const ArchiveManagement = () => {
             <div className="bg-slate-900 p-2 rounded-[2.5rem] shadow-xl border border-slate-800">
                 <div className="grid grid-cols-1 md:grid-cols-12 gap-2">
                     <div className="md:col-span-12 relative group">
-                        <div className="absolute left-10 top-1/2 -translate-y-1/2 flex items-center">
+                        <div className="absolute left-12 top-1/2 -translate-y-1/2 flex items-center">
                             <Search className="h-4 w-4 text-slate-500 group-focus-within:text-primary-500 transition-colors" />
                         </div>
                         <input
                             type="text" placeholder="QUERY ARCHIVE: NAME, ID, EMAIL..."
                             value={search} onChange={(e) => setSearch(e.target.value)}
                             onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                            className="w-full pl-24 pr-32 py-5 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-3xl outline-none focus:ring-2 focus:ring-primary-500/50 placeholder:text-slate-600 transition-all font-sans"
+                            className="w-full pl-32 pr-32 py-5 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-3xl outline-none focus:ring-2 focus:ring-primary-500/50 placeholder:text-slate-600 transition-all font-sans"
                         />
                         <button 
                             onClick={handleSearch}
