@@ -376,6 +376,7 @@ const Register = () => {
                     placeholder="jane@example.com"
                     value={formData.email}
                     onChange={handleChange}
+                    autoComplete="off"
                   />
                 </div>
               </div>
@@ -474,6 +475,7 @@ const Register = () => {
                     placeholder="Passphrase"
                     value={formData.password}
                     onChange={handleChange}
+                    autoComplete="new-password"
                   />
                   <button
                     type="button"
@@ -491,6 +493,7 @@ const Register = () => {
                     placeholder="Repeat Passphrase"
                     value={formData.confirmPassword}
                     onChange={handleChange}
+                    autoComplete="new-password"
                   />
                   <button
                     type="button"
