@@ -14,7 +14,8 @@ import {
     Calendar,
     Filter,
     RefreshCw,
-    ChevronDown
+    ChevronDown,
+    Target
 } from 'lucide-react';
 
 const ActivityHistory = () => {
