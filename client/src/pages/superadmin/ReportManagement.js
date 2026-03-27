@@ -7,6 +7,7 @@ import {
     User,
     Store,
     Calendar,
+    Filter,
     AlertTriangle,
     ExternalLink,
     MoreVertical,
