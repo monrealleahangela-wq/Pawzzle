@@ -180,8 +180,11 @@ const FloatingChatManager = ({ currentUser }) => {
     }
   };
 
-  // Dragging logic for both mobile and desktop
+  // Dragging logic - Functional on mobile, disabled for desktop mouse events
   const handleDragStart = (e) => {
+    // Only allow dragging via touch on mobile, or prevent if desktop mouse event
+    if (e.type === 'mousedown' && window.innerWidth >= 640) return;
+    
     const clientY = e.type === 'touchstart' ? e.touches[0].clientY : e.clientY;
     setStartY(clientY);
     setIsDragging(true);
@@ -296,14 +299,16 @@ const FloatingChatManager = ({ currentUser }) => {
         >
           {/* Draggable Handle */}
           <div 
-            className="w-full pt-3 pb-2 flex flex-col items-center cursor-grab active:cursor-grabbing bg-primary-800 touch-none select-none"
+            className={`w-full pt-3 pb-2 flex flex-col items-center ${window.innerWidth < 640 ? 'cursor-grab active:cursor-grabbing' : ''} bg-primary-800 touch-none select-none`}
             onMouseDown={handleDragStart}
             onTouchStart={handleDragStart}
           >
             <div className="w-12 h-1.5 bg-white/30 rounded-full mb-1" />
-            <p className="text-[8px] font-black uppercase text-white/50 tracking-widest">
-              {window.innerWidth < 640 ? 'Pull down to close' : 'Drag to close'}
-            </p>
+            {window.innerWidth < 640 && (
+              <p className="text-[8px] font-black uppercase text-white/50 tracking-widest">
+                Pull down to close
+              </p>
+            )}
           </div>
 
           {/* Header */}

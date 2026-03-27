@@ -114,7 +114,7 @@ const AccountManagement = () => {
       let reason = null;
       if (user.isActive) {
         reason = window.prompt(
-          'Reason for deactivation (optional):', 
+          'Reason for deactivation (optional):',
           'Account disabled by administrator for security or policy review.'
         );
         if (reason === null) return; // User cancelled prompt
@@ -205,13 +205,13 @@ const AccountManagement = () => {
               <Search className="h-4 w-4 text-slate-500 group-focus-within:text-primary-500 transition-colors" />
             </div>
             <input
-              type="text" 
-              value={searchTerm} 
+              type="text"
+              value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="SEARCH BY USERNAME, EMAIL OR NAME..."
+              placeholder=""
               className="w-full pl-14 pr-24 py-3.5.5 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl outline-none focus:ring-2 focus:ring-primary-500/50 placeholder:text-slate-600 transition-all font-sans"
             />
-            <button 
+            <button
               type="submit"
               className="absolute right-2 top-1/2 -translate-y-1/2 px-4 py-1.5 bg-primary-600 text-white text-[9px] font-black uppercase tracking-widest rounded-lg hover:bg-primary-700 transition-all opacity-0 group-focus-within:opacity-100"
             >
@@ -275,11 +275,10 @@ const AccountManagement = () => {
                 </span>
                 {user.isActive && (
                   <div className="flex items-center gap-1.5">
-                    <div className={`w-1.5 h-1.5 rounded-full ${
-                      user.lastSeen && (new Date() - new Date(user.lastSeen)) < 5 * 60 * 1000 
-                        ? 'bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.5)]' 
+                    <div className={`w-1.5 h-1.5 rounded-full ${user.lastSeen && (new Date() - new Date(user.lastSeen)) < 5 * 60 * 1000
+                        ? 'bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.5)]'
                         : 'bg-slate-300'
-                    }`} />
+                      }`} />
                     <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none">
                       {user.lastSeen && (new Date() - new Date(user.lastSeen)) < 5 * 60 * 1000 ? 'ONLINE' : 'OFFLINE'}
                     </span>

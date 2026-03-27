@@ -22,7 +22,7 @@ const labelMap = {
     services: { name: 'name', secondary: 'category' },
     stores: { name: 'name', secondary: 'businessType' },
     users: { name: 'username', secondary: 'email' },
-    bookings: { name: '_id', secondary: 'status' },
+    bookings: { name: 'status', secondary: 'notes' },
     orders: { name: 'orderNumber', secondary: 'status' }
 };
 
@@ -35,46 +35,56 @@ const getArchivedItems = async (req, res) => {
         const typesToQuery = type === 'all' ? Object.keys(modelMap) : [type];
 
         for (const t of typesToQuery) {
-            const Model = modelMap[t];
-            if (!Model) continue;
+            try {
+                const Model = modelMap[t];
+                if (!Model) continue;
 
-            const filter = { isDeleted: true };
+                const filter = { isDeleted: true };
 
-            if (search && search !== '') {
-                const fields = labelMap[t];
-                filter.$or = [
-                    { [fields.name]: { $regex: search, $options: 'i' } }
-                ];
-                if (fields.secondary) {
-                    filter.$or.push({ [fields.secondary]: { $regex: search, $options: 'i' } });
+                if (search && search !== '') {
+                    const fields = labelMap[t];
+                    filter.$or = [];
+                    
+                    if (fields.name) {
+                        filter.$or.push({ [fields.name]: { $regex: search, $options: 'i' } });
+                    }
+                    
+                    if (fields.secondary) {
+                        filter.$or.push({ [fields.secondary]: { $regex: search, $options: 'i' } });
+                    }
+                    
+                    if (filter.$or.length === 0) delete filter.$or;
                 }
+
+                let query = Model.find(filter).sort({ updatedAt: -1 });
+
+                // Add populates based on type
+                if (t === 'pets') {
+                    query = query.populate('addedBy', 'username firstName lastName').populate('store', 'name');
+                } else if (t === 'products') {
+                    query = query.populate('addedBy', 'username firstName lastName').populate('store', 'name');
+                } else if (t === 'services') {
+                    query = query.populate('addedBy', 'username firstName lastName').populate('store', 'name');
+                } else if (t === 'stores') {
+                    query = query.populate('owner', 'username firstName lastName');
+                } else if (t === 'bookings') {
+                    query = query.populate('customer', 'firstName lastName').populate('service', 'name');
+                } else if (t === 'orders') {
+                    query = query.populate('customer', 'firstName lastName');
+                }
+
+                if (type !== 'all') {
+                    const skip = (page - 1) * limit;
+                    query = query.skip(skip).limit(parseInt(limit));
+                } else {
+                    query = query.limit(50);
+                }
+
+                results[t] = await query;
+            } catch (err) {
+                console.error(`Error fetching archived ${t}:`, err);
+                results[t] = []; // Return empty array for this type instead of crashing
             }
-
-            let query = Model.find(filter).sort({ updatedAt: -1 });
-
-            // Add populates based on type
-            if (t === 'pets') {
-                query = query.populate('addedBy', 'username firstName lastName').populate('store', 'name');
-            } else if (t === 'products') {
-                query = query.populate('addedBy', 'username firstName lastName').populate('store', 'name');
-            } else if (t === 'services') {
-                query = query.populate('addedBy', 'username firstName lastName').populate('store', 'name');
-            } else if (t === 'stores') {
-                query = query.populate('owner', 'username firstName lastName');
-            } else if (t === 'bookings') {
-                query = query.populate('customer', 'firstName lastName').populate('service', 'name');
-            } else if (t === 'orders') {
-                query = query.populate('customer', 'firstName lastName');
-            }
-
-            if (type !== 'all') {
-                const skip = (page - 1) * limit;
-                query = query.skip(skip).limit(parseInt(limit));
-            } else {
-                query = query.limit(50);
-            }
-
-            results[t] = await query;
         }
 
         // If querying a single type, include count for pagination
