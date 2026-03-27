@@ -137,7 +137,7 @@ const AdminChat = () => {
           </div>
         </header>
 
-        <div className="flex-1 flex overflow-hidden bg-white border border-slate-100 rounded-none md:rounded-[2.5rem] shadow-sm">
+        <div className="flex-1 flex overflow-hidden bg-white border border-slate-100 rounded-none md:rounded-2xl shadow-sm">
           {/* Sidebar - Conversation List */}
           <div className={`w-full md:w-80 lg:w-96 flex flex-col border-r border-slate-50 ${selectedConversation ? 'hidden md:flex' : 'flex'}`}>
             {/* Search & Filter - Compact */}
@@ -254,7 +254,7 @@ const AdminChat = () => {
               </>
             ) : (
               <div className="flex-1 flex flex-col items-center justify-center text-center p-12 opacity-40">
-                <div className="w-20 h-20 bg-slate-50 rounded-[2.5rem] flex items-center justify-center mb-6">
+                <div className="w-20 h-20 bg-slate-50 rounded-2xl flex items-center justify-center mb-6">
                   <MessageSquare className="h-10 w-10 text-slate-200" />
                 </div>
                 <h2 className="text-xl font-black text-slate-900 uppercase tracking-tighter mb-2">Select a thread</h2>

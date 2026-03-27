@@ -65,7 +65,7 @@ const AdminDSS = () => {
     const isStaff = roleProfile?.isStaff;
     const staffType = roleProfile?.staffType?.replace('_', ' ');
 
-    const cardClass = "bg-white border border-slate-100 rounded-[2.5rem] p-8 shadow-sm hover:shadow-xl transition-all duration-500 overflow-hidden relative group";
+    const cardClass = "bg-white border border-slate-100 rounded-2xl p-8 shadow-sm hover:shadow-xl transition-all duration-500 overflow-hidden relative group";
     const labelClass = "text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4 block";
     const titleClass = "text-xl font-black text-slate-900 tracking-tight mb-6 flex items-center gap-3 uppercase";
 
@@ -97,11 +97,11 @@ const AdminDSS = () => {
                     </div>
 
                     <div className="flex flex-wrap gap-4 mt-10">
-                        <div className="px-6 py-5 bg-white/5 border border-white/10 rounded-[2.5rem] backdrop-blur-md">
+                        <div className="px-6 py-3.5 bg-white/5 border border-white/10 rounded-2xl backdrop-blur-md">
                             <p className="text-[8px] font-black text-white/40 uppercase tracking-widest mb-1">Portfolio Revenue</p>
                             <p className="text-2xl font-black text-white tracking-tighter">₱{overview.totalRevenue.toLocaleString()}</p>
                         </div>
-                        <div className="px-6 py-5 bg-white/5 border border-white/10 rounded-[2.5rem] backdrop-blur-md">
+                        <div className="px-6 py-3.5 bg-white/5 border border-white/10 rounded-2xl backdrop-blur-md">
                             <p className="text-[8px] font-black text-white/40 uppercase tracking-widest mb-1">Conversion Rate</p>
                             <p className="text-2xl font-black text-emerald-400 tracking-tighter">{conversionRate}%</p>
                         </div>
@@ -110,7 +110,7 @@ const AdminDSS = () => {
             </div>
 
             {/* Navigation Tabs */}
-            <div className="flex gap-2 p-1.5 bg-slate-100 rounded-[2.5rem] w-fit mx-auto shadow-inner">
+            <div className="flex gap-2 p-1.5 bg-slate-100 rounded-2xl w-fit mx-auto shadow-inner">
                 {[
                     { id: 'inventory', label: 'Smart Alerts', icon: AlertCircle },
                     { id: 'sales', label: 'Sales Velocity', icon: BarChart3 },
@@ -119,7 +119,7 @@ const AdminDSS = () => {
                     <button
                         key={tab.id}
                         onClick={() => setActiveTab(tab.id)}
-                        className={`flex items-center gap-2 px-8 py-3 rounded-3xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === tab.id
+                        className={`flex items-center gap-2 px-8 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === tab.id
                             ? 'bg-slate-900 text-white shadow-xl translate-y-[-1px]'
                             : 'text-slate-400 hover:text-slate-600'
                             }`}
@@ -165,10 +165,10 @@ const AdminDSS = () => {
                                                     </p>
                                                 </div>
                                                 <div className="flex flex-col justify-center gap-3 w-full md:w-48">
-                                                    <button className="w-full py-5 bg-slate-900 text-white rounded-3xl text-[10px] font-black uppercase tracking-widest hover:bg-primary-600 transition-all shadow-xl shadow-slate-200">
+                                                    <button className="w-full py-3.5 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-primary-600 transition-all shadow-xl shadow-slate-200">
                                                         Restock Now
                                                     </button>
-                                                    <button className="w-full py-5 bg-slate-50 text-slate-400 rounded-3xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-100 transition-all">
+                                                    <button className="w-full py-3.5 bg-slate-50 text-slate-400 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-100 transition-all">
                                                         Ignore Alert
                                                     </button>
                                                 </div>
@@ -221,7 +221,7 @@ const AdminDSS = () => {
                                 </div>
                             </div>
 
-                            <div className="bg-slate-900 rounded-[2.5rem] p-8 text-white shadow-2xl overflow-hidden relative">
+                            <div className="bg-slate-900 rounded-2xl p-8 text-white shadow-2xl overflow-hidden relative">
                                 <Activity className="absolute -right-8 -bottom-8 w-32 h-32 text-white/5" />
                                 <p className="text-[9px] font-black uppercase tracking-[0.3em] text-primary-400 mb-4">Replenishment Logic</p>
                                 <p className="text-xs font-bold leading-relaxed text-slate-400">
@@ -315,7 +315,7 @@ const AdminDSS = () => {
                                         }
                                     ].map((step, i) => (
                                         <div key={i} className="flex gap-6 group">
-                                            <div className="w-12 h-12 bg-slate-50 rounded-3xl flex items-center justify-center shrink-0 border border-slate-100 group-hover:bg-primary-600 group-hover:text-white transition-all shadow-sm">
+                                            <div className="w-12 h-12 bg-slate-50 rounded-xl flex items-center justify-center shrink-0 border border-slate-100 group-hover:bg-primary-600 group-hover:text-white transition-all shadow-sm">
                                                 <step.icon size={20} />
                                             </div>
                                             <div>
@@ -338,7 +338,7 @@ const AdminDSS = () => {
                                         { label: "Medium Priority", desc: "Depletion estimated within 14 days", color: "bg-blue-500" },
                                         { label: "Low Priority", desc: "Safe inventory levels detected", color: "bg-emerald-500" }
                                     ].map((item, i) => (
-                                        <div key={i} className="flex items-center gap-4 p-4 bg-white/5 rounded-3xl border border-white/10">
+                                        <div key={i} className="flex items-center gap-4 p-4 bg-white/5 rounded-xl border border-white/10">
                                             <div className={`w-3 h-3 rounded-full ${item.color} shadow-lg`} />
                                             <div>
                                                 <span className="text-[10px] font-black uppercase tracking-widest">{item.label}</span>
@@ -350,7 +350,7 @@ const AdminDSS = () => {
                             </div>
 
                             <div className="bg-primary-600 rounded-[3rem] p-10 text-white shadow-xl flex gap-6 items-center">
-                                <div className="p-4 bg-white/10 rounded-[2.5rem] backdrop-blur-md">
+                                <div className="p-4 bg-white/10 rounded-2xl backdrop-blur-md">
                                     <ShoppingBag size={32} />
                                 </div>
                                 <div>

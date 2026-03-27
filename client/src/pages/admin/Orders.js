@@ -118,24 +118,24 @@ const AdminOrders = () => {
         </div>
 
       {/* Order HUD Filter - High Contrast & Always Visible */}
-      <div className="relative z-10 bg-slate-900 p-2 rounded-[2.5rem] shadow-xl border border-slate-800">
+      <div className="relative z-10 bg-slate-900 p-2 rounded-2xl shadow-xl border border-slate-800">
         <div className="grid grid-cols-1 md:grid-cols-12 gap-2">
           <div className="md:col-span-8 relative group">
-            <div className="absolute left-12 top-1/2 -translate-y-1/2 flex items-center">
+            <div className="absolute left-10 top-1/2 -translate-y-1/2 flex items-center">
               <Search className="h-4 w-4 text-slate-500 group-focus-within:text-indigo-500 transition-colors" />
             </div>
             <input
               type="text" placeholder=""
               value={filters.search} onChange={(e) => handleFilterChange('search', e.target.value)}
-              className="w-full pl-32 pr-4 py-5 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-[2.5rem] outline-none focus:ring-2 focus:ring-indigo-500/50 placeholder:text-slate-600 transition-all font-sans"
+              className="w-full pl-28 pr-4 py-3.5 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500/50 placeholder:text-slate-600 transition-all font-sans"
             />
           </div>
           <div className="md:col-span-4 relative">
-            <div className="absolute left-12 top-1/2 -translate-y-1/2 flex items-center">
+            <div className="absolute left-10 top-1/2 -translate-y-1/2 flex items-center">
               <Activity className="h-4 w-4 text-primary-500" />
             </div>
             <select
-              className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-[2.5rem] pl-32 pr-10 py-5 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer font-sans"
+              className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-2xl pl-28 pr-10 py-3.5 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer font-sans"
               value={filters.status}
               onChange={(e) => handleFilterChange('status', e.target.value)}
             >
@@ -163,12 +163,12 @@ const AdminOrders = () => {
               <table className="w-full">
                 <thead>
                   <tr className="bg-slate-50/50">
-                    <th className="px-8 py-5 text-left text-[9px] font-black text-slate-400 uppercase tracking-widest">Protocol ID</th>
-                    <th className="px-8 py-5 text-left text-[9px] font-black text-slate-400 uppercase tracking-widest">Customer Profile</th>
-                    <th className="px-8 py-5 text-left text-[9px] font-black text-slate-400 uppercase tracking-widest">Cargo / Items</th>
-                    <th className="px-8 py-5 text-left text-[9px] font-black text-slate-400 uppercase tracking-widest">Financials</th>
-                    <th className="px-8 py-5 text-left text-[9px] font-black text-slate-400 uppercase tracking-widest">Status</th>
-                    <th className="px-8 py-5 text-right text-[9px] font-black text-slate-400 uppercase tracking-widest">Actions</th>
+                    <th className="px-8 py-3.5 text-left text-[9px] font-black text-slate-400 uppercase tracking-widest">Protocol ID</th>
+                    <th className="px-8 py-3.5 text-left text-[9px] font-black text-slate-400 uppercase tracking-widest">Customer Profile</th>
+                    <th className="px-8 py-3.5 text-left text-[9px] font-black text-slate-400 uppercase tracking-widest">Cargo / Items</th>
+                    <th className="px-8 py-3.5 text-left text-[9px] font-black text-slate-400 uppercase tracking-widest">Financials</th>
+                    <th className="px-8 py-3.5 text-left text-[9px] font-black text-slate-400 uppercase tracking-widest">Status</th>
+                    <th className="px-8 py-3.5 text-right text-[9px] font-black text-slate-400 uppercase tracking-widest">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50">
@@ -241,7 +241,7 @@ const AdminOrders = () => {
           {/* Cards for Mobile */}
           <div className="md:hidden space-y-4">
             {orders.map((order) => (
-              <div key={order._id} className="bg-white p-5 rounded-[2.5rem] border border-slate-100 shadow-sm space-y-4 relative overflow-hidden">
+              <div key={order._id} className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm space-y-4 relative overflow-hidden">
                 <div className="flex justify-between items-start">
                   <div>
                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">#{order.orderNumber.slice(-8).toUpperCase()}</p>
@@ -287,11 +287,11 @@ const AdminOrders = () => {
 
       {/* Pagination */}
       {pagination.totalPages > 1 && (
-        <div className="relative z-10 flex justify-between items-center bg-slate-900 p-4 rounded-[2.5rem] border border-slate-800 mt-12 shadow-2xl">
+        <div className="relative z-10 flex justify-between items-center bg-slate-900 p-4 rounded-2xl border border-slate-800 mt-12 shadow-2xl">
           <button
             onClick={() => setPagination(p => ({ ...p, currentPage: p.currentPage - 1 }))}
             disabled={!pagination.hasPrev}
-            className="w-14 h-14 flex items-center justify-center bg-white/5 text-white disabled:opacity-20 rounded-[2.5rem] hover:bg-white/10 transition-all font-black"
+            className="w-14 h-14 flex items-center justify-center bg-white/5 text-white disabled:opacity-20 rounded-2xl hover:bg-white/10 transition-all font-black"
           >
             <ChevronLeft className="h-6 w-6" />
           </button>
@@ -310,7 +310,7 @@ const AdminOrders = () => {
           <button
             onClick={() => setPagination(p => ({ ...p, currentPage: p.currentPage + 1 }))}
             disabled={!pagination.hasNext}
-            className="w-14 h-14 flex items-center justify-center bg-primary-600 text-white disabled:opacity-20 rounded-[2.5rem] hover:bg-primary-700 transition-all shadow-xl shadow-primary-900/40 font-black"
+            className="w-14 h-14 flex items-center justify-center bg-primary-600 text-white disabled:opacity-20 rounded-2xl hover:bg-primary-700 transition-all shadow-xl shadow-primary-900/40 font-black"
           >
             <ChevronRight className="h-6 w-6" />
           </button>
