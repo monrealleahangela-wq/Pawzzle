@@ -360,27 +360,33 @@ const ProductInventory = () => {
       <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
         {activeTab === 'products' ? (
           <div className="space-y-8">
-            {/* Filter Deck */}
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
-              <div className="md:col-span-8 input-container group">
-                <Search className="input-icon h-4 w-4 text-slate-400 group-focus-within:text-primary-600 transition-colors" />
-                <input
-                  type="text" value={productSearchInput} onChange={(e) => setProductSearchInput(e.target.value)}
-                  placeholder="SEARCH PRODUCTS BY NAME OR BRAND..."
-                  className="input input-with-icon bg-white border-slate-100 text-[11px] font-bold uppercase tracking-widest rounded-[2rem] outline-none focus:ring-4 focus:ring-primary-600/5 shadow-sm transition-all placeholder:text-slate-300"
-                />
-              </div>
-              <div className="md:col-span-4 relative group">
-                <Filter className="absolute left-6 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                <select
-                  value={productFilters.category} onChange={(e) => setProductFilters(prev => ({ ...prev, category: e.target.value }))}
-                  className="w-full pl-16 pr-10 py-5 bg-white border border-slate-100 text-[11px] font-black uppercase tracking-widest rounded-[2rem] outline-none focus:ring-4 focus:ring-primary-600/5 appearance-none cursor-pointer shadow-sm shadow-slate-100"
-                >
-                  <option value="">ALL CATEGORIES</option>
-                  {categories.map(c => <option key={c.value} value={c.value}>{c.label.toUpperCase()}</option>)}
-                </select>
-                <ChevronDown className="absolute right-6 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300 pointer-events-none" />
-              </div>
+            {/* Catalog Identity HUD Filter - High Contrast & Always Visible */}
+            <div className="bg-slate-900 p-2 rounded-[2.5rem] shadow-xl border border-slate-800">
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-2">
+                    <div className="md:col-span-8 relative group">
+                        <div className="absolute left-6 top-1/2 -translate-y-1/2 flex items-center gap-3">
+                            <Search className="h-4 w-4 text-slate-500 group-focus-within:text-primary-500 transition-colors" />
+                        </div>
+                        <input
+                            type="text" value={productSearchInput} onChange={(e) => setProductSearchInput(e.target.value)}
+                            placeholder="QUERY CATALOG: NAME, BRAND, SKU..."
+                            className="w-full pl-16 pr-4 py-5 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-3xl outline-none focus:ring-2 focus:ring-primary-500/50 placeholder:text-slate-600 transition-all font-sans"
+                        />
+                    </div>
+                    <div className="md:col-span-4 relative">
+                        <div className="absolute left-6 top-1/2 -translate-y-1/2">
+                            <Layers className="h-3.5 w-3.5 text-primary-500" />
+                        </div>
+                        <select
+                            value={productFilters.category} onChange={(e) => setProductFilters(prev => ({ ...prev, category: e.target.value }))}
+                            className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-3xl pl-14 pr-10 py-5 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer font-sans"
+                        >
+                            <option value="" className="bg-slate-900 text-white font-black">ALL CATEGORIES: VIEW ALL</option>
+                            {categories.map(c => <option key={c.value} value={c.value} className="bg-slate-900 text-white font-black">{c.label.toUpperCase()}</option>)}
+                        </select>
+                        <ChevronDown className="absolute right-6 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-500 pointer-events-none" />
+                    </div>
+                </div>
             </div>
 
             {/* Products Grid */}
@@ -471,16 +477,21 @@ const ProductInventory = () => {
 
             {/* Stock List */}
             <div className="bg-white rounded-[3rem] border border-slate-100 shadow-xl overflow-hidden">
-              <div className="p-4 border-b border-slate-50 bg-slate-50/20 flex flex-col sm:flex-row gap-4 items-center">
-                <div className="input-container flex-1 bg-white border border-slate-100 rounded-2xl shadow-inner group">
-                  <Search className="input-icon h-4 w-4 text-slate-400 group-focus-within:text-primary-600 transition-colors" />
-                  <input
-                    type="text" value={inventorySearchInput} onChange={(e) => setInventorySearchInput(e.target.value)}
-                    placeholder="SEARCH INVENTORY..."
-                    className="input input-with-icon bg-transparent border-none text-[10px] font-black uppercase tracking-widest outline-none py-3 placeholder:text-slate-300"
-                  />
+            {/* Inventory HUD Filter - High Contrast & Always Visible */}
+            <div className="bg-slate-900 p-2 rounded-[2.5rem] shadow-xl border border-slate-800">
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-2">
+                    <div className="md:col-span-12 relative group">
+                        <div className="absolute left-6 top-1/2 -translate-y-1/2 flex items-center gap-3">
+                            <Search className="h-4 w-4 text-slate-500 group-focus-within:text-primary-500 transition-colors" />
+                        </div>
+                        <input
+                            type="text" value={inventorySearchInput} onChange={(e) => setInventorySearchInput(e.target.value)}
+                            placeholder="QUERY INVENTORY: NAME, BRAND, STOCK..."
+                            className="w-full pl-16 pr-4 py-5 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-3xl outline-none focus:ring-2 focus:ring-primary-500/50 placeholder:text-slate-600 transition-all font-sans"
+                        />
+                    </div>
                 </div>
-              </div>
+            </div>
 
               <div className="overflow-x-auto no-scrollbar">
                 <table className="min-w-full divide-y divide-slate-100">

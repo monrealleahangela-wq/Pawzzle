@@ -149,21 +149,26 @@ const ArchiveManagement = () => {
                 </div>
             </div>
 
-            {/* Search Bar */}
-            <div className="bg-slate-900 p-2 rounded-[2.5rem] shadow-xl">
-                <div className="flex gap-2">
-                    <div className="flex-1 relative group">
-                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500 group-focus-within:text-primary-500" />
+            {/* Archive HUD Filter - High Contrast & Always Visible */}
+            <div className="bg-slate-900 p-2 rounded-[2.5rem] shadow-xl border border-slate-800">
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-2">
+                    <div className="md:col-span-12 relative group">
+                        <div className="absolute left-6 top-1/2 -translate-y-1/2 flex items-center gap-3">
+                            <Search className="h-4 w-4 text-slate-500 group-focus-within:text-primary-500 transition-colors" />
+                        </div>
                         <input
-                            type="text" placeholder="SEARCH ARCHIVE..."
+                            type="text" placeholder="QUERY ARCHIVE: NAME, ID, EMAIL..."
                             value={search} onChange={(e) => setSearch(e.target.value)}
                             onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                            className="w-full !pl-20 pr-4 py-4 bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-3xl outline-none focus:ring-1 focus:ring-primary-500 placeholder:text-slate-600"
+                            className="w-full pl-16 pr-32 py-5 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-3xl outline-none focus:ring-2 focus:ring-primary-500/50 placeholder:text-slate-600 transition-all font-sans"
                         />
+                        <button 
+                            onClick={handleSearch}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 px-6 py-2.5 bg-primary-600 text-white rounded-2xl text-[9px] font-black uppercase tracking-widest hover:bg-primary-500 transition-all active:scale-95"
+                        >
+                            Execute
+                        </button>
                     </div>
-                    <button onClick={handleSearch} className="px-8 py-4 bg-primary-600 text-white rounded-3xl text-[10px] font-black uppercase tracking-widest hover:bg-primary-500 transition-all">
-                        Search
-                    </button>
                 </div>
             </div>
 

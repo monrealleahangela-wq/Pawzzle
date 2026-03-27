@@ -173,37 +173,46 @@ const TransactionHistory = () => {
         ))}
       </div>
 
-      {/* Filters */}
-      <div className="bg-slate-900 p-2 rounded-[2.5rem] shadow-xl">
+      {/* Identity HUD Filter - High Contrast & Always Visible */}
+      <div className="bg-slate-900 p-2 rounded-[2.5rem] shadow-xl border border-slate-800">
         <div className="grid grid-cols-1 md:grid-cols-12 gap-2">
           <div className="md:col-span-6 relative group">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500 group-focus-within:text-primary-500" />
+            <div className="absolute left-6 top-1/2 -translate-y-1/2 flex items-center gap-3">
+              <Search className="h-4 w-4 text-slate-500 group-focus-within:text-primary-500 transition-colors" />
+            </div>
             <input
-              type="text" placeholder="SEARCH BY ORDER ID OR CUSTOMER NAME..."
+              type="text" placeholder="QUERY TRANSACTIONS: ID, NAME, EMAIL..."
               value={filters.search} onChange={(e) => handleFilterChange('search', e.target.value)}
-              className="w-full !pl-20 pr-4 py-4 bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-3xl outline-none focus:ring-1 focus:ring-primary-500 placeholder:text-slate-600"
+              className="w-full pl-16 pr-4 py-5 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-3xl outline-none focus:ring-2 focus:ring-primary-500/50 placeholder:text-slate-600 transition-all font-sans"
             />
           </div>
-          <div className="md:col-span-3">
+          <div className="md:col-span-3 relative">
+            <div className="absolute left-6 top-1/2 -translate-y-1/2">
+              <Shield className="h-3.5 w-3.5 text-primary-500" />
+            </div>
             <select
               value={filters.status} onChange={(e) => handleFilterChange('status', e.target.value)}
-              className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-3xl px-6 outline-none focus:ring-1 focus:ring-primary-500 appearance-none"
+              className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-3xl pl-14 pr-6 py-5 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer font-sans"
             >
-              <option value="">ALL STATUSES</option>
-              <option value="pending">PENDING</option>
-              <option value="confirmed">CONFIRMED</option>
-              <option value="delivered">DELIVERED</option>
+              <option value="" className="bg-slate-900 text-white font-black">ALL STATUSES</option>
+              <option value="pending" className="bg-slate-900 text-white font-black">ST: PENDING</option>
+              <option value="confirmed" className="bg-slate-900 text-white font-black">ST: CONFIRMED</option>
+              <option value="delivered" className="bg-slate-900 text-white font-black">ST: DELIVERED</option>
+              <option value="cancelled" className="bg-slate-900 text-white font-black">ST: CANCELLED</option>
             </select>
           </div>
-          <div className="md:col-span-3">
+          <div className="md:col-span-3 relative">
+            <div className="absolute left-6 top-1/2 -translate-y-1/2">
+              <Calendar className="h-3.5 w-3.5 text-emerald-500" />
+            </div>
             <select
               value={filters.dateRange} onChange={(e) => handleFilterChange('dateRange', e.target.value)}
-              className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-3xl px-6 outline-none focus:ring-1 focus:ring-primary-500 appearance-none"
+              className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-3xl pl-14 pr-6 py-5 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer font-sans"
             >
-              <option value="">ALL TIME</option>
-              <option value="today">TODAY</option>
-              <option value="week">THIS WEEK</option>
-              <option value="month">THIS MONTH</option>
+              <option value="" className="bg-slate-900 text-white font-black">CHRONO: ALL TIME</option>
+              <option value="today" className="bg-slate-900 text-white font-black">CHRONO: TODAY</option>
+              <option value="week" className="bg-slate-900 text-white font-black">CHRONO: THIS WEEK</option>
+              <option value="month" className="bg-slate-900 text-white font-black">CHRONO: THIS MONTH</option>
             </select>
           </div>
         </div>

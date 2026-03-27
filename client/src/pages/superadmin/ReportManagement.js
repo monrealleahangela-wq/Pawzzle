@@ -85,23 +85,31 @@ const ReportManagement = () => {
                     <p className="text-[9px] sm:text-xs font-bold text-slate-400 uppercase tracking-widest leading-none">Review and manage safety reports from sellers</p>
                 </div>
 
-                <div className="flex items-center gap-2">
-                    <select
-                        value={statusFilter}
-                        onChange={(e) => {
-                            setStatusFilter(e.target.value);
-                            setPagination(p => ({ ...p, currentPage: 1 }));
-                        }}
-                        className="px-4 py-2 bg-white border border-slate-100 rounded-xl text-[10px] font-black uppercase tracking-widest outline-none focus:ring-1 focus:ring-primary-500"
-                    >
-                        <option value="">All Statuses</option>
-                        <option value="pending">Pending</option>
-                        <option value="reviewed">Reviewed</option>
-                        <option value="resolved">Resolved</option>
-                        <option value="dismissed">Dismissed</option>
-                        <option value="action_taken">Action Taken</option>
-                    </select>
+            {/* Safety HUD Filter - High Contrast & Always Visible */}
+            <div className="bg-slate-900 p-2 rounded-[2.5rem] shadow-xl border border-slate-800 mb-6">
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-2">
+                    <div className="md:col-span-12 relative">
+                        <div className="absolute left-6 top-1/2 -translate-y-1/2 flex items-center gap-3">
+                            <ShieldAlert className="h-4 w-4 text-rose-500" />
+                        </div>
+                        <select
+                            value={statusFilter}
+                            onChange={(e) => {
+                                setStatusFilter(e.target.value);
+                                setPagination(p => ({ ...p, currentPage: 1 }));
+                            }}
+                            className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-3xl pl-16 pr-6 py-5 outline-none focus:ring-2 focus:ring-rose-500/50 appearance-none transition-all cursor-pointer font-sans"
+                        >
+                            <option value="" className="bg-slate-900 text-white font-black">ALL SAFETY STATUSES: VIEW ALL</option>
+                            <option value="pending" className="bg-slate-900 text-white font-black">ST: PENDING REVIEW</option>
+                            <option value="reviewed" className="bg-slate-900 text-white font-black">ST: REVIEWED</option>
+                            <option value="resolved" className="bg-slate-900 text-white font-black">ST: RESOLVED</option>
+                            <option value="dismissed" className="bg-slate-900 text-white font-black">ST: DISMISSED</option>
+                            <option value="action_taken" className="bg-slate-900 text-white font-black text-rose-400">ST: ACTION TAKEN</option>
+                        </select>
+                    </div>
                 </div>
+            </div>
             </div>
 
             <div className="bg-white border border-slate-100 rounded-[2.5rem] overflow-hidden shadow-sm">

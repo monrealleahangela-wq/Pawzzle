@@ -116,21 +116,27 @@ const AdminOrders = () => {
           </h1>
         </div>
 
-        <div className="flex items-center gap-4">
-          <div className="relative group w-64">
-            <Filter className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 group-focus-within:text-primary-600 transition-colors" />
+      {/* Order HUD Filter - High Contrast & Always Visible */}
+      <div className="relative z-10 bg-slate-900 p-2 rounded-[2.5rem] shadow-xl border border-slate-800">
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-2">
+          <div className="md:col-span-12 relative">
+            <div className="absolute left-6 top-1/2 -translate-y-1/2 flex items-center gap-3">
+              <Activity className="h-4 w-4 text-primary-500" />
+            </div>
             <select
-              className="w-full pl-16 pr-6 py-3 bg-white border border-slate-100 rounded-2xl text-[10px] font-black uppercase tracking-widest outline-none focus:ring-2 focus:ring-primary-600/10 appearance-none shadow-sm text-slate-900"
+              className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-3xl pl-16 pr-6 py-5 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer font-sans"
               value={filters.status}
               onChange={(e) => handleFilterChange('status', e.target.value)}
             >
-              <option value="">ALL STATUSES</option>
+              <option value="" className="bg-slate-900 text-white font-black">ALL ORDER STATUSES: VIEW ALL</option>
               {['pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled'].map(s => (
-                <option key={s} value={s}>{s.toUpperCase()}</option>
+                <option key={s} value={s} className="bg-slate-900 text-white font-black">ST: {s.toUpperCase()}</option>
               ))}
             </select>
+            <ChevronDown className="absolute right-6 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500 pointer-events-none" />
           </div>
         </div>
+      </div>
       </header>
 
       {orders.length === 0 ? (

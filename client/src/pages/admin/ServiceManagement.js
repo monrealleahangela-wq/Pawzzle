@@ -35,6 +35,8 @@ const ServiceManagement = () => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [serviceToDelete, setServiceToDelete] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterCategory, setFilterCategory] = useState('');
 
   const initialFormState = {
     name: '',
@@ -222,9 +224,46 @@ const ServiceManagement = () => {
         ))}
       </div>
 
+      {/* Service HUD Filter - High Contrast & Always Visible */}
+      <div className="bg-slate-900 p-2 rounded-[2.5rem] shadow-xl border border-slate-800">
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-2">
+          <div className="md:col-span-8 relative group">
+            <div className="absolute left-6 top-1/2 -translate-y-1/2 flex items-center gap-3">
+              <Search className="h-4 w-4 text-slate-500 group-focus-within:text-primary-500 transition-colors" />
+            </div>
+            <input
+              type="text" placeholder="QUERY SERVICES: NAME, DESCRIPTION..."
+              value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-16 pr-4 py-5 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-3xl outline-none focus:ring-2 focus:ring-primary-500/50 placeholder:text-slate-600 transition-all font-sans"
+            />
+          </div>
+          <div className="md:col-span-4 relative">
+            <div className="absolute left-6 top-1/2 -translate-y-1/2">
+              <Briefcase className="h-3.5 w-3.5 text-primary-500" />
+            </div>
+            <select
+              value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)}
+              className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-3xl pl-16 pr-10 py-5 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer font-sans"
+            >
+              <option value="" className="bg-slate-900 text-white font-black">ALL SERVICES: VIEW ALL</option>
+              {categories.map(c => (
+                <option key={c.value} value={c.value} className="bg-slate-900 text-white font-black">CAT: {c.label.toUpperCase()}</option>
+              ))}
+            </select>
+            <ChevronDown className="absolute right-6 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500 pointer-events-none" />
+          </div>
+        </div>
+      </div>
+
       {/* Services List */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-        {services.map((service) => (
+        {services
+          .filter(s => {
+            const matchSearch = !searchTerm || s.name.toLowerCase().includes(searchTerm.toLowerCase()) || s.description.toLowerCase().includes(searchTerm.toLowerCase());
+            const matchCat = !filterCategory || s.category === filterCategory;
+            return matchSearch && matchCat;
+          })
+          .map((service) => (
           <div key={service._id} className="group bg-white border border-slate-100 rounded-2xl overflow-hidden shadow-sm hover:shadow-xl hover:-translate-y-0.5 transition-all relative flex flex-col">
             {/* Card Image / Icon Header */}
             <div className="relative h-40 bg-gradient-to-br from-indigo-500 to-primary-600 flex items-center justify-center overflow-hidden">

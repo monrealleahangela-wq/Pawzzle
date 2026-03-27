@@ -92,32 +92,44 @@ const FeedbackManagement = () => {
                     </h1>
                     <p className="text-[10px] sm:text-xs text-slate-400 font-bold uppercase tracking-widest mt-2">Voice of the customers & developers</p>
                 </div>
-
-                <div className="flex flex-wrap gap-2 relative z-10">
-                    <select
-                        value={filter.category}
-                        onChange={(e) => setFilter({ ...filter, category: e.target.value, page: 1 })}
-                        className="px-4 py-2 bg-slate-50 border border-slate-100 rounded-xl text-[10px] font-black uppercase tracking-widest outline-none focus:ring-2 ring-primary-500/20 transition-all"
-                    >
-                        <option value="">All Categories</option>
-                        <option value="UI/UX">UI/UX</option>
-                        <option value="Performance">Performance</option>
-                        <option value="Features">Features</option>
-                        <option value="Bug Report">Bugs</option>
-                        <option value="General">General</option>
-                    </select>
-                    <select
-                        value={filter.status}
-                        onChange={(e) => setFilter({ ...filter, status: e.target.value, page: 1 })}
-                        className="px-4 py-2 bg-slate-50 border border-slate-100 rounded-xl text-[10px] font-black uppercase tracking-widest outline-none focus:ring-2 ring-primary-500/20 transition-all"
-                    >
-                        <option value="">All Status</option>
-                        <option value="pending">Pending</option>
-                        <option value="reviewed">Reviewed</option>
-                        <option value="implemented">Implemented</option>
-                    </select>
-                </div>
             </header>
+
+            {/* Intellectual HUD Filter - High Contrast & Always Visible */}
+            <div className="bg-slate-900 p-2 rounded-[2.5rem] shadow-xl border border-slate-800">
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-2">
+                    <div className="md:col-span-6 relative">
+                        <div className="absolute left-6 top-1/2 -translate-y-1/2 flex items-center gap-3">
+                            <Sparkles className="h-4 w-4 text-primary-500" />
+                        </div>
+                        <select
+                            value={filter.category}
+                            onChange={(e) => setFilter({ ...filter, category: e.target.value, page: 1 })}
+                            className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-3xl pl-16 pr-6 py-5 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer font-sans"
+                        >
+                            <option value="" className="bg-slate-900 text-white font-black">ALL FEEDBACK: VIEW ALL</option>
+                            <option value="UI/UX" className="bg-slate-900 text-white font-black">CAT: UI / UX</option>
+                            <option value="Performance" className="bg-slate-900 text-white font-black">CAT: PERFORMANCE</option>
+                            <option value="Features" className="bg-slate-900 text-white font-black">CAT: FEATURES</option>
+                            <option value="Bug Report" className="bg-slate-900 text-white font-black text-rose-400">CAT: BUGS</option>
+                        </select>
+                    </div>
+                    <div className="md:col-span-6 relative">
+                        <div className="absolute left-6 top-1/2 -translate-y-1/2 flex items-center gap-3">
+                            <Zap className="h-4 w-4 text-emerald-500" />
+                        </div>
+                        <select
+                            value={filter.status}
+                            onChange={(e) => setFilter({ ...filter, status: e.target.value, page: 1 })}
+                            className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-3xl pl-16 pr-6 py-5 outline-none focus:ring-2 focus:ring-emerald-500/50 appearance-none transition-all cursor-pointer font-sans"
+                        >
+                            <option value="" className="bg-slate-900 text-white font-black">ANY STATUS: ALL</option>
+                            <option value="pending" className="bg-slate-900 text-white font-black">ST: PENDING</option>
+                            <option value="reviewed" className="bg-slate-900 text-white font-black">ST: REVIEWED</option>
+                            <option value="implemented" className="bg-slate-900 text-white font-black text-emerald-400">ST: IMPLEMENTED</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
 
             <div className="grid grid-cols-1 gap-4">
                 {loading ? (
