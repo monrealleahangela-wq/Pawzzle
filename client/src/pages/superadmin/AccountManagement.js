@@ -198,10 +198,10 @@ const AccountManagement = () => {
       </div>
 
       {/* Identity HUD Filter - High Contrast & Always Visible */}
-      <div className="bg-slate-900 p-2 rounded-xl shadow-xl border border-slate-800">
+      <div className="bg-slate-900 p-2 rounded-[1.5rem] shadow-xl border border-slate-800">
         <div className="grid grid-cols-1 md:grid-cols-12 gap-2">
-          <form onSubmit={handleSearchSubmit} className="md:col-span-6 relative group">
-            <div className="absolute left-4 top-1/2 -translate-y-1/2 flex items-center">
+          <form onSubmit={handleSearchSubmit} className="md:col-span-5 relative group">
+            <div className="absolute left-5 top-1/2 -translate-y-1/2 flex items-center">
               <Search className="h-4 w-4 text-slate-500 group-focus-within:text-primary-500 transition-colors" />
             </div>
             <input
@@ -209,7 +209,7 @@ const AccountManagement = () => {
               value={searchTerm} 
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="SEARCH BY USERNAME, EMAIL OR NAME..."
-              className="w-full pl-12 pr-24 py-3 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-xl outline-none focus:ring-2 focus:ring-primary-500/50 placeholder:text-slate-600 transition-all font-sans"
+              className="w-full pl-14 pr-24 py-3.5 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl outline-none focus:ring-2 focus:ring-primary-500/50 placeholder:text-slate-600 transition-all font-sans"
             />
             <button 
               type="submit"
@@ -218,27 +218,28 @@ const AccountManagement = () => {
               SEARCH
             </button>
           </form>
-          <div className="md:col-span-3 relative">
-            <div className="absolute left-4 top-1/2 -translate-y-1/2">
+          <div className="md:col-span-4 relative">
+            <div className="absolute left-5 top-1/2 -translate-y-1/2">
               <Shield className="h-3.5 w-3.5 text-primary-500" />
             </div>
             <select
               value={filters.role} onChange={(e) => handleFilterChange('role', e.target.value)}
-              className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-xl pl-12 pr-10 py-3 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer font-sans"
+              className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-2xl pl-14 pr-10 py-3.5 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer font-sans"
             >
               <option value="" className="bg-slate-900 text-white font-black">ALL ROLES</option>
               <option value="super_admin" className="bg-slate-900 text-white font-black">MASTER ADMIN</option>
               <option value="admin" className="bg-slate-900 text-white font-black">STORE OWNER</option>
               <option value="customer" className="bg-slate-900 text-white font-black">CUSTOMER</option>
             </select>
+            <ChevronDown className="absolute right-6 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500 pointer-events-none" />
           </div>
           <div className="md:col-span-3 relative">
-            <div className="absolute left-4 top-1/2 -translate-y-1/2">
+            <div className="absolute left-5 top-1/2 -translate-y-1/2">
               <Zap className="h-3.5 w-3.5 text-emerald-500" />
             </div>
             <select
               value={filters.isActive} onChange={(e) => handleFilterChange('isActive', e.target.value)}
-              className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-xl pl-12 pr-10 py-3 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer font-sans"
+              className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-2xl pl-14 pr-10 py-3.5 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer font-sans"
             >
               <option value="" className="bg-slate-900 text-white font-black">ANY STATUS</option>
               <option value="true" className="bg-slate-900 text-white font-black">ACTIVE</option>
