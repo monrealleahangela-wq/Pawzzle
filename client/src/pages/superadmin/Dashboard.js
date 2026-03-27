@@ -99,7 +99,7 @@ const SuperAdminDashboard = () => {
         </div>
 
         <div className="flex items-center gap-3">
-          <div className="px-5 py-2.5 bg-slate-900 text-white rounded-3xl flex items-center gap-3 shadow-xl">
+          <div className="px-5 py-2.5 bg-slate-900 text-white rounded-2xl flex items-center gap-3 shadow-xl">
             <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
             <span className="text-[10px] font-black uppercase tracking-widest">System Online</span>
           </div>
@@ -143,7 +143,7 @@ const SuperAdminDashboard = () => {
               <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight">Recent Orders</h2>
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Live transaction history</p>
             </div>
-            <Link to="/superadmin/transaction-history" className="flex items-center gap-2 px-6 py-3 bg-slate-50 text-slate-600 rounded-3xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-900 hover:text-white transition-all">
+            <Link to="/superadmin/transaction-history" className="flex items-center gap-2 px-6 py-3 bg-slate-50 text-slate-600 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-900 hover:text-white transition-all">
               View All <ChevronRight className="h-4 w-4" />
             </Link>
           </div>
@@ -184,7 +184,7 @@ const SuperAdminDashboard = () => {
                 { to: "/superadmin/store-applications", label: "Store Requests", icon: Settings, desc: "Review new stores" },
                 { to: "/superadmin/system-analytics", label: "Analytics", icon: Activity, desc: "System performance" }
               ].map((action, i) => (
-                <Link key={i} to={action.to} className="flex items-center gap-4 p-4 bg-white/5 hover:bg-white/10 rounded-3xl transition-all group/item active:scale-[0.98]">
+                <Link key={i} to={action.to} className="flex items-center gap-4 p-4 bg-white/5 hover:bg-white/10 rounded-2xl transition-all group/item active:scale-[0.98]">
                   <div className="w-12 h-12 bg-white/5 rounded-xl flex items-center justify-center text-white/40 group-hover/item:bg-primary-600 group-hover/item:text-white transition-all">
                     <action.icon className="h-5 w-5" />
                   </div>

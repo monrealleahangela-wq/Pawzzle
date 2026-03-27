@@ -151,35 +151,35 @@ const ActivityHistory = () => {
                 </div>
 
                 <div className="flex items-center gap-3 w-full md:w-auto">
-                    <button onClick={fetchAllData} className="p-4 bg-white border border-slate-100 text-slate-400 rounded-3xl hover:text-indigo-600 hover:border-indigo-100 transition-all active:scale-95 shadow-sm">
+                    <button onClick={fetchAllData} className="p-4 bg-white border border-slate-100 text-slate-400 rounded-2xl hover:text-indigo-600 hover:border-indigo-100 transition-all active:scale-95 shadow-sm">
                         <RefreshCw className="h-5 w-5" />
                     </button>
-                    <div className="px-6 py-4 bg-indigo-600 text-white rounded-3xl flex items-center gap-3 shadow-xl shadow-indigo-100">
+                    <div className="px-6 py-4 bg-indigo-600 text-white rounded-2xl flex items-center gap-3 shadow-xl shadow-indigo-100">
                         <Shield className="h-4 w-4" />
                         <span className="text-[10px] font-black uppercase tracking-widest">{allActivities.length} Events Total</span>
                     </div>
                 </div>
             </div>
             {/* Audit HUD Filter - High Contrast & Always Visible */}
-            <div className="bg-slate-900 p-2 rounded-[2.5rem] shadow-xl border border-slate-800">
+            <div className="bg-slate-900 p-2 rounded-[1.5rem] shadow-xl border border-slate-800">
                 <div className="grid grid-cols-1 md:grid-cols-12 gap-2">
                     <div className="md:col-span-5 relative group">
-                        <div className="absolute left-12 top-1/2 -translate-y-1/2 flex items-center">
+                        <div className="absolute left-10 top-1/2 -translate-y-1/2 flex items-center">
                             <Search className="h-4 w-4 text-slate-500 group-focus-within:text-primary-500 transition-colors" />
                         </div>
                         <input
                             type="text" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
-                            placeholder="QUERY ACTIVITY..."
-                            className="w-full pl-32 pr-4 py-5 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-3xl outline-none focus:ring-2 focus:ring-primary-500/50 placeholder:text-slate-600 transition-all font-sans"
+                            placeholder=""
+                            className="w-full pl-28 pr-4 py-3.5 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl outline-none focus:ring-2 focus:ring-primary-500/50 placeholder:text-slate-600 transition-all font-sans"
                         />
                     </div>
                     <div className="md:col-span-4 relative">
-                        <div className="absolute left-12 top-1/2 -translate-y-1/2">
+                        <div className="absolute left-10 top-1/2 -translate-y-1/2">
                             <Target className="h-3.5 w-3.5 text-primary-500" />
                         </div>
                         <select
                             value={filterType} onChange={(e) => setFilterType(e.target.value)}
-                            className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-3xl pl-32 pr-10 py-5 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer font-sans"
+                            className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-2xl pl-28 pr-10 py-3.5 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer font-sans"
                         >
                             <option value="all" className="bg-slate-900 text-white font-black">ALL EVENTS</option>
                             <option value="user" className="bg-slate-900 text-white font-black">USER EVENTS</option>
@@ -189,12 +189,12 @@ const ActivityHistory = () => {
                         <ChevronDown className="absolute right-6 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500 pointer-events-none" />
                     </div>
                     <div className="md:col-span-3 relative">
-                        <div className="absolute left-12 top-1/2 -translate-y-1/2">
+                        <div className="absolute left-10 top-1/2 -translate-y-1/2">
                             <Calendar className="h-3.5 w-3.5 text-blue-500" />
                         </div>
                         <select
                             value={dateRange} onChange={(e) => setDateRange(e.target.value)}
-                            className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-3xl pl-32 pr-10 py-5 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer font-sans"
+                            className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-2xl pl-28 pr-10 py-3.5 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer font-sans"
                         >
                             <option value="" className="bg-slate-900 text-white font-black">ALL TIME</option>
                             <option value="today" className="bg-slate-900 text-white font-black">TODAY</option>
@@ -223,7 +223,7 @@ const ActivityHistory = () => {
                                 <tr key={i} className="hover:bg-slate-50/50 transition-colors group">
                                     <td className="px-8 py-8">
                                         <div className="flex items-center gap-4">
-                                            <div className={`w-12 h-12 rounded-3xl bg-${activity.color}-50 text-${activity.color}-600 flex items-center justify-center border border-${activity.color}-100 group-hover:scale-110 transition-transform`}>
+                                            <div className={`w-12 h-12 rounded-2xl bg-${activity.color}-50 text-${activity.color}-600 flex items-center justify-center border border-${activity.color}-100 group-hover:scale-110 transition-transform`}>
                                                 {activity.type === 'user' ? <Users className="h-5 w-5" /> :
                                                     activity.type === 'pet' ? <Heart className="h-5 w-5" /> :
                                                         <ShoppingCart className="h-5 w-5" />}

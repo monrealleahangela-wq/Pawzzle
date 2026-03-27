@@ -130,7 +130,7 @@ const SystemAnalytics = () => {
         ].map((stat, i) => (
           <div key={i} className="bg-white border border-slate-100 p-5 rounded-[2rem] shadow-sm hover:shadow-xl transition-all group">
             <div className="flex justify-between items-start mb-4">
-              <div className={`p-2.5 rounded-3xl bg-${stat.color}-50 text-${stat.color}-600 group-hover:scale-110 transition-transform`}>
+              <div className={`p-2.5 rounded-2xl bg-${stat.color}-50 text-${stat.color}-600 group-hover:scale-110 transition-transform`}>
                 <stat.icon className="h-5 w-5" />
               </div>
               <span className="text-[9px] font-black text-emerald-500 bg-emerald-50 px-2 py-0.5 rounded-full">{stat.trend}</span>
@@ -151,11 +151,11 @@ const SystemAnalytics = () => {
             <label className="text-[10px] font-black text-primary-500 uppercase tracking-[0.5em] block">Total Revenue</label>
             <p className="text-5xl sm:text-7xl font-black tracking-tighter">₱{metrics.totalRevenue.toLocaleString()}</p>
             <div className="flex flex-wrap justify-center md:justify-start gap-4 pt-4">
-              <div className="px-4 py-2 bg-white/5 border border-white/10 rounded-3xl">
+              <div className="px-4 py-2 bg-white/5 border border-white/10 rounded-2xl">
                 <p className="text-[8px] font-black text-white/40 uppercase tracking-widest mb-1">Revenue Growth</p>
                 <p className="text-sm font-black text-emerald-400">+24.8%</p>
               </div>
-              <div className="px-4 py-2 bg-white/5 border border-white/10 rounded-3xl">
+              <div className="px-4 py-2 bg-white/5 border border-white/10 rounded-2xl">
                 <p className="text-[8px] font-black text-white/40 uppercase tracking-widest mb-1">Avg Order Value</p>
                 <p className="text-sm font-black text-primary-400">₱{(metrics.totalRevenue / (metrics.totalOrders || 1)).toFixed(2)}</p>
               </div>
@@ -170,7 +170,7 @@ const SystemAnalytics = () => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Distribution */}
         <div className="space-y-4">
-          <div className="bg-white border border-slate-100 rounded-[2.5rem] p-8 shadow-sm">
+          <div className="bg-white border border-slate-100 rounded-[1.5rem] p-8 shadow-sm">
             <div className="flex items-center justify-between mb-8">
               <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest flex items-center gap-2">
                 <PieChart className="h-4 w-4 text-primary-600" /> User Distribution
@@ -194,7 +194,7 @@ const SystemAnalytics = () => {
             </div>
           </div>
 
-          <div className="bg-white border border-slate-100 rounded-[2.5rem] p-8 shadow-sm">
+          <div className="bg-white border border-slate-100 rounded-[1.5rem] p-8 shadow-sm">
             <div className="flex items-center justify-between mb-8">
               <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest flex items-center gap-2">
                 <TrendingUp className="h-4 w-4 text-emerald-600" /> Order Statuses
@@ -220,7 +220,7 @@ const SystemAnalytics = () => {
         </div>
 
         {/* Activity Log */}
-        <div className="bg-white border border-slate-100 rounded-[2.5rem] p-8 shadow-sm h-fit">
+        <div className="bg-white border border-slate-100 rounded-[1.5rem] p-8 shadow-sm h-fit">
           <div className="flex items-center justify-between mb-8">
             <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest flex items-center gap-2">
               <Zap className="h-4 w-4 text-amber-500" /> Live Activity Log
@@ -248,7 +248,7 @@ const SystemAnalytics = () => {
               </div>
             ))}
           </div>
-          <Link to="/superadmin/activity-history" className="w-full mt-10 py-4 bg-slate-50 hover:bg-slate-100 rounded-3xl text-[9px] font-black text-slate-400 uppercase tracking-widest transition-all flex items-center justify-center">
+          <Link to="/superadmin/activity-history" className="w-full mt-10 py-4 bg-slate-50 hover:bg-slate-100 rounded-2xl text-[9px] font-black text-slate-400 uppercase tracking-widest transition-all flex items-center justify-center">
             See All Activity History
           </Link>
         </div>
