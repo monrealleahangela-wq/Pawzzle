@@ -188,36 +188,44 @@ const AccountManagement = () => {
         </div>
       </div>
 
-      {/* Identity HUD Filter */}
-      <div className="bg-slate-900 p-2 rounded-[2.5rem] shadow-xl">
+      {/* Identity HUD Filter - High Contrast & Always Visible */}
+      <div className="bg-slate-900 p-2 rounded-[2.5rem] shadow-xl border border-slate-800">
         <div className="grid grid-cols-1 md:grid-cols-12 gap-2">
           <div className="md:col-span-6 relative group">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500 group-focus-within:text-primary-500" />
+            <div className="absolute left-6 top-1/2 -translate-y-1/2 flex items-center gap-3">
+              <Search className="h-4 w-4 text-slate-500 group-focus-within:text-primary-500 transition-colors" />
+            </div>
             <input
-              type="text" placeholder="SEARCH BY NAME, EMAIL OR USERNAME..."
+              type="text" placeholder="QUERY IDENTITY: NAME, EMAIL, USERNAME..."
               value={filters.search} onChange={(e) => handleFilterChange('search', e.target.value)}
-              className="w-full !pl-20 pr-4 py-4 bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-3xl outline-none focus:ring-1 focus:ring-primary-500 placeholder:text-slate-600"
+              className="w-full pl-16 pr-4 py-5 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-3xl outline-none focus:ring-2 focus:ring-primary-500/50 placeholder:text-slate-600 transition-all"
             />
           </div>
-          <div className="md:col-span-3">
+          <div className="md:col-span-3 relative">
+            <div className="absolute left-6 top-1/2 -translate-y-1/2">
+              <Shield className="h-3.5 w-3.5 text-primary-500" />
+            </div>
             <select
               value={filters.role} onChange={(e) => handleFilterChange('role', e.target.value)}
-              className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-3xl px-6 outline-none focus:ring-1 focus:ring-primary-500 appearance-none"
+              className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-3xl pl-14 pr-6 py-5 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer"
             >
-              <option value="">ALL ROLES</option>
-              <option value="super_admin">SUPER ADMIN</option>
-              <option value="admin">STORE OWNER</option>
-              <option value="customer">CUSTOMER</option>
+              <option value="" className="bg-slate-900 text-white font-black">ALL ROLES</option>
+              <option value="super_admin" className="bg-slate-900 text-white font-black">SUPER ADM: MASTER</option>
+              <option value="admin" className="bg-slate-900 text-white font-black">ADMIN: STORE OWNER</option>
+              <option value="customer" className="bg-slate-900 text-white font-black">USER: CUSTOMER</option>
             </select>
           </div>
-          <div className="md:col-span-3">
+          <div className="md:col-span-3 relative">
+            <div className="absolute left-6 top-1/2 -translate-y-1/2">
+              <Zap className="h-3.5 w-3.5 text-emerald-500" />
+            </div>
             <select
               value={filters.isActive} onChange={(e) => handleFilterChange('isActive', e.target.value)}
-              className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-3xl px-6 outline-none focus:ring-1 focus:ring-primary-500 appearance-none"
+              className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-3xl pl-14 pr-6 py-5 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer"
             >
-              <option value="">ALL STATUSES</option>
-              <option value="true">ACTIVE</option>
-              <option value="false">DISABLED</option>
+              <option value="" className="bg-slate-900 text-white font-black">LIFE STATUS: ALL</option>
+              <option value="true" className="bg-slate-900 text-white font-black">STATUS: ACTIVE</option>
+              <option value="false" className="bg-slate-900 text-white font-black">STATUS: DISABLED</option>
             </select>
           </div>
         </div>
@@ -255,7 +263,8 @@ const AccountManagement = () => {
                 </div>
               </div>
 
-              <div className="flex gap-2 mt-8 opacity-0 group-hover:opacity-100 transition-all translate-y-2 group-hover:translate-y-0">
+              {/* Action Suite - Always visible for better accessibility */}
+              <div className="flex gap-2 mt-8 py-4 border-t border-slate-50">
                 <button
                   onClick={() => handleViewCredentials(user)}
                   className="flex-1 py-3 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all hover:bg-primary-600 shadow-lg flex items-center justify-center gap-2"
