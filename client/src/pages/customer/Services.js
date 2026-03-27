@@ -312,51 +312,52 @@ const Services = () => {
                 "{service.description || 'Expertly delivered service focused on the health and comfort of your pet.'}"
               </p>
 
-              <div className="grid grid-cols-2 gap-2 sm:gap-4 py-2 sm:py-4 border-y border-slate-50 group-hover:border-primary-100 transition-colors">
-                <div className="flex items-center gap-1 sm:gap-2">
-                  <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-lg bg-slate-50 group-hover:bg-primary-50 flex items-center justify-center transition-colors">
-                    <Clock className="h-3 w-3 sm:h-4 sm:w-4 text-primary-500" />
+              {/* Bottom Fixed Section - Unified for perfect alignment */}
+              <div className="mt-auto pt-6 space-y-6">
+                {/* Stats Grid */}
+                <div className="grid grid-cols-2 gap-4 py-4 border-y border-slate-50 group-hover:border-primary-100 transition-colors">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-slate-50 group-hover:bg-primary-50 flex items-center justify-center transition-colors">
+                      <Clock className="h-4 w-4 text-primary-500" />
+                    </div>
+                    <span className="text-xs font-bold text-slate-600 italic">{service.duration}m</span>
                   </div>
-                  <span className="text-[10px] sm:text-xs font-bold text-slate-600">{service.duration}m</span>
-                </div>
-                <div className="flex items-center gap-1 sm:gap-2">
-                  <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-lg bg-slate-50 group-hover:bg-secondary-50 flex items-center justify-center transition-colors">
-                    <MapPin className="h-3 w-3 sm:h-4 sm:w-4 text-secondary-500" />
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-slate-50 group-hover:bg-secondary-50 flex items-center justify-center transition-colors">
+                      <MapPin className="h-4 w-4 text-secondary-500" />
+                    </div>
+                    <span className="text-xs font-bold text-slate-600 italic">
+                      {service.homeServiceAvailable ? 'Home' : 'Store'}
+                    </span>
                   </div>
-                  <span className="text-[10px] sm:text-xs font-bold text-slate-600 truncate">
-                    {service.homeServiceAvailable ? 'Home' : 'Store'}
-                  </span>
                 </div>
-              </div>
 
-              {/* Bottom Fixed Section */}
-              <div className="mt-auto space-y-4 pt-4">
-                {/* Store Identifier - Hidden on small mobile */}
+                {/* Store Identifier - Fixed at Bottom */}
                 {service.store && (
-                  <div className="hidden sm:flex items-center gap-3 p-3 bg-slate-50 rounded-2xl border border-slate-100 group-hover:bg-primary-50 group-hover:border-primary-100 transition-all">
-                    <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shadow-sm">
-                      <Store className="h-5 w-5 text-primary-600" />
+                  <div className="flex items-center gap-4 p-4 bg-slate-50 rounded-2xl border border-slate-100 group-hover:bg-primary-50 group-hover:border-primary-100 transition-all">
+                    <div className="w-12 h-12 rounded-xl bg-white flex items-center justify-center shadow-sm shrink-0">
+                      <Store className="h-6 w-6 text-primary-600" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-[10px] font-black text-slate-900 uppercase truncate leading-tight">
+                      <p className="text-[11px] font-black text-slate-900 uppercase truncate leading-tight mb-1">
                         {service.store.name}
                       </p>
                       <a
                         href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-                          `${service.store.contactInfo?.address?.street || ''}, ${service.store.contactInfo?.address?.barangay || ''}, ${service.store.contactInfo?.address?.city || ''}, ${service.store.contactInfo?.address?.state || ''}`
+                          `${service.store.contactInfo?.address?.street || ''}, ${service.store.contactInfo?.address?.barangay || ''}, ${service.store.contactInfo?.address?.city || ''}, Cavite`
                         )}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-[9px] font-bold text-slate-500 hover:text-primary-600 transition-colors uppercase flex items-center gap-1 group/addr"
+                        className="text-[10px] font-bold text-slate-500 hover:text-primary-600 transition-colors uppercase flex items-center gap-1.5 group/addr"
                       >
-                        <MapPin className="h-2.5 w-2.5 text-primary-400 group-hover/addr:text-primary-600 transition-colors" />
+                        <MapPin className="h-3 w-3 text-primary-400 group-hover/addr:text-primary-600 transition-colors" />
                         <span className="truncate">
                           {[
                             service.store.contactInfo?.address?.street,
                             service.store.contactInfo?.address?.barangay,
                             service.store.contactInfo?.address?.city,
-                            service.store.contactInfo?.address?.state
-                          ].filter(Boolean).join(', ') || 'Cavite Operating Zone'}
+                            'Cavite'
+                          ].filter(Boolean).join(', ')}
                         </span>
                       </a>
                     </div>
@@ -366,11 +367,11 @@ const Services = () => {
                 {/* Enhanced Footer Button */}
                 <button
                   onClick={() => handleBookService(service._id)}
-                  className="btn btn-primary w-full py-2 sm:py-4 text-[9px] sm:text-xs font-black uppercase tracking-widest shadow-md sm:shadow-lg shadow-primary-100 group/btn overflow-hidden"
+                  className="btn btn-primary w-full py-4 text-xs font-black uppercase tracking-widest shadow-lg shadow-primary-100 group/btn overflow-hidden relative"
                 >
-                  <span className="relative z-10 flex items-center justify-center gap-1 sm:gap-2">
-                    Book <span className="hidden sm:inline">Now</span>
-                    <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4 transition-transform group-hover/btn:translate-x-1" />
+                  <span className="relative z-10 flex items-center justify-center gap-2">
+                    Book Now
+                    <ChevronRight className="h-4 w-4 transition-transform group-hover/btn:translate-x-1" />
                   </span>
                 </button>
               </div>
