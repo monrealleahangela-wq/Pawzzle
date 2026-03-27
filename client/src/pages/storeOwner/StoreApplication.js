@@ -186,6 +186,73 @@ const StoreApplication = () => {
     return colors[status] || 'bg-slate-100 text-slate-800';
   };
 
+  const handleReapply = () => {
+    if (!application) return;
+
+    // Pre-fill form from existing application
+    setFormData({
+      businessName: application.businessName || '',
+      businessType: application.businessType || '',
+      legalStructure: application.legalStructure || 'single_proprietorship',
+      yearsInBusiness: application.yearsInBusiness || 0,
+      numberOfEmployees: application.numberOfEmployees || 1,
+      hasPhysicalStore: application.hasPhysicalStore ?? true,
+      businessLicense: application.businessLicense || {
+        number: '',
+        issuingAuthority: '',
+        issueDate: '',
+        expiryDate: ''
+      },
+      taxId: application.taxId || '',
+      contactInfo: {
+        phone: application.contactInfo?.phone || '',
+        email: application.contactInfo?.email || user?.email || '',
+        address: {
+          street: application.contactInfo?.address?.street || '',
+          city: application.contactInfo?.address?.city || '',
+          barangay: application.contactInfo?.address?.barangay || '',
+          state: application.contactInfo?.address?.state || 'cavite',
+          zipCode: application.contactInfo?.address?.zipCode || '',
+          country: application.contactInfo?.address?.country || 'PH'
+        }
+      },
+      paymentInfo: application.paymentInfo || {
+        bankName: '',
+        bankAccountName: '',
+        bankAccountNumber: '',
+        alternativePaymentMethod: {
+          provider: 'GCash',
+          accountNumber: ''
+        }
+      },
+      productsOffered: application.productsOffered || [],
+      businessDescription: application.businessDescription || '',
+      emergencyContact: application.emergencyContact || {
+        name: '',
+        phone: '',
+        relationship: ''
+      },
+      references: application.references?.length >= 2 ? application.references : [
+        { name: '', business: '', phone: '', email: '' },
+        { name: '', business: '', phone: '', email: '' }
+      ]
+    });
+
+    // Store the old application for correction highlighting but go to form
+    const oldApp = { ...application };
+    setApplication(null);
+    // Use a small timeout or state to ensure we show corrections
+    setTimeout(() => {
+      setPreviousApplicationToCorrect(oldApp);
+    }, 100);
+  };
+
+  const [previousApplicationToCorrect, setPreviousApplicationToCorrect] = useState(null);
+
+  const isFieldBroken = (fieldName) => {
+    return previousApplicationToCorrect?.requiredCorrections?.includes(fieldName);
+  };
+
   if (application) {
     return (
       <div className="max-w-4xl mx-auto space-y-8 animate-fade-in">
@@ -260,12 +327,12 @@ const StoreApplication = () => {
                  </div>
                )}
 
-               {application.status === 'rejected' && (
+               {(application.status === 'rejected' || application.status === 'requires_more_info') && (
                  <button 
-                   onClick={() => setApplication(null)}
-                   className="mt-6 px-8 py-3 bg-rose-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-900 transition-all shadow-lg"
+                   onClick={handleReapply}
+                   className={`mt-6 px-8 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest text-white transition-all shadow-lg ${application.status === 'rejected' ? 'bg-rose-600 hover:bg-slate-900' : 'bg-orange-600 hover:bg-slate-900'}`}
                  >
-                   Re-apply with Corrected Documents
+                   {application.status === 'rejected' ? 'Re-apply with Corrected Documents' : 'Submit Required Corrections'}
                  </button>
                )}
             </div>
@@ -419,13 +486,17 @@ const StoreApplication = () => {
           <div className="card p-10 space-y-8 animate-slide-up">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-1.5">
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Store Name *</label>
-                <input type="text" className="input-premium" placeholder="Official Business Title" value={formData.businessName} onChange={(e) => handleChange('businessName', e.target.value)} required />
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 flex items-center gap-2">
+                  Store Name * {isFieldBroken('businessName') && <span className="px-2 py-0.5 bg-rose-100 text-rose-600 rounded-md text-[7px] animate-pulse">ACTION REQUIRED</span>}
+                </label>
+                <input type="text" className={`input-premium ${isFieldBroken('businessName') ? 'border-rose-500 ring-2 ring-rose-100' : ''}`} placeholder="Official Business Title" value={formData.businessName} onChange={(e) => handleChange('businessName', e.target.value)} required />
               </div>
               <div className="space-y-1.5">
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Store Logo *</label>
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 flex items-center gap-2">
+                  Store Logo * {isFieldBroken('storeLogo') && <span className="px-2 py-0.5 bg-rose-100 text-rose-600 rounded-md text-[7px] animate-pulse">RESUBMIT REQUIRED</span>}
+                </label>
                 <div className="flex items-center gap-4">
-                  <div className="w-16 h-16 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200 flex items-center justify-center relative overflow-hidden group">
+                  <div className={`w-16 h-16 rounded-2xl border-2 border-dashed flex items-center justify-center relative overflow-hidden group transition-all ${isFieldBroken('storeLogo') ? 'border-rose-500 bg-rose-50' : 'border-slate-200 bg-slate-50'}`}>
                     {files.storeLogo ? (
                       <img src={URL.createObjectURL(files.storeLogo)} alt="Preview" className="w-full h-full object-cover" />
                     ) : (
@@ -442,8 +513,10 @@ const StoreApplication = () => {
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Business Description *</label>
-              <textarea className="input-premium min-h-[120px]" value={formData.businessDescription} onChange={(e) => handleChange('businessDescription', e.target.value)} placeholder="Experience, specialties, and vision..." required />
+              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 flex items-center gap-2">
+                Business Description * {isFieldBroken('businessDescription') && <span className="px-2 py-0.5 bg-rose-100 text-rose-600 rounded-md text-[7px] animate-pulse">NEEDS CLARIFICATION</span>}
+              </label>
+              <textarea className={`input-premium min-h-[120px] ${isFieldBroken('businessDescription') ? 'border-rose-500 ring-2 ring-rose-100' : ''}`} value={formData.businessDescription} onChange={(e) => handleChange('businessDescription', e.target.value)} placeholder="Experience, specialties, and vision..." required />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -452,8 +525,10 @@ const StoreApplication = () => {
                 <input type="text" className="input-premium" placeholder="e.g. Pet Care, Premium Feeds, Breeding" value={formData.productsOffered.join(', ')} onChange={(e) => handleChange('productsOffered', e.target.value.split(',').map(s => s.trim()))} required />
               </div>
               <div className="space-y-1.5">
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Business Type *</label>
-                <select className="input-premium" value={formData.businessType} onChange={(e) => handleChange('businessType', e.target.value)} required>
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 flex items-center gap-2">
+                  Business Type * {isFieldBroken('businessType') && <span className="px-2 py-0.5 bg-rose-100 text-rose-600 rounded-md text-[7px] animate-pulse">INVALID SELECTION</span>}
+                </label>
+                <select className={`input-premium ${isFieldBroken('businessType') ? 'border-rose-500 ring-2 ring-rose-100' : ''}`} value={formData.businessType} onChange={(e) => handleChange('businessType', e.target.value)} required>
                   <option value="">Select type</option>
                   <option value="pet_store">Pet Store</option>
                   <option value="breeder">Breeder</option>
@@ -477,10 +552,12 @@ const StoreApplication = () => {
                 </h3>
                 <div className="space-y-4">
                   <div className="space-y-1.5">
-                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Tax ID (TIN) *</label>
-                    <input type="text" className="input-premium" value={formData.taxId} onChange={(e) => handleChange('taxId', e.target.value)} required />
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 flex items-center gap-2">
+                      Tax ID (TIN) * {isFieldBroken('taxId') && <span className="px-2 py-0.5 bg-rose-100 text-rose-600 rounded-md text-[7px] animate-pulse">VERIFICATION FAILED</span>}
+                    </label>
+                    <input type="text" className={`input-premium ${isFieldBroken('taxId') ? 'border-rose-500 ring-2 ring-rose-100' : ''}`} value={formData.taxId} onChange={(e) => handleChange('taxId', e.target.value)} required />
                   </div>
-                  <div className="p-6 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+                  <div className={`p-6 rounded-2xl border border-dashed transition-all ${isFieldBroken('governmentId') ? 'bg-rose-50 border-rose-500 ring-2 ring-rose-100' : 'bg-slate-50 border-slate-200'}`}>
                     <input type="file" onChange={(e) => handleFileChange('governmentId', e.target.files[0])} className="hidden" id="govIdFile" />
                     <label htmlFor="govIdFile" className="cursor-pointer flex flex-col items-center gap-2">
                       <Shield className="h-5 w-5 text-slate-400" />
@@ -493,26 +570,26 @@ const StoreApplication = () => {
 
               <div className="space-y-6">
                 <h3 className="text-[10px] font-black text-slate-900 uppercase tracking-[0.2em] flex items-center gap-2">
-                  <Building className="h-3 w-3 text-primary-500" /> Base Registry
+                  <Building className="h-3 w-3 text-primary-500" /> Base Registry {isFieldBroken('address') && <span className="px-2 py-0.5 bg-rose-100 text-rose-600 rounded-md text-[7px] animate-pulse ml-2">UPDATE LOCATION</span>}
                 </h3>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1.5">
                     <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">City *</label>
-                    <select className="input-premium" value={formData.contactInfo.address.city} onChange={(e) => handleChange('contactInfo.address.city', e.target.value)} required>
+                    <select className={`input-premium ${isFieldBroken('address') ? 'border-rose-500 ring-2 ring-rose-100' : ''}`} value={formData.contactInfo.address.city} onChange={(e) => handleChange('contactInfo.address.city', e.target.value)} required>
                       <option value="">Select City</option>
                       {cities.map(city => <option key={city.value} value={city.value}>{city.label}</option>)}
                     </select>
                   </div>
                   <div className="space-y-1.5">
                     <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Barangay *</label>
-                    <select className="input-premium" value={formData.contactInfo.address.barangay} onChange={(e) => handleChange('contactInfo.address.barangay', e.target.value)} disabled={!formData.contactInfo.address.city} required>
+                    <select className={`input-premium ${isFieldBroken('address') ? 'border-rose-500 ring-2 ring-rose-100' : ''}`} value={formData.contactInfo.address.barangay} onChange={(e) => handleChange('contactInfo.address.barangay', e.target.value)} disabled={!formData.contactInfo.address.city} required>
                       <option value="">Select Barangay</option>
                       {barangays.map(bg => <option key={bg.value} value={bg.value}>{bg.label}</option>)}
                     </select>
                   </div>
                   <div className="col-span-2 space-y-1.5">
                     <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Street Address *</label>
-                    <input type="text" className="input-premium" value={formData.contactInfo.address.street} onChange={(e) => handleChange('contactInfo.address.street', e.target.value)} required />
+                    <input type="text" className={`input-premium ${isFieldBroken('address') ? 'border-rose-500 ring-2 ring-rose-100' : ''}`} value={formData.contactInfo.address.street} onChange={(e) => handleChange('contactInfo.address.street', e.target.value)} required />
                   </div>
                 </div>
               </div>
@@ -526,42 +603,47 @@ const StoreApplication = () => {
               <div className="space-y-6">
                 <h3 className="text-[10px] font-black text-slate-900 uppercase tracking-[0.2em]">Compliance Vault</h3>
                 <div className="space-y-4">
-                   {[
-                     { id: 'businessRegistration', label: 'DTI / SEC Certificate' },
-                     { id: 'licenseDocument', label: 'Mayor\'s / Business Permit' },
-                     { id: 'birRegistration', label: 'BIR Form 2303' },
-                     { id: 'barangayClearance', label: 'Barangay Clearance' }
-                   ].map((doc) => (
-                     <div key={doc.id} className="p-4 bg-slate-50 rounded-2xl border border-slate-100 flex items-center justify-between group hover:border-primary-200 transition-all">
-                       <div className="flex items-center gap-3">
-                         <div className={`p-2 rounded-lg ${files[doc.id] ? 'bg-emerald-50 text-emerald-600' : 'bg-white text-slate-400'}`}>
-                           {files[doc.id] ? <Check className="h-4 w-4" /> : <FileText className="h-4 w-4" />}
-                         </div>
-                         <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest">{doc.label}</p>
-                       </div>
-                       <input type="file" className="hidden" id={doc.id} onChange={(e) => handleFileChange(doc.id, e.target.files[0])} />
-                       <label htmlFor={doc.id} className="cursor-pointer px-4 py-2 bg-white rounded-lg text-[9px] font-black uppercase text-primary-600 border border-slate-100 hover:bg-primary-600 hover:text-white transition-all shadow-sm">
-                         {files[doc.id] ? 'Replace' : 'Upload'}
-                       </label>
-                     </div>
-                   ))}
+                    { [
+                      { id: 'businessRegistration', label: 'DTI / SEC Certificate' },
+                      { id: 'mayorsPermit', label: 'Mayor\'s / Business Permit' },
+                      { id: 'birRegistration', label: 'BIR Form 2303' },
+                      { id: 'barangayClearance', label: 'Barangay Clearance' }
+                    ].map((doc) => (
+                      <div key={doc.id} className={`p-4 rounded-2xl border flex items-center justify-between group transition-all ${isFieldBroken(doc.id) ? 'bg-rose-50 border-rose-500 ring-2 ring-rose-100 shadow-lg' : 'bg-slate-50 border-slate-100 hover:border-primary-200'}`}>
+                        <div className="flex items-center gap-3">
+                          <div className={`p-2 rounded-lg ${isFieldBroken(doc.id) ? 'bg-rose-600 text-white' : files[doc.id] ? 'bg-emerald-50 text-emerald-600' : 'bg-white text-slate-400'}`}>
+                            {isFieldBroken(doc.id) ? <AlertCircle className="h-4 w-4" /> : files[doc.id] ? <Check className="h-4 w-4" /> : <FileText className="h-4 w-4" />}
+                          </div>
+                          <div>
+                            <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest">{doc.label}</p>
+                            {isFieldBroken(doc.id) && <p className="text-[7px] text-rose-600 font-black uppercase mt-0.5">RESUBMISSION REQUIRED</p>}
+                          </div>
+                        </div>
+                        <input type="file" className="hidden" id={doc.id} onChange={(e) => handleFileChange(doc.id, e.target.files[0])} />
+                        <label htmlFor={doc.id} className={`cursor-pointer px-4 py-2 rounded-lg text-[9px] font-black uppercase transition-all shadow-sm ${isFieldBroken(doc.id) ? 'bg-rose-600 text-white hover:bg-rose-700' : 'bg-white text-primary-600 border border-slate-100 hover:bg-primary-600 hover:text-white'}`}>
+                          {isFieldBroken(doc.id) ? 'Redo Upload' : files[doc.id] ? 'Replace' : 'Upload'}
+                        </label>
+                      </div>
+                    ))}
                 </div>
               </div>
 
               <div className="space-y-8">
-                <h3 className="text-[10px] font-black text-slate-900 uppercase tracking-[0.2em]">Settlement Information</h3>
+                <h3 className="text-[10px] font-black text-slate-900 uppercase tracking-[0.2em] flex items-center gap-2">
+                  Settlement Information {isFieldBroken('paymentInfo') && <span className="px-2 py-0.5 bg-rose-100 text-rose-600 rounded-md text-[7px] animate-pulse ml-2">DATA MISMATCH</span>}
+                </h3>
                 <div className="space-y-4">
                   <div className="space-y-1.5">
                     <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Bank Name</label>
-                    <input type="text" className="input-premium" placeholder="e.g. BDO, BPI, UnionBank" value={formData.paymentInfo.bankName} onChange={(e) => handleChange('paymentInfo.bankName', e.target.value)} />
+                    <input type="text" className={`input-premium ${isFieldBroken('paymentInfo') ? 'border-rose-500 ring-2 ring-rose-100' : ''}`} placeholder="e.g. BDO, BPI, UnionBank" value={formData.paymentInfo.bankName} onChange={(e) => handleChange('paymentInfo.bankName', e.target.value)} />
                   </div>
                   <div className="space-y-1.5">
                     <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Account Name</label>
-                    <input type="text" className="input-premium" value={formData.paymentInfo.bankAccountName} onChange={(e) => handleChange('paymentInfo.bankAccountName', e.target.value)} />
+                    <input type="text" className={`input-premium ${isFieldBroken('paymentInfo') ? 'border-rose-500 ring-2 ring-rose-100' : ''}`} value={formData.paymentInfo.bankAccountName} onChange={(e) => handleChange('paymentInfo.bankAccountName', e.target.value)} />
                   </div>
                   <div className="space-y-1.5">
                     <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Account Number</label>
-                    <input type="text" className="input-premium" value={formData.paymentInfo.bankAccountNumber} onChange={(e) => handleChange('paymentInfo.bankAccountNumber', e.target.value)} />
+                    <input type="text" className={`input-premium ${isFieldBroken('paymentInfo') ? 'border-rose-500 ring-2 ring-rose-100' : ''}`} value={formData.paymentInfo.bankAccountNumber} onChange={(e) => handleChange('paymentInfo.bankAccountNumber', e.target.value)} />
                   </div>
                   
                   <div className="pt-4 mt-4 border-t border-slate-100">
@@ -585,12 +667,12 @@ const StoreApplication = () => {
           <div className="card p-10 space-y-8 animate-slide-up">
             <div className="space-y-6">
               <h3 className="text-[10px] font-black text-slate-900 uppercase tracking-[0.2em] flex items-center gap-2">
-                <Users className="h-4 w-4 text-primary-500" /> Professional Network
+                <Users className="h-4 w-4 text-primary-500" /> Professional Network {isFieldBroken('references') && <span className="px-2 py-0.5 bg-rose-100 text-rose-600 rounded-md text-[7px] animate-pulse ml-2">UNVERIFIED CONTACTS</span>}
               </h3>
               <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mb-4">Verification requires two commercial character references.</p>
               {formData.references.map((ref, idx) => (
-                <div key={idx} className="p-6 bg-slate-50 rounded-2xl border border-slate-100 grid grid-cols-2 gap-4 relative mt-4">
-                  <span className="absolute -top-3 left-4 px-2 py-0.5 bg-white border border-slate-100 rounded text-[7px] font-black uppercase text-slate-400">Reference Protocol {idx + 1}</span>
+                <div key={idx} className={`p-6 rounded-2xl border grid grid-cols-2 gap-4 relative mt-4 transition-all ${isFieldBroken('references') ? 'bg-rose-50 border-rose-500 ring-2 ring-rose-100' : 'bg-slate-50 border-slate-100'}`}>
+                  <span className={`absolute -top-3 left-4 px-2 py-0.5 border rounded text-[7px] font-black uppercase ${isFieldBroken('references') ? 'bg-rose-600 border-rose-600 text-white' : 'bg-white border-slate-100 text-slate-400'}`}>Reference Protocol {idx + 1}</span>
                   <input type="text" className="input-premium bg-white" placeholder="Contact Name" value={ref.name} onChange={(e) => handleReferenceChange(idx, 'name', e.target.value)} required />
                   <input type="text" className="input-premium bg-white" placeholder="Business / Organization" value={ref.business} onChange={(e) => handleReferenceChange(idx, 'business', e.target.value)} required />
                   <input type="tel" className="input-premium bg-white" placeholder="Secure Line" value={ref.phone} onChange={(e) => handleReferenceChange(idx, 'phone', e.target.value)} required />

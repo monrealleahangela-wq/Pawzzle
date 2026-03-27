@@ -36,8 +36,25 @@ const StoreApplications = () => {
   const [reviewForm, setReviewForm] = useState({
     status: '',
     reviewNotes: '',
-    rejectionReason: ''
+    rejectionReason: '',
+    requiredCorrections: []
   });
+
+  const CORRECTION_OPTIONS = [
+    { id: 'businessName', label: 'Business Name' },
+    { id: 'businessType', label: 'Business Type' },
+    { id: 'businessDescription', label: 'Description' },
+    { id: 'storeLogo', label: 'Store Logo' },
+    { id: 'taxId', label: 'Tax ID' },
+    { id: 'governmentId', label: 'Gov ID' },
+    { id: 'businessRegistration', label: 'DTI/SEC' },
+    { id: 'licenseDocument', label: 'Mayor\'s Permit' },
+    { id: 'birRegistration', label: 'BIR 2303' },
+    { id: 'barangayClearance', label: 'Brgy Clearance' },
+    { id: 'address', label: 'Address' },
+    { id: 'paymentInfo', label: 'Payment/Bank' },
+    { id: 'references', label: 'References' }
+  ];
 
   const REJECTION_REASONS = [
     'Incomplete Documentation',
@@ -64,9 +81,9 @@ const StoreApplications = () => {
     }
   };
 
-  const handleReview = async (applicationId, status, reviewNotes, rejectionReason) => {
+  const handleReview = async (applicationId, status, reviewNotes, rejectionReason, requiredCorrections) => {
     try {
-      const reviewData = { status, reviewNotes, rejectionReason };
+      const reviewData = { status, reviewNotes, rejectionReason, requiredCorrections };
       await storeApplicationService.reviewApplication(applicationId, reviewData);
       toast.success(`Application ${status} successfully`);
       setShowReviewModal(false);
@@ -515,41 +532,68 @@ const StoreApplications = () => {
               </div>
             ) : (
               <div className="p-10 bg-white border-t border-slate-100 relative z-10 space-y-8 shadow-[0_-20px_50px_rgba(0,0,0,0.05)]">
-                <div>
-                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 block">Review Intelligence Notes</label>
-                   <textarea 
-                     className="w-full h-24 bg-slate-50 border border-slate-100 rounded-3xl p-6 text-sm font-bold outline-none focus:border-primary-500 transition-all"
-                     placeholder="Technical observations or internal notes..."
-                     value={reviewForm.reviewNotes}
-                     onChange={(e) => setReviewForm(prev => ({ ...prev, reviewNotes: e.target.value }))}
-                   />
+                <div className="bg-amber-50 rounded-[2rem] p-8 border border-amber-100/50">
+                   <div className="flex items-center gap-3 mb-4">
+                     <AlertTriangle className="h-5 w-5 text-amber-600" />
+                     <h4 className="text-[10px] font-black uppercase text-amber-600 tracking-widest">Mark Corrections Needed</h4>
+                   </div>
+                   <div className="flex flex-wrap gap-2">
+                     {CORRECTION_OPTIONS.map(opt => (
+                       <button
+                         key={opt.id}
+                         onClick={() => {
+                           setReviewForm(prev => {
+                             const current = prev.requiredCorrections || [];
+                             const next = current.includes(opt.id) 
+                               ? current.filter(id => id !== opt.id)
+                               : [...current, opt.id];
+                             return { ...prev, requiredCorrections: next };
+                           });
+                         }}
+                         className={`px-3 py-1.5 rounded-lg text-[8px] font-black uppercase tracking-widest border transition-all ${reviewForm.requiredCorrections?.includes(opt.id) ? 'bg-amber-600 border-amber-600 text-white shadow-lg' : 'bg-white border-amber-100 text-amber-600 hover:bg-amber-50'}`}
+                       >
+                         {opt.label}
+                       </button>
+                     ))}
+                   </div>
+                   <p className="text-[8px] font-bold text-amber-600 uppercase tracking-widest mt-4 italic opacity-60">* Selection will be highlighted for the applicant</p>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <button
                     onClick={() => handleReview(selectedApplication._id, 'approved', reviewForm.reviewNotes)}
-                    className="py-6 bg-slate-900 text-white rounded-[2rem] text-[10px] font-black uppercase tracking-[0.2em] hover:bg-emerald-600 transition-all shadow-xl flex items-center justify-center gap-3"
+                    className="py-6 bg-slate-900 text-white rounded-[2rem] text-[10px] font-black uppercase tracking-[0.1em] hover:bg-emerald-600 transition-all shadow-xl flex items-center justify-center gap-2"
                   >
-                    <Check className="h-4 w-4" /> Finalize Approval
+                    <Check className="h-4 w-4" /> Approve
                   </button>
-                  <div className="relative group/reject">
-                    <button
-                      onClick={() => {
-                        if (!reviewForm.rejectionReason) {
-                          toast.warning('Please select or specify a rejection reason');
-                          return;
-                        }
-                        handleReview(selectedApplication._id, 'rejected', reviewForm.reviewNotes, reviewForm.rejectionReason);
-                      }}
-                      className="w-full py-6 bg-rose-600 text-white rounded-[2rem] text-[10px] font-black uppercase tracking-[0.2em] hover:bg-rose-700 transition-all shadow-xl flex items-center justify-center gap-3"
-                    >
-                      <X className="h-4 w-4" /> Reject Protocol
-                    </button>
-                  </div>
+                  <button
+                    onClick={() => {
+                      if (!reviewForm.requiredCorrections?.length) {
+                        toast.warning('Please select at least one field requiring correction');
+                        return;
+                      }
+                      handleReview(selectedApplication._id, 'requires_more_info', reviewForm.reviewNotes, '', reviewForm.requiredCorrections);
+                    }}
+                    className="py-6 bg-amber-500 text-white rounded-[2rem] text-[10px] font-black uppercase tracking-[0.1em] hover:bg-amber-600 transition-all shadow-xl flex items-center justify-center gap-2"
+                  >
+                    <AlertTriangle className="h-4 w-4" /> Need Info
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (!reviewForm.rejectionReason) {
+                        toast.warning('Please select or specify a rejection reason');
+                        return;
+                      }
+                      handleReview(selectedApplication._id, 'rejected', reviewForm.reviewNotes, reviewForm.rejectionReason, reviewForm.requiredCorrections);
+                    }}
+                    className="py-6 bg-rose-600 text-white rounded-[2rem] text-[10px] font-black uppercase tracking-[0.1em] hover:bg-rose-700 transition-all shadow-xl flex items-center justify-center gap-2"
+                  >
+                    <X className="h-4 w-4" /> Reject
+                  </button>
                 </div>
 
-                <div className="bg-rose-50/50 p-8 rounded-[2.5rem] border border-rose-100/50">
-                  <label className="text-[10px] font-black text-rose-400 uppercase tracking-widest mb-4 block">Rejection Feedback Control</label>
+                <div className="bg-rose-50/50 p-8 rounded-[2.5rem] border border-rose-100/50 mt-4">
+                  <label className="text-[10px] font-black text-rose-400 uppercase tracking-widest mb-4 block">Final Decision Feedback (Optional for Approval)</label>
                   <div className="flex flex-wrap gap-2 mb-4">
                     {REJECTION_REASONS.map(reason => (
                       <button 
@@ -564,7 +608,7 @@ const StoreApplications = () => {
                   <input 
                     type="text"
                     className="w-full bg-white border border-rose-100 rounded-2xl px-6 py-4 text-sm font-bold placeholder:text-rose-200 outline-none focus:border-rose-400"
-                    placeholder="Provide a custom rejection reason if 'Other'..."
+                    placeholder="Decision context or custom reason..."
                     value={reviewForm.rejectionReason}
                     onChange={(e) => setReviewForm(prev => ({ ...prev, rejectionReason: e.target.value }))}
                   />

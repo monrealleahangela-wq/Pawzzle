@@ -158,6 +158,15 @@ const storeApplicationSchema = new mongoose.Schema({
     enum: ['pending', 'under_review', 'approved', 'rejected', 'requires_more_info'],
     default: 'pending'
   },
+  requiredCorrections: [{
+    type: String,
+    enum: [
+      'businessName', 'businessType', 'businessDescription', 'storeLogo',
+      'taxId', 'governmentId', 'businessRegistration', 'mayorsPermit',
+      'birRegistration', 'barangayClearance', 'address', 'paymentInfo',
+      'references'
+    ]
+  }],
   reviewNotes: {
     type: String,
     trim: true

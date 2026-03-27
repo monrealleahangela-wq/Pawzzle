@@ -221,7 +221,7 @@ const getApplicationById = async (req, res) => {
 // Review and approve/reject application
 const reviewApplication = async (req, res) => {
   try {
-    const { status, reviewNotes, rejectionReason } = req.body;
+    const { status, reviewNotes, rejectionReason, requiredCorrections } = req.body;
 
     if (!status) {
       return res.status(400).json({ message: 'Status is required' });
@@ -239,6 +239,7 @@ const reviewApplication = async (req, res) => {
 
     application.status = status;
     application.reviewNotes = reviewNotes || '';
+    application.requiredCorrections = requiredCorrections || [];
     application.reviewedBy = req.user.id;
     application.reviewedAt = new Date();
 
