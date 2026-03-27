@@ -213,9 +213,9 @@ const AccountManagement = () => {
               className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-3xl pl-20 pr-10 py-5 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer font-sans"
             >
               <option value="" className="bg-slate-900 text-white font-black">ALL ROLES</option>
-              <option value="super_admin" className="bg-slate-900 text-white font-black">SUPER ADM: MASTER</option>
-              <option value="admin" className="bg-slate-900 text-white font-black">ADMIN: STORE OWNER</option>
-              <option value="customer" className="bg-slate-900 text-white font-black">USER: CUSTOMER</option>
+              <option value="super_admin" className="bg-slate-900 text-white font-black">MASTER ADMIN</option>
+              <option value="admin" className="bg-slate-900 text-white font-black">STORE OWNER</option>
+              <option value="customer" className="bg-slate-900 text-white font-black">CUSTOMER</option>
             </select>
           </div>
           <div className="md:col-span-3 relative">
@@ -227,8 +227,8 @@ const AccountManagement = () => {
               className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-3xl pl-20 pr-10 py-5 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer font-sans"
             >
               <option value="" className="bg-slate-900 text-white font-black">ANY STATUS</option>
-              <option value="true" className="bg-slate-900 text-white font-black">STATUS: ACTIVE</option>
-              <option value="false" className="bg-slate-900 text-white font-black">STATUS: DISABLED</option>
+              <option value="true" className="bg-slate-900 text-white font-black">ACTIVE</option>
+              <option value="false" className="bg-slate-900 text-white font-black">DISABLED</option>
             </select>
           </div>
           <div className="md:col-span-2 relative">

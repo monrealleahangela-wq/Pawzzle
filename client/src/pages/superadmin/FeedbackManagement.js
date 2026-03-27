@@ -108,11 +108,11 @@ const FeedbackManagement = () => {
                             onChange={(e) => setFilter({ ...filter, category: e.target.value, page: 1 })}
                             className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-3xl pl-20 pr-6 py-5 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer font-sans"
                         >
-                            <option value="" className="bg-slate-900 text-white font-black">ALL FEEDBACK: VIEW ALL</option>
-                            <option value="UI/UX" className="bg-slate-900 text-white font-black">CAT: UI / UX</option>
-                            <option value="Performance" className="bg-slate-900 text-white font-black">CAT: PERFORMANCE</option>
-                            <option value="Features" className="bg-slate-900 text-white font-black">CAT: FEATURES</option>
-                            <option value="Bug Report" className="bg-slate-900 text-white font-black text-rose-400">CAT: BUGS</option>
+                            <option value="" className="bg-slate-900 text-white font-black">ALL FEEDBACK</option>
+                            <option value="UI/UX" className="bg-slate-900 text-white font-black">UI / UX</option>
+                            <option value="Performance" className="bg-slate-900 text-white font-black">PERFORMANCE</option>
+                            <option value="Features" className="bg-slate-900 text-white font-black">FEATURES</option>
+                            <option value="Bug Report" className="bg-slate-900 text-white font-black text-rose-400">BUGS</option>
                         </select>
                     </div>
                     <div className="md:col-span-6 relative">
@@ -124,10 +124,10 @@ const FeedbackManagement = () => {
                             onChange={(e) => setFilter({ ...filter, status: e.target.value, page: 1 })}
                             className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-3xl pl-20 pr-6 py-5 outline-none focus:ring-2 focus:ring-emerald-500/50 appearance-none transition-all cursor-pointer font-sans"
                         >
-                            <option value="" className="bg-slate-900 text-white font-black">ANY STATUS: ALL</option>
-                            <option value="pending" className="bg-slate-900 text-white font-black">ST: PENDING</option>
-                            <option value="reviewed" className="bg-slate-900 text-white font-black">ST: REVIEWED</option>
-                            <option value="implemented" className="bg-slate-900 text-white font-black text-emerald-400">ST: IMPLEMENTED</option>
+                            <option value="" className="bg-slate-900 text-white font-black">ANY STATUS</option>
+                            <option value="pending" className="bg-slate-900 text-white font-black">PENDING</option>
+                            <option value="reviewed" className="bg-slate-900 text-white font-black">REVIEWED</option>
+                            <option value="implemented" className="bg-slate-900 text-white font-black text-emerald-400">IMPLEMENTED</option>
                         </select>
                     </div>
                 </div>

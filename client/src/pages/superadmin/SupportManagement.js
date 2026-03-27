@@ -156,10 +156,10 @@ const SupportManagement = () => {
                             className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-3xl pl-20 pr-10 py-5 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer font-sans"
                         >
                             <option value="" className="bg-slate-900 text-white font-black">ALL STATUSES</option>
-                            <option value="pending" className="bg-slate-900 text-white font-black">ST: PENDING</option>
-                            <option value="in_review" className="bg-slate-900 text-white font-black">ST: IN REVIEW</option>
-                            <option value="resolved" className="bg-slate-900 text-white font-black">ST: RESOLVED</option>
-                            <option value="closed" className="bg-slate-900 text-white font-black">ST: CLOSED</option>
+                            <option value="pending" className="bg-slate-900 text-white font-black">PENDING</option>
+                            <option value="in_review" className="bg-slate-900 text-white font-black">IN REVIEW</option>
+                            <option value="resolved" className="bg-slate-900 text-white font-black">RESOLVED</option>
+                            <option value="closed" className="bg-slate-900 text-white font-black">CLOSED</option>
                         </select>
                     </div>
                     <div className="md:col-span-3 relative">

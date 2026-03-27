@@ -181,10 +181,10 @@ const ActivityHistory = () => {
                             value={filterType} onChange={(e) => setFilterType(e.target.value)}
                             className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-3xl pl-20 pr-10 py-5 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer font-sans"
                         >
-                            <option value="all" className="bg-slate-900 text-white font-black">ALL EVENTS: VIEW ALL</option>
-                            <option value="user" className="bg-slate-900 text-white font-black">TYP: USER EVENTS</option>
-                            <option value="pet" className="bg-slate-900 text-white font-black">TYP: PET CATALOG</option>
-                            <option value="order" className="bg-slate-900 text-white font-black">TYP: TRANSACTION LOG</option>
+                            <option value="all" className="bg-slate-900 text-white font-black">ALL EVENTS</option>
+                            <option value="user" className="bg-slate-900 text-white font-black">USER EVENTS</option>
+                            <option value="pet" className="bg-slate-900 text-white font-black">PET CATALOG</option>
+                            <option value="order" className="bg-slate-900 text-white font-black">TRANSACTION LOG</option>
                         </select>
                         <ChevronDown className="absolute right-6 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500 pointer-events-none" />
                     </div>

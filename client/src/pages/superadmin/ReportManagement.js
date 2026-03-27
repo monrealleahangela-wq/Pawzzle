@@ -120,11 +120,11 @@ const ReportManagement = () => {
                             className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-3xl pl-20 pr-10 py-5 outline-none focus:ring-2 focus:ring-rose-500/50 appearance-none transition-all cursor-pointer font-sans"
                         >
                             <option value="" className="bg-slate-900 text-white font-black">ALL STATUSES</option>
-                            <option value="pending" className="bg-slate-900 text-white font-black">ST: PENDING</option>
-                            <option value="reviewed" className="bg-slate-900 text-white font-black">ST: REVIEWED</option>
-                            <option value="resolved" className="bg-slate-900 text-white font-black">ST: RESOLVED</option>
-                            <option value="dismissed" className="bg-slate-900 text-white font-black">ST: DISMISSED</option>
-                            <option value="action_taken" className="bg-slate-900 text-white font-black">ST: ACTION TAKEN</option>
+                            <option value="pending" className="bg-slate-900 text-white font-black">PENDING</option>
+                            <option value="reviewed" className="bg-slate-900 text-white font-black">REVIEWED</option>
+                            <option value="resolved" className="bg-slate-900 text-white font-black">RESOLVED</option>
+                            <option value="dismissed" className="bg-slate-900 text-white font-black">DISMISSED</option>
+                            <option value="action_taken" className="bg-slate-900 text-white font-black">ACTION TAKEN</option>
                         </select>
                     </div>
                     <div className="md:col-span-3 relative">

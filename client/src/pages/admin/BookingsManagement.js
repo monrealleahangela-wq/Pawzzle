@@ -187,29 +187,29 @@ const BookingsManagement = () => {
       <div className="relative z-10 bg-slate-900 p-2 rounded-[2.5rem] shadow-xl border border-slate-800">
         <div className="grid grid-cols-1 md:grid-cols-12 gap-2">
           <div className="md:col-span-8 relative group">
-            <div className="absolute left-6 top-1/2 -translate-y-1/2 flex items-center gap-3">
+            <div className="absolute left-8 top-1/2 -translate-y-1/2 flex items-center gap-3">
               <Search className="h-4 w-4 text-slate-500 group-focus-within:text-primary-500 transition-colors" />
             </div>
             <input
               type="text" placeholder="QUERY PROTOCOLS: CLIENT, SERVICE, ID..."
               value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-16 pr-4 py-5 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-3xl outline-none focus:ring-2 focus:ring-primary-500/50 placeholder:text-slate-600 transition-all font-sans"
+              className="w-full pl-20 pr-4 py-5 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-3xl outline-none focus:ring-2 focus:ring-primary-500/50 placeholder:text-slate-600 transition-all font-sans"
             />
           </div>
           <div className="md:col-span-4 relative">
-            <div className="absolute left-6 top-1/2 -translate-y-1/2">
+            <div className="absolute left-8 top-1/2 -translate-y-1/2">
               <Activity className="h-3.5 w-3.5 text-primary-500" />
             </div>
             <select
               value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}
-              className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-3xl pl-14 pr-6 py-5 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer font-sans"
+              className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-3xl pl-20 pr-10 py-5 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer font-sans"
             >
-              <option value="all" className="bg-slate-900 text-white font-black">ALL PROTOCOLS: VIEW ALL</option>
-              <option value="pending" className="bg-slate-900 text-white font-black">ST: PENDING</option>
-              <option value="confirmed" className="bg-slate-900 text-white font-black">ST: CONFIRMED</option>
-              <option value="in_progress" className="bg-slate-900 text-white font-black">ST: IN PROGRESS</option>
-              <option value="completed" className="bg-slate-900 text-white font-black">ST: COMPLETED</option>
-              <option value="cancelled" className="bg-slate-900 text-white font-black text-rose-400">ST: CANCELLED</option>
+              <option value="all" className="bg-slate-900 text-white font-black">ALL PROTOCOLS</option>
+              <option value="pending" className="bg-slate-900 text-white font-black">PENDING</option>
+              <option value="confirmed" className="bg-slate-900 text-white font-black">CONFIRMED</option>
+              <option value="in_progress" className="bg-slate-900 text-white font-black">IN PROGRESS</option>
+              <option value="completed" className="bg-slate-900 text-white font-black">COMPLETED</option>
+              <option value="cancelled" className="bg-slate-900 text-white font-black text-rose-400">CANCELLED</option>
             </select>
           </div>
         </div>
