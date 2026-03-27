@@ -30,6 +30,7 @@ const FeedbackManagement = () => {
     const [filter, setFilter] = useState({
         category: '',
         status: '',
+        search: '',
         page: 1,
         limit: 10
     });
@@ -58,6 +59,10 @@ const FeedbackManagement = () => {
 
     const handlePageChange = (newPage) => {
         setFilter(prev => ({ ...prev, page: newPage }));
+    };
+
+    const handleFilterChange = (name, value) => {
+        setFilter(prev => ({ ...prev, [name]: value, page: 1 }));
     };
 
     const getCategoryIcon = (category) => {

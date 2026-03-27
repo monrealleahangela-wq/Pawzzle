@@ -29,7 +29,8 @@ const StoreApplications = () => {
   const [applications, setApplications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({
-    status: ''
+    status: '',
+    search: ''
   });
   const [selectedApplication, setSelectedApplication] = useState(null);
   const [showReviewModal, setShowReviewModal] = useState(false);
@@ -136,12 +137,9 @@ const StoreApplications = () => {
             <input
               type="text"
               placeholder="QUERY APPLICATIONS: STORE NAME, APPLICANT, REF..."
-              className="w-full pl-24 pr-4 py-5 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-3xl outline-none focus:ring-2 focus:ring-primary-500/50 placeholder:text-slate-600 transition-all"
-              onChange={(e) => {
-                // Implement local search filter if needed, or update parent filters
-                const query = e.target.value.toLowerCase();
-                setFilters(prev => ({ ...prev, search: query }));
-              }}
+              className="w-full pl-24 pr-4 py-5 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-3xl outline-none focus:ring-2 focus:ring-primary-500/50 placeholder:text-slate-600 transition-all font-sans"
+              value={filters.search}
+              onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
             />
           </div>
           <div className="md:col-span-4 relative">

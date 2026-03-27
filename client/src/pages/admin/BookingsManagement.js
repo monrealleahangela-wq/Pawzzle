@@ -193,9 +193,9 @@ const BookingsManagement = () => {
             <input
               type="text"
               placeholder="QUERY BOOKINGS: CUSTOMER, REFERENCE, PET..."
-              className="w-full pl-24 pr-4 py-5 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-3xl outline-none focus:ring-2 focus:ring-primary-500/50 placeholder:text-slate-600 transition-all"
-              value={filters.search}
-              onChange={(e) => handleFilterChange('search', e.target.value)}
+              className="w-full pl-24 pr-4 py-5 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-3xl outline-none focus:ring-2 focus:ring-primary-500/50 placeholder:text-slate-600 transition-all font-sans"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
           <div className="md:col-span-4 relative">
@@ -203,11 +203,11 @@ const BookingsManagement = () => {
                 <Activity className="h-4 w-4 text-primary-500" />
              </div>
              <select
-                value={filters.status}
-                onChange={(e) => handleFilterChange('status', e.target.value)}
-                className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-3xl pl-24 pr-10 py-5 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer"
+                value={filterStatus}
+                onChange={(e) => setFilterStatus(e.target.value)}
+                className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-3xl pl-24 pr-10 py-5 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer font-sans"
              >
-                <option value="" className="bg-slate-900 text-white font-black">ALL STATUSES</option>
+                <option value="all" className="bg-slate-900 text-white font-black">ALL STATUSES</option>
                 <option value="pending" className="bg-slate-900 text-white font-black">PENDING</option>
                 <option value="confirmed" className="bg-slate-900 text-white font-black">CONFIRMED</option>
                 <option value="in_progress" className="bg-slate-900 text-white font-black">IN PROGRESS</option>

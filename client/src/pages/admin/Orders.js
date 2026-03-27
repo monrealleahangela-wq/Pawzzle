@@ -2,13 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { adminOrderService, getImageUrl } from '../../services/apiService';
-import { ShoppingBag, Eye, Package, ArrowRight, Filter, ChevronLeft, ChevronRight, Activity, ChevronDown } from 'lucide-react';
+import { ShoppingBag, Eye, Package, ArrowRight, Filter, ChevronLeft, ChevronRight, Activity, ChevronDown, Search } from 'lucide-react';
 
 const AdminOrders = () => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({
-    status: ''
+    status: '',
+    search: ''
   });
   const [pagination, setPagination] = useState({
     currentPage: 1,
@@ -125,7 +126,7 @@ const AdminOrders = () => {
             </div>
             <input
               type="text" placeholder="QUERY ORDERS: NUMBER, CUSTOMER, PRODUCT..."
-              value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
+              value={filters.search} onChange={(e) => handleFilterChange('search', e.target.value)}
               className="w-full pl-24 pr-4 py-5 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-3xl outline-none focus:ring-2 focus:ring-indigo-500/50 placeholder:text-slate-600 transition-all font-sans"
             />
           </div>
