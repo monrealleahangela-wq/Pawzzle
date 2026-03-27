@@ -354,6 +354,20 @@ const Layout = () => {
               <div className="flex items-center gap-2 group-actions pr-1">
                 <NotificationBell />
                 
+                {user?.role === 'customer' && (
+                  <Link
+                    to="/cart"
+                    className="p-3 bg-white border border-slate-100 rounded-xl text-slate-400 hover:text-primary-600 hover:bg-primary-50 hover:border-primary-100 transition-all shadow-sm relative shrink-0"
+                    title="View Cart"
+                  >
+                    <ShoppingCart className="h-4 w-4" />
+                    {getTotalItems() > 0 && (
+                      <span className="absolute -top-1 -right-1 bg-primary-600 text-white text-[8px] font-black w-4 h-4 rounded-full flex items-center justify-center border-2 border-white shadow-sm font-sans">
+                        {getTotalItems()}
+                      </span>
+                    )}
+                  </Link>
+                )}
                 <Link
                   to="/profile"
                   className="p-1 px-1.5 bg-[#2D1B14] text-white rounded-xl shadow-xl hover:bg-amber-600 transition-all flex items-center justify-center shrink-0"
