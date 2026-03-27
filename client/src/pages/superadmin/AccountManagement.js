@@ -192,25 +192,25 @@ const AccountManagement = () => {
       </div>
 
       {/* Identity HUD Filter - High Contrast & Always Visible */}
-      <div className="bg-slate-900 p-2 rounded-[2.5rem] shadow-xl border border-slate-800">
+      <div className="bg-slate-900 p-2 rounded-[1.5rem] shadow-xl border border-slate-800">
         <div className="grid grid-cols-1 md:grid-cols-12 gap-2">
           <div className="md:col-span-8 relative group">
-            <div className="absolute left-12 top-1/2 -translate-y-1/2 flex items-center">
+            <div className="absolute left-5 top-1/2 -translate-y-1/2 flex items-center">
               <Search className="h-4 w-4 text-slate-500 group-focus-within:text-primary-500 transition-colors" />
             </div>
             <input
               type="text" value={filters.search} onChange={(e) => handleFilterChange('search', e.target.value)}
               placeholder="QUERY SYSTEM ACCOUNTS: NAME, EMAIL, UID..."
-              className="w-full pl-32 pr-4 py-5 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-3xl outline-none focus:ring-2 focus:ring-primary-500/50 placeholder:text-slate-600 transition-all font-sans"
+              className="w-full pl-14 pr-4 py-3.5 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl outline-none focus:ring-2 focus:ring-primary-500/50 placeholder:text-slate-600 transition-all font-sans"
             />
           </div>
           <div className="md:col-span-3 relative">
-            <div className="absolute left-12 top-1/2 -translate-y-1/2">
+            <div className="absolute left-5 top-1/2 -translate-y-1/2">
               <Shield className="h-3.5 w-3.5 text-primary-500" />
             </div>
             <select
               value={filters.role} onChange={(e) => handleFilterChange('role', e.target.value)}
-              className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-3xl pl-32 pr-10 py-5 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer font-sans"
+              className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-2xl pl-14 pr-10 py-3.5 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer font-sans"
             >
               <option value="" className="bg-slate-900 text-white font-black">ALL ROLES</option>
               <option value="super_admin" className="bg-slate-900 text-white font-black">MASTER ADMIN</option>
@@ -219,12 +219,12 @@ const AccountManagement = () => {
             </select>
           </div>
           <div className="md:col-span-3 relative">
-            <div className="absolute left-12 top-1/2 -translate-y-1/2">
+            <div className="absolute left-5 top-1/2 -translate-y-1/2">
               <Zap className="h-3.5 w-3.5 text-emerald-500" />
             </div>
             <select
               value={filters.isActive} onChange={(e) => handleFilterChange('isActive', e.target.value)}
-              className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-3xl pl-32 pr-10 py-5 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer font-sans"
+              className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-2xl pl-14 pr-10 py-3.5 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer font-sans"
             >
               <option value="" className="bg-slate-900 text-white font-black">ANY STATUS</option>
               <option value="true" className="bg-slate-900 text-white font-black">ACTIVE</option>
@@ -232,12 +232,12 @@ const AccountManagement = () => {
             </select>
           </div>
           <div className="md:col-span-2 relative">
-            <div className="absolute left-12 top-1/2 -translate-y-1/2">
+            <div className="absolute left-5 top-1/2 -translate-y-1/2">
               <Calendar className="h-3.5 w-3.5 text-blue-500" />
             </div>
             <select
               value={filters.dateRange} onChange={(e) => handleFilterChange('dateRange', e.target.value)}
-              className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-3xl pl-32 pr-10 py-5 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer font-sans"
+              className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-2xl pl-14 pr-10 py-3.5 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer font-sans"
             >
               <option value="" className="bg-slate-900 text-white font-black">ALL TIME</option>
               <option value="today" className="bg-slate-900 text-white font-black">TODAY</option>
@@ -253,7 +253,7 @@ const AccountManagement = () => {
         {accounts.map((user) => {
           const role = getRoleProps(user.role);
           return (
-            <div key={user._id} className="group bg-white border border-slate-100 rounded-[2.5rem] p-6 shadow-sm hover:shadow-2xl transition-all relative overflow-hidden flex flex-col">
+            <div key={user._id} className="group bg-white border border-slate-100 rounded-[1.5rem] p-6 shadow-sm hover:shadow-2xl transition-all relative overflow-hidden flex flex-col">
               <div className="absolute top-0 right-0 p-6 flex flex-col items-end gap-2">
                 <span className={`px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-widest ${user.isActive ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
                   {user.isActive ? 'ACTIVE' : 'DISABLED'}
@@ -366,7 +366,7 @@ const AccountManagement = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
                 {/* Visual Identity Assets */}
                 <div className="space-y-8">
-                  <div className="bg-slate-900 rounded-[2.5rem] p-10 text-white relative overflow-hidden shadow-2xl">
+                  <div className="bg-slate-900 rounded-[1.5rem] p-10 text-white relative overflow-hidden shadow-2xl">
                     <Target className="absolute -bottom-10 -right-10 w-48 h-48 opacity-10 animate-pulse" />
                     <div className="relative z-10 space-y-6">
                       <div className="flex justify-between items-start">
@@ -389,7 +389,7 @@ const AccountManagement = () => {
                     </div>
                   </div>
 
-                  <div className="bg-slate-50 rounded-[2.5rem] p-8 border border-slate-100">
+                  <div className="bg-slate-50 rounded-[1.5rem] p-8 border border-slate-100">
                     <h3 className="text-[11px] font-black text-slate-900 uppercase tracking-widest mb-6 flex items-center gap-2">
                       Contact Routing
                     </h3>
@@ -415,7 +415,7 @@ const AccountManagement = () => {
 
                 {/* Authentication Subsystem */}
                 <div className="space-y-8">
-                  <div className="bg-white border border-slate-100 rounded-[2.5rem] p-8 shadow-sm">
+                  <div className="bg-white border border-slate-100 rounded-[1.5rem] p-8 shadow-sm">
                     <h3 className="text-[11px] font-black text-slate-900 uppercase tracking-widest mb-8 flex items-center gap-2">
                       <Key className="h-4 w-4 text-primary-600" /> Access Credentials
                     </h3>
@@ -447,7 +447,7 @@ const AccountManagement = () => {
                   </div>
 
                   {selectedAccount.address && (
-                    <div className="bg-white border border-slate-100 rounded-[2.5rem] p-8 shadow-sm">
+                    <div className="bg-white border border-slate-100 rounded-[1.5rem] p-8 shadow-sm">
                       <h3 className="text-[11px] font-black text-slate-900 uppercase tracking-widest mb-6 flex items-center gap-2">
                         <Globe className="h-4 w-4 text-primary-600" /> Geographical Node
                       </h3>

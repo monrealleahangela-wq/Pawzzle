@@ -170,7 +170,7 @@ const SystemAnalytics = () => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Distribution */}
         <div className="space-y-4">
-          <div className="bg-white border border-slate-100 rounded-[2.5rem] p-8 shadow-sm">
+          <div className="bg-white border border-slate-100 rounded-[1.5rem] p-8 shadow-sm">
             <div className="flex items-center justify-between mb-8">
               <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest flex items-center gap-2">
                 <PieChart className="h-4 w-4 text-primary-600" /> User Distribution
@@ -194,7 +194,7 @@ const SystemAnalytics = () => {
             </div>
           </div>
 
-          <div className="bg-white border border-slate-100 rounded-[2.5rem] p-8 shadow-sm">
+          <div className="bg-white border border-slate-100 rounded-[1.5rem] p-8 shadow-sm">
             <div className="flex items-center justify-between mb-8">
               <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest flex items-center gap-2">
                 <TrendingUp className="h-4 w-4 text-emerald-600" /> Order Statuses
@@ -220,7 +220,7 @@ const SystemAnalytics = () => {
         </div>
 
         {/* Activity Log */}
-        <div className="bg-white border border-slate-100 rounded-[2.5rem] p-8 shadow-sm h-fit">
+        <div className="bg-white border border-slate-100 rounded-[1.5rem] p-8 shadow-sm h-fit">
           <div className="flex items-center justify-between mb-8">
             <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest flex items-center gap-2">
               <Zap className="h-4 w-4 text-amber-500" /> Live Activity Log

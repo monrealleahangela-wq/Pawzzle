@@ -102,7 +102,7 @@ const FeedbackManagement = () => {
             </header>
 
             {/* Intellectual HUD Filter - High Contrast & Always Visible */}
-            <div className="bg-slate-900 p-2 rounded-[2.5rem] shadow-xl border border-slate-800">
+            <div className="bg-slate-900 p-2 rounded-[1.5rem] shadow-xl border border-slate-800">
                 <div className="grid grid-cols-1 md:grid-cols-12 gap-2">
                     <div className="md:col-span-6 relative">
                         <div className="absolute left-8 top-1/2 -translate-y-1/2 flex items-center gap-3">
@@ -111,7 +111,7 @@ const FeedbackManagement = () => {
                         <select
                             value={filter.category}
                             onChange={(e) => setFilter({ ...filter, category: e.target.value, page: 1 })}
-                            className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-3xl pl-20 pr-6 py-5 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer font-sans"
+                            className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-2xl pl-20 pr-6 py-3.5 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer font-sans"
                         >
                             <option value="" className="bg-slate-900 text-white font-black">ALL FEEDBACK</option>
                             <option value="UI/UX" className="bg-slate-900 text-white font-black">UI / UX</option>
@@ -121,23 +121,23 @@ const FeedbackManagement = () => {
                         </select>
                     </div>
                     <div className="md:col-span-4 relative group">
-                        <div className="absolute left-12 top-1/2 -translate-y-1/2 flex items-center">
+                        <div className="absolute left-5 top-1/2 -translate-y-1/2 flex items-center">
                             <Search className="h-4 w-4 text-slate-500 group-focus-within:text-indigo-500 transition-colors" />
                         </div>
                         <input
                             type="text" placeholder="QUERY FEEDBACK: CONTENT, NAME, EMAIL..."
                             value={filter.search} onChange={(e) => handleFilterChange('search', e.target.value)}
-                            className="w-full pl-32 pr-4 py-5 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-3xl outline-none focus:ring-2 focus:ring-indigo-500/50 placeholder:text-slate-600 transition-all font-sans"
+                            className="w-full pl-14 pr-4 py-3.5 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500/50 placeholder:text-slate-600 transition-all font-sans"
                         />
                     </div>
                     <div className="md:col-span-4 relative">
-                        <div className="absolute left-12 top-1/2 -translate-y-1/2 flex items-center">
+                        <div className="absolute left-5 top-1/2 -translate-y-1/2 flex items-center">
                             <Zap className="h-4 w-4 text-emerald-500" />
                         </div>
                         <select
                             value={filter.status}
                             onChange={(e) => handleFilterChange('status', e.target.value)}
-                            className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-3xl pl-32 pr-6 py-5 outline-none focus:ring-2 focus:ring-emerald-500/50 appearance-none transition-all cursor-pointer font-sans"
+                            className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-2xl pl-14 pr-6 py-3.5 outline-none focus:ring-2 focus:ring-emerald-500/50 appearance-none transition-all cursor-pointer font-sans"
                         >
                             <option value="" className="bg-slate-900 text-white font-black">ANY STATUS</option>
                             <option value="pending" className="bg-slate-900 text-white font-black">PENDING</option>
@@ -151,7 +151,7 @@ const FeedbackManagement = () => {
             <div className="grid grid-cols-1 gap-4">
                 {loading ? (
                     [...Array(3)].map((_, i) => (
-                        <div key={i} className="bg-white p-8 rounded-[2.5rem] animate-pulse border border-slate-100">
+                        <div key={i} className="bg-white p-8 rounded-[1.5rem] animate-pulse border border-slate-100">
                             <div className="h-4 w-32 bg-slate-100 rounded mb-4"></div>
                             <div className="h-10 w-full bg-slate-50 rounded mb-4"></div>
                             <div className="h-4 w-1/2 bg-slate-50 rounded"></div>
@@ -166,7 +166,7 @@ const FeedbackManagement = () => {
                     feedbacks.map((item) => {
                         const CatIcon = getCategoryIcon(item.category);
                         return (
-                            <div key={item._id} className="bg-white p-6 sm:p-10 rounded-[2.5rem] border border-slate-50 shadow-sm hover:shadow-xl transition-all duration-500 group relative overflow-hidden">
+                            <div key={item._id} className="bg-white p-6 sm:p-10 rounded-[1.5rem] border border-slate-50 shadow-sm hover:shadow-xl transition-all duration-500 group relative overflow-hidden">
                                 <div className={`absolute top-0 right-10 w-16 h-1 px-4 rounded-b-full ${getStatusColor(item.status).split(' ')[0]}`}></div>
 
                                 <div className="flex flex-col md:flex-row md:items-start gap-6 sm:gap-10">

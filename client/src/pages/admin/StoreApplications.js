@@ -128,28 +128,28 @@ const StoreApplications = () => {
   return (
     <div className="space-y-6 pb-20">
       {/* Top HUD Filter - High Contrast & Always Visible */}
-      <div className="bg-slate-900 p-2 rounded-[2.5rem] shadow-xl border border-white/5 relative z-10">
+      <div className="bg-slate-900 p-2 rounded-[1.5rem] shadow-xl border border-white/5 relative z-10">
         <div className="grid grid-cols-1 md:grid-cols-12 gap-2">
           <div className="md:col-span-8 relative group">
-            <div className="absolute left-12 top-1/2 -translate-y-1/2 flex items-center">
+            <div className="absolute left-5 top-1/2 -translate-y-1/2 flex items-center">
               <Search className="h-4 w-4 text-slate-500 group-focus-within:text-primary-500 transition-colors" />
             </div>
             <input
               type="text"
               placeholder="QUERY APPLICATIONS: STORE NAME, APPLICANT, REF..."
-              className="w-full pl-32 pr-4 py-5 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-3xl outline-none focus:ring-2 focus:ring-primary-500/50 placeholder:text-slate-600 transition-all font-sans"
+              className="w-full pl-14 pr-4 py-3.5 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl outline-none focus:ring-2 focus:ring-primary-500/50 placeholder:text-slate-600 transition-all font-sans"
               value={filters.search}
               onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
             />
           </div>
           <div className="md:col-span-4 relative">
-             <div className="absolute left-12 top-1/2 -translate-y-1/2">
+             <div className="absolute left-5 top-1/2 -translate-y-1/2">
                 <Activity className="h-4 w-4 text-primary-500" />
              </div>
              <select
                 value={filters.status}
                 onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value }))}
-                className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black tracking-widest rounded-3xl pl-32 pr-10 py-5 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer"
+                className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black tracking-widest rounded-2xl pl-14 pr-10 py-3.5 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer"
              >
                 <option value="" className="bg-slate-900 text-white font-black uppercase tracking-widest italic">ALL STATUSES</option>
                  <option value="under_review" className="bg-slate-900 text-white font-black">Under Review</option>
@@ -173,7 +173,7 @@ const StoreApplications = () => {
           {applications.map((app) => {
             const status = getStatusProps(app.status);
             return (
-              <div key={app._id} className="group bg-white border border-slate-100 rounded-[2.5rem] p-8 shadow-sm hover:shadow-2xl transition-all relative overflow-hidden flex flex-col">
+              <div key={app._id} className="group bg-white border border-slate-100 rounded-[1.5rem] p-8 shadow-sm hover:shadow-2xl transition-all relative overflow-hidden flex flex-col">
                 <div className="absolute top-0 right-0 p-8">
                   <span className={`px-2.5 py-1 rounded-lg text-[9px] font-black tracking-widest bg-${status.color}-50 text-${status.color}-600`}>
                     {status.label}
@@ -251,8 +251,8 @@ const StoreApplications = () => {
             <div className="flex-1 overflow-y-auto p-10 space-y-10 no-scrollbar">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
                 <div className="space-y-8">
-                  <div className="bg-slate-50 rounded-[2.5rem] p-8 border border-slate-100 flex flex-col items-center justify-center text-center">
-                    <div className="w-32 h-32 bg-white rounded-3xl p-2 border-4 border-slate-100 shadow-inner mb-4 overflow-hidden">
+                  <div className="bg-slate-50 rounded-[1.5rem] p-8 border border-slate-100 flex flex-col items-center justify-center text-center">
+                    <div className="w-32 h-32 bg-white rounded-2xl p-2 border-4 border-slate-100 shadow-inner mb-4 overflow-hidden">
                         {selectedApplication.storeLogoUrl ? (
                         <img 
                           src={getImageUrl(selectedApplication.storeLogoUrl)} 
@@ -269,7 +269,7 @@ const StoreApplications = () => {
                     <p className="text-[9px] font-bold text-slate-400 uppercase tracking-[0.2em] mt-1">Primary Store Identity</p>
                   </div>
 
-                  <div className="bg-slate-50 rounded-[2.5rem] p-8 border border-slate-100">
+                  <div className="bg-slate-50 rounded-[1.5rem] p-8 border border-slate-100">
                     <h3 className="text-[11px] font-black text-slate-900 uppercase tracking-widest mb-6 flex items-center gap-2">
                        Business Identity & Legal
                     </h3>
@@ -299,7 +299,7 @@ const StoreApplications = () => {
                     </div>
                   </div>
 
-                  <div className="bg-slate-50 rounded-[2.5rem] p-8 border border-slate-100">
+                  <div className="bg-slate-50 rounded-[1.5rem] p-8 border border-slate-100">
                     <h3 className="text-[11px] font-black text-slate-900 uppercase tracking-widest mb-6 flex items-center gap-2">
                       Store Contact & Location
                     </h3>
@@ -323,7 +323,7 @@ const StoreApplications = () => {
                     </div>
                   </div>
 
-                  <div className="bg-slate-50 rounded-[2.5rem] p-8 border border-slate-100">
+                  <div className="bg-slate-50 rounded-[1.5rem] p-8 border border-slate-100">
                     <h3 className="text-[11px] font-black text-slate-900 uppercase tracking-widest mb-6 flex items-center gap-2">
                       Applicant Information
                     </h3>
@@ -343,7 +343,7 @@ const StoreApplications = () => {
 
                 {/* Business Info */}
                 <div className="space-y-8">
-                  <div className="bg-white border border-slate-100 rounded-[2.5rem] p-8 shadow-sm">
+                  <div className="bg-white border border-slate-100 rounded-[1.5rem] p-8 shadow-sm">
                     <h3 className="text-[11px] font-black text-slate-900 uppercase tracking-widest mb-6 flex items-center gap-2">
                        Payment Profile
                     </h3>
@@ -367,7 +367,7 @@ const StoreApplications = () => {
                     </div>
                   </div>
 
-                  <div className="bg-slate-50 rounded-[2.5rem] p-8 border border-slate-100 space-y-6">
+                  <div className="bg-slate-50 rounded-[1.5rem] p-8 border border-slate-100 space-y-6">
                     <div>
                       <h3 className="text-[11px] font-black text-slate-900 uppercase tracking-widest mb-4 flex items-center gap-2">
                         Professional Network
@@ -399,7 +399,7 @@ const StoreApplications = () => {
                 </div>
 
                 <div className="md:col-span-2 space-y-6">
-                  <div className="bg-slate-900/5 rounded-[2.5rem] p-10 border border-slate-100 mt-4">
+                  <div className="bg-slate-900/5 rounded-[1.5rem] p-10 border border-slate-100 mt-4">
                     <h3 className="text-[11px] font-black text-slate-900 uppercase tracking-widest mb-8 flex items-center gap-2">
                        Verification Intelligence Vault
                     </h3>
@@ -516,13 +516,13 @@ const StoreApplications = () => {
                   <span className="text-[10px] font-black uppercase tracking-[0.4em]">Review Complete</span>
                 </div>
                 {selectedApplication.rejectionReason && (
-                  <div className="p-6 bg-rose-50 border border-rose-100 rounded-3xl">
+                  <div className="p-6 bg-rose-50 border border-rose-100 rounded-2xl">
                     <p className="text-[10px] font-black text-rose-600 uppercase tracking-widest mb-2">Rejection Reason</p>
                     <p className="text-sm font-bold text-rose-900">{selectedApplication.rejectionReason}</p>
                   </div>
                 )}
                 {selectedApplication.reviewNotes && (
-                  <div className="p-6 bg-white border border-slate-100 rounded-3xl">
+                  <div className="p-6 bg-white border border-slate-100 rounded-2xl">
                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Review Notes</p>
                     <p className="text-sm font-bold text-slate-900">{selectedApplication.reviewNotes}</p>
                   </div>
@@ -590,7 +590,7 @@ const StoreApplications = () => {
                   </button>
                 </div>
 
-                <div className="bg-rose-50/50 p-8 rounded-[2.5rem] border border-rose-100/50 mt-4">
+                <div className="bg-rose-50/50 p-8 rounded-[1.5rem] border border-rose-100/50 mt-4">
                   <label className="text-[10px] font-black text-rose-400 uppercase tracking-widest mb-4 block">Final Decision Feedback (Optional for Approval)</label>
                   <div className="flex flex-wrap gap-2 mb-4">
                     {REJECTION_REASONS.map(reason => (

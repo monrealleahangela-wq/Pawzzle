@@ -184,28 +184,28 @@ const BookingsManagement = () => {
       </div>
 
       {/* Protocol HUD Filter - High Contrast & Always Visible */}
-      <div className="relative z-10 bg-slate-900 p-2 rounded-[2.5rem] shadow-xl border border-slate-800">
+      <div className="relative z-10 bg-slate-900 p-2 rounded-[1.5rem] shadow-xl border border-slate-800">
         <div className="grid grid-cols-1 md:grid-cols-12 gap-2">
           <div className="md:col-span-8 relative group">
-            <div className="absolute left-12 top-1/2 -translate-y-1/2 flex items-center">
+            <div className="absolute left-5 top-1/2 -translate-y-1/2 flex items-center">
               <Search className="h-4 w-4 text-slate-500 group-focus-within:text-primary-500 transition-colors" />
             </div>
             <input
               type="text"
               placeholder="QUERY BOOKINGS: CUSTOMER, REFERENCE, PET..."
-              className="w-full pl-32 pr-4 py-5 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-3xl outline-none focus:ring-2 focus:ring-primary-500/50 placeholder:text-slate-600 transition-all font-sans"
+              className="w-full pl-14 pr-4 py-3.5 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl outline-none focus:ring-2 focus:ring-primary-500/50 placeholder:text-slate-600 transition-all font-sans"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
           <div className="md:col-span-4 relative">
-             <div className="absolute left-12 top-1/2 -translate-y-1/2">
+             <div className="absolute left-5 top-1/2 -translate-y-1/2">
                 <Activity className="h-4 w-4 text-primary-500" />
              </div>
              <select
                 value={filterStatus}
                 onChange={(e) => setFilterStatus(e.target.value)}
-                className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-3xl pl-32 pr-10 py-5 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer font-sans"
+                className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-2xl pl-14 pr-10 py-3.5 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer font-sans"
              >
                 <option value="all" className="bg-slate-900 text-white font-black">ALL STATUSES</option>
                 <option value="pending" className="bg-slate-900 text-white font-black">PENDING</option>
@@ -293,7 +293,7 @@ const BookingsManagement = () => {
       {/* Booking Details Modal */}
       {selectedBooking && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[100] flex items-center justify-center p-4 animate-in fade-in duration-300">
-          <div className="bg-white w-full max-w-2xl rounded-3xl overflow-hidden shadow-2xl animate-in slide-in-from-bottom-8 duration-500 border border-slate-200 flex flex-col max-h-[90vh]">
+          <div className="bg-white w-full max-w-2xl rounded-2xl overflow-hidden shadow-2xl animate-in slide-in-from-bottom-8 duration-500 border border-slate-200 flex flex-col max-h-[90vh]">
             <header className="shrink-0 bg-slate-900 p-6 sm:p-8 text-white flex justify-between items-start relative overflow-hidden">
               <div className="absolute top-0 right-0 p-12 opacity-10 blur-3xl pointer-events-none">
                 <ShieldCheck className="w-64 h-64 text-primary-500" />

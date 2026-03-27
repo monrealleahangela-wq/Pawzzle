@@ -150,17 +150,17 @@ const ArchiveManagement = () => {
             </div>
 
             {/* Archive HUD Filter - High Contrast & Always Visible */}
-            <div className="bg-slate-900 p-2 rounded-[2.5rem] shadow-xl border border-slate-800">
+            <div className="bg-slate-900 p-2 rounded-[1.5rem] shadow-xl border border-slate-800">
                 <div className="grid grid-cols-1 md:grid-cols-12 gap-2">
                     <div className="md:col-span-12 relative group">
-                        <div className="absolute left-12 top-1/2 -translate-y-1/2 flex items-center">
+                        <div className="absolute left-5 top-1/2 -translate-y-1/2 flex items-center">
                             <Search className="h-4 w-4 text-slate-500 group-focus-within:text-primary-500 transition-colors" />
                         </div>
                         <input
                             type="text" placeholder="QUERY ARCHIVE: NAME, ID, EMAIL..."
                             value={search} onChange={(e) => setSearch(e.target.value)}
                             onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                            className="w-full pl-32 pr-32 py-5 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-3xl outline-none focus:ring-2 focus:ring-primary-500/50 placeholder:text-slate-600 transition-all font-sans"
+                            className="w-full pl-14 pr-32 py-3.5 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl outline-none focus:ring-2 focus:ring-primary-500/50 placeholder:text-slate-600 transition-all font-sans"
                         />
                         <button 
                             onClick={handleSearch}
@@ -206,7 +206,7 @@ const ArchiveManagement = () => {
             {activeType === 'all' && (
                 <div className="space-y-6">
                     {totalArchived === 0 ? (
-                        <div className="text-center py-20 bg-white border border-slate-100 rounded-[2.5rem]">
+                        <div className="text-center py-20 bg-white border border-slate-100 rounded-[1.5rem]">
                             <div className="w-16 h-16 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-200 mx-auto mb-4">
                                 <Archive className="h-8 w-8" />
                             </div>
@@ -219,7 +219,7 @@ const ArchiveManagement = () => {
                             const cfg = typeConfig[type];
                             const Icon = cfg.icon;
                             return (
-                                <div key={type} className="bg-white border border-slate-100 rounded-[2.5rem] overflow-hidden">
+                                <div key={type} className="bg-white border border-slate-100 rounded-[1.5rem] overflow-hidden">
                                     <div className="flex items-center justify-between p-5 sm:p-6 border-b border-slate-50">
                                         <div className="flex items-center gap-3">
                                             <div className={`w-10 h-10 rounded-2xl bg-${cfg.color}-50 flex items-center justify-center`}>
@@ -274,7 +274,7 @@ const ArchiveManagement = () => {
 
             {/* Detail List (Single type mode) */}
             {activeType !== 'all' && (
-                <div className="bg-white border border-slate-100 rounded-[2.5rem] overflow-hidden">
+                <div className="bg-white border border-slate-100 rounded-[1.5rem] overflow-hidden">
                     {items.length === 0 ? (
                         <div className="text-center py-16">
                             <Archive className="h-10 w-10 text-slate-200 mx-auto mb-3" />
@@ -283,7 +283,7 @@ const ArchiveManagement = () => {
                     ) : (
                         <div className="divide-y divide-slate-50">
                             {items.map(item => (
-                                <div key={item._id} className="flex items-center gap-4 px-5 sm:px-8 py-4 sm:py-5 hover:bg-slate-50/50 transition-colors group">
+                                <div key={item._id} className="flex items-center gap-4 px-5 sm:px-8 py-4 sm:py-3.5 hover:bg-slate-50/50 transition-colors group">
                                     <div className={`w-10 h-10 rounded-2xl bg-${typeConfig[activeType]?.color}-50 flex items-center justify-center shrink-0`}>
                                         {(() => { const Icon = typeConfig[activeType]?.icon; return Icon ? <Icon className={`h-5 w-5 text-${typeConfig[activeType]?.color}-600`} /> : null; })()}
                                     </div>
