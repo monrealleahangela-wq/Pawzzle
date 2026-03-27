@@ -200,7 +200,7 @@ const AccountManagement = () => {
             </div>
             <input
               type="text" value={filters.search} onChange={(e) => handleFilterChange('search', e.target.value)}
-              placeholder="QUERY ACCOUNTS..."
+              placeholder=""
               className="w-full pl-32 pr-4 py-5 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-[2.5rem] outline-none focus:ring-2 focus:ring-primary-500/50 placeholder:text-slate-600 transition-all font-sans"
             />
           </div>
