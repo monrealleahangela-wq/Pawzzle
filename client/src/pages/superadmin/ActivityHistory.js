@@ -164,22 +164,22 @@ const ActivityHistory = () => {
             <div className="bg-slate-900 p-2 rounded-[1.5rem] shadow-xl border border-slate-800">
                 <div className="grid grid-cols-1 md:grid-cols-12 gap-2">
                     <div className="md:col-span-5 relative group">
-                        <div className="absolute left-10 top-1/2 -translate-y-1/2 flex items-center">
+                        <div className="absolute left-8 top-1/2 -translate-y-1/2 flex items-center">
                             <Search className="h-4 w-4 text-slate-500 group-focus-within:text-primary-500 transition-colors" />
                         </div>
                         <input
                             type="text" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
                             placeholder=""
-                            className="w-full pl-28 pr-4 py-3.5 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl outline-none focus:ring-2 focus:ring-primary-500/50 placeholder:text-slate-600 transition-all font-sans"
+                            className="w-full pl-20 pr-4 py-3.5 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl outline-none focus:ring-2 focus:ring-primary-500/50 placeholder:text-slate-600 transition-all font-sans"
                         />
                     </div>
                     <div className="md:col-span-4 relative">
-                        <div className="absolute left-10 top-1/2 -translate-y-1/2">
+                        <div className="absolute left-8 top-1/2 -translate-y-1/2">
                             <Target className="h-3.5 w-3.5 text-primary-500" />
                         </div>
                         <select
                             value={filterType} onChange={(e) => setFilterType(e.target.value)}
-                            className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-2xl pl-28 pr-10 py-3.5 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer font-sans"
+                            className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-2xl pl-20 pr-10 py-3.5 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer font-sans"
                         >
                             <option value="all" className="bg-slate-900 text-white font-black">ALL EVENTS</option>
                             <option value="user" className="bg-slate-900 text-white font-black">USER EVENTS</option>
@@ -189,12 +189,12 @@ const ActivityHistory = () => {
                         <ChevronDown className="absolute right-6 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500 pointer-events-none" />
                     </div>
                     <div className="md:col-span-3 relative">
-                        <div className="absolute left-10 top-1/2 -translate-y-1/2">
+                        <div className="absolute left-8 top-1/2 -translate-y-1/2">
                             <Calendar className="h-3.5 w-3.5 text-blue-500" />
                         </div>
                         <select
                             value={dateRange} onChange={(e) => setDateRange(e.target.value)}
-                            className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-2xl pl-28 pr-10 py-3.5 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer font-sans"
+                            className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-2xl pl-20 pr-10 py-3.5 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer font-sans"
                         >
                             <option value="" className="bg-slate-900 text-white font-black">ALL TIME</option>
                             <option value="today" className="bg-slate-900 text-white font-black">TODAY</option>
