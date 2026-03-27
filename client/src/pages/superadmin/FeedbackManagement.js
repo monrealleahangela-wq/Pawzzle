@@ -65,6 +65,28 @@ const FeedbackManagement = () => {
         setFilter(prev => ({ ...prev, [name]: value, page: 1 }));
     };
 
+    const handleStatusUpdate = async (id, status) => {
+        try {
+            await reviewService.updatePlatformFeedbackStatus(id, { status });
+            toast.success(`Feedback marked as ${status}`);
+            fetchFeedback();
+        } catch (error) {
+            toast.error('Failed to update status');
+        }
+    };
+
+    const handleDelete = async (id) => {
+        if (window.confirm('Delete this feedback mission?')) {
+            try {
+                await reviewService.deletePlatformFeedback(id);
+                toast.success('Deleted successfully');
+                fetchFeedback();
+            } catch (error) {
+                toast.error('Failed to delete');
+            }
+        }
+    };
+
     const getCategoryIcon = (category) => {
         switch (category) {
             case 'UI/UX': return Layout;
@@ -210,10 +232,17 @@ const FeedbackManagement = () => {
                                     </div>
 
                                     <div className="flex md:flex-col gap-2 shrink-0">
-                                        <button className="flex-1 md:flex-none p-3 bg-slate-50 text-slate-400 rounded-2xl hover:bg-primary-600 hover:text-white transition-all shadow-sm">
+                                        <button 
+                                            onClick={() => handleStatusUpdate(item._id, item.status === 'pending' ? 'reviewed' : 'pending')}
+                                            title={item.status === 'pending' ? 'Mark Reviewed' : 'Mark Pending'}
+                                            className={`flex-1 md:flex-none p-3 rounded-2xl transition-all shadow-sm ${item.status === 'reviewed' ? 'bg-primary-600 text-white' : 'bg-slate-50 text-slate-400 hover:bg-primary-600 hover:text-white'}`}
+                                        >
                                             <CheckCircle className="h-5 w-5" />
                                         </button>
-                                        <button className="flex-1 md:flex-none p-3 bg-slate-50 text-slate-400 rounded-2xl hover:bg-rose-600 hover:text-white transition-all shadow-sm">
+                                        <button 
+                                            onClick={() => handleDelete(item._id)}
+                                            className="flex-1 md:flex-none p-3 bg-slate-50 text-slate-400 rounded-2xl hover:bg-rose-600 hover:text-white transition-all shadow-sm"
+                                        >
                                             <Trash2 className="h-5 w-5" />
                                         </button>
                                     </div>

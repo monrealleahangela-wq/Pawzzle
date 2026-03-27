@@ -364,12 +364,47 @@ const toggleReviewStatus = async (req, res) => {
     }
 };
 
+const updatePlatformFeedbackStatus = async (req, res) => {
+    try {
+        const { status, isAdminNote } = req.body;
+        const feedback = await PlatformFeedback.findById(req.params.id);
+        if (!feedback) return res.status(404).json({ message: 'Feedback not found' });
+
+        if (status) feedback.status = status;
+        if (isAdminNote !== undefined) feedback.isAdminNote = isAdminNote;
+
+        await feedback.save();
+        res.json({ message: 'Feedback status updated successfully', feedback });
+    } catch (error) {
+        console.error('Update platform feedback error:', error);
+        res.status(500).json({ message: 'Server error' });
+    }
+};
+
+const deletePlatformFeedback = async (req, res) => {
+    try {
+        const feedback = await PlatformFeedback.findById(req.params.id);
+        if (!feedback) return res.status(404).json({ message: 'Feedback not found' });
+
+        // Soft delete
+        feedback.isDeleted = true;
+        await feedback.save();
+
+        res.json({ message: 'Feedback deleted successfully' });
+    } catch (error) {
+        console.error('Delete platform feedback error:', error);
+        res.status(500).json({ message: 'Server error' });
+    }
+};
+
 module.exports = {
     createReview,
     getShopReviews,
     getTargetReviews,
     createPlatformFeedback,
     getAllPlatformFeedback,
+    updatePlatformFeedbackStatus,
+    deletePlatformFeedback,
     replyToReview,
     checkReviewEligibility,
     toggleReviewStatus

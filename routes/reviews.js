@@ -5,6 +5,8 @@ const {
     getTargetReviews,
     createPlatformFeedback,
     getAllPlatformFeedback,
+    updatePlatformFeedbackStatus,
+    deletePlatformFeedback,
     replyToReview,
     getShopReviews,
     checkReviewEligibility,
@@ -14,6 +16,8 @@ const { authenticate, adminOnly, superAdminOnly, adminOrStaff } = require('../mi
 
 // Administrative & Specialized Review Routes
 router.get('/platform/all', authenticate, superAdminOnly, getAllPlatformFeedback);
+router.patch('/platform/:id', authenticate, superAdminOnly, updatePlatformFeedbackStatus);
+router.delete('/platform/:id', authenticate, superAdminOnly, deletePlatformFeedback);
 router.get('/shop', authenticate, adminOrStaff, getShopReviews);
 router.post('/platform', authenticate, createPlatformFeedback);
 
