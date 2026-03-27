@@ -356,9 +356,11 @@ const Layout = () => {
                 </span>
               </Link>
 
-              {/* Global Search Bar - Refined Right-Aligned Positioning */}
-              <div className="hidden sm:flex flex-1 justify-end items-center px-4">
-                <GlobalSearch isScrolled={isScrolled} />
+              {/* Global Search Bar - Compact & Centered Pill Layout */}
+              <div className="hidden sm:flex flex-1 justify-center items-center px-4">
+                <div className="w-full max-w-[240px]">
+                  <GlobalSearch isScrolled={isScrolled} />
+                </div>
               </div>
 
               {/* Header Actions */}
@@ -383,15 +385,15 @@ const Layout = () => {
                 )}
 
                 {user && (
-                  <div className="flex items-center gap-1.5 sm:gap-3 px-2 py-1.5 bg-slate-50/50 rounded-2xl border border-slate-100/50">
+                   <div className="flex items-center gap-2 sm:gap-4 ml-1">
                     <NotificationBell />
-
+ 
                     <Link
                       to="/profile"
-                      className="p-1 border border-slate-100 bg-white rounded-lg shadow-sm hover:border-primary-300 hover:shadow-md transition-all group shrink-0"
+                      className="p-1 border border-slate-100 bg-slate-900 text-white rounded-xl shadow-lg hover:bg-primary-600 transition-all group shrink-0"
                       title="View Profile"
                     >
-                      <div className="w-8 h-8 rounded-md overflow-hidden bg-primary-600 flex items-center justify-center text-white text-[10px] font-black group-hover:bg-primary-700 transition-colors">
+                      <div className="w-8 h-8 rounded-lg overflow-hidden flex items-center justify-center text-[10px] font-black tracking-tighter">
                         {user?.avatar || user?.profilePicture ? (
                           <img src={user?.avatar || user?.profilePicture} alt="" className="w-full h-full object-cover" />
                         ) : (
@@ -399,10 +401,10 @@ const Layout = () => {
                         )}
                       </div>
                     </Link>
-
+ 
                     <button
                       onClick={handleLogout}
-                      className="hidden lg:flex p-2 bg-white border border-slate-100 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 hover:border-rose-100 transition-all shadow-sm group"
+                      className="hidden lg:flex p-3 bg-white border border-slate-100 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 hover:border-rose-100 transition-all shadow-sm group"
                       title="Sign Out"
                     >
                       <LogOut className="h-4 w-4 group-hover:rotate-12 transition-transform" />
