@@ -118,24 +118,24 @@ const AdminOrders = () => {
         </div>
 
       {/* Order HUD Filter - High Contrast & Always Visible */}
-      <div className="relative z-10 bg-slate-900 p-2 rounded-xl shadow-xl border border-slate-800">
+      <div className="relative z-10 bg-slate-900 p-2 rounded-[1.5rem] shadow-xl border border-slate-800">
         <div className="grid grid-cols-1 md:grid-cols-12 gap-2">
           <div className="md:col-span-6 relative group">
-            <div className="absolute left-4 top-1/2 -translate-y-1/2 flex items-center">
+            <div className="absolute left-5 top-1/2 -translate-y-1/2 flex items-center">
               <Search className="h-4 w-4 text-slate-500 group-focus-within:text-indigo-500 transition-colors" />
             </div>
             <input
               type="text" placeholder=""
               value={filters.search} onChange={(e) => handleFilterChange('search', e.target.value)}
-              className="w-full pl-12 pr-4 py-3 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-xl outline-none focus:ring-2 focus:ring-indigo-500/50 placeholder:text-slate-600 transition-all font-sans"
+              className="w-full pl-14 pr-4 py-3.5 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500/50 placeholder:text-slate-600 transition-all font-sans"
             />
           </div>
           <div className="md:col-span-4 relative">
-            <div className="absolute left-4 top-1/2 -translate-y-1/2 flex items-center">
+            <div className="absolute left-5 top-1/2 -translate-y-1/2 flex items-center">
               <Activity className="h-4 w-4 text-primary-500" />
             </div>
             <select
-              className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-xl pl-12 pr-10 py-3 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer font-sans"
+              className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-2xl pl-14 pr-10 py-3.5 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer font-sans"
               value={filters.status}
               onChange={(e) => handleFilterChange('status', e.target.value)}
             >
@@ -163,12 +163,12 @@ const AdminOrders = () => {
               <table className="w-full">
                 <thead>
                   <tr className="bg-slate-50/50">
-                    <th className="px-8 py-3 text-left text-[9px] font-black text-slate-400 uppercase tracking-widest">Protocol ID</th>
-                    <th className="px-8 py-3 text-left text-[9px] font-black text-slate-400 uppercase tracking-widest">Customer Profile</th>
-                    <th className="px-8 py-3 text-left text-[9px] font-black text-slate-400 uppercase tracking-widest">Cargo / Items</th>
-                    <th className="px-8 py-3 text-left text-[9px] font-black text-slate-400 uppercase tracking-widest">Financials</th>
-                    <th className="px-8 py-3 text-left text-[9px] font-black text-slate-400 uppercase tracking-widest">Status</th>
-                    <th className="px-8 py-3 text-right text-[9px] font-black text-slate-400 uppercase tracking-widest">Actions</th>
+                    <th className="px-8 py-3.5 text-left text-[9px] font-black text-slate-400 uppercase tracking-widest">Protocol ID</th>
+                    <th className="px-8 py-3.5 text-left text-[9px] font-black text-slate-400 uppercase tracking-widest">Customer Profile</th>
+                    <th className="px-8 py-3.5 text-left text-[9px] font-black text-slate-400 uppercase tracking-widest">Cargo / Items</th>
+                    <th className="px-8 py-3.5 text-left text-[9px] font-black text-slate-400 uppercase tracking-widest">Financials</th>
+                    <th className="px-8 py-3.5 text-left text-[9px] font-black text-slate-400 uppercase tracking-widest">Status</th>
+                    <th className="px-8 py-3.5 text-right text-[9px] font-black text-slate-400 uppercase tracking-widest">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50">
@@ -209,13 +209,13 @@ const AdminOrders = () => {
                       </td>
                       <td className="px-8 py-6">
                         <div className="flex items-center justify-end gap-2">
-                          <Link to={`/admin/orders/${order._id}`} className="p-2.5 bg-slate-50 text-slate-400 rounded-xl hover:bg-slate-900 hover:text-white transition-all shadow-sm">
+                          <Link to={`/admin/orders/${order._id}`} className="p-2.5 bg-slate-50 text-slate-400 rounded-2xl hover:bg-slate-900 hover:text-white transition-all shadow-sm">
                             <Eye className="h-4 w-4" />
                           </Link>
                           {order.paymentStatus !== 'paid' && order.status !== 'cancelled' && (
                             <button
                               onClick={() => handleConfirmPayment(order._id)}
-                              className="p-2.5 bg-emerald-50 text-emerald-600 rounded-xl hover:bg-emerald-500 hover:text-white transition-all shadow-sm group/pay relative"
+                              className="p-2.5 bg-emerald-50 text-emerald-600 rounded-2xl hover:bg-emerald-500 hover:text-white transition-all shadow-sm group/pay relative"
                               title="Confirm Payment"
                             >
                               <Activity className="h-4 w-4" />
@@ -224,7 +224,7 @@ const AdminOrders = () => {
                           {getNextStatus(order.status) && (
                             <button
                               onClick={() => handleStatusUpdate(order._id, getNextStatus(order.status))}
-                              className="flex items-center gap-2 px-5 py-2.5 bg-slate-900 text-white rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-primary-600 transition-all shadow-xl shadow-slate-200 active:scale-95"
+                              className="flex items-center gap-2 px-5 py-2.5 bg-slate-900 text-white rounded-2xl text-[9px] font-black uppercase tracking-widest hover:bg-primary-600 transition-all shadow-xl shadow-slate-200 active:scale-95"
                             >
                               Process <ArrowRight className="h-3.5 w-3.5" />
                             </button>
@@ -241,7 +241,7 @@ const AdminOrders = () => {
           {/* Cards for Mobile */}
           <div className="md:hidden space-y-4">
             {orders.map((order) => (
-              <div key={order._id} className="bg-white p-5 rounded-xl border border-slate-100 shadow-sm space-y-4 relative overflow-hidden">
+              <div key={order._id} className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm space-y-4 relative overflow-hidden">
                 <div className="flex justify-between items-start">
                   <div>
                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">#{order.orderNumber.slice(-8).toUpperCase()}</p>
@@ -267,13 +267,13 @@ const AdminOrders = () => {
                 </div>
 
                 <div className="flex gap-2 pt-1">
-                  <Link to={`/admin/orders/${order._id}`} className="flex-1 py-3 bg-slate-50 text-slate-600 rounded-xl text-[9px] font-black uppercase tracking-widest text-center hover:bg-slate-900 hover:text-white transition-all">
+                  <Link to={`/admin/orders/${order._id}`} className="flex-1 py-3.5 bg-slate-50 text-slate-600 rounded-2xl text-[9px] font-black uppercase tracking-widest text-center hover:bg-slate-900 hover:text-white transition-all">
                     View Briefing
                   </Link>
                   {getNextStatus(order.status) && (
                     <button
                       onClick={() => handleStatusUpdate(order._id, getNextStatus(order.status))}
-                      className="flex-1 py-3 bg-slate-900 text-white rounded-xl text-[9px] font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-primary-600 transition-all shadow-lg active:scale-95"
+                      className="flex-1 py-3.5 bg-slate-900 text-white rounded-2xl text-[9px] font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-primary-600 transition-all shadow-lg active:scale-95"
                     >
                       Process <ArrowRight className="h-3 w-3" />
                     </button>
@@ -287,11 +287,11 @@ const AdminOrders = () => {
 
       {/* Pagination */}
       {pagination.totalPages > 1 && (
-        <div className="relative z-10 flex justify-between items-center bg-slate-900 p-4 rounded-xl border border-slate-800 mt-12 shadow-2xl">
+        <div className="relative z-10 flex justify-between items-center bg-slate-900 p-4 rounded-2xl border border-slate-800 mt-12 shadow-2xl">
           <button
             onClick={() => setPagination(p => ({ ...p, currentPage: p.currentPage - 1 }))}
             disabled={!pagination.hasPrev}
-            className="w-14 h-14 flex items-center justify-center bg-white/5 text-white disabled:opacity-20 rounded-xl hover:bg-white/10 transition-all font-black"
+            className="w-14 h-14 flex items-center justify-center bg-white/5 text-white disabled:opacity-20 rounded-2xl hover:bg-white/10 transition-all font-black"
           >
             <ChevronLeft className="h-6 w-6" />
           </button>
@@ -310,7 +310,7 @@ const AdminOrders = () => {
           <button
             onClick={() => setPagination(p => ({ ...p, currentPage: p.currentPage + 1 }))}
             disabled={!pagination.hasNext}
-            className="w-14 h-14 flex items-center justify-center bg-primary-600 text-white disabled:opacity-20 rounded-xl hover:bg-primary-700 transition-all shadow-xl shadow-primary-900/40 font-black"
+            className="w-14 h-14 flex items-center justify-center bg-primary-600 text-white disabled:opacity-20 rounded-2xl hover:bg-primary-700 transition-all shadow-xl shadow-primary-900/40 font-black"
           >
             <ChevronRight className="h-6 w-6" />
           </button>

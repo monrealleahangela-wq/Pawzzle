@@ -116,7 +116,7 @@ const AdminChat = () => {
       <div className="max-w-[1600px] mx-auto min-h-screen flex flex-col md:p-4 lg:p-6">
 
         {/* Compact Header */}
-        <header className="flex items-center justify-between px-4 py-3 md:px-0 md:pb-6">
+        <header className="flex items-center justify-between px-4 py-3.5 md:px-0 md:pb-6">
           <div className="flex items-center gap-3">
             <div className="p-1.5 bg-slate-900 text-white rounded-lg">
               <MessageSquare className="h-3.5 w-3.5" />
@@ -137,7 +137,7 @@ const AdminChat = () => {
           </div>
         </header>
 
-        <div className="flex-1 flex overflow-hidden bg-white border border-slate-100 rounded-none md:rounded-xl shadow-sm">
+        <div className="flex-1 flex overflow-hidden bg-white border border-slate-100 rounded-none md:rounded-2xl shadow-sm">
           {/* Sidebar - Conversation List */}
           <div className={`w-full md:w-80 lg:w-96 flex flex-col border-r border-slate-50 ${selectedConversation ? 'hidden md:flex' : 'flex'}`}>
             {/* Search & Filter - Compact */}
@@ -149,7 +149,7 @@ const AdminChat = () => {
                   placeholder="find customer..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-9 pr-4 py-2 bg-slate-50/50 border border-slate-100 text-[10px] font-bold uppercase tracking-widest rounded-xl outline-none focus:bg-white focus:ring-2 focus:ring-primary-500/10 transition-all"
+                  className="w-full pl-9 pr-4 py-2 bg-slate-50/50 border border-slate-100 text-[10px] font-bold uppercase tracking-widest rounded-2xl outline-none focus:bg-white focus:ring-2 focus:ring-primary-500/10 transition-all"
                 />
               </div>
 
@@ -173,9 +173,9 @@ const AdminChat = () => {
                   <div
                     key={conv._id}
                     onClick={() => handleSelectConversation(conv)}
-                    className={`px-4 py-3 cursor-pointer transition-all border-b border-slate-50/50 flex items-center gap-4 relative ${selectedConversation?._id === conv._id ? 'bg-slate-50 border-l-4 border-l-primary-600' : 'hover:bg-slate-50/50 border-l-4 border-l-transparent'}`}
+                    className={`px-4 py-3.5 cursor-pointer transition-all border-b border-slate-50/50 flex items-center gap-4 relative ${selectedConversation?._id === conv._id ? 'bg-slate-50 border-l-4 border-l-primary-600' : 'hover:bg-slate-50/50 border-l-4 border-l-transparent'}`}
                   >
-                    <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-400 font-bold text-sm shrink-0 uppercase">
+                    <div className="w-10 h-10 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-400 font-bold text-sm shrink-0 uppercase">
                       {getParticipantNames(conv)[0]}
                     </div>
                     <div className="min-w-0 flex-1">
@@ -210,7 +210,7 @@ const AdminChat = () => {
             {selectedConversation ? (
               <>
                 {/* Minimalist Chat Header */}
-                <header className="px-4 md:px-6 py-3 border-b border-slate-50 flex items-center justify-between bg-white/80 backdrop-blur-md z-10">
+                <header className="px-4 md:px-6 py-3.5 border-b border-slate-50 flex items-center justify-between bg-white/80 backdrop-blur-md z-10">
                   <div className="flex items-center gap-3">
                     <button
                       onClick={() => setSelectedConversation(null)}
@@ -254,7 +254,7 @@ const AdminChat = () => {
               </>
             ) : (
               <div className="flex-1 flex flex-col items-center justify-center text-center p-12 opacity-40">
-                <div className="w-20 h-20 bg-slate-50 rounded-xl flex items-center justify-center mb-6">
+                <div className="w-20 h-20 bg-slate-50 rounded-2xl flex items-center justify-center mb-6">
                   <MessageSquare className="h-10 w-10 text-slate-200" />
                 </div>
                 <h2 className="text-xl font-black text-slate-900 uppercase tracking-tighter mb-2">Select a thread</h2>

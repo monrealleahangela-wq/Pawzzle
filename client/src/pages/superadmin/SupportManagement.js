@@ -32,6 +32,12 @@ const SupportManagement = () => {
         page: 1,
         limit: 10
     });
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const handleSearchSubmit = (e) => {
+    if (e) e.preventDefault();
+    handleFilterChange('search', searchQuery);
+  };
     const [pagination, setPagination] = useState({
         currentPage: 1,
         totalPages: 1,
@@ -135,25 +141,31 @@ const SupportManagement = () => {
             </header>
 
             {/* Support HUD Filter - High Contrast & Always Visible */}
-            <div className="bg-slate-900 p-2 rounded-xl shadow-xl border border-slate-800">
+            <div className="bg-slate-900 p-2 rounded-[1.5rem] shadow-xl border border-slate-800">
                 <div className="grid grid-cols-1 md:grid-cols-12 gap-2">
-                    <div className="md:col-span-6 relative group">
-                        <div className="absolute left-4 top-1/2 -translate-y-1/2 flex items-center">
-                            <Search className="h-4 w-4 text-slate-500 group-focus-within:text-primary-500 transition-colors" />
-                        </div>
-                        <input
+                    <form onSubmit={handleSearchSubmit} className="md:col-span-6 relative group">
+            <div className="absolute left-5 top-1/2 -translate-y-1/2 flex items-center">
+              <Search className="h-4 w-4 text-slate-500 group-focus-within:text-primary-500 transition-colors" />
+            </div>
+            <input
                             type="text" placeholder=""
-                            value={filters.search} onChange={(e) => handleFilterChange('search', e.target.value)}
-                            className="w-full pl-12 pr-4 py-3 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-xl outline-none focus:ring-2 focus:ring-primary-500/50 placeholder:text-slate-600 transition-all font-sans"
+                            value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
+                            className="w-full pl-14 pr-4 py-3.5 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl outline-none focus:ring-2 focus:ring-primary-500/50 placeholder:text-slate-600 transition-all font-sans"
                         />
-                    </div>
+            <button 
+              type="submit"
+              className="absolute right-2 top-1/2 -translate-y-1/2 px-4 py-1.5 bg-primary-600 text-white text-[9px] font-black uppercase tracking-widest rounded-lg hover:bg-primary-700 transition-all opacity-0 group-focus-within:opacity-100"
+            >
+              SEARCH
+            </button>
+          </form>
                     <div className="md:col-span-3 relative">
-                        <div className="absolute left-4 top-1/2 -translate-y-1/2">
+                        <div className="absolute left-5 top-1/2 -translate-y-1/2">
                             <Filter className="h-3.5 w-3.5 text-primary-500" />
                         </div>
                         <select
                             value={filters.status} onChange={(e) => handleFilterChange('status', e.target.value)}
-                            className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-xl pl-12 pr-10 py-3 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer font-sans"
+                            className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-2xl pl-14 pr-10 py-3.5 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer font-sans"
                         >
                             <option value="" className="bg-slate-900 text-white font-black">ALL STATUSES</option>
                             <option value="pending" className="bg-slate-900 text-white font-black">PENDING</option>
@@ -163,12 +175,12 @@ const SupportManagement = () => {
                         </select>
                     </div>
                     <div className="md:col-span-3 relative">
-                        <div className="absolute left-4 top-1/2 -translate-y-1/2">
+                        <div className="absolute left-5 top-1/2 -translate-y-1/2">
                             <Calendar className="h-3.5 w-3.5 text-emerald-500" />
                         </div>
                         <select
                             value={filters.dateRange} onChange={(e) => handleFilterChange('dateRange', e.target.value)}
-                            className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-xl pl-12 pr-10 py-3 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer font-sans"
+                            className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-2xl pl-14 pr-10 py-3.5 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer font-sans"
                         >
                             <option value="" className="bg-slate-900 text-white font-black">ALL TIME</option>
                             <option value="today" className="bg-slate-900 text-white font-black">TODAY</option>
@@ -182,7 +194,7 @@ const SupportManagement = () => {
             <div className="grid grid-cols-1 gap-4">
                 {loading ? (
                     [...Array(3)].map((_, i) => (
-                        <div key={i} className="bg-white p-8 rounded-xl animate-pulse border border-slate-100">
+                        <div key={i} className="bg-white p-8 rounded-2xl animate-pulse border border-slate-100">
                             <div className="h-4 w-32 bg-slate-100 rounded mb-4"></div>
                             <div className="h-10 w-full bg-slate-50 rounded mb-4"></div>
                             <div className="h-4 w-1/2 bg-slate-50 rounded"></div>
@@ -196,7 +208,7 @@ const SupportManagement = () => {
                 ) : (
                     messages.map((item) => {
                         return (
-                            <div key={item._id} className="bg-white p-6 sm:p-10 rounded-xl border border-slate-50 shadow-sm hover:shadow-xl transition-all duration-500 group relative overflow-hidden">
+                            <div key={item._id} className="bg-white p-6 sm:p-10 rounded-2xl border border-slate-50 shadow-sm hover:shadow-xl transition-all duration-500 group relative overflow-hidden">
                                 <div className={`absolute top-0 right-10 w-16 h-1 px-4 rounded-b-full ${getStatusColor(item.status).split(' ')[0]}`}></div>
 
                                 <div className="flex flex-col md:flex-row md:items-start gap-6 sm:gap-10">
@@ -215,7 +227,7 @@ const SupportManagement = () => {
                                         </p>
 
                                         {item.adminNotes && (
-                                            <div className="p-4 bg-slate-50 rounded-xl border border-slate-100 italic text-[11px] text-slate-500">
+                                            <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 italic text-[11px] text-slate-500">
                                                 <span className="font-black uppercase tracking-widest text-[9px] block mb-1">Admin Notes:</span>
                                                 {item.adminNotes}
                                             </div>
@@ -242,21 +254,21 @@ const SupportManagement = () => {
                                     <div className="flex md:flex-col gap-2 shrink-0">
                                         <button 
                                             onClick={() => handleUpdateStatus(item._id, 'in_review')}
-                                            className="flex-1 md:flex-none p-3 bg-slate-50 text-slate-400 rounded-xl hover:bg-primary-600 hover:text-white transition-all shadow-sm"
+                                            className="flex-1 md:flex-none p-3 bg-slate-50 text-slate-400 rounded-2xl hover:bg-primary-600 hover:text-white transition-all shadow-sm"
                                             title="Mark as In Review"
                                         >
                                             <Clock className="h-5 w-5" />
                                         </button>
                                         <button 
                                             onClick={() => handleUpdateStatus(item._id, 'resolved')}
-                                            className="flex-1 md:flex-none p-3 bg-slate-50 text-slate-400 rounded-xl hover:bg-emerald-600 hover:text-white transition-all shadow-sm"
+                                            className="flex-1 md:flex-none p-3 bg-slate-50 text-slate-400 rounded-2xl hover:bg-emerald-600 hover:text-white transition-all shadow-sm"
                                             title="Mark as Resolved"
                                         >
                                             <CheckCircle className="h-5 w-5" />
                                         </button>
                                         <a 
                                             href={`mailto:${item.email}?subject=Re: ${item.subject}`}
-                                            className="flex-1 md:flex-none p-3 bg-slate-50 text-slate-400 rounded-xl hover:bg-blue-600 hover:text-white transition-all shadow-sm flex items-center justify-center"
+                                            className="flex-1 md:flex-none p-3 bg-slate-50 text-slate-400 rounded-2xl hover:bg-blue-600 hover:text-white transition-all shadow-sm flex items-center justify-center"
                                             title="Reply via Email"
                                         >
                                             <Mail className="h-5 w-5" />
@@ -264,7 +276,7 @@ const SupportManagement = () => {
                                         {item.subject.toLowerCase().includes('recovery') && item.status !== 'resolved' && (
                                             <button 
                                                 onClick={() => handleResolveAndEnableAccount(item)}
-                                                className="flex-1 md:flex-none p-3 bg-primary-50 text-primary-600 rounded-xl hover:bg-primary-600 hover:text-white transition-all shadow-sm flex items-center justify-center animate-pulse"
+                                                className="flex-1 md:flex-none p-3 bg-primary-50 text-primary-600 rounded-2xl hover:bg-primary-600 hover:text-white transition-all shadow-sm flex items-center justify-center animate-pulse"
                                                 title="Resolve & Enable Account"
                                             >
                                                 <Zap className="h-5 w-5" />
@@ -283,7 +295,7 @@ const SupportManagement = () => {
                     <button
                         disabled={filters.page === 1}
                         onClick={() => handlePageChange(filters.page - 1)}
-                        className="p-3 bg-white rounded-xl border border-slate-100 text-slate-400 disabled:opacity-30 hover:bg-primary-50 hover:text-primary-600 transition-all shadow-sm"
+                        className="p-3 bg-white rounded-2xl border border-slate-100 text-slate-400 disabled:opacity-30 hover:bg-primary-50 hover:text-primary-600 transition-all shadow-sm"
                     >
                         <ChevronLeft className="h-5 w-5" />
                     </button>
@@ -293,7 +305,7 @@ const SupportManagement = () => {
                             <button
                                 key={i}
                                 onClick={() => handlePageChange(i + 1)}
-                                className={`w-10 h-10 rounded-xl text-[10px] font-black tracking-widest transition-all ${filters.page === i + 1 ? 'bg-slate-900 text-white shadow-xl shadow-slate-200' : 'bg-white text-slate-400 hover:bg-slate-50 border border-slate-100'
+                                className={`w-10 h-10 rounded-2xl text-[10px] font-black tracking-widest transition-all ${filters.page === i + 1 ? 'bg-slate-900 text-white shadow-xl shadow-slate-200' : 'bg-white text-slate-400 hover:bg-slate-50 border border-slate-100'
                                     }`}
                             >
                                 {i + 1}
@@ -304,7 +316,7 @@ const SupportManagement = () => {
                     <button
                         disabled={filters.page === pagination.totalPages}
                         onClick={() => handlePageChange(filters.page + 1)}
-                        className="p-3 bg-white rounded-xl border border-slate-100 text-slate-400 disabled:opacity-30 hover:bg-primary-50 hover:text-primary-600 transition-all shadow-sm"
+                        className="p-3 bg-white rounded-2xl border border-slate-100 text-slate-400 disabled:opacity-30 hover:bg-primary-50 hover:text-primary-600 transition-all shadow-sm"
                     >
                         <ChevronRight className="h-5 w-5" />
                     </button>

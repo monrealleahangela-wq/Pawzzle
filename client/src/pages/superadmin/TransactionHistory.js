@@ -31,6 +31,12 @@ const TransactionHistory = () => {
     userType: '',
     search: ''
   });
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const handleSearchSubmit = (e) => {
+    if (e) e.preventDefault();
+    handleFilterChange('search', searchQuery);
+  };
   const [pagination, setPagination] = useState({
     currentPage: 1,
     totalPages: 1,
@@ -145,7 +151,7 @@ const TransactionHistory = () => {
         <div className="flex gap-2 w-full sm:w-auto">
           <button
             onClick={exportTransactions}
-            className="flex-1 sm:flex-none px-6 py-3 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-primary-600 transition-all flex items-center justify-center gap-2 shadow-xl shadow-slate-200"
+            className="flex-1 sm:flex-none px-6 py-3.5 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-primary-600 transition-all flex items-center justify-center gap-2 shadow-xl shadow-slate-200"
           >
             <Download className="h-4 w-4" /> Export Transactions
           </button>
@@ -162,7 +168,7 @@ const TransactionHistory = () => {
         ].map((s, i) => (
           <div key={i} className="bg-white border border-slate-100 p-5 rounded-[2rem] shadow-sm">
             <div className="flex justify-between items-start mb-3">
-              <div className={`p-2 rounded-xl bg-${s.color}-50 text-${s.color}-600`}>
+              <div className={`p-2 rounded-2xl bg-${s.color}-50 text-${s.color}-600`}>
                 <s.icon className="h-4 w-4" />
               </div>
               <span className={`text-[8px] font-black uppercase tracking-tight ${s.trend.startsWith('+') ? 'text-emerald-500' : s.trend.startsWith('-') ? 'text-rose-500' : 'text-slate-400'}`}>
@@ -176,25 +182,31 @@ const TransactionHistory = () => {
       </div>
 
       {/* Identity HUD Filter - High Contrast & Always Visible */}
-      <div className="bg-slate-900 p-2 rounded-xl shadow-xl border border-slate-800">
+      <div className="bg-slate-900 p-2 rounded-[1.5rem] shadow-xl border border-slate-800">
         <div className="grid grid-cols-1 md:grid-cols-12 gap-2">
-          <div className="md:col-span-6 relative group">
-            <div className="absolute left-4 top-1/2 -translate-y-1/2 flex items-center">
+          <form onSubmit={handleSearchSubmit} className="md:col-span-6 relative group">
+            <div className="absolute left-5 top-1/2 -translate-y-1/2 flex items-center">
               <Search className="h-4 w-4 text-slate-500 group-focus-within:text-primary-500 transition-colors" />
             </div>
             <input
               type="text" placeholder=""
-              value={filters.search} onChange={(e) => handleFilterChange('search', e.target.value)}
-              className="w-full pl-12 pr-4 py-3 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-xl outline-none focus:ring-2 focus:ring-primary-500/50 placeholder:text-slate-600 transition-all font-sans"
+              value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-14 pr-4 py-3.5 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl outline-none focus:ring-2 focus:ring-primary-500/50 placeholder:text-slate-600 transition-all font-sans"
             />
-          </div>
+            <button 
+              type="submit"
+              className="absolute right-2 top-1/2 -translate-y-1/2 px-4 py-1.5 bg-primary-600 text-white text-[9px] font-black uppercase tracking-widest rounded-lg hover:bg-primary-700 transition-all opacity-0 group-focus-within:opacity-100"
+            >
+              SEARCH
+            </button>
+          </form>
           <div className="md:col-span-3 relative">
-            <div className="absolute left-4 top-1/2 -translate-y-1/2">
+            <div className="absolute left-5 top-1/2 -translate-y-1/2">
               <Shield className="h-3.5 w-3.5 text-primary-500" />
             </div>
             <select
               value={filters.status} onChange={(e) => handleFilterChange('status', e.target.value)}
-              className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-xl pl-12 pr-10 py-3 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer font-sans"
+              className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-2xl pl-14 pr-10 py-3.5 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer font-sans"
             >
               <option value="" className="bg-slate-900 text-white font-black">ALL STATUSES</option>
               <option value="pending" className="bg-slate-900 text-white font-black">PENDING</option>
@@ -204,12 +216,12 @@ const TransactionHistory = () => {
             </select>
           </div>
           <div className="md:col-span-3 relative">
-            <div className="absolute left-4 top-1/2 -translate-y-1/2">
+            <div className="absolute left-5 top-1/2 -translate-y-1/2">
               <Calendar className="h-3.5 w-3.5 text-emerald-500" />
             </div>
             <select
               value={filters.dateRange} onChange={(e) => handleFilterChange('dateRange', e.target.value)}
-              className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-xl pl-12 pr-10 py-3 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer font-sans"
+              className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-2xl pl-14 pr-10 py-3.5 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer font-sans"
             >
               <option value="" className="bg-slate-900 text-white font-black">ALL TIME</option>
               <option value="today" className="bg-slate-900 text-white font-black">TODAY</option>
@@ -226,11 +238,11 @@ const TransactionHistory = () => {
           <table className="w-full border-collapse">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-100">
-                <th className="px-8 py-3 text-left text-[9px] font-black text-slate-400 uppercase tracking-[0.3em]">Order Number</th>
-                <th className="px-8 py-3 text-left text-[9px] font-black text-slate-400 uppercase tracking-[0.3em]">Customer</th>
-                <th className="px-8 py-3 text-left text-[9px] font-black text-slate-400 uppercase tracking-[0.3em]">Amount</th>
-                <th className="px-8 py-3 text-left text-[9px] font-black text-slate-400 uppercase tracking-[0.3em]">Status</th>
-                <th className="px-8 py-3 text-right text-[9px] font-black text-slate-400 uppercase tracking-[0.3em]">Actions</th>
+                <th className="px-8 py-3.5 text-left text-[9px] font-black text-slate-400 uppercase tracking-[0.3em]">Order Number</th>
+                <th className="px-8 py-3.5 text-left text-[9px] font-black text-slate-400 uppercase tracking-[0.3em]">Customer</th>
+                <th className="px-8 py-3.5 text-left text-[9px] font-black text-slate-400 uppercase tracking-[0.3em]">Amount</th>
+                <th className="px-8 py-3.5 text-left text-[9px] font-black text-slate-400 uppercase tracking-[0.3em]">Status</th>
+                <th className="px-8 py-3.5 text-right text-[9px] font-black text-slate-400 uppercase tracking-[0.3em]">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
@@ -258,7 +270,7 @@ const TransactionHistory = () => {
                     <td className="px-8 py-6 text-right">
                       <button
                         onClick={() => { setSelectedTransaction(t); setShowDetailsModal(true); }}
-                        className="p-3 bg-slate-50 text-slate-400 rounded-xl hover:bg-slate-900 hover:text-white transition-all group-hover:scale-110 active:scale-90"
+                        className="p-3 bg-slate-50 text-slate-400 rounded-2xl hover:bg-slate-900 hover:text-white transition-all group-hover:scale-110 active:scale-90"
                       >
                         <Eye className="h-4 w-4" />
                       </button>
@@ -276,7 +288,7 @@ const TransactionHistory = () => {
         <div className="flex justify-center items-center gap-4 bg-white border border-slate-100 p-4 rounded-[2rem] w-fit mx-auto shadow-sm">
           <button
             disabled={!pagination.hasPrev} onClick={() => handlePageChange(pagination.currentPage - 1)}
-            className="p-3 bg-slate-50 text-slate-400 rounded-xl hover:bg-slate-100 disabled:opacity-20 transition-all font-black text-[9px] uppercase tracking-widest"
+            className="p-3 bg-slate-50 text-slate-400 rounded-2xl hover:bg-slate-100 disabled:opacity-20 transition-all font-black text-[9px] uppercase tracking-widest"
           >
             Previous
           </button>
@@ -285,7 +297,7 @@ const TransactionHistory = () => {
           </span>
           <button
             disabled={!pagination.hasNext} onClick={() => handlePageChange(pagination.currentPage + 1)}
-            className="p-3 bg-slate-900 text-white rounded-xl hover:bg-primary-600 disabled:opacity-20 transition-all font-black text-[9px] uppercase tracking-widest"
+            className="p-3 bg-slate-900 text-white rounded-2xl hover:bg-primary-600 disabled:opacity-20 transition-all font-black text-[9px] uppercase tracking-widest"
           >
             Next
           </button>
@@ -309,7 +321,7 @@ const TransactionHistory = () => {
               </div>
               <button
                 onClick={() => setShowDetailsModal(false)}
-                className="p-3 bg-slate-50 text-slate-400 rounded-xl hover:bg-rose-50 hover:text-rose-600 transition-all"
+                className="p-3 bg-slate-50 text-slate-400 rounded-2xl hover:bg-rose-50 hover:text-rose-600 transition-all"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -319,7 +331,7 @@ const TransactionHistory = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
                 {/* Transaction Summary */}
                 <div className="space-y-8">
-                  <div className="bg-slate-900 rounded-xl p-10 text-white relative overflow-hidden shadow-2xl">
+                  <div className="bg-slate-900 rounded-2xl p-10 text-white relative overflow-hidden shadow-2xl">
                     <PieChart className="absolute -bottom-10 -right-10 w-48 h-48 opacity-10" />
                     <div className="relative z-10 space-y-6">
                       <div className="flex justify-between items-start">
@@ -330,11 +342,11 @@ const TransactionHistory = () => {
                       </div>
                       <p className="text-6xl font-black tracking-tighter">₱{selectedTransaction.totalAmount?.toLocaleString()}</p>
                       <div className="flex gap-4">
-                        <div className="px-4 py-2 bg-white/5 border border-white/10 rounded-xl">
+                        <div className="px-4 py-2 bg-white/5 border border-white/10 rounded-2xl">
                           <p className="text-[8px] font-black text-white/40 uppercase tracking-widest mb-1">Method</p>
                           <p className="text-sm font-black text-primary-400 uppercase">{selectedTransaction.paymentMethod || 'SECURE'}</p>
                         </div>
-                        <div className="px-4 py-2 bg-white/5 border border-white/10 rounded-xl">
+                        <div className="px-4 py-2 bg-white/5 border border-white/10 rounded-2xl">
                           <p className="text-[8px] font-black text-white/40 uppercase tracking-widest mb-1">Verify</p>
                           <p className="text-sm font-black text-emerald-400 uppercase">VERIFIED</p>
                         </div>
@@ -342,7 +354,7 @@ const TransactionHistory = () => {
                     </div>
                   </div>
 
-                  <div className="bg-slate-50 rounded-xl p-8 border border-slate-100">
+                  <div className="bg-slate-50 rounded-2xl p-8 border border-slate-100">
                     <h3 className="text-[11px] font-black text-slate-900 uppercase tracking-widest mb-6 flex items-center gap-2">
                       Customer Profile
                     </h3>
@@ -361,7 +373,7 @@ const TransactionHistory = () => {
 
                 {/* Order Details */}
                 <div className="space-y-8">
-                  <div className="bg-white border border-slate-100 rounded-xl p-8 shadow-sm">
+                  <div className="bg-white border border-slate-100 rounded-2xl p-8 shadow-sm">
                     <h3 className="text-[11px] font-black text-slate-900 uppercase tracking-widest mb-6 flex items-center justify-between">
                       Items Ordered
                       <span className="text-[9px] text-primary-600 font-black">{selectedTransaction.items.length} ITEMS</span>
@@ -369,7 +381,7 @@ const TransactionHistory = () => {
                     <div className="space-y-4">
                       {selectedTransaction.items.map((item, idx) => (
                         <div key={idx} className="flex items-center gap-4 group">
-                          <div className="w-10 h-10 bg-slate-50 border border-slate-100 rounded-xl flex items-center justify-center shrink-0">
+                          <div className="w-10 h-10 bg-slate-50 border border-slate-100 rounded-2xl flex items-center justify-center shrink-0">
                             <Package className="h-4 w-4 text-slate-400 group-hover:text-primary-600 transition-colors" />
                           </div>
                           <div className="min-w-0 flex-1">
@@ -382,13 +394,13 @@ const TransactionHistory = () => {
                     </div>
                   </div>
 
-                  <div className="bg-white border border-slate-100 rounded-xl p-8 shadow-sm">
+                  <div className="bg-white border border-slate-100 rounded-2xl p-8 shadow-sm">
                     <h3 className="text-[11px] font-black text-slate-900 uppercase tracking-widest mb-6 flex items-center gap-2">
                       <Target className="h-4 w-4 text-primary-600" /> Shipping Details
                     </h3>
                     <div className="space-y-2">
                       <p className="text-[9px] font-black text-slate-900 uppercase tracking-widest">Method: <span className="text-primary-600 italic px-2">{selectedTransaction.deliveryMethod || 'SHIPPING'}</span></p>
-                      <div className="p-4 bg-slate-50 rounded-xl border border-slate-100 mt-4">
+                      <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 mt-4">
                         <p className="text-[11px] font-medium text-slate-600 leading-relaxed uppercase tracking-tight">
                           {selectedTransaction.shippingAddress?.street}, {selectedTransaction.shippingAddress?.city}, <br />
                           {selectedTransaction.shippingAddress?.province} {selectedTransaction.shippingAddress?.zipCode}
@@ -412,7 +424,7 @@ const TransactionHistory = () => {
             <div className="p-8 bg-slate-50 border-t border-slate-100 relative z-10 flex gap-4">
               <button
                 onClick={() => setShowDetailsModal(false)}
-                className="flex-1 py-3 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-primary-600 transition-all shadow-xl"
+                className="flex-1 py-3.5 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-primary-600 transition-all shadow-xl"
               >
                 Close Order Details
               </button>

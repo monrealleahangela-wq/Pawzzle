@@ -99,7 +99,7 @@ const StorePayout = () => {
     };
 
     if (loading) return (
-        <div className="flex justify-center py-32">
+        <div className="flex justify-center py-3.52">
             <div className="w-10 h-10 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin" />
         </div>
     );
@@ -123,7 +123,7 @@ const StorePayout = () => {
                         { label: 'Pending Payouts', value: `₱${(stats?.pendingPayouts || 0).toLocaleString()}` },
                         { label: 'Total Withdrawn', value: `₱${(stats?.totalWithdrawn || 0).toLocaleString()}` }
                     ].map(c => (
-                        <div key={c.label} className={`rounded-xl border p-4 ${c.highlight ? 'bg-slate-900 border-slate-800 text-white shadow-md' : 'bg-white border-slate-100 text-slate-900 shadow-sm'}`}>
+                        <div key={c.label} className={`rounded-2xl border p-4 ${c.highlight ? 'bg-slate-900 border-slate-800 text-white shadow-md' : 'bg-white border-slate-100 text-slate-900 shadow-sm'}`}>
                             <p className={`text-[9px] font-black uppercase tracking-widest mb-2 leading-tight ${c.highlight ? 'text-primary-400' : 'text-slate-400'}`}>{c.label}</p>
                             <p className={`text-lg sm:text-xl font-black ${c.highlight ? 'text-white' : 'text-slate-900'}`}>{c.value}</p>
                         </div>
@@ -131,7 +131,7 @@ const StorePayout = () => {
                 </div>
 
                 {/* Tabs */}
-                <div className="bg-white/80 backdrop-blur-md rounded-xl border border-white shadow-sm p-1 flex gap-1">
+                <div className="bg-white/80 backdrop-blur-md rounded-2xl border border-white shadow-sm p-1 flex gap-1">
                     {[
                         { id: 'withdraw', label: 'Request Withdrawal' },
                         { id: 'methods', label: 'Payout Methods' },
@@ -140,7 +140,7 @@ const StorePayout = () => {
                         <button
                             key={t.id}
                             onClick={() => setTab(t.id)}
-                            className={`flex-1 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all ${tab === t.id ? 'bg-slate-900 text-white shadow' : 'text-slate-400 hover:text-slate-700'}`}
+                            className={`flex-1 py-3.5 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all ${tab === t.id ? 'bg-slate-900 text-white shadow' : 'text-slate-400 hover:text-slate-700'}`}
                         >
                             {t.label}
                         </button>
@@ -149,11 +149,11 @@ const StorePayout = () => {
 
                 {/* Request Withdrawal */}
                 {tab === 'withdraw' && (
-                    <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-6 space-y-5">
+                    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 space-y-5">
                         <h2 className="font-black text-slate-900 uppercase tracking-tighter">Withdraw Earnings</h2>
 
                         {(stats?.payoutMethods || []).length === 0 ? (
-                            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3">
+                            <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-start gap-3">
                                 <BadgeCheck className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
                                 <div>
                                     <p className="font-black text-amber-800 text-sm">Add a payout method first</p>
@@ -175,7 +175,7 @@ const StorePayout = () => {
                                         placeholder="e.g. 500"
                                         value={amount}
                                         onChange={e => setAmount(e.target.value)}
-                                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-900 font-bold text-lg focus:outline-none focus:border-primary-400"
+                                        className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3.5 text-slate-900 font-bold text-lg focus:outline-none focus:border-primary-400"
                                         required
                                     />
                                     <p className="text-slate-400 text-[10px] font-bold mt-1">Min: ₱100 · Available: ₱{(stats?.balance || 0).toLocaleString()}</p>
@@ -191,7 +191,7 @@ const StorePayout = () => {
                                                     type="button"
                                                     key={i}
                                                     onClick={() => setSelectedMethodId(m._id)}
-                                                    className={`w-full flex items-center gap-3 p-4 rounded-xl border text-left transition-all ${selectedMethodId === m._id ? 'border-primary-400 bg-primary-50' : 'border-slate-100 bg-slate-50 hover:border-slate-200'}`}
+                                                    className={`w-full flex items-center gap-3 p-4 rounded-2xl border text-left transition-all ${selectedMethodId === m._id ? 'border-primary-400 bg-primary-50' : 'border-slate-100 bg-slate-50 hover:border-slate-200'}`}
                                                 >
                                                     <Icon className={`h-5 w-5 ${METHOD_COLORS[m.type]}`} />
                                                     <div className="flex-1 min-w-0">
@@ -208,7 +208,7 @@ const StorePayout = () => {
                                 <button
                                     type="submit"
                                     disabled={requesting}
-                                    className="w-full py-3 bg-slate-900 text-white rounded-xl font-black text-xs uppercase tracking-widest hover:bg-slate-800 transition-all disabled:opacity-50"
+                                    className="w-full py-3.5 bg-slate-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-slate-800 transition-all disabled:opacity-50"
                                 >
                                     {requesting ? 'Submitting...' : 'Request Withdrawal'}
                                 </button>
@@ -223,19 +223,19 @@ const StorePayout = () => {
 
                 {/* Payout Methods */}
                 {tab === 'methods' && (
-                    <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-6 space-y-4">
+                    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 space-y-4">
                         <div className="flex items-center justify-between">
                             <h2 className="font-black text-slate-900 uppercase tracking-tighter">Payout Methods</h2>
                             <button
                                 onClick={() => setAddingMethod(!addingMethod)}
-                                className="flex items-center gap-1.5 px-4 py-2 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-700 transition-all"
+                                className="flex items-center gap-1.5 px-4 py-2 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-700 transition-all"
                             >
                                 <Plus className="h-3 w-3" /> Add Method
                             </button>
                         </div>
 
                         {addingMethod && (
-                            <div className="bg-slate-50 rounded-xl border border-slate-200 p-4 space-y-3">
+                            <div className="bg-slate-50 rounded-2xl border border-slate-200 p-4 space-y-3">
                                 <h3 className="font-black text-slate-700 text-xs uppercase tracking-widest">New Method</h3>
                                 <div className="grid grid-cols-3 gap-2">
                                     {['gcash', 'maya', 'bank_transfer'].map(t => (
@@ -243,7 +243,7 @@ const StorePayout = () => {
                                             key={t}
                                             type="button"
                                             onClick={() => setNewMethod(m => ({ ...m, type: t }))}
-                                            className={`py-2.5 rounded-xl border font-black text-[10px] uppercase tracking-widest transition-all capitalize ${newMethod.type === t ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-500 border-slate-200 hover:border-slate-300'}`}
+                                            className={`py-2.5 rounded-2xl border font-black text-[10px] uppercase tracking-widest transition-all capitalize ${newMethod.type === t ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-500 border-slate-200 hover:border-slate-300'}`}
                                         >
                                             {t.replace('_', ' ')}
                                         </button>
@@ -254,14 +254,14 @@ const StorePayout = () => {
                                     placeholder="Account Name"
                                     value={newMethod.accountName}
                                     onChange={e => setNewMethod(m => ({ ...m, accountName: e.target.value }))}
-                                    className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-700 focus:outline-none focus:border-primary-400"
+                                    className="w-full bg-white border border-slate-200 rounded-2xl px-3 py-2.5 text-sm text-slate-700 focus:outline-none focus:border-primary-400"
                                 />
                                 <input
                                     type="text"
                                     placeholder={newMethod.type === 'bank_transfer' ? 'Account Number' : 'GCash/Maya Number'}
                                     value={newMethod.accountNumber}
                                     onChange={e => setNewMethod(m => ({ ...m, accountNumber: e.target.value }))}
-                                    className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-700 focus:outline-none focus:border-primary-400"
+                                    className="w-full bg-white border border-slate-200 rounded-2xl px-3 py-2.5 text-sm text-slate-700 focus:outline-none focus:border-primary-400"
                                 />
                                 {newMethod.type === 'bank_transfer' && (
                                     <input
@@ -269,12 +269,12 @@ const StorePayout = () => {
                                         placeholder="Bank Name (e.g. BDO, BPI)"
                                         value={newMethod.bankName}
                                         onChange={e => setNewMethod(m => ({ ...m, bankName: e.target.value }))}
-                                        className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-700 focus:outline-none focus:border-primary-400"
+                                        className="w-full bg-white border border-slate-200 rounded-2xl px-3 py-2.5 text-sm text-slate-700 focus:outline-none focus:border-primary-400"
                                     />
                                 )}
                                 <div className="flex gap-2">
-                                    <button onClick={handleAddMethod} className="flex-1 py-2.5 bg-primary-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-primary-700 transition-all">Save</button>
-                                    <button onClick={() => setAddingMethod(false)} className="px-4 py-2.5 bg-white border border-slate-200 text-slate-500 rounded-xl text-[10px] font-black uppercase tracking-widest hover:border-slate-300 transition-all">Cancel</button>
+                                    <button onClick={handleAddMethod} className="flex-1 py-2.5 bg-primary-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-primary-700 transition-all">Save</button>
+                                    <button onClick={() => setAddingMethod(false)} className="px-4 py-2.5 bg-white border border-slate-200 text-slate-500 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:border-slate-300 transition-all">Cancel</button>
                                 </div>
                             </div>
                         )}
@@ -289,7 +289,7 @@ const StorePayout = () => {
                                 {(stats?.payoutMethods || []).map((m, i) => {
                                     const Icon = METHOD_ICONS[m.type] || CreditCard;
                                     return (
-                                        <div key={i} className="flex items-center gap-3 p-4 bg-slate-50 rounded-xl border border-slate-100">
+                                        <div key={i} className="flex items-center gap-3 p-4 bg-slate-50 rounded-2xl border border-slate-100">
                                             <Icon className={`h-5 w-5 ${METHOD_COLORS[m.type]}`} />
                                             <div className="flex-1 min-w-0">
                                                 <p className="font-black text-slate-900 text-sm capitalize">{m.type.replace('_', ' ')}</p>
@@ -309,7 +309,7 @@ const StorePayout = () => {
 
                 {/* History */}
                 {tab === 'history' && (
-                    <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-6 space-y-3">
+                    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 space-y-3">
                         <h2 className="font-black text-slate-900 uppercase tracking-tighter">Withdrawal History</h2>
                         {history.length === 0 ? (
                             <div className="text-center py-10">
@@ -320,7 +320,7 @@ const StorePayout = () => {
                             history.map(p => {
                                 const Icon = STATUS_ICONS[p.status] || Clock;
                                 return (
-                                    <div key={p._id} className="flex items-center gap-4 p-4 bg-slate-50 rounded-xl border border-slate-100">
+                                    <div key={p._id} className="flex items-center gap-4 p-4 bg-slate-50 rounded-2xl border border-slate-100">
                                         <div className="flex-1 min-w-0">
                                             <p className="font-black text-slate-900 text-sm">{p.referenceNumber}</p>
                                             <p className="text-slate-400 text-xs">{new Date(p.requestedAt).toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: 'numeric' })} · {p.payoutMethod?.type?.replace('_', ' ')} · {p.payoutMethod?.accountNumber}</p>

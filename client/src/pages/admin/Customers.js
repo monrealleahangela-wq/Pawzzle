@@ -58,7 +58,7 @@ const Customers = () => {
                             Manage your store's clients and view their purchase history
                         </p>
                     </div>
-                    <div className="px-5 py-3 bg-white rounded-xl border border-slate-100 shadow-sm flex items-center gap-3">
+                    <div className="px-5 py-3.5 bg-white rounded-2xl border border-slate-100 shadow-sm flex items-center gap-3">
                         <Users className="h-5 w-5 text-primary-500" />
                         <div className="text-right">
                             <p className="text-2xl font-black text-slate-900 leading-none">{customers.length}</p>
@@ -75,7 +75,7 @@ const Customers = () => {
                         placeholder="Search customers by name, email, or phone number..."
                         value={searchQuery}
                         onChange={e => setSearchQuery(e.target.value)}
-                        className="input input-with-icon bg-white border-slate-200 rounded-xl pr-12 text-sm text-slate-700 focus:outline-none focus:border-primary-400 shadow-sm placeholder:text-slate-300"
+                        className="input input-with-icon bg-white border-slate-200 rounded-2xl pr-12 text-sm text-slate-700 focus:outline-none focus:border-primary-400 shadow-sm placeholder:text-slate-300"
                     />
                     {searchQuery && (
                         <button
@@ -93,7 +93,7 @@ const Customers = () => {
                         <div className="w-8 h-8 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin" />
                     </div>
                 ) : filtered.length === 0 ? (
-                    <div className="bg-white rounded-xl border border-slate-100 p-16 text-center shadow-sm">
+                    <div className="bg-white rounded-2xl border border-slate-100 p-16 text-center shadow-sm">
                         <Users className="h-12 w-12 text-slate-200 mx-auto mb-4" />
                         <p className="font-black text-slate-900 uppercase tracking-tighter text-lg">No Customers Found</p>
                         <p className="text-slate-400 font-bold text-sm mt-1">
@@ -105,7 +105,7 @@ const Customers = () => {
                         {filtered.map(customer => {
                             const isExpanded = expandedId === customer._id;
                             return (
-                                <div key={customer._id} className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden transition-all duration-300">
+                                <div key={customer._id} className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden transition-all duration-300">
 
                                     {/* Customer Row Header */}
                                     <button
@@ -153,7 +153,7 @@ const Customers = () => {
 
                                             {/* Left Sidebar Info */}
                                             <div className="w-full lg:w-64 shrink-0 space-y-4">
-                                                <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
+                                                <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm">
                                                     <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3 flex items-center gap-1.5 border-b border-slate-100 pb-2">
                                                         <Activity className="h-3 w-3" /> Customer Summary
                                                     </h4>
@@ -186,7 +186,7 @@ const Customers = () => {
                                                         </h4>
                                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                                             {customer.recentOrders.map(order => (
-                                                                <Link key={order._id} to={`/admin/orders/${order._id}`} className="block bg-white border border-slate-200 rounded-xl p-3 hover:border-primary-300 hover:shadow-md transition-all group">
+                                                                <Link key={order._id} to={`/admin/orders/${order._id}`} className="block bg-white border border-slate-200 rounded-2xl p-3 hover:border-primary-300 hover:shadow-md transition-all group">
                                                                     <div className="flex justify-between items-start mb-2">
                                                                         <span className="text-[10px] font-black tracking-widest text-slate-400 uppercase">{order.orderNumber}</span>
                                                                         <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md border ${getStatusColor(order.status)}`}>
@@ -218,7 +218,7 @@ const Customers = () => {
                                                         </h4>
                                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                                             {customer.recentBookings.map(booking => (
-                                                                <div key={booking._id} className="bg-white border border-slate-200 rounded-xl p-3">
+                                                                <div key={booking._id} className="bg-white border border-slate-200 rounded-2xl p-3">
                                                                     <div className="flex justify-between items-start mb-2">
                                                                         <span className="text-xs font-black text-slate-800 truncate pr-2">{booking.service}</span>
                                                                         <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md border shrink-0 ${getStatusColor(booking.status)}`}>

@@ -76,7 +76,7 @@ const AdminSettings = () => {
         <button
           onClick={handleSave}
           disabled={loading}
-          className="w-full sm:w-auto px-6 py-3 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-primary-600 transition-all flex items-center justify-center gap-2 shadow-xl shadow-slate-200"
+          className="w-full sm:w-auto px-6 py-3.5 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-primary-600 transition-all flex items-center justify-center gap-2 shadow-xl shadow-slate-200"
         >
           {loading ? <Zap className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
           {loading ? 'Saving...' : 'Save Changes'}
@@ -86,7 +86,7 @@ const AdminSettings = () => {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Shipping */}
         <div className="lg:col-span-8 space-y-4">
-          <div className="bg-white border border-slate-100 rounded-xl p-8 shadow-sm">
+          <div className="bg-white border border-slate-100 rounded-2xl p-8 shadow-sm">
             <div className="flex items-center gap-4 mb-10">
               <div className="w-12 h-12 bg-primary-50 text-primary-600 rounded-[1.2rem] flex items-center justify-center">
                 <Truck className="h-6 w-6" />
@@ -120,7 +120,7 @@ const AdminSettings = () => {
                     <input
                       type="number" value={settings.shippingFee}
                       onChange={(e) => handleInputChange('shippingFee', e.target.value)}
-                      className="input input-with-icon bg-slate-50 border-none rounded-xl text-[12px] font-black uppercase tracking-widest focus:ring-2 focus:ring-primary-500 placeholder:text-slate-300"
+                      className="input input-with-icon bg-slate-50 border-none rounded-2xl text-[12px] font-black uppercase tracking-widest focus:ring-2 focus:ring-primary-500 placeholder:text-slate-300"
                     />
                   </div>
                 </div>
@@ -132,7 +132,7 @@ const AdminSettings = () => {
                     <input
                       type="number" value={settings.freeShippingThreshold}
                       onChange={(e) => handleInputChange('freeShippingThreshold', e.target.value)}
-                      className="input input-with-icon bg-slate-50 border-none rounded-xl text-[12px] font-black uppercase tracking-widest focus:ring-2 focus:ring-primary-500 placeholder:text-slate-300"
+                      className="input input-with-icon bg-slate-50 border-none rounded-2xl text-[12px] font-black uppercase tracking-widest focus:ring-2 focus:ring-primary-500 placeholder:text-slate-300"
                     />
                   </div>
                 </div>
@@ -143,13 +143,13 @@ const AdminSettings = () => {
 
         {/* Information */}
         <div className="lg:col-span-4 space-y-4">
-          <div className="bg-slate-900 rounded-xl p-8 text-white relative overflow-hidden shadow-2xl">
+          <div className="bg-slate-900 rounded-2xl p-8 text-white relative overflow-hidden shadow-2xl">
             <Globe className="absolute -bottom-10 -right-10 w-48 h-48 opacity-10 animate-pulse" />
             <div className="relative z-10">
               <h3 className="text-[11px] font-black text-primary-500 uppercase tracking-[0.4em] mb-6">Business Identity</h3>
               <div className="space-y-6">
-                <div className="bg-white/5 border border-white/10 p-5 rounded-xl flex items-center gap-4">
-                  <div className="w-10 h-10 bg-primary-600 rounded-xl flex items-center justify-center shrink-0">
+                <div className="bg-white/5 border border-white/10 p-5 rounded-2xl flex items-center gap-4">
+                  <div className="w-10 h-10 bg-primary-600 rounded-2xl flex items-center justify-center shrink-0">
                     <Building className="h-5 w-5" />
                   </div>
                   <div>
@@ -158,8 +158,8 @@ const AdminSettings = () => {
                   </div>
                 </div>
 
-                <div className="bg-white/5 border border-white/10 p-5 rounded-xl flex items-center gap-4">
-                  <div className={`w-10 h-10 ${user?.store?.verificationStatus === 'verified' ? 'bg-emerald-600' : 'bg-amber-600'} rounded-xl flex items-center justify-center shrink-0`}>
+                <div className="bg-white/5 border border-white/10 p-5 rounded-2xl flex items-center gap-4">
+                  <div className={`w-10 h-10 ${user?.store?.verificationStatus === 'verified' ? 'bg-emerald-600' : 'bg-amber-600'} rounded-2xl flex items-center justify-center shrink-0`}>
                     {user?.store?.verificationStatus === 'verified' ? <CheckCircle className="h-5 w-5" /> : <AlertCircle className="h-5 w-5" />}
                   </div>
                   <div>

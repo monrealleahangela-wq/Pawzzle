@@ -84,7 +84,7 @@ const SuperAdminDashboard = () => {
       <header className="relative z-10 flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-slate-100 pb-10">
         <div>
           <div className="flex items-center gap-3 mb-4">
-            <div className="p-2 bg-slate-900 text-white rounded-xl shadow-2xl">
+            <div className="p-2 bg-slate-900 text-white rounded-2xl shadow-2xl">
               <Shield className="h-4 w-4" />
             </div>
             <span className="text-[10px] font-black text-primary-600 uppercase tracking-[0.4em]">SUPER ADMIN PANEL</span>
@@ -99,7 +99,7 @@ const SuperAdminDashboard = () => {
         </div>
 
         <div className="flex items-center gap-3">
-          <div className="px-5 py-2.5 bg-slate-900 text-white rounded-xl flex items-center gap-3 shadow-xl">
+          <div className="px-5 py-2.5 bg-slate-900 text-white rounded-2xl flex items-center gap-3 shadow-xl">
             <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
             <span className="text-[10px] font-black uppercase tracking-widest">System Online</span>
           </div>
@@ -117,7 +117,7 @@ const SuperAdminDashboard = () => {
         ].map((stat, i) => (
           <div key={i} className="bg-white border border-slate-100 p-6 rounded-[2rem] shadow-sm hover:shadow-xl transition-all group overflow-hidden">
             <div className="flex justify-between items-start mb-6">
-              <div className={`p-3 bg-${stat.color}-50 text-${stat.color}-600 rounded-xl`}>
+              <div className={`p-3 bg-${stat.color}-50 text-${stat.color}-600 rounded-2xl`}>
                 <stat.icon className="h-5 w-5" />
               </div>
               {stat.growth > 0 && (
@@ -143,7 +143,7 @@ const SuperAdminDashboard = () => {
               <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight">Recent Orders</h2>
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Live transaction history</p>
             </div>
-            <Link to="/superadmin/transaction-history" className="flex items-center gap-2 px-6 py-3 bg-slate-50 text-slate-600 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-900 hover:text-white transition-all">
+            <Link to="/superadmin/transaction-history" className="flex items-center gap-2 px-6 py-3.5 bg-slate-50 text-slate-600 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-900 hover:text-white transition-all">
               View All <ChevronRight className="h-4 w-4" />
             </Link>
           </div>
@@ -152,7 +152,7 @@ const SuperAdminDashboard = () => {
             {stats.recentOrders.map((order) => (
               <div key={order._id} className="flex justify-between items-center p-5 bg-slate-50 rounded-[1.8rem] border border-transparent hover:border-primary-100 hover:bg-white hover:shadow-xl transition-all group">
                 <div className="flex items-center gap-5 min-w-0">
-                  <div className="w-12 h-12 rounded-xl bg-white flex items-center justify-center text-slate-300 group-hover:bg-primary-600 group-hover:text-white transition-all shadow-sm">
+                  <div className="w-12 h-12 rounded-2xl bg-white flex items-center justify-center text-slate-300 group-hover:bg-primary-600 group-hover:text-white transition-all shadow-sm">
                     <ShoppingBag className="h-5 w-5" />
                   </div>
                   <div className="min-w-0">
@@ -184,8 +184,8 @@ const SuperAdminDashboard = () => {
                 { to: "/superadmin/store-applications", label: "Store Requests", icon: Settings, desc: "Review new stores" },
                 { to: "/superadmin/system-analytics", label: "Analytics", icon: Activity, desc: "System performance" }
               ].map((action, i) => (
-                <Link key={i} to={action.to} className="flex items-center gap-4 p-4 bg-white/5 hover:bg-white/10 rounded-xl transition-all group/item active:scale-[0.98]">
-                  <div className="w-12 h-12 bg-white/5 rounded-xl flex items-center justify-center text-white/40 group-hover/item:bg-primary-600 group-hover/item:text-white transition-all">
+                <Link key={i} to={action.to} className="flex items-center gap-4 p-4 bg-white/5 hover:bg-white/10 rounded-2xl transition-all group/item active:scale-[0.98]">
+                  <div className="w-12 h-12 bg-white/5 rounded-2xl flex items-center justify-center text-white/40 group-hover/item:bg-primary-600 group-hover/item:text-white transition-all">
                     <action.icon className="h-5 w-5" />
                   </div>
                   <div>
@@ -220,7 +220,7 @@ const SuperAdminDashboard = () => {
           {stats.recentUsers.map((user) => (
             <div key={user._id} className="flex flex-col p-6 bg-slate-50/50 rounded-[2rem] border border-transparent hover:border-slate-100 hover:bg-white transition-all group relative overflow-hidden">
               <div className="flex items-center gap-4 mb-6 relative z-10">
-                <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-slate-300 group-hover:text-primary-600 shadow-sm transition-colors">
+                <div className="w-10 h-10 bg-white rounded-2xl flex items-center justify-center text-slate-300 group-hover:text-primary-600 shadow-sm transition-colors">
                   <Users className="h-4 w-4" />
                 </div>
                 <div className="min-w-0">

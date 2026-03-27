@@ -70,7 +70,7 @@ const AdminPayouts = () => {
                         <h1 className="text-2xl font-black text-slate-900 uppercase tracking-tighter">Payout <span className="text-primary-600 italic">Requests</span></h1>
                         <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mt-0.5">Manage seller withdrawal requests</p>
                     </div>
-                    <button onClick={fetchPayouts} className="p-2.5 bg-white border border-slate-100 rounded-xl hover:bg-slate-50 transition-all shadow-sm">
+                    <button onClick={fetchPayouts} className="p-2.5 bg-white border border-slate-100 rounded-2xl hover:bg-slate-50 transition-all shadow-sm">
                         <RefreshCw className="h-4 w-4 text-slate-400" />
                     </button>
                 </div>
@@ -82,7 +82,7 @@ const AdminPayouts = () => {
                         { label: 'Processing', amount: totalProcessing, count: payouts.filter(p => p.status === 'processing').length, color: 'blue' },
                         { label: 'Completed', amount: totalCompleted, count: payouts.filter(p => p.status === 'completed').length, color: 'emerald' }
                     ].map(s => (
-                        <div key={s.label} className="bg-white rounded-xl border border-slate-100 p-5 shadow-sm">
+                        <div key={s.label} className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm">
                             <p className={`text-[10px] font-black uppercase tracking-widest text-${s.color}-600`}>{s.label}</p>
                             <p className="text-2xl font-black text-slate-900 mt-1">₱{s.amount.toLocaleString()}</p>
                             <p className="text-slate-400 text-xs font-bold">{s.count} request{s.count !== 1 ? 's' : ''}</p>
@@ -110,7 +110,7 @@ const AdminPayouts = () => {
                         <div className="w-8 h-8 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin" />
                     </div>
                 ) : payouts.length === 0 ? (
-                    <div className="bg-white rounded-xl border border-slate-100 p-12 text-center">
+                    <div className="bg-white rounded-2xl border border-slate-100 p-12 text-center">
                         <Wallet className="h-10 w-10 text-slate-200 mx-auto mb-3" />
                         <p className="text-slate-400 font-bold text-sm">No payout requests found</p>
                     </div>
@@ -120,12 +120,12 @@ const AdminPayouts = () => {
                             const Icon = STATUS_ICONS[payout.status];
                             const isExpanded = expandedId === payout._id;
                             return (
-                                <div key={payout._id} className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
+                                <div key={payout._id} className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
                                     <button
                                         onClick={() => setExpandedId(isExpanded ? null : payout._id)}
                                         className="w-full flex items-center gap-4 p-5 hover:bg-slate-50 transition-all text-left"
                                     >
-                                        <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center shrink-0">
+                                        <div className="w-10 h-10 rounded-2xl bg-slate-100 flex items-center justify-center shrink-0">
                                             <Building className="h-5 w-5 text-slate-400" />
                                         </div>
                                         <div className="flex-1 min-w-0">
@@ -166,7 +166,7 @@ const AdminPayouts = () => {
                                             </div>
 
                                             {payout.adminNotes && (
-                                                <div className="bg-white rounded-xl p-3 border border-slate-100">
+                                                <div className="bg-white rounded-2xl p-3 border border-slate-100">
                                                     <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Admin Notes</p>
                                                     <p className="text-slate-700 text-xs">{payout.adminNotes}</p>
                                                 </div>
@@ -177,7 +177,7 @@ const AdminPayouts = () => {
                                                 <div className="pt-2 border-t border-slate-200 mt-2">
                                                     <button
                                                         onClick={() => generatePayoutReceipt(payout)}
-                                                        className="w-full flex items-center justify-center gap-2 py-3 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 transition-all shadow-sm"
+                                                        className="w-full flex items-center justify-center gap-2 py-3.5 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 transition-all shadow-sm"
                                                     >
                                                         <Printer className="h-3.5 w-3.5" /> DOWNLOAD / PRINT RECEIPT
                                                     </button>
@@ -190,7 +190,7 @@ const AdminPayouts = () => {
                                                         placeholder="Admin notes (optional)..."
                                                         value={notes[payout._id] || ''}
                                                         onChange={e => setNotes(n => ({ ...n, [payout._id]: e.target.value }))}
-                                                        className="w-full bg-white border border-slate-200 rounded-xl p-3 text-xs text-slate-700 resize-none h-16 focus:outline-none focus:border-primary-400"
+                                                        className="w-full bg-white border border-slate-200 rounded-2xl p-3 text-xs text-slate-700 resize-none h-16 focus:outline-none focus:border-primary-400"
                                                     />
                                                     <div className="flex gap-2">
                                                         {payout.status === 'pending' && (
@@ -198,14 +198,14 @@ const AdminPayouts = () => {
                                                                 <button
                                                                     onClick={() => handleProcess(payout._id, 'approve')}
                                                                     disabled={processing[payout._id]}
-                                                                    className="flex-1 py-2.5 bg-blue-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-700 transition-all disabled:opacity-50"
+                                                                    className="flex-1 py-2.5 bg-blue-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-700 transition-all disabled:opacity-50"
                                                                 >
                                                                     Mark as Processing
                                                                 </button>
                                                                 <button
                                                                     onClick={() => handleProcess(payout._id, 'reject')}
                                                                     disabled={processing[payout._id]}
-                                                                    className="flex-1 py-2.5 bg-rose-50 text-rose-600 border border-rose-200 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-rose-600 hover:text-white transition-all disabled:opacity-50"
+                                                                    className="flex-1 py-2.5 bg-rose-50 text-rose-600 border border-rose-200 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-rose-600 hover:text-white transition-all disabled:opacity-50"
                                                                 >
                                                                     Reject & Refund
                                                                 </button>
@@ -215,7 +215,7 @@ const AdminPayouts = () => {
                                                             <button
                                                                 onClick={() => handleProcess(payout._id, 'complete')}
                                                                 disabled={processing[payout._id]}
-                                                                className="flex-1 py-2.5 bg-emerald-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-700 transition-all disabled:opacity-50"
+                                                                className="flex-1 py-2.5 bg-emerald-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-700 transition-all disabled:opacity-50"
                                                             >
                                                                 ✓ Mark as Sent / Completed
                                                             </button>

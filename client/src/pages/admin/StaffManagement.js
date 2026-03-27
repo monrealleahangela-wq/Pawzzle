@@ -187,7 +187,7 @@ const StaffManagement = () => {
                     </div>
                     <button
                         onClick={openCreate}
-                        className="flex items-center gap-2 px-5 py-3 bg-slate-900 text-white rounded-xl font-black text-xs uppercase tracking-widest hover:bg-primary-600 transition-all shadow-lg"
+                        className="flex items-center gap-2 px-5 py-3.5 bg-slate-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-primary-600 transition-all shadow-lg"
                     >
                         <Plus className="h-4 w-4" />
                         Add Staff
@@ -203,7 +203,7 @@ const StaffManagement = () => {
                         { label: 'Inventory', value: counts.inventory, color: 'amber' },
                         { label: 'Service', value: counts.service, color: 'purple' }
                     ].map(s => (
-                        <div key={s.label} className="bg-white rounded-xl border border-slate-100 p-4 shadow-sm text-center">
+                        <div key={s.label} className="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm text-center">
                             <p className={`text-[9px] font-black uppercase tracking-widest text-${s.color}-600 mb-1`}>{s.label}</p>
                             <p className="text-2xl font-black text-slate-900">{s.value}</p>
                         </div>
@@ -218,9 +218,9 @@ const StaffManagement = () => {
                             <div
                                 key={t.id}
                                 onClick={() => setFilterType(filterType === t.id ? '' : t.id)}
-                                className={`bg-white rounded-xl border p-5 cursor-pointer transition-all shadow-sm hover:shadow-md ${filterType === t.id ? 'border-slate-900 ring-2 ring-slate-900' : 'border-slate-100'}`}
+                                className={`bg-white rounded-2xl border p-5 cursor-pointer transition-all shadow-sm hover:shadow-md ${filterType === t.id ? 'border-slate-900 ring-2 ring-slate-900' : 'border-slate-100'}`}
                             >
-                                <div className={`inline-flex p-2.5 rounded-xl bg-${t.color}-50 mb-3`}>
+                                <div className={`inline-flex p-2.5 rounded-2xl bg-${t.color}-50 mb-3`}>
                                     <Icon className={`h-5 w-5 text-${t.color}-600`} />
                                 </div>
                                 <h3 className="font-black text-slate-900 text-sm">{t.label} Staff</h3>
@@ -231,25 +231,25 @@ const StaffManagement = () => {
                 </div>
 
                 {/* Team HUD Filter - High Contrast & Always Visible */}
-                <div className="bg-slate-900 p-2 rounded-xl shadow-xl border border-slate-800">
+                <div className="bg-slate-900 p-2 rounded-[1.5rem] shadow-xl border border-slate-800">
                     <div className="grid grid-cols-1 md:grid-cols-12 gap-2">
                         <div className="md:col-span-6 relative group">
-                            <div className="absolute left-4 top-1/2 -translate-y-1/2 flex items-center gap-3">
+                            <div className="absolute left-5 top-1/2 -translate-y-1/2 flex items-center gap-3">
                                 <Search className="h-4 w-4 text-slate-500 group-focus-within:text-primary-500 transition-colors" />
                             </div>
                             <input
                                 type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
                                 placeholder=""
-                                className="w-full pl-12 pr-4 py-3 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-xl outline-none focus:ring-2 focus:ring-primary-500/50 placeholder:text-slate-600 transition-all font-sans"
+                                className="w-full pl-14 pr-4 py-3.5 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl outline-none focus:ring-2 focus:ring-primary-500/50 placeholder:text-slate-600 transition-all font-sans"
                             />
                         </div>
                         <div className="md:col-span-4 relative">
-                            <div className="absolute left-4 top-1/2 -translate-y-1/2">
+                            <div className="absolute left-5 top-1/2 -translate-y-1/2">
                                 <Shield className="h-4 w-4 text-primary-500" />
                             </div>
                             <select
                                 value={filterType} onChange={(e) => setFilterType(e.target.value)}
-                                className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-xl pl-12 pr-10 py-3 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer font-sans"
+                                className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-2xl pl-14 pr-10 py-3.5 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer font-sans"
                             >
                                 <option value="" className="bg-slate-900 text-white font-black">ALL ROLES: VIEW ALL</option>
                                 {STAFF_TYPES.map(t => (
@@ -267,23 +267,23 @@ const StaffManagement = () => {
                         <div className="w-8 h-8 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin" />
                     </div>
                 ) : filtered.length === 0 ? (
-                    <div className="bg-white rounded-xl border border-slate-100 p-12 text-center">
+                    <div className="bg-white rounded-2xl border border-slate-100 p-12 text-center">
                         <Users className="h-10 w-10 text-slate-200 mx-auto mb-3" />
                         <p className="text-slate-400 font-bold text-sm">
                             {staff.length === 0 ? 'No staff added yet. Click "Add Staff" to get started.' : 'No staff match your search.'}
                         </p>
                     </div>
                 ) : (
-                    <div className="bg-white rounded-xl border border-slate-100 overflow-hidden shadow-sm">
+                    <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden shadow-sm">
                         <div className="overflow-x-auto">
                             <table className="w-full">
                                 <thead>
                                     <tr className="border-b border-slate-50">
-                                        <th className="text-left px-6 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest">Staff Member</th>
-                                        <th className="text-left px-6 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest hidden sm:table-cell">Contact</th>
-                                        <th className="text-left px-6 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest">Role</th>
-                                        <th className="text-left px-6 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest hidden sm:table-cell">Status</th>
-                                        <th className="text-right px-6 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest">Actions</th>
+                                        <th className="text-left px-6 py-3.5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Staff Member</th>
+                                        <th className="text-left px-6 py-3.5 text-[10px] font-black text-slate-400 uppercase tracking-widest hidden sm:table-cell">Contact</th>
+                                        <th className="text-left px-6 py-3.5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Role</th>
+                                        <th className="text-left px-6 py-3.5 text-[10px] font-black text-slate-400 uppercase tracking-widest hidden sm:table-cell">Status</th>
+                                        <th className="text-right px-6 py-3.5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-50">
@@ -292,9 +292,9 @@ const StaffManagement = () => {
                                         const Icon = typeInfo?.icon || Shield;
                                         return (
                                             <tr key={member._id} className={`hover:bg-slate-50/50 transition-colors ${!member.isActive ? 'opacity-50' : ''}`}>
-                                                <td className="px-6 py-3">
+                                                <td className="px-6 py-3.5">
                                                     <div className="flex items-center gap-3">
-                                                        <div className="w-9 h-9 rounded-xl bg-slate-100 flex items-center justify-center font-black text-slate-500 text-sm shrink-0">
+                                                        <div className="w-9 h-9 rounded-2xl bg-slate-100 flex items-center justify-center font-black text-slate-500 text-sm shrink-0">
                                                             {member.firstName[0]}{member.lastName[0]}
                                                         </div>
                                                         <div>
@@ -303,17 +303,17 @@ const StaffManagement = () => {
                                                         </div>
                                                     </div>
                                                 </td>
-                                                <td className="px-6 py-3 hidden sm:table-cell">
+                                                <td className="px-6 py-3.5 hidden sm:table-cell">
                                                     <p className="text-slate-600 text-xs">{member.email}</p>
                                                     {member.phone && <p className="text-slate-400 text-xs">{member.phone}</p>}
                                                 </td>
-                                                <td className="px-6 py-3">
+                                                <td className="px-6 py-3.5">
                                                     <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-[10px] font-black uppercase tracking-widest ${TYPE_STYLES[member.staffType]}`}>
                                                         <Icon className="h-3 w-3" />
                                                         {typeInfo?.label || member.staffType}
                                                     </span>
                                                 </td>
-                                                <td className="px-6 py-3 hidden sm:table-cell">
+                                                <td className="px-6 py-3.5 hidden sm:table-cell">
                                                     <div className="flex flex-col gap-1.5">
                                                         <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest ${member.isActive ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-600'}`}>
                                                             <span className={`w-1.5 h-1.5 rounded-full ${member.isActive ? 'bg-emerald-500' : 'bg-rose-400'}`} />
@@ -329,33 +329,33 @@ const StaffManagement = () => {
                                                         )}
                                                     </div>
                                                 </td>
-                                                <td className="px-6 py-3">
+                                                <td className="px-6 py-3.5">
                                                     <div className="flex items-center justify-end gap-1.5">
                                                         <button
                                                             onClick={() => openEdit(member)}
                                                             title="Edit"
-                                                            className="p-2 rounded-xl text-slate-400 hover:bg-slate-100 hover:text-slate-900 transition-all"
+                                                            className="p-2 rounded-2xl text-slate-400 hover:bg-slate-100 hover:text-slate-900 transition-all"
                                                         >
                                                             <Edit2 className="h-3.5 w-3.5" />
                                                         </button>
                                                         <button
                                                             onClick={() => { setResetTarget(member); setNewPassword(''); }}
                                                             title="Reset Password"
-                                                            className="p-2 rounded-xl text-slate-400 hover:bg-amber-50 hover:text-amber-600 transition-all"
+                                                            className="p-2 rounded-2xl text-slate-400 hover:bg-amber-50 hover:text-amber-600 transition-all"
                                                         >
                                                             <Key className="h-3.5 w-3.5" />
                                                         </button>
                                                         <button
                                                             onClick={() => handleToggle(member._id)}
                                                             title={member.isActive ? 'Deactivate' : 'Activate'}
-                                                            className={`p-2 rounded-xl transition-all ${member.isActive ? 'text-slate-400 hover:bg-rose-50 hover:text-rose-600' : 'text-slate-400 hover:bg-emerald-50 hover:text-emerald-600'}`}
+                                                            className={`p-2 rounded-2xl transition-all ${member.isActive ? 'text-slate-400 hover:bg-rose-50 hover:text-rose-600' : 'text-slate-400 hover:bg-emerald-50 hover:text-emerald-600'}`}
                                                         >
                                                             <Power className="h-3.5 w-3.5" />
                                                         </button>
                                                         <button
                                                             onClick={() => handleDelete(member._id, `${member.firstName} ${member.lastName}`)}
                                                             title="Remove"
-                                                            className="p-2 rounded-xl text-slate-400 hover:bg-rose-50 hover:text-rose-600 transition-all"
+                                                            className="p-2 rounded-2xl text-slate-400 hover:bg-rose-50 hover:text-rose-600 transition-all"
                                                         >
                                                             <Trash2 className="h-3.5 w-3.5" />
                                                         </button>
@@ -374,7 +374,7 @@ const StaffManagement = () => {
             {/* Create / Edit Modal */}
             {showModal && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-xl w-full max-w-lg shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+                    <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl animate-in fade-in zoom-in-95 duration-200">
                         <div className="flex items-center justify-between p-6 border-b border-slate-50">
                             <div>
                                 <h2 className="font-black text-slate-900 uppercase tracking-tighter text-lg">
@@ -384,7 +384,7 @@ const StaffManagement = () => {
                                     {editingStaff ? 'Update staff information and role' : 'Create a new staff account for your store'}
                                 </p>
                             </div>
-                            <button onClick={() => setShowModal(false)} className="p-2 rounded-xl hover:bg-slate-50 transition-all text-slate-400">
+                            <button onClick={() => setShowModal(false)} className="p-2 rounded-2xl hover:bg-slate-50 transition-all text-slate-400">
                                 <X className="h-5 w-5" />
                             </button>
                         </div>
@@ -401,7 +401,7 @@ const StaffManagement = () => {
                                                 key={t.id}
                                                 type="button"
                                                 onClick={() => setForm(f => ({ ...f, staffType: t.id }))}
-                                                className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border transition-all ${form.staffType === t.id ? 'bg-slate-900 border-slate-900 text-white' : 'bg-slate-50 border-slate-100 text-slate-500 hover:border-slate-200'}`}
+                                                className={`flex flex-col items-center gap-1.5 p-3 rounded-2xl border transition-all ${form.staffType === t.id ? 'bg-slate-900 border-slate-900 text-white' : 'bg-slate-50 border-slate-100 text-slate-500 hover:border-slate-200'}`}
                                             >
                                                 <Icon className="h-4 w-4" />
                                                 <span className="text-[9px] font-black uppercase tracking-widest text-center leading-tight">{t.label}</span>
@@ -426,7 +426,7 @@ const StaffManagement = () => {
                                             type="text"
                                             value={form[f.field]}
                                             onChange={e => setForm(prev => ({ ...prev, [f.field]: e.target.value }))}
-                                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-900 focus:outline-none focus:border-primary-400"
+                                            className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-3 py-2.5 text-sm text-slate-900 focus:outline-none focus:border-primary-400"
                                             required={f.required}
                                         />
                                     </div>
@@ -436,7 +436,7 @@ const StaffManagement = () => {
                             {/* Contact fields */}
                             {!editingStaff && (
                                 <>
-                                    <div className="bg-primary-50 rounded-xl p-4 border border-primary-100 flex items-start gap-3 mb-2">
+                                    <div className="bg-primary-50 rounded-2xl p-4 border border-primary-100 flex items-start gap-3 mb-2">
                                         <AlertCircle className="h-4 w-4 text-primary-600 mt-0.5" />
                                         <p className="text-[10px] font-bold text-primary-700 leading-relaxed uppercase tracking-widest">
                                             The system will automatically generate a <span className="underline">secure random password</span> and send it to the staff's email.
@@ -456,7 +456,7 @@ const StaffManagement = () => {
                                                     username: f.username || email.split('@')[0] 
                                                 }));
                                             }}
-                                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-900 focus:outline-none focus:border-primary-400"
+                                            className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-3 py-2.5 text-sm text-slate-900 focus:outline-none focus:border-primary-400"
                                             required
                                             placeholder="e.g. staff@example.com"
                                         />
@@ -469,7 +469,7 @@ const StaffManagement = () => {
                                                 type="text"
                                                 value={form.username}
                                                 onChange={e => setForm(f => ({ ...f, username: e.target.value }))}
-                                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-900 focus:outline-none focus:border-primary-400"
+                                                className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-3 py-2.5 text-sm text-slate-900 focus:outline-none focus:border-primary-400"
                                                 required
                                             />
                                         </div>
@@ -479,7 +479,7 @@ const StaffManagement = () => {
                                                 type="text"
                                                 value={form.phone}
                                                 onChange={e => setForm(f => ({ ...f, phone: e.target.value }))}
-                                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-900 focus:outline-none focus:border-primary-400"
+                                                className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-3 py-2.5 text-sm text-slate-900 focus:outline-none focus:border-primary-400"
                                             />
                                         </div>
                                     </div>
@@ -494,7 +494,7 @@ const StaffManagement = () => {
                                         type="text"
                                         value={form.phone}
                                         onChange={e => setForm(f => ({ ...f, phone: e.target.value }))}
-                                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-900 focus:outline-none focus:border-primary-400"
+                                        className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-3 py-2.5 text-sm text-slate-900 focus:outline-none focus:border-primary-400"
                                     />
                                     <p className="text-slate-400 text-[10px] mt-1">Email and username cannot be changed. Use "Reset Password" for password changes.</p>
                                 </div>
@@ -504,14 +504,14 @@ const StaffManagement = () => {
                                 <button
                                     type="submit"
                                     disabled={submitting}
-                                    className="flex-1 py-3 bg-slate-900 text-white rounded-xl font-black text-xs uppercase tracking-widest hover:bg-primary-600 transition-all disabled:opacity-50"
+                                    className="flex-1 py-3.5 bg-slate-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-primary-600 transition-all disabled:opacity-50"
                                 >
                                     {submitting ? 'Saving...' : editingStaff ? 'Save Changes' : 'Create Staff Account'}
                                 </button>
                                 <button
                                     type="button"
                                     onClick={() => setShowModal(false)}
-                                    className="px-6 py-3 bg-slate-50 text-slate-500 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-slate-100 transition-all border border-slate-100"
+                                    className="px-6 py-3.5 bg-slate-50 text-slate-500 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-slate-100 transition-all border border-slate-100"
                                 >
                                     Cancel
                                 </button>
@@ -524,16 +524,16 @@ const StaffManagement = () => {
             {/* Reset Password Modal */}
             {resetTarget && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-xl w-full max-w-sm shadow-2xl animate-in fade-in zoom-in-95 duration-200 p-6 space-y-4">
+                    <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl animate-in fade-in zoom-in-95 duration-200 p-6 space-y-4">
                         <div className="flex items-center justify-between">
                             <div>
                                 <h2 className="font-black text-slate-900 uppercase tracking-tighter">Reset Password</h2>
                                 <p className="text-slate-400 text-xs mt-0.5">for {resetTarget.firstName} {resetTarget.lastName}</p>
                             </div>
-                            <button onClick={() => setResetTarget(null)} className="p-2 rounded-xl hover:bg-slate-50 text-slate-400"><X className="h-5 w-5" /></button>
+                            <button onClick={() => setResetTarget(null)} className="p-2 rounded-2xl hover:bg-slate-50 text-slate-400"><X className="h-5 w-5" /></button>
                         </div>
 
-                        <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-start gap-2">
+                        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-3 flex items-start gap-2">
                             <AlertCircle className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
                             <p className="text-amber-700 text-xs">Share the new password with the staff member securely. They can change it after logging in.</p>
                         </div>
@@ -545,7 +545,7 @@ const StaffManagement = () => {
                                 value={newPassword}
                                 onChange={e => setNewPassword(e.target.value)}
                                 placeholder="Enter new password (min. 6 chars)"
-                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-900 focus:outline-none focus:border-primary-400"
+                                className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-3 py-2.5 text-sm text-slate-900 focus:outline-none focus:border-primary-400"
                             />
                         </div>
 
@@ -553,13 +553,13 @@ const StaffManagement = () => {
                             <button
                                 onClick={handleResetPassword}
                                 disabled={resetting}
-                                className="flex-1 py-3 bg-amber-500 text-white rounded-xl font-black text-xs uppercase tracking-widest hover:bg-amber-600 transition-all disabled:opacity-50"
+                                className="flex-1 py-3.5 bg-amber-500 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-amber-600 transition-all disabled:opacity-50"
                             >
                                 {resetting ? 'Resetting...' : 'Reset Password'}
                             </button>
                             <button
                                 onClick={() => setResetTarget(null)}
-                                className="px-5 py-3 bg-slate-50 text-slate-500 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-slate-100 transition-all border border-slate-100"
+                                className="px-5 py-3.5 bg-slate-50 text-slate-500 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-slate-100 transition-all border border-slate-100"
                             >
                                 Cancel
                             </button>

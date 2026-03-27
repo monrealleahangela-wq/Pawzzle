@@ -117,7 +117,7 @@ const Dashboard = () => {
       <header className="relative z-10 flex flex-col md:flex-row md:items-end justify-between gap-6">
         <div>
           <div className="flex items-center gap-3 mb-4">
-            <div className="p-2 bg-slate-900 text-white rounded-xl shadow-2xl">
+            <div className="p-2 bg-slate-900 text-white rounded-2xl shadow-2xl">
               <Activity className="h-4 w-4" />
             </div>
             <span className="text-[10px] font-black text-primary-600 uppercase tracking-[0.4em]">ADMIN DASHBOARD</span>
@@ -133,7 +133,7 @@ const Dashboard = () => {
 
         <button
           onClick={handleRefreshRole}
-          className="group relative px-8 py-3 bg-white border border-slate-100 rounded-xl overflow-hidden transition-all hover:border-primary-200 active:scale-95 shadow-sm"
+          className="group relative px-8 py-3.5 bg-white border border-slate-100 rounded-2xl overflow-hidden transition-all hover:border-primary-200 active:scale-95 shadow-sm"
         >
           <div className="absolute inset-0 bg-slate-50 translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
           <div className="relative flex items-center gap-3">
@@ -158,12 +158,12 @@ const Dashboard = () => {
           <Link
             key={i}
             to={stat.link}
-            className="group relative bg-white border border-slate-100 p-6 rounded-xl hover:shadow-2xl hover:border-primary-100 transition-all overflow-hidden"
+            className="group relative bg-white border border-slate-100 p-6 rounded-2xl hover:shadow-2xl hover:border-primary-100 transition-all overflow-hidden"
           >
             <div className={`absolute top-0 right-0 w-24 h-24 bg-${stat.color}-50 rounded-bl-[3rem] -translate-y-12 translate-x-12 opacity-0 group-hover:opacity-100 transition-all duration-500`} />
 
             <div className="flex justify-between items-start mb-6 relative z-10">
-              <div className={`p-3 bg-${stat.color}-50 text-${stat.color}-600 rounded-xl group-hover:scale-110 transition-transform shadow-sm`}>
+              <div className={`p-3 bg-${stat.color}-50 text-${stat.color}-600 rounded-2xl group-hover:scale-110 transition-transform shadow-sm`}>
                 <stat.icon className="h-5 w-5" />
               </div>
               <div className="flex flex-col items-end">
@@ -200,7 +200,7 @@ const Dashboard = () => {
                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Customer Purchase History</p>
                 </div>
               </div>
-              <Link to="/admin/orders" className="group flex items-center gap-2 px-6 py-3 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-primary-600 transition-all">
+              <Link to="/admin/orders" className="group flex items-center gap-2 px-6 py-3.5 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-primary-600 transition-all">
                 View All <ChevronRight className="h-3 w-3 group-hover:translate-x-1 transition-transform" />
               </Link>
             </div>
@@ -209,7 +209,7 @@ const Dashboard = () => {
               {stats.recentOrders.length > 0 ? stats.recentOrders.map(order => (
                 <Link to={`/admin/orders?id=${order._id}`} key={order._id} className="group flex items-center justify-between p-4 bg-slate-50 rounded-[1.8rem] border border-transparent hover:border-primary-100 hover:bg-white hover:shadow-xl transition-all">
                   <div className="flex items-center gap-5 min-w-0">
-                    <div className="w-14 h-14 rounded-xl bg-white border border-slate-100 flex items-center justify-center shrink-0 group-hover:bg-primary-600 transition-colors shadow-sm">
+                    <div className="w-14 h-14 rounded-2xl bg-white border border-slate-100 flex items-center justify-center shrink-0 group-hover:bg-primary-600 transition-colors shadow-sm">
                       <ShoppingBag className="h-6 w-6 text-slate-400 group-hover:text-white transition-colors" />
                     </div>
                     <div className="min-w-0">
@@ -224,7 +224,7 @@ const Dashboard = () => {
                     </div>
                   </div>
                   <div className="flex flex-col items-end gap-2">
-                    <span className={`px-4 py-1.5 rounded-xl text-[8px] font-black uppercase tracking-widest border-2 ${order.status === 'delivered' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
+                    <span className={`px-4 py-1.5 rounded-2xl text-[8px] font-black uppercase tracking-widest border-2 ${order.status === 'delivered' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
                       order.status === 'processing' ? 'bg-blue-50 text-blue-600 border-blue-100' :
                         'bg-amber-50 text-amber-600 border-amber-100'
                       }`}>
@@ -250,14 +250,14 @@ const Dashboard = () => {
           {stats.recommendations.length > 0 && (['admin', 'super_admin'].includes(user?.role) || user?.staffType === 'general') && (
             <div className="bg-white rounded-[3rem] p-8 border border-slate-100 shadow-xl relative overflow-hidden group">
               <div className="flex items-center gap-3 mb-6">
-                <div className="p-2 bg-primary-50 text-primary-600 rounded-xl">
+                <div className="p-2 bg-primary-50 text-primary-600 rounded-2xl">
                   <Sparkles size={16} />
                 </div>
                 <h2 className="text-[11px] font-black text-slate-900 uppercase tracking-[0.4em]">Strategic Insights</h2>
               </div>
               <div className="space-y-4">
                 {stats.recommendations.map((rec, i) => (
-                  <div key={i} className="p-4 bg-slate-50 rounded-xl border border-transparent hover:border-primary-100 hover:bg-white transition-all">
+                  <div key={i} className="p-4 bg-slate-50 rounded-2xl border border-transparent hover:border-primary-100 hover:bg-white transition-all">
                     <p className="text-[10px] font-black text-slate-900 uppercase tracking-tight mb-1">{rec.title}</p>
                     <p className="text-[9px] font-bold text-slate-400 uppercase leading-relaxed line-clamp-2 italic">
                       "{rec.message}"
@@ -284,8 +284,8 @@ const Dashboard = () => {
                 { to: "/admin/products", label: "Add New Product", icon: Package, desc: "Add item to your store", show: ['admin', 'super_admin'].includes(user?.role) || ['inventory_staff', 'general'].includes(user?.staffType) },
                 { to: "/admin/bookings", label: "Manage Bookings", icon: Calendar, desc: "View scheduled services", show: ['admin', 'super_admin'].includes(user?.role) || ['service_staff', 'order_staff', 'general'].includes(user?.staffType) },
               ].filter(action => action.show).map((action, i) => (
-                <Link key={i} to={action.to} className="group/btn flex items-center gap-4 p-4 bg-white/5 hover:bg-white/15 rounded-xl transition-all active:scale-[0.98]">
-                  <div className="w-12 h-12 bg-white/10 rounded-xl flex items-center justify-center shrink-0 group-hover/btn:bg-primary-600 transition-colors">
+                <Link key={i} to={action.to} className="group/btn flex items-center gap-4 p-4 bg-white/5 hover:bg-white/15 rounded-2xl transition-all active:scale-[0.98]">
+                  <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center shrink-0 group-hover/btn:bg-primary-600 transition-colors">
                     <action.icon className="h-5 w-5 text-white" />
                   </div>
                   <div className="flex-1 min-w-0">
@@ -304,7 +304,7 @@ const Dashboard = () => {
               <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.2),transparent)] pointer-events-none" />
 
               <div className="flex items-center gap-4 mb-8">
-                <div className="p-3 bg-white/20 backdrop-blur-md rounded-xl animate-pulse">
+                <div className="p-3 bg-white/20 backdrop-blur-md rounded-2xl animate-pulse">
                   <AlertCircle className="h-5 w-5 text-white" />
                 </div>
                 <div>
@@ -315,7 +315,7 @@ const Dashboard = () => {
 
               <div className="space-y-3">
                 {stats.lowStockProducts.slice(0, 3).map(p => (
-                  <div key={p._id} className="flex justify-between items-center p-4 bg-white/10 backdrop-blur-sm rounded-xl border border-white/10">
+                  <div key={p._id} className="flex justify-between items-center p-4 bg-white/10 backdrop-blur-sm rounded-2xl border border-white/10">
                     <span className="text-[10px] font-black uppercase truncate mr-4">{p.name}</span>
                     <div className="flex items-center gap-2 shrink-0">
                       <span className="px-3 py-1 bg-white text-rose-600 rounded-lg text-[10px] font-black">{p.stockQuantity}</span>
