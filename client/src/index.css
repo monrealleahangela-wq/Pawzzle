@@ -254,21 +254,16 @@ code {
 
 /* ── Stable Header ── */
 .header-stable {
-  @apply sticky top-0 z-[100] w-full bg-white;
-  transition: background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
-  height: 80px;
+  @apply sticky top-0 z-[100] w-full bg-white transition-all duration-300;
   will-change: background-color, box-shadow;
-  backface-visibility: hidden;
-  -webkit-backface-visibility: hidden;
 }
 
 .header-scrolled {
-  @apply shadow-xl shadow-primary-900/5 bg-white/95 backdrop-blur-xl border-b border-primary-100/50;
-  /* Removed py change to avoid layout recalc jitter */
+  @apply shadow-xl shadow-primary-900/5 bg-white/95 backdrop-blur-xl border-b border-primary-100/30 py-4;
 }
 
 .header-default {
-  @apply bg-white border-b border-transparent;
+  @apply bg-white border-b border-transparent py-6;
 }
 
 /* ── Custom Toast Styling ── */
