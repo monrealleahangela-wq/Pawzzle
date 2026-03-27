@@ -268,7 +268,7 @@ const Layout = () => {
               onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}
             />
           </div>
-          <span className={`text-xl font-black text-white tracking-tighter transition-all duration-300 whitespace-nowrap ${user?.role === 'super_admin' ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
+          <span className="text-xl font-black text-white tracking-tighter transition-all duration-300 whitespace-nowrap opacity-0 group-hover:opacity-100">
             PAWZZLE
           </span>
         </Link>

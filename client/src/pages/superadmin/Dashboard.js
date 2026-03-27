@@ -44,7 +44,7 @@ const SuperAdminDashboard = () => {
 
       setStats({
         totalUsers: dss.platform?.totalUsers || 0,
-        totalOrders: dss.orders?.totalOrders || 0,
+        totalOrders: dss.orders?.total || 0,
         totalRevenue: dss.revenue?.totalGross || 0,
         totalPlatformFees: dss.revenue?.totalPlatformFees || 0,
         recentOrders: dss.orders?.recent || [], // Note: Back end currently doesn't return recent orders in dss, I might need to add it or keep the manual fetch for recent list
