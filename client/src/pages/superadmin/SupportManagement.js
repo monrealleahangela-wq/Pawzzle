@@ -24,8 +24,10 @@ import { Zap } from 'lucide-react';
 const SupportManagement = () => {
     const [messages, setMessages] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [filter, setFilter] = useState({
+    const [filters, setFilters] = useState({
         status: '',
+        search: '',
+        dateRange: '',
         page: 1,
         limit: 10
     });
@@ -38,7 +40,7 @@ const SupportManagement = () => {
     const fetchMessages = useCallback(async () => {
         try {
             setLoading(true);
-            const response = await supportService.getAllMessages(filter);
+            const response = await supportService.getAllMessages(filters);
             setMessages(response.data?.messages || []);
             setPagination(response.data?.pagination || { currentPage: 1, totalPages: 1, totalMessages: 0 });
         } catch (error) {
@@ -48,14 +50,18 @@ const SupportManagement = () => {
         } finally {
             setLoading(false);
         }
-    }, [filter]);
+    }, [filters]);
 
     useEffect(() => {
         fetchMessages();
     }, [fetchMessages]);
 
+    const handleFilterChange = (name, value) => {
+        setFilters(prev => ({ ...prev, [name]: value, page: 1 }));
+    };
+
     const handlePageChange = (newPage) => {
-        setFilter(prev => ({ ...prev, page: newPage }));
+        setFilters(prev => ({ ...prev, page: newPage }));
     };
 
     const handleUpdateStatus = async (messageId, status) => {
@@ -130,20 +136,43 @@ const SupportManagement = () => {
             {/* Support HUD Filter - High Contrast & Always Visible */}
             <div className="bg-slate-900 p-2 rounded-[2.5rem] shadow-xl border border-slate-800">
                 <div className="grid grid-cols-1 md:grid-cols-12 gap-2">
-                    <div className="md:col-span-12 relative">
+                    <div className="md:col-span-6 relative group">
                         <div className="absolute left-6 top-1/2 -translate-y-1/2 flex items-center gap-3">
+                            <Search className="h-4 w-4 text-slate-500 group-focus-within:text-primary-500 transition-colors" />
+                        </div>
+                        <input
+                            type="text" placeholder="QUERY SUPPORT: EMAIL, SUBJECT, MESSAGE..."
+                            value={filters.search} onChange={(e) => handleFilterChange('search', e.target.value)}
+                            className="w-full pl-16 pr-4 py-5 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-3xl outline-none focus:ring-2 focus:ring-primary-500/50 placeholder:text-slate-600 transition-all font-sans"
+                        />
+                    </div>
+                    <div className="md:col-span-3 relative">
+                        <div className="absolute left-6 top-1/2 -translate-y-1/2">
                             <Clock className="h-4 w-4 text-primary-500" />
                         </div>
                         <select
-                            value={filter.status}
-                            onChange={(e) => setFilter({ ...filter, status: e.target.value, page: 1 })}
+                            value={filters.status} onChange={(e) => handleFilterChange('status', e.target.value)}
                             className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-3xl pl-16 pr-6 py-5 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer font-sans"
                         >
-                            <option value="" className="bg-slate-900 text-white font-black">ALL REQUEST STATUS: VIEW ALL</option>
-                            <option value="pending" className="bg-slate-900 text-white font-black">STATE: PENDING</option>
-                            <option value="in_review" className="bg-slate-900 text-white font-black">STATE: IN REVIEW</option>
-                            <option value="resolved" className="bg-slate-900 text-white font-black">STATE: RESOLVED</option>
-                            <option value="closed" className="bg-slate-900 text-white font-black">STATE: CLOSED</option>
+                            <option value="" className="bg-slate-900 text-white font-black">ALL STATUSES</option>
+                            <option value="pending" className="bg-slate-900 text-white font-black">ST: PENDING</option>
+                            <option value="in_review" className="bg-slate-900 text-white font-black">ST: IN REVIEW</option>
+                            <option value="resolved" className="bg-slate-900 text-white font-black">ST: RESOLVED</option>
+                            <option value="closed" className="bg-slate-900 text-white font-black">ST: CLOSED</option>
+                        </select>
+                    </div>
+                    <div className="md:col-span-3 relative">
+                        <div className="absolute left-6 top-1/2 -translate-y-1/2">
+                            <Calendar className="h-3.5 w-3.5 text-emerald-500" />
+                        </div>
+                        <select
+                            value={filters.dateRange} onChange={(e) => handleFilterChange('dateRange', e.target.value)}
+                            className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-3xl pl-14 pr-6 py-5 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer font-sans"
+                        >
+                            <option value="" className="bg-slate-900 text-white font-black">ALL TIME</option>
+                            <option value="today" className="bg-slate-900 text-white font-black">TODAY</option>
+                            <option value="week" className="bg-slate-900 text-white font-black">THIS WEEK</option>
+                            <option value="month" className="bg-slate-900 text-white font-black">THIS MONTH</option>
                         </select>
                     </div>
                 </div>
@@ -251,8 +280,8 @@ const SupportManagement = () => {
             {pagination.totalPages > 1 && (
                 <div className="flex justify-center items-center gap-4 pt-8">
                     <button
-                        disabled={filter.page === 1}
-                        onClick={() => handlePageChange(filter.page - 1)}
+                        disabled={filters.page === 1}
+                        onClick={() => handlePageChange(filters.page - 1)}
                         className="p-3 bg-white rounded-2xl border border-slate-100 text-slate-400 disabled:opacity-30 hover:bg-primary-50 hover:text-primary-600 transition-all shadow-sm"
                     >
                         <ChevronLeft className="h-5 w-5" />
@@ -263,7 +292,7 @@ const SupportManagement = () => {
                             <button
                                 key={i}
                                 onClick={() => handlePageChange(i + 1)}
-                                className={`w-10 h-10 rounded-xl text-[10px] font-black tracking-widest transition-all ${filter.page === i + 1 ? 'bg-slate-900 text-white shadow-xl shadow-slate-200' : 'bg-white text-slate-400 hover:bg-slate-50 border border-slate-100'
+                                className={`w-10 h-10 rounded-xl text-[10px] font-black tracking-widest transition-all ${filters.page === i + 1 ? 'bg-slate-900 text-white shadow-xl shadow-slate-200' : 'bg-white text-slate-400 hover:bg-slate-50 border border-slate-100'
                                     }`}
                             >
                                 {i + 1}
@@ -272,8 +301,8 @@ const SupportManagement = () => {
                     </div>
 
                     <button
-                        disabled={filter.page === pagination.totalPages}
-                        onClick={() => handlePageChange(filter.page + 1)}
+                        disabled={filters.page === pagination.totalPages}
+                        onClick={() => handlePageChange(filters.page + 1)}
                         className="p-3 bg-white rounded-2xl border border-slate-100 text-slate-400 disabled:opacity-30 hover:bg-primary-50 hover:text-primary-600 transition-all shadow-sm"
                     >
                         <ChevronRight className="h-5 w-5" />

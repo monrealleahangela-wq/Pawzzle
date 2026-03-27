@@ -5,12 +5,34 @@ const ActivityLog = require('../models/ActivityLog');
 // Get all users (Admin only)
 const getAllUsers = async (req, res) => {
   try {
-    const { role, isActive, search, page = 1, limit = 10 } = req.query;
+    const { role, isActive, search, page = 1, limit = 10, dateRange } = req.query;
 
-    console.log('🔍 getAllUsers called with:', { role, isActive, search, page, limit });
+    console.log('🔍 getAllUsers called with:', { role, isActive, search, page, limit, dateRange });
     console.log('👤 Request user:', req.user);
 
     let filter = { isDeleted: { $ne: true } };
+
+    // Apply dateRange filter
+    if (dateRange) {
+      const now = new Date();
+      let startDate;
+      if (dateRange === 'today') {
+        startDate = new Date(now.setHours(0, 0, 0, 0));
+      } else if (dateRange === 'week') {
+        startDate = new Date(now.setDate(now.getDate() - 7));
+        startDate.setHours(0, 0, 0, 0); // Ensure start of the day
+      } else if (dateRange === 'month') {
+        startDate = new Date(now.setMonth(now.getMonth() - 1));
+        startDate.setHours(0, 0, 0, 0); // Ensure start of the day
+      } else if (dateRange === 'year') {
+        startDate = new Date(now.setFullYear(now.getFullYear() - 1));
+        startDate.setHours(0, 0, 0, 0); // Ensure start of the day
+      }
+
+      if (startDate) {
+        filter.createdAt = { $gte: startDate };
+      }
+    }
 
     // Super admin can see all users
     if (req.user.role === 'super_admin') {
@@ -25,7 +47,8 @@ const getAllUsers = async (req, res) => {
           { username: { $regex: search, $options: 'i' } },
           { email: { $regex: search, $options: 'i' } },
           { firstName: { $regex: search, $options: 'i' } },
-          { lastName: { $regex: search, $options: 'i' } }
+          { lastName: { $regex: search, $options: 'i' } },
+          { phone: { $regex: search, $options: 'i' } } // Added phone to search
         ];
       }
 

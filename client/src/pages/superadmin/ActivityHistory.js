@@ -28,6 +28,7 @@ const ActivityHistory = () => {
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [filterType, setFilterType] = useState('all');
+    const [dateRange, setDateRange] = useState('');
 
     const fetchAllData = useCallback(async () => {
         try {
@@ -81,7 +82,7 @@ const ActivityHistory = () => {
                 id: o._id,
                 type: 'order',
                 label: 'New Order Placed',
-                detail: `Order #${o.orderNumber.slice(-8).toUpperCase()} - ₱${o.totalAmount.toLocaleString()}`,
+                detail: `Order #${o.orderNumber?.slice(-8).toUpperCase()} - ₱${o.totalAmount?.toLocaleString()}`,
                 customer: o.customer?.firstName || 'Unknown',
                 date: o.createdAt,
                 color: 'emerald'
@@ -96,9 +97,25 @@ const ActivityHistory = () => {
             const matchesSearch = activity.detail.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 activity.label.toLowerCase().includes(searchTerm.toLowerCase());
             const matchesFilter = filterType === 'all' || activity.type === filterType;
-            return matchesSearch && matchesFilter;
+            
+            let matchesDate = true;
+            if (dateRange) {
+                const actDate = new Date(activity.date);
+                const now = new Date();
+                if (dateRange === 'today') {
+                    matchesDate = actDate.setHours(0,0,0,0) === now.setHours(0,0,0,0);
+                } else if (dateRange === 'week') {
+                    const weekAgo = new Date(now.setDate(now.getDate() - 7));
+                    matchesDate = actDate >= weekAgo;
+                } else if (dateRange === 'month') {
+                    const monthAgo = new Date(now.setMonth(now.getMonth() - 1));
+                    matchesDate = actDate >= monthAgo;
+                }
+            }
+
+            return matchesSearch && matchesFilter && matchesDate;
         });
-    }, [allActivities, searchTerm, filterType]);
+    }, [allActivities, searchTerm, filterType, dateRange]);
 
     if (loading) {
         return (
@@ -146,7 +163,7 @@ const ActivityHistory = () => {
             {/* Audit HUD Filter - High Contrast & Always Visible */}
             <div className="bg-slate-900 p-2 rounded-[2.5rem] shadow-xl border border-slate-800">
                 <div className="grid grid-cols-1 md:grid-cols-12 gap-2">
-                    <div className="md:col-span-8 relative group">
+                    <div className="md:col-span-5 relative group">
                         <div className="absolute left-6 top-1/2 -translate-y-1/2 flex items-center gap-3">
                             <Search className="h-4 w-4 text-slate-500 group-focus-within:text-primary-500 transition-colors" />
                         </div>
@@ -168,6 +185,21 @@ const ActivityHistory = () => {
                             <option value="user" className="bg-slate-900 text-white font-black">TYP: USER EVENTS</option>
                             <option value="pet" className="bg-slate-900 text-white font-black">TYP: PET CATALOG</option>
                             <option value="order" className="bg-slate-900 text-white font-black">TYP: TRANSACTION LOG</option>
+                        </select>
+                        <ChevronDown className="absolute right-6 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500 pointer-events-none" />
+                    </div>
+                    <div className="md:col-span-3 relative">
+                        <div className="absolute left-6 top-1/2 -translate-y-1/2">
+                            <Calendar className="h-3.5 w-3.5 text-blue-500" />
+                        </div>
+                        <select
+                            value={dateRange} onChange={(e) => setDateRange(e.target.value)}
+                            className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-3xl pl-16 pr-10 py-5 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer font-sans"
+                        >
+                            <option value="" className="bg-slate-900 text-white font-black">ALL TIME</option>
+                            <option value="today" className="bg-slate-900 text-white font-black">TODAY</option>
+                            <option value="week" className="bg-slate-900 text-white font-black">THIS WEEK</option>
+                            <option value="month" className="bg-slate-900 text-white font-black">THIS MONTH</option>
                         </select>
                         <ChevronDown className="absolute right-6 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500 pointer-events-none" />
                     </div>

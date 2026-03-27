@@ -33,24 +33,66 @@ const createSupportMessage = async (req, res) => {
     }
 };
 
+const mongoose = require('mongoose');
+
 // Get all support messages (Super Admin only)
 const getAllSupportMessages = async (req, res) => {
     try {
-        console.log('--- GET ALL SUPPORT MESSAGES ---');
-        console.log('Query:', req.query);
-        const { status, page = 1, limit = 10 } = req.query;
-        const query = {};
-        if (status) query.status = status;
+        const { status, page = 1, limit = 10, search, dateRange } = req.query;
+        let query = {};
+        
+        if (status && status !== '' && status !== 'all') {
+            query.status = status;
+        }
 
-        console.log('Executing messages query...');
+        // Apply dateRange filter
+        if (dateRange) {
+            const now = new Date();
+            let startDate;
+            if (dateRange === 'today') {
+                startDate = new Date(now.setHours(0, 0, 0, 0));
+            } else if (dateRange === 'week') {
+                startDate = new Date(now.setDate(now.getDate() - 7));
+            } else if (dateRange === 'month') {
+                startDate = new Date(now.setMonth(now.getMonth() - 1));
+            }
+
+            if (startDate) {
+                query.createdAt = { $gte: startDate };
+            }
+        }
+
+        // Apply search filter
+        if (search && search !== '') {
+            const matchedUsers = await User.find({
+                $or: [
+                    { firstName: { $regex: search, $options: 'i' } },
+                    { lastName: { $regex: search, $options: 'i' } },
+                    { email: { $regex: search, $options: 'i' } },
+                    { username: { $regex: search, $options: 'i' } }
+                ]
+            }, '_id');
+
+            const userIds = matchedUsers.map(u => u._id);
+
+            query.$or = [
+                { email: { $regex: search, $options: 'i' } },
+                { subject: { $regex: search, $options: 'i' } },
+                { message: { $regex: search, $options: 'i' } },
+                { user: { $in: userIds } }
+            ];
+
+            if (mongoose.Types.ObjectId.isValid(search)) {
+                query.$or.push({ _id: search });
+            }
+        }
+
         const messages = await SupportMessage.find(query)
             .sort({ createdAt: -1 })
             .skip((parseInt(page) - 1) * parseInt(limit))
             .limit(parseInt(limit))
-            .populate('user', 'username firstName lastName role');
+            .populate('user', 'username firstName lastName role email');
 
-        console.log(`Found ${messages.length} messages`);
-        console.log('Counting total messages...');
         const totalMessages = await SupportMessage.countDocuments(query);
 
         res.json({

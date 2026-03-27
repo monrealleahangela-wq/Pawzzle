@@ -193,7 +193,6 @@ const Profile = () => {
         try { setActivityLogs(typeof logsRes !== 'undefined' ? (logsRes?.data?.logs || []) : []); } catch(e){}
         setActivityLogs(logsRes?.data?.logs || []);
 
-        // Populate stats from pagination totals
         setStats({
           totalOrders: ordersRes.data?.pagination?.totalOrders || 0,
           totalBookings: bookingsRes.data?.pagination?.totalBookings || 0,
@@ -202,7 +201,6 @@ const Profile = () => {
           totalPets: 0
         });
       } else if (user.role === 'admin') {
-        // Fetch Admin-specific data with multi-tenant isolation
         const [ordersRes, bookingsRes, adoptionsRes, dssRes, logsRes] = await Promise.all([
           adminOrderService.getAllOrders({ limit: 5 }),
           adminBookingService.getAllBookings({ limit: 5 }),
@@ -216,26 +214,16 @@ const Profile = () => {
         try { setActivityLogs(typeof logsRes !== 'undefined' ? (logsRes?.data?.logs || []) : []); } catch(e){}
         setActivityLogs(logsRes?.data?.logs || []);
 
-        // Use live stats from DSS instead of stale store object
         if (dssRes.data?.overview) {
           setStats({
             totalOrders: dssRes.data.overview.totalOrders || ordersRes.data?.pagination?.totalOrders || 0,
             totalRevenue: dssRes.data.overview.totalRevenue || 0,
             totalBookings: dssRes.data.overview.totalBookings || bookingsRes.data?.pagination?.totalBookings || 0,
             totalPets: dssRes.data.overview.totalPets || 0,
-            totalAdoptions: adoptionsRes.data?.requests?.length || 0
+            totalAdoptions: dssRes.data.overview.totalAdoptions || adoptionsRes.data?.requests?.length || 0
           });
-        } else {
-          // Fallback stats if DSS fails
-          setStats(prev => ({
-            ...prev,
-            totalOrders: ordersRes.data?.pagination?.totalOrders || 0,
-            totalBookings: bookingsRes.data?.pagination?.totalBookings || 0,
-            totalAdoptions: adoptionsRes.data?.requests?.length || 0
-          }));
         }
       } else if (user.role === 'super_admin') {
-        // Super admins see global activity
         const [ordersRes, bookingsRes, adoptionsRes, logsRes] = await Promise.all([
           orderService.getAllOrders({ limit: 5 }),
           bookingService.getAllBookings({ limit: 5 }),
@@ -255,31 +243,27 @@ const Profile = () => {
     }
   };
 
-  // Initialize cities for Cavite and handle city/barangay changes
-  useEffect(() => {
-    // Always load Cavite cities
-    setCities(getCitiesByProvince('cavite'));
-
-    // Load barangays if city is selected
-    if (formData.address.city) {
-      setBarangays(getBarangaysByCity(formData.address.city));
-    }
-  }, [formData.address.city]);
-
   const fetchApplicationStatus = async () => {
     try {
-      const data = await storeApplicationService.getUserApplication();
-      if (data.application) {
-        setApplication(data.application);
+      const response = await storeApplicationService.getUserApplication();
+      if (response.data && response.data.application) {
+        setApplication(response.data.application);
       }
     } catch (error) {
       console.error('Error fetching application status:', error);
     }
   };
 
+  useEffect(() => {
+    setCities(getCitiesByProvince('cavite'));
+
+    if (formData.address.city) {
+      setBarangays(getBarangaysByCity(formData.address.city));
+    }
+  }, [formData.address.city]);
+
   const handleEdit = () => {
     setIsEditing(true);
-    // Auto-populate form with current user data when editing
     if (user) {
       setFormData({
         username: user.username || '',
@@ -290,7 +274,7 @@ const Profile = () => {
         address: {
           street: user.address?.street || '',
           city: user.address?.city || '',
-          province: user.address?.province || '',
+          province: user.address?.province || 'cavite',
           barangay: user.address?.barangay || '',
           zipCode: user.address?.zipCode || '',
           country: user.address?.country || 'PH'
@@ -302,7 +286,6 @@ const Profile = () => {
 
   const handleCancel = () => {
     setIsEditing(false);
-    // Reset form to original user data
     if (user) {
       setFormData({
         username: user.username || '',
@@ -313,7 +296,7 @@ const Profile = () => {
         address: {
           street: user.address?.street || '',
           city: user.address?.city || '',
-          province: user.address?.province || '',
+          province: user.address?.province || 'cavite',
           barangay: user.address?.barangay || '',
           zipCode: user.address?.zipCode || '',
           country: user.address?.country || 'PH'
@@ -336,7 +319,6 @@ const Profile = () => {
       address: {
         ...prev.address,
         [field]: value,
-        // Reset barangay when city changes
         ...(field === 'city' ? { barangay: '' } : {})
       }
     }));
@@ -345,16 +327,14 @@ const Profile = () => {
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
-      if (file.size > 5 * 1024 * 1024) { // 5MB limit
+      if (file.size > 5 * 1024 * 1024) {
         toast.error('Image size should be less than 5MB');
         return;
       }
-
       if (!file.type.startsWith('image/')) {
         toast.error('Please select an image file');
         return;
       }
-
       setProfilePicture(file);
       const reader = new FileReader();
       reader.onloadend = () => {
@@ -372,72 +352,35 @@ const Profile = () => {
         toast.error('User ID not found');
         return;
       }
-
-      try {
-        // Ensure address is properly structured
-        const saveData = {
-          ...formData,
-          address: {
-            street: formData.address?.street || '',
-            city: formData.address?.city || '',
-            province: formData.address?.province || '',
-            barangay: formData.address?.barangay || '',
-            zipCode: formData.address?.zipCode || '',
-            country: formData.address?.country || 'PH'
-          }
-        };
-
-        console.log('Saving profile data:', saveData);
-
-        let finalAvatar = user.avatar || user.profilePicture;
-
-        // Handle profile picture upload if it's a new file
-        if (profilePicture instanceof File) {
-          const imageFormData = new FormData();
-          imageFormData.append('image', profilePicture);
-          const uploadRes = await uploadService.uploadImage(imageFormData);
-          if (uploadRes.data && uploadRes.data.imageUrl) {
-            finalAvatar = uploadRes.data.imageUrl;
-          }
+      const saveData = {
+        ...formData,
+        address: {
+          ...formData.address,
+          province: 'cavite'
         }
-
-        const updatePayload = {
-          ...saveData,
-          avatar: finalAvatar
-        };
-
-        const response = await userService.updateUser(userId, updatePayload);
-
-        if (response.data) {
-          toast.success('Profile updated successfully!');
-          updateUser(response.data.user);
-          setIsEditing(false);
-          // Reset form to updated user data
-          setFormData({
-            username: response.data.user.username || '',
-            firstName: response.data.user.firstName || '',
-            lastName: response.data.user.lastName || '',
-            email: response.data.user.email || '',
-            phone: response.data.user.phone || '',
-            address: response.data.user.address || {
-              street: '',
-              city: '',
-              province: '',
-              barangay: '',
-              zipCode: '',
-              country: ''
-            }
-          });
+      };
+      let finalAvatar = user.avatar || user.profilePicture;
+      if (profilePicture instanceof File) {
+        const imageFormData = new FormData();
+        imageFormData.append('image', profilePicture);
+        const uploadRes = await uploadService.uploadImage(imageFormData);
+        if (uploadRes.data && uploadRes.data.imageUrl) {
+          finalAvatar = uploadRes.data.imageUrl;
         }
-      } catch (error) {
-        console.error('Save profile error:', error);
-        toast.error('Failed to update profile');
-      } finally {
-        setLoading(false);
+      }
+      const updatePayload = {
+        ...saveData,
+        avatar: finalAvatar
+      };
+      const response = await userService.updateUser(userId, updatePayload);
+      if (response.data) {
+        toast.success('Profile updated successfully!');
+        updateUser(response.data.user);
+        setIsEditing(false);
       }
     } catch (error) {
-      console.error('Save profile error:', error);
       toast.error('Failed to update profile');
+    } finally {
       setLoading(false);
     }
   };
@@ -449,24 +392,10 @@ const Profile = () => {
 
   const handlePasswordChange = async (e) => {
     e.preventDefault();
-
     if (passwordData.newPassword !== passwordData.confirmPassword) {
       toast.error('Passwords do not match');
       return;
     }
-
-    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+={}\[\]|:;"'<>,.?/~`]).{8,}$/;
-    if (!passwordRegex.test(passwordData.newPassword)) {
-      toast.error('Password must be at least 8 characters long (14+ recommended) and contain uppercase, lowercase, numbers, and symbols');
-      return;
-    }
-
-    if (passwordData.newPassword.toLowerCase() === user.username.toLowerCase() ||
-      passwordData.newPassword.toLowerCase() === user.email.toLowerCase()) {
-      toast.error('Password cannot be the same as your username or email');
-      return;
-    }
-
     setPasswordLoading(true);
     try {
       const response = await authService.changePassword({
@@ -488,7 +417,6 @@ const Profile = () => {
       const result = await authService.toggle2FA({ enabled: !user.twoFactorEnabled });
       if (result.success) {
         toast.success(result.message);
-        // Update user in context
         updateUser({ ...user, twoFactorEnabled: !user.twoFactorEnabled });
       } else {
         toast.error(result.message || 'Failed to toggle 2FA');
@@ -542,6 +470,7 @@ const Profile = () => {
     newRefs[index] = { ...newRefs[index], [field]: value };
     setUpgradeFormData(prev => ({ ...prev, references: newRefs }));
   };
+
 
   const handleFileChange = (fileType, file) => {
     if (file) {

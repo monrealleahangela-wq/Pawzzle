@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const { validationResult } = require('express-validator');
 const Order = require('../models/Order');
 const Pet = require('../models/Pet');
@@ -12,9 +13,9 @@ const Voucher = require('../models/Voucher');
 // Get all orders (Admin only) or user's own orders (Customer)
 const getAllOrders = async (req, res) => {
   try {
-    const { status, page = 1, limit = 10 } = req.query;
+    const { status, page = 1, limit = 10, search, dateRange } = req.query;
 
-    let filter = {};
+    let filter = { isDeleted: { $ne: true } };
 
     // Check if this is an admin route (check full original URL)
     const isAdminRoute = req.originalUrl && req.originalUrl.includes('/admin');
@@ -28,13 +29,60 @@ const getAllOrders = async (req, res) => {
       // Multi-tenant isolation: filter orders by admin user ID
       filter.addedBy = req.user._id;
       console.log('🔒 Multi-tenant isolation - showing orders for admin:', req.user._id);
+    } else if (req.user.role === 'super_admin') {
+      // Super admin sees all, no additional base filter unless searching
     }
 
-    if (status) filter.status = status;
+    if (status && status !== '' && status !== 'all') {
+      filter.status = status;
+    }
+
+    // Apply dateRange filter
+    if (dateRange) {
+      const now = new Date();
+      let startDate;
+      if (dateRange === 'today') {
+        startDate = new Date(now.setHours(0, 0, 0, 0));
+      } else if (dateRange === 'week') {
+        startDate = new Date(now.setDate(now.getDate() - 7));
+      } else if (dateRange === 'month') {
+        startDate = new Date(now.setMonth(now.getMonth() - 1));
+      }
+
+      if (startDate) {
+        filter.createdAt = { $gte: startDate };
+      }
+    }
+
+    // Apply search filter (Super admin only for now)
+    if (search && search !== '') {
+      // Find matching users if searching by name/email
+      const matchedUsers = await User.find({
+        $or: [
+          { firstName: { $regex: search, $options: 'i' } },
+          { lastName: { $regex: search, $options: 'i' } },
+          { email: { $regex: search, $options: 'i' } },
+          { username: { $regex: search, $options: 'i' } }
+        ]
+      }, '_id');
+
+      const userIds = matchedUsers.map(u => u._id);
+
+      filter.$or = [
+        { orderNumber: { $regex: search, $options: 'i' } },
+        { customer: { $in: userIds } }
+      ];
+
+      // Mongoose automatically converts _id if valid
+      if (mongoose.Types.ObjectId.isValid(search)) {
+        filter.$or.push({ _id: search });
+      }
+    }
 
     const skip = (page - 1) * limit;
     const orders = await Order.find(filter)
       .populate('customer', 'username firstName lastName email')
+      .populate('store', 'name')
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(parseInt(limit));

@@ -1,6 +1,8 @@
+const mongoose = require('mongoose');
 const { validationResult } = require('express-validator');
 const Booking = require('../models/Booking');
 const Service = require('../models/Service');
+const User = require('../models/User');
 const Store = require('../models/Store');
 const Voucher = require('../models/Voucher');
 const RevenueService = require('../services/revenueService');
@@ -419,16 +421,36 @@ const getAllBookings = async (req, res) => {
     }
 
     // Build search
-    if (search) {
+    if (search && search !== '') {
+      // Find matching users if searching by name/email
+      const matchedUsers = await User.find({
+        $or: [
+          { firstName: { $regex: search, $options: 'i' } },
+          { lastName: { $regex: search, $options: 'i' } },
+          { email: { $regex: search, $options: 'i' } },
+          { username: { $regex: search, $options: 'i' } }
+        ]
+      }, '_id');
+
+      const matchedServices = await Service.find({
+        name: { $regex: search, $options: 'i' }
+      }, '_id');
+
+      const userIds = matchedUsers.map(u => u._id);
+      const serviceIds = matchedServices.map(s => s._id);
+
       filter.$or = [
-        { 'customer.firstName': { $regex: search, $options: 'i' } },
-        { 'customer.lastName': { $regex: search, $options: 'i' } },
-        { 'customer.email': { $regex: search, $options: 'i' } },
-        { 'service.name': { $regex: search, $options: 'i' } }
+        { customer: { $in: userIds } },
+        { service: { $in: serviceIds } }
       ];
+
+      // Also check specific booking fields
+      if (mongoose.Types.ObjectId.isValid(search)) {
+        filter.$or.push({ _id: search });
+      }
     }
 
-    console.log('🔍 Filter being used:', filter);
+    console.log('🔍 Filter being used:', JSON.stringify(filter));
 
     // Run auto-cleanup for this filtered context
     await autoCancelExpiredBookings(filter);

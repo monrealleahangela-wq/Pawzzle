@@ -27,12 +27,59 @@ const createReport = async (req, res) => {
     }
 };
 
+const mongoose = require('mongoose');
+
 // Get all reports (Super Admin)
 const getAllReports = async (req, res) => {
     try {
-        const { status, page = 1, limit = 10 } = req.query;
-        let filter = {};
-        if (status) filter.status = status;
+        const { status, page = 1, limit = 10, search, dateRange } = req.query;
+        let filter = { isDeleted: { $ne: true } };
+        
+        if (status && status !== '' && status !== 'all') {
+            filter.status = status;
+        }
+
+        // Apply dateRange filter
+        if (dateRange) {
+            const now = new Date();
+            let startDate;
+            if (dateRange === 'today') {
+                startDate = new Date(now.setHours(0, 0, 0, 0));
+            } else if (dateRange === 'week') {
+                startDate = new Date(now.setDate(now.getDate() - 7));
+            } else if (dateRange === 'month') {
+                startDate = new Date(now.setMonth(now.getMonth() - 1));
+            }
+
+            if (startDate) {
+                filter.createdAt = { $gte: startDate };
+            }
+        }
+
+        // Apply search filter
+        if (search && search !== '') {
+            const matchedUsers = await User.find({
+                $or: [
+                    { firstName: { $regex: search, $options: 'i' } },
+                    { lastName: { $regex: search, $options: 'i' } },
+                    { email: { $regex: search, $options: 'i' } },
+                    { username: { $regex: search, $options: 'i' } }
+                ]
+            }, '_id');
+
+            const userIds = matchedUsers.map(u => u._id);
+
+            filter.$or = [
+                { reporter: { $in: userIds } },
+                { reportedUser: { $in: userIds } },
+                { description: { $regex: search, $options: 'i' } },
+                { reason: { $regex: search, $options: 'i' } }
+            ];
+
+            if (mongoose.Types.ObjectId.isValid(search)) {
+                filter.$or.push({ _id: search });
+            }
+        }
 
         const skip = (parseInt(page) - 1) * parseInt(limit);
 
@@ -50,7 +97,9 @@ const getAllReports = async (req, res) => {
             pagination: {
                 currentPage: parseInt(page),
                 totalPages: Math.ceil(total / limit),
-                totalReports: total
+                totalReports: total,
+                hasNext: page * limit < total,
+                hasPrev: page > 1
             }
         });
     } catch (error) {
