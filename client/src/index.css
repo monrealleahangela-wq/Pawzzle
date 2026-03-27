@@ -254,20 +254,16 @@ code {
 
 /* ── Stable Header ── */
 .header-stable {
-  @apply flex flex-col justify-center;
-  min-height: 80px;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  @apply sticky top-0 z-50 flex flex-col justify-center h-20 bg-white transition-all duration-300;
+  will-change: transform, background-color, box-shadow;
 }
 
 .header-scrolled {
-  @apply py-3 shadow-xl shadow-primary-900/5 bg-white/95 backdrop-blur-xl border-b border-primary-100/50;
-  min-height: 80px;
-  /* Keep height consistent to prevent layout shift */
+  @apply shadow-xl shadow-primary-900/5 bg-white/95 backdrop-blur-xl border-b border-primary-100/50 py-3;
 }
 
 .header-default {
   @apply py-5 bg-white border-b border-transparent;
-  min-height: 80px;
 }
 
 /* ══════════════════════════════════════════

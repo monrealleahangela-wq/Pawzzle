@@ -195,14 +195,27 @@ const Layout = () => {
   const [isScrolled, setIsScrolled] = useState(false);
 
   useEffect(() => {
-    const handleScroll = () => {
-      const totalScroll = document.documentElement.scrollHeight - window.innerHeight;
-      const currentScroll = window.pageYOffset;
-      setScrollProgress((currentScroll / totalScroll) * 100);
-      setIsScrolled(currentScroll > 20);
+    let scrollHeight = document.documentElement.scrollHeight - window.innerHeight;
+    
+    const handleResize = () => {
+      scrollHeight = document.documentElement.scrollHeight - window.innerHeight;
     };
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
+
+    const handleScroll = () => {
+      const currentScroll = window.pageYOffset;
+      if (scrollHeight > 0) {
+        setScrollProgress((currentScroll / scrollHeight) * 100);
+      }
+      setIsScrolled(currentScroll > 40);
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    window.addEventListener('resize', handleResize);
+    
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      window.removeEventListener('resize', handleResize);
+    };
   }, []);
 
   // Bottom Nav Items for Mobile App Feel
@@ -322,7 +335,7 @@ const Layout = () => {
       <div className="flex-1 lg:pl-20 transition-all duration-500 w-full min-w-0">
         {/* Header */}
         <header
-          className={`sticky top-0 z-50 header-stable ${isScrolled ? 'header-scrolled' : 'header-default'}`}
+          className={`header-stable ${isScrolled ? 'header-scrolled' : 'header-default'}`}
         >
           <div className="container-custom">
             <div className="flex justify-between items-center gap-2 sm:gap-6">
