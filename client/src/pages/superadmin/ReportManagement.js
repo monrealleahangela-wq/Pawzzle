@@ -99,25 +99,25 @@ const ReportManagement = () => {
             </div>
 
             {/* Safety HUD Filter - High Contrast & Always Visible */}
-            <div className="bg-slate-900 p-2 rounded-[1.5rem] shadow-xl border border-slate-800 mb-6">
+            <div className="bg-slate-900 p-2 rounded-[2.5rem] shadow-xl border border-slate-800 mb-6">
                 <div className="grid grid-cols-1 md:grid-cols-12 gap-2">
                     <div className="md:col-span-6 relative group">
-                        <div className="absolute left-8 top-1/2 -translate-y-1/2 flex items-center">
+                        <div className="absolute left-12 top-1/2 -translate-y-1/2 flex items-center">
                             <Search className="h-4 w-4 text-slate-500 group-focus-within:text-primary-500 transition-colors" />
                         </div>
                         <input
-                            type="text" placeholder=""
+                            type="text" placeholder="QUERY REPORTS..."
                             value={filters.search} onChange={(e) => handleFilterChange('search', e.target.value)}
-                            className="w-full pl-20 pr-4 py-3.5 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl outline-none focus:ring-2 focus:ring-rose-500/50 placeholder:text-slate-600 transition-all font-sans"
+                            className="w-full pl-32 pr-4 py-5 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-3xl outline-none focus:ring-2 focus:ring-rose-500/50 placeholder:text-slate-600 transition-all font-sans"
                         />
                     </div>
                     <div className="md:col-span-3 relative">
-                        <div className="absolute left-8 top-1/2 -translate-y-1/2">
+                        <div className="absolute left-12 top-1/2 -translate-y-1/2">
                             <Filter className="h-3.5 w-3.5 text-rose-500" />
                         </div>
                         <select
                             value={filters.status} onChange={(e) => handleFilterChange('status', e.target.value)}
-                            className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-2xl pl-20 pr-10 py-3.5 outline-none focus:ring-2 focus:ring-rose-500/50 appearance-none transition-all cursor-pointer font-sans"
+                            className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-3xl pl-32 pr-10 py-5 outline-none focus:ring-2 focus:ring-rose-500/50 appearance-none transition-all cursor-pointer font-sans"
                         >
                             <option value="" className="bg-slate-900 text-white font-black">ALL STATUSES</option>
                             <option value="pending" className="bg-slate-900 text-white font-black">PENDING</option>
@@ -128,12 +128,12 @@ const ReportManagement = () => {
                         </select>
                     </div>
                     <div className="md:col-span-3 relative">
-                        <div className="absolute left-8 top-1/2 -translate-y-1/2">
+                        <div className="absolute left-12 top-1/2 -translate-y-1/2">
                             <Calendar className="h-3.5 w-3.5 text-emerald-500" />
                         </div>
                         <select
                             value={filters.dateRange} onChange={(e) => handleFilterChange('dateRange', e.target.value)}
-                            className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-2xl pl-20 pr-10 py-3.5 outline-none focus:ring-2 focus:ring-rose-500/50 appearance-none transition-all cursor-pointer font-sans"
+                            className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-3xl pl-32 pr-10 py-5 outline-none focus:ring-2 focus:ring-rose-500/50 appearance-none transition-all cursor-pointer font-sans"
                         >
                             <option value="" className="bg-slate-900 text-white font-black">ALL TIME</option>
                             <option value="today" className="bg-slate-900 text-white font-black">TODAY</option>
@@ -144,17 +144,17 @@ const ReportManagement = () => {
                 </div>
             </div>
 
-            <div className="bg-white border border-slate-100 rounded-[1.5rem] overflow-hidden shadow-sm">
+            <div className="bg-white border border-slate-100 rounded-[2.5rem] overflow-hidden shadow-sm">
                 <div className="overflow-x-auto">
                     <table className="w-full border-collapse">
                         <thead>
                             <tr className="bg-slate-50 border-b border-slate-100">
-                                <th className="px-8 py-3.5 text-left text-[9px] font-black text-slate-400 uppercase tracking-[0.3em]">Date</th>
-                                <th className="px-8 py-3.5 text-left text-[9px] font-black text-slate-400 uppercase tracking-[0.3em]">Reporter (Seller)</th>
-                                <th className="px-8 py-3.5 text-left text-[9px] font-black text-slate-400 uppercase tracking-[0.3em]">Reported User</th>
-                                <th className="px-8 py-3.5 text-left text-[9px] font-black text-slate-400 uppercase tracking-[0.3em]">Reason</th>
-                                <th className="px-8 py-3.5 text-left text-[9px] font-black text-slate-400 uppercase tracking-[0.3em]">Status</th>
-                                <th className="px-8 py-3.5 text-right text-[9px] font-black text-slate-400 uppercase tracking-[0.3em]">Actions</th>
+                                <th className="px-8 py-5 text-left text-[9px] font-black text-slate-400 uppercase tracking-[0.3em]">Date</th>
+                                <th className="px-8 py-5 text-left text-[9px] font-black text-slate-400 uppercase tracking-[0.3em]">Reporter (Seller)</th>
+                                <th className="px-8 py-5 text-left text-[9px] font-black text-slate-400 uppercase tracking-[0.3em]">Reported User</th>
+                                <th className="px-8 py-5 text-left text-[9px] font-black text-slate-400 uppercase tracking-[0.3em]">Reason</th>
+                                <th className="px-8 py-5 text-left text-[9px] font-black text-slate-400 uppercase tracking-[0.3em]">Status</th>
+                                <th className="px-8 py-5 text-right text-[9px] font-black text-slate-400 uppercase tracking-[0.3em]">Actions</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-50">
@@ -217,7 +217,7 @@ const ReportManagement = () => {
                                         <td className="px-8 py-6 text-right">
                                             <button
                                                 onClick={() => setSelectedReport(report)}
-                                                className="p-3 bg-slate-50 text-slate-400 rounded-2xl hover:bg-slate-900 hover:text-white transition-all shadow-sm"
+                                                className="p-3 bg-slate-50 text-slate-400 rounded-3xl hover:bg-slate-900 hover:text-white transition-all shadow-sm"
                                             >
                                                 <ExternalLink className="h-4 w-4" />
                                             </button>
@@ -264,7 +264,7 @@ const ReportManagement = () => {
                             </div>
                             <button
                                 onClick={() => setSelectedReport(null)}
-                                className="p-3 bg-slate-50 text-slate-400 rounded-2xl hover:bg-rose-50 hover:text-rose-600 transition-all"
+                                className="p-3 bg-slate-50 text-slate-400 rounded-3xl hover:bg-rose-50 hover:text-rose-600 transition-all"
                             >
                                 <X className="h-5 w-5" />
                             </button>
@@ -274,7 +274,7 @@ const ReportManagement = () => {
                             <div className="grid grid-cols-2 gap-8">
                                 <div className="space-y-4">
                                     <label className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] block">Reporter Details</label>
-                                    <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                                    <div className="p-4 bg-slate-50 rounded-3xl border border-slate-100">
                                         <p className="text-[13px] font-black text-slate-900 uppercase">{selectedReport.reporter?.firstName} {selectedReport.reporter?.lastName}</p>
                                         <p className="text-[10px] font-bold text-primary-600 uppercase tracking-widest">{selectedReport.store?.name}</p>
                                         <p className="text-[10px] font-medium text-slate-400 italic mt-1">{selectedReport.reporter?.email}</p>
@@ -282,7 +282,7 @@ const ReportManagement = () => {
                                 </div>
                                 <div className="space-y-4">
                                     <label className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] block">Reported User</label>
-                                    <div className="p-4 bg-rose-50 rounded-2xl border border-rose-100">
+                                    <div className="p-4 bg-rose-50 rounded-3xl border border-rose-100">
                                         <p className="text-[13px] font-black text-rose-900 uppercase">{selectedReport.reportedUser?.firstName} {selectedReport.reportedUser?.lastName}</p>
                                         <p className="text-[10px] font-bold text-rose-500 uppercase tracking-widest">@{selectedReport.reportedUser?.username}</p>
                                         <p className="text-[10px] font-medium text-rose-300 italic mt-1">{selectedReport.reportedUser?.email}</p>

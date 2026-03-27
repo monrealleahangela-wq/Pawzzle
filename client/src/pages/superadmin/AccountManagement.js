@@ -192,25 +192,25 @@ const AccountManagement = () => {
       </div>
 
       {/* Identity HUD Filter - High Contrast & Always Visible */}
-      <div className="bg-slate-900 p-2 rounded-[1.5rem] shadow-xl border border-slate-800">
+      <div className="bg-slate-900 p-2 rounded-[2.5rem] shadow-xl border border-slate-800">
         <div className="grid grid-cols-1 md:grid-cols-12 gap-2">
           <div className="md:col-span-8 relative group">
-            <div className="absolute left-8 top-1/2 -translate-y-1/2 flex items-center">
+            <div className="absolute left-12 top-1/2 -translate-y-1/2 flex items-center">
               <Search className="h-4 w-4 text-slate-500 group-focus-within:text-primary-500 transition-colors" />
             </div>
             <input
               type="text" value={filters.search} onChange={(e) => handleFilterChange('search', e.target.value)}
-              placeholder=""
-              className="w-full pl-20 pr-4 py-3.5 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl outline-none focus:ring-2 focus:ring-primary-500/50 placeholder:text-slate-600 transition-all font-sans"
+              placeholder="QUERY ACCOUNTS..."
+              className="w-full pl-32 pr-4 py-5 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-3xl outline-none focus:ring-2 focus:ring-primary-500/50 placeholder:text-slate-600 transition-all font-sans"
             />
           </div>
           <div className="md:col-span-3 relative">
-            <div className="absolute left-8 top-1/2 -translate-y-1/2">
+            <div className="absolute left-12 top-1/2 -translate-y-1/2">
               <Shield className="h-3.5 w-3.5 text-primary-500" />
             </div>
             <select
               value={filters.role} onChange={(e) => handleFilterChange('role', e.target.value)}
-              className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-2xl pl-20 pr-10 py-3.5 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer font-sans"
+              className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-3xl pl-32 pr-10 py-5 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer font-sans"
             >
               <option value="" className="bg-slate-900 text-white font-black">ALL ROLES</option>
               <option value="super_admin" className="bg-slate-900 text-white font-black">MASTER ADMIN</option>
@@ -219,12 +219,12 @@ const AccountManagement = () => {
             </select>
           </div>
           <div className="md:col-span-3 relative">
-            <div className="absolute left-8 top-1/2 -translate-y-1/2">
+            <div className="absolute left-12 top-1/2 -translate-y-1/2">
               <Zap className="h-3.5 w-3.5 text-emerald-500" />
             </div>
             <select
               value={filters.isActive} onChange={(e) => handleFilterChange('isActive', e.target.value)}
-              className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-2xl pl-20 pr-10 py-3.5 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer font-sans"
+              className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-3xl pl-32 pr-10 py-5 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer font-sans"
             >
               <option value="" className="bg-slate-900 text-white font-black">ANY STATUS</option>
               <option value="true" className="bg-slate-900 text-white font-black">ACTIVE</option>
@@ -232,12 +232,12 @@ const AccountManagement = () => {
             </select>
           </div>
           <div className="md:col-span-2 relative">
-            <div className="absolute left-8 top-1/2 -translate-y-1/2">
+            <div className="absolute left-12 top-1/2 -translate-y-1/2">
               <Calendar className="h-3.5 w-3.5 text-blue-500" />
             </div>
             <select
               value={filters.dateRange} onChange={(e) => handleFilterChange('dateRange', e.target.value)}
-              className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-2xl pl-20 pr-10 py-3.5 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer font-sans"
+              className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-3xl pl-32 pr-10 py-5 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer font-sans"
             >
               <option value="" className="bg-slate-900 text-white font-black">ALL TIME</option>
               <option value="today" className="bg-slate-900 text-white font-black">TODAY</option>
@@ -253,7 +253,7 @@ const AccountManagement = () => {
         {accounts.map((user) => {
           const role = getRoleProps(user.role);
           return (
-            <div key={user._id} className="group bg-white border border-slate-100 rounded-[1.5rem] p-6 shadow-sm hover:shadow-2xl transition-all relative overflow-hidden flex flex-col">
+            <div key={user._id} className="group bg-white border border-slate-100 rounded-[2.5rem] p-6 shadow-sm hover:shadow-2xl transition-all relative overflow-hidden flex flex-col">
               <div className="absolute top-0 right-0 p-6 flex flex-col items-end gap-2">
                 <span className={`px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-widest ${user.isActive ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
                   {user.isActive ? 'ACTIVE' : 'DISABLED'}
@@ -272,7 +272,7 @@ const AccountManagement = () => {
                 )}
               </div>
 
-              <div className="w-12 h-12 rounded-2xl mb-4 bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-primary-600 group-hover:text-white transition-all group-hover:rotate-3 shadow-inner">
+              <div className="w-12 h-12 rounded-3xl mb-4 bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-primary-600 group-hover:text-white transition-all group-hover:rotate-3 shadow-inner">
                 <Users className="h-6 w-6" />
               </div>
 
@@ -356,7 +356,7 @@ const AccountManagement = () => {
               </div>
               <button
                 onClick={() => setShowCredentialsModal(false)}
-                className="p-3 bg-slate-50 text-slate-400 rounded-2xl hover:bg-rose-50 hover:text-rose-600 transition-all"
+                className="p-3 bg-slate-50 text-slate-400 rounded-3xl hover:bg-rose-50 hover:text-rose-600 transition-all"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -366,7 +366,7 @@ const AccountManagement = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
                 {/* Visual Identity Assets */}
                 <div className="space-y-8">
-                  <div className="bg-slate-900 rounded-[1.5rem] p-10 text-white relative overflow-hidden shadow-2xl">
+                  <div className="bg-slate-900 rounded-[2.5rem] p-10 text-white relative overflow-hidden shadow-2xl">
                     <Target className="absolute -bottom-10 -right-10 w-48 h-48 opacity-10 animate-pulse" />
                     <div className="relative z-10 space-y-6">
                       <div className="flex justify-between items-start">
@@ -377,11 +377,11 @@ const AccountManagement = () => {
                       </div>
                       <p className="text-4xl font-black tracking-tighter uppercase">{selectedAccount.firstName} {selectedAccount.lastName}</p>
                       <div className="flex gap-4">
-                        <div className="px-4 py-2 bg-white/5 border border-white/10 rounded-2xl">
+                        <div className="px-4 py-2 bg-white/5 border border-white/10 rounded-3xl">
                           <p className="text-[8px] font-black text-white/40 uppercase tracking-widest mb-1">Role</p>
                           <p className="text-sm font-black text-primary-400 uppercase">{getRoleProps(selectedAccount.role).label}</p>
                         </div>
-                        <div className="px-4 py-2 bg-white/5 border border-white/10 rounded-2xl">
+                        <div className="px-4 py-2 bg-white/5 border border-white/10 rounded-3xl">
                           <p className="text-[8px] font-black text-white/40 uppercase tracking-widest mb-1">State</p>
                           <p className="text-sm font-black text-emerald-400 uppercase">NORMAL</p>
                         </div>
@@ -389,7 +389,7 @@ const AccountManagement = () => {
                     </div>
                   </div>
 
-                  <div className="bg-slate-50 rounded-[1.5rem] p-8 border border-slate-100">
+                  <div className="bg-slate-50 rounded-[2.5rem] p-8 border border-slate-100">
                     <h3 className="text-[11px] font-black text-slate-900 uppercase tracking-widest mb-6 flex items-center gap-2">
                       Contact Routing
                     </h3>
@@ -415,21 +415,21 @@ const AccountManagement = () => {
 
                 {/* Authentication Subsystem */}
                 <div className="space-y-8">
-                  <div className="bg-white border border-slate-100 rounded-[1.5rem] p-8 shadow-sm">
+                  <div className="bg-white border border-slate-100 rounded-[2.5rem] p-8 shadow-sm">
                     <h3 className="text-[11px] font-black text-slate-900 uppercase tracking-widest mb-8 flex items-center gap-2">
                       <Key className="h-4 w-4 text-primary-600" /> Access Credentials
                     </h3>
                     <div className="space-y-8">
                       <div>
                         <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-3">Identity Key (USERNAME)</p>
-                        <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 flex justify-between items-center">
+                        <div className="p-4 bg-slate-50 rounded-3xl border border-slate-100 flex justify-between items-center">
                           <span className="text-[12px] font-black text-slate-900 uppercase tracking-widest">{selectedAccount.username}</span>
                           <button onClick={() => navigator.clipboard.writeText(selectedAccount.username)} className="text-primary-600 text-[9px] font-black uppercase tracking-widest">Copy Username</button>
                         </div>
                       </div>
                       <div>
                         <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-3">Pass-Sequence (DECRYPTED)</p>
-                        <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 flex justify-between items-center">
+                        <div className="p-4 bg-slate-50 rounded-3xl border border-slate-100 flex justify-between items-center">
                           <span className="text-[12px] font-black text-slate-900 tracking-widest">
                             {showPassword ? selectedAccount.password : '••••••••••••'}
                           </span>
@@ -447,11 +447,11 @@ const AccountManagement = () => {
                   </div>
 
                   {selectedAccount.address && (
-                    <div className="bg-white border border-slate-100 rounded-[1.5rem] p-8 shadow-sm">
+                    <div className="bg-white border border-slate-100 rounded-[2.5rem] p-8 shadow-sm">
                       <h3 className="text-[11px] font-black text-slate-900 uppercase tracking-widest mb-6 flex items-center gap-2">
                         <Globe className="h-4 w-4 text-primary-600" /> Geographical Node
                       </h3>
-                      <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                      <div className="p-4 bg-slate-50 rounded-3xl border border-slate-100">
                         <p className="text-[11px] font-medium text-slate-600 leading-relaxed uppercase tracking-tight">
                           {selectedAccount.address.street}, {selectedAccount.address.city}, <br />
                           {selectedAccount.address.state} {selectedAccount.address.zipCode} <br />
@@ -467,7 +467,7 @@ const AccountManagement = () => {
             <div className="p-8 bg-slate-50 border-t border-slate-100 relative z-10">
               <button
                 onClick={() => setShowCredentialsModal(false)}
-                className="w-full py-4 bg-slate-900 text-white rounded-[1.5rem] text-[10px] font-black uppercase tracking-[0.2em] hover:bg-primary-600 transition-all shadow-xl"
+                className="w-full py-4 bg-slate-900 text-white rounded-[2.5rem] text-[10px] font-black uppercase tracking-[0.2em] hover:bg-primary-600 transition-all shadow-xl"
               >
                 Close Details
               </button>

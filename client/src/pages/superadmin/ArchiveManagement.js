@@ -142,7 +142,7 @@ const ArchiveManagement = () => {
                     <p className="text-[9px] sm:text-xs font-bold text-slate-400 uppercase tracking-widest leading-none">Deleted records · Restore or delete permanently</p>
                 </div>
                 <div className="flex items-center gap-3">
-                    <div className="px-4 py-2 bg-slate-900 rounded-2xl flex items-center gap-2">
+                    <div className="px-4 py-2 bg-slate-900 rounded-3xl flex items-center gap-2">
                         <Archive className="h-3 w-3 text-primary-400" />
                         <span className="text-[10px] font-black text-white uppercase tracking-widest">{totalArchived} Archived</span>
                     </div>
@@ -150,21 +150,21 @@ const ArchiveManagement = () => {
             </div>
 
             {/* Archive HUD Filter - High Contrast & Always Visible */}
-            <div className="bg-slate-900 p-2 rounded-[1.5rem] shadow-xl border border-slate-800">
+            <div className="bg-slate-900 p-2 rounded-[2.5rem] shadow-xl border border-slate-800">
                 <div className="grid grid-cols-1 md:grid-cols-12 gap-2">
                     <div className="md:col-span-12 relative group">
-                        <div className="absolute left-8 top-1/2 -translate-y-1/2 flex items-center">
+                        <div className="absolute left-12 top-1/2 -translate-y-1/2 flex items-center">
                             <Search className="h-4 w-4 text-slate-500 group-focus-within:text-primary-500 transition-colors" />
                         </div>
                         <input
-                            type="text" placeholder=""
+                            type="text" placeholder="QUERY ARCHIVES..."
                             value={search} onChange={(e) => setSearch(e.target.value)}
                             onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                            className="w-full pl-20 pr-32 py-3.5 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl outline-none focus:ring-2 focus:ring-primary-500/50 placeholder:text-slate-600 transition-all font-sans"
+                            className="w-full pl-32 pr-32 py-5 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-3xl outline-none focus:ring-2 focus:ring-primary-500/50 placeholder:text-slate-600 transition-all font-sans"
                         />
                         <button 
                             onClick={handleSearch}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 px-6 py-2.5 bg-primary-600 text-white rounded-2xl text-[9px] font-black uppercase tracking-widest hover:bg-primary-500 transition-all active:scale-95"
+                            className="absolute right-3 top-1/2 -translate-y-1/2 px-6 py-2.5 bg-primary-600 text-white rounded-3xl text-[9px] font-black uppercase tracking-widest hover:bg-primary-500 transition-all active:scale-95"
                         >
                             Execute
                         </button>
@@ -176,7 +176,7 @@ const ArchiveManagement = () => {
             <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
                 <button
                     onClick={() => { setActiveType('all'); setPagination({ currentPage: 1, totalPages: 1 }); }}
-                    className={`flex items-center gap-2 px-5 py-2.5 rounded-2xl text-[9px] font-black uppercase tracking-widest whitespace-nowrap shrink-0 transition-all border-2 ${activeType === 'all'
+                    className={`flex items-center gap-2 px-5 py-2.5 rounded-3xl text-[9px] font-black uppercase tracking-widest whitespace-nowrap shrink-0 transition-all border-2 ${activeType === 'all'
                         ? 'bg-slate-900 border-slate-900 text-white shadow-lg'
                         : 'bg-white border-slate-100 text-slate-700 hover:border-slate-300'
                         }`}
@@ -191,7 +191,7 @@ const ArchiveManagement = () => {
                         <button
                             key={key}
                             onClick={() => { setActiveType(key); setPagination({ currentPage: 1, totalPages: 1 }); }}
-                            className={`flex items-center gap-2 px-5 py-2.5 rounded-2xl text-[9px] font-black uppercase tracking-widest whitespace-nowrap shrink-0 transition-all border-2 ${activeType === key
+                            className={`flex items-center gap-2 px-5 py-2.5 rounded-3xl text-[9px] font-black uppercase tracking-widest whitespace-nowrap shrink-0 transition-all border-2 ${activeType === key
                                 ? 'bg-slate-900 border-slate-900 text-white shadow-lg'
                                 : 'bg-white border-slate-100 text-slate-700 hover:border-slate-300'
                                 }`}
@@ -206,8 +206,8 @@ const ArchiveManagement = () => {
             {activeType === 'all' && (
                 <div className="space-y-6">
                     {totalArchived === 0 ? (
-                        <div className="text-center py-20 bg-white border border-slate-100 rounded-[1.5rem]">
-                            <div className="w-16 h-16 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-200 mx-auto mb-4">
+                        <div className="text-center py-20 bg-white border border-slate-100 rounded-[2.5rem]">
+                            <div className="w-16 h-16 bg-slate-50 rounded-3xl flex items-center justify-center text-slate-200 mx-auto mb-4">
                                 <Archive className="h-8 w-8" />
                             </div>
                             <h4 className="text-lg font-black text-slate-900 uppercase tracking-tighter mb-1">Archive Empty</h4>
@@ -219,10 +219,10 @@ const ArchiveManagement = () => {
                             const cfg = typeConfig[type];
                             const Icon = cfg.icon;
                             return (
-                                <div key={type} className="bg-white border border-slate-100 rounded-[1.5rem] overflow-hidden">
+                                <div key={type} className="bg-white border border-slate-100 rounded-[2.5rem] overflow-hidden">
                                     <div className="flex items-center justify-between p-5 sm:p-6 border-b border-slate-50">
                                         <div className="flex items-center gap-3">
-                                            <div className={`w-10 h-10 rounded-2xl bg-${cfg.color}-50 flex items-center justify-center`}>
+                                            <div className={`w-10 h-10 rounded-3xl bg-${cfg.color}-50 flex items-center justify-center`}>
                                                 <Icon className={`h-5 w-5 text-${cfg.color}-600`} />
                                             </div>
                                             <div>
@@ -274,7 +274,7 @@ const ArchiveManagement = () => {
 
             {/* Detail List (Single type mode) */}
             {activeType !== 'all' && (
-                <div className="bg-white border border-slate-100 rounded-[1.5rem] overflow-hidden">
+                <div className="bg-white border border-slate-100 rounded-[2.5rem] overflow-hidden">
                     {items.length === 0 ? (
                         <div className="text-center py-16">
                             <Archive className="h-10 w-10 text-slate-200 mx-auto mb-3" />
@@ -283,8 +283,8 @@ const ArchiveManagement = () => {
                     ) : (
                         <div className="divide-y divide-slate-50">
                             {items.map(item => (
-                                <div key={item._id} className="flex items-center gap-4 px-5 sm:px-8 py-4 sm:py-3.5 hover:bg-slate-50/50 transition-colors group">
-                                    <div className={`w-10 h-10 rounded-2xl bg-${typeConfig[activeType]?.color}-50 flex items-center justify-center shrink-0`}>
+                                <div key={item._id} className="flex items-center gap-4 px-5 sm:px-8 py-4 sm:py-5 hover:bg-slate-50/50 transition-colors group">
+                                    <div className={`w-10 h-10 rounded-3xl bg-${typeConfig[activeType]?.color}-50 flex items-center justify-center shrink-0`}>
                                         {(() => { const Icon = typeConfig[activeType]?.icon; return Icon ? <Icon className={`h-5 w-5 text-${typeConfig[activeType]?.color}-600`} /> : null; })()}
                                     </div>
                                     <div className="flex-1 min-w-0">
@@ -347,7 +347,7 @@ const ArchiveManagement = () => {
                 <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4 z-[100] animate-fade-in">
                     <div className="bg-white rounded-[3rem] max-w-md w-full shadow-2xl relative overflow-hidden">
                         <div className="p-8 text-center">
-                            <div className="w-16 h-16 bg-rose-50 rounded-2xl flex items-center justify-center mx-auto mb-5">
+                            <div className="w-16 h-16 bg-rose-50 rounded-3xl flex items-center justify-center mx-auto mb-5">
                                 <AlertTriangle className="h-8 w-8 text-rose-600" />
                             </div>
                             <h3 className="text-xl font-black text-slate-900 uppercase tracking-tighter mb-2">Permanent Deletion</h3>
@@ -359,13 +359,13 @@ const ArchiveManagement = () => {
                         <div className="flex gap-3 p-6 bg-slate-50 border-t border-slate-100">
                             <button
                                 onClick={() => setConfirmModal(null)}
-                                className="flex-1 py-4 bg-white border border-slate-200 text-slate-600 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-100 transition-all"
+                                className="flex-1 py-4 bg-white border border-slate-200 text-slate-600 rounded-3xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-100 transition-all"
                             >
                                 Cancel
                             </button>
                             <button
                                 onClick={handlePermanentDelete}
-                                className="flex-1 py-4 bg-rose-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-rose-700 transition-all shadow-lg shadow-rose-200"
+                                className="flex-1 py-4 bg-rose-600 text-white rounded-3xl text-[10px] font-black uppercase tracking-widest hover:bg-rose-700 transition-all shadow-lg shadow-rose-200"
                             >
                                 Delete Forever
                             </button>

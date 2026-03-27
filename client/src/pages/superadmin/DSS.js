@@ -62,7 +62,7 @@ const SuperAdminDSS = () => {
         ? (((customerGrowth[customerGrowth.length - 1].count - customerGrowth[0].count) / Math.max(customerGrowth[0].count, 1)) * 100).toFixed(1)
         : '0.0';
 
-    const cardClass = "bg-white border border-slate-100 rounded-[1.5rem] p-8 shadow-sm hover:shadow-xl transition-all duration-500 overflow-hidden relative group";
+    const cardClass = "bg-white border border-slate-100 rounded-[2.5rem] p-8 shadow-sm hover:shadow-xl transition-all duration-500 overflow-hidden relative group";
     const labelClass = "text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4 block";
     const titleClass = "text-xl font-black text-slate-900 tracking-tight mb-6 flex items-center gap-3 uppercase";
 
@@ -75,7 +75,7 @@ const SuperAdminDSS = () => {
 
                 <div className="relative z-10">
                     <div className="flex items-center gap-3 mb-8">
-                        <div className="p-3 bg-primary-600/20 rounded-2xl backdrop-blur-md border border-primary-500/30">
+                        <div className="p-3 bg-primary-600/20 rounded-3xl backdrop-blur-md border border-primary-500/30">
                             <Brain size={24} className="text-primary-400" />
                         </div>
                         <span className="text-[12px] font-black uppercase tracking-[0.6em] text-primary-400">Global DSS Core</span>
@@ -91,11 +91,11 @@ const SuperAdminDSS = () => {
                     </div>
 
                     <div className="flex flex-wrap gap-8 mt-12">
-                        <div className="px-8 py-3.5 bg-white/5 border border-white/10 rounded-2xl backdrop-blur-md">
+                        <div className="px-8 py-5 bg-white/5 border border-white/10 rounded-3xl backdrop-blur-md">
                             <p className="text-[10px] font-black text-white/40 uppercase tracking-widest mb-1">Global Revenue</p>
                             <p className="text-3xl font-black text-white tracking-tighter">₱{revenue.combined.toLocaleString()}</p>
                         </div>
-                        <div className="px-8 py-3.5 bg-white text-slate-900 rounded-2xl">
+                        <div className="px-8 py-5 bg-white text-slate-900 rounded-3xl">
                             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Growth Forecast</p>
                             <p className="text-3xl font-black text-emerald-600 tracking-tighter">+{platformGrowthRate}%</p>
                         </div>
@@ -112,7 +112,7 @@ const SuperAdminDSS = () => {
                     { label: 'Trust Rating', val: `${platform.avgRating}/5`, sub: `From ${platform.totalReviews} Reviews`, icon: Star, color: 'rose' }
                 ].map((kpi, i) => (
                     <div key={i} className={cardClass}>
-                        <div className={`p-3 bg-${kpi.color}-50 text-${kpi.color}-600 rounded-2xl w-fit mb-6`}>
+                        <div className={`p-3 bg-${kpi.color}-50 text-${kpi.color}-600 rounded-3xl w-fit mb-6`}>
                             <kpi.icon size={20} />
                         </div>
                         <p className={labelClass}>{kpi.label}</p>
@@ -145,7 +145,7 @@ const SuperAdminDSS = () => {
                             { label: '7D VOLUME', val: throughput.weekly, color: 'indigo', desc: 'Weekly transaction flow' },
                             { label: '30D THROUGHPUT', val: throughput.monthly, color: 'primary', desc: 'Monthly aggregate volume' }
                         ].map((node, i) => (
-                            <div key={i} className="bg-white border border-slate-100 p-8 rounded-[1.5rem] shadow-sm relative overflow-hidden group">
+                            <div key={i} className="bg-white border border-slate-100 p-8 rounded-[2.5rem] shadow-sm relative overflow-hidden group">
                                 <div className={`absolute top-0 right-0 w-24 h-24 bg-${node.color}-500/5 rounded-full blur-2xl -mr-8 -mt-8`} />
                                 <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">{node.label}</p>
                                 <p className={`text-4xl font-black text-slate-900 tracking-tighter mb-4`}>{node.val}</p>
@@ -157,9 +157,9 @@ const SuperAdminDSS = () => {
                     <div className="space-y-4 pt-4">
                         <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.4em] mb-6 block pl-2 italic">Global Store Node Throughput</h3>
                         {storePerformance.map((store, i) => (
-                            <div key={i} className="flex items-center justify-between p-8 bg-white border border-slate-100 rounded-[1.5rem] shadow-sm hover:shadow-2xl hover:border-primary-100 transition-all group">
+                            <div key={i} className="flex items-center justify-between p-8 bg-white border border-slate-100 rounded-[2.5rem] shadow-sm hover:shadow-2xl hover:border-primary-100 transition-all group">
                                 <div className="flex items-center gap-6">
-                                    <div className="w-16 h-16 bg-slate-900 text-white rounded-2xl flex items-center justify-center font-black text-xl shadow-xl group-hover:bg-primary-600 transition-colors">
+                                    <div className="w-16 h-16 bg-slate-900 text-white rounded-3xl flex items-center justify-center font-black text-xl shadow-xl group-hover:bg-primary-600 transition-colors">
                                         {i + 1}
                                     </div>
                                     <div>
@@ -204,7 +204,7 @@ const SuperAdminDSS = () => {
                         ))}
                     </div>
 
-                    <div className="bg-slate-900 rounded-[1.5rem] p-10 text-white shadow-2xl relative overflow-hidden">
+                    <div className="bg-slate-900 rounded-[2.5rem] p-10 text-white shadow-2xl relative overflow-hidden">
                         <Activity className="absolute -right-8 -bottom-8 w-40 h-40 text-white/5" />
                         <h3 className="text-lg font-black uppercase tracking-widest mb-6 text-primary-400">Strategic Logic</h3>
                         <p className="text-xs font-bold leading-relaxed text-slate-400 uppercase tracking-widest">
@@ -239,14 +239,14 @@ const SuperAdminDSS = () => {
                     </div>
                 </div>
 
-                <div className="lg:col-span-2 bg-white border border-slate-100 rounded-[1.5rem] p-10 shadow-sm overflow-hidden relative">
+                <div className="lg:col-span-2 bg-white border border-slate-100 rounded-[2.5rem] p-10 shadow-sm overflow-hidden relative">
                     <div className="flex items-center justify-between mb-10">
                         <div className="space-y-1">
                             <h3 className={titleClass}><Globe2 size={20} className="text-emerald-500" /> Transaction Velocity</h3>
                             <p className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] pl-8">Analyzing 24-hour platform liquidity trends</p>
                         </div>
                         <div className="flex items-center gap-3">
-                            <div className={`px-4 py-2 border rounded-2xl flex items-center gap-3 ${parseFloat(velocity.trend) >= 0 ? 'bg-emerald-50 border-emerald-100 text-emerald-600' : 'bg-rose-50 border-rose-100 text-rose-600'}`}>
+                            <div className={`px-4 py-2 border rounded-3xl flex items-center gap-3 ${parseFloat(velocity.trend) >= 0 ? 'bg-emerald-50 border-emerald-100 text-emerald-600' : 'bg-rose-50 border-rose-100 text-rose-600'}`}>
                                 {parseFloat(velocity.trend) >= 0 ? <TrendingUp size={14} /> : <Activity size={14} />}
                                 <span className="text-sm font-black whitespace-nowrap">{velocity.trend}%</span>
                             </div>
