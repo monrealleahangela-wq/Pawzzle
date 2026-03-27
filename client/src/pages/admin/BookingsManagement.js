@@ -161,7 +161,7 @@ const BookingsManagement = () => {
         </div>
         <Link
           to="/admin/services"
-          className="group px-6 py-3 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-primary-600 transition-all flex items-center gap-3"
+          className="group px-6 py-3 bg-slate-900 text-white rounded-3xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-primary-600 transition-all flex items-center gap-3"
         >
           <Briefcase className="h-4 w-4" /> Manage Services
         </Link>
@@ -176,7 +176,7 @@ const BookingsManagement = () => {
           { label: 'Done', value: analytics.completed, color: 'emerald' },
           { label: 'Revenue', value: `₱${analytics.revenue.toLocaleString()}`, color: 'rose' }
         ].map((stat, i) => (
-          <div key={i} className="bg-white border border-slate-100 p-4 rounded-2xl shadow-sm hover:shadow-md transition-all">
+          <div key={i} className="bg-white border border-slate-100 p-4 rounded-3xl shadow-sm hover:shadow-md transition-all">
             <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">{stat.label}</p>
             <p className="text-lg font-black text-slate-900 leading-none tracking-tight">{stat.value}</p>
           </div>
@@ -184,35 +184,35 @@ const BookingsManagement = () => {
       </div>
 
       {/* Protocol HUD Filter - High Contrast & Always Visible */}
-      <div className="relative z-10 bg-slate-900 p-2 rounded-[1.5rem] shadow-xl border border-slate-800">
+      <div className="relative z-10 bg-slate-900 p-2 rounded-[2.5rem] shadow-xl border border-slate-800">
         <div className="grid grid-cols-1 md:grid-cols-12 gap-2">
           <div className="md:col-span-8 relative group">
-            <div className="absolute left-10 top-1/2 -translate-y-1/2 flex items-center">
+            <div className="absolute left-12 top-1/2 -translate-y-1/2 flex items-center">
               <Search className="h-4 w-4 text-slate-500 group-focus-within:text-primary-500 transition-colors" />
             </div>
             <input
               type="text"
-              placeholder=""
-              className="w-full pl-28 pr-4 py-3.5 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl outline-none focus:ring-2 focus:ring-primary-500/50 placeholder:text-slate-600 transition-all font-sans"
+              placeholder="QUERY ..."
+              className="w-full pl-32 pr-4 py-5 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-3xl outline-none focus:ring-2 focus:ring-primary-500/50 placeholder:text-slate-600 transition-all font-sans"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
           <div className="md:col-span-4 relative">
-             <div className="absolute left-10 top-1/2 -translate-y-1/2">
+             <div className="absolute left-12 top-1/2 -translate-y-1/2">
                 <Activity className="h-4 w-4 text-primary-500" />
              </div>
              <select
                 value={filterStatus}
                 onChange={(e) => setFilterStatus(e.target.value)}
-                className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-2xl pl-28 pr-10 py-3.5 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer font-sans"
+                className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-3xl pl-32 pr-10 py-5 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer font-sans"
              >
-                <option value="all" className="bg-slate-900 text-white font-black">ALL STATUSES</option>
-                <option value="pending" className="bg-slate-900 text-white font-black">PENDING</option>
-                <option value="confirmed" className="bg-slate-900 text-white font-black">CONFIRMED</option>
-                <option value="in_progress" className="bg-slate-900 text-white font-black">IN PROGRESS</option>
-                <option value="completed" className="bg-slate-900 text-white font-black">COMPLETED</option>
-                <option value="cancelled" className="bg-slate-900 text-white font-black text-rose-400">CANCELLED</option>
+                <option value="all" className="bg-slate-900 text-white font-black">ST: ALL STATUSES</option>
+                <option value="pending" className="bg-slate-900 text-white font-black">ST: PENDING</option>
+                <option value="confirmed" className="bg-slate-900 text-white font-black">ST: CONFIRMED</option>
+                <option value="in_progress" className="bg-slate-900 text-white font-black">ST: IN PROGRESS</option>
+                <option value="completed" className="bg-slate-900 text-white font-black">ST: COMPLETED</option>
+                <option value="cancelled" className="bg-slate-900 text-white font-black text-rose-400">ST: CANCELLED</option>
              </select>
           </div>
         </div>
@@ -293,7 +293,7 @@ const BookingsManagement = () => {
       {/* Booking Details Modal */}
       {selectedBooking && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[100] flex items-center justify-center p-4 animate-in fade-in duration-300">
-          <div className="bg-white w-full max-w-2xl rounded-2xl overflow-hidden shadow-2xl animate-in slide-in-from-bottom-8 duration-500 border border-slate-200 flex flex-col max-h-[90vh]">
+          <div className="bg-white w-full max-w-2xl rounded-3xl overflow-hidden shadow-2xl animate-in slide-in-from-bottom-8 duration-500 border border-slate-200 flex flex-col max-h-[90vh]">
             <header className="shrink-0 bg-slate-900 p-6 sm:p-8 text-white flex justify-between items-start relative overflow-hidden">
               <div className="absolute top-0 right-0 p-12 opacity-10 blur-3xl pointer-events-none">
                 <ShieldCheck className="w-64 h-64 text-primary-500" />
@@ -354,7 +354,7 @@ const BookingsManagement = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
                 <div className="space-y-8">
                   <div className="flex items-start gap-6">
-                    <div className="w-16 h-16 bg-slate-50 rounded-2xl border border-slate-100 flex items-center justify-center text-slate-300">
+                    <div className="w-16 h-16 bg-slate-50 rounded-3xl border border-slate-100 flex items-center justify-center text-slate-300">
                       <User className="h-8 w-8" />
                     </div>
                     <div>
@@ -391,7 +391,7 @@ const BookingsManagement = () => {
                 <div className="absolute top-0 right-0 w-48 h-48 bg-primary-600/5 rounded-full -translate-y-24 translate-x-24 blur-3xl" />
 
                 <div className="flex items-center gap-5 relative z-10">
-                  <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center border border-white/10 group-hover:bg-primary-600 transition-all duration-500">
+                  <div className="w-12 h-12 bg-white/10 rounded-3xl flex items-center justify-center border border-white/10 group-hover:bg-primary-600 transition-all duration-500">
                     <Calendar className="h-6 w-6 text-primary-400 group-hover:text-white" />
                   </div>
                   <div>
@@ -428,7 +428,7 @@ const BookingsManagement = () => {
                   </div>
                   <div className="relative z-10">
                     <div className="flex items-center gap-3 mb-8">
-                      <div className="p-3 bg-amber-600 text-white rounded-2xl shadow-xl shadow-amber-900/20">
+                      <div className="p-3 bg-amber-600 text-white rounded-3xl shadow-xl shadow-amber-900/20">
                         <Activity className="h-5 w-5" />
                       </div>
                       <div>
@@ -438,7 +438,7 @@ const BookingsManagement = () => {
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       {selectedBooking.service.requirements.split(',').map((req, i) => (
-                        <div key={i} className="flex items-center gap-4 bg-white/60 p-4 rounded-2xl border border-amber-200/50 hover:bg-white transition-all">
+                        <div key={i} className="flex items-center gap-4 bg-white/60 p-4 rounded-3xl border border-amber-200/50 hover:bg-white transition-all">
                           <div className="w-6 h-6 rounded-lg border-2 border-amber-400 flex items-center justify-center cursor-pointer hover:bg-amber-100 transition-colors">
                             {/* Visual only checkbox for staff to 'mentally' check or we could add state if needed, but the prompt just says 'present for verification' */}
                           </div>
@@ -463,7 +463,7 @@ const BookingsManagement = () => {
               {(user?.role === 'admin' || user?.role === 'staff') && !selectedBooking.isRevenueRecorded && selectedBooking.status !== 'cancelled' && (
                 <button
                   onClick={() => confirmBookingPayment(selectedBooking._id)}
-                  className="px-6 py-4 bg-emerald-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-700 transition-all active:scale-[0.98] shadow-lg shadow-emerald-900/10 flex items-center gap-2"
+                  className="px-6 py-4 bg-emerald-600 text-white rounded-3xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-700 transition-all active:scale-[0.98] shadow-lg shadow-emerald-900/10 flex items-center gap-2"
                 >
                   <ShieldCheck className="h-4 w-4" /> Confirm Payment
                 </button>
@@ -473,7 +473,7 @@ const BookingsManagement = () => {
                   onClick={() => {
                     updateBookingStatus(selectedBooking._id, statusNextMap[selectedBooking.status]);
                   }}
-                  className="flex-1 min-w-[200px] px-6 py-4 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] shadow-lg hover:bg-primary-600 transition-all active:scale-[0.98] group flex items-center justify-center gap-3"
+                  className="flex-1 min-w-[200px] px-6 py-4 bg-slate-900 text-white rounded-3xl text-[10px] font-black uppercase tracking-[0.2em] shadow-lg hover:bg-primary-600 transition-all active:scale-[0.98] group flex items-center justify-center gap-3"
                 >
                   <TrendingUp className="h-4 w-4 opacity-50 text-emerald-400" />
                   Update Status to {statusNextMap[selectedBooking.status].replace('_', ' ')}
@@ -486,14 +486,14 @@ const BookingsManagement = () => {
                       updateBookingStatus(selectedBooking._id, 'cancelled');
                     }
                   }}
-                  className="px-6 py-4 bg-white border border-rose-200 text-rose-600 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-rose-500 hover:text-white transition-all active:scale-[0.98]"
+                  className="px-6 py-4 bg-white border border-rose-200 text-rose-600 rounded-3xl text-[10px] font-black uppercase tracking-widest hover:bg-rose-500 hover:text-white transition-all active:scale-[0.98]"
                 >
                   Cancel Booking
                 </button>
               )}
               <button
                 onClick={() => setSelectedBooking(null)}
-                className="flex-1 px-6 py-4 bg-slate-200 text-slate-500 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-300 transition-all active:scale-[0.98]"
+                className="flex-1 px-6 py-4 bg-slate-200 text-slate-500 rounded-3xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-300 transition-all active:scale-[0.98]"
               >
                 Close
               </button>
