@@ -325,6 +325,7 @@ const reviewApplication = async (req, res) => {
 const getUserApplication = async (req, res) => {
   try {
     const application = await StoreApplication.findOne({ applicant: req.user.id })
+      .sort({ createdAt: -1 })
       .populate('reviewedBy', 'username firstName lastName');
 
     if (!application) {

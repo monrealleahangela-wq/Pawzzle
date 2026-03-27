@@ -314,10 +314,20 @@ const StaffManagement = () => {
                                                     </span>
                                                 </td>
                                                 <td className="px-6 py-4 hidden sm:table-cell">
-                                                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest ${member.isActive ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-600'}`}>
-                                                        <span className={`w-1.5 h-1.5 rounded-full ${member.isActive ? 'bg-emerald-500' : 'bg-rose-400'}`} />
-                                                        {member.isActive ? 'Active' : 'Inactive'}
-                                                    </span>
+                                                    <div className="flex flex-col gap-1.5">
+                                                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest ${member.isActive ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-600'}`}>
+                                                            <span className={`w-1.5 h-1.5 rounded-full ${member.isActive ? 'bg-emerald-500' : 'bg-rose-400'}`} />
+                                                            {member.isActive ? 'Active' : 'Inactive'}
+                                                        </span>
+                                                        {member.isActive && (
+                                                            <div className="flex items-center gap-1.5 pl-1">
+                                                                <div className={`w-1 h-1 rounded-full ${member.lastSeen && (new Date() - new Date(member.lastSeen)) < 5 * 60 * 1000 ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)] animate-pulse' : 'bg-slate-300'}`} />
+                                                                <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none">
+                                                                    {member.lastSeen && (new Date() - new Date(member.lastSeen)) < 5 * 60 * 1000 ? 'Online' : 'Offline'}
+                                                                </span>
+                                                            </div>
+                                                        )}
+                                                    </div>
                                                 </td>
                                                 <td className="px-6 py-4">
                                                     <div className="flex items-center justify-end gap-1.5">

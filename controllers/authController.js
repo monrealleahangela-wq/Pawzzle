@@ -159,7 +159,7 @@ const verifyRegisterOTP = async (req, res) => {
     }
 
     // Check OTP match
-    if (otp !== storedData.otp) {
+    if (otp?.toString().trim() !== storedData.otp?.toString().trim()) {
       return res.status(400).json({ message: 'Invalid verification code. Please try again.' });
     }
 

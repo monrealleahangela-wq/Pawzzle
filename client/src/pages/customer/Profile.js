@@ -1417,7 +1417,7 @@ const Profile = () => {
                           </div>
                           <div className="space-y-1">
                             <label className="text-[8px] sm:text-xs font-black text-slate-300 uppercase tracking-widest block ml-1">Barangay *</label>
-                            <select required name="contactInfo.address.barangay" value={upgradeFormData.contactInfo.address.barangay} onChange={handleUpgradeFormChange} className="w-full px-4 py-3 bg-slate-50 border-2 border-slate-50 rounded-xl focus:border-primary-500 outline-none font-bold text-sm transition-all">
+                            <select required name="contactInfo.address.barangay" value={upgradeFormData.contactInfo.address.barangay} onChange={handleUpgradeFormChange} className="w-full px-4 py-3 bg-slate-50 border-2 border-slate-50 rounded-xl focus:border-primary-500 outline-none font-bold text-sm transition-all cursor-pointer">
                               <option value="">Select Barangay</option>
                               {upgradeFormData.contactInfo.address.city && getBarangaysByCity(upgradeFormData.contactInfo.address.city).map(barangay => (
                                   <option key={barangay.value} value={barangay.value}>{barangay.label}</option>

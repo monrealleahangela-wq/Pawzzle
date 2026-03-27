@@ -238,10 +238,22 @@ const AccountManagement = () => {
           const role = getRoleProps(user.role);
           return (
             <div key={user._id} className="group bg-white border border-slate-100 rounded-[2.5rem] p-6 shadow-sm hover:shadow-2xl transition-all relative overflow-hidden flex flex-col">
-              <div className="absolute top-0 right-0 p-6">
+              <div className="absolute top-0 right-0 p-6 flex flex-col items-end gap-2">
                 <span className={`px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-widest ${user.isActive ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
                   {user.isActive ? 'ACTIVE' : 'DISABLED'}
                 </span>
+                {user.isActive && (
+                  <div className="flex items-center gap-1.5">
+                    <div className={`w-1.5 h-1.5 rounded-full ${
+                      user.lastSeen && (new Date() - new Date(user.lastSeen)) < 5 * 60 * 1000 
+                        ? 'bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.5)]' 
+                        : 'bg-slate-300'
+                    }`} />
+                    <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none">
+                      {user.lastSeen && (new Date() - new Date(user.lastSeen)) < 5 * 60 * 1000 ? 'ONLINE' : 'OFFLINE'}
+                    </span>
+                  </div>
+                )}
               </div>
 
               <div className="w-12 h-12 rounded-2xl mb-4 bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-primary-600 group-hover:text-white transition-all group-hover:rotate-3 shadow-inner">

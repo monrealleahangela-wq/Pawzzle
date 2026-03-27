@@ -109,33 +109,40 @@ const StoreApplications = () => {
 
   return (
     <div className="space-y-6 pb-20">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-3 border-b border-slate-100 pb-4">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <ShieldAlert className="h-3 w-3 text-primary-600" />
-            <span className="text-[9px] font-black text-primary-600 uppercase tracking-[0.4em]">ADMIN PANEL: STORE REQUESTS</span>
+      {/* Top HUD Filter - High Contrast & Always Visible */}
+      <div className="bg-slate-900 p-2 rounded-[2.5rem] shadow-xl border border-white/5 relative z-10">
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-2">
+          <div className="md:col-span-8 relative group">
+            <div className="absolute left-6 top-1/2 -translate-y-1/2 flex items-center gap-3">
+              <Search className="h-4 w-4 text-slate-500 group-focus-within:text-primary-500 transition-colors" />
+            </div>
+            <input
+              type="text"
+              placeholder="QUERY APPLICATIONS: STORE NAME, APPLICANT, REF..."
+              className="w-full pl-16 pr-4 py-5 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-3xl outline-none focus:ring-2 focus:ring-primary-500/50 placeholder:text-slate-600 transition-all"
+              onChange={(e) => {
+                // Implement local search filter if needed, or update parent filters
+                const query = e.target.value.toLowerCase();
+                setFilters(prev => ({ ...prev, search: query }));
+              }}
+            />
           </div>
-          <h1 className="text-xl sm:text-3xl font-black text-slate-900 uppercase tracking-tighter leading-none mb-1">
-            Store <br /> <span className="text-primary-600 italic">Applications</span>
-          </h1>
-          <p className="text-[9px] sm:text-xs font-bold text-slate-400 uppercase tracking-widest leading-none">Review and manage new store requests</p>
-        </div>
-        <div className="bg-slate-900 p-1.5 rounded-2xl flex items-center gap-2">
-          <select
-            value={filters.status} onChange={(e) => setFilters({ status: e.target.value })}
-            className="bg-transparent border-none text-white text-[10px] font-black uppercase tracking-widest px-4 outline-none appearance-none cursor-pointer"
-          >
-            <option value="">ALL STATUSES</option>
-            <option value="pending">PENDING</option>
-            <option value="under_review">REVIEWING</option>
-            <option value="approved">APPROVED</option>
-            <option value="rejected">REJECTED</option>
-          </select>
-          <div className="w-px h-4 bg-slate-700 mx-1" />
-          <div className="flex items-center gap-2 px-3">
-            <Activity className="h-3.5 w-3.5 text-primary-500" />
-            <span className="text-[10px] font-black text-white">{applications.length} TOTAL</span>
+          <div className="md:col-span-4 relative">
+             <div className="absolute left-6 top-1/2 -translate-y-1/2">
+                <Activity className="h-4 w-4 text-primary-500" />
+             </div>
+             <select
+                value={filters.status}
+                onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value }))}
+                className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-3xl pl-16 pr-10 py-5 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer"
+             >
+                <option value="" className="bg-slate-900 text-white font-black">ALL STATUSES: VIEW ALL</option>
+                <option value="pending" className="bg-slate-900 text-white font-black">ST: PENDING</option>
+                <option value="under_review" className="bg-slate-900 text-white font-black">ST: UNDER REVIEW</option>
+                <option value="approved" className="bg-slate-900 text-white font-black">ST: APPROVED</option>
+                <option value="rejected" className="bg-slate-900 text-white font-black">ST: REJECTED</option>
+             </select>
+             <ChevronRight className="absolute right-6 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500 pointer-events-none rotate-90" />
           </div>
         </div>
       </div>

@@ -291,7 +291,7 @@ const Services = () => {
                       {service.category}
                     </span>
                   )}
-                  <h3 className="text-sm sm:text-2xl font-black text-slate-900 leading-tight group-hover:text-primary-600 transition-colors truncate sm:whitespace-normal">
+                  <h3 className="text-sm sm:text-2xl font-black text-slate-900 leading-tight group-hover:text-primary-600 transition-colors truncate sm:line-clamp-2 sm:whitespace-normal min-h-[1.5rem] sm:min-h-[4rem]">
                     {service.name}
                   </h3>
                   {service.ratings && service.ratings.count > 0 && (
@@ -308,7 +308,7 @@ const Services = () => {
                 </div>
               </div>
 
-              <p className="text-[11px] sm:text-sm text-slate-500 italic leading-relaxed line-clamp-2 hidden sm:block">
+              <p className="text-[11px] sm:text-sm text-slate-500 italic leading-relaxed line-clamp-2 hidden sm:block min-h-[3.5rem]">
                 "{service.description || 'Expertly delivered service focused on the health and comfort of your pet.'}"
               </p>
 
