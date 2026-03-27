@@ -330,10 +330,10 @@ const ProductInventory = () => {
         </div>
 
         <div className="flex flex-wrap gap-3 w-full lg:w-auto relative z-10">
-          <button onClick={() => handleOpenProductModal()} className="flex-1 lg:flex-none px-8 py-3.5 bg-slate-900 text-white rounded-xl text-[11px] font-black uppercase tracking-[0.2em] hover:bg-primary-600 transition-all shadow-xl shadow-slate-200 flex items-center justify-center gap-3 group">
+          <button onClick={() => handleOpenProductModal()} className="flex-1 lg:flex-none px-8 py-3 bg-slate-900 text-white rounded-xl text-[11px] font-black uppercase tracking-[0.2em] hover:bg-primary-600 transition-all shadow-xl shadow-slate-200 flex items-center justify-center gap-3 group">
             <Plus className="h-4 w-4 group-hover:rotate-90 transition-transform" /> Add Product
           </button>
-          <button onClick={() => handleOpenInventoryModal()} className="flex-1 lg:flex-none px-8 py-3.5 bg-white border-2 border-slate-100 text-slate-600 rounded-xl text-[11px] font-black uppercase tracking-[0.2em] hover:bg-slate-50 transition-all flex items-center justify-center gap-3">
+          <button onClick={() => handleOpenInventoryModal()} className="flex-1 lg:flex-none px-8 py-3 bg-white border-2 border-slate-100 text-slate-600 rounded-xl text-[11px] font-black uppercase tracking-[0.2em] hover:bg-slate-50 transition-all flex items-center justify-center gap-3">
             <Zap className="h-4 w-4 text-primary-600 shadow-glow" /> Update Stock
           </button>
         </div>
@@ -361,25 +361,25 @@ const ProductInventory = () => {
         {activeTab === 'products' ? (
           <div className="space-y-8">
             {/* Catalog Identity HUD Filter - High Contrast & Always Visible */}
-            <div className="bg-slate-900 p-2 rounded-2xl shadow-xl border border-slate-800">
+            <div className="bg-slate-900 p-2 rounded-xl shadow-xl border border-slate-800">
                 <div className="grid grid-cols-1 md:grid-cols-12 gap-2">
-                    <div className="md:col-span-8 relative group">
-                        <div className="absolute left-10 top-1/2 -translate-y-1/2 flex items-center gap-3">
+                    <div className="md:col-span-6 relative group">
+                        <div className="absolute left-4 top-1/2 -translate-y-1/2 flex items-center gap-3">
                             <Search className="h-4 w-4 text-slate-500 group-focus-within:text-primary-500 transition-colors" />
                         </div>
                         <input
                             type="text" value={productSearchInput} onChange={(e) => setProductSearchInput(e.target.value)}
                             placeholder=""
-                            className="w-full pl-28 pr-4 py-3.5 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl outline-none focus:ring-2 focus:ring-primary-500/50 placeholder:text-slate-600 transition-all font-sans"
+                            className="w-full pl-12 pr-4 py-3 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-xl outline-none focus:ring-2 focus:ring-primary-500/50 placeholder:text-slate-600 transition-all font-sans"
                         />
                     </div>
                     <div className="md:col-span-4 relative">
-                        <div className="absolute left-10 top-1/2 -translate-y-1/2">
+                        <div className="absolute left-4 top-1/2 -translate-y-1/2">
                             <Layers className="h-3.5 w-3.5 text-primary-500" />
                         </div>
                         <select
                             value={productFilters.category} onChange={(e) => setProductFilters(prev => ({ ...prev, category: e.target.value }))}
-                            className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-2xl pl-28 pr-10 py-3.5 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer font-sans"
+                            className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-xl pl-12 pr-10 py-3 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer font-sans"
                         >
                             <option value="" className="bg-slate-900 text-white font-black">ALL CATEGORIES: VIEW ALL</option>
                             {categories.map(c => <option key={c.value} value={c.value} className="bg-slate-900 text-white font-black">{c.label.toUpperCase()}</option>)}
@@ -478,16 +478,16 @@ const ProductInventory = () => {
             {/* Stock List */}
             <div className="bg-white rounded-[3rem] border border-slate-100 shadow-xl overflow-hidden">
             {/* Inventory HUD Filter - High Contrast & Always Visible */}
-            <div className="bg-slate-900 p-2 rounded-2xl shadow-xl border border-slate-800">
+            <div className="bg-slate-900 p-2 rounded-xl shadow-xl border border-slate-800">
                 <div className="grid grid-cols-1 md:grid-cols-12 gap-2">
                     <div className="md:col-span-12 relative group">
-                        <div className="absolute left-10 top-1/2 -translate-y-1/2 flex items-center gap-3">
+                        <div className="absolute left-4 top-1/2 -translate-y-1/2 flex items-center gap-3">
                             <Search className="h-4 w-4 text-slate-500 group-focus-within:text-primary-500 transition-colors" />
                         </div>
                         <input
                             type="text" value={inventorySearchInput} onChange={(e) => setInventorySearchInput(e.target.value)}
                             placeholder=""
-                            className="w-full pl-28 pr-4 py-3.5 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl outline-none focus:ring-2 focus:ring-primary-500/50 placeholder:text-slate-600 transition-all font-sans"
+                            className="w-full pl-12 pr-4 py-3 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-xl outline-none focus:ring-2 focus:ring-primary-500/50 placeholder:text-slate-600 transition-all font-sans"
                         />
                     </div>
                 </div>
@@ -559,7 +559,7 @@ const ProductInventory = () => {
             {/* Modal Header */}
             <header className="p-8 border-b border-slate-100 flex items-center justify-between bg-white shrink-0">
               <div className="flex items-center gap-5">
-                <div className="w-14 h-14 bg-primary-600 rounded-2xl flex items-center justify-center shadow-2xl shadow-primary-200">
+                <div className="w-14 h-14 bg-primary-600 rounded-xl flex items-center justify-center shadow-2xl shadow-primary-200">
                   <Package className="h-7 w-7 text-white" />
                 </div>
                 <div>
@@ -576,7 +576,7 @@ const ProductInventory = () => {
             </header>
 
             {/* Modal Navigation */}
-            <nav className="px-8 py-3.5 border-b border-slate-50 flex gap-6 overflow-x-auto no-scrollbar shrink-0 bg-slate-50/50">
+            <nav className="px-8 py-3 border-b border-slate-50 flex gap-6 overflow-x-auto no-scrollbar shrink-0 bg-slate-50/50">
               {[
                 { id: 'essential', label: 'Basic Info', icon: Info },
                 { id: 'tactical', label: 'Details', icon: Target },
@@ -600,7 +600,7 @@ const ProductInventory = () => {
               {modalTab === 'essential' && (
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 animate-in fade-in slide-in-from-right-4 duration-500">
                   <div className="lg:col-span-4 space-y-6">
-                    <div className="p-8 bg-slate-900 rounded-2xl text-white relative overflow-hidden shadow-2xl border border-white/5">
+                    <div className="p-8 bg-slate-900 rounded-xl text-white relative overflow-hidden shadow-2xl border border-white/5">
                       <ImageIcon className="absolute -bottom-12 -right-12 w-56 h-56 opacity-10 pointer-events-none" />
                       <label className="text-[11px] font-black text-primary-500 uppercase tracking-[0.5em] block mb-6">Product Images</label>
                       <div className="grid grid-cols-2 gap-4">
@@ -625,18 +625,18 @@ const ProductInventory = () => {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div className="space-y-2">
                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Product Name</label>
-                        <input type="text" required value={productForm.name} onChange={e => setProductForm(p => ({ ...p, name: e.target.value }))} className="w-full px-6 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl text-[12px] font-black uppercase outline-none focus:ring-4 focus:ring-primary-600/5" placeholder="NAME..." />
+                        <input type="text" required value={productForm.name} onChange={e => setProductForm(p => ({ ...p, name: e.target.value }))} className="w-full px-6 py-3 bg-slate-50 border border-slate-100 rounded-xl text-[12px] font-black uppercase outline-none focus:ring-4 focus:ring-primary-600/5" placeholder="NAME..." />
                       </div>
                       <div className="space-y-2">
                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Category</label>
-                        <select value={productForm.category} onChange={e => setProductForm(p => ({ ...p, category: e.target.value }))} className="w-full px-6 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl text-[12px] font-black uppercase outline-none focus:ring-4 focus:ring-primary-600/5 appearance-none">
+                        <select value={productForm.category} onChange={e => setProductForm(p => ({ ...p, category: e.target.value }))} className="w-full px-6 py-3 bg-slate-50 border border-slate-100 rounded-xl text-[12px] font-black uppercase outline-none focus:ring-4 focus:ring-primary-600/5 appearance-none">
                           {categories.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
                         </select>
                       </div>
                     </div>
                     <div className="space-y-2">
                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Description</label>
-                      <textarea required value={productForm.description} onChange={e => setProductForm(p => ({ ...p, description: e.target.value }))} className="w-full px-8 py-8 bg-slate-50 border border-slate-100 rounded-2xl text-[13px] font-medium leading-relaxed outline-none focus:ring-4 focus:ring-primary-600/5 h-48 resize-none shadow-inner" placeholder="TELL CUSTOMERS ABOUT THIS PRODUCT..." />
+                      <textarea required value={productForm.description} onChange={e => setProductForm(p => ({ ...p, description: e.target.value }))} className="w-full px-8 py-8 bg-slate-50 border border-slate-100 rounded-xl text-[13px] font-medium leading-relaxed outline-none focus:ring-4 focus:ring-primary-600/5 h-48 resize-none shadow-inner" placeholder="TELL CUSTOMERS ABOUT THIS PRODUCT..." />
                     </div>
                   </div>
                 </div>
@@ -649,18 +649,18 @@ const ProductInventory = () => {
                     <div className="space-y-2">
                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Sale Price (₱)</label>
                       <div className="relative">
-                        <PhilippinePeso className="absolute left-10 top-1/2 -translate-y-1/2 h-5 w-5 text-primary-600" />
-                        <input type="number" required value={productForm.price} onChange={e => setProductForm(p => ({ ...p, price: e.target.value }))} className="w-full pl-28 pr-8 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl text-xl font-black outline-none focus:ring-4 focus:ring-primary-600/5" placeholder="0.00" />
+                        <PhilippinePeso className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-primary-600" />
+                        <input type="number" required value={productForm.price} onChange={e => setProductForm(p => ({ ...p, price: e.target.value }))} className="w-full pl-12 pr-8 py-3 bg-slate-50 border border-slate-100 rounded-xl text-xl font-black outline-none focus:ring-4 focus:ring-primary-600/5" placeholder="0.00" />
                       </div>
                     </div>
                     <div className="space-y-2">
                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Brand</label>
-                      <input type="text" value={productForm.brand} onChange={e => setProductForm(p => ({ ...p, brand: e.target.value }))} className="w-full px-8 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl text-[12px] font-black uppercase outline-none focus:ring-4 focus:ring-primary-600/5" placeholder="BRAND NAME..." />
+                      <input type="text" value={productForm.brand} onChange={e => setProductForm(p => ({ ...p, brand: e.target.value }))} className="w-full px-8 py-3 bg-slate-50 border border-slate-100 rounded-xl text-[12px] font-black uppercase outline-none focus:ring-4 focus:ring-primary-600/5" placeholder="BRAND NAME..." />
                     </div>
                     <div className="space-y-2">
                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Weight</label>
-                      <div className="flex bg-slate-50 border border-slate-100 rounded-2xl overflow-hidden focus-within:ring-4 focus-within:ring-primary-600/5 transition-all">
-                        <input type="number" value={productForm.weight} onChange={e => setProductForm(p => ({ ...p, weight: e.target.value }))} className="flex-1 px-6 py-3.5 bg-transparent text-[12px] font-black outline-none" placeholder="0" />
+                      <div className="flex bg-slate-50 border border-slate-100 rounded-xl overflow-hidden focus-within:ring-4 focus-within:ring-primary-600/5 transition-all">
+                        <input type="number" value={productForm.weight} onChange={e => setProductForm(p => ({ ...p, weight: e.target.value }))} className="flex-1 px-6 py-3 bg-transparent text-[12px] font-black outline-none" placeholder="0" />
                         <select value={productForm.weightUnit} onChange={e => setProductForm(p => ({ ...p, weightUnit: e.target.value }))} className="px-4 bg-white border-l border-slate-100 text-[10px] font-black uppercase outline-none">
                           {['kg', 'g', 'lbs', 'oz'].map(u => <option key={u} value={u}>{u}</option>)}
                         </select>
@@ -676,7 +676,7 @@ const ProductInventory = () => {
                         {['length', 'width', 'height'].map(f => (
                           <div key={f} className="space-y-2">
                             <label className="text-[9px] font-black text-white/40 uppercase tracking-widest text-center block">{f}</label>
-                            <input type="number" value={productForm.dimensions[f]} onChange={e => setProductForm(p => ({ ...p, dimensions: { ...p.dimensions, [f]: e.target.value } }))} className="w-full py-3.5 bg-white/5 border border-white/10 rounded-xl text-center text-[12px] font-black text-white outline-none focus:bg-white/10" placeholder="0" />
+                            <input type="number" value={productForm.dimensions[f]} onChange={e => setProductForm(p => ({ ...p, dimensions: { ...p.dimensions, [f]: e.target.value } }))} className="w-full py-3 bg-white/5 border border-white/10 rounded-xl text-center text-[12px] font-black text-white outline-none focus:bg-white/10" placeholder="0" />
                           </div>
                         ))}
                       </div>
@@ -693,12 +693,12 @@ const ProductInventory = () => {
                       <div className="flex items-center gap-6 justify-center">
                         <div className="space-y-2">
                           <label className="text-[9px] font-black text-emerald-200/50 uppercase tracking-widest text-center block">Minimum</label>
-                          <input type="number" value={productForm.ageRange.min} onChange={e => setProductForm(p => ({ ...p, ageRange: { ...p.ageRange, min: e.target.value } }))} className="w-24 py-3.5 bg-white/10 border border-white/10 rounded-xl text-center text-xl font-black text-white outline-none" placeholder="0" />
+                          <input type="number" value={productForm.ageRange.min} onChange={e => setProductForm(p => ({ ...p, ageRange: { ...p.ageRange, min: e.target.value } }))} className="w-24 py-3 bg-white/10 border border-white/10 rounded-xl text-center text-xl font-black text-white outline-none" placeholder="0" />
                         </div>
                         <span className="text-2xl font-black text-emerald-200/30">—</span>
                         <div className="space-y-2">
                           <label className="text-[9px] font-black text-emerald-200/50 uppercase tracking-widest text-center block">Maximum</label>
-                          <input type="number" value={productForm.ageRange.max} onChange={e => setProductForm(p => ({ ...p, ageRange: { ...p.ageRange, max: e.target.value } }))} className="w-24 py-3.5 bg-white/10 border border-white/10 rounded-xl text-center text-xl font-black text-white outline-none" placeholder="0" />
+                          <input type="number" value={productForm.ageRange.max} onChange={e => setProductForm(p => ({ ...p, ageRange: { ...p.ageRange, max: e.target.value } }))} className="w-24 py-3 bg-white/10 border border-white/10 rounded-xl text-center text-xl font-black text-white outline-none" placeholder="0" />
                         </div>
                       </div>
                       <div className="mt-6 flex justify-center">
@@ -714,7 +714,7 @@ const ProductInventory = () => {
               {/* STAGE 3: DISCOVERY LOGIC */}
               {modalTab === 'discovery' && (
                 <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-500">
-                  <div className="p-6 bg-slate-900 border border-white/5 rounded-2xl text-white">
+                  <div className="p-6 bg-slate-900 border border-white/5 rounded-xl text-white">
                     <div className="flex items-center gap-4 mb-8">
                       <div className="p-3 bg-primary-600 rounded-xl"><Target className="h-5 w-5" /></div>
                       <h4 className="text-[12px] font-black uppercase tracking-[0.4em]">Suitable For</h4>
@@ -723,7 +723,7 @@ const ProductInventory = () => {
                       {species.map(s => {
                         const active = productForm.suitableFor.includes(s);
                         return (
-                          <button type="button" key={s} onClick={() => { if (s === 'all') setProductForm(p => ({ ...p, suitableFor: ['all'] })); else setProductForm(p => { const n = p.suitableFor.includes(s) ? p.suitableFor.filter(x => x !== s) : [...p.suitableFor.filter(x => x !== 'all'), s]; return { ...p, suitableFor: n.length ? n : ['all'] }; }) }} className={`px-6 py-3.5 rounded-xl text-[10px] font-black uppercase tracking-widest border-2 transition-all ${active ? 'bg-primary-600 border-primary-500 shadow-xl shadow-primary-900/40' : 'bg-white/5 border-white/5 text-white/40 hover:bg-white/10'}`}>
+                          <button type="button" key={s} onClick={() => { if (s === 'all') setProductForm(p => ({ ...p, suitableFor: ['all'] })); else setProductForm(p => { const n = p.suitableFor.includes(s) ? p.suitableFor.filter(x => x !== s) : [...p.suitableFor.filter(x => x !== 'all'), s]; return { ...p, suitableFor: n.length ? n : ['all'] }; }) }} className={`px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest border-2 transition-all ${active ? 'bg-primary-600 border-primary-500 shadow-xl shadow-primary-900/40' : 'bg-white/5 border-white/5 text-white/40 hover:bg-white/10'}`}>
                             {s}
                           </button>
                         );
@@ -735,11 +735,11 @@ const ProductInventory = () => {
                     <div className="space-y-6">
                       <div className="space-y-2">
                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Material</label>
-                        <input type="text" value={productForm.material} onChange={e => setProductForm(p => ({ ...p, material: e.target.value }))} className="w-full px-8 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl text-[12px] font-black uppercase outline-none" placeholder="E.G. COTTON, PLASTIC..." />
+                        <input type="text" value={productForm.material} onChange={e => setProductForm(p => ({ ...p, material: e.target.value }))} className="w-full px-8 py-3 bg-slate-50 border border-slate-100 rounded-xl text-[12px] font-black uppercase outline-none" placeholder="E.G. COTTON, PLASTIC..." />
                       </div>
                       <div className="space-y-2">
                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Colors</label>
-                        <input type="text" value={productForm.colors.join(', ')} onChange={e => setProductForm(p => ({ ...p, colors: e.target.value.split(',').map(s => s.trim()).filter(s => s) }))} className="w-full px-8 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl text-[12px] font-black uppercase outline-none" placeholder="BLUE, RED, WHITE..." />
+                        <input type="text" value={productForm.colors.join(', ')} onChange={e => setProductForm(p => ({ ...p, colors: e.target.value.split(',').map(s => s.trim()).filter(s => s) }))} className="w-full px-8 py-3 bg-slate-50 border border-slate-100 rounded-xl text-[12px] font-black uppercase outline-none" placeholder="BLUE, RED, WHITE..." />
                       </div>
                     </div>
                     <div className="space-y-2">
@@ -747,13 +747,13 @@ const ProductInventory = () => {
                         Search Tags
                         <span className="text-[8px] opacity-40">COMMA SEPARATED</span>
                       </label>
-                      <textarea value={productForm.tags.join(', ')} onChange={e => setProductForm(p => ({ ...p, tags: e.target.value.split(',').map(s => s.trim()).filter(s => s) }))} className="w-full px-8 py-8 bg-slate-50 border border-slate-100 rounded-2xl text-[12px] font-medium h-[155px] resize-none outline-none shadow-inner" placeholder="PREMIUM, NEW, ECO-FRIENDLY..." />
+                      <textarea value={productForm.tags.join(', ')} onChange={e => setProductForm(p => ({ ...p, tags: e.target.value.split(',').map(s => s.trim()).filter(s => s) }))} className="w-full px-8 py-8 bg-slate-50 border border-slate-100 rounded-xl text-[12px] font-medium h-[155px] resize-none outline-none shadow-inner" placeholder="PREMIUM, NEW, ECO-FRIENDLY..." />
                     </div>
                   </div>
 
-                  <div className="bg-amber-400 p-8 rounded-2xl flex items-center justify-between shadow-xl shadow-amber-100">
+                  <div className="bg-amber-400 p-8 rounded-xl flex items-center justify-between shadow-xl shadow-amber-100">
                     <div className="flex items-center gap-6">
-                      <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center shadow-lg"><Star className={`h-8 w-8 ${productForm.isFeatured ? 'text-amber-500 fill-current' : 'text-slate-200'}`} /></div>
+                      <div className="w-16 h-16 bg-white rounded-xl flex items-center justify-center shadow-lg"><Star className={`h-8 w-8 ${productForm.isFeatured ? 'text-amber-500 fill-current' : 'text-slate-200'}`} /></div>
                       <div>
                         <p className="text-[12px] font-black text-amber-900 uppercase tracking-widest mb-1">Featured Product</p>
                         <p className="text-[10px] font-bold text-amber-800/60 uppercase tracking-widest">Display this product on the home page showcase</p>
@@ -769,7 +769,7 @@ const ProductInventory = () => {
 
             {/* Modal Footer Deck */}
             <footer className="p-8 bg-white border-t border-slate-50 flex gap-4 shrink-0 relative z-20">
-              <button type="button" onClick={() => setShowProductModal(false)} className="px-10 py-3.5 bg-slate-50 text-slate-400 rounded-xl text-[11px] font-black uppercase tracking-widest hover:bg-slate-100 transition-all active:scale-95">Cancel</button>
+              <button type="button" onClick={() => setShowProductModal(false)} className="px-10 py-3 bg-slate-50 text-slate-400 rounded-xl text-[11px] font-black uppercase tracking-widest hover:bg-slate-100 transition-all active:scale-95">Cancel</button>
               <button
                 disabled={submitting}
                 type="button"
@@ -778,7 +778,7 @@ const ProductInventory = () => {
                   else if (modalTab === 'tactical') setModalTab('discovery');
                   else handleProductSubmit(e);
                 }}
-                className="flex-1 py-3.5 bg-primary-600 text-white rounded-2xl text-[11px] font-black uppercase tracking-widest hover:bg-slate-900 hover:scale-[1.02] transition-all shadow-2xl shadow-primary-200 flex items-center justify-center gap-4 active:scale-95 disabled:opacity-50"
+                className="flex-1 py-3 bg-primary-600 text-white rounded-xl text-[11px] font-black uppercase tracking-widest hover:bg-slate-900 hover:scale-[1.02] transition-all shadow-2xl shadow-primary-200 flex items-center justify-center gap-4 active:scale-95 disabled:opacity-50"
               >
                 {submitting ? 'Saving...' : (
                   modalTab === 'essential' ? 'Go to Details' :
@@ -805,7 +805,7 @@ const ProductInventory = () => {
             </header>
             <form onSubmit={handleInventorySubmit} className="p-6 space-y-6 bg-slate-50/20">
               {selectedInventoryItem ? (
-                <div className="bg-slate-900 rounded-2xl p-6 text-white relative overflow-hidden group">
+                <div className="bg-slate-900 rounded-xl p-6 text-white relative overflow-hidden group">
                   <Target className="absolute -bottom-12 -right-12 w-48 h-48 opacity-10 animate-pulse pointer-events-none" />
                   <div className="relative z-10">
                     <label className="text-[10px] font-black text-primary-500 uppercase tracking-[0.4em] block mb-3">Product</label>
@@ -818,7 +818,7 @@ const ProductInventory = () => {
               ) : (
                 <div className="space-y-3">
                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Select Product</label>
-                  <select required value={inventoryForm.productId} onChange={e => setInventoryForm(p => ({ ...p, productId: e.target.value }))} className="w-full px-6 py-3.5 bg-white border border-slate-100 rounded-2xl text-[12px] font-black uppercase outline-none focus:ring-4 focus:ring-primary-600/5 appearance-none">
+                  <select required value={inventoryForm.productId} onChange={e => setInventoryForm(p => ({ ...p, productId: e.target.value }))} className="w-full px-6 py-3 bg-white border border-slate-100 rounded-xl text-[12px] font-black uppercase outline-none focus:ring-4 focus:ring-primary-600/5 appearance-none">
                     <option value="">SELECT PRODUCT...</option>
                     {products.map(p => <option key={p._id} value={p._id}>{p.name.toUpperCase()}</option>)}
                   </select>
@@ -842,13 +842,13 @@ const ProductInventory = () => {
                 </div>
                 <div className="space-y-3">
                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Quantity</label>
-                  <input type="number" required value={inventoryForm.quantity} onChange={e => setInventoryForm(p => ({ ...p, quantity: e.target.value }))} className="w-full px-6 py-3.5 bg-white border border-slate-100 rounded-2xl text-2xl font-black outline-none focus:ring-4 focus:ring-primary-600/5" placeholder="0" />
+                  <input type="number" required value={inventoryForm.quantity} onChange={e => setInventoryForm(p => ({ ...p, quantity: e.target.value }))} className="w-full px-6 py-3 bg-white border border-slate-100 rounded-xl text-2xl font-black outline-none focus:ring-4 focus:ring-primary-600/5" placeholder="0" />
                 </div>
               </div>
 
               <div className="space-y-3">
                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Reason for Update</label>
-                <input type="text" value={inventoryForm.notes} onChange={e => setInventoryForm(p => ({ ...p, notes: e.target.value }))} className="w-full px-8 py-3.5 bg-white border border-slate-100 rounded-2xl text-[11px] font-medium outline-none shadow-inner" placeholder="E.G. NEW DELIVERY, DAMAGED ITEM, INVENTORY COUNT..." />
+                <input type="text" value={inventoryForm.notes} onChange={e => setInventoryForm(p => ({ ...p, notes: e.target.value }))} className="w-full px-8 py-3 bg-white border border-slate-100 rounded-xl text-[11px] font-medium outline-none shadow-inner" placeholder="E.G. NEW DELIVERY, DAMAGED ITEM, INVENTORY COUNT..." />
               </div>
 
               <button disabled={submitting} type="submit" className="w-full py-6 bg-emerald-600 text-white rounded-[2rem] text-[11px] font-black uppercase tracking-[0.3em] hover:bg-slate-900 transition-all shadow-xl shadow-emerald-100 flex items-center justify-center gap-4 active:scale-95 disabled:opacity-50">

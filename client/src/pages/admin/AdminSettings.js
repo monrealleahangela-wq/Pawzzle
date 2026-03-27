@@ -86,7 +86,7 @@ const AdminSettings = () => {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Shipping */}
         <div className="lg:col-span-8 space-y-4">
-          <div className="bg-white border border-slate-100 rounded-2xl p-8 shadow-sm">
+          <div className="bg-white border border-slate-100 rounded-xl p-8 shadow-sm">
             <div className="flex items-center gap-4 mb-10">
               <div className="w-12 h-12 bg-primary-50 text-primary-600 rounded-[1.2rem] flex items-center justify-center">
                 <Truck className="h-6 w-6" />
@@ -143,7 +143,7 @@ const AdminSettings = () => {
 
         {/* Information */}
         <div className="lg:col-span-4 space-y-4">
-          <div className="bg-slate-900 rounded-2xl p-8 text-white relative overflow-hidden shadow-2xl">
+          <div className="bg-slate-900 rounded-xl p-8 text-white relative overflow-hidden shadow-2xl">
             <Globe className="absolute -bottom-10 -right-10 w-48 h-48 opacity-10 animate-pulse" />
             <div className="relative z-10">
               <h3 className="text-[11px] font-black text-primary-500 uppercase tracking-[0.4em] mb-6">Business Identity</h3>

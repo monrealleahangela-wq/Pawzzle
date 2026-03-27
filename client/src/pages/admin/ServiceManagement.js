@@ -195,12 +195,12 @@ const ServiceManagement = () => {
         <div className="flex flex-wrap items-center gap-4">
           <Link
             to="/admin/bookings"
-            className="px-8 py-3.5 bg-white border border-slate-100 text-slate-900 rounded-xl text-[11px] font-black uppercase tracking-[0.2em] hover:bg-slate-50 transition-all shadow-sm flex items-center gap-3"
+            className="px-8 py-3 bg-white border border-slate-100 text-slate-900 rounded-xl text-[11px] font-black uppercase tracking-[0.2em] hover:bg-slate-50 transition-all shadow-sm flex items-center gap-3"
           >
             <Calendar className="h-4 w-4 text-indigo-600" /> View Bookings
           </Link>
           <button onClick={() => { resetForm(); setShowModal(true); }}
-            className="px-8 py-3.5 bg-slate-900 text-white rounded-xl text-[11px] font-black uppercase tracking-[0.2em] hover:bg-indigo-600 transition-all shadow-xl shadow-slate-200 flex items-center gap-3 group">
+            className="px-8 py-3 bg-slate-900 text-white rounded-xl text-[11px] font-black uppercase tracking-[0.2em] hover:bg-indigo-600 transition-all shadow-xl shadow-slate-200 flex items-center gap-3 group">
             <Plus className="h-4 w-4 group-hover:rotate-90 transition-transform" /> Add New Service
           </button>
         </div>
@@ -225,25 +225,25 @@ const ServiceManagement = () => {
       </div>
 
       {/* Service HUD Filter - High Contrast & Always Visible */}
-      <div className="bg-slate-900 p-2 rounded-2xl shadow-xl border border-slate-800">
+      <div className="bg-slate-900 p-2 rounded-xl shadow-xl border border-slate-800">
         <div className="grid grid-cols-1 md:grid-cols-12 gap-2">
-          <div className="md:col-span-8 relative group">
-            <div className="absolute left-10 top-1/2 -translate-y-1/2 flex items-center gap-3">
+          <div className="md:col-span-6 relative group">
+            <div className="absolute left-4 top-1/2 -translate-y-1/2 flex items-center gap-3">
               <Search className="h-4 w-4 text-slate-500 group-focus-within:text-primary-500 transition-colors" />
             </div>
             <input
               type="text" placeholder=""
               value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-28 pr-4 py-3.5 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl outline-none focus:ring-2 focus:ring-primary-500/50 placeholder:text-slate-600 transition-all font-sans"
+              className="w-full pl-12 pr-4 py-3 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-xl outline-none focus:ring-2 focus:ring-primary-500/50 placeholder:text-slate-600 transition-all font-sans"
             />
           </div>
           <div className="md:col-span-4 relative">
-            <div className="absolute left-10 top-1/2 -translate-y-1/2">
+            <div className="absolute left-4 top-1/2 -translate-y-1/2">
               <Briefcase className="h-3.5 w-3.5 text-primary-500" />
             </div>
             <select
               value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)}
-              className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-2xl pl-28 pr-10 py-3.5 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer font-sans"
+              className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-xl pl-12 pr-10 py-3 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer font-sans"
             >
               <option value="" className="bg-slate-900 text-white font-black">ALL SERVICES: VIEW ALL</option>
               {categories.map(c => (
@@ -331,7 +331,7 @@ const ServiceManagement = () => {
           <div className="bg-white w-full max-w-5xl rounded-[3rem] overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300 flex flex-col max-h-[90vh]">
             <header className="p-8 border-b border-slate-100 flex items-center justify-between bg-white shrink-0">
               <div className="flex items-center gap-5">
-                <div className="w-14 h-14 bg-indigo-600 rounded-2xl flex items-center justify-center shadow-2xl shadow-indigo-200">
+                <div className="w-14 h-14 bg-indigo-600 rounded-xl flex items-center justify-center shadow-2xl shadow-indigo-200">
                   <Settings className="h-7 w-7 text-white" />
                 </div>
                 <div>
@@ -346,7 +346,7 @@ const ServiceManagement = () => {
             </header>
 
             {/* Tabs */}
-            <nav className="px-8 py-3.5 border-b border-slate-50 flex gap-4 overflow-x-auto no-scrollbar shrink-0 bg-slate-50/50">
+            <nav className="px-8 py-3 border-b border-slate-50 flex gap-4 overflow-x-auto no-scrollbar shrink-0 bg-slate-50/50">
               {[
                 { id: 'core', label: 'Basic Info', icon: Info },
                 { id: 'operations', label: 'Details', icon: Settings },
@@ -369,7 +369,7 @@ const ServiceManagement = () => {
                       <div className="space-y-2">
                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Service Name</label>
                         <input type="text" required value={formData.name} onChange={e => setFormData(p => ({ ...p, name: e.target.value }))}
-                          className="w-full px-6 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl text-[12px] font-black uppercase outline-none focus:ring-4 focus:ring-indigo-500/10" placeholder="E.G. PREMIUM GROOMING" />
+                          className="w-full px-6 py-3 bg-slate-50 border border-slate-100 rounded-xl text-[12px] font-black uppercase outline-none focus:ring-4 focus:ring-indigo-500/10" placeholder="E.G. PREMIUM GROOMING" />
                       </div>
                       <div className="space-y-2">
                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Service Category</label>
@@ -390,17 +390,17 @@ const ServiceManagement = () => {
                         <div className="space-y-2">
                           <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Base Price (₱)</label>
                           <div className="relative">
-                            <PhilippinePeso className="absolute left-10 top-1/2 -translate-y-1/2 h-5 w-5 text-indigo-600" />
+                            <PhilippinePeso className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-indigo-600" />
                             <input type="number" required value={formData.price} onChange={e => setFormData(p => ({ ...p, price: parseFloat(e.target.value) || 0 }))}
-                              className="w-full pl-28 pr-6 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl text-xl font-black outline-none focus:ring-4 focus:ring-indigo-500/10" placeholder="0" />
+                              className="w-full pl-12 pr-6 py-3 bg-slate-50 border border-slate-100 rounded-xl text-xl font-black outline-none focus:ring-4 focus:ring-indigo-500/10" placeholder="0" />
                           </div>
                         </div>
                         <div className="space-y-2">
                           <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Session Capacity</label>
                           <div className="relative">
-                            <Users className="absolute left-10 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+                            <Users className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
                             <input type="number" value={formData.maxPetsPerSession} onChange={e => setFormData(p => ({ ...p, maxPetsPerSession: parseInt(e.target.value) || 1 }))}
-                              className="w-full pl-28 pr-6 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl text-xl font-black outline-none" placeholder="1" />
+                              className="w-full pl-12 pr-6 py-3 bg-slate-50 border border-slate-100 rounded-xl text-xl font-black outline-none" placeholder="1" />
                           </div>
                         </div>
                       </div>
@@ -418,7 +418,7 @@ const ServiceManagement = () => {
                         <div className="flex items-center gap-3">
                           <Clock className="h-5 w-5 text-slate-400" />
                           <input type="number" value={formData.duration} onChange={e => setFormData(p => ({ ...p, duration: parseInt(e.target.value) || 0 }))}
-                            className="w-full px-6 py-3.5 bg-slate-50 border border-slate-100 rounded-xl text-[12px] font-black outline-none" placeholder="Custom minutes" />
+                            className="w-full px-6 py-3 bg-slate-50 border border-slate-100 rounded-xl text-[12px] font-black outline-none" placeholder="Custom minutes" />
                           <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest whitespace-nowrap">Min</span>
                         </div>
                       </div>
@@ -426,7 +426,7 @@ const ServiceManagement = () => {
                       <div className="space-y-2">
                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Service Description</label>
                         <textarea required value={formData.description} onChange={e => setFormData(p => ({ ...p, description: e.target.value }))}
-                          className="w-full px-8 py-6 bg-slate-50 border border-slate-100 rounded-2xl text-[13px] font-medium leading-relaxed outline-none h-40 resize-none shadow-inner" placeholder="WHAT DOES THIS SERVICE INCLUDE? DETAIL THE EXPERIENCE..." />
+                          className="w-full px-8 py-6 bg-slate-50 border border-slate-100 rounded-xl text-[13px] font-medium leading-relaxed outline-none h-40 resize-none shadow-inner" placeholder="WHAT DOES THIS SERVICE INCLUDE? DETAIL THE EXPERIENCE..." />
                       </div>
                     </div>
                   </div>
@@ -457,7 +457,7 @@ const ServiceManagement = () => {
                       <div className="bg-white/10 rounded-xl p-6 border border-white/10 animate-in fade-in duration-300">
                         <label className="text-[10px] font-black text-indigo-200 uppercase tracking-[0.3em] block mb-3">Home Service Fee (₱)</label>
                         <input type="number" value={formData.homeServicePrice} onChange={e => setFormData(p => ({ ...p, homeServicePrice: parseFloat(e.target.value) || 0 }))}
-                          className="w-full px-6 py-3.5 bg-white/10 border border-white/10 rounded-xl text-xl font-black text-white outline-none focus:bg-white/20" placeholder="0.00" />
+                          className="w-full px-6 py-3 bg-white/10 border border-white/10 rounded-xl text-xl font-black text-white outline-none focus:bg-white/20" placeholder="0.00" />
                       </div>
                     )}
                   </div>
@@ -468,7 +468,7 @@ const ServiceManagement = () => {
                       <AlertTriangle className="h-4 w-4 text-amber-500" /> Requirements & Notes
                     </label>
                     <textarea value={formData.requirements} onChange={e => setFormData(p => ({ ...p, requirements: e.target.value }))}
-                      className="w-full px-8 py-8 bg-slate-50 border border-slate-100 rounded-2xl text-[12px] font-medium leading-relaxed h-44 resize-none outline-none shadow-inner"
+                      className="w-full px-8 py-8 bg-slate-50 border border-slate-100 rounded-xl text-[12px] font-medium leading-relaxed h-44 resize-none outline-none shadow-inner"
                       placeholder="E.G. PET MUST HAVE UP-TO-DATE VACCINATIONS, BRING MEDICAL RECORDS, NO AGGRESSIVE PETS..." />
                   </div>
                 </div>
@@ -509,9 +509,9 @@ const ServiceManagement = () => {
                   </div>
 
                   {/* Active Toggle */}
-                  <div className="bg-emerald-500 p-8 rounded-2xl flex items-center justify-between shadow-xl shadow-emerald-100">
+                  <div className="bg-emerald-500 p-8 rounded-xl flex items-center justify-between shadow-xl shadow-emerald-100">
                     <div className="flex items-center gap-6">
-                      <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center shadow-lg">
+                      <div className="w-16 h-16 bg-white rounded-xl flex items-center justify-center shadow-lg">
                         <CheckCircle className={`h-8 w-8 ${formData.isActive ? 'text-emerald-500' : 'text-slate-300'}`} />
                       </div>
                       <div>
@@ -531,7 +531,7 @@ const ServiceManagement = () => {
             {/* Footer */}
             <footer className="p-8 bg-white border-t border-slate-50 flex gap-4 shrink-0 relative z-20">
               <button type="button" onClick={() => setShowModal(false)}
-                className="px-10 py-3.5 bg-slate-50 text-slate-400 rounded-xl text-[11px] font-black uppercase tracking-[0.2em] hover:bg-slate-100 transition-all active:scale-95">
+                className="px-10 py-3 bg-slate-50 text-slate-400 rounded-xl text-[11px] font-black uppercase tracking-[0.2em] hover:bg-slate-100 transition-all active:scale-95">
                 Cancel
               </button>
               <button disabled={submitting} type="button"
@@ -540,7 +540,7 @@ const ServiceManagement = () => {
                   else if (modalTab === 'operations') setModalTab('media');
                   else handleSubmit(e);
                 }}
-                className="flex-1 py-3.5 bg-indigo-600 text-white rounded-2xl text-[11px] font-black uppercase tracking-[0.3em] hover:bg-slate-900 hover:scale-[1.02] transition-all shadow-2xl shadow-indigo-200 flex items-center justify-center gap-4 active:scale-95 disabled:opacity-50">
+                className="flex-1 py-3 bg-indigo-600 text-white rounded-xl text-[11px] font-black uppercase tracking-[0.3em] hover:bg-slate-900 hover:scale-[1.02] transition-all shadow-2xl shadow-indigo-200 flex items-center justify-center gap-4 active:scale-95 disabled:opacity-50">
                 {submitting ? 'SAVING...' : (
                   modalTab === 'core' ? 'Details' :
                     modalTab === 'operations' ? 'Images' :
@@ -557,12 +557,12 @@ const ServiceManagement = () => {
       {showDeleteConfirm && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center z-[110] p-4">
           <div className="bg-white rounded-[3rem] p-10 max-w-sm w-full shadow-2xl text-center animate-in zoom-in-95 duration-300">
-            <div className="w-20 h-20 bg-rose-50 text-rose-600 rounded-2xl flex items-center justify-center mx-auto mb-6"><Trash2 className="h-10 w-10" /></div>
+            <div className="w-20 h-20 bg-rose-50 text-rose-600 rounded-xl flex items-center justify-center mx-auto mb-6"><Trash2 className="h-10 w-10" /></div>
             <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tighter mb-2">Delete Service?</h2>
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-relaxed mb-8">This action will permanently remove the service from your store.</p>
             <div className="flex flex-col gap-3">
-              <button onClick={confirmDelete} className="w-full py-3.5 bg-rose-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-rose-200">Delete Service</button>
-              <button onClick={() => setShowDeleteConfirm(false)} className="w-full py-3.5 bg-slate-50 text-slate-400 rounded-xl text-[10px] font-black uppercase tracking-widest">Cancel</button>
+              <button onClick={confirmDelete} className="w-full py-3 bg-rose-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-rose-200">Delete Service</button>
+              <button onClick={() => setShowDeleteConfirm(false)} className="w-full py-3 bg-slate-50 text-slate-400 rounded-xl text-[10px] font-black uppercase tracking-widest">Cancel</button>
             </div>
           </div>
         </div>

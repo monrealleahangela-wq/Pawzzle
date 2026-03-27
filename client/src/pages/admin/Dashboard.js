@@ -133,7 +133,7 @@ const Dashboard = () => {
 
         <button
           onClick={handleRefreshRole}
-          className="group relative px-8 py-3.5 bg-white border border-slate-100 rounded-xl overflow-hidden transition-all hover:border-primary-200 active:scale-95 shadow-sm"
+          className="group relative px-8 py-3 bg-white border border-slate-100 rounded-xl overflow-hidden transition-all hover:border-primary-200 active:scale-95 shadow-sm"
         >
           <div className="absolute inset-0 bg-slate-50 translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
           <div className="relative flex items-center gap-3">
@@ -158,7 +158,7 @@ const Dashboard = () => {
           <Link
             key={i}
             to={stat.link}
-            className="group relative bg-white border border-slate-100 p-6 rounded-2xl hover:shadow-2xl hover:border-primary-100 transition-all overflow-hidden"
+            className="group relative bg-white border border-slate-100 p-6 rounded-xl hover:shadow-2xl hover:border-primary-100 transition-all overflow-hidden"
           >
             <div className={`absolute top-0 right-0 w-24 h-24 bg-${stat.color}-50 rounded-bl-[3rem] -translate-y-12 translate-x-12 opacity-0 group-hover:opacity-100 transition-all duration-500`} />
 

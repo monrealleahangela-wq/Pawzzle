@@ -125,7 +125,7 @@ const AdminUsers = () => {
       </div>
 
       {users.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-20 bg-slate-50/50 rounded-2xl border border-dashed border-slate-200">
+        <div className="flex flex-col items-center justify-center py-20 bg-slate-50/50 rounded-xl border border-dashed border-slate-200">
           <Users className="h-10 w-10 text-slate-200 mb-4" />
           <h2 className="text-xs font-black text-slate-400 uppercase tracking-widest">No users found</h2>
         </div>

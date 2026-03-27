@@ -231,25 +231,25 @@ const StaffManagement = () => {
                 </div>
 
                 {/* Team HUD Filter - High Contrast & Always Visible */}
-                <div className="bg-slate-900 p-2 rounded-2xl shadow-xl border border-slate-800">
+                <div className="bg-slate-900 p-2 rounded-xl shadow-xl border border-slate-800">
                     <div className="grid grid-cols-1 md:grid-cols-12 gap-2">
-                        <div className="md:col-span-8 relative group">
-                            <div className="absolute left-10 top-1/2 -translate-y-1/2 flex items-center gap-3">
+                        <div className="md:col-span-6 relative group">
+                            <div className="absolute left-4 top-1/2 -translate-y-1/2 flex items-center gap-3">
                                 <Search className="h-4 w-4 text-slate-500 group-focus-within:text-primary-500 transition-colors" />
                             </div>
                             <input
                                 type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
                                 placeholder=""
-                                className="w-full pl-28 pr-4 py-3.5 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl outline-none focus:ring-2 focus:ring-primary-500/50 placeholder:text-slate-600 transition-all font-sans"
+                                className="w-full pl-12 pr-4 py-3 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-xl outline-none focus:ring-2 focus:ring-primary-500/50 placeholder:text-slate-600 transition-all font-sans"
                             />
                         </div>
                         <div className="md:col-span-4 relative">
-                            <div className="absolute left-10 top-1/2 -translate-y-1/2">
+                            <div className="absolute left-4 top-1/2 -translate-y-1/2">
                                 <Shield className="h-4 w-4 text-primary-500" />
                             </div>
                             <select
                                 value={filterType} onChange={(e) => setFilterType(e.target.value)}
-                                className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-2xl pl-28 pr-10 py-3.5 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer font-sans"
+                                className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-xl pl-12 pr-10 py-3 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer font-sans"
                             >
                                 <option value="" className="bg-slate-900 text-white font-black">ALL ROLES: VIEW ALL</option>
                                 {STAFF_TYPES.map(t => (
@@ -279,11 +279,11 @@ const StaffManagement = () => {
                             <table className="w-full">
                                 <thead>
                                     <tr className="border-b border-slate-50">
-                                        <th className="text-left px-6 py-3.5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Staff Member</th>
-                                        <th className="text-left px-6 py-3.5 text-[10px] font-black text-slate-400 uppercase tracking-widest hidden sm:table-cell">Contact</th>
-                                        <th className="text-left px-6 py-3.5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Role</th>
-                                        <th className="text-left px-6 py-3.5 text-[10px] font-black text-slate-400 uppercase tracking-widest hidden sm:table-cell">Status</th>
-                                        <th className="text-right px-6 py-3.5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Actions</th>
+                                        <th className="text-left px-6 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest">Staff Member</th>
+                                        <th className="text-left px-6 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest hidden sm:table-cell">Contact</th>
+                                        <th className="text-left px-6 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest">Role</th>
+                                        <th className="text-left px-6 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest hidden sm:table-cell">Status</th>
+                                        <th className="text-right px-6 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-50">
@@ -292,7 +292,7 @@ const StaffManagement = () => {
                                         const Icon = typeInfo?.icon || Shield;
                                         return (
                                             <tr key={member._id} className={`hover:bg-slate-50/50 transition-colors ${!member.isActive ? 'opacity-50' : ''}`}>
-                                                <td className="px-6 py-3.5">
+                                                <td className="px-6 py-3">
                                                     <div className="flex items-center gap-3">
                                                         <div className="w-9 h-9 rounded-xl bg-slate-100 flex items-center justify-center font-black text-slate-500 text-sm shrink-0">
                                                             {member.firstName[0]}{member.lastName[0]}
@@ -303,17 +303,17 @@ const StaffManagement = () => {
                                                         </div>
                                                     </div>
                                                 </td>
-                                                <td className="px-6 py-3.5 hidden sm:table-cell">
+                                                <td className="px-6 py-3 hidden sm:table-cell">
                                                     <p className="text-slate-600 text-xs">{member.email}</p>
                                                     {member.phone && <p className="text-slate-400 text-xs">{member.phone}</p>}
                                                 </td>
-                                                <td className="px-6 py-3.5">
+                                                <td className="px-6 py-3">
                                                     <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-[10px] font-black uppercase tracking-widest ${TYPE_STYLES[member.staffType]}`}>
                                                         <Icon className="h-3 w-3" />
                                                         {typeInfo?.label || member.staffType}
                                                     </span>
                                                 </td>
-                                                <td className="px-6 py-3.5 hidden sm:table-cell">
+                                                <td className="px-6 py-3 hidden sm:table-cell">
                                                     <div className="flex flex-col gap-1.5">
                                                         <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest ${member.isActive ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-600'}`}>
                                                             <span className={`w-1.5 h-1.5 rounded-full ${member.isActive ? 'bg-emerald-500' : 'bg-rose-400'}`} />
@@ -329,7 +329,7 @@ const StaffManagement = () => {
                                                         )}
                                                     </div>
                                                 </td>
-                                                <td className="px-6 py-3.5">
+                                                <td className="px-6 py-3">
                                                     <div className="flex items-center justify-end gap-1.5">
                                                         <button
                                                             onClick={() => openEdit(member)}
@@ -374,7 +374,7 @@ const StaffManagement = () => {
             {/* Create / Edit Modal */}
             {showModal && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+                    <div className="bg-white rounded-xl w-full max-w-lg shadow-2xl animate-in fade-in zoom-in-95 duration-200">
                         <div className="flex items-center justify-between p-6 border-b border-slate-50">
                             <div>
                                 <h2 className="font-black text-slate-900 uppercase tracking-tighter text-lg">
@@ -504,14 +504,14 @@ const StaffManagement = () => {
                                 <button
                                     type="submit"
                                     disabled={submitting}
-                                    className="flex-1 py-3.5 bg-slate-900 text-white rounded-xl font-black text-xs uppercase tracking-widest hover:bg-primary-600 transition-all disabled:opacity-50"
+                                    className="flex-1 py-3 bg-slate-900 text-white rounded-xl font-black text-xs uppercase tracking-widest hover:bg-primary-600 transition-all disabled:opacity-50"
                                 >
                                     {submitting ? 'Saving...' : editingStaff ? 'Save Changes' : 'Create Staff Account'}
                                 </button>
                                 <button
                                     type="button"
                                     onClick={() => setShowModal(false)}
-                                    className="px-6 py-3.5 bg-slate-50 text-slate-500 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-slate-100 transition-all border border-slate-100"
+                                    className="px-6 py-3 bg-slate-50 text-slate-500 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-slate-100 transition-all border border-slate-100"
                                 >
                                     Cancel
                                 </button>
@@ -524,7 +524,7 @@ const StaffManagement = () => {
             {/* Reset Password Modal */}
             {resetTarget && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl animate-in fade-in zoom-in-95 duration-200 p-6 space-y-4">
+                    <div className="bg-white rounded-xl w-full max-w-sm shadow-2xl animate-in fade-in zoom-in-95 duration-200 p-6 space-y-4">
                         <div className="flex items-center justify-between">
                             <div>
                                 <h2 className="font-black text-slate-900 uppercase tracking-tighter">Reset Password</h2>

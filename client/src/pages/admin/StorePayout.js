@@ -208,7 +208,7 @@ const StorePayout = () => {
                                 <button
                                     type="submit"
                                     disabled={requesting}
-                                    className="w-full py-3.5 bg-slate-900 text-white rounded-xl font-black text-xs uppercase tracking-widest hover:bg-slate-800 transition-all disabled:opacity-50"
+                                    className="w-full py-3 bg-slate-900 text-white rounded-xl font-black text-xs uppercase tracking-widest hover:bg-slate-800 transition-all disabled:opacity-50"
                                 >
                                     {requesting ? 'Submitting...' : 'Request Withdrawal'}
                                 </button>
