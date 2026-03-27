@@ -164,6 +164,8 @@ const verifyRegisterOTP = async (req, res) => {
     }
 
     // OTP verified — create the user
+    const { userData } = storedData;
+
     const existingEmail = await User.findOne({ email: userData.email, isDeleted: false });
     if (existingEmail) {
       otpStore.delete(`reg_${email}`);
