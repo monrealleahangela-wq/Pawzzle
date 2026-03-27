@@ -529,13 +529,13 @@ const StoreApplications = () => {
                 )}
               </div>
             ) : (
-              <div className="p-10 bg-white border-t border-slate-100 relative z-10 space-y-8 shadow-[0_-20px_50px_rgba(0,0,0,0.05)]">
-                <div className="bg-amber-50 rounded-[2rem] p-8 border border-amber-100/50">
-                   <div className="flex items-center gap-3 mb-4">
-                     <AlertTriangle className="h-5 w-5 text-amber-600" />
-                     <h4 className="text-[10px] font-black uppercase text-amber-600 tracking-widest">Mark Corrections Needed</h4>
+              <div className="p-6 bg-white border-t border-slate-100 relative z-10 space-y-4 shadow-[0_-20px_50px_rgba(0,0,0,0.05)]">
+                <div className="bg-amber-50 rounded-2xl p-4 border border-amber-100/50">
+                   <div className="flex items-center gap-2 mb-3">
+                     <AlertTriangle className="h-4 w-4 text-amber-600" />
+                     <h4 className="text-[9px] font-black uppercase text-amber-600 tracking-widest">Mark Corrections Needed</h4>
                    </div>
-                   <div className="flex flex-wrap gap-2">
+                   <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-1.5">
                      {CORRECTION_OPTIONS.map(opt => (
                        <button
                          key={opt.id}
@@ -548,19 +548,19 @@ const StoreApplications = () => {
                              return { ...prev, requiredCorrections: next };
                            });
                          }}
-                         className={`px-3 py-1.5 rounded-lg text-[8px] font-black uppercase tracking-widest border transition-all ${reviewForm.requiredCorrections?.includes(opt.id) ? 'bg-amber-600 border-amber-600 text-white shadow-lg' : 'bg-white border-amber-100 text-amber-600 hover:bg-amber-50'}`}
+                         className={`px-2 py-1 rounded-lg text-[7px] font-black uppercase tracking-widest border transition-all ${reviewForm.requiredCorrections?.includes(opt.id) ? 'bg-amber-600 border-amber-600 text-white shadow-lg' : 'bg-white border-amber-100 text-amber-600 hover:bg-amber-50'}`}
                        >
                          {opt.label}
                        </button>
                      ))}
                    </div>
-                   <p className="text-[8px] font-bold text-amber-600 uppercase tracking-widest mt-4 italic opacity-60">* Selection will be highlighted for the applicant</p>
+                   <p className="text-[8px] font-bold text-amber-600 uppercase tracking-widest mt-3 italic opacity-60">* Selection will be highlighted for the applicant</p>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                   <button
                     onClick={() => handleReview(selectedApplication._id, 'approved', reviewForm.reviewNotes)}
-                    className="py-6 bg-slate-900 text-white rounded-[2rem] text-[10px] font-black uppercase tracking-[0.1em] hover:bg-emerald-600 transition-all shadow-xl flex items-center justify-center gap-2"
+                    className="py-4 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.1em] hover:bg-emerald-600 transition-all shadow-xl flex items-center justify-center gap-2"
                   >
                     <Check className="h-4 w-4" /> Approve
                   </button>
@@ -572,7 +572,7 @@ const StoreApplications = () => {
                       }
                       handleReview(selectedApplication._id, 'requires_more_info', reviewForm.reviewNotes, '', reviewForm.requiredCorrections);
                     }}
-                    className="py-6 bg-amber-500 text-white rounded-[2rem] text-[10px] font-black uppercase tracking-[0.1em] hover:bg-amber-600 transition-all shadow-xl flex items-center justify-center gap-2"
+                    className="py-4 bg-amber-500 text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.1em] hover:bg-amber-600 transition-all shadow-xl flex items-center justify-center gap-2"
                   >
                     <AlertTriangle className="h-4 w-4" /> Need Info
                   </button>
@@ -584,14 +584,14 @@ const StoreApplications = () => {
                       }
                       handleReview(selectedApplication._id, 'rejected', reviewForm.reviewNotes, reviewForm.rejectionReason, reviewForm.requiredCorrections);
                     }}
-                    className="py-6 bg-rose-600 text-white rounded-[2rem] text-[10px] font-black uppercase tracking-[0.1em] hover:bg-rose-700 transition-all shadow-xl flex items-center justify-center gap-2"
+                    className="py-4 bg-rose-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.1em] hover:bg-rose-700 transition-all shadow-xl flex items-center justify-center gap-2"
                   >
                     <X className="h-4 w-4" /> Reject
                   </button>
                 </div>
 
-                <div className="bg-rose-50/50 p-8 rounded-[1.5rem] border border-rose-100/50 mt-4">
-                  <label className="text-[10px] font-black text-rose-400 uppercase tracking-widest mb-4 block">Final Decision Feedback (Optional for Approval)</label>
+                <div className="bg-rose-50/50 p-4 rounded-2xl border border-rose-100/50 mt-2">
+                  <label className="text-[9px] font-black text-rose-400 uppercase tracking-widest mb-3 block">Final Decision Feedback (Optional for Approval)</label>
                   <div className="flex flex-wrap gap-2 mb-4">
                     {REJECTION_REASONS.map(reason => (
                       <button 
