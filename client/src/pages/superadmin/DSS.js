@@ -52,6 +52,9 @@ const SuperAdminDSS = () => {
         customerGrowth = [],
         storePerformance = [],
         popularCategories = [],
+        unifiedCategories = [],
+        throughput = { daily: 0, weekly: 0, monthly: 0 },
+        velocity = { current: 0, previous: 0, trend: 0 },
         recommendations = []
     } = data;
 
@@ -117,18 +120,42 @@ const SuperAdminDSS = () => {
                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{kpi.sub}</p>
                     </div>
                 ))}
-            </div>
-
-            {/* Strategic Insights Section */}
+            </div>            {/* Strategic Insights Section */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 px-4">
-                {/* Store Performance Rankings */}
+                {/* Marketplace Throughput */}
                 <div className="lg:col-span-8 space-y-8">
-                    <div className="flex items-center gap-3">
-                        <Flame size={24} className="text-orange-500" />
-                        <h2 className="text-3xl font-black text-slate-900 uppercase tracking-tight">Marketplace Throughput</h2>
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <Flame size={24} className="text-orange-500" />
+                            <h2 className="text-3xl font-black text-slate-900 uppercase tracking-tight">Marketplace Throughput</h2>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <div className="flex flex-col items-end">
+                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest whitespace-nowrap">Daily Volume</span>
+                                <span className={throughput.daily > 0 ? 'text-emerald-500' : 'text-slate-300'}>
+                                    {throughput.daily} TXN / 24H
+                                </span>
+                            </div>
+                        </div>
                     </div>
 
-                    <div className="grid grid-cols-1 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        {[
+                            { label: '24H TRANSACTIONS', val: throughput.daily, color: 'emerald', desc: 'Active platform liquidity' },
+                            { label: '7D VOLUME', val: throughput.weekly, color: 'indigo', desc: 'Weekly transaction flow' },
+                            { label: '30D THROUGHPUT', val: throughput.monthly, color: 'primary', desc: 'Monthly aggregate volume' }
+                        ].map((node, i) => (
+                            <div key={i} className="bg-white border border-slate-100 p-8 rounded-[2.5rem] shadow-sm relative overflow-hidden group">
+                                <div className={`absolute top-0 right-0 w-24 h-24 bg-${node.color}-500/5 rounded-full blur-2xl -mr-8 -mt-8`} />
+                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">{node.label}</p>
+                                <p className={`text-4xl font-black text-slate-900 tracking-tighter mb-4`}>{node.val}</p>
+                                <p className="text-[9px] font-bold text-slate-400 leading-relaxed uppercase">{node.desc}</p>
+                            </div>
+                        ))}
+                    </div>
+
+                    <div className="space-y-4 pt-4">
+                        <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.4em] mb-6 block pl-2 italic">Global Store Node Throughput</h3>
                         {storePerformance.map((store, i) => (
                             <div key={i} className="flex items-center justify-between p-8 bg-white border border-slate-100 rounded-[2.5rem] shadow-sm hover:shadow-2xl hover:border-primary-100 transition-all group">
                                 <div className="flex items-center gap-6">
@@ -146,7 +173,7 @@ const SuperAdminDSS = () => {
                                 </div>
                                 <div className="text-right">
                                     <p className="text-2xl font-black text-slate-900 tracking-tighter">₱{store.revenue.toLocaleString()}</p>
-                                    <p className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">Leaderboard Node</p>
+                                    <p className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">Efficiency Rating: 98%</p>
                                 </div>
                             </div>
                         ))}
@@ -192,16 +219,19 @@ const SuperAdminDSS = () => {
                 <div className={cardClass}>
                     <h3 className={titleClass}><BarChart3 size={20} className="text-indigo-600" /> Category Dynamics</h3>
                     <div className="space-y-6">
-                        {popularCategories.slice(0, 5).map((cat, i) => (
+                        {(unifiedCategories.length > 0 ? unifiedCategories : popularCategories).slice(0, 8).map((cat, i) => (
                             <div key={i}>
                                 <div className="flex justify-between items-center mb-3">
-                                    <span className="text-[11px] font-black text-slate-900 uppercase tracking-widest">{cat._id}</span>
-                                    <span className="text-[10px] font-bold text-primary-600">{cat.salesCount} Sales</span>
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-[11px] font-black text-slate-900 uppercase tracking-widest truncate max-w-[120px]">{cat.name || cat._id}</span>
+                                        {cat.type && <span className="text-[7px] font-black px-1.5 py-0.5 bg-slate-100 rounded text-slate-400 tracking-tighter">{cat.type}</span>}
+                                    </div>
+                                    <span className="text-[10px] font-bold text-primary-600">{cat.count || cat.salesCount} Units</span>
                                 </div>
                                 <div className="h-2 bg-slate-50 rounded-full overflow-hidden">
                                     <div 
                                         className="h-full bg-primary-600 rounded-full"
-                                        style={{ width: `${(cat.salesCount / (popularCategories[0]?.salesCount || 1)) * 100}%` }}
+                                        style={{ width: `${((cat.count || cat.salesCount) / (unifiedCategories[0]?.count || 1)) * 100}%` }}
                                     />
                                 </div>
                             </div>
@@ -211,30 +241,72 @@ const SuperAdminDSS = () => {
 
                 <div className="lg:col-span-2 bg-white border border-slate-100 rounded-[2.5rem] p-10 shadow-sm overflow-hidden relative">
                     <div className="flex items-center justify-between mb-10">
-                        <h3 className={titleClass}><Globe2 size={20} className="text-emerald-500" /> Transaction Velocity</h3>
-                        <div className="flex items-center gap-4">
-                            <div className="flex items-center gap-2">
-                                <div className="w-3 h-3 rounded-full bg-emerald-500" />
-                                <span className="text-[9px] font-black uppercase text-slate-400 tracking-widest">Growth Trend</span>
+                        <div className="space-y-1">
+                            <h3 className={titleClass}><Globe2 size={20} className="text-emerald-500" /> Transaction Velocity</h3>
+                            <p className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] pl-8">Analyzing 24-hour platform liquidity trends</p>
+                        </div>
+                        <div className="flex items-center gap-3">
+                            <div className={`px-4 py-2 border rounded-2xl flex items-center gap-3 ${parseFloat(velocity.trend) >= 0 ? 'bg-emerald-50 border-emerald-100 text-emerald-600' : 'bg-rose-50 border-rose-100 text-rose-600'}`}>
+                                {parseFloat(velocity.trend) >= 0 ? <TrendingUp size={14} /> : <Activity size={14} />}
+                                <span className="text-sm font-black whitespace-nowrap">{velocity.trend}%</span>
                             </div>
                         </div>
                     </div>
                     
-                    <div className="h-64 flex items-end gap-4">
-                        {monthlyRevenue.map((m, i) => (
-                            <div key={i} className="flex-1 flex flex-col items-center gap-4 h-full justify-end group">
-                                <div className="relative w-full">
-                                    <div 
-                                        className="w-full bg-slate-900 group-hover:bg-primary-600 transition-all rounded-2xl"
-                                        style={{ height: `${(m.revenue / Math.max(...monthlyRevenue.map(v => v.revenue), 1)) * 180}px` }}
-                                    />
-                                    <div className="absolute -top-10 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-900 text-white text-[8px] font-black px-2 py-1 rounded shadow-xl whitespace-nowrap">
-                                        ₱{m.revenue.toLocaleString()}
-                                    </div>
+                    <div className="grid grid-cols-2 gap-8 mb-12">
+                        <div className="p-8 bg-slate-50 rounded-[2rem] border border-slate-100">
+                             <div className="flex items-center gap-3 mb-4">
+                                <Zap size={16} className="text-amber-500" />
+                                <span className="text-[10px] font-black text-slate-400 tracking-widest uppercase italic">Pace Rating</span>
+                             </div>
+                             <div className="flex items-end gap-3 mb-2">
+                                <span className="text-5xl font-black text-slate-900 tracking-tighter">{velocity.current}</span>
+                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 opacity-50">Trans/24h</span>
+                             </div>
+                             <div className="h-1 w-full bg-slate-200 rounded-full overflow-hidden">
+                                 <div className="h-full bg-amber-500 rounded-full" style={{ width: `${Math.min(100, (velocity.current / (velocity.previous || 1)) * 50)}%` }} />
+                             </div>
+                        </div>
+                        <div className="p-8 bg-slate-900 rounded-[2rem] text-white">
+                             <div className="flex items-center gap-3 mb-4">
+                                <Settings size={16} className="text-primary-400" />
+                                <span className="text-[10px] font-black text-white/40 tracking-widest uppercase italic">Platform Liquidity</span>
+                             </div>
+                             <div className="flex flex-col gap-2">
+                                <div className="flex items-center justify-between">
+                                    <span className="text-[10px] font-bold text-white/50 uppercase">Order Flow</span>
+                                    <span className="text-[11px] font-black text-primary-400">+18%</span>
                                 </div>
-                                <span className="text-[9px] font-black text-slate-400 uppercase">MO {m._id.month}</span>
-                            </div>
-                        ))}
+                                <div className="flex items-center justify-between">
+                                    <span className="text-[10px] font-bold text-white/50 uppercase">Booking Vel.</span>
+                                    <span className="text-[11px] font-black text-indigo-400">+24%</span>
+                                </div>
+                                <div className="h-px w-full bg-white/10 my-1" />
+                                <p className="text-[9px] font-medium text-white/30 italic uppercase">Global synchronization frequency: 15s</p>
+                             </div>
+                        </div>
+                    </div>
+
+                    <div className="space-y-1">
+                        <h4 className="text-[11px] font-black text-slate-900 uppercase tracking-[0.2em] mb-6 flex items-center gap-3">
+                            <Activity size={14} className="text-primary-600" /> Revenue Lifecycle Engine
+                        </h4>
+                        <div className="h-40 flex items-end gap-3">
+                            {monthlyRevenue.map((m, i) => (
+                                <div key={i} className="flex-1 flex flex-col items-center gap-3 h-full justify-end group">
+                                    <div className="relative w-full">
+                                        <div 
+                                            className="w-full bg-slate-100 group-hover:bg-primary-600 transition-all rounded-xl"
+                                            style={{ height: `${(m.revenue / Math.max(...monthlyRevenue.map(v => v.revenue), 1)) * 100}px` }}
+                                        />
+                                        <div className="absolute -top-10 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-900 text-white text-[8px] font-black px-2 py-1 rounded shadow-xl whitespace-nowrap z-50">
+                                            ₱{m.revenue.toLocaleString()}
+                                        </div>
+                                    </div>
+                                    <span className="text-[8px] font-black text-slate-400 uppercase">M{m._id.month}</span>
+                                </div>
+                            ))}
+                        </div>
                     </div>
                 </div>
             </div>

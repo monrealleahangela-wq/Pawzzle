@@ -852,6 +852,33 @@ const getSuperAdminInsights = async (req, res) => {
             { $sort: { count: -1 } }
         ]);
 
+        // --- NEW: HI-FI DSS METRICS (Throughput, Velocity, Dynamics) ---
+        const last24h = new Date(now.getTime() - (24 * 60 * 60 * 1000));
+        const prev24h = new Date(now.getTime() - (48 * 60 * 60 * 1000));
+        const sevenDaysAgo = new Date(now.getTime() - (7 * 24 * 60 * 60 * 1000));
+        const thirtyDaysAgo = new Date(now.getTime() - (30 * 24 * 60 * 60 * 1000));
+
+        // 1. Transaction Velocity (Last 24h vs Previous 24h)
+        const currentVelocity = await Order.countDocuments({ createdAt: { $gte: last24h }, isDeleted: { $ne: true } }) +
+                                 await Booking.countDocuments({ createdAt: { $gte: last24h }, isDeleted: { $ne: true } });
+        const previousVelocity = await Order.countDocuments({ createdAt: { $gte: prev24h, $lt: last24h }, isDeleted: { $ne: true } }) +
+                                  await Booking.countDocuments({ createdAt: { $gte: prev24h, $lt: last24h }, isDeleted: { $ne: true } });
+        const velocityTrend = previousVelocity === 0 ? (currentVelocity > 0 ? 100 : 0) : ((currentVelocity - previousVelocity) / previousVelocity) * 100;
+
+        // 2. Marketplace Throughput (Volume per period)
+        const dailyThroughput = currentVelocity; 
+        const weeklyThroughput = await Order.countDocuments({ createdAt: { $gte: sevenDaysAgo }, isDeleted: { $ne: true } }) +
+                                  await Booking.countDocuments({ createdAt: { $gte: sevenDaysAgo }, isDeleted: { $ne: true } });
+        const monthlyThroughput = await Order.countDocuments({ createdAt: { $gte: thirtyDaysAgo }, isDeleted: { $ne: true } }) +
+                                   await Booking.countDocuments({ createdAt: { $gte: thirtyDaysAgo }, isDeleted: { $ne: true } });
+
+        // 3. Robust Category Dynamics (Unified View)
+        const unifiedCategories = [
+            ...productCategories.map(c => ({ name: c._id, count: c.count, type: 'Product' })),
+            ...speciesDistribution.map(s => ({ name: s._id, count: s.count, type: 'Species' }))
+        ].sort((a, b) => b.count - a.count).slice(0, 8);
+
+
         // Smart recommendations
         const recommendations = [];
         if (allOrders.length > 0 && cancelledOrders > allOrders.length * 0.25) recommendations.push({ type: 'critical', title: 'High Platform Cancellation Rate', message: `${((cancelledOrders / allOrders.length) * 100).toFixed(0)}% orders cancelled. Investigate root causes.`, priority: 'critical' });
@@ -900,6 +927,17 @@ const getSuperAdminInsights = async (req, res) => {
             speciesDistribution,
             productCategories,
             popularCategories,
+            unifiedCategories,
+            throughput: {
+                daily: dailyThroughput,
+                weekly: weeklyThroughput,
+                monthly: monthlyThroughput
+            },
+            velocity: {
+                current: currentVelocity,
+                previous: previousVelocity,
+                trend: velocityTrend.toFixed(1)
+            },
             recommendations
         });
     } catch (error) {
