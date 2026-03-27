@@ -156,7 +156,7 @@ const storeApplicationSchema = new mongoose.Schema({
   status: {
     type: String,
     enum: ['pending', 'under_review', 'approved', 'rejected', 'requires_more_info'],
-    default: 'pending'
+    default: 'under_review'
   },
   requiredCorrections: [{
     type: String,

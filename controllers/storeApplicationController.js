@@ -58,7 +58,7 @@ const submitApplication = async (req, res) => {
     // Check if user already has a pending or approved application
     const existingApplication = await StoreApplication.findOne({
       applicant: req.user.id,
-      status: { $in: ['pending', 'under_review', 'approved'] }
+      status: { $in: ['under_review', 'approved'] }
     });
 
     if (existingApplication) {
@@ -133,7 +133,7 @@ const submitApplication = async (req, res) => {
     // All applications now require manual review by Super Admin
     // We set status based on score but DO NOT auto-approve
     if (application.verificationScore >= 60) {
-      application.status = 'pending';
+      application.status = 'under_review';
       application.reviewNotes = 'Application submitted and awaiting manual review';
     } else {
       application.status = 'requires_more_info';
@@ -172,7 +172,13 @@ const getAllApplications = async (req, res) => {
   try {
     const { status, page = 1, limit = 10 } = req.query;
     const filter = {};
-    if (status) filter.status = status;
+    if (status) {
+      if (status === 'under_review') {
+        filter.status = { $in: ['pending', 'under_review', 'under review'] };
+      } else {
+        filter.status = status;
+      }
+    }
 
     const skip = (page - 1) * limit;
     const applications = await StoreApplication.find(filter)

@@ -99,11 +99,11 @@ const StoreApplications = () => {
 
   const getStatusProps = (status) => {
     const props = {
-      pending: { color: 'amber', label: 'PENDING' },
-      under_review: { color: 'primary', label: 'REVIEWING' },
-      approved: { color: 'emerald', label: 'APPROVED' },
-      rejected: { color: 'rose', label: 'REJECTED' },
-      requires_more_info: { color: 'blue', label: 'NEED INFO' }
+      pending: { color: 'primary', label: 'Under Review' },
+      under_review: { color: 'primary', label: 'Under Review' },
+      approved: { color: 'emerald', label: 'Approved' },
+      rejected: { color: 'rose', label: 'Rejected' },
+      requires_more_info: { color: 'blue', label: 'Need Info' }
     };
     return props[status] || { color: 'slate', label: 'UNKNOWN' };
   };
@@ -149,13 +149,13 @@ const StoreApplications = () => {
              <select
                 value={filters.status}
                 onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value }))}
-                className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-3xl pl-24 pr-10 py-5 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer"
+                className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black tracking-widest rounded-3xl pl-24 pr-10 py-5 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer"
              >
-                <option value="" className="bg-slate-900 text-white font-black">ALL STATUSES</option>
-                <option value="pending" className="bg-slate-900 text-white font-black">PENDING</option>
-                <option value="under_review" className="bg-slate-900 text-white font-black">UNDER REVIEW</option>
-                <option value="approved" className="bg-slate-900 text-white font-black">APPROVED</option>
-                <option value="rejected" className="bg-slate-900 text-white font-black">REJECTED</option>
+                <option value="" className="bg-slate-900 text-white font-black uppercase tracking-widest italic">ALL STATUSES</option>
+                 <option value="under_review" className="bg-slate-900 text-white font-black">Under Review</option>
+                 <option value="requires_more_info" className="bg-slate-900 text-white font-black">Need Info</option>
+                 <option value="approved" className="bg-slate-900 text-white font-black">Approved</option>
+                 <option value="rejected" className="bg-slate-900 text-white font-black">Rejected</option>
              </select>
              <ChevronRight className="absolute right-6 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500 pointer-events-none rotate-90" />
           </div>
@@ -175,7 +175,7 @@ const StoreApplications = () => {
             return (
               <div key={app._id} className="group bg-white border border-slate-100 rounded-[2.5rem] p-8 shadow-sm hover:shadow-2xl transition-all relative overflow-hidden flex flex-col">
                 <div className="absolute top-0 right-0 p-8">
-                  <span className={`px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest bg-${status.color}-50 text-${status.color}-600`}>
+                  <span className={`px-2.5 py-1 rounded-lg text-[9px] font-black tracking-widest bg-${status.color}-50 text-${status.color}-600`}>
                     {status.label}
                   </span>
                 </div>
