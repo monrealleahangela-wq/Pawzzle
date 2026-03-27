@@ -184,7 +184,7 @@ const BookingHistory = () => {
                         <input
                             type="text" placeholder="QUERY ..."
                             value={filters.search} onChange={(e) => handleFilterChange('search', e.target.value)}
-                            className="w-full pl-32 pr-4 py-5 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-3xl outline-none focus:ring-2 focus:ring-primary-500/50 placeholder:text-slate-600 transition-all font-sans"
+                            className="w-full pl-32 pr-4 py-5 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-[2.5rem] outline-none focus:ring-2 focus:ring-primary-500/50 placeholder:text-slate-600 transition-all font-sans"
                         />
                     </div>
                     <div className="md:col-span-4 relative">
@@ -193,7 +193,7 @@ const BookingHistory = () => {
                         </div>
                         <select
                             value={filters.status} onChange={(e) => handleFilterChange('status', e.target.value)}
-                            className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-3xl pl-32 pr-10 py-5 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer font-sans"
+                            className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-[2.5rem] pl-32 pr-10 py-5 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer font-sans"
                         >
                             <option value="" className="bg-slate-900 text-white font-black">ST: ALL STATUSES</option>
                             <option value="pending" className="bg-slate-900 text-white font-black hover:bg-primary-600">ST: PENDING</option>
@@ -256,7 +256,7 @@ const BookingHistory = () => {
                                         <td className="px-8 py-6 text-right">
                                             <button
                                                 onClick={() => setSelectedBooking(b)}
-                                                className="p-3 bg-slate-50 text-slate-400 rounded-3xl hover:bg-slate-900 hover:text-white transition-all group-hover:scale-110 active:scale-90"
+                                                className="p-3 bg-slate-50 text-slate-400 rounded-[2.5rem] hover:bg-slate-900 hover:text-white transition-all group-hover:scale-110 active:scale-90"
                                             >
                                                 <Eye className="h-4 w-4" />
                                             </button>
@@ -307,7 +307,7 @@ const BookingHistory = () => {
                             </div>
                             <button
                                 onClick={() => setSelectedBooking(null)}
-                                className="p-3 bg-slate-50 text-slate-400 rounded-3xl hover:bg-rose-50 hover:text-rose-600 transition-all"
+                                className="p-3 bg-slate-50 text-slate-400 rounded-[2.5rem] hover:bg-rose-50 hover:text-rose-600 transition-all"
                             >
                                 <X className="h-5 w-5" />
                             </button>
@@ -328,11 +328,11 @@ const BookingHistory = () => {
                                             </div>
                                             <p className="text-4xl font-black tracking-tighter uppercase">{selectedBooking.service?.name}</p>
                                             <div className="flex gap-4">
-                                                <div className="px-4 py-2 bg-white/5 border border-white/10 rounded-3xl">
+                                                <div className="px-4 py-2 bg-white/5 border border-white/10 rounded-[2.5rem]">
                                                     <p className="text-[8px] font-black text-white/40 uppercase tracking-widest mb-1">Booking Date</p>
                                                     <p className="text-sm font-black text-primary-400 uppercase">{new Date(selectedBooking.bookingDate).toLocaleDateString()}</p>
                                                 </div>
-                                                <div className="px-4 py-2 bg-white/5 border border-white/10 rounded-3xl">
+                                                <div className="px-4 py-2 bg-white/5 border border-white/10 rounded-[2.5rem]">
                                                     <p className="text-[8px] font-black text-white/40 uppercase tracking-widest mb-1">Status</p>
                                                     <p className="text-sm font-black text-emerald-400 uppercase">SECURE</p>
                                                 </div>
@@ -408,7 +408,7 @@ const BookingHistory = () => {
                                             <h3 className="text-[11px] font-black text-slate-900 uppercase tracking-widest mb-6 flex items-center gap-2">
                                                 <Globe className="h-4 w-4 text-primary-600" /> Service Location
                                             </h3>
-                                            <div className="p-5 bg-slate-50 rounded-3xl border border-slate-100">
+                                            <div className="p-5 bg-slate-50 rounded-[2.5rem] border border-slate-100">
                                                 <p className="text-[11px] font-medium text-slate-600 leading-relaxed uppercase tracking-tight">
                                                     {selectedBooking.serviceAddress.street}, {selectedBooking.serviceAddress.barangay}, <br />
                                                     {selectedBooking.serviceAddress.city}, {selectedBooking.serviceAddress.province}
@@ -422,7 +422,7 @@ const BookingHistory = () => {
                                         <ShieldCheck className="absolute -bottom-10 -right-10 w-48 h-48 opacity-10 animate-pulse" />
                                         <div className="relative z-10 space-y-6">
                                             <div className="flex items-center gap-3">
-                                                <div className="p-3 bg-white/10 backdrop-blur-md rounded-3xl border border-white/20">
+                                                <div className="p-3 bg-white/10 backdrop-blur-md rounded-[2.5rem] border border-white/20">
                                                     <AlertCircle className="h-6 w-6 text-primary-400" />
                                                 </div>
                                                 <div>
@@ -434,7 +434,7 @@ const BookingHistory = () => {
                                             <div className="grid grid-cols-1 gap-3">
                                                 {selectedBooking.service?.requirements ? (
                                                     selectedBooking.service.requirements.split(',').map((req, index) => (
-                                                        <div key={index} className="flex items-center gap-4 p-4 bg-white/5 border border-white/10 rounded-3xl group hover:bg-white/10 transition-all">
+                                                        <div key={index} className="flex items-center gap-4 p-4 bg-white/5 border border-white/10 rounded-[2.5rem] group hover:bg-white/10 transition-all">
                                                             <div className="h-5 w-5 rounded-full border-2 border-primary-500/50 flex items-center justify-center bg-primary-500/10">
                                                                 <CheckCircle className="h-3 w-3 text-primary-500" />
                                                             </div>
@@ -442,13 +442,13 @@ const BookingHistory = () => {
                                                         </div>
                                                     ))
                                                 ) : (
-                                                    <div className="text-center py-6 border-2 border-dashed border-white/10 rounded-3xl">
+                                                    <div className="text-center py-6 border-2 border-dashed border-white/10 rounded-[2.5rem]">
                                                         <p className="text-[10px] font-black text-white/40 uppercase tracking-widest">No specific requirements set</p>
                                                     </div>
                                                 )}
                                             </div>
 
-                                            <div className="flex items-center gap-3 p-4 bg-amber-500/10 border border-amber-500/20 rounded-3xl text-amber-400">
+                                            <div className="flex items-center gap-3 p-4 bg-amber-500/10 border border-amber-500/20 rounded-[2.5rem] text-amber-400">
                                                 <Activity className="h-5 w-5 shrink-0" />
                                                 <p className="text-[10px] font-black uppercase tracking-widest leading-relaxed">
                                                     The customer was instructed to present these documents for verification upon arrival.
@@ -485,7 +485,7 @@ const BookingHistory = () => {
                         <div className="p-8 bg-slate-50 border-t border-slate-100 relative z-10 flex gap-4">
                             <button
                                 onClick={() => setSelectedBooking(null)}
-                                className="flex-1 py-4 bg-slate-900 text-white rounded-[2.5rem] text-[10px] font-black uppercase tracking-[0.2em] hover:bg-primary-600 transition-all shadow-xl"
+                                className="flex-1 py-5 bg-slate-900 text-white rounded-[2.5rem] text-[10px] font-black uppercase tracking-[0.2em] hover:bg-primary-600 transition-all shadow-xl"
                             >
                                 Close
                             </button>

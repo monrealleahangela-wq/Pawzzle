@@ -223,22 +223,22 @@ const AdminPets = () => {
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" /> Track and manage pets for adoption
           </p>
         </div>
-        <button onClick={handleOpenModal} className="px-8 py-4 bg-slate-900 text-white rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] hover:bg-rose-500 transition-all shadow-xl shadow-slate-200 flex items-center gap-3 group">
+        <button onClick={handleOpenModal} className="px-8 py-5 bg-slate-900 text-white rounded-3xl text-[11px] font-black uppercase tracking-[0.2em] hover:bg-rose-500 transition-all shadow-xl shadow-slate-200 flex items-center gap-3 group">
           <Plus className="h-4 w-4 group-hover:rotate-90 transition-transform" /> Add New Pet
         </button>
       </div>
 
       {/* View Switcher */}
-      <div className="flex gap-4 p-1.5 bg-white rounded-3xl border border-slate-100 shadow-sm w-fit">
+      <div className="flex gap-4 p-1.5 bg-white rounded-[2.5rem] border border-slate-100 shadow-sm w-fit">
         <button
           onClick={() => setActiveTab('inventory')}
-          className={`px-8 py-3 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all flex items-center gap-3 ${activeTab === 'inventory' ? 'bg-slate-900 text-white shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}
+          className={`px-8 py-3 rounded-3xl text-[10px] font-black uppercase tracking-[0.2em] transition-all flex items-center gap-3 ${activeTab === 'inventory' ? 'bg-slate-900 text-white shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}
         >
           <PawPrint className="h-4 w-4" /> Pet Inventory
         </button>
         <button
           onClick={() => setActiveTab('adoptions')}
-          className={`px-8 py-3 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all flex items-center gap-3 ${activeTab === 'adoptions' ? 'bg-slate-900 text-white shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}
+          className={`px-8 py-3 rounded-3xl text-[10px] font-black uppercase tracking-[0.2em] transition-all flex items-center gap-3 ${activeTab === 'adoptions' ? 'bg-slate-900 text-white shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}
         >
           <History className="h-4 w-4" /> Adoption History
         </button>
@@ -258,7 +258,7 @@ const AdminPets = () => {
                 <Search className="input-icon h-4 w-4 text-slate-400 group-focus-within:text-primary-600 transition-colors" />
                 <input
                   type="text" placeholder="SEARCH PETS..." value={filters.search} onChange={e => handleFilterChange('search', e.target.value)}
-                  className="input input-with-icon bg-slate-50 border-slate-100 rounded-2xl text-[10px] font-black uppercase tracking-widest outline-none focus:ring-2 focus:ring-primary-600/10 placeholder:text-slate-300"
+                  className="input input-with-icon bg-slate-50 border-slate-100 rounded-3xl text-[10px] font-black uppercase tracking-widest outline-none focus:ring-2 focus:ring-primary-600/10 placeholder:text-slate-300"
                 />
               </div>
 
@@ -271,8 +271,8 @@ const AdminPets = () => {
                 <div key={field} className="space-y-2">
                   <label className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] px-1">{label}</label>
                   <select value={filters[field]} onChange={e => handleFilterChange(field, e.target.value)}
-                    className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-[10px] font-black uppercase tracking-widest outline-none appearance-none focus:ring-2 focus:ring-primary-600/10">
-                    <option value="">ALL</option>
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-3xl text-[10px] font-black uppercase tracking-widest outline-none appearance-none focus:ring-2 focus:ring-primary-600/10">
+                    <option value="">ST: ALL</option>
                     {options.map(o => typeof o === 'string'
                       ? <option key={o} value={o}>{o.toUpperCase()}</option>
                       : <option key={o.v} value={o.v}>{o.l}</option>
@@ -282,7 +282,7 @@ const AdminPets = () => {
               ))}
 
               <button onClick={() => setFilters({ species: '', size: '', gender: '', isAvailable: '', search: '' })}
-                className="w-full py-3 bg-slate-50 hover:bg-slate-100 text-slate-400 text-[10px] font-black uppercase tracking-widest rounded-2xl transition-colors border border-slate-100">
+                className="w-full py-3 bg-slate-50 hover:bg-slate-100 text-slate-400 text-[10px] font-black uppercase tracking-widest rounded-3xl transition-colors border border-slate-100">
                 Reset Filters
               </button>
             </div>
@@ -298,7 +298,7 @@ const AdminPets = () => {
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-4">
                 {pets.map((pet) => (
-                  <div key={pet._id} className="group bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-xl hover:-translate-y-0.5 transition-all overflow-hidden flex flex-col">
+                  <div key={pet._id} className="group bg-white rounded-3xl border border-slate-100 shadow-sm hover:shadow-xl hover:-translate-y-0.5 transition-all overflow-hidden flex flex-col">
                     {/* Image */}
                     <div className="relative w-full aspect-square bg-slate-50 flex items-center justify-center overflow-hidden">
                       {pet.images?.[0] ? (
@@ -364,7 +364,7 @@ const AdminPets = () => {
             )}
 
             {pagination.totalPages > 1 && (
-              <div className="flex justify-center items-center gap-6 bg-white border border-slate-100 p-4 rounded-2xl w-fit mx-auto shadow-sm">
+              <div className="flex justify-center items-center gap-6 bg-white border border-slate-100 p-4 rounded-3xl w-fit mx-auto shadow-sm">
                 <button onClick={() => setPagination(p => ({ ...p, currentPage: p.currentPage - 1 }))} disabled={!pagination.hasPrev} className="px-5 py-3 bg-slate-50 text-slate-500 rounded-xl disabled:opacity-20 text-[10px] font-black uppercase tracking-widest hover:bg-slate-100 transition-all"><ChevronLeft className="h-4 w-4" /></button>
                 <span className="text-[10px] font-black text-slate-900 uppercase tracking-widest">Page <span className="text-primary-600 italic px-1">{pagination.currentPage}</span> / {pagination.totalPages}</span>
                 <button onClick={() => setPagination(p => ({ ...p, currentPage: p.currentPage + 1 }))} disabled={!pagination.hasNext} className="px-5 py-3 bg-slate-900 text-white rounded-xl disabled:opacity-20 text-[10px] font-black uppercase tracking-widest hover:bg-primary-600 transition-all"><ChevronRight className="h-4 w-4" /></button>
@@ -387,7 +387,7 @@ const AdminPets = () => {
                   placeholder="SEARCH PROTOCOLS..."
                   value={adoptionSearch}
                   onChange={(e) => setAdoptionSearch(e.target.value)}
-                  className="input input-with-icon bg-slate-50 border-slate-100 rounded-2xl text-[10px] font-black uppercase outline-none focus:ring-2 focus:ring-rose-500/10 w-64 placeholder:text-slate-300"
+                  className="input input-with-icon bg-slate-50 border-slate-100 rounded-3xl text-[10px] font-black uppercase outline-none focus:ring-2 focus:ring-rose-500/10 w-64 placeholder:text-slate-300"
                 />
               </div>
             </div>
@@ -408,7 +408,7 @@ const AdminPets = () => {
                 {fetchingAdoptions ? (
                   Array(5).fill(0).map((_, i) => (
                     <tr key={i} className="animate-pulse">
-                      <td colSpan={5} className="px-8 py-6"><div className="h-12 bg-slate-50 rounded-2xl w-full" /></td>
+                      <td colSpan={5} className="px-8 py-6"><div className="h-12 bg-slate-50 rounded-3xl w-full" /></td>
                     </tr>
                   ))
                 ) : adoptionRequests.length === 0 ? (
@@ -503,7 +503,7 @@ const AdminPets = () => {
           <div className="bg-white w-full max-w-5xl rounded-[3rem] overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300 flex flex-col max-h-[90vh]">
             <header className="p-8 border-b border-slate-100 flex items-center justify-between bg-white shrink-0">
               <div className="flex items-center gap-5">
-                <div className="w-14 h-14 bg-rose-500 rounded-3xl flex items-center justify-center shadow-2xl shadow-rose-200">
+                <div className="w-14 h-14 bg-rose-500 rounded-[2.5rem] flex items-center justify-center shadow-2xl shadow-rose-200">
                   <Heart className="h-7 w-7 text-white" />
                 </div>
                 <div>
@@ -514,11 +514,11 @@ const AdminPets = () => {
                   <h3 className="text-3xl font-black uppercase text-slate-900 tracking-tighter leading-none">{editingPet ? 'Edit Pet' : 'New Pet'}</h3>
                 </div>
               </div>
-              <button onClick={() => { setShowAddForm(false); setEditingPet(null); }} className="p-4 bg-slate-50 text-slate-400 rounded-2xl hover:bg-rose-50 hover:text-rose-600 transition-all"><X className="h-6 w-6" /></button>
+              <button onClick={() => { setShowAddForm(false); setEditingPet(null); }} className="p-4 bg-slate-50 text-slate-400 rounded-3xl hover:bg-rose-50 hover:text-rose-600 transition-all"><X className="h-6 w-6" /></button>
             </header>
 
             {/* Tabs */}
-            <nav className="px-8 py-4 border-b border-slate-50 flex gap-4 overflow-x-auto no-scrollbar shrink-0 bg-slate-50/50">
+            <nav className="px-8 py-5 border-b border-slate-50 flex gap-4 overflow-x-auto no-scrollbar shrink-0 bg-slate-50/50">
               {[
                 { id: 'identity', label: 'Basic Info', icon: Info },
                 { id: 'health', label: 'Health', icon: Activity },
@@ -526,7 +526,7 @@ const AdminPets = () => {
                 { id: 'gallery', label: 'Images', icon: ImageIcon }
               ].map(tab => (
                 <button key={tab.id} onClick={() => setModalTab(tab.id)}
-                  className={`px-6 py-3 rounded-2xl flex items-center gap-3 text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${modalTab === tab.id ? 'bg-white text-rose-500 shadow-sm border border-slate-100' : 'text-slate-400 hover:text-slate-600'}`}>
+                  className={`px-6 py-3 rounded-3xl flex items-center gap-3 text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${modalTab === tab.id ? 'bg-white text-rose-500 shadow-sm border border-slate-100' : 'text-slate-400 hover:text-slate-600'}`}>
                   <tab.icon className="h-4 w-4" /> {tab.label}
                 </button>
               ))}
@@ -541,21 +541,21 @@ const AdminPets = () => {
                   <div className="space-y-1.5">
                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Pet Name</label>
                     <input type="text" required value={petForm.name} onChange={e => setPetForm(p => ({ ...p, name: e.target.value }))}
-                      className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-[13px] font-black uppercase outline-none focus:ring-2 focus:ring-rose-400/20" placeholder="PET NAME..." />
+                      className="w-full px-5 py-5 bg-slate-50 border border-slate-100 rounded-3xl text-[13px] font-black uppercase outline-none focus:ring-2 focus:ring-rose-400/20" placeholder="PET NAME..." />
                   </div>
                   {/* Row 2: Species + Breed */}
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1.5">
                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Species</label>
                       <select value={petForm.species} onChange={e => setPetForm(p => ({ ...p, species: e.target.value }))}
-                        className="w-full px-4 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-[11px] font-black uppercase outline-none appearance-none cursor-pointer">
+                        className="w-full px-4 py-5 bg-slate-50 border border-slate-100 rounded-3xl text-[11px] font-black uppercase outline-none appearance-none cursor-pointer">
                         {['dog', 'cat', 'bird', 'fish', 'rabbit', 'hamster', 'reptile', 'other'].map(s => <option key={s} value={s}>{s}</option>)}
                       </select>
                     </div>
                     <div className="space-y-1.5">
                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Breed</label>
                       <input type="text" required value={petForm.breed} onChange={e => setPetForm(p => ({ ...p, breed: e.target.value }))}
-                        className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-[11px] font-black uppercase outline-none" placeholder="E.G. GOLDEN RETRIEVER" />
+                        className="w-full px-5 py-5 bg-slate-50 border border-slate-100 rounded-3xl text-[11px] font-black uppercase outline-none" placeholder="E.G. GOLDEN RETRIEVER" />
                     </div>
                   </div>
                   {/* Row 3: Price + Age + Unit */}
@@ -563,18 +563,18 @@ const AdminPets = () => {
                     <div className="col-span-6 space-y-1.5">
                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Price (₱)</label>
                       <input type="number" required value={petForm.price} onChange={e => setPetForm(p => ({ ...p, price: e.target.value }))}
-                        className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-lg font-black outline-none" placeholder="0.00" />
+                        className="w-full px-5 py-5 bg-slate-50 border border-slate-100 rounded-3xl text-lg font-black outline-none" placeholder="0.00" />
                     </div>
                     <div className="col-span-3 space-y-1.5">
                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Age</label>
                       <input type="number" required value={petForm.age} onChange={e => setPetForm(p => ({ ...p, age: e.target.value }))}
-                        className="w-full px-4 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-lg font-black outline-none text-center" placeholder="0" />
+                        className="w-full px-4 py-5 bg-slate-50 border border-slate-100 rounded-3xl text-lg font-black outline-none text-center" placeholder="0" />
                     </div>
                     <div className="col-span-3 space-y-1.5">
                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Unit</label>
                       <select value={petForm.ageUnit} onChange={e => setPetForm(p => ({ ...p, ageUnit: e.target.value }))}
-                        className="w-full px-3 py-4 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase outline-none appearance-none cursor-pointer text-center">
-                        <option value="years">Yrs</option><option value="months">Mos</option>
+                        className="w-full px-3 py-5 bg-slate-900 text-white rounded-3xl text-[10px] font-black uppercase outline-none appearance-none cursor-pointer text-center">
+                        <option value="years">ST: YRS</option><option value="months">ST: MOS</option>
                       </select>
                     </div>
                   </div>
@@ -582,7 +582,7 @@ const AdminPets = () => {
                   <div className="space-y-1.5">
                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Color</label>
                     <input type="text" value={petForm.color} onChange={e => setPetForm(p => ({ ...p, color: e.target.value }))}
-                      className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-[11px] font-black uppercase outline-none" placeholder="E.G. GOLDEN, BLACK, TRI-COLOR..." />
+                      className="w-full px-5 py-5 bg-slate-50 border border-slate-100 rounded-3xl text-[11px] font-black uppercase outline-none" placeholder="E.G. GOLDEN, BLACK, TRI-COLOR..." />
                   </div>
                   {/* Row 5: Gender + Size side-by-side */}
                   <div className="grid grid-cols-2 gap-4">
@@ -591,7 +591,7 @@ const AdminPets = () => {
                       <div className="grid grid-cols-2 gap-2">
                         {['male', 'female'].map(g => (
                           <button key={g} type="button" onClick={() => setPetForm(p => ({ ...p, gender: g }))}
-                            className={`py-4 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all border-2 ${petForm.gender === g ? 'bg-rose-500 border-rose-400 text-white shadow-lg' : 'bg-slate-50 border-slate-100 text-slate-400 hover:border-rose-200'}`}>
+                            className={`py-5 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all border-2 ${petForm.gender === g ? 'bg-rose-500 border-rose-400 text-white shadow-lg' : 'bg-slate-50 border-slate-100 text-slate-400 hover:border-rose-200'}`}>
                             {g}
                           </button>
                         ))}
@@ -602,7 +602,7 @@ const AdminPets = () => {
                       <div className="grid grid-cols-4 gap-2">
                         {[{ v: 'small', l: 'S' }, { v: 'medium', l: 'M' }, { v: 'large', l: 'L' }, { v: 'extra_large', l: 'XL' }].map(s => (
                           <button key={s.v} type="button" onClick={() => setPetForm(p => ({ ...p, size: s.v }))}
-                            className={`py-4 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all border-2 ${petForm.size === s.v ? 'bg-slate-900 border-slate-800 text-white shadow-lg' : 'bg-slate-50 border-slate-100 text-slate-400 hover:border-slate-300'}`}>
+                            className={`py-5 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all border-2 ${petForm.size === s.v ? 'bg-slate-900 border-slate-800 text-white shadow-lg' : 'bg-slate-50 border-slate-100 text-slate-400 hover:border-slate-300'}`}>
                             {s.l}
                           </button>
                         ))}
@@ -613,7 +613,7 @@ const AdminPets = () => {
                   <div className="space-y-1.5">
                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Description</label>
                     <textarea required value={petForm.description} onChange={e => setPetForm(p => ({ ...p, description: e.target.value }))}
-                      className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-[12px] font-medium leading-relaxed outline-none h-28 resize-none" placeholder="Tell customers about this pet..." />
+                      className="w-full px-5 py-5 bg-slate-50 border border-slate-100 rounded-3xl text-[12px] font-medium leading-relaxed outline-none h-28 resize-none" placeholder="Tell customers about this pet..." />
                   </div>
                 </div>
               )}
@@ -632,7 +632,7 @@ const AdminPets = () => {
                           { v: 'not_vaccinated', l: 'Not Vaccinated ✗', desc: 'No immunization records on file' }
                         ].map(opt => (
                           <button key={opt.v} type="button" onClick={() => setPetForm(p => ({ ...p, vaccinationStatus: opt.v }))}
-                            className={`w-full p-5 rounded-2xl text-left transition-all border-2 ${petForm.vaccinationStatus === opt.v ? 'bg-white/20 border-white shadow-xl' : 'bg-white/5 border-white/10 hover:bg-white/10'}`}>
+                            className={`w-full p-5 rounded-3xl text-left transition-all border-2 ${petForm.vaccinationStatus === opt.v ? 'bg-white/20 border-white shadow-xl' : 'bg-white/5 border-white/10 hover:bg-white/10'}`}>
                             <p className="text-[11px] font-black uppercase tracking-widest mb-1">{opt.l}</p>
                             <p className="text-[9px] font-bold text-emerald-200/60 uppercase tracking-widest">Update this pet's vaccination status</p>
                           </button>
@@ -651,7 +651,7 @@ const AdminPets = () => {
                           { v: 'needs_attention', l: 'Needs Attention', desc: 'Immediate veterinary intervention recommended' }
                         ].map(opt => (
                           <button key={opt.v} type="button" onClick={() => setPetForm(p => ({ ...p, healthStatus: opt.v }))}
-                            className={`w-full p-5 rounded-2xl text-left transition-all border-2 ${petForm.healthStatus === opt.v ? 'bg-white/20 border-primary-500 shadow-xl' : 'bg-white/5 border-white/10 hover:bg-white/10'}`}>
+                            className={`w-full p-5 rounded-3xl text-left transition-all border-2 ${petForm.healthStatus === opt.v ? 'bg-white/20 border-primary-500 shadow-xl' : 'bg-white/5 border-white/10 hover:bg-white/10'}`}>
                             <p className="text-[11px] font-black uppercase tracking-widest mb-1">{opt.l}</p>
                             <p className="text-[9px] font-bold text-white/40 uppercase tracking-widest">{opt.desc}</p>
                           </button>
@@ -668,7 +668,7 @@ const AdminPets = () => {
                     </div>
                     <div className={`${petForm.status === 'adopted' ? 'bg-rose-500' : petForm.status === 'reserved' ? 'bg-amber-500' : 'bg-emerald-500'} p-8 rounded-[2.5rem] flex items-center justify-between shadow-xl self-start transition-colors`}>
                       <div className="flex items-center gap-6">
-                        <div className="w-16 h-16 bg-white rounded-3xl flex items-center justify-center shadow-lg">
+                        <div className="w-16 h-16 bg-white rounded-[2.5rem] flex items-center justify-center shadow-lg">
                           {petForm.status === 'adopted' ? <UserCheck className="h-8 w-8 text-rose-500" /> : <CheckCircle className={`h-8 w-8 ${petForm.isAvailable ? 'text-emerald-500' : 'text-slate-300'}`} />}
                         </div>
                         <div>
@@ -700,7 +700,7 @@ const AdminPets = () => {
                       <textarea
                         value={petForm.adoptionDetails?.requirements}
                         onChange={e => setPetForm(p => ({ ...p, adoptionDetails: { ...p.adoptionDetails, requirements: e.target.value } }))}
-                        className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-[12px] h-32 resize-none outline-none focus:ring-2 focus:ring-rose-500/10"
+                        className="w-full px-6 py-5 bg-slate-50 border border-slate-100 rounded-3xl text-[12px] h-32 resize-none outline-none focus:ring-2 focus:ring-rose-500/10"
                         placeholder="E.g. Fenced yard, experience with large breeds..."
                       />
                     </div>
@@ -711,14 +711,14 @@ const AdminPets = () => {
                           type="text"
                           value={petForm.adoptionDetails?.trialPeriod}
                           onChange={e => setPetForm(p => ({ ...p, adoptionDetails: { ...p.adoptionDetails, trialPeriod: e.target.value } }))}
-                          className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-[11px] font-black uppercase outline-none"
+                          className="w-full px-6 py-5 bg-slate-50 border border-slate-100 rounded-3xl text-[11px] font-black uppercase outline-none"
                           placeholder="Trial Period (e.g. 2 Weeks)"
                         />
                         <input
                           type="text"
                           value={petForm.adoptionDetails?.rescuePartner}
                           onChange={e => setPetForm(p => ({ ...p, adoptionDetails: { ...p.adoptionDetails, rescuePartner: e.target.value } }))}
-                          className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-[11px] font-black uppercase outline-none"
+                          className="w-full px-6 py-5 bg-slate-50 border border-slate-100 rounded-3xl text-[11px] font-black uppercase outline-none"
                           placeholder="Rescue Partner / Original Shelter"
                         />
                       </div>
@@ -739,7 +739,7 @@ const AdminPets = () => {
                           ...p,
                           adoptionDetails: { ...p.adoptionDetails, [toggle.id]: !p.adoptionDetails[toggle.id] }
                         }))}
-                        className={`p-6 rounded-3xl border-2 transition-all flex flex-col items-center gap-3 ${petForm.adoptionDetails?.[toggle.id]
+                        className={`p-6 rounded-[2.5rem] border-2 transition-all flex flex-col items-center gap-3 ${petForm.adoptionDetails?.[toggle.id]
                           ? 'bg-rose-50 border-rose-200 text-rose-600'
                           : 'bg-slate-50 border-slate-100 text-slate-400 hover:border-slate-200'
                           }`}
@@ -758,7 +758,7 @@ const AdminPets = () => {
                   <div className="p-10 bg-slate-900 rounded-[3rem] text-white relative overflow-hidden shadow-2xl border border-white/5">
                     <ImageIcon className="absolute -bottom-16 -right-16 w-64 h-64 opacity-10 pointer-events-none" />
                     <div className="flex items-center gap-4 mb-8">
-                      <div className="p-3 bg-rose-500 rounded-2xl"><ImageIcon className="h-5 w-5" /></div>
+                      <div className="p-3 bg-rose-500 rounded-3xl"><ImageIcon className="h-5 w-5" /></div>
                       <div>
                         <h4 className="text-[12px] font-black uppercase tracking-[0.4em]">Pet Images</h4>
                         <p className="text-[9px] font-bold text-white/40 uppercase tracking-widest">Upload high-quality pictures of the pet</p>
@@ -766,7 +766,7 @@ const AdminPets = () => {
                     </div>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                       {petForm.images.map((img, i) => (
-                        <div key={i} className="aspect-square bg-white/5 rounded-2xl overflow-hidden border border-white/10 relative group">
+                        <div key={i} className="aspect-square bg-white/5 rounded-3xl overflow-hidden border border-white/10 relative group">
                           <img src={getImageUrl(img)} alt="" className="w-full h-full object-cover" />
                           <button type="button" onClick={() => setPetForm(p => ({ ...p, images: p.images.filter((_, idx) => idx !== i) }))}
                             className="absolute inset-0 bg-rose-600/90 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
@@ -775,7 +775,7 @@ const AdminPets = () => {
                         </div>
                       ))}
                       {petForm.images.length < 10 && (
-                        <label className="aspect-square bg-white/5 rounded-2xl border-2 border-white/10 border-dashed flex flex-col items-center justify-center cursor-pointer hover:bg-white/10 transition-all hover:border-rose-500 group">
+                        <label className="aspect-square bg-white/5 rounded-3xl border-2 border-white/10 border-dashed flex flex-col items-center justify-center cursor-pointer hover:bg-white/10 transition-all hover:border-rose-500 group">
                           <Plus className="h-8 w-8 text-rose-500 mb-2 group-hover:scale-110 transition-transform" />
                           <span className="text-[9px] font-black uppercase tracking-[0.2em] text-white/30">Add Image</span>
                           <input type="file" multiple accept="image/*" className="hidden" onChange={handleImageUpload} />
@@ -793,7 +793,7 @@ const AdminPets = () => {
             {/* Footer */}
             <footer className="p-8 bg-white border-t border-slate-50 flex gap-4 shrink-0 relative z-20">
               <button type="button" onClick={() => { setShowAddForm(false); setEditingPet(null); }}
-                className="px-10 py-5 bg-slate-50 text-slate-400 rounded-2xl text-[11px] font-black uppercase tracking-widest hover:bg-slate-100 transition-all active:scale-95">
+                className="px-10 py-5 bg-slate-50 text-slate-400 rounded-3xl text-[11px] font-black uppercase tracking-widest hover:bg-slate-100 transition-all active:scale-95">
                 Cancel
               </button>
               <button disabled={submitting} type="button"
@@ -803,7 +803,7 @@ const AdminPets = () => {
                   else if (modalTab === 'adoption') setModalTab('gallery');
                   else handleSubmit(e);
                 }}
-                className="flex-1 py-5 bg-rose-500 text-white rounded-[1.5rem] text-[11px] font-black uppercase tracking-widest hover:bg-slate-900 hover:scale-[1.02] transition-all shadow-2xl shadow-rose-200 flex items-center justify-center gap-4 active:scale-95 disabled:opacity-50">
+                className="flex-1 py-5 bg-rose-500 text-white rounded-[2.5rem] text-[11px] font-black uppercase tracking-widest hover:bg-slate-900 hover:scale-[1.02] transition-all shadow-2xl shadow-rose-200 flex items-center justify-center gap-4 active:scale-95 disabled:opacity-50">
                 {submitting ? 'Saving...' : (
                   modalTab === 'identity' ? 'Next: Health & Status' :
                     modalTab === 'health' ? 'Next: Adoption Info' :

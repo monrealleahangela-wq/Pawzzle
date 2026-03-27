@@ -58,7 +58,7 @@ const Customers = () => {
                             Manage your store's clients and view their purchase history
                         </p>
                     </div>
-                    <div className="px-5 py-3 bg-white rounded-2xl border border-slate-100 shadow-sm flex items-center gap-3">
+                    <div className="px-5 py-3 bg-white rounded-3xl border border-slate-100 shadow-sm flex items-center gap-3">
                         <Users className="h-5 w-5 text-primary-500" />
                         <div className="text-right">
                             <p className="text-2xl font-black text-slate-900 leading-none">{customers.length}</p>
@@ -75,7 +75,7 @@ const Customers = () => {
                         placeholder="Search customers by name, email, or phone number..."
                         value={searchQuery}
                         onChange={e => setSearchQuery(e.target.value)}
-                        className="input input-with-icon bg-white border-slate-200 rounded-2xl pr-12 text-sm text-slate-700 focus:outline-none focus:border-primary-400 shadow-sm placeholder:text-slate-300"
+                        className="input input-with-icon bg-white border-slate-200 rounded-3xl pr-12 text-sm text-slate-700 focus:outline-none focus:border-primary-400 shadow-sm placeholder:text-slate-300"
                     />
                     {searchQuery && (
                         <button
@@ -105,7 +105,7 @@ const Customers = () => {
                         {filtered.map(customer => {
                             const isExpanded = expandedId === customer._id;
                             return (
-                                <div key={customer._id} className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden transition-all duration-300">
+                                <div key={customer._id} className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden transition-all duration-300">
 
                                     {/* Customer Row Header */}
                                     <button

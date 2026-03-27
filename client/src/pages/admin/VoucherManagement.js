@@ -171,7 +171,7 @@ const VoucherManagement = () => {
                         placeholder="Search by voucher code..."
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
-                        className="w-full pl-14 pr-4 py-4 bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-3xl outline-none focus:ring-1 focus:ring-primary-500 placeholder:text-slate-600"
+                        className="w-full pl-32 pr-4 py-5 bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-[2.5rem] outline-none focus:ring-1 focus:ring-primary-500 placeholder:text-slate-600"
                     />
                 </div>
             </div>
@@ -199,7 +199,7 @@ const VoucherManagement = () => {
                             )}
                             <div className="flex justify-between items-start mb-6">
                                 <div className="flex items-center gap-3">
-                                    <div className="p-3 bg-primary-50 text-primary-600 rounded-2xl">
+                                    <div className="p-3 bg-primary-50 text-primary-600 rounded-3xl">
                                         <Tag className="h-5 w-5" />
                                     </div>
                                     <div>
@@ -267,7 +267,7 @@ const VoucherManagement = () => {
                             </div>
                             <button
                                 onClick={() => setShowModal(false)}
-                                className="p-3 bg-slate-50 text-slate-400 rounded-2xl hover:bg-rose-50 hover:text-rose-600 transition-all"
+                                className="p-3 bg-slate-50 text-slate-400 rounded-3xl hover:bg-rose-50 hover:text-rose-600 transition-all"
                             >
                                 <X className="h-5 w-5" />
                             </button>
@@ -282,7 +282,7 @@ const VoucherManagement = () => {
                                     placeholder="e.g. SUMMER2024"
                                     value={formData.code}
                                     onChange={(e) => setFormData({ ...formData, code: e.target.value.toUpperCase() })}
-                                    className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-1 focus:ring-primary-500 font-black text-slate-900 text-[13px] uppercase tracking-widest"
+                                    className="w-full px-6 py-5 bg-slate-50 border border-slate-100 rounded-3xl outline-none focus:ring-1 focus:ring-primary-500 font-black text-slate-900 text-[13px] uppercase tracking-widest"
                                 />
                             </div>
 
@@ -292,10 +292,10 @@ const VoucherManagement = () => {
                                     <select
                                         value={formData.discountType}
                                         onChange={(e) => setFormData({ ...formData, discountType: e.target.value })}
-                                        className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-1 focus:ring-primary-500 font-bold text-slate-900"
+                                        className="w-full px-6 py-5 bg-slate-50 border border-slate-100 rounded-3xl outline-none focus:ring-1 focus:ring-primary-500 font-bold text-slate-900"
                                     >
-                                        <option value="percentage">Percentage (%)</option>
-                                        <option value="fixed">Fixed Amount (₱)</option>
+                                        <option value="percentage">ST: PERCENTAGE (%)</option>
+                                        <option value="fixed">ST: FIXED AMOUNT (₱)</option>
                                     </select>
                                 </div>
                                 <div className="space-y-2">
@@ -305,7 +305,7 @@ const VoucherManagement = () => {
                                         required
                                         value={formData.discountValue}
                                         onChange={(e) => setFormData({ ...formData, discountValue: e.target.value })}
-                                        className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-1 focus:ring-primary-500 font-black text-slate-900"
+                                        className="w-full px-6 py-5 bg-slate-50 border border-slate-100 rounded-3xl outline-none focus:ring-1 focus:ring-primary-500 font-black text-slate-900"
                                     />
                                 </div>
                             </div>
@@ -318,7 +318,7 @@ const VoucherManagement = () => {
                                         required
                                         value={formData.minPurchase}
                                         onChange={(e) => setFormData({ ...formData, minPurchase: e.target.value })}
-                                        className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-1 focus:ring-primary-500 font-black text-slate-900"
+                                        className="w-full px-6 py-5 bg-slate-50 border border-slate-100 rounded-3xl outline-none focus:ring-1 focus:ring-primary-500 font-black text-slate-900"
                                     />
                                 </div>
                                 <div className="space-y-2">
@@ -328,7 +328,7 @@ const VoucherManagement = () => {
                                         placeholder="Unlimited if empty"
                                         value={formData.usageLimit}
                                         onChange={(e) => setFormData({ ...formData, usageLimit: e.target.value })}
-                                        className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-1 focus:ring-primary-500 font-black text-slate-900"
+                                        className="w-full px-6 py-5 bg-slate-50 border border-slate-100 rounded-3xl outline-none focus:ring-1 focus:ring-primary-500 font-black text-slate-900"
                                     />
                                 </div>
                             </div>
@@ -341,7 +341,7 @@ const VoucherManagement = () => {
                                         required
                                         value={formData.startDate}
                                         onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
-                                        className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-1 focus:ring-primary-500 font-bold text-slate-900"
+                                        className="w-full px-6 py-5 bg-slate-50 border border-slate-100 rounded-3xl outline-none focus:ring-1 focus:ring-primary-500 font-bold text-slate-900"
                                     />
                                 </div>
                                 <div className="space-y-2">
@@ -351,14 +351,14 @@ const VoucherManagement = () => {
                                         required
                                         value={formData.endDate}
                                         onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
-                                        className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-1 focus:ring-primary-500 font-bold text-slate-900"
+                                        className="w-full px-6 py-5 bg-slate-50 border border-slate-100 rounded-3xl outline-none focus:ring-1 focus:ring-primary-500 font-bold text-slate-900"
                                     />
                                 </div>
                             </div>
 
                             <button
                                 type="submit"
-                                className="w-full py-5 bg-slate-900 text-white rounded-[1.5rem] font-black uppercase tracking-widest hover:bg-primary-600 transition-all shadow-xl"
+                                className="w-full py-5 bg-slate-900 text-white rounded-[2.5rem] font-black uppercase tracking-widest hover:bg-primary-600 transition-all shadow-xl"
                             >
                                 {editingVoucher ? 'Update Voucher' : 'Create Voucher'}
                             </button>

@@ -128,7 +128,7 @@ const ReviewManagement = () => {
                                     <div className="flex-1 space-y-6">
                                         <div className="flex items-center justify-between flex-wrap gap-4">
                                             <div className="flex items-center gap-3">
-                                                <div className="w-12 h-12 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-center overflow-hidden">
+                                                <div className="w-12 h-12 rounded-3xl bg-slate-50 border border-slate-100 flex items-center justify-center overflow-hidden">
                                                     {review.user?.avatar ? <img src={review.user.avatar} className="w-full h-full object-cover" /> : <User className="h-6 w-6 text-slate-300" />}
                                                 </div>
                                                 <div>
@@ -142,7 +142,7 @@ const ReviewManagement = () => {
                                             </div>
 
                                             <div className="flex items-center gap-3">
-                                                <div className="px-4 py-2 bg-slate-50 rounded-2xl border border-slate-100 flex items-center gap-2">
+                                                <div className="px-4 py-2 bg-slate-50 rounded-3xl border border-slate-100 flex items-center gap-2">
                                                     <TargetIcon className="h-3 w-3 text-primary-600" />
                                                     <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">{review.targetType}: {review.targetId?.name}</span>
                                                 </div>
@@ -157,7 +157,7 @@ const ReviewManagement = () => {
                                         {review.images && review.images.length > 0 && (
                                             <div className="flex gap-2 pb-2">
                                                 {review.images.map((img, i) => (
-                                                    <div key={i} className="w-16 h-16 sm:w-24 sm:h-24 rounded-2xl bg-slate-50 border border-slate-100 overflow-hidden shrink-0 group-hover:scale-105 transition-transform duration-500">
+                                                    <div key={i} className="w-16 h-16 sm:w-24 sm:h-24 rounded-3xl bg-slate-50 border border-slate-100 overflow-hidden shrink-0 group-hover:scale-105 transition-transform duration-500">
                                                         <img src={img} className="w-full h-full object-cover" />
                                                     </div>
                                                 ))}
@@ -192,13 +192,13 @@ const ReviewManagement = () => {
                                                             <button
                                                                 onClick={() => handleReply(review._id)}
                                                                 disabled={submittingReply || !replyText[review._id]?.trim()}
-                                                                className="px-8 py-3 bg-slate-900 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-primary-600 transition-all disabled:opacity-50"
+                                                                className="px-8 py-3 bg-slate-900 text-white rounded-3xl font-black text-[10px] uppercase tracking-widest hover:bg-primary-600 transition-all disabled:opacity-50"
                                                             >
                                                                 {submittingReply ? 'Sending...' : 'Transmit Reply'}
                                                             </button>
                                                             <button
                                                                 onClick={() => setReplyingTo(null)}
-                                                                className="px-8 py-3 bg-slate-100 text-slate-400 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-200 transition-all"
+                                                                className="px-8 py-3 bg-slate-100 text-slate-400 rounded-3xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-200 transition-all"
                                                             >
                                                                 Cancel
                                                             </button>
@@ -208,13 +208,13 @@ const ReviewManagement = () => {
                                                     <div className="flex flex-wrap items-center gap-3">
                                                         <button
                                                             onClick={() => setReplyingTo(review._id)}
-                                                            className="flex items-center gap-2 px-6 py-3 bg-slate-50 text-slate-500 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-primary-600 hover:text-white transition-all shadow-sm"
+                                                            className="flex items-center gap-2 px-6 py-3 bg-slate-50 text-slate-500 rounded-3xl text-[10px] font-black uppercase tracking-widest hover:bg-primary-600 hover:text-white transition-all shadow-sm"
                                                         >
                                                             <Reply className="h-4 w-4" /> Reply to Review
                                                         </button>
                                                         <button
                                                             onClick={() => handleToggleStatus(review._id)}
-                                                            className={`flex items-center gap-2 px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all shadow-sm ${review.isApproved ? 'bg-slate-50 text-slate-500 hover:bg-rose-500 hover:text-white' : 'bg-rose-50 text-rose-500 hover:bg-emerald-500 hover:text-white'}`}
+                                                            className={`flex items-center gap-2 px-6 py-3 rounded-3xl text-[10px] font-black uppercase tracking-widest transition-all shadow-sm ${review.isApproved ? 'bg-slate-50 text-slate-500 hover:bg-rose-500 hover:text-white' : 'bg-rose-50 text-rose-500 hover:bg-emerald-500 hover:text-white'}`}
                                                         >
                                                             {review.isApproved ? <><EyeOff className="h-4 w-4" /> Hide Review</> : <><Eye className="h-4 w-4" /> Show Review</>}
                                                         </button>
@@ -235,7 +235,7 @@ const ReviewManagement = () => {
                     <button
                         disabled={filter.page === 1}
                         onClick={() => setFilter({ ...filter, page: filter.page - 1 })}
-                        className="p-4 bg-white rounded-2xl border border-slate-100 text-slate-400 disabled:opacity-30 hover:bg-primary-50 hover:text-primary-600 transition-all"
+                        className="p-4 bg-white rounded-3xl border border-slate-100 text-slate-400 disabled:opacity-30 hover:bg-primary-50 hover:text-primary-600 transition-all"
                     >
                         <ChevronLeft className="h-5 w-5" />
                     </button>
@@ -245,7 +245,7 @@ const ReviewManagement = () => {
                             <button
                                 key={i}
                                 onClick={() => setFilter({ ...filter, page: i + 1 })}
-                                className={`w-12 h-12 rounded-2xl text-[11px] font-black tracking-widest transition-all ${filter.page === i + 1 ? 'bg-slate-900 text-white shadow-2xl shadow-slate-200' : 'bg-white text-slate-400 border border-slate-100 hover:bg-slate-50'
+                                className={`w-12 h-12 rounded-3xl text-[11px] font-black tracking-widest transition-all ${filter.page === i + 1 ? 'bg-slate-900 text-white shadow-2xl shadow-slate-200' : 'bg-white text-slate-400 border border-slate-100 hover:bg-slate-50'
                                     }`}
                             >
                                 {i + 1}
@@ -256,7 +256,7 @@ const ReviewManagement = () => {
                     <button
                         disabled={filter.page === pagination.totalPages}
                         onClick={() => setFilter({ ...filter, page: filter.page + 1 })}
-                        className="p-4 bg-white rounded-2xl border border-slate-100 text-slate-400 disabled:opacity-30 hover:bg-primary-50 hover:text-primary-600 transition-all"
+                        className="p-4 bg-white rounded-3xl border border-slate-100 text-slate-400 disabled:opacity-30 hover:bg-primary-50 hover:text-primary-600 transition-all"
                     >
                         <ChevronRight className="h-5 w-5" />
                     </button>

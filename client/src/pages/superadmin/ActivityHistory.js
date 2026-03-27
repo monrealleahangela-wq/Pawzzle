@@ -151,10 +151,10 @@ const ActivityHistory = () => {
                 </div>
 
                 <div className="flex items-center gap-3 w-full md:w-auto">
-                    <button onClick={fetchAllData} className="p-4 bg-white border border-slate-100 text-slate-400 rounded-3xl hover:text-indigo-600 hover:border-indigo-100 transition-all active:scale-95 shadow-sm">
+                    <button onClick={fetchAllData} className="p-4 bg-white border border-slate-100 text-slate-400 rounded-[2.5rem] hover:text-indigo-600 hover:border-indigo-100 transition-all active:scale-95 shadow-sm">
                         <RefreshCw className="h-5 w-5" />
                     </button>
-                    <div className="px-6 py-4 bg-indigo-600 text-white rounded-3xl flex items-center gap-3 shadow-xl shadow-indigo-100">
+                    <div className="px-6 py-5 bg-indigo-600 text-white rounded-[2.5rem] flex items-center gap-3 shadow-xl shadow-indigo-100">
                         <Shield className="h-4 w-4" />
                         <span className="text-[10px] font-black uppercase tracking-widest">{allActivities.length} Events Total</span>
                     </div>
@@ -170,7 +170,7 @@ const ActivityHistory = () => {
                         <input
                             type="text" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
                             placeholder="QUERY ACTIVITY..."
-                            className="w-full pl-32 pr-4 py-5 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-3xl outline-none focus:ring-2 focus:ring-primary-500/50 placeholder:text-slate-600 transition-all font-sans"
+                            className="w-full pl-32 pr-4 py-5 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-[2.5rem] outline-none focus:ring-2 focus:ring-primary-500/50 placeholder:text-slate-600 transition-all font-sans"
                         />
                     </div>
                     <div className="md:col-span-4 relative">
@@ -179,7 +179,7 @@ const ActivityHistory = () => {
                         </div>
                         <select
                             value={filterType} onChange={(e) => setFilterType(e.target.value)}
-                            className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-3xl pl-32 pr-10 py-5 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer font-sans"
+                            className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-[2.5rem] pl-32 pr-10 py-5 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer font-sans"
                         >
                             <option value="all" className="bg-slate-900 text-white font-black">ST: ALL EVENTS</option>
                             <option value="user" className="bg-slate-900 text-white font-black">ST: USER EVENTS</option>
@@ -194,7 +194,7 @@ const ActivityHistory = () => {
                         </div>
                         <select
                             value={dateRange} onChange={(e) => setDateRange(e.target.value)}
-                            className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-3xl pl-32 pr-10 py-5 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer font-sans"
+                            className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-[2.5rem] pl-32 pr-10 py-5 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer font-sans"
                         >
                             <option value="" className="bg-slate-900 text-white font-black">ST: ALL TIME</option>
                             <option value="today" className="bg-slate-900 text-white font-black">ST: TODAY</option>
@@ -223,7 +223,7 @@ const ActivityHistory = () => {
                                 <tr key={i} className="hover:bg-slate-50/50 transition-colors group">
                                     <td className="px-8 py-8">
                                         <div className="flex items-center gap-4">
-                                            <div className={`w-12 h-12 rounded-3xl bg-${activity.color}-50 text-${activity.color}-600 flex items-center justify-center border border-${activity.color}-100 group-hover:scale-110 transition-transform`}>
+                                            <div className={`w-12 h-12 rounded-[2.5rem] bg-${activity.color}-50 text-${activity.color}-600 flex items-center justify-center border border-${activity.color}-100 group-hover:scale-110 transition-transform`}>
                                                 {activity.type === 'user' ? <Users className="h-5 w-5" /> :
                                                     activity.type === 'pet' ? <Heart className="h-5 w-5" /> :
                                                         <ShoppingCart className="h-5 w-5" />}

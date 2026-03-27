@@ -137,7 +137,7 @@ const StoreApplications = () => {
             <input
               type="text"
               placeholder="QUERY APPLICATIONS..."
-              className="w-full pl-32 pr-4 py-5 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-3xl outline-none focus:ring-2 focus:ring-primary-500/50 placeholder:text-slate-600 transition-all font-sans"
+              className="w-full pl-32 pr-4 py-5 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-[2.5rem] outline-none focus:ring-2 focus:ring-primary-500/50 placeholder:text-slate-600 transition-all font-sans"
               value={filters.search}
               onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
             />
@@ -149,7 +149,7 @@ const StoreApplications = () => {
              <select
                 value={filters.status}
                 onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value }))}
-                className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black tracking-widest rounded-3xl pl-32 pr-10 py-5 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer"
+                className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black tracking-widest rounded-[2.5rem] pl-32 pr-10 py-5 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer"
              >
                 <option value="" className="bg-slate-900 text-white font-black uppercase tracking-widest italic">ST: ALL STATUSES</option>
                  <option value="pending" className="bg-slate-900 text-white font-black">ST: PENDING</option>
@@ -181,7 +181,7 @@ const StoreApplications = () => {
                   </span>
                 </div>
 
-                <div className="w-14 h-14 bg-slate-50 rounded-3xl flex items-center justify-center mb-6 group-hover:bg-primary-600 group-hover:text-white transition-all shadow-inner">
+                <div className="w-14 h-14 bg-slate-50 rounded-[2.5rem] flex items-center justify-center mb-6 group-hover:bg-primary-600 group-hover:text-white transition-all shadow-inner">
                   <Building className="h-6 w-6" />
                 </div>
 
@@ -194,7 +194,7 @@ const StoreApplications = () => {
                   </div>
 
                   <div className="grid grid-cols-2 gap-6 mb-8">
-                    <div className="p-4 bg-slate-50 rounded-3xl border border-slate-100">
+                    <div className="p-4 bg-slate-50 rounded-[2.5rem] border border-slate-100">
                       <div className="flex justify-between items-start mb-1.5">
                         <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Trust Index</p>
                         <span className="text-[8px] font-black text-primary-600 italic">Level {app.verificationLevel || 1}</span>
@@ -204,7 +204,7 @@ const StoreApplications = () => {
                         <TrendingUp className={`h-4 w-4 mb-1 ${getScoreColor(app.verificationScore)}`} />
                       </div>
                     </div>
-                    <div className="p-4 bg-slate-50 rounded-3xl border border-slate-100">
+                    <div className="p-4 bg-slate-50 rounded-[2.5rem] border border-slate-100">
                       <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Applicant Name</p>
                       <p className="text-[11px] font-black text-slate-900 uppercase tracking-tight truncate leading-none mt-2">{app.applicant?.firstName} {app.applicant?.lastName}</p>
                     </div>
@@ -214,7 +214,7 @@ const StoreApplications = () => {
                 <div className="flex gap-2">
                   <button
                     onClick={() => { setSelectedApplication(app); setShowReviewModal(true); }}
-                    className="flex-1 py-4 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-primary-600 transition-all shadow-xl flex items-center justify-center gap-2"
+                    className="flex-1 py-5 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-primary-600 transition-all shadow-xl flex items-center justify-center gap-2"
                   >
                     <Eye className="h-3.5 w-3.5" />
                     {['approved', 'rejected', 'requires_more_info'].includes(app.status) ? 'View Application' : 'Review Application'}
@@ -243,7 +243,7 @@ const StoreApplications = () => {
               </div>
               <button
                 onClick={() => setShowReviewModal(false)}
-                className="p-3 bg-slate-50 text-slate-400 rounded-3xl hover:bg-rose-50 hover:text-rose-600 transition-all"
+                className="p-3 bg-slate-50 text-slate-400 rounded-[2.5rem] hover:bg-rose-50 hover:text-rose-600 transition-all"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -253,12 +253,12 @@ const StoreApplications = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
                 <div className="space-y-8">
                   <div className="bg-slate-50 rounded-[2.5rem] p-8 border border-slate-100 flex flex-col items-center justify-center text-center">
-                    <div className="w-32 h-32 bg-white rounded-3xl p-2 border-4 border-slate-100 shadow-inner mb-4 overflow-hidden">
+                    <div className="w-32 h-32 bg-white rounded-[2.5rem] p-2 border-4 border-slate-100 shadow-inner mb-4 overflow-hidden">
                         {selectedApplication.storeLogoUrl ? (
                         <img 
                           src={getImageUrl(selectedApplication.storeLogoUrl)} 
                           alt="Store Logo" 
-                          className="w-full h-full object-cover rounded-3xl"
+                          className="w-full h-full object-cover rounded-[2.5rem]"
                         />
                       ) : (
                         <div className="w-full h-full bg-slate-50 flex items-center justify-center">
@@ -275,7 +275,7 @@ const StoreApplications = () => {
                        Business Identity & Legal
                     </h3>
                     <div className="space-y-6">
-                      <div className="p-4 bg-white rounded-3xl border border-slate-100">
+                      <div className="p-4 bg-white rounded-[2.5rem] border border-slate-100">
                         <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-2">About the Store</p>
                         <p className="text-[11px] font-medium text-slate-600 leading-relaxed italic">"{selectedApplication.businessDescription}"</p>
                       </div>
@@ -349,7 +349,7 @@ const StoreApplications = () => {
                        Payment Profile
                     </h3>
                     <div className="space-y-4">
-                      <div className="p-5 bg-slate-900 rounded-3xl text-white relative overflow-hidden">
+                      <div className="p-5 bg-slate-900 rounded-[2.5rem] text-white relative overflow-hidden">
                         <Wallet className="absolute -right-4 -bottom-4 h-20 w-20 opacity-10" />
                         <p className="text-[8px] font-black text-primary-400 uppercase tracking-[0.3em] mb-3">Bank Transfer Protocol</p>
                         <div className="space-y-1">
@@ -358,7 +358,7 @@ const StoreApplications = () => {
                           <p className="text-[14px] font-black text-primary-500 tracking-[0.2em] mt-2">{selectedApplication.paymentInfo?.bankAccountNumber || 'N/A'}</p>
                         </div>
                       </div>
-                      <div className="p-5 bg-primary-50 border border-primary-100 rounded-3xl">
+                      <div className="p-5 bg-primary-50 border border-primary-100 rounded-[2.5rem]">
                         <p className="text-[8px] font-black text-primary-600 uppercase tracking-widest mb-2">Alternative Method</p>
                         <div className="flex justify-between items-center">
                           <span className="text-[11px] font-black text-slate-900 uppercase">{selectedApplication.paymentInfo?.alternativePaymentMethod?.provider || 'GCash'}</span>
@@ -375,7 +375,7 @@ const StoreApplications = () => {
                       </h3>
                       <div className="space-y-3">
                         {selectedApplication.references?.map((ref, idx) => (
-                          <div key={idx} className="p-4 bg-white rounded-3xl border border-slate-100">
+                          <div key={idx} className="p-4 bg-white rounded-[2.5rem] border border-slate-100">
                             <p className="text-[10px] font-black text-slate-900 uppercase truncate">{ref.name}</p>
                             <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest mb-2">{ref.business}</p>
                             <div className="flex justify-between text-[8px] font-black text-primary-600 uppercase italic">
@@ -410,7 +410,7 @@ const StoreApplications = () => {
                         <a 
                           href={getImageUrl(selectedApplication.mayorsPermitUrl)}
                           target="_blank" rel="noopener noreferrer"
-                          className="flex items-center justify-between p-6 bg-white rounded-3xl border border-slate-100 hover:border-primary-500 hover:shadow-xl transition-all group/doc"
+                          className="flex items-center justify-between p-6 bg-white rounded-[2.5rem] border border-slate-100 hover:border-primary-500 hover:shadow-xl transition-all group/doc"
                         >
                           <div className="flex items-center gap-4">
                             <div className="p-3 bg-amber-100 text-amber-700 rounded-xl group-hover/doc:bg-amber-600 group-hover/doc:text-white transition-colors">
@@ -430,7 +430,7 @@ const StoreApplications = () => {
                         <a 
                           href={getImageUrl(selectedApplication.governmentIdUrl)}
                           target="_blank" rel="noopener noreferrer"
-                          className="flex items-center justify-between p-6 bg-white rounded-3xl border border-slate-100 hover:border-primary-500 hover:shadow-xl transition-all group/doc"
+                          className="flex items-center justify-between p-6 bg-white rounded-[2.5rem] border border-slate-100 hover:border-primary-500 hover:shadow-xl transition-all group/doc"
                         >
                           <div className="flex items-center gap-4">
                             <div className="p-3 bg-emerald-50 text-emerald-600 rounded-xl group-hover/doc:bg-emerald-600 group-hover/doc:text-white transition-colors">
@@ -450,7 +450,7 @@ const StoreApplications = () => {
                         <a 
                           href={getImageUrl(selectedApplication.businessRegistrationUrl)}
                           target="_blank" rel="noopener noreferrer"
-                          className="flex items-center justify-between p-6 bg-white rounded-3xl border border-slate-100 hover:border-primary-500 hover:shadow-xl transition-all group/doc"
+                          className="flex items-center justify-between p-6 bg-white rounded-[2.5rem] border border-slate-100 hover:border-primary-500 hover:shadow-xl transition-all group/doc"
                         >
                           <div className="flex items-center gap-4">
                             <div className="p-3 bg-indigo-50 text-indigo-600 rounded-xl group-hover/doc:bg-indigo-600 group-hover/doc:text-white transition-colors">
@@ -470,7 +470,7 @@ const StoreApplications = () => {
                         <a 
                           href={getImageUrl(selectedApplication.birRegistrationUrl)}
                           target="_blank" rel="noopener noreferrer"
-                          className="flex items-center justify-between p-6 bg-white rounded-3xl border border-slate-100 hover:border-primary-500 hover:shadow-xl transition-all group/doc"
+                          className="flex items-center justify-between p-6 bg-white rounded-[2.5rem] border border-slate-100 hover:border-primary-500 hover:shadow-xl transition-all group/doc"
                         >
                           <div className="flex items-center gap-4">
                             <div className="p-3 bg-rose-50 text-rose-600 rounded-xl group-hover/doc:bg-rose-600 group-hover/doc:text-white transition-colors">
@@ -490,7 +490,7 @@ const StoreApplications = () => {
                         <a 
                           href={getImageUrl(selectedApplication.barangayClearanceUrl)}
                           target="_blank" rel="noopener noreferrer"
-                          className="flex items-center justify-between p-6 bg-white rounded-3xl border border-slate-100 hover:border-primary-500 hover:shadow-xl transition-all group/doc"
+                          className="flex items-center justify-between p-6 bg-white rounded-[2.5rem] border border-slate-100 hover:border-primary-500 hover:shadow-xl transition-all group/doc"
                         >
                           <div className="flex items-center gap-4">
                             <div className="p-3 bg-amber-50 text-amber-600 rounded-xl group-hover/doc:bg-amber-600 group-hover/doc:text-white transition-colors">
@@ -517,13 +517,13 @@ const StoreApplications = () => {
                   <span className="text-[10px] font-black uppercase tracking-[0.4em]">Review Complete</span>
                 </div>
                 {selectedApplication.rejectionReason && (
-                  <div className="p-6 bg-rose-50 border border-rose-100 rounded-3xl">
+                  <div className="p-6 bg-rose-50 border border-rose-100 rounded-[2.5rem]">
                     <p className="text-[10px] font-black text-rose-600 uppercase tracking-widest mb-2">Rejection Reason</p>
                     <p className="text-sm font-bold text-rose-900">{selectedApplication.rejectionReason}</p>
                   </div>
                 )}
                 {selectedApplication.reviewNotes && (
-                  <div className="p-6 bg-white border border-slate-100 rounded-3xl">
+                  <div className="p-6 bg-white border border-slate-100 rounded-[2.5rem]">
                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Review Notes</p>
                     <p className="text-sm font-bold text-slate-900">{selectedApplication.reviewNotes}</p>
                   </div>
@@ -531,7 +531,7 @@ const StoreApplications = () => {
               </div>
             ) : (
               <div className="p-10 bg-white border-t border-slate-100 relative z-10 space-y-8 shadow-[0_-20px_50px_rgba(0,0,0,0.05)]">
-                <div className="bg-amber-50 rounded-3xl p-4 border border-amber-100/50">
+                <div className="bg-amber-50 rounded-[2.5rem] p-4 border border-amber-100/50">
                    <div className="flex items-center gap-2 mb-3">
                      <AlertTriangle className="h-4 w-4 text-amber-600" />
                      <h4 className="text-[10px] font-black uppercase text-amber-600 tracking-widest">Mark Corrections Needed</h4>
@@ -561,7 +561,7 @@ const StoreApplications = () => {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                   <button
                     onClick={() => handleReview(selectedApplication._id, 'approved', reviewForm.reviewNotes)}
-                    className="py-6 bg-slate-900 text-white rounded-3xl text-[10px] font-black uppercase tracking-[0.1em] hover:bg-emerald-600 transition-all shadow-xl flex items-center justify-center gap-2"
+                    className="py-6 bg-slate-900 text-white rounded-[2.5rem] text-[10px] font-black uppercase tracking-[0.1em] hover:bg-emerald-600 transition-all shadow-xl flex items-center justify-center gap-2"
                   >
                     <Check className="h-4 w-4" /> Approve
                   </button>
@@ -573,7 +573,7 @@ const StoreApplications = () => {
                       }
                       handleReview(selectedApplication._id, 'requires_more_info', reviewForm.reviewNotes, '', reviewForm.requiredCorrections);
                     }}
-                    className="py-6 bg-amber-500 text-white rounded-3xl text-[10px] font-black uppercase tracking-[0.1em] hover:bg-amber-600 transition-all shadow-xl flex items-center justify-center gap-2"
+                    className="py-6 bg-amber-500 text-white rounded-[2.5rem] text-[10px] font-black uppercase tracking-[0.1em] hover:bg-amber-600 transition-all shadow-xl flex items-center justify-center gap-2"
                   >
                     <AlertTriangle className="h-4 w-4" /> Need Info
                   </button>
@@ -585,13 +585,13 @@ const StoreApplications = () => {
                       }
                       handleReview(selectedApplication._id, 'rejected', reviewForm.reviewNotes, reviewForm.rejectionReason, reviewForm.requiredCorrections);
                     }}
-                    className="py-6 bg-rose-600 text-white rounded-3xl text-[10px] font-black uppercase tracking-[0.1em] hover:bg-rose-700 transition-all shadow-xl flex items-center justify-center gap-2"
+                    className="py-6 bg-rose-600 text-white rounded-[2.5rem] text-[10px] font-black uppercase tracking-[0.1em] hover:bg-rose-700 transition-all shadow-xl flex items-center justify-center gap-2"
                   >
                     <X className="h-4 w-4" /> Reject
                   </button>
                 </div>
 
-                <div className="bg-rose-50/50 p-8 rounded-[1.5rem] border border-rose-100/50 mt-4">
+                <div className="bg-rose-50/50 p-8 rounded-[2.5rem] border border-rose-100/50 mt-4">
                   <label className="text-[9px] font-black text-rose-400 uppercase tracking-widest mb-3 block">Final Decision Feedback (Optional for Approval)</label>
                   <div className="flex flex-wrap gap-2 mb-4">
                     {REJECTION_REASONS.map(reason => (
@@ -606,7 +606,7 @@ const StoreApplications = () => {
                   </div>
                   <input 
                     type="text"
-                    className="w-full bg-white border border-rose-100 rounded-3xl px-6 py-4 text-sm font-bold placeholder:text-rose-200 outline-none focus:border-rose-400"
+                    className="w-full bg-white border border-rose-100 rounded-[2.5rem] px-6 py-5 text-sm font-bold placeholder:text-rose-200 outline-none focus:border-rose-400"
                     placeholder="QUERY APPLICATIONS..."
                     value={reviewForm.rejectionReason}
                     onChange={(e) => setReviewForm(prev => ({ ...prev, rejectionReason: e.target.value }))}

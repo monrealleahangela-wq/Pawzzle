@@ -102,10 +102,10 @@ const AdminUsers = () => {
               value={filters.role}
               onChange={(e) => handleFilterChange('role', e.target.value)}
             >
-              <option value="">All Roles</option>
-              <option value="super_admin">Super Admin</option>
-              <option value="admin">Admin</option>
-              <option value="customer">Customer</option>
+              <option value="">ST: ALL ROLES</option>
+              <option value="super_admin">ST: SUPER ADMIN</option>
+              <option value="admin">ST: ADMIN</option>
+              <option value="customer">ST: CUSTOMER</option>
             </select>
           </div>
 
@@ -116,16 +116,16 @@ const AdminUsers = () => {
               value={filters.isActive}
               onChange={(e) => handleFilterChange('isActive', e.target.value)}
             >
-              <option value="">All Status</option>
-              <option value="true">Active Only</option>
-              <option value="false">Inactive</option>
+              <option value="">ST: ALL STATUS</option>
+              <option value="true">ST: ACTIVE ONLY</option>
+              <option value="false">ST: INACTIVE</option>
             </select>
           </div>
         </div>
       </div>
 
       {users.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-20 bg-slate-50/50 rounded-3xl border border-dashed border-slate-200">
+        <div className="flex flex-col items-center justify-center py-20 bg-slate-50/50 rounded-[2.5rem] border border-dashed border-slate-200">
           <Users className="h-10 w-10 text-slate-200 mb-4" />
           <h2 className="text-xs font-black text-slate-400 uppercase tracking-widest">No users found</h2>
         </div>
@@ -142,7 +142,7 @@ const AdminUsers = () => {
 
           <div className="space-y-1.5">
             {users.map((user) => (
-              <div key={user._id} className="group bg-white hover:bg-slate-50 border border-slate-100 rounded-xl sm:rounded-2xl p-3 sm:p-4 transition-all duration-300">
+              <div key={user._id} className="group bg-white hover:bg-slate-50 border border-slate-100 rounded-xl sm:rounded-3xl p-3 sm:p-4 transition-all duration-300">
                 <div className="grid grid-cols-1 lg:grid-cols-12 items-center gap-3 sm:gap-4">
                   {/* User */}
                   <div className="lg:col-span-4 flex items-center gap-3">
@@ -224,7 +224,7 @@ const AdminUsers = () => {
 
           {/* Pagination */}
           {pagination.totalPages > 1 && (
-            <div className="flex justify-between items-center bg-slate-50 p-2 rounded-xl sm:rounded-2xl border border-slate-100 mt-6">
+            <div className="flex justify-between items-center bg-slate-50 p-2 rounded-xl sm:rounded-3xl border border-slate-100 mt-6">
               <button
                 onClick={() => setPagination(p => ({ ...p, currentPage: p.currentPage - 1 }))}
                 disabled={!pagination.hasPrev}

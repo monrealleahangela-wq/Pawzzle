@@ -108,7 +108,7 @@ const ReportManagement = () => {
                         <input
                             type="text" placeholder="QUERY REPORTS..."
                             value={filters.search} onChange={(e) => handleFilterChange('search', e.target.value)}
-                            className="w-full pl-32 pr-4 py-5 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-3xl outline-none focus:ring-2 focus:ring-rose-500/50 placeholder:text-slate-600 transition-all font-sans"
+                            className="w-full pl-32 pr-4 py-5 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-[2.5rem] outline-none focus:ring-2 focus:ring-rose-500/50 placeholder:text-slate-600 transition-all font-sans"
                         />
                     </div>
                     <div className="md:col-span-3 relative">
@@ -117,7 +117,7 @@ const ReportManagement = () => {
                         </div>
                         <select
                             value={filters.status} onChange={(e) => handleFilterChange('status', e.target.value)}
-                            className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-3xl pl-32 pr-10 py-5 outline-none focus:ring-2 focus:ring-rose-500/50 appearance-none transition-all cursor-pointer font-sans"
+                            className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-[2.5rem] pl-32 pr-10 py-5 outline-none focus:ring-2 focus:ring-rose-500/50 appearance-none transition-all cursor-pointer font-sans"
                         >
                             <option value="" className="bg-slate-900 text-white font-black">ST: ALL STATUSES</option>
                             <option value="pending" className="bg-slate-900 text-white font-black">ST: PENDING</option>
@@ -133,7 +133,7 @@ const ReportManagement = () => {
                         </div>
                         <select
                             value={filters.dateRange} onChange={(e) => handleFilterChange('dateRange', e.target.value)}
-                            className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-3xl pl-32 pr-10 py-5 outline-none focus:ring-2 focus:ring-rose-500/50 appearance-none transition-all cursor-pointer font-sans"
+                            className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-[2.5rem] pl-32 pr-10 py-5 outline-none focus:ring-2 focus:ring-rose-500/50 appearance-none transition-all cursor-pointer font-sans"
                         >
                             <option value="" className="bg-slate-900 text-white font-black">ST: ALL TIME</option>
                             <option value="today" className="bg-slate-900 text-white font-black">ST: TODAY</option>
@@ -217,7 +217,7 @@ const ReportManagement = () => {
                                         <td className="px-8 py-6 text-right">
                                             <button
                                                 onClick={() => setSelectedReport(report)}
-                                                className="p-3 bg-slate-50 text-slate-400 rounded-3xl hover:bg-slate-900 hover:text-white transition-all shadow-sm"
+                                                className="p-3 bg-slate-50 text-slate-400 rounded-[2.5rem] hover:bg-slate-900 hover:text-white transition-all shadow-sm"
                                             >
                                                 <ExternalLink className="h-4 w-4" />
                                             </button>
@@ -264,7 +264,7 @@ const ReportManagement = () => {
                             </div>
                             <button
                                 onClick={() => setSelectedReport(null)}
-                                className="p-3 bg-slate-50 text-slate-400 rounded-3xl hover:bg-rose-50 hover:text-rose-600 transition-all"
+                                className="p-3 bg-slate-50 text-slate-400 rounded-[2.5rem] hover:bg-rose-50 hover:text-rose-600 transition-all"
                             >
                                 <X className="h-5 w-5" />
                             </button>
@@ -274,7 +274,7 @@ const ReportManagement = () => {
                             <div className="grid grid-cols-2 gap-8">
                                 <div className="space-y-4">
                                     <label className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] block">Reporter Details</label>
-                                    <div className="p-4 bg-slate-50 rounded-3xl border border-slate-100">
+                                    <div className="p-4 bg-slate-50 rounded-[2.5rem] border border-slate-100">
                                         <p className="text-[13px] font-black text-slate-900 uppercase">{selectedReport.reporter?.firstName} {selectedReport.reporter?.lastName}</p>
                                         <p className="text-[10px] font-bold text-primary-600 uppercase tracking-widest">{selectedReport.store?.name}</p>
                                         <p className="text-[10px] font-medium text-slate-400 italic mt-1">{selectedReport.reporter?.email}</p>
@@ -282,7 +282,7 @@ const ReportManagement = () => {
                                 </div>
                                 <div className="space-y-4">
                                     <label className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] block">Reported User</label>
-                                    <div className="p-4 bg-rose-50 rounded-3xl border border-rose-100">
+                                    <div className="p-4 bg-rose-50 rounded-[2.5rem] border border-rose-100">
                                         <p className="text-[13px] font-black text-rose-900 uppercase">{selectedReport.reportedUser?.firstName} {selectedReport.reportedUser?.lastName}</p>
                                         <p className="text-[10px] font-bold text-rose-500 uppercase tracking-widest">@{selectedReport.reportedUser?.username}</p>
                                         <p className="text-[10px] font-medium text-rose-300 italic mt-1">{selectedReport.reportedUser?.email}</p>

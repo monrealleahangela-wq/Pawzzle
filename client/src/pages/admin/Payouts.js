@@ -82,7 +82,7 @@ const AdminPayouts = () => {
                         { label: 'Processing', amount: totalProcessing, count: payouts.filter(p => p.status === 'processing').length, color: 'blue' },
                         { label: 'Completed', amount: totalCompleted, count: payouts.filter(p => p.status === 'completed').length, color: 'emerald' }
                     ].map(s => (
-                        <div key={s.label} className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm">
+                        <div key={s.label} className="bg-white rounded-3xl border border-slate-100 p-5 shadow-sm">
                             <p className={`text-[10px] font-black uppercase tracking-widest text-${s.color}-600`}>{s.label}</p>
                             <p className="text-2xl font-black text-slate-900 mt-1">₱{s.amount.toLocaleString()}</p>
                             <p className="text-slate-400 text-xs font-bold">{s.count} request{s.count !== 1 ? 's' : ''}</p>
@@ -110,7 +110,7 @@ const AdminPayouts = () => {
                         <div className="w-8 h-8 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin" />
                     </div>
                 ) : payouts.length === 0 ? (
-                    <div className="bg-white rounded-2xl border border-slate-100 p-12 text-center">
+                    <div className="bg-white rounded-3xl border border-slate-100 p-12 text-center">
                         <Wallet className="h-10 w-10 text-slate-200 mx-auto mb-3" />
                         <p className="text-slate-400 font-bold text-sm">No payout requests found</p>
                     </div>
@@ -120,7 +120,7 @@ const AdminPayouts = () => {
                             const Icon = STATUS_ICONS[payout.status];
                             const isExpanded = expandedId === payout._id;
                             return (
-                                <div key={payout._id} className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+                                <div key={payout._id} className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
                                     <button
                                         onClick={() => setExpandedId(isExpanded ? null : payout._id)}
                                         className="w-full flex items-center gap-4 p-5 hover:bg-slate-50 transition-all text-left"

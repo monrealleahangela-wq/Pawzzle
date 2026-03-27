@@ -201,7 +201,7 @@ const AccountManagement = () => {
             <input
               type="text" value={filters.search} onChange={(e) => handleFilterChange('search', e.target.value)}
               placeholder="QUERY ACCOUNTS..."
-              className="w-full pl-32 pr-4 py-5 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-3xl outline-none focus:ring-2 focus:ring-primary-500/50 placeholder:text-slate-600 transition-all font-sans"
+              className="w-full pl-32 pr-4 py-5 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-[2.5rem] outline-none focus:ring-2 focus:ring-primary-500/50 placeholder:text-slate-600 transition-all font-sans"
             />
           </div>
           <div className="md:col-span-3 relative">
@@ -210,7 +210,7 @@ const AccountManagement = () => {
             </div>
             <select
               value={filters.role} onChange={(e) => handleFilterChange('role', e.target.value)}
-              className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-3xl pl-32 pr-10 py-5 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer font-sans"
+              className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-[2.5rem] pl-32 pr-10 py-5 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer font-sans"
             >
               <option value="" className="bg-slate-900 text-white font-black">ST: ALL ROLES</option>
               <option value="super_admin" className="bg-slate-900 text-white font-black">ST: MASTER ADMIN</option>
@@ -224,7 +224,7 @@ const AccountManagement = () => {
             </div>
             <select
               value={filters.isActive} onChange={(e) => handleFilterChange('isActive', e.target.value)}
-              className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-3xl pl-32 pr-10 py-5 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer font-sans"
+              className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-[2.5rem] pl-32 pr-10 py-5 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer font-sans"
             >
               <option value="" className="bg-slate-900 text-white font-black">ST: ANY STATUS</option>
               <option value="true" className="bg-slate-900 text-white font-black">ST: ACTIVE</option>
@@ -237,7 +237,7 @@ const AccountManagement = () => {
             </div>
             <select
               value={filters.dateRange} onChange={(e) => handleFilterChange('dateRange', e.target.value)}
-              className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-3xl pl-32 pr-10 py-5 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer font-sans"
+              className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-[2.5rem] pl-32 pr-10 py-5 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer font-sans"
             >
               <option value="" className="bg-slate-900 text-white font-black">ST: ALL TIME</option>
               <option value="today" className="bg-slate-900 text-white font-black">ST: TODAY</option>
@@ -272,7 +272,7 @@ const AccountManagement = () => {
                 )}
               </div>
 
-              <div className="w-12 h-12 rounded-3xl mb-4 bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-primary-600 group-hover:text-white transition-all group-hover:rotate-3 shadow-inner">
+              <div className="w-12 h-12 rounded-[2.5rem] mb-4 bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-primary-600 group-hover:text-white transition-all group-hover:rotate-3 shadow-inner">
                 <Users className="h-6 w-6" />
               </div>
 
@@ -293,7 +293,7 @@ const AccountManagement = () => {
               </div>
 
               {/* Action Suite - Always visible for better accessibility */}
-              <div className="flex gap-2 mt-8 py-4 border-t border-slate-50">
+              <div className="flex gap-2 mt-8 py-5 border-t border-slate-50">
                 <button
                   onClick={() => handleViewCredentials(user)}
                   className="flex-1 py-3 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all hover:bg-primary-600 shadow-lg flex items-center justify-center gap-2"
@@ -356,7 +356,7 @@ const AccountManagement = () => {
               </div>
               <button
                 onClick={() => setShowCredentialsModal(false)}
-                className="p-3 bg-slate-50 text-slate-400 rounded-3xl hover:bg-rose-50 hover:text-rose-600 transition-all"
+                className="p-3 bg-slate-50 text-slate-400 rounded-[2.5rem] hover:bg-rose-50 hover:text-rose-600 transition-all"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -377,11 +377,11 @@ const AccountManagement = () => {
                       </div>
                       <p className="text-4xl font-black tracking-tighter uppercase">{selectedAccount.firstName} {selectedAccount.lastName}</p>
                       <div className="flex gap-4">
-                        <div className="px-4 py-2 bg-white/5 border border-white/10 rounded-3xl">
+                        <div className="px-4 py-2 bg-white/5 border border-white/10 rounded-[2.5rem]">
                           <p className="text-[8px] font-black text-white/40 uppercase tracking-widest mb-1">Role</p>
                           <p className="text-sm font-black text-primary-400 uppercase">{getRoleProps(selectedAccount.role).label}</p>
                         </div>
-                        <div className="px-4 py-2 bg-white/5 border border-white/10 rounded-3xl">
+                        <div className="px-4 py-2 bg-white/5 border border-white/10 rounded-[2.5rem]">
                           <p className="text-[8px] font-black text-white/40 uppercase tracking-widest mb-1">State</p>
                           <p className="text-sm font-black text-emerald-400 uppercase">NORMAL</p>
                         </div>
@@ -422,14 +422,14 @@ const AccountManagement = () => {
                     <div className="space-y-8">
                       <div>
                         <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-3">Identity Key (USERNAME)</p>
-                        <div className="p-4 bg-slate-50 rounded-3xl border border-slate-100 flex justify-between items-center">
+                        <div className="p-4 bg-slate-50 rounded-[2.5rem] border border-slate-100 flex justify-between items-center">
                           <span className="text-[12px] font-black text-slate-900 uppercase tracking-widest">{selectedAccount.username}</span>
                           <button onClick={() => navigator.clipboard.writeText(selectedAccount.username)} className="text-primary-600 text-[9px] font-black uppercase tracking-widest">Copy Username</button>
                         </div>
                       </div>
                       <div>
                         <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-3">Pass-Sequence (DECRYPTED)</p>
-                        <div className="p-4 bg-slate-50 rounded-3xl border border-slate-100 flex justify-between items-center">
+                        <div className="p-4 bg-slate-50 rounded-[2.5rem] border border-slate-100 flex justify-between items-center">
                           <span className="text-[12px] font-black text-slate-900 tracking-widest">
                             {showPassword ? selectedAccount.password : '••••••••••••'}
                           </span>
@@ -451,7 +451,7 @@ const AccountManagement = () => {
                       <h3 className="text-[11px] font-black text-slate-900 uppercase tracking-widest mb-6 flex items-center gap-2">
                         <Globe className="h-4 w-4 text-primary-600" /> Geographical Node
                       </h3>
-                      <div className="p-4 bg-slate-50 rounded-3xl border border-slate-100">
+                      <div className="p-4 bg-slate-50 rounded-[2.5rem] border border-slate-100">
                         <p className="text-[11px] font-medium text-slate-600 leading-relaxed uppercase tracking-tight">
                           {selectedAccount.address.street}, {selectedAccount.address.city}, <br />
                           {selectedAccount.address.state} {selectedAccount.address.zipCode} <br />
@@ -467,7 +467,7 @@ const AccountManagement = () => {
             <div className="p-8 bg-slate-50 border-t border-slate-100 relative z-10">
               <button
                 onClick={() => setShowCredentialsModal(false)}
-                className="w-full py-4 bg-slate-900 text-white rounded-[2.5rem] text-[10px] font-black uppercase tracking-[0.2em] hover:bg-primary-600 transition-all shadow-xl"
+                className="w-full py-5 bg-slate-900 text-white rounded-[2.5rem] text-[10px] font-black uppercase tracking-[0.2em] hover:bg-primary-600 transition-all shadow-xl"
               >
                 Close Details
               </button>

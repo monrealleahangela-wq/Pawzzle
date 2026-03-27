@@ -195,12 +195,12 @@ const ServiceManagement = () => {
         <div className="flex flex-wrap items-center gap-4">
           <Link
             to="/admin/bookings"
-            className="px-8 py-4 bg-white border border-slate-100 text-slate-900 rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] hover:bg-slate-50 transition-all shadow-sm flex items-center gap-3"
+            className="px-8 py-5 bg-white border border-slate-100 text-slate-900 rounded-3xl text-[11px] font-black uppercase tracking-[0.2em] hover:bg-slate-50 transition-all shadow-sm flex items-center gap-3"
           >
             <Calendar className="h-4 w-4 text-indigo-600" /> View Bookings
           </Link>
           <button onClick={() => { resetForm(); setShowModal(true); }}
-            className="px-8 py-4 bg-slate-900 text-white rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] hover:bg-indigo-600 transition-all shadow-xl shadow-slate-200 flex items-center gap-3 group">
+            className="px-8 py-5 bg-slate-900 text-white rounded-3xl text-[11px] font-black uppercase tracking-[0.2em] hover:bg-indigo-600 transition-all shadow-xl shadow-slate-200 flex items-center gap-3 group">
             <Plus className="h-4 w-4 group-hover:rotate-90 transition-transform" /> Add New Service
           </button>
         </div>
@@ -214,7 +214,7 @@ const ServiceManagement = () => {
           { label: 'Home Service', value: services.filter(s => s.homeServiceAvailable).length, icon: Home, color: 'indigo' },
           { label: 'Total Revenue', value: `₱${services.reduce((a, b) => a + (b.price || 0), 0).toLocaleString()}`, icon: PhilippinePeso, color: 'amber' }
         ].map((stat, idx) => (
-          <div key={idx} className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm group hover:shadow-lg hover:border-indigo-100 transition-all">
+          <div key={idx} className="bg-white border border-slate-100 rounded-3xl p-5 shadow-sm group hover:shadow-lg hover:border-indigo-100 transition-all">
             <div className={`w-10 h-10 rounded-xl bg-${stat.color}-50 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}>
               <stat.icon className={`h-5 w-5 text-${stat.color}-600`} />
             </div>
@@ -228,24 +228,24 @@ const ServiceManagement = () => {
       <div className="bg-slate-900 p-2 rounded-[2.5rem] shadow-xl border border-slate-800">
         <div className="grid grid-cols-1 md:grid-cols-12 gap-2">
           <div className="md:col-span-8 relative group">
-            <div className="absolute left-6 top-1/2 -translate-y-1/2 flex items-center gap-3">
+            <div className="absolute left-12 top-1/2 -translate-y-1/2 flex items-center gap-3">
               <Search className="h-4 w-4 text-slate-500 group-focus-within:text-primary-500 transition-colors" />
             </div>
             <input
               type="text" placeholder="QUERY SERVICES: NAME, DESCRIPTION..."
               value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-16 pr-4 py-5 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-3xl outline-none focus:ring-2 focus:ring-primary-500/50 placeholder:text-slate-600 transition-all font-sans"
+              className="w-full pl-32 pr-4 py-5 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-[2.5rem] outline-none focus:ring-2 focus:ring-primary-500/50 placeholder:text-slate-600 transition-all font-sans"
             />
           </div>
           <div className="md:col-span-4 relative">
-            <div className="absolute left-6 top-1/2 -translate-y-1/2">
+            <div className="absolute left-12 top-1/2 -translate-y-1/2">
               <Briefcase className="h-3.5 w-3.5 text-primary-500" />
             </div>
             <select
               value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)}
-              className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-3xl pl-16 pr-10 py-5 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer font-sans"
+              className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-[2.5rem] pl-32 pr-10 py-5 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer font-sans"
             >
-              <option value="" className="bg-slate-900 text-white font-black">ALL SERVICES: VIEW ALL</option>
+              <option value="" className="bg-slate-900 text-white font-black">ST: ALL SERVICES: VIEW ALL</option>
               {categories.map(c => (
                 <option key={c.value} value={c.value} className="bg-slate-900 text-white font-black">CAT: {c.label.toUpperCase()}</option>
               ))}
@@ -264,7 +264,7 @@ const ServiceManagement = () => {
             return matchSearch && matchCat;
           })
           .map((service) => (
-          <div key={service._id} className="group bg-white border border-slate-100 rounded-2xl overflow-hidden shadow-sm hover:shadow-xl hover:-translate-y-0.5 transition-all relative flex flex-col">
+          <div key={service._id} className="group bg-white border border-slate-100 rounded-3xl overflow-hidden shadow-sm hover:shadow-xl hover:-translate-y-0.5 transition-all relative flex flex-col">
             {/* Card Image / Icon Header */}
             <div className="relative h-40 bg-gradient-to-br from-indigo-500 to-primary-600 flex items-center justify-center overflow-hidden">
               {service.images?.[0] ? (
@@ -331,7 +331,7 @@ const ServiceManagement = () => {
           <div className="bg-white w-full max-w-5xl rounded-[3rem] overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300 flex flex-col max-h-[90vh]">
             <header className="p-8 border-b border-slate-100 flex items-center justify-between bg-white shrink-0">
               <div className="flex items-center gap-5">
-                <div className="w-14 h-14 bg-indigo-600 rounded-3xl flex items-center justify-center shadow-2xl shadow-indigo-200">
+                <div className="w-14 h-14 bg-indigo-600 rounded-[2.5rem] flex items-center justify-center shadow-2xl shadow-indigo-200">
                   <Settings className="h-7 w-7 text-white" />
                 </div>
                 <div>
@@ -342,18 +342,18 @@ const ServiceManagement = () => {
                   <h3 className="text-3xl font-black uppercase text-slate-900 tracking-tighter leading-none">{editingService ? 'Edit Service' : 'Add New Service'}</h3>
                 </div>
               </div>
-              <button onClick={() => setShowModal(false)} className="p-4 bg-slate-50 text-slate-400 rounded-2xl hover:bg-rose-50 hover:text-rose-600 transition-all"><X className="h-6 w-6" /></button>
+              <button onClick={() => setShowModal(false)} className="p-4 bg-slate-50 text-slate-400 rounded-3xl hover:bg-rose-50 hover:text-rose-600 transition-all"><X className="h-6 w-6" /></button>
             </header>
 
             {/* Tabs */}
-            <nav className="px-8 py-4 border-b border-slate-50 flex gap-4 overflow-x-auto no-scrollbar shrink-0 bg-slate-50/50">
+            <nav className="px-8 py-5 border-b border-slate-50 flex gap-4 overflow-x-auto no-scrollbar shrink-0 bg-slate-50/50">
               {[
                 { id: 'core', label: 'Basic Info', icon: Info },
                 { id: 'operations', label: 'Details', icon: Settings },
                 { id: 'media', label: 'Images', icon: ImageIcon }
               ].map(tab => (
                 <button key={tab.id} onClick={() => setModalTab(tab.id)}
-                  className={`px-6 py-3 rounded-2xl flex items-center gap-3 text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${modalTab === tab.id ? 'bg-white text-indigo-600 shadow-sm border border-slate-100' : 'text-slate-400 hover:text-slate-600'}`}>
+                  className={`px-6 py-3 rounded-3xl flex items-center gap-3 text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${modalTab === tab.id ? 'bg-white text-indigo-600 shadow-sm border border-slate-100' : 'text-slate-400 hover:text-slate-600'}`}>
                   <tab.icon className="h-4 w-4" /> {tab.label}
                 </button>
               ))}
@@ -369,14 +369,14 @@ const ServiceManagement = () => {
                       <div className="space-y-2">
                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Service Name</label>
                         <input type="text" required value={formData.name} onChange={e => setFormData(p => ({ ...p, name: e.target.value }))}
-                          className="w-full px-6 py-5 bg-slate-50 border border-slate-100 rounded-3xl text-[12px] font-black uppercase outline-none focus:ring-4 focus:ring-indigo-500/10" placeholder="E.G. PREMIUM GROOMING" />
+                          className="w-full px-6 py-5 bg-slate-50 border border-slate-100 rounded-[2.5rem] text-[12px] font-black uppercase outline-none focus:ring-4 focus:ring-indigo-500/10" placeholder="E.G. PREMIUM GROOMING" />
                       </div>
                       <div className="space-y-2">
                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Service Category</label>
                         <div className="grid grid-cols-2 gap-2">
                           {categories.map(c => (
                             <button key={c.value} type="button" onClick={() => setFormData(p => ({ ...p, category: c.value }))}
-                              className={`p-4 rounded-2xl text-left transition-all border-2 flex items-center gap-3 ${formData.category === c.value ? 'bg-indigo-50 border-indigo-300 shadow-lg' : 'bg-slate-50 border-slate-50 hover:border-slate-200'}`}>
+                              className={`p-4 rounded-3xl text-left transition-all border-2 flex items-center gap-3 ${formData.category === c.value ? 'bg-indigo-50 border-indigo-300 shadow-lg' : 'bg-slate-50 border-slate-50 hover:border-slate-200'}`}>
                               <span className="text-lg">{c.icon}</span>
                               <span className="text-[10px] font-black uppercase tracking-widest">{c.label}</span>
                             </button>
@@ -390,17 +390,17 @@ const ServiceManagement = () => {
                         <div className="space-y-2">
                           <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Base Price (₱)</label>
                           <div className="relative">
-                            <PhilippinePeso className="absolute left-5 top-1/2 -translate-y-1/2 h-5 w-5 text-indigo-600" />
+                            <PhilippinePeso className="absolute left-12 top-1/2 -translate-y-1/2 h-5 w-5 text-indigo-600" />
                             <input type="number" required value={formData.price} onChange={e => setFormData(p => ({ ...p, price: parseFloat(e.target.value) || 0 }))}
-                              className="w-full pl-14 pr-6 py-5 bg-slate-50 border border-slate-100 rounded-3xl text-xl font-black outline-none focus:ring-4 focus:ring-indigo-500/10" placeholder="0" />
+                              className="w-full pl-32 pr-6 py-5 bg-slate-50 border border-slate-100 rounded-[2.5rem] text-xl font-black outline-none focus:ring-4 focus:ring-indigo-500/10" placeholder="0" />
                           </div>
                         </div>
                         <div className="space-y-2">
                           <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Session Capacity</label>
                           <div className="relative">
-                            <Users className="absolute left-5 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+                            <Users className="absolute left-12 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
                             <input type="number" value={formData.maxPetsPerSession} onChange={e => setFormData(p => ({ ...p, maxPetsPerSession: parseInt(e.target.value) || 1 }))}
-                              className="w-full pl-14 pr-6 py-5 bg-slate-50 border border-slate-100 rounded-3xl text-xl font-black outline-none" placeholder="1" />
+                              className="w-full pl-32 pr-6 py-5 bg-slate-50 border border-slate-100 rounded-[2.5rem] text-xl font-black outline-none" placeholder="1" />
                           </div>
                         </div>
                       </div>
@@ -410,7 +410,7 @@ const ServiceManagement = () => {
                         <div className="flex flex-wrap gap-2 mb-3">
                           {durationPresets.map(d => (
                             <button key={d} type="button" onClick={() => setFormData(p => ({ ...p, duration: d }))}
-                              className={`px-4 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all border-2 ${formData.duration === d ? 'bg-indigo-600 border-indigo-500 text-white shadow-lg' : 'bg-slate-50 border-slate-100 text-slate-500 hover:border-indigo-200'}`}>
+                              className={`px-4 py-3 rounded-3xl text-[10px] font-black uppercase tracking-widest transition-all border-2 ${formData.duration === d ? 'bg-indigo-600 border-indigo-500 text-white shadow-lg' : 'bg-slate-50 border-slate-100 text-slate-500 hover:border-indigo-200'}`}>
                               {d >= 60 ? `${d / 60}h` : `${d}m`}
                             </button>
                           ))}
@@ -418,7 +418,7 @@ const ServiceManagement = () => {
                         <div className="flex items-center gap-3">
                           <Clock className="h-5 w-5 text-slate-400" />
                           <input type="number" value={formData.duration} onChange={e => setFormData(p => ({ ...p, duration: parseInt(e.target.value) || 0 }))}
-                            className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-[12px] font-black outline-none" placeholder="Custom minutes" />
+                            className="w-full px-6 py-5 bg-slate-50 border border-slate-100 rounded-3xl text-[12px] font-black outline-none" placeholder="Custom minutes" />
                           <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest whitespace-nowrap">Min</span>
                         </div>
                       </div>
@@ -441,7 +441,7 @@ const ServiceManagement = () => {
                     <Home className="absolute top-10 right-10 w-32 h-32 opacity-10 pointer-events-none" />
                     <div className="flex items-center justify-between mb-8">
                       <div className="flex items-center gap-4">
-                        <div className="w-14 h-14 bg-white/10 rounded-2xl flex items-center justify-center"><Home className="h-7 w-7" /></div>
+                        <div className="w-14 h-14 bg-white/10 rounded-3xl flex items-center justify-center"><Home className="h-7 w-7" /></div>
                         <div>
                           <h4 className="text-[12px] font-black uppercase tracking-[0.4em]">Home Service</h4>
                           <p className="text-[9px] font-bold text-indigo-200/60 uppercase tracking-widest">Offer this service at the customer's home</p>
@@ -454,10 +454,10 @@ const ServiceManagement = () => {
                     </div>
 
                     {formData.homeServiceAvailable && (
-                      <div className="bg-white/10 rounded-2xl p-6 border border-white/10 animate-in fade-in duration-300">
+                      <div className="bg-white/10 rounded-3xl p-6 border border-white/10 animate-in fade-in duration-300">
                         <label className="text-[10px] font-black text-indigo-200 uppercase tracking-[0.3em] block mb-3">Home Service Fee (₱)</label>
                         <input type="number" value={formData.homeServicePrice} onChange={e => setFormData(p => ({ ...p, homeServicePrice: parseFloat(e.target.value) || 0 }))}
-                          className="w-full px-6 py-5 bg-white/10 border border-white/10 rounded-2xl text-xl font-black text-white outline-none focus:bg-white/20" placeholder="0.00" />
+                          className="w-full px-6 py-5 bg-white/10 border border-white/10 rounded-3xl text-xl font-black text-white outline-none focus:bg-white/20" placeholder="0.00" />
                       </div>
                     )}
                   </div>
@@ -481,7 +481,7 @@ const ServiceManagement = () => {
                   <div className="p-10 bg-slate-900 rounded-[3rem] text-white relative overflow-hidden shadow-2xl border border-white/5">
                     <ImageIcon className="absolute -bottom-16 -right-16 w-64 h-64 opacity-10 pointer-events-none" />
                     <div className="flex items-center gap-4 mb-8">
-                      <div className="p-3 bg-indigo-600 rounded-2xl"><ImageIcon className="h-5 w-5" /></div>
+                      <div className="p-3 bg-indigo-600 rounded-3xl"><ImageIcon className="h-5 w-5" /></div>
                       <div>
                         <h4 className="text-[12px] font-black uppercase tracking-[0.4em]">Service Images</h4>
                         <p className="text-[9px] font-bold text-white/40 uppercase tracking-widest">Upload photos of your service</p>
@@ -489,7 +489,7 @@ const ServiceManagement = () => {
                     </div>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                       {formData.images.map((img, i) => (
-                        <div key={i} className="aspect-square bg-white/5 rounded-2xl overflow-hidden border border-white/10 relative group">
+                        <div key={i} className="aspect-square bg-white/5 rounded-3xl overflow-hidden border border-white/10 relative group">
                           <img src={getImageUrl(img)} alt="" className="w-full h-full object-cover" />
                           <button type="button" onClick={() => setFormData(p => ({ ...p, images: p.images.filter((_, idx) => idx !== i) }))}
                             className="absolute inset-0 bg-rose-600/90 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
@@ -498,7 +498,7 @@ const ServiceManagement = () => {
                         </div>
                       ))}
                       {formData.images.length < 6 && (
-                        <label className="aspect-square bg-white/5 rounded-2xl border-2 border-white/10 border-dashed flex flex-col items-center justify-center cursor-pointer hover:bg-white/10 transition-all hover:border-indigo-500 group">
+                        <label className="aspect-square bg-white/5 rounded-3xl border-2 border-white/10 border-dashed flex flex-col items-center justify-center cursor-pointer hover:bg-white/10 transition-all hover:border-indigo-500 group">
                           <Plus className="h-8 w-8 text-indigo-500 mb-2 group-hover:scale-110 transition-transform" />
                           <span className="text-[9px] font-black uppercase tracking-[0.2em] text-white/30">Add Image</span>
                           <input type="file" multiple accept="image/*" className="hidden" onChange={handleImageUpload} />
@@ -511,7 +511,7 @@ const ServiceManagement = () => {
                   {/* Active Toggle */}
                   <div className="bg-emerald-500 p-8 rounded-[2.5rem] flex items-center justify-between shadow-xl shadow-emerald-100">
                     <div className="flex items-center gap-6">
-                      <div className="w-16 h-16 bg-white rounded-3xl flex items-center justify-center shadow-lg">
+                      <div className="w-16 h-16 bg-white rounded-[2.5rem] flex items-center justify-center shadow-lg">
                         <CheckCircle className={`h-8 w-8 ${formData.isActive ? 'text-emerald-500' : 'text-slate-300'}`} />
                       </div>
                       <div>
@@ -531,7 +531,7 @@ const ServiceManagement = () => {
             {/* Footer */}
             <footer className="p-8 bg-white border-t border-slate-50 flex gap-4 shrink-0 relative z-20">
               <button type="button" onClick={() => setShowModal(false)}
-                className="px-10 py-5 bg-slate-50 text-slate-400 rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] hover:bg-slate-100 transition-all active:scale-95">
+                className="px-10 py-5 bg-slate-50 text-slate-400 rounded-3xl text-[11px] font-black uppercase tracking-[0.2em] hover:bg-slate-100 transition-all active:scale-95">
                 Cancel
               </button>
               <button disabled={submitting} type="button"
@@ -540,7 +540,7 @@ const ServiceManagement = () => {
                   else if (modalTab === 'operations') setModalTab('media');
                   else handleSubmit(e);
                 }}
-                className="flex-1 py-5 bg-indigo-600 text-white rounded-[1.5rem] text-[11px] font-black uppercase tracking-[0.3em] hover:bg-slate-900 hover:scale-[1.02] transition-all shadow-2xl shadow-indigo-200 flex items-center justify-center gap-4 active:scale-95 disabled:opacity-50">
+                className="flex-1 py-5 bg-indigo-600 text-white rounded-[2.5rem] text-[11px] font-black uppercase tracking-[0.3em] hover:bg-slate-900 hover:scale-[1.02] transition-all shadow-2xl shadow-indigo-200 flex items-center justify-center gap-4 active:scale-95 disabled:opacity-50">
                 {submitting ? 'SAVING...' : (
                   modalTab === 'core' ? 'Details' :
                     modalTab === 'operations' ? 'Images' :
@@ -557,12 +557,12 @@ const ServiceManagement = () => {
       {showDeleteConfirm && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center z-[110] p-4">
           <div className="bg-white rounded-[3rem] p-10 max-w-sm w-full shadow-2xl text-center animate-in zoom-in-95 duration-300">
-            <div className="w-20 h-20 bg-rose-50 text-rose-600 rounded-3xl flex items-center justify-center mx-auto mb-6"><Trash2 className="h-10 w-10" /></div>
+            <div className="w-20 h-20 bg-rose-50 text-rose-600 rounded-[2.5rem] flex items-center justify-center mx-auto mb-6"><Trash2 className="h-10 w-10" /></div>
             <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tighter mb-2">Delete Service?</h2>
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-relaxed mb-8">This action will permanently remove the service from your store.</p>
             <div className="flex flex-col gap-3">
-              <button onClick={confirmDelete} className="w-full py-4 bg-rose-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-rose-200">Delete Service</button>
-              <button onClick={() => setShowDeleteConfirm(false)} className="w-full py-4 bg-slate-50 text-slate-400 rounded-2xl text-[10px] font-black uppercase tracking-widest">Cancel</button>
+              <button onClick={confirmDelete} className="w-full py-5 bg-rose-600 text-white rounded-3xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-rose-200">Delete Service</button>
+              <button onClick={() => setShowDeleteConfirm(false)} className="w-full py-5 bg-slate-50 text-slate-400 rounded-3xl text-[10px] font-black uppercase tracking-widest">Cancel</button>
             </div>
           </div>
         </div>

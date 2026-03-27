@@ -187,7 +187,7 @@ const StaffManagement = () => {
                     </div>
                     <button
                         onClick={openCreate}
-                        className="flex items-center gap-2 px-5 py-3 bg-slate-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-primary-600 transition-all shadow-lg"
+                        className="flex items-center gap-2 px-5 py-3 bg-slate-900 text-white rounded-3xl font-black text-xs uppercase tracking-widest hover:bg-primary-600 transition-all shadow-lg"
                     >
                         <Plus className="h-4 w-4" />
                         Add Staff
@@ -203,7 +203,7 @@ const StaffManagement = () => {
                         { label: 'Inventory', value: counts.inventory, color: 'amber' },
                         { label: 'Service', value: counts.service, color: 'purple' }
                     ].map(s => (
-                        <div key={s.label} className="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm text-center">
+                        <div key={s.label} className="bg-white rounded-3xl border border-slate-100 p-4 shadow-sm text-center">
                             <p className={`text-[9px] font-black uppercase tracking-widest text-${s.color}-600 mb-1`}>{s.label}</p>
                             <p className="text-2xl font-black text-slate-900">{s.value}</p>
                         </div>
@@ -218,7 +218,7 @@ const StaffManagement = () => {
                             <div
                                 key={t.id}
                                 onClick={() => setFilterType(filterType === t.id ? '' : t.id)}
-                                className={`bg-white rounded-2xl border p-5 cursor-pointer transition-all shadow-sm hover:shadow-md ${filterType === t.id ? 'border-slate-900 ring-2 ring-slate-900' : 'border-slate-100'}`}
+                                className={`bg-white rounded-3xl border p-5 cursor-pointer transition-all shadow-sm hover:shadow-md ${filterType === t.id ? 'border-slate-900 ring-2 ring-slate-900' : 'border-slate-100'}`}
                             >
                                 <div className={`inline-flex p-2.5 rounded-xl bg-${t.color}-50 mb-3`}>
                                     <Icon className={`h-5 w-5 text-${t.color}-600`} />
@@ -234,24 +234,24 @@ const StaffManagement = () => {
                 <div className="bg-slate-900 p-2 rounded-[2.5rem] shadow-xl border border-slate-800">
                     <div className="grid grid-cols-1 md:grid-cols-12 gap-2">
                         <div className="md:col-span-8 relative group">
-                            <div className="absolute left-6 top-1/2 -translate-y-1/2 flex items-center gap-3">
+                            <div className="absolute left-12 top-1/2 -translate-y-1/2 flex items-center gap-3">
                                 <Search className="h-4 w-4 text-slate-500 group-focus-within:text-primary-500 transition-colors" />
                             </div>
                             <input
                                 type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
                                 placeholder="QUERY TEAM: NAME, EMAIL, USERNAME..."
-                                className="w-full pl-16 pr-4 py-5 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-3xl outline-none focus:ring-2 focus:ring-primary-500/50 placeholder:text-slate-600 transition-all font-sans"
+                                className="w-full pl-32 pr-4 py-5 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-[2.5rem] outline-none focus:ring-2 focus:ring-primary-500/50 placeholder:text-slate-600 transition-all font-sans"
                             />
                         </div>
                         <div className="md:col-span-4 relative">
-                            <div className="absolute left-6 top-1/2 -translate-y-1/2">
+                            <div className="absolute left-12 top-1/2 -translate-y-1/2">
                                 <Shield className="h-4 w-4 text-primary-500" />
                             </div>
                             <select
                                 value={filterType} onChange={(e) => setFilterType(e.target.value)}
-                                className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-3xl pl-16 pr-10 py-5 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer font-sans"
+                                className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-[2.5rem] pl-32 pr-10 py-5 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer font-sans"
                             >
-                                <option value="" className="bg-slate-900 text-white font-black">ALL ROLES: VIEW ALL</option>
+                                <option value="" className="bg-slate-900 text-white font-black">ST: ALL ROLES: VIEW ALL</option>
                                 {STAFF_TYPES.map(t => (
                                     <option key={t.id} value={t.id} className="bg-slate-900 text-white font-black">RL: {t.label.toUpperCase()}</option>
                                 ))}
@@ -267,23 +267,23 @@ const StaffManagement = () => {
                         <div className="w-8 h-8 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin" />
                     </div>
                 ) : filtered.length === 0 ? (
-                    <div className="bg-white rounded-2xl border border-slate-100 p-12 text-center">
+                    <div className="bg-white rounded-3xl border border-slate-100 p-12 text-center">
                         <Users className="h-10 w-10 text-slate-200 mx-auto mb-3" />
                         <p className="text-slate-400 font-bold text-sm">
                             {staff.length === 0 ? 'No staff added yet. Click "Add Staff" to get started.' : 'No staff match your search.'}
                         </p>
                     </div>
                 ) : (
-                    <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden shadow-sm">
+                    <div className="bg-white rounded-3xl border border-slate-100 overflow-hidden shadow-sm">
                         <div className="overflow-x-auto">
                             <table className="w-full">
                                 <thead>
                                     <tr className="border-b border-slate-50">
-                                        <th className="text-left px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Staff Member</th>
-                                        <th className="text-left px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest hidden sm:table-cell">Contact</th>
-                                        <th className="text-left px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Role</th>
-                                        <th className="text-left px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest hidden sm:table-cell">Status</th>
-                                        <th className="text-right px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Actions</th>
+                                        <th className="text-left px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Staff Member</th>
+                                        <th className="text-left px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest hidden sm:table-cell">Contact</th>
+                                        <th className="text-left px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Role</th>
+                                        <th className="text-left px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest hidden sm:table-cell">Status</th>
+                                        <th className="text-right px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-50">
@@ -292,7 +292,7 @@ const StaffManagement = () => {
                                         const Icon = typeInfo?.icon || Shield;
                                         return (
                                             <tr key={member._id} className={`hover:bg-slate-50/50 transition-colors ${!member.isActive ? 'opacity-50' : ''}`}>
-                                                <td className="px-6 py-4">
+                                                <td className="px-6 py-5">
                                                     <div className="flex items-center gap-3">
                                                         <div className="w-9 h-9 rounded-xl bg-slate-100 flex items-center justify-center font-black text-slate-500 text-sm shrink-0">
                                                             {member.firstName[0]}{member.lastName[0]}
@@ -303,17 +303,17 @@ const StaffManagement = () => {
                                                         </div>
                                                     </div>
                                                 </td>
-                                                <td className="px-6 py-4 hidden sm:table-cell">
+                                                <td className="px-6 py-5 hidden sm:table-cell">
                                                     <p className="text-slate-600 text-xs">{member.email}</p>
                                                     {member.phone && <p className="text-slate-400 text-xs">{member.phone}</p>}
                                                 </td>
-                                                <td className="px-6 py-4">
+                                                <td className="px-6 py-5">
                                                     <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-[10px] font-black uppercase tracking-widest ${TYPE_STYLES[member.staffType]}`}>
                                                         <Icon className="h-3 w-3" />
                                                         {typeInfo?.label || member.staffType}
                                                     </span>
                                                 </td>
-                                                <td className="px-6 py-4 hidden sm:table-cell">
+                                                <td className="px-6 py-5 hidden sm:table-cell">
                                                     <div className="flex flex-col gap-1.5">
                                                         <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest ${member.isActive ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-600'}`}>
                                                             <span className={`w-1.5 h-1.5 rounded-full ${member.isActive ? 'bg-emerald-500' : 'bg-rose-400'}`} />
@@ -329,7 +329,7 @@ const StaffManagement = () => {
                                                         )}
                                                     </div>
                                                 </td>
-                                                <td className="px-6 py-4">
+                                                <td className="px-6 py-5">
                                                     <div className="flex items-center justify-end gap-1.5">
                                                         <button
                                                             onClick={() => openEdit(member)}
@@ -374,7 +374,7 @@ const StaffManagement = () => {
             {/* Create / Edit Modal */}
             {showModal && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+                    <div className="bg-white rounded-[2.5rem] w-full max-w-lg shadow-2xl animate-in fade-in zoom-in-95 duration-200">
                         <div className="flex items-center justify-between p-6 border-b border-slate-50">
                             <div>
                                 <h2 className="font-black text-slate-900 uppercase tracking-tighter text-lg">
@@ -436,7 +436,7 @@ const StaffManagement = () => {
                             {/* Contact fields */}
                             {!editingStaff && (
                                 <>
-                                    <div className="bg-primary-50 rounded-2xl p-4 border border-primary-100 flex items-start gap-3 mb-2">
+                                    <div className="bg-primary-50 rounded-3xl p-4 border border-primary-100 flex items-start gap-3 mb-2">
                                         <AlertCircle className="h-4 w-4 text-primary-600 mt-0.5" />
                                         <p className="text-[10px] font-bold text-primary-700 leading-relaxed uppercase tracking-widest">
                                             The system will automatically generate a <span className="underline">secure random password</span> and send it to the staff's email.
@@ -504,14 +504,14 @@ const StaffManagement = () => {
                                 <button
                                     type="submit"
                                     disabled={submitting}
-                                    className="flex-1 py-3.5 bg-slate-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-primary-600 transition-all disabled:opacity-50"
+                                    className="flex-1 py-5 bg-slate-900 text-white rounded-3xl font-black text-xs uppercase tracking-widest hover:bg-primary-600 transition-all disabled:opacity-50"
                                 >
                                     {submitting ? 'Saving...' : editingStaff ? 'Save Changes' : 'Create Staff Account'}
                                 </button>
                                 <button
                                     type="button"
                                     onClick={() => setShowModal(false)}
-                                    className="px-6 py-3.5 bg-slate-50 text-slate-500 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-slate-100 transition-all border border-slate-100"
+                                    className="px-6 py-5 bg-slate-50 text-slate-500 rounded-3xl font-black text-xs uppercase tracking-widest hover:bg-slate-100 transition-all border border-slate-100"
                                 >
                                     Cancel
                                 </button>
@@ -524,7 +524,7 @@ const StaffManagement = () => {
             {/* Reset Password Modal */}
             {resetTarget && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-3xl w-full max-w-sm shadow-2xl animate-in fade-in zoom-in-95 duration-200 p-6 space-y-4">
+                    <div className="bg-white rounded-[2.5rem] w-full max-w-sm shadow-2xl animate-in fade-in zoom-in-95 duration-200 p-6 space-y-4">
                         <div className="flex items-center justify-between">
                             <div>
                                 <h2 className="font-black text-slate-900 uppercase tracking-tighter">Reset Password</h2>

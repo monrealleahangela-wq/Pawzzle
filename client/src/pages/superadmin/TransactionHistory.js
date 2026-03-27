@@ -185,7 +185,7 @@ const TransactionHistory = () => {
             <input
               type="text" placeholder="QUERY TRANSACTIONS..."
               value={filters.search} onChange={(e) => handleFilterChange('search', e.target.value)}
-              className="w-full pl-32 pr-4 py-5 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-3xl outline-none focus:ring-2 focus:ring-primary-500/50 placeholder:text-slate-600 transition-all font-sans"
+              className="w-full pl-32 pr-4 py-5 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-[2.5rem] outline-none focus:ring-2 focus:ring-primary-500/50 placeholder:text-slate-600 transition-all font-sans"
             />
           </div>
           <div className="md:col-span-3 relative">
@@ -194,7 +194,7 @@ const TransactionHistory = () => {
             </div>
             <select
               value={filters.status} onChange={(e) => handleFilterChange('status', e.target.value)}
-              className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-3xl pl-32 pr-10 py-5 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer font-sans"
+              className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-[2.5rem] pl-32 pr-10 py-5 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer font-sans"
             >
               <option value="" className="bg-slate-900 text-white font-black">ST: ALL STATUSES</option>
               <option value="pending" className="bg-slate-900 text-white font-black">ST: PENDING</option>
@@ -209,7 +209,7 @@ const TransactionHistory = () => {
             </div>
             <select
               value={filters.dateRange} onChange={(e) => handleFilterChange('dateRange', e.target.value)}
-              className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-3xl pl-32 pr-10 py-5 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer font-sans"
+              className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-[2.5rem] pl-32 pr-10 py-5 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer font-sans"
             >
               <option value="" className="bg-slate-900 text-white font-black">ST: ALL TIME</option>
               <option value="today" className="bg-slate-900 text-white font-black">ST: TODAY</option>
@@ -258,7 +258,7 @@ const TransactionHistory = () => {
                     <td className="px-8 py-6 text-right">
                       <button
                         onClick={() => { setSelectedTransaction(t); setShowDetailsModal(true); }}
-                        className="p-3 bg-slate-50 text-slate-400 rounded-3xl hover:bg-slate-900 hover:text-white transition-all group-hover:scale-110 active:scale-90"
+                        className="p-3 bg-slate-50 text-slate-400 rounded-[2.5rem] hover:bg-slate-900 hover:text-white transition-all group-hover:scale-110 active:scale-90"
                       >
                         <Eye className="h-4 w-4" />
                       </button>
@@ -309,7 +309,7 @@ const TransactionHistory = () => {
               </div>
               <button
                 onClick={() => setShowDetailsModal(false)}
-                className="p-3 bg-slate-50 text-slate-400 rounded-3xl hover:bg-rose-50 hover:text-rose-600 transition-all"
+                className="p-3 bg-slate-50 text-slate-400 rounded-[2.5rem] hover:bg-rose-50 hover:text-rose-600 transition-all"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -330,11 +330,11 @@ const TransactionHistory = () => {
                       </div>
                       <p className="text-6xl font-black tracking-tighter">₱{selectedTransaction.totalAmount?.toLocaleString()}</p>
                       <div className="flex gap-4">
-                        <div className="px-4 py-2 bg-white/5 border border-white/10 rounded-3xl">
+                        <div className="px-4 py-2 bg-white/5 border border-white/10 rounded-[2.5rem]">
                           <p className="text-[8px] font-black text-white/40 uppercase tracking-widest mb-1">Method</p>
                           <p className="text-sm font-black text-primary-400 uppercase">{selectedTransaction.paymentMethod || 'SECURE'}</p>
                         </div>
-                        <div className="px-4 py-2 bg-white/5 border border-white/10 rounded-3xl">
+                        <div className="px-4 py-2 bg-white/5 border border-white/10 rounded-[2.5rem]">
                           <p className="text-[8px] font-black text-white/40 uppercase tracking-widest mb-1">Verify</p>
                           <p className="text-sm font-black text-emerald-400 uppercase">VERIFIED</p>
                         </div>
@@ -388,7 +388,7 @@ const TransactionHistory = () => {
                     </h3>
                     <div className="space-y-2">
                       <p className="text-[9px] font-black text-slate-900 uppercase tracking-widest">Method: <span className="text-primary-600 italic px-2">{selectedTransaction.deliveryMethod || 'SHIPPING'}</span></p>
-                      <div className="p-4 bg-slate-50 rounded-3xl border border-slate-100 mt-4">
+                      <div className="p-4 bg-slate-50 rounded-[2.5rem] border border-slate-100 mt-4">
                         <p className="text-[11px] font-medium text-slate-600 leading-relaxed uppercase tracking-tight">
                           {selectedTransaction.shippingAddress?.street}, {selectedTransaction.shippingAddress?.city}, <br />
                           {selectedTransaction.shippingAddress?.province} {selectedTransaction.shippingAddress?.zipCode}
@@ -412,7 +412,7 @@ const TransactionHistory = () => {
             <div className="p-8 bg-slate-50 border-t border-slate-100 relative z-10 flex gap-4">
               <button
                 onClick={() => setShowDetailsModal(false)}
-                className="flex-1 py-4 bg-slate-900 text-white rounded-[2.5rem] text-[10px] font-black uppercase tracking-[0.2em] hover:bg-primary-600 transition-all shadow-xl"
+                className="flex-1 py-5 bg-slate-900 text-white rounded-[2.5rem] text-[10px] font-black uppercase tracking-[0.2em] hover:bg-primary-600 transition-all shadow-xl"
               >
                 Close Order Details
               </button>

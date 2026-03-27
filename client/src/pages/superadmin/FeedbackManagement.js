@@ -133,7 +133,7 @@ const FeedbackManagement = () => {
                         <select
                             value={filter.category}
                             onChange={(e) => setFilter({ ...filter, category: e.target.value, page: 1 })}
-                            className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-3xl pl-32 pr-6 py-5 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer font-sans"
+                            className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-[2.5rem] pl-32 pr-6 py-5 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer font-sans"
                         >
                             <option value="" className="bg-slate-900 text-white font-black">ST: ALL FEEDBACK</option>
                             <option value="UI/UX" className="bg-slate-900 text-white font-black">ST: UI / UX</option>
@@ -149,7 +149,7 @@ const FeedbackManagement = () => {
                         <input
                             type="text" placeholder="QUERY FEEDBACK..."
                             value={filter.search} onChange={(e) => handleFilterChange('search', e.target.value)}
-                            className="w-full pl-32 pr-4 py-5 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-3xl outline-none focus:ring-2 focus:ring-indigo-500/50 placeholder:text-slate-600 transition-all font-sans"
+                            className="w-full pl-32 pr-4 py-5 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-[2.5rem] outline-none focus:ring-2 focus:ring-indigo-500/50 placeholder:text-slate-600 transition-all font-sans"
                         />
                     </div>
                     <div className="md:col-span-4 relative">
@@ -159,7 +159,7 @@ const FeedbackManagement = () => {
                         <select
                             value={filter.status}
                             onChange={(e) => handleFilterChange('status', e.target.value)}
-                            className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-3xl pl-32 pr-6 py-5 outline-none focus:ring-2 focus:ring-emerald-500/50 appearance-none transition-all cursor-pointer font-sans"
+                            className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-[2.5rem] pl-32 pr-6 py-5 outline-none focus:ring-2 focus:ring-emerald-500/50 appearance-none transition-all cursor-pointer font-sans"
                         >
                             <option value="" className="bg-slate-900 text-white font-black">ST: ANY STATUS</option>
                             <option value="pending" className="bg-slate-900 text-white font-black">ST: PENDING</option>
@@ -235,13 +235,13 @@ const FeedbackManagement = () => {
                                         <button 
                                             onClick={() => handleStatusUpdate(item._id, item.status === 'pending' ? 'reviewed' : 'pending')}
                                             title={item.status === 'pending' ? 'Mark Reviewed' : 'Mark Pending'}
-                                            className={`flex-1 md:flex-none p-3 rounded-3xl transition-all shadow-sm ${item.status === 'reviewed' ? 'bg-primary-600 text-white' : 'bg-slate-50 text-slate-400 hover:bg-primary-600 hover:text-white'}`}
+                                            className={`flex-1 md:flex-none p-3 rounded-[2.5rem] transition-all shadow-sm ${item.status === 'reviewed' ? 'bg-primary-600 text-white' : 'bg-slate-50 text-slate-400 hover:bg-primary-600 hover:text-white'}`}
                                         >
                                             <CheckCircle className="h-5 w-5" />
                                         </button>
                                         <button 
                                             onClick={() => handleDelete(item._id)}
-                                            className="flex-1 md:flex-none p-3 bg-slate-50 text-slate-400 rounded-3xl hover:bg-rose-600 hover:text-white transition-all shadow-sm"
+                                            className="flex-1 md:flex-none p-3 bg-slate-50 text-slate-400 rounded-[2.5rem] hover:bg-rose-600 hover:text-white transition-all shadow-sm"
                                         >
                                             <Trash2 className="h-5 w-5" />
                                         </button>
@@ -258,7 +258,7 @@ const FeedbackManagement = () => {
                     <button
                         disabled={filter.page === 1}
                         onClick={() => handlePageChange(filter.page - 1)}
-                        className="p-3 bg-white rounded-3xl border border-slate-100 text-slate-400 disabled:opacity-30 hover:bg-primary-50 hover:text-primary-600 transition-all shadow-sm"
+                        className="p-3 bg-white rounded-[2.5rem] border border-slate-100 text-slate-400 disabled:opacity-30 hover:bg-primary-50 hover:text-primary-600 transition-all shadow-sm"
                     >
                         <ChevronLeft className="h-5 w-5" />
                     </button>
@@ -279,7 +279,7 @@ const FeedbackManagement = () => {
                     <button
                         disabled={filter.page === pagination.totalPages}
                         onClick={() => handlePageChange(filter.page + 1)}
-                        className="p-3 bg-white rounded-3xl border border-slate-100 text-slate-400 disabled:opacity-30 hover:bg-primary-50 hover:text-primary-600 transition-all shadow-sm"
+                        className="p-3 bg-white rounded-[2.5rem] border border-slate-100 text-slate-400 disabled:opacity-30 hover:bg-primary-50 hover:text-primary-600 transition-all shadow-sm"
                     >
                         <ChevronRight className="h-5 w-5" />
                     </button>

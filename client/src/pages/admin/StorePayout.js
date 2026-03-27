@@ -123,7 +123,7 @@ const StorePayout = () => {
                         { label: 'Pending Payouts', value: `₱${(stats?.pendingPayouts || 0).toLocaleString()}` },
                         { label: 'Total Withdrawn', value: `₱${(stats?.totalWithdrawn || 0).toLocaleString()}` }
                     ].map(c => (
-                        <div key={c.label} className={`rounded-2xl border p-4 ${c.highlight ? 'bg-slate-900 border-slate-800 text-white shadow-md' : 'bg-white border-slate-100 text-slate-900 shadow-sm'}`}>
+                        <div key={c.label} className={`rounded-3xl border p-4 ${c.highlight ? 'bg-slate-900 border-slate-800 text-white shadow-md' : 'bg-white border-slate-100 text-slate-900 shadow-sm'}`}>
                             <p className={`text-[9px] font-black uppercase tracking-widest mb-2 leading-tight ${c.highlight ? 'text-primary-400' : 'text-slate-400'}`}>{c.label}</p>
                             <p className={`text-lg sm:text-xl font-black ${c.highlight ? 'text-white' : 'text-slate-900'}`}>{c.value}</p>
                         </div>
@@ -131,7 +131,7 @@ const StorePayout = () => {
                 </div>
 
                 {/* Tabs */}
-                <div className="bg-white/80 backdrop-blur-md rounded-2xl border border-white shadow-sm p-1 flex gap-1">
+                <div className="bg-white/80 backdrop-blur-md rounded-3xl border border-white shadow-sm p-1 flex gap-1">
                     {[
                         { id: 'withdraw', label: 'Request Withdrawal' },
                         { id: 'methods', label: 'Payout Methods' },
@@ -149,7 +149,7 @@ const StorePayout = () => {
 
                 {/* Request Withdrawal */}
                 {tab === 'withdraw' && (
-                    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 space-y-5">
+                    <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-6 space-y-5">
                         <h2 className="font-black text-slate-900 uppercase tracking-tighter">Withdraw Earnings</h2>
 
                         {(stats?.payoutMethods || []).length === 0 ? (
@@ -208,7 +208,7 @@ const StorePayout = () => {
                                 <button
                                     type="submit"
                                     disabled={requesting}
-                                    className="w-full py-4 bg-slate-900 text-white rounded-xl font-black text-xs uppercase tracking-widest hover:bg-slate-800 transition-all disabled:opacity-50"
+                                    className="w-full py-5 bg-slate-900 text-white rounded-xl font-black text-xs uppercase tracking-widest hover:bg-slate-800 transition-all disabled:opacity-50"
                                 >
                                     {requesting ? 'Submitting...' : 'Request Withdrawal'}
                                 </button>
@@ -223,7 +223,7 @@ const StorePayout = () => {
 
                 {/* Payout Methods */}
                 {tab === 'methods' && (
-                    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 space-y-4">
+                    <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-6 space-y-4">
                         <div className="flex items-center justify-between">
                             <h2 className="font-black text-slate-900 uppercase tracking-tighter">Payout Methods</h2>
                             <button
@@ -309,7 +309,7 @@ const StorePayout = () => {
 
                 {/* History */}
                 {tab === 'history' && (
-                    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 space-y-3">
+                    <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-6 space-y-3">
                         <h2 className="font-black text-slate-900 uppercase tracking-tighter">Withdrawal History</h2>
                         {history.length === 0 ? (
                             <div className="text-center py-10">

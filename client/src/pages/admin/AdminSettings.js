@@ -120,7 +120,7 @@ const AdminSettings = () => {
                     <input
                       type="number" value={settings.shippingFee}
                       onChange={(e) => handleInputChange('shippingFee', e.target.value)}
-                      className="input input-with-icon bg-slate-50 border-none rounded-2xl text-[12px] font-black uppercase tracking-widest focus:ring-2 focus:ring-primary-500 placeholder:text-slate-300"
+                      className="input input-with-icon bg-slate-50 border-none rounded-3xl text-[12px] font-black uppercase tracking-widest focus:ring-2 focus:ring-primary-500 placeholder:text-slate-300"
                     />
                   </div>
                 </div>
@@ -132,7 +132,7 @@ const AdminSettings = () => {
                     <input
                       type="number" value={settings.freeShippingThreshold}
                       onChange={(e) => handleInputChange('freeShippingThreshold', e.target.value)}
-                      className="input input-with-icon bg-slate-50 border-none rounded-2xl text-[12px] font-black uppercase tracking-widest focus:ring-2 focus:ring-primary-500 placeholder:text-slate-300"
+                      className="input input-with-icon bg-slate-50 border-none rounded-3xl text-[12px] font-black uppercase tracking-widest focus:ring-2 focus:ring-primary-500 placeholder:text-slate-300"
                     />
                   </div>
                 </div>
@@ -148,7 +148,7 @@ const AdminSettings = () => {
             <div className="relative z-10">
               <h3 className="text-[11px] font-black text-primary-500 uppercase tracking-[0.4em] mb-6">Business Identity</h3>
               <div className="space-y-6">
-                <div className="bg-white/5 border border-white/10 p-5 rounded-2xl flex items-center gap-4">
+                <div className="bg-white/5 border border-white/10 p-5 rounded-3xl flex items-center gap-4">
                   <div className="w-10 h-10 bg-primary-600 rounded-xl flex items-center justify-center shrink-0">
                     <Building className="h-5 w-5" />
                   </div>
@@ -158,7 +158,7 @@ const AdminSettings = () => {
                   </div>
                 </div>
 
-                <div className="bg-white/5 border border-white/10 p-5 rounded-2xl flex items-center gap-4">
+                <div className="bg-white/5 border border-white/10 p-5 rounded-3xl flex items-center gap-4">
                   <div className={`w-10 h-10 ${user?.store?.verificationStatus === 'verified' ? 'bg-emerald-600' : 'bg-amber-600'} rounded-xl flex items-center justify-center shrink-0`}>
                     {user?.store?.verificationStatus === 'verified' ? <CheckCircle className="h-5 w-5" /> : <AlertCircle className="h-5 w-5" />}
                   </div>

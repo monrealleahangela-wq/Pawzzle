@@ -127,7 +127,7 @@ const AdminOrders = () => {
             <input
               type="text" placeholder="QUERY ORDERS..."
               value={filters.search} onChange={(e) => handleFilterChange('search', e.target.value)}
-              className="w-full pl-32 pr-4 py-5 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-3xl outline-none focus:ring-2 focus:ring-indigo-500/50 placeholder:text-slate-600 transition-all font-sans"
+              className="w-full pl-32 pr-4 py-5 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-[2.5rem] outline-none focus:ring-2 focus:ring-indigo-500/50 placeholder:text-slate-600 transition-all font-sans"
             />
           </div>
           <div className="md:col-span-4 relative">
@@ -135,7 +135,7 @@ const AdminOrders = () => {
               <Activity className="h-4 w-4 text-primary-500" />
             </div>
             <select
-              className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-3xl pl-32 pr-10 py-5 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer font-sans"
+              className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-[2.5rem] pl-32 pr-10 py-5 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer font-sans"
               value={filters.status}
               onChange={(e) => handleFilterChange('status', e.target.value)}
             >
@@ -291,7 +291,7 @@ const AdminOrders = () => {
           <button
             onClick={() => setPagination(p => ({ ...p, currentPage: p.currentPage - 1 }))}
             disabled={!pagination.hasPrev}
-            className="w-14 h-14 flex items-center justify-center bg-white/5 text-white disabled:opacity-20 rounded-3xl hover:bg-white/10 transition-all font-black"
+            className="w-14 h-14 flex items-center justify-center bg-white/5 text-white disabled:opacity-20 rounded-[2.5rem] hover:bg-white/10 transition-all font-black"
           >
             <ChevronLeft className="h-6 w-6" />
           </button>
@@ -310,7 +310,7 @@ const AdminOrders = () => {
           <button
             onClick={() => setPagination(p => ({ ...p, currentPage: p.currentPage + 1 }))}
             disabled={!pagination.hasNext}
-            className="w-14 h-14 flex items-center justify-center bg-primary-600 text-white disabled:opacity-20 rounded-3xl hover:bg-primary-700 transition-all shadow-xl shadow-primary-900/40 font-black"
+            className="w-14 h-14 flex items-center justify-center bg-primary-600 text-white disabled:opacity-20 rounded-[2.5rem] hover:bg-primary-700 transition-all shadow-xl shadow-primary-900/40 font-black"
           >
             <ChevronRight className="h-6 w-6" />
           </button>

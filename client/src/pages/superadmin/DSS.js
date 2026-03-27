@@ -75,7 +75,7 @@ const SuperAdminDSS = () => {
 
                 <div className="relative z-10">
                     <div className="flex items-center gap-3 mb-8">
-                        <div className="p-3 bg-primary-600/20 rounded-3xl backdrop-blur-md border border-primary-500/30">
+                        <div className="p-3 bg-primary-600/20 rounded-[2.5rem] backdrop-blur-md border border-primary-500/30">
                             <Brain size={24} className="text-primary-400" />
                         </div>
                         <span className="text-[12px] font-black uppercase tracking-[0.6em] text-primary-400">Global DSS Core</span>
@@ -91,11 +91,11 @@ const SuperAdminDSS = () => {
                     </div>
 
                     <div className="flex flex-wrap gap-8 mt-12">
-                        <div className="px-8 py-5 bg-white/5 border border-white/10 rounded-3xl backdrop-blur-md">
+                        <div className="px-8 py-5 bg-white/5 border border-white/10 rounded-[2.5rem] backdrop-blur-md">
                             <p className="text-[10px] font-black text-white/40 uppercase tracking-widest mb-1">Global Revenue</p>
                             <p className="text-3xl font-black text-white tracking-tighter">₱{revenue.combined.toLocaleString()}</p>
                         </div>
-                        <div className="px-8 py-5 bg-white text-slate-900 rounded-3xl">
+                        <div className="px-8 py-5 bg-white text-slate-900 rounded-[2.5rem]">
                             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Growth Forecast</p>
                             <p className="text-3xl font-black text-emerald-600 tracking-tighter">+{platformGrowthRate}%</p>
                         </div>
@@ -112,7 +112,7 @@ const SuperAdminDSS = () => {
                     { label: 'Trust Rating', val: `${platform.avgRating}/5`, sub: `From ${platform.totalReviews} Reviews`, icon: Star, color: 'rose' }
                 ].map((kpi, i) => (
                     <div key={i} className={cardClass}>
-                        <div className={`p-3 bg-${kpi.color}-50 text-${kpi.color}-600 rounded-3xl w-fit mb-6`}>
+                        <div className={`p-3 bg-${kpi.color}-50 text-${kpi.color}-600 rounded-[2.5rem] w-fit mb-6`}>
                             <kpi.icon size={20} />
                         </div>
                         <p className={labelClass}>{kpi.label}</p>
@@ -159,7 +159,7 @@ const SuperAdminDSS = () => {
                         {storePerformance.map((store, i) => (
                             <div key={i} className="flex items-center justify-between p-8 bg-white border border-slate-100 rounded-[2.5rem] shadow-sm hover:shadow-2xl hover:border-primary-100 transition-all group">
                                 <div className="flex items-center gap-6">
-                                    <div className="w-16 h-16 bg-slate-900 text-white rounded-3xl flex items-center justify-center font-black text-xl shadow-xl group-hover:bg-primary-600 transition-colors">
+                                    <div className="w-16 h-16 bg-slate-900 text-white rounded-[2.5rem] flex items-center justify-center font-black text-xl shadow-xl group-hover:bg-primary-600 transition-colors">
                                         {i + 1}
                                     </div>
                                     <div>
@@ -246,7 +246,7 @@ const SuperAdminDSS = () => {
                             <p className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] pl-8">Analyzing 24-hour platform liquidity trends</p>
                         </div>
                         <div className="flex items-center gap-3">
-                            <div className={`px-4 py-2 border rounded-3xl flex items-center gap-3 ${parseFloat(velocity.trend) >= 0 ? 'bg-emerald-50 border-emerald-100 text-emerald-600' : 'bg-rose-50 border-rose-100 text-rose-600'}`}>
+                            <div className={`px-4 py-2 border rounded-[2.5rem] flex items-center gap-3 ${parseFloat(velocity.trend) >= 0 ? 'bg-emerald-50 border-emerald-100 text-emerald-600' : 'bg-rose-50 border-rose-100 text-rose-600'}`}>
                                 {parseFloat(velocity.trend) >= 0 ? <TrendingUp size={14} /> : <Activity size={14} />}
                                 <span className="text-sm font-black whitespace-nowrap">{velocity.trend}%</span>
                             </div>
