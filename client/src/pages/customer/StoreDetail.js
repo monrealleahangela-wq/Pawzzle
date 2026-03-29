@@ -25,7 +25,8 @@ import {
   Download,
   ShoppingCart,
   Zap,
-  Shield
+  Shield,
+  Check
 } from 'lucide-react';
 import GoogleMap from '../../components/GoogleMap';
 import ReviewSection from '../../components/ReviewSection';
