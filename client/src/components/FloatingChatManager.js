@@ -311,19 +311,6 @@ const FloatingChatManager = ({ currentUser }) => {
             opacity: isDragging ? 0.9 : 1
           }}
         >
-          {/* Draggable Handle */}
-          <div 
-            className={`w-full pt-3 pb-2 flex flex-col items-center ${window.innerWidth < 640 ? 'cursor-grab active:cursor-grabbing' : ''} bg-primary-800 touch-none select-none`}
-            onMouseDown={handleDragStart}
-            onTouchStart={handleDragStart}
-          >
-            <div className="w-12 h-1.5 bg-white/30 rounded-full mb-1" />
-            {window.innerWidth < 640 && (
-              <p className="text-[8px] font-black uppercase text-white/50 tracking-widest">
-                Pull down to close
-              </p>
-            )}
-          </div>
 
           {/* Header */}
           <div className="flex items-center justify-between p-4 border-b bg-primary-800 text-white sm:rounded-t-lg">
