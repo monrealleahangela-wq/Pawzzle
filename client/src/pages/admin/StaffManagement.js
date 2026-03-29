@@ -56,6 +56,8 @@ const StaffManagement = () => {
     const [submitting, setSubmitting] = useState(false);
 
     const [resetting, setResetting] = useState(false);
+    const [resetTarget, setResetTarget] = useState(null);
+    const [newPassword, setNewPassword] = useState('');
     
     // Modal tabs
     const [activeTab, setActiveTab] = useState('info'); // 'info' or 'permissions'
