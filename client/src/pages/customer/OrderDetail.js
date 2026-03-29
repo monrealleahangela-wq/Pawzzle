@@ -119,17 +119,19 @@ const OrderDetail = () => {
       <div className="card p-6">
         <div className="flex justify-between items-start">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">{order.orderNumber}</h1>
-            <p className="text-gray-600">
-              Placed on {new Date(order.orderDate).toLocaleDateString()}
+            <h1 className="text-2xl font-black text-slate-900 uppercase tracking-tighter">
+              {user?.role === 'customer' ? 'Order ID' : 'Order Reference'}: {order.orderNumber}
+            </h1>
+            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">
+              Placed on {new Date(order.orderDate).toLocaleDateString(undefined, { dateStyle: 'long' })}
             </p>
           </div>
-          <div className="text-right">
-            <span className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(order.status)}`}>
+          <div className="text-right flex flex-col items-end gap-2">
+            <span className={`inline-flex px-4 py-1 rounded-2xl text-[10px] font-black uppercase tracking-widest ${getStatusColor(order.status)} border shadow-sm`}>
               {order.status.replace('_', ' ')}
             </span>
-            <p className="text-2xl font-bold text-gray-900 mt-2">
-              ₱{order.totalAmount.toFixed(2)}
+            <p className="text-2xl font-black text-slate-900 tracking-tighter">
+              ₱{order.totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </p>
           </div>
         </div>
@@ -256,9 +258,9 @@ const OrderDetail = () => {
 
           {/* Payment Information */}
           <div className="card p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">
-              <CreditCard className="inline h-5 w-5 mr-2" />
-              Payment Information
+            <h2 className="text-sm font-black text-slate-900 uppercase tracking-widest mb-4 flex items-center gap-2">
+              <CreditCard className="h-4 w-4 text-primary-600" />
+              {user?.role === 'customer' ? 'Payment Summary' : 'Payment Information'}
             </h2>
             <div className="space-y-4 text-sm">
               <div className="flex justify-between items-center pb-2 border-b border-slate-50">
@@ -360,12 +362,37 @@ const OrderDetail = () => {
                 <CheckCircle className="h-5 w-5 text-emerald-500" />
                 Order Completed
               </h2>
-              <p className="text-xs text-slate-500 font-bold uppercase tracking-widest mb-6">
-                This order has been successfully delivered. Please take a moment to review the items to help other customers.
+              <p className="text-xs text-slate-500 font-bold uppercase tracking-widest mb-6 leading-relaxed">
+                This order has been successfully delivered. Please take a moment to review the items to help other customers and help us improve.
               </p>
-              <div className="p-4 bg-white rounded-2xl border border-emerald-100 flex items-center gap-3">
-                <Star className="h-5 w-5 text-amber-400 fill-current" />
-                <span className="text-[10px] font-black text-slate-900 uppercase tracking-widest">Feedback Requested</span>
+              
+              <div className="space-y-3">
+                <div className="p-4 bg-white rounded-2xl border border-emerald-100 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <Star className="h-5 w-5 text-amber-400 fill-current" />
+                        <span className="text-[10px] font-black text-slate-900 uppercase tracking-widest">Feedback Requested</span>
+                    </div>
+                </div>
+
+                {user?.role === 'customer' && (
+                  <button 
+                    onClick={() => {
+                        // More robust way to find the items heading
+                        const headings = Array.from(document.querySelectorAll('h2'));
+                        const itemHeading = headings.find(h => h.textContent.includes('Order Items'));
+                        if (itemHeading) {
+                            itemHeading.scrollIntoView({ behavior: 'smooth' });
+                            toast.info('Review individual items below!', { icon: '⭐' });
+                        } else {
+                            window.scrollTo({ top: 300, behavior: 'smooth' });
+                        }
+                    }}
+                    className="w-full py-4 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-primary-600 transition-all shadow-xl hover:scale-[1.02] flex items-center justify-center gap-2 group"
+                  >
+                    <Star className="h-4 w-4 group-hover:rotate-12 transition-transform" />
+                    Write a Review Now
+                  </button>
+                )}
               </div>
             </div>
           )}

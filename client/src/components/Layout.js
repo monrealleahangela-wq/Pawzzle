@@ -76,7 +76,7 @@ const Layout = () => {
     { path: '/adoptions', label: 'Adoptions', icon: Heart },
     { path: '/orders', label: 'Orders', icon: ShoppingBag },
     { path: '/vouchers', label: 'Vouchers', icon: Ticket },
-    { path: '/insights', label: 'Insights', icon: Brain },
+    { path: '/insights', label: 'AI Care Advisor', icon: Brain },
   ];
 
   const adminNavItems = [
