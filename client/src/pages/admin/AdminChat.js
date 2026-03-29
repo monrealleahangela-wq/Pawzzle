@@ -12,10 +12,12 @@ import {
   RefreshCw,
   MoreVertical,
   Activity,
-  ArrowLeft
+  ArrowLeft,
+  AlertTriangle
 } from 'lucide-react';
 import { chatService } from '../../services/chatService';
 import EnhancedChatMessenger from '../../components/EnhancedChatMessenger';
+import UserReportModal from '../../components/UserReportModal';
 
 const AdminChat = () => {
   const [conversations, setConversations] = useState([]);
@@ -25,6 +27,7 @@ const AdminChat = () => {
   const [filter, setFilter] = useState('all');
   const [unreadCount, setUnreadCount] = useState(0);
   const [currentUser, setCurrentUser] = useState(null);
+  const [showReportModal, setShowReportModal] = useState(false);
 
   useEffect(() => {
     const user = JSON.parse(localStorage.getItem('user') || '{}');
@@ -232,6 +235,13 @@ const AdminChat = () => {
                   </div>
 
                   <div className="flex items-center gap-1">
+                    <button 
+                      onClick={() => setShowReportModal(true)}
+                      className="p-2 text-rose-500 hover:bg-rose-50 rounded-lg transition-all"
+                      title="Report Customer"
+                    >
+                      <AlertTriangle className="h-4 w-4" />
+                    </button>
                     <button className="p-2 text-slate-300 hover:text-slate-600 transition-colors">
                       <MoreVertical className="h-4 w-4" />
                     </button>
@@ -266,6 +276,17 @@ const AdminChat = () => {
           </div>
         </div>
       </div>
+      {showReportModal && selectedConversation && (
+        <UserReportModal
+          isOpen={showReportModal}
+          onClose={() => setShowReportModal(false)}
+          reportedUser={selectedConversation.participants?.find(p => {
+            const pId = p.user?._id || p.user;
+            const currentId = currentUser?._id || currentUser?.id;
+            return pId && pId.toString() !== currentId?.toString();
+          })?.user}
+        />
+      )}
     </div>
   );
 };
