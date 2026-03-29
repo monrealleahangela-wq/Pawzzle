@@ -76,13 +76,18 @@ const UserReportModal = ({ isOpen, onClose, reportedUser }) => {
                         <div className="space-y-4">
                             <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Primary Breach Category</h3>
                             <div className="grid grid-cols-2 gap-3">
-                                {['Scamming', 'Harassment', 'Fake Account', 'Other'].map((r) => (
+                                {[
+                                    { label: 'Scamming', value: 'scam' },
+                                    { label: 'Harassment', value: 'harassment' },
+                                    { label: 'Fake Account', value: 'fake_account' },
+                                    { label: 'Other', value: 'other' }
+                                ].map((r) => (
                                     <button
-                                        key={r}
-                                        onClick={() => { setReason(r); setStep(2); }}
+                                        key={r.value}
+                                        onClick={() => { setReason(r.value); setStep(2); }}
                                         className="p-5 text-left bg-slate-50 border-2 border-slate-50 rounded-2xl hover:border-rose-500 hover:bg-white transition-all group"
                                     >
-                                        <p className="text-xs font-black text-slate-900 uppercase tracking-tight group-hover:text-rose-600">{r}</p>
+                                        <p className="text-xs font-black text-slate-900 uppercase tracking-tight group-hover:text-rose-600">{r.label}</p>
                                     </button>
                                 ))}
                             </div>
