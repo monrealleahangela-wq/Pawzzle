@@ -8,7 +8,9 @@ const PasswordChangeModal = () => {
     const { user, updateUser, logout } = useAuth();
     const [passwords, setPasswords] = useState({ current: '', new: '', confirm: '' });
     const [loading, setLoading] = useState(false);
-    const [showPass, setShowPass] = useState(false);
+    const [showCurrent, setShowCurrent] = useState(false);
+    const [showNew, setShowNew] = useState(false);
+    const [showConfirm, setShowConfirm] = useState(false);
 
     // If user doesn't need to change password, don't show anything
     if (!user?.requiresPasswordChange) return null;
@@ -83,7 +85,7 @@ const PasswordChangeModal = () => {
                                         <Lock className="h-4 w-4" />
                                     </div>
                                     <input
-                                        type={showPass ? "text" : "password"}
+                                        type={showCurrent ? "text" : "password"}
                                         value={passwords.current}
                                         onChange={e => setPasswords(p => ({ ...p, current: e.target.value }))}
                                         className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-12 pr-12 py-4 text-slate-900 font-bold focus:outline-none focus:border-primary-400 transition-all text-sm"
@@ -92,10 +94,10 @@ const PasswordChangeModal = () => {
                                     />
                                     <button
                                         type="button"
-                                        onClick={() => setShowPass(!showPass)}
+                                        onClick={() => setShowCurrent(!showCurrent)}
                                         className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-900 transition-colors"
                                     >
-                                        {showPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                        {showCurrent ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                                     </button>
                                 </div>
                             </div>
@@ -110,28 +112,47 @@ const PasswordChangeModal = () => {
                                         <CheckCircle2 className="h-4 w-4" />
                                     </div>
                                     <input
-                                        type="password"
+                                        type={showNew ? "text" : "password"}
                                         value={passwords.new}
                                         onChange={e => setPasswords(p => ({ ...p, new: e.target.value }))}
-                                        className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-12 pr-4 py-4 text-slate-900 font-bold focus:outline-none focus:border-emerald-400 transition-all text-sm"
+                                        className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-12 pr-12 py-4 text-slate-900 font-bold focus:outline-none focus:border-emerald-400 transition-all text-sm"
                                         placeholder="Minimum 6 characters"
                                         required
                                         minLength={6}
                                     />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowNew(!showNew)}
+                                        className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-900 transition-colors"
+                                    >
+                                        {showNew ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                    </button>
                                 </div>
                             </div>
 
                             {/* Confirm Password */}
                             <div>
                                 <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5 px-1">Confirm New Password</label>
-                                <input
-                                    type="password"
-                                    value={passwords.confirm}
-                                    onChange={e => setPasswords(p => ({ ...p, confirm: e.target.value }))}
-                                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 text-slate-900 font-bold focus:outline-none focus:border-emerald-400 transition-all text-sm"
-                                    placeholder="Confirm new password"
-                                    required
-                                />
+                                <div className="relative group">
+                                    <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-emerald-500 transition-colors">
+                                        <Lock className="h-4 w-4" />
+                                    </div>
+                                    <input
+                                        type={showConfirm ? "text" : "password"}
+                                        value={passwords.confirm}
+                                        onChange={e => setPasswords(p => ({ ...p, confirm: e.target.value }))}
+                                        className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-12 pr-12 py-4 text-slate-900 font-bold focus:outline-none focus:border-emerald-400 transition-all text-sm"
+                                        placeholder="Confirm new password"
+                                        required
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowConfirm(!showConfirm)}
+                                        className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-900 transition-colors"
+                                    >
+                                        {showConfirm ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                    </button>
+                                </div>
                             </div>
                         </div>
 
