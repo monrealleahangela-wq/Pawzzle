@@ -346,12 +346,21 @@ const login = async (req, res) => {
       });
     }
 
+    // Check if user has a password (OAuth users might not)
+    if (!user.password) {
+      console.log(`[AuthDebug] 🔴 Login FAILED for ${email || user.username} - Account has no local password (OAuth only)`);
+      return res.status(401).json({ 
+        message: 'This account was created via social login. Please sign in with Google or reset your password to create a local one.',
+        isOAuthOnly: true
+      });
+    }
+
     const isMatch = await user.comparePassword(password);
     
     // Detailed debug logs for password failures
     if (!isMatch) {
       const isActuallyHashed = user.password && (user.password.startsWith('$2a$') || user.password.startsWith('$2b$'));
-      console.log(`[AuthDebug] 🔴 Login FAILED for ${email || user.username}`);
+      console.log(`[AuthDebug] 🔴 Login FAILED for ${email || user.username} - Incorrect Password`);
       console.log(`[AuthDebug] Details: UserExists: true, IsHashedInDB: ${isActuallyHashed}, DB_Prefix: ${user.password ? user.password.substring(0, 4) : 'NONE'}, Input_Len: ${password ? password.length : 0}`);
       
       return res.status(401).json({ message: 'Incorrect password' });
@@ -373,6 +382,16 @@ const login = async (req, res) => {
       // Send OTP
       await otpService.sendLoginOTP(user.email, otp, user.firstName);
 
+      // Log activity before 2FA redirect
+      try {
+        await ActivityLog.create({
+          user: user._id,
+          action: '2FA Requested',
+          details: 'Two-factor authentication challenge initiated',
+          ipAddress: req.ip
+        });
+      } catch (logErr) {}
+
       return res.json({
         success: true,
         twoFactorRequired: true,
@@ -381,9 +400,22 @@ const login = async (req, res) => {
       });
     }
 
+    // Log the successful login Activity (before response to prevent double-response headers on error)
+    try {
+      await ActivityLog.create({
+        user: user._id,
+        action: 'Account Login',
+        details: 'Successfully authenticated session via standard sign-in',
+        ipAddress: req.ip
+      });
+    } catch (logError) {
+      console.error('⚠️ Failed to create activity log for login:', logError.message);
+      // Don't fail the entire login because logging failed
+    }
+
     const token = generateToken(user._id);
 
-    res.json({
+    return res.json({
       success: true,
       message: 'Login successful',
       token,
@@ -395,18 +427,13 @@ const login = async (req, res) => {
         requiresPasswordChange: user.requiresPasswordChange
       }
     });
-    
-    // Log the successful login Activity
-    await ActivityLog.create({
-      user: user._id,
-      action: 'Account Login',
-      details: 'Successfully authenticated session via standard sign-in',
-      ipAddress: req.ip
-    });
 
   } catch (error) {
     console.error('Login error:', error);
-    res.status(500).json({ message: 'Server error during login' });
+    // Be careful not to send 500 if headers were already sent by something else
+    if (!res.headersSent) {
+      res.status(500).json({ message: 'Server error during login' });
+    }
   }
 };
 
