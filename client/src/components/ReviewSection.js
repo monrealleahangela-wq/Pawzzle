@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Star, MessageSquare, Image as ImageIcon, Send, User } from 'lucide-react';
+import { Star, MessageSquare, Image as ImageIcon, Send, User, AlertCircle } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { reviewService, getImageUrl } from '../services/apiService';
 import { useAuth } from '../contexts/AuthContext';
@@ -90,13 +90,22 @@ const ReviewSection = ({ targetType, targetId }) => {
                     </h2>
                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">What our customers say</p>
                 </div>
-                {!showForm && isAuthenticated && isEligible && (
-                    <button
-                        onClick={() => setShowForm(true)}
-                        className="px-6 py-2 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-primary-600 transition-all shadow-lg"
-                    >
-                        Write Review
-                    </button>
+                {!showForm && isAuthenticated && (
+                    isEligible ? (
+                        <button
+                            onClick={() => setShowForm(true)}
+                            className="px-6 py-2 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-primary-600 transition-all shadow-lg"
+                        >
+                            Write Review
+                        </button>
+                    ) : (
+                        <div className="flex items-center gap-2 bg-slate-50 border border-slate-100 px-4 py-2 rounded-xl group hover:border-amber-200 transition-all">
+                            <AlertCircle className="h-3 w-3 text-amber-500" />
+                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest group-hover:text-amber-600 transition-colors">
+                                Verified Buyers Only
+                            </p>
+                        </div>
+                    )
                 )}
             </div>
 
