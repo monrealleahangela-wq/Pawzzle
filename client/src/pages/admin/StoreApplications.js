@@ -66,9 +66,23 @@ const StoreApplications = () => {
     'Vague Business Description'
   ];
 
+  const [searchTerm, setSearchTerm] = useState('');
+
   useEffect(() => {
     fetchApplications();
   }, [filters]);
+
+  // Debounce search effect
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      // Only update filter if searchTerm has changed
+      if (searchTerm !== filters.search) {
+        setFilters(prev => ({ ...prev, search: searchTerm }));
+      }
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [searchTerm, filters.search]);
 
   const fetchApplications = async () => {
     try {
@@ -136,10 +150,10 @@ const StoreApplications = () => {
             </div>
             <input
               type="text"
-              placeholder=""
-              className="w-full pl-14 pr-4 py-3.5 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl outline-none focus:ring-2 focus:ring-primary-500/50 placeholder:text-slate-600 transition-all font-sans"
-              value={filters.search}
-              onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
+              placeholder="SEARCH BY BUSINESS NAME, TYPE, OR ID..."
+              className="w-full pl-14 pr-5 py-3.5 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl outline-none focus:ring-2 focus:ring-primary-500/50 placeholder:text-slate-600 transition-all font-sans"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
           <div className="md:col-span-4 relative">

@@ -3,7 +3,7 @@ import { MessageSquare, X, Minimize2, Maximize2, Send, Search, User, Clock, Chec
 import { chatService } from '../services/chatService';
 import { toast } from 'react-toastify';
 
-import { uploadService } from '../services/apiService';
+import { uploadService, storeService } from '../services/apiService';
 
 const FloatingChatManager = ({ currentUser }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -17,6 +17,7 @@ const FloatingChatManager = ({ currentUser }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [showChatWindow, setShowChatWindow] = useState(false);
   const [lastRefresh, setLastRefresh] = useState(Date.now());
+  const [sellerStoreId, setSellerStoreId] = useState(null);
   const fileInputRef = React.useRef(null);
   const messagesEndRef = React.useRef(null);
   const dragRef = React.useRef(null);
@@ -100,12 +101,25 @@ const FloatingChatManager = ({ currentUser }) => {
     }
   };
 
-  const handleSelectConversation = (conversation) => {
+  const handleSelectConversation = async (conversation) => {
     setSelectedConversation(conversation);
     setShowChatWindow(true);
     setIsMinimized(false);
+    setSellerStoreId(null);
     fetchMessages(conversation._id);
     chatService.markAsRead(conversation._id);
+
+    // Resolve the seller's store for shop navigation
+    const other = getOtherParticipant(conversation);
+    if (other && (other.role === 'admin' || other.role === 'seller')) {
+      try {
+        const res = await storeService.getStoreByOwner(other._id || other.id);
+        const storeId = res.data?.store?._id || res.data?._id || null;
+        setSellerStoreId(storeId);
+      } catch (e) {
+        // Store lookup failed — navigation won't be available; that's OK
+      }
+    }
   };
 
   // Poll for new messages when a conversation is open
@@ -433,12 +447,23 @@ const FloatingChatManager = ({ currentUser }) => {
                             <span className="w-2 h-2 bg-green-500 rounded-full"></span>
                           )}
                         </div>
-                        <p className="text-[10px] text-gray-500 mt-1 uppercase font-bold tracking-wider">
-                          {getOtherParticipant(selectedConversation)?.firstName || 'User'}
-                          {getOtherParticipant(selectedConversation)?.lastSeen && (
-                            <span className="ml-1 opacity-60">• {getOnlineStatus(getOtherParticipant(selectedConversation).lastSeen).text}</span>
+                        {sellerStoreId ? (
+                            <button
+                              onClick={() => window.location.assign(`/stores/${sellerStoreId}`)}
+                              className="text-[10px] text-primary-600 mt-1 uppercase font-black tracking-wider hover:underline text-left flex items-center gap-1"
+                              title="Visit seller's shop"
+                            >
+                              <span className="w-1 h-1 rounded-full bg-primary-500 inline-block" />
+                              {getOtherParticipant(selectedConversation)?.firstName || 'Seller'} · View Shop
+                            </button>
+                          ) : (
+                            <p className="text-[10px] text-gray-500 mt-1 uppercase font-bold tracking-wider">
+                              {getOtherParticipant(selectedConversation)?.firstName || 'User'}
+                              {getOtherParticipant(selectedConversation)?.lastSeen && (
+                                <span className="ml-1 opacity-60">• {getOnlineStatus(getOtherParticipant(selectedConversation).lastSeen).text}</span>
+                              )}
+                            </p>
                           )}
-                        </p>
                       </div>
                     </div>
                     {/* Add Close Button */}

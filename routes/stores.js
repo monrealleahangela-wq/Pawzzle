@@ -11,7 +11,8 @@ const {
   updateStore,
   getStoreDashboard,
   toggleStoreStatus,
-  featureStore
+  featureStore,
+  getStoreByOwner
 } = require('../controllers/storeController');
 const { authenticate, superAdminOnly, authorize, adminOnly, adminOrStaff } = require('../middleware/auth');
 
@@ -52,6 +53,7 @@ router.post('/', authenticate, adminOnly, createStoreValidation, createStore);
 
 // Public routes with parameter (must come AFTER literal paths)
 router.get('/', getAllStores);
+router.get('/owner/:ownerId', getStoreByOwner);
 router.get('/:id', getStoreById);
 router.get('/:id/details', getStoreDetails);
 

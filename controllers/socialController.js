@@ -2,6 +2,7 @@ const Follow = require('../models/Follow');
 const ProductFavorite = require('../models/ProductFavorite');
 const User = require('../models/User');
 const Product = require('../models/Product');
+const Store = require('../models/Store');
 
 // Following Logic
 const followUser = async (req, res) => {
@@ -56,7 +57,25 @@ const getFollowing = async (req, res) => {
     const { userId } = req.params;
     const following = await Follow.find({ follower: userId })
       .populate('following', 'firstName lastName username avatar role');
-    res.json({ following: following.map(f => f.following) });
+    const followingUsers = following.map(f => f.following).filter(Boolean);
+
+    // For sellers/admins, attach their storeId for direct shop navigation
+    const storeMap = {};
+    const sellerIds = followingUsers
+      .filter(u => u.role === 'admin' || u.role === 'seller')
+      .map(u => u._id);
+
+    if (sellerIds.length > 0) {
+      const stores = await Store.find({ owner: { $in: sellerIds }, isDeleted: { $ne: true } }, '_id owner');
+      stores.forEach(s => { storeMap[s.owner.toString()] = s._id.toString(); });
+    }
+
+    const result = followingUsers.map(u => ({
+      ...u.toObject(),
+      storeId: storeMap[u._id.toString()] || null
+    }));
+
+    res.json({ following: result });
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
   }
@@ -108,6 +127,16 @@ const checkFavoriteStatus = async (req, res) => {
     }
 };
 
+const checkFollowStatus = async (req, res) => {
+    try {
+        const { followingId } = req.params;
+        const exists = await Follow.exists({ follower: req.user._id, following: followingId });
+        res.json({ isFollowing: !!exists });
+    } catch (error) {
+        res.status(500).json({ message: 'Server error' });
+    }
+};
+
 module.exports = {
   followUser,
   unfollowUser,
@@ -115,5 +144,6 @@ module.exports = {
   getFollowing,
   toggleFavorite,
   getUserFavorites,
-  checkFavoriteStatus
+  checkFavoriteStatus,
+  checkFollowStatus
 };

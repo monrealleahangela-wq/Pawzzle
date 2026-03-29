@@ -1,25 +1,42 @@
-const UserReport = require('../models/UserReport');
+const Report = require('../models/Report');
 const User = require('../models/User');
+const Notification = require('../models/Notification');
+const Store = require('../models/Store');
+const mongoose = require('mongoose');
 
-// Create a report (Seller reporting a customer)
+// Create a report (Any authenticated user)
 const createReport = async (req, res) => {
     try {
-        const { reportedUserId, reason, description, evidence } = req.body;
+        const { reportedUserId, reason, details, description, evidence, reportType, storeId } = req.body;
 
         const reportedUser = await User.findById(reportedUserId);
         if (!reportedUser) {
             return res.status(404).json({ message: 'User not found' });
         }
 
-        const report = new UserReport({
+        const report = new Report({
             reporter: req.user._id,
             reportedUser: reportedUserId,
-            reason,
-            description,
-            evidence
+            reason: reason || 'other',
+            details: details || description || 'No details provided',
+            evidence: evidence || [],
+            reportType: reportType || 'other',
+            store: storeId || req.user.store || null
         });
 
         await report.save();
+
+        // Notify reported user
+        await new Notification({
+            recipient: reportedUserId,
+            sender: req.user._id,
+            type: 'report',
+            title: 'Report Filed Against You',
+            message: `A report has been filed against your account for: ${reason || 'Policy violation'}. Our team is reviewing it.`,
+            relatedId: report._id,
+            relatedModel: 'Report'
+        }).save();
+
         res.status(201).json({ message: 'Report submitted successfully', report });
     } catch (error) {
         console.error('Create report error:', error);
@@ -27,16 +44,18 @@ const createReport = async (req, res) => {
     }
 };
 
-const mongoose = require('mongoose');
-
 // Get all reports (Super Admin)
 const getAllReports = async (req, res) => {
     try {
-        const { status, page = 1, limit = 10, search, dateRange } = req.query;
+        const { status, page = 1, limit = 10, search, dateRange, storeId } = req.query;
         let filter = { isDeleted: { $ne: true } };
         
         if (status && status !== '' && status !== 'all') {
             filter.status = status;
+        }
+
+        if (storeId) {
+            filter.store = storeId;
         }
 
         // Apply dateRange filter
@@ -72,8 +91,9 @@ const getAllReports = async (req, res) => {
             filter.$or = [
                 { reporter: { $in: userIds } },
                 { reportedUser: { $in: userIds } },
-                { description: { $regex: search, $options: 'i' } },
-                { reason: { $regex: search, $options: 'i' } }
+                { details: { $regex: search, $options: 'i' } },
+                { reason: { $regex: search, $options: 'i' } },
+                { adminNotes: { $regex: search, $options: 'i' } }
             ];
 
             if (mongoose.Types.ObjectId.isValid(search)) {
@@ -83,14 +103,15 @@ const getAllReports = async (req, res) => {
 
         const skip = (parseInt(page) - 1) * parseInt(limit);
 
-        const reports = await UserReport.find(filter)
-            .populate('reporter', 'firstName lastName username email')
-            .populate('reportedUser', 'firstName lastName username email')
+        const reports = await Report.find(filter)
+            .populate('reporter', 'firstName lastName username email avatar')
+            .populate('reportedUser', 'firstName lastName username email avatar')
+            .populate('store', 'name')
             .sort({ createdAt: -1 })
             .skip(skip)
             .limit(parseInt(limit));
 
-        const total = await UserReport.countDocuments(filter);
+        const total = await Report.countDocuments(filter);
 
         res.json({
             reports,
@@ -108,23 +129,48 @@ const getAllReports = async (req, res) => {
     }
 };
 
-// Update report status (Super Admin)
+// Update report status & take action (Super Admin)
 const updateReportStatus = async (req, res) => {
     try {
         const { reportId } = req.params;
-        const { status, adminNotes } = req.body;
+        const { status, adminNotes, actionTaken } = req.body;
 
-        const report = await UserReport.findByIdAndUpdate(
-            reportId,
-            { status, adminNotes },
-            { new: true }
-        );
-
+        const report = await Report.findById(reportId).populate('reportedUser');
         if (!report) {
             return res.status(404).json({ message: 'Report not found' });
         }
 
-        res.json({ message: 'Report updated', report });
+        if (status) report.status = status;
+        if (adminNotes !== undefined) report.adminNotes = adminNotes;
+        
+        if (actionTaken && actionTaken !== 'none') {
+            report.actionTaken = actionTaken;
+            report.status = 'action_taken';
+
+            // Take actual action on the user
+            const user = await User.findById(report.reportedUser._id);
+            if (user) {
+                if (actionTaken === 'ban' || actionTaken === 'suspension') {
+                    user.isActive = false;
+                    user.deactivationReason = `ACCOUNT ${actionTaken.toUpperCase()}: ${adminNotes || report.reason}`;
+                    user.deactivatedAt = new Date();
+                    await user.save();
+                }
+
+                // Notify User
+                await new Notification({
+                    recipient: user._id,
+                    type: 'user_action',
+                    title: `Account Action: ${actionTaken.toUpperCase()}`,
+                    message: `After reviewing a report, the administration has issued a ${actionTaken}. Reason: ${adminNotes || 'Policy violation'}.`,
+                    relatedId: report._id,
+                    relatedModel: 'Report'
+                }).save();
+            }
+        }
+
+        await report.save();
+        res.json({ message: 'Report updated and action taken', report });
     } catch (error) {
         console.error('Update report error:', error);
         res.status(500).json({ message: 'Server error' });

@@ -5,6 +5,7 @@ const Product = require('../models/Product');
 const Order = require('../models/Order');
 const Booking = require('../models/Booking');
 const Service = require('../models/Service');
+const Follow = require('../models/Follow');
 
 // Get all stores (public)
 const getAllStores = async (req, res) => {
@@ -108,8 +109,8 @@ const getStoreDetails = async (req, res) => {
       return res.status(404).json({ message: 'Store not found' });
     }
 
-    // Get store's products, services, and pets
-    const [products, services, pets] = await Promise.all([
+    // Get store's products, services, pets, and follower count
+    const [products, services, pets, followerCount] = await Promise.all([
       Product.find({
         $or: [
           { store: store._id },
@@ -133,14 +134,16 @@ const getStoreDetails = async (req, res) => {
         ],
         isAvailable: true,
         isDeleted: { $ne: true }
-      }).select('name breed age gender price images species description')
+      }).select('name breed age gender price images species description'),
+      Follow.countDocuments({ following: store.owner._id || store.owner })
     ]);
 
     res.json({
       store,
       products,
       services,
-      pets
+      pets,
+      followerCount
     });
   } catch (error) {
     console.error('Get store details error:', error);
@@ -414,6 +417,19 @@ const featureStore = async (req, res) => {
   }
 };
 
+// Get store by owner userId (public - for customer shop navigation)
+const getStoreByOwner = async (req, res) => {
+  try {
+    const { ownerId } = req.params;
+    const store = await Store.findOne({ owner: ownerId, isActive: true, isDeleted: { $ne: true } }).select('_id name logo slug');
+    if (!store) return res.status(404).json({ message: 'Store not found' });
+    res.json({ store });
+  } catch (error) {
+    console.error('Get store by owner error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
 module.exports = {
   getAllStores,
   getStoreById,
@@ -423,5 +439,6 @@ module.exports = {
   updateStore,
   getStoreDashboard,
   toggleStoreStatus,
-  featureStore
+  featureStore,
+  getStoreByOwner
 };

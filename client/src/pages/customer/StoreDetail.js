@@ -26,10 +26,13 @@ import {
   ShoppingCart,
   Zap,
   Shield,
-  Check
+  Check,
+  Users,
+  AlertTriangle
 } from 'lucide-react';
 import GoogleMap from '../../components/GoogleMap';
 import ReviewSection from '../../components/ReviewSection';
+import UserReportModal from '../../components/UserReportModal';
 
 const StoreDetail = () => {
   const { storeId } = useParams();
@@ -45,6 +48,8 @@ const StoreDetail = () => {
   const [isFollowing, setIsFollowing] = useState(false);
   const [isTogglingFollow, setIsTogglingFollow] = useState(false);
   const [chatLoading, setChatLoading] = useState(false);
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+  const [followerCount, setFollowerCount] = useState(0);
 
   useEffect(() => {
     if (isAuthenticated && store?.owner?._id) {
@@ -78,10 +83,12 @@ const StoreDetail = () => {
         if (isFollowing) {
             await socialService.unfollowUser(store.owner._id);
             setIsFollowing(false);
+            setFollowerCount(prev => Math.max(0, prev - 1));
             toast.info(`Unfollowed ${store.name}`);
         } else {
             await socialService.followUser(store.owner._id);
             setIsFollowing(true);
+            setFollowerCount(prev => prev + 1);
             toast.success(`Following ${store.name}!`);
         }
     } catch (error) {
@@ -227,6 +234,7 @@ const StoreDetail = () => {
       setLoading(true);
       const response = await storeService.getStoreDetails(storeId);
       setStore(response.data.store);
+      setFollowerCount(response.data.followerCount || 0);
       setProducts(response.data.products || []);
       setServices(response.data.services || []);
       setPets(response.data.pets || []);
@@ -358,9 +366,21 @@ const StoreDetail = () => {
                   <div className={`w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full bg-white ${isStoreOpen() ? 'animate-pulse' : ''}`} />
                   {isStoreOpen() ? 'Online' : 'Offline'}
                 </span>
+                <span className="px-2 py-0.5 bg-blue-600 text-white rounded-full text-[7px] sm:text-[10px] font-black uppercase tracking-widest shadow-lg flex items-center gap-1">
+                  <Users className="h-2 w-2 sm:h-3 sm:w-3 fill-white/20" /> {followerCount.toLocaleString()} {followerCount === 1 ? 'Follower' : 'Followers'}
+                </span>
               </div>
-              <h1 className="text-xl sm:text-5xl md:text-6xl font-black text-slate-900 tracking-tighter leading-tight uppercase truncate max-w-full">
+              <h1 className="text-xl sm:text-5xl md:text-6xl font-black text-slate-900 tracking-tighter leading-tight uppercase truncate max-w-full flex items-center gap-3">
                 {store.name}
+                {isAuthenticated && (
+                  <button 
+                    onClick={() => setIsReportModalOpen(true)}
+                    className="p-2 bg-rose-50 text-rose-500 rounded-xl hover:bg-rose-100 transition-all opacity-0 group-hover:opacity-100"
+                    title="Report Shop"
+                  >
+                    <AlertTriangle className="h-4 w-4" />
+                  </button>
+                )}
               </h1>
               {store.ratings && store.ratings.count > 0 && (
                 <div className="flex items-center gap-1.5 mt-2 bg-amber-50/80 backdrop-blur-md rounded-xl px-3 py-1.5 w-fit border border-amber-100 mb-2">
@@ -596,6 +616,11 @@ const StoreDetail = () => {
           </div>
         </div>
       </div>
+      <UserReportModal
+        isOpen={isReportModalOpen}
+        onClose={() => setIsReportModalOpen(false)}
+        reportedUser={store.owner}
+      />
     </div>
   );
 };

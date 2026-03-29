@@ -13,5 +13,6 @@ router.get('/following/:userId', socialController.getFollowing);
 router.post('/favorites/toggle', authenticate, socialController.toggleFavorite);
 router.get('/favorites/:userId', socialController.getUserFavorites);
 router.get('/favorites/check/:productId', authenticate, socialController.checkFavoriteStatus);
+router.get('/follow/check/:followingId', authenticate, socialController.checkFollowStatus);
 
 module.exports = router;

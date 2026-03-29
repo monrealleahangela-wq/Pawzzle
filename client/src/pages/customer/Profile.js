@@ -1355,37 +1355,52 @@ const Profile = () => {
                     </div>
                   ) : following.length > 0 ? (
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      {following.map(f => (
-                        <div key={f._id} className="flex items-center gap-4 p-4 bg-white border border-slate-100 rounded-2xl hover:shadow-lg transition-all group">
-                          <div className="w-12 h-12 rounded-xl overflow-hidden bg-slate-50 border border-slate-100">
-                            {f.avatar ? (
-                              <img src={getImageUrl(f.avatar)} alt="" className="w-full h-full object-cover" />
-                            ) : (
-                              <div className="w-full h-full flex items-center justify-center text-slate-300">
-                                <User className="h-6 w-6" />
-                              </div>
-                            )}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <h4 className="text-sm font-black text-slate-900 uppercase truncate">
-                                {f.firstName} {f.lastName}
-                            </h4>
-                            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">@{f.username}</p>
-                          </div>
-                          <button 
-                            onClick={async () => {
+                      {following.map(f => {
+                        const canVisitShop = !!f.storeId;
+                        return (
+                          <div 
+                            key={f._id} 
+                            className={`flex items-center gap-4 p-4 bg-white border border-slate-100 rounded-2xl hover:shadow-lg transition-all group ${canVisitShop ? 'cursor-pointer hover:border-primary-200' : ''}`}
+                            onClick={() => f.storeId && window.location.assign(`/stores/${f.storeId}`)}
+                            title={canVisitShop ? `Visit ${f.firstName}'s shop` : ''}
+                          >
+                            <div className="w-12 h-12 rounded-xl overflow-hidden bg-slate-50 border border-slate-100 shrink-0">
+                              {f.avatar ? (
+                                <img src={getImageUrl(f.avatar)} alt="" className="w-full h-full object-cover" />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center text-slate-300">
+                                  <User className="h-6 w-6" />
+                                </div>
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <h4 className="text-sm font-black text-slate-900 uppercase truncate">
+                                  {f.firstName} {f.lastName}
+                              </h4>
+                              <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">@{f.username}</p>
+                              {canVisitShop && (
+                                <p className="text-[8px] font-black text-primary-500 uppercase tracking-widest mt-0.5 flex items-center gap-1">
+                                  <span className="w-1 h-1 rounded-full bg-primary-500 inline-block" />
+                                  View Shop
+                                </p>
+                              )}
+                            </div>
+                            <button 
+                              onClick={async (e) => {
+                                e.stopPropagation();
                                 try {
                                     await socialService.unfollowUser(f._id);
                                     toast.success(`Unfollowed @${f.username}`);
                                     fetchSocialData();
                                 } catch(err) { toast.error('Failed to unfollow'); }
-                            }}
-                            className="bg-slate-50 text-slate-400 p-2 rounded-xl opacity-0 group-hover:opacity-100 hover:bg-rose-50 hover:text-rose-600 transition-all font-black text-[8px] uppercase tracking-widest"
-                          >
-                            Unfollow
-                          </button>
-                        </div>
-                      ))}
+                              }}
+                              className="bg-slate-50 text-slate-400 p-2 rounded-xl opacity-0 group-hover:opacity-100 hover:bg-rose-50 hover:text-rose-600 transition-all font-black text-[8px] uppercase tracking-widest shrink-0"
+                            >
+                              Unfollow
+                            </button>
+                          </div>
+                        );
+                      })}
                     </div>
                   ) : (
                     <div className="py-20 text-center bg-slate-50 rounded-[3rem] border border-dashed border-slate-200">

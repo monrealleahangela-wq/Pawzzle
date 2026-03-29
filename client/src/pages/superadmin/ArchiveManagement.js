@@ -27,9 +27,22 @@ const ArchiveManagement = () => {
     const [pagination, setPagination] = useState({ currentPage: 1, totalPages: 1 });
     const [confirmModal, setConfirmModal] = useState(null);
 
+    const [searchTerm, setSearchTerm] = useState('');
+
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            if (searchTerm !== search) {
+                setSearch(searchTerm);
+                setPagination(prev => ({ ...prev, currentPage: 1 }));
+            }
+        }, 500);
+
+        return () => clearTimeout(timer);
+    }, [searchTerm, search]);
+
     useEffect(() => {
         fetchArchive();
-    }, [activeType, pagination.currentPage]);
+    }, [activeType, pagination.currentPage, search]);
 
     const fetchArchive = async () => {
         setLoading(true);
@@ -157,17 +170,16 @@ const ArchiveManagement = () => {
                             <Search className="h-4 w-4 text-slate-500 group-focus-within:text-primary-500 transition-colors" />
                         </div>
                         <input
-                            type="text" placeholder=""
-                            value={search} onChange={(e) => setSearch(e.target.value)}
-                            onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                            className="w-full pl-14 pr-32 py-3.5 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl outline-none focus:ring-2 focus:ring-primary-500/50 placeholder:text-slate-600 transition-all font-sans"
+                            type="text" placeholder="SEARCH BY NAME, ID, OR TYPE..."
+                            value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                    setSearch(searchTerm);
+                                    setPagination(prev => ({ ...prev, currentPage: 1 }));
+                                }
+                            }}
+                            className="w-full pl-14 pr-5 py-3.5 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl outline-none focus:ring-2 focus:ring-primary-500/50 placeholder:text-slate-600 transition-all font-sans"
                         />
-                        <button 
-                            onClick={handleSearch}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 px-6 py-2.5 bg-primary-600 text-white rounded-2xl text-[9px] font-black uppercase tracking-widest hover:bg-primary-500 transition-all active:scale-95"
-                        >
-                            Execute
-                        </button>
                     </div>
                 </div>
             </div>

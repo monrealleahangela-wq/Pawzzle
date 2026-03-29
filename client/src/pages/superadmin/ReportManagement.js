@@ -29,9 +29,23 @@ const ReportManagement = () => {
     });
   const [searchQuery, setSearchQuery] = useState('');
 
+  // Debounce search effect
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      // Only update filter if searchQuery has changed from the current filter search
+      if (searchQuery !== filters.search) {
+        handleFilterChange('search', searchQuery);
+      }
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery, filters.search]);
+
   const handleSearchSubmit = (e) => {
     if (e) e.preventDefault();
-    handleFilterChange('search', searchQuery);
+    if (searchQuery !== filters.search) {
+      handleFilterChange('search', searchQuery);
+    }
   };
     const [pagination, setPagination] = useState({
         currentPage: 1,
@@ -67,20 +81,21 @@ const ReportManagement = () => {
         setPagination(prev => ({ ...prev, currentPage: 1 }));
     };
 
-    const handleUpdateStatus = async (id, newStatus) => {
+    const handleUpdateStatus = async (id, updates) => {
         try {
-            await adminReportService.updateReportStatus(id, newStatus);
-            toast.success('Report status updated');
+            await adminReportService.updateReportStatus(id, updates);
+            toast.success('Report updated successfully');
             fetchReports();
             setSelectedReport(null);
         } catch (error) {
-            toast.error('Failed to update report status');
+            toast.error('Failed to update report');
         }
     };
 
     const getStatusColor = (status) => {
         switch (status) {
             case 'pending': return 'bg-amber-100 text-amber-600 border-amber-200';
+            case 'investigating': return 'bg-purple-100 text-purple-600 border-purple-200';
             case 'reviewed': return 'bg-blue-100 text-blue-600 border-blue-200';
             case 'resolved': return 'bg-emerald-100 text-emerald-600 border-emerald-200';
             case 'dismissed': return 'bg-slate-100 text-slate-500 border-slate-200';
@@ -112,9 +127,9 @@ const ReportManagement = () => {
               <Search className="h-4 w-4 text-slate-500 group-focus-within:text-primary-500 transition-colors" />
             </div>
             <input
-                            type="text" placeholder=""
+                            type="text" placeholder="SEARCH BY REPORTER, USER, OR DETAILS..."
                             value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full pl-14 pr-4 py-3.5 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl outline-none focus:ring-2 focus:ring-rose-500/50 placeholder:text-slate-600 transition-all font-sans"
+                            className="w-full pl-14 pr-5 py-3.5 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl outline-none focus:ring-2 focus:ring-rose-500/50 placeholder:text-slate-600 transition-all font-sans"
                         />
           </form>
                     <div className="md:col-span-3 relative">
@@ -156,8 +171,8 @@ const ReportManagement = () => {
                         <thead>
                             <tr className="bg-slate-50 border-b border-slate-100">
                                 <th className="px-8 py-3.5 text-left text-[9px] font-black text-slate-400 uppercase tracking-[0.3em]">Date</th>
-                                <th className="px-8 py-3.5 text-left text-[9px] font-black text-slate-400 uppercase tracking-[0.3em]">Reporter (Seller)</th>
-                                <th className="px-8 py-3.5 text-left text-[9px] font-black text-slate-400 uppercase tracking-[0.3em]">Reported User</th>
+                                <th className="px-8 py-3.5 text-left text-[9px] font-black text-slate-400 uppercase tracking-[0.3em]">Reporter</th>
+                                <th className="px-8 py-3.5 text-left text-[9px] font-black text-slate-400 uppercase tracking-[0.3em]">Target User</th>
                                 <th className="px-8 py-3.5 text-left text-[9px] font-black text-slate-400 uppercase tracking-[0.3em]">Reason</th>
                                 <th className="px-8 py-3.5 text-left text-[9px] font-black text-slate-400 uppercase tracking-[0.3em]">Status</th>
                                 <th className="px-8 py-3.5 text-right text-[9px] font-black text-slate-400 uppercase tracking-[0.3em]">Actions</th>
@@ -301,23 +316,60 @@ const ReportManagement = () => {
                                 <div className="p-6 bg-slate-900 text-white rounded-[2rem] border border-white/5 relative overflow-hidden">
                                     <AlertTriangle className="absolute -bottom-4 -right-4 w-24 h-24 opacity-5" />
                                     <div className="relative z-10">
-                                        <span className="px-3 py-1 bg-white/10 rounded-lg text-[10px] font-black uppercase tracking-widest text-primary-400 mb-4 inline-block italic">
-                                            {selectedReport.reason.replace('_', ' ')}
-                                        </span>
                                         <p className="text-[14px] font-medium leading-relaxed italic opacity-80">
-                                            "{selectedReport.description}"
+                                            "{selectedReport.details || selectedReport.description}"
                                         </p>
                                     </div>
+                                    
+                                    {selectedReport.evidence && selectedReport.evidence.length > 0 && (
+                                        <div className="mt-4 flex gap-2 overflow-x-auto pb-2">
+                                            {selectedReport.evidence.map((img, idx) => (
+                                                <img key={idx} src={img} className="h-20 w-20 object-cover rounded-xl border border-white/10" alt="evidence" />
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-6 pt-6 border-t border-slate-100">
+                                <div className="space-y-4">
+                                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] block pl-1">Take Action</label>
+                                    <div className="flex flex-wrap gap-2">
+                                        {['none', 'warning', 'suspension', 'ban'].map((action) => (
+                                            <button
+                                                key={action}
+                                                onClick={() => setSelectedReport({ ...selectedReport, actionTaken: action })}
+                                                className={`px-4 py-2.5 rounded-xl text-[9px] font-bold uppercase tracking-widest border transition-all ${selectedReport.actionTaken === action ? 'bg-rose-600 text-white border-rose-600 shadow-lg' : 'bg-slate-50 text-slate-600 border-slate-100'}`}
+                                            >
+                                                {action}
+                                            </button>
+                                        ))}
+                                    </div>
+                                    <p className="text-[8px] font-bold text-rose-400 uppercase tracking-widest pl-1 italic">Action will notify the user and update account status</p>
+                                </div>
+
+                                <div className="space-y-4">
+                                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] block pl-1">Admin Notes</label>
+                                    <textarea
+                                        value={selectedReport.adminNotes || ''}
+                                        onChange={(e) => setSelectedReport({ ...selectedReport, adminNotes: e.target.value })}
+                                        className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-xs font-bold text-slate-900 outline-none focus:ring-1 focus:ring-primary-500 resize-none h-24"
+                                        placeholder="Add internal findings or evidence summary..."
+                                    />
                                 </div>
                             </div>
 
                             <div className="pt-6 border-t border-slate-100 flex flex-wrap gap-3">
-                                <p className="w-full text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">Update Case Status:</p>
-                                {['reviewed', 'resolved', 'dismissed', 'action_taken'].map((status) => (
+                                <p className="w-full text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">Finalize Status:</p>
+                                {['pending', 'investigating', 'reviewed', 'resolved', 'dismissed', 'action_taken'].map((status) => (
                                     <button
                                         key={status}
-                                        onClick={() => handleUpdateStatus(selectedReport._id, status)}
-                                        className={`flex-1 min-w-[120px] py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${selectedReport.status === status ? 'bg-slate-900 text-white ring-2 ring-primary-500 ring-offset-2' : 'bg-slate-50 text-slate-600 hover:bg-slate-200'
+                                        onClick={() => handleUpdateStatus(selectedReport._id, { 
+                                            status, 
+                                            adminNotes: selectedReport.adminNotes, 
+                                            actionTaken: selectedReport.actionTaken 
+                                        })}
+                                        className={`flex-1 min-w-[100px] py-4 rounded-2xl text-[9px] font-black uppercase tracking-widest transition-all ${selectedReport.status === status ? 'bg-slate-900 text-white ring-2 ring-primary-500 ring-offset-2 shadow-xl' : 'bg-slate-50 text-slate-400 hover:bg-slate-200'
                                             }`}
                                     >
                                         {status.replace('_', ' ')}

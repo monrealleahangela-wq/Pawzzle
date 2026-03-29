@@ -274,7 +274,8 @@ export const storeService = {
   updateStore: (id, storeData) => api.put('/stores/my-store', storeData),
   deleteStore: (id) => api.delete(`/stores/${id}`),
   getSettings: () => api.get('/store/settings'),
-  updateSettings: (settings) => api.put('/store/settings', settings)
+  updateSettings: (settings) => api.put('/store/settings', settings),
+  getStoreByOwner: (ownerId) => api.get(`/stores/owner/${ownerId}`)
 };
 
 // Adoption services
@@ -349,6 +350,5 @@ export const socialService = {
   checkFavoriteStatus: (productId) => api.get(`/social/favorites/check/${productId}`),
   checkFollowStatus: (followingId) => api.get(`/social/follow/check/${followingId}`)
 };
-
 
 export default api;

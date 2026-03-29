@@ -91,23 +91,31 @@ code {
   @apply absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none z-10 flex items-center justify-center;
 }
 
-/* Global Fix for all search icons and inputs */
+/* Universal Global Fix for all search icons and inputs across all roles */
 .relative svg.lucide-search + input,
 .relative div svg.lucide-search + input,
 .relative .lucide-search + input,
 .group .lucide-search + input,
 .relative div.absolute + input,
 .relative .absolute + input,
-.group div.absolute + input {
-  padding-left: 4.5rem !important;
+.group div.absolute + input,
+.relative .search-icon + input,
+form.relative .absolute + input,
+form.relative div.absolute + input {
+  padding-left: 4.75rem !important;
 }
 
-/* Mobile specific overrides for search/input padding */
+/* Mobile specific overrides for search/input padding - slightly tighter but still offset */
 @media (max-width: 640px) {
   .relative div.absolute + input,
   .relative .absolute + input,
   .input-with-both-icons,
   .input-with-icon {
+    padding-left: 4.25rem !important;
+  }
+  
+  .relative svg.lucide-search + input,
+  .relative .lucide-search + input {
     padding-left: 4rem !important;
   }
 }

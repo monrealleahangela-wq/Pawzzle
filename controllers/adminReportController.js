@@ -1,16 +1,13 @@
 const Report = require('../models/Report');
 const User = require('../models/User');
+const Notification = require('../models/Notification');
+const Store = require('../models/Store');
 
 // Create a report against a user
 const createReport = async (req, res) => {
     try {
-        const { reportedUserId, reason, details } = req.body;
+        const { reportedUserId, reason, details, evidence, reportType, storeId } = req.body;
 
-        if (!req.user.store) {
-            return res.status(403).json({ message: 'User does not have an assigned store to report from' });
-        }
-
-        // Check if reported user exists
         const reportedUser = await User.findById(reportedUserId);
         if (!reportedUser) {
             return res.status(404).json({ message: 'Reported user not found' });
@@ -21,10 +18,24 @@ const createReport = async (req, res) => {
             reportedUser: reportedUserId,
             reason,
             details,
-            store: req.user.store
+            evidence: evidence || [],
+            reportType: reportType || 'other',
+            store: storeId || req.user.store || null
         });
 
         await report.save();
+
+        // Notify reported user
+        await new Notification({
+            recipient: reportedUserId,
+            sender: req.user._id,
+            type: 'report',
+            title: 'Report Filed Against You',
+            message: `A report has been filed against your account for: ${reason}. Our team is reviewing it.`,
+            relatedId: report._id,
+            relatedModel: 'Report'
+        }).save();
+
         res.status(201).json({ message: 'Report submitted successfully', report });
     } catch (error) {
         console.error('Create report error:', error);
@@ -96,25 +107,51 @@ const getAllReports = async (req, res) => {
     }
 };
 
-// Update report status (Super Admin only or maybe restricted)
+// Update report status & take action (Super Admin only)
 const updateReportStatus = async (req, res) => {
     try {
         const { id } = req.params;
-        const { status } = req.body;
+        const { status, adminNotes, actionTaken } = req.body;
 
         if (req.user.role !== 'super_admin') {
             return res.status(403).json({ message: 'Only super admins can update report status' });
         }
 
-        const report = await Report.findById(id);
+        const report = await Report.findById(id).populate('reportedUser');
         if (!report) {
             return res.status(404).json({ message: 'Report not found' });
         }
 
-        report.status = status;
-        await report.save();
+        if (status) report.status = status;
+        if (adminNotes !== undefined) report.adminNotes = adminNotes;
+        if (actionTaken && actionTaken !== 'none') {
+            report.actionTaken = actionTaken;
+            report.status = 'action_taken';
 
-        res.json({ message: 'Report status updated', report });
+            // Take actual action on the user
+            const user = await User.findById(report.reportedUser._id);
+            if (user) {
+                if (actionTaken === 'ban' || actionTaken === 'suspension') {
+                    user.isActive = false;
+                    user.deactivationReason = `ACCOUNT ${actionTaken.toUpperCase()}: ${adminNotes || reason}`;
+                    user.deactivatedAt = new Date();
+                    await user.save();
+                }
+
+                // Notify User
+                await new Notification({
+                    recipient: user._id,
+                    type: 'user_action',
+                    title: `Account Action: ${actionTaken.toUpperCase()}`,
+                    message: `After reviewing a report, we have decided to issue a ${actionTaken}. Reason: ${adminNotes || 'Policy violation'}.`,
+                    relatedId: report._id,
+                    relatedModel: 'Report'
+                }).save();
+            }
+        }
+
+        await report.save();
+        res.json({ message: 'Report updated and action taken', report });
     } catch (error) {
         console.error('Update report status error:', error);
         res.status(500).json({ message: 'Server error' });

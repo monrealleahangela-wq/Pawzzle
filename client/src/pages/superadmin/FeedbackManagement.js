@@ -34,11 +34,19 @@ const FeedbackManagement = () => {
         page: 1,
         limit: 10
     });
-    const [pagination, setPagination] = useState({
-        currentPage: 1,
-        totalPages: 1,
-        totalFeedbacks: 0
-    });
+    const [searchQuery, setSearchQuery] = useState('');
+
+    // Debounce search effect
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            // Only update filter if searchQuery has changed from current filter
+            if (searchQuery !== filter.search) {
+                handleFilterChange('search', searchQuery);
+            }
+        }, 500);
+
+        return () => clearTimeout(timer);
+    }, [searchQuery, filter.search]);
 
     const fetchFeedback = useCallback(async () => {
         try {
@@ -135,11 +143,16 @@ const FeedbackManagement = () => {
                         </div>
                         <input
                             type="text" 
-                            placeholder=""
-                            value={filter.search} 
-                            onChange={(e) => handleFilterChange('search', e.target.value)}
-                            onKeyDown={(e) => e.key === 'Enter' && e.preventDefault()}
-                            className="w-full pl-14 pr-4 py-3.5 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl outline-none focus:ring-2 focus:ring-primary-500/50 placeholder:text-slate-600 transition-all font-sans"
+                            placeholder="SEARCH BY COMMENT, USER, OR CATEGORY..."
+                            value={searchQuery} 
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                    e.preventDefault();
+                                    handleFilterChange('search', searchQuery);
+                                }
+                            }}
+                            className="w-full pl-14 pr-5 py-3.5 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl outline-none focus:ring-2 focus:ring-primary-500/50 placeholder:text-slate-600 transition-all font-sans"
                         />
                     </form>
 

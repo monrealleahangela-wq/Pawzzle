@@ -28,8 +28,17 @@ const ActivityHistory = () => {
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
     const [submittedSearch, setSubmittedSearch] = useState('');
-    const [filterType, setFilterType] = useState('all');
-    const [dateRange, setDateRange] = useState('');
+
+    // Debounce search effect
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            if (searchQuery !== submittedSearch) {
+                setSubmittedSearch(searchQuery);
+            }
+        }, 500);
+
+        return () => clearTimeout(timer);
+    }, [searchQuery, submittedSearch]);
 
     const handleSearchSubmit = (e) => {
         if (e) e.preventDefault();
@@ -170,15 +179,9 @@ const ActivityHistory = () => {
                             type="text"
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            placeholder=""
-                            className="w-full pl-14 pr-24 py-3.5 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl outline-none focus:ring-2 focus:ring-primary-500/50 placeholder:text-slate-600 transition-all font-sans"
+                            placeholder="SEARCH BY DETAIL, LABEL, ID..."
+                            className="w-full pl-14 pr-5 py-3.5 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl outline-none focus:ring-2 focus:ring-primary-500/50 placeholder:text-slate-600 transition-all font-sans"
                         />
-                        <button
-                            type="submit"
-                            className="absolute right-2 top-1/2 -translate-y-1/2 px-4 py-1.5 bg-indigo-600 text-white text-[9px] font-black uppercase tracking-widest rounded-lg hover:bg-indigo-700 transition-all opacity-0 group-focus-within:opacity-100"
-                        >
-                            SEARCH
-                        </button>
                     </form>
                     <div className="md:col-span-4 relative">
                         <div className="absolute left-5 top-1/2 -translate-y-1/2">
