@@ -3,6 +3,7 @@ import { Bell, X, Check, Trash2, ExternalLink } from 'lucide-react';
 import { useNotifications } from '../contexts/NotificationContext';
 import formatDistanceToNow from 'date-fns/formatDistanceToNow';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 
 const NotificationBell = () => {
     const [isOpen, setIsOpen] = useState(false);
@@ -13,6 +14,7 @@ const NotificationBell = () => {
         markAllRead,
         deleteNotification
     } = useNotifications();
+    const { user } = useAuth();
     const dropdownRef = useRef(null);
     const navigate = useNavigate();
 
@@ -38,7 +40,11 @@ const NotificationBell = () => {
         } else if (notification.relatedModel === 'Booking') {
             navigate(notification.type === 'new_booking' ? '/admin/bookings' : '/bookings');
         } else if (notification.relatedModel === 'StoreApplication') {
-            navigate('/superadmin/store-applications');
+            if (user?.role === 'super_admin') {
+                navigate('/superadmin/store-applications');
+            } else {
+                navigate('/account-upgrade');
+            }
         }
     };
 
