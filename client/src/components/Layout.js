@@ -35,7 +35,6 @@ import {
   Zap
 } from 'lucide-react';
 import FloatingChatManager from './FloatingChatManager';
-import GlobalSearch from './GlobalSearch';
 import NotificationBell from './NotificationBell';
 import PasswordChangeModal from './auth/PasswordChangeModal';
 
@@ -342,13 +341,6 @@ const Layout = () => {
                   PAWZZLE
                 </span>
               </Link>
-
-              {/* COMPACT HUD PILL: Global Search Center Stage */}
-              <div className="hidden sm:flex flex-1 justify-center items-center px-4">
-                <div className="w-full max-w-[280px] hover:scale-105 transition-transform duration-300">
-                  <GlobalSearch isScrolled={true} />
-                </div>
-              </div>
 
               {/* UTILITY MODULE: Right Aligned Actions */}
               <div className="flex items-center gap-2 group-actions pr-1">
