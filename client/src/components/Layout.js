@@ -343,7 +343,7 @@ const Layout = () => {
               </Link>
 
               {/* UTILITY MODULE: Right Aligned Actions */}
-              <div className="flex items-center gap-2 group-actions pr-1">
+              <div className="flex items-center gap-2 group-actions pr-1 ml-auto">
                 <NotificationBell />
                 
                 {user?.role === 'customer' && (
