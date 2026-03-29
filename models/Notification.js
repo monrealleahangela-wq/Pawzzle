@@ -22,7 +22,8 @@ const notificationSchema = new mongoose.Schema({
             'low_stock',
             'system',
             'report',
-            'user_action'
+            'user_action',
+            'new_follow'
         ],
         required: true
     },

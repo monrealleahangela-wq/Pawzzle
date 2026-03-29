@@ -45,6 +45,8 @@ const NotificationBell = () => {
             } else {
                 navigate('/account-upgrade');
             }
+        } else if (notification.type === 'new_follow') {
+            navigate('/profile?tab=followers');
         }
     };
 

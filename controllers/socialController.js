@@ -3,6 +3,7 @@ const ProductFavorite = require('../models/ProductFavorite');
 const User = require('../models/User');
 const Product = require('../models/Product');
 const Store = require('../models/Store');
+const Notification = require('../models/Notification');
 
 // Following Logic
 const followUser = async (req, res) => {
@@ -21,6 +22,22 @@ const followUser = async (req, res) => {
 
     const follow = new Follow({ follower: followerId, following: followingId });
     await follow.save();
+
+    // Create Notification
+    try {
+        const followerUser = await User.findById(followerId);
+        await Notification.create({
+            recipient: followingId,
+            sender: followerId,
+            type: 'new_follow',
+            title: 'New Strategic Follower',
+            message: `${followerUser.firstName || followerUser.username} has started following your operational updates.`,
+            relatedId: followerId,
+            relatedModel: 'User'
+        });
+    } catch (e) {
+        console.error('Failed to create follow notification:', e);
+    }
 
     res.status(201).json({ message: 'Followed successfully' });
   } catch (error) {
