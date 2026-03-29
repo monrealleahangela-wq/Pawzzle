@@ -35,6 +35,11 @@ const FeedbackManagement = () => {
         limit: 10
     });
     const [searchQuery, setSearchQuery] = useState('');
+    const [pagination, setPagination] = useState({
+        currentPage: 1,
+        totalPages: 1,
+        totalFeedbacks: 0
+    });
 
     // Debounce search effect
     useEffect(() => {

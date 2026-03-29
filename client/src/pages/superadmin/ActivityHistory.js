@@ -28,6 +28,8 @@ const ActivityHistory = () => {
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
     const [submittedSearch, setSubmittedSearch] = useState('');
+    const [filterType, setFilterType] = useState('all');
+    const [dateRange, setDateRange] = useState('');
 
     // Debounce search effect
     useEffect(() => {

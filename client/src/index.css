@@ -596,3 +596,68 @@ form.relative div.absolute + input {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+/* ── Branded react-toastify Overrides ── */
+.Toastify__toast-container {
+  padding-top: var(--sat);
+}
+
+.Toastify__toast {
+  @apply !rounded-[1.5rem] !shadow-strong !border !border-primary-100 !backdrop-blur-md !p-4 !mb-4 !min-h-[auto] !bg-white;
+  font-family: 'Inter', sans-serif !important;
+}
+
+.Toastify__toast-body {
+  @apply !m-0 !p-0 !flex !items-center !gap-3;
+}
+
+.Toastify__toast--success {
+  @apply !bg-primary-50;
+}
+
+.Toastify__toast--error {
+  @apply !bg-red-50;
+}
+
+.Toastify__toast--warning {
+  @apply !bg-amber-50;
+}
+
+.Toastify__toast--info {
+  @apply !bg-primary-50;
+}
+
+.Toastify__progress-bar {
+  @apply !h-1 !opacity-40;
+}
+
+.Toastify__progress-bar--success {
+  @apply !bg-[#60534D];
+}
+
+.Toastify__progress-bar--error {
+  @apply !bg-[#533114];
+}
+
+.Toastify__progress-bar--warning {
+  @apply !bg-[#B7A79F];
+}
+
+.Toastify__progress-bar--info {
+  @apply !bg-[#A08B80];
+}
+
+.Toastify__close-button {
+  @apply !opacity-40 hover:!opacity-100 !transition-opacity !pt-1;
+}
+
+/* Fix CSS ordering for lint compliance */
+.backdrop-blur-md {
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+}
+
+.backface-hidden {
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+}

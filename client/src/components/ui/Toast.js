@@ -59,32 +59,32 @@ const ToastContainer = ({ toasts, onDismiss }) => {
 const ToastItem = ({ toast, onDismiss }) => {
   const variants = {
     default: {
-      bg: 'bg-white border-neutral-200',
+      bg: 'bg-white border-primary-100',
       icon: Info,
-      iconColor: 'text-secondary-500',
-      titleColor: 'text-neutral-900',
-      descriptionColor: 'text-neutral-600'
+      iconColor: 'text-primary-500',
+      titleColor: 'text-primary-950',
+      descriptionColor: 'text-primary-700'
     },
     success: {
-      bg: 'bg-success-50 border-success-200',
+      bg: 'bg-primary-50 border-primary-100',
       icon: CheckCircle,
-      iconColor: 'text-success-600',
-      titleColor: 'text-success-900',
-      descriptionColor: 'text-success-700'
+      iconColor: 'text-[#60534D]',
+      titleColor: 'text-primary-900',
+      descriptionColor: 'text-primary-800'
     },
     error: {
-      bg: 'bg-error-50 border-error-200',
+      bg: 'bg-red-50 border-red-100',
       icon: XCircle,
-      iconColor: 'text-error-600',
-      titleColor: 'text-error-900',
-      descriptionColor: 'text-error-700'
+      iconColor: 'text-[#533114]',
+      titleColor: 'text-primary-950',
+      descriptionColor: 'text-primary-900'
     },
     warning: {
-      bg: 'bg-warning-50 border-warning-200',
+      bg: 'bg-amber-50 border-amber-100',
       icon: AlertCircle,
-      iconColor: 'text-warning-600',
-      titleColor: 'text-warning-900',
-      descriptionColor: 'text-warning-700'
+      iconColor: 'text-[#B7A79F]',
+      titleColor: 'text-primary-950',
+      descriptionColor: 'text-primary-900'
     }
   };
 
@@ -99,8 +99,18 @@ const ToastItem = ({ toast, onDismiss }) => {
         hover:shadow-strong transition-all duration-200
       `}
     >
-      <div className="flex items-start gap-3">
-        <Icon className={`h-5 w-5 ${variant.iconColor} flex-shrink-0 mt-0.5`} />
+      <div className="flex items-start gap-4">
+        <div className="flex-shrink-0 w-10 h-10 rounded-full bg-white flex items-center justify-center shadow-sm border border-primary-50 overflow-hidden mt-0.5">
+          <img 
+            src="/images/logo.png" 
+            alt="Logo" 
+            className="w-7 h-7 object-contain"
+            onError={(e) => {
+              e.target.onerror = null;
+              e.target.src = 'https://raw.githubusercontent.com/lucide-react/lucide/main/icons/paw-print.svg';
+            }}
+          />
+        </div>
         <div className="flex-1 min-w-0">
           {toast.title && (
             <p className={`font-medium ${variant.titleColor}`}>

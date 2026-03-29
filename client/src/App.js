@@ -87,6 +87,20 @@ const routerConfig = {
   }
 };
 
+const BrandedToastIcon = () => (
+  <div className="flex-shrink-0 w-8 h-8 rounded-full bg-white flex items-center justify-center shadow-sm border border-primary-100 overflow-hidden">
+    <img 
+      src="/images/logo.png" 
+      alt="Pawzzle" 
+      className="w-6 h-6 object-contain"
+      onError={(e) => {
+        e.target.onerror = null;
+        e.target.src = 'https://raw.githubusercontent.com/lucide-react/lucide/main/icons/paw-print.svg';
+      }}
+    />
+  </div>
+);
+
 function App() {
   return (
     <AuthProvider>
@@ -178,7 +192,14 @@ function App() {
                 {/* 404 Route */}
                 <Route path="*" element={<NotFound />} />
               </Routes>
-              <ToastContainer position="top-right" autoClose={3000} transition={Slide} />
+              <ToastContainer 
+                position="top-right" 
+                autoClose={3000} 
+                transition={Slide} 
+                icon={BrandedToastIcon}
+                toastClassName="!rounded-2xl !p-4 !shadow-strong !border-none"
+                bodyClassName="!font-bold !text-[12px] !uppercase !tracking-widest !text-primary-900"
+              />
             </div>
           </Router>
         </CartProvider>

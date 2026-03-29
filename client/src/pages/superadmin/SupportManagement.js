@@ -32,6 +32,7 @@ const SupportManagement = () => {
         page: 1,
         limit: 10
     });
+    const [searchQuery, setSearchQuery] = useState('');
     // Debounce search effect
     useEffect(() => {
         const timer = setTimeout(() => {
