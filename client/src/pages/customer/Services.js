@@ -4,7 +4,7 @@ import { toast } from 'react-toastify';
 import { serviceService, getImageUrl } from '../../services/apiService';
 import { getCitiesByProvince } from '../../constants/locationConstants';
 import { useAuth } from '../../contexts/AuthContext';
-import { Calendar, Clock, DollarSign, MapPin, Users, Star, ChevronRight, Store, Filter, Navigation } from 'lucide-react';
+import { Calendar, Clock, DollarSign, MapPin, Users, Star, ChevronRight, Store, Filter, Navigation, Search } from 'lucide-react';
 
 const CAVITE_CITIES = getCitiesByProvince('cavite');
 
