@@ -344,43 +344,62 @@ const Layout = () => {
 
               {/* UTILITY MODULE: Right Aligned Actions */}
               <div className="flex items-center gap-2 group-actions pr-1 ml-auto">
-                <NotificationBell />
-                
-                {user?.role === 'customer' && (
-                  <Link
-                    to="/cart"
-                    className="p-3 bg-white border border-slate-100 rounded-xl text-slate-400 hover:text-primary-600 hover:bg-primary-50 hover:border-primary-100 transition-all shadow-sm relative shrink-0"
-                    title="View Cart"
-                  >
-                    <ShoppingCart className="h-4 w-4" />
-                    {getTotalItems() > 0 && (
-                      <span className="absolute -top-1 -right-1 bg-primary-600 text-white text-[8px] font-black w-4 h-4 rounded-full flex items-center justify-center border-2 border-white shadow-sm font-sans">
-                        {getTotalItems()}
-                      </span>
+                {user ? (
+                  <>
+                    <NotificationBell />
+                    
+                    {user?.role === 'customer' && (
+                      <Link
+                        to="/cart"
+                        className="p-3 bg-white border border-slate-100 rounded-xl text-slate-400 hover:text-primary-600 hover:bg-primary-50 hover:border-primary-100 transition-all shadow-sm relative shrink-0"
+                        title="View Cart"
+                      >
+                        <ShoppingCart className="h-4 w-4" />
+                        {getTotalItems() > 0 && (
+                          <span className="absolute -top-1 -right-1 bg-primary-600 text-white text-[8px] font-black w-4 h-4 rounded-full flex items-center justify-center border-2 border-white shadow-sm font-sans">
+                            {getTotalItems()}
+                          </span>
+                        )}
+                      </Link>
                     )}
-                  </Link>
-                )}
-                <Link
-                  to="/profile"
-                  className="p-1 px-1.5 bg-[#2D1B14] text-white rounded-xl shadow-xl hover:bg-amber-600 transition-all flex items-center justify-center shrink-0"
-                  title="View Profile"
-                >
-                  <div className="w-8 h-8 rounded-lg overflow-hidden flex items-center justify-center text-[11px] font-black tracking-tighter">
-                    {user?.avatar || user?.profilePicture ? (
-                      <img src={user?.avatar || user?.profilePicture} alt="" className="w-full h-full object-cover" />
-                    ) : (
-                      user?.firstName?.[0]?.toUpperCase() || 'P'
-                    )}
+                    <Link
+                      to="/profile"
+                      className="p-1 px-1.5 bg-[#2D1B14] text-white rounded-xl shadow-xl hover:bg-amber-600 transition-all flex items-center justify-center shrink-0"
+                      title="View Profile"
+                    >
+                      <div className="w-8 h-8 rounded-lg overflow-hidden flex items-center justify-center text-[11px] font-black tracking-tighter">
+                        {user?.avatar || user?.profilePicture ? (
+                          <img src={user?.avatar || user?.profilePicture} alt="" className="w-full h-full object-cover" />
+                        ) : (
+                          user?.firstName?.[0]?.toUpperCase() || 'P'
+                        )}
+                      </div>
+                    </Link>
+    
+                    <button
+                      onClick={handleLogout}
+                      className="hidden lg:flex p-3 bg-white border border-slate-100 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 hover:border-rose-100 transition-all shadow-sm flex items-center justify-center shrink-0"
+                    >
+                      <LogOut className="h-4 w-4" />
+                    </button>
+                  </>
+                ) : (
+                  <div className="flex items-center gap-4 px-2">
+                    <Link 
+                      to="/login" 
+                      className="text-[10px] font-black uppercase tracking-widest text-slate-600 hover:text-primary-600 transition-colors"
+                    >
+                      Sign In
+                    </Link>
+                    <Link 
+                      to="/register" 
+                      className="px-6 py-2.5 bg-primary-600 text-white rounded-xl text-[10px] font-black uppercase tracking-[0.2em] shadow-lg shadow-primary-100 hover:bg-primary-700 transition-all active:scale-95"
+                    >
+                      Join
+                    </Link>
                   </div>
-                </Link>
- 
-                <button
-                  onClick={handleLogout}
-                  className="hidden lg:flex p-3 bg-white border border-slate-100 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 hover:border-rose-100 transition-all shadow-sm flex items-center justify-center shrink-0"
-                >
-                  <LogOut className="h-4 w-4" />
-                </button>
- 
+                )}
+
                 {/* Mobile Menu Icon */}
                 <button
                   onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
@@ -401,15 +420,33 @@ const Layout = () => {
               />
               <div className="absolute top-0 right-0 h-full w-4/5 max-w-xs bg-white shadow-2xl p-6 flex flex-col overflow-y-auto">
                 <div className="flex items-center justify-between mb-8">
-                   <div className="flex items-center gap-3">
-                     <div className="w-10 h-10 bg-primary-600 rounded-xl flex items-center justify-center text-white font-black">
-                       {user?.firstName?.[0]?.toUpperCase() || 'P'}
-                     </div>
-                     <div>
-                       <p className="text-sm font-black text-slate-900 uppercase tracking-tight">{user?.firstName || 'Guest'}</p>
-                       <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none">{user?.role?.replace('_', ' ') || 'Pet Lover'}</p>
-                     </div>
-                   </div>
+                    <div className="flex items-center gap-3">
+                      {user ? (
+                        <>
+                          <div className="w-10 h-10 bg-primary-600 rounded-xl flex items-center justify-center text-white font-black overflow-hidden">
+                            {user?.avatar || user?.profilePicture ? (
+                              <img src={user?.avatar || user?.profilePicture} alt="" className="w-full h-full object-cover" />
+                            ) : (
+                              user?.firstName?.[0]?.toUpperCase() || 'P'
+                            )}
+                          </div>
+                          <div>
+                            <p className="text-sm font-black text-slate-900 uppercase tracking-tight">{user?.firstName}</p>
+                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none">{user?.role?.replace('_', ' ')}</p>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center text-slate-400">
+                            <User className="h-5 w-5" />
+                          </div>
+                          <div>
+                            <p className="text-xs font-black text-slate-900 uppercase tracking-tight leading-none mb-1">Welcome <span className="text-primary-600 italic">Guest</span></p>
+                            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest leading-none">Accessing Public Tabs</p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
                    <button onClick={() => setIsMobileMenuOpen(false)} className="p-2 bg-slate-50 rounded-xl text-slate-400">
                      <X className="h-5 w-5" />
                    </button>
