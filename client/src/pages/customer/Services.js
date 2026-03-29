@@ -38,6 +38,7 @@ const Services = () => {
   const [services, setServices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState('all');
+  const [searchTerm, setSearchTerm] = useState('');
   const [filters, setFilters] = useState({
     city: '',
     nearMe: false
@@ -56,8 +57,11 @@ const Services = () => {
   ];
 
   useEffect(() => {
-    fetchServices();
-  }, [selectedCategory, filters.city]);
+    const debounce = setTimeout(() => {
+      fetchServices();
+    }, 350);
+    return () => clearTimeout(debounce);
+  }, [selectedCategory, filters.city, searchTerm]);
 
   const fetchServices = async () => {
     try {
@@ -65,6 +69,7 @@ const Services = () => {
       const params = {};
       if (selectedCategory !== 'all') params.category = selectedCategory;
       if (filters.city) params.city = filters.city;
+      if (searchTerm) params.search = searchTerm;
 
       const response = await serviceService.getAllServices(params);
       setServices(response.data.services || []);
@@ -206,7 +211,20 @@ const Services = () => {
         )}
       </div>
 
-      <div className="flex flex-col md:flex-row gap-6 items-center">
+      <div className="flex flex-col gap-4">
+        {/* Search Bar */}
+        <div className="relative w-full md:w-96">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+          <input
+            type="text"
+            placeholder="Search services..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-11 pr-4 py-3 bg-white border border-slate-100 rounded-2xl text-sm font-medium text-slate-700 focus:outline-none focus:ring-4 focus:ring-primary-500/10 focus:border-primary-400 shadow-sm transition-all"
+          />
+        </div>
+
+        <div className="flex flex-col md:flex-row gap-6 items-center">
         {/* Modern Horizontal Filter Scrolling */}
         <div className="flex-1 flex items-center gap-3 overflow-x-auto pb-4 scrollbar-hide w-full">
           {categories.map((category) => (
@@ -260,6 +278,7 @@ const Services = () => {
             {filters.nearMe ? 'GPS Active' : 'Near Me'}
           </button>
         </div>
+      </div>
       </div>
 
       {/* Services Grid with Premium Cards */}

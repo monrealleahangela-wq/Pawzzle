@@ -54,8 +54,11 @@ const Products = () => {
   });
 
   useEffect(() => {
-    fetchProducts();
-  }, [filters.category, filters.brand, filters.suitableFor, filters.minPrice, filters.maxPrice, filters.inStock, filters.city, pagination.currentPage]);
+    const debounce = setTimeout(() => {
+      fetchProducts();
+    }, 350);
+    return () => clearTimeout(debounce);
+  }, [filters.category, filters.brand, filters.suitableFor, filters.minPrice, filters.maxPrice, filters.inStock, filters.city, pagination.currentPage, searchTerm]);
 
   const fetchProducts = async () => {
     try {
@@ -69,7 +72,7 @@ const Products = () => {
       delete params.nearMe;
 
       if (searchTerm) {
-        params.brand = searchTerm;
+        params.search = searchTerm;
       }
 
       const response = await productService.getAllProducts(params);
@@ -255,7 +258,7 @@ const Products = () => {
               <Search className="input-icon h-4 w-4 text-slate-400" />
               <input
                 type="text"
-                placeholder="SEARCH BRANDS..."
+                placeholder="SEARCH PRODUCTS..."
                 className="input input-with-icon border-none rounded-xl text-[10px] sm:text-sm font-bold uppercase tracking-widest bg-slate-50 focus:ring-2 focus:ring-primary-500/20 transition-all"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}

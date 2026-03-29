@@ -269,7 +269,7 @@ const deleteService = async (req, res) => {
 // Get all services (public)
 const getAllServices = async (req, res) => {
   try {
-    const { category, city, homeService, page = 1, limit = 20 } = req.query;
+    const { category, city, homeService, search, page = 1, limit = 20 } = req.query;
 
     let filter = { isActive: true, isDeleted: { $ne: true } };
 
@@ -285,6 +285,15 @@ const getAllServices = async (req, res) => {
 
     if (category) filter.category = category;
     if (homeService === 'true') filter.homeServiceAvailable = true;
+
+    // Search: match name, description, or category
+    if (search && search !== '') {
+      filter.$or = [
+        { name: { $regex: search, $options: 'i' } },
+        { description: { $regex: search, $options: 'i' } },
+        { category: { $regex: search, $options: 'i' } }
+      ];
+    }
 
     // Filter by City (if provided, we need to find stores in that city first)
     if (city) {

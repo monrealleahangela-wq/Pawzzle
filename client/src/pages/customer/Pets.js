@@ -51,8 +51,11 @@ const Pets = () => {
   });
 
   useEffect(() => {
-    fetchPets();
-  }, [filters.species, filters.breed, filters.size, filters.gender, filters.minAge, filters.maxAge, filters.minPrice, filters.maxPrice, filters.city, pagination.currentPage]);
+    const debounce = setTimeout(() => {
+      fetchPets();
+    }, 350);
+    return () => clearTimeout(debounce);
+  }, [filters.species, filters.breed, filters.size, filters.gender, filters.minAge, filters.maxAge, filters.minPrice, filters.maxPrice, filters.city, pagination.currentPage, searchTerm]);
 
   const fetchPets = async () => {
     try {
@@ -68,7 +71,7 @@ const Pets = () => {
       delete params.nearMe;
 
       if (searchTerm) {
-        params.breed = searchTerm;
+        params.search = searchTerm;
       }
 
       const response = await petService.getAllPets(params);
