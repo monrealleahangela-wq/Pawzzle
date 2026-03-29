@@ -36,7 +36,7 @@ const Modal = React.forwardRef(({
       <div
         ref={ref}
         className={cn(
-          "relative w-full bg-white/95 backdrop-blur-md rounded-2xl shadow-strong border border-neutral-200/50 animate-scale-in z-10",
+          "relative w-full bg-white/95 backdrop-blur-md rounded-2xl shadow-strong border border-neutral-200/50 animate-scale-in z-10 flex flex-col max-h-[90vh] overflow-hidden",
           sizes[size],
           className
         )}
@@ -44,7 +44,7 @@ const Modal = React.forwardRef(({
       >
         {/* Header */}
         {(title || showCloseButton) && (
-          <div className="flex items-center justify-between p-6 border-b border-neutral-200/50">
+          <div className="flex items-center justify-between p-6 border-b border-neutral-200/50 shrink-0">
             <div>
               {title && (
                 <h3 className="text-xl font-semibold text-neutral-900">
@@ -71,7 +71,7 @@ const Modal = React.forwardRef(({
         )}
 
         {/* Content */}
-        <div className="p-6">
+        <div className="p-6 overflow-y-auto flex-1 custom-scrollbar">
           {children}
         </div>
       </div>

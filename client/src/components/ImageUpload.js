@@ -105,7 +105,7 @@ const ImageUpload = ({
               <img
                 src={getImageUrl(image)}
                 alt={`Preview ${index + 1}`}
-                className="w-full h-32 object-cover rounded-lg border border-gray-200"
+                className="w-full h-20 object-cover rounded-lg border border-gray-200"
               />
               <button
                 type="button"
