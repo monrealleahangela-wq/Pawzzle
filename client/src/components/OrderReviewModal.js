@@ -71,31 +71,45 @@ const OrderReviewModal = ({ isOpen, onClose, item, orderId, onReviewSubmitted })
     };
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title={`Review ${item.name}`}>
-            <form onSubmit={handleSubmit} className="p-1 space-y-6">
-                <div className="bg-slate-50 p-6 rounded-3xl border border-slate-100 flex flex-col items-center">
-                    <label className="text-xs font-black text-slate-400 uppercase tracking-widest mb-3 block">Rate this item</label>
-                    {renderStars()}
-                    <p className="text-sm font-bold text-slate-900 uppercase tracking-tighter italic">
+        <Modal isOpen={isOpen} onClose={onClose} title={`Review ${item.name}`} size="sm">
+            <form onSubmit={handleSubmit} className="p-1 space-y-4">
+                <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100 flex flex-col items-center">
+                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Rate this item</label>
+                    <div className="flex gap-1.5 mb-1.5">
+                        {[1, 2, 3, 4, 5].map((star) => (
+                            <button
+                                key={star}
+                                type="button"
+                                onClick={() => setRating(star)}
+                                className="focus:outline-none transition-transform hover:scale-110"
+                            >
+                                <Star
+                                    className={`h-6 w-6 ${star <= rating ? 'fill-amber-400 text-amber-400' : 'text-slate-200'
+                                        }`}
+                                />
+                            </button>
+                        ))}
+                    </div>
+                    <p className="text-[10px] font-bold text-slate-900 uppercase tracking-tighter italic">
                         {rating === 5 ? 'Excellent!' : rating === 4 ? 'Very Good!' : rating === 3 ? 'Good' : rating === 2 ? 'Fair' : 'Poor'}
                     </p>
                 </div>
 
-                <div className="space-y-4">
-                    <div className="space-y-2">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block ml-1">Your Feedback</label>
+                <div className="space-y-3">
+                    <div className="space-y-1.5">
+                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block ml-1">Your Feedback</label>
                         <textarea
                             required
-                            rows={4}
+                            rows={2}
                             value={comment}
                             onChange={(e) => setComment(e.target.value)}
-                            className="w-full px-5 py-4 bg-slate-50 border-2 border-slate-50 rounded-2xl focus:border-primary-500 focus:bg-white outline-none font-medium text-slate-700 transition-all resize-none"
-                            placeholder="How was the quality? Did it meet your expectations?"
+                            className="w-full px-4 py-3 bg-slate-50 border-2 border-slate-50 rounded-xl focus:border-primary-500 focus:bg-white outline-none text-xs font-medium text-slate-700 transition-all resize-none"
+                            placeholder="How was the quality?"
                         />
                     </div>
 
-                    <div className="space-y-2">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block ml-1">Add Photos (Optional)</label>
+                    <div className="space-y-1.5">
+                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block ml-1">Add Photos (Optional)</label>
                         <ImageUpload
                             images={images}
                             onImagesChange={setImages}
@@ -105,33 +119,33 @@ const OrderReviewModal = ({ isOpen, onClose, item, orderId, onReviewSubmitted })
                         />
                     </div>
 
-                    <div className="flex items-center gap-3 bg-slate-50 p-4 rounded-2xl border border-slate-100 group cursor-pointer" onClick={() => setIsAnonymous(!isAnonymous)}>
-                        <div className={`w-5 h-5 rounded border-2 transition-all flex items-center justify-center ${isAnonymous ? 'bg-primary-600 border-primary-600' : 'border-slate-200 bg-white'}`}>
-                            {isAnonymous && <div className="w-2 h-2 bg-white rounded-full" />}
+                    <div className="flex items-center gap-2 bg-slate-50 p-2.5 rounded-xl border border-slate-100 group cursor-pointer" onClick={() => setIsAnonymous(!isAnonymous)}>
+                        <div className={`w-4 h-4 rounded border-2 transition-all flex items-center justify-center ${isAnonymous ? 'bg-primary-600 border-primary-600' : 'border-slate-200 bg-white'}`}>
+                            {isAnonymous && <div className="w-1.5 h-1.5 bg-white rounded-full" />}
                         </div>
                         <div>
-                            <p className="text-[10px] font-black text-slate-900 uppercase tracking-widest">Post Anonymously</p>
-                            <p className="text-[8px] font-bold text-slate-400 uppercase tracking-tighter opacity-60">Your name will be hidden from the public review list</p>
+                            <p className="text-[9px] font-black text-slate-900 uppercase tracking-widest leading-none mb-1">Post Anonymously</p>
+                            <p className="text-[7px] font-bold text-slate-400 uppercase tracking-tighter opacity-60">Your name will be hidden</p>
                         </div>
                     </div>
                 </div>
 
-                <div className="flex flex-col sm:flex-row gap-3 pt-4">
+                <div className="flex flex-col sm:flex-row gap-2 pt-2">
                     <button
                         type="submit"
                         disabled={submitting}
-                        className="flex-1 py-4 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-[0.2em] text-[10px] hover:bg-primary-600 transition-all shadow-xl shadow-slate-200 flex items-center justify-center gap-2 disabled:opacity-50"
+                        className="flex-1 py-3 bg-slate-900 text-white rounded-xl font-black uppercase tracking-[0.2em] text-[9px] hover:bg-primary-600 transition-all shadow-lg shadow-slate-200 flex items-center justify-center gap-2 disabled:opacity-50"
                     >
                         {submitting ? 'Submitting...' : (
                             <>
-                                <Send className="h-4 w-4" /> Submit Review
+                                <Send className="h-3.5 w-3.5" /> Submit Review
                             </>
                         )}
                     </button>
                     <button
                         type="button"
                         onClick={onClose}
-                        className="px-8 py-4 bg-slate-100 text-slate-400 rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-slate-200 transition-all"
+                        className="px-6 py-3 bg-slate-100 text-slate-400 rounded-xl font-black uppercase tracking-widest text-[9px] hover:bg-slate-200 transition-all"
                     >
                         Cancel
                     </button>
