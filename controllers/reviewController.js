@@ -18,10 +18,14 @@ const createReview = async (req, res) => {
         let isTrusted = false;
         let storeId;
 
-        if (targetType === 'Product') {
-            const product = await Product.findById(targetId);
+            const product = await Product.findById(targetId).populate('store');
             if (!product) return res.status(404).json({ message: 'Product not found' });
-            storeId = product.store;
+            
+            // PREVENT SELF-REVIEW: Check if user is the store owner
+            if (product.store?.owner?.toString() === userId.toString()) {
+                return res.status(403).json({ message: 'Unauthorized: You cannot review your own products.' });
+            }
+            storeId = product.store?._id || product.store;
 
             // Check if user has a DELIVERED order with this product
             const deliveredOrder = await Order.findOne({
@@ -32,9 +36,14 @@ const createReview = async (req, res) => {
             if (deliveredOrder) isTrusted = true;
         }
         else if (targetType === 'Pet') {
-            const pet = await Pet.findById(targetId);
+            const pet = await Pet.findById(targetId).populate('store');
             if (!pet) return res.status(404).json({ message: 'Pet not found' });
-            storeId = pet.store;
+
+            // PREVENT SELF-REVIEW: Check if user is the store owner
+            if (pet.store?.owner?.toString() === userId.toString()) {
+                return res.status(403).json({ message: 'Unauthorized: You cannot review your own pets.' });
+            }
+            storeId = pet.store?._id || pet.store;
 
             // Check if user has a DELIVERED adoption request for this pet
             const successfulAdoption = await AdoptionRequest.findOne({
@@ -45,9 +54,14 @@ const createReview = async (req, res) => {
             if (successfulAdoption) isTrusted = true;
         }
         else if (targetType === 'Service') {
-            const service = await Service.findById(targetId);
+            const service = await Service.findById(targetId).populate('store');
             if (!service) return res.status(404).json({ message: 'Service not found' });
-            storeId = service.store;
+
+            // PREVENT SELF-REVIEW: Check if user is the store owner
+            if (service.store?.owner?.toString() === userId.toString()) {
+                return res.status(403).json({ message: 'Unauthorized: You cannot review your own services.' });
+            }
+            storeId = service.store?._id || service.store;
 
             // Check if user has a COMPLETED booking for this service
             const completedBooking = await Booking.findOne({
@@ -58,6 +72,13 @@ const createReview = async (req, res) => {
             if (completedBooking) isTrusted = true;
         }
         else if (targetType === 'Store') {
+            const store = await Store.findById(targetId);
+            if (!store) return res.status(404).json({ message: 'Store not found' });
+
+            // PREVENT SELF-REVIEW: Check if user is the store owner
+            if (store.owner?.toString() === userId.toString()) {
+                return res.status(403).json({ message: 'Unauthorized: You cannot review your own store.' });
+            }
             storeId = targetId;
             // Check for ANY completed transaction with this store
             const [order, booking, adoption] = await Promise.all([
@@ -286,6 +307,12 @@ const checkReviewEligibility = async (req, res) => {
         let isEligible = false;
 
         if (targetType === 'Product') {
+            const product = await Product.findById(targetId).populate('store');
+            // If user is owner, they are NOT eligible regardless of orders
+            if (product?.store?.owner?.toString() === userId.toString()) {
+                return res.json({ isEligible: false });
+            }
+
             const deliveredOrder = await Order.findOne({
                 customer: userId,
                 status: 'delivered',
@@ -294,6 +321,11 @@ const checkReviewEligibility = async (req, res) => {
             if (deliveredOrder) isEligible = true;
         }
         else if (targetType === 'Pet') {
+            const pet = await Pet.findById(targetId).populate('store');
+            if (pet?.store?.owner?.toString() === userId.toString()) {
+                return res.json({ isEligible: false });
+            }
+
             const successfulAdoption = await AdoptionRequest.findOne({
                 customer: userId,
                 pet: targetId,
@@ -302,6 +334,11 @@ const checkReviewEligibility = async (req, res) => {
             if (successfulAdoption) isEligible = true;
         }
         else if (targetType === 'Service') {
+            const service = await Service.findById(targetId).populate('store');
+            if (service?.store?.owner?.toString() === userId.toString()) {
+                return res.json({ isEligible: false });
+            }
+
             const completedBooking = await Booking.findOne({
                 customer: userId,
                 service: targetId,
@@ -310,6 +347,11 @@ const checkReviewEligibility = async (req, res) => {
             if (completedBooking) isEligible = true;
         }
         else if (targetType === 'Store') {
+            const store = await Store.findById(targetId);
+            if (store?.owner?.toString() === userId.toString()) {
+                return res.json({ isEligible: false });
+            }
+
             const [order, booking, adoption] = await Promise.all([
                 Order.findOne({ customer: userId, store: targetId, status: 'delivered' }),
                 Booking.findOne({ customer: userId, store: targetId, status: 'completed' }),
