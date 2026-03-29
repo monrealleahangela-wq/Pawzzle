@@ -375,7 +375,7 @@ const StoreDetail = () => {
                 {isAuthenticated && (
                   <button 
                     onClick={() => setIsReportModalOpen(true)}
-                    className="p-2 bg-rose-50 text-rose-500 rounded-xl hover:bg-rose-100 transition-all opacity-0 group-hover:opacity-100"
+                    className="p-2 bg-rose-50 text-rose-500 rounded-xl hover:bg-rose-100 transition-all"
                     title="Report Shop"
                   >
                     <AlertTriangle className="h-4 w-4" />
