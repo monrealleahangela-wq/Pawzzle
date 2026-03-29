@@ -290,14 +290,14 @@ const Pets = () => {
                   <input
                     type="number"
                     placeholder="MIN"
-                    className="w-full px-2 py-2 bg-slate-50 rounded-lg text-[9px] font-black border-none"
+                    className="w-full px-2 py-2 bg-slate-50 rounded-lg text-[9px] font-black border-none text-slate-900 focus:bg-white focus:ring-1 focus:ring-primary-500/20 transition-all font-sans"
                     value={filters.minPrice}
                     onChange={(e) => handleFilterChange('minPrice', e.target.value)}
                   />
                   <input
                     type="number"
                     placeholder="MAX"
-                    className="w-full px-2 py-2 bg-slate-50 rounded-lg text-[9px] font-black border-none"
+                    className="w-full px-2 py-2 bg-slate-50 rounded-lg text-[9px] font-black border-none text-slate-900 focus:bg-white focus:ring-1 focus:ring-primary-500/20 transition-all font-sans"
                     value={filters.maxPrice}
                     onChange={(e) => handleFilterChange('maxPrice', e.target.value)}
                   />

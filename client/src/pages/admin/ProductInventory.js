@@ -676,7 +676,13 @@ const ProductInventory = () => {
                         {['length', 'width', 'height'].map(f => (
                           <div key={f} className="space-y-2">
                             <label className="text-[9px] font-black text-white/40 uppercase tracking-widest text-center block">{f}</label>
-                            <input type="number" value={productForm.dimensions[f]} onChange={e => setProductForm(p => ({ ...p, dimensions: { ...p.dimensions, [f]: e.target.value } }))} className="w-full py-3.5 bg-white/5 border border-white/10 rounded-2xl text-center text-[12px] font-black text-white outline-none focus:bg-white/10" placeholder="0" />
+                            <input 
+                              type="number" 
+                              value={productForm.dimensions[f]} 
+                              onChange={e => setProductForm(p => ({ ...p, dimensions: { ...p.dimensions, [f]: e.target.value } }))} 
+                              className="w-full py-3.5 bg-white/5 border border-white/10 rounded-2xl text-center text-[12px] font-black text-white outline-none focus:bg-white focus:text-slate-900 transition-all font-sans" 
+                              placeholder="0" 
+                            />
                           </div>
                         ))}
                       </div>
@@ -693,12 +699,24 @@ const ProductInventory = () => {
                       <div className="flex items-center gap-6 justify-center">
                         <div className="space-y-2">
                           <label className="text-[9px] font-black text-emerald-200/50 uppercase tracking-widest text-center block">Minimum</label>
-                          <input type="number" value={productForm.ageRange.min} onChange={e => setProductForm(p => ({ ...p, ageRange: { ...p.ageRange, min: e.target.value } }))} className="w-24 py-3.5 bg-white/10 border border-white/10 rounded-2xl text-center text-xl font-black text-white outline-none" placeholder="0" />
+                          <input 
+                            type="number" 
+                            value={productForm.ageRange.min} 
+                            onChange={e => setProductForm(p => ({ ...p, ageRange: { ...p.ageRange, min: e.target.value } }))} 
+                            className="w-24 py-3.5 bg-white/10 border border-white/10 rounded-2xl text-center text-xl font-black text-white outline-none focus:bg-white focus:text-emerald-900 transition-all font-sans" 
+                            placeholder="0" 
+                          />
                         </div>
                         <span className="text-2xl font-black text-emerald-200/30">—</span>
                         <div className="space-y-2">
                           <label className="text-[9px] font-black text-emerald-200/50 uppercase tracking-widest text-center block">Maximum</label>
-                          <input type="number" value={productForm.ageRange.max} onChange={e => setProductForm(p => ({ ...p, ageRange: { ...p.ageRange, max: e.target.value } }))} className="w-24 py-3.5 bg-white/10 border border-white/10 rounded-2xl text-center text-xl font-black text-white outline-none" placeholder="0" />
+                          <input 
+                            type="number" 
+                            value={productForm.ageRange.max} 
+                            onChange={e => setProductForm(p => ({ ...p, ageRange: { ...p.ageRange, max: e.target.value } }))} 
+                            className="w-24 py-3.5 bg-white/10 border border-white/10 rounded-2xl text-center text-xl font-black text-white outline-none focus:bg-white focus:text-emerald-900 transition-all font-sans" 
+                            placeholder="0" 
+                          />
                         </div>
                       </div>
                       <div className="mt-6 flex justify-center">
