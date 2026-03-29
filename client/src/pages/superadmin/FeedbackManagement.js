@@ -135,7 +135,7 @@ const FeedbackManagement = () => {
                         </div>
                         <input
                             type="text" 
-                            placeholder="QUERY SYSTEM FEEDBACK..."
+                            placeholder=""
                             value={filter.search} 
                             onChange={(e) => handleFilterChange('search', e.target.value)}
                             onKeyDown={(e) => e.key === 'Enter' && e.preventDefault()}

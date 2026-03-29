@@ -4,6 +4,24 @@ const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const { sendStaffInvitation } = require('../utils/emailService');
 
+const DEFAULT_PERMISSIONS = {
+    order_staff: {
+        orders: { view: true, create: false, update: true, delete: false, fullAccess: false },
+        bookings: { view: true, create: false, update: true, delete: false, fullAccess: false },
+        customers: { view: true, create: false, update: false, delete: false, fullAccess: false },
+        admin_chat: { view: true, create: true, update: true, delete: false, fullAccess: false }
+    },
+    inventory_staff: {
+        pets: { view: true, create: true, update: true, delete: true, fullAccess: false },
+        products: { view: true, create: true, update: true, delete: true, fullAccess: false },
+        inventory: { view: true, create: true, update: true, delete: true, fullAccess: false }
+    },
+    service_staff: {
+        services: { view: true, create: true, update: true, delete: true, fullAccess: false },
+        bookings: { view: true, create: true, update: true, delete: false, fullAccess: false }
+    }
+};
+
 /**
  * Get all staff under the current admin's store
  */
@@ -47,7 +65,7 @@ const getMyStaff = async (req, res) => {
 const createStaff = async (req, res) => {
     try {
         console.log('--- 🚀 CREATE STAFF API HIT 🚀 ---');
-        const { firstName, lastName, email, username, password, staffType, phone, storeId } = req.body;
+        const { firstName, lastName, email, username, password, staffType, phone, storeId, permissions } = req.body;
         
         const cleanFirstName = firstName ? firstName.trim() : '';
         const cleanLastName = lastName ? lastName.trim() : '';
@@ -147,7 +165,8 @@ const createStaff = async (req, res) => {
             createdBy: req.user._id,
             isActive: true,
             requiresPasswordChange: true, // 🛡️ Enforce first-login change
-            address: staffAddress
+            address: staffAddress,
+            permissions: permissions || DEFAULT_PERMISSIONS[staffType] || {}
         });
 
         console.log(`[StaffDebug] Attempting to save staff ${cleanEmail} with password: ${tempPassword}`);
@@ -195,7 +214,7 @@ const createStaff = async (req, res) => {
 const updateStaff = async (req, res) => {
     try {
         const { id } = req.params;
-        const { firstName, lastName, phone, staffType, isActive } = req.body;
+        const { firstName, lastName, phone, staffType, isActive, permissions } = req.body;
 
         const staff = await User.findOne({ _id: id, store: req.user.store, role: 'staff' });
         if (!staff) {
@@ -207,6 +226,7 @@ const updateStaff = async (req, res) => {
         if (phone !== undefined) staff.phone = phone;
         if (staffType) staff.staffType = staffType;
         if (isActive !== undefined) staff.isActive = isActive;
+        if (permissions) staff.permissions = permissions;
 
         await staff.save();
 

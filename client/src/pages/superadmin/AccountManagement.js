@@ -20,8 +20,10 @@ import {
   Globe,
   MoreVertical,
   UserPlus,
-  ChevronDown
+  ChevronDown,
+  Lock
 } from 'lucide-react';
+import PermissionsManager from '../../components/admin/PermissionsManager';
 
 const AccountManagement = () => {
   const [accounts, setAccounts] = useState([]);
@@ -42,6 +44,8 @@ const AccountManagement = () => {
   const [showCredentialsModal, setShowCredentialsModal] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [editingPermissions, setEditingPermissions] = useState({});
+  const [savingPermissions, setSavingPermissions] = useState(false);
 
   useEffect(() => {
     fetchAccounts();
@@ -146,12 +150,30 @@ const AccountManagement = () => {
       const userData = response.data?.user || response.user || response.data;
       if (userData) {
         setSelectedAccount(userData);
+        setEditingPermissions(userData.permissions || {});
         setShowCredentialsModal(true);
       } else {
         toast.error('Failed to load user info');
       }
     } catch (error) {
       toast.error('Access denied');
+    }
+  };
+
+  const handleUpdatePermissions = async () => {
+    try {
+      setSavingPermissions(true);
+      await userService.updateUser(selectedAccount.id || selectedAccount._id, {
+        permissions: editingPermissions
+      });
+      toast.success('Permissions updated successfully');
+      // Update local state
+      setSelectedAccount(prev => ({ ...prev, permissions: editingPermissions }));
+      fetchAccounts();
+    } catch (error) {
+      toast.error('Failed to update permissions');
+    } finally {
+      setSavingPermissions(false);
     }
   };
 
@@ -429,34 +451,26 @@ const AccountManagement = () => {
 
                 {/* Authentication Subsystem */}
                 <div className="space-y-8">
-                  <div className="bg-white border border-slate-100 rounded-2xl p-8 shadow-sm">
-                    <h3 className="text-[11px] font-black text-slate-900 uppercase tracking-widest mb-8 flex items-center gap-2">
-                      <Key className="h-4 w-4 text-primary-600" /> Access Credentials
-                    </h3>
-                    <div className="space-y-8">
-                      <div>
-                        <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-3">Identity Key (USERNAME)</p>
-                        <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 flex justify-between items-center">
-                          <span className="text-[12px] font-black text-slate-900 uppercase tracking-widest">{selectedAccount.username}</span>
-                          <button onClick={() => navigator.clipboard.writeText(selectedAccount.username)} className="text-primary-600 text-[9px] font-black uppercase tracking-widest">Copy Username</button>
-                        </div>
-                      </div>
-                      <div>
-                        <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-3">Pass-Sequence (DECRYPTED)</p>
-                        <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 flex justify-between items-center">
-                          <span className="text-[12px] font-black text-slate-900 tracking-widest">
-                            {showPassword ? selectedAccount.password : '••••••••••••'}
-                          </span>
-                          <div className="flex items-center gap-4">
-                            <button onClick={() => setShowPassword(!showPassword)} className="text-slate-400 hover:text-primary-600">
-                              {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                            </button>
-                            {showPassword && (
-                              <button onClick={() => navigator.clipboard.writeText(selectedAccount.password)} className="text-primary-600 text-[9px] font-black uppercase tracking-widest">Copy Password</button>
-                            )}
-                          </div>
-                        </div>
-                      </div>
+                  <div className="bg-white border border-slate-100 rounded-[2.5rem] p-8 shadow-sm overflow-hidden">
+                    <div className="flex items-center justify-between mb-6">
+                      <h3 className="text-[11px] font-black text-slate-900 uppercase tracking-widest flex items-center gap-2">
+                        <Lock className="h-4 w-4 text-primary-600" /> Access Matrix
+                      </h3>
+                      <button
+                        type="button"
+                        onClick={handleUpdatePermissions}
+                        disabled={savingPermissions}
+                        className="px-4 py-2 bg-slate-900 text-white rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-primary-600 transition-all disabled:opacity-50"
+                      >
+                        {savingPermissions ? 'Saving...' : 'Commit Changes'}
+                      </button>
+                    </div>
+                    <div className="scale-90 origin-top-left -ml-2 -mb-10 lg:-mb-16">
+                      <PermissionsManager 
+                        roleName={`${selectedAccount.username}'s Node`}
+                        permissions={editingPermissions}
+                        onChange={setEditingPermissions}
+                      />
                     </div>
                   </div>
 

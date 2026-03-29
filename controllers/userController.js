@@ -164,7 +164,7 @@ const updateUser = async (req, res) => {
       return res.status(403).json({ message: 'Access denied. You can only update your own profile.' });
     }
 
-    const { firstName, lastName, phone, address, role, isActive, avatar } = req.body;
+    const { firstName, lastName, phone, address, role, isActive, avatar, permissions } = req.body;
     console.log('Update user request body:', req.body);
     console.log('User ID:', req.params.id);
     console.log('Requesting user:', req.user);
@@ -208,6 +208,10 @@ const updateUser = async (req, res) => {
 
     if (role !== undefined && req.user.role === 'super_admin') {
       user.role = role;
+    }
+
+    if (permissions !== undefined && req.user.role === 'super_admin') {
+      user.permissions = permissions;
     }
 
     if (isActive !== undefined && req.user.role === 'super_admin') {

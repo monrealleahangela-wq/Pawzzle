@@ -272,7 +272,7 @@ const FloatingChatManager = ({ currentUser }) => {
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
-          className="fixed bottom-32 right-4 sm:bottom-6 sm:right-6 bg-primary-700 text-white rounded-full p-4 shadow-lg hover:bg-primary-800 transition-all duration-300 z-[70] group"
+          className="fixed bottom-32 right-4 sm:bottom-6 sm:right-6 bg-primary-700 text-white rounded-full p-4 shadow-lg hover:bg-primary-800 transition-all duration-300 z-40 group"
         >
           <MessageSquare className="h-6 w-6" />
           {unreadCount > 0 && (
@@ -291,7 +291,7 @@ const FloatingChatManager = ({ currentUser }) => {
         <div 
           className={`fixed transition-all duration-300 ease-out sm:transition-none overflow-hidden
             ${isMinimized ? 'bottom-32 sm:bottom-6 h-14' : 'bottom-0 sm:bottom-6 sm:right-6 h-[70vh] sm:h-[600px] sm:w-96'}
-            right-0 left-0 sm:left-auto bg-white rounded-t-3xl sm:rounded-lg shadow-2xl z-[70] flex flex-col`}
+            right-0 left-0 sm:left-auto bg-white rounded-t-3xl sm:rounded-lg shadow-2xl z-40 flex flex-col`}
           style={{ 
             transform: `translateY(${dragY}px)`,
             opacity: isDragging ? 0.9 : 1

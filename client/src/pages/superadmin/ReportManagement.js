@@ -116,12 +116,6 @@ const ReportManagement = () => {
                             value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
                             className="w-full pl-14 pr-4 py-3.5 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl outline-none focus:ring-2 focus:ring-rose-500/50 placeholder:text-slate-600 transition-all font-sans"
                         />
-            <button 
-              type="submit"
-              className="absolute right-2 top-1/2 -translate-y-1/2 px-4 py-1.5 bg-primary-600 text-white text-[9px] font-black uppercase tracking-widest rounded-lg hover:bg-primary-700 transition-all opacity-0 group-focus-within:opacity-100"
-            >
-              SEARCH
-            </button>
           </form>
                     <div className="md:col-span-3 relative">
                         <div className="absolute left-5 top-1/2 -translate-y-1/2">

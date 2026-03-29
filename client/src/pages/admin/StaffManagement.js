@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
-import { staffService } from '../../services/apiService';
-import {
+import { 
     Users, Plus, Edit2, Trash2, Power, Key, X, Check,
     ShoppingCart, Package, Calendar, ChevronDown, Search,
-    Shield, Clock, AlertCircle, RefreshCw
+    Shield, Clock, AlertCircle, RefreshCw, Lock
 } from 'lucide-react';
+import PermissionsManager from '../../components/admin/PermissionsManager';
+import { staffService } from '../../services/apiService';
 
 const STAFF_TYPES = [
     {
@@ -39,7 +40,7 @@ const TYPE_STYLES = {
 
 const defaultForm = {
     firstName: '', lastName: '', email: '', username: '',
-    staffType: 'order_staff', phone: ''
+    staffType: 'order_staff', phone: '', permissions: {}
 };
 
 const StaffManagement = () => {
@@ -54,10 +55,10 @@ const StaffManagement = () => {
     const [form, setForm] = useState(defaultForm);
     const [submitting, setSubmitting] = useState(false);
 
-    // Password reset modal
-    const [resetTarget, setResetTarget] = useState(null);
-    const [newPassword, setNewPassword] = useState('');
     const [resetting, setResetting] = useState(false);
+    
+    // Modal tabs
+    const [activeTab, setActiveTab] = useState('info'); // 'info' or 'permissions'
 
     const fetchStaff = async () => {
         setLoading(true);
@@ -76,6 +77,7 @@ const StaffManagement = () => {
     const openCreate = () => {
         setEditingStaff(null);
         setForm(defaultForm);
+        setActiveTab('info');
         setShowModal(true);
     };
 
@@ -88,8 +90,10 @@ const StaffManagement = () => {
             username: member.username,
             password: '',
             staffType: member.staffType,
-            phone: member.phone || ''
+            phone: member.phone || '',
+            permissions: member.permissions || {}
         });
+        setActiveTab('info');
         setShowModal(true);
     };
 
@@ -102,7 +106,8 @@ const StaffManagement = () => {
                     firstName: form.firstName,
                     lastName: form.lastName,
                     phone: form.phone,
-                    staffType: form.staffType
+                    staffType: form.staffType,
+                    permissions: form.permissions
                 });
                 toast.success('Staff updated successfully');
             } else {
@@ -374,146 +379,194 @@ const StaffManagement = () => {
             {/* Create / Edit Modal */}
             {showModal && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl animate-in fade-in zoom-in-95 duration-200">
-                        <div className="flex items-center justify-between p-6 border-b border-slate-50">
+                    <div className="bg-white rounded-[2rem] w-full max-w-2xl shadow-2xl animate-in fade-in zoom-in-95 duration-200 overflow-hidden">
+                        <div className="flex items-center justify-between p-7 border-b border-slate-50 bg-slate-50/30">
                             <div>
-                                <h2 className="font-black text-slate-900 uppercase tracking-tighter text-lg">
+                                <h2 className="font-black text-slate-900 uppercase tracking-tighter text-xl">
                                     {editingStaff ? 'Edit' : 'New'} <span className="text-primary-600 italic">Staff Member</span>
                                 </h2>
-                                <p className="text-slate-400 text-xs font-bold mt-0.5">
-                                    {editingStaff ? 'Update staff information and role' : 'Create a new staff account for your store'}
+                                <p className="text-slate-400 text-[10px] font-black uppercase tracking-[0.15em] mt-0.5">
+                                    {editingStaff ? 'Update profile and access matrix' : 'Hiring and Onboarding System'}
                                 </p>
                             </div>
-                            <button onClick={() => setShowModal(false)} className="p-2 rounded-2xl hover:bg-slate-50 transition-all text-slate-400">
+                            <button onClick={() => setShowModal(false)} className="p-2.5 rounded-2xl hover:bg-slate-100 transition-all text-slate-400">
                                 <X className="h-5 w-5" />
                             </button>
                         </div>
 
-                        <form onSubmit={handleSubmit} className="p-6 space-y-4">
-                            {/* Staff Type Selector */}
-                            <div>
-                                <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Staff Role *</label>
-                                <div className="grid grid-cols-3 gap-2">
-                                    {STAFF_TYPES.map(t => {
-                                        const Icon = t.icon;
-                                        return (
-                                            <button
-                                                key={t.id}
-                                                type="button"
-                                                onClick={() => setForm(f => ({ ...f, staffType: t.id }))}
-                                                className={`flex flex-col items-center gap-1.5 p-3 rounded-2xl border transition-all ${form.staffType === t.id ? 'bg-slate-900 border-slate-900 text-white' : 'bg-slate-50 border-slate-100 text-slate-500 hover:border-slate-200'}`}
-                                            >
-                                                <Icon className="h-4 w-4" />
-                                                <span className="text-[9px] font-black uppercase tracking-widest text-center leading-tight">{t.label}</span>
-                                            </button>
-                                        );
-                                    })}
-                                </div>
-                                <p className="text-slate-400 text-[10px] mt-2 italic">
-                                    {STAFF_TYPES.find(t => t.id === form.staffType)?.description}
-                                </p>
-                            </div>
+                        {/* Modal Tabs */}
+                        <div className="flex px-7 pt-4 gap-6 border-b border-slate-50">
+                            {[
+                                { id: 'info', label: 'General Information', icon: Users },
+                                { id: 'permissions', label: 'Access Matrix', icon: Lock }
+                            ].map(tab => (
+                                <button
+                                    key={tab.id}
+                                    onClick={() => setActiveTab(tab.id)}
+                                    className={`flex items-center gap-2 pb-4 text-[10px] font-black uppercase tracking-widest transition-all relative ${activeTab === tab.id ? 'text-primary-600' : 'text-slate-400 hover:text-slate-600'}`}
+                                >
+                                    <tab.icon className="h-3.5 w-3.5" />
+                                    {tab.label}
+                                    {activeTab === tab.id && <div className="absolute bottom-0 left-0 right-0 h-1 bg-primary-600 rounded-t-full" />}
+                                </button>
+                            ))}
+                        </div>
 
-                            {/* Name fields */}
-                            <div className="grid grid-cols-2 gap-3">
-                                {[
-                                    { field: 'firstName', label: 'First Name', required: true },
-                                    { field: 'lastName', label: 'Last Name', required: true }
-                                ].map(f => (
-                                    <div key={f.field}>
-                                        <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">{f.label} *</label>
-                                        <input
-                                            type="text"
-                                            value={form[f.field]}
-                                            onChange={e => setForm(prev => ({ ...prev, [f.field]: e.target.value }))}
-                                            className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-3 py-2.5 text-sm text-slate-900 focus:outline-none focus:border-primary-400"
-                                            required={f.required}
-                                        />
-                                    </div>
-                                ))}
-                            </div>
-
-                            {/* Contact fields */}
-                            {!editingStaff && (
-                                <>
-                                    <div className="bg-primary-50 rounded-2xl p-4 border border-primary-100 flex items-start gap-3 mb-2">
-                                        <AlertCircle className="h-4 w-4 text-primary-600 mt-0.5" />
-                                        <p className="text-[10px] font-bold text-primary-700 leading-relaxed uppercase tracking-widest">
-                                            The system will automatically generate a <span className="underline">secure random password</span> and send it to the staff's email.
-                                        </p>
-                                    </div>
-                                    
+                        <form onSubmit={handleSubmit} className="p-7">
+                            {activeTab === 'info' ? (
+                                <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2 scrollbar-hide">
+                                    {/* Staff Type Selector */}
                                     <div>
-                                        <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Invitation Email *</label>
-                                        <input
-                                            type="email"
-                                            value={form.email}
-                                            onChange={e => {
-                                                const email = e.target.value;
-                                                setForm(f => ({ 
-                                                    ...f, 
-                                                    email, 
-                                                    username: f.username || email.split('@')[0] 
-                                                }));
-                                            }}
-                                            className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-3 py-2.5 text-sm text-slate-900 focus:outline-none focus:border-primary-400"
-                                            required
-                                            placeholder="e.g. staff@example.com"
-                                        />
-                                    </div>
-
-                                    <div className="grid grid-cols-2 gap-3">
-                                        <div>
-                                            <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Username (Generated)</label>
-                                            <input
-                                                type="text"
-                                                value={form.username}
-                                                onChange={e => setForm(f => ({ ...f, username: e.target.value }))}
-                                                className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-3 py-2.5 text-sm text-slate-900 focus:outline-none focus:border-primary-400"
-                                                required
-                                            />
+                                        <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">Professional Specialization *</label>
+                                        <div className="grid grid-cols-3 gap-3">
+                                            {STAFF_TYPES.map(t => {
+                                                const Icon = t.icon;
+                                                return (
+                                                    <button
+                                                        key={t.id}
+                                                        type="button"
+                                                        onClick={() => setForm(f => ({ ...f, staffType: t.id }))}
+                                                        className={`flex flex-col items-center gap-2 p-4 rounded-2xl border-2 transition-all ${form.staffType === t.id ? 'bg-slate-900 border-slate-900 text-white shadow-lg' : 'bg-slate-50 border-slate-100 text-slate-500 hover:border-slate-200'}`}
+                                                    >
+                                                        <Icon className="h-5 w-5" />
+                                                        <span className="text-[9px] font-black uppercase tracking-[0.1em] text-center leading-tight">{t.label}</span>
+                                                    </button>
+                                                );
+                                            })}
                                         </div>
-                                        <div>
-                                            <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Phone (Optional)</label>
-                                            <input
-                                                type="text"
-                                                value={form.phone}
-                                                onChange={e => setForm(f => ({ ...f, phone: e.target.value }))}
-                                                className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-3 py-2.5 text-sm text-slate-900 focus:outline-none focus:border-primary-400"
-                                            />
+                                        <div className="mt-3 p-3 bg-slate-50 rounded-xl border border-slate-100">
+                                            <p className="text-slate-500 text-[10px] font-bold uppercase tracking-wide leading-relaxed">
+                                                <span className="text-primary-600">Scope:</span> {STAFF_TYPES.find(t => t.id === form.staffType)?.description}
+                                            </p>
                                         </div>
                                     </div>
-                                </>
-                            )}
 
-                            {/* Edit-only fields */}
-                            {editingStaff && (
-                                <div>
-                                    <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Phone</label>
-                                    <input
-                                        type="text"
-                                        value={form.phone}
-                                        onChange={e => setForm(f => ({ ...f, phone: e.target.value }))}
-                                        className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-3 py-2.5 text-sm text-slate-900 focus:outline-none focus:border-primary-400"
+                                    {/* Name fields */}
+                                    <div className="grid grid-cols-2 gap-4">
+                                        {[
+                                            { field: 'firstName', label: 'First Name', required: true, placeholder: 'e.g. Juan' },
+                                            { field: 'lastName', label: 'Last Name', required: true, placeholder: 'e.g. Dela Cruz' }
+                                        ].map(f => (
+                                            <div key={f.field}>
+                                                <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">{f.label} *</label>
+                                                <input
+                                                    type="text"
+                                                    value={form[f.field]}
+                                                    onChange={e => setForm(prev => ({ ...prev, [f.field]: e.target.value }))}
+                                                    placeholder={f.placeholder}
+                                                    className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-4 py-3 text-sm font-bold text-slate-900 focus:outline-none focus:border-primary-500 transition-all placeholder:text-slate-300"
+                                                    required={f.required}
+                                                />
+                                            </div>
+                                        ))}
+                                    </div>
+
+                                    {/* Contact fields */}
+                                    {!editingStaff && (
+                                        <>
+                                            <div className="bg-primary-50 rounded-2xl p-4 border border-primary-100 flex items-start gap-4">
+                                                <div className="p-2 bg-white rounded-xl shadow-sm">
+                                                    <Key className="h-4 w-4 text-primary-600" />
+                                                </div>
+                                                <p className="text-[10px] font-black text-primary-700 leading-relaxed uppercase tracking-widest">
+                                                    Automated Credentials: <span className="text-slate-900">A secure token will be dispatched to the professional email provided below.</span>
+                                                </p>
+                                            </div>
+                                            
+                                            <div className="space-y-4">
+                                                <div>
+                                                    <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Professional Email *</label>
+                                                    <input
+                                                        type="email"
+                                                        value={form.email}
+                                                        onChange={e => {
+                                                            const email = e.target.value;
+                                                            setForm(f => ({ 
+                                                                ...f, 
+                                                                email, 
+                                                                username: f.username || email.split('@')[0] 
+                                                            }));
+                                                        }}
+                                                        className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-4 py-3 text-sm font-bold text-slate-900 focus:outline-none focus:border-primary-500 transition-all placeholder:text-slate-300"
+                                                        required
+                                                        placeholder="staff@pawzzle.io"
+                                                    />
+                                                </div>
+
+                                                <div className="grid grid-cols-2 gap-4">
+                                                    <div>
+                                                        <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">System Username</label>
+                                                        <input
+                                                            type="text"
+                                                            value={form.username}
+                                                            onChange={e => setForm(f => ({ ...f, username: e.target.value }))}
+                                                            className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-4 py-3 text-sm font-bold text-slate-900 focus:outline-none focus:border-primary-500 transition-all"
+                                                            required
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Mobile Number</label>
+                                                        <input
+                                                            type="text"
+                                                            value={form.phone}
+                                                            onChange={e => setForm(f => ({ ...f, phone: e.target.value }))}
+                                                            placeholder="+63"
+                                                            className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-4 py-3 text-sm font-bold text-slate-900 focus:outline-none focus:border-primary-500 transition-all placeholder:text-slate-300"
+                                                        />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </>
+                                    )}
+
+                                    {/* Edit-only fields */}
+                                    {editingStaff && (
+                                        <div className="space-y-4">
+                                            <div>
+                                                <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Primary Phone</label>
+                                                <input
+                                                    type="text"
+                                                    value={form.phone}
+                                                    onChange={e => setForm(f => ({ ...f, phone: e.target.value }))}
+                                                    className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-4 py-3 text-sm font-bold text-slate-900 focus:outline-none focus:border-primary-500 transition-all"
+                                                />
+                                            </div>
+                                            <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 flex items-center gap-3">
+                                                <AlertCircle className="h-4 w-4 text-slate-400" />
+                                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none">Identity Immutable: Email & Username cannot be modified.</p>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            ) : (
+                                <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
+                                    <PermissionsManager 
+                                        permissions={form.permissions} 
+                                        onChange={(p) => setForm(f => ({ ...f, permissions: p }))}
+                                        roleName={`${form.firstName || 'Staff'}'s Account`}
                                     />
-                                    <p className="text-slate-400 text-[10px] mt-1">Email and username cannot be changed. Use "Reset Password" for password changes.</p>
                                 </div>
                             )}
 
-                            <div className="flex gap-3 pt-2">
+                            <div className="flex gap-4 pt-6 border-t border-slate-50 mt-6">
                                 <button
                                     type="submit"
                                     disabled={submitting}
-                                    className="flex-1 py-3.5 bg-slate-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-primary-600 transition-all disabled:opacity-50"
+                                    className="flex-1 py-4 bg-slate-900 text-white rounded-[1.5rem] font-black text-[11px] uppercase tracking-widest hover:bg-primary-600 transition-all disabled:opacity-50 shadow-xl flex items-center justify-center gap-3 group"
                                 >
-                                    {submitting ? 'Saving...' : editingStaff ? 'Save Changes' : 'Create Staff Account'}
+                                    {submitting ? (
+                                        <RefreshCw className="h-4 w-4 animate-spin" />
+                                    ) : (
+                                        <Check className="h-4 w-4 group-hover:scale-125 transition-transform" />
+                                    )}
+                                    {submitting ? 'Processing Session...' : editingStaff ? 'Update Operational Status' : 'Initiate Staff Onboarding'}
                                 </button>
                                 <button
                                     type="button"
                                     onClick={() => setShowModal(false)}
-                                    className="px-6 py-3.5 bg-slate-50 text-slate-500 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-slate-100 transition-all border border-slate-100"
+                                    className="px-8 py-4 bg-white text-slate-400 rounded-[1.5rem] font-black text-[11px] uppercase tracking-widest hover:bg-slate-50 transition-all border-2 border-slate-100"
                                 >
-                                    Cancel
+                                    Dismiss
                                 </button>
                             </div>
                         </form>

@@ -128,6 +128,10 @@ const userSchema = new mongoose.Schema({
     type: Date,
     default: Date.now
   },
+  permissions: {
+    type: Object,
+    default: {}
+  },
   requiresPasswordChange: {
     type: Boolean,
     default: false
