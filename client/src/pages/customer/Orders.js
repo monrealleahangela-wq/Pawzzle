@@ -243,7 +243,7 @@ const Orders = () => {
                   </div>
                   <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
                     {order.status === 'delivered' && (
-                      <Link to={`/orders/${order._id}`}
+                      <Link to={`/orders/${order._id}?review=true`}
                         className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-4 bg-emerald-50 text-emerald-600 rounded-2xl text-[9px] font-black uppercase tracking-[0.2em] border border-emerald-100 hover:bg-emerald-600 hover:text-white transition-all shadow-sm">
                         <Star className="h-4 w-4" /> Review Items
                       </Link>

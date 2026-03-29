@@ -15,6 +15,27 @@ const OrderDetail = () => {
   const [loading, setLoading] = useState(true);
   const [reviewItem, setReviewItem] = useState(null);
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
+  const [hasAutoReviewed, setHasAutoReviewed] = useState(false);
+
+  useEffect(() => {
+    if (order && !hasAutoReviewed && new URLSearchParams(location.search).get('review') === 'true') {
+      if (order?.items?.length === 1) {
+        setReviewItem(order.items[0]);
+        setIsReviewModalOpen(true);
+      } else if (order?.items?.length > 1) {
+        const headings = Array.from(document.querySelectorAll('h2'));
+        const itemHeading = headings.find(h => h.textContent.includes('Order Items'));
+        if (itemHeading) {
+          itemHeading.scrollIntoView({ behavior: 'smooth' });
+          toast.info('Please select which item you want to review below!', { icon: '⭐' });
+        }
+      }
+      setHasAutoReviewed(true);
+      // Clean up the URL
+      const newPath = window.location.pathname;
+      window.history.replaceState(null, '', newPath);
+    }
+  }, [order, location.search, hasAutoReviewed]);
 
   useEffect(() => {
     const queryParams = new URLSearchParams(location.search);
