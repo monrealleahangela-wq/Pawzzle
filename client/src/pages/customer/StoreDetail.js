@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import { storeService, getImageUrl } from '../../services/apiService';
+import { storeService, getImageUrl, socialService } from '../../services/apiService';
 import { useAuth } from '../../contexts/AuthContext';
 import { useCart } from '../../contexts/CartContext';
 import { chatService } from '../../services/chatService';
@@ -41,28 +41,70 @@ const StoreDetail = () => {
   const [pets, setPets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('products');
-  const [isFavorited, setIsFavorited] = useState(false);
+  const [isFollowing, setIsFollowing] = useState(false);
+  const [isTogglingFollow, setIsTogglingFollow] = useState(false);
   const [chatLoading, setChatLoading] = useState(false);
 
-  // Check if store is favorited on mount
   useEffect(() => {
-    const favorites = JSON.parse(localStorage.getItem('favoriteStores') || '[]');
-    setIsFavorited(favorites.includes(storeId));
-  }, [storeId]);
+    if (isAuthenticated && store?.owner?._id) {
+        checkFollowStatus();
+    }
+  }, [store?.owner?._id, isAuthenticated]);
+
+  const checkFollowStatus = async () => {
+    try {
+        const res = await socialService.checkFollowStatus(store.owner._id);
+        setIsFollowing(res.data.isFollowing);
+    } catch (error) {
+        console.error('Error checking follow status:', error);
+    }
+  };
+
+  const handleToggleFollow = async () => {
+    if (!isAuthenticated) {
+        toast.error('Please log in to follow this partner');
+        navigate('/login');
+        return;
+    }
+
+    if (store.owner._id === user._id) {
+        toast.error('You cannot follow yourself');
+        return;
+    }
+
+    try {
+        setIsTogglingFollow(true);
+        if (isFollowing) {
+            await socialService.unfollowUser(store.owner._id);
+            setIsFollowing(false);
+            toast.info(`Unfollowed ${store.name}`);
+        } else {
+            await socialService.followUser(store.owner._id);
+            setIsFollowing(true);
+            toast.success(`Following ${store.name}!`);
+        }
+    } catch (error) {
+        toast.error('Failed to update follow status');
+    } finally {
+        setIsTogglingFollow(false);
+    }
+  };
 
   const handleToggleFavorite = () => {
+    // Legacy local favorite heart - keeping for UI but can be merged later
     const favorites = JSON.parse(localStorage.getItem('favoriteStores') || '[]');
-    if (isFavorited) {
+    const isLocalFav = favorites.includes(storeId);
+    if (isLocalFav) {
       const updated = favorites.filter(id => id !== storeId);
       localStorage.setItem('favoriteStores', JSON.stringify(updated));
-      setIsFavorited(false);
       toast.info('Removed from favorites');
     } else {
       favorites.push(storeId);
       localStorage.setItem('favoriteStores', JSON.stringify(favorites));
-      setIsFavorited(true);
       toast.success('Added to favorites! ❤️');
     }
+    // Update local state if we want to keep showing the heart
+    window.dispatchEvent(new Event('storage'));
   };
 
   const handleStartChat = async () => {
@@ -334,17 +376,23 @@ const StoreDetail = () => {
 
             <div className="flex gap-1.5 shrink-0 sm:pb-2">
               <button
-                onClick={handleToggleFavorite}
-                className={`p-3 sm:p-5 rounded-xl sm:rounded-3xl shadow-lg transition-all active:scale-95 ${isFavorited ? 'bg-red-50' : 'bg-white'}`}
+                onClick={handleToggleFollow}
+                disabled={isTogglingFollow}
+                className={`flex items-center gap-2 px-6 sm:px-10 py-3 sm:py-5 rounded-xl sm:rounded-3xl font-black uppercase tracking-tighter text-[10px] sm:text-sm transition-all shadow-xl active:scale-95 ${
+                    isFollowing 
+                    ? 'bg-primary-50 text-primary-600 border-2 border-primary-200' 
+                    : 'bg-slate-900 text-white hover:bg-black'
+                }`}
               >
-                <Heart className={`h-4 w-4 sm:h-6 sm:w-6 ${isFavorited ? 'text-red-500 fill-red-500' : 'text-slate-300'}`} />
+                {isFollowing ? <Check className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+                {isFollowing ? 'Following' : 'Follow'}
               </button>
               <button
                 onClick={handleStartChat}
                 disabled={chatLoading}
-                className="p-3 sm:p-5 bg-slate-900 text-white rounded-xl sm:rounded-3xl shadow-lg transition-all disabled:opacity-50 active:scale-95"
+                className="p-3 sm:p-5 bg-white text-slate-900 border-2 border-slate-100 rounded-xl sm:rounded-3xl shadow-lg transition-all disabled:opacity-50 active:scale-95 hover:border-slate-200"
               >
-                {chatLoading ? <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <MessageCircle className="h-4 w-4 sm:h-6 sm:w-6" />}
+                {chatLoading ? <div className="h-4 w-4 border-2 border-slate-900 border-t-transparent rounded-full animate-spin" /> : <MessageCircle className="h-4 w-4 sm:h-6 sm:w-6" />}
               </button>
             </div>
           </div>

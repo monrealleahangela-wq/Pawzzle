@@ -73,22 +73,37 @@ code {
 
 .input-with-icon {
   @apply pl-12 pr-4 !important;
-  padding-left: 3rem !important;
+  padding-left: 3.25rem !important;
 }
 
 .input-with-icon-right {
   @apply pr-12 pl-4 !important;
-  padding-right: 3rem !important;
+  padding-right: 3.25rem !important;
 }
 
 .input-with-both-icons {
   @apply pl-12 pr-12 !important;
-  padding-left: 3rem !important;
-  padding-right: 3rem !important;
+  padding-left: 3.25rem !important;
+  padding-right: 3.25rem !important;
 }
 
 .input-icon {
   @apply absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none z-10 flex items-center justify-center;
+}
+
+/* Global Fix for all search icons and inputs */
+.relative svg.lucide-search + input,
+.relative div svg.lucide-search + input,
+.relative .lucide-search + input,
+.group .lucide-search + input {
+  padding-left: 3.25rem !important;
+}
+
+/* Specific fix for elements that might not use standard classes but have absolute icons */
+.relative > svg.absolute.left-3 + input,
+.relative > svg.absolute.left-4 + input,
+.relative > svg.absolute.left-5 + input {
+  padding-left: 3.5rem !important;
 }
 
 .input-icon-right {
@@ -359,28 +374,36 @@ code {
     @apply py-1.5 px-3 text-[0.6rem] !important;
   }
 
-  /* Inputs - slimmer */
+  /* Inputs - slimmer but spacious enough for icons */
   .input {
     @apply py-2 text-xs !important;
-    padding-left: 0.75rem;
-    padding-right: 0.75rem;
+    padding-left: 1rem;
+    padding-right: 1rem;
     border-radius: 0.75rem !important;
   }
 
   .input-with-icon {
-    @apply pl-12 !important;
+    @apply pl-11 !important;
     padding-left: 3rem !important;
   }
 
   .input-with-icon-right {
-    @apply pr-12 !important;
+    @apply pr-11 !important;
     padding-right: 3rem !important;
   }
 
   .input-with-both-icons {
-    @apply pl-12 pr-12 !important;
+    @apply pl-11 pr-11 !important;
     padding-left: 3rem !important;
     padding-right: 3rem !important;
+  }
+
+  /* Universal search spacing for mobile */
+  .relative svg.lucide-search + input,
+  .relative .lucide-search + input,
+  .relative > svg.absolute.left-3 + input,
+  .relative > svg.absolute.left-4 + input {
+    padding-left: 3rem !important;
   }
 
   .input-icon {

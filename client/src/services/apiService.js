@@ -338,4 +338,17 @@ export const supportService = {
 };
 
 
+// Social & Favorites services
+export const socialService = {
+  followUser: (followingId) => api.post('/social/follow', { followingId }),
+  unfollowUser: (followingId) => api.delete(`/social/follow/${followingId}`),
+  getFollowers: (userId) => api.get(`/social/followers/${userId}`),
+  getFollowing: (userId) => api.get(`/social/following/${userId}`),
+  toggleFavorite: (productId) => api.post('/social/favorites/toggle', { productId }),
+  getUserFavorites: (userId) => api.get(`/social/favorites/${userId}`),
+  checkFavoriteStatus: (productId) => api.get(`/social/favorites/check/${productId}`),
+  checkFollowStatus: (followingId) => api.get(`/social/follow/check/${followingId}`)
+};
+
+
 export default api;

@@ -4,10 +4,11 @@ import { toast } from 'react-toastify';
 import { productService, getImageUrl } from '../../services/apiService';
 import { useCart } from '../../contexts/CartContext';
 import { useAuth } from '../../contexts/AuthContext';
-import { Package, ArrowLeft, Plus, Minus, MapPin, Phone, Mail, Clock, Store, ShoppingBag, Star } from 'lucide-react';
+import { Package, ArrowLeft, Plus, Minus, MapPin, Phone, Mail, Clock, Store, ShoppingBag, Star, Heart } from 'lucide-react';
 import GoogleMap from '../../components/GoogleMap';
 import LoginModal from '../../components/LoginModal';
 import ReviewSection from '../../components/ReviewSection';
+import { socialService } from '../../services/apiService';
 
 const ProductDetail = () => {
   const { id } = useParams();
@@ -16,12 +17,44 @@ const ProductDetail = () => {
   const [loading, setLoading] = useState(true);
   const [quantity, setQuantity] = useState(1);
   const [showLoginModal, setShowLoginModal] = useState(false);
+  const [isFavorite, setIsFavorite] = useState(false);
+  const [isTogglingFavorite, setIsTogglingFavorite] = useState(false);
   const { addToCart, buyNow } = useCart();
   const { isAuthenticated, user } = useAuth();
 
   useEffect(() => {
     fetchProduct();
-  }, [id]);
+    if (isAuthenticated) {
+        checkFavoriteStatus();
+    }
+  }, [id, isAuthenticated]);
+
+  const checkFavoriteStatus = async () => {
+    try {
+        const res = await socialService.checkFavoriteStatus(id);
+        setIsFavorite(res.data.isFavorite);
+    } catch (error) {
+        console.error('Error checking favorite status:', error);
+    }
+  };
+
+  const handleToggleFavorite = async () => {
+    if (!isAuthenticated) {
+        setShowLoginModal(true);
+        return;
+    }
+
+    try {
+        setIsTogglingFavorite(true);
+        const res = await socialService.toggleFavorite(id);
+        setIsFavorite(res.data.isFavorite);
+        toast.success(res.data.message, { icon: res.data.isFavorite ? '❤️' : '💔' });
+    } catch (error) {
+        toast.error('Failed to update favorite status');
+    } finally {
+        setIsTogglingFavorite(false);
+    }
+  };
 
   const fetchProduct = async () => {
     try {
@@ -131,7 +164,20 @@ const ProductDetail = () => {
         <div className="space-y-4 sm:space-y-8 px-2 sm:px-0">
           <div>
             <p className="text-[10px] font-black text-secondary-600 uppercase tracking-[0.2em] mb-1">{product.category}</p>
-            <h1 className="text-2xl sm:text-5xl font-black text-slate-900 mb-2 uppercase tracking-tight leading-none">{product.name}</h1>
+            <div className="flex justify-between items-start gap-4">
+                <h1 className="text-2xl sm:text-5xl font-black text-slate-900 mb-2 uppercase tracking-tight leading-none">{product.name}</h1>
+                <button 
+                    onClick={handleToggleFavorite}
+                    disabled={isTogglingFavorite}
+                    className={`p-3 rounded-2xl border-2 transition-all ${isFavorite 
+                        ? 'bg-rose-50 border-rose-100 text-rose-500 shadow-lg shadow-rose-100' 
+                        : 'bg-white border-slate-100 text-slate-300 hover:border-slate-200 hover:text-slate-400'
+                    }`}
+                    title={isFavorite ? 'Remove from Favorites' : 'Add to Favorites'}
+                >
+                    <Heart className={`h-6 w-6 ${isFavorite ? 'fill-current' : ''}`} />
+                </button>
+            </div>
             <div className="flex items-center gap-3">
               <span className="text-xl sm:text-3xl font-black text-slate-900 tracking-tighter">₱{product.price?.toLocaleString()}</span>
               {product.brand && (

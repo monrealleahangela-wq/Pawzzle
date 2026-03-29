@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
 import { useAuth } from '../../contexts/AuthContext';
-import { userService, orderService, bookingService, uploadService, adminOrderService, adminBookingService, dssService, adoptionService, getImageUrl } from '../../services/apiService';
+import { userService, orderService, bookingService, uploadService, adminOrderService, adminBookingService, dssService, adoptionService, getImageUrl, socialService } from '../../services/apiService';
 import ImageUpload from '../../components/ImageUpload';
 import {
   User,
@@ -145,6 +145,10 @@ const Profile = () => {
   const [toggling2FA, setToggling2FA] = useState(false);
   const [activityLogs, setActivityLogs] = useState([]);
   const [showActivityModal, setShowActivityModal] = useState(false);
+  const [favorites, setFavorites] = useState([]);
+  const [followers, setFollowers] = useState([]);
+  const [following, setFollowing] = useState([]);
+  const [socialLoading, setSocialLoading] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -172,8 +176,29 @@ const Profile = () => {
 
       // Fetch activity data for all roles
       fetchActivityData();
+      fetchSocialData();
     }
   }, [user]);
+
+  const fetchSocialData = async () => {
+    if (!user) return;
+    setSocialLoading(true);
+    try {
+        const userId = user._id || user.id;
+        const [favRes, followersRes, followingRes] = await Promise.all([
+            socialService.getUserFavorites(userId),
+            socialService.getFollowers(userId),
+            socialService.getFollowing(userId)
+        ]);
+        setFavorites(favRes.data.favorites || []);
+        setFollowers(followersRes.data.followers || []);
+        setFollowing(followingRes.data.following || []);
+    } catch (error) {
+        console.error('Error fetching social data:', error);
+    } finally {
+        setSocialLoading(false);
+    }
+  };
 
   const fetchActivityData = async () => {
     if (!user) return;
@@ -658,28 +683,18 @@ const Profile = () => {
                   </div>
                 </div>
 
-                <div className="hidden lg:grid w-full grid-cols-2 gap-2 border-t border-slate-50 pt-6">
+                  <div className="hidden lg:grid w-full grid-cols-2 gap-2 border-t border-slate-50 pt-6">
                   <div className="text-center">
-                    <p className="text-[9px] font-black text-slate-300 uppercase tracking-widest mb-0.5">{user.role === 'admin' ? 'Revenue' : 'Orders'}</p>
-                    <p className="text-xl font-black text-slate-900 leading-none">
-                      {user.role === 'admin'
-                        ? `₱${(stats.totalRevenue || 0).toLocaleString()}`
-                        : stats.totalOrders}
-                    </p>
+                    <p className="text-[9px] font-black text-slate-300 uppercase tracking-widest mb-0.5">Followers</p>
+                    <p className="text-xl font-black text-slate-900 leading-none">{followers.length}</p>
                   </div>
                   <div className="text-center border-l border-slate-50">
-                    <p className="text-[9px] font-black text-slate-300 uppercase tracking-widest mb-0.5">{user.role === 'admin' ? 'Orders' : 'Bookings'}</p>
-                    <p className="text-xl font-black text-primary-600 leading-none">
-                      {user.role === 'admin'
-                        ? (stats.totalOrders || 0)
-                        : stats.totalBookings}
-                    </p>
+                    <p className="text-[9px] font-black text-slate-300 uppercase tracking-widest mb-0.5">Following</p>
+                    <p className="text-xl font-black text-primary-600 leading-none">{following.length}</p>
                   </div>
-                  <div className="text-center border-l border-slate-50 col-span-2 pt-4">
-                    <p className="text-[9px] font-black text-slate-300 uppercase tracking-widest mb-0.5">Adoptions</p>
-                    <p className="text-xl font-black text-amber-600 leading-none">
-                      {stats.totalAdoptions || 0}
-                    </p>
+                  <div className="text-center pt-4 col-span-2 border-t border-slate-50 mt-4">
+                    <p className="text-[9px] font-black text-slate-300 uppercase tracking-widest mb-0.5">Favorites</p>
+                    <p className="text-xl font-black text-rose-500 leading-none">{favorites.length}</p>
                   </div>
                 </div>
               </div>
@@ -691,6 +706,9 @@ const Profile = () => {
                 {[
                   { id: 'overview', icon: TrendingUp, label: 'Activity' },
                   { id: 'details', icon: User, label: 'Profile' },
+                  { id: 'favorites', icon: HeartIcon, label: 'Favorites' },
+                  { id: 'followers', icon: Users, label: 'Followers' },
+                  { id: 'following', icon: User, label: 'Following' },
                   { id: 'security', icon: Shield, label: 'Security' },
                   { id: 'store', icon: Building, label: 'My Store', role: 'admin' },
                   { id: 'upgrade', icon: Store, label: 'Become a Partner', role: 'customer' }
@@ -1208,6 +1226,171 @@ const Profile = () => {
                       <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest max-w-xs mx-auto">
                         Your account is not currently associated with a verified store entity.
                       </p>
+                    </div>
+                  )}
+                </div>
+              )}
+              {activeTab === 'favorites' && (
+                <div className="space-y-10 animate-in fade-in slide-in-from-right-8 duration-700">
+                  <header>
+                    <h2 className="text-xl sm:text-3xl font-black text-slate-900 uppercase tracking-tighter leading-none">
+                      Tactical <br />
+                      <span className="text-rose-600 italic">Favorites</span>
+                    </h2>
+                    <p className="text-[9px] sm:text-sm text-slate-400 font-bold uppercase tracking-tight mt-1">Products you've bookmarked for later</p>
+                  </header>
+
+                  {socialLoading ? (
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
+                      {[1, 2, 3].map(i => (
+                        <div key={i} className="aspect-square bg-slate-50 rounded-3xl animate-pulse" />
+                      ))}
+                    </div>
+                  ) : favorites.length > 0 ? (
+                    <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6">
+                      {favorites.map(product => (
+                        <div key={product._id} className="bg-white border border-slate-100 rounded-3xl overflow-hidden group hover:shadow-xl transition-all duration-500">
+                          <div className="aspect-square relative overflow-hidden bg-slate-50">
+                            {product.images?.[0] ? (
+                              <img src={getImageUrl(product.images[0])} alt={product.name} className="w-full h-full object-cover transition-transform group-hover:scale-110" />
+                            ) : (
+                              <Package className="w-full h-full p-8 text-slate-200" />
+                            )}
+                            <button 
+                              onClick={async (e) => {
+                                e.preventDefault();
+                                try {
+                                  const res = await socialService.toggleFavorite(product._id);
+                                  toast.success(res.data.message);
+                                  fetchSocialData();
+                                } catch(err) { toast.error('Failed to update'); }
+                              }}
+                              className="absolute top-2 right-2 p-2 bg-white/90 backdrop-blur-sm rounded-xl text-rose-500 shadow-sm opacity-0 group-hover:opacity-100 transition-all"
+                            >
+                              <X className="h-4 w-4" />
+                            </button>
+                          </div>
+                          <div className="p-4">
+                            <h4 className="text-[10px] sm:text-xs font-black text-slate-900 uppercase truncate mb-1">{product.name}</h4>
+                            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-2">{product.category}</p>
+                            <div className="flex justify-between items-center">
+                              <span className="text-xs sm:text-sm font-black text-slate-900">₱{product.price?.toLocaleString()}</span>
+                              <a href={`/products/${product._id}`} className="text-[8px] font-black text-primary-600 uppercase tracking-widest hover:underline">View Spec</a>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="py-20 text-center bg-slate-50 rounded-[3rem] border border-dashed border-slate-200">
+                      <HeartIcon className="h-12 w-12 text-slate-200 mx-auto mb-4" />
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">No favorites yet</p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {activeTab === 'followers' && (
+                <div className="space-y-10 animate-in fade-in slide-in-from-right-8 duration-700">
+                  <header>
+                    <h2 className="text-xl sm:text-3xl font-black text-slate-900 uppercase tracking-tighter leading-none">
+                      Troop <br />
+                      <span className="text-primary-600 italic">Followers</span>
+                    </h2>
+                    <p className="text-[9px] sm:text-sm text-slate-400 font-bold uppercase tracking-tight mt-1">Users following your tactical updates</p>
+                  </header>
+
+                  {socialLoading ? (
+                    <div className="space-y-4">
+                      {[1, 2, 3].map(i => (
+                        <div key={i} className="h-16 bg-slate-50 rounded-2xl animate-pulse" />
+                      ))}
+                    </div>
+                  ) : followers.length > 0 ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {followers.map(f => (
+                        <div key={f._id} className="flex items-center gap-4 p-4 bg-white border border-slate-100 rounded-2xl hover:shadow-lg transition-all">
+                          <div className="w-12 h-12 rounded-xl overflow-hidden bg-slate-50 border border-slate-100">
+                            {f.avatar ? (
+                              <img src={getImageUrl(f.avatar)} alt="" className="w-full h-full object-cover" />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center text-slate-300">
+                                <User className="h-6 w-6" />
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h4 className="text-sm font-black text-slate-900 uppercase truncate">
+                                {f.firstName} {f.lastName}
+                            </h4>
+                            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">@{f.username}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="py-20 text-center bg-slate-50 rounded-[3rem] border border-dashed border-slate-200">
+                      <Users className="h-12 w-12 text-slate-200 mx-auto mb-4" />
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Base is quiet. No followers yet.</p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {activeTab === 'following' && (
+                <div className="space-y-10 animate-in fade-in slide-in-from-right-8 duration-700">
+                  <header>
+                    <h2 className="text-xl sm:text-3xl font-black text-slate-900 uppercase tracking-tighter leading-none">
+                      Strategic <br />
+                      <span className="text-primary-600 italic">Following</span>
+                    </h2>
+                    <p className="text-[9px] sm:text-sm text-slate-400 font-bold uppercase tracking-tight mt-1">Tactical partners you're monitoring</p>
+                  </header>
+
+                  {socialLoading ? (
+                    <div className="space-y-4">
+                      {[1, 2, 3].map(i => (
+                        <div key={i} className="h-16 bg-slate-50 rounded-2xl animate-pulse" />
+                      ))}
+                    </div>
+                  ) : following.length > 0 ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {following.map(f => (
+                        <div key={f._id} className="flex items-center gap-4 p-4 bg-white border border-slate-100 rounded-2xl hover:shadow-lg transition-all group">
+                          <div className="w-12 h-12 rounded-xl overflow-hidden bg-slate-50 border border-slate-100">
+                            {f.avatar ? (
+                              <img src={getImageUrl(f.avatar)} alt="" className="w-full h-full object-cover" />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center text-slate-300">
+                                <User className="h-6 w-6" />
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h4 className="text-sm font-black text-slate-900 uppercase truncate">
+                                {f.firstName} {f.lastName}
+                            </h4>
+                            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">@{f.username}</p>
+                          </div>
+                          <button 
+                            onClick={async () => {
+                                try {
+                                    await socialService.unfollowUser(f._id);
+                                    toast.success(`Unfollowed @${f.username}`);
+                                    fetchSocialData();
+                                } catch(err) { toast.error('Failed to unfollow'); }
+                            }}
+                            className="bg-slate-50 text-slate-400 p-2 rounded-xl opacity-0 group-hover:opacity-100 hover:bg-rose-50 hover:text-rose-600 transition-all font-black text-[8px] uppercase tracking-widest"
+                          >
+                            Unfollow
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="py-20 text-center bg-slate-50 rounded-[3rem] border border-dashed border-slate-200">
+                      <User className="h-12 w-12 text-slate-200 mx-auto mb-4" />
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">No strategic following</p>
                     </div>
                   )}
                 </div>

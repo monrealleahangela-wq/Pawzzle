@@ -396,6 +396,46 @@ const Checkout = () => {
     }
   };
 
+  const checkVoucherValidity = (mv) => {
+    if (!mv || !mv.voucher) return { isValid: false, reason: 'Invalid voucher' };
+    
+    const voucher = mv.voucher;
+    const now = new Date();
+    const currentStoreId = checkoutItems[0]?.storeId;
+    
+    // Check shop applicability
+    // Handle both object and string ID comparison
+    const voucherStoreId = (typeof voucher.store === 'object' && voucher.store?._id) 
+        ? voucher.store._id 
+        : voucher.store;
+        
+    if (currentStoreId && voucherStoreId && voucherStoreId.toString() !== currentStoreId.toString()) {
+      return { isValid: false, reason: 'Wrong Shop' };
+    }
+    
+    // Check minimum purchase
+    if (checkoutTotalPrice < voucher.minPurchase) {
+      return { isValid: false, reason: `Min. ₱${voucher.minPurchase.toLocaleString()}` };
+    }
+    
+    // Check date
+    const endDate = new Date(voucher.endDate);
+    if (now > endDate) {
+      return { isValid: false, reason: 'Expired' };
+    }
+    
+    // Check usage
+    if (voucher.usageLimit !== null && voucher.usedCount >= voucher.usageLimit) {
+      return { isValid: false, reason: 'Fully Used' };
+    }
+
+    if (!voucher.isActive) {
+        return { isValid: false, reason: 'Inactive' };
+    }
+    
+    return { isValid: true, reason: 'Applicable' };
+  };
+
   const calculateFinalTotal = () => {
     let total = checkoutTotalPrice;
 
@@ -861,28 +901,40 @@ const Checkout = () => {
                     </button>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {myVouchers.slice(0, 2).map((mv) => (
-                      <button
-                        key={mv._id}
-                        onClick={() => handleApplyVoucher(mv.voucher.code)}
-                        className="group flex items-center justify-between p-4 bg-white border border-slate-100 rounded-2xl hover:border-primary-500 hover:shadow-xl hover:shadow-primary-100 transition-all text-left"
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 bg-primary-50 text-primary-600 rounded-xl flex items-center justify-center group-hover:bg-primary-600 group-hover:text-white transition-all shadow-inner">
-                            <Tag size={16} />
+                    {myVouchers.slice(0, 4).map((mv) => {
+                      const { isValid, reason } = checkVoucherValidity(mv);
+                      return (
+                        <button
+                          key={mv._id}
+                          onClick={() => isValid && handleApplyVoucher(mv.voucher.code)}
+                          disabled={!isValid}
+                          className={`group flex items-center justify-between p-4 bg-white border-2 rounded-2xl transition-all text-left ${
+                            isValid 
+                              ? 'border-slate-100 hover:border-primary-500 hover:shadow-xl hover:shadow-primary-100' 
+                              : 'border-slate-50 opacity-60 grayscale cursor-not-allowed'
+                          }`}
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all shadow-inner ${
+                                isValid ? 'bg-primary-50 text-primary-600 group-hover:bg-primary-600 group-hover:text-white' : 'bg-slate-100 text-slate-400'
+                            }`}>
+                              <Tag size={16} />
+                            </div>
+                            <div>
+                              <p className={`text-[10px] font-black uppercase tracking-tighter mb-0.5 ${isValid ? 'text-slate-900' : 'text-slate-400'}`}>{mv.voucher.code}</p>
+                              <p className={`text-[9px] font-bold uppercase tracking-widest ${isValid ? 'text-primary-600' : 'text-slate-400'}`}>
+                                {isValid ? (mv.voucher.discountType === 'percentage' ? `${mv.voucher.discountValue}% OFF` : `₱${mv.voucher.discountValue} OFF`) : reason}
+                              </p>
+                            </div>
                           </div>
-                          <div>
-                            <p className="text-[10px] font-black text-slate-900 uppercase tracking-tighter mb-0.5">{mv.voucher.code}</p>
-                            <p className="text-[9px] font-bold text-primary-600 uppercase tracking-widest">
-                              {mv.voucher.discountType === 'percentage' ? `${mv.voucher.discountValue}% OFF` : `₱${mv.voucher.discountValue} OFF`}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-                          <ChevronRight size={14} className="text-primary-600" />
-                        </div>
-                      </button>
-                    ))}
+                          {isValid && (
+                            <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                              <ChevronRight size={14} className="text-primary-600" />
+                            </div>
+                          )}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               )}
@@ -998,32 +1050,58 @@ const Checkout = () => {
 
             <div className="p-8 space-y-4 max-h-[60vh] overflow-y-auto no-scrollbar">
               {myVouchers.length > 0 ? (
-                myVouchers.map((mv) => (
-                  <button
-                    key={mv._id}
-                    onClick={() => {
-                        handleApplyVoucher(mv.voucher.code);
-                        setShowVoucherModal(false);
-                    }}
-                    className="w-full text-left p-6 rounded-3xl border border-slate-100 hover:border-primary-200 bg-slate-50 hover:bg-primary-50 transition-all group relative overflow-hidden"
-                  >
-                    <div className="flex items-center gap-4 relative z-10">
-                      <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-primary-600 shadow-sm group-hover:bg-primary-600 group-hover:text-white transition-all">
-                        <Tag size={20} />
+                myVouchers.map((mv) => {
+                  const { isValid, reason } = checkVoucherValidity(mv);
+                  return (
+                    <button
+                      key={mv._id}
+                      onClick={() => {
+                        if (isValid) {
+                          handleApplyVoucher(mv.voucher.code);
+                          setShowVoucherModal(false);
+                        }
+                      }}
+                      disabled={!isValid}
+                      className={`w-full text-left p-6 rounded-3xl border-2 transition-all group relative overflow-hidden ${
+                        isValid 
+                          ? 'border-slate-100 hover:border-primary-200 bg-slate-50 hover:bg-primary-50' 
+                          : 'border-slate-50 opacity-60 grayscale cursor-not-allowed'
+                      }`}
+                    >
+                      <div className="flex items-center gap-4 relative z-10">
+                        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-sm transition-all ${
+                            isValid ? 'bg-white text-primary-600 group-hover:bg-primary-600 group-hover:text-white' : 'bg-slate-200 text-slate-400'
+                        }`}>
+                          <Tag size={20} />
+                        </div>
+                        <div className="flex-1">
+                          <div className="flex items-center justify-between mb-0.5">
+                            <h4 className={`font-black uppercase tracking-tighter ${isValid ? 'text-slate-900' : 'text-slate-400'}`}>{mv.voucher.code}</h4>
+                            {!isValid && (
+                                <span className="px-2 py-0.5 bg-slate-200 text-slate-600 text-[8px] font-black uppercase tracking-widest rounded-full">
+                                    {reason}
+                                </span>
+                            )}
+                          </div>
+                          <p className={`text-[10px] font-black uppercase tracking-widest ${isValid ? 'text-primary-600' : 'text-slate-400'}`}>
+                              {mv.voucher.discountType === 'percentage' ? `${mv.voucher.discountValue}% OFF` : `₱${mv.voucher.discountValue} OFF`}
+                          </p>
+                          <div className="flex items-center gap-3 mt-1">
+                            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tight">Min. Purchase: ₱{mv.voucher.minPurchase.toLocaleString()}</p>
+                            {isValid && (
+                              <p className="text-[9px] font-bold text-emerald-600 uppercase tracking-tight">Available</p>
+                            )}
+                          </div>
+                        </div>
                       </div>
-                      <div>
-                        <h4 className="font-black text-slate-900 uppercase tracking-tighter mb-0.5">{mv.voucher.code}</h4>
-                        <p className="text-[10px] font-black text-primary-600 uppercase tracking-widest">
-                            {mv.voucher.discountType === 'percentage' ? `${mv.voucher.discountValue}% OFF` : `₱${mv.voucher.discountValue} OFF`}
-                        </p>
-                        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tight mt-1">Min. Purchase: ₱{mv.voucher.minPurchase}</p>
-                      </div>
-                    </div>
-                    <div className="absolute top-1/2 right-6 -translate-y-1/2 w-8 h-8 rounded-full bg-white flex items-center justify-center shadow-md opacity-0 group-hover:opacity-100 transition-opacity">
-                        <ChevronRight size={16} className="text-primary-600" />
-                    </div>
-                  </button>
-                ))
+                      {isValid && (
+                        <div className="absolute top-1/2 right-6 -translate-y-1/2 w-8 h-8 rounded-full bg-white flex items-center justify-center shadow-md opacity-0 group-hover:opacity-100 transition-opacity">
+                            <ChevronRight size={16} className="text-primary-600" />
+                        </div>
+                      )}
+                    </button>
+                  );
+                })
               ) : (
                 <div className="text-center py-12">
                   <Ticket className="h-12 w-12 text-slate-200 mx-auto mb-4" />
