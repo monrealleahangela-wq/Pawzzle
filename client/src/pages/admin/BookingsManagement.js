@@ -193,7 +193,7 @@ const BookingsManagement = () => {
             <input
               type="text"
               placeholder=""
-              className="w-full pl-14 pr-4 py-3.5 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl outline-none focus:ring-2 focus:ring-primary-500/50 placeholder:text-slate-600 transition-all font-sans"
+              className="w-full pl-14 pr-4 py-3.5 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl outline-none focus:ring-2 focus:ring-primary-500/50 placeholder:text-slate-600 transition-all font-sans input-with-icon"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />

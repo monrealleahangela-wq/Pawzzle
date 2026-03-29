@@ -95,8 +95,21 @@ code {
 .relative svg.lucide-search + input,
 .relative div svg.lucide-search + input,
 .relative .lucide-search + input,
-.group .lucide-search + input {
-  padding-left: 3.25rem !important;
+.group .lucide-search + input,
+.relative div.absolute + input,
+.relative .absolute + input,
+.group div.absolute + input {
+  padding-left: 4.5rem !important;
+}
+
+/* Mobile specific overrides for search/input padding */
+@media (max-width: 640px) {
+  .relative div.absolute + input,
+  .relative .absolute + input,
+  .input-with-both-icons,
+  .input-with-icon {
+    padding-left: 4rem !important;
+  }
 }
 
 /* Specific fix for elements that might not use standard classes but have absolute icons */
