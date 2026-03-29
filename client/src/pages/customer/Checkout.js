@@ -626,7 +626,7 @@ const Checkout = () => {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       <div className="md:col-span-2">
                         <p className="text-sm text-gray-600">
-                          <strong>Current Address:</strong> {user?.address?.street || 'No street'}, {user?.address?.city || 'No city'}, {user?.address?.barangay || 'No barangay'}, {user?.address?.zipCode || 'No ZIP'}, Cavite, Philippines
+                          <strong>Current Address:</strong> {shippingAddress.street || 'No street'}, {shippingAddress.city || 'No city'}, {shippingAddress.barangay || 'No barangay'}, {shippingAddress.zipCode || 'No ZIP'}, Cavite, Philippines
                         </p>
                       </div>
                     </div>
@@ -741,6 +741,29 @@ const Checkout = () => {
                         Philippines
                       </div>
                     </div>
+                  </div>
+
+                  <div className="pt-4">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!shippingAddress.street || !shippingAddress.city || !shippingAddress.barangay) {
+                          toast.error('Please complete all required address fields');
+                          return;
+                        }
+                        setEditAddress(false);
+                        setAddressApplied(true);
+                        setTimeout(() => setAddressApplied(false), 2000);
+                        toast.success('Delivery address confirmed and applied!');
+                      }}
+                      className="w-full py-4 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-primary-600 transition-all shadow-xl shadow-slate-200 flex items-center justify-center gap-2 group"
+                    >
+                      <CheckCircle className="h-4 w-4 group-hover:scale-110 transition-transform" />
+                      Confirm & Apply Delivery Address
+                    </button>
+                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tighter text-center mt-3 italic opacity-60">
+                      * This address will only be used for this specific order
+                    </p>
                   </div>
                 </form>
               )}
