@@ -377,14 +377,18 @@ const OrderDetail = () => {
                 {user?.role === 'customer' && (
                   <button 
                     onClick={() => {
-                        // More robust way to find the items heading
-                        const headings = Array.from(document.querySelectorAll('h2'));
-                        const itemHeading = headings.find(h => h.textContent.includes('Order Items'));
-                        if (itemHeading) {
-                            itemHeading.scrollIntoView({ behavior: 'smooth' });
-                            toast.info('Review individual items below!', { icon: '⭐' });
+                        if (order.items.length === 1) {
+                            openReviewModal(order.items[0]);
                         } else {
-                            window.scrollTo({ top: 300, behavior: 'smooth' });
+                            // More robust way to find the items heading
+                            const headings = Array.from(document.querySelectorAll('h2'));
+                            const itemHeading = headings.find(h => h.textContent.includes('Order Items'));
+                            if (itemHeading) {
+                                itemHeading.scrollIntoView({ behavior: 'smooth' });
+                                toast.info('Please select which item you want to review below!', { icon: '⭐' });
+                            } else {
+                                window.scrollTo({ top: 300, behavior: 'smooth' });
+                            }
                         }
                     }}
                     className="w-full py-4 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-primary-600 transition-all shadow-xl hover:scale-[1.02] flex items-center justify-center gap-2 group"
