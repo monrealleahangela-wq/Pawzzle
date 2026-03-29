@@ -33,8 +33,19 @@ class RevenueService {
       doc.paymentStatus = 'paid';
       doc.isRevenueRecorded = true;
 
-      if (doc.store) {
-        await Store.findByIdAndUpdate(doc.store, {
+      // Determine the store ID if missing from the document
+      let storeId = doc.store;
+      if (!storeId && doc.addedBy) {
+        const store = await Store.findOne({ owner: doc.addedBy });
+        if (store) {
+          storeId = store._id;
+          // Periodically fix the document too
+          doc.store = storeId;
+        }
+      }
+
+      if (storeId) {
+        await Store.findByIdAndUpdate(storeId, {
           $inc: {
             'balance': netAmount,
             'stats.totalRevenue': totalAmount,

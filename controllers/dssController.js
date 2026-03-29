@@ -358,9 +358,22 @@ const getAdminInsights = async (req, res) => {
         const storeId = store._id;
 
         // 1. Core Analytics: Revenue & Orders
+        // Be inclusive: check both storeId AND addedBy for historical consistency
         const [orders, bookings] = await Promise.all([
-            Order.find({ store: storeId, isDeleted: { $ne: true } }),
-            Booking.find({ store: storeId, isDeleted: { $ne: true } })
+            Order.find({ 
+                $or: [
+                    { store: storeId },
+                    { addedBy: store.owner }
+                ], 
+                isDeleted: { $ne: true } 
+            }),
+            Booking.find({ 
+                $or: [
+                    { store: storeId },
+                    { addedBy: store.owner }
+                ], 
+                isDeleted: { $ne: true } 
+            })
         ]);
 
         const orderRevenue = orders.filter(o => o.paymentStatus === 'paid').reduce((s, o) => s + (o.totalAmount || 0), 0);
@@ -565,6 +578,12 @@ const getAdminInsights = async (req, res) => {
             { $group: { _id: { month: { $month: '$createdAt' }, year: { $year: '$createdAt' } }, revenue: { $sum: '$totalAmount' } } },
             { $sort: { '_id.year': 1, '_id.month': 1 } }
         ]);
+
+        // Calculate Average Rating
+        const storeReviews = await Review.find({ store: storeId, isDeleted: { $ne: true } });
+        const avgRating = storeReviews.length > 0
+            ? (storeReviews.reduce((sum, r) => sum + r.rating, 0) / storeReviews.length).toFixed(1)
+            : 5.0;
 
         res.json({
             roleProfile: {
