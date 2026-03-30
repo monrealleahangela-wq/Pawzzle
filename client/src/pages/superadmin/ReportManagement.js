@@ -146,6 +146,7 @@ const ReportManagement = () => {
                             <option value="resolved" className="bg-slate-900 text-white font-black">RESOLVED</option>
                             <option value="dismissed" className="bg-slate-900 text-white font-black">DISMISSED</option>
                             <option value="action_taken" className="bg-slate-900 text-white font-black">ACTION TAKEN</option>
+                            <option value="appealed" className="bg-slate-900 text-white font-black">APPEALED</option>
                         </select>
                     </div>
                     <div className="md:col-span-3 relative">
