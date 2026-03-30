@@ -4,6 +4,19 @@ import { bookingService, serviceService, voucherService, getImageUrl } from '../
 import { toast } from 'react-toastify';
 import { Clock, User, MapPin, Phone, Mail, DollarSign, CheckCircle, XCircle, AlertCircle, Filter, Search, Calendar, ArrowLeft, ChevronLeft, ChevronRight, Store, X, Activity, ShieldCheck, TrendingUp, Tag, Ticket, Bell, Building, Heart } from 'lucide-react';
 
+const StoreHoursHint = ({ bookingDate, businessHours }) => {
+  const dayNames = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
+  const [yr, mo, dy] = bookingDate.split('-').map(Number);
+  const dayName = dayNames[new Date(yr, mo - 1, dy).getDay()];
+  const hrs = businessHours[dayName];
+  if (!hrs) return null;
+  return hrs.closed ? (
+    <p className="text-[8px] font-black text-rose-500 uppercase tracking-widest mt-1.5 px-1">✗ Store closed on this day</p>
+  ) : (
+    <p className="text-[8px] font-black text-emerald-600 uppercase tracking-widest mt-1.5 px-1">✓ Store hours: {hrs.open} – {hrs.close}</p>
+  );
+};
+
 const Bookings = () => {
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -765,21 +778,12 @@ const Bookings = () => {
                             className="w-full pl-11 pr-4 py-4 bg-white/50 backdrop-blur-md border border-slate-100 rounded-[1.25rem] text-[13px] font-black text-slate-900 uppercase tracking-tight focus:outline-none focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 focus:bg-white transition-all shadow-sm" />
                         </div>
                         {/* Store hours hint */}
-                        {bookingForm.bookingDate && selectedService?.store?.businessHours && (() => {
-                          const dayNames = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
-                          const [yr, mo, dy] = bookingForm.bookingDate.split('-').map(Number);
-                          const dayName = dayNames[new Date(yr, mo-1, dy).getDay()];
-                          const hrs = selectedService.store.businessHours[dayName];
-                          return hrs && !hrs.closed ? (
-                            <p className="text-[8px] font-black text-emerald-600 uppercase tracking-widest mt-1.5 px-1">
-                              ✓ Store hours: {hrs.open} – {hrs.close}
-                            </p>
-                          ) : (
-                            <p className="text-[8px] font-black text-rose-500 uppercase tracking-widest mt-1.5 px-1">
-                              ✗ Store closed on this day
-                            </p>
-                          );
-                        })()}
+                        {bookingForm.bookingDate && selectedService?.store?.businessHours && (
+                          <StoreHoursHint
+                            bookingDate={bookingForm.bookingDate}
+                            businessHours={selectedService.store.businessHours}
+                          />
+                        )}
                       </div>
 
                       {bookingForm.bookingDate && (
@@ -862,10 +866,8 @@ const Bookings = () => {
                     <button type="button" onClick={() => {
                         if (!bookingForm.bookingDate || !bookingForm.startTime) {
                           toast.info('Please select a date and time');
-                        } else {
-                          validateBookingTime(bookingForm.bookingDate, bookingForm.startTime, true)
-                            ? setFormStep(3)
-                            : null;
+                        } else if (validateBookingTime(bookingForm.bookingDate, bookingForm.startTime, true)) {
+                          setFormStep(3);
                         }
                       }}
                       className="flex-1 py-4 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.25em] shadow-xl shadow-slate-200 hover:bg-primary-600 transition-all active:scale-95 disabled:opacity-50">

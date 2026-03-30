@@ -10,8 +10,8 @@ client/node_modules/
 !client/.env.production
 
 
-# Build output
-client/build/
+# Build output - intentionally committed to skip Render pipeline
+# client/build/
 
 # Logs
 *.log
