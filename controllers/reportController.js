@@ -14,6 +14,10 @@ const createReport = async (req, res) => {
             return res.status(404).json({ message: 'User not found' });
         }
 
+        if (!evidence || !Array.isArray(evidence) || evidence.length === 0) {
+            return res.status(400).json({ message: 'Supporting evidence (images/screenshots) is required to submit a report.' });
+        }
+
         const report = new Report({
             reporter: req.user._id,
             reportedUser: reportedUserId,

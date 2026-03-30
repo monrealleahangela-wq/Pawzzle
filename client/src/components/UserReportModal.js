@@ -10,10 +10,12 @@ import {
 } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { adminReportService as reportService } from '../services/apiService';
+import ImageUpload from './ImageUpload';
 
 const UserReportModal = ({ isOpen, onClose, reportedUser }) => {
     const [reason, setReason] = useState('');
     const [description, setDescription] = useState('');
+    const [evidence, setEvidence] = useState([]);
     const [submitting, setSubmitting] = useState(false);
     const [step, setStep] = useState(1);
 
@@ -23,16 +25,23 @@ const UserReportModal = ({ isOpen, onClose, reportedUser }) => {
         e.preventDefault();
         if (!reason || !description) return;
 
+        if (evidence.length === 0) {
+            toast.error('Supporting evidence (images/screenshots) is required to submit a report.');
+            return;
+        }
+
         try {
             setSubmitting(true);
             await reportService.createReport({
                 reportedUserId: reportedUser.id || reportedUser._id,
                 reason,
-                description
+                description,
+                evidence,
+                reportType: 'customer_reporting_seller'
             });
             setStep(3); // Success step
         } catch (error) {
-            toast.error('Failed to submit report');
+            toast.error(error.response?.data?.message || 'Failed to submit report');
         } finally {
             setSubmitting(false);
         }
@@ -112,7 +121,17 @@ const UserReportModal = ({ isOpen, onClose, reportedUser }) => {
                                 value={description}
                                 onChange={(e) => setDescription(e.target.value)}
                                 placeholder="Provide specific details about the scamming or incident. Include order numbers if applicable..."
-                                className="w-full p-6 bg-slate-50 border-2 border-slate-50 rounded-3xl focus:border-rose-500 focus:bg-white outline-none font-bold text-sm sm:text-base transition-all min-h-[160px]"
+                                className="w-full p-6 bg-slate-50 border-2 border-slate-50 rounded-3xl focus:border-rose-500 focus:bg-white outline-none font-bold text-sm sm:text-base transition-all min-h-[140px]"
+                            />
+                        </div>
+
+                        <div className="space-y-4">
+                            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Supporting Evidence <span className="text-rose-500 font-black">(REQUIRED)</span></h3>
+                            <ImageUpload 
+                                images={evidence}
+                                onImagesChange={setEvidence}
+                                multiple={true}
+                                maxFiles={5}
                             />
                         </div>
 
