@@ -174,6 +174,8 @@ export const adminVoucherService = {
 export const adminReportService = {
   createReport: (data) => api.post('/reports', data),
   getAllReports: (params) => api.get('/reports/all', { params }),
+  getReportById: (reportId) => api.get(`/reports/${reportId}`),
+  submitAppeal: (reportId, data) => api.post(`/reports/appeal/${reportId}`, data),
   updateReportStatus: (reportId, data) => api.patch(`/reports/${reportId}`, data)
 };
 

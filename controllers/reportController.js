@@ -177,8 +177,64 @@ const updateReportStatus = async (req, res) => {
     }
 };
 
+const submitAppeal = async (req, res) => {
+    try {
+        const { reportId } = req.params;
+        const { content, evidence } = req.body;
+
+        const report = await Report.findById(reportId);
+        if (!report) {
+            return res.status(404).json({ message: 'Report not found' });
+        }
+
+        // Verify that the user is the one reported
+        if (report.reportedUser.toString() !== req.user._id.toString()) {
+            return res.status(403).json({ message: 'Unauthorized: You can only appeal reports filed against you.' });
+        }
+
+        report.appeal = {
+            content,
+            evidence: evidence || [],
+            submittedAt: new Date(),
+            status: 'pending'
+        };
+        report.status = 'appealed';
+
+        await report.save();
+        res.json({ message: 'Appeal submitted successfully', report });
+    } catch (error) {
+        console.error('Submit appeal error:', error);
+        res.status(500).json({ message: 'Server error' });
+    }
+};
+
+const getReportById = async (req, res) => {
+    try {
+        const { reportId } = req.params;
+        const report = await Report.findById(reportId)
+            .populate('reporter', 'firstName lastName username avatar')
+            .populate('reportedUser', 'firstName lastName username avatar');
+            
+        if (!report) return res.status(404).json({ message: 'Report not found' });
+        
+        // Only reporter, reportedUser, or superAdmin can view
+        if (report.reporter?._id.toString() !== req.user._id.toString() && 
+            report.reportedUser?._id.toString() !== req.user._id.toString() &&
+            req.user.role !== 'super_admin') {
+            return res.status(403).json({ message: 'Unauthorized' });
+        }
+        
+        res.json({ report });
+    } catch (error) {
+         console.error('Get report error:', error);
+         res.status(500).json({ message: 'Server error' });
+    }
+};
+
 module.exports = {
     createReport,
     getAllReports,
-    updateReportStatus
+    updateReportStatus,
+    submitAppeal,
+    getReportById
 };

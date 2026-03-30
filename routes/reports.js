@@ -3,12 +3,16 @@ const router = express.Router();
 const {
     createReport,
     getAllReports,
-    updateReportStatus
+    updateReportStatus,
+    getReportById,
+    submitAppeal
 } = require('../controllers/reportController');
 const { authenticate, superAdminOnly } = require('../middleware/auth');
 
 // Seller/User reporting
 router.post('/', authenticate, createReport);
+router.get('/:reportId', authenticate, getReportById);
+router.post('/appeal/:reportId', authenticate, submitAppeal);
 
 // Super Admin Management
 router.get('/all', authenticate, superAdminOnly, getAllReports);

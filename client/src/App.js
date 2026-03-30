@@ -42,6 +42,7 @@ import Search from './pages/customer/Search';
 import Adoptions from './pages/customer/Adoptions';
 import CustomerDSS from './pages/customer/DSS';
 import CustomerVouchers from './pages/customer/Vouchers';
+import AppealForm from './pages/customer/AppealForm';
 
 // Admin Pages
 import AdminDashboard from './pages/admin/Dashboard';
@@ -139,6 +140,7 @@ function App() {
                   <Route path="account-upgrade" element={<ProtectedRoute roles={['customer', 'admin', 'super_admin']}><StoreApplication /></ProtectedRoute>} />
                   <Route path="insights" element={<ProtectedRoute roles={['customer', 'admin', 'super_admin']}><CustomerDSS /></ProtectedRoute>} />
                   <Route path="vouchers" element={<ProtectedRoute roles={['customer', 'admin', 'super_admin']}><CustomerVouchers /></ProtectedRoute>} />
+                  <Route path="appeal/:reportId" element={<ProtectedRoute roles={['customer', 'admin', 'super_admin']}><AppealForm /></ProtectedRoute>} />
 
                   {/* Admin Routes */}
                   {/* Dashboard - all staff types can see */}

@@ -25,8 +25,18 @@ const reportSchema = new mongoose.Schema({
     }],
     status: {
         type: String,
-        enum: ['pending', 'investigating', 'reviewed', 'resolved', 'dismissed', 'action_taken'],
+        enum: ['pending', 'investigating', 'reviewed', 'resolved', 'dismissed', 'action_taken', 'appealed'],
         default: 'pending'
+    },
+    appeal: {
+        content: { type: String, default: '' },
+        evidence: [{ type: String }],
+        submittedAt: { type: Date },
+        status: { 
+            type: String, 
+            enum: ['none', 'pending', 'reviewed', 'accepted', 'rejected'],
+            default: 'none'
+        }
     },
     adminNotes: {
         type: String,

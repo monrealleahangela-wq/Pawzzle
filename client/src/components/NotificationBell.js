@@ -47,6 +47,8 @@ const NotificationBell = () => {
             }
         } else if (notification.type === 'new_follow') {
             navigate('/profile?tab=followers');
+        } else if (notification.type === 'report') {
+            navigate(`/appeal/${notification.relatedId}`);
         }
     };
 
