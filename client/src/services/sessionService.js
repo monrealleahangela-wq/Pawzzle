@@ -53,8 +53,12 @@ const startSession = (userData, token) => {
   localStorage.setItem('sessionId', sessionId);
   
   console.log('🟢 SESSION CREATED ===');
-  console.log('📧 User email:', userData.email);
-  console.log('📧 User role:', userData.role);
+  if (userData) {
+    console.log('📧 User email:', userData.email);
+    console.log('📧 User role:', userData.role);
+  } else {
+    console.log('⚠️ Session created without user data');
+  }
   console.log('📧 Session ID:', sessionId);
   console.log('📧 Token stored:', token ? 'yes' : 'no');
   console.log('📧 Session start time:', new Date().toISOString());

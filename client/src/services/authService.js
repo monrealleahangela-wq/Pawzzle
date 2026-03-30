@@ -57,9 +57,18 @@ const authService = {
       .then(response => {
         console.log(' === REAL API SUCCESS ===');
         console.log(' Response data:', response.data);
-        const { token, user } = response.data;
-        const session = SessionService.startSession(user, token);
-        return { ...response.data, sessionId: session.sessionId };
+        const { token, user, twoFactorRequired } = response.data;
+        
+        if (twoFactorRequired) {
+          return response.data;
+        }
+
+        if (token && user) {
+          const session = SessionService.startSession(user, token);
+          return { ...response.data, sessionId: session.sessionId };
+        }
+        
+        return response.data;
       })
       .catch(error => {
         console.log(' === REAL API ERROR ===');
