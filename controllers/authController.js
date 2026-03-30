@@ -712,7 +712,7 @@ const verify2FA = async (req, res) => {
       return res.status(400).json({ message: 'Verification code has expired. Please log in again.' });
     }
 
-    if (otp !== storedData.otp) {
+    if (otp?.toString().trim() !== storedData.otp?.toString().trim()) {
       return res.status(400).json({ message: 'Invalid verification code. Please try again.' });
     }
 

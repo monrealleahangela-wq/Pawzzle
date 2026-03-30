@@ -176,7 +176,8 @@ export const adminReportService = {
   getAllReports: (params) => api.get('/reports/all', { params }),
   getReportById: (reportId) => api.get(`/reports/${reportId}`),
   submitAppeal: (reportId, data) => api.post(`/reports/appeal/${reportId}`, data),
-  updateReportStatus: (reportId, data) => api.patch(`/reports/${reportId}`, data)
+  updateReportStatus: (reportId, data) => api.patch(`/reports/${reportId}`, data),
+  getImageUrl: (path) => getImageUrl(path)
 };
 
 // User services

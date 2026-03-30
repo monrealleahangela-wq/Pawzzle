@@ -229,8 +229,8 @@ const Cart = () => {
         </div>
       </div>
 
-      {/* Mobile Fixed Checkout Bar - Ultra sleek High Density */}
-      <div className="lg:hidden fixed bottom-[76px] left-0 right-0 z-50 bg-white/95 backdrop-blur-2xl border-t border-slate-100 px-3 py-2.5 shadow-[0_-15px_50px_rgba(0,0,0,0.12)]">
+      {/* Mobile Fixed Checkout Bar - Adjusted for Bottom Nav HUD */}
+      <div className="lg:hidden fixed bottom-[96px] left-1/2 -translate-x-1/2 w-[94%] max-w-lg z-50 bg-white/95 backdrop-blur-2xl border border-white/20 px-4 py-3.5 rounded-[2rem] shadow-[0_20px_60px_rgba(0,0,0,0.2)]">
         <div className="flex items-center justify-between gap-3 max-w-lg mx-auto">
           <div className="pl-1">
             <p className="text-[7px] font-black text-slate-400 uppercase tracking-widest leading-none mb-0.5">Net Payload</p>

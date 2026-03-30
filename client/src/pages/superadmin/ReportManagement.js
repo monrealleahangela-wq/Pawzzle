@@ -313,23 +313,43 @@ const ReportManagement = () => {
 
                             <div className="space-y-4">
                                 <label className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] block">Reason & Findings</label>
-                                <div className="p-6 bg-slate-900 text-white rounded-[2rem] border border-white/5 relative overflow-hidden">
+                                 <div className="p-6 bg-slate-900 text-white rounded-[2rem] border border-white/5 relative overflow-hidden">
                                     <AlertTriangle className="absolute -bottom-4 -right-4 w-24 h-24 opacity-5" />
                                     <div className="relative z-10">
                                         <p className="text-[14px] font-medium leading-relaxed italic opacity-80">
-                                            "{selectedReport.details || selectedReport.description}"
+                                            "{selectedReport.details || selectedReport.description || 'No breach details provided'}"
                                         </p>
                                     </div>
                                     
                                     {selectedReport.evidence && selectedReport.evidence.length > 0 && (
                                         <div className="mt-4 flex gap-2 overflow-x-auto pb-2">
                                             {selectedReport.evidence.map((img, idx) => (
-                                                <img key={idx} src={img} className="h-20 w-20 object-cover rounded-xl border border-white/10" alt="evidence" />
+                                                <img key={idx} src={adminReportService.getImageUrl ? adminReportService.getImageUrl(img) : img} className="h-20 w-20 object-cover rounded-xl border border-white/10" alt="evidence" />
                                             ))}
                                         </div>
                                     )}
                                 </div>
                             </div>
+
+                            {/* Appeal Section - Added Visibility */}
+                            {selectedReport.appeal && selectedReport.appeal.status !== 'none' && (
+                                <div className="space-y-4 animate-in fade-in duration-500">
+                                    <label className="text-[9px] font-black text-rose-500 uppercase tracking-[0.2em] block">Defense Appeal</label>
+                                    <div className="p-6 bg-rose-50/50 border border-rose-100 rounded-[2rem]">
+                                        <p className="text-[12px] font-bold text-rose-900 leading-relaxed italic mb-4">
+                                            "{selectedReport.appeal.content}"
+                                        </p>
+                                        {selectedReport.appeal.evidence && selectedReport.appeal.evidence.length > 0 && (
+                                            <div className="flex gap-2 overflow-x-auto pb-2">
+                                                {selectedReport.appeal.evidence.map((img, idx) => (
+                                                    <img key={idx} src={adminReportService.getImageUrl ? adminReportService.getImageUrl(img) : img} className="h-16 w-16 object-cover rounded-lg border border-rose-200" alt="appeal-evidence" />
+                                                ))}
+                                            </div>
+                                        )}
+                                        <p className="text-[8px] font-black text-rose-400 uppercase tracking-widest mt-2">Submitted: {new Date(selectedReport.appeal.submittedAt).toLocaleString()}</p>
+                                    </div>
+                                </div>
+                            )}
 
                             <div className="grid grid-cols-2 gap-6 pt-6 border-t border-slate-100">
                                 <div className="space-y-4">

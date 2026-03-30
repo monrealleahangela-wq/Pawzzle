@@ -129,24 +129,26 @@ const updateReportStatus = async (req, res) => {
             report.status = 'action_taken';
 
             // Take actual action on the user
-            const user = await User.findById(report.reportedUser._id);
-            if (user) {
-                if (actionTaken === 'ban' || actionTaken === 'suspension') {
-                    user.isActive = false;
-                    user.deactivationReason = `ACCOUNT ${actionTaken.toUpperCase()}: ${adminNotes || reason}`;
-                    user.deactivatedAt = new Date();
-                    await user.save();
-                }
+            if (report.reportedUser) {
+                const user = await User.findById(report.reportedUser._id);
+                if (user) {
+                    if (actionTaken === 'ban' || actionTaken === 'suspension') {
+                        user.isActive = false;
+                        user.deactivationReason = `ACCOUNT ${actionTaken.toUpperCase()}: ${adminNotes || report.reason}`;
+                        user.deactivatedAt = new Date();
+                        await user.save();
+                    }
 
-                // Notify User
-                await new Notification({
-                    recipient: user._id,
-                    type: 'user_action',
-                    title: `Account Action: ${actionTaken.toUpperCase()}`,
-                    message: `After reviewing a report, we have decided to issue a ${actionTaken}. Reason: ${adminNotes || 'Policy violation'}.`,
-                    relatedId: report._id,
-                    relatedModel: 'Report'
-                }).save();
+                    // Notify User
+                    await new Notification({
+                        recipient: user._id,
+                        type: 'user_action',
+                        title: `Account Action: ${actionTaken.toUpperCase()}`,
+                        message: `After reviewing a report, we have decided to issue a ${actionTaken}. Reason: ${adminNotes || 'Policy violation'}.`,
+                        relatedId: report._id,
+                        relatedModel: 'Report'
+                    }).save();
+                }
             }
         }
 
