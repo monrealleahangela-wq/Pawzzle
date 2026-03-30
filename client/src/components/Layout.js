@@ -46,6 +46,21 @@ const Layout = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
 
+  // Handle body scroll locking when mobile menu is open
+  useEffect(() => {
+    if (isMobileMenuOpen) {
+      document.body.style.overflow = 'hidden';
+      document.body.style.height = '100vh';
+    } else {
+      document.body.style.overflow = '';
+      document.body.style.height = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+      document.body.style.height = '';
+    };
+  }, [isMobileMenuOpen]);
+
   // Debug logging
   console.log('🔍 Layout Debug:', {
     user: user ? `${user.firstName} (${user.role})` : 'No user',
@@ -413,7 +428,7 @@ const Layout = () => {
 
           {/* Mobile Navigation Drawer (Overlay) */}
           {isMobileMenuOpen && (
-            <div className="lg:hidden fixed inset-0 z-[100] animate-fade-in">
+            <div className="lg:hidden fixed inset-0 z-[100] animate-fade-in pointer-events-auto">
               <div 
                 className="absolute inset-0 bg-primary-900/40 backdrop-blur-sm" 
                 onClick={() => setIsMobileMenuOpen(false)}
