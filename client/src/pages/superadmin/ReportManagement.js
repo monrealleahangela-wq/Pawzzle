@@ -276,56 +276,55 @@ const ReportManagement = () => {
 
             {selectedReport && (
                 <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4 z-[100] animate-fade-in">
-                    <div className="bg-white rounded-[3rem] max-w-2xl w-full shadow-2xl overflow-hidden animate-slide-up">
-                        <div className="p-8 border-b border-slate-100 flex items-center justify-between">
+                    <div className="bg-white rounded-3xl max-w-2xl w-full shadow-2xl flex flex-col max-h-[90vh] animate-slide-up">
+                        <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between flex-shrink-0">
                             <div>
-                                <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tighter">
+                                <h2 className="text-lg font-black text-slate-900 uppercase tracking-tighter">
                                     Report <span className="text-rose-600 italic">Details</span>
                                 </h2>
-                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Case ID: {selectedReport._id.slice(-8).toUpperCase()}</p>
+                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Case ID: {selectedReport._id.slice(-8).toUpperCase()}</p>
                             </div>
                             <button
                                 onClick={() => setSelectedReport(null)}
-                                className="p-3 bg-slate-50 text-slate-400 rounded-2xl hover:bg-rose-50 hover:text-rose-600 transition-all"
+                                className="p-2.5 bg-slate-50 text-slate-400 rounded-xl hover:bg-rose-50 hover:text-rose-600 transition-all flex-shrink-0"
                             >
-                                <X className="h-5 w-5" />
+                                <X className="h-4 w-4" />
                             </button>
                         </div>
 
-                        <div className="p-10 space-y-8">
-                            <div className="grid grid-cols-2 gap-8">
-                                <div className="space-y-4">
+                        <div className="p-5 space-y-4 overflow-y-auto">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
                                     <label className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] block">Reporter Details</label>
-                                    <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                                        <p className="text-[13px] font-black text-slate-900 uppercase">{selectedReport.reporter?.firstName} {selectedReport.reporter?.lastName}</p>
-                                        <p className="text-[10px] font-bold text-primary-600 uppercase tracking-widest">{selectedReport.store?.name}</p>
-                                        <p className="text-[10px] font-medium text-slate-400 italic mt-1">{selectedReport.reporter?.email}</p>
+                                    <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
+                                        <p className="text-[11px] font-black text-slate-900 uppercase">{selectedReport.reporter?.firstName} {selectedReport.reporter?.lastName}</p>
+                                        <p className="text-[9px] font-bold text-primary-600 uppercase tracking-widest">{selectedReport.store?.name}</p>
+                                        <p className="text-[9px] font-medium text-slate-400 italic mt-0.5">{selectedReport.reporter?.email}</p>
                                     </div>
                                 </div>
-                                <div className="space-y-4">
+                                <div className="space-y-2">
                                     <label className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] block">Reported User</label>
-                                    <div className="p-4 bg-rose-50 rounded-2xl border border-rose-100">
-                                        <p className="text-[13px] font-black text-rose-900 uppercase">{selectedReport.reportedUser?.firstName} {selectedReport.reportedUser?.lastName}</p>
-                                        <p className="text-[10px] font-bold text-rose-500 uppercase tracking-widest">@{selectedReport.reportedUser?.username}</p>
-                                        <p className="text-[10px] font-medium text-rose-300 italic mt-1">{selectedReport.reportedUser?.email}</p>
+                                    <div className="p-3 bg-rose-50 rounded-xl border border-rose-100">
+                                        <p className="text-[11px] font-black text-rose-900 uppercase">{selectedReport.reportedUser?.firstName} {selectedReport.reportedUser?.lastName}</p>
+                                        <p className="text-[9px] font-bold text-rose-500 uppercase tracking-widest">@{selectedReport.reportedUser?.username}</p>
+                                        <p className="text-[9px] font-medium text-rose-300 italic mt-0.5">{selectedReport.reportedUser?.email}</p>
                                     </div>
                                 </div>
                             </div>
 
-                            <div className="space-y-4">
+                            <div className="space-y-2">
                                 <label className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] block">Reason & Findings</label>
-                                 <div className="p-6 bg-slate-900 text-white rounded-[2rem] border border-white/5 relative overflow-hidden">
-                                    <AlertTriangle className="absolute -bottom-4 -right-4 w-24 h-24 opacity-5" />
+                                 <div className="p-4 bg-slate-900 text-white rounded-2xl border border-white/5 relative overflow-hidden">
+                                    <AlertTriangle className="absolute -bottom-4 -right-4 w-16 h-16 opacity-5" />
                                     <div className="relative z-10">
-                                        <p className="text-[14px] font-medium leading-relaxed italic opacity-80">
+                                        <p className="text-[12px] font-medium leading-relaxed italic opacity-80">
                                             "{selectedReport.details || selectedReport.description || 'No breach details provided'}"
                                         </p>
                                     </div>
-                                    
                                     {selectedReport.evidence && selectedReport.evidence.length > 0 && (
-                                        <div className="mt-4 flex gap-2 overflow-x-auto pb-2">
+                                        <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
                                             {selectedReport.evidence.map((img, idx) => (
-                                                <img key={idx} src={adminReportService.getImageUrl ? adminReportService.getImageUrl(img) : img} className="h-20 w-20 object-cover rounded-xl border border-white/10" alt="evidence" />
+                                                <img key={idx} src={adminReportService.getImageUrl ? adminReportService.getImageUrl(img) : img} className="h-14 w-14 object-cover rounded-lg border border-white/10" alt="evidence" />
                                             ))}
                                         </div>
                                     )}
@@ -334,33 +333,33 @@ const ReportManagement = () => {
 
                             {/* Appeal Section - Added Visibility */}
                             {selectedReport.appeal && selectedReport.appeal.status !== 'none' && (
-                                <div className="space-y-4 animate-in fade-in duration-500">
+                                <div className="space-y-2 animate-in fade-in duration-500">
                                     <label className="text-[9px] font-black text-rose-500 uppercase tracking-[0.2em] block">Defense Appeal</label>
-                                    <div className="p-6 bg-rose-50/50 border border-rose-100 rounded-[2rem]">
-                                        <p className="text-[12px] font-bold text-rose-900 leading-relaxed italic mb-4">
+                                    <div className="p-4 bg-rose-50/50 border border-rose-100 rounded-2xl">
+                                        <p className="text-[11px] font-bold text-rose-900 leading-relaxed italic mb-2">
                                             "{selectedReport.appeal.content}"
                                         </p>
                                         {selectedReport.appeal.evidence && selectedReport.appeal.evidence.length > 0 && (
-                                            <div className="flex gap-2 overflow-x-auto pb-2">
+                                            <div className="flex gap-2 overflow-x-auto pb-1">
                                                 {selectedReport.appeal.evidence.map((img, idx) => (
-                                                    <img key={idx} src={adminReportService.getImageUrl ? adminReportService.getImageUrl(img) : img} className="h-16 w-16 object-cover rounded-lg border border-rose-200" alt="appeal-evidence" />
+                                                    <img key={idx} src={adminReportService.getImageUrl ? adminReportService.getImageUrl(img) : img} className="h-12 w-12 object-cover rounded-lg border border-rose-200" alt="appeal-evidence" />
                                                 ))}
                                             </div>
                                         )}
-                                        <p className="text-[8px] font-black text-rose-400 uppercase tracking-widest mt-2">Submitted: {new Date(selectedReport.appeal.submittedAt).toLocaleString()}</p>
+                                        <p className="text-[8px] font-black text-rose-400 uppercase tracking-widest mt-1">Submitted: {new Date(selectedReport.appeal.submittedAt).toLocaleString()}</p>
                                     </div>
                                 </div>
                             )}
 
-                            <div className="grid grid-cols-2 gap-6 pt-6 border-t border-slate-100">
-                                <div className="space-y-4">
+                            <div className="grid grid-cols-2 gap-4 pt-4 border-t border-slate-100">
+                                <div className="space-y-2">
                                     <label className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] block pl-1">Take Action</label>
-                                    <div className="flex flex-wrap gap-2">
+                                    <div className="flex flex-wrap gap-1.5">
                                         {['none', 'warning', 'suspension', 'ban'].map((action) => (
                                             <button
                                                 key={action}
                                                 onClick={() => setSelectedReport({ ...selectedReport, actionTaken: action })}
-                                                className={`px-4 py-2.5 rounded-xl text-[9px] font-bold uppercase tracking-widest border transition-all ${selectedReport.actionTaken === action ? 'bg-rose-600 text-white border-rose-600 shadow-lg' : 'bg-slate-50 text-slate-600 border-slate-100'}`}
+                                                className={`px-3 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-widest border transition-all ${selectedReport.actionTaken === action ? 'bg-rose-600 text-white border-rose-600 shadow-lg' : 'bg-slate-50 text-slate-600 border-slate-100'}`}
                                             >
                                                 {action}
                                             </button>
@@ -369,19 +368,19 @@ const ReportManagement = () => {
                                     <p className="text-[8px] font-bold text-rose-400 uppercase tracking-widest pl-1 italic">Action will notify the user and update account status</p>
                                 </div>
 
-                                <div className="space-y-4">
+                                <div className="space-y-2">
                                     <label className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] block pl-1">Admin Notes</label>
                                     <textarea
                                         value={selectedReport.adminNotes || ''}
                                         onChange={(e) => setSelectedReport({ ...selectedReport, adminNotes: e.target.value })}
-                                        className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-xs font-bold text-slate-900 outline-none focus:ring-1 focus:ring-primary-500 resize-none h-24"
+                                        className="w-full px-3 py-2 bg-slate-50 border border-slate-100 rounded-xl text-xs font-bold text-slate-900 outline-none focus:ring-1 focus:ring-primary-500 resize-none h-16"
                                         placeholder="Add internal findings or evidence summary..."
                                     />
                                 </div>
                             </div>
 
-                            <div className="pt-6 border-t border-slate-100 flex flex-wrap gap-3">
-                                <p className="w-full text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">Finalize Status:</p>
+                            <div className="pt-4 border-t border-slate-100 flex flex-wrap gap-2">
+                                <p className="w-full text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Finalize Status:</p>
                                 {['pending', 'investigating', 'reviewed', 'resolved', 'dismissed', 'action_taken'].map((status) => (
                                     <button
                                         key={status}
@@ -390,7 +389,7 @@ const ReportManagement = () => {
                                             adminNotes: selectedReport.adminNotes, 
                                             actionTaken: selectedReport.actionTaken 
                                         })}
-                                        className={`flex-1 min-w-[100px] py-4 rounded-2xl text-[9px] font-black uppercase tracking-widest transition-all ${selectedReport.status === status ? 'bg-slate-900 text-white ring-2 ring-primary-500 ring-offset-2 shadow-xl' : 'bg-slate-50 text-slate-400 hover:bg-slate-200'
+                                        className={`flex-1 min-w-[80px] py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${selectedReport.status === status ? 'bg-slate-900 text-white ring-2 ring-primary-500 ring-offset-2 shadow-xl' : 'bg-slate-50 text-slate-400 hover:bg-slate-200'
                                             }`}
                                     >
                                         {status.replace('_', ' ')}
