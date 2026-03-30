@@ -40,7 +40,7 @@ const userSchema = new mongoose.Schema({
   staffType: {
     // Only relevant when role === 'staff'
     type: String,
-    enum: ['order_staff', 'inventory_staff', 'service_staff', null],
+    enum: ['order_staff', 'inventory_staff', 'service_staff', 'delivery_staff', null],
     default: null
   },
   createdBy: {

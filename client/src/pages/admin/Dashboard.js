@@ -150,7 +150,7 @@ const Dashboard = () => {
         {[
           { label: 'Total Pets', value: stats.totalPets, icon: Heart, color: 'rose', link: '/admin/pets', sub: 'In Store', growth: stats.growth.pets, show: ['admin', 'super_admin'].includes(user?.role) || ['inventory_staff', 'general'].includes(user?.staffType) },
           { label: 'Total Products', value: stats.totalProducts, icon: Package, color: 'amber', link: '/admin/products', sub: 'Active', growth: stats.growth.products, show: ['admin', 'super_admin'].includes(user?.role) || ['inventory_staff', 'general'].includes(user?.staffType) },
-          { label: 'Total Orders', value: stats.totalOrders, icon: ShoppingCart, color: 'indigo', link: '/admin/orders', sub: 'Completed', growth: stats.growth.orders, show: ['admin', 'super_admin'].includes(user?.role) || ['order_staff', 'general'].includes(user?.staffType) },
+          { label: 'Total Orders', value: stats.totalOrders, icon: ShoppingCart, color: 'indigo', link: '/admin/orders', sub: 'Completed', growth: stats.growth.orders, show: ['admin', 'super_admin'].includes(user?.role) || ['order_staff', 'delivery_staff', 'general'].includes(user?.staffType) },
           { label: 'Total Bookings', value: stats.totalBookings, icon: Calendar, color: 'emerald', link: '/admin/bookings', sub: 'Scheduled', growth: stats.growth.bookings, show: ['admin', 'super_admin'].includes(user?.role) || ['service_staff', 'order_staff', 'general'].includes(user?.staffType) },
           { label: 'Net Earnings', value: `₱${stats.netEarnings.toLocaleString()}`, icon: TrendingUp, color: 'primary', link: '/admin/insights', sub: 'Paid', growth: stats.growth.revenue, show: ['admin', 'super_admin'].includes(user?.role) },
           { label: 'Balance', value: `₱${stats.availableBalance.toLocaleString()}`, icon: Shield, color: 'emerald', link: '/admin/payouts', sub: 'Available', growth: stats.growth.balance, show: ['admin', 'super_admin'].includes(user?.role) }
@@ -190,7 +190,7 @@ const Dashboard = () => {
 
       <div className="relative z-10 grid grid-cols-1 xl:grid-cols-12 gap-6 pb-20">
         {/* Recent Orders */}
-        {(['admin', 'super_admin'].includes(user?.role) || ['order_staff', 'general'].includes(user?.staffType)) && (
+        {(['admin', 'super_admin'].includes(user?.role) || ['order_staff', 'delivery_staff', 'general'].includes(user?.staffType)) && (
           <div className="xl:col-span-8 bg-white rounded-[3rem] border border-slate-100 p-8 shadow-xl shadow-slate-200/50 flex flex-col">
             <div className="flex items-center justify-between mb-10">
               <div className="flex items-center gap-4">

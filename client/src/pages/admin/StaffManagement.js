@@ -3,7 +3,7 @@ import { toast } from 'react-toastify';
 import { 
     Users, Plus, Edit2, Trash2, Power, Key, X, Check,
     ShoppingCart, Package, Calendar, ChevronDown, Search,
-    Shield, Clock, AlertCircle, RefreshCw, Lock
+    Shield, Clock, AlertCircle, RefreshCw, Lock, Truck
 } from 'lucide-react';
 import PermissionsManager from '../../components/admin/PermissionsManager';
 import { staffService } from '../../services/apiService';
@@ -29,13 +29,21 @@ const STAFF_TYPES = [
         icon: Calendar,
         color: 'purple',
         description: 'Manages grooming/vet bookings and appointment schedules'
+    },
+    {
+        id: 'delivery_staff',
+        label: 'Delivery',
+        icon: Truck,
+        color: 'green',
+        description: 'Handles logistics, confirms order pickups, manages delivery, collects payments, and updates To Deliver / Delivered status'
     }
 ];
 
 const TYPE_STYLES = {
     order_staff: 'bg-blue-50 text-blue-700 border-blue-200',
     inventory_staff: 'bg-amber-50 text-amber-700 border-amber-200',
-    service_staff: 'bg-purple-50 text-purple-700 border-purple-200'
+    service_staff: 'bg-purple-50 text-purple-700 border-purple-200',
+    delivery_staff: 'bg-green-50 text-green-700 border-green-200'
 };
 
 const defaultForm = {
@@ -175,7 +183,8 @@ const StaffManagement = () => {
         active: staff.filter(s => s.isActive).length,
         order: staff.filter(s => s.staffType === 'order_staff').length,
         inventory: staff.filter(s => s.staffType === 'inventory_staff').length,
-        service: staff.filter(s => s.staffType === 'service_staff').length
+        service: staff.filter(s => s.staffType === 'service_staff').length,
+        delivery: staff.filter(s => s.staffType === 'delivery_staff').length
     };
 
     return (
@@ -202,13 +211,14 @@ const StaffManagement = () => {
                 </div>
 
                 {/* Stats */}
-                <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-6 gap-3">
                     {[
                         { label: 'Total Staff', value: counts.total, color: 'slate' },
                         { label: 'Active', value: counts.active, color: 'emerald' },
                         { label: 'Order Staff', value: counts.order, color: 'blue' },
                         { label: 'Inventory', value: counts.inventory, color: 'amber' },
-                        { label: 'Service', value: counts.service, color: 'purple' }
+                        { label: 'Service', value: counts.service, color: 'purple' },
+                        { label: 'Delivery', value: counts.delivery, color: 'green' }
                     ].map(s => (
                         <div key={s.label} className="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm text-center">
                             <p className={`text-[9px] font-black uppercase tracking-widest text-${s.color}-600 mb-1`}>{s.label}</p>
@@ -218,7 +228,7 @@ const StaffManagement = () => {
                 </div>
 
                 {/* Staff Type Cards */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                     {STAFF_TYPES.map(t => {
                         const Icon = t.icon;
                         return (
@@ -420,7 +430,7 @@ const StaffManagement = () => {
                                     {/* Staff Type Selector */}
                                     <div>
                                         <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">Professional Specialization *</label>
-                                        <div className="grid grid-cols-3 gap-3">
+                                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                                             {STAFF_TYPES.map(t => {
                                                 const Icon = t.icon;
                                                 return (

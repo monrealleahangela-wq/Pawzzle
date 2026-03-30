@@ -144,6 +144,15 @@ const Layout = () => {
     { path: '/admin/insights', label: 'Intelligence', icon: Brain },
   ];
 
+  // Delivery Staff nav
+  const deliveryStaffNavItems = [
+    { type: 'label', label: 'Logistics' },
+    { path: '/admin/dashboard', label: 'Dashboard', icon: Activity },
+    { path: '/admin/orders', label: 'Orders', icon: ShoppingCart },
+    { path: '/admin/customers', label: 'Customers', icon: Users },
+    { path: '/admin/insights', label: 'Intelligence', icon: Brain },
+  ];
+
   // General Staff nav (for managers or staff with no specific role)
   const generalStaffNavItems = [
     { type: 'label', label: 'Store Overview' },
@@ -194,7 +203,8 @@ const Layout = () => {
       user?.role === 'staff' ?
         (user?.staffType === 'order_staff' ? orderStaffNavItems :
           user?.staffType === 'inventory_staff' ? inventoryStaffNavItems :
-            user?.staffType === 'service_staff' ? serviceStaffNavItems : generalStaffNavItems) :
+            user?.staffType === 'service_staff' ? serviceStaffNavItems :
+              user?.staffType === 'delivery_staff' ? deliveryStaffNavItems : generalStaffNavItems) :
         !user ? publicNavItems : adminNavItems;
 
   // Debug: Log navigation items
@@ -252,7 +262,24 @@ const Layout = () => {
         { path: '/profile', label: 'Admin', icon: User },
       ];
     }
-    if (user?.role === 'admin' || user?.role === 'staff') {
+    if (user?.role === 'admin') {
+      return [
+        { path: '/admin/dashboard', label: 'Home', icon: House },
+        { path: '/admin/orders', label: 'Orders', icon: ShoppingCart },
+        { path: '/admin/bookings', label: 'Bookings', icon: Calendar },
+        { path: '/admin/chat', label: 'Chat', icon: MessageSquare },
+        { path: '/profile', label: 'Me', icon: User },
+      ];
+    }
+    if (user?.role === 'staff' && user?.staffType === 'delivery_staff') {
+      return [
+        { path: '/admin/dashboard', label: 'Home', icon: House },
+        { path: '/admin/orders', label: 'Deliveries', icon: ShoppingCart },
+        { path: '/admin/customers', label: 'Customers', icon: Users },
+        { path: '/profile', label: 'Me', icon: User },
+      ];
+    }
+    if (user?.role === 'staff') {
       return [
         { path: '/admin/dashboard', label: 'Home', icon: House },
         { path: '/admin/orders', label: 'Orders', icon: ShoppingCart },
