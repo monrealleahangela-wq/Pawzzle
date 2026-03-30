@@ -62,7 +62,7 @@ const getAllStores = async (req, res) => {
 const getStoreById = async (req, res) => {
   try {
     const store = await Store.findOne({ _id: req.params.id, isActive: true, isDeleted: { $ne: true } })
-      .populate('owner', 'username firstName lastName email');
+      .populate('owner', 'username firstName lastName email lastSeen');
 
     if (!store) {
       return res.status(404).json({ message: 'Store not found' });
@@ -103,7 +103,7 @@ const getStoreById = async (req, res) => {
 const getStoreDetails = async (req, res) => {
   try {
     const store = await Store.findOne({ _id: req.params.id, isActive: true, isDeleted: { $ne: true } })
-      .populate('owner', 'username firstName lastName email');
+      .populate('owner', 'username firstName lastName email lastSeen');
 
     if (!store) {
       return res.status(404).json({ message: 'Store not found' });

@@ -253,7 +253,6 @@ const StoreDetail = () => {
   const isStoreOpen = () => {
     if (!store?.businessHours) return false;
 
-    // Use consistent day detection matching the sidebar
     const now = new Date();
     const dayName = now.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
     const hours = store.businessHours[dayName];
@@ -263,10 +262,8 @@ const StoreDetail = () => {
 
     try {
       const currentTimeInMinutes = now.getHours() * 60 + now.getMinutes();
-
       const parseToMinutes = (timeStr) => {
         if (!timeStr) return 0;
-        // Handle HH:mm or HH:mm:ss
         const parts = timeStr.split(':');
         const h = parseInt(parts[0], 10);
         const m = parseInt(parts[1], 10) || 0;
@@ -276,16 +273,22 @@ const StoreDetail = () => {
       const openMinutes = parseToMinutes(hours.open);
       const closeMinutes = parseToMinutes(hours.close);
 
-      // Handle overnight hours (e.g., 22:00 - 02:00)
       if (closeMinutes < openMinutes) {
         return currentTimeInMinutes >= openMinutes || currentTimeInMinutes <= closeMinutes;
       }
-
       return currentTimeInMinutes >= openMinutes && currentTimeInMinutes <= closeMinutes;
     } catch (error) {
       console.error('Error calculating open status:', error);
       return false;
     }
+  };
+
+  const isOnline = () => {
+    if (!store?.owner?.lastSeen) return false;
+    const lastSeen = new Date(store.owner.lastSeen);
+    const now = new Date();
+    // Online if active in the last 5 minutes
+    return (now - lastSeen) < 5 * 60 * 1000;
   };
 
   if (loading) {
@@ -362,9 +365,13 @@ const StoreDetail = () => {
                     Pending
                   </span>
                 )}
-                <span className={`px-2 py-0.5 rounded-full text-[7px] sm:text-[10px] font-black uppercase tracking-widest flex items-center gap-1 shadow-lg transition-all ${isStoreOpen() ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white'}`}>
-                  <div className={`w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full bg-white ${isStoreOpen() ? 'animate-pulse' : ''}`} />
-                  {isStoreOpen() ? 'Online' : 'Offline'}
+                <span className={`px-2 py-0.5 rounded-full text-[7px] sm:text-[10px] font-black uppercase tracking-widest flex items-center gap-1 shadow-lg transition-all ${isOnline() ? 'bg-emerald-500 text-white' : 'bg-slate-400 text-white'}`}>
+                  <div className={`w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full bg-white ${isOnline() ? 'animate-pulse shadow-[0_0_8px_rgba(255,255,255,0.8)]' : 'opacity-40'}`} />
+                  {isOnline() ? 'Online' : 'Offline'}
+                </span>
+                <span className={`px-2 py-0.5 rounded-full text-[7px] sm:text-[10px] font-black uppercase tracking-widest flex items-center gap-1 shadow-lg transition-all ${isStoreOpen() ? 'bg-primary-500 text-white' : 'bg-rose-500 text-white opacity-60'}`}>
+                  <Clock className="h-2 w-2 sm:h-3 sm:w-3" />
+                  {isStoreOpen() ? 'Open Now' : 'Closed'}
                 </span>
                 <span className="px-2 py-0.5 bg-blue-600 text-white rounded-full text-[7px] sm:text-[10px] font-black uppercase tracking-widest shadow-lg flex items-center gap-1">
                   <Users className="h-2 w-2 sm:h-3 sm:w-3 fill-white/20" /> {followerCount.toLocaleString()} {followerCount === 1 ? 'Follower' : 'Followers'}
