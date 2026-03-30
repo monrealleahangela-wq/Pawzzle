@@ -281,7 +281,7 @@ const Layout = () => {
       />
 
       {/* Sidebar - Desktop Only with Premium Deep Brown Palette */}
-      <aside className={`hidden lg:flex fixed left-0 top-0 h-full w-20 hover:w-64 bg-[#2D1B14] z-40 flex-col transition-all duration-300 group shadow-2xl overflow-hidden border-r border-white/5`}>
+      <aside className={`hidden lg:flex fixed left-0 top-0 h-full w-20 hover:w-64 bg-[#2D1B14] z-[70] flex-col transition-all duration-300 group shadow-2xl overflow-hidden border-r border-white/5`}>
         {/* Sidebar Logo Area */}
         <Link
           to={!user ? '/landing' : user?.role === 'customer' ? '/home' : user?.role === 'super_admin' ? '/superadmin/dashboard' : '/admin/dashboard'}
@@ -531,7 +531,7 @@ const Layout = () => {
         )}
 
         {/* Main content Area Scrollable */}
-        <main className="container-custom py-6 pb-40 lg:pb-6">
+        <main className="container-custom py-6 pb-28 lg:pb-6">
           <div className="w-full">
             <Outlet />
           </div>
@@ -539,7 +539,7 @@ const Layout = () => {
       </div>
 
       {/* Floating Bottom Navigation for Mobile */}
-      <nav id="mobile-bottom-nav" className="lg:hidden fixed bottom-6 left-1/2 -translate-x-1/2 w-[92%] max-w-lg bg-white/90 backdrop-blur-2xl border border-white/20 px-2 py-3 rounded-[2.5rem] z-20 flex justify-around items-center shadow-[0_15px_50px_rgba(0,0,0,0.15)] ring-1 ring-black/5 transition-all duration-300">
+      <nav id="mobile-bottom-nav" className="lg:hidden fixed bottom-6 left-1/2 -translate-x-1/2 w-[92%] max-w-lg bg-white/90 backdrop-blur-2xl border border-white/20 px-2 py-3 rounded-[2.5rem] z-[50] flex justify-around items-center shadow-[0_15px_50px_rgba(0,0,0,0.15)] ring-1 ring-black/5 transition-all duration-300">
         {bottomNavItems.map((item) => {
           const Icon = item.icon;
           const active = isActivePath(item.path);
