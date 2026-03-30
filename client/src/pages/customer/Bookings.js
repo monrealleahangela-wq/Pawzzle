@@ -53,8 +53,73 @@ const Bookings = () => {
     { num: 4, label: 'Confirm', icon: <ShieldCheck className="h-4 w-4" /> },
   ];
 
+  const validateBookingTime = (date, time, showToast = false) => {
+    if (!date || !time) return false;
+
+    const [year, month, day] = date.split('-').map(Number);
+    const [h, m] = time.split(':').map(Number);
+    const selectedDateTime = new Date(year, month - 1, day, h, m);
+    const now = new Date();
+
+    // 1. Past time check
+    if (selectedDateTime <= now) {
+      if (showToast) toast.error('⏰ Selected time has already passed. Please choose a future time.');
+      return false;
+    }
+
+    // 2. Store hours check
+    if (selectedService?.store?.businessHours) {
+      const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+      const dayName = dayNames[new Date(year, month - 1, day).getDay()];
+      const hours = selectedService.store.businessHours[dayName];
+
+      if (!hours || hours.closed) {
+        if (showToast) toast.error('🚫 The store is closed on the selected day.');
+        return false;
+      }
+
+      const [openH, openM] = hours.open.split(':').map(Number);
+      const [closeH, closeM] = hours.close.split(':').map(Number);
+      const openMins = openH * 60 + openM;
+      const closeMins = closeH * 60 + closeM;
+      const selectedMins = h * 60 + m;
+      const duration = selectedService?.duration || 60;
+      const endMins = selectedMins + duration;
+
+      if (selectedMins < openMins) {
+        if (showToast) toast.error(`🕐 Store opens at ${hours.open}. Please pick a time from ${hours.open} onwards.`);
+        return false;
+      }
+      if (endMins > closeMins) {
+        if (showToast) toast.error(`🕕 This time slot runs past store closing (${hours.close}). Please pick an earlier time.`);
+        return false;
+      }
+    }
+
+    // 3. Slot conflict check
+    const conflicts = existingBookings.filter(b => {
+      const bDate = new Date(b.bookingDate);
+      const bDateStr = `${bDate.getFullYear()}-${String(bDate.getMonth()+1).padStart(2,'0')}-${String(bDate.getDate()).padStart(2,'0')}`;
+      if (bDateStr !== date) return false;
+      if (!['confirmed','pending','processing'].includes(b.status)) return false;
+      const [bStartH, bStartM] = b.startTime.split(':').map(Number);
+      const [bEndH, bEndM] = b.endTime.split(':').map(Number);
+      const bStartMins = bStartH * 60 + bStartM;
+      const bEndMins = bEndH * 60 + bEndM;
+      const selEndMins = h * 60 + m + (selectedService?.duration || 60);
+      return (h * 60 + m) < bEndMins && selEndMins > bStartMins;
+    });
+
+    if (conflicts.length > 0) {
+      if (showToast) toast.error(`❌ Time slot ${time} is already booked (${conflicts[0].startTime}–${conflicts[0].endTime}). Please choose another time.`);
+      return false;
+    }
+
+    return true;
+  };
+
   const canAdvance = (step) => {
-    if (step === 2) return !!bookingForm.bookingDate && !!bookingForm.startTime;
+    if (step === 2) return !!bookingForm.bookingDate && !!bookingForm.startTime && validateBookingTime(bookingForm.bookingDate, bookingForm.startTime);
     if (step === 3) return !!(bookingForm.pet.name && bookingForm.pet.type && bookingForm.pet.breed && bookingForm.pet.age && bookingForm.pet.weight);
     return true;
   };
@@ -699,6 +764,22 @@ const Bookings = () => {
                             onChange={handleFormChange} required
                             className="w-full pl-11 pr-4 py-4 bg-white/50 backdrop-blur-md border border-slate-100 rounded-[1.25rem] text-[13px] font-black text-slate-900 uppercase tracking-tight focus:outline-none focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 focus:bg-white transition-all shadow-sm" />
                         </div>
+                        {/* Store hours hint */}
+                        {bookingForm.bookingDate && selectedService?.store?.businessHours && (() => {
+                          const dayNames = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
+                          const [yr, mo, dy] = bookingForm.bookingDate.split('-').map(Number);
+                          const dayName = dayNames[new Date(yr, mo-1, dy).getDay()];
+                          const hrs = selectedService.store.businessHours[dayName];
+                          return hrs && !hrs.closed ? (
+                            <p className="text-[8px] font-black text-emerald-600 uppercase tracking-widest mt-1.5 px-1">
+                              ✓ Store hours: {hrs.open} – {hrs.close}
+                            </p>
+                          ) : (
+                            <p className="text-[8px] font-black text-rose-500 uppercase tracking-widest mt-1.5 px-1">
+                              ✗ Store closed on this day
+                            </p>
+                          );
+                        })()}
                       </div>
 
                       {bookingForm.bookingDate && (
@@ -778,7 +859,15 @@ const Bookings = () => {
                       className="px-8 py-4 bg-white border border-slate-100 text-slate-600 rounded-2xl text-[9px] font-black uppercase tracking-widest hover:border-slate-300 transition-all shadow-sm">
                       ← Back
                     </button>
-                    <button type="button" onClick={() => canAdvance(2) ? setFormStep(3) : toast.info('Please select a date and time')}
+                    <button type="button" onClick={() => {
+                        if (!bookingForm.bookingDate || !bookingForm.startTime) {
+                          toast.info('Please select a date and time');
+                        } else {
+                          validateBookingTime(bookingForm.bookingDate, bookingForm.startTime, true)
+                            ? setFormStep(3)
+                            : null;
+                        }
+                      }}
                       className="flex-1 py-4 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.25em] shadow-xl shadow-slate-200 hover:bg-primary-600 transition-all active:scale-95 disabled:opacity-50">
                       Continue to Pet Details →
                     </button>
