@@ -119,7 +119,7 @@ const Cart = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] pb-24 lg:pb-12">
+    <div className="min-h-screen bg-[#F8FAFC] pb-36 lg:pb-12">
       {/* Warning for sold pets - Tightened */}
       {hasSoldItems() && (
         <div className="bg-rose-50 border border-rose-100 rounded-xl p-2.5 mb-2 mx-2 animate-pulse">

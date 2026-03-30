@@ -531,7 +531,7 @@ const Layout = () => {
         )}
 
         {/* Main content Area Scrollable */}
-        <main className="container-custom py-6 pb-28 lg:pb-6">
+        <main className="container-custom py-6 pb-36 lg:pb-6">
           <div className="w-full">
             <Outlet />
           </div>

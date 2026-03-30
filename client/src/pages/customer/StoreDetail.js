@@ -323,7 +323,7 @@ const StoreDetail = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] pb-12">
+    <div className="min-h-screen bg-[#F8FAFC] pb-36 sm:pb-12">
       {/* Dynamic Hero Section - Optimized for Compact Mobile */}
       <div className="relative h-[30vh] sm:h-[60vh] w-full overflow-hidden">
         {store.coverImage ? (

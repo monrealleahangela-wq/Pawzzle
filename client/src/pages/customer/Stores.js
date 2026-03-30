@@ -121,7 +121,7 @@ const Stores = () => {
     }
 
     return (
-        <div className="min-h-screen bg-[#F8FAFC] pb-20 px-1 sm:px-2">
+        <div className="min-h-screen bg-[#F8FAFC] pb-36 sm:pb-20 px-1 sm:px-2">
             {/* Premium Header Section - Optimized for Compactness */}
             <section className="relative pt-12 pb-20 sm:pt-20 sm:pb-32 overflow-hidden rounded-b-[2rem] sm:rounded-b-[4rem]">
                 <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-slate-800 to-primary-900"></div>

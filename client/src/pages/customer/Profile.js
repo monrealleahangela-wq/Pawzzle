@@ -638,7 +638,7 @@ const Profile = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] pb-12 sm:pb-20 overflow-x-hidden">
+    <div className="min-h-screen bg-[#F8FAFC] pb-36 sm:pb-20 overflow-x-hidden">
       {/* Premium Header/Banner - Compacted */}
       <div className="relative h-24 sm:h-48 w-full overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-slate-800 to-primary-900"></div>
