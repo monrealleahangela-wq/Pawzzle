@@ -341,7 +341,7 @@ const Layout = () => {
       {/* Main Content Area - Stable Header with Centered HUD Pill */}
       <div className="flex-1 lg:pl-20 transition-all duration-500 w-full min-w-0 bg-[#F8F7F4] pt-24">
         {/* Header - Fixed to ensure it persists on scroll */}
-        <header className={`fixed top-0 left-0 lg:left-20 right-0 z-30 transition-all duration-300 pointer-events-none ${isScrolled ? 'pt-2' : 'pt-4'}`}>
+        <header className={`fixed top-0 left-0 lg:left-20 right-0 z-[60] transition-all duration-300 pointer-events-none ${isScrolled ? 'pt-2' : 'pt-4'}`}>
           <div className="container-custom pointer-events-auto">
             <div className="flex justify-between items-center bg-white/95 backdrop-blur-md rounded-3xl p-3 shadow-2xl shadow-slate-200/50 border border-slate-50 gap-4">
               {/* Mobile Only: Logo */}
