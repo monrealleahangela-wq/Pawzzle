@@ -45,33 +45,8 @@ const validateEmail = async (email) => {
         return { valid: false, reason: 'Temporary or disposable email addresses are not allowed. Please use a permanent email.' };
     }
 
-    // 3. Check DNS MX records — verify the domain can actually receive email
-    try {
-        // Use specific resolver to bypass potentially broken local DNS settings
-        const mxRecords = await dnsResolver.resolveMx(domain).catch(async (err) => {
-            // If connectivity is the issue, try A record fallback
-            if (['ECONNREFUSED', 'ETIMEOUT', 'ENOTFOUND'].includes(err.code)) {
-                const aRecords = await dnsResolver.resolve4(domain).catch(() => []);
-                return aRecords.length > 0 ? [{ exchange: domain, priority: 0 }] : [];
-            }
-            throw err; // Re-throw true resolution errors
-        });
-
-        if (!mxRecords || mxRecords.length === 0) {
-            return { valid: false, reason: `The email domain "${domain}" does not appear to accept emails. Please use a valid email address.` };
-        }
-
-        return { valid: true };
-    } catch (error) {
-        // DNS lookup failed definitive — domain likely doesn't exist
-        if (error.code === 'ENOTFOUND' || error.code === 'ENODATA' || error.code === 'SERVFAIL') {
-            return { valid: false, reason: `The email domain "${domain}" does not exist. Please use a valid email address.` };
-        }
-
-        // For other network errors, allow through (don't block users due to DNS issues)
-        console.warn('⚠️ DNS lookup warning for domain:', domain, error.code);
-        return { valid: true };
-    }
+    // 3. Deactivated DNS MX Records check - This caused 400 errors due to flaky ISP firewalls capturing Port 53 packets natively.
+    return { valid: true };
 };
 
 module.exports = { validateEmail, DISPOSABLE_DOMAINS };

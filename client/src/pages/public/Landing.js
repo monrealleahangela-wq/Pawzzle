@@ -50,25 +50,7 @@ const Landing = () => {
 
   return (
     <div className="min-h-screen bg-neutral-50 selection:bg-primary-500 selection:text-white overflow-hidden text-slate-900">
-      {/* Sticky Navigation */}
-      <nav className={`fixed top-0 left-0 right-0 z-[100] transition-all duration-500 ${isScrolled ? 'py-4 glass-morphism' : 'py-6 bg-transparent'}`}>
-        <div className="container-custom flex justify-between items-center">
-          <Link to="/" className="flex items-center gap-3 group">
-            <img src="/images/logo.png" alt="Pawzzle Logo" className="h-10 md:h-12 w-auto object-contain transition-transform group-hover:scale-110 drop-shadow-2xl" />
-            <span className={`text-2xl font-black tracking-tighter ${isScrolled ? 'text-primary-600' : 'text-slate-900'}`}>Pawzzle</span>
-          </Link>
-          <div className="flex items-center gap-6">
-            {!isAuthenticated ? (
-              <>
-                <Link to="/login" className="text-sm font-black uppercase tracking-widest text-slate-600 hover:text-primary-600 transition-colors">Sign In</Link>
-                <Link to="/register" className="btn btn-primary px-6 py-2.5 text-xs font-black uppercase tracking-[0.2em] shadow-lg shadow-primary-100">Join</Link>
-              </>
-            ) : (
-              <Link to="/home" className="btn btn-primary px-6 py-2.5 text-xs font-black uppercase tracking-[0.2em] shadow-lg shadow-primary-100">Dashboard</Link>
-            )}
-          </div>
-        </div>
-      </nav>
+      {/* Top navigation removed to prevent duplication with global tab bar */}
 
       {/* Dynamic Background Blobs */}
       <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
