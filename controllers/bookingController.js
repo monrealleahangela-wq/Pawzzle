@@ -5,6 +5,7 @@ const Service = require('../models/Service');
 const User = require('../models/User');
 const Store = require('../models/Store');
 const Voucher = require('../models/Voucher');
+const PetProfile = require('../models/PetProfile');
 const RevenueService = require('../services/revenueService');
 const { createNotification } = require('./notificationController');
 
@@ -139,6 +140,38 @@ const createBooking = async (req, res) => {
     });
 
     await booking.save();
+
+    // ── Auto-save / update pet profile for this customer ──
+    try {
+      const existingPetProfile = await PetProfile.findOne({
+        owner: req.user._id,
+        name: { $regex: new RegExp(`^${pet.name.trim()}$`, 'i') },
+        type: { $regex: new RegExp(`^${pet.type.trim()}$`, 'i') }
+      });
+      if (existingPetProfile) {
+        // Update details in case they changed (weight/age/breed may drift)
+        existingPetProfile.breed = pet.breed;
+        existingPetProfile.age = pet.age;
+        existingPetProfile.weight = pet.weight;
+        if (pet.specialNotes) existingPetProfile.specialNotes = pet.specialNotes;
+        existingPetProfile.lastBookedAt = new Date();
+        await existingPetProfile.save();
+      } else {
+        await PetProfile.create({
+          owner: req.user._id,
+          name: pet.name,
+          type: pet.type,
+          breed: pet.breed,
+          age: pet.age,
+          weight: pet.weight,
+          specialNotes: pet.specialNotes || '',
+          lastBookedAt: new Date()
+        });
+      }
+    } catch (petErr) {
+      // Non-critical — don't fail the booking if pet profile save fails
+      console.error('⚠️ Pet profile auto-save failed (non-critical):', petErr.message);
+    }
 
     // Auto-populate for return
     await booking.populate([

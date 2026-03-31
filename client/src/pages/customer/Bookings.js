@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { bookingService, serviceService, voucherService, getImageUrl } from '../../services/apiService';
+import { bookingService, serviceService, voucherService, getImageUrl, petProfileService } from '../../services/apiService';
 import { toast } from 'react-toastify';
-import { Clock, User, MapPin, Phone, Mail, DollarSign, CheckCircle, XCircle, AlertCircle, Filter, Search, Calendar, ArrowLeft, ChevronLeft, ChevronRight, Store, X, Activity, ShieldCheck, TrendingUp, Tag, Ticket, Bell, Building, Heart } from 'lucide-react';
+import { Clock, User, MapPin, Phone, Mail, DollarSign, CheckCircle, XCircle, AlertCircle, Filter, Search, Calendar, ArrowLeft, ChevronLeft, ChevronRight, Store, X, Activity, ShieldCheck, TrendingUp, Tag, Ticket, Bell, Building, Heart, PawPrint, Trash2 } from 'lucide-react';
 
 const StoreHoursHint = ({ bookingDate, businessHours }) => {
   const dayNames = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
@@ -52,6 +52,8 @@ const Bookings = () => {
   const [isVerifyingVoucher, setIsVerifyingVoucher] = useState(false);
   const [myVouchers, setMyVouchers] = useState([]);
   const [showVoucherModal, setShowVoucherModal] = useState(false);
+  const [savedPets, setSavedPets] = useState([]);
+  const [selectedPetProfile, setSelectedPetProfile] = useState(null);
 
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -159,6 +161,19 @@ const Bookings = () => {
       }
     };
     if (showBookingForm) fetchVouchers();
+  }, [showBookingForm]);
+
+  // Fetch saved pet profiles when booking form opens
+  useEffect(() => {
+    const fetchPetProfiles = async () => {
+      try {
+        const res = await petProfileService.getMyPets();
+        setSavedPets(res.data.pets || []);
+      } catch (err) {
+        console.error('Error fetching pet profiles:', err);
+      }
+    };
+    if (showBookingForm) fetchPetProfiles();
   }, [showBookingForm]);
 
   const fetchServiceDetails = async (serviceId) => {
@@ -890,6 +905,69 @@ const Bookings = () => {
                     </div>
                   </div>
 
+                  {/* ── Saved Pets Quick-Select ── */}
+                  {savedPets.length > 0 && (
+                    <div className="mb-7">
+                      <div className="flex items-center justify-between mb-3">
+                        <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+                          <PawPrint className="h-3 w-3 text-primary-500" /> Your Saved Pets
+                        </p>
+                        {selectedPetProfile && (
+                          <button type="button"
+                            onClick={() => {
+                              setSelectedPetProfile(null);
+                              setBookingForm(prev => ({ ...prev, pet: { name: '', type: '', breed: '', age: '', weight: '' } }));
+                            }}
+                            className="text-[8px] font-black text-slate-400 hover:text-rose-500 uppercase tracking-widest flex items-center gap-1 transition-colors">
+                            <X className="h-3 w-3" /> Clear / New Pet
+                          </button>
+                        )}
+                      </div>
+                      <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
+                        {savedPets.map(pet => {
+                          const isSelected = selectedPetProfile?._id === pet._id;
+                          return (
+                            <button key={pet._id} type="button"
+                              onClick={() => {
+                                setSelectedPetProfile(pet);
+                                setBookingForm(prev => ({
+                                  ...prev,
+                                  pet: { name: pet.name, type: pet.type, breed: pet.breed, age: String(pet.age), weight: String(pet.weight) }
+                                }));
+                              }}
+                              className={`flex-shrink-0 min-w-[160px] p-4 rounded-2xl border-2 text-left transition-all ${
+                                isSelected
+                                  ? 'border-primary-500 bg-primary-50 shadow-lg shadow-primary-100'
+                                  : 'border-slate-100 bg-white hover:border-primary-200 hover:shadow-md'
+                              }`}>
+                              <div className="flex items-center gap-2 mb-2">
+                                <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-sm ${isSelected ? 'bg-primary-500 text-white' : 'bg-slate-100 text-slate-500'}`}>
+                                  🐾
+                                </div>
+                                <div>
+                                  <p className="text-[11px] font-black text-slate-900 uppercase tracking-tight leading-none">{pet.name}</p>
+                                  <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">{pet.type}</p>
+                                </div>
+                              </div>
+                              <p className="text-[8px] font-bold text-slate-500 uppercase tracking-wide">{pet.breed}</p>
+                              <p className="text-[8px] text-slate-400 font-bold mt-0.5">{pet.age}yr · {pet.weight}kg</p>
+                              {isSelected && (
+                                <div className="flex items-center gap-1 mt-2">
+                                  <CheckCircle className="h-3 w-3 text-primary-500" />
+                                  <span className="text-[7px] font-black text-primary-600 uppercase tracking-widest">Selected</span>
+                                </div>
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      <div className="mt-3 flex items-center gap-2 text-[8px] font-bold text-slate-400 uppercase tracking-widest">
+                        <div className="flex-1 h-px bg-slate-100" />
+                        or fill in manually
+                        <div className="flex-1 h-px bg-slate-100" />
+                      </div>
+                    </div>
+                  )}
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                     {[
                       { label: 'Pet Name', name: 'pet.name', type: 'text', placeholder: 'e.g. Max', required: true, icon: User },

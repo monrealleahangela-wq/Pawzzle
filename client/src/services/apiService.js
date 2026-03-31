@@ -354,4 +354,12 @@ export const socialService = {
   checkFollowStatus: (followingId) => api.get(`/social/follow/check/${followingId}`)
 };
 
+// Pet Profile service
+export const petProfileService = {
+  getMyPets: () => api.get('/pet-profiles'),
+  createPet: (data) => api.post('/pet-profiles', data),
+  updatePet: (id, data) => api.put(`/pet-profiles/${id}`, data),
+  deletePet: (id) => api.delete(`/pet-profiles/${id}`)
+};
+
 export default api;

@@ -105,6 +105,7 @@ app.use('/api/payouts', require('./routes/payout'));
 app.use('/api/staff', require('./routes/staff'));
 app.use('/api/customers', require('./routes/customers'));
 app.use('/api/social', require('./routes/social'));
+app.use('/api/pet-profiles', require('./routes/petProfiles'));
 
 // Serve static files from React app
 const buildPaths = [

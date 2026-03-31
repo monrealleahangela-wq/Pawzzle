@@ -1,0 +1,70 @@
+const express = require('express');
+const router = express.Router();
+const { authenticate } = require('../middleware/auth');
+const PetProfile = require('../models/PetProfile');
+const { body, validationResult } = require('express-validator');
+
+const petValidation = [
+  body('name').trim().notEmpty().withMessage('Pet name is required'),
+  body('type').trim().notEmpty().withMessage('Pet type is required'),
+  body('breed').trim().notEmpty().withMessage('Pet breed is required'),
+  body('age').isFloat({ min: 0, max: 30 }).withMessage('Age must be between 0 and 30'),
+  body('weight').isFloat({ min: 0 }).withMessage('Weight must be positive'),
+];
+
+// GET /api/pet-profiles — list all saved pets for the authenticated customer
+router.get('/', authenticate, async (req, res) => {
+  try {
+    const pets = await PetProfile.find({ owner: req.user._id })
+      .sort({ lastBookedAt: -1, createdAt: -1 });
+    res.json({ pets });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// POST /api/pet-profiles — manually create a pet profile
+router.post('/', authenticate, petValidation, async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ message: errors.array()[0].msg, errors: errors.array() });
+  }
+  try {
+    const { name, type, breed, age, weight, specialNotes } = req.body;
+    const pet = await PetProfile.create({ owner: req.user._id, name, type, breed, age, weight, specialNotes: specialNotes || '' });
+    res.status(201).json({ pet });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// PUT /api/pet-profiles/:id — update a saved pet profile
+router.put('/:id', authenticate, petValidation, async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ message: errors.array()[0].msg, errors: errors.array() });
+  }
+  try {
+    const pet = await PetProfile.findOne({ _id: req.params.id, owner: req.user._id });
+    if (!pet) return res.status(404).json({ message: 'Pet profile not found' });
+    const { name, type, breed, age, weight, specialNotes } = req.body;
+    Object.assign(pet, { name, type, breed, age, weight, specialNotes: specialNotes || '' });
+    await pet.save();
+    res.json({ pet });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// DELETE /api/pet-profiles/:id — delete a saved pet profile
+router.delete('/:id', authenticate, async (req, res) => {
+  try {
+    const pet = await PetProfile.findOneAndDelete({ _id: req.params.id, owner: req.user._id });
+    if (!pet) return res.status(404).json({ message: 'Pet profile not found' });
+    res.json({ message: 'Pet profile deleted' });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+module.exports = router;
