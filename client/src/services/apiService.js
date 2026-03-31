@@ -39,7 +39,7 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      const publicPaths = ['/login', '/register', '/landing'];
+      const publicPaths = ['/login', '/register', '/'];
       const isPublicPath = publicPaths.includes(window.location.pathname);
 
       if (!isPublicPath) {

@@ -115,7 +115,6 @@ function App() {
                 <Route path="/register" element={<Register />} />
                 <Route path="/forgot-password" element={<ForgotPassword />} />
                 <Route path="/oauth-callback" element={<OAuthCallback />} />
-                <Route path="/landing" element={<Landing />} />
 
                 {/* Protected Routes with Layout */}
                 <Route path="/" element={<Layout />}>

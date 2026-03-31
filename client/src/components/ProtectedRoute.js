@@ -14,7 +14,7 @@ const ProtectedRoute = ({ children, roles = [], staffTypes = [] }) => {
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/landing" replace />;
+    return <Navigate to="/" replace />;
   }
 
   // Check basic role access

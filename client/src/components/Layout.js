@@ -311,7 +311,7 @@ const Layout = () => {
       <aside className={`hidden lg:flex fixed left-0 top-0 h-full w-20 hover:w-64 bg-[#2D1B14] z-[70] flex-col transition-all duration-300 group shadow-2xl overflow-hidden border-r border-white/5`}>
         {/* Sidebar Logo Area */}
         <Link
-          to={!user ? '/landing' : user?.role === 'customer' ? '/home' : user?.role === 'super_admin' ? '/superadmin/dashboard' : '/admin/dashboard'}
+          to={!user ? '/' : user?.role === 'customer' ? '/home' : user?.role === 'super_admin' ? '/superadmin/dashboard' : '/admin/dashboard'}
           className="p-6 flex items-center gap-4 transition-all"
         >
           <div className="w-8 h-8 flex-shrink-0 relative">
@@ -373,7 +373,7 @@ const Layout = () => {
             <div className="flex justify-between items-center bg-white/95 backdrop-blur-md rounded-3xl p-3 shadow-2xl shadow-slate-200/50 border border-slate-50 gap-4">
               {/* Mobile Only: Logo */}
               <Link
-                to={!user ? '/landing' : user?.role === 'customer' ? '/home' : user?.role === 'super_admin' ? '/superadmin/dashboard' : '/admin/dashboard'}
+                to={!user ? '/' : user?.role === 'customer' ? '/home' : user?.role === 'super_admin' ? '/superadmin/dashboard' : '/admin/dashboard'}
                 className="flex lg:hidden items-center space-x-2 group shrink-0"
               >
                 <div className="relative">

@@ -299,7 +299,7 @@ export const AuthProvider = ({ children }) => {
     dispatch({ type: 'LOGOUT' });
 
     // Force page reload to clear any in-memory state and prevent back navigation
-    window.location.href = '/landing';
+    window.location.href = '/';
   };
 
   const updateUser = (userData) => {

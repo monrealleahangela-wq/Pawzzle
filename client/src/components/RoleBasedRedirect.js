@@ -1,6 +1,7 @@
 import React from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import Landing from '../pages/public/Landing';
 
 const RoleBasedRedirect = () => {
   const { user, isAuthenticated, loading } = useAuth();
@@ -10,8 +11,9 @@ const RoleBasedRedirect = () => {
     return null; // Don't redirect while loading
   }
 
+  // Unauthenticated: render the Landing page directly at the root URL (no redirect)
   if (!isAuthenticated) {
-    return <Navigate to="/landing" replace />;
+    return <Landing />;
   }
 
   // Redirect based on user role
