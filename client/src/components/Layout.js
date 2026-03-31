@@ -299,77 +299,80 @@ const Layout = () => {
   };
 
   const bottomNavItems = getBottomNavItems();
+  const isLandingPage = location.pathname === '/' && !isAuthenticated;
 
   return (
-    <div className="min-h-screen bg-primary-50 transition-colors duration-500 flex flex-col lg:flex-row overflow-x-hidden">
+    <div className={`min-h-screen bg-primary-50 transition-colors duration-500 flex flex-col lg:flex-row overflow-x-hidden ${isLandingPage ? '!bg-transparent' : ''}`}>
       {/* Scroll Progress */}
-      <div
-        className="scroll-progress"
-        style={{ width: `${scrollProgress}%` }}
-      />
+      {!isLandingPage && (
+        <div className="scroll-progress" style={{ width: `${scrollProgress}%` }} />
+      )}
 
       {/* Sidebar - Desktop Only with Premium Deep Brown Palette */}
-      <aside className={`hidden lg:flex fixed left-0 top-0 h-full w-20 hover:w-64 bg-[#2D1B14] z-[70] flex-col transition-all duration-300 group shadow-2xl overflow-hidden border-r border-white/5`}>
-        {/* Sidebar Logo Area */}
-        <Link
-          to={!user ? '/' : user?.role === 'customer' ? '/home' : user?.role === 'super_admin' ? '/superadmin/dashboard' : '/admin/dashboard'}
-          className="p-6 flex items-center gap-4 transition-all"
-        >
-          <div className="w-8 h-8 flex-shrink-0 relative">
-            <img
-              src="/images/logo.png"
-              alt="Logo"
-              className="w-full h-full object-contain transition-transform duration-500 group-hover:scale-110 drop-shadow-xl"
-              onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}
-            />
-          </div>
-          <span className="text-xl font-black text-white tracking-tighter transition-all duration-300 whitespace-nowrap opacity-0 group-hover:opacity-100">
-            PAWZZLE
-          </span>
-        </Link>
+      {!isLandingPage && (
+        <aside className={`hidden lg:flex fixed left-0 top-0 h-full w-20 hover:w-64 bg-[#2D1B14] z-[70] flex-col transition-all duration-300 group shadow-2xl overflow-hidden border-r border-white/5`}>
+          {/* Sidebar Logo Area */}
+          <Link
+            to={!user ? '/' : user?.role === 'customer' ? '/home' : user?.role === 'super_admin' ? '/superadmin/dashboard' : '/admin/dashboard'}
+            className="p-6 flex items-center gap-4 transition-all"
+          >
+            <div className="w-8 h-8 flex-shrink-0 relative">
+              <img
+                src="/images/logo.png"
+                alt="Logo"
+                className="w-full h-full object-contain transition-transform duration-500 group-hover:scale-110 drop-shadow-xl"
+                onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}
+              />
+            </div>
+            <span className="text-xl font-black text-white tracking-tighter transition-all duration-300 whitespace-nowrap opacity-0 group-hover:opacity-100">
+              PAWZZLE
+            </span>
+          </Link>
 
-        {/* Sidebar Navigation */}
-        <nav className="flex-1 px-4 py-4 space-y-2 overflow-y-auto no-scrollbar scroll-smooth">
-          {navItems.map((item, idx) => {
-            if (item.type === 'label') {
+          {/* Sidebar Navigation */}
+          <nav className="flex-1 px-4 py-4 space-y-2 overflow-y-auto no-scrollbar scroll-smooth">
+            {navItems.map((item, idx) => {
+              if (item.type === 'label') {
+                return (
+                  <div key={`label-${idx}`} className="pt-6 pb-2 pl-3 transition-opacity duration-300">
+                    <span className={`text-[9px] font-black text-amber-100/30 uppercase tracking-[0.3em] whitespace-nowrap transition-all opacity-0 group-hover:opacity-100 hidden group-hover:block`}>{item.label}</span>
+                    <div className={`h-px w-6 bg-white/10 mt-1 block group-hover:hidden ml-1`} />
+                  </div>
+                );
+              }
+
+              const Icon = item.icon;
+              const active = isActivePath(item.path);
               return (
-                <div key={`label-${idx}`} className="pt-6 pb-2 pl-3 transition-opacity duration-300">
-                  <span className={`text-[9px] font-black text-amber-100/30 uppercase tracking-[0.3em] whitespace-nowrap transition-all opacity-0 group-hover:opacity-100 hidden group-hover:block`}>{item.label}</span>
-                  <div className={`h-px w-6 bg-white/10 mt-1 block group-hover:hidden ml-1`} />
-                </div>
+                <Link
+                  key={item.path}
+                  to={item.path}
+                  className={`flex items-center gap-4 p-3 rounded-2xl transition-all duration-300 relative ${active
+                    ? 'bg-amber-600/10 text-amber-500 shadow-xl shadow-black/20'
+                    : 'text-amber-50/40 hover:bg-white/5 hover:text-white'
+                    }`}
+                >
+                  <div className="w-6 h-6 flex items-center justify-center flex-shrink-0">
+                    <Icon className="h-5 w-5" />
+                  </div>
+                  <span className={`text-[11px] font-black uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-all duration-300 whitespace-nowrap`}>
+                    {item.label}
+                  </span>
+                </Link>
               );
-            }
- 
-            const Icon = item.icon;
-            const active = isActivePath(item.path);
-            return (
-              <Link
-                key={item.path}
-                to={item.path}
-                className={`flex items-center gap-4 p-3 rounded-2xl transition-all duration-300 relative ${active
-                  ? 'bg-amber-600/10 text-amber-500 shadow-xl shadow-black/20'
-                  : 'text-amber-50/40 hover:bg-white/5 hover:text-white'
-                  }`}
-              >
-                <div className="w-6 h-6 flex items-center justify-center flex-shrink-0">
-                  <Icon className="h-5 w-5" />
-                </div>
-                <span className={`text-[11px] font-black uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-all duration-300 whitespace-nowrap`}>
-                  {item.label}
-                </span>
-              </Link>
-            );
-          })}
-        </nav>
+            })}
+          </nav>
 
-        {/* Sidebar Footer - Space reserved for future expansion or empty */}
-        <div className="p-4 border-t border-white/5 h-16" />
-      </aside>
+          {/* Sidebar Footer */}
+          <div className="p-4 border-t border-white/5 h-16" />
+        </aside>
+      )}
 
       {/* Main Content Area - Stable Header with Centered HUD Pill */}
-      <div className="flex-1 lg:pl-20 transition-all duration-500 w-full min-w-0 bg-[#F8F7F4] pt-24">
+      <div className={`flex-1 transition-all duration-500 w-full min-w-0 bg-[#F8F7F4] ${isLandingPage ? '!bg-transparent !pl-0 !pt-0' : 'lg:pl-20 pt-24'}`}>
         {/* Header - Fixed to ensure it persists on scroll */}
-        <header className={`fixed top-0 left-0 lg:left-20 right-0 z-30 transition-all duration-300 pointer-events-none ${isScrolled ? 'pt-2' : 'pt-4'}`}>
+        {!isLandingPage && (
+          <header className={`fixed top-0 left-0 lg:left-20 right-0 z-30 transition-all duration-300 pointer-events-none ${isScrolled ? 'pt-2' : 'pt-4'}`}>
           <div className="container-custom pointer-events-auto">
             <div className="flex justify-between items-center bg-white/95 backdrop-blur-md rounded-3xl p-3 shadow-2xl shadow-slate-200/50 border border-slate-50 gap-4">
               {/* Mobile Only: Logo */}
@@ -530,6 +533,7 @@ const Layout = () => {
             </div>
           )}
         </header>
+        )}
 
         {/* Logout Confirmation Modal */}
         {showLogoutModal && (
