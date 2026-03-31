@@ -1501,7 +1501,7 @@ const Bookings = () => {
                       <div className="flex flex-col">
                         <span className="text-[10px] font-black text-slate-900 uppercase tracking-widest leading-none mb-0.5">{booking.store?.name || 'Store'}</span>
                         <span className="text-[8px] font-bold text-slate-400 uppercase tracking-tight flex items-center gap-1">
-                          <MapPin className="h-2 w-2" /> {booking.store?.contactInfo?.address?.city || 'CAVITE'}
+                          <MapPin className="h-2 w-2 text-primary-500" /> {booking.store?.contactInfo?.address?.street ? `${booking.store.contactInfo.address.street}, ${booking.store.contactInfo.address.city}` : booking.store?.contactInfo?.address?.city || 'CAVITE'}
                         </span>
                       </div>
                     </a>
@@ -1612,13 +1612,13 @@ const Bookings = () => {
                     rel="noopener noreferrer"
                     className="text-[10px] font-bold text-slate-500 hover:text-primary-600 transition-colors uppercase tracking-tight flex items-center gap-1.5 group/venue"
                   >
-                    <MapPin className="h-3.5 w-3.5 group-hover/venue:text-primary-600 transition-colors text-emerald-500" />
-                    <span className="truncate">
+                    <MapPin className="h-3.5 w-3.5 group-hover/venue:text-primary-600 transition-colors text-primary-500 animate-pulse" />
+                    <span className="truncate group-hover/venue:underline transition-all">
                       {selectedBooking.isHomeService
                         ? `${selectedBooking.serviceAddress?.street}, ${selectedBooking.serviceAddress?.city}`
                         : selectedBooking.store?.contactInfo?.address?.street
-                          ? `${selectedBooking.store.contactInfo.address.street}, ${selectedBooking.store.contactInfo.address.city}`
-                          : selectedBooking.serviceAddress?.city || 'BASE_FACILITY'}
+                          ? `${selectedBooking.store.contactInfo.address.street}, ${selectedBooking.store.contactInfo.address.barangay || ''}, ${selectedBooking.store.contactInfo.address.city}`
+                          : selectedBooking.serviceAddress?.city || 'VIEW IN GOOGLE MAPS'}
                     </span>
                   </a>
                 </div>
