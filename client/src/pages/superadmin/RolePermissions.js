@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { RefreshCcw, Save, Shield, Database, Users, Store, Activity, Settings, RefreshCw, AlertCircle } from 'lucide-react';
-import { Card } from '../../../components/ui/Card';
 
 const permissionsData = [
   {
