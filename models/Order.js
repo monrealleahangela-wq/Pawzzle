@@ -132,6 +132,10 @@ const orderSchema = new mongoose.Schema({
     checkoutUrl: { type: String },
     paymentIntentId: { type: String }
   },
+  reviewStatus: {
+    isRated: { type: Boolean, default: false },
+    reviewId: { type: mongoose.Schema.Types.ObjectId, ref: 'Review' }
+  },
   createdAt: {
     type: Date,
     default: Date.now

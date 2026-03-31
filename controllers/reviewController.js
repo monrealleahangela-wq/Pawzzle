@@ -11,7 +11,7 @@ const AdoptionRequest = require('../models/AdoptionRequest');
 // Create a review for product/pet/store/service
 const createReview = async (req, res) => {
     try {
-        const { targetType, targetId, rating, comment, images, orderId, isAnonymous } = req.body;
+        const { targetType, targetId, rating, comment, images, orderId, bookingId, isAnonymous } = req.body;
         const userId = req.user._id;
 
         // TRUSTED REVIEW LOGIC: Verify if user has completed the relevant interaction
@@ -110,10 +110,25 @@ const createReview = async (req, res) => {
             comment,
             images,
             orderId,
+            bookingId,
             isAnonymous: !!isAnonymous
         });
 
         await review.save();
+
+        // Mark the source transaction as rated if provided
+        if (orderId) {
+            await Order.findByIdAndUpdate(orderId, {
+                'reviewStatus.isRated': true,
+                'reviewStatus.reviewId': review._id
+            });
+        }
+        if (bookingId) {
+            await Booking.findByIdAndUpdate(bookingId, {
+                'reviewStatus.isRated': true,
+                'reviewStatus.reviewId': review._id
+            });
+        }
 
         // Update target rating
         let Model;

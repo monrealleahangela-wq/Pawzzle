@@ -148,7 +148,8 @@ export const staffService = {
 
 // Customer services (Admin only)
 export const customerService = {
-  getStoreCustomers: () => api.get('/customers')
+  getStoreCustomers: () => api.get('/customers'),
+  getCustomerDetails: (customerId) => api.get(`/customers/${customerId}`)
 };
 
 // Admin booking services (filtered by user's store)

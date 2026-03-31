@@ -16,7 +16,8 @@ import {
   TrendingUp,
   CheckCircle,
   Briefcase,
-  Filter
+  Filter,
+  ExternalLink
 } from 'lucide-react';
 
 const statusNextMap = {
@@ -372,7 +373,15 @@ const BookingsManagement = () => {
                   <div className="p-6 bg-slate-50/50 rounded-[2rem] border border-slate-100 hover:border-primary-200 transition-all group">
                     <label className="text-[9px] font-black text-slate-400 uppercase tracking-[0.4em] block mb-3 group-hover:text-primary-600 transition-colors">Service</label>
                     <p className="text-[13px] font-black text-slate-900 uppercase leading-none mb-1.5">{selectedBooking.service?.name}</p>
-                    <span className="text-[10px] font-black text-primary-600 bg-primary-50 px-2 py-0.5 rounded-md border border-primary-100">{selectedBooking.service?.duration} Min</span>
+                    <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-black text-primary-600 bg-primary-50 px-2 py-0.5 rounded-md border border-primary-100">{selectedBooking.service?.duration} Min</span>
+                        <Link 
+                            to={`/services?service=${selectedBooking.service?._id}`}
+                            className="text-[9px] font-black text-slate-400 hover:text-primary-600 uppercase tracking-widest flex items-center gap-1 transition-colors"
+                        >
+                            <ExternalLink className="h-3 w-3" /> View Page
+                        </Link>
+                    </div>
                   </div>
                   <div className="p-6 bg-slate-50/50 rounded-[2rem] border border-slate-100 hover:border-emerald-200 transition-all group">
                     <label className="text-[9px] font-black text-slate-400 uppercase tracking-[0.4em] block mb-3 group-hover:text-emerald-600 transition-colors">Venue</label>

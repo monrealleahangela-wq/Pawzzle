@@ -18,6 +18,7 @@ import {
 import { chatService } from '../../services/chatService';
 import EnhancedChatMessenger from '../../components/EnhancedChatMessenger';
 import UserReportModal from '../../components/UserReportModal';
+import CustomerQuickViewModal from '../../components/CustomerQuickViewModal';
 
 const AdminChat = () => {
   const [conversations, setConversations] = useState([]);
@@ -28,6 +29,8 @@ const AdminChat = () => {
   const [unreadCount, setUnreadCount] = useState(0);
   const [currentUser, setCurrentUser] = useState(null);
   const [showReportModal, setShowReportModal] = useState(false);
+  const [showCustomerDetails, setShowCustomerDetails] = useState(false);
+  const [viewingCustomerId, setViewingCustomerId] = useState(null);
 
   useEffect(() => {
     const user = JSON.parse(localStorage.getItem('user') || '{}');
@@ -221,17 +224,33 @@ const AdminChat = () => {
                     >
                       <ArrowLeft className="h-4 w-4" />
                     </button>
-                    <div className="w-8 h-8 bg-slate-900 rounded-lg flex items-center justify-center text-white text-xs font-black uppercase">
-                      {getParticipantNames(selectedConversation)[0]}
-                    </div>
-                    <div>
-                      <h2 className="text-xs font-black text-slate-900 uppercase tracking-tight">{getParticipantNames(selectedConversation)}</h2>
-                      <div className="flex items-center gap-2">
-                        <span className="text-[9px] font-black text-emerald-500 uppercase tracking-widest">Online</span>
-                        <div className="w-1 h-1 rounded-full bg-slate-200" />
-                        <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">{selectedConversation.type}</span>
-                      </div>
-                    </div>
+                    <button 
+                        onClick={() => {
+                            const otherParticipant = selectedConversation.participants?.find(p => {
+                                const pId = p.user?._id || p.user;
+                                return pId?.toString() !== (currentUser?._id || currentUser?.id)?.toString();
+                            });
+                            if (otherParticipant?.user?._id) {
+                                setViewingCustomerId(otherParticipant.user._id);
+                                setShowCustomerDetails(true);
+                            }
+                        }}
+                        className="flex items-center gap-3 hover:opacity-75 transition-opacity text-left"
+                    >
+                        <div className="w-8 h-8 bg-slate-900 rounded-lg flex items-center justify-center text-white text-xs font-black uppercase overflow-hidden shrink-0">
+                        {(selectedConversation.participants?.find(p => p.user?._id?.toString() !== (currentUser?._id || currentUser?.id)?.toString())?.user?.avatar) ? (
+                            <img src={selectedConversation.participants?.find(p => p.user?._id?.toString() !== (currentUser?._id || currentUser?.id)?.toString())?.user?.avatar} alt="" className="w-full h-full object-cover" />
+                        ) : getParticipantNames(selectedConversation)[0]}
+                        </div>
+                        <div>
+                        <h2 className="text-xs font-black text-slate-900 uppercase tracking-tight">{getParticipantNames(selectedConversation)}</h2>
+                        <div className="flex items-center gap-2">
+                            <span className="text-[9px] font-black text-emerald-500 uppercase tracking-widest">Online</span>
+                            <div className="w-1 h-1 rounded-full bg-slate-200" />
+                            <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">{selectedConversation.type}</span>
+                        </div>
+                        </div>
+                    </button>
                   </div>
 
                   <div className="flex items-center gap-1">
@@ -285,6 +304,16 @@ const AdminChat = () => {
             const currentId = currentUser?._id || currentUser?.id;
             return pId && pId.toString() !== currentId?.toString();
           })?.user}
+        />
+      )}
+      {showCustomerDetails && viewingCustomerId && (
+        <CustomerQuickViewModal
+            isOpen={showCustomerDetails}
+            onClose={() => {
+                setShowCustomerDetails(false);
+                setViewingCustomerId(null);
+            }}
+            customerId={viewingCustomerId}
         />
       )}
     </div>

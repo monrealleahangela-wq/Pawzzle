@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { bookingService, serviceService, voucherService, getImageUrl, petProfileService } from '../../services/apiService';
 import { toast } from 'react-toastify';
-import { Clock, User, MapPin, Phone, Mail, DollarSign, CheckCircle, XCircle, AlertCircle, Filter, Search, Calendar, ArrowLeft, ChevronLeft, ChevronRight, Store, X, Activity, ShieldCheck, TrendingUp, Tag, Ticket, Bell, Building, Heart, PawPrint, Trash2 } from 'lucide-react';
+import { Clock, User, MapPin, Phone, Mail, DollarSign, CheckCircle, XCircle, AlertCircle, Filter, Search, Calendar, ArrowLeft, ChevronLeft, ChevronRight, Store, X, Activity, ShieldCheck, TrendingUp, Tag, Ticket, Bell, Building, Heart, PawPrint, Trash2, Star } from 'lucide-react';
+import ReviewModal from '../../components/ReviewModal';
 
 const StoreHoursHint = ({ bookingDate, businessHours }) => {
   const dayNames = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
@@ -41,6 +42,7 @@ const Bookings = () => {
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [showBookingForm, setShowBookingForm] = useState(false);
   const [selectedService, setSelectedService] = useState(null);
+  const [ratingBooking, setRatingBooking] = useState(null);
   const [bookingForm, setBookingForm] = useState({
     bookingDate: '',
     startTime: '',
@@ -1514,7 +1516,14 @@ const Bookings = () => {
                     >
                       View Details <ChevronRight className="h-4 w-4" />
                     </button>
-
+                    {booking.status === 'completed' && !booking.reviewStatus?.isRated && (
+                      <button
+                        onClick={() => setRatingBooking(booking)}
+                        className="flex-1 sm:flex-none flex items-center justify-center gap-3 px-6 py-4 bg-emerald-50 text-emerald-600 border border-emerald-100 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] shadow-sm hover:bg-emerald-600 hover:text-white transition-all active:scale-95"
+                      >
+                        <Star className="h-4 w-4" /> Rate Service
+                      </button>
+                    )}
                     {booking.status === 'pending' && (
                       <button
                         onClick={() => handleCancelBooking(booking._id)}
@@ -1765,6 +1774,20 @@ const Bookings = () => {
             </div>
           </div>
         </div>
+      )}
+      {ratingBooking && (
+        <ReviewModal
+            isOpen={!!ratingBooking}
+            onClose={() => setRatingBooking(null)}
+            targetType="Service"
+            targetId={ratingBooking.service?._id}
+            targetName={ratingBooking.service?.name}
+            bookingId={ratingBooking._id}
+            onReviewSubmitted={() => {
+                fetchBookings();
+                setRatingBooking(null);
+            }}
+        />
       )}
     </div>
   );

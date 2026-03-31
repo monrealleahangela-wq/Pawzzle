@@ -125,6 +125,10 @@ const bookingSchema = new mongoose.Schema({
     type: String,
     default: ''
   },
+  reviewStatus: {
+    isRated: { type: Boolean, default: false },
+    reviewId: { type: mongoose.Schema.Types.ObjectId, ref: 'Review' }
+  },
   createdAt: {
     type: Date,
     default: Date.now

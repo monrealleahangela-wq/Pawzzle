@@ -65,27 +65,28 @@ const createTransporter = async () => {
 
   if (!isUserDefault && !isPassDefault) {
     const isHostinger = process.env.EMAIL_SERVICE === 'hostinger' || user.endsWith('@pawzzle.io');
-    
-    return {
-      transporter: nodemailer.createTransport({
-        host: isHostinger ? 'smtp.hostinger.com' : 'smtp.gmail.com',
-        port: isHostinger ? 587 : 465,
-        secure: isHostinger ? false : true,
-        auth: {
-          user: user,
-          pass: pass
-        },
-        debug: true,
-        logger: true,
+    const config = isHostinger ? {
+        host: 'smtp.hostinger.com',
+        port: 587,
+        secure: false,
+        auth: { user, pass },
+        connectionTimeout: 30000,
+        tls: {
+          rejectUnauthorized: false
+        }
+    } : {
+        service: 'gmail',
+        auth: { user, pass },
         connectionTimeout: 30000,
         greetingTimeout: 30000,
         socketTimeout: 30000,
-        family: 4,
         tls: {
-          ciphers: 'SSLv3',
           rejectUnauthorized: false
         }
-      }),
+    };
+    
+    return {
+      transporter: nodemailer.createTransport(config),
       fromEmail: user,
       isEthereal: false
     };
@@ -164,9 +165,16 @@ const sendPasswordResetOTP = async (email, otp) => {
       <p style="font-size:15px;color:#334155;margin:0 0 8px;font-weight:600;">Password Reset Request</p>
       <div style="font-size:36px;font-weight:900;color:#1e293b;letter-spacing:8px;font-family:monospace;">${otp}</div>
     `);
-    await sendWithResend(email, '🔑 Reset Your Pawzzle Password', bodyHtml);
+    const sent = await sendWithResend(email, '🔑 Reset Your Pawzzle Password', bodyHtml);
+    if (sent) return true;
+
+    const { transporter, fromEmail } = await createTransporter();
+    await transporter.sendMail({ from: `"Pawzzle" <${fromEmail}>`, to: email, subject: '🔑 Reset Your Pawzzle Password', html: bodyHtml });
     return true;
-  } catch (error) { return false; }
+  } catch (error) { 
+    console.error('❌ Error sending password reset email:', error.message);
+    return false; 
+  }
 };
 
 const sendLoginOTP = async (email, otp, firstName) => {
@@ -179,9 +187,16 @@ const sendLoginOTP = async (email, otp, firstName) => {
       <p style="font-size:15px;color:#334155;margin:0 0 8px;font-weight:600;">Login Verification</p>
       <div style="font-size:36px;font-weight:900;color:#6d7c45;letter-spacing:8px;font-family:monospace;">${otp}</div>
     `);
-    await sendWithResend(email, '🛡 Pawzzle Login Verification Code', bodyHtml);
+    const sent = await sendWithResend(email, '🛡 Pawzzle Login Verification Code', bodyHtml);
+    if (sent) return true;
+
+    const { transporter, fromEmail } = await createTransporter();
+    await transporter.sendMail({ from: `"Pawzzle" <${fromEmail}>`, to: email, subject: '🛡 Pawzzle Login Verification Code', html: bodyHtml });
     return true;
-  } catch (error) { return true; }
+  } catch (error) { 
+    console.error('❌ Error sending login OTP email:', error.message);
+    return true; 
+  }
 };
 
 const sendSMS_OTP = async (phoneNumber, otp) => {

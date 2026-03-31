@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { orderService, getImageUrl } from '../../services/apiService';
 import { ShoppingBag, Eye, Clock, Package, Truck, CheckCircle, XCircle, AlertCircle, ChevronLeft, ChevronRight, ArrowRight, Star } from 'lucide-react';
+import ReviewModal from '../../components/ReviewModal';
 
 /* ── Order progress steps ── */
 const STATUS_STEPS = ['pending', 'confirmed', 'processing', 'shipped', 'delivered'];
@@ -62,6 +63,7 @@ const Orders = () => {
   const [allOrders, setAllOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filterTab, setFilterTab] = useState('all');
+  const [ratingOrder, setRatingOrder] = useState(null);
   const [pagination, setPagination] = useState({ currentPage: 1, totalPages: 1, hasNext: false, hasPrev: false });
 
   useEffect(() => { fetchOrders(); }, [pagination.currentPage]);
@@ -242,11 +244,13 @@ const Orders = () => {
                     </div>
                   </div>
                   <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-                    {order.status === 'delivered' && (
-                      <Link to={`/orders/${order._id}?review=true`}
-                        className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-4 bg-emerald-50 text-emerald-600 rounded-2xl text-[9px] font-black uppercase tracking-[0.2em] border border-emerald-100 hover:bg-emerald-600 hover:text-white transition-all shadow-sm">
-                        <Star className="h-4 w-4" /> Review Items
-                      </Link>
+                    {order.status === 'delivered' && !order.reviewStatus?.isRated && (
+                      <button 
+                        onClick={() => setRatingOrder(order)}
+                        className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-4 bg-emerald-50 text-emerald-600 rounded-2xl text-[9px] font-black uppercase tracking-[0.2em] border border-emerald-100 hover:bg-emerald-600 hover:text-white transition-all shadow-sm"
+                      >
+                        <Star className="h-4 w-4" /> Rate Transaction
+                      </button>
                     )}
                     <Link to={`/orders/${order._id}`}
                       className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-8 py-4 bg-slate-900 text-white rounded-2xl text-[9px] font-black uppercase tracking-[0.2em] shadow-xl shadow-slate-200 hover:bg-primary-600 transition-all active:scale-95">
@@ -279,6 +283,20 @@ const Orders = () => {
             <ChevronRight className="h-4 w-4" />
           </button>
         </div>
+      )}
+      {ratingOrder && (
+        <ReviewModal
+            isOpen={!!ratingOrder}
+            onClose={() => setRatingOrder(null)}
+            targetType="Store"
+            targetId={ratingOrder.store?._id || ratingOrder.store}
+            targetName={ratingOrder.store?.name || 'Shop'}
+            orderId={ratingOrder._id}
+            onReviewSubmitted={() => {
+                fetchOrders();
+                setRatingOrder(null);
+            }}
+        />
       )}
     </div>
   );

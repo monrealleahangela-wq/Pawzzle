@@ -8,7 +8,7 @@ const reviewSchema = new mongoose.Schema({
     },
     targetType: {
         type: String,
-        enum: ['Product', 'Pet', 'Store', 'Service'],
+        enum: ['Product', 'Pet', 'Store', 'Service', 'PetProfile'],
         required: true
     },
     targetId: {
@@ -19,7 +19,10 @@ const reviewSchema = new mongoose.Schema({
     orderId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Order'
-        // Optional: To verify the user actually bought the item
+    },
+    bookingId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Booking'
     },
     storeId: {
         type: mongoose.Schema.Types.ObjectId,
