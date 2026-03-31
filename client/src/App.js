@@ -77,6 +77,7 @@ import StoreApplications from './pages/admin/StoreApplications';
 import SuperAdminDSS from './pages/superadmin/DSS';
 import ActivityHistory from './pages/superadmin/ActivityHistory';
 import SupportManagement from './pages/superadmin/SupportManagement';
+import RolePermissions from './pages/superadmin/RolePermissions';
 
 // Not Found
 import NotFound from './pages/NotFound';
@@ -178,6 +179,7 @@ function App() {
 
                   {/* Super Admin Routes */}
                   <Route path="superadmin/dashboard" element={<ProtectedRoute roles={['super_admin']}><SuperAdminDashboard /></ProtectedRoute>} />
+                  <Route path="superadmin/permissions" element={<ProtectedRoute roles={['super_admin']}><RolePermissions /></ProtectedRoute>} />
                   <Route path="superadmin/account-management" element={<ProtectedRoute roles={['super_admin']}><AccountManagement /></ProtectedRoute>} />
                   <Route path="superadmin/store-applications" element={<ProtectedRoute roles={['super_admin']}><StoreApplications /></ProtectedRoute>} />
                   <Route path="superadmin/transaction-history" element={<ProtectedRoute roles={['super_admin']}><TransactionHistory /></ProtectedRoute>} />

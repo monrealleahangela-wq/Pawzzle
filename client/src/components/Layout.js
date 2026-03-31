@@ -176,6 +176,7 @@ const Layout = () => {
     { path: '/superadmin/insights', label: 'Platform DSS', icon: Brain },
     { path: '/superadmin/system-analytics', label: 'Analytics', icon: TrendingUp },
     { type: 'label', label: 'Management' },
+    { path: '/superadmin/permissions', label: 'Role Permissions', icon: ShieldAlert },
     { path: '/superadmin/account-management', label: 'Accounts', icon: Users },
     { path: '/superadmin/store-applications', label: 'Store Applications', icon: FileText },
     { type: 'label', label: 'Operations' },
