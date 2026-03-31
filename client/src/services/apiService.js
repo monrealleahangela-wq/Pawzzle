@@ -45,7 +45,7 @@ api.interceptors.response.use(
       if (!isPublicPath) {
         localStorage.removeItem('token');
         localStorage.removeItem('user');
-        window.location.href = '/login';
+        window.location.href = '/';
       }
     }
     
@@ -61,7 +61,7 @@ api.interceptors.response.use(
       }));
       
       if (window.location.pathname !== '/login') {
-        window.location.href = '/login?disabled=true';
+        window.location.href = '/';
       }
     }
 

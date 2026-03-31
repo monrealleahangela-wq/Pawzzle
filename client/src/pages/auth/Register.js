@@ -172,7 +172,7 @@ const Register = () => {
         toast.success('Account verified successfully! Welcome to Pawzzle!');
 
         // Login the user
-        window.location.href = '/home';
+        window.location.href = '/';
       } else {
         toast.error(result.message || 'Verification failed');
       }

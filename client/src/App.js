@@ -1,6 +1,6 @@
 // Pawzzle App - Integrated Version: 2026-03-31 09:30 (Root URL + Pet Profiles Patch)
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { MemoryRouter as Router, Routes, Route } from 'react-router-dom';
 import { ToastContainer, Slide } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import './styles/Global.css';

@@ -321,7 +321,7 @@ const AccountUpgrade = () => {
                   Congratulations! Your account has been upgraded to Admin/Seller. You can now access admin features.
                 </p>
                 <button
-                  onClick={() => window.location.href = '/admin/dashboard'}
+                  onClick={() => window.location.href = '/'}
                   className="mt-3 btn btn-primary"
                 >
                   Go to Admin Dashboard

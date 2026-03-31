@@ -49,7 +49,7 @@ const StoreAssignmentRequired = ({ onRefresh }) => {
             <ArrowRight className="h-4 w-4" />
           </button>
           <button
-            onClick={() => window.location.href = '/profile'}
+            onClick={() => window.location.href = '/'}
             className="btn btn-outline"
           >
             Go to Profile

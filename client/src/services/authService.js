@@ -32,8 +32,8 @@ api.interceptors.response.use(
     if (error.response?.status === 401 && error.response?.data?.message !== 'Token expired') {
       SessionService.clearAllSessions();
       // Only redirect if not already on login page
-      if (window.location.pathname !== '/login') {
-        window.location.href = '/login';
+      if (window.location.pathname !== '/') {
+        window.location.href = '/';
       }
     }
     return Promise.reject(error);
@@ -261,13 +261,13 @@ const authService = {
         SessionService.clearAllSessions();
 
         // Redirect to login
-        window.location.href = '/login';
+        window.location.href = '/';
       })
       .catch(error => {
         console.error('Logout error:', error);
         // Still clear session data even on error
         SessionService.clearAllSessions();
-        window.location.href = '/login';
+        window.location.href = '/';
       });
   }
 };
