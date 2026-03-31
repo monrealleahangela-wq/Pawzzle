@@ -1,9 +1,4 @@
 // Server main entry point - Updated: 2026-03-01 13:51
-const dns = require('dns');
-// Force Node.js to use Google's public DNS to resolve MongoDB Atlas SRV records
-// (local network DNS may block querySrv lookups)
-dns.setServers(['8.8.8.8', '1.1.1.1', '8.8.4.4']);
-
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
