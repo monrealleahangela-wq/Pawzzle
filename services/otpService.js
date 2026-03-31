@@ -1,10 +1,6 @@
 const nodemailer = require('nodemailer');
 const fs = require('fs');
 const path = require('path');
-const dns = require('dns');
-
-// Fix for connection issues on some cloud networks (like Render)
-dns.setServers(['8.8.8.8', '8.8.4.4']);
 
 // Log OTP to a file for easy retrieval during development
 const logOTPToFile = (type, email, otp) => {

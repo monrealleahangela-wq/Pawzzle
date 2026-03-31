@@ -10,9 +10,8 @@ const path = require('path');
 const fs = require('fs');
 const ActivityLog = require('../models/ActivityLog');
 
-// Enhanced DNS Resolver with Public Fallbacks (Google/Cloudflare)
+// Enhanced DNS Resolver
 const dnsResolver = new (require('dns').promises.Resolver)();
-dnsResolver.setServers(['8.8.8.8', '1.1.1.1', '8.8.4.4']);
 
 // Helper to verify if email domain exists with high stability
 const isEmailDomainValid = async (email) => {

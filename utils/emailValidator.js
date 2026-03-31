@@ -2,7 +2,6 @@ const { promisify } = require('util');
 
 // Enhanced DNS Resolver with Public Fallbacks (Google/Cloudflare)
 const dnsResolver = new (require('dns').promises.Resolver)();
-dnsResolver.setServers(['8.8.8.8', '1.1.1.1', '8.8.4.4']);
 
 // Common disposable/temporary email domains to block
 const DISPOSABLE_DOMAINS = new Set([
