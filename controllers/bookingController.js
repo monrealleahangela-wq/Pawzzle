@@ -84,7 +84,16 @@ const createBooking = async (req, res) => {
     // Calculate total price
     let basePrice = service.price;
     if (isHomeService) {
-      basePrice += service.homeServicePrice;
+      basePrice += service.homeServicePrice || 0;
+    }
+
+    // Dynamic Surcharge based on pet size (₱50 for Medium, ₱100 for Large, ₱150 for Extra Large)
+    // Applied to Grooming/Bath related services
+    const isGrooming = (service.name || '').toLowerCase().includes('grooming') || (service.name || '').toLowerCase().includes('bath');
+    if (isGrooming && pet.size) {
+      if (pet.size === 'Medium') basePrice += 50;
+      else if (pet.size === 'Large') basePrice += 100;
+      else if (pet.size === 'Extra Large') basePrice += 150;
     }
 
     // Process Voucher if provided
@@ -149,8 +158,9 @@ const createBooking = async (req, res) => {
         type: { $regex: new RegExp(`^${pet.type.trim()}$`, 'i') }
       });
       if (existingPetProfile) {
-        // Update details in case they changed (weight/age/breed may drift)
+        // Update details in case they changed (weight/age/breed/size may drift)
         existingPetProfile.breed = pet.breed;
+        existingPetProfile.size = pet.size;
         existingPetProfile.age = pet.age;
         existingPetProfile.weight = pet.weight;
         if (pet.specialNotes) existingPetProfile.specialNotes = pet.specialNotes;
@@ -162,6 +172,7 @@ const createBooking = async (req, res) => {
           name: pet.name,
           type: pet.type,
           breed: pet.breed,
+          size: pet.size,
           age: pet.age,
           weight: pet.weight,
           specialNotes: pet.specialNotes || '',

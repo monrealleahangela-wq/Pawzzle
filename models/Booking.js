@@ -34,6 +34,11 @@ const bookingSchema = new mongoose.Schema({
       type: String,
       required: true
     },
+    size: {
+      type: String,
+      enum: ['Small', 'Medium', 'Large', 'Extra Large'],
+      default: 'Small'
+    },
     age: {
       type: Number,
       required: true

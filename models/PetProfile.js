@@ -10,6 +10,7 @@ const petProfileSchema = new mongoose.Schema({
   name: { type: String, required: true, trim: true },
   type: { type: String, required: true, trim: true },   // Dog, Cat, etc.
   breed: { type: String, required: true, trim: true },
+  size: { type: String, enum: ['Small', 'Medium', 'Large', 'Extra Large'], default: 'Small' },
   age: { type: Number, required: true, min: 0 },
   weight: { type: Number, required: true, min: 0 },
   specialNotes: { type: String, default: '' },

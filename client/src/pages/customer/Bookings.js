@@ -17,6 +17,21 @@ const StoreHoursHint = ({ bookingDate, businessHours }) => {
   );
 };
 
+const getSizeSurcharge = (size, serviceName = '') => {
+  if (!size) return 0;
+  // Apply surcharge only if it's likely a grooming/handling/bath service
+  const isGrooming = serviceName.toLowerCase().includes('grooming') || serviceName.toLowerCase().includes('bath');
+  if (!isGrooming) return 0;
+
+  const surcharges = {
+    'Small': 0,
+    'Medium': 50,
+    'Large': 100,
+    'Extra Large': 150
+  };
+  return surcharges[size] || 0;
+};
+
 const Bookings = () => {
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -33,6 +48,7 @@ const Bookings = () => {
       name: '',
       type: '',
       breed: '',
+      size: 'Small',
       age: '',
       weight: ''
     },
@@ -479,12 +495,17 @@ const Bookings = () => {
       const endMinutes = totalMinutes % 60;
       const endTime = `${String(endHours).padStart(2, '0')}:${String(endMinutes).padStart(2, '0')}`;
 
+      const sizeSurcharge = getSizeSurcharge(bookingForm.pet.size, selectedService.name);
+      const subtotal = (selectedService.price || 0) + (bookingForm.isHomeService ? (selectedService.homeServicePrice || 0) : 0);
+      const totalAmount = Math.max(0, subtotal + sizeSurcharge - (appliedVoucher?.discountAmount || 0));
+
       const bookingData = {
         serviceId: selectedService._id,
         pet: {
           name: bookingForm.pet.name,
           type: bookingForm.pet.type,
           breed: bookingForm.pet.breed,
+          size: bookingForm.pet.size,
           age: parseInt(bookingForm.pet.age),
           weight: parseFloat(bookingForm.pet.weight)
         },
@@ -494,7 +515,8 @@ const Bookings = () => {
         isHomeService: bookingForm.isHomeService,
         serviceAddress: bookingForm.isHomeService ? bookingForm.serviceAddress : undefined,
         notes: bookingForm.notes,
-        voucherCode: appliedVoucher ? voucherCode : null
+        voucherCode: appliedVoucher ? voucherCode : null,
+        totalPrice: totalAmount
       };
 
       await bookingService.createBooking(bookingData);
@@ -504,7 +526,7 @@ const Bookings = () => {
       setBookingForm({
         bookingDate: '',
         startTime: '',
-        pet: { name: '', type: '', breed: '', age: '', weight: '' },
+        pet: { name: '', type: '', breed: '', size: 'Small', age: '', weight: '' },
         isHomeService: false,
         serviceAddress: { street: '', city: '', province: '' },
         notes: ''
@@ -530,7 +552,7 @@ const Bookings = () => {
     setBookingForm({
       bookingDate: '',
       startTime: '',
-      pet: { name: '', type: '', breed: '', age: '', weight: '' },
+      pet: { name: '', type: '', breed: '', size: 'Small', age: '', weight: '' },
       isHomeService: false,
       serviceAddress: { street: '', city: '', province: '' },
       notes: ''
@@ -916,7 +938,7 @@ const Bookings = () => {
                           <button type="button"
                             onClick={() => {
                               setSelectedPetProfile(null);
-                              setBookingForm(prev => ({ ...prev, pet: { name: '', type: '', breed: '', age: '', weight: '' } }));
+                              setBookingForm(prev => ({ ...prev, pet: { name: '', type: '', breed: '', size: 'Small', age: '', weight: '' } }));
                             }}
                             className="text-[8px] font-black text-slate-400 hover:text-rose-500 uppercase tracking-widest flex items-center gap-1 transition-colors">
                             <X className="h-3 w-3" /> Clear / New Pet
@@ -932,7 +954,7 @@ const Bookings = () => {
                                 setSelectedPetProfile(pet);
                                 setBookingForm(prev => ({
                                   ...prev,
-                                  pet: { name: pet.name, type: pet.type, breed: pet.breed, age: String(pet.age), weight: String(pet.weight) }
+                                  pet: { name: pet.name, type: pet.type, breed: pet.breed, size: pet.size || 'Small', age: String(pet.age), weight: String(pet.weight) }
                                 }));
                               }}
                               className={`flex-shrink-0 min-w-[160px] p-4 rounded-2xl border-2 text-left transition-all ${
@@ -950,7 +972,7 @@ const Bookings = () => {
                                 </div>
                               </div>
                               <p className="text-[8px] font-bold text-slate-500 uppercase tracking-wide">{pet.breed}</p>
-                              <p className="text-[8px] text-slate-400 font-bold mt-0.5">{pet.age}yr · {pet.weight}kg</p>
+                              <p className="text-[8px] text-slate-400 font-bold mt-0.5">{pet.age}yr · {pet.weight}kg · <span className="text-primary-500">{pet.size || 'Small'}</span></p>
                               {isSelected && (
                                 <div className="flex items-center gap-1 mt-2">
                                   <CheckCircle className="h-3 w-3 text-primary-500" />
@@ -989,6 +1011,28 @@ const Bookings = () => {
                         </div>
                       );
                     })}
+                    
+                    {/* Size Selector */}
+                    <div className="group">
+                      <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1.5 px-1 group-focus-within:text-primary-500 transition-colors uppercase tracking-[0.2em]">Pet Size *</label>
+                      <div className="relative">
+                        <Activity className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300 group-focus-within:text-primary-500 transition-colors" />
+                        <select 
+                          name="pet.size" 
+                          value={bookingForm.pet.size} 
+                          onChange={handleFormChange}
+                          className="w-full pl-11 pr-4 py-4 bg-white/40 backdrop-blur-md border border-slate-100 rounded-[1.25rem] text-[13px] font-black text-slate-900 uppercase tracking-tight focus:outline-none focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 focus:bg-white transition-all shadow-sm cursor-pointer appearance-none"
+                        >
+                          <option value="Small">Small (Standard)</option>
+                          <option value="Medium">Medium (+₱50)</option>
+                          <option value="Large">Large (+₱100)</option>
+                          <option value="Extra Large">Extra Large (+₱150)</option>
+                        </select>
+                        <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                          <ChevronLeft className="h-4 w-4 -rotate-90" />
+                        </div>
+                      </div>
+                    </div>
                   </div>
 
                   <div className="mt-8">
@@ -1212,24 +1256,48 @@ const Bookings = () => {
                       </div>
                     </div>
 
-                    {/* Total */}
                     <div className="flex flex-col gap-2 pt-5 border-t border-slate-100">
                       <div className="flex items-center justify-between text-slate-500">
-                        <span className="text-[9px] font-black uppercase tracking-widest">Subtotal</span>
-                        <span className="text-xs font-black">
-                          ₱{((selectedService.price || 0) + (bookingForm.isHomeService ? (selectedService.homeServicePrice || 0) : 0)).toLocaleString()}
-                        </span>
+                        <span className="text-[9px] font-black uppercase tracking-widest">Base Service</span>
+                        <span className="text-xs font-black">₱{(selectedService.price || 0).toLocaleString()}</span>
                       </div>
+                      
+                      {bookingForm.isHomeService && (
+                        <div className="flex items-center justify-between text-slate-500">
+                          <div className="flex items-center gap-1.5">
+                            <MapPin className="h-3 w-3 text-emerald-500" />
+                            <span className="text-[9px] font-black uppercase tracking-widest">Home Service Fee</span>
+                          </div>
+                          <span className="text-xs font-black">+ ₱{(selectedService.homeServicePrice || 0).toLocaleString()}</span>
+                        </div>
+                      )}
+
+                      {getSizeSurcharge(bookingForm.pet.size, selectedService.name) > 0 && (
+                        <div className="flex items-center justify-between text-slate-500">
+                          <div className="flex items-center gap-1.5">
+                            <Activity className="h-3 w-3 text-indigo-500" />
+                            <span className="text-[9px] font-black uppercase tracking-widest">{bookingForm.pet.size} Pet Surcharge</span>
+                          </div>
+                          <span className="text-xs font-black">+ ₱{getSizeSurcharge(bookingForm.pet.size, selectedService.name).toLocaleString()}</span>
+                        </div>
+                      )}
+
                       {appliedVoucher && (
                         <div className="flex items-center justify-between text-emerald-600">
-                          <span className="text-[9px] font-black uppercase tracking-widest">Discount</span>
+                          <span className="text-[9px] font-black uppercase tracking-widest">Voucher Discount</span>
                           <span className="text-xs font-black">- ₱{appliedVoucher.discountAmount.toLocaleString()}</span>
                         </div>
                       )}
-                      <div className="flex items-center justify-between pt-2">
+
+                      <div className="flex items-center justify-between pt-4 border-t border-slate-50">
                         <span className="text-[9px] font-black text-slate-900 uppercase tracking-widest">Total Amount</span>
-                        <span className="text-2xl font-black text-primary-600 tracking-tighter">
-                          ₱{Math.max(0, ((selectedService.price || 0) + (bookingForm.isHomeService ? (selectedService.homeServicePrice || 0) : 0) - (appliedVoucher?.discountAmount || 0))).toLocaleString()}
+                        <span className="text-3xl font-black text-primary-600 tracking-tighter">
+                          ₱{Math.max(0, (
+                            (selectedService.price || 0) + 
+                            (bookingForm.isHomeService ? (selectedService.homeServicePrice || 0) : 0) + 
+                            getSizeSurcharge(bookingForm.pet.size, selectedService.name) - 
+                            (appliedVoucher?.discountAmount || 0)
+                          )).toLocaleString()}
                         </span>
                       </div>
                     </div>
