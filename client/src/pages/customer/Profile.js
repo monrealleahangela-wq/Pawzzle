@@ -39,8 +39,11 @@ import authService from '../../services/authService';
 import PlatformFeedbackModal from '../../components/PlatformFeedbackModal';
 import { Heart as HeartIcon, MessageSquare, Briefcase, Globe, ShieldCheck, Users } from 'lucide-react';
 
+import { useTheme } from '../../contexts/ThemeContext';
+
 const Profile = () => {
   const { user, updateUser, logout } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showUpgradeForm, setShowUpgradeForm] = useState(false);
@@ -1134,7 +1137,35 @@ const Profile = () => {
                     </div>
                   </div>
 
-                  <div className="bg-rose-50/50 p-6 sm:p-10 rounded-xl sm:rounded-[2.5rem] border border-rose-100">
+                  <div className="bg-slate-50 border border-slate-100 p-6 sm:p-10 rounded-xl sm:rounded-[2.5rem] mt-8 group hover:border-primary-200 transition-all duration-500">
+                    <div className="flex items-center gap-4 sm:gap-6 mb-8 border-b border-slate-100 pb-6">
+                      <div className="w-10 h-10 sm:w-16 sm:h-16 bg-white rounded-lg sm:rounded-2xl shadow-sm flex items-center justify-center text-slate-600 transition-colors">
+                        <Eye className="h-5 w-5 sm:h-8 sm:w-8" />
+                      </div>
+                      <div>
+                        <h4 className="font-black text-slate-900 text-xs sm:text-lg uppercase tracking-tight mb-0.5">System Theme</h4>
+                        <p className="text-[8px] sm:text-sm text-slate-400 font-bold uppercase tracking-tight opacity-70 leading-none">Global Application Appearance</p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white p-4 sm:p-6 rounded-xl sm:rounded-2xl border border-slate-50 shadow-sm">
+                      <div>
+                        <p className="text-xs sm:text-sm font-black text-slate-900 uppercase tracking-widest">{theme === 'dark' ? 'Dark Mode' : 'Light Mode'}</p>
+                        <p className="text-[9px] sm:text-xs text-slate-400 font-medium mt-1">Easier on the eyes in low-light environments.</p>
+                      </div>
+                      <button
+                        onClick={toggleTheme}
+                        className={`px-6 py-3 rounded-xl font-black text-[10px] sm:text-xs uppercase tracking-widest transition-all shadow-md active:scale-95 ${theme === 'dark'
+                          ? 'bg-slate-900 text-white hover:bg-slate-800 border border-slate-700'
+                          : 'bg-white text-slate-900 hover:bg-slate-50 border border-slate-200'
+                          }`}
+                      >
+                        {theme === 'dark' ? 'Switch to Light' : 'Switch to Dark'}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="bg-rose-50/50 p-6 sm:p-10 rounded-xl sm:rounded-[2.5rem] border border-rose-100 mt-8">
                     <h4 className="text-rose-900 font-black text-sm sm:text-xl uppercase tracking-tighter mb-2 sm:mb-3 leading-none">Delete Account</h4>
                     <p className="text-rose-700 font-medium text-[9px] sm:text-sm mb-4 sm:mb-6 leading-relaxed max-w-xl opacity-80">
                       Deletion is irreversible. All account data and information will be permanently removed.

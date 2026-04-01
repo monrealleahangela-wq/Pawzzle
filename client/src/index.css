@@ -16,6 +16,28 @@ body {
   min-height: 100vh;
   min-height: 100dvh;
 }
+/* Global Faux Dark Mode */
+html {
+  transition: filter 0.4s ease, background-color 0.4s ease;
+}
+
+html.dark {
+  filter: invert(0.92) hue-rotate(180deg) brightness(1.05);
+  background-color: #1a1a1a;
+}
+
+html.dark img,
+html.dark video,
+html.dark iframe,
+html.dark .no-invert,
+html.dark [style*='background-image'] {
+  filter: invert(1) hue-rotate(180deg); /* Double invert to restore original colors for media */
+}
+
+/* Explicit exclusion for Toast containers so colors don't look muddy in dark mode */
+html.dark .Toastify {
+  filter: invert(1) hue-rotate(180deg);
+}
 
 body.chat-modal-open #mobile-bottom-nav {
   transform: translate(-50%, 150%) !important;
