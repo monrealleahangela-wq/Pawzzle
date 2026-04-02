@@ -92,7 +92,7 @@ const Landing = () => {
             </h1>
 
             <p className="text-lg md:text-xl text-slate-600 max-w-2xl mx-auto leading-relaxed animate-slide-up" style={{ animationDelay: '0.2s' }}>
-              Connect with verified shelters, browse premium pet supplies, and book expert services. Everything your furry friend needs, all in one premium platform.
+              Browse premium pet supplies, and book expert services. Everything your furry friend needs, all in one premium platform.
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center animate-slide-up" style={{ animationDelay: '0.4s' }}>
