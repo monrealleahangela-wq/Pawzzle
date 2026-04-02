@@ -32,14 +32,18 @@ import {
   Star,
   Wallet,
   Brain,
-  Zap
+  Zap,
+  Moon,
+  Sun
 } from 'lucide-react';
 import FloatingChatManager from './FloatingChatManager';
 import NotificationBell from './NotificationBell';
 import PasswordChangeModal from './auth/PasswordChangeModal';
+import { useTheme } from '../contexts/ThemeContext';
 
 const Layout = () => {
   const { user, logout, loading, isAuthenticated } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const { getTotalItems } = useCart();
   const location = useLocation();
   const navigate = useNavigate();
@@ -390,6 +394,15 @@ const Layout = () => {
 
               {/* UTILITY MODULE: Right Aligned Actions */}
               <div className="flex items-center gap-2 group-actions pr-1 ml-auto">
+                {/* Global Theme Toggle */}
+                <button
+                  onClick={toggleTheme}
+                  className="p-3 bg-white border border-slate-100 rounded-xl text-slate-400 hover:text-amber-500 hover:bg-amber-50 transition-all shadow-sm flex items-center justify-center shrink-0"
+                  title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+                >
+                  {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+                </button>
+
                 {user ? (
                   <>
                     <NotificationBell />
