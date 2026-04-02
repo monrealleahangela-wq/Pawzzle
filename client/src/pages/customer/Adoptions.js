@@ -6,7 +6,7 @@ import { adoptionService } from '../../services/apiService';
 import { useAuth } from '../../contexts/AuthContext';
 import EnhancedChatMessenger from '../../components/EnhancedChatMessenger';
 
-const Adoptions = () => {
+const Adoptions = ({ isSubcomponent = false }) => {
     const { user } = useAuth();
     const [requests, setRequests] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -70,22 +70,24 @@ const Adoptions = () => {
     }
 
     return (
-        <div className="space-y-8 pb-20">
-            <header className="flex flex-col md:flex-row md:items-end justify-between gap-6 px-1">
-                <div>
-                    <div className="flex items-center gap-2 mb-2">
-                        <Heart className="h-4 w-4 text-primary-500" />
-                        <span className="text-[10px] font-black text-primary-600 uppercase tracking-[0.4em]">Acquisition Portfolio</span>
+        <div className={isSubcomponent ? "space-y-8" : "space-y-8 pb-20"}>
+            {!isSubcomponent && (
+                <header className="flex flex-col md:flex-row md:items-end justify-between gap-6 px-1">
+                    <div>
+                        <div className="flex items-center gap-2 mb-2">
+                            <Heart className="h-4 w-4 text-primary-500" />
+                            <span className="text-[10px] font-black text-primary-600 uppercase tracking-[0.4em]">Acquisition Portfolio</span>
+                        </div>
+                        <h1 className="text-4xl sm:text-6xl font-black text-slate-900 uppercase tracking-tighter leading-none">
+                            Adoption <br />
+                            <span className="text-primary-600 italic">Manifest</span>
+                        </h1>
                     </div>
-                    <h1 className="text-4xl sm:text-6xl font-black text-slate-900 uppercase tracking-tighter leading-none">
-                        Adoption <br />
-                        <span className="text-primary-600 italic">Manifest</span>
-                    </h1>
-                </div>
-                <Link to="/pets" className="group px-8 py-4 bg-slate-900 text-white rounded-[2rem] text-[10px] font-black uppercase tracking-[0.2em] shadow-2xl shadow-slate-200 hover:bg-primary-600 transition-all flex items-center gap-3">
-                    Incorporate More Assets <ArrowLeft className="h-4 w-4 rotate-180 group-hover:translate-x-1 transition-transform" />
-                </Link>
-            </header>
+                    <Link to="/pets" className="group px-8 py-4 bg-slate-900 text-white rounded-[2rem] text-[10px] font-black uppercase tracking-[0.2em] shadow-2xl shadow-slate-200 hover:bg-primary-600 transition-all flex items-center gap-3">
+                        Incorporate More Assets <ArrowLeft className="h-4 w-4 rotate-180 group-hover:translate-x-1 transition-transform" />
+                    </Link>
+                </header>
+            )}
 
             {requests.length === 0 ? (
                 <div className="bg-white rounded-[3rem] border-2 border-dashed border-slate-100 p-20 text-center">

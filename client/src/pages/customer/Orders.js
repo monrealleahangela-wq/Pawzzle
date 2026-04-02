@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { orderService, getImageUrl } from '../../services/apiService';
-import { ShoppingBag, Eye, Clock, Package, Truck, CheckCircle, XCircle, AlertCircle, ChevronLeft, ChevronRight, ArrowRight, Star } from 'lucide-react';
+import { ShoppingBag, Eye, Clock, Package, Truck, CheckCircle, XCircle, AlertCircle, ChevronLeft, ChevronRight, ArrowRight, Star, Heart, Calendar, Receipt } from 'lucide-react';
 import ReviewModal from '../../components/ReviewModal';
+import Adoptions from './Adoptions';
+import Bookings from './Bookings';
 
 /* ── Order progress steps ── */
 const STATUS_STEPS = ['pending', 'confirmed', 'processing', 'shipped', 'delivered'];
@@ -59,6 +61,7 @@ const ProgressBar = ({ status }) => {
 };
 
 const Orders = () => {
+  const [activeTransactionTab, setActiveTransactionTab] = useState('orders'); // 'orders' | 'pets' | 'bookings'
   const [orders, setOrders] = useState([]);
   const [allOrders, setAllOrders] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -105,43 +108,79 @@ const Orders = () => {
                     <div className="flex items-center gap-3 mb-2">
                         <div className="px-3 py-1 bg-primary-600 text-white text-[8px] font-black uppercase tracking-[0.3em] rounded-full shadow-lg shadow-primary-200">System Secure</div>
                         <div className="w-1.5 h-1.5 rounded-full bg-slate-300" />
-                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.4em]">Acquisition History</p>
+                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.4em]">Central Dashboard</p>
                     </div>
                     <h1 className="text-5xl sm:text-7xl lg:text-8xl font-black text-slate-900 uppercase tracking-tighter leading-[0.85]">
-                        Order <span className="text-primary-600 italic">Vault</span>
+                        Transaction <span className="text-primary-600 italic">Vault</span>
                     </h1>
                     <p className="text-[11px] font-bold text-slate-400 uppercase tracking-[0.2em] max-w-md leading-relaxed border-l-2 border-primary-500 pl-4 mt-4">
-                        A secure repository of your past tactical acquisitions and digital transaction manifests.
+                        A secure, centralized repository of your tactical acquisitions, adoptions, and service schedule manifests.
                     </p>
                 </div>
-                <Link to="/products" className="group h-fit px-8 py-4 bg-slate-900 text-white rounded-[2rem] text-[10px] font-black uppercase tracking-[0.2em] shadow-2xl shadow-slate-900/20 hover:bg-primary-600 hover:-translate-y-1 active:scale-95 transition-all flex items-center gap-3 w-fit">
-                    Initiate Procurement <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
-                </Link>
+                {activeTransactionTab === 'orders' && (
+                    <Link to="/products" className="group h-fit px-8 py-4 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] shadow-2xl shadow-slate-900/20 hover:bg-primary-600 hover:-translate-y-1 active:scale-95 transition-all flex items-center gap-3 w-fit">
+                        Initiate Procurement <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
+                    </Link>
+                )}
+                {activeTransactionTab === 'pets' && (
+                    <Link to="/pets" className="group h-fit px-8 py-4 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] shadow-2xl shadow-slate-900/20 hover:bg-primary-600 hover:-translate-y-1 active:scale-95 transition-all flex items-center gap-3 w-fit">
+                        Incorporate Assets <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
+                    </Link>
+                )}
+                {activeTransactionTab === 'bookings' && (
+                    <Link to="/services" className="group h-fit px-8 py-4 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] shadow-2xl shadow-slate-900/20 hover:bg-primary-600 hover:-translate-y-1 active:scale-95 transition-all flex items-center gap-3 w-fit">
+                        Book Service <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
+                    </Link>
+                )}
             </header>
 
-
-            {/* ── Filter Tabs ── */}
-            <div className="relative z-10 flex gap-3 overflow-x-auto pb-4 pt-2 no-scrollbar">
-                {FILTER_TABS.map(tab => {
-                    const meta = STATUS_META[tab] || { label: 'All', dot: 'bg-slate-400' };
-                    const active = filterTab === tab;
+            {/* ── Main Sub-Tabs ── */}
+            <div className="relative z-10 flex gap-4 overflow-x-auto pb-6 pt-2 border-b border-slate-100 no-scrollbar">
+                {[
+                    { id: 'orders', label: 'Order History', icon: Receipt },
+                    { id: 'pets', label: 'Purchased Pets', icon: Heart },
+                    { id: 'bookings', label: 'Booking History', icon: Calendar }
+                ].map((tab) => {
+                    const active = activeTransactionTab === tab.id;
                     return (
-                        <button key={tab} onClick={() => setFilterTab(tab)}
-                            className={`flex items-center gap-3 px-6 py-3.5 rounded-[1.8rem] text-[10px] font-black uppercase tracking-widest whitespace-nowrap transition-all border-2 shrink-0 ${active
-                                ? 'bg-slate-900 text-white border-slate-900 shadow-[0_20px_40px_-12px_rgba(15,23,42,0.3)]'
-                                : 'bg-white/80 backdrop-blur-md text-slate-500 border-slate-100 hover:border-slate-300 hover:bg-white'
-                                }`}>
-                            <span className={`w-2 h-2 rounded-full ${active ? 'bg-primary-400 animate-pulse' : meta.dot}`} />
-                            {tab === 'all' ? 'All Transactions' : meta.label}
-                            <span className={`ml-1 px-2 py-0.5 rounded-lg text-[8px] font-black ${active ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500'}`}>
-                                {countOf(tab).toString().padStart(2, '0')}
-                            </span>
+                        <button key={tab.id} onClick={() => setActiveTransactionTab(tab.id)}
+                            className={`flex items-center gap-2.5 px-6 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest whitespace-nowrap transition-all border-2 shrink-0 ${active
+                                ? 'bg-slate-900 text-white border-slate-900 shadow-[0_15px_30px_-10px_rgba(15,23,42,0.3)]'
+                                : 'bg-white/50 backdrop-blur-md text-slate-500 border-transparent hover:border-slate-200 hover:bg-white/80'}
+                            `}>
+                            <tab.icon className={`h-4 w-4 ${active ? 'text-primary-400' : 'text-slate-400'}`} />
+                            {tab.label}
                         </button>
                     );
                 })}
             </div>
 
-            {/* ── Orders List ── */}
+            {/* ── Tab Content Container ── */}
+            <div className="relative z-10">
+                {activeTransactionTab === 'orders' && (
+                    <div className="space-y-6 animate-fade-in">
+                        {/* ── Filter Tabs ── */}
+                        <div className="flex gap-3 overflow-x-auto pb-4 pt-2 no-scrollbar">
+                            {FILTER_TABS.map(tab => {
+                                const meta = STATUS_META[tab] || { label: 'All', dot: 'bg-slate-400' };
+                                const active = filterTab === tab;
+                                return (
+                                    <button key={tab} onClick={() => setFilterTab(tab)}
+                                        className={`flex items-center gap-3 px-6 py-3.5 rounded-[1.8rem] text-[10px] font-black uppercase tracking-widest whitespace-nowrap transition-all border-2 shrink-0 ${active
+                                            ? 'bg-white text-slate-900 border-primary-500 shadow-md'
+                                            : 'bg-white/80 backdrop-blur-md text-slate-500 border-slate-100 hover:border-slate-300 hover:bg-white'
+                                            }`}>
+                                        <span className={`w-2 h-2 rounded-full ${active ? 'bg-primary-500 animate-pulse' : meta.dot}`} />
+                                        {tab === 'all' ? 'All Orders' : meta.label}
+                                        <span className={`ml-1 px-2 py-0.5 rounded-lg text-[8px] font-black ${active ? 'bg-primary-50 text-primary-600' : 'bg-slate-100 text-slate-500'}`}>
+                                            {countOf(tab).toString().padStart(2, '0')}
+                                        </span>
+                                    </button>
+                                );
+                            })}
+                        </div>
+            
+                        {/* ── Orders List ── */}
             {orders.length === 0 ? (
                 <div className="relative z-10 flex flex-col items-center py-32 text-center bg-white/60 backdrop-blur-xl rounded-[4rem] border-2 border-dashed border-slate-200 shadow-sm overflow-hidden group">
                     <div className="absolute inset-0 bg-gradient-to-b from-slate-50/50 to-transparent pointer-events-none" />
@@ -298,6 +337,21 @@ const Orders = () => {
             }}
         />
       )}
+                    </div>
+                )}
+
+                {activeTransactionTab === 'pets' && (
+                    <div className="animate-fade-in w-full">
+                        <Adoptions isSubcomponent={true} />
+                    </div>
+                )}
+
+                {activeTransactionTab === 'bookings' && (
+                    <div className="animate-fade-in w-full">
+                        <Bookings isSubcomponent={true} />
+                    </div>
+                )}
+            </div>
     </div>
   );
 };

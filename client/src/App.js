@@ -136,7 +136,6 @@ function App() {
                   <Route path="orders" element={<ProtectedRoute roles={['customer', 'admin', 'super_admin']}><Orders /></ProtectedRoute>} />
                   <Route path="orders/:id" element={<ProtectedRoute roles={['customer', 'admin', 'super_admin']}><OrderDetail /></ProtectedRoute>} />
                   <Route path="bookings" element={<ProtectedRoute roles={['customer', 'admin', 'super_admin']}><Bookings /></ProtectedRoute>} />
-                  <Route path="adoptions" element={<ProtectedRoute roles={['customer', 'admin', 'super_admin']}><Adoptions /></ProtectedRoute>} />
                   <Route path="booking-calendar" element={<ProtectedRoute roles={['customer', 'admin', 'super_admin']}><BookingCalendar /></ProtectedRoute>} />
                   <Route path="account-upgrade" element={<ProtectedRoute roles={['customer', 'admin', 'super_admin']}><StoreApplication /></ProtectedRoute>} />
                   <Route path="insights" element={<ProtectedRoute roles={['customer', 'admin', 'super_admin']}><CustomerDSS /></ProtectedRoute>} />

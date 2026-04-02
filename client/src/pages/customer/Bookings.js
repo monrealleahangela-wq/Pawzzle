@@ -33,7 +33,7 @@ const getSizeSurcharge = (size, serviceName = '') => {
   return surcharges[size] || 0;
 };
 
-const Bookings = () => {
+const Bookings = ({ isSubcomponent = false }) => {
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState('all');
@@ -1328,7 +1328,7 @@ const Bookings = () => {
 
       {/* Existing Bookings Header */}
       {
-        !showBookingForm && (
+        !showBookingForm && !isSubcomponent && (
           <header className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 px-1">
             <div>
               <p className="text-[9px] font-black text-primary-600 uppercase tracking-[0.4em] mb-1.5">Service Schedule</p>
