@@ -400,7 +400,7 @@ const EnhancedChatMessenger = ({
   const messengerContent = (
     <div 
       className={`flex flex-col h-full bg-white transition-transform duration-300 ease-out min-h-0
-        ${!isEmbedded ? 'rounded-t-[2.5rem] sm:rounded-[40px] shadow-2xl max-w-2xl w-full h-[75vh] sm:h-[700px] overflow-hidden border border-white/20' : ''}`}
+        ${!isEmbedded ? 'rounded-t-3xl sm:rounded-[32px] shadow-2xl max-w-lg w-full h-[65vh] sm:h-[600px] overflow-hidden border border-white/20' : ''}`}
       style={{ 
         transform: `translateY(${dragY}px)`
       }}
@@ -408,28 +408,28 @@ const EnhancedChatMessenger = ({
       {/* Drag Handle */}
       {!isEmbedded && (
         <div 
-          className="w-full pt-4 pb-2 flex flex-col items-center cursor-grab active:cursor-grabbing bg-neutral-900 touch-none select-none"
+          className="w-full pt-3 pb-1 flex flex-col items-center cursor-grab active:cursor-grabbing bg-neutral-900 touch-none select-none"
           onMouseDown={handleDragStart}
           onTouchStart={handleDragStart}
         >
-          <div className="w-12 h-1.5 bg-white/30 rounded-full mb-1" />
-          <p className="text-[8px] font-black uppercase text-white/50 tracking-widest">
+          <div className="w-10 h-1 bg-white/30 rounded-full mb-0.5" />
+          <p className="text-[7px] font-black uppercase text-white/50 tracking-widest">
             {window.innerWidth < 640 ? 'Pull down to close' : 'Drag to close'}
           </p>
         </div>
       )}
 
       {!isEmbedded && (
-        <div className="px-6 py-4 bg-neutral-900 text-white flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="w-14 h-14 bg-primary-500 rounded-2xl flex items-center justify-center font-black text-xl shadow-lg rotate-3 uppercase">
+        <div className="px-5 py-3 bg-neutral-900 text-white flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-primary-500 rounded-xl flex items-center justify-center font-black text-base shadow-lg rotate-3 uppercase">
               {pet?.name?.[0] || 'P'}
             </div>
             <div>
-              <h3 className="text-lg font-black tracking-tight">{pet?.name || 'Inquiry'}</h3>
-              <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest transition-all">
-                <div className={`w-1.5 h-1.5 rounded-full ${onlineStatus.isOnline ? 'bg-secondary-500 animate-pulse' : 'bg-slate-400'}`} />
-                <span className={onlineStatus.isOnline ? 'text-secondary-400' : 'text-slate-400'}>
+              <h3 className="text-base font-black tracking-tight">{pet?.name || 'Inquiry'}</h3>
+              <div className="flex items-center gap-2 text-[9px] font-black uppercase tracking-widest transition-all">
+                <div className={`w-1 h-1 rounded-full ${onlineStatus.isOnline ? 'bg-secondary-500 animate-pulse' : 'bg-slate-400'}`} />
+                <span className={onlineStatus.isOnline ? 'text-secondary-400 font-bold' : 'text-slate-400'}>
                   {onlineStatus.text}
                 </span>
               </div>
@@ -439,18 +439,18 @@ const EnhancedChatMessenger = ({
             {isSeller && (
               <button
                 onClick={() => setShowReportModal(true)}
-                className="w-10 h-10 rounded-full bg-rose-500/10 text-rose-500 flex items-center justify-center hover:bg-rose-500/20 transition-colors"
+                className="w-8 h-8 rounded-full bg-rose-500/10 text-rose-500 flex items-center justify-center hover:bg-rose-500/20 transition-colors"
                 title="Report User"
               >
-                <AlertCircle className="h-5 w-5" />
+                <AlertCircle className="h-4 w-4" />
               </button>
             )}
             <button 
               onClick={onClose} 
-              className="w-11 h-11 rounded-xl bg-white/10 flex items-center justify-center hover:bg-white/20 transition-all border border-white/10 group"
+              className="w-9 h-9 rounded-lg bg-white/10 flex items-center justify-center hover:bg-white/20 transition-all border border-white/10 group"
               title="Close Chat"
             >
-              <X className="h-6 w-6 text-white group-hover:scale-110 transition-transform" />
+              <X className="h-5 w-5 text-white group-hover:scale-110 transition-transform" />
             </button>
           </div>
         </div>
@@ -458,17 +458,17 @@ const EnhancedChatMessenger = ({
 
       {renderAdoptionStatus()}
 
-      <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-slate-50/50 no-scrollbar overscroll-contain touch-pan-y">
+      <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50/50 no-scrollbar overscroll-contain touch-pan-y">
         {!adoptionRequest && !isSeller && !isAdmin && conversationId && pet && (
-          <div className="bg-white border border-primary-100 p-8 rounded-[32px] text-center space-y-6 mx-4 shadow-sm">
-            <div className="w-20 h-20 bg-primary-50 rounded-full flex items-center justify-center mx-auto">
-              <Heart className="h-10 w-10 text-primary-500" />
+          <div className="bg-white border border-primary-100 p-4 rounded-3xl text-center space-y-3 mx-2 shadow-sm mb-4">
+            <div className="w-12 h-12 bg-primary-50 rounded-full flex items-center justify-center mx-auto">
+              <Heart className="h-6 w-6 text-primary-500" />
             </div>
-            <div className="space-y-1">
-              <h3 className="text-xl font-black text-slate-800 uppercase tracking-tight">Serious Inquiry?</h3>
-              <p className="text-xs text-slate-500 font-medium">Initiate the premium reservation protocol.</p>
+            <div className="space-y-0.5">
+              <h3 className="text-sm font-black text-slate-800 uppercase tracking-tight">Serious Inquiry?</h3>
+              <p className="text-[10px] text-slate-500 font-medium">Initiate the premium reservation protocol.</p>
             </div>
-            <button onClick={handleAdoptRequest} className="btn btn-primary w-full py-4 text-[10px] font-black uppercase tracking-[0.2em] shadow-xl shadow-primary-100">
+            <button onClick={handleAdoptRequest} className="btn btn-primary w-full py-2.5 text-[9px] font-black uppercase tracking-[0.2em] shadow-lg shadow-primary-100">
               Reserve Pet
             </button>
           </div>
@@ -477,10 +477,10 @@ const EnhancedChatMessenger = ({
         <div ref={messagesEndRef} />
       </div>
 
-      <div className="p-6 bg-white border-t border-slate-100">
-        <div className="flex items-center gap-4 bg-slate-50 rounded-[28px] p-2 pl-4 border border-slate-100">
-          <button onClick={() => fileInputRef.current?.click()} className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-slate-400 hover:text-primary-500 shadow-sm transition-colors">
-            <Camera className="h-5 w-5" />
+      <div className="p-4 bg-white border-t border-slate-100">
+        <div className="flex items-center gap-3 bg-slate-50 rounded-full p-1.5 pl-4 border border-slate-100">
+          <button onClick={() => fileInputRef.current?.click()} className="w-8 h-8 rounded-full bg-white flex items-center justify-center text-slate-400 hover:text-primary-500 shadow-sm transition-colors shrink-0">
+            <Camera className="h-4 w-4" />
             <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleImageUpload} />
           </button>
           <textarea
@@ -489,11 +489,11 @@ const EnhancedChatMessenger = ({
             onChange={(e) => setNewMessage(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendMessage(); } }}
             placeholder="Write a message..."
-            className="flex-1 bg-transparent border-none focus:ring-0 text-sm font-medium text-slate-700 py-3 resize-none max-h-32"
+            className="flex-1 bg-transparent border-none focus:ring-0 text-sm font-medium text-slate-700 py-2 resize-none max-h-24"
             disabled={isLoading}
           />
-          <button onClick={handleSendMessage} disabled={isLoading || !newMessage.trim()} className="w-12 h-12 bg-primary-600 text-white rounded-full flex items-center justify-center shadow-lg hover:bg-primary-700 disabled:opacity-50">
-            <Send className="h-5 w-5" />
+          <button onClick={handleSendMessage} disabled={isLoading || !newMessage.trim()} className="w-10 h-10 bg-primary-600 text-white rounded-full flex items-center justify-center shadow-lg hover:bg-primary-700 disabled:opacity-50 shrink-0">
+            <Send className="h-4 w-4" />
           </button>
         </div>
       </div>
@@ -506,7 +506,7 @@ const EnhancedChatMessenger = ({
 
   return (
     <div className={`fixed inset-0 ${isDragging ? 'bg-neutral-900/40' : 'bg-neutral-900/60'} backdrop-blur-[2px] flex items-end sm:items-center justify-center z-[100] sm:p-6 font-sans transition-colors duration-300`}>
-      <div className="w-full max-w-2xl">
+      <div className="w-full max-w-lg">
         {messengerContent}
       </div>
 
