@@ -92,7 +92,7 @@ const Landing = () => {
             </h1>
 
             <p className="text-lg md:text-xl text-slate-600 max-w-2xl mx-auto leading-relaxed animate-slide-up" style={{ animationDelay: '0.2s' }}>
-              Browse premium pet supplies, and book expert services. Everything your furry friend needs, all in one premium platform.
+              Browse premium pet supplies, find a bestfriend, and book expert services. Everything your furry friend needs, all in one premium platform.
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center animate-slide-up" style={{ animationDelay: '0.4s' }}>
@@ -119,7 +119,7 @@ const Landing = () => {
         <div className="absolute top-1/4 left-10 float-animation hidden xl:block opacity-40">
           <div className="p-4 glass-morphism rounded-2xl shadow-xl flex items-center gap-3">
             <div className="w-10 h-10 bg-primary-100 rounded-full flex items-center justify-center"><Heart className="text-primary-600 h-5 w-5" /></div>
-            <div><p className="text-xs font-bold text-slate-800">500+ Adoptions</p><p className="text-[10px] text-slate-500">This month</p></div>
+            <div><p className="text-xs font-bold text-slate-800">Premium Supplies!</p><p className="text-[10px] text-slate-500">This month</p></div>
           </div>
         </div>
         <div className="absolute bottom-1/4 right-10 float-animation hidden xl:block opacity-40" style={{ animationDelay: '-3s' }}>

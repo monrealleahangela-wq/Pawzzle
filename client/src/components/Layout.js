@@ -92,8 +92,7 @@ const Layout = () => {
     { path: '/pets', label: 'Pets', icon: Heart },
     { path: '/products', label: 'Products', icon: Package },
     { path: '/services', label: 'Services', icon: Calendar },
-    { path: '/adoptions', label: 'Adoptions', icon: Heart },
-    { path: '/orders', label: 'Orders', icon: ShoppingBag },
+    { path: '/orders', label: 'Transactions', icon: ShoppingBag },
     { path: '/vouchers', label: 'Vouchers', icon: Ticket },
     { path: '/insights', label: 'AI Care Advisor', icon: Brain },
   ];
