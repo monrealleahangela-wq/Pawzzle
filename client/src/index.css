@@ -27,6 +27,38 @@ html {
   }
 }
 
+/* ==========================================================================
+   GLOBAL MINIMALIST DESIGN OVERRIDE
+   Forces all bubbly, heavy shadow, and over-designed elements to be clean, 
+   flat, and sharp across all pages and users.
+   ========================================================================== */
+.rounded-xl, 
+.rounded-2xl, 
+.rounded-3xl, 
+.rounded-\[2rem\], 
+.rounded-\[2\.5rem\], 
+.rounded-\[3rem\], 
+.rounded-\[40px\], 
+.rounded-\[32px\] {
+  border-radius: 0.5rem !important; /* Enforce sleek, minimalist 'rounded-lg' borders universally */
+}
+
+.shadow-md, 
+.shadow-lg, 
+.shadow-xl, 
+.shadow-2xl, 
+.shadow-\[0_0_20px_rgba\(83\,49\,20\,0\.3\)\], 
+.shadow-soft, 
+.shadow-medium, 
+.shadow-strong {
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1) !important; /* Strip heavy drop shadows to clean flat shadows */
+}
+
+.border-2,
+.border-4 {
+  border-width: 1px !important; /* Reduce thick borders to minimalist hairlines */
+}
+
 html.dark {
   filter: invert(0.92) hue-rotate(180deg) brightness(1.05);
   background-color: #1a1a1a;
