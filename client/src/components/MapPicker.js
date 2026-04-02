@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
 import L from 'leaflet';
-import { Navigation, MapPin, Check, X, AlertCircle, Search, LocateFixed } from 'lucide-react';
+import { Navigation, MapPin, Check, X, AlertCircle, Search, LocateFixed, Info } from 'lucide-react';
 import { toast } from 'react-toastify';
 
 // Fix for Leaflet default icon issues in React
