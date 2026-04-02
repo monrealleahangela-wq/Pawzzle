@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import SessionService from '../../services/sessionService';
 
 /**
  * This page is the redirect target for Google OAuth.
@@ -28,9 +29,8 @@ const OAuthCallback = () => {
         try {
             const user = JSON.parse(decodeURIComponent(userStr));
 
-            // Store exactly the same way as regular login
-            localStorage.setItem('token', token);
-            localStorage.setItem('user', JSON.stringify(user));
+            // Correctly initialize a fully valid session with an ID and timestamps
+            SessionService.startSession(user, token);
 
             // Let AuthContext know we're logged in
             completeOAuthLogin(user, token);
