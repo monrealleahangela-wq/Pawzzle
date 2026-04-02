@@ -6,6 +6,8 @@ import { useAuth } from '../../contexts/AuthContext';
 import { orderService, userService, paymentService, storeService, voucherService, getImageUrl } from '../../services/apiService';
 import { Heart, Package, CreditCard, Truck, Edit2, ShoppingBag, Store, CheckCircle, AlertCircle, MapPin, Tag, Ticket, X, ChevronRight } from 'lucide-react';
 import { getCitiesByProvince, getBarangaysByCity } from '../../constants/locationConstants';
+import MapPicker from '../../components/MapPicker';
+import { Info } from 'lucide-react';
 
 const Checkout = () => {
   const { items, removeFromCart, updateQuantity, getTotalPrice, clearCart, clearSelectedItems, toggleItemSelection, selectAllItems, deselectAllItems, getSelectedItems } = useCart();
@@ -30,6 +32,7 @@ const Checkout = () => {
   // All hooks must be called before any conditional returns
   const [isLoading, setIsLoading] = useState(false);
   const [editAddress, setEditAddress] = useState(false);
+  const [addressInputType, setAddressInputType] = useState('map'); // 'map' or 'manual'
   const [adminSettings, setAdminSettings] = useState({
     freeShipping: true,
     shippingFee: 0,
@@ -697,24 +700,59 @@ const Checkout = () => {
                   </div>
                 </div>
               ) : (
-                <form className="space-y-4">
-                  {deliveryMethod === 'delivery' ? (
-                    <>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Street Address</label>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between gap-4 bg-slate-50 p-2 rounded-2xl mb-4">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Input Mode</p>
+                    <div className="flex bg-slate-200 p-1 rounded-xl shadow-inner">
+                      <button
+                        type="button"
+                        onClick={() => setAddressInputType('map')}
+                        className={`px-4 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${addressInputType === 'map' ? 'bg-white text-primary-600 shadow-sm scale-105' : 'text-slate-500 hover:text-slate-700'}`}
+                      >
+                        MAP GPS
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setAddressInputType('manual')}
+                        className={`px-4 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${addressInputType === 'manual' ? 'bg-white text-primary-600 shadow-sm scale-105' : 'text-slate-500 hover:text-slate-700'}`}
+                      >
+                        MANUAL
+                      </button>
+                    </div>
+                  </div>
+
+                  {addressInputType === 'map' ? (
+                    <div className="animate-fade-in">
+                      <MapPicker 
+                        onLocationSelected={(location) => {
+                          setShippingAddress(prev => ({
+                            ...prev,
+                            street: location.street || location.full,
+                            city: location.city.toLowerCase().replace(/\s+/g, '_').replace('municipality_of_', ''),
+                            barangay: location.barangay.toLowerCase().replace(/\s+/g, '_'),
+                            zipCode: location.zipCode || prev.zipCode
+                          }));
+                        }}
+                        initialAddress={shippingAddress.street}
+                      />
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-fade-in px-1">
+                      <div className="md:col-span-2">
+                        <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1 ml-1">Street Address</label>
                         <input
                           type="text"
                           required
-                          className="input"
+                          className="w-full px-5 py-4 bg-white border-2 border-slate-100 rounded-2xl focus:border-primary-500 outline-none font-bold text-sm transition-all shadow-sm"
                           value={shippingAddress.street}
                           onChange={(e) => handleAddressChange('street', e.target.value)}
                         />
                       </div>
 
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">City</label>
+                        <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1 ml-1">City</label>
                         <select
-                          className="input"
+                          className="w-full px-5 py-4 bg-white border-2 border-slate-100 rounded-2xl focus:border-primary-500 outline-none font-bold text-sm transition-all shadow-sm appearance-none cursor-pointer"
                           value={shippingAddress.city}
                           onChange={(e) => handleAddressChange('city', e.target.value)}
                           required
@@ -728,43 +766,34 @@ const Checkout = () => {
                         </select>
                       </div>
 
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Barangay</label>
-                          <select
-                            className="input"
-                            value={shippingAddress.barangay}
-                            onChange={(e) => handleAddressChange('barangay', e.target.value)}
-                            disabled={!shippingAddress.city}
-                            required
-                          >
-                            <option value="">Select Barangay</option>
-                            {barangays.map(barangay => (
-                              <option key={barangay.value} value={barangay.value}>
-                                {barangay.label}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">ZIP Code</label>
-                          <input
-                            type="text"
-                            required
-                            className="input"
-                            value={shippingAddress.zipCode}
-                            onChange={(e) => handleAddressChange('zipCode', e.target.value)}
-                          />
-                        </div>
+                      <div>
+                        <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1 ml-1">Barangay</label>
+                        <select
+                          className="w-full px-5 py-4 bg-white border-2 border-slate-100 rounded-2xl focus:border-primary-500 outline-none font-bold text-sm transition-all shadow-sm appearance-none cursor-pointer disabled:opacity-50"
+                          value={shippingAddress.barangay}
+                          onChange={(e) => handleAddressChange('barangay', e.target.value)}
+                          disabled={!shippingAddress.city}
+                          required
+                        >
+                          <option value="">Select Barangay</option>
+                          {barangays.map(barangay => (
+                            <option key={barangay.value} value={barangay.value}>
+                              {barangay.label}
+                            </option>
+                          ))}
+                        </select>
                       </div>
-                    </>
-                  ) : (
-                    <div className="bg-gray-50 p-4 rounded-lg">
-                      <p className="text-sm text-gray-600 text-center">
-                        <strong>Store Pickup</strong><br />
-                        No shipping address required for pickup orders.
-                      </p>
+
+                      <div>
+                        <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1 ml-1">ZIP Code</label>
+                        <input
+                          type="text"
+                          required
+                          className="w-full px-5 py-4 bg-white border-2 border-slate-100 rounded-2xl focus:border-primary-500 outline-none font-bold text-sm transition-all shadow-sm"
+                          value={shippingAddress.zipCode}
+                          onChange={(e) => handleAddressChange('zipCode', e.target.value)}
+                        />
+                      </div>
                     </div>
                   )}
 
@@ -805,7 +834,7 @@ const Checkout = () => {
                       * This address will only be used for this specific order
                     </p>
                   </div>
-                </form>
+                </div>
               )}
             </div>
           )}
