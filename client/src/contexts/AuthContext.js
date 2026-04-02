@@ -334,6 +334,9 @@ export const AuthProvider = ({ children }) => {
   };
 
   const completeOAuthLogin = (user, token) => {
+    // Ensure localStorage is set (SessionService may not cover all edge cases)
+    localStorage.setItem('token', token);
+    localStorage.setItem('user', JSON.stringify(user));
     dispatch({
       type: 'LOGIN_SUCCESS',
       payload: { user, token }

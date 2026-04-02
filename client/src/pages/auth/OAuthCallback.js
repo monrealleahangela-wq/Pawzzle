@@ -45,7 +45,7 @@ const OAuthCallback = () => {
                 } else {
                     navigate('/home', { replace: true });
                 }
-            }, 100);
+            }, 300);
         } catch (e) {
             setError('Could not parse login data. Please try again.');
             setTimeout(() => navigate('/login'), 2500);
