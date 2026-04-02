@@ -35,14 +35,17 @@ const OAuthCallback = () => {
             // Let AuthContext know we're logged in
             completeOAuthLogin(user, token);
 
-            // Redirect by role
-            if (user.role === 'super_admin') {
-                navigate('/superadmin/dashboard', { replace: true });
-            } else if (user.role === 'admin') {
-                navigate('/admin/dashboard', { replace: true });
-            } else {
-                navigate('/home', { replace: true });
-            }
+            // Defer navigation slightly so AuthContext has time to propagate the new state
+            // to all consumers (like ProtectedRoute), circumventing false access rejections.
+            setTimeout(() => {
+                if (user.role === 'super_admin') {
+                    navigate('/superadmin/dashboard', { replace: true });
+                } else if (user.role === 'admin') {
+                    navigate('/admin/dashboard', { replace: true });
+                } else {
+                    navigate('/home', { replace: true });
+                }
+            }, 100);
         } catch (e) {
             setError('Could not parse login data. Please try again.');
             setTimeout(() => navigate('/login'), 2500);
