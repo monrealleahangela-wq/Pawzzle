@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, Link, useNavigate } from 'react-router-dom';
-import { petService, productService, serviceService, storeService } from '../../services/apiService';
+import { petService, productService, serviceService, storeService, getImageUrl } from '../../services/apiService';
 import {
   Search as SearchIcon,
   Package,
@@ -276,8 +276,12 @@ const Search = () => {
             onClick={(e) => { e.stopPropagation(); navigate(`/stores/${pet.store?._id}`); }}
             className="flex items-center gap-2 mb-4 bg-slate-50 p-2 rounded-xl border border-slate-100 hover:bg-primary-50 hover:border-primary-100 transition-colors cursor-pointer group/store"
           >
-            <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center shadow-sm shrink-0 group-hover/store:bg-primary-50">
-              <StoreIcon className="h-4 w-4 text-primary-500" />
+            <div className="w-8 h-8 rounded-lg bg-white overflow-hidden flex items-center justify-center shadow-sm shrink-0 group-hover/store:bg-primary-50 border border-slate-100">
+              {pet.store?.logo ? (
+                <img src={getImageUrl(pet.store.logo)} alt="" className="w-full h-full object-cover" onError={(e) => { e.target.style.display = 'none'; }} />
+              ) : (
+                <StoreIcon className="h-4 w-4 text-primary-500" />
+              )}
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-[9px] font-black text-slate-900 uppercase truncate group-hover/store:text-primary-600 transition-colors">
@@ -335,8 +339,12 @@ const Search = () => {
             onClick={(e) => { e.stopPropagation(); navigate(`/stores/${product.store?._id}`); }}
             className="hidden sm:flex items-center gap-2 mb-4 bg-slate-50 p-2 rounded-xl border border-slate-100 hover:bg-primary-50 hover:border-primary-100 transition-colors group/store"
           >
-            <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center shadow-sm shrink-0 group-hover/store:bg-primary-50">
-              <StoreIcon className="h-4 w-4 text-primary-500" />
+            <div className="w-8 h-8 rounded-lg bg-white overflow-hidden flex items-center justify-center shadow-sm shrink-0 group-hover/store:bg-primary-50 border border-slate-100">
+              {product.store?.logo ? (
+                <img src={getImageUrl(product.store.logo)} alt="" className="w-full h-full object-cover" onError={(e) => { e.target.style.display = 'none'; }} />
+              ) : (
+                <StoreIcon className="h-4 w-4 text-primary-500" />
+              )}
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-[9px] font-black text-slate-900 uppercase truncate group-hover/store:text-primary-600 transition-colors">
@@ -388,8 +396,12 @@ const Search = () => {
             onClick={(e) => { e.stopPropagation(); navigate(`/stores/${service.store?._id}`); }}
             className="hidden sm:flex items-center gap-2 mb-4 bg-slate-50 p-2 rounded-xl border border-slate-100 hover:bg-primary-50 hover:border-primary-100 transition-colors group/store"
           >
-            <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center shadow-sm shrink-0 group-hover/store:bg-primary-50">
-              <StoreIcon className="h-4 w-4 text-primary-500" />
+            <div className="w-8 h-8 rounded-lg bg-white overflow-hidden flex items-center justify-center shadow-sm shrink-0 group-hover/store:bg-primary-50 border border-slate-100">
+              {service.store?.logo ? (
+                <img src={getImageUrl(service.store.logo)} alt="" className="w-full h-full object-cover" onError={(e) => { e.target.style.display = 'none'; }} />
+              ) : (
+                <StoreIcon className="h-4 w-4 text-primary-500" />
+              )}
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-[9px] font-black text-slate-900 uppercase truncate group-hover/store:text-primary-600 transition-colors">
@@ -661,12 +673,17 @@ const Search = () => {
                           <p className="text-[7px] sm:text-xs font-bold text-slate-400 uppercase tracking-tighter truncate leading-none mb-1">{pet.breed}</p>
                           <div className="flex items-center justify-between mt-auto pt-2 border-t border-slate-50">
                             <p className="text-[10px] sm:text-xl font-black text-primary-600 tracking-tighter">₱{pet.price?.toLocaleString()}</p>
-                            <span 
+                            <div 
                               onClick={(e) => { e.preventDefault(); e.stopPropagation(); navigate(`/stores/${pet.store?._id}`); }}
-                              className="text-[7px] font-black text-slate-400 uppercase tracking-widest hover:text-primary-600 transition-colors"
+                              className="flex items-center gap-1 hover:text-primary-600 transition-colors cursor-pointer"
                             >
-                              {pet.store?.name}
-                            </span>
+                              {pet.store?.logo && (
+                                <img src={getImageUrl(pet.store.logo)} alt="" className="w-3 h-3 rounded-full object-cover shrink-0 border border-slate-100" />
+                              )}
+                              <span className="text-[7px] font-black text-slate-400 uppercase tracking-widest truncate max-w-[80px]">
+                                {pet.store?.name}
+                              </span>
+                            </div>
                           </div>
                         </div>
                       </Link>
@@ -693,12 +710,17 @@ const Search = () => {
                           <p className="text-[7px] sm:text-xs font-bold text-slate-400 uppercase tracking-tighter truncate leading-none mb-1">{product.category}</p>
                           <div className="flex items-center justify-between mt-auto pt-2 border-t border-slate-50">
                             <p className="text-[10px] sm:text-xl font-black text-slate-900 tracking-tighter">₱{product.price?.toLocaleString()}</p>
-                            <span 
+                            <div 
                               onClick={(e) => { e.preventDefault(); e.stopPropagation(); navigate(`/stores/${product.store?._id}`); }}
-                              className="text-[7px] font-black text-slate-400 uppercase tracking-widest hover:text-primary-600 transition-colors"
+                              className="flex items-center gap-1 hover:text-primary-600 transition-colors cursor-pointer"
                             >
-                              {product.store?.name}
-                            </span>
+                              {product.store?.logo && (
+                                <img src={getImageUrl(product.store.logo)} alt="" className="w-3 h-3 rounded-full object-cover shrink-0 border border-slate-100" />
+                              )}
+                              <span className="text-[7px] font-black text-slate-400 uppercase tracking-widest truncate max-w-[80px]">
+                                {product.store?.name}
+                              </span>
+                            </div>
                           </div>
                         </div>
                       </Link>
@@ -724,12 +746,17 @@ const Search = () => {
                           <h4 className="text-[11px] sm:text-xl font-black text-slate-900 uppercase truncate leading-tight">{service.name}</h4>
                           <div className="flex items-center gap-2 mt-1">
                             <p className="text-[8px] sm:text-sm text-slate-400 font-bold uppercase tracking-widest leading-none">{service.duration} MIN</p>
-                            <span 
+                            <div 
                               onClick={(e) => { e.preventDefault(); e.stopPropagation(); navigate(`/stores/${service.store?._id}`); }}
-                              className="text-[7px] font-black text-slate-400 uppercase tracking-widest hover:text-primary-600 transition-colors"
+                              className="flex items-center gap-1 hover:text-primary-600 transition-colors cursor-pointer"
                             >
-                              {service.store?.name}
-                            </span>
+                              {service.store?.logo && (
+                                <img src={getImageUrl(service.store.logo)} alt="" className="w-3 h-3 rounded-full object-cover shrink-0 border border-slate-100" />
+                              )}
+                              <span className="text-[7px] font-black text-slate-400 uppercase tracking-widest truncate max-w-[80px]">
+                                {service.store?.name}
+                              </span>
+                            </div>
                           </div>
                         </div>
                         <div className="text-right shrink-0">

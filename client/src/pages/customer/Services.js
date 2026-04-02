@@ -357,8 +357,12 @@ const Services = () => {
                     to={`/stores/${service.store._id}`}
                     className="flex items-center gap-4 p-4 bg-slate-50 rounded-2xl border border-slate-100 group-hover:bg-primary-50 group-hover:border-primary-100 transition-all hover:scale-[1.02] active:scale-95 translate-y-2 mb-2"
                   >
-                    <div className="w-12 h-12 rounded-xl bg-white flex items-center justify-center shadow-sm shrink-0">
-                      <Store className="h-6 w-6 text-primary-600" />
+                    <div className="w-12 h-12 rounded-xl bg-white overflow-hidden flex items-center justify-center shadow-sm shrink-0 border border-slate-100">
+                      {service.store.logo ? (
+                        <img src={getImageUrl(service.store.logo)} alt="" className="w-full h-full object-cover" onError={(e) => { e.target.style.display = 'none'; }} />
+                      ) : (
+                        <Store className="h-6 w-6 text-primary-600" />
+                      )}
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-[11px] font-black text-slate-900 uppercase truncate leading-tight mb-1">

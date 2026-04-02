@@ -406,8 +406,22 @@ const Home = () => {
 
                 <div className="flex justify-between items-center mt-auto pt-2 border-t border-slate-50">
                   <div>
-                    <p className="text-[7px] font-black text-slate-400 uppercase tracking-widest">Pricing</p>
-                    <p className="text-sm sm:text-xl font-black text-slate-900 tracking-tighter leading-none">₱{pet.price?.toLocaleString()}</p>
+                    <div className="flex items-center gap-1.5 mb-1">
+                      <p className="text-[7px] font-black text-slate-400 uppercase tracking-widest leading-none">Price:</p>
+                      <p className="text-sm sm:text-xl font-black text-slate-900 tracking-tighter leading-none">₱{pet.price?.toLocaleString()}</p>
+                    </div>
+                    <Link to={`/stores/${pet.store?._id}`} className="flex items-center gap-1 hover:text-primary-600 transition-colors group/store">
+                      <div className="w-4 h-4 rounded-full overflow-hidden bg-slate-50 border border-slate-100 shrink-0">
+                        {pet.store?.logo ? (
+                          <img src={getImageUrl(pet.store.logo)} alt="" className="w-full h-full object-cover" />
+                        ) : (
+                          <Store className="h-2 w-2 text-primary-400 m-auto" />
+                        )}
+                      </div>
+                      <span className="text-[7px] font-black uppercase text-slate-400 group-hover/store:text-primary-600 transition-colors">
+                        {pet.store?.name}
+                      </span>
+                    </Link>
                   </div>
                   <Link to={`/pets/${pet._id}`}
                     className="px-4 py-2 bg-slate-900 text-white rounded-xl text-[8px] font-black uppercase tracking-widest hover:bg-primary-600 active:scale-90 transition-all shadow-lg shadow-slate-200">
@@ -478,7 +492,24 @@ const Home = () => {
                 <div className="px-2 pb-2 flex-1 flex flex-col">
                   <p className="text-[7px] font-black text-slate-400 uppercase tracking-widest mb-0.5 truncate">{product.category}</p>
                   <p className="text-[10px] sm:text-sm font-black text-slate-900 uppercase truncate mb-2 group-hover:text-primary-600 transition-colors">{product.name}</p>
-                  <p className="text-sm sm:text-lg font-black text-slate-900 tracking-tighter mt-auto">₱{product.price?.toLocaleString()}</p>
+                  
+                  <div className="mt-auto flex justify-between items-end pt-2 border-t border-slate-50">
+                    <div>
+                      <p className="text-sm sm:text-lg font-black text-slate-900 tracking-tighter mb-1 leading-none">₱{product.price?.toLocaleString()}</p>
+                      <div className="flex items-center gap-1 group/store">
+                        <div className="w-3.5 h-3.5 rounded-full overflow-hidden bg-slate-50 border border-slate-100 shrink-0">
+                          {product.store?.logo ? (
+                            <img src={getImageUrl(product.store.logo)} alt="" className="w-full h-full object-cover" />
+                          ) : (
+                            <Store className="h-2 w-2 text-primary-400 m-auto" />
+                          )}
+                        </div>
+                        <span className="text-[7px] font-black uppercase text-slate-400">
+                          {product.store?.name}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </Link>
             ))}

@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { Heart, Package, Calendar, ArrowRight, LogIn, Sparkles, Users, TrendingUp, Star, Store } from 'lucide-react';
-import { petService, productService, serviceService } from '../../services/apiService';
+import { Heart, Package, Calendar, ArrowRight, LogIn, Sparkles, Users, TrendingUp, Star, Store, ChevronRight, MapPin } from 'lucide-react';
+import { petService, productService, serviceService, getImageUrl } from '../../services/apiService';
 import { useAuth } from '../../contexts/AuthContext';
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
@@ -15,6 +15,29 @@ const Landing = () => {
   const [services, setServices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isScrolled, setIsScrolled] = useState(false);
+  const [revealPets, setRevealPets] = useState(false);
+
+  // Intersection Observer for scroll animations
+  const sectionRef = useRef(null);
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setRevealPets(true);
+          observer.unobserve(entry.target);
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    if (sectionRef.current) {
+      observer.observe(sectionRef.current);
+    }
+
+    return () => {
+      if (sectionRef.current) observer.unobserve(sectionRef.current);
+    };
+  }, []);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -247,40 +270,88 @@ const Landing = () => {
       </section>
 
       {/* Featured Pets Grid */}
-      <section className="py-24 relative z-10">
+      <section ref={sectionRef} className="py-24 relative z-10">
         <div className="container-custom">
           <div className="flex flex-col md:flex-row justify-between items-end mb-16 gap-4">
             <div className="space-y-4">
-              <h2 className="text-4xl md:text-5xl font-black text-slate-900 tracking-tight">Meet the New Arrivals</h2>
-              <p className="text-lg text-slate-500 max-w-xl">Our latest companions are ready to bring joy to your home.</p>
+              <div className="inline-flex items-center gap-2 px-3 py-1 bg-primary-100 rounded-full">
+                <Heart className="h-3 w-3 text-primary-600" />
+                <span className="text-[10px] font-black text-primary-700 uppercase tracking-widest">Global Discovery</span>
+              </div>
+              <h2 className="text-4xl md:text-6xl font-black text-slate-900 tracking-tight leading-none uppercase">
+                Featured <span className="text-gradient-shimmer italic">Companions</span>
+              </h2>
+              <p className="text-lg text-slate-500 max-w-xl font-medium">Our latest elite fleet of companions are ready to bring joy to your base.</p>
             </div>
-            <Link to="/pets" className="group flex items-center gap-2 font-bold text-primary-600 hover:text-primary-700">
+            <Link to="/pets" className="group flex items-center gap-2 font-black text-[10px] uppercase tracking-[0.2em] text-primary-600 hover:text-primary-700 transition-all">
               View All Pets
-              <ArrowRight className="h-5 w-5 group-hover:translate-x-1 transition-transform" />
+              <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
             </Link>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
             {pets.map((pet, index) => (
-              <div key={pet._id} className="card group p-0 hover:border-primary-200 transition-all duration-500 hover:shadow-primary-100 animate-slide-up" style={{ animationDelay: `${index * 0.1}s` }}>
-                <div className="relative h-64 overflow-hidden rounded-t-[23px]">
+              <div 
+                key={pet._id} 
+                className={`group card-landing-premium flex flex-col relative overflow-hidden transition-all duration-700 hover:shadow-2xl hover:shadow-primary-200/50 hover:-translate-y-2 card-3d-hover ${revealPets ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-20'}`} 
+                style={{ transitionDelay: `${index * 150}ms` }}
+              >
+                {/* 3D background accent */}
+                <div className="absolute top-0 right-0 w-32 h-32 bg-slate-50 rounded-bl-[4rem] -translate-y-16 translate-x-16 group-hover:bg-primary-50 transition-colors duration-500" />
+                
+                <div className="relative h-64 overflow-hidden rounded-[2rem] z-10">
                   <img
                     src={pet.images?.[0] || 'https://images.unsplash.com/photo-1543466835-00a7907e9de1?q=80&w=1000&auto=format&fit=crop'}
                     alt={pet.name}
-                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                    className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110 group-hover:rotate-1"
                   />
-                  <div className="absolute top-4 right-4"><span className="badge badge-success glass-morphism border-none">Available</span></div>
+                  <div className="absolute top-4 right-4 flex flex-col gap-2">
+                    <span className="px-3 py-1 bg-white/90 backdrop-blur-md rounded-xl text-[10px] font-black uppercase tracking-widest text-primary-600 shadow-xl border border-white/20">LIVE</span>
+                    <span className="px-3 py-1 bg-slate-900/90 backdrop-blur-md rounded-xl text-[10px] font-black uppercase tracking-widest text-white shadow-xl border border-white/10 opacity-0 group-hover:opacity-100 transition-all translate-x-4 group-hover:translate-x-0">VERIFIED</span>
+                  </div>
+                  
+                  {/* Floating price tag on hover */}
+                  <div className="absolute inset-x-4 bottom-4 glass-morphism rounded-2xl p-4 flex justify-between items-center opacity-0 group-hover:opacity-100 translate-y-10 group-hover:translate-y-0 transition-all duration-500">
+                    <span className="text-white text-lg font-black tracking-tighter">₱{pet.price?.toLocaleString()}</span>
+                    <Link to={`/pets/${pet._id}`} className="w-10 h-10 bg-white text-primary-600 rounded-full flex items-center justify-center shadow-lg hover:scale-110 active:scale-90 transition-transform">
+                      <ArrowRight className="h-5 w-5" />
+                    </Link>
+                  </div>
                 </div>
-                <div className="p-6 space-y-4">
-                  <div className="flex justify-between items-center">
-                    <h3 className="text-xl font-bold text-slate-900">{pet.name}</h3>
-                    <p className="text-lg font-black text-primary-600">₱{pet.price}</p>
+
+                <div className="p-6 space-y-4 relative z-10 flex-1 flex flex-col">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.3em] mb-1">{pet.breed || 'Biological Unit'}</p>
+                      <h3 className="text-2xl font-black text-slate-900 uppercase tracking-tight leading-none group-hover:text-primary-600 transition-colors">{pet.name}</h3>
+                    </div>
+                    {pet.store && (
+                      <Link to={`/stores/${pet.store._id}`} className="flex flex-col items-center gap-1 group/store text-center">
+                        <div className="w-8 h-8 rounded-full overflow-hidden bg-white border border-slate-100 shadow-sm shrink-0 group-hover/store:border-primary-200 transition-colors">
+                          {pet.store.logo ? (
+                            <img src={getImageUrl(pet.store.logo)} alt="" className="w-full h-full object-cover" />
+                          ) : (
+                            <Store className="h-4 w-4 text-primary-400 m-auto mt-2" />
+                          )}
+                        </div>
+                        <span className="text-[7px] font-black uppercase text-slate-400 group-hover/store:text-primary-600 transition-colors max-w-[50px] truncate">
+                          {pet.store.name}
+                        </span>
+                      </Link>
+                    )}
                   </div>
+                  
                   <div className="flex gap-2 flex-wrap">
-                    <span className="text-[10px] uppercase tracking-wider font-bold px-2 py-1 bg-slate-100 text-slate-600 rounded-md">{pet.breed}</span>
-                    <span className="text-[10px] uppercase tracking-wider font-bold px-2 py-1 bg-slate-100 text-slate-600 rounded-md">{pet.age} {pet.ageUnit}</span>
+                    <span className="px-3 py-1 bg-slate-50 border border-slate-100 rounded-lg text-[9px] font-black uppercase tracking-widest text-slate-600">{pet.age} {pet.ageUnit?.[0]}</span>
+                    <span className="px-3 py-1 bg-slate-50 border border-slate-100 rounded-lg text-[9px] font-black uppercase tracking-widest text-slate-600">{pet.gender?.[0]}</span>
                   </div>
-                  <Link to={`/pets/${pet._id}`} className="btn btn-primary w-full py-3 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity">Meet {pet.name}</Link>
+
+                  <Link 
+                    to={`/pets/${pet._id}`} 
+                    className="mt-auto px-6 py-4 bg-slate-900 text-white rounded-xl text-xs font-black uppercase tracking-widest group-hover:bg-primary-600 transition-all hover:shadow-xl hover:shadow-primary-200 active:scale-95 text-center flex items-center justify-center gap-2"
+                  >
+                    Details <ChevronRight className="h-4 w-4" />
+                  </Link>
                 </div>
               </div>
             ))}
