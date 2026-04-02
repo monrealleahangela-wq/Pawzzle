@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Heart, Package, Calendar, ArrowRight, LogIn, Sparkles, Users, TrendingUp, Star } from 'lucide-react';
+import { Heart, Package, Calendar, ArrowRight, LogIn, Sparkles, Users, TrendingUp, Star, Store } from 'lucide-react';
 import { petService, productService, serviceService } from '../../services/apiService';
 import { useAuth } from '../../contexts/AuthContext';
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/Card';
@@ -57,14 +57,32 @@ const Landing = () => {
             <img src="/images/logo.png" alt="Pawzzle Logo" className="h-10 md:h-12 w-auto object-contain transition-transform group-hover:scale-110 drop-shadow-2xl" />
             <span className={`text-2xl font-black tracking-tighter ${isScrolled ? 'text-primary-600' : 'text-slate-900'}`}>Pawzzle</span>
           </Link>
-          <div className="flex items-center gap-6">
+          <div className="flex items-center gap-3 sm:gap-5">
             {!isAuthenticated ? (
               <>
-                <Link to="/login" className="text-sm font-black uppercase tracking-widest text-slate-600 hover:text-primary-600 transition-colors">Sign In</Link>
-                <Link to="/register" className="btn btn-primary px-6 py-2.5 text-xs font-black uppercase tracking-[0.2em] shadow-lg shadow-primary-100">Join</Link>
+                <Link to="/login" className="text-sm font-black uppercase tracking-widest text-slate-600 hover:text-primary-600 transition-colors hidden sm:block">Sign In</Link>
+                <Link
+                  to="/register?seller=true"
+                  className="flex items-center gap-1.5 text-xs font-black uppercase tracking-[0.15em] px-4 py-2 rounded-xl border-2 border-amber-400 text-amber-600 hover:bg-amber-400 hover:text-white transition-all duration-200 shadow-sm shadow-amber-100"
+                >
+                  <Store className="h-3.5 w-3.5" />
+                  Be a Seller
+                </Link>
+                <Link to="/register" className="btn btn-primary px-5 py-2.5 text-xs font-black uppercase tracking-[0.2em] shadow-lg shadow-primary-100">Join</Link>
               </>
             ) : (
-              <Link to="/home" className="btn btn-primary px-6 py-2.5 text-xs font-black uppercase tracking-[0.2em] shadow-lg shadow-primary-100">Dashboard</Link>
+              <>
+                {user?.role === 'customer' && (
+                  <Link
+                    to="/account-upgrade"
+                    className="flex items-center gap-1.5 text-xs font-black uppercase tracking-[0.15em] px-4 py-2 rounded-xl border-2 border-amber-400 text-amber-600 hover:bg-amber-400 hover:text-white transition-all duration-200 shadow-sm shadow-amber-100"
+                  >
+                    <Store className="h-3.5 w-3.5" />
+                    Be a Seller
+                  </Link>
+                )}
+                <Link to="/home" className="btn btn-primary px-5 py-2.5 text-xs font-black uppercase tracking-[0.2em] shadow-lg shadow-primary-100">Dashboard</Link>
+              </>
             )}
           </div>
         </div>
@@ -95,7 +113,7 @@ const Landing = () => {
               Browse premium pet supplies, find a bestfriend, and book expert services. Everything your furry friend needs, all in one premium platform.
             </p>
 
-            <div className="flex flex-col sm:flex-row gap-4 justify-center animate-slide-up" style={{ animationDelay: '0.4s' }}>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center flex-wrap animate-slide-up" style={{ animationDelay: '0.4s' }}>
               {!isAuthenticated ? (
                 <Link to="/login" className="btn btn-primary px-10 py-5 text-lg group shadow-xl shadow-primary-200">
                   Get Started
@@ -110,6 +128,13 @@ const Landing = () => {
               <Link to="/pets" className="btn btn-outline px-10 py-5 text-lg border-2 border-slate-200 hover:border-primary-600 bg-white/50 backdrop-blur-sm">
                 <Heart className="h-5 w-5 mr-1" />
                 Browse Pets
+              </Link>
+              <Link
+                to={isAuthenticated ? '/account-upgrade' : '/register?seller=true'}
+                className="flex items-center justify-center gap-2 px-10 py-5 text-lg font-black uppercase tracking-[0.15em] rounded-2xl bg-gradient-to-r from-amber-400 to-amber-500 text-white shadow-xl shadow-amber-200 hover:from-amber-500 hover:to-amber-600 transition-all duration-300 hover:scale-105 active:scale-95"
+              >
+                <Store className="h-5 w-5" />
+                Be a Seller
               </Link>
             </div>
           </div>
