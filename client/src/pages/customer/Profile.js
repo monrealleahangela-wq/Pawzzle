@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { useAuth } from '../../contexts/AuthContext';
-import { userService, orderService, bookingService, uploadService, adminOrderService, adminBookingService, dssService, adoptionService, getImageUrl, socialService } from '../../services/apiService';
+import { userService, orderService, bookingService, uploadService, adminOrderService, adminBookingService, dssService, adoptionService, getImageUrl, socialService, petProfileService } from '../../services/apiService';
 import ImageUpload from '../../components/ImageUpload';
 import {
   User,
@@ -31,7 +31,12 @@ import {
   Eye,
   EyeOff,
   LogOut,
-  Zap
+  Zap,
+  Plus,
+  Trash2,
+  PawPrint,
+  FileBadge,
+  Search
 } from 'lucide-react';
 import { getCitiesByProvince, getBarangaysByCity } from '../../constants/locationConstants';
 import storeApplicationService from '../../services/storeApplicationService';
@@ -141,6 +146,27 @@ const Profile = () => {
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+  const [myPets, setMyPets] = useState([]);
+  const [petsLoading, setPetsLoading] = useState(false);
+  const [showPetModal, setShowPetModal] = useState(false);
+  const [editingPet, setEditingPet] = useState(null);
+  const [petForm, setPetForm] = useState({
+    name: '',
+    type: 'Dog',
+    breed: '',
+    size: 'Small',
+    birthday: '',
+    gender: 'Male',
+    weight: 5,
+    color: '',
+    photo: null,
+    vaccinationCards: [null, null],
+    specialNotes: ''
+  });
+  const [petSubmitLoading, setPetSubmitLoading] = useState(false);
+  const [petPhotoPreview, setPetPhotoPreview] = useState(null);
+  const [vaccinationPreviews, setVaccinationPreviews] = useState([null, null]);
+  const [breedSearch, setBreedSearch] = useState('');
   const [stats, setStats] = useState({
     totalOrders: 0,
     totalRevenue: 0,
@@ -423,6 +449,175 @@ const Profile = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  useEffect(() => {
+    if (user && activeTab === 'pets') {
+      const fetchPets = async () => {
+        setPetsLoading(true);
+        try {
+          const response = await petProfileService.getMyPets();
+          setMyPets(response.data.pets || []);
+        } catch (error) {
+          console.error('Error fetching pets:', error);
+        } finally {
+          setPetsLoading(false);
+        }
+      };
+      fetchPets();
+    }
+  }, [user, activeTab]);
+
+  const calculateAge = (birthday) => {
+    if (!birthday) return 'N/A';
+    const birthDate = new Date(birthday);
+    const today = new Date();
+    let years = today.getFullYear() - birthDate.getFullYear();
+    const m = today.getMonth() - birthDate.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+      years--;
+    }
+    
+    if (years === 0) {
+      const months = (today.getFullYear() - birthDate.getFullYear()) * 12 + today.getMonth() - birthDate.getMonth();
+      return `${months} mos`;
+    }
+    return `${years} yrs`;
+  };
+
+  const handlePetPhotoChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setPetForm({ ...petForm, photo: file });
+      setPetPhotoPreview(URL.createObjectURL(file));
+    }
+  };
+
+  const handleVaccinationCardChange = (e, index) => {
+    const file = e.target.files[0];
+    if (file) {
+      const newVaccinationCards = [...petForm.vaccinationCards];
+      newVaccinationCards[index] = file;
+      setPetForm({ ...petForm, vaccinationCards: newVaccinationCards });
+
+      const newPreviews = [...vaccinationPreviews];
+      newPreviews[index] = URL.createObjectURL(file);
+      setVaccinationPreviews(newPreviews);
+    }
+  };
+
+  const handlePetSubmit = async (e) => {
+    e.preventDefault();
+    if (petForm.weight < 1 || petForm.weight > 50) {
+      toast.error('Weight must be between 1 and 50 kg');
+      return;
+    }
+
+    setPetSubmitLoading(true);
+    try {
+      let photoUrl = petForm.photo;
+      if (petForm.photo && typeof petForm.photo !== 'string') {
+        const formData = new FormData();
+        formData.append('image', petForm.photo);
+        const uploadRes = await uploadService.uploadImage(formData);
+        photoUrl = uploadRes.data.url;
+      }
+
+      const vaccinationUrls = [...petForm.vaccinationCards];
+      for (let i = 0; i < vaccinationUrls.length; i++) {
+        if (vaccinationUrls[i] && typeof vaccinationUrls[i] !== 'string') {
+          const formData = new FormData();
+          formData.append('image', vaccinationUrls[i]);
+          const uploadRes = await uploadService.uploadImage(formData);
+          vaccinationUrls[i] = uploadRes.data.url;
+        }
+      }
+
+      const dataToSubmit = {
+        ...petForm,
+        photo: photoUrl,
+        vaccinationCards: vaccinationUrls.filter(u => u !== null)
+      };
+
+      if (editingPet) {
+        const response = await petProfileService.updatePet(editingPet._id, dataToSubmit);
+        setMyPets(myPets.map(p => p._id === editingPet._id ? response.data.pet : p));
+        toast.success('Pet profile updated!');
+      } else {
+        const response = await petProfileService.createPet(dataToSubmit);
+        setMyPets([response.data.pet, ...myPets]);
+        toast.success('Pet profile created!');
+      }
+
+      setShowPetModal(false);
+      resetPetForm();
+    } catch (error) {
+      console.error('Error submitting pet:', error);
+      toast.error(error.response?.data?.message || 'Failed to save pet profile');
+    } finally {
+      setPetSubmitLoading(false);
+    }
+  };
+
+  const resetPetForm = () => {
+    setPetForm({
+      name: '',
+      type: 'Dog',
+      breed: '',
+      size: 'Small',
+      birthday: '',
+      gender: 'Male',
+      weight: 5,
+      color: '',
+      photo: null,
+      vaccinationCards: [null, null],
+      specialNotes: ''
+    });
+    setEditingPet(null);
+    setPetPhotoPreview(null);
+    setVaccinationPreviews([null, null]);
+    setBreedSearch('');
+  };
+
+  const handleEditPet = (pet) => {
+    setEditingPet(pet);
+    setPetForm({
+      name: pet.name,
+      type: pet.type,
+      breed: pet.breed,
+      size: pet.size,
+      birthday: pet.birthday.split('T')[0],
+      gender: pet.gender,
+      weight: pet.weight,
+      color: pet.color,
+      photo: pet.photo,
+      vaccinationCards: pet.vaccinationCards || [null, null],
+      specialNotes: pet.specialNotes || ''
+    });
+    setPetPhotoPreview(getImageUrl(pet.photo));
+    setVaccinationPreviews((pet.vaccinationCards || []).map(url => getImageUrl(url)));
+    setBreedSearch(pet.breed);
+    setShowPetModal(true);
+  };
+
+  const handleDeletePet = async (petId) => {
+    if (!window.confirm('Are you sure you want to remove this pet profile?')) return;
+    try {
+      await petProfileService.deletePet(petId);
+      setMyPets(myPets.filter(p => p._id !== petId));
+      toast.success('Pet profile removed');
+    } catch (error) {
+      toast.error('Failed to remove pet profile');
+    }
+  };
+
+  const dogBreeds = ['Beagle', 'Bulldog', 'Chihuahua', 'Dachshund', 'Dalmatian', 'French Bulldog', 'German Shepherd', 'Golden Retriever', 'Labrador Retriever', 'Poodle', 'Pug', 'Rottweiler', 'Shih Tzu', 'Siberian Husky', 'Yorkshire Terrier', 'Other'];
+  const catBreeds = ['Abyssinian', 'American Shorthair', 'Bengal', 'Birman', 'British Shorthair', 'Burmese', 'Maine Coon', 'Persian', 'Ragdoll', 'Russian Blue', 'Siamese', 'Sphynx', 'Other'];
+  
+  const getBreedsByType = (type) => {
+    if (type === 'Dog') return dogBreeds;
+    if (type === 'Cat') return catBreeds;
+    return ['Mixed', 'Other'];
   };
 
   const handleRemovePicture = () => {
@@ -1058,6 +1253,122 @@ const Profile = () => {
                 </div>
               )}
 
+              {activeTab === 'pets' && (
+                <div className="space-y-8 animate-fade-in p-2 sm:p-2 sm:p-0">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-50 pb-6">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 bg-primary-50 rounded-2xl flex items-center justify-center">
+                        <HeartIcon className="h-6 w-6 text-primary-600" />
+                      </div>
+                      <div>
+                        <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight">Personal Pet Fleet</h2>
+                        <p className="text-xs text-slate-400 font-bold uppercase tracking-widest leading-none mt-1">Manage your pet asset profiles</p>
+                      </div>
+                    </div>
+                    <button 
+                      onClick={() => { resetPetForm(); setShowPetModal(true); }}
+                      className="bg-primary-600 hover:bg-primary-700 text-white px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-xl shadow-primary-100 flex items-center justify-center gap-2 group"
+                    >
+                      <Plus className="h-4 w-4 group-hover:rotate-90 transition-transform duration-300" />
+                      Register New Pet
+                    </button>
+                  </div>
+
+                  {petsLoading ? (
+                    <div className="py-20 flex flex-col items-center justify-center space-y-4">
+                      <div className="w-12 h-12 border-4 border-primary-100 border-t-primary-600 rounded-full animate-spin" />
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Synchronizing Pet Data...</p>
+                    </div>
+                  ) : myPets.length === 0 ? (
+                    <div className="py-24 text-center bg-slate-50 rounded-[3rem] border-2 border-dashed border-slate-200">
+                      <div className="w-20 h-20 bg-white rounded-3xl shadow-xl flex items-center justify-center mx-auto mb-6">
+                        <HeartIcon className="h-8 w-8 text-primary-200" />
+                      </div>
+                      <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight mb-2">No Pets On Guard</h3>
+                      <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest max-w-xs mx-auto mb-8">
+                        You haven't registered any pet profiles yet. Start building your fleet for easier service booking.
+                      </p>
+                      <button 
+                        onClick={() => { resetPetForm(); setShowPetModal(true); }}
+                        className="bg-white text-primary-600 border-2 border-primary-100 hover:border-primary-600 px-8 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all shadow-sm"
+                      >
+                        Initiate First Registration
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                      {myPets.map(pet => (
+                        <div key={pet._id} className="group bg-white rounded-[2.5rem] p-6 shadow-sm hover:shadow-2xl transition-all duration-500 border border-slate-50 relative overflow-hidden">
+                          <div className="absolute top-0 right-0 p-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <div className="flex gap-2">
+                                <button onClick={() => handleEditPet(pet)} className="w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center hover:bg-blue-100 transition-colors">
+                                    <Edit2 className="h-3.5 w-3.5" />
+                                </button>
+                                <button onClick={() => handleDeletePet(pet._id)} className="w-8 h-8 rounded-full bg-red-50 text-red-600 flex items-center justify-center hover:bg-red-100 transition-colors">
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                </button>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-5">
+                            <div className="relative">
+                                <div className="w-24 h-24 rounded-[2rem] overflow-hidden bg-slate-100 shadow-inner group-hover:scale-105 transition-transform duration-500">
+                                {pet.photo ? (
+                                    <img src={getImageUrl(pet.photo)} alt={pet.name} className="w-full h-full object-cover" />
+                                ) : (
+                                    <div className="w-full h-full flex items-center justify-center bg-primary-50">
+                                    <HeartIcon className="h-10 w-10 text-primary-200" />
+                                    </div>
+                                )}
+                                </div>
+                                <div className="absolute -bottom-2 -right-2 bg-white p-2 rounded-xl shadow-lg border border-slate-50 capitalize">
+                                    <p className="text-[10px] font-black text-slate-800 leading-none">{pet.type === 'Dog' ? '🐶' : pet.type === 'Cat' ? '🐱' : '🐾'}</p>
+                                </div>
+                            </div>
+
+                            <div className="flex-1 space-y-1">
+                                <h3 className="text-2xl font-black text-slate-900 leading-none group-hover:text-primary-600 transition-colors capitalize">{pet.name}</h3>
+                                <div className="flex items-center gap-2">
+                                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{pet.breed}</span>
+                                    <span className="w-1 h-1 rounded-full bg-slate-200"></span>
+                                    <span className="text-[9px] font-black text-primary-500 uppercase tracking-widest">{calculateAge(pet.birthday)}</span>
+                                </div>
+                            </div>
+                          </div>
+
+                          <div className="mt-8 grid grid-cols-3 gap-4">
+                            <div className="bg-slate-50 rounded-2xl p-4 flex flex-col items-center justify-center space-y-1 group-hover:bg-primary-50 transition-colors">
+                                <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Gender</p>
+                                <p className="text-xs font-black text-slate-800 uppercase">{pet.gender}</p>
+                            </div>
+                            <div className="bg-slate-50 rounded-2xl p-4 flex flex-col items-center justify-center space-y-1 group-hover:bg-primary-50 transition-colors">
+                                <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Weight</p>
+                                <p className="text-xs font-black text-slate-800">{pet.weight} kg</p>
+                            </div>
+                            <div className="bg-slate-50 rounded-2xl p-4 flex flex-col items-center justify-center space-y-1 group-hover:bg-primary-50 transition-colors">
+                                <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Size</p>
+                                <p className="text-xs font-black text-slate-800 uppercase">{pet.size}</p>
+                            </div>
+                          </div>
+                          
+                          <div className="mt-6 flex items-center justify-between border-t border-slate-50 pt-5">
+                            <div className="flex -space-x-2">
+                                {(pet.vaccinationCards || []).map((card, idx) => (
+                                    <div key={idx} className="w-8 h-8 rounded-lg border-2 border-white bg-slate-100 overflow-hidden shadow-sm" title={`Vax Card ${idx + 1}`}>
+                                        <img src={getImageUrl(card)} alt="vax" className="w-full h-full object-cover" />
+                                    </div>
+                                ))}
+                            </div>
+                            <button onClick={() => handleEditPet(pet)} className="text-[10px] font-black text-slate-300 uppercase tracking-widest hover:text-primary-600 transition-colors flex items-center gap-1">
+                                Open Dossier <ChevronRight className="h-3 w-3" />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
               {activeTab === 'security' && (
                 <div className="space-y-8 sm:space-y-12 animate-in fade-in slide-in-from-right-8 duration-700">
                   <header>
@@ -1845,6 +2156,281 @@ const Profile = () => {
                   No activity logs found.
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Pet Registration Modal */}
+      {showPetModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-md animate-fade-in" onClick={() => setShowPetModal(false)} />
+          <div className="bg-white w-full max-w-4xl max-h-[90vh] overflow-hidden rounded-[3rem] shadow-2xl relative z-10 flex flex-col animate-scale-in">
+            {/* Header */}
+            <div className="px-10 py-8 border-b border-slate-50 flex items-center justify-between bg-slate-50/50">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-primary-600 rounded-2xl flex items-center justify-center shadow-lg shadow-primary-100">
+                  <PawPrint className="h-6 w-6 text-white" />
+                </div>
+                <div>
+                    <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tight">{editingPet ? 'Update Pet Dossier' : 'Register New Asset'}</h2>
+                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest leading-none mt-1">Complete your pet's biometric profile</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setShowPetModal(false)}
+                className="w-10 h-10 rounded-full bg-white hover:bg-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-900 transition-all shadow-sm"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Form Body */}
+            <div className="flex-1 overflow-y-auto px-10 py-8 scrollbar-hide">
+              <form id="petForm" onSubmit={handlePetSubmit} className="space-y-12">
+                
+                {/* 1. Base Biometrics */}
+                <div className="space-y-10">
+                    <div className="flex items-center gap-4 border-b border-slate-50 pb-3">
+                        <FileText className="h-4 w-4 text-primary-500" />
+                        <h3 className="text-[10px] font-black text-slate-800 uppercase tracking-[0.3em]">Identification & Base Metrics</h3>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-12 gap-10">
+                        {/* Profile Photo */}
+                        <div className="md:col-span-3 flex flex-col items-center space-y-4">
+                           <div className="relative group cursor-pointer w-full aspect-square bg-slate-50 rounded-[2.5rem] border-2 border-dashed border-slate-200 flex items-center justify-center overflow-hidden transition-all hover:border-primary-300">
+                                {petPhotoPreview ? (
+                                    <img src={petPhotoPreview} alt="preview" className="w-full h-full object-cover" />
+                                ) : (
+                                    <div className="flex flex-col items-center space-y-2">
+                                        <Camera className="h-8 w-8 text-slate-300" />
+                                        <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Upload Photo</p>
+                                    </div>
+                                )}
+                                <input 
+                                    type="file" 
+                                    accept="image/*" 
+                                    onChange={handlePetPhotoChange}
+                                    className="absolute inset-0 opacity-0 cursor-pointer" 
+                                />
+                                <div className="absolute inset-0 bg-primary-600/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                                    <Upload className="h-8 w-8 text-white" />
+                                </div>
+                           </div>
+                           <p className="text-[8px] font-black text-slate-300 uppercase tracking-widest text-center">Identity Scan Required</p>
+                        </div>
+
+                        {/* Text Fields */}
+                        <div className="md:col-span-9 grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-10">
+                            <div className="space-y-2">
+                                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Pet Name</label>
+                                <input 
+                                    required
+                                    type="text" 
+                                    value={petForm.name}
+                                    onChange={(e) => setPetForm({ ...petForm, name: e.target.value })}
+                                    className="w-full px-5 py-4 bg-slate-50 border-2 border-slate-50 rounded-2xl focus:bg-white focus:border-primary-500 outline-none font-bold text-sm transition-all shadow-sm"
+                                    placeholder="e.g. Commander Fluff"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Species Type</label>
+                                <select 
+                                    required
+                                    value={petForm.type}
+                                    onChange={(e) => setPetForm({ ...petForm, type: e.target.value, breed: '' })}
+                                    className="w-full px-5 py-4 bg-slate-50 border-2 border-slate-50 rounded-2xl focus:bg-white focus:border-primary-500 outline-none font-bold text-sm transition-all shadow-sm appearance-none cursor-pointer"
+                                >
+                                    <option value="Dog">Dog</option>
+                                    <option value="Cat">Cat</option>
+                                    <option value="Bird">Bird</option>
+                                    <option value="Rabbit">Rabbit</option>
+                                    <option value="Hamster">Hamster</option>
+                                    <option value="Other">Other</option>
+                                </select>
+                            </div>
+                            <div className="space-y-2 relative">
+                                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Searchable Breed</label>
+                                <div className="relative">
+                                    <input 
+                                        required
+                                        type="text"
+                                        value={petForm.breed}
+                                        onChange={(e) => setPetForm({ ...petForm, breed: e.target.value })}
+                                        onFocus={() => setBreedSearch('')}
+                                        className="w-full px-5 py-4 bg-slate-50 border-2 border-slate-50 rounded-2xl focus:bg-white focus:border-primary-500 outline-none font-bold text-sm transition-all shadow-sm pr-12"
+                                        placeholder="Breed Type"
+                                    />
+                                    <Search className="absolute right-5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300" />
+                                    
+                                    {/* Quick Suggestions */}
+                                    <div className="absolute top-full left-0 right-0 z-50 mt-2 bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden opacity-0 invisible group-focus-within:opacity-100 group-focus-within:visible transition-all max-h-48 overflow-y-auto hidden group-focus-within:block">
+                                        {getBreedsByType(petForm.type).map(b => (
+                                            <button key={b} type="button" onClick={() => setPetForm({ ...petForm, breed: b })} className="w-full text-left px-5 py-3 text-xs font-bold hover:bg-slate-50 transition-colors">{b}</button>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Gender</label>
+                                <div className="flex bg-slate-50 p-1.5 rounded-2xl">
+                                    {['Male', 'Female'].map(g => (
+                                        <button 
+                                            key={g} 
+                                            type="button"
+                                            onClick={() => setPetForm({ ...petForm, gender: g })}
+                                            className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${petForm.gender === g ? 'bg-white text-primary-600 shadow-md' : 'text-slate-400'}`}
+                                        >
+                                            {g}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* 2. Lifecycle & Growth */}
+                <div className="space-y-10">
+                    <div className="flex items-center gap-4 border-b border-slate-50 pb-3">
+                        <Zap className="h-4 w-4 text-amber-500" />
+                        <h3 className="text-[10px] font-black text-slate-800 uppercase tracking-[0.3em]">Lifecycle & Calibration</h3>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8">
+                        <div className="space-y-2">
+                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Birthday</label>
+                            <input 
+                                required
+                                type="date" 
+                                value={petForm.birthday}
+                                onChange={(e) => setPetForm({ ...petForm, birthday: e.target.value })}
+                                className="w-full px-4 py-4 bg-slate-50 border-2 border-slate-50 rounded-2xl focus:bg-white focus:border-primary-500 outline-none font-bold text-xs sm:text-sm transition-all shadow-sm"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Current Age</label>
+                            <div className="w-full px-5 py-4 bg-slate-100/50 border-2 border-slate-100/50 rounded-2xl font-black text-sm text-slate-500 flex items-center">
+                                {calculateAge(petForm.birthday)}
+                            </div>
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Measured Weight (KG)</label>
+                            <input 
+                                required
+                                type="number" 
+                                min="1"
+                                max="50"
+                                value={petForm.weight}
+                                onChange={(e) => setPetForm({ ...petForm, weight: Number(e.target.value) })}
+                                className={`w-full px-5 py-4 bg-slate-50 border-2 rounded-2xl focus:bg-white outline-none font-bold text-sm transition-all shadow-sm ${petForm.weight < 1 || petForm.weight > 50 ? 'border-red-300 focus:border-red-500' : 'border-slate-50 focus:border-primary-500'}`}
+                            />
+                            <p className="text-[8px] font-black text-slate-300 uppercase tracking-tighter ml-1">Operational Range: 1-50kg</p>
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Breed Size</label>
+                            <select 
+                                required
+                                value={petForm.size}
+                                onChange={(e) => setPetForm({ ...petForm, size: e.target.value })}
+                                className="w-full px-5 py-4 bg-slate-50 border-2 border-slate-50 rounded-2xl focus:bg-white focus:border-primary-500 outline-none font-bold text-sm transition-all shadow-sm appearance-none cursor-pointer"
+                            >
+                                <option value="Small">Small</option>
+                                <option value="Medium">Medium</option>
+                                <option value="Large">Large</option>
+                                <option value="Extra Large">Extra Large (XL/XXL)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-6">
+                        <div className="space-y-2">
+                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Color / Marking Matrix</label>
+                            <input 
+                                type="text" 
+                                value={petForm.color}
+                                onChange={(e) => setPetForm({ ...petForm, color: e.target.value })}
+                                className="w-full px-5 py-4 bg-slate-50 border-2 border-slate-50 rounded-2xl focus:bg-white focus:border-primary-500 outline-none font-bold text-sm transition-all shadow-sm"
+                                placeholder="e.g. Brindle with white socks"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Special Medical Notes</label>
+                            <input 
+                                type="text" 
+                                value={petForm.specialNotes}
+                                onChange={(e) => setPetForm({ ...petForm, specialNotes: e.target.value })}
+                                className="w-full px-5 py-4 bg-slate-50 border-2 border-slate-50 rounded-2xl focus:bg-white focus:border-primary-500 outline-none font-bold text-sm transition-all shadow-sm"
+                                placeholder="Allergies or behavior flags"
+                            />
+                        </div>
+                    </div>
+                </div>
+
+                {/* 3. Medical Credentials */}
+                <div className="space-y-10">
+                    <div className="flex items-center gap-4 border-b border-slate-50 pb-3">
+                        <FileBadge className="h-4 w-4 text-emerald-500" />
+                        <h3 className="text-[10px] font-black text-slate-800 uppercase tracking-[0.3em]">Vaccination Credentials</h3>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-10">
+                        {[0, 1].map(idx => (
+                            <div key={idx} className="space-y-4">
+                                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Vaccination Record {idx + 1}</label>
+                                <div className="relative group w-full h-48 bg-slate-50 rounded-3xl border-2 border-dashed border-slate-200 flex items-center justify-center overflow-hidden transition-all hover:border-emerald-300">
+                                    {vaccinationPreviews[idx] ? (
+                                        <img src={vaccinationPreviews[idx]} alt={`vax-${idx}`} className="w-full h-full object-cover" />
+                                    ) : (
+                                        <div className="flex flex-col items-center space-y-2">
+                                            <Upload className="h-6 w-6 text-slate-300" />
+                                            <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Upload Scan {idx + 1}</p>
+                                        </div>
+                                    )}
+                                    <input 
+                                        type="file" 
+                                        accept="image/*"
+                                        onChange={(e) => handleVaccinationCardChange(e, idx)}
+                                        className="absolute inset-0 opacity-0 cursor-pointer"
+                                    />
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                    <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest text-center italic opacity-60">Providing clear scans expedites service authorization</p>
+                </div>
+              </form>
+            </div>
+
+            {/* Footer */}
+            <div className="px-10 py-8 border-t border-slate-50 bg-slate-50/50 flex flex-col sm:flex-row items-center justify-between gap-4">
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-tight text-center sm:text-left">
+                    * Ensure all biometric data is accurate.<br />
+                    System checks will verify vaccination status.
+                </p>
+                <div className="flex items-center gap-4 w-full sm:w-auto">
+                    <button 
+                        type="button"
+                        onClick={() => setShowPetModal(false)}
+                        className="flex-1 sm:flex-none px-10 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-900 transition-colors"
+                    >
+                        Cancel
+                    </button>
+                    <button 
+                        type="submit"
+                        form="petForm"
+                        disabled={petSubmitLoading}
+                        className="flex-1 sm:flex-none bg-primary-600 hover:bg-primary-700 text-white px-12 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all shadow-xl shadow-primary-200 disabled:opacity-50 flex items-center justify-center gap-2 group"
+                    >
+                        {petSubmitLoading ? (
+                            <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                        ) : (
+                            <Save className="h-4 w-4 group-hover:scale-110 transition-transform" />
+                        )}
+                        {editingPet ? 'Commit Update' : 'Initialize Profile'}
+                    </button>
+                </div>
             </div>
           </div>
         </div>
