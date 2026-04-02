@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useSearchParams, Link } from 'react-router-dom';
+import { useSearchParams, Link, useNavigate } from 'react-router-dom';
 import { petService, productService, serviceService, storeService } from '../../services/apiService';
 import {
   Search as SearchIcon,
@@ -44,6 +44,7 @@ const normalizeString = (str) => {
 };
 
 const Search = () => {
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const query = searchParams.get('q') || '';
   const [searchQuery, setSearchQuery] = useState(query);
@@ -248,8 +249,12 @@ const Search = () => {
   const totalResults = filteredResults.pets.length + filteredResults.products.length + filteredResults.services.length + filteredResults.stores.length;
 
   const renderPetCard = (pet) => (
-    <Link key={pet._id} to={`/pets/${pet._id}`} className="block group animate-slide-up">
-      <div className="bg-white rounded-[32px] shadow-sm hover:shadow-2xl hover:shadow-primary-200/50 transition-all duration-500 overflow-hidden border border-slate-100 group-hover:border-primary-100">
+    <div 
+      key={pet._id} 
+      onClick={() => navigate(`/pets/${pet._id}`)}
+      className="block group animate-slide-up cursor-pointer"
+    >
+      <div className="bg-white rounded-[32px] shadow-sm hover:shadow-2xl hover:shadow-primary-200/50 transition-all duration-500 overflow-hidden border border-slate-100 group-hover:border-primary-100 h-full flex flex-col">
         <div className="h-48 bg-slate-50 flex items-center justify-center relative overflow-hidden">
           {pet.images && pet.images.length > 0 ? (
             <img src={pet.images[0]} alt={pet.name} className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110" />
@@ -263,16 +268,19 @@ const Search = () => {
             </span>
           </div>
         </div>
-        <div className="p-5">
+        <div className="p-5 flex-1 flex flex-col">
           <h3 className="font-black text-slate-900 group-hover:text-primary-600 transition-colors uppercase tracking-tight truncate">{pet.name}</h3>
           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">{pet.breed}</p>
 
-          <div className="flex items-center gap-2 mb-4 bg-slate-50 p-2 rounded-xl border border-slate-100 group-hover:bg-primary-50 group-hover:border-primary-100 transition-colors">
-            <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center shadow-sm">
+          <div 
+            onClick={(e) => { e.stopPropagation(); navigate(`/stores/${pet.store?._id}`); }}
+            className="flex items-center gap-2 mb-4 bg-slate-50 p-2 rounded-xl border border-slate-100 hover:bg-primary-50 hover:border-primary-100 transition-colors cursor-pointer group/store"
+          >
+            <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center shadow-sm shrink-0 group-hover/store:bg-primary-50">
               <StoreIcon className="h-4 w-4 text-primary-500" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-[9px] font-black text-slate-900 uppercase truncate">
+              <p className="text-[9px] font-black text-slate-900 uppercase truncate group-hover/store:text-primary-600 transition-colors">
                 {pet.store?.name || 'Local Breeder'}
               </p>
               <div className="flex items-center gap-1">
@@ -284,33 +292,33 @@ const Search = () => {
             </div>
           </div>
 
-          <div className="flex justify-between items-center pt-3 border-t border-slate-50 group-hover:border-primary-50">
-            <span className="text-lg font-black text-primary-600">₱{pet.price?.toLocaleString()}</span>
-            <div className="w-8 h-8 rounded-full bg-primary-50 flex items-center justify-center text-primary-600 opacity-0 group-hover:opacity-100 transition-all transform translate-x-4 group-hover:translate-x-0">
+          <div className="mt-auto flex justify-between items-center pt-3 border-t border-slate-50 group-hover:border-primary-50">
+            <div>
+              <span className="text-lg font-black text-primary-600 block">₱{pet.price?.toLocaleString()}</span>
+              {pet.distance && (
+                <div className="mt-1 text-[8px] font-black text-secondary-600 uppercase tracking-widest flex items-center gap-1">
+                  <Navigation className="h-2.5 w-2.5" />
+                  {pet.distance.toFixed(1)} km away
+                </div>
+              )}
+            </div>
+            <div className="w-8 h-8 rounded-full bg-primary-50 flex items-center justify-center text-primary-600 opacity-0 group-hover:opacity-100 transition-all">
               <Heart className="h-4 w-4 fill-current" />
-            </div>
-          </div>
-          {pet.distance && (
-            <div className="mt-2 text-[8px] font-black text-secondary-600 uppercase tracking-widest flex items-center gap-1">
-              <Navigation className="h-2.5 w-2.5" />
-              {pet.distance.toFixed(1)} km away
-            </div>
-          )}
-          <div className="mt-auto flex justify-between items-center pt-2 sm:pt-3 border-t border-slate-50 group-hover:border-primary-50">
-            <span className="text-sm sm:text-lg font-black text-primary-600">₱{pet.price?.toLocaleString()}</span>
-            <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-primary-50 flex items-center justify-center text-primary-600 sm:opacity-0 group-hover:opacity-100 transition-all">
-              <Heart className="h-3 w-3 sm:h-4 sm:w-4 fill-current" />
             </div>
           </div>
         </div>
       </div>
-    </Link>
+    </div>
   );
 
   const renderProductCard = (product) => (
-    <Link key={product._id} to={`/products/${product._id}`} className="block group animate-slide-up">
+    <div 
+      key={product._id} 
+      onClick={() => navigate(`/products/${product._id}`)}
+      className="block group animate-slide-up cursor-pointer"
+    >
       <div className="bg-white rounded-2xl sm:rounded-[32px] shadow-sm hover:shadow-2xl hover:shadow-primary-200/50 transition-all duration-500 overflow-hidden border border-slate-100 group-hover:border-primary-100 h-full flex flex-col">
-        <div className="h-32 sm:h-48 bg-slate-50 flex items-center justify-center relative overflow-hidden">
+        <div className="h-32 sm:h-48 bg-slate-50 flex items-center justify-center relative overflow-hidden shrink-0">
           {product.images && product.images.length > 0 ? (
             <img src={product.images[0]} alt={product.name} className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110" />
           ) : (
@@ -323,12 +331,15 @@ const Search = () => {
         <div className="p-3 sm:p-5 flex-1 flex flex-col">
           <h3 className="text-xs sm:text-base font-black text-slate-900 group-hover:text-primary-600 transition-colors uppercase tracking-tight truncate mb-1">{product.name}</h3>
 
-          <div className="hidden sm:flex items-center gap-2 mb-4 bg-slate-50 p-2 rounded-xl border border-slate-100 group-hover:bg-primary-50 group-hover:border-primary-100 transition-colors">
-            <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center shadow-sm">
+          <div 
+            onClick={(e) => { e.stopPropagation(); navigate(`/stores/${product.store?._id}`); }}
+            className="hidden sm:flex items-center gap-2 mb-4 bg-slate-50 p-2 rounded-xl border border-slate-100 hover:bg-primary-50 hover:border-primary-100 transition-colors group/store"
+          >
+            <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center shadow-sm shrink-0 group-hover/store:bg-primary-50">
               <StoreIcon className="h-4 w-4 text-primary-500" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-[9px] font-black text-slate-900 uppercase truncate">
+              <p className="text-[9px] font-black text-slate-900 uppercase truncate group-hover/store:text-primary-600 transition-colors">
                 {product.store?.name || 'Local Store'}
               </p>
               <div className="flex items-center gap-1">
@@ -348,13 +359,17 @@ const Search = () => {
           </div>
         </div>
       </div>
-    </Link>
+    </div>
   );
 
   const renderServiceCard = (service) => (
-    <Link key={service._id} to={`/services/${service._id}`} className="block group animate-slide-up">
+    <div 
+      key={service._id} 
+      onClick={() => navigate(`/services/${service._id}`)}
+      className="block group animate-slide-up cursor-pointer"
+    >
       <div className="bg-white rounded-2xl sm:rounded-[32px] shadow-sm hover:shadow-2xl hover:shadow-primary-200/50 transition-all duration-500 overflow-hidden border border-slate-100 group-hover:border-primary-100 h-full flex flex-col">
-        <div className="h-32 sm:h-48 bg-gradient-to-br from-primary-600 to-secondary-500 flex items-center justify-center relative overflow-hidden">
+        <div className="h-32 sm:h-48 bg-gradient-to-br from-primary-600 to-secondary-500 flex items-center justify-center relative overflow-hidden shrink-0">
           {service.images?.[0] ? (
             <img src={service.images[0]} alt={service.name} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
           ) : (
@@ -369,12 +384,15 @@ const Search = () => {
         <div className="p-3 sm:p-5 flex-1 flex flex-col">
           <h3 className="text-xs sm:text-base font-black text-slate-900 group-hover:text-primary-600 transition-colors uppercase tracking-tight truncate mb-1">{service.name}</h3>
 
-          <div className="hidden sm:flex items-center gap-2 mb-4 bg-slate-50 p-2 rounded-xl border border-slate-100 group-hover:bg-primary-50 group-hover:border-primary-100 transition-colors">
-            <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center shadow-sm">
+          <div 
+            onClick={(e) => { e.stopPropagation(); navigate(`/stores/${service.store?._id}`); }}
+            className="hidden sm:flex items-center gap-2 mb-4 bg-slate-50 p-2 rounded-xl border border-slate-100 hover:bg-primary-50 hover:border-primary-100 transition-colors group/store"
+          >
+            <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center shadow-sm shrink-0 group-hover/store:bg-primary-50">
               <StoreIcon className="h-4 w-4 text-primary-500" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-[9px] font-black text-slate-900 uppercase truncate">
+              <p className="text-[9px] font-black text-slate-900 uppercase truncate group-hover/store:text-primary-600 transition-colors">
                 {service.store?.name || 'Local Store'}
               </p>
               <div className="flex items-center gap-1">
@@ -395,7 +413,7 @@ const Search = () => {
           </div>
         </div>
       </div>
-    </Link>
+    </div>
   );
 
   const renderStoreCard = (store) => (
@@ -640,8 +658,16 @@ const Search = () => {
                         </div>
                         <div className="flex-1 min-w-0">
                           <h3 className="text-[10px] sm:text-lg font-black text-slate-900 truncate uppercase mb-0.5">{pet.name}</h3>
-                          <p className="text-[7px] sm:text-xs font-bold text-slate-400 uppercase tracking-tighter truncate leading-none mb-2">{pet.breed}</p>
-                          <p className="text-[10px] sm:text-xl font-black text-primary-600 tracking-tighter">₱{pet.price?.toLocaleString()}</p>
+                          <p className="text-[7px] sm:text-xs font-bold text-slate-400 uppercase tracking-tighter truncate leading-none mb-1">{pet.breed}</p>
+                          <div className="flex items-center justify-between mt-auto pt-2 border-t border-slate-50">
+                            <p className="text-[10px] sm:text-xl font-black text-primary-600 tracking-tighter">₱{pet.price?.toLocaleString()}</p>
+                            <span 
+                              onClick={(e) => { e.preventDefault(); e.stopPropagation(); navigate(`/stores/${pet.store?._id}`); }}
+                              className="text-[7px] font-black text-slate-400 uppercase tracking-widest hover:text-primary-600 transition-colors"
+                            >
+                              {pet.store?.name}
+                            </span>
+                          </div>
                         </div>
                       </Link>
                     ))}
@@ -664,8 +690,16 @@ const Search = () => {
                         </div>
                         <div className="flex-1 min-w-0">
                           <h3 className="text-[10px] sm:text-lg font-black text-slate-900 truncate uppercase mb-0.5">{product.name}</h3>
-                          <p className="text-[7px] sm:text-xs font-bold text-slate-400 uppercase tracking-tighter truncate leading-none mb-2">{product.category}</p>
-                          <p className="text-[10px] sm:text-xl font-black text-slate-900 tracking-tighter">₱{product.price?.toLocaleString()}</p>
+                          <p className="text-[7px] sm:text-xs font-bold text-slate-400 uppercase tracking-tighter truncate leading-none mb-1">{product.category}</p>
+                          <div className="flex items-center justify-between mt-auto pt-2 border-t border-slate-50">
+                            <p className="text-[10px] sm:text-xl font-black text-slate-900 tracking-tighter">₱{product.price?.toLocaleString()}</p>
+                            <span 
+                              onClick={(e) => { e.preventDefault(); e.stopPropagation(); navigate(`/stores/${product.store?._id}`); }}
+                              className="text-[7px] font-black text-slate-400 uppercase tracking-widest hover:text-primary-600 transition-colors"
+                            >
+                              {product.store?.name}
+                            </span>
+                          </div>
                         </div>
                       </Link>
                     ))}
@@ -688,7 +722,15 @@ const Search = () => {
                         </div>
                         <div className="flex-1 min-w-0">
                           <h4 className="text-[11px] sm:text-xl font-black text-slate-900 uppercase truncate leading-tight">{service.name}</h4>
-                          <p className="text-[8px] sm:text-sm text-slate-400 font-bold uppercase tracking-widest leading-none mt-1">{service.duration} MIN</p>
+                          <div className="flex items-center gap-2 mt-1">
+                            <p className="text-[8px] sm:text-sm text-slate-400 font-bold uppercase tracking-widest leading-none">{service.duration} MIN</p>
+                            <span 
+                              onClick={(e) => { e.preventDefault(); e.stopPropagation(); navigate(`/stores/${service.store?._id}`); }}
+                              className="text-[7px] font-black text-slate-400 uppercase tracking-widest hover:text-primary-600 transition-colors"
+                            >
+                              {service.store?.name}
+                            </span>
+                          </div>
                         </div>
                         <div className="text-right shrink-0">
                           <p className="text-xs sm:text-2xl font-black text-slate-900 tracking-tighter">₱{service.price?.toLocaleString()}</p>

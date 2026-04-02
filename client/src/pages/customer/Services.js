@@ -353,7 +353,10 @@ const Services = () => {
 
                 {/* Store Identifier - Fixed at Bottom */}
                 {service.store && (
-                  <div className="flex items-center gap-4 p-4 bg-slate-50 rounded-2xl border border-slate-100 group-hover:bg-primary-50 group-hover:border-primary-100 transition-all">
+                  <Link 
+                    to={`/stores/${service.store._id}`}
+                    className="flex items-center gap-4 p-4 bg-slate-50 rounded-2xl border border-slate-100 group-hover:bg-primary-50 group-hover:border-primary-100 transition-all hover:scale-[1.02] active:scale-95 translate-y-2 mb-2"
+                  >
                     <div className="w-12 h-12 rounded-xl bg-white flex items-center justify-center shadow-sm shrink-0">
                       <Store className="h-6 w-6 text-primary-600" />
                     </div>
@@ -361,14 +364,7 @@ const Services = () => {
                       <p className="text-[11px] font-black text-slate-900 uppercase truncate leading-tight mb-1">
                         {service.store.name}
                       </p>
-                      <a
-                        href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-                          `${service.store.contactInfo?.address?.street || ''}, ${service.store.contactInfo?.address?.barangay || ''}, ${service.store.contactInfo?.address?.city || ''}, Cavite`
-                        )}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-[10px] font-bold text-slate-500 hover:text-primary-600 transition-colors uppercase flex items-center gap-1.5 group/addr"
-                      >
+                      <div className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1.5 group/addr">
                         <MapPin className="h-3 w-3 text-primary-400 group-hover/addr:text-primary-600 transition-colors" />
                         <span className="truncate">
                           {[
@@ -378,9 +374,9 @@ const Services = () => {
                             'Cavite'
                           ].filter(Boolean).join(', ')}
                         </span>
-                      </a>
+                      </div>
                     </div>
-                  </div>
+                  </Link>
                 )}
 
                 {/* Enhanced Footer Button */}

@@ -494,16 +494,19 @@ const Products = () => {
                     </div>
 
                     {/* Store Node */}
-                    <div className="mt-4 pt-3 border-t border-slate-50 flex items-center justify-between">
+                    <Link 
+                      to={`/stores/${product.store?._id}`}
+                      className="mt-4 pt-3 border-t border-slate-50 flex items-center justify-between group/store hover:bg-slate-50/50 transition-colors -mx-4 px-4"
+                    >
                       <div className="flex items-center gap-2 min-w-0">
-                        <div className="w-5 h-5 rounded-lg bg-slate-50 flex items-center justify-center shrink-0">
+                        <div className="w-5 h-5 rounded-lg bg-slate-50 flex items-center justify-center shrink-0 group-hover/store:bg-primary-50 transition-colors">
                           <MapPin className="h-2.5 w-2.5 text-primary-500" />
                         </div>
-                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-tighter truncate">
+                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-tighter truncate group-hover/store:text-primary-600 transition-colors">
                           {product.store?.name} • {product.store?.contactInfo?.address?.city || 'Cavite'}
                         </span>
                       </div>
-                    </div>
+                    </Link>
                   </div>
                 </div>
               ))}
