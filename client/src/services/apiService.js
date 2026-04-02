@@ -34,19 +34,30 @@ api.interceptors.request.use(
   }
 );
 
+// Debounce to prevent multiple simultaneous 401s from triggering multiple logouts
+let isHandling401 = false;
+
 // Response interceptor to handle errors
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      const publicPaths = ['/login', '/register', '/'];
-      const isPublicPath = publicPaths.includes(window.location.pathname);
+      // ONLY clear session and redirect if:
+      // 1. The token truly doesn't exist (not a transient error)
+      // 2. We're not already handling a 401 (debounce)
+      // 3. We're not on a public page already
+      const token = localStorage.getItem('token');
+      const publicPaths = ['/login', '/register', '/oauth-callback'];
+      const isPublicPath = publicPaths.some(p => window.location.pathname.startsWith(p));
+      const isOnRoot = window.location.pathname === '/';
 
-      if (!isPublicPath) {
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
+      if (!token && !isPublicPath && !isOnRoot && !isHandling401) {
+        isHandling401 = true;
+        setTimeout(() => { isHandling401 = false; }, 3000);
         window.location.href = '/';
       }
+      // If token exists, do NOT clear it - this may be a transient 401
+      // just let the error propagate naturally
     }
     
     // Handle Account Disabled (403)

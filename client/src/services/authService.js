@@ -28,14 +28,9 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    // Only logout on 401 if it's not a network error or server issue
-    if (error.response?.status === 401 && error.response?.data?.message !== 'Token expired') {
-      SessionService.clearAllSessions();
-      // Only redirect if not already on login page
-      if (window.location.pathname !== '/') {
-        window.location.href = '/';
-      }
-    }
+    // NOTE: We intentionally do NOT clear sessions or redirect here.
+    // Doing so on any 401 causes unexpected logouts on back navigation.
+    // Session clearing is ONLY done by the explicit logout() function below.
     return Promise.reject(error);
   }
 );
