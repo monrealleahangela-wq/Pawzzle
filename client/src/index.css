@@ -44,8 +44,9 @@ html {
 }
 
 /* ==========================================================================
-   GLOBAL UI COMPACTION (Forms & Details)
-   Reduces oversized elements, paddings, and inputs for a slimmer UI.
+   GLOBAL UI COMPACTION (Forms, Details & Modals)
+   Uncompromising reduction of oversized elements, massive fonts, and bulky paddings 
+   across the ENTIRE system.
    ========================================================================== */
 
 /* Universal Input Compaction */
@@ -63,53 +64,58 @@ textarea,
   border-radius: 0.4rem !important;
 }
 
-/* Target bulky paddings in layout containers globally */
-.p-6, .p-8, .p-10, .p-12,
-.p-16, .p-20, .p-24,
-.sm\:p-8, .sm\:p-10, .sm\:p-12,
-.md\:p-8, .md\:p-10, .md\:p-12,
-.lg\:p-8, .lg\:p-10, .lg\:p-12 {
-  padding: clamp(1rem, 2vw + 0.25rem, 1.75rem) !important;
+/* Force massive paddings down (targeting all variants, e.g. sm:p-12, lg:p-16) */
+[class*="p-8"], [class*="p-10"], [class*="p-12"], [class*="p-14"], [class*="p-16"], [class*="p-20"], [class*="p-24"] {
+  padding: clamp(1rem, 2vw, 1.5rem) !important;
+}
+[class*="px-8"], [class*="px-10"], [class*="px-12"], [class*="px-14"], [class*="px-16"], [class*="px-20"], [class*="px-24"] {
+  padding-left: clamp(1rem, 2vw, 1.5rem) !important;
+  padding-right: clamp(1rem, 2vw, 1.5rem) !important;
+}
+[class*="py-8"], [class*="py-10"], [class*="py-12"], [class*="py-14"], [class*="py-16"], [class*="py-20"], [class*="py-24"] {
+  padding-top: clamp(1rem, 2vw, 1.5rem) !important;
+  padding-bottom: clamp(1rem, 2vw, 1.5rem) !important;
 }
 
-.px-6, .px-8, .px-10, .px-12,
-.py-6, .py-8, .py-10, .py-12,
-.sm\:px-8, .sm\:px-10, .sm\:py-8, .sm\:py-10 {
-  padding-left: clamp(1rem, 2vw + 0.25rem, 1.75rem) !important;
-  padding-right: clamp(1rem, 2vw + 0.25rem, 1.75rem) !important;
-}
-
-/* Target bulky vertical spacing globally */
-.space-y-6 > :not([hidden]) ~ :not([hidden]) {
-  margin-top: 1rem !important;
-}
-.space-y-8 > :not([hidden]) ~ :not([hidden]) {
-  margin-top: 1.25rem !important;
-}
-.space-y-10 > :not([hidden]) ~ :not([hidden]) {
+/* Force massive spacing down */
+[class*="space-y-6"] > :not([hidden]) ~ :not([hidden]) { margin-top: 1rem !important; }
+[class*="space-y-8"] > :not([hidden]) ~ :not([hidden]) { margin-top: 1.25rem !important; }
+[class*="space-y-10"] > :not([hidden]) ~ :not([hidden]),
+[class*="space-y-12"] > :not([hidden]) ~ :not([hidden]),
+[class*="space-y-16"] > :not([hidden]) ~ :not([hidden]) {
   margin-top: 1.5rem !important;
 }
-.gap-6 { gap: 1rem !important; }
-.gap-8 { gap: 1.25rem !important; }
 
-/* Reduce text sizes proportionally to compress UI footprint */
-/* Keep base typography the same relative rem output, but cap maximum sizes */
-.text-lg { font-size: 0.95rem !important; line-height: 1.5rem !important; }
-.text-xl { font-size: 1.1rem !important; line-height: 1.6rem !important; }
-.text-2xl { font-size: 1.25rem !important; line-height: 1.75rem !important; }
-.text-3xl { font-size: 1.45rem !important; line-height: 1.85rem !important; }
-.text-4xl { font-size: 1.75rem !important; line-height: 2rem !important; }
-.text-5xl { font-size: 2rem !important; line-height: 2.25rem !important; }
+/* Force extreme texts to remain completely constrained */
+[class*="text-4xl"] { font-size: 1.5rem !important; line-height: 1.75rem !important; }
+[class*="text-5xl"], [class*="text-6xl"] { font-size: 1.75rem !important; line-height: 2rem !important; }
+[class*="text-7xl"], [class*="text-8xl"], [class*="text-9xl"] { font-size: 2rem !important; line-height: 2.25rem !important; }
 
-/* Further shrink common interactive elements */
-.btn, button[class*="px-"][class*="py-"]:not(.no-compact) {
+/* Further shrink buttons, hunting down oversized button formats */
+.btn, button[class*="px-"][class*="py-"]:not(.no-compact):not([class*="py-5"]):not([class*="py-6"]) {
   padding-top: 0.45rem !important;
   padding-bottom: 0.45rem !important;
-  font-size: 0.7rem !important;
+  font-size: 0.75rem !important;
   line-height: 1rem !important;
 }
 
-/* Specialized container constraints to visibly shrink forms horizontally */
+/* Target gargantuan buttons specifically (like the Close button in the screenshot) */
+button[class*="py-4"], button[class*="py-5"], button[class*="py-6"], button[class*="py-8"] {
+  padding-top: 0.75rem !important;
+  padding-bottom: 0.75rem !important;
+}
+
+/* Target gigantic structural elements like the 64x64 modal close button */
+.w-16.h-16 {
+  width: 2.5rem !important;
+  height: 2.5rem !important;
+}
+.w-12.h-12 {
+  width: 2rem !important;
+  height: 2rem !important;
+}
+
+/* Force container sizes down */
 .max-w-5xl { max-width: 52rem !important; }
 .max-w-4xl { max-width: 44rem !important; }
 .max-w-3xl { max-width: 38rem !important; }
