@@ -11,6 +11,7 @@ import { NotificationProvider } from './contexts/NotificationContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Layout from './components/Layout';
 import RoleBasedRedirect from './components/RoleBasedRedirect';
+import CustomCursor from './components/CustomCursor';
 
 // Auth Pages
 import Login from './pages/auth/Login';
@@ -111,6 +112,7 @@ function App() {
         <CartProvider>
           <Router {...routerConfig}>
             <div className="App">
+              <CustomCursor />
               <Routes>
                 {/* Public Routes */}
                 <Route path="/login" element={<Login />} />
