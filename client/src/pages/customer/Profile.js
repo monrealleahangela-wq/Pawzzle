@@ -37,7 +37,8 @@ import { getCitiesByProvince, getBarangaysByCity } from '../../constants/locatio
 import storeApplicationService from '../../services/storeApplicationService';
 import authService from '../../services/authService';
 import PlatformFeedbackModal from '../../components/PlatformFeedbackModal';
-import { Heart as HeartIcon, MessageSquare, Briefcase, Globe, ShieldCheck, Users } from 'lucide-react';
+import { Heart as HeartIcon, MessageSquare, Briefcase, Globe, ShieldCheck, Users, Info } from 'lucide-react';
+import MapPicker from '../../components/MapPicker';
 
 import { useTheme } from '../../contexts/ThemeContext';
 
@@ -46,6 +47,7 @@ const Profile = () => {
   const { theme, toggleTheme } = useTheme();
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [addressInputType, setAddressInputType] = useState('manual'); // 'manual' or 'map'
   const [showUpgradeForm, setShowUpgradeForm] = useState(false);
   const [application, setApplication] = useState(null);
   const [upgradeLoading, setUpgradeLoading] = useState(false);
@@ -966,51 +968,92 @@ const Profile = () => {
                   </div>
 
                   <div className="pt-4 sm:pt-10 space-y-6 sm:space-y-10">
-                    <h3 className="text-[8px] sm:text-xs font-black text-slate-300 uppercase tracking-[0.3em] border-b border-slate-50 pb-3">Address Information</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6 sm:gap-x-12 sm:gap-y-10">
-                      <div className="md:col-span-2 space-y-1">
-                        <label className="text-[8px] sm:text-xs font-black text-slate-300 uppercase tracking-widest block ml-1">Street Address</label>
-                        {isEditing ? (
-                          <input type="text" value={formData.address.street} onChange={(e) => handleAddressChange('street', e.target.value)} className="w-full px-4 py-3 sm:px-5 sm:py-4 bg-slate-50 border-2 border-slate-50 rounded-xl sm:rounded-2xl focus:border-primary-500 focus:bg-white outline-none font-bold text-sm sm:text-base transition-all" placeholder="Sector/Street" />
-                        ) : (
-                          <p className="text-sm sm:text-lg font-black text-slate-900 px-1 py-1 leading-none">{user.address?.street || '--'}</p>
-                        )}
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-[8px] sm:text-xs font-black text-slate-300 uppercase tracking-widest block ml-1">City</label>
-                        {isEditing ? (
-                          <select required value={formData.address.city} onChange={(e) => handleAddressChange('city', e.target.value)} className="w-full px-4 py-3 sm:px-5 sm:py-4 bg-slate-50 border-2 border-slate-50 rounded-xl sm:rounded-2xl focus:border-primary-500 focus:bg-white outline-none font-bold text-sm sm:text-base transition-all appearance-none cursor-pointer">
-                            <option value="">Select City</option>
-                            {cities.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
-                          </select>
-                        ) : (
-                          <p className="text-sm sm:text-lg font-black text-slate-900 px-1 py-1 uppercase leading-none">{user.address?.city || '--'}</p>
-                        )}
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-[8px] sm:text-xs font-black text-slate-300 uppercase tracking-widest block ml-1">Barangay</label>
-                        {isEditing ? (
-                          <select required value={formData.address.barangay} onChange={(e) => handleAddressChange('barangay', e.target.value)} disabled={!formData.address.city} className="w-full px-4 py-3 sm:px-5 sm:py-4 bg-slate-50 border-2 border-slate-50 rounded-xl sm:rounded-2xl focus:border-primary-500 focus:bg-white outline-none font-bold text-sm sm:text-base transition-all appearance-none cursor-pointer disabled:opacity-50">
-                            <option value="">Select Barangay</option>
-                            {barangays.map(b => <option key={b.value} value={b.value}>{b.label}</option>)}
-                          </select>
-                        ) : (
-                          <p className="text-sm sm:text-lg font-black text-slate-900 px-1 py-1 uppercase leading-none">{user.address?.barangay || '--'}</p>
-                        )}
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-[8px] sm:text-xs font-black text-slate-300 uppercase tracking-widest block ml-1">Province</label>
-                        <p className="text-sm sm:text-lg font-black text-slate-400 px-1 py-1 uppercase leading-none italic opacity-60">Cavite</p>
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-[8px] sm:text-xs font-black text-slate-300 uppercase tracking-widest block ml-1">ZIP Code</label>
-                        {isEditing ? (
-                          <input type="text" value={formData.address.zipCode} onChange={(e) => handleAddressChange('zipCode', e.target.value)} className="w-full px-4 py-3 sm:px-5 sm:py-4 bg-slate-50 border-2 border-slate-50 rounded-xl sm:rounded-2xl focus:border-primary-500 focus:bg-white outline-none font-bold text-sm sm:text-base transition-all" placeholder="4100" />
-                        ) : (
-                          <p className="text-sm sm:text-lg font-black text-slate-900 px-1 py-1 leading-none">{user.address?.zipCode || '--'}</p>
-                        )}
-                      </div>
+                    <div className="flex items-center justify-between gap-4 border-b border-slate-50 pb-3">
+                      <h3 className="text-[8px] sm:text-xs font-black text-slate-300 uppercase tracking-[0.3em]">Address Information</h3>
+                      {isEditing && (
+                        <div className="flex bg-slate-100 p-1 rounded-xl">
+                          <button
+                            type="button"
+                            onClick={() => setAddressInputType('map')}
+                            className={`px-3 py-1.5 rounded-lg text-[8px] font-black uppercase tracking-widest transition-all ${addressInputType === 'map' ? 'bg-white text-primary-600 shadow-sm' : 'text-slate-400'}`}
+                          >
+                            MAP GPS
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setAddressInputType('manual')}
+                            className={`px-3 py-1.5 rounded-lg text-[8px] font-black uppercase tracking-widest transition-all ${addressInputType === 'manual' ? 'bg-white text-primary-600 shadow-sm' : 'text-slate-400'}`}
+                          >
+                            MANUAL
+                          </button>
+                        </div>
+                      )}
                     </div>
+
+                    {isEditing && addressInputType === 'map' ? (
+                      <div className="animate-fade-in">
+                        <MapPicker 
+                          onLocationSelected={(location) => {
+                            setFormData(prev => ({
+                              ...prev,
+                              address: {
+                                ...prev.address,
+                                street: location.street || location.full,
+                                city: location.city.toLowerCase().replace(/\s+/g, '_').replace('municipality_of_', ''),
+                                barangay: location.barangay.toLowerCase().replace(/\s+/g, '_'),
+                                zipCode: location.zipCode || prev.address.zipCode
+                              }
+                            }));
+                          }}
+                          initialAddress={formData.address.street}
+                        />
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6 sm:gap-x-12 sm:gap-y-10 animate-fade-in">
+                        <div className="md:col-span-2 space-y-1">
+                          <label className="text-[8px] sm:text-xs font-black text-slate-300 uppercase tracking-widest block ml-1">Street Address</label>
+                          {isEditing ? (
+                            <input type="text" value={formData.address.street} onChange={(e) => handleAddressChange('street', e.target.value)} className="w-full px-4 py-3 sm:px-5 sm:py-4 bg-slate-50 border-2 border-slate-50 rounded-xl sm:rounded-2xl focus:border-primary-500 focus:bg-white outline-none font-bold text-sm sm:text-base transition-all" placeholder="Sector/Street" />
+                          ) : (
+                            <p className="text-sm sm:text-lg font-black text-slate-900 px-1 py-1 leading-none">{user.address?.street || '--'}</p>
+                          )}
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[8px] sm:text-xs font-black text-slate-300 uppercase tracking-widest block ml-1">City</label>
+                          {isEditing ? (
+                            <select required value={formData.address.city} onChange={(e) => handleAddressChange('city', e.target.value)} className="w-full px-4 py-3 sm:px-5 sm:py-4 bg-slate-50 border-2 border-slate-50 rounded-xl sm:rounded-2xl focus:border-primary-500 focus:bg-white outline-none font-bold text-sm sm:text-base transition-all appearance-none cursor-pointer">
+                              <option value="">Select City</option>
+                              {cities.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+                            </select>
+                          ) : (
+                            <p className="text-sm sm:text-lg font-black text-slate-900 px-1 py-1 uppercase leading-none">{user.address?.city || '--'}</p>
+                          )}
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[8px] sm:text-xs font-black text-slate-300 uppercase tracking-widest block ml-1">Barangay</label>
+                          {isEditing ? (
+                            <select required value={formData.address.barangay} onChange={(e) => handleAddressChange('barangay', e.target.value)} disabled={!formData.address.city} className="w-full px-4 py-3 sm:px-5 sm:py-4 bg-slate-50 border-2 border-slate-50 rounded-xl sm:rounded-2xl focus:border-primary-500 focus:bg-white outline-none font-bold text-sm sm:text-base transition-all appearance-none cursor-pointer disabled:opacity-50">
+                              <option value="">Select Barangay</option>
+                              {barangays.map(b => <option key={b.value} value={b.value}>{b.label}</option>)}
+                            </select>
+                          ) : (
+                            <p className="text-sm sm:text-lg font-black text-slate-900 px-1 py-1 uppercase leading-none">{user.address?.barangay || '--'}</p>
+                          )}
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[8px] sm:text-xs font-black text-slate-300 uppercase tracking-widest block ml-1">Province</label>
+                          <p className="text-sm sm:text-lg font-black text-slate-400 px-1 py-1 uppercase leading-none italic opacity-60">Cavite</p>
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[8px] sm:text-xs font-black text-slate-300 uppercase tracking-widest block ml-1">ZIP Code</label>
+                          {isEditing ? (
+                            <input type="text" value={formData.address.zipCode} onChange={(e) => handleAddressChange('zipCode', e.target.value)} className="w-full px-4 py-3 sm:px-5 sm:py-4 bg-slate-50 border-2 border-slate-50 rounded-xl sm:rounded-2xl focus:border-primary-500 focus:bg-white outline-none font-bold text-sm sm:text-base transition-all" placeholder="4100" />
+                          ) : (
+                            <p className="text-sm sm:text-lg font-black text-slate-900 px-1 py-1 leading-none">{user.address?.zipCode || '--'}</p>
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
