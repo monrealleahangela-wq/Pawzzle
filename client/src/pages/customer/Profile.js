@@ -36,7 +36,8 @@ import {
   Trash2,
   PawPrint,
   FileBadge,
-  Search
+  Search,
+  ChevronRight
 } from 'lucide-react';
 import { getCitiesByProvince, getBarangaysByCity } from '../../constants/locationConstants';
 import storeApplicationService from '../../services/storeApplicationService';
