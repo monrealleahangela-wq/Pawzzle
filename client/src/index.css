@@ -64,32 +64,62 @@ textarea,
   border-radius: 0.4rem !important;
 }
 
-/* Force massive paddings down (targeting all variants, e.g. sm:p-12, lg:p-16) */
+/* Force massive paddings down globally */
 [class*="p-8"], [class*="p-10"], [class*="p-12"], [class*="p-14"], [class*="p-16"], [class*="p-20"], [class*="p-24"] {
-  padding: clamp(1rem, 2vw, 1.5rem) !important;
+  padding: clamp(1rem, 2vw, 1.25rem) !important;
 }
 [class*="px-8"], [class*="px-10"], [class*="px-12"], [class*="px-14"], [class*="px-16"], [class*="px-20"], [class*="px-24"] {
-  padding-left: clamp(1rem, 2vw, 1.5rem) !important;
-  padding-right: clamp(1rem, 2vw, 1.5rem) !important;
+  padding-left: clamp(1rem, 2vw, 1.25rem) !important;
+  padding-right: clamp(1rem, 2vw, 1.25rem) !important;
 }
 [class*="py-8"], [class*="py-10"], [class*="py-12"], [class*="py-14"], [class*="py-16"], [class*="py-20"], [class*="py-24"] {
-  padding-top: clamp(1rem, 2vw, 1.5rem) !important;
-  padding-bottom: clamp(1rem, 2vw, 1.5rem) !important;
+  padding-top: clamp(0.75rem, 1.5vw, 1rem) !important;
+  padding-bottom: clamp(0.75rem, 1.5vw, 1rem) !important;
+}
+
+/* MODAL & DARK CONTAINER SQUASH (This destroys massive black headers specifically) */
+.fixed > div > header, 
+div[class*="bg-slate-900"][class*="rounded-"],
+div[class*="bg-slate-800"][class*="rounded-"] {
+  padding-top: 1rem !important;
+  padding-bottom: 1rem !important;
+  padding-left: 1.5rem !important;
+  padding-right: 1.5rem !important;
+}
+
+/* Squash massive margins natively inside modals/headers */
+.fixed > div > header [class*="mb-"],
+div[class*="bg-slate"][class*="rounded-"] [class*="mb-"] {
+  margin-bottom: 0.25rem !important;
+}
+.fixed > div > header [class*="mt-"],
+div[class*="bg-slate"][class*="rounded-"] [class*="mt-"] {
+  margin-top: 0.25rem !important;
+}
+
+/* Modal Internal Gaps */
+.fixed > div > .flex-1, .fixed > div > .overflow-y-auto {
+  padding-top: 1.25rem !important;
+  padding-bottom: 1.25rem !important;
+  gap: 1rem !important;
+}
+.fixed > div > .flex-1 [class*="space-y-12"] > :not([hidden]) ~ :not([hidden]) {
+  margin-top: 1.25rem !important;
 }
 
 /* Force massive spacing down */
-[class*="space-y-6"] > :not([hidden]) ~ :not([hidden]) { margin-top: 1rem !important; }
-[class*="space-y-8"] > :not([hidden]) ~ :not([hidden]) { margin-top: 1.25rem !important; }
+[class*="space-y-6"] > :not([hidden]) ~ :not([hidden]) { margin-top: 0.75rem !important; }
+[class*="space-y-8"] > :not([hidden]) ~ :not([hidden]) { margin-top: 1rem !important; }
 [class*="space-y-10"] > :not([hidden]) ~ :not([hidden]),
 [class*="space-y-12"] > :not([hidden]) ~ :not([hidden]),
 [class*="space-y-16"] > :not([hidden]) ~ :not([hidden]) {
-  margin-top: 1.5rem !important;
+  margin-top: 1.25rem !important;
 }
 
 /* Force extreme texts to remain completely constrained */
-[class*="text-4xl"] { font-size: 1.5rem !important; line-height: 1.75rem !important; }
-[class*="text-5xl"], [class*="text-6xl"] { font-size: 1.75rem !important; line-height: 2rem !important; }
-[class*="text-7xl"], [class*="text-8xl"], [class*="text-9xl"] { font-size: 2rem !important; line-height: 2.25rem !important; }
+[class*="text-4xl"] { font-size: 1.25rem !important; line-height: 1.5rem !important; }
+[class*="text-5xl"], [class*="text-6xl"] { font-size: 1.5rem !important; line-height: 1.75rem !important; }
+[class*="text-7xl"], [class*="text-8xl"], [class*="text-9xl"] { font-size: 1.75rem !important; line-height: 2rem !important; }
 
 /* Further shrink buttons, hunting down oversized button formats */
 .btn, button[class*="px-"][class*="py-"]:not(.no-compact):not([class*="py-5"]):not([class*="py-6"]) {
@@ -99,27 +129,28 @@ textarea,
   line-height: 1rem !important;
 }
 
-/* Target gargantuan buttons specifically (like the Close button in the screenshot) */
+/* Target gargantuan buttons specifically */
 button[class*="py-4"], button[class*="py-5"], button[class*="py-6"], button[class*="py-8"] {
-  padding-top: 0.75rem !important;
-  padding-bottom: 0.75rem !important;
+  padding-top: 0.6rem !important;
+  padding-bottom: 0.6rem !important;
+  font-size: 0.75rem !important;
 }
 
 /* Target gigantic structural elements like the 64x64 modal close button */
 .w-16.h-16 {
-  width: 2.5rem !important;
-  height: 2.5rem !important;
-}
-.w-12.h-12 {
   width: 2rem !important;
   height: 2rem !important;
 }
+.w-12.h-12 {
+  width: 1.75rem !important;
+  height: 1.75rem !important;
+}
 
 /* Force container sizes down */
-.max-w-5xl { max-width: 52rem !important; }
-.max-w-4xl { max-width: 44rem !important; }
-.max-w-3xl { max-width: 38rem !important; }
-.max-w-2xl { max-width: 34rem !important; }
+.max-w-5xl { max-width: 48rem !important; }
+.max-w-4xl { max-width: 42rem !important; }
+.max-w-3xl { max-width: 36rem !important; }
+.max-w-2xl { max-width: 30rem !important; }
 
 .shadow-md, 
 .shadow-lg, 
