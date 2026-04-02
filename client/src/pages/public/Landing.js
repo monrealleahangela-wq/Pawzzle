@@ -186,6 +186,66 @@ const Landing = () => {
         </div>
       </section>
 
+      {/* === BECOME A SELLER BANNER === */}
+      <section className="py-20 relative z-10 overflow-hidden">
+        <div className="container-custom">
+          <div className="relative rounded-[2.5rem] overflow-hidden bg-gradient-to-br from-slate-900 via-amber-950 to-slate-900 p-10 lg:p-16 shadow-2xl">
+            {/* Ambient blobs */}
+            <div className="absolute top-0 right-0 w-72 h-72 bg-amber-400/10 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none" />
+            <div className="absolute bottom-0 left-10 w-64 h-64 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
+
+            <div className="relative z-10 flex flex-col lg:flex-row items-center gap-10 lg:gap-16">
+              {/* Left: Icon badge */}
+              <div className="shrink-0">
+                <div className="w-20 h-20 rounded-3xl bg-amber-400/20 border border-amber-400/30 flex items-center justify-center shadow-xl shadow-amber-900/30">
+                  <Store className="h-10 w-10 text-amber-400" />
+                </div>
+              </div>
+
+              {/* Center: Text */}
+              <div className="flex-1 text-center lg:text-left">
+                <p className="text-amber-400 text-xs font-black uppercase tracking-[0.4em] mb-2">For Pet Owners & Breeders</p>
+                <h2 className="text-3xl md:text-4xl font-black text-white tracking-tight mb-3">
+                  Ready to Sell Your Pets & Products?
+                </h2>
+                <p className="text-slate-400 text-base leading-relaxed max-w-xl">
+                  Join hundreds of trusted sellers on Pawzzle. List your pets, products, and services — reach thousands of pet lovers and grow your business.
+                </p>
+
+                {/* Benefits row */}
+                <div className="flex flex-wrap gap-x-8 gap-y-3 mt-5 justify-center lg:justify-start">
+                  {[
+                    { icon: TrendingUp, text: 'Grow your reach' },
+                    { icon: Users,     text: 'Trusted community' },
+                    { icon: Package,   text: 'Easy store setup' },
+                  ].map(({ icon: Icon, text }) => (
+                    <div key={text} className="flex items-center gap-2 text-slate-300 text-sm font-semibold">
+                      <div className="w-5 h-5 rounded-full bg-amber-400/20 flex items-center justify-center">
+                        <Icon className="h-3 w-3 text-amber-400" />
+                      </div>
+                      {text}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Right: CTA */}
+              <div className="shrink-0">
+                <Link
+                  to={isAuthenticated ? '/account-upgrade' : '/register?seller=true'}
+                  className="inline-flex items-center gap-2.5 px-8 py-4 rounded-2xl bg-gradient-to-r from-amber-400 to-amber-500 text-white font-black text-sm uppercase tracking-[0.2em] shadow-xl shadow-amber-900/40 hover:from-amber-500 hover:to-amber-600 transition-all duration-300 hover:scale-105 active:scale-95 whitespace-nowrap"
+                >
+                  <Store className="h-4.5 w-4.5" />
+                  Be a Seller — It's Free
+                  <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
+                </Link>
+                <p className="text-slate-500 text-xs mt-3 text-center">No monthly fees. Apply in minutes.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Featured Pets Grid */}
       <section className="py-24 relative z-10">
         <div className="container-custom">
