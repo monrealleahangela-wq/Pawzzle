@@ -4,6 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import storeApplicationService from '../../services/storeApplicationService';
 import { Upload, FileText, AlertCircle, Building, Phone, Mail, MapPin, Check, X, Shield, Users, ArrowRight, ChevronRight, Briefcase, Globe, Info, Wallet, Camera } from 'lucide-react';
 import { getCitiesByProvince, getBarangaysByCity } from '../../constants/locationConstants';
+import MapPicker from '../../components/MapPicker';
 
 const StoreApplication = () => {
   const { user, updateUser } = useAuth();
@@ -59,6 +60,7 @@ const StoreApplication = () => {
       { name: '', business: '', phone: '', email: '' }
     ]
   });
+  const [addressInputType, setAddressInputType] = useState('map'); // 'map' or 'manual'
   const [files, setFiles] = useState({
     licenseDocument: null,
     governmentId: null,
@@ -568,31 +570,69 @@ const StoreApplication = () => {
                 </div>
               </div>
 
-              <div className="space-y-6">
-                <h3 className="text-[10px] font-black text-slate-900 uppercase tracking-[0.2em] flex items-center gap-2">
-                  <Building className="h-3 w-3 text-primary-500" /> Base Registry {isFieldBroken('address') && <span className="px-2 py-0.5 bg-rose-100 text-rose-600 rounded-md text-[7px] animate-pulse ml-2">UPDATE LOCATION</span>}
-                </h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">City *</label>
-                    <select className={`input-premium ${isFieldBroken('address') ? 'border-rose-500 ring-2 ring-rose-100' : ''}`} value={formData.contactInfo.address.city} onChange={(e) => handleChange('contactInfo.address.city', e.target.value)} required>
-                      <option value="">Select City</option>
-                      {cities.map(city => <option key={city.value} value={city.value}>{city.label}</option>)}
-                    </select>
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Barangay *</label>
-                    <select className={`input-premium ${isFieldBroken('address') ? 'border-rose-500 ring-2 ring-rose-100' : ''}`} value={formData.contactInfo.address.barangay} onChange={(e) => handleChange('contactInfo.address.barangay', e.target.value)} disabled={!formData.contactInfo.address.city} required>
-                      <option value="">Select Barangay</option>
-                      {barangays.map(bg => <option key={bg.value} value={bg.value}>{bg.label}</option>)}
-                    </select>
-                  </div>
-                  <div className="col-span-2 space-y-1.5">
-                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Street Address *</label>
-                    <input type="text" className={`input-premium ${isFieldBroken('address') ? 'border-rose-500 ring-2 ring-rose-100' : ''}`} value={formData.contactInfo.address.street} onChange={(e) => handleChange('contactInfo.address.street', e.target.value)} required />
+                <div className="flex items-center justify-between gap-4 mb-4">
+                  <h3 className="text-[10px] font-black text-slate-900 uppercase tracking-[0.2em] flex items-center gap-2">
+                    <Building className="h-3 w-3 text-primary-500" /> Base Registry {isFieldBroken('address') && <span className="px-2 py-0.5 bg-rose-100 text-rose-600 rounded-md text-[7px] animate-pulse ml-2">UPDATE LOCATION</span>}
+                  </h3>
+                  <div className="flex bg-slate-100 p-1 rounded-xl">
+                    <button
+                      type="button"
+                      onClick={() => setAddressInputType('map')}
+                      className={`px-3 py-1.5 rounded-lg text-[8px] font-black uppercase tracking-widest transition-all ${addressInputType === 'map' ? 'bg-white text-primary-600 shadow-sm' : 'text-slate-400'}`}
+                    >
+                      MAP GPS
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setAddressInputType('manual')}
+                      className={`px-3 py-1.5 rounded-lg text-[8px] font-black uppercase tracking-widest transition-all ${addressInputType === 'manual' ? 'bg-white text-primary-600 shadow-sm' : 'text-slate-400'}`}
+                    >
+                      MANUAL
+                    </button>
                   </div>
                 </div>
-              </div>
+
+                {addressInputType === 'map' ? (
+                  <MapPicker 
+                    onLocationSelected={(location) => {
+                      setFormData(prev => ({
+                        ...prev,
+                        contactInfo: {
+                          ...prev.contactInfo,
+                          address: {
+                            ...prev.contactInfo.address,
+                            street: location.street || location.full,
+                            city: location.city.toLowerCase().replace(/\s+/g, '_').replace('municipality_of_', ''),
+                            barangay: location.barangay.toLowerCase().replace(/\s+/g, '_'),
+                            zipCode: location.zipCode || prev.contactInfo.address.zipCode
+                          }
+                        }
+                      }));
+                    }}
+                    initialAddress={formData.contactInfo.address.street}
+                  />
+                ) : (
+                  <div className="grid grid-cols-2 gap-4 animate-fade-in">
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">City *</label>
+                      <select className={`input-premium ${isFieldBroken('address') ? 'border-rose-500 ring-2 ring-rose-100' : ''}`} value={formData.contactInfo.address.city} onChange={(e) => handleChange('contactInfo.address.city', e.target.value)} required>
+                        <option value="">Select City</option>
+                        {cities.map(city => <option key={city.value} value={city.value}>{city.label}</option>)}
+                      </select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Barangay *</label>
+                      <select className={`input-premium ${isFieldBroken('address') ? 'border-rose-500 ring-2 ring-rose-100' : ''}`} value={formData.contactInfo.address.barangay} onChange={(e) => handleChange('contactInfo.address.barangay', e.target.value)} disabled={!formData.contactInfo.address.city} required>
+                        <option value="">Select Barangay</option>
+                        {barangays.map(bg => <option key={bg.value} value={bg.value}>{bg.label}</option>)}
+                      </select>
+                    </div>
+                    <div className="col-span-2 space-y-1.5">
+                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Street Address *</label>
+                      <input type="text" className={`input-premium ${isFieldBroken('address') ? 'border-rose-500 ring-2 ring-rose-100' : ''}`} value={formData.contactInfo.address.street} onChange={(e) => handleChange('contactInfo.address.street', e.target.value)} required />
+                    </div>
+                  </div>
+                )}
             </div>
           </div>
         )}
