@@ -302,50 +302,50 @@ const Services = () => {
               <div className="h-1.5 sm:h-2 w-full shrink-0 bg-gradient-to-r from-primary-500 to-secondary-500 rounded-t-xl sm:rounded-t-[23px] opacity-70 group-hover:opacity-100 transition-all duration-500" />
             )}
 
-            <div className="p-4 sm:p-8 flex flex-col flex-1 space-y-3 sm:space-y-6">
-              <div className="flex flex-col sm:flex-row justify-between items-start gap-1 sm:gap-0">
-                <div className="space-y-0.5 sm:space-y-1 w-full sm:w-auto">
+            <div className="p-3 sm:p-5 flex flex-col flex-1 space-y-2 sm:space-y-4">
+              <div className="flex justify-between items-start">
+                <div className="space-y-0.5 w-full min-w-0">
                   {!service.images?.[0] && (
-                    <span className="text-[8px] sm:text-[10px] font-black uppercase tracking-[0.1em] sm:tracking-[0.2em] text-primary-500">
+                    <span className="text-[7px] sm:text-[9px] font-black uppercase tracking-[0.1em] text-primary-500">
                       {service.category}
                     </span>
                   )}
-                  <h3 className="text-sm sm:text-2xl font-black text-slate-900 leading-tight group-hover:text-primary-600 transition-colors truncate sm:line-clamp-2 sm:whitespace-normal min-h-[1.5rem] sm:min-h-[4rem]">
+                  <h3 className="text-xs sm:text-lg font-black text-slate-900 leading-tight group-hover:text-primary-600 transition-colors truncate min-h-[1rem] sm:min-h-[2.5rem]">
                     {service.name}
                   </h3>
                   {service.ratings && service.ratings.count > 0 && (
-                    <div className="flex items-center gap-1 mt-1.5 opacity-80 group-hover:opacity-100 transition-opacity">
-                      <Star className="w-3 h-3 text-amber-400 fill-amber-400" />
-                      <span className="text-[10px] font-bold text-slate-600">
+                    <div className="flex items-center gap-1 mt-0.5 opacity-80 group-hover:opacity-100 transition-opacity">
+                      <Star className="w-2.5 h-2.5 text-amber-400 fill-amber-400" />
+                      <span className="text-[9px] font-bold text-slate-600">
                         {service.ratings.average.toFixed(1)} <span className="text-slate-400 font-normal">({service.ratings.count})</span>
                       </span>
                     </div>
                   )}
                 </div>
-                <div className="flex flex-col items-start sm:items-end">
-                  <span className="text-sm sm:text-2xl font-black text-primary-600">₱{service.price}</span>
+                <div className="flex flex-col items-end shrink-0 pl-2">
+                  <span className="text-xs sm:text-lg font-black text-primary-600 tracking-tighter">₱{service.price}</span>
                 </div>
               </div>
 
-              <p className="text-[11px] sm:text-sm text-slate-500 italic leading-relaxed line-clamp-2 hidden sm:block min-h-[3.5rem]">
+              <p className="text-[10px] sm:text-xs text-slate-500 italic leading-relaxed line-clamp-2 hidden sm:block min-h-[2rem]">
                 "{service.description || 'Expertly delivered service focused on the health and comfort of your pet.'}"
               </p>
 
               {/* Bottom Fixed Section - Unified for perfect alignment */}
-              <div className="mt-auto pt-6 space-y-6">
+              <div className="mt-auto pt-3 sm:pt-4 space-y-3 sm:space-y-4">
                 {/* Stats Grid */}
-                <div className="grid grid-cols-2 gap-4 py-4 border-y border-slate-50 group-hover:border-primary-100 transition-colors">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-slate-50 group-hover:bg-primary-50 flex items-center justify-center transition-colors">
-                      <Clock className="h-4 w-4 text-primary-500" />
+                <div className="grid grid-cols-2 gap-2 py-2 border-y border-slate-50 group-hover:border-primary-100 transition-colors">
+                  <div className="flex items-center gap-2">
+                    <div className="w-6 h-6 rounded-lg bg-slate-50 group-hover:bg-primary-50 flex items-center justify-center transition-colors">
+                      <Clock className="h-3 w-3 text-primary-500" />
                     </div>
-                    <span className="text-xs font-bold text-slate-600 italic">{service.duration}m</span>
+                    <span className="text-[10px] font-bold text-slate-600 italic">{service.duration}m</span>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-slate-50 group-hover:bg-secondary-50 flex items-center justify-center transition-colors">
-                      <MapPin className="h-4 w-4 text-secondary-500" />
+                  <div className="flex items-center gap-2">
+                    <div className="w-6 h-6 rounded-lg bg-slate-50 group-hover:bg-secondary-50 flex items-center justify-center transition-colors">
+                      <MapPin className="h-3 w-3 text-secondary-500" />
                     </div>
-                    <span className="text-xs font-bold text-slate-600 italic">
+                    <span className="text-[10px] font-bold text-slate-600 italic uppercase">
                       {service.homeServiceAvailable ? 'Home' : 'Store'}
                     </span>
                   </div>
@@ -355,28 +355,23 @@ const Services = () => {
                 {service.store && (
                   <Link 
                     to={`/stores/${service.store._id}`}
-                    className="flex items-center gap-4 p-4 bg-slate-50 rounded-2xl border border-slate-100 group-hover:bg-primary-50 group-hover:border-primary-100 transition-all hover:scale-[1.02] active:scale-95 translate-y-2 mb-2"
+                    className="flex items-center gap-3 p-2 bg-slate-50 rounded-xl border border-slate-100 group-hover:bg-primary-50 group-hover:border-primary-100 transition-all hover:scale-[1.02] active:scale-95"
                   >
-                    <div className="w-12 h-12 rounded-xl bg-white overflow-hidden flex items-center justify-center shadow-sm shrink-0 border border-slate-100">
+                    <div className="w-8 h-8 rounded-lg bg-white overflow-hidden flex items-center justify-center shadow-sm shrink-0 border border-slate-100">
                       {service.store.logo ? (
-                        <img src={getImageUrl(service.store.logo)} alt="" className="w-full h-full object-cover" onError={(e) => { e.target.style.display = 'none'; }} />
+                        <img src={getImageUrl(service.store.logo)} alt="" className="w-full h-full object-cover" />
                       ) : (
-                        <Store className="h-6 w-6 text-primary-600" />
+                        <Store className="h-4 w-4 text-primary-600" />
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-[11px] font-black text-slate-900 uppercase truncate leading-tight mb-1">
+                      <p className="text-[9px] font-black text-slate-900 uppercase truncate leading-tight">
                         {service.store.name}
                       </p>
-                      <div className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1.5 group/addr">
-                        <MapPin className="h-3 w-3 text-primary-400 group-hover/addr:text-primary-600 transition-colors" />
+                      <div className="text-[8px] font-bold text-slate-400 uppercase flex items-center gap-1.5 group/addr">
+                        <MapPin className="h-2 w-2 text-primary-400 group-hover/addr:text-primary-600 transition-colors" />
                         <span className="truncate">
-                          {[
-                            service.store.contactInfo?.address?.street,
-                            service.store.contactInfo?.address?.barangay,
-                            service.store.contactInfo?.address?.city,
-                            'Cavite'
-                          ].filter(Boolean).join(', ')}
+                          {service.store.contactInfo?.address?.city || 'Cavite'}
                         </span>
                       </div>
                     </div>
@@ -386,12 +381,9 @@ const Services = () => {
                 {/* Enhanced Footer Button */}
                 <button
                   onClick={() => handleBookService(service._id)}
-                  className="btn btn-primary w-full py-4 text-xs font-black uppercase tracking-widest shadow-lg shadow-primary-100 group/btn overflow-hidden relative"
+                  className="btn btn-primary w-full py-2.5 sm:py-3 text-[10px] font-black uppercase tracking-widest shadow-lg shadow-primary-100 group/btn"
                 >
-                  <span className="relative z-10 flex items-center justify-center gap-2">
-                    Book Now
-                    <ChevronRight className="h-4 w-4 transition-transform group-hover/btn:translate-x-1" />
-                  </span>
+                  Confirm Booking
                 </button>
               </div>
             </div>
