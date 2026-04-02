@@ -295,28 +295,28 @@ const BookingsManagement = () => {
       {selectedBooking && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[100] flex items-center justify-center p-4 animate-in fade-in duration-300">
           <div className="bg-white w-full max-w-2xl rounded-2xl overflow-hidden shadow-2xl animate-in slide-in-from-bottom-8 duration-500 border border-slate-200 flex flex-col max-h-[90vh]">
-            <header className="shrink-0 bg-slate-900 p-6 sm:p-8 text-white flex justify-between items-start relative overflow-hidden">
-              <div className="absolute top-0 right-0 p-12 opacity-10 blur-3xl pointer-events-none">
-                <ShieldCheck className="w-64 h-64 text-primary-500" />
+            <header className="shrink-0 bg-slate-900 px-5 py-4 text-white flex justify-between items-center relative overflow-hidden">
+              <div className="absolute top-0 right-0 p-8 opacity-10 blur-3xl pointer-events-none">
+                <ShieldCheck className="w-32 h-32 text-primary-500" />
               </div>
               <div className="relative z-10">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="px-3 py-1 bg-primary-600 rounded-2xl flex items-center gap-2 shadow-lg shadow-primary-900/20">
-                    <div className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
-                    <span className="text-[8px] font-black uppercase tracking-[0.3em]">Booking Details</span>
+                <div className="flex items-center gap-2 mb-1.5">
+                  <div className="px-2.5 py-1 bg-primary-600 rounded-xl flex items-center gap-1.5 shadow-lg shadow-primary-900/20">
+                    <div className="w-1 h-1 rounded-full bg-white animate-ping" />
+                    <span className="text-[7px] font-black uppercase tracking-[0.3em]">Booking Details</span>
                   </div>
                 </div>
-                <h3 className="text-2xl sm:text-4xl font-black uppercase tracking-tighter leading-none mb-3">#{selectedBooking._id.slice(-12).toUpperCase()}</h3>
-                <div className="flex items-center gap-4 text-slate-400">
-                  <Activity className="h-4 w-4 text-emerald-500" />
-                <p className="text-[9px] font-black uppercase tracking-[0.2em]">Status Tracking Active</p>
+                <h3 className="text-base font-black uppercase tracking-tighter leading-none mb-1">#{selectedBooking._id.slice(-12).toUpperCase()}</h3>
+                <div className="flex items-center gap-2 text-slate-400">
+                  <Activity className="h-3 w-3 text-emerald-500" />
+                  <p className="text-[8px] font-black uppercase tracking-[0.2em]">Status Tracking Active</p>
                 </div>
               </div>
               <button
                 onClick={() => setSelectedBooking(null)}
-                className="relative z-10 w-10 h-10 bg-white/10 hover:bg-white/20 border border-white/10 rounded-2xl flex items-center justify-center transition-all active:scale-95 duration-300 group"
+                className="relative z-10 w-8 h-8 bg-white/10 hover:bg-white/20 border border-white/10 rounded-xl flex items-center justify-center transition-all active:scale-95 duration-300 group"
               >
-                <X className="h-5 w-5 text-white" />
+                <X className="h-4 w-4 text-white" />
               </button>
             </header>
 
