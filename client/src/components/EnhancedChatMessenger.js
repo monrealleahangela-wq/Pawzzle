@@ -197,7 +197,7 @@ const EnhancedChatMessenger = ({
         notes: `Interest in adopting ${pet.name}`
       });
       setAdoptionRequest(response.data.request);
-      toast.success('Adoption request submitted!');
+      toast.success('Reservation request submitted!');
       loadMessages(conversationId);
     } catch (error) {
       console.error('Error requesting adoption:', error);
@@ -278,11 +278,11 @@ const EnhancedChatMessenger = ({
   };
 
   const handleCancelRequest = async () => {
-    if (!window.confirm('Are you sure you want to cancel your adoption request?')) return;
+    if (!window.confirm('Are you sure you want to cancel your reservation request?')) return;
     try {
       setIsLoading(true);
       await adoptionService.cancelAdoptionRequest(adoptionRequest._id);
-      toast.success('Adoption request cancelled');
+      toast.success('Reservation request cancelled');
       fetchAdoptionData(conversationId);
       loadMessages(conversationId);
     } catch (error) {
@@ -297,7 +297,7 @@ const EnhancedChatMessenger = ({
     if (!adoptionRequest) return null;
 
     const statusConfig = {
-      pending: { color: 'bg-primary-50 text-primary-800', icon: <Clock className="h-4 w-4" />, label: 'Adoption Pending' },
+      pending: { color: 'bg-primary-50 text-primary-800', icon: <Clock className="h-4 w-4" />, label: 'Reservation Pending' },
       reserved: { color: 'bg-amber-50 text-amber-800', icon: <Shield className="h-4 w-4" />, label: 'Pet Reserved' },
       approved: { color: 'bg-secondary-100 text-secondary-800', icon: <CheckCircle className="h-4 w-4" />, label: 'Application Approved' },
       rejected: { color: 'bg-neutral-100 text-neutral-800', icon: <X className="h-4 w-4" />, label: 'Application Declined' },
@@ -466,10 +466,10 @@ const EnhancedChatMessenger = ({
             </div>
             <div className="space-y-1">
               <h3 className="text-xl font-black text-slate-800 uppercase tracking-tight">Serious Inquiry?</h3>
-              <p className="text-xs text-slate-500 font-medium">Initiate the premium adoption protocol.</p>
+              <p className="text-xs text-slate-500 font-medium">Initiate the premium reservation protocol.</p>
             </div>
             <button onClick={handleAdoptRequest} className="btn btn-primary w-full py-4 text-[10px] font-black uppercase tracking-[0.2em] shadow-xl shadow-primary-100">
-              Request Adoption
+              Reserve Pet
             </button>
           </div>
         )}
