@@ -26,9 +26,7 @@ const EnhancedChatMessenger = ({
   const [showReportModal, setShowReportModal] = useState(false);
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
-  const [dragY, setDragY] = useState(0);
-  const [isDragging, setIsDragging] = useState(false);
-  const [startY, setStartY] = useState(0);
+
 
   useEffect(() => {
     if (isOpen && !isEmbedded) {
@@ -226,43 +224,7 @@ const EnhancedChatMessenger = ({
     return new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
-  // Dragging logic for both mobile and desktop
-  const handleDragStart = (e) => {
-    const clientY = e.type === 'touchstart' ? e.touches[0].clientY : e.clientY;
-    setStartY(clientY);
-    setIsDragging(true);
-  };
 
-  const handleDragMove = (e) => {
-    if (!isDragging) return;
-    const clientY = e.type === 'touchmove' ? e.touches[0].clientY : e.clientY;
-    const deltaY = clientY - startY;
-    if (deltaY > 0) setDragY(deltaY);
-  };
-
-  const handleDragEnd = () => {
-    if (!isDragging) return;
-    setIsDragging(false);
-    if (dragY > 150) {
-      onClose();
-    }
-    setDragY(0);
-  };
-
-  useEffect(() => {
-    if (isDragging) {
-      window.addEventListener('mousemove', handleDragMove);
-      window.addEventListener('mouseup', handleDragEnd);
-      window.addEventListener('touchmove', handleDragMove);
-      window.addEventListener('touchend', handleDragEnd);
-    }
-    return () => {
-      window.removeEventListener('mousemove', handleDragMove);
-      window.removeEventListener('mouseup', handleDragEnd);
-      window.removeEventListener('touchmove', handleDragMove);
-      window.removeEventListener('touchend', handleDragEnd);
-    };
-  }, [isDragging, dragY, startY]);
 
   const getOnlineStatus = (lastSeen) => {
     if (!lastSeen) return { isOnline: false, text: 'Last seen unknown' };
@@ -398,27 +360,10 @@ const EnhancedChatMessenger = ({
   };
 
   const messengerContent = (
-    <div 
+    <div
       className={`flex flex-col h-full bg-white transition-transform duration-300 ease-out min-h-0
-        ${!isEmbedded ? 'rounded-t-3xl sm:rounded-[32px] shadow-2xl max-w-lg w-full h-[65vh] sm:h-[600px] overflow-hidden border border-white/20' : ''}`}
-      style={{ 
-        transform: `translateY(${dragY}px)`
-      }}
+        ${!isEmbedded ? 'rounded-3xl shadow-2xl max-w-lg w-full h-[65vh] sm:h-[600px] overflow-hidden border border-white/20' : ''}`}
     >
-      {/* Drag Handle */}
-      {!isEmbedded && (
-        <div 
-          className="w-full pt-3 pb-1 flex flex-col items-center cursor-grab active:cursor-grabbing bg-neutral-900 touch-none select-none"
-          onMouseDown={handleDragStart}
-          onTouchStart={handleDragStart}
-        >
-          <div className="w-10 h-1 bg-white/30 rounded-full mb-0.5" />
-          <p className="text-[7px] font-black uppercase text-white/50 tracking-widest">
-            {window.innerWidth < 640 ? 'Pull down to close' : 'Drag to close'}
-          </p>
-        </div>
-      )}
-
       {!isEmbedded && (
         <div className="px-5 py-3 bg-neutral-900 text-white flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -505,7 +450,7 @@ const EnhancedChatMessenger = ({
   if (!isOpen) return null;
 
   return (
-    <div className={`fixed inset-0 ${isDragging ? 'bg-neutral-900/40' : 'bg-neutral-900/60'} backdrop-blur-[2px] flex items-end sm:items-center justify-center z-[100] sm:p-6 font-sans transition-colors duration-300`}>
+    <div className="fixed inset-0 bg-neutral-900/60 backdrop-blur-[2px] flex items-center justify-center z-[100] p-4 sm:p-6 font-sans transition-colors duration-300">
       <div className="w-full max-w-lg">
         {messengerContent}
       </div>
