@@ -545,4 +545,4 @@ const StoreApplications = () => {
   );
 };
 
-export default StoreApplications;cations;
+export default StoreApplications;
