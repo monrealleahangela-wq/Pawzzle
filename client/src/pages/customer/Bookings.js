@@ -947,7 +947,11 @@ const Bookings = ({ isSubcomponent = false }) => {
                     <div className="w-10 h-10 bg-primary-50 rounded-2xl flex items-center justify-center text-lg">🐾</div>
                     <div>
                       <p className="text-[9px] font-black text-primary-600 uppercase tracking-[0.3em]">Pet Info</p>
-                      <h3 className="text-lg font-black text-slate-900 uppe                  {/* ── Pet Selection Intelligence ── */}
+                      <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight">Pet Profile</h3>
+                    </div>
+                  </div>
+
+                  {/* ── Pet Selection Intelligence ── */}
                   <div className="flex bg-slate-50 p-1.5 rounded-[1.5rem] mb-8 border border-slate-100 shadow-inner">
                     <button 
                       type="button"
