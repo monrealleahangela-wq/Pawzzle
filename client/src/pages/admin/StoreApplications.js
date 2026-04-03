@@ -417,7 +417,8 @@ const StoreApplications = () => {
                              <p className="text-[9px] font-black text-[#3D2B23] group-hover/doc:text-white uppercase tracking-widest mb-1">{doc.label}</p>
                              <p className="text-[8px] font-black text-[#5D4037]/20 uppercase tracking-tighter">{doc.sub}</p>
                           </a>
-                                        ))}
+                        )
+                      ))}
                    </div>
                 </div>
               </div>
