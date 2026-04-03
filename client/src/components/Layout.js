@@ -305,41 +305,49 @@ const Layout = () => {
   const isLandingPage = location.pathname === '/' && !isAuthenticated;
 
   return (
-    <div className={`min-h-screen bg-primary-50 transition-colors duration-500 flex flex-col lg:flex-row overflow-x-hidden ${isLandingPage ? '!bg-transparent' : ''}`}>
+    <div className={`min-h-screen bg-[#FAF9F6] transition-colors duration-500 flex flex-col lg:flex-row overflow-x-hidden ${isLandingPage ? '!bg-transparent' : ''} font-['Outfit']`}>
+      {/* Premium Ambiance Layer */}
+      <div className="fixed inset-0 pointer-events-none overflow-hidden opacity-30 z-0">
+        <div className="absolute top-[-10%] left-[-5%] w-[40%] h-[40%] bg-amber-100/40 blur-[120px] rounded-full animate-spin-slow" />
+        <div className="absolute bottom-[-10%] right-[-5%] w-[30%] h-[30%] bg-primary-100/30 blur-[100px] rounded-full animate-blob-move" />
+      </div>
+
       {/* Scroll Progress */}
       {!isLandingPage && (
-        <div className="scroll-progress" style={{ width: `${scrollProgress}%` }} />
+        <div className="scroll-progress h-1.5 bg-accent-gradient" style={{ width: `${scrollProgress}%` }} />
       )}
 
-      {/* Sidebar - Desktop Only with Premium Deep Brown Palette */}
+      {/* Sidebar - Desktop Only with Premium Deep Espresso Palette */}
       {!isLandingPage && (
-        <aside className={`hidden lg:flex fixed left-0 top-0 h-full w-20 hover:w-64 bg-[#2D1B14] z-[70] flex-col transition-all duration-300 group shadow-2xl overflow-hidden border-r border-white/5`}>
-          {/* Sidebar Logo Area */}
+        <aside className={`hidden lg:flex fixed left-0 top-0 h-full w-24 hover:w-72 bg-[#211510] z-[70] flex-col transition-all duration-500 group shadow-[10px_0_40px_rgba(0,0,0,0.4)] overflow-hidden border-r border-[#3D2B23]`}>
+          <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-5 pointer-events-none" />
+          
+          {/* Sidebar Logo Area with Gold Trim */}
           <Link
             to={!user ? '/' : user?.role === 'customer' ? '/home' : user?.role === 'super_admin' ? '/superadmin/dashboard' : '/admin/dashboard'}
-            className="p-6 flex items-center gap-4 transition-all"
+            className="p-8 flex items-center gap-5 transition-all relative border-b border-[#3D2B23]"
           >
-            <div className="w-8 h-8 flex-shrink-0 relative">
+            <div className="w-10 h-10 flex-shrink-0 relative group-hover:rotate-[360deg] transition-transform duration-1000">
               <img
                 src="/images/logo.png"
                 alt="Logo"
-                className="w-full h-full object-contain transition-transform duration-500 group-hover:scale-110 drop-shadow-xl"
+                className="w-full h-full object-contain filter drop-shadow-[0_0_8px_rgba(184,137,90,0.6)]"
                 onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}
               />
             </div>
-            <span className="text-xl font-black text-white tracking-tighter transition-all duration-300 whitespace-nowrap opacity-0 group-hover:opacity-100">
-              PAWZZLE
+            <span className="text-2xl font-black text-white tracking-[-0.05em] transition-all duration-500 whitespace-nowrap opacity-0 group-hover:opacity-100 group-hover:translate-x-0 translate-x-[-10px]">
+              PAWZZLE <span className="text-amber-500">.</span>
             </span>
           </Link>
 
           {/* Sidebar Navigation */}
-          <nav className="flex-1 px-4 py-4 space-y-2 overflow-y-auto no-scrollbar scroll-smooth">
+          <nav className="flex-1 px-5 py-8 space-y-3 overflow-y-auto no-scrollbar scroll-smooth relative z-10">
             {navItems.map((item, idx) => {
               if (item.type === 'label') {
                 return (
-                  <div key={`label-${idx}`} className="pt-6 pb-2 pl-3 transition-opacity duration-300">
-                    <span className={`text-[9px] font-black text-amber-100/30 uppercase tracking-[0.3em] whitespace-nowrap transition-all opacity-0 group-hover:opacity-100 hidden group-hover:block`}>{item.label}</span>
-                    <div className={`h-px w-6 bg-white/10 mt-1 block group-hover:hidden ml-1`} />
+                  <div key={`label-${idx}`} className="pt-8 pb-3 pl-4 transition-opacity duration-300">
+                    <span className={`text-[10px] font-black text-amber-500/50 uppercase tracking-[0.4em] whitespace-nowrap transition-all opacity-0 group-hover:opacity-100 hidden group-hover:block`}>{item.label}</span>
+                    <div className={`h-[2px] w-8 bg-amber-500/20 mt-1 block group-hover:hidden ml-1 rounded-full`} />
                   </div>
                 );
               }
@@ -350,15 +358,16 @@ const Layout = () => {
                 <Link
                   key={item.path}
                   to={item.path}
-                  className={`flex items-center gap-4 p-3 rounded-2xl transition-all duration-300 relative ${active
-                    ? 'bg-amber-600/10 text-amber-500 shadow-xl shadow-black/20'
-                    : 'text-amber-50/40 hover:bg-white/5 hover:text-white'
+                   className={`flex items-center gap-5 p-4 rounded-[1.25rem] transition-all duration-400 relative group/item ${active
+                    ? 'bg-gradient-to-r from-amber-600/20 to-transparent text-amber-400 border border-amber-500/20 shadow-[0_10px_20px_rgba(0,0,0,0.2)]'
+                    : 'text-amber-50/30 hover:bg-white/5 hover:text-white'
                     }`}
                 >
-                  <div className="w-6 h-6 flex items-center justify-center flex-shrink-0">
-                    <Icon className="h-5 w-5" />
+                  {active && <div className="absolute left-0 w-1.5 h-6 bg-amber-500 rounded-r-full shadow-[0_0_15px_rgba(245,158,11,0.6)]" />}
+                  <div className={`w-6 h-6 flex items-center justify-center flex-shrink-0 transition-transform duration-300 ${active ? 'scale-110' : 'group-hover/item:scale-110'}`}>
+                    <Icon className="h-6 w-6" />
                   </div>
-                  <span className={`text-[11px] font-black uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-all duration-300 whitespace-nowrap`}>
+                  <span className={`text-[12px] font-black uppercase tracking-[0.15em] opacity-0 group-hover:opacity-100 transition-all duration-500 whitespace-nowrap`}>
                     {item.label}
                   </span>
                 </Link>
@@ -367,54 +376,67 @@ const Layout = () => {
           </nav>
 
           {/* Sidebar Footer */}
-          <div className="p-4 border-t border-white/5 h-16" />
+          <div className="p-6 border-t border-[#3D2B23] flex items-center justify-center group-hover:justify-start gap-4">
+             <div className="w-10 h-10 rounded-xl bg-[#3D2B23] flex items-center justify-center text-amber-500 shadow-inner group-hover:scale-110 transition-all">
+                <Settings2 className="h-5 w-5" />
+             </div>
+             <span className="text-[10px] font-black text-amber-500/40 uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-all whitespace-nowrap">System Matrix 2.4</span>
+          </div>
         </aside>
       )}
 
       {/* Main Content Area - Stable Header with Centered HUD Pill */}
-      <div className={`flex-1 transition-all duration-500 w-full min-w-0 bg-[#F8F7F4] ${isLandingPage ? '!bg-transparent !pl-0 !pt-0' : 'lg:pl-20 pt-24'}`}>
+      <div className={`flex-1 transition-all duration-500 w-full min-w-0 z-10 ${isLandingPage ? '!bg-transparent !pl-0 !pt-0' : 'lg:pl-24 pt-28'}`}>
         {/* Header - Fixed to ensure it persists on scroll */}
         {!isLandingPage && (
-          <header className={`fixed top-0 left-0 lg:left-20 right-0 z-30 transition-all duration-300 pointer-events-none ${isScrolled ? 'pt-2' : 'pt-4'}`}>
-          <div className="container-custom pointer-events-auto">
-            <div className="flex justify-between items-center bg-white/95 backdrop-blur-md rounded-3xl p-3 shadow-2xl shadow-slate-200/50 border border-slate-50 gap-4">
+          <header className={`fixed top-0 left-0 lg:left-24 right-0 z-50 transition-all duration-500 pointer-events-none ${isScrolled ? 'pt-2 scale-[0.98]' : 'pt-6'}`}>
+          <div className="container-custom pointer-events-auto max-w-6xl mx-auto px-4">
+            <div className={`flex justify-between items-center bg-white/80 backdrop-blur-2xl rounded-[2.5rem] p-3 shadow-[0_20px_50px_rgba(93,64,55,0.12)] border border-white/50 gap-6 transition-all duration-500 ${isScrolled ? 'px-6 border-amber-500/10' : 'px-8'}`}>
               {/* Mobile Only: Logo */}
               <Link
                 to={!user ? '/' : user?.role === 'customer' ? '/home' : user?.role === 'super_admin' ? '/superadmin/dashboard' : '/admin/dashboard'}
-                className="flex lg:hidden items-center space-x-2 group shrink-0"
+                className="flex lg:hidden items-center space-x-3 group shrink-0"
               >
-                <div className="relative">
-                  <img src="/images/logo.png" className="h-8 w-auto object-contain transition-all duration-500 group-hover:scale-110 drop-shadow-xl" />
+                <div className="relative p-1 bg-primary-600 rounded-xl shadow-lg shadow-primary-200">
+                  <img src="/images/logo.png" className="h-8 w-auto object-contain brightness-0 invert" />
                 </div>
-                <span className={`text-lg font-black tracking-tighter text-primary-600 logo-text sm:inline`}>
+                <span className={`text-xl font-black tracking-[-0.05em] text-[#5D4037] logo-text sm:inline`}>
                   PAWZZLE
                 </span>
               </Link>
 
+              {/* HUD PILL: Role & Identity Indicator */}
+              {user && (
+                <div className="hidden sm:flex items-center gap-3 bg-[#FAF9F6] px-5 py-2.5 rounded-2xl border border-[#5D4037]/5 shadow-inner group cursor-default">
+                   <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse shadow-[0_0_8px_rgba(245,158,11,0.8)]" />
+                   <span className="text-[10px] font-black text-[#5D4037]/40 uppercase tracking-[0.2em]">{user?.role?.replace('_', ' ')} SESSION</span>
+                </div>
+              )}
+
               {/* UTILITY MODULE: Right Aligned Actions */}
-              <div className="flex items-center gap-2 group-actions pr-1 ml-auto">
+              <div className="flex items-center gap-3 group-actions pr-1 ml-auto">
                 {/* Global Theme Toggle */}
                 <button
                   onClick={toggleTheme}
-                  className="p-3 bg-white border border-slate-100 rounded-xl text-slate-400 hover:text-amber-500 hover:bg-amber-50 transition-all shadow-sm flex items-center justify-center shrink-0"
+                  className="p-3.5 bg-white border border-[#5D4037]/5 rounded-2xl text-[#5D4037]/40 hover:text-amber-600 hover:bg-amber-50 transition-all shadow-[0_8px_15px_rgba(0,0,0,0.05)] flex items-center justify-center shrink-0 active:scale-90"
                   title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
                 >
-                  {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+                  {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
                 </button>
 
                 {user ? (
                   <>
-                    <NotificationBell />
+                    <NotificationBell className="p-3.5" />
                     
                     {user?.role === 'customer' && (
                       <Link
                         to="/cart"
-                        className="p-3 bg-white border border-slate-100 rounded-xl text-slate-400 hover:text-primary-600 hover:bg-primary-50 hover:border-primary-100 transition-all shadow-sm relative shrink-0"
+                        className="p-3.5 bg-white border border-[#5D4037]/5 rounded-2xl text-[#5D4037]/40 hover:text-amber-600 hover:bg-amber-50 transition-all shadow-[0_8px_15px_rgba(0,0,0,0.05)] relative shrink-0 active:scale-90"
                         title="View Cart"
                       >
-                        <ShoppingCart className="h-4 w-4" />
+                        <ShoppingCart className="h-5 w-5" />
                         {getTotalItems() > 0 && (
-                          <span className="absolute -top-1 -right-1 bg-primary-600 text-white text-[8px] font-black w-4 h-4 rounded-full flex items-center justify-center border-2 border-white shadow-sm font-sans">
+                          <span className="absolute -top-1.5 -right-1.5 bg-amber-600 text-white text-[9px] font-black w-5 h-5 rounded-full flex items-center justify-center border-2 border-white shadow-xl">
                             {getTotalItems()}
                           </span>
                         )}
@@ -422,10 +444,10 @@ const Layout = () => {
                     )}
                     <Link
                       to="/profile"
-                      className="p-1 px-1.5 bg-[#2D1B14] text-white rounded-xl shadow-xl hover:bg-amber-600 transition-all flex items-center justify-center shrink-0"
+                      className="p-1 px-1 bg-gradient-to-br from-[#3D2B23] to-[#211510] text-white rounded-2xl shadow-2xl hover:shadow-amber-500/20 transition-all flex items-center justify-center shrink-0 border border-white/10 active:scale-95"
                       title="View Profile"
                     >
-                      <div className="w-8 h-8 rounded-lg overflow-hidden flex items-center justify-center text-[11px] font-black tracking-tighter">
+                      <div className="w-10 h-10 rounded-[0.8rem] overflow-hidden flex items-center justify-center text-[13px] font-black tracking-tighter">
                         {user?.avatar || user?.profilePicture ? (
                           <img src={user?.avatar || user?.profilePicture} alt="" className="w-full h-full object-cover" />
                         ) : (
@@ -436,24 +458,24 @@ const Layout = () => {
     
                     <button
                       onClick={handleLogout}
-                      className="hidden lg:flex p-3 bg-white border border-slate-100 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 hover:border-rose-100 transition-all shadow-sm flex items-center justify-center shrink-0"
+                      className="hidden lg:flex p-3.5 bg-white border border-[#5D4037]/5 rounded-2xl text-[#5D4037]/40 hover:text-rose-600 hover:bg-rose-50 transition-all shadow-[0_8px_15px_rgba(0,0,0,0.05)] flex items-center justify-center shrink-0 active:scale-90"
                     >
-                      <LogOut className="h-4 w-4" />
+                      <LogOut className="h-5 w-5" />
                     </button>
                   </>
                 ) : (
                   <div className="flex items-center gap-4 px-2">
                     <Link 
                       to="/login" 
-                      className="text-[10px] font-black uppercase tracking-widest text-slate-600 hover:text-primary-600 transition-colors"
+                      className="text-[11px] font-black uppercase tracking-[0.2em] text-[#5D4037]/60 hover:text-amber-600 transition-colors"
                     >
-                      Sign In
+                      LOGIN
                     </Link>
                     <Link 
                       to="/register" 
-                      className="px-6 py-2.5 bg-primary-600 text-white rounded-xl text-[10px] font-black uppercase tracking-[0.2em] shadow-lg shadow-primary-100 hover:bg-primary-700 transition-all active:scale-95"
+                      className="px-8 py-3 bg-gradient-to-r from-amber-600 to-amber-700 text-white rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] shadow-[0_15px_30px_rgba(184,137,90,0.3)] hover:shadow-amber-600/40 hover:translate-y-[-2px] transition-all active:scale-95"
                     >
-                      Join
+                      UPGRADE
                     </Link>
                   </div>
                 )}
@@ -461,9 +483,9 @@ const Layout = () => {
                 {/* Mobile Menu Icon */}
                 <button
                   onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                  className="lg:hidden p-3 bg-slate-50 rounded-xl text-slate-900 border border-slate-100"
+                  className="lg:hidden p-3.5 bg-white rounded-2xl text-[#5D4037] border border-[#5D4037]/10 shadow-lg"
                 >
-                  <Menu className="h-5 w-5" />
+                  <Menu className="h-6 w-6" />
                 </button>
               </div>
             </div>
@@ -471,17 +493,17 @@ const Layout = () => {
 
           {/* Mobile Navigation Drawer (Overlay) */}
           {isMobileMenuOpen && (
-            <div className="lg:hidden fixed inset-0 z-[100] animate-fade-in pointer-events-auto">
+            <div className="lg:hidden fixed inset-0 z-[100] animate-fade-in pointer-events-auto font-['Outfit']">
               <div 
-                className="absolute inset-0 bg-primary-900/40 backdrop-blur-sm" 
+                className="absolute inset-0 bg-[#211510]/60 backdrop-blur-md" 
                 onClick={() => setIsMobileMenuOpen(false)}
               />
-              <div className="absolute top-0 right-0 h-full w-4/5 max-w-xs bg-white shadow-2xl p-6 flex flex-col overflow-y-auto">
-                <div className="flex items-center justify-between mb-8">
-                    <div className="flex items-center gap-3">
+              <div className="absolute top-0 right-0 h-full w-[85%] max-w-sm bg-[#FAF9F6] shadow-2xl p-8 flex flex-col overflow-y-auto">
+                <div className="flex items-center justify-between mb-12">
+                    <div className="flex items-center gap-4">
                       {user ? (
                         <>
-                          <div className="w-10 h-10 bg-primary-600 rounded-xl flex items-center justify-center text-white font-black overflow-hidden">
+                          <div className="w-14 h-14 bg-gradient-to-br from-amber-600 to-amber-800 rounded-2xl flex items-center justify-center text-white font-black overflow-hidden shadow-xl border-2 border-white">
                             {user?.avatar || user?.profilePicture ? (
                               <img src={user?.avatar || user?.profilePicture} alt="" className="w-full h-full object-cover" />
                             ) : (
@@ -489,33 +511,33 @@ const Layout = () => {
                             )}
                           </div>
                           <div>
-                            <p className="text-sm font-black text-slate-900 uppercase tracking-tight">{user?.firstName}</p>
-                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none">{user?.role?.replace('_', ' ')}</p>
+                            <p className="text-lg font-black text-[#5D4037] tracking-tight">{user?.firstName}</p>
+                            <p className="text-[10px] font-black text-amber-600 uppercase tracking-[0.2em] leading-none mt-1">{user?.role?.replace('_', ' ')}</p>
                           </div>
                         </>
                       ) : (
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center text-slate-400">
-                            <User className="h-5 w-5" />
+                        <div className="flex items-center gap-4">
+                          <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center text-amber-600 shadow-xl border border-amber-100">
+                            <User className="h-7 w-7" />
                           </div>
                           <div>
-                            <p className="text-xs font-black text-slate-900 uppercase tracking-tight leading-none mb-1">Welcome <span className="text-primary-600 italic">Guest</span></p>
-                            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest leading-none">Accessing Public Tabs</p>
+                            <p className="text-sm font-black text-[#5D4037] uppercase tracking-tight leading-none mb-1">GUEST <span className="text-amber-600">CORE</span></p>
+                            <p className="text-[10px] font-bold text-[#5D4037]/40 uppercase tracking-[0.2em] leading-none">SYSTEM ACCESS GRANTED</p>
                           </div>
                         </div>
                       )}
                     </div>
-                   <button onClick={() => setIsMobileMenuOpen(false)} className="p-2 bg-slate-50 rounded-xl text-slate-400">
-                     <X className="h-5 w-5" />
+                   <button onClick={() => setIsMobileMenuOpen(false)} className="w-12 h-12 rounded-2xl bg-white flex items-center justify-center text-amber-600 shadow-lg border border-amber-100">
+                     <X className="h-6 w-6" />
                    </button>
                 </div>
 
-                <div className="flex-1 space-y-6">
+                <div className="flex-1 space-y-8">
                   {navItems.reduce((acc, item, idx) => {
                     if (item.type === 'label') {
                       acc.push(
-                        <div key={`mlabel-${idx}`} className="pt-2 border-t border-slate-50 mt-4 first:pt-0 first:border-0 first:mt-0">
-                          <span className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em]">{item.label}</span>
+                        <div key={`mlabel-${idx}`} className="pt-6 border-t border-[#5D4037]/5 mt-8 first:pt-0 first:border-0 first:mt-0">
+                          <span className="text-[11px] font-black text-amber-600/40 uppercase tracking-[0.3em]">{item.label}</span>
                         </div>
                       );
                     } else {
@@ -526,14 +548,14 @@ const Layout = () => {
                           key={item.path}
                           to={item.path}
                           onClick={() => setIsMobileMenuOpen(false)}
-                          className={`flex items-center gap-4 p-3.5 rounded-2xl transition-all ${active
-                            ? 'bg-primary-50 text-primary-600 font-black shadow-sm border border-primary-100'
-                            : 'text-slate-500 font-bold hover:bg-slate-50'
+                          className={`flex items-center gap-5 p-5 rounded-3xl transition-all ${active
+                            ? 'bg-gradient-to-r from-amber-600 to-amber-700 text-white font-black shadow-[0_15px_30px_rgba(184,137,90,0.3)]'
+                            : 'text-[#5D4037]/60 font-black hover:bg-white border border-transparent hover:border-amber-100'
                             }`}
                         >
-                          <Icon className={`h-5 w-5 ${active ? 'text-primary-600' : 'text-slate-400'}`} />
-                          <span className="text-xs uppercase tracking-wider">{item.label}</span>
-                          <ChevronRight className="ml-auto h-4 w-4 opacity-30" />
+                          <Icon className={`h-6 w-6 ${active ? 'text-white' : 'text-amber-600/40'}`} />
+                          <span className="text-xs uppercase tracking-[0.15em]">{item.label}</span>
+                          <ChevronRight className={`ml-auto h-5 w-5 ${active ? 'opacity-100' : 'opacity-20'}`} />
                         </Link>
                       );
                     }
@@ -541,49 +563,61 @@ const Layout = () => {
                   }, [])}
                 </div>
 
+                {/* Drawer Footer */}
+                {user && (
+                   <button 
+                    onClick={confirmLogout}
+                    className="mt-12 w-full p-5 bg-rose-50 rounded-3xl flex items-center justify-center gap-4 text-rose-600 font-black text-xs uppercase tracking-[0.15em] border border-rose-100 shadow-sm active:scale-95 transition-all"
+                   >
+                     <LogOut className="h-5 w-5" />
+                     Terminate Session
+                   </button>
+                )}
               </div>
             </div>
           )}
         </header>
         )}
 
-        {/* Logout Confirmation Modal */}
+        {/* Premium Logout Confirmation Modal */}
         {showLogoutModal && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[70]">
-            <div className="bg-white rounded-xl p-6 max-w-sm mx-4 shadow-2xl border border-primary-100 animate-scale-in">
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">Confirm Logout</h3>
-              <p className="text-sm text-primary-600 mb-6">Are you sure you want to logout? This will terminate your secure session.</p>
-              <div className="flex gap-3 justify-center">
+          <div className="fixed inset-0 bg-[#211510]/80 backdrop-blur-xl flex items-center justify-center z-[100] p-6">
+            <div className="bg-white rounded-[3rem] p-12 max-w-sm w-full mx-auto shadow-2xl border border-white/50 animate-scale-in text-center relative overflow-hidden">
+              <div className="absolute top-0 left-0 right-0 h-2 bg-gradient-to-r from-rose-500 to-rose-700" />
+              <div className="w-20 h-20 bg-rose-50 rounded-3xl flex items-center justify-center mx-auto mb-8 border border-rose-100">
+                <LogOut className="h-10 w-10 text-rose-600" />
+              </div>
+              <h3 className="text-2xl font-black text-[#5D4037] tracking-tight mb-4 uppercase">Terminate Session?</h3>
+              <p className="text-[12px] font-bold text-[#5D4037]/40 uppercase tracking-widest leading-relaxed mb-10">You will be securely disconnected from the Pawzzle network.</p>
+              <div className="flex flex-col gap-4">
                 <button
-                  onClick={() => {
-                    setShowLogoutModal(false);
-                    logout();
-                  }}
-                  className="px-5 py-2 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700 transition-colors shadow-lg shadow-primary-200"
+                  onClick={confirmLogout}
+                  className="w-full py-5 bg-rose-600 text-white text-[11px] font-black uppercase tracking-[0.2em] rounded-2xl hover:bg-rose-700 transition-all shadow-[0_15px_30px_rgba(225,29,72,0.3)] active:scale-95"
                 >
-                  Yes, Logout
+                  Yes, Disconnect
                 </button>
                 <button
                   onClick={() => setShowLogoutModal(false)}
-                  className="px-5 py-2 bg-primary-100 text-primary-700 text-sm font-medium rounded-lg hover:bg-primary-200 transition-colors"
+                  className="w-full py-5 bg-[#FAF9F6] text-[#5D4037]/60 text-[11px] font-black uppercase tracking-[0.2em] rounded-2xl hover:bg-white hover:text-[#5D4037] transition-all border border-[#5D4037]/5"
                 >
-                  Cancel
+                  Stay Connected
                 </button>
               </div>
             </div>
           </div>
         )}
 
-        {/* Main content Area Scrollable */}
-        <main className="container-custom py-6 pb-36 lg:pb-6">
-          <div className="w-full">
+        {/* Global Page Entrance Animation Container */}
+        <main className={`container-custom py-10 pb-40 lg:pb-12 relative z-10 page-transition`}>
+           <div className="w-full">
             <Outlet />
           </div>
         </main>
       </div>
 
-      {/* Floating Bottom Navigation for Mobile */}
-      <nav id="mobile-bottom-nav" className="lg:hidden fixed bottom-6 left-1/2 -translate-x-1/2 w-[92%] max-w-lg bg-white/90 backdrop-blur-2xl border border-white/20 px-2 py-3 rounded-[2.5rem] z-[50] flex justify-around items-center shadow-[0_15px_50px_rgba(0,0,0,0.15)] ring-1 ring-black/5 transition-all duration-300">
+      {/* Floating Bottom Navigation for Mobile — Premium Glass Morphism */}
+      <nav id="mobile-bottom-nav" className="lg:hidden fixed bottom-8 left-1/2 -translate-x-1/2 w-[94%] max-w-lg bg-[#FAF9F6]/80 backdrop-blur-3xl border border-white/50 px-3 py-4 rounded-[3rem] z-[80] flex justify-around items-center shadow-[0_30px_60px_-15px_rgba(93,64,55,0.25)] ring-1 ring-white/50 transition-all duration-500">
+        <div className="absolute inset-0 rounded-[3rem] border-2 border-white/80 pointer-events-none" />
         {bottomNavItems.map((item) => {
           const Icon = item.icon;
           const active = isActivePath(item.path);
@@ -591,17 +625,17 @@ const Layout = () => {
             <Link
               key={item.path}
               to={item.path}
-              className={`flex flex-col items-center gap-1.5 px-3 py-1 rounded-2xl transition-all ${active ? 'text-primary-600 scale-110' : 'text-slate-400'}`}
+              className={`flex flex-col items-center gap-2 px-4 py-1.5 rounded-3xl transition-all duration-500 ${active ? 'text-amber-600 scale-110' : 'text-[#5D4037]/30 hover:text-amber-600/60'}`}
             >
-              <div className={`relative p-2 rounded-[1.2rem] transition-all ${active ? 'bg-primary-50 shadow-sm' : ''}`}>
-                <Icon className={`h-5 w-5 ${active ? 'stroke-[2.5px]' : 'stroke-2'}`} />
-                {item.label === 'Cart' && getTotalItems() > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-secondary-500 text-white text-[8px] rounded-full h-4 w-4 flex items-center justify-center font-bold shadow-lg">
+              <div className={`relative p-3 rounded-[1.25rem] transition-all duration-500 ${active ? 'bg-white shadow-[0_10px_20px_rgba(184,137,90,0.15)] scale-110' : ''}`}>
+                <Icon className={`h-6 w-6 ${active ? 'stroke-[2.5px]' : 'stroke-2'}`} />
+                {item.label === 'Shop' && getTotalItems() > 0 && (
+                  <span className="absolute -top-1.5 -right-1.5 bg-rose-600 text-white text-[9px] font-black rounded-full h-5 w-5 flex items-center justify-center border-2 border-[#FAF9F6] shadow-xl animate-pulse">
                     {getTotalItems()}
                   </span>
                 )}
               </div>
-              <span className={`text-[9px] font-black uppercase tracking-tighter transition-all ${active ? 'opacity-100' : 'opacity-60'}`}>
+              <span className={`text-[9px] font-black uppercase tracking-[0.1em] transition-all duration-500 ${active ? 'opacity-100' : 'opacity-0 h-0 scale-0'}`}>
                 {item.label}
               </span>
             </Link>
@@ -609,7 +643,7 @@ const Layout = () => {
         })}
       </nav>
 
-      {/* Floating Chat Manager for Customers */}
+      {/* Floating Chat Manager for Customers — Premium Branded */}
       {user?.role === 'customer' && (
         <FloatingChatManager currentUser={user} />
       )}
@@ -617,6 +651,7 @@ const Layout = () => {
       {/* Mandatory Password Change enforcement */}
       <PasswordChangeModal />
     </div>
+  );>
   );
 };
 

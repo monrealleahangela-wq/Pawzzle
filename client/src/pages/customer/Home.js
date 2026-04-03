@@ -176,257 +176,218 @@ const Home = () => {
   ];
 
   return (
-    <div className="space-y-6 sm:space-y-10 pb-24 animate-fade-in">
+    <div className="space-y-10 sm:space-y-16 pb-32 animate-fade-in font-['Outfit'] relative z-10">
 
-      {/* ── Ambient blobs ── */}
-      <div className="fixed inset-0 z-[-1] pointer-events-none overflow-hidden">
-        <div className="absolute top-[-15%] right-[-10%] w-[500px] h-[500px] bg-primary-50 rounded-full blur-[120px] animate-blob opacity-60" />
-        <div className="absolute bottom-[-10%] left-[-10%] w-[350px] h-[350px] bg-secondary-50 rounded-full blur-[100px] animate-blob opacity-50" style={{ animationDelay: '-4s' }} />
-        <div className="absolute top-[40%] left-[30%] w-[250px] h-[250px] bg-amber-50 rounded-full blur-[80px] animate-blob opacity-30" style={{ animationDelay: '-8s' }} />
+      {/* Premium Ambiance Layer - Immersive Glows */}
+      <div className="fixed inset-0 z-[-1] pointer-events-none overflow-hidden opacity-30">
+        <div className="absolute top-[-10%] right-[-5%] w-[500px] h-[500px] bg-amber-100 rounded-full blur-[120px] animate-spin-slow" />
+        <div className="absolute bottom-[-10%] left-[-5%] w-[400px] h-[400px] bg-[#5D4037]/10 rounded-full blur-[100px] animate-blob-move" />
       </div>
 
-      {/* ── Hero Section ── */}
-      <section className="relative">
-        <div className="relative z-10 glass-morphism rounded-[2rem] sm:rounded-[3rem] p-6 sm:p-16 border border-white/50 shadow-2xl shadow-primary-100/20 overflow-hidden">
-          {/* decorative corner shape */}
-          <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-bl from-primary-100/60 to-transparent rounded-bl-[4rem] pointer-events-none" />
-          <div className="absolute bottom-0 left-0 w-32 h-32 bg-gradient-to-tr from-secondary-100/40 to-transparent rounded-tr-[4rem] pointer-events-none" />
+      {/* ── Modern Heritage Hero Section ── */}
+      <section className="relative group">
+        <div className="relative z-10 bg-white/60 backdrop-blur-3xl rounded-[3rem] sm:rounded-[4rem] p-8 sm:p-20 border border-white/80 shadow-[0_40px_100px_-20px_rgba(93,64,55,0.15)] overflow-hidden transition-all duration-700 hover:bg-white/80">
+          {/* Layered Decorative Elements */}
+          <div className="absolute top-0 right-0 w-80 h-80 bg-gradient-to-bl from-amber-100/40 to-transparent rounded-bl-[8rem] pointer-events-none group-hover:scale-110 transition-transform duration-1000" />
+          <div className="absolute bottom-0 left-0 w-64 h-64 bg-gradient-to-tr from-[#5D4037]/5 to-transparent rounded-tr-[8rem] pointer-events-none" />
 
-          <div className="relative z-10 text-center space-y-4 sm:space-y-6">
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-white/70 backdrop-blur-md rounded-full border border-primary-100 shadow-sm">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              <span className="text-[8px] sm:text-[10px] font-black text-primary-900 uppercase tracking-[0.3em]">Live Collection</span>
+          <div className="relative z-10 text-center space-y-6 sm:space-y-10">
+            <div className="inline-flex items-center gap-3 px-5 py-2.5 bg-white border border-[#5D4037]/5 rounded-full shadow-[0_10px_25px_rgba(0,0,0,0.03)] selection:bg-amber-100">
+              <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+              <span className="text-[10px] font-black text-[#503E3B]/40 uppercase tracking-[0.4em]">ELITE ADOPTION NETWORK</span>
             </div>
 
-            <h1 className="text-3xl sm:text-7xl font-black tracking-tighter leading-[0.88] uppercase">
-              <span className="text-gradient-shimmer">Find Your</span>
-              <br />
-              <span className="bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent italic">Best Friend</span>
+            <h1 className="text-4xl sm:text-8xl font-black tracking-[-0.05em] leading-[0.88] uppercase text-[#3D2B23]">
+              Secure Your <br />
+              <span className="italic text-transparent bg-clip-text bg-gradient-to-r from-amber-500 to-amber-700">Best Friend .</span>
             </h1>
 
-            <p className="text-[9px] sm:text-base text-slate-500 max-w-sm mx-auto font-bold leading-relaxed uppercase tracking-tight opacity-80">
-              Curated excellence in pet adoption.
-              <span className="hidden sm:inline"> Verified breeders &amp; world-class service.</span>
+            <p className="text-[10px] sm:text-lg text-[#5D4037]/50 max-w-xl mx-auto font-medium leading-relaxed uppercase tracking-tight">
+              Access curated high-pedigree companions through the world's most <span className="text-amber-600">secure biological network</span>.
             </p>
 
-            <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 justify-center pt-1">
-              <Link to="/pets" className="group px-8 py-3.5 bg-slate-900 text-white rounded-2xl text-[9px] sm:text-xs font-black uppercase tracking-widest shadow-xl shadow-slate-200 hover:bg-primary-700 active:scale-95 transition-all flex items-center justify-center gap-2">
-                Find Pets <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-1 transition-transform" />
+            <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 justify-center pt-4">
+              <Link to="/pets" className="group relative px-12 py-5 bg-gradient-to-br from-[#3D2B23] to-[#211510] text-white rounded-2xl text-[11px] sm:text-xs font-black uppercase tracking-[0.3em] shadow-[0_25px_50px_rgba(0,0,0,0.2)] hover:shadow-amber-900/30 active:scale-95 transition-all flex items-center justify-center gap-3">
+                VIEW FLEET <ChevronRight className="h-5 w-5 group-hover:translate-x-2 transition-transform" />
               </Link>
-              <Link to="/products" className="px-8 py-3.5 bg-white/80 border border-slate-200 text-slate-800 rounded-2xl text-[9px] sm:text-xs font-black uppercase tracking-widest hover:border-slate-900 hover:bg-white active:scale-95 transition-all">
-                Shop Now
+              <Link to="/products" className="px-12 py-5 bg-white border-2 border-[#5D4037]/5 text-[#5D4037] rounded-2xl text-[11px] sm:text-xs font-black uppercase tracking-[0.3em] hover:bg-amber-50 hover:border-amber-200 transition-all active:scale-95">
+                SHOP NETWORK
               </Link>
             </div>
           </div>
         </div>
       </section>
 
-      {/* ── Live Ticker ── */}
-      <div className="relative overflow-hidden bg-slate-900 rounded-[1.5rem] py-3 border border-white/5 shadow-xl">
-        <div className="absolute inset-y-0 left-0 w-16 bg-gradient-to-r from-slate-900 to-transparent z-10 pointer-events-none" />
-        <div className="absolute inset-y-0 right-0 w-16 bg-gradient-to-l from-slate-900 to-transparent z-10 pointer-events-none" />
-        <div className="flex gap-12 animate-ticker whitespace-nowrap select-none">
+      {/* ── Precision Live Ticker ── */}
+      <div className="relative overflow-hidden bg-[#211510] rounded-[2rem] py-4 border border-[#3D2B23] shadow-2xl">
+        <div className="absolute inset-y-0 left-0 w-32 bg-gradient-to-r from-[#211510] to-transparent z-10 pointer-events-none" />
+        <div className="absolute inset-y-0 right-0 w-32 bg-gradient-to-l from-[#211510] to-transparent z-10 pointer-events-none" />
+        <div className="flex gap-16 animate-ticker whitespace-nowrap select-none">
           {[...TICKER_ITEMS, ...TICKER_ITEMS].map((item, i) => (
-            <span key={i} className="text-[9px] sm:text-xs font-black text-slate-400 uppercase tracking-[0.2em] shrink-0">
-              {item}&nbsp;&nbsp;<span className="text-primary-700">·</span>
+            <span key={i} className="text-[10px] sm:text-[11px] font-black text-amber-500/40 uppercase tracking-[0.3em] shrink-0 flex items-center gap-4">
+              {item} <div className="w-1.5 h-1.5 rounded-full bg-amber-500/20" />
             </span>
           ))}
         </div>
       </div>
 
-      {/* ── Animated Stats Cluster ── */}
-      <section className="grid grid-cols-3 gap-3">
-        <StatCard icon={Heart} label="Pets Available" target={500} suffix="+" color="primary" />
-        <StatCard icon={Users} label="Happy Owners" target={1200} suffix="+" color="secondary" />
-        <StatCard icon={Shield} label="Vetted Breeders" target={99} suffix="%" color="emerald" />
+      {/* ── High-Fidelity Stats Cluster ── */}
+      <section className="grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-8">
+        <StatCard icon={Heart} label="Available companions" target={500} suffix="+" color="amber" />
+        <StatCard icon={Users} label="Verified Owners" target={1200} suffix="+" color="stone" />
+        <StatCard icon={Shield} label="Protocol Integrity" target={99} suffix="%" color="emerald" />
       </section>
 
-      {/* ── Quick Nav Pills ── */}
-      <section className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
+      {/* ── Modular Quick Nav ── */}
+      <section className="flex gap-4 overflow-x-auto pb-4 scrollbar-none px-1">
         {[
-          { label: 'Pets', to: '/pets', icon: Heart },
-          { label: 'Products', to: '/products', icon: Package },
-          { label: 'Services', to: '/services', icon: Sparkles },
-          { label: 'Stores', to: '/stores', icon: MapPin },
-          { label: 'Bookings', to: '/bookings', icon: Clock },
+          { label: 'Companions', to: '/pets', icon: Heart },
+          { label: 'Hardware', to: '/products', icon: Package },
+          { label: 'Logistics', to: '/services', icon: Sparkles },
+          { label: 'Hub Centers', to: '/stores', icon: MapPin },
+          { label: 'Operations', to: '/bookings', icon: Clock },
         ].map(({ label, to, icon: Icon }) => (
           <Link key={label} to={to}
-            className="flex items-center gap-2 px-5 py-2.5 bg-white border border-slate-100 rounded-2xl text-[9px] font-black uppercase tracking-widest text-slate-700 hover:border-primary-300 hover:text-primary-700 hover:shadow-lg transition-all whitespace-nowrap shrink-0 shadow-sm">
-            <Icon className="h-3 w-3" /> {label}
+            className="flex items-center gap-3 px-8 py-4 bg-white/80 backdrop-blur-xl border border-[#5D4037]/5 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] text-[#5D4037]/60 hover:border-amber-500/30 hover:text-amber-700 hover:shadow-2xl hover:bg-white transition-all whitespace-nowrap shrink-0 shadow-[0_10px_30px_rgba(0,0,0,0.03)]">
+            <Icon className="h-4 w-4 text-amber-600/30" /> {label}
           </Link>
         ))}
       </section>
 
-      {/* ── Nearby Bases Radar section ── */}
-      <section className="space-y-4">
-        <div className="flex items-end justify-between px-1">
-          <div>
-            <p className="text-[9px] font-black text-secondary-600 uppercase tracking-[0.35em] mb-1">Nearby Shops</p>
-            <h2 className="text-xl sm:text-4xl font-black text-slate-900 uppercase tracking-tighter leading-none">
-              Pet Shops <span className="italic text-secondary-600">Near You</span>
+      {/* ── Proximity Radar Section ── */}
+      <section className="space-y-8">
+        <div className="flex items-end justify-between px-2">
+          <div className="space-y-2">
+             <div className="inline-flex items-center gap-2 px-3 py-1 bg-amber-50 border border-amber-100 rounded-full">
+                <Navigation className="h-3 w-3 text-amber-600" />
+                <span className="text-[9px] font-black text-amber-700 uppercase tracking-widest">LOGISTICS GRID</span>
+             </div>
+            <h2 className="text-3xl sm:text-5xl font-black text-[#5D4037] uppercase tracking-[-0.03em] leading-none">
+              Nearby <span className="italic text-amber-600">Stations .</span>
             </h2>
           </div>
           <button
             onClick={handleNearMe}
             disabled={nearMeLoading}
-            className="group flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-xl text-[8px] font-black uppercase tracking-widest hover:bg-secondary-600 active:scale-95 transition-all shadow-lg"
+            className="group relative px-6 py-3 bg-[#211510] text-white rounded-xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-amber-600 active:scale-95 transition-all shadow-[0_15px_30px_rgba(0,0,0,0.15)] flex items-center gap-3 overflow-hidden"
           >
-            <Navigation className={`h-3 w-3 ${nearMeLoading ? 'animate-spin' : ''}`} />
-            {nearMeLoading ? 'Finding...' : 'Find Nearby'}
+            <div className={`absolute inset-0 bg-amber-500/20 translate-y-full group-hover:translate-y-0 transition-transform duration-500`} />
+            <Navigation className={`h-4 w-4 relative z-10 ${nearMeLoading ? 'animate-spin' : ''}`} />
+            <span className="relative z-10">{nearMeLoading ? 'SCANNING...' : 'SCAN PROXIMITY'}</span>
           </button>
         </div>
 
         {nearbyStores.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
             {nearbyStores.map((store) => (
               <Link key={store._id} to={`/stores/${store._id}`}
-                className="group bg-white rounded-[2rem] border border-slate-100 p-4 flex gap-4 card-interactive animate-card-appear shadow-sm">
-                <div className="w-16 h-16 sm:w-20 sm:h-20 bg-slate-50 rounded-2xl overflow-hidden shrink-0 relative">
+                className="group bg-white rounded-[3rem] border border-[#5D4037]/5 p-6 flex gap-6 hover:shadow-[0_40px_80px_rgba(93,64,55,0.12)] hover:-translate-y-2 transition-all duration-500 animate-card-appear">
+                <div className="w-20 h-20 sm:w-24 sm:h-24 bg-[#FAF9F6] rounded-[1.8rem] overflow-hidden shrink-0 relative p-1 transition-all duration-500 group-hover:scale-105">
                   {store.logo ? (
                     <img
                       src={getImageUrl(store.logo)}
                       alt={store.name}
-                      onError={(e) => { e.target.onError = null; e.target.src = "https://images.unsplash.com/photo-1578575437130-527eed3abbec?w=200&h=200&fit=crop"; }}
-                      className="w-full h-full object-cover" />
+                      className="w-full h-full object-cover rounded-[1.5rem]" 
+                    />
                   ) : (
-                    <Building className="h-6 w-6 sm:h-8 sm:w-8 text-slate-200 absolute inset-0 m-auto" />
+                    <Building className="h-10 w-10 text-amber-100 absolute inset-0 m-auto" />
                   )}
                 </div>
-                <div className="flex-1 min-w-0 flex flex-col justify-center">
-                  <h3 className="text-xs sm:text-sm font-black text-slate-900 uppercase truncate group-hover:text-secondary-600 transition-colors">{store.name}</h3>
-                  <div className="flex items-center gap-2 mt-1">
-                    <span className="flex items-center gap-1 px-2 py-0.5 bg-secondary-50 text-secondary-600 rounded-lg text-[7px] sm:text-[8px] font-black uppercase tracking-wider">
-                      <Navigation className="h-2 w-2" />
-                      {store.distance.toFixed(1)} km
+                <div className="flex-1 min-w-0 flex flex-col justify-center space-y-3">
+                  <h3 className="text-sm sm:text-base font-black text-[#5D4037] uppercase tracking-tight truncate group-hover:text-amber-600 transition-colors">{store.name}</h3>
+                  <div className="flex items-center gap-2">
+                    <span className="px-3 py-1 bg-amber-50 text-amber-600 rounded-lg text-[8px] font-black uppercase tracking-widest border border-amber-100/50 flex items-center gap-1.5">
+                      <Navigation className="h-3 w-3" /> {store.distance.toFixed(1)} KM
                     </span>
-                    <span className="flex items-center gap-1 px-2 py-0.5 bg-amber-50 text-amber-600 rounded-lg text-[7px] sm:text-[8px] font-black uppercase tracking-wider">
-                      <Star className="h-2 w-2 fill-amber-500 text-amber-500" />
-                      {store.ratings?.average || '0.0'}
+                    <span className="px-3 py-1 bg-[#FAF9F6] text-[#5D4037]/60 rounded-lg text-[8px] font-black uppercase tracking-widest border border-[#5D4037]/5 flex items-center gap-1.5">
+                      <Star className="h-3 w-3 fill-amber-500 text-amber-500" /> {store.ratings?.average || '5.0'}
                     </span>
-                  </div>
-                  <div className="mt-2 flex gap-1 overflow-hidden">
-                    {store.services?.slice(0, 2).map((s, i) => (
-                      <span key={i} className="text-[6px] sm:text-[8px] font-bold text-slate-400 uppercase tracking-widest bg-slate-50 px-1.5 py-0.5 rounded">
-                        {s.name}
-                      </span>
-                    ))}
                   </div>
                 </div>
-                <div className="flex items-center">
-                  <ChevronRight className="h-4 w-4 text-slate-300 group-hover:translate-x-1 transition-transform" />
+                <div className="flex items-center gap-2 pr-2">
+                   <div className="w-10 h-10 rounded-full border border-amber-100 flex items-center justify-center opacity-0 group-hover:opacity-100 group-hover:translate-x-2 transition-all duration-500">
+                    <ChevronRight className="h-5 w-5 text-amber-600" />
+                   </div>
                 </div>
               </Link>
             ))}
           </div>
         ) : !nearMeLoading && userLocation && (
-          <div className="py-10 text-center bg-slate-50 rounded-[2rem] border border-dashed border-slate-200">
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">No bases detected within operational range (5km).</p>
+          <div className="py-20 text-center bg-white/40 backdrop-blur-md rounded-[3rem] border border-dashed border-[#5D4037]/10">
+            <p className="text-[11px] font-black text-[#5D4037]/30 uppercase tracking-[0.4em]">NO ACTIVE HUBS DETECTED IN OPERATIONAL RADIUS</p>
           </div>
         )}
       </section>
 
-      {/* ── Featured Pets ── */}
-      <section className="space-y-4">
-        <div className="flex items-end justify-between px-1">
-          <div>
-            <p className="text-[9px] font-black text-primary-600 uppercase tracking-[0.35em] mb-1">New Arrivals</p>
-            <h2 className="text-xl sm:text-4xl font-black text-slate-900 uppercase tracking-tighter leading-none">
-              Pets for <span className="italic text-primary-600">Adoption</span>
+      {/* ── Featured Biological Fleet ── */}
+      <section className="space-y-10">
+        <div className="flex items-end justify-between px-2">
+          <div className="space-y-2">
+             <div className="inline-flex items-center gap-2 px-3 py-1 bg-rose-50 border border-rose-100 rounded-full">
+                <Heart className="h-3 w-3 text-rose-500" />
+                <span className="text-[9px] font-black text-rose-700 uppercase tracking-widest">BIOLOGICAL STATUS: LIVE</span>
+             </div>
+            <h2 className="text-3xl sm:text-5xl font-black text-[#3D2B23] uppercase tracking-[-0.03em] leading-none">
+              Live <span className="italic text-amber-600">Companions .</span>
             </h2>
           </div>
-          <Link to="/pets" className="group text-[9px] font-black text-slate-500 uppercase tracking-widest hover:text-slate-900 transition-colors flex items-center gap-1">
-            All <ChevronRight className="h-3 w-3 group-hover:translate-x-0.5 transition-transform" />
+          <Link to="/pets" className="group text-[10px] font-black text-[#5D4037]/40 uppercase tracking-[0.3em] hover:text-amber-600 transition-all flex items-center gap-3">
+            VIEW ALL <div className="w-8 h-8 rounded-full border border-amber-500/10 flex items-center justify-center group-hover:bg-amber-50 transition-all">
+              <ChevronRight className="h-4 w-4" />
+            </div>
           </Link>
         </div>
 
-        <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-5">
+        <div className="grid grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-10">
           {featuredPets.map((pet, idx) => (
             <div key={pet._id}
-              className="group bg-white rounded-[2.5rem] border border-slate-100 p-2 flex flex-col relative overflow-hidden card-interactive animate-card-appear shadow-sm"
+              className="group bg-white rounded-[3.5rem] border border-[#5D4037]/5 p-3 flex flex-col relative overflow-hidden transition-all duration-700 hover:shadow-[0_50px_100px_-20px_rgba(93,64,55,0.15)] hover:-translate-y-3 animate-card-appear"
               style={{ animationDelay: `${idx * 0.08}s` }}>
-              {/* corner accent */}
-              <div className="absolute top-0 right-0 w-20 h-20 bg-slate-50 rounded-bl-[3rem] -translate-y-10 translate-x-10 group-hover:bg-primary-50 transition-colors duration-500" />
+              <div className="absolute top-0 right-0 w-32 h-32 bg-[#FAF9F6] rounded-bl-[5rem] -translate-y-16 translate-x-16 group-hover:bg-amber-50 transition-colors duration-700" />
 
               <Link to={`/pets/${pet._id}`} className="block relative z-10">
-                <div className="h-32 sm:h-52 bg-slate-50 rounded-[2rem] overflow-hidden relative">
+                <div className="aspect-square bg-[#FAF9F6] rounded-[3rem] overflow-hidden relative shadow-inner">
                   {pet.images?.[0] ? (
                     <img
                       src={getImageUrl(pet.images[0])}
                       alt={pet.name}
-                      onError={(e) => { e.target.onError = null; e.target.src = "https://images.unsplash.com/photo-1543466835-00a7907e9de1?w=400&h=400&fit=crop"; }}
-                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000" 
+                    />
                   ) : (
-                    <Heart className="h-8 w-8 text-slate-200 absolute inset-0 m-auto" />
+                    <Heart className="h-12 w-12 text-amber-500/10 absolute inset-0 m-auto" />
                   )}
-                  {/* status + species badges */}
-                  <div className="absolute top-2.5 left-2.5 flex flex-col gap-1">
-                    <span className={`px-2 py-0.5 rounded-lg text-[7px] font-black uppercase tracking-wider backdrop-blur-md border border-white/20 shadow-sm ${pet.status === 'available' ? 'bg-emerald-500/90 text-white' :
-                      pet.status === 'reserved' ? 'bg-amber-500/90 text-white' :
-                        'bg-rose-500/90 text-white'
-                      }`}>
-                      {pet.status === 'available' ? '● LIVE' : pet.status === 'reserved' ? '○ RESERVED' : '○ ADOPTED'}
+                  <div className="absolute top-4 left-4 flex flex-col gap-2">
+                    <span className={`px-4 py-1.5 rounded-2xl text-[8px] font-black uppercase tracking-[0.2em] backdrop-blur-xl border border-white/20 shadow-2xl ${pet.status === 'available' ? 'bg-emerald-500/90 text-white' : 'bg-rose-500/90 text-white'}`}>
+                      {pet.status === 'available' ? 'ACTIVE' : 'LOCKED'}
                     </span>
-                  </div>
-                  <div className="absolute top-2.5 right-2.5">
-                    <span className="px-2 py-0.5 bg-slate-900/80 backdrop-blur-md rounded-lg text-[7px] font-black uppercase tracking-wider text-white border border-white/10">
-                      {pet.species || 'Vetted'}
-                    </span>
-                  </div>
-                  {/* price overlay on hover */}
-                  <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-3">
-                    <span className="text-white text-sm font-black tracking-tighter">₱{pet.price?.toLocaleString()}</span>
                   </div>
                 </div>
               </Link>
 
-              <div className="p-3 sm:p-4 flex-1 flex flex-col relative z-10 gap-2">
-                <div>
-                  <p className="text-[7px] sm:text-[9px] font-black text-slate-400 uppercase tracking-[0.25em] truncate">{pet.breed || '—'}</p>
-                  <h3 className="text-[11px] sm:text-lg font-black text-slate-900 uppercase truncate group-hover:text-primary-600 transition-colors">{pet.name}</h3>
+              <div className="p-6 sm:p-8 flex-1 flex flex-col relative z-10 space-y-6">
+                <div className="space-y-2">
+                  <p className="text-[10px] font-black text-amber-600/60 uppercase tracking-[0.4em] truncate">{pet.breed || 'HIGH PEDIGREE'}</p>
+                  <h3 className="text-xl sm:text-3xl font-black text-[#3D2B23] uppercase tracking-tighter truncate group-hover:text-amber-600 transition-colors leading-none">{pet.name}</h3>
                 </div>
 
-                {/* Info pills */}
-                <div className="flex gap-1.5 flex-wrap">
-                  {pet.age && (
-                    <span className="px-2 py-0.5 bg-slate-50 border border-slate-100 rounded-lg text-[7px] font-black uppercase tracking-wide text-slate-600">
-                      {pet.age} {pet.ageUnit?.[0]}
-                    </span>
-                  )}
-                  {pet.gender && (
-                    <span className="px-2 py-0.5 bg-slate-50 border border-slate-100 rounded-lg text-[7px] font-black uppercase tracking-wide text-slate-600">
-                      {pet.gender}
-                    </span>
-                  )}
-                  {pet.weight && (
-                    <span className="px-2 py-0.5 bg-slate-50 border border-slate-100 rounded-lg text-[7px] font-black uppercase tracking-wide text-slate-600">
-                      {pet.weight}kg
-                    </span>
-                  )}
-                </div>
-
-                <div className="flex justify-between items-center mt-auto pt-2 border-t border-slate-50">
-                  <div>
-                    <div className="flex items-center gap-1.5 mb-1">
-                      <p className="text-[7px] font-black text-slate-400 uppercase tracking-widest leading-none">Price:</p>
-                      <p className="text-sm sm:text-xl font-black text-slate-900 tracking-tighter leading-none">₱{pet.price?.toLocaleString()}</p>
-                    </div>
-                    <Link to={`/stores/${pet.store?._id}`} className="flex items-center gap-1 hover:text-primary-600 transition-colors group/store">
-                      <div className="w-4 h-4 rounded-full overflow-hidden bg-slate-50 border border-slate-100 shrink-0">
-                        {pet.store?.logo ? (
-                          <img src={getImageUrl(pet.store.logo)} alt="" className="w-full h-full object-cover" />
-                        ) : (
-                          <Store className="h-2 w-2 text-primary-400 m-auto" />
-                        )}
-                      </div>
-                      <span className="text-[7px] font-black uppercase text-slate-400 group-hover/store:text-primary-600 transition-colors">
-                        {pet.store?.name}
+                <div className="flex gap-2 flex-wrap pb-6 border-b border-[#5D4037]/5">
+                  {[pet.age + ' ' + (pet.ageUnit?.[0] || 'Y'), pet.gender?.[0], pet.weight + 'KG'].map((label, i) => (
+                    label && (
+                      <span key={i} className="px-4 py-1.5 bg-[#FAF9F6] border border-[#5D4037]/5 rounded-xl text-[9px] font-black uppercase tracking-widest text-[#5D4037]/40">
+                        {label}
                       </span>
-                    </Link>
-                  </div>
-                  <Link to={`/pets/${pet._id}`}
-                    className="px-4 py-2 bg-slate-900 text-white rounded-xl text-[8px] font-black uppercase tracking-widest hover:bg-primary-600 active:scale-90 transition-all shadow-lg shadow-slate-200">
-                    View
-                  </Link>
+                    )
+                  ))}
+                </div>
+
+                <div className="flex justify-between items-center mt-auto">
+                   <div className="space-y-1">
+                      <p className="text-[9px] font-black text-[#5D4037]/30 uppercase tracking-[0.3em]">SECURE ACCESS</p>
+                      <p className="text-2xl sm:text-3xl font-black text-[#3D2B23] tracking-tighter leading-none">₱{pet.price?.toLocaleString()}</p>
+                   </div>
+                   <Link to={`/pets/${pet._id}`} className="w-14 h-14 bg-[#211510] text-white rounded-2xl flex items-center justify-center shadow-xl hover:bg-amber-600 active:scale-90 transition-all">
+                      <ArrowRight className="h-6 w-6" />
+                   </Link>
                 </div>
               </div>
             </div>
@@ -434,41 +395,44 @@ const Home = () => {
         </div>
       </section>
 
-      {/* ── Featured Products ── */}
+      {/* ── Precision Hardware Grid ── */}
       {featuredProducts.length > 0 && (
-        <section className="space-y-4">
-          <div className="flex items-end justify-between px-1">
-            <div>
-              <p className="text-[9px] font-black text-primary-600 uppercase tracking-[0.35em] mb-1">Top Items</p>
-              <h2 className="text-xl sm:text-4xl font-black text-slate-900 uppercase tracking-tighter leading-none">
-                Curated <span className="italic text-primary-600">Gear</span>
+        <section className="space-y-10">
+          <div className="flex items-end justify-between px-2">
+            <div className="space-y-2">
+               <div className="inline-flex items-center gap-2 px-3 py-1 bg-amber-50 border border-amber-100 rounded-full">
+                  <Package className="h-3 w-3 text-amber-600" />
+                  <span className="text-[9px] font-black text-amber-700 uppercase tracking-widest">HARDWARE ECOSYSTEM</span>
+               </div>
+              <h2 className="text-3xl sm:text-5xl font-black text-[#3D2B23] uppercase tracking-[-0.03em] leading-none">
+                Elite <span className="italic text-amber-600">Supplies .</span>
               </h2>
             </div>
-            <Link to="/products" className="group text-[9px] font-black text-slate-500 uppercase tracking-widest hover:text-slate-900 transition-colors flex items-center gap-1">
-              All <ChevronRight className="h-3 w-3 group-hover:translate-x-0.5 transition-transform" />
+            <Link to="/products" className="group text-[10px] font-black text-[#5D4037]/40 uppercase tracking-[0.3em] hover:text-amber-600 transition-all flex items-center gap-3">
+              EXPLORE HUB <div className="w-8 h-8 rounded-full border border-amber-500/10 flex items-center justify-center group-hover:bg-amber-50 transition-all">
+                <ChevronRight className="h-4 w-4" />
+              </div>
             </Link>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-6">
             {featuredProducts.map((product, idx) => (
-              <Link key={product._id} to={`/products/${product._id}`}
-                className="group bg-white rounded-[2rem] border border-slate-100 p-2 flex flex-col card-interactive shadow-sm animate-card-appear"
-                style={{ animationDelay: `${idx * 0.06}s` }}>
-                <div className="h-28 sm:h-36 bg-slate-50 rounded-[1.5rem] overflow-hidden mb-3 relative">
+              <div key={product._id} className="group bg-white rounded-[2.5rem] border border-[#5D4037]/5 p-3 flex flex-col hover:shadow-[0_30px_60px_-15px_rgba(0,0,0,0.1)] hover:-translate-y-2 transition-all duration-500 animate-card-appear" style={{ animationDelay: `${idx * 0.06}s` }}>
+                <Link to={`/products/${product._id}`} className="block h-40 sm:h-56 bg-[#FAF9F6] rounded-[2rem] overflow-hidden mb-5 relative group/img">
                   {product.images?.[0] ? (
                     <img
                       src={getImageUrl(product.images[0])}
                       alt={product.name}
-                      onError={(e) => { e.target.onError = null; e.target.src = "https://images.unsplash.com/photo-1583337130417-3346a1be7dee?w=400&h=400&fit=crop"; }}
-                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+                      className="w-full h-full object-cover group-hover/img:scale-110 transition-transform duration-1000" 
+                    />
                   ) : (
-                    <Package className="h-8 w-8 text-slate-200 absolute inset-0 m-auto" />
+                    <Package className="h-10 w-10 text-amber-100 absolute inset-0 m-auto" />
                   )}
-                  <span className={`absolute top-2 right-2 px-2 py-0.5 rounded-lg text-[7px] font-black uppercase tracking-wider backdrop-blur-md border border-white/20 shadow-sm ${product.stockQuantity > 5 ? 'bg-emerald-500/90 text-white' : 'bg-rose-500/90 text-white'}`}>
-                    {product.stockQuantity > 5 ? 'In Stock' : 'Low'}
-                  </span>
-                  
-                  {/* Quick Add to Cart Button */}
+                   {/* Stock Indicator HUD */}
+                   <div className="absolute top-3 right-3 px-3 py-1 bg-white/90 backdrop-blur-md rounded-xl text-[8px] font-black uppercase tracking-widest text-[#5D4037] border border-white/50 shadow-xl opacity-0 group-hover/img:opacity-100 transition-opacity">
+                      {product.stockQuantity > 5 ? 'IN STOCK' : 'CRITICAL'}
+                   </div>
+
                   <button
                     onClick={(e) => {
                       e.preventDefault();
@@ -484,96 +448,78 @@ const Home = () => {
                       });
                       toast.success(`${product.name} added to cart!`);
                     }}
-                    className="absolute bottom-2 right-2 p-2 bg-white/90 backdrop-blur-md border border-slate-100 rounded-xl text-slate-800 hover:bg-primary-600 hover:text-white hover:border-primary-600 active:scale-90 transition-all shadow-lg opacity-0 group-hover:opacity-100 translate-y-2 group-hover:translate-y-0 transition-all duration-300"
+                    className="absolute bottom-3 right-3 w-12 h-12 bg-[#211510] text-white rounded-[1.2rem] flex items-center justify-center shadow-2xl opacity-0 group-hover:opacity-100 translate-y-4 group-hover:translate-y-0 transition-all duration-500 hover:bg-amber-600 active:scale-90"
                   >
-                    <ShoppingBag className="h-3 w-3" />
+                    <ShoppingBag className="h-5 w-5" />
                   </button>
-                </div>
-                <div className="px-2 pb-2 flex-1 flex flex-col">
-                  <p className="text-[7px] font-black text-slate-400 uppercase tracking-widest mb-0.5 truncate">{product.category}</p>
-                  <p className="text-[10px] sm:text-sm font-black text-slate-900 uppercase truncate mb-2 group-hover:text-primary-600 transition-colors">{product.name}</p>
+                </Link>
+                <div className="px-3 pb-3 flex-1 flex flex-col space-y-3">
+                  <div className="space-y-1">
+                    <p className="text-[9px] font-black text-amber-600/40 uppercase tracking-[0.3em] truncate">{product.category}</p>
+                    <Link to={`/products/${product._id}`} className="text-xs sm:text-sm font-black text-[#5D4037] uppercase tracking-tight truncate block group-hover:text-amber-600 transition-colors">{product.name}</Link>
+                  </div>
                   
-                  <div className="mt-auto flex justify-between items-end pt-2 border-t border-slate-50">
-                    <div>
-                      <p className="text-sm sm:text-lg font-black text-slate-900 tracking-tighter mb-1 leading-none">₱{product.price?.toLocaleString()}</p>
-                      <div className="flex items-center gap-1 group/store">
-                        <div className="w-3.5 h-3.5 rounded-full overflow-hidden bg-slate-50 border border-slate-100 shrink-0">
-                          {product.store?.logo ? (
-                            <img src={getImageUrl(product.store.logo)} alt="" className="w-full h-full object-cover" />
-                          ) : (
-                            <Store className="h-2 w-2 text-primary-400 m-auto" />
-                          )}
-                        </div>
-                        <span className="text-[7px] font-black uppercase text-slate-400">
-                          {product.store?.name}
-                        </span>
-                      </div>
+                  <div className="mt-auto pt-4 border-t border-[#5D4037]/5 flex justify-between items-end">
+                    <p className="text-lg sm:text-xl font-black text-[#3D2B23] tracking-tighter leading-none">₱{product.price?.toLocaleString()}</p>
+                    <div className="w-8 h-8 rounded-full border border-amber-500/10 flex items-center justify-center group-hover:bg-amber-50 transition-all">
+                       <ChevronRight className="h-4 w-4 text-amber-600" />
                     </div>
                   </div>
                 </div>
-              </Link>
+              </div>
             ))}
           </div>
         </section>
       )}
 
-      {/* ── Features Bento ── */}
-      <section className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      {/* ── Operational Integrity Grid ── */}
+      <section className="grid grid-cols-1 sm:grid-cols-3 gap-8">
         {[
-          { icon: Crown, title: 'Healthy Pets', desc: 'Only verified and health-checked animals enter our platform.', color: 'primary' },
-          { icon: Shield, title: '100% Secure', desc: 'Safe transactions and buyer-first policies on every order.', color: 'emerald' },
-          { icon: Zap, title: 'Easy Booking', desc: 'Schedule grooming, vet visits, and walks in seconds.', color: 'amber' },
+          { icon: Crown, title: 'Verified Units', desc: 'Every companion undergoes tactical health screening by our elite vetting core.', color: 'amber' },
+          { icon: Shield, title: 'Encrypted Escrow', desc: 'All transactions are secured via high-level protocol validation.', color: 'emerald' },
+          { icon: Zap, title: 'Instant Logistics', desc: 'Secure grooming, medical, and behavioral services with one-tap deployment.', color: 'stone' },
         ].map(({ icon: Icon, title, desc, color }, i) => (
-          <div key={i} className={`bg-white rounded-[2.5rem] border border-slate-100 p-6 sm:p-8 relative overflow-hidden card-interactive shadow-sm animate-card-appear`}
+          <div key={i} className={`bg-white rounded-[3.5rem] border border-[#5D4037]/5 p-10 relative overflow-hidden transition-all duration-500 hover:shadow-[0_40px_80px_rgba(93,64,55,0.1)] hover:-translate-y-2 animate-card-appear`}
             style={{ animationDelay: `${i * 0.12}s` }}>
-            <div className={`w-12 h-12 bg-${color}-50 rounded-2xl flex items-center justify-center mb-5`}>
-              <Icon className={`h-6 w-6 text-${color}-600`} />
+            <div className={`w-14 h-14 bg-[#FAF9F6] border border-[#5D4037]/5 rounded-2xl flex items-center justify-center mb-6`}>
+              <Icon className={`h-7 w-7 text-amber-600`} />
             </div>
-            <h3 className="text-base sm:text-lg font-black text-slate-900 uppercase tracking-tight mb-2">{title}</h3>
-            <p className="text-[10px] sm:text-xs text-slate-500 font-bold leading-relaxed">{desc}</p>
-            <div className={`absolute bottom-0 right-0 w-24 h-24 bg-${color}-50 rounded-tl-[3rem] opacity-50 pointer-events-none`} />
+            <h3 className="text-xl font-black text-[#5D4037] uppercase tracking-tight mb-4">{title}</h3>
+            <p className="text-[11px] text-[#5D4037]/40 font-bold leading-relaxed uppercase tracking-widest">{desc}</p>
           </div>
         ))}
       </section>
 
-      {/* ── Dark CTA ── */}
-      <section>
-        <div className="bg-slate-900 rounded-[2.5rem] p-8 sm:p-16 relative overflow-hidden text-center text-white border border-white/5 shadow-2xl">
-          <div className="absolute top-0 right-0 w-40 h-40 sm:w-72 sm:h-72 bg-primary-600/10 rounded-full blur-[80px] pointer-events-none" />
-          <div className="absolute bottom-0 left-0 w-40 h-40 sm:w-72 sm:h-72 bg-secondary-600/10 rounded-full blur-[80px] pointer-events-none" />
+      {/* ── Luxe Terminal CTA ── */}
+      <section className="px-2">
+        <div className="bg-gradient-to-br from-[#211510] via-[#3D2B23] to-[#211510] rounded-[4rem] p-12 sm:p-24 relative overflow-hidden text-center text-white border border-white/5 shadow-[0_60px_100px_-20px_rgba(0,0,0,0.6)] group">
+          <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10" />
+          <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-amber-500/10 rounded-full blur-[120px] pointer-events-none group-hover:scale-110 transition-transform duration-1000" />
+          <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-amber-600/5 rounded-full blur-[100px] pointer-events-none" />
 
-          {/* rotating ring decoration */}
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 border border-white/5 rounded-full animate-rotate-slow pointer-events-none hidden sm:block" />
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 border border-white/[0.03] rounded-full animate-rotate-slow pointer-events-none hidden sm:block" style={{ animationDirection: 'reverse' }} />
-
-          <div className="relative z-10 space-y-4 sm:space-y-6">
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-white/5 border border-white/10 rounded-full">
-              <TrendingUp className="h-3 w-3 text-primary-400" />
-              <span className="text-[8px] sm:text-[10px] font-black uppercase tracking-[0.3em] text-primary-400">Growing Community</span>
+          <div className="relative z-10 space-y-10">
+            <div className="inline-flex items-center gap-3 px-6 py-2 bg-white/5 border border-white/10 rounded-full">
+              <TrendingUp className="h-4 w-4 text-amber-400" />
+              <span className="text-[10px] sm:text-[11px] font-black uppercase tracking-[0.4em] text-amber-400">NETWORK EXPANSION</span>
             </div>
-            <h2 className="text-2xl sm:text-6xl font-black tracking-tighter uppercase leading-[0.9]">
-              {isAuthenticated ? `Welcome back,` : 'Join the'}
+            <h2 className="text-4xl sm:text-8xl font-black tracking-[-0.05em] uppercase leading-[0.85] text-white">
+              {isAuthenticated ? `Operational Status` : 'Initiate'}
               <br />
-              <span className="text-gradient-shimmer italic">
-                {isAuthenticated ? user?.firstName || 'Commander' : 'Elite'}
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-amber-600 italic">
+                {isAuthenticated ? 'OPTIMAL .' : 'PROTOCOL .'}
               </span>
             </h2>
-            <p className="text-[8px] sm:text-base text-slate-400 max-w-sm mx-auto font-bold uppercase tracking-widest leading-relaxed">
+            <p className="text-[12px] sm:text-lg text-white/40 max-w-lg mx-auto font-black uppercase tracking-[0.2em] leading-relaxed">
               {isAuthenticated
-                ? 'Your premium fleet awaits. Continue your journey.'
-                : 'Get exclusive access to the finest pets and top-tier services.'}
+                ? 'Your premium biological fleet is secured. Deployment ready.'
+                : 'Authenticate your access to secure elite hardware and companions today.'}
             </p>
-            <div className="flex flex-col sm:flex-row gap-3 justify-center pt-2">
+            <div className="flex flex-col sm:flex-row gap-6 justify-center pt-4">
               <Link to={isAuthenticated ? '/pets' : '/register'}
-                className="group px-10 py-4 bg-primary-600 text-white rounded-2xl text-[9px] sm:text-xs font-black uppercase tracking-widest hover:bg-primary-500 active:scale-95 transition-all shadow-xl shadow-primary-900/40 flex items-center justify-center gap-2">
-                {isAuthenticated ? 'See New Pets' : 'Create Account'}
-                <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-1 transition-transform" />
+                className="group relative px-16 py-6 bg-amber-500 text-white rounded-2xl text-sm font-black uppercase tracking-[0.3em] hover:bg-amber-600 active:scale-95 transition-all shadow-[0_20px_50px_rgba(184,137,90,0.4)] flex items-center justify-center gap-4">
+                {isAuthenticated ? 'VIEW NEW FLEET' : 'REGISTER CORE'}
+                <ArrowRight className="h-5 w-5 group-hover:translate-x-3 transition-transform" />
               </Link>
-              {!isAuthenticated && (
-                <Link to="/login" className="px-10 py-4 bg-white/5 border border-white/10 text-white rounded-2xl text-[9px] sm:text-xs font-black uppercase tracking-widest hover:bg-white/10 transition-all">
-                  Sign In
-                </Link>
-              )}
             </div>
           </div>
         </div>
