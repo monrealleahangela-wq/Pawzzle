@@ -651,7 +651,6 @@ const Layout = () => {
       {/* Mandatory Password Change enforcement */}
       <PasswordChangeModal />
     </div>
-  );>
   );
 };
 

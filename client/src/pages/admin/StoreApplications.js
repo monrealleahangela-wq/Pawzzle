@@ -258,6 +258,7 @@ const StoreApplications = () => {
             );
           })}
         </div>
+      )}
       {/* Review Modal */}
     {showReviewModal && selectedApplication && (
       <div className="fixed inset-0 bg-[#211510]/80 backdrop-blur-xl flex items-center justify-center p-4 z-[100] animate-fade-in">

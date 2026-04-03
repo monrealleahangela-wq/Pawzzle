@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { Heart, Package, Calendar, ArrowRight, LogIn, Sparkles, Users, TrendingUp, Star, Store, ChevronRight, MapPin } from 'lucide-react';
+import { Heart as HeartIcon, Package, Calendar, ArrowRight, LogIn, Sparkles, Users, TrendingUp, Star, Store, ChevronRight, MapPin, ShieldCheck, Heart } from 'lucide-react';
 import { petService, productService, serviceService, getImageUrl } from '../../services/apiService';
 import { useAuth } from '../../contexts/AuthContext';
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/Card';
