@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { bookingService, serviceService, voucherService, getImageUrl, petProfileService } from '../../services/apiService';
 import { toast } from 'react-toastify';
-import { Clock, User, MapPin, Phone, Mail, DollarSign, CheckCircle, XCircle, AlertCircle, Filter, Search, Calendar, ArrowLeft, ChevronLeft, ChevronRight, Store, X, Activity, ShieldCheck, TrendingUp, Tag, Ticket, Bell, Building, Heart, PawPrint, Trash2, Star, Plus } from 'lucide-react';
+import { Clock, User, MapPin, Phone, Mail, DollarSign, CheckCircle, XCircle, AlertCircle, Filter, Search, Calendar, ArrowLeft, ChevronLeft, ChevronRight, Store, X, Activity, ShieldCheck, TrendingUp, Tag, Ticket, Bell, Building, Heart, PawPrint, Trash2, Star } from 'lucide-react';
 import ReviewModal from '../../components/ReviewModal';
 
 const StoreHoursHint = ({ bookingDate, businessHours }) => {
@@ -72,7 +72,6 @@ const Bookings = ({ isSubcomponent = false }) => {
   const [showVoucherModal, setShowVoucherModal] = useState(false);
   const [savedPets, setSavedPets] = useState([]);
   const [selectedPetProfile, setSelectedPetProfile] = useState(null);
-  const [petSelectionMode, setPetSelectionMode] = useState('select'); // 'select' or 'new'
 
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -193,10 +192,7 @@ const Bookings = ({ isSubcomponent = false }) => {
       }
     };
     if (showBookingForm) fetchPetProfiles();
-    // Default to 'new' if no pets, otherwise 'select'
-    if (showBookingForm && savedPets.length === 0) setPetSelectionMode('new');
-    else if (showBookingForm) setPetSelectionMode('select');
-  }, [showBookingForm, savedPets.length]);
+  }, [showBookingForm]);
 
   const fetchServiceDetails = async (serviceId) => {
     try {
@@ -525,8 +521,8 @@ const Bookings = ({ isSubcomponent = false }) => {
         totalPrice: totalAmount
       };
 
-      // Auto-Save Pet Profile if it's a new entry
-      if (petSelectionMode === 'new') {
+      // Auto-Save Pet Profile if it's a new entry (using the minimalist UI logic)
+      if (!selectedPetProfile) {
         try {
           await petProfileService.createPet({
             name: bookingForm.pet.name,
@@ -951,173 +947,112 @@ const Bookings = ({ isSubcomponent = false }) => {
                     </div>
                   </div>
 
-                  {/* ── Pet Selection Intelligence ── */}
-                  <div className="flex bg-slate-50 p-1.5 rounded-[1.5rem] mb-8 border border-slate-100 shadow-inner">
-                    <button 
-                      type="button"
-                      onClick={() => {
-                        setPetSelectionMode('select');
-                        if (savedPets.length === 0) toast.info("Register a pet first! Transitioning to manual entry.");
-                      }}
-                      className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${petSelectionMode === 'select' ? 'bg-white text-primary-600 shadow-md translate-y-[-1px]' : 'text-slate-400 hover:text-slate-600'}`}
-                    >
-                      <ShieldCheck className={`h-3.5 w-3.5 ${petSelectionMode === 'select' ? 'text-primary-500' : 'text-slate-300'}`} />
-                      Select Saved Pet
-                    </button>
-                    <button 
-                      type="button"
-                      onClick={() => {
-                        setPetSelectionMode('new');
-                        setSelectedPetProfile(null);
-                        setBookingForm(prev => ({ ...prev, pet: { name: '', type: '', breed: '', size: 'Small', age: '', weight: '' } }));
-                      }}
-                      className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${petSelectionMode === 'new' ? 'bg-white text-secondary-600 shadow-md translate-y-[-1px]' : 'text-slate-400 hover:text-slate-600'}`}
-                    >
-                      <Plus className={`h-3.5 w-3.5 ${petSelectionMode === 'new' ? 'text-secondary-500' : 'text-slate-300'}`} />
-                      Register New Pet
-                    </button>
-                  </div>
-
                   {/* ── Saved Pets Quick-Select ── */}
-                  {petSelectionMode === 'select' && (
-                    <div className="mb-7 animate-in fade-in slide-in-from-top-2 duration-500">
-                      <div className="flex items-center justify-between mb-4">
-                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                          <Activity className="h-4 w-4 text-primary-500 animate-pulse" /> Identify Your Pet Asset
+                  {savedPets.length > 0 && (
+                    <div className="mb-7">
+                      <div className="flex items-center justify-between mb-3">
+                        <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+                          <PawPrint className="h-3 w-3 text-primary-500" /> Your Saved Pets
                         </p>
+                        {selectedPetProfile && (
+                          <button type="button"
+                            onClick={() => {
+                              setSelectedPetProfile(null);
+                              setBookingForm(prev => ({ ...prev, pet: { name: '', type: '', breed: '', size: 'Small', age: '', weight: '' } }));
+                            }}
+                            className="text-[8px] font-black text-slate-400 hover:text-rose-500 uppercase tracking-widest flex items-center gap-1 transition-colors">
+                            <X className="h-3 w-3" /> Clear / New Pet
+                          </button>
+                        )}
                       </div>
-
-                      {savedPets.length > 0 ? (
-                        <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
-                          {savedPets.map(pet => {
-                            const isSelected = selectedPetProfile?._id === pet._id;
-                            return (
-                              <button key={pet._id} type="button"
-                                onClick={() => {
-                                  setSelectedPetProfile(pet);
-                                  setBookingForm(prev => ({
-                                    ...prev,
-                                    pet: { name: pet.name, type: pet.type, breed: pet.breed, size: pet.size || 'Small', age: String(pet.age), weight: String(pet.weight) }
-                                  }));
-                                }}
-                                className={`flex-shrink-0 min-w-[200px] p-6 rounded-[2rem] border-2 text-left transition-all relative overflow-hidden group/pet ${
-                                  isSelected
-                                    ? 'border-primary-600 bg-primary-50/50 shadow-xl shadow-primary-200/40 ring-4 ring-primary-500/10'
-                                    : 'border-slate-100 bg-white hover:border-primary-300 hover:shadow-lg'
-                                }`}>
-                                <div className="absolute top-0 right-0 w-16 h-16 bg-primary-50 rounded-bl-3xl opacity-20 group-hover/pet:scale-110 transition-transform" />
-                                <div className="flex items-center gap-4 mb-4 relative z-10">
-                                  <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-xl shadow-inner transition-all ${isSelected ? 'bg-primary-600 text-white shadow-primary-200' : 'bg-slate-50 text-slate-400'}`}>
-                                    {pet.type === 'Dog' ? '🐶' : pet.type === 'Cat' ? '🐱' : '🐾'}
-                                  </div>
-                                  <div className="min-w-0">
-                                    <p className={`text-base font-black uppercase tracking-tight leading-none ${isSelected ? 'text-primary-900' : 'text-slate-900'}`}>{pet.name}</p>
-                                    <p className={`text-[9px] font-black uppercase tracking-widest mt-1 ${isSelected ? 'text-primary-500' : 'text-slate-400'}`}>{pet.type}</p>
-                                  </div>
+                      <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
+                        {savedPets.map(pet => {
+                          const isSelected = selectedPetProfile?._id === pet._id;
+                          return (
+                            <button key={pet._id} type="button"
+                              onClick={() => {
+                                setSelectedPetProfile(pet);
+                                setBookingForm(prev => ({
+                                  ...prev,
+                                  pet: { name: pet.name, type: pet.type, breed: pet.breed, size: pet.size || 'Small', age: String(pet.age), weight: String(pet.weight) }
+                                }));
+                              }}
+                              className={`flex-shrink-0 min-w-[160px] p-4 rounded-2xl border-2 text-left transition-all ${
+                                isSelected
+                                  ? 'border-primary-500 bg-primary-50 shadow-lg shadow-primary-100'
+                                  : 'border-slate-100 bg-white hover:border-primary-200 hover:shadow-md'
+                              }`}>
+                              <div className="flex items-center gap-2 mb-2">
+                                <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-sm ${isSelected ? 'bg-primary-500 text-white' : 'bg-slate-100 text-slate-500'}`}>
+                                  🐾
                                 </div>
-                                <div className="space-y-1 relative z-10">
-                                  <p className="text-[10px] font-black text-slate-800 uppercase tracking-tight">{pet.breed}</p>
-                                  <div className="flex items-center gap-2 pt-1">
-                                     <span className="px-2 py-0.5 bg-white border border-slate-100 rounded text-[8px] font-black text-slate-500 uppercase">{pet.age}YR</span>
-                                     <span className="px-2 py-0.5 bg-white border border-slate-100 rounded text-[8px] font-black text-slate-500 uppercase">{pet.weight}KG</span>
-                                     <span className="px-2 py-0.5 bg-primary-600 text-white rounded text-[8px] font-black uppercase">{pet.size || 'Small'}</span>
-                                  </div>
+                                <div>
+                                  <p className="text-[11px] font-black text-slate-900 uppercase tracking-tight leading-none">{pet.name}</p>
+                                  <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">{pet.type}</p>
                                 </div>
-                                {isSelected && (
-                                  <div className="absolute top-4 right-4 animate-in zoom-in duration-300">
-                                    <CheckCircle className="h-5 w-5 text-primary-600 drop-shadow-sm" />
-                                  </div>
-                                )}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      ) : (
-                        <div className="py-12 border-2 border-dashed border-slate-100 rounded-[2.5rem] flex flex-col items-center justify-center text-center px-6">
-                           <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-4">
-                              <PawPrint className="h-8 w-8 text-slate-200" />
-                           </div>
-                           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Zero Profiles Detected</p>
-                           <p className="text-[9px] text-slate-300 font-bold uppercase tracking-tight italic mb-6">Transition to 'Register New' to begin your fleet</p>
-                           <button 
-                             type="button"
-                             onClick={() => setPetSelectionMode('new')}
-                             className="px-6 py-2.5 bg-slate-900 text-white rounded-xl text-[9px] font-black uppercase tracking-widest shadow-lg shadow-slate-200"
-                           >
-                             Switch to New Pet
-                           </button>
-                        </div>
-                      )}
+                              </div>
+                              <p className="text-[8px] font-bold text-slate-500 uppercase tracking-wide">{pet.breed}</p>
+                              <p className="text-[8px] text-slate-400 font-bold mt-0.5">{pet.age}yr · {pet.weight}kg · <span className="text-primary-500">{pet.size || 'Small'}</span></p>
+                              {isSelected && (
+                                <div className="flex items-center gap-1 mt-2">
+                                  <CheckCircle className="h-3 w-3 text-primary-500" />
+                                  <span className="text-[7px] font-black text-primary-600 uppercase tracking-widest">Selected</span>
+                                </div>
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      <div className="mt-3 flex items-center gap-2 text-[8px] font-bold text-slate-400 uppercase tracking-widest">
+                        <div className="flex-1 h-px bg-slate-100" />
+                        or fill in manually
+                        <div className="flex-1 h-px bg-slate-100" />
+                      </div>
                     </div>
                   )}
-
-                  {/* ── Manual Entry Fallback or Edit ── */}
-                  <div className={`transition-all duration-700 ${petSelectionMode === 'select' && !selectedPetProfile ? 'opacity-0 h-0 pointer-events-none' : 'opacity-100 h-auto'}`}>
-                    <div className="flex items-center gap-3 mb-6">
-                      <div className="w-1.5 h-1.5 rounded-full bg-secondary-500" />
-                      <p className="text-[9px] font-black text-secondary-600 uppercase tracking-[0.3em] leading-none">
-                        {petSelectionMode === 'new' ? 'Initialize New Asset' : 'Confirm Pet Details'}
-                      </p>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                      {[
-                        { label: 'Pet Name', name: 'pet.name', type: 'text', placeholder: 'e.g. Max', required: true, icon: User },
-                        { label: 'Pet Type', name: 'pet.type', type: 'text', placeholder: 'e.g. Dog, Cat', required: true, icon: Heart },
-                        { label: 'Breed', name: 'pet.breed', type: 'text', placeholder: 'e.g. Bulldog', required: true, icon: Activity },
-                        { label: 'Age (years)', name: 'pet.age', type: 'number', placeholder: '1', required: true, icon: Clock },
-                        { label: 'Weight (kg)', name: 'pet.weight', type: 'number', placeholder: '5.0', required: true, step: '0.1', icon: TrendingUp },
-                      ].map(({ label, name, type, placeholder, required, step, icon: Icon }) => {
-                        const val = name.split('.').reduce((o, k) => (o || {})[k], bookingForm);
-                        return (
-                          <div key={name} className="group">
-                            <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1.5 px-1 group-focus-within:text-primary-500 transition-colors uppercase tracking-[0.2em]">{label}{required && ' *'}</label>
-                            <div className="relative">
-                              <Icon className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300 group-focus-within:text-primary-500 transition-colors" />
-                              <input type={type} name={name} value={val} onChange={handleFormChange}
-                                placeholder={placeholder} required={required} step={step}
-                                className="w-full pl-11 pr-4 py-4 bg-white/40 backdrop-blur-md border border-slate-100 rounded-[1.25rem] text-[13px] font-black text-slate-900 uppercase tracking-tight focus:outline-none focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 focus:bg-white transition-all shadow-sm" />
-                            </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {[
+                      { label: 'Pet Name', name: 'pet.name', type: 'text', placeholder: 'e.g. Max', required: true, icon: User },
+                      { label: 'Pet Type', name: 'pet.type', type: 'text', placeholder: 'e.g. Dog, Cat', required: true, icon: Heart },
+                      { label: 'Breed', name: 'pet.breed', type: 'text', placeholder: 'e.g. Bulldog', required: true, icon: Activity },
+                      { label: 'Age (years)', name: 'pet.age', type: 'number', placeholder: '1', required: true, icon: Clock },
+                      { label: 'Weight (kg)', name: 'pet.weight', type: 'number', placeholder: '5.0', required: true, step: '0.1', icon: TrendingUp },
+                    ].map(({ label, name, type, placeholder, required, step, icon: Icon }) => {
+                      const val = name.split('.').reduce((o, k) => (o || {})[k], bookingForm);
+                      return (
+                        <div key={name} className="group">
+                          <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1.5 px-1 group-focus-within:text-primary-500 transition-colors uppercase tracking-[0.2em]">{label}{required && ' *'}</label>
+                          <div className="relative">
+                            <Icon className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300 group-focus-within:text-primary-500 transition-colors" />
+                            <input type={type} name={name} value={val} onChange={handleFormChange}
+                              placeholder={placeholder} required={required} step={step}
+                              className="w-full pl-11 pr-4 py-4 bg-white/40 backdrop-blur-md border border-slate-100 rounded-[1.25rem] text-[13px] font-black text-slate-900 uppercase tracking-tight focus:outline-none focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 focus:bg-white transition-all shadow-sm" />
                           </div>
-                        );
-                      })}
-                      
-                      {/* Size Selector */}
-                      <div className="group">
-                        <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1.5 px-1 group-focus-within:text-primary-500 transition-colors uppercase tracking-[0.2em]">Pet Size *</label>
-                        <div className="relative">
-                          <Activity className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300 group-focus-within:text-primary-500 transition-colors" />
-                          <select 
-                            name="pet.size" 
-                            value={bookingForm.pet.size} 
-                            onChange={handleFormChange}
-                            className="w-full pl-11 pr-4 py-4 bg-white/40 backdrop-blur-md border border-slate-100 rounded-[1.25rem] text-[13px] font-black text-slate-900 uppercase tracking-tight focus:outline-none focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 focus:bg-white transition-all shadow-sm cursor-pointer appearance-none"
-                          >
-                            <option value="Small">Small (Standard)</option>
-                            <option value="Medium">Medium (+₱50)</option>
-                            <option value="Large">Large (+₱100)</option>
-                            <option value="Extra Large">Extra Large (+₱150)</option>
-                          </select>
-                          <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
-                            <ChevronLeft className="h-4 w-4 -rotate-90" />
-                          </div>
+                        </div>
+                      );
+                    })}
+                    
+                    {/* Size Selector */}
+                    <div className="group">
+                      <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1.5 px-1 group-focus-within:text-primary-500 transition-colors uppercase tracking-[0.2em]">Pet Size *</label>
+                      <div className="relative">
+                        <Activity className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300 group-focus-within:text-primary-500 transition-colors" />
+                        <select 
+                          name="pet.size" 
+                          value={bookingForm.pet.size} 
+                          onChange={handleFormChange}
+                          className="w-full pl-11 pr-4 py-4 bg-white/40 backdrop-blur-md border border-slate-100 rounded-[1.25rem] text-[13px] font-black text-slate-900 uppercase tracking-tight focus:outline-none focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 focus:bg-white transition-all shadow-sm cursor-pointer appearance-none"
+                        >
+                          <option value="Small">Small (Standard)</option>
+                          <option value="Medium">Medium (+₱50)</option>
+                          <option value="Large">Large (+₱100)</option>
+                          <option value="Extra Large">Extra Large (+₱150)</option>
+                        </select>
+                        <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                          <ChevronLeft className="h-4 w-4 -rotate-90" />
                         </div>
                       </div>
                     </div>
-
-                    {petSelectionMode === 'new' && (
-                      <div className="mt-8 flex items-start gap-4 p-5 bg-primary-600/5 rounded-3xl border border-primary-600/10 animate-in fade-in slide-in-from-bottom-2 duration-700">
-                        <div className="w-10 h-10 rounded-2xl bg-primary-600/10 flex items-center justify-center shrink-0">
-                           <ShieldCheck className="h-5 w-5 text-primary-600" />
-                        </div>
-                        <div>
-                           <p className="text-[10px] font-black text-primary-900 uppercase tracking-widest mb-1 leading-none">Intelligence Auto-Vault Enabled</p>
-                           <p className="text-[8px] font-bold text-primary-700/60 uppercase tracking-tight italic leading-relaxed">
-                             Neural pattern detected. New pet profile details will be autonomously archived to your Personal Fleet upon booking confirmation for future rapid deployment.
-                           </p>
-                        </div>
-                      </div>
-                    )}
                   </div>
 
                   <div className="mt-8">
