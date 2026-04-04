@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import { adminBookingService } from '../../services/apiService';
+import { adminBookingService, uploadService, getImageUrl } from '../../services/apiService';
 import {
   Calendar,
   Clock,
@@ -17,7 +17,10 @@ import {
   CheckCircle,
   Briefcase,
   Filter,
-  ExternalLink
+  ExternalLink,
+  Camera,
+  Eye,
+  Plus
 } from 'lucide-react';
 
 const statusNextMap = {
@@ -491,11 +494,13 @@ const BookingsManagement = () => {
                             if(!file) return;
                             try {
                               toast.info('Uploading snap...');
-                              const res = await uploadService.uploadPhoto(file);
+                              const formData = new FormData();
+                              formData.append('image', file);
+                              const res = await uploadService.uploadImage(formData);
                               const updatedPhotos = [...(selectedBooking.servicePhotos || []), res.data.url];
                               await adminBookingService.updateBookingStatus(selectedBooking._id, selectedBooking.status, { servicePhotos: updatedPhotos });
                               setSelectedBooking(prev => ({ ...prev, servicePhotos: updatedPhotos }));
-                              toast.success('Snap uploaded to protocollog');
+                              toast.success('Snap uploaded to protocol log');
                             } catch (err) {
                               toast.error('Snap failure');
                             }

@@ -165,12 +165,21 @@ const Bookings = ({ isSubcomponent = false }) => {
   };
 
   const handleFormChange = (e) => {
-    const { name, value } = e.target;
-    if (name.startsWith('pet.')) {
-      const field = name.split('.')[1];
-      setBookingForm(prev => ({ ...prev, pet: { ...prev.pet, [field]: value } }));
+    const { name, value, type, checked } = e.target;
+    if (name.includes('.')) {
+      const [parent, child] = name.split('.');
+      setBookingForm(prev => ({
+        ...prev,
+        [parent]: {
+          ...prev[parent],
+          [child]: value
+        }
+      }));
     } else {
-      setBookingForm(prev => ({ ...prev, [name]: value }));
+      setBookingForm(prev => ({
+        ...prev,
+        [name]: type === 'checkbox' ? checked : value
+      }));
     }
   };
 
@@ -463,25 +472,7 @@ const Bookings = ({ isSubcomponent = false }) => {
     setSearchTerm(e.target.value);
   };
 
-  const handleFormChange = (e) => {
-    const { name, value, type, checked } = e.target;
 
-    if (name.includes('.')) {
-      const [parent, child] = name.split('.');
-      setBookingForm(prev => ({
-        ...prev,
-        [parent]: {
-          ...prev[parent],
-          [child]: value
-        }
-      }));
-    } else {
-      setBookingForm(prev => ({
-        ...prev,
-        [name]: type === 'checkbox' ? checked : value
-      }));
-    }
-  };
 
   const handleApplyVoucher = async (codeOverride) => {
     const codeToUse = typeof codeOverride === 'string' ? codeOverride : voucherCode;
