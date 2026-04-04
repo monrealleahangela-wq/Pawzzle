@@ -96,6 +96,17 @@ const ProductInventory = () => {
     ]
   };
 
+  const [inventoryForm, setInventoryForm] = useState({
+    productId: '',
+    quantity: 0,
+    operation: 'add',
+    reorderLevel: 10,
+    notes: ''
+  });
+
+  const [summary, setSummary] = useState({ totalItems: 0, lowStockItems: 0, outOfStockItems: 0, totalValue: 0 });
+  const [pagination, setPagination] = useState({ currentPage: 1, totalPages: 1, hasNext: false, hasPrev: false });
+
   // Form States
   const initialProductState = {
     name: '',
