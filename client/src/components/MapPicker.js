@@ -47,6 +47,28 @@ const MapPicker = ({ onLocationSelected, initialAddress = '', className = '' }) 
   const [showConfirm, setShowConfirm] = useState(false);
   const [tempLocation, setTempLocation] = useState(null);
 
+  // Geocode initialAddress on mount
+  useEffect(() => {
+    if (initialAddress && initialAddress !== 'N/A') {
+      const geocodeInitial = async () => {
+        try {
+          const query = initialAddress.toLowerCase().includes('cavite') 
+            ? initialAddress 
+            : `${initialAddress}, Cavite, Philippines`;
+          const encoded = encodeURIComponent(query);
+          const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encoded}&limit=1`);
+          const data = await response.json();
+          if (data && data.length > 0) {
+            setPosition([parseFloat(data[0].lat), parseFloat(data[0].lon)]);
+          }
+        } catch (error) {
+          console.error('Initial geocode failed:', error);
+        }
+      };
+      geocodeInitial();
+    }
+  }, [initialAddress]);
+
   // Reverse geocoding using Nominatim
   const reverseGeocode = async (lat, lng) => {
     try {

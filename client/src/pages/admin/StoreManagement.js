@@ -16,10 +16,13 @@ import {
   Plus,
   Eye,
   Camera,
-  Globe
+  Globe,
+  Navigation,
+  Map as MapIcon
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import GoogleMap from '../../components/GoogleMap';
+import MapPicker from '../../components/MapPicker';
 import { getCitiesByProvince, getBarangaysByCity } from '../../constants/locationConstants';
 
 const StoreManagement = () => {
@@ -34,6 +37,7 @@ const StoreManagement = () => {
   const [coverLoading, setCoverLoading] = useState(false);
   const [cities, setCities] = useState([]);
   const [barangays, setBarangays] = useState([]);
+  const [showMapPicker, setShowMapPicker] = useState(false);
 
   useEffect(() => {
     fetchMyStore();
@@ -166,6 +170,25 @@ const StoreManagement = () => {
         address: { ...prev.contactInfo?.address, coordinates: coords }
       }
     }));
+  };
+
+  const handleMapLocationSelected = (location) => {
+    setStore(prev => ({
+      ...prev,
+      contactInfo: {
+        ...prev.contactInfo,
+        address: {
+          ...prev.contactInfo?.address,
+          street: location.street || prev.contactInfo?.address?.street || '',
+          city: location.city || prev.contactInfo?.address?.city || '',
+          barangay: location.barangay || prev.contactInfo?.address?.barangay || '',
+          zipCode: location.zipCode || prev.contactInfo?.address?.zipCode || '',
+          coordinates: { lat: location.lat, lng: location.lng }
+        }
+      }
+    }));
+    setShowMapPicker(false);
+    toast.success('Address coordinates synced with base location.');
   };
 
   const handleSave = async () => {
@@ -367,6 +390,36 @@ const StoreManagement = () => {
                             className="w-full px-6 py-3.5 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:border-indigo-500 focus:bg-white outline-none font-bold transition-all"
                             placeholder="e.g. Blk 13 Lot 17, Main Street, Village Name"
                           />
+                        </div>
+
+                        {/* Map Intelligence Activation */}
+                        <div className="md:col-span-3 pt-6">
+                          <button
+                            type="button"
+                            onClick={() => setShowMapPicker(!showMapPicker)}
+                            className={`flex items-center gap-3 px-6 py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] transition-all border-2 ${showMapPicker ? 'bg-amber-50 border-amber-500 text-amber-700' : 'bg-white border-slate-100 text-slate-500 hover:border-indigo-500 hover:text-indigo-600'}`}
+                          >
+                            <MapIcon className={`h-4 w-4 ${showMapPicker ? 'animate-bounce' : ''}`} />
+                            {showMapPicker ? 'CLOSE MAP INTELLIGENCE' : 'ACTIVATE MAP CALIBRATION'}
+                          </button>
+
+                          {showMapPicker && (
+                            <div className="mt-8 p-6 bg-slate-50 rounded-[3rem] border-2 border-dashed border-slate-200">
+                               <div className="flex items-center gap-4 mb-6">
+                                  <div className="w-10 h-10 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600">
+                                      <Navigation className="h-5 w-5" />
+                                  </div>
+                                  <div>
+                                      <h4 className="text-sm font-black text-slate-900 uppercase tracking-tight">Geospatial Calibration</h4>
+                                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Select your base center on the grid</p>
+                                  </div>
+                               </div>
+                               <MapPicker 
+                                 onLocationSelected={handleMapLocationSelected}
+                                 initialAddress={store.contactInfo?.address?.street}
+                               />
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
