@@ -386,28 +386,28 @@ const AccountManagement = () => {
 
       {/* Credentials Terminal Modal */}
       {showCredentialsModal && selectedAccount && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4 z-[100] animate-fade-in">
-          <div className="bg-white rounded-[3rem] max-w-4xl w-full shadow-2xl relative overflow-hidden max-h-[90vh] flex flex-col">
-            <div className="p-8 border-b border-slate-100 flex items-center justify-between bg-white relative z-10">
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-2 z-[100] animate-fade-in">
+          <div className="bg-white rounded-[2rem] max-w-3xl w-full shadow-2xl relative overflow-hidden max-h-[95vh] flex flex-col border border-slate-200">
+            <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-white relative z-10">
               <div>
                 <div className="flex items-center gap-2 mb-1">
-                  <Shield className="h-3 w-3 text-primary-600" />
-                  <span className="text-[9px] font-black text-primary-600 uppercase tracking-[0.4em]">Security Sublayer</span>
+                  <Shield className="h-2.5 w-2.5 text-primary-600" />
+                  <span className="text-[8px] font-black text-primary-600 uppercase tracking-[0.4em]">Security Sublayer</span>
                 </div>
-                <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tighter leading-none mb-1">
+                <h2 className="text-lg font-black text-slate-900 uppercase tracking-tighter leading-none mb-1">
                   Identity <span className="text-primary-600 italic">#{selectedAccount.username.toUpperCase()}</span>
                 </h2>
-                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Global Citizen Access Node</p>
+                <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none">Access Node Control</p>
               </div>
               <button
                 onClick={() => setShowCredentialsModal(false)}
-                className="p-3 bg-slate-50 text-slate-400 rounded-2xl hover:bg-rose-50 hover:text-rose-600 transition-all"
+                className="p-2.5 bg-slate-50 text-slate-400 rounded-xl hover:bg-rose-50 hover:text-rose-600 transition-all active:scale-95"
               >
-                <X className="h-5 w-5" />
+                <X className="h-4 w-4" />
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-10 space-y-10 no-scrollbar">
+            <div className="flex-1 overflow-y-auto p-6 sm:p-8 space-y-8 no-scrollbar">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
                 {/* Visual Identity Assets */}
                 <div className="space-y-8">

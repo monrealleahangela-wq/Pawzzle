@@ -256,109 +256,109 @@ const VoucherManagement = () => {
             </div>
 
             {showModal && (
-                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4 z-[100] animate-fade-in">
-                    <div className="bg-white rounded-[3rem] max-w-lg w-full shadow-2xl overflow-hidden animate-slide-up">
-                        <div className="p-8 border-b border-slate-100 flex items-center justify-between">
+                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-2 z-[100] animate-fade-in">
+                    <div className="bg-white rounded-[2rem] max-w-md w-full shadow-2xl overflow-hidden animate-slide-up border border-slate-200">
+                        <div className="p-5 border-b border-slate-100 flex items-center justify-between">
                             <div>
-                                <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tighter">
+                                <h2 className="text-lg font-black text-slate-900 uppercase tracking-tighter leading-none mb-0.5">
                                     {editingVoucher ? 'Edit' : 'Create'} <span className="text-primary-600 italic">Voucher</span>
                                 </h2>
-                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Discount properties</p>
+                                <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none">Discount properties</p>
                             </div>
                             <button
                                 onClick={() => setShowModal(false)}
-                                className="p-3 bg-slate-50 text-slate-400 rounded-2xl hover:bg-rose-50 hover:text-rose-600 transition-all"
+                                className="p-2 w-9 h-9 bg-slate-50 text-slate-400 rounded-xl hover:bg-rose-50 hover:text-rose-600 transition-all active:scale-95 flex items-center justify-center"
                             >
-                                <X className="h-5 w-5" />
+                                <X className="h-4 w-4" />
                             </button>
                         </div>
 
-                        <form onSubmit={handleSubmit} className="p-10 space-y-6">
-                            <div className="space-y-2">
-                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Voucher Code</label>
+                        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+                            <div className="space-y-1.5">
+                                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Voucher Code</label>
                                 <input
                                     type="text"
                                     required
                                     placeholder="e.g. SUMMER2024"
                                     value={formData.code}
                                     onChange={(e) => setFormData({ ...formData, code: e.target.value.toUpperCase() })}
-                                    className="w-full px-6 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-1 focus:ring-primary-500 font-black text-slate-900 text-[13px] uppercase tracking-widest"
+                                    className="w-full px-5 py-3 bg-slate-50 border border-slate-100 rounded-xl outline-none focus:ring-1 focus:ring-primary-500 font-black text-slate-900 text-xs uppercase tracking-widest"
                                 />
                             </div>
 
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Type</label>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="space-y-1.5">
+                                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Type</label>
                                     <select
                                         value={formData.discountType}
                                         onChange={(e) => setFormData({ ...formData, discountType: e.target.value })}
-                                        className="w-full px-6 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-1 focus:ring-primary-500 font-bold text-slate-900"
+                                        className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl outline-none focus:ring-1 focus:ring-primary-500 font-bold text-slate-900 text-xs"
                                     >
                                         <option value="percentage">PERCENTAGE (%)</option>
                                         <option value="fixed">FIXED AMOUNT (₱)</option>
                                     </select>
                                 </div>
-                                <div className="space-y-2">
-                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Value</label>
+                                <div className="space-y-1.5">
+                                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Value</label>
                                     <input
                                         type="number"
                                         required
                                         value={formData.discountValue}
                                         onChange={(e) => setFormData({ ...formData, discountValue: e.target.value })}
-                                        className="w-full px-6 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-1 focus:ring-primary-500 font-black text-slate-900"
+                                        className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl outline-none focus:ring-1 focus:ring-primary-500 font-black text-slate-900 text-xs"
                                     />
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Min Purchase (₱)</label>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="space-y-1.5">
+                                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Min Purchase (₱)</label>
                                     <input
                                         type="number"
                                         required
                                         value={formData.minPurchase}
                                         onChange={(e) => setFormData({ ...formData, minPurchase: e.target.value })}
-                                        className="w-full px-6 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-1 focus:ring-primary-500 font-black text-slate-900"
+                                        className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl outline-none focus:ring-1 focus:ring-primary-500 font-black text-slate-900 text-xs"
                                     />
                                 </div>
-                                <div className="space-y-2">
-                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Usage Limit</label>
+                                <div className="space-y-1.5">
+                                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Usage Limit</label>
                                     <input
                                         type="number"
                                         placeholder="Unlimited if empty"
                                         value={formData.usageLimit}
                                         onChange={(e) => setFormData({ ...formData, usageLimit: e.target.value })}
-                                        className="w-full px-6 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-1 focus:ring-primary-500 font-black text-slate-900"
+                                        className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl outline-none focus:ring-1 focus:ring-primary-500 font-black text-slate-900 text-xs"
                                     />
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Start Date</label>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="space-y-1.5">
+                                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Start Date</label>
                                     <input
                                         type="date"
                                         required
                                         value={formData.startDate}
                                         onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
-                                        className="w-full px-6 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-1 focus:ring-primary-500 font-bold text-slate-900"
+                                        className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl outline-none focus:ring-1 focus:ring-primary-500 font-bold text-slate-900 text-xs"
                                     />
                                 </div>
-                                <div className="space-y-2">
-                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">End Date</label>
+                                <div className="space-y-1.5">
+                                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">End Date</label>
                                     <input
                                         type="date"
                                         required
                                         value={formData.endDate}
                                         onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
-                                        className="w-full px-6 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-1 focus:ring-primary-500 font-bold text-slate-900"
+                                        className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl outline-none focus:ring-1 focus:ring-primary-500 font-bold text-slate-900 text-xs"
                                     />
                                 </div>
                             </div>
 
                             <button
                                 type="submit"
-                                className="w-full py-3.5 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest hover:bg-primary-600 transition-all shadow-xl"
+                                className="w-full py-4 bg-slate-900 text-white rounded-xl font-black uppercase tracking-widest hover:bg-primary-600 transition-all shadow-xl active:scale-95"
                             >
                                 {editingVoucher ? 'Update Voucher' : 'Create Voucher'}
                             </button>

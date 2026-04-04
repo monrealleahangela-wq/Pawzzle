@@ -275,24 +275,24 @@ const ReportManagement = () => {
             )}
 
             {selectedReport && (
-                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4 z-[100] animate-fade-in">
-                    <div className="bg-white rounded-3xl max-w-2xl w-full shadow-2xl flex flex-col max-h-[90vh] animate-slide-up">
-                        <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between flex-shrink-0">
+                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-2 z-[100] animate-fade-in">
+                    <div className="bg-white rounded-[2rem] max-w-xl w-full shadow-2xl flex flex-col max-h-[95vh] animate-slide-up border border-slate-200 overflow-hidden">
+                        <div className="px-5 py-3.5 border-b border-slate-100 flex items-center justify-between flex-shrink-0">
                             <div>
-                                <h2 className="text-lg font-black text-slate-900 uppercase tracking-tighter">
+                                <h2 className="text-base font-black text-slate-900 uppercase tracking-tighter leading-none mb-0.5">
                                     Report <span className="text-rose-600 italic">Details</span>
                                 </h2>
-                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Case ID: {selectedReport._id.slice(-8).toUpperCase()}</p>
+                                <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none">Case ID: {selectedReport._id.slice(-8).toUpperCase()}</p>
                             </div>
                             <button
                                 onClick={() => setSelectedReport(null)}
-                                className="p-2.5 bg-slate-50 text-slate-400 rounded-xl hover:bg-rose-50 hover:text-rose-600 transition-all flex-shrink-0"
+                                className="p-2 w-9 h-9 bg-slate-50 text-slate-400 rounded-xl hover:bg-rose-50 hover:text-rose-600 transition-all flex-shrink-0 active:scale-95"
                             >
                                 <X className="h-4 w-4" />
                             </button>
                         </div>
 
-                        <div className="p-5 space-y-4 overflow-y-auto">
+                        <div className="p-4 sm:p-5 space-y-4 overflow-y-auto no-scrollbar">
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
                                     <label className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] block">Reporter Details</label>

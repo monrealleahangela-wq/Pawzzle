@@ -1065,19 +1065,19 @@ const Checkout = () => {
       </div>
       {/* Voucher Selection Modal */}
       {showVoucherModal && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4 z-[100] animate-fade-in text-slate-900">
-          <div className="bg-white rounded-[3rem] max-w-lg w-full shadow-2xl overflow-hidden animate-slide-up">
-            <div className="p-8 border-b border-slate-100 flex items-center justify-between">
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-2 z-[100] animate-fade-in text-slate-900">
+          <div className="bg-white rounded-[2rem] max-w-md w-full shadow-2xl overflow-hidden animate-slide-up border border-slate-200">
+            <div className="p-5 border-b border-slate-100 flex items-center justify-between">
               <div>
-                <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tighter">Your <span className="text-primary-600 italic">Vouchers</span></h2>
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Select a claimed discount</p>
+                <h2 className="text-lg font-black text-slate-900 uppercase tracking-tighter leading-none mb-0.5">Your <span className="text-primary-600 italic">Vouchers</span></h2>
+                <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none">Select a claimed discount</p>
               </div>
-              <button onClick={() => setShowVoucherModal(false)} className="p-3 bg-slate-50 text-slate-400 rounded-2xl hover:bg-rose-50 hover:text-rose-600 transition-all">
-                <X className="h-5 w-5" />
+              <button onClick={() => setShowVoucherModal(false)} className="p-2 w-9 h-9 bg-slate-50 text-slate-400 rounded-xl hover:bg-rose-50 hover:text-rose-600 transition-all active:scale-95 flex items-center justify-center">
+                <X className="h-4 w-4" />
               </button>
             </div>
 
-            <div className="p-8 space-y-4 max-h-[60vh] overflow-y-auto no-scrollbar">
+            <div className="p-5 space-y-3 max-h-[60vh] overflow-y-auto no-scrollbar">
               {myVouchers.length > 0 ? (
                 myVouchers.map((mv) => {
                   const { isValid, reason } = checkVoucherValidity(mv);
@@ -1139,10 +1139,10 @@ const Checkout = () => {
               )}
             </div>
 
-            <div className="p-8 bg-slate-50 border-t border-slate-100">
+            <div className="p-5 bg-slate-50 border-t border-slate-100">
                 <button 
                     onClick={() => navigate('/vouchers')}
-                    className="w-full py-4 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl hover:bg-primary-600 transition-all"
+                    className="w-full py-3 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-xl hover:bg-primary-600 transition-all active:scale-95"
                 >
                     Explore More Discounts
                 </button>

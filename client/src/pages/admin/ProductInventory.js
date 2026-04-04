@@ -596,24 +596,24 @@ const ProductInventory = () => {
 
       {/* Product Form Modal */}
       {showProductModal && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[100] flex items-center justify-center p-4 overflow-hidden">
-          <div className="bg-white w-full max-w-5xl rounded-[3rem] overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300 flex flex-col max-h-[90vh]">
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-2 overflow-hidden">
+          <div className="bg-white w-full max-w-4xl rounded-[2rem] overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300 flex flex-col max-h-[95vh] border border-slate-200">
             {/* Modal Header */}
-            <header className="p-8 border-b border-slate-100 flex items-center justify-between bg-white shrink-0">
+            <header className="p-5 border-b border-slate-100 flex items-center justify-between bg-white shrink-0">
               <div className="flex items-center gap-5">
-                <div className="w-14 h-14 bg-primary-600 rounded-2xl flex items-center justify-center shadow-2xl shadow-primary-200">
-                  <Package className="h-7 w-7 text-white" />
+                <div className="w-10 h-10 bg-primary-600 rounded-xl flex items-center justify-center shadow-2xl shadow-primary-200">
+                  <Package className="h-5 w-5 text-white" />
                 </div>
                 <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <Shield className="h-3 w-3 text-primary-600" />
-                    <span className="text-[10px] font-black text-primary-600 uppercase tracking-[0.4em]">Action : {editingProduct ? 'Protocol_Update' : 'Asset_Acquisition'}</span>
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <Shield className="h-2.5 w-2.5 text-primary-600" />
+                    <span className="text-[8px] font-black text-primary-600 uppercase tracking-[0.4em] leading-none">Action : {editingProduct ? 'Update' : 'Asset'}</span>
                   </div>
-                  <h3 className="text-3xl font-black uppercase text-slate-900 tracking-tighter leading-none">{editingProduct ? 'Edit Product' : 'Add New Product'}</h3>
+                  <h3 className="text-xl font-black uppercase text-slate-900 tracking-tighter leading-none">{editingProduct ? 'Edit Product' : 'Add New Product'}</h3>
                 </div>
               </div>
-              <button onClick={() => setShowProductModal(false)} className="p-4 bg-slate-50 text-slate-400 rounded-2xl hover:bg-rose-50 hover:text-rose-600 transition-all">
-                <X className="h-6 w-6" />
+              <button onClick={() => setShowProductModal(false)} className="p-2.5 bg-slate-50 text-slate-400 rounded-xl hover:bg-rose-50 hover:text-rose-600 transition-all active:scale-95">
+                <X className="h-4 w-4" />
               </button>
             </header>
 
@@ -624,19 +624,19 @@ const ProductInventory = () => {
                 <section className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
                   <button 
                     onClick={() => setActiveSections(p => ({ ...p, basic: !p.basic }))}
-                    className="w-full px-8 py-6 flex items-center justify-between hover:bg-slate-50 transition-all"
+                    className="w-full px-6 py-4 flex items-center justify-between hover:bg-slate-50 transition-all"
                   >
-                    <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 bg-primary-50 text-primary-600 rounded-xl flex items-center justify-center">
-                        <Info className="h-5 w-5" />
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 bg-primary-50 text-primary-600 rounded-lg flex items-center justify-center">
+                        <Info className="h-4 w-4" />
                       </div>
-                      <h4 className="text-lg font-black uppercase tracking-tight text-slate-900">A. Basic Information</h4>
+                      <h4 className="text-base font-black uppercase tracking-tight text-slate-900">A. Basic Information</h4>
                     </div>
-                    {activeSections.basic ? <ChevronUp className="h-5 w-5 text-slate-400" /> : <ChevronDown className="h-5 w-5 text-slate-400" />}
+                    {activeSections.basic ? <ChevronUp className="h-4 w-4 text-slate-400" /> : <ChevronDown className="h-4 w-4 text-slate-400" />}
                   </button>
                   
                   {activeSections.basic && (
-                    <div className="p-8 border-t border-slate-50 space-y-8 animate-in slide-in-from-top-2 duration-300">
+                    <div className="p-6 border-t border-slate-50 space-y-6 animate-in slide-in-from-top-2 duration-300">
                       {/* Images */}
                       <div className="space-y-4">
                         <div className="flex items-center justify-between">
@@ -991,24 +991,24 @@ const ProductInventory = () => {
             </div>
 
             {/* Modal Footer Deck */}
-            <footer className="p-10 bg-white border-t border-slate-100 flex gap-4 shrink-0 relative z-20">
+            <footer className="p-5 bg-white border-t border-slate-100 flex gap-3 shrink-0 relative z-20">
               <button 
                 type="button" 
                 onClick={() => setShowProductModal(false)} 
-                className="px-10 py-5 bg-slate-50 text-slate-400 rounded-[1.5rem] text-[11px] font-black uppercase tracking-widest hover:bg-slate-100 transition-all active:scale-95"
+                className="px-6 py-2.5 bg-slate-50 text-slate-400 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-100 transition-all active:scale-95"
               >
-                Abort Protocol
+                Cancel
               </button>
               <button
                 disabled={submitting}
                 type="button"
                 onClick={handleProductSubmit}
-                className="flex-1 py-5 bg-primary-600 text-white rounded-[1.5rem] text-[11px] font-black uppercase tracking-[0.25em] hover:bg-slate-900 hover:scale-[1.01] transition-all shadow-2xl shadow-primary-200 flex items-center justify-center gap-4 active:scale-95 disabled:opacity-50"
+                className="flex-1 py-2.5 bg-primary-600 text-white rounded-xl text-[10px] font-black uppercase tracking-[0.25em] hover:bg-slate-900 hover:scale-[1.01] transition-all shadow-2xl shadow-primary-200 flex items-center justify-center gap-4 active:scale-95 disabled:opacity-50"
               >
                 {submitting ? (
-                  <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> SYNCHRONIZING...</>
+                  <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> SAVING...</>
                 ) : (
-                  <><FileText className="h-5 w-5" /> {editingProduct ? 'Update Inventory Asset' : 'Commit New Product'}</>
+                  <><FileText className="h-5 w-5" /> {editingProduct ? 'Update Product' : 'Create Product'}</>
                 )}
               </button>
             </footer>
@@ -1016,11 +1016,11 @@ const ProductInventory = () => {
         </div>
       )}
 
-      {/* Inventory Modal */}
+      {/* Inventory Adjustment Modal */}
       {showInventoryModal && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[100] flex items-center justify-center p-4">
-          <div className="bg-white w-full max-w-lg rounded-[3.5rem] overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300">
-            <header className="p-6 border-b border-slate-50 bg-white flex items-center justify-between">
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-2">
+          <div className="bg-white rounded-[2rem] max-w-sm w-full shadow-2xl animate-in zoom-in-95 duration-300 border border-slate-200 overflow-hidden flex flex-col">
+            <header className="p-5 border-b border-slate-100 flex items-center justify-between">
               <div className="flex items-center gap-4">
                 <div className="p-3 bg-emerald-50 text-emerald-600 rounded-2xl"><Activity className="h-6 w-6" /></div>
                 <h3 className="text-2xl font-black uppercase tracking-tighter">Update Stock</h3>

@@ -240,10 +240,11 @@ const StoreManagement = () => {
   if (!store) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4">
-        <div className="bg-white p-12 rounded-[3rem] shadow-2xl text-center max-w-lg">
-          <Building className="h-16 w-16 text-slate-300 mx-auto mb-8" />
-          <h2 className="text-3xl font-black mb-4">Setup Your Store</h2>
-          <button onClick={handleInitialize} className="w-full py-3.5 bg-slate-900 text-white rounded-2xl font-black uppercase">Create Store Profile</button>
+        <div className="bg-white p-8 rounded-[2rem] shadow-2xl text-center max-w-md border border-slate-200">
+          <Building className="h-12 w-12 text-slate-300 mx-auto mb-6" />
+          <h2 className="text-xl font-black mb-2 uppercase tracking-tight">Setup Your Store</h2>
+          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-6">Initialize your business presence</p>
+          <button onClick={handleInitialize} className="w-full py-4 bg-slate-900 text-white rounded-xl font-black uppercase text-[10px] tracking-widest hover:bg-primary-600 transition-all active:scale-95 shadow-xl">Create Store Profile</button>
         </div>
       </div>
     );

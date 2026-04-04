@@ -356,28 +356,28 @@ const ArchiveManagement = () => {
 
             {/* Permanent Delete Confirmation Modal */}
             {confirmModal && (
-                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4 z-[100] animate-fade-in">
-                    <div className="bg-white rounded-[3rem] max-w-md w-full shadow-2xl relative overflow-hidden">
-                        <div className="p-8 text-center">
-                            <div className="w-16 h-16 bg-rose-50 rounded-2xl flex items-center justify-center mx-auto mb-5">
-                                <AlertTriangle className="h-8 w-8 text-rose-600" />
+                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-2 z-[100] animate-fade-in">
+                    <div className="bg-white rounded-[2rem] max-w-sm w-full shadow-2xl relative overflow-hidden border border-slate-200">
+                        <div className="p-6 text-center">
+                            <div className="w-12 h-12 bg-rose-50 rounded-xl flex items-center justify-center mx-auto mb-4">
+                                <AlertTriangle className="h-6 w-6 text-rose-600" />
                             </div>
-                            <h3 className="text-xl font-black text-slate-900 uppercase tracking-tighter mb-2">Permanent Deletion</h3>
-                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">This action cannot be undone</p>
-                            <p className="text-sm font-black text-slate-700 mt-4">
+                            <h3 className="text-lg font-black text-slate-900 uppercase tracking-tighter mb-1">Permanent Deletion</h3>
+                            <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest leading-none mb-4">This action cannot be undone</p>
+                            <p className="text-sm font-black text-slate-700 leading-tight">
                                 Are you sure you want to permanently delete <span className="text-rose-600 italic">"{confirmModal.name}"</span>?
                             </p>
                         </div>
-                        <div className="flex gap-3 p-6 bg-slate-50 border-t border-slate-100">
+                        <div className="flex gap-3 p-5 bg-slate-50 border-t border-slate-100">
                             <button
                                 onClick={() => setConfirmModal(null)}
-                                className="flex-1 py-3.5 bg-white border border-slate-200 text-slate-600 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-100 transition-all"
+                                className="flex-1 py-3 bg-white border border-slate-200 text-slate-600 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-100 transition-all active:scale-95"
                             >
                                 Cancel
                             </button>
                             <button
                                 onClick={handlePermanentDelete}
-                                className="flex-1 py-3.5 bg-rose-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-rose-700 transition-all shadow-lg shadow-rose-200"
+                                className="flex-1 py-3 bg-rose-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-rose-700 transition-all shadow-lg active:scale-95"
                             >
                                 Delete Forever
                             </button>

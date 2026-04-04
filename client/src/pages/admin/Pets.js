@@ -59,8 +59,8 @@ const AdminPets = () => {
       const response = await adoptionService.getMyRequests();
       setAdoptionRequests(response.data.requests || []);
     } catch (error) {
-      console.error('Error fetching adoption requests:', error);
-      toast.error('Failed to load adoption history');
+      console.error('Error fetching pet sales history:', error);
+      toast.error('Failed to load pet sales history');
     } finally {
       setFetchingAdoptions(false);
     }
@@ -220,7 +220,7 @@ const AdminPets = () => {
             Manage <span className="text-rose-500">Pets</span>
           </h1>
           <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" /> Track and manage pets for adoption
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" /> Track and manage your pet inventory and sales
           </p>
         </div>
         <button onClick={handleOpenModal} className="px-8 py-3.5 bg-slate-900 text-white rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] hover:bg-rose-500 transition-all shadow-xl shadow-slate-200 flex items-center gap-3 group">
@@ -240,7 +240,7 @@ const AdminPets = () => {
           onClick={() => setActiveTab('adoptions')}
           className={`px-8 py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all flex items-center gap-3 ${activeTab === 'adoptions' ? 'bg-slate-900 text-white shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}
         >
-          <History className="h-4 w-4" /> Adoption History
+          <History className="h-4 w-4" /> Sold Pets
         </button>
       </div>
 
@@ -376,15 +376,15 @@ const AdminPets = () => {
         <div className="bg-white rounded-[3rem] border border-slate-100 shadow-sm overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500">
           <div className="p-8 border-b border-slate-50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-              <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight mb-1">Adoption Protocols</h2>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Monitor and manage all customer adoption requests</p>
+              <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight mb-1">Transaction History</h2>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Monitor and manage all pet sales transactions</p>
             </div>
             <div className="flex items-center gap-3">
               <div className="input-container group">
                 <Search className="input-icon h-4 w-4 text-slate-400" />
                 <input
                   type="text"
-                  placeholder="SEARCH PROTOCOLS..."
+                  placeholder="SEARCH TRANSACTIONS..."
                   value={adoptionSearch}
                   onChange={(e) => setAdoptionSearch(e.target.value)}
                   className="input input-with-icon bg-slate-50 border-slate-100 rounded-2xl text-[10px] font-black uppercase outline-none focus:ring-2 focus:ring-rose-500/10 w-64 placeholder:text-slate-300"
@@ -415,7 +415,7 @@ const AdminPets = () => {
                   <tr>
                     <td colSpan={5} className="px-8 py-20 text-center">
                       <ClipboardList className="h-12 w-12 text-slate-200 mx-auto mb-4" />
-                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">No adoption requests on record</p>
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">No transactions found</p>
                     </td>
                   </tr>
                 ) : (
@@ -497,37 +497,38 @@ const AdminPets = () => {
         </div>
       )}
 
-      {/* Pet Details Form */}
       {showAddForm && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[100] flex items-center justify-center p-4 overflow-hidden">
-          <div className="bg-white w-full max-w-5xl rounded-[3rem] overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300 flex flex-col max-h-[90vh]">
-            <header className="p-8 border-b border-slate-100 flex items-center justify-between bg-white shrink-0">
-              <div className="flex items-center gap-5">
-                <div className="w-14 h-14 bg-rose-500 rounded-2xl flex items-center justify-center shadow-2xl shadow-rose-200">
-                  <Heart className="h-7 w-7 text-white" />
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-2 overflow-hidden animate-fade-in">
+          <div className="bg-white w-full max-w-4xl rounded-[2rem] overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300 flex flex-col max-h-[95vh] border border-slate-200">
+            <header className="p-5 border-b border-slate-100 flex items-center justify-between bg-white shrink-0">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-rose-500 rounded-xl flex items-center justify-center shadow-xl shadow-rose-200">
+                  <Heart className="h-6 w-6 text-white" />
                 </div>
                 <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <Shield className="h-3 w-3 text-rose-500" />
-                    <span className="text-[10px] font-black text-rose-500 uppercase tracking-[0.4em]">Action : {editingPet ? 'Update' : 'Add'}</span>
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <Shield className="h-2.5 w-2.5 text-rose-500" />
+                    <span className="text-[9px] font-black text-rose-500 uppercase tracking-[0.4em] leading-none">Action : {editingPet ? 'Update' : 'Add'}</span>
                   </div>
-                  <h3 className="text-3xl font-black uppercase text-slate-900 tracking-tighter leading-none">{editingPet ? 'Edit Pet' : 'New Pet'}</h3>
+                  <h3 className="text-xl font-black uppercase text-slate-900 tracking-tighter leading-none">{editingPet ? 'Edit Pet' : 'New Pet'}</h3>
                 </div>
               </div>
-              <button onClick={() => { setShowAddForm(false); setEditingPet(null); }} className="p-4 bg-slate-50 text-slate-400 rounded-2xl hover:bg-rose-50 hover:text-rose-600 transition-all"><X className="h-6 w-6" /></button>
+              <button onClick={() => { setShowAddForm(false); setEditingPet(null); }} className="p-2 w-10 h-10 bg-slate-50 text-slate-400 rounded-xl hover:bg-rose-50 hover:text-rose-600 transition-all active:scale-95 flex items-center justify-center">
+                <X className="h-5 w-5" />
+              </button>
             </header>
 
             {/* Tabs */}
-            <nav className="px-8 py-3.5 border-b border-slate-50 flex gap-4 overflow-x-auto no-scrollbar shrink-0 bg-slate-50/50">
+            <nav className="px-5 py-2 border-b border-slate-50 flex gap-3 overflow-x-auto no-scrollbar shrink-0 bg-slate-50/50">
               {[
                 { id: 'identity', label: 'Basic Info', icon: Info },
                 { id: 'health', label: 'Health', icon: Activity },
-                { id: 'adoption', label: 'Adoption Details', icon: PawPrint },
+                { id: 'adoption', label: 'Sales Details', icon: PawPrint },
                 { id: 'gallery', label: 'Images', icon: ImageIcon }
               ].map(tab => (
                 <button key={tab.id} onClick={() => setModalTab(tab.id)}
-                  className={`px-6 py-3.5 rounded-2xl flex items-center gap-3 text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${modalTab === tab.id ? 'bg-white text-rose-500 shadow-sm border border-slate-100' : 'text-slate-400 hover:text-slate-600'}`}>
-                  <tab.icon className="h-4 w-4" /> {tab.label}
+                  className={`px-5 py-2.5 rounded-xl flex items-center gap-2 text-[9px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${modalTab === tab.id ? 'bg-white text-rose-500 shadow-sm border border-slate-100' : 'text-slate-400 hover:text-slate-600'}`}>
+                  <tab.icon className="h-3.5 w-3.5" /> {tab.label}
                 </button>
               ))}
             </nav>
@@ -538,10 +539,10 @@ const AdminPets = () => {
               {modalTab === 'identity' && (
                 <div className="space-y-5 animate-in fade-in slide-in-from-right-4 duration-500">
                   {/* Row 1: Name */}
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Pet Name</label>
+                  <div className="space-y-1">
+                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Pet Name</label>
                     <input type="text" required value={petForm.name} onChange={e => setPetForm(p => ({ ...p, name: e.target.value }))}
-                      className="w-full px-5 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl text-[13px] font-black uppercase outline-none focus:ring-2 focus:ring-rose-400/20" placeholder="PET NAME..." />
+                      className="w-full px-5 py-3 bg-slate-50 border border-slate-100 rounded-xl text-[12px] font-black uppercase outline-none focus:ring-2 focus:ring-rose-400/20" placeholder="PET NAME..." />
                   </div>
                   {/* Row 2: Species + Breed */}
                   <div className="grid grid-cols-2 gap-4">
@@ -624,7 +625,7 @@ const AdminPets = () => {
                   <div className="grid grid-cols-1 gap-6">
                     <div className="bg-emerald-600 border border-emerald-500 rounded-[3rem] p-10 text-white relative overflow-hidden">
                       <Shield className="absolute top-10 right-10 w-32 h-32 opacity-10 pointer-events-none" />
-                      <h4 className="text-[12px] font-black text-emerald-200 uppercase tracking-[0.4em] mb-8">Vaccination Status</h4>
+                      <h4 className="text-[12px] font-black text-emerald-200 uppercase tracking-[0.4em] mb-8">Health Protocols</h4>
                       <div className="space-y-4">
                         {[
                           { v: 'fully_vaccinated', l: 'Fully Vaccinated ✓', desc: 'All primary and booster protocols complete' },
@@ -673,10 +674,10 @@ const AdminPets = () => {
                         </div>
                         <div>
                           <p className="text-[12px] font-black text-white uppercase tracking-widest mb-1">
-                            {petForm.status === 'adopted' ? 'SUBJECT ADOPTED' : petForm.status === 'reserved' ? 'SUBJECT RESERVED' : 'Available for Adoption'}
+                            {petForm.status === 'adopted' ? 'SUBJECT SOLD' : petForm.status === 'reserved' ? 'SUBJECT RESERVED' : 'Available for Sale'}
                           </p>
                           <p className="text-[10px] font-bold text-white/60 uppercase tracking-widest">
-                            {petForm.status === 'adopted' ? 'This pet has found a home' : petForm.status === 'reserved' ? 'Adoption process in progress' : 'Show in public catalog'}
+                            {petForm.status === 'adopted' ? 'This pet has been sold' : petForm.status === 'reserved' ? 'Sale process in progress' : 'Show in public catalog'}
                           </p>
                         </div>
                       </div>
@@ -691,12 +692,12 @@ const AdminPets = () => {
                 </div>
               )}
 
-              {/* STAGE 3: ADOPTION DETAILS */}
+              {/* STAGE 3: SALES DETAILS */}
               {modalTab === 'adoption' && (
                 <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-500">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-2">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Adoption Requirements</label>
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Sales Terms / Requirements</label>
                       <textarea
                         value={petForm.adoptionDetails?.requirements}
                         onChange={e => setPetForm(p => ({ ...p, adoptionDetails: { ...p.adoptionDetails, requirements: e.target.value } }))}
@@ -705,7 +706,7 @@ const AdminPets = () => {
                       />
                     </div>
                     <div className="space-y-2">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Trial Period & Rescue Info</label>
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Return Period & Source Info</label>
                       <div className="space-y-4">
                         <input
                           type="text"
@@ -791,9 +792,9 @@ const AdminPets = () => {
             </div>
 
             {/* Footer */}
-            <footer className="p-8 bg-white border-t border-slate-50 flex gap-4 shrink-0 relative z-20">
+            <footer className="p-5 bg-white border-t border-slate-50 flex gap-3 shrink-0 relative z-20">
               <button type="button" onClick={() => { setShowAddForm(false); setEditingPet(null); }}
-                className="px-10 py-3.5 bg-slate-50 text-slate-400 rounded-2xl text-[11px] font-black uppercase tracking-widest hover:bg-slate-100 transition-all active:scale-95">
+                className="px-8 py-3 bg-slate-50 text-slate-400 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-100 transition-all active:scale-95">
                 Cancel
               </button>
               <button disabled={submitting} type="button"

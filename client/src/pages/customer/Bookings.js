@@ -52,8 +52,10 @@ const Bookings = ({ isSubcomponent = false }) => {
       breed: '',
       size: 'Small',
       age: '',
+      gender: 'Male',
       weight: '',
       color: '',
+      photo: null,
       vaccinationStatus: 'Pending',
       specialNotes: '',
       allergies: 'None',
@@ -200,8 +202,10 @@ const Bookings = ({ isSubcomponent = false }) => {
         breed: pet.breed,
         size: pet.size,
         age: Math.floor((new Date() - new Date(pet.birthday)) / (1000 * 60 * 60 * 24 * 365.25)) || 1,
+        gender: pet.gender || 'Male',
         weight: pet.weight,
         color: pet.color || '',
+        photo: pet.photo || null,
         vaccinationStatus: pet.vaccinationStatus || 'Pending',
         specialNotes: pet.specialNotes || '',
         allergies: pet.allergies || 'None',
@@ -1833,19 +1837,19 @@ const Bookings = ({ isSubcomponent = false }) => {
       )}
       {/* Voucher Selection Modal */}
       {showVoucherModal && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4 z-[100] animate-fade-in text-slate-900">
-          <div className="bg-white rounded-[3rem] max-w-lg w-full shadow-2xl overflow-hidden animate-slide-up flex flex-col max-h-[90vh]">
-            <div className="shrink-0 p-8 border-b border-slate-100 flex items-center justify-between">
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-2 z-[100] animate-fade-in text-slate-900">
+          <div className="bg-white rounded-[2rem] max-w-sm w-full shadow-2xl overflow-hidden animate-slide-up flex flex-col max-h-[95vh] border border-slate-200">
+            <div className="shrink-0 p-5 border-b border-slate-100 flex items-center justify-between">
               <div>
-                <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tighter">Your <span className="text-primary-600 italic">Vouchers</span></h2>
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Select a claimed discount</p>
+                <h2 className="text-lg font-black text-slate-900 uppercase tracking-tighter">Your <span className="text-primary-600 italic">Vouchers</span></h2>
+                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none">Select a claimed discount</p>
               </div>
-              <button onClick={() => setShowVoucherModal(false)} className="p-3 bg-slate-50 text-slate-400 rounded-2xl hover:bg-rose-50 hover:text-rose-600 transition-all">
-                <X className="h-5 w-5" />
+              <button onClick={() => setShowVoucherModal(false)} className="p-2.5 bg-slate-50 text-slate-400 rounded-xl hover:bg-rose-50 hover:text-rose-600 transition-all active:scale-95">
+                <X className="h-4 w-4" />
               </button>
             </div>
 
-            <div className="flex-1 p-8 space-y-4 overflow-y-auto no-scrollbar">
+            <div className="flex-1 p-4 sm:p-6 space-y-3 overflow-y-auto no-scrollbar">
               {myVouchers.length > 0 ? (
                 myVouchers.map((mv) => (
                   <button
@@ -1854,37 +1858,37 @@ const Bookings = ({ isSubcomponent = false }) => {
                         handleApplyVoucher(mv.voucher.code);
                         setShowVoucherModal(false);
                     }}
-                    className="w-full text-left p-6 rounded-3xl border border-slate-100 hover:border-primary-200 bg-slate-50 hover:bg-primary-50 transition-all group relative overflow-hidden"
+                    className="w-full text-left p-4 rounded-2xl border border-slate-100 hover:border-primary-200 bg-slate-50 hover:bg-primary-50 transition-all group relative overflow-hidden"
                   >
-                    <div className="flex items-center gap-4 relative z-10">
-                      <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-primary-600 shadow-sm group-hover:bg-primary-600 group-hover:text-white transition-all">
-                        <Tag size={20} />
+                    <div className="flex items-center gap-3 relative z-10">
+                      <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-primary-600 shadow-sm group-hover:bg-primary-600 group-hover:text-white transition-all">
+                        <Tag size={16} />
                       </div>
                       <div>
-                        <h4 className="font-black text-slate-900 uppercase tracking-tighter mb-0.5">{mv.voucher.code}</h4>
-                        <p className="text-[10px] font-black text-primary-600 uppercase tracking-widest">
+                        <h4 className="text-sm font-black text-slate-900 uppercase tracking-tighter mb-0.5">{mv.voucher.code}</h4>
+                        <p className="text-[9px] font-black text-primary-600 uppercase tracking-widest leading-none">
                             {mv.voucher.discountType === 'percentage' ? `${mv.voucher.discountValue}% OFF` : `₱${mv.voucher.discountValue} OFF`}
                         </p>
-                        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tight mt-1">Min. Purchase: ₱{mv.voucher.minPurchase}</p>
+                        <p className="text-[8px] font-bold text-slate-400 uppercase tracking-tight mt-1">Min. Purchase: ₱{mv.voucher.minPurchase}</p>
                       </div>
                     </div>
-                    <div className="absolute top-1/2 right-6 -translate-y-1/2 w-8 h-8 rounded-full bg-white flex items-center justify-center shadow-md opacity-0 group-hover:opacity-100 transition-opacity">
-                        <ChevronRight size={16} className="text-primary-600" />
+                    <div className="absolute top-1/2 right-4 -translate-y-1/2 w-7 h-7 rounded-full bg-white flex items-center justify-center shadow-md opacity-0 group-hover:opacity-100 transition-opacity">
+                        <ChevronRight size={14} className="text-primary-600" />
                     </div>
                   </button>
                 ))
               ) : (
-                <div className="text-center py-12">
-                  <Ticket className="h-12 w-12 text-slate-200 mx-auto mb-4" />
-                  <p className="text-sm text-slate-500 font-bold uppercase tracking-widest">No claimed vouchers found</p>
+                <div className="text-center py-8">
+                  <Ticket className="h-10 w-10 text-slate-200 mx-auto mb-3" />
+                  <p className="text-[11px] text-slate-500 font-bold uppercase tracking-widest px-8">No claimed vouchers found</p>
                 </div>
               )}
             </div>
 
-            <div className="shrink-0 p-8 bg-slate-50 border-t border-slate-100">
+            <div className="shrink-0 p-5 bg-slate-50 border-t border-slate-100">
                 <button 
                     onClick={() => navigate('/vouchers')}
-                    className="w-full py-4 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl hover:bg-primary-600 transition-all"
+                    className="w-full py-3 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-xl hover:bg-primary-600 transition-all active:scale-[0.98]"
                 >
                     Explore More Discounts
                 </button>

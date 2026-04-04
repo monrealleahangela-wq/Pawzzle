@@ -257,32 +257,34 @@ const StoreApplication = () => {
 
   if (application) {
     return (
-      <div className="max-w-4xl mx-auto space-y-8 animate-fade-in">
-        <div className="flex items-center justify-between bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-xl relative overflow-hidden">
+      <div className="max-w-4xl mx-auto space-y-4 animate-fade-in">
+        <div className="flex items-center justify-between bg-white p-5 rounded-[2rem] border border-slate-100 shadow-xl relative overflow-hidden">
           <div className="absolute top-0 right-0 w-32 h-32 bg-primary-50 rounded-full blur-3xl -translate-y-12 translate-x-12" />
           <div className="relative z-10">
-            <p className="text-[10px] font-black text-primary-600 uppercase tracking-[0.3em] mb-2">Protocol Execution</p>
-            <h1 className="text-3xl font-black text-slate-900 uppercase tracking-tighter">Application Protocol Status</h1>
-            <p className="text-slate-500 font-bold text-xs uppercase tracking-widest mt-1">Ref: {application._id}</p>
+            <p className="text-[8px] font-black text-primary-600 uppercase tracking-[0.3em] mb-1">Protocol Execution</p>
+            <h1 className="text-xl font-black text-slate-900 uppercase tracking-tighter">Application Status</h1>
+            <p className="text-slate-400 font-bold text-[8px] uppercase tracking-widest leading-none mt-1">Ref: {application._id}</p>
           </div>
-          <span className={`relative z-10 px-6 py-2 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-sm ${getStatusColor(application.status)}`}>
+          <span className={`relative z-10 px-4 py-1.5 rounded-xl text-[8px] font-black uppercase tracking-[0.2em] shadow-sm ${getStatusColor(application.status)}`}>
             {application.status.replace('_', ' ')}
           </span>
         </div>
 
-        <div className="card p-10 space-y-10">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <div className="space-y-6">
+        <div className="bg-white rounded-[2rem] p-6 space-y-6 shadow-xl border border-slate-100">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-4">
               <div className="flex items-center gap-3">
-                <Building className="h-5 w-5 text-primary-600" />
+                <div className="p-2.5 bg-primary-50 text-primary-600 rounded-xl">
+                  <Building className="h-4 w-4" />
+                </div>
                 <div>
-                  <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Business Identity</h3>
+                  <h3 className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1.5">Business Identity</h3>
                   <p className="text-lg font-black text-slate-900 uppercase leading-none">{application.businessName}</p>
                 </div>
               </div>
-              <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1 italic">Intelligence Summary</p>
-                <p className="text-xs font-bold text-slate-600 leading-relaxed">"{application.businessDescription || 'No description provided.'}"</p>
+              <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-100">
+                <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1 italic">Intelligence Summary</p>
+                <p className="text-[11px] font-bold text-slate-600 leading-relaxed">"{application.businessDescription || 'No description provided.'}"</p>
               </div>
             </div>
 
@@ -394,31 +396,30 @@ const StoreApplication = () => {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-8 animate-fade-in">
-        <div className="bg-primary-50 border border-primary-200 rounded-[2rem] p-6 mb-8 flex items-start gap-4">
-          <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-sm">
-            <Info className="h-5 w-5 text-primary-600" />
+        <div className="bg-primary-50 border border-primary-200 rounded-2xl p-4 mb-6 flex items-start gap-3">
+          <div className="w-9 h-9 bg-white rounded-xl flex items-center justify-center shadow-sm shrink-0">
+            <Info className="h-4 w-4 text-primary-600" />
           </div>
           <div>
-            <p className="text-[11px] font-black text-primary-900 uppercase tracking-widest mb-1">Prerequisites</p>
-            <p className="text-[10px] text-primary-800 font-bold leading-relaxed uppercase opacity-70">
-              Valid Business Permit · TIN · Liability Insurance (min. 100k PHP) · 2 Commercial References.
-              <br />Score 85% for instant approval.
+            <p className="text-[10px] font-black text-primary-900 uppercase tracking-widest mb-0.5">Prerequisites</p>
+            <p className="text-[9px] text-primary-800 font-bold leading-none uppercase opacity-60">
+              Valid Business Permit · TIN · 2 Commercial References.
             </p>
           </div>
         </div>
 
         {currentStep === 0 && (
-          <div className="card p-8 sm:p-12 space-y-10 animate-fade-in relative overflow-hidden">
+          <div className="bg-white rounded-[2rem] p-6 sm:p-10 space-y-8 animate-fade-in relative overflow-hidden shadow-xl border border-slate-100">
             <div className="absolute top-0 right-0 w-64 h-64 bg-primary-50 rounded-full blur-[100px] -translate-y-20 translate-x-20" />
             
             <div className="relative z-10">
               <div className="flex items-center gap-4 mb-6">
-                <div className="w-16 h-16 bg-primary-600 rounded-[2rem] flex items-center justify-center text-white shadow-2xl shadow-primary-200">
-                  <Shield className="h-8 w-8" />
+                <div className="w-14 h-14 bg-primary-600 rounded-[1.5rem] flex items-center justify-center text-white shadow-2xl shadow-primary-200">
+                  <Shield className="h-6 w-6" />
                 </div>
                 <div>
-                  <h2 className="text-3xl font-black text-slate-900 uppercase tracking-tighter">Application Requirements</h2>
-                  <p className="text-slate-400 font-bold text-xs uppercase tracking-widest mt-1">Verification Protocol v2.1</p>
+                  <h2 className="text-xl font-black text-slate-900 uppercase tracking-tighter leading-none mb-1">Application Steps</h2>
+                  <p className="text-slate-400 font-bold text-[9px] uppercase tracking-widest leading-none">Verification Protocol v2.1</p>
                 </div>
               </div>
               

@@ -163,6 +163,10 @@ const createBooking = async (req, res) => {
         existingPetProfile.size = pet.size;
         existingPetProfile.age = pet.age;
         existingPetProfile.weight = pet.weight;
+        existingPetProfile.gender = pet.gender || existingPetProfile.gender;
+        existingPetProfile.color = pet.color || existingPetProfile.color;
+        existingPetProfile.photo = pet.photo || existingPetProfile.photo;
+        existingPetProfile.vaccinationStatus = pet.vaccinationStatus || existingPetProfile.vaccinationStatus;
         if (pet.specialNotes) existingPetProfile.specialNotes = pet.specialNotes;
         existingPetProfile.lastBookedAt = new Date();
         await existingPetProfile.save();
@@ -175,6 +179,10 @@ const createBooking = async (req, res) => {
           size: pet.size,
           age: pet.age,
           weight: pet.weight,
+          gender: pet.gender || 'Male',
+          color: pet.color || '',
+          photo: pet.photo || null,
+          vaccinationStatus: pet.vaccinationStatus || 'Pending',
           specialNotes: pet.specialNotes || '',
           lastBookedAt: new Date()
         });
