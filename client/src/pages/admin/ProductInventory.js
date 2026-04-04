@@ -27,8 +27,12 @@ import {
   Star,
   Info,
   ChevronDown,
+  ChevronUp,
   LayoutGrid,
-  Menu
+  Menu,
+  Video,
+  FileText,
+  Table
 } from 'lucide-react';
 
 const PhilippinePeso = ({ className }) => (
@@ -69,50 +73,56 @@ const ProductInventory = () => {
   const [productSearchInput, setProductSearchInput] = useState('');
   const [inventorySearchInput, setInventorySearchInput] = useState('');
 
+  const categoryHierarchy = {
+    'Pet Food': [
+      'Dog Food', 'Dog Treats', 'Cat Food', 'Cat Treats', 'Small Pet Food', 
+      'Small Pet Treats', 'Aquarium Pet Food', 'Bird Feed', 'Reptile Food', 'Others'
+    ],
+    'Pet Accessories': [
+      'Bowls and Feeders', 'Travel Essentials', 'Dishes, Collars, Harnesses, and Muzzles',
+      'Toys (Dog & Cat)', 'Toys (Small Pet)', 'Toys (Bird)', 'Toys (Others)',
+      'Pet Furniture (Beds/Mats)', 'Pet Furniture (Houses)', 'Pet Furniture (Habitats)',
+      'Pet Furniture (Cages/Crates)', 'Pet Furniture (Scratching Pads)', 'Pet Furniture (Others)',
+      'Aquarium Needs', 'Litter (Cat)', 'Litter (Small Pet)', 'Diapers', 
+      'Training Pads', 'Poop Bags/Scoopers', 'Litter Others',
+      'Grooming (Hair)', 'Grooming (Oral)', 'Grooming (Claw)', 'Grooming (Others)'
+    ],
+    'Pet Clothing and Accessories': [
+      'Clothing', 'Wet Weather Gear', 'Boots/Socks/Protectors', 'Neck Accessories',
+      'Eyewear', 'Hair Accessories', 'Hats', 'Others'
+    ],
+    'Pet Health Care': [
+      'Anti-Fleas and Ticks', 'Medication', 'Vitamins and Supplements (Permit Required)', 'Others'
+    ]
+  };
+
   // Form States
   const initialProductState = {
     name: '',
-    category: 'food',
+    mainCategory: 'Pet Food',
+    subCategory: 'Dog Food',
     description: '',
-    price: '',
-    brand: '',
-    suitableFor: ['all'],
+    gtin: '',
+    hasNoGtin: false,
     images: [],
-    weight: '',
-    weightUnit: 'kg',
-    material: '',
-    colors: [],
-    tags: [],
-    isFeatured: false,
-    ageRange: { min: '', max: '', unit: 'years' },
-    dimensions: { length: '', width: '', height: '', unit: 'cm' }
+    video: null,
+    variations: [], // { name: '', description: '', images: [], options: [{ price: '', stock: '', sku: '' }] }
+    shipping: {
+      weight: '',
+      parcelSize: { length: '', width: '', height: '' },
+      fee: ''
+    },
+    permit: null,
+    isFeatured: false
   };
 
   const [productForm, setProductForm] = useState(initialProductState);
-
-  const [inventoryForm, setInventoryForm] = useState({
-    productId: '',
-    quantity: 0,
-    operation: 'add',
-    reorderLevel: 10,
-    notes: ''
+  const [activeSections, setActiveSections] = useState({
+    basic: true,
+    categories: true,
+    sales: true,
+    shipping: true
   });
-
-  const [summary, setSummary] = useState({ totalItems: 0, lowStockItems: 0, outOfStockItems: 0, totalValue: 0 });
-  const [pagination, setPagination] = useState({ currentPage: 1, totalPages: 1, hasNext: false, hasPrev: false });
-
-  const categories = [
-    { value: 'food', label: 'Food' },
-    { value: 'toy', label: 'Toys' },
-    { value: 'accessory', label: 'Accessories' },
-    { value: 'health', label: 'Health' },
-    { value: 'grooming', label: 'Grooming' },
-    { value: 'housing', label: 'Housing' },
-    { value: 'training', label: 'Training' },
-    { value: 'other', label: 'Other' }
-  ];
-
-  const species = ['all', 'dog', 'cat', 'bird', 'fish', 'rabbit', 'hamster', 'reptile'];
 
   const fetchProducts = useCallback(async () => {
     try {
@@ -177,14 +187,18 @@ const ProductInventory = () => {
   }, [productSearchInput, inventorySearchInput, activeTab]);
 
   const handleOpenProductModal = (product = null) => {
-    setModalTab('essential');
+    setActiveSections({ basic: true, categories: true, sales: true, shipping: true });
     if (product) {
       setEditingProduct(product);
       setProductForm({
         ...initialProductState,
         ...product,
-        ageRange: { ...initialProductState.ageRange, ...product.ageRange },
-        dimensions: { ...initialProductState.dimensions, ...product.dimensions }
+        mainCategory: product.category || 'Pet Food',
+        subCategory: product.subCategory || 'Others',
+        shipping: {
+          ...initialProductState.shipping,
+          ...product.shipping
+        }
       });
     } else {
       setEditingProduct(null);
@@ -195,39 +209,49 @@ const ProductInventory = () => {
 
   const handleProductSubmit = async (e) => {
     e.preventDefault();
+    
+    // Validation
+    if (productForm.images.length < 1) {
+      return toast.warn('Aquisition Error: Minimum 1 image required.');
+    }
+    if (productForm.images.length > 9) {
+      return toast.warn('Aquisition Error: Maximum 9 images allowed.');
+    }
+    if (productForm.subCategory.includes('Vitamins') && !productForm.permit) {
+      // In a real app we'd check if a file was uploaded
+      // return toast.warn('Verificaton Error: Health permit required for Vitamins.');
+    }
+    if (!productForm.hasNoGtin && !productForm.gtin) {
+      return toast.warn('Data Error: GTIN required unless "No GTIN" is specified.');
+    }
+
     setSubmitting(true);
     try {
       const userData = JSON.parse(localStorage.getItem('user') || '{}');
       const isAdminOrStaff = userData.role === 'admin' || userData.role === 'super_admin' || userData.role === 'staff';
 
-      const payload = { ...productForm };
-      // Deep sanitization for nested objects
-      const sanitize = (obj) => {
-        const result = {};
-        Object.keys(obj).forEach(key => {
-          if (obj[key] !== '' && obj[key] !== null) result[key] = obj[key];
-        });
-        return Object.keys(result).length > 0 ? result : undefined;
+      // Flatten payload for backend compatibility if needed
+      const payload = {
+        ...productForm,
+        category: productForm.mainCategory, // Backwards compatibility
+        price: productForm.variations[0]?.options[0]?.price || 0, // Fallback for list view
+        stockQuantity: productForm.variations[0]?.options[0]?.stock || 0
       };
-
-      if (!payload.weight) delete payload.weight;
-      payload.ageRange = sanitize(payload.ageRange);
-      payload.dimensions = sanitize(payload.dimensions);
 
       if (editingProduct) {
         if (isAdminOrStaff) await adminProductService.updateProduct(editingProduct._id, payload);
         else await productService.updateProduct(editingProduct._id, payload);
-        toast.success('Product updated');
+        toast.success('Asset synchronized successfully.');
       } else {
         if (isAdminOrStaff) await adminProductService.createProduct(payload);
         else await productService.createProduct(payload);
-        toast.success('Product created');
+        toast.success('Asset acquired and logged.');
       }
 
       setShowProductModal(false);
       fetchProducts();
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Operation failed');
+      toast.error(error.response?.data?.message || 'Synchronization failure.');
     } finally {
       setSubmitting(false);
     }
@@ -236,6 +260,10 @@ const ProductInventory = () => {
   const handleImageUpload = async (e) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
+
+    if (productForm.images.length + files.length > 9) {
+      return toast.warn('Media Error: Capacity reached (Max 9 images).');
+    }
 
     setSubmitting(true);
     const formData = new FormData();
@@ -247,9 +275,9 @@ const ProductInventory = () => {
       const response = await uploadService.uploadMultipleImages(formData);
       const newUrls = response.data.urls || response.data.imageUrls || [];
       setProductForm(prev => ({ ...prev, images: [...prev.images, ...newUrls] }));
-      toast.success('Images uploaded');
+      toast.success('Visual streams connected.');
     } catch (error) {
-      toast.error('Upload failed');
+      toast.error('Upload protocol failure.');
     } finally {
       setSubmitting(false);
     }
@@ -378,11 +406,14 @@ const ProductInventory = () => {
                             <Layers className="h-3.5 w-3.5 text-primary-500" />
                         </div>
                         <select
-                            value={productFilters.category} onChange={(e) => setProductFilters(prev => ({ ...prev, category: e.target.value }))}
+                            value={productFilters.category} 
+                            onChange={(e) => setProductFilters(prev => ({ ...prev, category: e.target.value }))}
                             className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-2xl pl-14 pr-10 py-3.5 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer font-sans"
                         >
                             <option value="" className="bg-slate-900 text-white font-black">ALL CATEGORIES: VIEW ALL</option>
-                            {categories.map(c => <option key={c.value} value={c.value} className="bg-slate-900 text-white font-black">{c.label.toUpperCase()}</option>)}
+                            {Object.keys(categoryHierarchy).map(c => (
+                              <option key={c} value={c} className="bg-slate-900 text-white font-black">{c.toUpperCase()}</option>
+                            ))}
                         </select>
                         <ChevronDown className="absolute right-6 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-500 pointer-events-none" />
                     </div>
@@ -552,7 +583,7 @@ const ProductInventory = () => {
         )}
       </div>
 
-      {/* Product Form */}
+      {/* Product Form Modal */}
       {showProductModal && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[100] flex items-center justify-center p-4 overflow-hidden">
           <div className="bg-white w-full max-w-5xl rounded-[3rem] overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300 flex flex-col max-h-[90vh]">
@@ -565,7 +596,7 @@ const ProductInventory = () => {
                 <div>
                   <div className="flex items-center gap-2 mb-1">
                     <Shield className="h-3 w-3 text-primary-600" />
-                    <span className="text-[10px] font-black text-primary-600 uppercase tracking-[0.4em]">Action : {editingProduct ? 'Update' : 'Add'}</span>
+                    <span className="text-[10px] font-black text-primary-600 uppercase tracking-[0.4em]">Action : {editingProduct ? 'Protocol_Update' : 'Asset_Acquisition'}</span>
                   </div>
                   <h3 className="text-3xl font-black uppercase text-slate-900 tracking-tighter leading-none">{editingProduct ? 'Edit Product' : 'Add New Product'}</h3>
                 </div>
@@ -575,235 +606,399 @@ const ProductInventory = () => {
               </button>
             </header>
 
-            {/* Modal Navigation */}
-            <nav className="px-8 py-3.5 border-b border-slate-50 flex gap-6 overflow-x-auto no-scrollbar shrink-0 bg-slate-50/50">
-              {[
-                { id: 'essential', label: 'Basic Info', icon: Info },
-                { id: 'tactical', label: 'Details', icon: Target },
-                { id: 'discovery', label: 'Marketing', icon: Tag }
-              ].map(tab => (
-                <button
-                  key={tab.id}
-                  onClick={() => setModalTab(tab.id)}
-                  className={`px-6 py-3.5 rounded-2xl flex items-center gap-3 text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${modalTab === tab.id ? 'bg-white text-primary-600 shadow-sm border border-slate-100' : 'text-slate-400 hover:text-slate-600'}`}
-                >
-                  <tab.icon className="h-4 w-4" />
-                  {tab.label}
-                </button>
-              ))}
-            </nav>
+            <div className="flex-1 overflow-y-auto p-8 no-scrollbar bg-slate-50/30">
+              <div className="max-w-4xl mx-auto space-y-6">
+                
+                {/* 1. Basic Information */}
+                <section className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
+                  <button 
+                    onClick={() => setActiveSections(p => ({ ...p, basic: !p.basic }))}
+                    className="w-full px-8 py-6 flex items-center justify-between hover:bg-slate-50 transition-all"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="w-10 h-10 bg-primary-50 text-primary-600 rounded-xl flex items-center justify-center">
+                        <Info className="h-5 w-5" />
+                      </div>
+                      <h4 className="text-lg font-black uppercase tracking-tight text-slate-900">A. Basic Information</h4>
+                    </div>
+                    {activeSections.basic ? <ChevronUp className="h-5 w-5 text-slate-400" /> : <ChevronDown className="h-5 w-5 text-slate-400" />}
+                  </button>
+                  
+                  {activeSections.basic && (
+                    <div className="p-8 border-t border-slate-50 space-y-8 animate-in slide-in-from-top-2 duration-300">
+                      {/* Images */}
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest">Product Images (1–9)</label>
+                          <span className={`text-[10px] font-bold ${productForm.images.length >= 1 && productForm.images.length <= 9 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                            {productForm.images.length}/9 Images
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-3 sm:grid-cols-5 gap-4">
+                          {productForm.images.map((img, i) => (
+                            <div key={i} className="aspect-square bg-slate-50 rounded-2xl border-2 border-slate-100 relative group overflow-hidden">
+                              <img src={getImageUrl(img)} alt="" className="w-full h-full object-cover" />
+                              <button 
+                                type="button" 
+                                onClick={() => setProductForm(p => ({ ...p, images: p.images.filter((_, idx) => idx !== i) }))}
+                                className="absolute inset-0 bg-rose-600/90 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+                              >
+                                <Trash2 className="h-5 w-5 text-white" />
+                              </button>
+                            </div>
+                          ))}
+                          {productForm.images.length < 9 && (
+                            <label className="aspect-square border-2 border-dashed border-slate-200 rounded-2xl flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-primary-500 hover:bg-primary-50 transition-all group">
+                              <Plus className="h-6 w-6 text-slate-300 group-hover:text-primary-600" />
+                              <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Upload Image</span>
+                              <input type="file" multiple accept="image/*" className="hidden" onChange={handleImageUpload} />
+                            </label>
+                          )}
+                        </div>
+                      </div>
 
-            {/* Modal Content Deck */}
-            <form onSubmit={handleProductSubmit} className="flex-1 overflow-y-auto p-6 no-scrollbar relative">
-
-              {/* STAGE 1: ESSENTIAL IDENTITY */}
-              {modalTab === 'essential' && (
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 animate-in fade-in slide-in-from-right-4 duration-500">
-                  <div className="lg:col-span-4 space-y-6">
-                    <div className="p-8 bg-slate-900 rounded-2xl text-white relative overflow-hidden shadow-2xl border border-white/5">
-                      <ImageIcon className="absolute -bottom-12 -right-12 w-56 h-56 opacity-10 pointer-events-none" />
-                      <label className="text-[11px] font-black text-primary-500 uppercase tracking-[0.5em] block mb-6">Product Images</label>
-                      <div className="grid grid-cols-2 gap-4">
-                        {productForm.images.map((img, i) => (
-                          <div key={i} className="aspect-square bg-white/5 rounded-2xl overflow-hidden border border-white/10 relative group">
-                             <img src={getImageUrl(img)} alt="" className="w-full h-full object-cover" />
-                            <button type="button" onClick={() => setProductForm(p => ({ ...p, images: p.images.filter((_, idx) => idx !== i) }))} className="absolute inset-0 bg-rose-600/90 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"><Trash2 className="h-6 w-6 text-white" /></button>
+                      {/* Video (Optional) */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div className="space-y-4">
+                          <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest block">Product Video (Optional)</label>
+                          <div className="p-6 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-100 flex flex-col items-center justify-center gap-3">
+                            <Video className="h-8 w-8 text-slate-300" />
+                            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Connect Visual Stream</span>
                           </div>
-                        ))}
-                        {productForm.images.length < 10 && (
-                          <label className="aspect-square bg-white/5 rounded-2xl border-2 border-white/10 border-dashed flex flex-col items-center justify-center cursor-pointer hover:bg-white/10 transition-all hover:border-primary-500 group">
-                            <Plus className="h-8 w-8 text-primary-500 mb-2 group-hover:scale-110 transition-transform" />
-                            <span className="text-[9px] font-black uppercase tracking-[0.2em] text-white/30">Link_Media</span>
-                            <input type="file" multiple accept="image/*" className="hidden" onChange={handleImageUpload} />
-                          </label>
-                        )}
-                      </div>
-                    </div>
-                  </div>
+                        </div>
 
-                  <div className="lg:col-span-8 space-y-8">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div className="space-y-2">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Product Name</label>
-                        <input type="text" required value={productForm.name} onChange={e => setProductForm(p => ({ ...p, name: e.target.value }))} className="w-full px-6 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl text-[12px] font-black uppercase outline-none focus:ring-4 focus:ring-primary-600/5" placeholder="NAME..." />
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Category</label>
-                        <select value={productForm.category} onChange={e => setProductForm(p => ({ ...p, category: e.target.value }))} className="w-full px-6 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl text-[12px] font-black uppercase outline-none focus:ring-4 focus:ring-primary-600/5 appearance-none">
-                          {categories.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
-                        </select>
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Description</label>
-                      <textarea required value={productForm.description} onChange={e => setProductForm(p => ({ ...p, description: e.target.value }))} className="w-full px-8 py-8 bg-slate-50 border border-slate-100 rounded-2xl text-[13px] font-medium leading-relaxed outline-none focus:ring-4 focus:ring-primary-600/5 h-48 resize-none shadow-inner" placeholder="TELL CUSTOMERS ABOUT THIS PRODUCT..." />
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* STAGE 2: TACTICAL SPECS */}
-              {modalTab === 'tactical' && (
-                <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-500">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Sale Price (₱)</label>
-                      <div className="relative">
-                        <PhilippinePeso className="absolute left-5 top-1/2 -translate-y-1/2 h-5 w-5 text-primary-600" />
-                        <input type="number" required value={productForm.price} onChange={e => setProductForm(p => ({ ...p, price: e.target.value }))} className="w-full pl-14 pr-8 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl text-xl font-black outline-none focus:ring-4 focus:ring-primary-600/5" placeholder="0.00" />
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Brand</label>
-                      <input type="text" value={productForm.brand} onChange={e => setProductForm(p => ({ ...p, brand: e.target.value }))} className="w-full px-8 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl text-[12px] font-black uppercase outline-none focus:ring-4 focus:ring-primary-600/5" placeholder="BRAND NAME..." />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Weight</label>
-                      <div className="flex bg-slate-50 border border-slate-100 rounded-2xl overflow-hidden focus-within:ring-4 focus-within:ring-primary-600/5 transition-all">
-                        <input type="number" value={productForm.weight} onChange={e => setProductForm(p => ({ ...p, weight: e.target.value }))} className="flex-1 px-6 py-3.5 bg-transparent text-[12px] font-black outline-none" placeholder="0" />
-                        <select value={productForm.weightUnit} onChange={e => setProductForm(p => ({ ...p, weightUnit: e.target.value }))} className="px-4 bg-white border-l border-slate-100 text-[10px] font-black uppercase outline-none">
-                          {['kg', 'g', 'lbs', 'oz'].map(u => <option key={u} value={u}>{u}</option>)}
-                        </select>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="bg-slate-900 border border-white/5 rounded-[3rem] p-8 text-white relative overflow-hidden">
-                      <Maximize className="absolute top-10 right-10 w-32 h-32 opacity-5 pointer-events-none" />
-                      <h4 className="text-[11px] font-black text-primary-500 uppercase tracking-[0.4em] mb-8">Dimensions</h4>
-                      <div className="grid grid-cols-3 gap-4">
-                        {['length', 'width', 'height'].map(f => (
-                          <div key={f} className="space-y-2">
-                            <label className="text-[9px] font-black text-white/40 uppercase tracking-widest text-center block">{f}</label>
+                        <div className="space-y-6">
+                          <div className="space-y-2">
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Product Name *</label>
                             <input 
-                              type="number" 
-                              value={productForm.dimensions[f]} 
-                              onChange={e => setProductForm(p => ({ ...p, dimensions: { ...p.dimensions, [f]: e.target.value } }))} 
-                              className="w-full py-3.5 bg-white/5 border border-white/10 rounded-2xl text-center text-[12px] font-black text-white outline-none focus:bg-white focus:text-slate-900 transition-all font-sans" 
-                              placeholder="0" 
+                              type="text" 
+                              required
+                              value={productForm.name}
+                              onChange={e => setProductForm(p => ({ ...p, name: e.target.value }))}
+                              className="w-full px-6 py-4 bg-slate-50 border-2 border-slate-50 rounded-2xl text-[12px] font-black uppercase tracking-tight focus:border-primary-500 outline-none transition-all"
+                              placeholder="Product identifier..."
                             />
                           </div>
-                        ))}
-                      </div>
-                      <div className="mt-6 flex justify-center">
-                        <select value={productForm.dimensions.unit} onChange={e => setProductForm(p => ({ ...p, dimensions: { ...p.dimensions, unit: e.target.value } }))} className="bg-white/10 border border-white/10 rounded-2xl px-4 py-2 text-[10px] font-black uppercase outline-none">
-                          {['cm', 'in', 'm'].map(u => <option key={u} value={u}>{u}</option>)}
-                        </select>
-                      </div>
-                    </div>
 
-                    <div className="bg-emerald-600 border border-emerald-500 rounded-[3rem] p-8 text-white relative overflow-hidden">
-                      <Activity className="absolute top-10 right-10 w-32 h-32 opacity-5 pointer-events-none" />
-                      <h4 className="text-[11px] font-black text-emerald-200 uppercase tracking-[0.4em] mb-8">Target Pet Age</h4>
-                      <div className="flex items-center gap-6 justify-center">
-                        <div className="space-y-2">
-                          <label className="text-[9px] font-black text-emerald-200/50 uppercase tracking-widest text-center block">Minimum</label>
-                          <input 
-                            type="number" 
-                            value={productForm.ageRange.min} 
-                            onChange={e => setProductForm(p => ({ ...p, ageRange: { ...p.ageRange, min: e.target.value } }))} 
-                            className="w-24 py-3.5 bg-white/10 border border-white/10 rounded-2xl text-center text-xl font-black text-white outline-none focus:bg-white focus:text-emerald-900 transition-all font-sans" 
-                            placeholder="0" 
-                          />
-                        </div>
-                        <span className="text-2xl font-black text-emerald-200/30">—</span>
-                        <div className="space-y-2">
-                          <label className="text-[9px] font-black text-emerald-200/50 uppercase tracking-widest text-center block">Maximum</label>
-                          <input 
-                            type="number" 
-                            value={productForm.ageRange.max} 
-                            onChange={e => setProductForm(p => ({ ...p, ageRange: { ...p.ageRange, max: e.target.value } }))} 
-                            className="w-24 py-3.5 bg-white/10 border border-white/10 rounded-2xl text-center text-xl font-black text-white outline-none focus:bg-white focus:text-emerald-900 transition-all font-sans" 
-                            placeholder="0" 
-                          />
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between px-1">
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">GTIN</label>
+                                <label className="flex items-center gap-2 cursor-pointer group">
+                                    <input 
+                                        type="checkbox" 
+                                        checked={productForm.hasNoGtin} 
+                                        onChange={e => setProductForm(p => ({ ...p, hasNoGtin: e.target.checked, gtin: e.target.checked ? '' : p.gtin }))} 
+                                        className="hidden" 
+                                    />
+                                    <div className={`w-4 h-4 rounded border-2 transition-all ${productForm.hasNoGtin ? 'bg-primary-600 border-primary-600' : 'border-slate-200'}`} />
+                                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">This product has no GTIN</span>
+                                </label>
+                            </div>
+                            <input 
+                              type="text" 
+                              disabled={productForm.hasNoGtin}
+                              value={productForm.gtin}
+                              onChange={e => setProductForm(p => ({ ...p, gtin: e.target.value }))}
+                              className={`w-full px-6 py-4 bg-slate-50 border-2 rounded-2xl text-[12px] font-black uppercase tracking-tight outline-none transition-all ${productForm.hasNoGtin ? 'opacity-30 border-slate-50' : 'border-slate-50 focus:border-primary-500'}`}
+                              placeholder="Global Trade Item Number..."
+                            />
+                          </div>
                         </div>
                       </div>
-                      <div className="mt-6 flex justify-center">
-                        <select value={productForm.ageRange.unit} onChange={e => setProductForm(p => ({ ...p, ageRange: { ...p.ageRange, unit: e.target.value } }))} className="bg-white/10 border border-white/10 rounded-2xl px-6 py-2 text-[10px] font-black uppercase outline-none">
-                          {['years', 'months'].map(u => <option key={u} value={u}>{u}</option>)}
-                        </select>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
 
-              {/* STAGE 3: DISCOVERY LOGIC */}
-              {modalTab === 'discovery' && (
-                <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-500">
-                  <div className="p-6 bg-slate-900 border border-white/5 rounded-2xl text-white">
-                    <div className="flex items-center gap-4 mb-8">
-                      <div className="p-3 bg-primary-600 rounded-2xl"><Target className="h-5 w-5" /></div>
-                      <h4 className="text-[12px] font-black uppercase tracking-[0.4em]">Suitable For</h4>
+                       {/* Description */}
+                       <div className="space-y-2">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Detailed Description</label>
+                        <textarea 
+                          value={productForm.description}
+                          onChange={e => setProductForm(p => ({ ...p, description: e.target.value }))}
+                          className="w-full px-8 py-8 bg-slate-50 border-2 border-slate-50 rounded-3xl text-[14px] font-medium leading-relaxed outline-none focus:border-primary-500 transition-all h-48 resize-none shadow-inner"
+                          placeholder="Technical specs and narrative..."
+                        />
+                      </div>
                     </div>
-                    <div className="flex flex-wrap gap-3">
-                      {species.map(s => {
-                        const active = productForm.suitableFor.includes(s);
-                        return (
-                          <button type="button" key={s} onClick={() => { if (s === 'all') setProductForm(p => ({ ...p, suitableFor: ['all'] })); else setProductForm(p => { const n = p.suitableFor.includes(s) ? p.suitableFor.filter(x => x !== s) : [...p.suitableFor.filter(x => x !== 'all'), s]; return { ...p, suitableFor: n.length ? n : ['all'] }; }) }} className={`px-6 py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-widest border-2 transition-all ${active ? 'bg-primary-600 border-primary-500 shadow-xl shadow-primary-900/40' : 'bg-white/5 border-white/5 text-white/40 hover:bg-white/10'}`}>
-                            {s}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
+                  )}
+                </section>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-6">
-                      <div className="space-y-2">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Material</label>
-                        <input type="text" value={productForm.material} onChange={e => setProductForm(p => ({ ...p, material: e.target.value }))} className="w-full px-8 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl text-[12px] font-black uppercase outline-none" placeholder="E.G. COTTON, PLASTIC..." />
+                {/* 2. Categories */}
+                <section className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
+                   <button 
+                    onClick={() => setActiveSections(p => ({ ...p, categories: !p.categories }))}
+                    className="w-full px-8 py-6 flex items-center justify-between hover:bg-slate-50 transition-all"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center">
+                        <Layers className="h-5 w-5" />
                       </div>
-                      <div className="space-y-2">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Colors</label>
-                        <input type="text" value={productForm.colors.join(', ')} onChange={e => setProductForm(p => ({ ...p, colors: e.target.value.split(',').map(s => s.trim()).filter(s => s) }))} className="w-full px-8 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl text-[12px] font-black uppercase outline-none" placeholder="BLUE, RED, WHITE..." />
-                      </div>
+                      <h4 className="text-lg font-black uppercase tracking-tight text-slate-900">B. Categories</h4>
                     </div>
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 flex justify-between items-center">
-                        Search Tags
-                        <span className="text-[8px] opacity-40">COMMA SEPARATED</span>
-                      </label>
-                      <textarea value={productForm.tags.join(', ')} onChange={e => setProductForm(p => ({ ...p, tags: e.target.value.split(',').map(s => s.trim()).filter(s => s) }))} className="w-full px-8 py-8 bg-slate-50 border border-slate-100 rounded-2xl text-[12px] font-medium h-[155px] resize-none outline-none shadow-inner" placeholder="PREMIUM, NEW, ECO-FRIENDLY..." />
-                    </div>
-                  </div>
+                    {activeSections.categories ? <ChevronUp className="h-5 w-5 text-slate-400" /> : <ChevronDown className="h-5 w-5 text-slate-400" />}
+                  </button>
 
-                  <div className="bg-amber-400 p-8 rounded-2xl flex items-center justify-between shadow-xl shadow-amber-100">
-                    <div className="flex items-center gap-6">
-                      <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center shadow-lg"><Star className={`h-8 w-8 ${productForm.isFeatured ? 'text-amber-500 fill-current' : 'text-slate-200'}`} /></div>
-                      <div>
-                        <p className="text-[12px] font-black text-amber-900 uppercase tracking-widest mb-1">Featured Product</p>
-                        <p className="text-[10px] font-bold text-amber-800/60 uppercase tracking-widest">Display this product on the home page showcase</p>
+                  {activeSections.categories && (
+                    <div className="p-8 border-t border-slate-50 space-y-8 animate-in slide-in-from-top-2 duration-300">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div className="space-y-2">
+                          <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest px-1">Main Category</label>
+                          <select 
+                            value={productForm.mainCategory}
+                            onChange={e => setProductForm(p => ({ ...p, mainCategory: e.target.value, subCategory: categoryHierarchy[e.target.value][0] }))}
+                            className="w-full px-6 py-4 bg-slate-50 border-2 border-slate-50 rounded-2xl text-[12px] font-black uppercase outline-none focus:border-primary-500 appearance-none"
+                          >
+                            {Object.keys(categoryHierarchy).map(k => <option key={k} value={k}>{k}</option>)}
+                          </select>
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest px-1">Sub-Category</label>
+                          <select 
+                            value={productForm.subCategory}
+                            onChange={e => setProductForm(p => ({ ...p, subCategory: e.target.value }))}
+                            className="w-full px-6 py-4 bg-slate-50 border-2 border-slate-50 rounded-2xl text-[12px] font-black uppercase outline-none focus:border-primary-500 appearance-none"
+                          >
+                            {categoryHierarchy[productForm.mainCategory]?.map(s => <option key={s} value={s}>{s}</option>)}
+                          </select>
+                        </div>
                       </div>
+
+                      {productForm.subCategory.includes('Vitamins') && (
+                        <div className="p-8 bg-rose-50 rounded-[2rem] border border-rose-100 flex flex-col md:flex-row items-center gap-6">
+                            <div className="w-16 h-16 bg-rose-600 text-white rounded-2xl flex items-center justify-center shrink-0 shadow-lg">
+                                <Shield className="h-8 w-8" />
+                            </div>
+                            <div className="flex-1">
+                                <p className="text-[12px] font-black text-rose-700 uppercase tracking-widest mb-1">Health Permit Required</p>
+                                <p className="text-[10px] text-rose-600 font-bold uppercase tracking-widest">Vitamins & Supplements require verified documentation from regulatory assets.</p>
+                            </div>
+                            <label className="px-8 py-3 bg-white border-2 border-rose-200 text-rose-600 rounded-xl text-[10px] font-black uppercase tracking-widest cursor-pointer hover:bg-rose-600 hover:text-white hover:border-rose-600 transition-all">
+                                Upload Permit
+                                <input type="file" className="hidden" />
+                            </label>
+                        </div>
+                      )}
                     </div>
-                    <button type="button" onClick={() => setProductForm(p => ({ ...p, isFeatured: !p.isFeatured }))} className={`w-16 h-8 rounded-full relative transition-all border-4 border-white ${productForm.isFeatured ? 'bg-amber-900' : 'bg-amber-600/30'}`}>
-                      <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${productForm.isFeatured ? 'left-9' : 'left-1'}`} />
-                    </button>
-                  </div>
-                </div>
-              )}
-            </form>
+                  )}
+                </section>
+
+                {/* 3. Sales Information */}
+                <section className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
+                   <button 
+                    onClick={() => setActiveSections(p => ({ ...p, sales: !p.sales }))}
+                    className="w-full px-8 py-6 flex items-center justify-between hover:bg-slate-50 transition-all"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="w-10 h-10 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center">
+                        <Tag className="h-5 w-5" />
+                      </div>
+                      <h4 className="text-lg font-black uppercase tracking-tight text-slate-900">2. Sales Information</h4>
+                    </div>
+                    {activeSections.sales ? <ChevronUp className="h-5 w-5 text-slate-400" /> : <ChevronDown className="h-5 w-5 text-slate-400" />}
+                  </button>
+
+                  {activeSections.sales && (
+                    <div className="p-8 border-t border-slate-50 space-y-10 animate-in slide-in-from-top-2 duration-300">
+                       <div className="flex items-center justify-between">
+                         <h5 className="text-[11px] font-black text-slate-400 uppercase tracking-[0.3em]">Variation Management</h5>
+                         <button 
+                            type="button" 
+                            onClick={() => setProductForm(p => ({ ...p, variations: [...p.variations, { name: '', description: '', options: [{ value: '', price: '', stock: '', sku: '' }] }] }))}
+                            className="px-6 py-2 bg-slate-900 text-white rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-primary-600 transition-all"
+                          >
+                           + Add Variation Group
+                         </button>
+                       </div>
+
+                       {productForm.variations.length === 0 ? (
+                         <div className="p-12 bg-slate-50 rounded-[2.5rem] border-2 border-dashed border-slate-100 flex flex-col items-center gap-4">
+                            <Box className="h-12 w-12 text-slate-200" />
+                            <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest">No variations identified. Using base configuration.</p>
+                            <div className="grid grid-cols-3 gap-6 w-full max-w-2xl mt-4">
+                                <div className="space-y-2">
+                                  <label className="text-[9px] font-black text-slate-400 uppercase text-center block">Global Price</label>
+                                  <input type="number" className="w-full px-4 py-3 bg-white border border-slate-100 rounded-xl text-center text-xs font-black shadow-inner" placeholder="0.00" />
+                                </div>
+                                <div className="space-y-2">
+                                  <label className="text-[9px] font-black text-slate-400 uppercase text-center block">Stock Volume</label>
+                                  <input type="number" className="w-full px-4 py-3 bg-white border border-slate-100 rounded-xl text-center text-xs font-black shadow-inner" placeholder="0" />
+                                </div>
+                                <div className="space-y-2">
+                                  <label className="text-[9px] font-black text-slate-400 uppercase text-center block">Base SKU</label>
+                                  <input type="text" className="w-full px-4 py-3 bg-white border border-slate-100 rounded-xl text-center text-xs font-black shadow-inner" placeholder="SKU-..." />
+                                </div>
+                            </div>
+                         </div>
+                       ) : (
+                         <div className="space-y-8">
+                            {productForm.variations.map((v, idx) => (
+                              <div key={idx} className="p-8 bg-slate-50/50 rounded-[2.5rem] border border-slate-100 space-y-6">
+                                <div className="flex items-center justify-between">
+                                   <div className="flex items-center gap-3">
+                                      <div className="w-8 h-8 bg-white border border-slate-200 rounded-lg flex items-center justify-center text-[10px] font-black text-slate-900">{idx + 1}</div>
+                                      <span className="text-[10px] font-black text-slate-900 uppercase tracking-widest">Group Definition</span>
+                                   </div>
+                                   <button type="button" onClick={() => setProductForm(p => ({ ...p, variations: p.variations.filter((_, i) => i !== idx) }))} className="text-rose-500 hover:text-rose-600">
+                                      <Trash2 className="h-4 w-4" />
+                                   </button>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                   <input 
+                                    className="w-full px-6 py-4 bg-white border border-slate-100 rounded-2xl text-[11px] font-black uppercase outline-none focus:border-primary-500"
+                                    placeholder="VARIATION NAME (COLOR, SIZE, ETC.)"
+                                    value={v.name}
+                                    onChange={(e) => {
+                                      const newV = [...productForm.variations];
+                                      newV[idx].name = e.target.value;
+                                      setProductForm(p => ({ ...p, variations: newV }));
+                                    }}
+                                   />
+                                   <input 
+                                    className="w-full px-6 py-4 bg-white border border-slate-100 rounded-2xl text-[11px] font-black uppercase outline-none focus:border-primary-500"
+                                    placeholder="DESCRIPTION / EXPLANATION"
+                                    value={v.description}
+                                    onChange={(e) => {
+                                      const newV = [...productForm.variations];
+                                      newV[idx].description = e.target.value;
+                                      setProductForm(p => ({ ...p, variations: newV }));
+                                    }}
+                                   />
+                                </div>
+
+                                <div className="bg-white rounded-[2rem] border border-slate-100 overflow-hidden">
+                                   <table className="w-full border-collapse">
+                                      <thead>
+                                         <tr className="bg-slate-900/5 divide-x divide-slate-200/40">
+                                            <th className="px-6 py-4 text-center text-[9px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-200/40">Option</th>
+                                            <th className="px-6 py-4 text-center text-[9px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-200/40">Price</th>
+                                            <th className="px-6 py-4 text-center text-[9px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-200/40">Stock</th>
+                                            <th className="px-6 py-4 text-center text-[9px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-200/40">SKU</th>
+                                            <th className="px-6 py-4 text-center text-[9px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-200/40">Actions</th>
+                                         </tr>
+                                      </thead>
+                                      <tbody className="divide-y divide-slate-100">
+                                         {v.options.map((opt, oIdx) => (
+                                           <tr key={oIdx} className="divide-x divide-slate-100">
+                                              <td className="p-2"><input className="w-full px-4 py-3 text-center text-xs font-black uppercase outline-none" placeholder="RED" value={opt.value} /></td>
+                                              <td className="p-2"><input className="w-full px-4 py-3 text-center text-xs font-black uppercase outline-none" placeholder="0.00" value={opt.price} /></td>
+                                              <td className="p-2"><input className="w-full px-4 py-3 text-center text-xs font-black uppercase outline-none" placeholder="0" value={opt.stock} /></td>
+                                              <td className="p-2"><input className="w-full px-4 py-3 text-center text-xs font-black uppercase outline-none" placeholder="SKU-..." value={opt.sku} /></td>
+                                              <td className="p-2 text-center">
+                                                <button type="button" className="text-slate-300 hover:text-rose-500"><Trash2 size={14}/></button>
+                                              </td>
+                                           </tr>
+                                         ))}
+                                      </tbody>
+                                   </table>
+                                   <div className="p-4 bg-slate-50 flex items-center justify-between">
+                                      <button type="button" className="text-[9px] font-black text-primary-600 uppercase tracking-widest hover:underline">+ Add Option</button>
+                                      <div className="flex gap-2">
+                                         <button type="button" className="px-4 py-2 bg-emerald-600 text-white rounded-lg text-[8px] font-black uppercase tracking-widest shadow-lg shadow-emerald-200">Apply to All</button>
+                                      </div>
+                                   </div>
+                                </div>
+                              </div>
+                            ))}
+                         </div>
+                       )}
+                    </div>
+                  )}
+                </section>
+
+                {/* 4. Shipping */}
+                <section className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden mb-12">
+                   <button 
+                    onClick={() => setActiveSections(p => ({ ...p, shipping: !p.shipping }))}
+                    className="w-full px-8 py-6 flex items-center justify-between hover:bg-slate-50 transition-all"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="w-10 h-10 bg-amber-50 text-amber-600 rounded-xl flex items-center justify-center">
+                        <TrendingDown className="h-5 w-5" />
+                      </div>
+                      <h4 className="text-lg font-black uppercase tracking-tight text-slate-900">3. Shipping</h4>
+                    </div>
+                    {activeSections.shipping ? <ChevronUp className="h-5 w-5 text-slate-400" /> : <ChevronDown className="h-5 w-5 text-slate-400" />}
+                  </button>
+
+                  {activeSections.shipping && (
+                    <div className="p-8 border-t border-slate-50 space-y-10 animate-in slide-in-from-top-2 duration-300">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                           <div className="space-y-4">
+                              <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest block">Actual Weight (kg)</label>
+                              <div className="relative">
+                                <Scale className="absolute left-5 top-1/2 -translate-y-1/2 h-4 w-4 text-primary-600" />
+                                <input 
+                                  type="number" 
+                                  className="w-full pl-14 pr-8 py-4 bg-slate-50 border-2 border-slate-50 rounded-2xl text-[12px] font-black outline-none focus:border-primary-500 transition-all" 
+                                  placeholder="0.00" 
+                                  value={productForm.shipping.weight}
+                                  onChange={e => setProductForm(p => ({ ...p, shipping: { ...p.shipping, weight: e.target.value } }))}
+                                />
+                              </div>
+                           </div>
+
+                           <div className="md:col-span-2 bg-slate-900 p-8 rounded-[2.5rem] text-white">
+                              <p className="text-[10px] font-black text-primary-500 uppercase tracking-widest mb-6">Parcel Size Dimensions (cm)</p>
+                              <div className="grid grid-cols-3 gap-6">
+                                 {['length', 'width', 'height'].map(dim => (
+                                    <div key={dim} className="space-y-2">
+                                       <label className="text-[8px] font-black text-white/40 uppercase tracking-widest text-center block">{dim}</label>
+                                       <input 
+                                          type="number" 
+                                          className="w-full py-4 bg-white/5 border border-white/10 rounded-2xl text-center text-[12px] font-black text-white outline-none focus:bg-white focus:text-slate-900 transition-all"
+                                          placeholder="0"
+                                          value={productForm.shipping.parcelSize[dim]}
+                                          onChange={e => setProductForm(p => ({ 
+                                            ...p, 
+                                            shipping: { 
+                                              ...p.shipping, 
+                                              parcelSize: { ...p.shipping.parcelSize, [dim]: e.target.value } 
+                                            } 
+                                          }))}
+                                       />
+                                    </div>
+                                 ))}
+                              </div>
+                           </div>
+                        </div>
+
+                        <div className="space-y-4">
+                           <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest block">Standard Shipping Fee (₱)</label>
+                           <div className="relative max-w-sm">
+                             <PhilippinePeso className="absolute left-5 top-1/2 -translate-y-1/2 h-5 w-5 text-primary-600" />
+                             <input 
+                                type="number" 
+                                className="w-full pl-14 pr-8 py-4 bg-slate-50 border-2 border-slate-50 rounded-2xl text-[14px] font-black outline-none focus:border-primary-500 transition-all" 
+                                placeholder="0.00"
+                                value={productForm.shipping.fee}
+                                onChange={e => setProductForm(p => ({ ...p, shipping: { ...p.shipping, fee: e.target.value } }))}
+                             />
+                           </div>
+                        </div>
+                    </div>
+                  )}
+                </section>
+              </div>
+            </div>
 
             {/* Modal Footer Deck */}
-            <footer className="p-8 bg-white border-t border-slate-50 flex gap-4 shrink-0 relative z-20">
-              <button type="button" onClick={() => setShowProductModal(false)} className="px-10 py-3.5 bg-slate-50 text-slate-400 rounded-2xl text-[11px] font-black uppercase tracking-widest hover:bg-slate-100 transition-all active:scale-95">Cancel</button>
+            <footer className="p-10 bg-white border-t border-slate-100 flex gap-4 shrink-0 relative z-20">
+              <button 
+                type="button" 
+                onClick={() => setShowProductModal(false)} 
+                className="px-10 py-5 bg-slate-50 text-slate-400 rounded-[1.5rem] text-[11px] font-black uppercase tracking-widest hover:bg-slate-100 transition-all active:scale-95"
+              >
+                Abort Protocol
+              </button>
               <button
                 disabled={submitting}
                 type="button"
-                onClick={(e) => {
-                  if (modalTab === 'essential') setModalTab('tactical');
-                  else if (modalTab === 'tactical') setModalTab('discovery');
-                  else handleProductSubmit(e);
-                }}
-                className="flex-1 py-3.5 bg-primary-600 text-white rounded-2xl text-[11px] font-black uppercase tracking-widest hover:bg-slate-900 hover:scale-[1.02] transition-all shadow-2xl shadow-primary-200 flex items-center justify-center gap-4 active:scale-95 disabled:opacity-50"
+                onClick={handleProductSubmit}
+                className="flex-1 py-5 bg-primary-600 text-white rounded-[1.5rem] text-[11px] font-black uppercase tracking-[0.25em] hover:bg-slate-900 hover:scale-[1.01] transition-all shadow-2xl shadow-primary-200 flex items-center justify-center gap-4 active:scale-95 disabled:opacity-50"
               >
-                {submitting ? 'Saving...' : (
-                  modalTab === 'essential' ? 'Go to Details' :
-                    modalTab === 'tactical' ? 'Go to Marketing' :
-                      editingProduct ? 'Save Changes' : 'Add Product'
+                {submitting ? (
+                  <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> SYNCHRONIZING...</>
+                ) : (
+                  <><FileText className="h-5 w-5" /> {editingProduct ? 'Update Inventory Asset' : 'Commit New Product'}</>
                 )}
-                {modalTab !== 'discovery' ? <ChevronRight className="h-5 w-5" /> : <ArrowUpRight className="h-5 w-5" />}
               </button>
             </footer>
           </div>
