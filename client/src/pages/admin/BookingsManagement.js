@@ -21,9 +21,10 @@ import {
 } from 'lucide-react';
 
 const statusNextMap = {
-  'pending': 'confirmed',
-  'confirmed': 'in_progress',
-  'in_progress': 'completed'
+  'pending': 'approved',
+  'approved': 'processing',
+  'processing': 'finished',
+  'finished': 'completed'
 };
 
 const BookingsManagement = () => {
@@ -110,11 +111,12 @@ const BookingsManagement = () => {
 
   const getStatusStyle = (status) => {
     switch (status) {
-      case 'pending': return 'bg-amber-500 text-white border-amber-400Shadow-amber-200';
-      case 'confirmed': return 'bg-primary-600 text-white border-primary-500';
-      case 'in_progress': return 'bg-blue-500 text-white border-blue-400';
-      case 'completed': return 'bg-emerald-500 text-white border-emerald-400';
-      case 'cancelled': return 'bg-rose-500 text-white border-rose-400';
+      case 'pending': return 'bg-amber-500 text-white border-amber-400 shadow-amber-200';
+      case 'approved': return 'bg-primary-600 text-white border-primary-500 shadow-primary-200';
+      case 'processing': return 'bg-indigo-500 text-white border-indigo-400 shadow-indigo-200';
+      case 'finished': return 'bg-emerald-600 text-white border-emerald-500 shadow-emerald-200';
+      case 'completed': return 'bg-slate-900 text-white border-slate-700 shadow-slate-300';
+      case 'cancelled': return 'bg-rose-500 text-white border-rose-400 shadow-rose-200';
       default: return 'bg-slate-400 text-white border-slate-300';
     }
   };
@@ -429,39 +431,78 @@ const BookingsManagement = () => {
                 </div>
               </div>
 
-              {/* Protocol Verification Checklist - Added for staff verification */}
-              {selectedBooking.service?.requirements && (
-                <div className="p-10 bg-amber-50 rounded-[3rem] border border-amber-100 relative overflow-hidden group">
-                  <div className="absolute top-0 right-0 w-32 h-32 bg-amber-200/20 rounded-bl-[4rem] flex items-center justify-center">
-                    <ShieldCheck className="w-12 h-12 text-amber-500 opacity-30 group-hover:opacity-100 transition-opacity" />
+              {/* QR Protocol - Only for Approved Bookings */}
+              {selectedBooking.status === 'approved' && (
+                <div className="p-8 bg-slate-900 rounded-[2.5rem] text-white flex flex-col items-center text-center gap-6 relative overflow-hidden group">
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-primary-600/10 rounded-full blur-3xl" />
+                  <div className="relative z-10 w-48 h-48 bg-white p-4 rounded-3xl shadow-2xl flex items-center justify-center">
+                    <img 
+                      src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${selectedBooking._id}`} 
+                      alt="Booking QR" 
+                      className="w-full h-full object-contain"
+                    />
                   </div>
                   <div className="relative z-10">
-                    <div className="flex items-center gap-3 mb-8">
-                      <div className="p-3 bg-amber-600 text-white rounded-2xl shadow-xl shadow-amber-900/20">
-                        <Activity className="h-5 w-5" />
-                      </div>
-                      <div>
-                        <h4 className="text-[12px] font-black uppercase tracking-[0.4em] text-amber-900 leading-none mb-1">Protocol Verification</h4>
-                        <p className="text-[9px] font-bold text-amber-700 uppercase tracking-widest">Verify requirements before proceeding</p>
-                      </div>
+                     <h4 className="text-xl font-black uppercase tracking-tighter mb-2">Operational QR Code</h4>
+                     <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest leading-relaxed max-w-[250px]">
+                       Present this to the groomer or staff to initiate the 'Processing' phase via scan calibration.
+                     </p>
+                  </div>
+                  <button 
+                    onClick={() => updateBookingStatus(selectedBooking._id, 'processing')}
+                    className="relative z-10 px-8 py-3 bg-primary-600 text-white rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-primary-500 active:scale-95 transition-all shadow-xl shadow-primary-900/40"
+                  >
+                    Simulate Protocol Scan
+                  </button>
+                </div>
+              )}
+
+              {/* Multi-Angle Photo Reconnaissance */}
+              {(selectedBooking.status === 'processing' || selectedBooking.status === 'finished' || selectedBooking.status === 'completed') && (
+                <div className="p-8 bg-white rounded-[2.5rem] border border-slate-100 shadow-sm space-y-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="text-xl font-black text-slate-900 uppercase tracking-tighter leading-none mb-1">Service Documentation</h4>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Multi-angle visual forensics</p>
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      {selectedBooking.service.requirements.split(',').map((req, i) => (
-                        <div key={i} className="flex items-center gap-4 bg-white/60 p-4 rounded-2xl border border-amber-200/50 hover:bg-white transition-all">
-                          <div className="w-6 h-6 rounded-lg border-2 border-amber-400 flex items-center justify-center cursor-pointer hover:bg-amber-100 transition-colors">
-                            {/* Visual only checkbox for staff to 'mentally' check or we could add state if needed, but the prompt just says 'present for verification' */}
-                          </div>
-                          <span className="text-[10px] font-black text-slate-700 uppercase tracking-tight">{req.trim()}</span>
+                    <div className="w-10 h-10 bg-slate-900 rounded-xl flex items-center justify-center text-white">
+                      <Camera className="h-5 w-5" />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                    {selectedBooking.servicePhotos?.map((photo, idx) => (
+                      <div key={idx} className="aspect-square bg-slate-50 rounded-2xl border-2 border-slate-100 overflow-hidden relative group">
+                        <img src={getImageUrl(photo)} alt="" className="w-full h-full object-cover" />
+                        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                          <Eye className="h-5 w-5 text-white" />
                         </div>
-                      ))}
-                    </div>
-                    <div className="mt-8 pt-6 border-t border-amber-200/50 flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <AlertCircle className="h-4 w-4 text-amber-600" />
-                        <span className="text-[10px] font-black uppercase tracking-widest text-amber-900">Mandatory Verification</span>
                       </div>
-                      <span className="px-5 py-2 bg-amber-100 text-amber-600 rounded-2xl text-[9px] font-black uppercase tracking-widest">Awaiting Staff Check</span>
-                    </div>
+                    ))}
+                    {(selectedBooking.status === 'processing' || selectedBooking.status === 'finished') && (selectedBooking.servicePhotos?.length || 0) < 4 && (
+                      <label className="aspect-square bg-primary-50 rounded-2xl border-2 border-dashed border-primary-200 flex flex-col items-center justify-center gap-2 cursor-pointer hover:bg-primary-100 transition-all text-primary-600 active:scale-95">
+                        <Plus className="h-6 w-6" />
+                        <span className="text-[8px] font-black uppercase tracking-widest">Add Snap</span>
+                        <input 
+                          type="file" 
+                          className="hidden" 
+                          onChange={async (e) => {
+                            const file = e.target.files[0];
+                            if(!file) return;
+                            try {
+                              toast.info('Uploading snap...');
+                              const res = await uploadService.uploadPhoto(file);
+                              const updatedPhotos = [...(selectedBooking.servicePhotos || []), res.data.url];
+                              await adminBookingService.updateBookingStatus(selectedBooking._id, selectedBooking.status, { servicePhotos: updatedPhotos });
+                              setSelectedBooking(prev => ({ ...prev, servicePhotos: updatedPhotos }));
+                              toast.success('Snap uploaded to protocollog');
+                            } catch (err) {
+                              toast.error('Snap failure');
+                            }
+                          }} 
+                        />
+                      </label>
+                    )}
                   </div>
                 </div>
               )}

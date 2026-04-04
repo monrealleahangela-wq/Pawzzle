@@ -48,11 +48,18 @@ const Bookings = ({ isSubcomponent = false }) => {
     startTime: '',
     pet: {
       name: '',
-      type: '',
+      type: 'Dog',
       breed: '',
       size: 'Small',
       age: '',
-      weight: ''
+      weight: '',
+      color: '',
+      vaccinationStatus: 'Pending',
+      specialNotes: '',
+      allergies: 'None',
+      medicalConditions: 'None',
+      groomingPreferences: 'None',
+      behaviorNotes: 'Normal'
     },
     isHomeService: false,
     serviceAddress: {
@@ -157,6 +164,40 @@ const Bookings = ({ isSubcomponent = false }) => {
     return true;
   };
 
+  const handleFormChange = (e) => {
+    const { name, value } = e.target;
+    if (name.startsWith('pet.')) {
+      const field = name.split('.')[1];
+      setBookingForm(prev => ({ ...prev, pet: { ...prev.pet, [field]: value } }));
+    } else {
+      setBookingForm(prev => ({ ...prev, [name]: value }));
+    }
+  };
+
+  const handleSelectSavedPet = (pet) => {
+    setSelectedPetProfile(pet);
+    setBookingForm(prev => ({
+      ...prev,
+      pet: {
+        name: pet.name,
+        type: pet.type,
+        breed: pet.breed,
+        size: pet.size,
+        age: Math.floor((new Date() - new Date(pet.birthday)) / (1000 * 60 * 60 * 24 * 365.25)) || 1,
+        weight: pet.weight,
+        color: pet.color || '',
+        vaccinationStatus: pet.vaccinationStatus || 'Pending',
+        specialNotes: pet.specialNotes || '',
+        allergies: pet.allergies || 'None',
+        medicalConditions: pet.medicalConditions || 'None',
+        groomingPreferences: pet.groomingPreferences || 'None',
+        behaviorNotes: pet.behaviorNotes || 'Normal'
+      }
+    }));
+    toast.info(`Synced with ${pet.name}'s profile!`);
+    setFormStep(4); // Skip to confirm if selecting saved pet
+  };
+
   useEffect(() => {
     fetchBookings();
   }, [filterStatus, searchTerm]);
@@ -251,7 +292,7 @@ const Bookings = ({ isSubcomponent = false }) => {
   };
 
   const getPhaseIndex = (status) => {
-    const phases = ['pending', 'confirmed', 'processing', 'completed'];
+    const phases = ['pending', 'approved', 'processing', 'finished', 'completed'];
     return phases.indexOf(status);
   };
 
@@ -393,11 +434,12 @@ const Bookings = ({ isSubcomponent = false }) => {
 
   const getStatusColor = (status) => {
     const colors = {
-      pending: 'bg-primary-50 text-primary-600',
-      confirmed: 'bg-secondary-50 text-secondary-600',
-      processing: 'bg-neutral-50 text-neutral-600',
-      completed: 'bg-emerald-50 text-emerald-600',
-      cancelled: 'bg-rose-50 text-rose-600'
+      pending: 'bg-amber-50 text-amber-600 border-amber-100',
+      approved: 'bg-primary-50 text-primary-600 border-primary-100',
+      processing: 'bg-indigo-50 text-indigo-600 border-indigo-100',
+      finished: 'bg-emerald-50 text-emerald-600 border-emerald-100',
+      completed: 'bg-slate-900 text-white border-slate-700',
+      cancelled: 'bg-rose-50 text-rose-600 border-rose-100'
     };
     return colors[status] || 'bg-gray-50 text-gray-600';
   };
@@ -509,7 +551,11 @@ const Bookings = ({ isSubcomponent = false }) => {
           breed: bookingForm.pet.breed,
           size: bookingForm.pet.size,
           age: parseInt(bookingForm.pet.age),
-          weight: parseFloat(bookingForm.pet.weight)
+          weight: parseFloat(bookingForm.pet.weight),
+          allergies: bookingForm.pet.allergies,
+          medicalConditions: bookingForm.pet.medicalConditions,
+          groomingPreferences: bookingForm.pet.groomingPreferences,
+          behaviorNotes: bookingForm.pet.behaviorNotes
         },
         bookingDate: bookingForm.bookingDate,
         startTime: bookingForm.startTime,
@@ -1596,7 +1642,7 @@ const Bookings = ({ isSubcomponent = false }) => {
                 />
 
                 <div className="relative z-10 flex justify-between">
-                  {['pending', 'confirmed', 'processing', 'completed'].map((phase, idx) => {
+                  {['pending', 'approved', 'processing', 'finished', 'completed'].map((phase, idx) => {
                     const currentIdx = getPhaseIndex(selectedBooking.status);
                     const isPassed = idx < currentIdx;
                     const isCurrent = idx === currentIdx;
@@ -1710,6 +1756,49 @@ const Bookings = ({ isSubcomponent = false }) => {
                   </div>
                 </div>
               </div>
+
+              {/* QR Protocol - Critical for Approved Entry */}
+              {selectedBooking.status === 'approved' && (
+                <div className="bg-slate-900 p-10 rounded-[2.5rem] text-white flex flex-col items-center text-center gap-8 relative overflow-hidden group">
+                  <div className="absolute top-0 right-0 w-64 h-64 bg-primary-600/10 rounded-full blur-[90px] pointer-events-none" />
+                  <div className="relative z-10 w-56 h-56 bg-white p-6 rounded-[2.5rem] shadow-[0_0_50px_rgba(255,255,255,0.2)] flex items-center justify-center group-hover:scale-105 transition-transform duration-700">
+                    <img 
+                      src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${selectedBooking._id}`} 
+                      alt="Booking QR" 
+                      className="w-full h-full object-contain"
+                    />
+                  </div>
+                  <div className="relative z-10 max-w-sm">
+                    <h4 className="text-2xl font-black uppercase tracking-tighter mb-3">Service Entry QR</h4>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-relaxed">
+                      Present this code to the store staff. Scanning this will verify your identity and initiate the 'Processing' phase of your protocol.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Service Photos Feed */}
+              {selectedBooking.servicePhotos?.length > 0 && (
+                <div className="space-y-6 pt-12 border-t border-slate-50">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="text-xl font-black text-slate-900 uppercase tracking-tighter mb-0.5">Service Documentation</h4>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Real-time visual monitoring from the store</p>
+                    </div>
+                    <Camera className="h-6 w-6 text-slate-300" />
+                  </div>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {selectedBooking.servicePhotos.map((photo, idx) => (
+                      <div key={idx} className="aspect-square rounded-[2rem] overflow-hidden border-4 border-slate-50 shadow-sm relative group">
+                        <img src={getImageUrl(photo)} alt={`Service Snapshot ${idx + 1}`} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
+                        <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                           <Eye className="h-6 w-6 text-white" />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
             <footer className="shrink-0 p-10 sm:p-14 bg-slate-50 border-t border-slate-100 flex flex-wrap gap-6 relative z-10">

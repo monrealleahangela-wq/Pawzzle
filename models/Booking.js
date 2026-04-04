@@ -16,41 +16,28 @@ const bookingSchema = new mongoose.Schema({
     ref: 'Service',
     required: true
   },
+  staff: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null
+  },
   store: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Store',
     required: true
   },
   pet: {
-    name: {
-      type: String,
-      required: true
-    },
-    type: {
-      type: String,
-      required: true
-    },
-    breed: {
-      type: String,
-      required: true
-    },
-    size: {
-      type: String,
-      enum: ['Small', 'Medium', 'Large', 'Extra Large'],
-      default: 'Small'
-    },
-    age: {
-      type: Number,
-      required: true
-    },
-    weight: {
-      type: Number,
-      required: true
-    },
-    specialNotes: {
-      type: String,
-      default: ''
-    }
+    name: { type: String, required: true },
+    type: { type: String, required: true },
+    breed: { type: String, required: true },
+    size: { type: String, enum: ['Small', 'Medium', 'Large', 'Extra Large'], default: 'Small' },
+    age: { type: Number, required: true },
+    weight: { type: Number, required: true },
+    specialNotes: { type: String, default: '' },
+    allergies: { type: String, default: 'None' },
+    medicalConditions: { type: String, default: 'None' },
+    groomingPreferences: { type: String, default: 'None' },
+    behaviorNotes: { type: String, default: 'Normal' }
   },
   bookingDate: {
     type: Date,
@@ -79,9 +66,21 @@ const bookingSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['pending', 'confirmed', 'in_progress', 'completed', 'cancelled', 'no_show'],
+    // pending -> approved -> (QR SCAN) -> processing -> finished (wait for review) -> completed
+    enum: ['pending', 'confirmed', 'approved', 'processing', 'finished', 'completed', 'cancelled', 'no_show'],
     default: 'pending'
   },
+  qrCode: {
+    type: String, // Stringified unique ID or secure hash
+    default: null
+  },
+  isScanned: {
+    type: Boolean,
+    default: false
+  },
+  servicePhotos: [{
+    type: String // URLs of photos uploaded by staff/groomers after service
+  }],
   paymentMethod: {
     type: String,
     enum: ['online', 'in_person', 'pending'],

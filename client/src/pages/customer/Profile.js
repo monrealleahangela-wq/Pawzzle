@@ -158,11 +158,17 @@ const Profile = () => {
     size: 'Small',
     birthday: '',
     gender: 'Male',
-    weight: 5,
+    weight: 1,
     color: '',
+    vaccinationStatus: 'Pending',
+    specialNotes: '',
+    allergies: 'None',
+    medicalConditions: 'None',
+    groomingPreferences: 'None',
+    behaviorNotes: 'Normal',
+    emergencyContact: '',
     photo: null,
-    vaccinationCards: [null, null],
-    specialNotes: ''
+    vaccinationCards: [null, null]
   });
   const [petSubmitLoading, setPetSubmitLoading] = useState(false);
   const [petPhotoPreview, setPetPhotoPreview] = useState(null);
@@ -568,11 +574,17 @@ const Profile = () => {
       size: 'Small',
       birthday: '',
       gender: 'Male',
-      weight: 5,
+      weight: 1,
       color: '',
+      vaccinationStatus: 'Pending',
+      specialNotes: '',
+      allergies: 'None',
+      medicalConditions: 'None',
+      groomingPreferences: 'None',
+      behaviorNotes: 'Normal',
+      emergencyContact: '',
       photo: null,
-      vaccinationCards: [null, null],
-      specialNotes: ''
+      vaccinationCards: [null, null]
     });
     setEditingPet(null);
     setPetPhotoPreview(null);
@@ -587,13 +599,19 @@ const Profile = () => {
       type: pet.type,
       breed: pet.breed,
       size: pet.size,
-      birthday: pet.birthday.split('T')[0],
+      birthday: pet.birthday ? new Date(pet.birthday).toISOString().split('T')[0] : '',
       gender: pet.gender,
       weight: pet.weight,
-      color: pet.color,
+      color: pet.color || '',
+      vaccinationStatus: pet.vaccinationStatus || 'Pending',
+      specialNotes: pet.specialNotes || '',
+      allergies: pet.allergies || 'None',
+      medicalConditions: pet.medicalConditions || 'None',
+      groomingPreferences: pet.groomingPreferences || 'None',
+      behaviorNotes: pet.behaviorNotes || 'Normal',
+      emergencyContact: pet.emergencyContact || '',
       photo: pet.photo,
-      vaccinationCards: pet.vaccinationCards || [null, null],
-      specialNotes: pet.specialNotes || ''
+      vaccinationCards: pet.vaccinationCards || [null, null]
     });
     setPetPhotoPreview(getImageUrl(pet.photo));
     setVaccinationPreviews((pet.vaccinationCards || []).map(url => getImageUrl(url)));
