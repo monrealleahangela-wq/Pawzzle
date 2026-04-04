@@ -159,8 +159,15 @@ const Bookings = ({ isSubcomponent = false }) => {
   };
 
   const canAdvance = (step) => {
-    if (step === 2) return !!bookingForm.bookingDate && !!bookingForm.startTime && validateBookingTime(bookingForm.bookingDate, bookingForm.startTime);
-    if (step === 3) return !!(bookingForm.pet.name && bookingForm.pet.type && bookingForm.pet.breed && bookingForm.pet.age && bookingForm.pet.weight);
+    if (step === 2) {
+      if (!bookingForm.bookingDate || !bookingForm.startTime) return false;
+      return validateBookingTime(bookingForm.bookingDate, bookingForm.startTime);
+    }
+    if (step === 3) {
+      const { name, type, breed, age, weight } = bookingForm.pet;
+      const isValid = !!(name?.trim() && type?.trim() && breed?.trim() && (age !== '' && age !== null) && (weight !== '' && weight !== null));
+      return isValid;
+    }
     return true;
   };
 
@@ -1105,7 +1112,19 @@ const Bookings = ({ isSubcomponent = false }) => {
                     className="px-8 py-4 bg-white border border-slate-100 text-slate-600 rounded-2xl text-[9px] font-black uppercase tracking-widest hover:border-slate-300 transition-all shadow-sm">
                     ← Back
                   </button>
-                  <button type="button" onClick={() => canAdvance(3) ? setFormStep(4) : toast.info('Please fill in all pet details')}
+                  <button type="button" onClick={() => {
+                        if (canAdvance(3)) {
+                          setFormStep(4);
+                        } else {
+                          const { name, type, breed, age, weight } = bookingForm.pet;
+                          if (!name?.trim()) toast.info('Pet name is required');
+                          else if (!type?.trim()) toast.info('Pet species/type is required');
+                          else if (!breed?.trim()) toast.info('Pet breed is required');
+                          else if (age === '' || age === null) toast.info('Pet age is required');
+                          else if (weight === '' || weight === null) toast.info('Pet weight is required');
+                          else toast.info('Please complete all required pet profile metrics');
+                        }
+                      }}
                     className="flex-1 py-4 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.25em] shadow-xl shadow-slate-200 hover:bg-primary-600 transition-all active:scale-95">
                     Review & Confirm →
                   </button>
