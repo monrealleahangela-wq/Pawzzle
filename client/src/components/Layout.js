@@ -50,6 +50,61 @@ const Layout = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
 
+  // Paw Print Cursor Trail Intelligence
+  useEffect(() => {
+    const coords = { x: 0, y: 0 };
+    const circles = [];
+    const colors = ["#5d4037", "#8d6e63", "#ffb74d"];
+    
+    // Create trail elements
+    for(let i=0; i<12; i++) {
+      const circle = document.createElement("div");
+      circle.className = "cursor-trail";
+      circle.style.backgroundColor = colors[i % colors.length];
+      // Size fades out
+      circle.style.width = `${12 - i}px`;
+      circle.style.height = `${12 - i}px`;
+      // Small random paw-like offset
+      circle.style.borderRadius = "50%"; 
+      document.body.appendChild(circle);
+      circles.push({ el: circle, x: 0, y: 0 });
+    }
+
+    const handleMouseMove = (e) => {
+      coords.x = e.clientX;
+      coords.y = e.clientY;
+    };
+
+    window.addEventListener("mousemove", handleMouseMove);
+
+    const animateCircles = () => {
+      let x = coords.x;
+      let y = coords.y;
+      
+      circles.forEach((circle, index) => {
+        circle.el.style.left = x - 6 + "px";
+        circle.el.style.top = y - 6 + "px";
+        circle.el.style.transform = `scale(${(circles.length - index) / circles.length})`;
+        
+        circle.x = x;
+        circle.y = y;
+
+        const nextCircle = circles[index + 1] || circles[0];
+        x += (nextCircle.x - x) * 0.3;
+        y += (nextCircle.y - y) * 0.3;
+      });
+      
+      requestAnimationFrame(animateCircles);
+    };
+
+    animateCircles();
+
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      circles.forEach(c => c.el.remove());
+    };
+  }, []);
+
   // Handle body scroll locking when mobile menu is open
   useEffect(() => {
     if (isMobileMenuOpen) {

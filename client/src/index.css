@@ -8,1015 +8,131 @@
 :root {
   --sat: env(safe-area-inset-top, 0px);
   --sab: env(safe-area-inset-bottom, 0px);
+  
+  /* Fun Nature Palette */
+  --color-primary: #5d4037;   /* Coffee Brown */
+  --color-secondary: #8d6e63; /* Earthy Clay */
+  --color-accent: #ffb74d;    /* Playful Amber */
+  --color-accent-light: #fff3e0;
+  --color-bg: #fafaf7;        /* Off-White Alabaster */
+  --color-header: #3e2723;    /* Deep Chocolate */
+  
+  --shadow-fun: 0 10px 25px -5px rgba(93, 64, 55, 0.15);
+  --shadow-hover: 0 20px 40px -10px rgba(93, 64, 55, 0.25);
 }
 
 body {
   margin: 0;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+  font-family: 'Outfit', 'Inter', -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  background-color: #533114; /* Match app theme for overscroll */
+  background-color: var(--color-bg);
+  color: var(--color-primary);
   min-height: 100vh;
-  min-height: 100dvh;
-}
-/* Global Base Scaling & Faux Dark Mode */
-html {
-  transition: filter 0.4s ease, background-color 0.4s ease;
-}
-
-@media (min-width: 640px) {
-  html {
-    font-size: 14px !important; /* Globally shrinks all Tailwind rem-based paddings, margins, and text uniformly by ~12.5% to create a tighter minimalist UI on wider screens */
-  }
+  overflow-x: hidden;
+  /* Paw Print Cursor Strategy */
+  cursor: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSIjNWQ0MDM3IiBzdHJva2U9Im5vbmUiPjxwYXRoIGQ9Ik04LjUgMTUuOThjLTEuMTcgMC0yLjEyLS45NS0yLjEyLTIuMTIgMC0xLjE3Ljk1LTIuMTIgMi4xMi0yLjEyIDEuMTcgMCAyLjEyLjk1IDIuMTIgMi4xMiwuMDEgMS4xNi0uOTQgMi4xMi0yLjEyIDIuMTJ6bTcgMGMtMS4xNyAwLTIuMTItLjk1LTIuMTItMi4xMiAwLTEuMTcuOTYtMi4xMiAyLjEyLTIuMTIgMS4xNyAwIDIuMTIuOTUgMi4xMiAyLjEyIDAgMS4xNi0uOTUgMi4xMi0yLjEyIDIuMTJ6bS03LjI1LTYuNzhjLS45IDAtMS42My0uNzMtMS42My0xLjYzIDAtLjkgLjczLTEuNjMgMS42My0xLjYzcyAxLjYzLjczIDEuNjMgMS42M2MwIC45LS43MyAxLjYzLTEuNjMgMS42M3ptNC41IDBjLS45IDAtMS42My0uNzMtMS42My0xLjYzcy43My0xLjYzIDEuNjMtMS42MyAxLjYzLjczIDEuNjMgMS42M2MwIC45LS43MyAxLjYzLTEuNjMgMS42M3ptNC41IDBjLS45IDAtMS42My0uNzMtMS42My0xLjYzcy43My0xLjYzIDEuNjMtMS42MyAxLjYzLjczIDEuNjMgMS42M2MwIC45LS43MyAxLjYzLTEuNjMgMS42M3ptLTQuNSAxMi43OWMtMi40IDAtNC4zOC0xLjE2LTUuNDgtMy4wOGExIDEgMCAwIDEgMS43My0xYy43NSAxLjMgMi4yNSAyLjA4IDMuNzUgMi4wOCAxLjUxIDAgMy4wMS0uNzggMy43NS0yLjA4YTEgMSAwIDEgMSAxLjczIDFjLTEuMSAxLjkyLTMuMDkgMy4wOC01LjQ4IDMuMDh6Ii8+PC9zdmc+") 16 16, auto;
 }
 
 /* ==========================================================================
-   GLOBAL MINIMALIST DESIGN OVERRIDE
-   Forces all bubbly, heavy shadow, and over-designed elements to be clean, 
-   flat, and sharp across all pages and users.
+   ANIMATIONS & DYNAMICS
    ========================================================================== */
-.rounded-xl, 
-.rounded-2xl, 
-.rounded-3xl, 
-.rounded-\[2rem\], 
-.rounded-\[2\.5rem\], 
-.rounded-\[3rem\], 
-.rounded-\[40px\], 
-.rounded-\[32px\] {
-  border-radius: 0.5rem !important; /* Enforce sleek, minimalist 'rounded-lg' borders universally */
+
+@keyframes float {
+  0% { transform: translateY(0px) rotate(0deg); opacity: 0.1; }
+  50% { transform: translateY(-30px) rotate(15deg); opacity: 0.3; }
+  100% { transform: translateY(-70px) rotate(-10deg); opacity: 0; }
 }
+
+@keyframes wag {
+  0% { transform: rotate(0deg); }
+  50% { transform: rotate(15deg); }
+  100% { transform: rotate(0deg); }
+}
+
+@keyframes pop {
+  0% { transform: scale(0.9); opacity: 0; }
+  70% { transform: scale(1.05); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { transform: translateY(30px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.animate-float { animation: float 6s ease-in-out infinite; }
+.animate-wag { animation: wag 0.8s ease-in-out infinite; origin-bottom; }
+.animate-pop { animation: pop 0.6s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.animate-slide-up { animation: slideUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) both; }
 
 /* ==========================================================================
-   GLOBAL UI COMPACTION (Forms, Details & Modals)
-   Uncompromising reduction of oversized elements, massive fonts, and bulky paddings 
-   across the ENTIRE system.
+   FUN DESIGN OVERRIDES
    ========================================================================== */
 
-/* Universal Input Compaction */
-input:not([type="checkbox"]):not([type="radio"]), 
-select, 
-textarea, 
-.input {
-  padding-top: 0.45rem !important;
-  padding-bottom: 0.45rem !important;
-  padding-left: 0.75rem !important;
-  padding-right: 0.75rem !important;
-  font-size: 0.8rem !important;
-  line-height: 1.25rem !important;
-  min-height: 2.125rem !important;
-  border-radius: 0.4rem !important;
+.rounded-fun {
+  border-radius: 2.5rem;
 }
 
-/* Force massive paddings down globally */
-[class*="p-8"], [class*="p-10"], [class*="p-12"], [class*="p-14"], [class*="p-16"], [class*="p-20"], [class*="p-24"] {
-  padding: clamp(1rem, 2vw, 1.25rem) !important;
-}
-[class*="px-8"], [class*="px-10"], [class*="px-12"], [class*="px-14"], [class*="px-16"], [class*="px-20"], [class*="px-24"] {
-  padding-left: clamp(1rem, 2vw, 1.25rem) !important;
-  padding-right: clamp(1rem, 2vw, 1.25rem) !important;
-}
-[class*="py-8"], [class*="py-10"], [class*="py-12"], [class*="py-14"], [class*="py-16"], [class*="py-20"], [class*="py-24"] {
-  padding-top: clamp(0.75rem, 1.5vw, 1rem) !important;
-  padding-bottom: clamp(0.75rem, 1.5vw, 1rem) !important;
+.card-paw-interactive {
+  @apply bg-white border border-transparent shadow-fun transition-all duration-500 overflow-hidden;
+  border-radius: 2.5rem;
 }
 
-/* MODAL & DARK CONTAINER SQUASH (This destroys massive black headers specifically) */
-.fixed > div > header, 
-div[class*="bg-slate-900"][class*="rounded-"],
-div[class*="bg-slate-800"][class*="rounded-"] {
-  padding-top: 1rem !important;
-  padding-bottom: 1rem !important;
-  padding-left: 1.5rem !important;
-  padding-right: 1.5rem !important;
+.card-paw-interactive:hover {
+  @apply shadow-hover -translate-y-2 border-accent/20;
 }
 
-/* Squash massive margins natively inside modals/headers */
-.fixed > div > header [class*="mb-"],
-div[class*="bg-slate"][class*="rounded-"] [class*="mb-"] {
-  margin-bottom: 0.25rem !important;
-}
-.fixed > div > header [class*="mt-"],
-div[class*="bg-slate"][class*="rounded-"] [class*="mt-"] {
-  margin-top: 0.25rem !important;
-}
-
-/* Modal Internal Gaps */
-.fixed > div > .flex-1, .fixed > div > .overflow-y-auto {
-  padding-top: 1.25rem !important;
-  padding-bottom: 1.25rem !important;
-  gap: 1rem !important;
-}
-.fixed > div > .flex-1 [class*="space-y-12"] > :not([hidden]) ~ :not([hidden]) {
-  margin-top: 1.25rem !important;
+.cursor-trail {
+  position: fixed;
+  width: 20px;
+  height: 20px;
+  pointer-events: none;
+  background: var(--color-accent);
+  border-radius: 50%;
+  z-index: 9999;
+  opacity: 0.4;
+  transition: transform 0.1s ease-out;
 }
 
-/* Force massive spacing down */
-[class*="space-y-6"] > :not([hidden]) ~ :not([hidden]) { margin-top: 0.75rem !important; }
-[class*="space-y-8"] > :not([hidden]) ~ :not([hidden]) { margin-top: 1rem !important; }
-[class*="space-y-10"] > :not([hidden]) ~ :not([hidden]),
-[class*="space-y-12"] > :not([hidden]) ~ :not([hidden]),
-[class*="space-y-16"] > :not([hidden]) ~ :not([hidden]) {
-  margin-top: 1.25rem !important;
+/* Global Button Styling */
+.btn-fun {
+  @apply px-8 py-4 bg-primary text-white rounded-full font-black uppercase tracking-widest transition-all duration-300 shadow-fun active:scale-95;
 }
 
-/* Force extreme texts to remain completely constrained */
-[class*="text-4xl"] { font-size: 1.25rem !important; line-height: 1.5rem !important; }
-[class*="text-5xl"], [class*="text-6xl"] { font-size: 1.5rem !important; line-height: 1.75rem !important; }
-[class*="text-7xl"], [class*="text-8xl"], [class*="text-9xl"] { font-size: 1.75rem !important; line-height: 2rem !important; }
-
-/* Further shrink buttons, hunting down oversized button formats */
-.btn, button[class*="px-"][class*="py-"]:not(.no-compact):not([class*="py-5"]):not([class*="py-6"]) {
-  padding-top: 0.45rem !important;
-  padding-bottom: 0.45rem !important;
-  font-size: 0.75rem !important;
-  line-height: 1rem !important;
+.btn-fun:hover {
+  @apply bg-header -translate-y-1 shadow-hover;
 }
 
-/* Target gargantuan buttons specifically */
-button[class*="py-4"], button[class*="py-5"], button[class*="py-6"], button[class*="py-8"] {
-  padding-top: 0.6rem !important;
-  padding-bottom: 0.6rem !important;
-  font-size: 0.75rem !important;
-}
-
-/* Target gigantic structural elements like the 64x64 modal close button */
-.w-16.h-16 {
-  width: 2rem !important;
-  height: 2rem !important;
-}
-.w-12.h-12 {
-  width: 1.75rem !important;
-  height: 1.75rem !important;
-}
-
-/* Force container sizes down */
-.max-w-5xl { max-width: 48rem !important; }
-.max-w-4xl { max-width: 42rem !important; }
-.max-w-3xl { max-width: 36rem !important; }
-.max-w-2xl { max-width: 30rem !important; }
-
-.shadow-md, 
-.shadow-lg, 
-.shadow-xl, 
-.shadow-2xl, 
-.shadow-\[0_0_20px_rgba\(83\,49\,20\,0\.3\)\], 
-.shadow-soft, 
-.shadow-medium, 
-.shadow-strong {
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1) !important; /* Strip heavy drop shadows to clean flat shadows */
-}
-
-.border-2,
-.border-4 {
-  border-width: 1px !important; /* Reduce thick borders to minimalist hairlines */
-}
-
-html.dark {
-  filter: invert(0.92) hue-rotate(180deg) brightness(1.05);
-  background-color: #1a1a1a;
-}
-
-html.dark img,
-html.dark video,
-html.dark iframe,
-html.dark .no-invert,
-html.dark [style*='background-image'] {
-  filter: invert(1) hue-rotate(180deg); /* Double invert to restore original colors for media */
-}
-
-/* Explicit exclusion for Toast containers so colors don't look muddy in dark mode */
-html.dark .Toastify {
-  filter: invert(1) hue-rotate(180deg);
-}
-
-body.chat-modal-open #mobile-bottom-nav {
-  transform: translate(-50%, 150%) !important;
-  opacity: 0 !important;
-  pointer-events: none !important;
-}
-
-/* Globally hide scrollbars */
-::-webkit-scrollbar {
-  display: none;
-}
-
-* {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-}
-
-code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New', monospace;
-}
-
-/* ── Buttons ── */
-.btn {
-  @apply px-4 py-2 sm:px-5 sm:py-2.5 rounded-lg font-bold text-[10px] sm:text-xs uppercase tracking-widest transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 active:scale-95 text-center;
-}
-
-.btn-primary {
-  @apply bg-primary-600 text-white hover:bg-primary-700 focus:ring-primary-500 shadow-md hover:shadow-lg;
-}
-
-.btn-secondary {
-  @apply bg-secondary-500 text-white hover:bg-secondary-600 focus:ring-secondary-400 shadow-md hover:shadow-lg;
-}
-
-.btn-outline {
-  @apply border-2 border-primary-300 bg-white text-primary-700 hover:bg-primary-50 focus:ring-primary-400;
-}
-
-.btn-danger {
-  @apply bg-red-600 text-white hover:bg-red-700 focus:ring-red-500 shadow-md;
-}
-
-.btn-green {
-  @apply bg-green-600 text-white hover:bg-green-700 focus:ring-green-500 shadow-md;
-}
-
-/* ── Inputs ── */
-.input {
-  @apply w-full py-2.5 px-4 border border-primary-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400 focus:border-primary-400 transition-all duration-200 bg-white;
-}
-
-.input-container {
-  @apply relative w-full flex items-center;
-}
-
-.input-with-icon {
-  @apply pl-12 pr-4 !important;
-  padding-left: 3.25rem !important;
-}
-
-.input-with-icon-right {
-  @apply pr-12 pl-4 !important;
-  padding-right: 3.25rem !important;
-}
-
-.input-with-both-icons {
-  @apply pl-12 pr-12 !important;
-  padding-left: 3.25rem !important;
-  padding-right: 3.25rem !important;
-}
-
-.input-icon {
-  @apply absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none z-10 flex items-center justify-center;
-}
-
-/* Universal Global Fix for all search icons and inputs across all roles */
-.relative svg.lucide-search + input,
-.relative div svg.lucide-search + input,
-.relative .lucide-search + input,
-.group .lucide-search + input,
-.relative div.absolute + input,
-.relative .absolute + input,
-.group div.absolute + input,
-.relative .search-icon + input,
-form.relative .absolute + input,
-form.relative div.absolute + input {
-  padding-left: 4.75rem !important;
-}
-
-/* Mobile specific overrides for search/input padding - slightly tighter but still offset */
-@media (max-width: 640px) {
-  .relative div.absolute + input,
-  .relative .absolute + input,
-  .input-with-both-icons,
-  .input-with-icon {
-    padding-left: 4.25rem !important;
-  }
-  
-  .relative svg.lucide-search + input,
-  .relative .lucide-search + input {
-    padding-left: 4rem !important;
-  }
-}
-
-/* Specific fix for elements that might not use standard classes but have absolute icons */
-.relative > svg.absolute.left-3 + input,
-.relative > svg.absolute.left-4 + input,
-.relative > svg.absolute.left-5 + input {
-  padding-left: 3.5rem !important;
-}
-
-.input-icon-right {
-  @apply absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 z-10 flex items-center justify-center;
-}
-
-/* ── Cards ── */
-.card {
-  @apply bg-white rounded-2xl sm:rounded-3xl shadow-sm border border-primary-100 hover:shadow-xl hover:shadow-primary-100/20 transition-all duration-500 overflow-hidden;
-}
-
-/* ── Navigation ── */
-.nav-link {
-  @apply px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200;
-}
-
-.nav-link-active {
-  @apply bg-primary-100 text-primary-800 font-semibold;
-}
-
-.nav-link-inactive {
-  @apply text-primary-700/70 hover:text-primary-800 hover:bg-primary-50;
-}
-
-/* ── Loading ── */
-.loading-spinner {
-  @apply animate-spin rounded-full h-8 w-8 border-2 border-primary-200 border-t-primary-600;
-}
-
-/* ── Layout ── */
-.container-custom {
-  @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
-}
-
-@layer utilities {
-  .animate-slide-up {
-    animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
-  }
-
-  @keyframes slideUp {
-    from {
-      transform: translateY(20px);
-      opacity: 0;
-    }
-
-    to {
-      transform: translateY(0);
-      opacity: 1;
-    }
-  }
-
-  .animate-fade-in {
-    animation: fadeIn 0.3s ease both;
-  }
-
-  @keyframes fadeIn {
-    from {
-      opacity: 0;
-      transform: translateY(-8px);
-    }
-
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-
-  .scrollbar-hide {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
-  }
-
-  .scrollbar-hide::-webkit-scrollbar {
-    display: none;
-  }
-
-  .blob-animation {
-    animation: blobMove 8s ease-in-out infinite;
-  }
-
-  @keyframes blobMove {
-
-    0%,
-    100% {
-      transform: translate(0, 0) scale(1);
-    }
-
-    33% {
-      transform: translate(20px, -20px) scale(1.05);
-    }
-
-    66% {
-      transform: translate(-15px, 10px) scale(0.95);
-    }
-  }
-  .animate-spin-slow {
-    animation: spin 8s linear infinite;
-  }
-
-  .skeleton {
-    @apply relative overflow-hidden bg-slate-200 rounded-lg;
-  }
-
-  .skeleton::after {
-    @apply absolute inset-0;
-    content: "";
-    background: linear-gradient(
-      90deg,
-      transparent,
-      rgba(255, 255, 255, 0.4),
-      transparent
-    );
-    animation: skeleton-shimmer 1.5s infinite;
-  }
-
-  @keyframes skeleton-shimmer {
-    0% {
-      transform: translateX(-100%);
-    }
-    100% {
-      transform: translateX(100%);
-    }
-  }
-}
-
-@keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
-
-/* ── Text Gradient ── */
-.text-gradient {
-  @apply bg-gradient-to-r from-primary-600 to-primary-800 bg-clip-text text-transparent;
-}
-
-/* ── Utilities ── */
-.hover-lift {
-  @apply transition-transform duration-200 hover:-translate-y-0.5;
-}
-
-.glass {
-  @apply bg-white/80 backdrop-blur-sm border border-primary-100/40;
-}
-
-/* ── Scroll Progress Bar ── */
+/* Scroll Progress */
 .scroll-progress {
   position: fixed;
   top: 0;
   left: 0;
-  height: 3px;
-  background: linear-gradient(90deg, #7a5c3e, #b8895a);
-  z-index: 9999;
-  transition: width 0.1s ease;
-}
-
-/* ── Glass Morphism ── */
-.glass-morphism {
-  background: rgba(255, 255, 255, 0.15);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-}
-
-/* ── Stable Header ── */
-.header-stable {
-  @apply sticky top-0 z-[100] w-full bg-white;
-  transition: background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
-  height: 80px;
-  will-change: background-color, box-shadow;
-  backface-visibility: hidden;
-  -webkit-backface-visibility: hidden;
-}
-
-.header-scrolled {
-  @apply shadow-xl shadow-primary-900/5 bg-white/95 backdrop-blur-xl border-b border-primary-100/50;
-  /* Removed py change to avoid layout recalc jitter */
-}
-
-.header-default {
-  @apply bg-white border-b border-transparent;
-}
-
-/* ── Custom Toast Styling ── */
-.Toastify__toast {
-  @apply rounded-2xl shadow-2xl border border-white/10 backdrop-blur-xl transition-all duration-300;
-  font-family: 'Inter', sans-serif;
-  padding: 12px 20px;
-}
-
-.Toastify__toast--success {
-  @apply bg-emerald-500/95 text-white;
-}
-
-.Toastify__toast--error {
-  @apply bg-rose-500/95 text-white;
-}
-
-.Toastify__toast--info {
-  @apply bg-primary-600/95 text-white;
-}
-
-.Toastify__toast--warning {
-  @apply bg-amber-500/95 text-white;
-}
-
-.Toastify__toast-body {
-  @apply text-[10px] font-black uppercase tracking-widest leading-relaxed;
-}
-
-.Toastify__progress-bar {
-  @apply opacity-30;
-}
-
-.Toastify__close-button {
-  @apply text-white opacity-50 hover:opacity-100 transition-opacity;
-}
-
-/* ══════════════════════════════════════════
-   MOBILE COMPACT GLOBAL OVERRIDES
-   Applied at < 640px to tighten ALL pages
-   ══════════════════════════════════════════ */
-@media (max-width: 639px) {
-
-  /* Container: tighter horizontal padding */
-  .container-custom {
-    @apply px-3.5 !important;
-    padding-top: var(--sat);
-  }
-
-  /* Full screen fill */
-  .min-h-screen {
-    min-height: 100dvh !important;
-  }
-
-  /* Typography - tighter & smaller */
-  h1 {
-    @apply text-xl !important;
-  }
-
-  h2 {
-    @apply text-xl !important;
-  }
-
-  h3 {
-    @apply text-lg !important;
-  }
-
-  h4 {
-    @apply text-base !important;
-  }
-
-  p {
-    @apply text-[10px] leading-relaxed !important;
-  }
-
-  /* Buttons - slimmer */
-  .btn {
-    @apply py-2 px-4 text-[0.7rem] !important;
-    letter-spacing: 0.05em !important;
-    border-radius: 0.75rem !important;
-  }
-
-  .btn-lg {
-    @apply py-2.5 !important;
-  }
-
-  .btn-sm {
-    @apply py-1.5 px-3 text-[0.6rem] !important;
-  }
-
-  /* Inputs - slimmer but spacious enough for icons */
-  .input {
-    @apply py-2 text-xs !important;
-    padding-left: 1rem;
-    padding-right: 1rem;
-    border-radius: 0.75rem !important;
-  }
-
-  .input-with-icon {
-    @apply pl-11 !important;
-    padding-left: 3rem !important;
-  }
-
-  .input-with-icon-right {
-    @apply pr-11 !important;
-    padding-right: 3rem !important;
-  }
-
-  .input-with-both-icons {
-    @apply pl-11 pr-11 !important;
-    padding-left: 3rem !important;
-    padding-right: 3rem !important;
-  }
-
-  /* Universal search spacing for mobile */
-  .relative svg.lucide-search + input,
-  .relative .lucide-search + input,
-  .relative > svg.absolute.left-3 + input,
-  .relative > svg.absolute.left-4 + input {
-    padding-left: 3rem !important;
-  }
-
-  .input-icon {
-    @apply left-4 !important;
-  }
-
-  .input-icon-right {
-    @apply right-4 !important;
-  }
-
-  /* Spacing - significantly reduced */
-  /* Target space-y utilities */
-  [class*="space-y-24"],
-  [class*="space-y-20"] {
-    @apply space-y-8 !important;
-  }
-
-  [class*="space-y-16"],
-  [class*="space-y-12"] {
-    @apply space-y-6 !important;
-  }
-
-  [class*="space-y-10"],
-  [class*="space-y-8"] {
-    @apply space-y-4 !important;
-  }
-
-  /* Target gap utilities */
-  [class*="gap-12"],
-  [class*="gap-10"],
-  [class*="gap-8"] {
-    @apply gap-3 !important;
-  }
-
-  /* Padding - crushed, but preserve specific side padding if needed */
-  /* We use more specific selectors to avoid hitting pl- and pr- unnecessarily */
-  .p-20,
-  .p-16,
-  .p-12,
-  .py-20,
-  .py-16,
-  .py-12,
-  .px-20,
-  .px-16,
-  .px-12,
-  .p-14,
-  .py-14,
-  .px-14 {
-    @apply p-4 !important;
-  }
-
-  .p-10,
-  .p-8,
-  .p-6,
-  .py-10,
-  .py-8,
-  .py-6,
-  .px-10,
-  .px-8,
-  .px-6 {
-    @apply p-2 !important;
-  }
-
-  /* Rounding - softened for small screens */
-  .rounded-\[3rem\],
-  .rounded-\[40px\],
-  .rounded-\[32px\] {
-    @apply rounded-2xl !important;
-  }
-
-  /* Force 2 columns on mobile if they were 3+ for better fit */
-  .grid-cols-3,
-  .grid-cols-4,
-  .grid-cols-5 {
-    @apply grid-cols-2 !important;
-  }
-
-  /* Cards - tighter */
-  .card {
-    @apply p-4 !important;
-    border-radius: 1rem !important;
-  }
-
-  /* Table Compacting */
-  table {
-    @apply text-[10px] !important;
-  }
-
-  th,
-  td {
-    @apply p-2 !important;
-  }
-
-  /* Dashboard Specific */
-  .stat-card-value {
-    @apply text-2xl !important;
-  }
-
-  /* ── Mobile App Specifics ── */
-  * {
-    -webkit-tap-highlight-color: transparent;
-    touch-action: manipulation;
-  }
-
-  .mobile-nav-active {
-    @apply animate-bounce shadow-[0_0_20px_rgba(83,49,20,0.3)];
-  }
-
-  /* Compact Grids for small stats */
-  .grid-compact {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
-    gap: 0.5rem;
-  }
-
-  /* Touch Feedback */
-  .btn:active, 
-  .card-interactive:active {
-    transform: scale(0.96);
-    transition: transform 0.1s ease;
-  }
-
-  /* Hide Desktop only elements */
-  .desktop-only {
-    display: none !important;
-  }
-
-  /* Bottom Nav Safe Area */
-  nav.fixed.bottom-0 {
-    padding-bottom: calc(0.75rem + var(--sab)) !important;
-    height: auto !important;
-  }
-
-  /* Prevent logo text overlap on tiny screens */
-  .logo-text {
-    display: none;
-  }
-}
-
-@media (min-width: 640px) {
-  .mobile-only {
-    display: none !important;
-  }
-}
-
-/* ── Custom Animations for Mobile App Feel ── */
-@keyframes slide-up-soft {
-  from { transform: translateY(100%); }
-  to { transform: translateY(0); }
-}
-
-.animate-slide-up-soft {
-  animation: slide-up-soft 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
-}
-
-@keyframes scale-in {
-  from { transform: scale(0.95); opacity: 0; }
-  to { transform: scale(1); opacity: 1; }
-}
-
-.animate-scale-in {
-  animation: scale-in 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
-}
-
-.no-scrollbar::-webkit-scrollbar {
-  display: none;
-}
-.no-scrollbar {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-}
-
-/* ── Branded react-toastify Overrides ── */
-.Toastify__toast-container {
-  padding-top: var(--sat);
-}
-
-.Toastify__toast {
-  @apply !rounded-[1.5rem] !shadow-strong !border !border-primary-100 !backdrop-blur-md !p-4 !mb-4 !min-h-[auto] !bg-white;
-  font-family: 'Inter', sans-serif !important;
-}
-
-.Toastify__toast-body {
-  @apply !m-0 !p-0 !flex !items-center !gap-3;
-}
-
-.Toastify__toast--success {
-  @apply !bg-primary-50;
-}
-
-.Toastify__toast--error {
-  @apply !bg-red-50;
-}
-
-.Toastify__toast--warning {
-  @apply !bg-amber-50;
-}
-
-.Toastify__toast--info {
-  @apply !bg-primary-50;
-}
-
-.Toastify__progress-bar {
-  @apply !h-1 !opacity-40;
-}
-
-.Toastify__progress-bar--success {
-  @apply !bg-[#60534D];
-}
-
-.Toastify__progress-bar--error {
-  @apply !bg-[#533114];
-}
-
-.Toastify__progress-bar--warning {
-  @apply !bg-[#B7A79F];
-}
-
-.Toastify__progress-bar--info {
-  @apply !bg-[#A08B80];
-}
-
-.Toastify__close-button {
-  @apply !opacity-40 hover:!opacity-100 !transition-opacity !pt-1;
-}
-
-/* Fix CSS ordering for lint compliance */
-.backdrop-blur-md {
-  -webkit-backdrop-filter: blur(12px);
-  backdrop-filter: blur(12px);
-}
-
-.backface-hidden {
-  -webkit-backface-visibility: hidden;
-  backface-visibility: hidden;
+  height: 4px;
+  background: var(--color-accent);
+  z-index: 10000;
+  transition: width 0.1s;
 }
 
 /* ==========================================================================
-   CUSTOM PAW CURSOR — Trail Edition
+   COMPACTNESS & UTILITIES
    ========================================================================== */
-body.custom-cursor-enabled, 
-body.custom-cursor-enabled * {
-  cursor: none !important;
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+.parallax-bg {
+  background-attachment: fixed;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
 }
 
-/* Main leading paw */
-.paw-cursor-main {
-  position: absolute;
-  width: 22px;
-  height: 22px;
-  margin-left: -11px;
-  margin-top: -11px;
-  color: #d97706;
-  will-change: transform, opacity, color;
-  transition: color 0.15s ease;
-  filter: drop-shadow(0 2px 4px rgba(217, 119, 6, 0.35));
-  pointer-events: none;
+/* Custom Scrollbar */
+::-webkit-scrollbar { width: 10px; }
+::-webkit-scrollbar-track { background: var(--color-bg); }
+::-webkit-scrollbar-thumb { 
+  background: var(--color-secondary); 
+  border-radius: 10px;
+  border: 3px solid var(--color-bg);
 }
-
-.paw-cursor-main svg {
-  width: 100%;
-  height: 100%;
-  display: block;
-}
-
-/* Trail paw prints */
-.paw-cursor-trail {
-  position: absolute;
-  width: 13px;
-  height: 13px;
-  margin-left: -6.5px;
-  margin-top: -6.5px;
-  color: #d97706;
-  will-change: transform, opacity;
-  transition: opacity 0.12s ease-out;
-  pointer-events: none;
-}
-
-/* ==========================================================================
-   UNIVERSAL CARD COMPACTION SUITE (Minimalist & Efficient)
-   ========================================================================== */
-
-/* 1. Global Card Container Compaction */
-.card, 
-[class*="rounded-[2.5rem]"],
-[class*="rounded-[3rem]"] {
-  border-radius: 1.25rem !important; /* Shorter corners for cleaner minimalist look */
-}
-
-/* Force reduce large padding on all responsive screen sizes */
-.card, 
-[class*="rounded-[2.5rem]"],
-[class*="rounded-[3rem]"],
-[class*="p-6"], 
-[class*="p-8"], 
-[class*="p-10"], 
-[class*="p-12"] {
-  padding: clamp(0.75rem, 3vw, 1.25rem) !important; /* Universal compact padding */
-}
-
-/* 2. Header & Content Compaction */
-.card h1, .card h2, .card h3,
-[class*="rounded-"] h1, [class*="rounded-"] h2, [class*="rounded-"] h3 {
-  font-size: clamp(0.9rem, 2vw, 1.25rem) !important; /* Smaller, more professional headings */
-  letter-spacing: -0.02em !important;
-  margin-bottom: 0.5rem !important;
-}
-
-.card p, 
-[class*="rounded-"] p {
-  font-size: clamp(0.75rem, 1.5vw, 0.9rem) !important;
-  line-height: 1.4 !important;
-}
-
-/* 3. Image & Media Cap */
-.card [class*="h-64"], 
-.card [class*="h-56"], 
-.card [class*="h-48"],
-[class*="rounded-"] [class*="h-64"],
-[class*="rounded-"] [class*="h-56"],
-[class*="rounded-"] [class*="h-48"] {
-  height: clamp(120px, 20vh, 180px) !important; /* Cap huge image containers */
-}
-
-/* 4. Internal Spacing & Gaps */
-.card [class*="space-y-"], 
-[class*="rounded-"] [class*="space-y-"] {
-  --tw-space-y-reverse: 0 !important;
-  margin-top: calc(0.75rem * calc(1 - var(--tw-space-y-reverse))) !important;
-}
-
-.card [class*="gap-6"], 
-.card [class*="gap-8"], 
-.card [class*="gap-10"],
-[class*="rounded-"] [class*="gap-6"],
-[class*="rounded-"] [class*="gap-8"],
-[class*="rounded-"] [class*="gap-10"] {
-  gap: 0.75rem !important; /* Tighten grid/flex gaps */
-}
-
-/* 5. Buttons & Badges Compaction */
-.card .btn, 
-.card [class*="btn-"],
-[class*="rounded-"] [class*="btn-"],
-[class*="rounded-"] .btn {
-  padding: 0.5rem 1rem !important; /* Standardized compact button size */
-  font-size: 0.75rem !important;
-  border-radius: 0.75rem !important;
-}
-
-.card .badge, 
-.card [class*="badge-"],
-[class*="rounded-"] .badge,
-[class*="rounded-"] [class*="badge-"] {
-  padding: 0.2rem 0.5rem !important;
-  font-size: 0.65rem !important;
-  border-radius: 0.5rem !important;
-}
-
-/* 6. Price Displays Compaction */
-.card [class*="text-2xl"], 
-.card [class*="text-3xl"], 
-.card [class*="text-4xl"],
-[class*="rounded-"] [class*="text-2xl"],
-[class*="rounded-"] [class*="text-3xl"],
-[class*="rounded-"] [class*="text-4xl"] {
-  font-size: 1.25rem !important; /* Cap price/large text sizes */
-  letter-spacing: -0.04em !important;
-}
-
-/* 7. Specific Content Box Compaction (like Pet Details boxes) */
-[class*="bg-slate-50/50"],
-[class*="bg-slate-50"] {
-  padding: 0.75rem !important;
-  margin-bottom: 0.75rem !important;
-  border-radius: 1rem !important;
-}
-
-/* PREMIUM LANDING PAGE OVERRIDES - Added to bypass global UI compaction for marketing sections */
-.card-landing-premium {
-  border-radius: 2.5rem !important;
-  padding: 1rem !important;
-  background: white !important;
-  border: 1px solid #f1f5f9 !important;
-}
-
-.card-landing-premium [class*="h-64"] {
-  height: clamp(240px, 40vh, 320px) !important; /* Restore scale for landing page showcase */
-}
-
-/* ── High-Fidelity Animations ── */
-@keyframes shimmer-text {
-  0% { background-position: -200% center; }
-  100% { background-position: 200% center; }
-}
-
-.text-gradient-shimmer {
-  background: linear-gradient(90deg, #724E31, #fac700, #724E31) !important;
-  background-size: 200% auto !important;
-  color: transparent !important;
-  -webkit-background-clip: text !important;
-  background-clip: text !important;
-  animation: shimmer-text 6s linear infinite !important;
-}
-
-@keyframes blob-bounce {
-  0%, 100% { transform: translate(0, 0) scale(1); }
-  33% { transform: translate(30px, -50px) scale(1.1); }
-  66% { transform: translate(-20px, 20px) scale(0.9); }
-}
-
-.blob-animation {
-  animation: blob-bounce 15s ease-in-out infinite !important;
-}
-
-/* 3D Transform for Hero/Showcase Cards */
-.card-3d-hover {
-  transition: transform 0.6s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) !important;
-}
-
-.card-3d-hover:hover {
-  transform: perspective(1000px) rotateX(2deg) rotateY(1deg) scale(1.02) !important;
-}
+::-webkit-scrollbar-thumb:hover { background: var(--color-primary); }
