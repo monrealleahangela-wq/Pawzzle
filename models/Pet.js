@@ -26,6 +26,9 @@ const petSchema = new mongoose.Schema({
     enum: ['months', 'years'],
     default: 'years'
   },
+  birthday: {
+    type: Date
+  },
   gender: {
     type: String,
     enum: ['male', 'female'],

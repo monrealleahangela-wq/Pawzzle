@@ -26,6 +26,7 @@ const AdminPets = () => {
 
   const initialPetState = {
     name: '', species: 'dog', breed: '', age: '', ageUnit: 'years',
+    ageYears: '', ageMonths: '', birthday: '', // Frontend helper fields
     gender: 'male', size: 'medium', color: '', description: '', price: '',
     vaccinationStatus: 'not_vaccinated', healthStatus: 'good',
     specialNeeds: '', images: [], isAvailable: true,
@@ -112,11 +113,24 @@ const AdminPets = () => {
       const response = await adminPetService.getPetById(petId);
       const pet = response.data.pet;
       setEditingPet(pet);
+      // Pre-process age for the dual-field UI
+      let years = '', months = '';
+      if (pet.ageUnit === 'years') {
+        years = pet.age;
+        months = 0;
+      } else {
+        years = 0;
+        months = pet.age;
+      }
+
       setPetForm({
         ...initialPetState,
         ...pet,
         price: pet.price || '',
         age: pet.age || '',
+        ageYears: years,
+        ageMonths: months,
+        birthday: pet.birthday ? new Date(pet.birthday).toISOString().split('T')[0] : '',
         adoptionDetails: {
           ...initialPetState.adoptionDetails,
           ...(pet.adoptionDetails || {})
@@ -140,7 +154,40 @@ const AdminPets = () => {
     e.preventDefault();
     setSubmitting(true);
     try {
-      const payload = { ...petForm, age: parseInt(petForm.age) || 0, price: parseFloat(petForm.price) || 0 };
+      // Validate Age
+      const years = parseInt(petForm.ageYears) || 0;
+      const months = parseInt(petForm.ageMonths) || 0;
+
+      if (years === 0 && months === 0) {
+        toast.error('Age cannot be 0 years and 0 months');
+        setSubmitting(false);
+        return;
+      }
+      if (years < 0 || months < 0) {
+        toast.error('Age values cannot be negative');
+        setSubmitting(false);
+        return;
+      }
+      if (years > 25) { // Common realistic limit for most pets we handle
+        toast.error('Please enter a realistic age (max 25 years)');
+        setSubmitting(false);
+        return;
+      }
+
+      // Convert back to single fields for backend
+      let finalAge = years;
+      let finalUnit = 'years';
+      if (years === 0) {
+        finalAge = months;
+        finalUnit = 'months';
+      }
+
+      const payload = { 
+        ...petForm, 
+        age: finalAge, 
+        ageUnit: finalUnit,
+        price: parseFloat(petForm.price) || 0 
+      };
       if (editingPet) {
         await adminPetService.updatePet(editingPet._id, payload);
         toast.success('Pet updated');
@@ -166,6 +213,26 @@ const AdminPets = () => {
     }
   };
 
+  const calculateAge = (birthDate) => {
+    if (!birthDate) return;
+    const birth = new Date(birthDate);
+    const today = new Date();
+    let years = today.getFullYear() - birth.getFullYear();
+    let months = today.getMonth() - birth.getMonth();
+    
+    if (months < 0 || (months === 0 && today.getDate() < birth.getDate())) {
+      years--;
+      months += 12;
+    }
+    
+    setPetForm(prev => ({
+      ...prev,
+      ageYears: years,
+      ageMonths: months,
+      birthday: birthDate
+    }));
+  };
+
   const handleImageUpload = async (e) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
@@ -178,7 +245,8 @@ const AdminPets = () => {
       setPetForm(prev => ({ ...prev, images: [...prev.images, ...newUrls] }));
       toast.success('Images uploaded');
     } catch (error) {
-      toast.error('Upload failed');
+      console.error('Upload Error:', error);
+      toast.error('Upload failed. Please ensure file is valid JPG or PNG.');
     } finally {
       setSubmitting(false);
     }
@@ -537,13 +605,50 @@ const AdminPets = () => {
             <div className="flex-1 overflow-y-auto p-6 no-scrollbar">
               {/* STAGE 1: CORE IDENTITY */}
               {modalTab === 'identity' && (
-                <div className="space-y-5 animate-in fade-in slide-in-from-right-4 duration-500">
-                  {/* Row 1: Name */}
-                  <div className="space-y-1">
-                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Pet Name</label>
-                    <input type="text" required value={petForm.name} onChange={e => setPetForm(p => ({ ...p, name: e.target.value }))}
-                      className="w-full px-5 py-3 bg-slate-50 border border-slate-100 rounded-xl text-[12px] font-black uppercase outline-none focus:ring-2 focus:ring-rose-400/20" placeholder="PET NAME..." />
+                <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-500">
+                  {/* Row 0: Profile Image Upload */}
+                  <div className="flex flex-col md:flex-row gap-8 items-center bg-slate-900 p-8 rounded-[3rem] text-white relative overflow-hidden border border-white/5">
+                    <div className="relative shrink-0 group">
+                      <div className="w-40 h-40 rounded-3xl bg-white/5 border-2 border-white/10 overflow-hidden flex items-center justify-center relative shadow-2xl transition-all group-hover:border-rose-500">
+                        {petForm.images[0] ? (
+                          <img src={getImageUrl(petForm.images[0])} alt="Profile" className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="flex flex-col items-center gap-2 opacity-30 text-center">
+                            <ImageIcon className="h-8 w-8" />
+                            <span className="text-[8px] font-black uppercase tracking-widest">Select Image</span>
+                          </div>
+                        )}
+                        <label className="absolute inset-0 bg-rose-600/90 flex items-center justify-center cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Plus className="h-10 w-10 text-white" />
+                          <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+                        </label>
+                      </div>
+                      {petForm.images[0] && (
+                        <button type="button" onClick={() => setPetForm(p => ({ ...p, images: p.images.slice(1) }))}
+                          className="absolute -top-3 -right-3 w-10 h-10 bg-rose-500 text-white rounded-xl flex items-center justify-center shadow-lg hover:bg-slate-900 transition-all border-2 border-white/20">
+                          <Trash2 className="h-5 w-5" />
+                        </button>
+                      )}
+                    </div>
+                    <div className="text-center md:text-left">
+                      <h4 className="text-[12px] font-black uppercase tracking-[0.4em] mb-2 text-rose-400">Pet Profile Image</h4>
+                      <p className="text-[9px] font-bold text-white/40 uppercase tracking-widest leading-relaxed max-w-xs mx-auto md:mx-0">
+                        Upload a primary display photo. This is the first image potential buyers will see.
+                      </p>
+                      <label className="mt-6 inline-flex items-center gap-3 px-8 py-3 bg-white/10 hover:bg-rose-500 hover:text-white border border-white/10 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all cursor-pointer">
+                         Update Highlight Photo
+                        <input type="file" accept="image/png, image/jpeg, image/jpg" className="hidden" onChange={handleImageUpload} />
+                      </label>
+                    </div>
                   </div>
+
+                  {/* Row 1: Name */}
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 underline decoration-rose-500/30 underline-offset-4">Pet Alias / Name</label>
+                    <input type="text" required value={petForm.name} onChange={e => setPetForm(p => ({ ...p, name: e.target.value }))}
+                      className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-[14px] font-black uppercase outline-none focus:ring-4 focus:ring-rose-500/5 transition-all" placeholder="Enter Pet Name..." />
+                  </div>
+
                   {/* Row 2: Species + Breed */}
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1.5">
@@ -559,33 +664,76 @@ const AdminPets = () => {
                         className="w-full px-5 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl text-[11px] font-black uppercase outline-none" placeholder="E.G. GOLDEN RETRIEVER" />
                     </div>
                   </div>
-                  {/* Row 3: Price + Age + Unit */}
-                  <div className="grid grid-cols-12 gap-4">
-                    <div className="col-span-6 space-y-1.5">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Price (₱)</label>
+
+                  {/* Row 3: Birthday + Age Units */}
+                  <div className="bg-slate-50/50 border border-slate-100 rounded-[2.5rem] p-8">
+                    <div className="flex items-center gap-2 mb-6">
+                      <Clock className="w-4 h-4 text-slate-400" />
+                      <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-500">Age & Chronology Information</h4>
+                    </div>
+                    <div className="grid grid-cols-12 gap-6">
+                      <div className="col-span-12 md:col-span-4 space-y-1.5">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Birth Date</label>
+                        <input type="date" value={petForm.birthday} onChange={e => calculateAge(e.target.value)}
+                          className="w-full px-4 py-3.5 bg-white border border-slate-100 rounded-2xl text-[11px] font-black outline-none focus:ring-4 focus:ring-rose-500/5 cursor-pointer transition-all" />
+                      </div>
+                      <div className="col-span-6 md:col-span-4 space-y-1.5">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1 block opacity-60">Age in Years</label>
+                        <div className="flex items-center bg-white border border-slate-100 rounded-2xl overflow-hidden focus-within:ring-4 focus-within:ring-rose-500/5 transition-all">
+                          <button type="button" onClick={() => setPetForm(p => ({ ...p, ageYears: Math.max(0, (parseInt(p.ageYears) || 0) - 1) }))} className="px-4 py-3.5 hover:bg-slate-50 text-slate-400 transition-colors">
+                            <Minus className="h-3 w-3" />
+                          </button>
+                          <input type="number" value={petForm.ageYears} onChange={e => setPetForm(p => ({ ...p, ageYears: e.target.value }))}
+                            className="w-full bg-transparent text-center font-black text-lg outline-none py-3" placeholder="0" />
+                          <button type="button" onClick={() => setPetForm(p => ({ ...p, ageYears: (parseInt(p.ageYears) || 0) + 1 }))} className="px-4 py-3.5 hover:bg-slate-50 text-slate-400 transition-colors">
+                            <Plus className="h-3 w-3" />
+                          </button>
+                        </div>
+                      </div>
+                      <div className="col-span-6 md:col-span-4 space-y-1.5">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1 block opacity-60">Extra Months</label>
+                        <div className="flex items-center bg-white border border-slate-100 rounded-2xl overflow-hidden focus-within:ring-4 focus-within:ring-rose-500/5 transition-all">
+                          <button type="button" onClick={() => setPetForm(p => ({ ...p, ageMonths: Math.max(0, (parseInt(p.ageMonths) || 0) - 1) }))} className="px-4 py-3.5 hover:bg-slate-50 text-slate-400 transition-colors">
+                            <Minus className="h-3 w-3" />
+                          </button>
+                          <input type="number" value={petForm.ageMonths} onChange={e => {
+                            let val = parseInt(e.target.value) || 0;
+                            if (val > 11) {
+                              setPetForm(p => ({ ...p, ageYears: (parseInt(p.ageYears) || 0) + Math.floor(val / 12), ageMonths: val % 12 }));
+                            } else {
+                              setPetForm(p => ({ ...p, ageMonths: e.target.value }));
+                            }
+                          }}
+                            className="w-full bg-transparent text-center font-black text-lg outline-none py-3" placeholder="0" />
+                          <button type="button" onClick={() => {
+                            setPetForm(p => {
+                              let m = (parseInt(p.ageMonths) || 0) + 1;
+                              if (m > 11) return { ...p, ageYears: (parseInt(p.ageYears) || 0) + 1, ageMonths: 0 };
+                              return { ...p, ageMonths: m };
+                            });
+                          }} className="px-4 py-3.5 hover:bg-slate-50 text-slate-400 transition-colors">
+                            <Plus className="h-3 w-3" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Row 4: Price & Color */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Selling Price (₱)</label>
                       <input type="number" required value={petForm.price} onChange={e => setPetForm(p => ({ ...p, price: e.target.value }))}
-                        className="w-full px-5 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl text-lg font-black outline-none" placeholder="0.00" />
+                        className="w-full px-5 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl text-lg font-black outline-none transition-all focus:ring-4 focus:ring-rose-500/5" placeholder="0.00" />
                     </div>
-                    <div className="col-span-3 space-y-1.5">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Age</label>
-                      <input type="number" required value={petForm.age} onChange={e => setPetForm(p => ({ ...p, age: e.target.value }))}
-                        className="w-full px-4 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl text-lg font-black outline-none text-center" placeholder="0" />
-                    </div>
-                    <div className="col-span-3 space-y-1.5">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Unit</label>
-                      <select value={petForm.ageUnit} onChange={e => setPetForm(p => ({ ...p, ageUnit: e.target.value }))}
-                        className="w-full px-3 py-3.5 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase outline-none appearance-none cursor-pointer text-center">
-                        <option value="years">YRS</option><option value="months">MOS</option>
-                      </select>
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Variant / Color</label>
+                      <input type="text" value={petForm.color} onChange={e => setPetForm(p => ({ ...p, color: e.target.value }))}
+                        className="w-full px-5 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl text-[11px] font-black uppercase outline-none transition-all focus:ring-4 focus:ring-rose-500/5" placeholder="E.G. GOLDEN, BLACK..." />
                     </div>
                   </div>
-                  {/* Row 4: Color */}
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Color</label>
-                    <input type="text" value={petForm.color} onChange={e => setPetForm(p => ({ ...p, color: e.target.value }))}
-                      className="w-full px-5 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl text-[11px] font-black uppercase outline-none" placeholder="E.G. GOLDEN, BLACK, TRI-COLOR..." />
-                  </div>
-                  {/* Row 5: Gender + Size side-by-side */}
+
+                  {/* Row 5: Gender + Size */}
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1.5">
                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Gender</label>
@@ -599,7 +747,7 @@ const AdminPets = () => {
                       </div>
                     </div>
                     <div className="space-y-1.5">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Size</label>
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Pet Size</label>
                       <div className="grid grid-cols-4 gap-2">
                         {[{ v: 'small', l: 'S' }, { v: 'medium', l: 'M' }, { v: 'large', l: 'L' }, { v: 'extra_large', l: 'XL' }].map(s => (
                           <button key={s.v} type="button" onClick={() => setPetForm(p => ({ ...p, size: s.v }))}
@@ -610,11 +758,12 @@ const AdminPets = () => {
                       </div>
                     </div>
                   </div>
+
                   {/* Row 6: Description */}
                   <div className="space-y-1.5">
                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Description</label>
                     <textarea required value={petForm.description} onChange={e => setPetForm(p => ({ ...p, description: e.target.value }))}
-                      className="w-full px-5 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl text-[12px] font-medium leading-relaxed outline-none h-28 resize-none" placeholder="Tell customers about this pet..." />
+                      className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-[12px] font-medium leading-relaxed outline-none h-28 resize-none focus:ring-4 focus:ring-rose-500/5 transition-all" placeholder="Enter pet description..." />
                   </div>
                 </div>
               )}
