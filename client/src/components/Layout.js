@@ -146,7 +146,6 @@ const Layout = () => {
   const customerNavItems = [
     { path: '/home', label: 'Home', icon: House },
     { path: '/pets', label: 'Explore Pets', icon: Heart },
-    { path: '/profile?tab=pets', label: 'My Pets', icon: PawPrint },
     { path: '/products', label: 'Products', icon: Package },
     { path: '/services', label: 'Services', icon: Calendar },
     { path: '/orders', label: 'Transactions', icon: ShoppingBag },

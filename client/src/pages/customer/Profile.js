@@ -858,6 +858,7 @@ const Profile = () => {
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] pb-36 sm:pb-20 overflow-x-hidden">
+      {/* Profile Terminal - Root Node */}
       {/* Premium Header/Banner - Compacted */}
       <div className="relative h-24 sm:h-48 w-full overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-slate-800 to-primary-900"></div>
@@ -871,59 +872,55 @@ const Profile = () => {
           {/* Sidebar / Stats - High Density */}
           <div className="lg:col-span-4 space-y-3 sm:space-y-6 min-w-0 w-full overflow-hidden">
             {/* User Card - Slimmed */}
-            <div className="bg-white/90 backdrop-blur-xl rounded-2xl sm:rounded-[2.5rem] shadow-xl shadow-slate-200/40 border border-white p-3 sm:p-8 group overflow-hidden">
-              <div className="relative flex items-center lg:flex-col lg:items-center gap-3 lg:gap-0">
-                <div className="relative lg:mb-4 shrink-0">
-                  <div className="absolute -inset-2 sm:-inset-4 bg-primary-600/10 rounded-full blur-xl sm:blur-2xl"></div>
-                  {previewImage || profilePicture ? (
-                    <img
-                      src={getImageUrl(previewImage || profilePicture)}
-                      alt="Profile"
-                      className="w-14 h-14 sm:w-28 sm:h-28 rounded-xl sm:rounded-[2rem] object-cover ring-2 sm:ring-4 ring-white shadow-lg relative z-10"
-                    />
+            <div className="bg-white/90 backdrop-blur-xl rounded-[3rem] shadow-xl shadow-slate-200/40 border border-white p-8 group overflow-hidden relative">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-primary-100/30 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+              
+              <div className="relative z-10 text-center">
+                <div className="mx-auto w-32 h-32 sm:w-44 sm:h-44 rounded-[3rem] p-2 bg-white/50 backdrop-blur-xl border border-white/50 shadow-2xl relative group overflow-hidden mb-6">
+                  {previewImage || user.profilePicture ? (
+                    <img src={previewImage || getImageUrl(user.profilePicture)} alt="Profile" className="w-full h-full object-cover rounded-[2.5rem] transition-transform duration-700 group-hover:scale-110" />
                   ) : (
-                    <div className="w-14 h-14 sm:w-28 sm:h-28 rounded-xl sm:rounded-[2rem] bg-slate-100 flex items-center justify-center ring-2 sm:ring-4 ring-white shadow-lg relative z-10">
-                      <User className="h-6 w-6 sm:h-12 sm:w-12 text-slate-300" />
+                    <div className="w-full h-full bg-slate-100 rounded-[2.5rem] flex items-center justify-center text-slate-300">
+                      <User className="h-16 w-16" />
                     </div>
                   )}
-                  {isEditing && (
-                    <label className="absolute -right-1 -bottom-1 z-20 p-1.5 bg-slate-900 text-white rounded-lg shadow-lg cursor-pointer hover:scale-110 transition-transform">
-                      <Camera className="h-3 w-3" />
-                      <input type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
-                    </label>
-                  )}
+                  <label className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-all cursor-pointer flex flex-col items-center justify-center gap-2 backdrop-blur-sm">
+                    <Camera className="h-8 w-8 text-white animate-bounce-subtle" />
+                    <span className="text-[10px] font-black text-white uppercase tracking-widest">Update HUD</span>
+                    <input type="file" className="hidden" onChange={handleImageChange} accept="image/*" />
+                  </label>
                 </div>
 
-                <div className="min-w-0 lg:text-center flex-1">
-                  <h1 className="text-sm sm:text-2xl font-black text-slate-900 tracking-tighter truncate leading-tight uppercase">
-                    {user.firstName} {user.lastName}
-                  </h1>
-                  <p className="text-slate-400 font-bold text-[9px] sm:text-sm uppercase tracking-tight opacity-70 italic">@{user.username}</p>
-
-                  <div className="flex flex-wrap lg:justify-center gap-1 mt-1.5 lg:mb-6">
-                    <span className="px-1.5 sm:px-3 py-0.5 bg-slate-900 text-white rounded-md text-[7px] sm:text-[9px] font-black uppercase tracking-widest leading-none">
+                <h1 className="text-3xl sm:text-4xl font-black text-slate-900 uppercase tracking-tighter leading-tight mb-2">
+                  {user.firstName ? `${user.firstName} ${user.lastName}` : user.username}
+                </h1>
+                
+                <div className="flex flex-col items-center gap-3">
+                  <span className="text-slate-400 font-bold text-[10px] uppercase tracking-widest bg-slate-50 px-4 py-1.5 rounded-full border border-slate-100">@{user.username}</span>
+                  <div className="flex items-center gap-2">
+                    <div className="px-3 py-1 bg-slate-900 text-white rounded-lg text-[9px] font-black uppercase tracking-widest shadow-lg shadow-slate-200">
                       {user.role.replace('_', ' ')}
-                    </span>
+                    </div>
                     {user.store && (
-                      <span className="px-1.5 sm:px-3 py-0.5 bg-primary-50 text-primary-700 rounded-md text-[7px] sm:text-[9px] font-black uppercase tracking-widest border border-primary-100 leading-none flex items-center gap-1">
-                        <Building className="h-2 w-2" /> {user.store.name}
-                      </span>
+                      <div className="px-3 py-1 bg-primary-50 text-primary-600 rounded-lg text-[9px] font-black uppercase tracking-widest border border-primary-100 flex items-center gap-1">
+                        <Building className="h-3 w-3" /> {user.store.name}
+                      </div>
                     )}
                   </div>
                 </div>
 
-                  <div className="hidden lg:grid w-full grid-cols-2 gap-2 border-t border-slate-50 pt-6">
+                <div className="grid grid-cols-3 gap-2 mt-8 pt-8 border-t border-slate-50">
                   <div className="text-center">
-                    <p className="text-[9px] font-black text-slate-300 uppercase tracking-widest mb-0.5">Followers</p>
-                    <p className="text-xl font-black text-slate-900 leading-none">{followers.length}</p>
+                    <p className="text-[8px] font-black text-slate-300 uppercase tracking-widest mb-1.5">Followers</p>
+                    <p className="text-lg font-black text-slate-900 leading-none">{followers.length}</p>
                   </div>
-                  <div className="text-center border-l border-slate-50">
-                    <p className="text-[9px] font-black text-slate-300 uppercase tracking-widest mb-0.5">Following</p>
-                    <p className="text-xl font-black text-primary-600 leading-none">{following.length}</p>
+                  <div className="text-center border-x border-slate-100 px-2">
+                    <p className="text-[8px] font-black text-slate-300 uppercase tracking-widest mb-1.5">Following</p>
+                    <p className="text-lg font-black text-primary-600 leading-none">{following.length}</p>
                   </div>
-                  <div className="text-center pt-4 col-span-2 border-t border-slate-50 mt-4">
-                    <p className="text-[9px] font-black text-slate-300 uppercase tracking-widest mb-0.5">Favorites</p>
-                    <p className="text-xl font-black text-rose-500 leading-none">{favorites.length}</p>
+                  <div className="text-center">
+                    <p className="text-[8px] font-black text-slate-300 uppercase tracking-widest mb-1.5">Favorites</p>
+                    <p className="text-lg font-black text-rose-500 leading-none">{favorites.length}</p>
                   </div>
                 </div>
               </div>
@@ -934,20 +931,21 @@ const Profile = () => {
               <div className="bg-white/80 backdrop-blur-md rounded-xl sm:rounded-[2rem] shadow-xl shadow-slate-200/20 border border-white p-1 flex lg:block overflow-x-auto no-scrollbar scroll-smooth w-full">
                 {[
                   { id: 'overview', icon: TrendingUp, label: 'Activity' },
-                  { id: 'details', icon: User, label: 'Profile' },
+                  { id: 'details', icon: User, label: 'Personal' },
+                  { id: 'pets', icon: PawPrint, label: 'My Pets', role: 'customer' },
                   { id: 'favorites', icon: HeartIcon, label: 'Favorites' },
                   { id: 'followers', icon: Users, label: 'Followers' },
                   { id: 'following', icon: User, label: 'Following' },
                   { id: 'security', icon: Shield, label: 'Security' },
                   { id: 'store', icon: Building, label: 'My Store', role: 'admin' },
-                  { id: 'upgrade', icon: Store, label: 'Become a Partner', role: 'customer' }
+                  { id: 'upgrade', icon: Store, label: 'Partner Program', role: 'customer' }
                 ].filter(item => !item.role || item.role === user.role).map((item) => (
                   <button
                     key={item.id}
                     onClick={() => setActiveTab(item.id)}
                     className={`flex items-center gap-1.5 whitespace-nowrap px-3 sm:px-6 py-2 sm:py-4 rounded-lg sm:rounded-2xl font-black text-[9px] sm:text-xs transition-all duration-300 group ${activeTab === item.id
-                      ? 'bg-slate-900 text-white shadow-lg'
-                      : 'text-slate-400 hover:bg-white hover:text-slate-900'
+                      ? 'bg-slate-900 text-white shadow-xl shadow-slate-200'
+                      : 'text-slate-400 hover:bg-slate-50 hover:text-slate-900'
                       }`}
                   >
                     <item.icon className={`h-3 w-3 sm:h-4 sm:w-4 ${activeTab === item.id ? 'text-primary-400' : 'text-slate-300 group-hover:text-primary-500'}`} />
@@ -1089,31 +1087,29 @@ const Profile = () => {
                       )}
                     </div>
                   </div>
-
                   {/* Platform Feedback Section */}
-                  <div className="bg-gradient-to-br from-primary-600 to-primary-800 p-6 sm:p-10 rounded-[2.5rem] text-white relative overflow-hidden group">
-                    <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 group-hover:scale-150 transition-transform duration-700"></div>
-                    <div className="relative z-10 flex flex-col sm:flex-row items-center justify-between gap-6">
+                  <div className="bg-slate-900 p-8 sm:p-12 rounded-[3.5rem] text-white relative overflow-hidden group shadow-2xl shadow-slate-200">
+                    <div className="absolute top-0 right-0 w-64 h-64 bg-primary-600/20 rounded-full blur-[100px] -translate-y-1/2 translate-x-1/2 group-hover:scale-150 transition-transform duration-1000"></div>
+                    <div className="relative z-10 flex flex-col sm:flex-row items-center justify-between gap-8">
                       <div className="text-center sm:text-left">
-                        <div className="flex items-center justify-center sm:justify-start gap-2 mb-2">
-                          <HeartIcon className="h-4 w-4 text-primary-400 fill-primary-400" />
-                          <span className="text-[9px] font-black uppercase tracking-[0.3em] text-primary-300">WE VALUE YOU</span>
+                        <div className="flex items-center justify-center sm:justify-start gap-3 mb-3">
+                          <HeartIcon className="h-5 w-5 text-primary-400 fill-primary-400" />
+                          <span className="text-[10px] font-black uppercase tracking-[0.4em] text-primary-300">WE VALUE YOUR INTEL</span>
                         </div>
-                        <h3 className="text-xl sm:text-2xl font-black uppercase tracking-tighter leading-tight mb-2">
-                          How's the <span className="italic">Experience?</span>
-                        </h3>
-                        <p className="text-[10px] sm:text-sm font-medium text-primary-100/70 max-w-md">
-                          Your feedback helps us build a better sanctuary for all pets and owners.
+                        <h3 className="text-3xl sm:text-4xl font-black uppercase tracking-tighter mb-3 leading-none">Help us <span className="text-primary-500 italic">Evolve</span></h3>
+                        <p className="text-[11px] text-slate-400 font-bold uppercase tracking-widest max-w-[400px] leading-relaxed">
+                          Your feedback allows us to calibrate the platform for the the elite pet care experience.
                         </p>
                       </div>
-                      <button
-                        onClick={() => setShowFeedbackModal(true)}
-                        className="w-full sm:w-auto px-8 py-4 bg-white text-slate-900 rounded-2xl font-black text-[10px] sm:text-xs uppercase tracking-widest hover:bg-primary-50 transition-all shadow-2xl active:scale-95 flex items-center justify-center gap-2"
+                      <button 
+                         onClick={() => setShowFeedbackModal(true)}
+                         className="px-10 py-5 bg-white text-slate-900 rounded-[2rem] text-[11px] font-black uppercase tracking-[0.2em] shadow-xl hover:bg-primary-500 hover:text-white transition-all active:scale-95 whitespace-nowrap"
                       >
-                        <MessageSquare className="h-4 w-4" /> Give Feedback
+                        Initiate Calibration
                       </button>
                     </div>
                   </div>
+
                 </div>
               )}
 
