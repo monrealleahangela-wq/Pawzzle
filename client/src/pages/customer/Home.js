@@ -178,6 +178,25 @@ const Home = () => {
   return (
     <div className="space-y-10 sm:space-y-16 pb-32 animate-fade-in font-['Outfit'] relative z-10">
 
+      {/* ── Friction-Free Registration: Profile Maturity Prompt ── */}
+      {user && (!user.firstName || user.phone === '' || user.phone === 'N/A') && (
+        <div className="animate-pop p-6 bg-accent-light rounded-[2.5rem] border border-accent/20 flex flex-col md:flex-row items-center justify-between gap-6 relative overflow-hidden group">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-accent/5 rounded-bl-[5rem] pointer-events-none group-hover:scale-125 transition-transform duration-700" />
+          <div className="flex items-center gap-6 relative z-10">
+             <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center text-2xl shadow-fun animate-wag">
+                👋
+             </div>
+             <div>
+                <h3 className="text-[11px] font-black text-amber-900 uppercase tracking-[0.25em] mb-1">Welcome to the Pack, {user.username}!</h3>
+                <p className="text-xs text-amber-700 font-medium leading-relaxed">Your account is active, but your identity profile is incomplete. Finish it now to unlock full booking perks.</p>
+             </div>
+          </div>
+          <Link to="/profile" className="btn-fun bg-accent text-white px-8 py-3 text-[10px] shadow-hover hover:bg-header relative z-10">
+             Complete Profile
+          </Link>
+        </div>
+      )}
+
       {/* Premium Ambiance Layer - Immersive Glows */}
       <div className="fixed inset-0 z-[-1] pointer-events-none overflow-hidden opacity-30">
         <div className="absolute top-[-10%] right-[-5%] w-[500px] h-[500px] bg-amber-100 rounded-full blur-[120px] animate-spin-slow" />

@@ -3,8 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { useAuth } from '../../contexts/AuthContext';
 import authService from '../../services/authService';
-import { Heart, Mail, Lock, User, Phone, Eye, EyeOff, ArrowLeft, ShieldCheck, RefreshCw } from 'lucide-react';
-import { getCitiesByProvince, getBarangaysByCity } from '../../constants/locationConstants';
+import { Heart, Mail, Lock, User, Eye, EyeOff, ArrowLeft, ShieldCheck, RefreshCw, Sparkles } from 'lucide-react';
 
 const Register = () => {
   const [formData, setFormData] = useState({
@@ -12,40 +11,31 @@ const Register = () => {
     email: '',
     password: '',
     confirmPassword: '',
+    // Hidden/Defaults for now
     firstName: '',
     lastName: '',
     phone: '',
     address: {
-      street: '',
-      city: '',
-      province: 'cavite',
-      barangay: '',
+      street: 'N/A',
+      city: 'N/A',
+      province: 'Cavite',
+      barangay: 'N/A',
       zipCode: '',
       country: 'PH'
     }
   });
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [cities, setCities] = useState([]);
-  const [barangays, setBarangays] = useState([]);
 
   // OTP state
   const [step, setStep] = useState(1); // 1: form, 2: OTP verification
   const [otpDigits, setOtpDigits] = useState(['', '', '', '', '', '']);
   const [otpLoading, setOtpLoading] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
-  const [deliveryMethod, setDeliveryMethod] = useState('email'); // 'email' or 'sms'
+  const [deliveryMethod, setDeliveryMethod] = useState('email');
   const otpRefs = useRef([]);
 
-  const { login } = useAuth();
   const navigate = useNavigate();
-
-  useEffect(() => {
-    setCities(getCitiesByProvince('cavite'));
-    if (formData.address.city) {
-      setBarangays(getBarangaysByCity(formData.address.city));
-    }
-  }, [formData.address.city]);
 
   // Resend cooldown timer
   useEffect(() => {
@@ -60,18 +50,7 @@ const Register = () => {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleAddressChange = (field, value) => {
-    setFormData(prev => ({
-      ...prev,
-      address: {
-        ...prev.address,
-        [field]: value,
-        ...(field === 'city' ? { barangay: '' } : {})
-      }
-    }));
-  };
-
-  // ─── STEP 1: Submit registration form → send OTP ────────────────────────────
+  // ─── STEP 1: Submit simplified registration form ────────────────────────────
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -86,16 +65,11 @@ const Register = () => {
       return;
     }
 
-    if (formData.password.toLowerCase() === formData.username.toLowerCase() ||
-      formData.password.toLowerCase() === formData.email.toLowerCase()) {
-      toast.error('Password cannot be the same as your username or email');
-      return;
-    }
-
     setLoading(true);
 
     try {
       const { confirmPassword, ...registerData } = formData;
+      // We send the simplified data. Backend fields like firstName/lastName are now optional.
       const result = await authService.sendRegisterOTP(registerData);
 
       if (result.success) {
@@ -103,7 +77,6 @@ const Register = () => {
         setDeliveryMethod(result.deliveryMethod || 'email');
         setStep(2);
         setResendCooldown(60);
-        // Focus first OTP input
         setTimeout(() => otpRefs.current[0]?.focus(), 300);
       } else {
         toast.error(result.message || 'Failed to send verification code');
@@ -116,69 +89,46 @@ const Register = () => {
     }
   };
 
-  // ─── OTP Input handlers ────────────────────────────────────────────────────
   const handleOtpChange = (index, value) => {
     if (value.length > 1) {
-      // Handle paste
       const digits = value.replace(/\D/g, '').slice(0, 6).split('');
       const newOtp = [...otpDigits];
-      digits.forEach((d, i) => {
-        if (index + i < 6) newOtp[index + i] = d;
-      });
+      digits.forEach((d, i) => { if (index + i < 6) newOtp[index + i] = d; });
       setOtpDigits(newOtp);
       const nextIndex = Math.min(index + digits.length, 5);
       otpRefs.current[nextIndex]?.focus();
       return;
     }
-
     if (!/^\d?$/.test(value)) return;
-
     const newOtp = [...otpDigits];
     newOtp[index] = value;
     setOtpDigits(newOtp);
-
-    if (value && index < 5) {
-      otpRefs.current[index + 1]?.focus();
-    }
+    if (value && index < 5) otpRefs.current[index + 1]?.focus();
   };
 
   const handleOtpKeyDown = (index, e) => {
-    if (e.key === 'Backspace' && !otpDigits[index] && index > 0) {
-      otpRefs.current[index - 1]?.focus();
-    }
+    if (e.key === 'Backspace' && !otpDigits[index] && index > 0) otpRefs.current[index - 1]?.focus();
   };
 
-  // ─── STEP 2: Verify OTP → complete registration ────────────────────────────
   const handleVerifyOTP = async () => {
     const otp = otpDigits.join('');
     if (otp.length !== 6) {
       toast.error('Please enter the complete 6-digit code');
       return;
     }
-
     setOtpLoading(true);
-
     try {
-      const result = await authService.verifyRegisterOTP({
-        email: formData.email,
-        otp
-      });
-
+      const result = await authService.verifyRegisterOTP({ email: formData.email, otp });
       if (result.success && result.token && result.user) {
-        // Store auth data
         localStorage.setItem('token', result.token);
         localStorage.setItem('user', JSON.stringify(result.user));
-
-        toast.success('Account verified successfully! Welcome to Pawzzle!');
-
-        // Login the user
-        window.location.href = '/';
+        toast.success('Welcome to the Pack! Registration successful.');
+        window.location.href = '/home?new_user=true';
       } else {
         toast.error(result.message || 'Verification failed');
       }
     } catch (error) {
-      const msg = error.response?.data?.message || 'Invalid verification code';
-      toast.error(msg);
+      toast.error(error.response?.data?.message || 'Invalid verification code');
       setOtpDigits(['', '', '', '', '', '']);
       otpRefs.current[0]?.focus();
     } finally {
@@ -186,14 +136,11 @@ const Register = () => {
     }
   };
 
-  // ─── Resend OTP ────────────────────────────────────────────────────────────
   const handleResendOTP = async () => {
     if (resendCooldown > 0) return;
-
     try {
       const result = await authService.resendRegisterOTP({ email: formData.email });
-      toast.success(result.message || 'New verification code sent!');
-      setDeliveryMethod(result.deliveryMethod || 'email');
+      toast.success(result.message || 'New code sent!');
       setResendCooldown(60);
       setOtpDigits(['', '', '', '', '', '']);
       otpRefs.current[0]?.focus();
@@ -202,330 +149,140 @@ const Register = () => {
     }
   };
 
-  // ───────────────────────────────────────────────────────────────────────────
-  // RENDER: OTP Verification Screen (Step 2)
-  // ───────────────────────────────────────────────────────────────────────────
   if (step === 2) {
     return (
-      <div className="min-h-screen relative flex items-center justify-center p-6 overflow-hidden">
-        <div className="fixed inset-0 z-[-1] pointer-events-none opacity-40">
-          <div className="absolute top-20 right-[-10%] w-[500px] h-[500px] bg-primary-100 rounded-full blur-[120px] animate-blob" />
-          <div className="absolute bottom-[-10%] left-[-10%] w-[400px] h-[400px] bg-secondary-100 rounded-full blur-[100px] animate-blob" style={{ animationDelay: '-2s' }} />
-        </div>
-
-        <div className="max-w-md w-full animate-fade-in">
-          <div className="glass-morphism rounded-[40px] p-8 md:p-12 border border-white/40 shadow-2xl relative">
-            {/* Shield icon */}
-            <div className="absolute -top-10 left-1/2 -translate-x-1/2 w-20 h-20 bg-gradient-to-br from-primary-500 to-emerald-500 rounded-3xl flex items-center justify-center shadow-xl shadow-primary-200 rotate-6 group hover:rotate-12 transition-transform duration-500">
+      <div className="min-h-screen relative flex items-center justify-center p-6 overflow-hidden bg-[#fafaf7]">
+        <div className="max-w-md w-full animate-pop">
+          <div className="card-paw-interactive p-8 md:p-12 text-center relative group">
+            <div className="absolute -top-10 left-1/2 -translate-x-1/2 w-20 h-20 bg-primary rounded-3xl flex items-center justify-center shadow-hover rotate-6">
               <ShieldCheck className="h-10 w-10 text-white" />
             </div>
-
-            <div className="text-center mt-8 mb-8 space-y-3">
-              <h2 className="text-3xl font-black text-slate-900 tracking-tight">
-                {deliveryMethod === 'sms' ? 'Verify Your Phone' : 'Verify Your Email'}
-              </h2>
-              <p className="text-slate-500 font-medium text-sm">
-                We sent a 6-digit code to
-              </p>
-              <p className="text-primary-600 font-black text-sm tracking-wide">
-                {deliveryMethod === 'sms' ? formData.phone : formData.email}
-              </p>
+            <div className="mt-8 mb-8 space-y-3">
+              <h2 className="text-3xl font-black text-header tracking-tighter">Secure Access</h2>
+              <p className="text-primary/50 font-medium text-sm">We sent a 6-digit code to <span className="text-primary font-black">{formData.email}</span></p>
             </div>
-
-            {/* OTP Input Grid */}
-            <div className="flex justify-center gap-2 sm:gap-3 mb-8">
+            <div className="flex justify-center gap-2 mb-8">
               {otpDigits.map((digit, index) => (
                 <input
                   key={index}
                   ref={el => otpRefs.current[index] = el}
-                  type="text"
-                  inputMode="numeric"
-                  maxLength={6}
-                  value={digit}
-                  onChange={(e) => handleOtpChange(index, e.target.value)}
+                  type="text" inputMode="numeric" maxLength={1}
+                  value={digit} onChange={(e) => handleOtpChange(index, e.target.value)}
                   onKeyDown={(e) => handleOtpKeyDown(index, e)}
-                  onPaste={(e) => {
-                    e.preventDefault();
-                    const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
-                    handleOtpChange(index, pasted);
-                  }}
-                  autoComplete="one-time-code"
-                  className={`w-12 h-14 sm:w-14 sm:h-16 text-center text-xl sm:text-2xl font-black rounded-2xl border-2 outline-none transition-all duration-300
-                    ${digit
-                      ? 'border-primary-500 bg-primary-50 text-primary-700 shadow-lg shadow-primary-100'
-                      : 'border-slate-200 bg-white/50 text-slate-900 hover:border-slate-300'
-                    }
-                    focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10`}
+                  className="w-12 h-16 text-center text-2xl font-black rounded-2xl border-2 border-primary/10 focus:border-accent focus:ring-4 focus:ring-accent/10 outline-none transition-all"
                 />
               ))}
             </div>
-
-            {/* Timer & Resend */}
-            <div className="text-center mb-6">
+            <div className="mb-6">
               {resendCooldown > 0 ? (
-                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">
-                  Resend code in <span className="text-primary-600 font-black">{resendCooldown}s</span>
-                </p>
+                <p className="text-[10px] font-black text-primary/30 uppercase tracking-[0.2em]">Resend in {resendCooldown}s</p>
               ) : (
-                <button
-                  onClick={handleResendOTP}
-                  className="text-[11px] font-black text-primary-600 uppercase tracking-widest hover:text-primary-700 flex items-center gap-1.5 mx-auto transition-colors"
-                >
-                  <RefreshCw className="h-3.5 w-3.5" /> Resend Verification Code
+                <button onClick={handleResendOTP} className="text-[10px] font-black text-accent uppercase tracking-[0.2em] flex items-center gap-2 mx-auto">
+                  <RefreshCw className="h-3 w-3" /> Resend Code
                 </button>
               )}
             </div>
-
-            {/* Verify Button */}
-            <button
-              onClick={handleVerifyOTP}
-              disabled={otpLoading || otpDigits.join('').length !== 6}
-              className="btn btn-primary w-full py-5 text-xs font-black uppercase tracking-[0.2em] shadow-xl shadow-primary-100 relative overflow-hidden group disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <span className="relative z-10">
-                {otpLoading ? 'Verifying...' : 'Verify & Create Account'}
-              </span>
+            <button onClick={handleVerifyOTP} disabled={otpLoading} className="btn-fun w-full py-5">
+              {otpLoading ? 'Verifying...' : 'Complete Registration'}
             </button>
-
-            {/* Back button */}
-            <div className="mt-6 text-center">
-              <button
-                onClick={() => { setStep(1); setOtpDigits(['', '', '', '', '', '']); }}
-                className="text-sm text-slate-500 font-medium hover:text-primary-600 flex items-center justify-center gap-1.5 mx-auto transition-colors"
-              >
-                <ArrowLeft className="h-4 w-4" /> Back to Registration
-              </button>
-            </div>
+            <button onClick={() => setStep(1)} className="mt-6 text-xs text-primary/40 font-bold uppercase tracking-widest flex items-center justify-center gap-2 mx-auto">
+               <ArrowLeft className="h-3 w-3" /> Start Over
+            </button>
           </div>
         </div>
       </div>
     );
   }
 
-  // ───────────────────────────────────────────────────────────────────────────
-  // RENDER: Registration Form (Step 1)
-  // ───────────────────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen relative flex items-center justify-center p-6 overflow-hidden">
-      <div className="fixed inset-0 z-[-1] pointer-events-none opacity-40">
-        <div className="absolute top-20 right-[-10%] w-[500px] h-[500px] bg-primary-100 rounded-full blur-[120px] animate-blob" />
-        <div className="absolute bottom-[-10%] left-[-10%] w-[400px] h-[400px] bg-secondary-100 rounded-full blur-[100px] animate-blob" style={{ animationDelay: '-2s' }} />
-      </div>
-
-      <div className="max-w-xl w-full animate-fade-in py-12">
-        <div className="glass-morphism rounded-[40px] p-8 md:p-12 border border-white/40 shadow-2xl relative">
-          <div className="absolute -top-10 left-10 w-20 h-20 bg-gradient-to-br from-primary-500 to-secondary-500 rounded-2xl flex items-center justify-center shadow-xl shadow-primary-200 rotate-3 overflow-hidden p-3">
-            <img src="/images/logo.png" alt="Logo" className="w-full h-full object-contain" />
+    <div className="min-h-screen relative flex items-center justify-center p-6 overflow-hidden bg-[#fafaf7]">
+      <div className="max-w-md w-full animate-slide-up">
+        <div className="card-paw-interactive p-8 md:p-12 space-y-10 group">
+          <div className="flex flex-col items-center gap-4 text-center">
+            <div className="w-16 h-16 bg-primary rounded-3xl flex items-center justify-center text-white shadow-fun rotate-[-10deg] group-hover:rotate-0 transition-transform">
+               <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C10.34 2 9 3.34 9 5c0 1.66 1.34 3 3 3s3-1.34 3-3c0-1.66-1.34-3-3-3zM5 8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3zm14 0c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3zm12 11c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5z"/></svg>
+            </div>
+            <div className="space-y-2">
+              <h1 className="text-4xl font-black text-header tracking-tighter leading-none">Join the <span className="text-accent underline decoration-8 decoration-accent/20 underline-offset-4">Pack.</span></h1>
+              <p className="text-sm text-primary/50 font-medium">Register in seconds with zero friction.</p>
+            </div>
           </div>
 
-          <div className="mt-6 mb-10 space-y-2">
-            <h2 className="text-4xl font-black text-slate-900 tracking-tight leading-tight">Join the Elite<br /><span className="text-primary-600">Community</span></h2>
-            <p className="text-slate-500 font-medium">Create your premium pet-care profile</p>
-          </div>
-
-          <form className="space-y-8" onSubmit={handleSubmit} autoComplete="off">
-            {/* Identity Grid */}
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">First Name</label>
-                  <input
-                    name="firstName" type="text" required
-                    className="w-full px-4 py-4 bg-white/50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 outline-none transition-all font-medium text-slate-700"
-                    placeholder="Jane"
-                    value={formData.firstName}
-                    onChange={handleChange}
-                    autoComplete="off"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Last Name</label>
-                  <input
-                    name="lastName" type="text" required
-                    className="w-full px-4 py-4 bg-white/50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 outline-none transition-all font-medium text-slate-700"
-                    placeholder="Doe"
-                    value={formData.lastName}
-                    onChange={handleChange}
-                    autoComplete="off"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Username / Identifier</label>
-                <div className="input-container group">
-                  <User className="input-icon h-5 w-5" />
-                  <input
-                    name="username" type="text" required
-                    className="input input-with-icon bg-white/50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 outline-none transition-all font-medium text-slate-700 py-4"
-                    placeholder="janedoe_care"
-                    value={formData.username}
-                    onChange={handleChange}
-                    autoComplete="off"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Email Address</label>
-                <div className="input-container group">
-                  <Mail className="input-icon h-5 w-5" />
-                  <input
-                    name="email" type="email" required
-                    className="input input-with-icon bg-white/50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 outline-none transition-all font-medium text-slate-700 py-4"
-                    placeholder="jane@example.com"
-                    value={formData.email}
-                    onChange={handleChange}
-                    autoComplete="off"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Phone Number</label>
-                <div className="input-container group">
-                  <Phone className="input-icon h-5 w-5" />
-                  <input
-                    name="phone" type="tel" required
-                    className="input input-with-icon bg-white/50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 outline-none transition-all font-medium text-slate-700 py-4"
-                    placeholder="09123456789"
-                    value={formData.phone}
-                    onChange={handleChange}
-                    autoComplete="off"
-                  />
-                </div>
+          <form className="space-y-6" onSubmit={handleSubmit}>
+            <div className="space-y-2">
+              <label className="text-[10px] font-black uppercase tracking-[0.2em] text-primary/40 ml-1">Username / Name</label>
+              <div className="relative group/input">
+                <User className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-primary/20 group-focus-within/input:text-accent transition-colors" />
+                <input
+                  name="username" type="text" required
+                  className="w-full pl-12 pr-4 py-5 bg-primary/5 border border-transparent rounded-[1.5rem] focus:bg-white focus:border-accent focus:ring-4 focus:ring-accent/10 outline-none transition-all font-bold text-header"
+                  placeholder="TheLuckyPaw"
+                  value={formData.username}
+                  onChange={handleChange}
+                />
               </div>
             </div>
 
-            {/* Location Section */}
-            <div className="space-y-4">
-              <h3 className="text-xs font-black uppercase tracking-[0.2em] text-primary-600 border-b border-primary-50 pb-2">Location Logistics</h3>
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Street Address</label>
-                  <input
-                    type="text"
-                    value={formData.address.street}
-                    onChange={(e) => handleAddressChange('street', e.target.value)}
-                    className="w-full px-4 py-4 bg-white/50 border border-slate-100 rounded-2xl focus:border-primary-500 outline-none transition-all font-medium"
-                    placeholder="123 Luxury Lane"
-                    required
-                    autoComplete="off"
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">City</label>
-                    <select
-                      value={formData.address.city}
-                      onChange={(e) => handleAddressChange('city', e.target.value)}
-                      className="w-full px-4 py-4 bg-white/50 border border-slate-100 rounded-2xl focus:border-primary-500 outline-none transition-all font-medium"
-                      required
-                    >
-                      <option value="">Select City</option>
-                      {cities.map(city => <option key={city.value} value={city.value}>{city.label}</option>)}
-                    </select>
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Barangay</label>
-                    <select
-                      value={formData.address.barangay}
-                      onChange={(e) => handleAddressChange('barangay', e.target.value)}
-                      className="w-full px-4 py-4 bg-white/50 border border-slate-100 rounded-2xl focus:border-primary-500 outline-none transition-all font-medium"
-                      required
-                      disabled={!formData.address.city}
-                    >
-                      <option value="">Select Barangay</option>
-                      {barangays.map(barangay => <option key={barangay.value} value={barangay.value}>{barangay.label}</option>)}
-                    </select>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Province</label>
-                    <div className="w-full px-4 py-4 bg-slate-100 border border-slate-100 rounded-2xl font-medium text-slate-500">
-                      Cavite
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">ZIP Code</label>
-                    <input
-                      type="text"
-                      value={formData.address.zipCode}
-                      onChange={(e) => handleAddressChange('zipCode', e.target.value)}
-                      className="w-full px-4 py-4 bg-white/50 border border-slate-100 rounded-2xl focus:border-primary-500 outline-none transition-all font-medium"
-                      placeholder="4100"
-                      required
-                      autoComplete="off"
-                    />
-                  </div>
-                </div>
+            <div className="space-y-2">
+              <label className="text-[10px] font-black uppercase tracking-[0.2em] text-primary/40 ml-1">Email Address</label>
+              <div className="relative group/input">
+                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-primary/20 group-focus-within/input:text-accent transition-colors" />
+                <input
+                  name="email" type="email" required
+                  className="w-full pl-12 pr-4 py-5 bg-primary/5 border border-transparent rounded-[1.5rem] focus:bg-white focus:border-accent focus:ring-4 focus:ring-accent/10 outline-none transition-all font-bold text-header"
+                  placeholder="woof@example.com"
+                  value={formData.email}
+                  onChange={handleChange}
+                />
               </div>
             </div>
 
-            {/* Security Section */}
-            <div className="space-y-4">
-              <h3 className="text-xs font-black uppercase tracking-[0.2em] text-primary-600 border-b border-primary-50 pb-2">Vault Access</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="input-container group">
-                  <Lock className="input-icon h-5 w-5" />
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-primary/40 ml-1">Passphrase</label>
+                <div className="relative group/input">
+                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-primary/20" />
                   <input
                     name="password" type={showPassword ? 'text' : 'password'} required
-                    className="input input-with-both-icons bg-white/50 border border-slate-100 rounded-2xl focus:border-primary-500 outline-none font-medium py-4"
-                    placeholder="Passphrase"
+                    className="w-full pl-12 pr-10 py-5 bg-primary/5 border border-transparent rounded-[1.5rem] focus:bg-white focus:border-accent focus:ring-4 focus:ring-accent/10 outline-none transition-all font-bold text-header"
+                    placeholder="••••••••"
                     value={formData.password}
                     onChange={handleChange}
-                    autoComplete="new-password"
                   />
-                  <button
-                    type="button"
-                    className="input-icon-right pointer-events-auto hover:text-primary-500 transition-colors"
-                    onClick={() => setShowPassword(!showPassword)}
-                  >
-                    {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                  </button>
-                </div>
-                <div className="input-container group">
-                  <Lock className="input-icon h-5 w-5" />
-                  <input
-                    name="confirmPassword" type={showPassword ? 'text' : 'password'} required
-                    className="input input-with-both-icons bg-white/50 border border-slate-100 rounded-2xl focus:border-primary-500 outline-none font-medium py-4"
-                    placeholder="Repeat Passphrase"
-                    value={formData.confirmPassword}
-                    onChange={handleChange}
-                    autoComplete="new-password"
-                  />
-                  <button
-                    type="button"
-                    className="input-icon-right pointer-events-auto hover:text-primary-500 transition-colors"
-                    onClick={() => setShowPassword(!showPassword)}
-                  >
-                    {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                  <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-primary/20 hover:text-accent">
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
                 </div>
               </div>
-              <div className="flex flex-col md:flex-row justify-between gap-2 px-1">
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">
-                  MIN 8 CHARS (14+ RECOMMENDED) • UPPER • LOWER • NUMBER • SYMBOL
-                </p>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-primary/40 ml-1">Confirm</label>
+                <div className="relative group/input">
+                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-primary/20" />
+                  <input
+                    name="confirmPassword" type={showPassword ? 'text' : 'password'} required
+                    className="w-full pl-12 pr-4 py-5 bg-primary/5 border border-transparent rounded-[1.5rem] focus:bg-white focus:border-accent focus:ring-4 focus:ring-accent/10 outline-none transition-all font-bold text-header"
+                    placeholder="••••••••"
+                    value={formData.confirmPassword}
+                    onChange={handleChange}
+                  />
+                </div>
               </div>
             </div>
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="btn btn-primary w-full py-5 text-xs font-black uppercase tracking-[0.2em] shadow-xl shadow-primary-100"
-            >
-              {loading ? 'Sending Verification Code...' : 'Continue with Verification'}
+            <div className="flex items-center gap-2 px-2">
+               <Sparkles className="h-3 w-3 text-accent" />
+               <p className="text-[9px] font-black text-primary/30 uppercase tracking-widest">Passphrase must include Upper, Lower & Symbol</p>
+            </div>
+
+            <button type="submit" disabled={loading} className="btn-fun w-full py-6 text-sm shadow-hover">
+              {loading ? 'Processing...' : 'Get Instant Access'}
             </button>
           </form>
 
-          <div className="mt-10 pt-8 border-t border-slate-100 text-center">
-            <p className="text-sm text-slate-500 font-medium">
-              Already part of the network?{' '}
-              <Link to="/login" className="text-primary-600 font-black hover:underline underline-offset-4">
-                Sign In
-              </Link>
+          <div className="pt-8 border-t border-primary/5 text-center">
+            <p className="text-xs text-primary/40 font-bold uppercase tracking-widest">
+              Already have an account?{' '}
+              <Link to="/login" className="text-accent hover:underline decoration-2 underline-offset-4 decoration-accent/30">Sign In</Link>
             </p>
           </div>
         </div>
