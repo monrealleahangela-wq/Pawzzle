@@ -74,12 +74,18 @@ body {
 }
 
 .card-paw-interactive {
-  @apply bg-white border border-transparent shadow-fun transition-all duration-500 overflow-hidden;
+  background-color: white;
+  border: 1px solid transparent;
+  box-shadow: var(--shadow-fun);
+  transition: all 0.5s ease;
+  overflow: hidden;
   border-radius: 2.5rem;
 }
 
 .card-paw-interactive:hover {
-  @apply shadow-hover -translate-y-2 border-accent/20;
+  box-shadow: var(--shadow-hover);
+  transform: translateY(-0.5rem);
+  border-color: rgba(93, 64, 55, 0.1);
 }
 
 .cursor-trail {
@@ -96,11 +102,27 @@ body {
 
 /* Global Button Styling */
 .btn-fun {
-  @apply px-8 py-4 bg-primary text-white rounded-full font-black uppercase tracking-widest transition-all duration-300 shadow-fun active:scale-95;
+  padding: 1rem 2rem;
+  background-color: var(--color-primary);
+  color: white;
+  border-radius: 9999px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  transition: all 0.3s ease;
+  box-shadow: var(--shadow-fun);
+  display: inline-block;
+  text-align: center;
 }
 
 .btn-fun:hover {
-  @apply bg-header -translate-y-1 shadow-hover;
+  background-color: var(--color-header);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-hover);
+}
+
+.btn-fun:active {
+  transform: scale(0.95);
 }
 
 /* Scroll Progress */
