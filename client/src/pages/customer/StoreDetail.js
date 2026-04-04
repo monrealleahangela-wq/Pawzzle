@@ -373,9 +373,11 @@ const StoreDetail = () => {
                   <Clock className="h-2 w-2 sm:h-3 sm:w-3" />
                   {isStoreOpen() ? 'Open Now' : 'Closed'}
                 </span>
-                <span className="px-2 py-0.5 bg-blue-600 text-white rounded-full text-[7px] sm:text-[10px] font-black uppercase tracking-widest shadow-lg flex items-center gap-1">
-                  <Users className="h-2 w-2 sm:h-3 sm:w-3 fill-white/20" /> {followerCount.toLocaleString()} {followerCount === 1 ? 'Follower' : 'Followers'}
-                </span>
+                {user?.role !== 'super_admin' && (
+                  <span className="px-2 py-0.5 bg-blue-600 text-white rounded-full text-[7px] sm:text-[10px] font-black uppercase tracking-widest shadow-lg flex items-center gap-1">
+                    <Users className="h-2 w-2 sm:h-3 sm:w-3 fill-white/20" /> {followerCount.toLocaleString()} {followerCount === 1 ? 'Follower' : 'Followers'}
+                  </span>
+                )}
               </div>
               <h1 className="text-xl sm:text-5xl md:text-6xl font-black text-slate-900 tracking-tighter leading-tight uppercase truncate max-w-full flex items-center gap-3">
                 {store.name}
@@ -403,18 +405,20 @@ const StoreDetail = () => {
             </div>
 
             <div className="flex gap-1.5 shrink-0 sm:pb-2">
-              <button
-                onClick={handleToggleFollow}
-                disabled={isTogglingFollow}
-                className={`flex items-center gap-2 px-6 sm:px-10 py-3 sm:py-5 rounded-xl sm:rounded-3xl font-black uppercase tracking-tighter text-[10px] sm:text-sm transition-all shadow-xl active:scale-95 ${
-                    isFollowing 
-                    ? 'bg-primary-50 text-primary-600 border-2 border-primary-200' 
-                    : 'bg-slate-900 text-white hover:bg-black'
-                }`}
-              >
-                {isFollowing ? <Check className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
-                {isFollowing ? 'Following' : 'Follow'}
-              </button>
+              {user?.role !== 'super_admin' && (
+                <button
+                  onClick={handleToggleFollow}
+                  disabled={isTogglingFollow}
+                  className={`flex items-center gap-2 px-6 sm:px-10 py-3 sm:py-5 rounded-xl sm:rounded-3xl font-black uppercase tracking-tighter text-[10px] sm:text-sm transition-all shadow-xl active:scale-95 ${
+                      isFollowing 
+                      ? 'bg-primary-50 text-primary-600 border-2 border-primary-200' 
+                      : 'bg-slate-900 text-white hover:bg-black'
+                  }`}
+                >
+                  {isFollowing ? <Check className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+                  {isFollowing ? 'Following' : 'Follow'}
+                </button>
+              )}
               <button
                 onClick={handleStartChat}
                 disabled={chatLoading}

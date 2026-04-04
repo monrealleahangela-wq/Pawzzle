@@ -909,20 +909,22 @@ const Profile = () => {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-3 gap-2 mt-8 pt-8 border-t border-slate-50">
-                  <div className="text-center">
-                    <p className="text-[8px] font-black text-slate-300 uppercase tracking-widest mb-1.5">Followers</p>
-                    <p className="text-lg font-black text-slate-900 leading-none">{followers.length}</p>
+                {user.role !== 'super_admin' && (
+                  <div className="grid grid-cols-3 gap-2 mt-8 pt-8 border-t border-slate-50">
+                    <div className="text-center">
+                      <p className="text-[8px] font-black text-slate-300 uppercase tracking-widest mb-1.5">Followers</p>
+                      <p className="text-lg font-black text-slate-900 leading-none">{followers.length}</p>
+                    </div>
+                    <div className="text-center border-x border-slate-100 px-2">
+                      <p className="text-[8px] font-black text-slate-300 uppercase tracking-widest mb-1.5">Following</p>
+                      <p className="text-lg font-black text-primary-600 leading-none">{following.length}</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-[8px] font-black text-slate-300 uppercase tracking-widest mb-1.5">Favorites</p>
+                      <p className="text-lg font-black text-rose-500 leading-none">{favorites.length}</p>
+                    </div>
                   </div>
-                  <div className="text-center border-x border-slate-100 px-2">
-                    <p className="text-[8px] font-black text-slate-300 uppercase tracking-widest mb-1.5">Following</p>
-                    <p className="text-lg font-black text-primary-600 leading-none">{following.length}</p>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-[8px] font-black text-slate-300 uppercase tracking-widest mb-1.5">Favorites</p>
-                    <p className="text-lg font-black text-rose-500 leading-none">{favorites.length}</p>
-                  </div>
-                </div>
+                )}
               </div>
             </div>
 
@@ -933,13 +935,17 @@ const Profile = () => {
                   { id: 'overview', icon: TrendingUp, label: 'Activity' },
                   { id: 'details', icon: User, label: 'Personal' },
                   { id: 'pets', icon: PawPrint, label: 'My Pets', role: 'customer' },
-                  { id: 'favorites', icon: HeartIcon, label: 'Favorites' },
-                  { id: 'followers', icon: Users, label: 'Followers' },
-                  { id: 'following', icon: User, label: 'Following' },
+                  { id: 'favorites', icon: HeartIcon, label: 'Favorites', role: ['customer', 'admin'] },
+                  { id: 'followers', icon: Users, label: 'Followers', role: ['customer', 'admin'] },
+                  { id: 'following', icon: User, label: 'Following', role: ['customer', 'admin'] },
                   { id: 'security', icon: Shield, label: 'Security' },
                   { id: 'store', icon: Building, label: 'My Store', role: 'admin' },
                   { id: 'upgrade', icon: Store, label: 'Partner Program', role: 'customer' }
-                ].filter(item => !item.role || item.role === user.role).map((item) => (
+                ].filter(item => {
+                  if (!item.role) return true;
+                  if (Array.isArray(item.role)) return item.role.includes(user.role);
+                  return item.role === user.role;
+                }).map((item) => (
                   <button
                     key={item.id}
                     onClick={() => setActiveTab(item.id)}

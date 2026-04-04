@@ -166,17 +166,19 @@ const ProductDetail = () => {
             <p className="text-[10px] font-black text-secondary-600 uppercase tracking-[0.2em] mb-1">{product.category}</p>
             <div className="flex justify-between items-start gap-4">
                 <h1 className="text-2xl sm:text-5xl font-black text-slate-900 mb-2 uppercase tracking-tight leading-none">{product.name}</h1>
-                <button 
-                    onClick={handleToggleFavorite}
-                    disabled={isTogglingFavorite}
-                    className={`p-3 rounded-2xl border-2 transition-all ${isFavorite 
-                        ? 'bg-rose-50 border-rose-100 text-rose-500 shadow-lg shadow-rose-100' 
-                        : 'bg-white border-slate-100 text-slate-300 hover:border-slate-200 hover:text-slate-400'
-                    }`}
-                    title={isFavorite ? 'Remove from Favorites' : 'Add to Favorites'}
-                >
-                    <Heart className={`h-6 w-6 ${isFavorite ? 'fill-current' : ''}`} />
-                </button>
+                {user?.role !== 'super_admin' && (
+                  <button 
+                      onClick={handleToggleFavorite}
+                      disabled={isTogglingFavorite}
+                      className={`p-3 rounded-2xl border-2 transition-all ${isFavorite 
+                          ? 'bg-rose-50 border-rose-100 text-rose-500 shadow-lg shadow-rose-100' 
+                          : 'bg-white border-slate-100 text-slate-300 hover:border-slate-200 hover:text-slate-400'
+                      }`}
+                      title={isFavorite ? 'Remove from Favorites' : 'Add to Favorites'}
+                  >
+                      <Heart className={`h-6 w-6 ${isFavorite ? 'fill-current' : ''}`} />
+                  </button>
+                )}
             </div>
             <div className="flex items-center gap-3">
               <span className="text-xl sm:text-3xl font-black text-slate-900 tracking-tighter">₱{product.price?.toLocaleString()}</span>
