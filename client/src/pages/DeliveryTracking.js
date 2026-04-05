@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useLocation } from 'react-router-dom';
 import { MapContainer, TileLayer, Marker, Polyline, useMap } from 'react-leaflet';
 import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 import axios from 'axios';
 import { 
   MapPin, Phone, MessageSquare, Navigation, CheckCircle, Package, Truck, 
@@ -76,7 +77,7 @@ const DeliveryTracking = () => {
         setDelivery(prev => ({
           ...prev,
           riderLocation: { ...prev.riderLocation, lat: data.lat, lng: data.lng, lastUpdated: new Date() },
-          locationHistory: [...prev.locationHistory, { lat: data.lat, lng: data.lng }]
+          locationHistory: [...(prev.locationHistory || []), { lat: data.lat, lng: data.lng }]
         }));
       });
 
@@ -86,7 +87,7 @@ const DeliveryTracking = () => {
       });
 
       socket.on('newMessage', (data) => {
-        setDelivery(prev => ({ ...prev, chat: [...prev.chat, data] }));
+        setDelivery(prev => ({ ...prev, chat: [...(prev.chat || []), data] }));
         if (!chatOpen) toast.info(`New message from ${data.sender}`);
       });
     }
@@ -133,6 +134,18 @@ const DeliveryTracking = () => {
       setLoading(false);
     }
   };
+
+  // Compute Target Information
+  const storeCoords = delivery?.order?.store?.contactInfo?.address?.coordinates;
+  const customerCoords = delivery?.order?.shippingAddress?.coordinates;
+  const isToStore = delivery?.status === 'pending' || delivery?.status === 'picked_up';
+  
+  const targetCoords = isToStore ? storeCoords : customerCoords;
+  const targetLabel = isToStore ? 'Pickup: Store' : 'Delivery: Customer';
+  const targetAddress = isToStore 
+    ? `${delivery?.order?.store?.name} (Store)`
+    : `${delivery?.order?.shippingAddress?.street}, ${delivery?.order?.shippingAddress?.barangay}`;
+  const targetPhone = isToStore ? delivery?.order?.store?.phone : delivery?.order?.customer?.phoneNumber;
 
   useEffect(() => {
     if (delivery?.riderLocation?.lat && targetCoords?.lat) {
@@ -227,17 +240,6 @@ const DeliveryTracking = () => {
     delivered: 100
   };
 
-  // Compute Target Information
-  const storeCoords = delivery?.order?.store?.contactInfo?.address?.coordinates;
-  const customerCoords = delivery?.order?.shippingAddress?.coordinates;
-  const isToStore = delivery?.status === 'pending' || delivery?.status === 'picked_up';
-  
-  const targetCoords = isToStore ? storeCoords : customerCoords;
-  const targetLabel = isToStore ? 'Pickup: Store' : 'Delivery: Customer';
-  const targetAddress = isToStore 
-    ? `${delivery?.order?.store?.name} (Store)`
-    : `${delivery?.order?.shippingAddress?.street}, ${delivery?.order?.shippingAddress?.barangay}`;
-  const targetPhone = isToStore ? delivery?.order?.store?.phone : delivery?.order?.customer?.phoneNumber;
 
   return (
     <div className="flex flex-col min-h-[100dvh] bg-slate-50 overflow-hidden font-inter">
@@ -334,7 +336,7 @@ const DeliveryTracking = () => {
           )}
 
           {/* Route History (Breadcrumbs) */}
-          <Polyline positions={delivery.locationHistory.map(l => [l.lat, l.lng])} color="#64748b" weight={2} opacity={0.3} />
+          <Polyline positions={(delivery.locationHistory || []).map(l => [l.lat, l.lng])} color="#64748b" weight={2} opacity={0.3} />
         </MapContainer>
         
         {/* Floating Controls (Mobile Bottom Sheet Style) */}
@@ -449,7 +451,7 @@ const DeliveryTracking = () => {
           </div>
 
           <div className="flex-1 overflow-y-auto no-scrollbar space-y-4 mb-6 pr-2">
-            {delivery.chat.map((msg, i) => (
+            {(delivery.chat || []).map((msg, i) => (
               <div key={i} className={`flex ${msg.sender === role ? 'justify-end' : 'justify-start'}`}>
                 <div className={`max-w-[80%] p-4 rounded-3xl ${
                   msg.sender === role 
