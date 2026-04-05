@@ -264,179 +264,166 @@ const DeliveryTracking = () => {
         </div>
       </header>
 
-      {/* Map Content */}
-      <main className="flex-1 relative z-10 bg-slate-100 flex flex-col min-h-0">
-        <MapContainer 
-          center={[delivery.riderLocation?.lat || 14.5995, delivery.riderLocation?.lng || 120.9842]} 
-          zoom={16} 
-          style={{ height: '100%', width: '100%', position: 'absolute', top: 0, bottom: 0, left: 0, right: 0 }}
-          zoomControl={false}
-        >
-          <TileLayer 
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" 
-          />
-          <RecenterMap coords={delivery.riderLocation} />
-          
-          {/* Marker Logic */}
-          {delivery.riderLocation?.lat && (
-            <Marker position={[delivery.riderLocation.lat, delivery.riderLocation.lng]} icon={riderIcon}>
-              <Popup className="custom-popup">
-                <div className="p-2 text-center">
-                  <p className="text-[10px] font-black uppercase text-rose-500 mb-1">Rider</p>
-                  <p className="text-[11px] font-bold text-slate-800">Cyrus the Great</p>
-                </div>
-              </Popup>
-            </Marker>
-          )}
-          
-          {storeCoords?.lat && (
-            <Marker position={[storeCoords.lat, storeCoords.lng]} icon={storeIcon}>
-              <Popup>
-                <div className="p-2">
-                  <p className="text-[10px] font-black uppercase text-primary-600 mb-1">Pickup Point</p>
-                  <p className="text-[11px] font-bold text-slate-800">{delivery.order?.store?.name}</p>
-                  <p className="text-[9px] text-slate-500 font-medium">{delivery.order?.store?.contactInfo?.address?.street}</p>
-                </div>
-              </Popup>
-            </Marker>
-          )}
-          
-          {customerCoords?.lat && (
-            <Marker position={[customerCoords.lat, customerCoords.lng]} icon={homeIcon}>
-              <Popup>
-                <div className="p-2">
-                  <p className="text-[10px] font-black uppercase text-emerald-600 mb-1">Delivery Point</p>
-                  <p className="text-[11px] font-bold text-slate-800">{delivery.order?.customer?.firstName} {delivery.order?.customer?.lastName}</p>
-                  <p className="text-[9px] text-slate-500 font-medium">{delivery.order?.shippingAddress?.street}</p>
-                </div>
-              </Popup>
-            </Marker>
-          )}
-
-          {/* ROAD-FOLLOWING ROUTE LINE */}
-          {routeData && (
-            <Polyline 
-              positions={routeData} 
-              color="#3b82f6" 
-              weight={6} 
-              opacity={0.8}
-            />
-          )}
-
-          {/* Fallback Direct Line if routing fails */}
-          {!routeData && delivery.riderLocation?.lat && targetCoords?.lat && (
-            <Polyline 
-              positions={[
-                [delivery.riderLocation.lat, delivery.riderLocation.lng],
-                [targetCoords.lat, targetCoords.lng]
-              ]} 
-              color="#3b82f6" 
-              weight={4} 
-              dashArray="5, 10" 
-              opacity={0.5}
-            />
-          )}
-
-          {/* Route History (Breadcrumbs) */}
-          <Polyline positions={(delivery.locationHistory || []).map(l => [l.lat, l.lng])} color="#64748b" weight={2} opacity={0.3} />
-        </MapContainer>
+      {/* Main Content Area */}
+      <main className="flex-1 flex flex-col min-h-0 bg-slate-50">
         
-        {/* Floating Controls (Mobile Bottom Sheet Style) */}
+        {/* State 1: Status & Info Overview (Formerly Floating Card) */}
         {!chatOpen && (
-          <div className="absolute bottom-4 left-4 right-4 z-40 space-y-3">
-            {/* Real-time Status Overlay */}
-            <div className="bg-white/80 backdrop-blur-md p-6 rounded-[2.5rem] border border-white/50 shadow-2xl flex flex-col gap-6">
-              {/* Progress Bar */}
+          <section className="bg-white border-b border-slate-100 p-6 flex flex-col gap-5 z-20 shadow-sm shrink-0">
+            {/* Progress Visualization */}
+            <div className="space-y-3">
+              <div className="flex justify-between items-center px-1">
+                <span className="text-[9px] font-black uppercase text-slate-400 tracking-[0.2em] italic">Delivery Phase</span>
+                <span className="text-[10px] font-black uppercase text-rose-500 tracking-wider">
+                  {statusProgress[delivery.status]}% Complete
+                </span>
+              </div>
               <div className="relative h-2 bg-slate-100 rounded-full overflow-hidden">
                 <div 
-                  className="absolute left-0 top-0 h-full bg-rose-500 transition-all duration-1000" 
+                  className="absolute left-0 top-0 h-full bg-rose-500 transition-all duration-1000 shadow-[0_0_10px_rgba(244,63,94,0.3)]" 
                   style={{ width: `${statusProgress[delivery.status]}%` }}
                 />
               </div>
+            </div>
 
-              {/* Action/Info Buttons */}
-              <div className="flex items-center gap-4">
-                <div className="flex-1">
-                  <h4 className="text-[10px] font-black uppercase text-rose-500 mb-1">{targetLabel}</h4>
-                  <p className="text-xs font-bold truncate text-slate-800">{targetAddress}</p>
+            {/* Address & Quick Actions */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div className="flex items-center gap-4 flex-1 w-full">
+                <div className="w-12 h-12 bg-rose-50 rounded-2xl flex items-center justify-center shrink-0">
+                  <MapPin className="h-6 w-6 text-rose-500" />
                 </div>
-                <div className="flex gap-2">
-                  {role === 'rider' && (
-                    <button 
-                      onClick={() => setShowDirections(!showDirections)}
-                      className={`p-4 rounded-2xl transition-all shadow-lg active:scale-95 ${showDirections ? 'bg-primary-600 text-white' : 'bg-slate-100 text-slate-600'}`}
-                      title="Show Turn-by-Turn"
-                    >
-                      <Navigation2 className="h-5 w-5" />
-                    </button>
-                  )}
-                  {role === 'rider' && (
-                    <a 
-                      href={`https://www.google.com/maps/dir/?api=1&destination=${targetCoords?.lat || ''},${targetCoords?.lng || ''}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="p-4 bg-slate-900 text-white rounded-2xl hover:bg-slate-800 transition-all shadow-lg active:scale-95"
-                      title={`Navigate Outside`}
-                    >
-                      <Navigation className="h-5 w-5" />
-                    </a>
-                  )}
-                  <a href={`tel:${role === 'rider' ? delivery.order?.customer?.phoneNumber : delivery.order?.store?.phoneNumber}`} 
-                    className="p-4 bg-slate-100 text-slate-600 rounded-2xl hover:bg-rose-50 transition-all shadow-lg active:scale-95">
-                    <Phone className="h-5 w-5" />
-                  </a>
-                  <button onClick={() => setChatOpen(true)} className="p-4 bg-rose-500 text-white rounded-2xl hover:rotate-12 transition-all shadow-xl shadow-rose-200">
-                    <MessageSquare className="h-5 w-5" />
-                  </button>
+                <div className="min-w-0">
+                  <h4 className="text-[10px] font-black uppercase text-rose-500 mb-0.5 tracking-widest">{targetLabel}</h4>
+                  <p className="text-sm font-black text-slate-900 truncate leading-tight">{targetAddress}</p>
                 </div>
               </div>
 
-              {/* Turn-by-Turn Directions Panel */}
-              {showDirections && directions.length > 0 && (
-                <div className="max-h-48 overflow-y-auto no-scrollbar py-2 space-y-3">
-                  <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest border-b border-slate-100 pb-2">Turn-by-Turn Guide</p>
-                  {directions.map((step, i) => (
-                    <div key={i} className="flex items-start gap-3">
-                      <div className="w-6 h-6 rounded-lg bg-primary-50 flex items-center justify-center shrink-0">
-                        <Navigation className={`h-3 w-3 text-primary-600 ${i === 0 ? 'animate-bounce' : ''}`} />
-                      </div>
-                      <div>
-                        <p className={`text-[11px] leading-tight ${i === 0 ? 'font-black text-slate-900' : 'font-bold text-slate-500'}`}>
-                          {step.instruction}
-                        </p>
-                        <p className="text-[9px] font-medium text-slate-400">
-                          {step.distance > 1000 ? `${(step.distance/1000).toFixed(1)} km` : `${Math.round(step.distance)} m`}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {/* Rider Only controls */}
-              {role === 'rider' && delivery.isLive && (
-                <div className="grid grid-cols-2 gap-3 pt-2">
-                  {delivery.status === 'pending' && (
-                    <button onClick={() => handleStatusUpdate('picked_up')} className="col-span-2 py-4 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-3">
-                      <Package className="h-4 w-4" /> Start Pickup
-                    </button>
-                  )}
-                  {delivery.status === 'picked_up' && (
-                    <button onClick={() => handleStatusUpdate('in_transit')} className="col-span-2 py-4 bg-rose-500 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-3">
-                      <Navigation className="h-4 w-4" /> Start Transit
-                    </button>
-                  )}
-                  {delivery.status === 'in_transit' && (
-                    <button onClick={() => handleStatusUpdate('delivered')} className="col-span-2 py-4 bg-emerald-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-3">
-                      <CheckCircle className="h-4 w-4" /> Confirm Delivered
-                    </button>
-                  )}
-                </div>
-              )}
+              <div className="flex items-center gap-2 w-full sm:w-auto shrink-0">
+                <a href={`tel:${role === 'rider' ? delivery.order?.customer?.phoneNumber : delivery.order?.store?.phoneNumber}`} 
+                  className="flex-1 sm:flex-none p-4 bg-slate-50 text-slate-600 rounded-2xl hover:bg-rose-50 hover:text-rose-500 transition-all border border-slate-100 flex items-center justify-center">
+                  <Phone className="h-5 w-5" />
+                </a>
+                <button onClick={() => setChatOpen(true)} 
+                  className="flex-1 sm:flex-none p-4 bg-rose-500 text-white rounded-2xl hover:bg-rose-600 transition-all shadow-lg shadow-rose-100 flex items-center justify-center group">
+                  <MessageSquare className="h-5 w-5 group-hover:scale-110 transition-transform" />
+                </button>
+                {role === 'rider' && (
+                  <button 
+                    onClick={() => setShowDirections(!showDirections)}
+                    className={`p-4 rounded-2xl transition-all border ${showDirections ? 'bg-primary-600 border-primary-700 text-white shadow-inner' : 'bg-white border-slate-200 text-slate-600 shadow-sm'} flex items-center justify-center`}
+                  >
+                    <Navigation2 className="h-5 w-5" />
+                  </button>
+                )}
+              </div>
             </div>
-          </div>
+          </section>
         )}
+
+        {/* State 2: Interactive Map (The Interactive Zone) */}
+        <div className="flex-1 relative z-10 border-b border-slate-200 bg-slate-100 shadow-inner group">
+          <MapContainer 
+            center={[delivery.riderLocation?.lat || 14.5995, delivery.riderLocation?.lng || 120.9842]} 
+            zoom={16} 
+            style={{ height: '100%', width: '100%' }}
+            zoomControl={false}
+          >
+            <TileLayer 
+              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" 
+            />
+            <RecenterMap coords={delivery.riderLocation} />
+            
+            {/* Markers */}
+            {delivery.riderLocation?.lat && (
+              <Marker position={[delivery.riderLocation.lat, delivery.riderLocation.lng]} icon={riderIcon}>
+                <Popup className="custom-popup">
+                  <div className="p-1 text-center min-w-[100px]">
+                    <span className="text-[8px] font-black uppercase text-rose-500 tracking-tighter">Current Location</span>
+                    <p className="text-[11px] font-black text-slate-900 mt-0.5">Rider Cyrus</p>
+                  </div>
+                </Popup>
+              </Marker>
+            )}
+            {storeCoords?.lat && (
+              <Marker position={[storeCoords.lat, storeCoords.lng]} icon={storeIcon} />
+            )}
+            {customerCoords?.lat && (
+              <Marker position={[customerCoords.lat, customerCoords.lng]} icon={homeIcon} />
+            )}
+
+            {/* Path Overlays */}
+            {routeData && <Polyline positions={routeData} color="#3b82f6" weight={6} opacity={0.8} />}
+            {!routeData && delivery.riderLocation?.lat && targetCoords?.lat && (
+              <Polyline positions={[[delivery.riderLocation.lat, delivery.riderLocation.lng], [targetCoords.lat, targetCoords.lng]]} color="#3b82f6" weight={4} dashArray="8, 12" opacity={0.5} />
+            )}
+            <Polyline positions={(delivery.locationHistory || []).map(l => [l.lat, l.lng])} color="#94a3b8" weight={2} opacity={0.4} />
+          </MapContainer>
+
+          {/* Compass / Zoom HUD (Optional overlay) */}
+          <div className="absolute right-4 top-4 flex flex-col gap-2 z-20">
+            <button className="w-10 h-10 bg-white/90 backdrop-blur-sm rounded-xl flex items-center justify-center text-slate-600 shadow-xl border border-slate-100 hover:text-rose-500 transition-all font-black">+</button>
+            <button className="w-10 h-10 bg-white/90 backdrop-blur-sm rounded-xl flex items-center justify-center text-slate-600 shadow-xl border border-slate-100 hover:text-rose-500 transition-all font-black">-</button>
+          </div>
+        </div>
+
+        {/* State 3: Operations & Footer Actions */}
+        <section className={`bg-white p-6 z-20 shrink-0 transition-all duration-300 ${!chatOpen ? 'translate-y-0' : 'translate-y-full opacity-0'}`}>
+          {/* Turn-by-Turn Panel */}
+          {showDirections && directions.length > 0 && (
+            <div className="mb-6 p-5 bg-slate-50 rounded-[2rem] border border-slate-100 max-h-40 overflow-y-auto no-scrollbar space-y-4">
+              <p className="text-[10px] font-black uppercase text-slate-400 tracking-[0.3em] sticky top-0 bg-slate-50 py-1">Mission Guidance</p>
+              {directions.map((step, i) => (
+                <div key={i} className="flex flex-col gap-1 pb-4 border-b border-slate-100 last:border-0 last:pb-0">
+                  <p className={`text-[11px] leading-snug ${i === 0 ? 'font-black text-rose-600' : 'font-bold text-slate-700'}`}>
+                    {step.instruction}
+                  </p>
+                  <p className="text-[9px] font-black text-slate-400 uppercase">
+                    {step.distance > 1000 ? `${(step.distance/1000).toFixed(1)} km` : `${Math.round(step.distance)} m`}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Core Action Command Center */}
+          <div className="space-y-4">
+            {role === 'rider' && delivery.isLive && (
+              <div className="flex flex-col gap-3">
+                {delivery.status === 'pending' && (
+                  <button onClick={() => handleStatusUpdate('picked_up')} 
+                    className="w-full py-5 bg-slate-900 text-white rounded-[2rem] text-[11px] font-black uppercase tracking-[0.3em] flex items-center justify-center gap-4 hover:shadow-2xl hover:scale-[1.02] active:scale-95 transition-all shadow-xl shadow-slate-200 group">
+                    <Package className="h-5 w-5 text-rose-500 group-hover:rotate-12 transition-transform" /> START PICKUP PROCESS
+                  </button>
+                )}
+                {delivery.status === 'picked_up' && (
+                  <button onClick={() => handleStatusUpdate('in_transit')} 
+                    className="w-full py-5 bg-indigo-600 text-white rounded-[2rem] text-[11px] font-black uppercase tracking-[0.3em] flex items-center justify-center gap-4 hover:bg-rose-500 hover:scale-[1.02] active:scale-95 transition-all shadow-xl shadow-indigo-100">
+                    <Navigation className="h-5 w-5" /> BEGIN TRANSIT MISSION
+                  </button>
+                )}
+                {delivery.status === 'in_transit' && (
+                  <button onClick={() => handleStatusUpdate('delivered')} 
+                    className="w-full py-5 bg-emerald-600 text-white rounded-[2rem] text-[11px] font-black uppercase tracking-[0.3em] flex items-center justify-center gap-4 hover:bg-emerald-700 hover:scale-[1.02] active:scale-95 transition-all shadow-xl shadow-emerald-100 animate-pulse">
+                    <CheckCircle className="h-5 w-5" /> CONFIRM DELIVERY SUCCESS
+                  </button>
+                )}
+              </div>
+            )}
+            
+            {/* Contextual Navigation (External Maps) */}
+            {role === 'rider' && (
+              <a 
+                href={`https://www.google.com/maps/dir/?api=1&destination=${targetCoords?.lat || ''},${targetCoords?.lng || ''}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full py-4 border-2 border-slate-100 text-slate-500 rounded-[2rem] text-[9px] font-black uppercase tracking-[0.2em] flex items-center justify-center gap-3 hover:bg-slate-50 transition-all active:scale-95"
+              >
+                <Navigation2 className="h-4 w-4" /> Open in External GPS App
+              </a>
+            )}
+          </div>
+        </section>
       </main>
 
       {/* Chat Interface (Slide Up) */}

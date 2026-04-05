@@ -17,10 +17,10 @@ const { authenticate, adminOrStaff } = require('../middleware/auth');
 // Validation rules (same as regular services)
 const createServiceValidation = [
   body('name').trim().notEmpty().withMessage('Service name is required'),
-  body('category').isIn(['grooming', 'training', 'boarding', 'daycare', 'walking', 'health_check', 'consultation', 'emergency', 'veterinary', 'other']).withMessage('Invalid category'),
+  body('category').isIn(['grooming', 'health_wellness', 'boarding_hotel', 'pet_services', 'other']).withMessage('Invalid category'),
   body('price').isFloat({ min: 0 }).withMessage('Price must be a positive number'),
   body('description').trim().notEmpty().withMessage('Description is required'),
-  body('duration').isInt({ min: 1 }).withMessage('Duration must be at least 1 minute'),
+  body('duration').isInt({ min: 15 }).withMessage('Duration must be at least 15 minutes'),
   body('maxPetsPerSession').isInt({ min: 1 }).withMessage('Max pets per session must be at least 1')
 ];
 
@@ -28,8 +28,8 @@ const updateServiceValidation = [
   body('name').optional().trim().notEmpty().withMessage('Service name cannot be empty'),
   body('price').optional().isFloat({ min: 0 }).withMessage('Price must be a positive number'),
   body('description').optional().trim().notEmpty().withMessage('Description cannot be empty'),
-  body('category').optional().isIn(['grooming', 'training', 'boarding', 'daycare', 'walking', 'health_check', 'consultation', 'emergency', 'veterinary', 'other']).withMessage('Invalid category'),
-  body('duration').optional().isInt({ min: 1 }).withMessage('Duration must be at least 1 minute'),
+  body('category').optional().isIn(['grooming', 'health_wellness', 'boarding_hotel', 'pet_services', 'other']).withMessage('Invalid category'),
+  body('duration').optional().isInt({ min: 15 }).withMessage('Duration must be at least 15 minutes'),
   body('maxPetsPerSession').optional().isInt({ min: 1 }).withMessage('Max pets per session must be at least 1')
 ];
 
