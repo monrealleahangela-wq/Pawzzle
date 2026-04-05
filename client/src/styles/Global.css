@@ -37,7 +37,7 @@ body {
     radial-gradient(at 100% 100%, rgba(46, 45, 45, 0.05) 0px, transparent 50%);
   min-height: 100vh;
   overflow-x: hidden;
-  font-size: 13px; /* Reduced from default */
+  font-size: 15px; /* Base size; will be scaled to 12px via zoom */
   line-height: 1.5;
 }
 
@@ -94,60 +94,56 @@ h1, h2, h3, h4, .font-heading {
 }
 
 /* ══════════════════════════════════════════
-   COMPACT SYSTEM-WIDE OVERRIDES
+   80% SYSTEM-WIDE UI SCALING
    Targeting .main-content-area to spare the sidebar
    ══════════════════════════════════════════ */
 
 .main-content-area {
-  --compact-padding-large: 1.5rem;
-  --compact-padding-medium: 1.25rem;
-  --compact-padding-small: 0.75rem;
+  zoom: 0.8;
+  /* Compatibility for Firefox - approximate with scale */
+  @-moz-document url-prefix() {
+    transform: scale(0.8);
+    transform-origin: top left;
+    width: 125%; /* To compensate for scale reduction */
+  }
 }
 
-/* Typography Reductions */
-.main-content-area h1 { font-size: 1.75rem !important; margin-bottom: 0.25rem !important; }
-.main-content-area h2 { font-size: 1.25rem !important; margin-bottom: 0.25rem !important; }
-.main-content-area h3 { font-size: 1rem !important; }
+/* Individual Compaction Enhancements (Refining Scaling) */
+/* Ensure fixed header scales correctly if inside zoomed container */
+.main-content-area header {
+  width: 125% !important; 
+}
 
-/* Spacing & Gap Crush (Tailwind Override Pattern) */
+/* Include Modals, Chat and Toasts in the scaling mandate */
+[class*="PasswordChangeModal"],
+[class*="FloatingChatManager"],
+[class*="Modal"],
+.ToastContainer,
+.fixed.inset-0 {
+  zoom: 0.8;
+}
+
+/* Sidebar EXCLUSION: Counter-zoom if necessary to keep it at 1.0 */
+aside.lg\:flex {
+    zoom: 1 !important;
+}
+
+/* Typography Adjustments for Legibility at 80% Scale */
+.main-content-area h1 { 
+    font-size: 2.2rem !important; 
+    letter-spacing: -0.03em !important;
+}
+
+.main-content-area h2 { 
+    font-size: 1.7rem !important; 
+}
+
+/* Spacing Adjustments */
 .main-content-area [class*="p-12"],
 .main-content-area [class*="p-10"],
-.main-content-area [class*="p-8"] { padding: var(--compact-padding-large) !important; }
-
-.main-content-area [class*="p-6"] { padding: var(--compact-padding-medium) !important; }
-
-.main-content-area [class*="py-12"],
-.main-content-area [class*="py-10"] { padding-top: var(--compact-padding-large) !important; padding-bottom: var(--compact-padding-large) !important; }
-
-.main-content-area [class*="px-12"],
-.main-content-area [class*="px-10"] { padding-left: var(--compact-padding-large) !important; padding-right: var(--compact-padding-large) !important; }
-
-/* Margin Reductions */
-.main-content-area [class*="space-y-12"],
-.main-content-area [class*="space-y-10"] { margin-top: 1.5rem !important; }
-.main-content-area [class*="space-y-12"] > *:not(:first-child),
-.main-content-area [class*="space-y-10"] > *:not(:first-child) { margin-top: 1.5rem !important; }
-
-.main-content-area [class*="space-y-6"] > *:not(:first-child) { margin-top: 1rem !important; }
-
-/* Gap Reductions */
-.main-content-area [class*="gap-12"],
-.main-content-area [class*="gap-10"],
-.main-content-area [class*="gap-8"] { gap: 1rem !important; }
-
-/* Rounding Softening */
-.main-content-area [class*="rounded-[3rem]"],
-.main-content-area [class*="rounded-[3.5rem]"],
-.main-content-area [class*="rounded-[2.5rem]"] { border-radius: 1.5rem !important; }
-
-/* Specific Component Shrinkage */
-.main-content-area .card { padding: 1rem !important; }
-.main-content-area .btn { padding: 6px 14px !important; }
-.main-content-area .input { padding: 8px 12px !important; }
-
-/* Dashboard Pulse & Charts */
-.main-content-area .text-5xl, .main-content-area .text-7xl { font-size: 2.5rem !important; line-height: 1 !important; }
-.main-content-area .text-3xl { font-size: 1.5rem !important; }
+.main-content-area [class*="p-8"] { 
+    padding: var(--compact-padding-large) !important; 
+}
 
 
 /* Dynamic Buttons - More Compact */

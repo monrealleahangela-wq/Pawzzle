@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams, Link, useLocation } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import { orderService, adminOrderService, paymentService, getImageUrl } from '../../services/apiService';
+import { orderService, adminOrderService, paymentService, deliveryService, getImageUrl } from '../../services/apiService';
 import { useAuth } from '../../contexts/AuthContext';
-import { Heart, Package, ArrowLeft, Truck, CreditCard, MapPin, Store, Star, CheckCircle, AlertCircle } from 'lucide-react';
+import { Heart, Package, ArrowLeft, Truck, CreditCard, MapPin, Store, Star, CheckCircle, AlertCircle, Link2 } from 'lucide-react';
 import OrderReviewModal from '../../components/OrderReviewModal';
 
 const OrderDetail = () => {
@@ -90,6 +90,23 @@ const OrderDetail = () => {
       fetchOrder();
     } catch (error) {
       toast.error(error.response?.data?.message || 'Failed to confirm payment');
+    }
+  };
+  
+  const handleGenerateRiderLink = async () => {
+    try {
+      const response = await deliveryService.generateLinks(id);
+      const url = response.data.riderLink;
+      
+      // Attempt copy to clipboard
+      navigator.clipboard.writeText(url);
+      toast.success('Rider Link Generated & Copied!', {
+        description: 'You can now share this secure link with the rider.',
+        icon: <Link2 className="text-primary-600" />
+      });
+      fetchOrder(); // Refresh to show delivery status if needed
+    } catch (error) {
+      toast.error('Failed to generate tracking link');
     }
   };
 
@@ -417,6 +434,34 @@ const OrderDetail = () => {
                     <Star className="h-4 w-4 group-hover:rotate-12 transition-transform" />
                     Write a Review Now
                   </button>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Staff Delivery Link Action */}
+          {user?.role !== 'customer' && order.deliveryMethod === 'delivery' && order.status !== 'cancelled' && order.status !== 'delivered' && (
+            <div className="card p-6 border-2 border-primary-100 bg-primary-50/10">
+              <h2 className="text-sm font-black text-slate-900 uppercase tracking-widest mb-4 flex items-center gap-2">
+                <Truck className="h-4 w-4 text-primary-600" />
+                Dispatch Control
+              </h2>
+              <div className="space-y-4">
+                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest leading-relaxed">
+                  Generate link for rider only if delivery is selected. This link provides the rider with pinpoint GPS navigation to the customer.
+                </p>
+                <button
+                  onClick={handleGenerateRiderLink}
+                  className={`w-full py-4 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all shadow-lg flex items-center justify-center gap-2 group ${order.delivery ? 'bg-emerald-600 text-white hover:bg-emerald-700' : 'bg-slate-900 text-white hover:bg-primary-600'}`}
+                >
+                  <Link2 className="h-4 w-4 group-hover:rotate-12 transition-transform" />
+                  {order.delivery ? 'Copy Rider Tracking Link' : 'Generate Delivery Link'}
+                </button>
+                {order.delivery && (
+                  <div className="flex items-center gap-2 justify-center">
+                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                    <span className="text-[8px] font-black text-emerald-600 uppercase tracking-widest">Link Active & Secure</span>
+                  </div>
                 )}
               </div>
             </div>
