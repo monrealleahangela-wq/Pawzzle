@@ -10,7 +10,8 @@ const {
   getCalendarBookings,
   updateBookingStatus,
   updatePaymentMethod,
-  cancelBooking
+  cancelBooking,
+  validateBookingQR
 } = require('../controllers/bookingController');
 const { authenticate, superAdminOnly } = require('../middleware/auth');
 const { storeAdminOnly, canAccessStore } = require('../middleware/storeAuth');
@@ -54,5 +55,6 @@ router.get('/all', authenticate, getAllBookings);
 // Store admin routes
 router.get('/store/:storeId', authenticate, storeAdminOnly, getStoreBookings);
 router.put('/:bookingId/status', authenticate, storeAdminOnly, updateStatusValidation, updateBookingStatus);
+router.post('/validate-qr', authenticate, storeAdminOnly, validateBookingQR);
 
 module.exports = router;

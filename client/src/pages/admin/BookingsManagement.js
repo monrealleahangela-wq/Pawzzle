@@ -23,9 +23,11 @@ import {
   Plus,
   Link2,
   Truck,
-  Navigation
+  Navigation,
+  QrCode
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import QRScannerModal from '../../components/QRScannerModal';
 
 const statusNextMap = {
   'pending': 'approved',
@@ -42,6 +44,7 @@ const BookingsManagement = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [user, setUser] = useState(null);
+  const [isScannerOpen, setIsScannerOpen] = useState(false);
 
   useEffect(() => {
     const userData = JSON.parse(localStorage.getItem('user') || '{}');
@@ -198,12 +201,20 @@ const BookingsManagement = () => {
             </p>
           </div>
         </div>
-        <Link
-          to="/admin/services"
-          className="group px-6 py-3.5 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-primary-600 transition-all flex items-center gap-3"
-        >
-          <Briefcase className="h-4 w-4" /> Manage Services
-        </Link>
+        <div className="flex flex-wrap gap-3">
+          <button
+            onClick={() => setIsScannerOpen(true)}
+            className="group px-6 py-3.5 bg-emerald-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-emerald-700 transition-all flex items-center gap-3 shadow-lg shadow-emerald-900/10"
+          >
+            <QrCode className="h-4 w-4" /> Scan QR Code
+          </button>
+          <Link
+            to="/admin/services"
+            className="group px-6 py-3.5 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-primary-600 transition-all flex items-center gap-3"
+          >
+            <Briefcase className="h-4 w-4" /> Manage Services
+          </Link>
+        </div>
       </header>
 
       {/* Analytics Mini-Dashboard */}
@@ -680,6 +691,16 @@ const BookingsManagement = () => {
           </div>
         </div>
       )}
+
+      {/* QR Scanner Modal */}
+      <QRScannerModal 
+        isOpen={isScannerOpen} 
+        onClose={() => setIsScannerOpen(false)} 
+        onScanSuccess={() => {
+            setIsScannerOpen(false);
+            fetchBookings();
+        }}
+      />
     </div>
   );
 };

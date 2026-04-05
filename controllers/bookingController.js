@@ -17,32 +17,52 @@ const autoCancelExpiredBookings = async (filterBase = {}) => {
 
     const expiredQuery = {
       ...filterBase,
-      status: 'pending',
-      bookingDate: { $lt: today }
+      status: { $in: ['pending', 'approved', 'confirmed'] },
+      $or: [
+        { bookingDate: { $lt: today } },
+        {
+          bookingDate: today,
+          // Handle same day late arrivals (30 mins past startTime)
+          // This is a simplified check, ideally should use a more robust time comparison
+        }
+      ]
     };
 
     const expiredBookings = await Booking.find(expiredQuery);
-    if (expiredBookings.length > 0) {
-      const ids = expiredBookings.map(b => b._id);
+    
+    // Filter for today's late arrivals
+    const now = new Date();
+    const finalExpired = expiredBookings.filter(b => {
+      if (new Date(b.bookingDate) < today) return true;
+      
+      const [h, m] = b.startTime.split(':');
+      const sched = new Date(b.bookingDate);
+      sched.setHours(parseInt(h), parseInt(m), 0, 0);
+      const limit = new Date(sched.getTime() + 30 * 60000);
+      return now > limit;
+    });
+
+    if (finalExpired.length > 0) {
+      const ids = finalExpired.map(b => b._id);
       
       await Booking.updateMany(
         { _id: { $in: ids } },
         { 
           $set: { 
             status: 'cancelled', 
-            adminNotes: 'Automatically cancelled by system: scheduled date passed without confirmation.' 
+            adminNotes: 'Automatically cancelled by system: Arrived more than 30 minutes late or scheduled date passed.' 
           } 
         }
       );
 
       // Revert voucher usage if any
-      for (const booking of expiredBookings) {
+      for (const booking of finalExpired) {
         if (booking.voucher) {
           await Voucher.findByIdAndUpdate(booking.voucher, { $inc: { usedCount: -1 } });
         }
       }
 
-      console.log(`🕒 Auto-cancelled ${expiredBookings.length} expired pending bookings`);
+      console.log(`🕒 Auto-cancelled ${finalExpired.length} expired/late bookings`);
     }
   } catch (error) {
     console.error('Auto-cancel bookings error:', error);
@@ -622,6 +642,67 @@ const confirmBookingPayment = async (req, res) => {
   }
 };
 
+// Validate booking via QR scan (Staff/Admin)
+const validateBookingQR = async (req, res) => {
+  try {
+    const { bookingId } = req.body;
+    
+    const booking = await Booking.findById(bookingId)
+      .populate('customer', 'firstName lastName')
+      .populate('service', 'name');
+
+    if (!booking) {
+      return res.status(404).json({ message: 'Booking not found' });
+    }
+
+    if (booking.isScanned) {
+      return res.status(400).json({ message: 'Booking already validated/scanned' });
+    }
+
+    if (['cancelled', 'no_show', 'completed'].includes(booking.status)) {
+      return res.status(400).json({ message: `Cannot validate: Booking is already ${booking.status}` });
+    }
+
+    // Expiry Check (30 min window from startTime)
+    const now = new Date();
+    const [h, m] = booking.startTime.split(':');
+    const scheduled = new Date(booking.bookingDate);
+    scheduled.setHours(parseInt(h), parseInt(m), 0, 0);
+    const expiry = new Date(scheduled.getTime() + 30 * 60000);
+
+    if (now > expiry) {
+      booking.status = 'cancelled';
+      booking.adminNotes = 'Automatically cancelled: scanned more than 30 minutes after scheduled time.';
+      await booking.save();
+      return res.status(400).json({ 
+        message: 'Booking expired', 
+        details: 'QR code is only valid up to 30 minutes after the scheduled time.' 
+      });
+    }
+
+    // Valid Scan
+    booking.isScanned = true;
+    if (['pending', 'approved', 'confirmed'].includes(booking.status)) {
+      booking.status = 'processing';
+    }
+    await booking.save();
+
+    res.json({
+      message: 'Booking validated successfully!',
+      bookingInfo: {
+        customerName: `${booking.customer.firstName} ${booking.customer.lastName}`,
+        petName: booking.pet.name,
+        service: booking.service.name,
+        time: booking.startTime
+      }
+    });
+
+  } catch (error) {
+    console.error('QR Validation error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
 module.exports = {
   createBooking,
   getCustomerBookings,
@@ -631,5 +712,6 @@ module.exports = {
   updateBookingStatus,
   updatePaymentMethod,
   cancelBooking,
-  confirmBookingPayment
+  confirmBookingPayment,
+  validateBookingQR
 };
