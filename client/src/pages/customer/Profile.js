@@ -1337,75 +1337,59 @@ const Profile = () => {
                       </button>
                     </div>
                   ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                    <div className="flex overflow-x-auto pb-10 pt-2 gap-6 no-scrollbar snap-x snap-mandatory scroll-smooth -mx-2 px-2">
                       {myPets.map(pet => (
-                        <div key={pet._id} className="group bg-white rounded-[2.5rem] p-6 shadow-sm hover:shadow-2xl transition-all duration-500 border border-slate-50 relative overflow-hidden">
-                          <div className="absolute top-0 right-0 p-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div key={pet._id} className="shrink-0 w-[240px] sm:w-[280px] snap-start group bg-white rounded-[2.5rem] p-5 shadow-sm hover:shadow-2xl transition-all duration-500 border border-slate-50 relative overflow-hidden flex flex-col items-center text-center">
+                          <div className="absolute top-0 right-0 p-4 opacity-0 group-hover:opacity-100 transition-opacity z-20">
                             <div className="flex gap-2">
-                                <button onClick={() => handleEditPet(pet)} className="w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center hover:bg-blue-100 transition-colors">
+                                <button onClick={(e) => { e.stopPropagation(); handleEditPet(pet); }} className="w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center hover:bg-blue-100 transition-colors shadow-sm">
                                     <Edit2 className="h-3.5 w-3.5" />
                                 </button>
-                                <button onClick={() => handleDeletePet(pet._id)} className="w-8 h-8 rounded-full bg-red-50 text-red-600 flex items-center justify-center hover:bg-red-100 transition-colors">
+                                <button onClick={(e) => { e.stopPropagation(); handleDeletePet(pet._id); }} className="w-8 h-8 rounded-full bg-red-50 text-red-600 flex items-center justify-center hover:bg-red-100 transition-colors shadow-sm">
                                     <Trash2 className="h-3.5 w-3.5" />
                                 </button>
                             </div>
                           </div>
 
-                          <div className="flex items-center gap-5">
-                            <div className="relative">
-                                <div className="w-24 h-24 rounded-[2rem] overflow-hidden bg-slate-100 shadow-inner group-hover:scale-105 transition-transform duration-500">
-                                {pet.photo ? (
-                                    <img src={getImageUrl(pet.photo)} alt={pet.name} className="w-full h-full object-cover" />
-                                ) : (
-                                    <div className="w-full h-full flex items-center justify-center bg-primary-50">
+                          <div className="relative mb-5">
+                            <div className="w-28 h-28 sm:w-32 sm:h-32 rounded-[2.5rem] overflow-hidden bg-slate-100 shadow-inner group-hover:scale-105 transition-transform duration-700 ring-4 ring-slate-50">
+                              {pet.photo ? (
+                                  <img src={getImageUrl(pet.photo)} alt={pet.name} className="w-full h-full object-cover" />
+                              ) : (
+                                  <div className="w-full h-full flex items-center justify-center bg-primary-50">
                                     <HeartIcon className="h-10 w-10 text-primary-200" />
-                                    </div>
-                                )}
-                                </div>
-                                <div className="absolute -bottom-2 -right-2 bg-white p-2 rounded-xl shadow-lg border border-slate-50 capitalize">
-                                    <p className="text-[10px] font-black text-slate-800 leading-none">{pet.type === 'Dog' ? '🐶' : pet.type === 'Cat' ? '🐱' : '🐾'}</p>
-                                </div>
+                                  </div>
+                              )}
                             </div>
-
-                            <div className="flex-1 space-y-1">
-                                <h3 className="text-2xl font-black text-slate-900 leading-none group-hover:text-primary-600 transition-colors capitalize">{pet.name}</h3>
-                                <div className="flex items-center gap-2">
-                                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{pet.breed}</span>
-                                    <span className="w-1 h-1 rounded-full bg-slate-200"></span>
-                                    <span className="text-[9px] font-black text-primary-500 uppercase tracking-widest">{calculateAge(pet.birthday)}</span>
-                                </div>
+                            <div className="absolute -bottom-2 -right-2 bg-white p-2.5 rounded-2xl shadow-xl border border-slate-50">
+                                <p className="text-xs font-black text-slate-800 leading-none">{pet.type === 'Dog' ? '🐶' : pet.type === 'Cat' ? '🐱' : '🐾'}</p>
                             </div>
                           </div>
 
-                          <div className="mt-8 grid grid-cols-3 gap-4">
-                            <div className="bg-slate-50 rounded-2xl p-4 flex flex-col items-center justify-center space-y-1 group-hover:bg-primary-50 transition-colors">
-                                <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Gender</p>
-                                <p className="text-xs font-black text-slate-800 uppercase">{pet.gender}</p>
-                            </div>
-                            <div className="bg-slate-50 rounded-2xl p-4 flex flex-col items-center justify-center space-y-1 group-hover:bg-primary-50 transition-colors">
-                                <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Weight</p>
-                                <p className="text-xs font-black text-slate-800">{pet.weight} kg</p>
-                            </div>
-                            <div className="bg-slate-50 rounded-2xl p-4 flex flex-col items-center justify-center space-y-1 group-hover:bg-primary-50 transition-colors">
-                                <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Size</p>
-                                <p className="text-xs font-black text-slate-800 uppercase">{pet.size}</p>
+                          <div className="space-y-2 w-full">
+                            <h3 className="text-2xl font-black text-slate-900 leading-none group-hover:text-primary-600 transition-colors capitalize truncate px-2">{pet.name}</h3>
+                            <div className="flex items-center justify-center gap-2">
+                                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest bg-slate-50 px-3 py-1 rounded-full border border-slate-100">{pet.breed}</span>
+                                <span className="text-[9px] font-black text-primary-500 uppercase tracking-widest bg-primary-50 px-3 py-1 rounded-full border border-primary-50">{calculateAge(pet.birthday)}</span>
                             </div>
                           </div>
-                          
-                          <div className="mt-6 flex items-center justify-between border-t border-slate-50 pt-5">
-                            <div className="flex -space-x-2">
-                                {(pet.vaccinationCards || []).map((card, idx) => (
-                                    <div key={idx} className="w-8 h-8 rounded-lg border-2 border-white bg-slate-100 overflow-hidden shadow-sm" title={`Vax Card ${idx + 1}`}>
-                                        <img src={getImageUrl(card)} alt="vax" className="w-full h-full object-cover" />
-                                    </div>
-                                ))}
-                            </div>
-                            <button onClick={() => handleEditPet(pet)} className="text-[10px] font-black text-slate-300 uppercase tracking-widest hover:text-primary-600 transition-colors flex items-center gap-1">
-                                Open Dossier <ChevronRight className="h-3 w-3" />
-                            </button>
-                          </div>
+
+                          <button onClick={() => handleEditPet(pet)} className="mt-8 w-full py-4 bg-slate-900 text-white rounded-2xl text-[9px] font-black uppercase tracking-widest hover:bg-primary-600 transition-all opacity-0 group-hover:opacity-100 translate-y-4 group-hover:translate-y-0 duration-300">
+                             Open Dossier
+                          </button>
                         </div>
                       ))}
+                      
+                      {/* Empty state add card */}
+                      <button 
+                        onClick={() => { resetPetForm(); setShowPetModal(true); }}
+                        className="shrink-0 w-[240px] sm:w-[280px] snap-start bg-slate-50 rounded-[2.5rem] border-2 border-dashed border-slate-200 flex flex-col items-center justify-center gap-4 hover:bg-white hover:border-primary-200 transition-all group p-5"
+                      >
+                         <div className="w-16 h-16 bg-white rounded-2xl shadow-lg flex items-center justify-center text-slate-300 group-hover:text-primary-500 transition-colors">
+                            <Plus className="h-8 w-8" />
+                         </div>
+                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Enlist More</p>
+                      </button>
                     </div>
                   )}
                 </div>
