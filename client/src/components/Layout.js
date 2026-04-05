@@ -156,6 +156,16 @@ const Layout = () => {
   }, []);
 
   const getBottomNavItems = () => {
+    if (user?.role === 'admin' || user?.role === 'staff' || user?.role === 'super_admin') {
+      const base = user.role === 'super_admin' ? '/superadmin' : '/admin';
+      return [
+        { path: `${base}/dashboard`, label: 'Dashboard', icon: Activity },
+        { path: '/admin/orders', label: 'Orders', icon: ShoppingCart },
+        { path: '/admin/bookings', label: 'Bookings', icon: Calendar },
+        { path: '/admin/chat', label: 'Chat', icon: MessageSquare },
+        { path: '/profile', label: 'Me', icon: User },
+      ];
+    }
     if (user?.role === 'customer') {
       return [
         { path: '/home', label: 'Home', icon: House },
@@ -229,10 +239,18 @@ const Layout = () => {
       <div className={`flex-1 flex flex-col min-w-0 ${isLandingPage ? '' : 'lg:pl-20 pt-16'} main-content-area`}>
         {!isLandingPage && (
           <header className={`fixed top-0 left-0 lg:left-20 right-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-200 h-16 flex items-center px-4 justify-between shadow-sm`}>
-             <Link to="/" className="lg:hidden flex items-center gap-2">
-               <img src="/images/logo.png" alt="Logo" className="h-8 w-8 object-contain" />
-               <span className="font-bold text-primary-600">PAWZZLE</span>
-             </Link>
+             <div className="lg:hidden flex items-center gap-3">
+               <button 
+                 onClick={() => setIsMobileMenuOpen(true)}
+                 className="p-2 -ml-2 text-slate-500 hover:bg-slate-100 rounded-xl"
+               >
+                 <Menu className="h-6 w-6" />
+               </button>
+               <Link to="/" className="flex items-center gap-2">
+                 <img src="/images/logo.png" alt="Logo" className="h-8 w-8 object-contain" />
+                 <span className="font-extrabold text-primary-600 tracking-tighter uppercase text-sm">PAWZZLE</span>
+               </Link>
+             </div>
 
              <div className="flex items-center gap-3 ml-auto">
                 <button onClick={toggleTheme} className="p-2 text-slate-500 hover:bg-slate-100 rounded-lg">
@@ -277,14 +295,80 @@ const Layout = () => {
         )}
       </div>
 
+      )}
+
+      {/* Mobile Drawer */}
+      <div className={`fixed inset-0 z-[150] lg:hidden transition-all duration-500 ${isMobileMenuOpen ? 'visible' : 'invisible'}`}>
+        <div 
+          className={`absolute inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity duration-500 ${isMobileMenuOpen ? 'opacity-100' : 'opacity-0'}`}
+          onClick={() => setIsMobileMenuOpen(false)}
+        />
+        <aside 
+          className={`absolute top-0 left-0 h-full w-[280px] bg-white shadow-2xl transition-transform duration-500 ease-out border-r border-slate-100 ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}
+        >
+          <div className="p-6 border-b border-slate-100 flex items-center justify-between">
+            <Link to="/" className="flex items-center gap-2" onClick={() => setIsMobileMenuOpen(false)}>
+              <img src="/images/logo.png" alt="Logo" className="h-8 w-8 object-contain" />
+              <span className="font-extrabold text-primary-600 tracking-tighter uppercase">PAWZZLE</span>
+            </Link>
+            <button 
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="p-2 bg-slate-50 text-slate-400 rounded-xl hover:bg-rose-50 hover:text-rose-600 transition-colors"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+
+          <nav className="flex-1 px-4 py-8 space-y-1 overflow-y-auto no-scrollbar max-h-[calc(100vh-160px)]">
+            {navItems.map((item, idx) => {
+              if (item.type === 'label') {
+                return (
+                  <div key={idx} className="pt-6 pb-2 pl-3">
+                    <span className="text-[10px] font-black text-slate-300 uppercase tracking-[0.3em]">{item.label}</span>
+                  </div>
+                );
+              }
+              const Icon = item.icon;
+              const active = isActivePath(item.path);
+              return (
+                <Link
+                  key={item.path}
+                  to={item.path}
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className={`flex items-center gap-4 p-4 rounded-2xl transition-all ${active ? 'bg-primary-600 text-white shadow-lg shadow-primary-200' : 'text-slate-500 hover:bg-slate-50 active:bg-slate-100'}`}
+                >
+                  <Icon className="h-5 w-5 shrink-0" />
+                  <span className="text-sm font-bold uppercase tracking-tight">{item.label}</span>
+                </Link>
+              );
+            })}
+          </nav>
+
+          <div className="absolute bottom-0 left-0 right-0 p-6 border-t border-slate-50 bg-slate-50/50">
+             <button 
+               onClick={() => {
+                 setIsMobileMenuOpen(false);
+                 handleLogout();
+               }}
+               className="flex items-center gap-4 p-4 w-full bg-white text-slate-500 hover:text-rose-600 rounded-2xl border border-slate-100 shadow-sm transition-all active:scale-[0.98]"
+             >
+               <LogOut className="h-5 w-5 shrink-0" />
+               <span className="text-sm font-bold uppercase tracking-tight">Logout System</span>
+             </button>
+          </div>
+        </aside>
+      </div>
       {showLogoutModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[200] flex items-center justify-center p-4">
-           <div className="bg-white rounded-xl p-6 w-full max-w-sm shadow-xl">
-              <h2 className="text-lg font-bold mb-2">Logout</h2>
-              <p className="text-slate-500 mb-6">Are you sure you want to sign out?</p>
-              <div className="flex gap-3">
-                 <button onClick={confirmLogout} className="flex-1 py-2 bg-rose-600 text-white rounded-lg font-bold">Yes, Sign Out</button>
-                 <button onClick={() => setShowLogoutModal(false)} className="flex-1 py-2 bg-slate-100 text-slate-700 rounded-lg font-bold">Cancel</button>
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[200] flex items-center justify-center p-4 animate-fade-in">
+           <div className="bg-white rounded-[2rem] p-8 w-full max-w-sm shadow-2xl border border-slate-100 animate-slide-up">
+              <div className="w-16 h-16 bg-rose-50 rounded-2xl flex items-center justify-center text-rose-500 mb-6">
+                <LogOut className="h-8 w-8" />
+              </div>
+              <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tighter mb-2">Logout</h2>
+              <p className="text-sm font-bold text-slate-500 uppercase tracking-tight mb-8">Are you sure you want to sign out of Pawzzle?</p>
+              <div className="flex flex-col gap-3">
+                 <button onClick={confirmLogout} className="w-full py-4 bg-rose-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] shadow-lg shadow-rose-200 active:scale-[0.98] transition-all">Yes, Sign Out</button>
+                 <button onClick={() => setShowLogoutModal(false)} className="w-full py-4 bg-slate-100 text-slate-700 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] active:scale-[0.98] transition-all">Cancel</button>
               </div>
            </div>
         </div>
