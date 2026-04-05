@@ -571,11 +571,15 @@ const Bookings = ({ isSubcomponent = false }) => {
           breed: bookingForm.pet.breed,
           size: bookingForm.pet.size,
           age: parseInt(bookingForm.pet.age),
+          gender: bookingForm.pet.gender,
           weight: parseFloat(bookingForm.pet.weight),
+          photo: bookingForm.pet.photo,
+          vaccinationStatus: bookingForm.pet.vaccinationStatus,
           allergies: bookingForm.pet.allergies,
           medicalConditions: bookingForm.pet.medicalConditions,
           groomingPreferences: bookingForm.pet.groomingPreferences,
-          behaviorNotes: bookingForm.pet.behaviorNotes
+          behaviorNotes: bookingForm.pet.behaviorNotes,
+          specialNotes: bookingForm.pet.specialNotes
         },
         bookingDate: bookingForm.bookingDate,
         startTime: bookingForm.startTime,
@@ -586,24 +590,6 @@ const Bookings = ({ isSubcomponent = false }) => {
         voucherCode: appliedVoucher ? voucherCode : null,
         totalPrice: totalAmount
       };
-
-      // Auto-Save Pet Profile if it's a new entry (using the minimalist UI logic)
-      if (!selectedPetProfile) {
-        try {
-          await petProfileService.createPet({
-            name: bookingForm.pet.name,
-            type: bookingForm.pet.type,
-            breed: bookingForm.pet.breed,
-            size: bookingForm.pet.size,
-            age: parseInt(bookingForm.pet.age),
-            weight: parseFloat(bookingForm.pet.weight)
-          });
-          console.log('Pet profile auto-saved to vault');
-        } catch (petErr) {
-          console.error('Failed to auto-save pet profile:', petErr);
-          // Don't block booking if profile saving fails
-        }
-      }
 
       await bookingService.createBooking(bookingData);
       toast.success('Booking created successfully!');

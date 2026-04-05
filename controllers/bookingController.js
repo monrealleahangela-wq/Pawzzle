@@ -152,43 +152,64 @@ const createBooking = async (req, res) => {
 
     // ── Auto-save / update pet profile for this customer ──
     try {
-      const existingPetProfile = await PetProfile.findOne({
-        owner: req.user._id,
-        name: { $regex: new RegExp(`^${pet.name.trim()}$`, 'i') },
-        type: { $regex: new RegExp(`^${pet.type.trim()}$`, 'i') }
-      });
-      if (existingPetProfile) {
-        // Update details in case they changed (weight/age/breed/size may drift)
-        existingPetProfile.breed = pet.breed;
-        existingPetProfile.size = pet.size;
-        existingPetProfile.age = pet.age;
-        existingPetProfile.weight = pet.weight;
-        existingPetProfile.gender = pet.gender || existingPetProfile.gender;
-        existingPetProfile.color = pet.color || existingPetProfile.color;
-        existingPetProfile.photo = pet.photo || existingPetProfile.photo;
-        existingPetProfile.vaccinationStatus = pet.vaccinationStatus || existingPetProfile.vaccinationStatus;
-        if (pet.specialNotes) existingPetProfile.specialNotes = pet.specialNotes;
-        existingPetProfile.lastBookedAt = new Date();
-        await existingPetProfile.save();
-      } else {
-        await PetProfile.create({
+      const petName = (pet.name || '').trim();
+      const petType = (pet.type || '').trim();
+
+      if (petName && petType) {
+        const existingPetProfile = await PetProfile.findOne({
           owner: req.user._id,
-          name: pet.name,
-          type: pet.type,
-          breed: pet.breed,
-          size: pet.size,
-          age: pet.age,
-          weight: pet.weight,
-          gender: pet.gender || 'Male',
-          color: pet.color || '',
-          photo: pet.photo || null,
-          vaccinationStatus: pet.vaccinationStatus || 'Pending',
-          specialNotes: pet.specialNotes || '',
-          lastBookedAt: new Date()
+          name: { $regex: new RegExp(`^${petName}$`, 'i') },
+          type: { $regex: new RegExp(`^${petType}$`, 'i') }
         });
+
+        // Compute a calculated birthday if age is provided but birthday isn't
+        let calculatedBirthday = pet.birthday;
+        if (!calculatedBirthday && pet.age) {
+          const bday = new Date();
+          bday.setFullYear(bday.getFullYear() - parseInt(pet.age));
+          bday.setMonth(0);
+          bday.setDate(1);
+          calculatedBirthday = bday;
+        } else if (!calculatedBirthday) {
+          // Absolute fallback to avoid validation error
+          calculatedBirthday = new Date(2020, 0, 1);
+        }
+
+        if (existingPetProfile) {
+          // Update details in case they changed
+          existingPetProfile.breed = pet.breed || existingPetProfile.breed;
+          existingPetProfile.size = pet.size || existingPetProfile.size;
+          existingPetProfile.birthday = calculatedBirthday || existingPetProfile.birthday;
+          existingPetProfile.weight = pet.weight || existingPetProfile.weight;
+          existingPetProfile.gender = pet.gender || existingPetProfile.gender;
+          existingPetProfile.color = pet.color || existingPetProfile.color;
+          existingPetProfile.photo = pet.photo || existingPetProfile.photo;
+          existingPetProfile.vaccinationStatus = pet.vaccinationStatus || existingPetProfile.vaccinationStatus;
+          if (pet.specialNotes) existingPetProfile.specialNotes = pet.specialNotes;
+          existingPetProfile.lastBookedAt = new Date();
+          await existingPetProfile.save();
+          console.log(`✅ Pet profile updated: ${petName}`);
+        } else {
+          // Create new profile
+          await PetProfile.create({
+            owner: req.user._id,
+            name: petName,
+            type: petType,
+            breed: pet.breed || 'Mixed',
+            size: pet.size || 'Small',
+            birthday: calculatedBirthday,
+            gender: pet.gender || 'Male',
+            weight: pet.weight || 5,
+            color: pet.color || '',
+            photo: pet.photo || null,
+            vaccinationStatus: pet.vaccinationStatus || 'Pending',
+            specialNotes: pet.specialNotes || '',
+            lastBookedAt: new Date()
+          });
+          console.log(`✅ New pet profile auto-saved: ${petName}`);
+        }
       }
     } catch (petErr) {
-      // Non-critical — don't fail the booking if pet profile save fails
       console.error('⚠️ Pet profile auto-save failed (non-critical):', petErr.message);
     }
 
