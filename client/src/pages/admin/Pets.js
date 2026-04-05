@@ -6,7 +6,7 @@ import {
   Heart, Plus, Edit, Trash2, Filter, X, Save, Search, ChevronLeft, ChevronRight,
   Activity, Shield, Image as ImageIcon, Zap, Target, ArrowUpRight, Star, Info,
   AlertTriangle, CheckCircle, PawPrint, Home, Truck, Users2, History, ClipboardList,
-  Clock, CheckCircle2, XCircle, MessageSquare, ArrowRight, UserCheck
+  Clock, CheckCircle2, XCircle, MessageSquare, ArrowRight, UserCheck, Minus
 } from 'lucide-react';
 
 const AdminPets = () => {
