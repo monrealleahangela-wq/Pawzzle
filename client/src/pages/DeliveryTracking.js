@@ -265,14 +265,17 @@ const DeliveryTracking = () => {
       </header>
 
       {/* Map Content */}
-      <main className="flex-1 relative z-10 bg-slate-200">
+      <main className="flex-1 relative z-10 bg-slate-100 flex flex-col min-h-0">
         <MapContainer 
           center={[delivery.riderLocation?.lat || 14.5995, delivery.riderLocation?.lng || 120.9842]} 
           zoom={16} 
-          className="w-full h-full"
+          style={{ height: '100%', width: '100%', position: 'absolute', top: 0, bottom: 0, left: 0, right: 0 }}
           zoomControl={false}
         >
-          <TileLayer url="https://{s}.tile.osm.org/{z}/{x}/{y}.png" />
+          <TileLayer 
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" 
+          />
           <RecenterMap coords={delivery.riderLocation} />
           
           {/* Marker Logic */}
