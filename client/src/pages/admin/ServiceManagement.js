@@ -219,22 +219,22 @@ const ServiceManagement = () => {
       <div className="bg-slate-900 p-2 rounded-[1.5rem] shadow-xl border border-slate-800">
         <div className="grid grid-cols-1 md:grid-cols-12 gap-2">
           <div className="md:col-span-6 relative group">
-            <div className="absolute left-5 top-1/2 -translate-y-1/2 flex items-center gap-3">
+            <div className="absolute left-6 top-1/2 -translate-y-1/2 flex items-center gap-3">
               <Search className="h-4 w-4 text-slate-500 group-focus-within:text-primary-500 transition-colors" />
             </div>
             <input
-              type="text" placeholder=""
+              type="text" placeholder="SEARCH SERVICES..."
               value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-14 pr-4 py-3.5 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl outline-none focus:ring-2 focus:ring-primary-500/50 placeholder:text-slate-600 transition-all font-sans input-with-icon"
+              className="w-full pl-16 pr-4 py-4 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl outline-none focus:ring-2 focus:ring-primary-500/50 placeholder:text-slate-600 transition-all font-sans input-with-icon"
             />
           </div>
-          <div className="md:col-span-4 relative">
-            <div className="absolute left-5 top-1/2 -translate-y-1/2">
-              <Briefcase className="h-3.5 w-3.5 text-primary-500" />
+          <div className="md:col-span-4 relative group">
+            <div className="absolute left-6 top-1/2 -translate-y-1/2 transition-transform group-focus-within:scale-110">
+              <Briefcase className="h-4 w-4 text-primary-500" />
             </div>
             <select
               value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)}
-              className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-2xl pl-14 pr-10 py-3.5 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer font-sans"
+              className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-2xl pl-16 pr-10 py-4 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer font-sans"
             >
               <option value="" className="bg-slate-900 text-white font-black">ALL SERVICES: VIEW ALL</option>
               {categories.map(c => (
@@ -393,18 +393,18 @@ const ServiceManagement = () => {
                       <div className="grid grid-cols-2 gap-6">
                         <div className="space-y-2">
                           <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Base Price (₱)</label>
-                          <div className="relative">
-                            <PhilippinePeso className="absolute left-5 top-1/2 -translate-y-1/2 h-5 w-5 text-indigo-600" />
+                          <div className="relative group">
+                            <PhilippinePeso className="absolute left-6 top-1/2 -translate-y-1/2 h-5 w-5 text-indigo-600 transition-transform group-focus-within:scale-110" />
                             <input type="number" required value={formData.price} onChange={e => setFormData(p => ({ ...p, price: parseFloat(e.target.value) || 0 }))}
-                              className="w-full pl-14 pr-6 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl text-xl font-black outline-none focus:ring-4 focus:ring-indigo-500/10" placeholder="0" />
+                              className="w-full pl-16 pr-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-xl font-black outline-none focus:ring-4 focus:ring-indigo-500/10 focus:bg-white transition-all" placeholder="0" />
                           </div>
                         </div>
                         <div className="space-y-2">
                           <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Session Capacity</label>
-                          <div className="relative">
-                            <Users className="absolute left-5 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+                          <div className="relative group">
+                            <Users className="absolute left-6 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400 transition-transform group-focus-within:scale-110" />
                             <input type="number" value={formData.maxPetsPerSession} onChange={e => setFormData(p => ({ ...p, maxPetsPerSession: parseInt(e.target.value) || 1 }))}
-                              className="w-full pl-14 pr-6 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl text-xl font-black outline-none" placeholder="1" />
+                              className="w-full pl-16 pr-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-xl font-black outline-none focus:ring-4 focus:ring-indigo-500/10 focus:bg-white transition-all" placeholder="1" />
                           </div>
                         </div>
                       </div>
