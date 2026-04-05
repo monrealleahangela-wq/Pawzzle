@@ -5,7 +5,12 @@ const deliverySchema = new mongoose.Schema({
   order: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Order',
-    required: true
+    default: null
+  },
+  booking: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Booking',
+    default: null
   },
   riderToken: {
     type: String,

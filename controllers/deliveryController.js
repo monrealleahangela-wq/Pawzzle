@@ -1,29 +1,44 @@
 const Delivery = require('../models/Delivery');
 const Order = require('../models/Order');
+const Booking = require('../models/Booking');
 const crypto = require('crypto');
+
+const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER;
+let CLIENT_URL = process.env.CLIENT_URL;
+if (!CLIENT_URL || CLIENT_URL.includes('localhost')) {
+    CLIENT_URL = isProduction ? 'https://pawzzle.io' : 'http://localhost:3000';
+}
 
 // Generate unique delivery links (Rider & Customer)
 const generateDeliveryLinks = async (req, res) => {
   try {
-    const { orderId } = req.body;
+    const { orderId, bookingId } = req.body;
     
-    let delivery = await Delivery.findOne({ order: orderId });
+    if (!orderId && !bookingId) {
+      return res.status(400).json({ message: 'Order ID or Booking ID is required' });
+    }
+    
+    const query = orderId ? { order: orderId } : { booking: bookingId };
+    let delivery = await Delivery.findOne(query);
     
     if (delivery) {
       return res.json({ 
         message: 'Delivery links already exist', 
-        riderLink: `${process.env.CLIENT_URL || 'http://localhost:3000'}/rider-track/${delivery.riderToken}`,
-        customerLink: `${process.env.CLIENT_URL || 'http://localhost:3000'}/track/${delivery.trackingToken}`
+        riderLink: `${CLIENT_URL}/rider-track/${delivery.riderToken}`,
+        customerLink: `${CLIENT_URL}/track/${delivery.trackingToken}`
       });
     }
 
-    const order = await Order.findById(orderId).populate('customer store');
-    if (!order) {
-      return res.status(404).json({ message: 'Order not found' });
+    const order = orderId ? await Order.findById(orderId).populate('customer store') : null;
+    const booking = bookingId ? await Booking.findById(bookingId).populate('customer store service') : null;
+    
+    if (!order && !booking) {
+      return res.status(404).json({ message: 'Order or Booking not found' });
     }
 
     delivery = new Delivery({
-      order: orderId,
+      order: orderId || null,
+      booking: bookingId || null,
       riderToken: crypto.randomBytes(32).toString('hex'),
       trackingToken: crypto.randomBytes(32).toString('hex'),
       status: 'pending'
@@ -31,14 +46,19 @@ const generateDeliveryLinks = async (req, res) => {
 
     await delivery.save();
 
-    // Link delivery back to order
-    order.delivery = delivery._id;
-    await order.save();
+    // Link delivery back to order/booking
+    if (order) {
+      order.delivery = delivery._id;
+      await order.save();
+    } else if (booking) {
+      // Assuming Booking schema might eventually have a delivery field
+      // but for now the link exists in Delivery model
+    }
 
     res.status(201).json({
       message: 'Delivery links generated',
-      riderLink: `${process.env.CLIENT_URL || 'http://localhost:3000'}/rider-track/${delivery.riderToken}`,
-      customerLink: `${process.env.CLIENT_URL || 'http://localhost:3000'}/track/${delivery.trackingToken}`,
+      riderLink: `${CLIENT_URL}/rider-track/${delivery.riderToken}`,
+      customerLink: `${CLIENT_URL}/track/${delivery.trackingToken}`,
       delivery
     });
   } catch (error) {
@@ -60,6 +80,14 @@ const getDeliveryByToken = async (req, res) => {
           { path: 'customer', select: 'firstName lastName phoneNumber' },
           { path: 'store', select: 'name contactInfo' }
         ]
+      })
+      .populate({
+        path: 'booking',
+        populate: [
+          { path: 'customer', select: 'firstName lastName phoneNumber' },
+          { path: 'store', select: 'name contactInfo' },
+          { path: 'service', select: 'name duration' }
+        ]
       });
 
     let role = 'rider';
@@ -72,6 +100,14 @@ const getDeliveryByToken = async (req, res) => {
           populate: [
             { path: 'customer', select: 'firstName lastName phoneNumber' },
             { path: 'store', select: 'name contactInfo' }
+          ]
+        })
+        .populate({
+          path: 'booking',
+          populate: [
+            { path: 'customer', select: 'firstName lastName phoneNumber' },
+            { path: 'store', select: 'name contactInfo' },
+            { path: 'service', select: 'name duration' }
           ]
         });
       role = 'customer';

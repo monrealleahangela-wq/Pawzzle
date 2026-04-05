@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import { adminBookingService, uploadService, getImageUrl } from '../../services/apiService';
+import { adminBookingService, uploadService, deliveryService, getImageUrl } from '../../services/apiService';
 import {
   Calendar,
   Clock,
@@ -20,7 +20,9 @@ import {
   ExternalLink,
   Camera,
   Eye,
-  Plus
+  Plus,
+  Link2,
+  Truck
 } from 'lucide-react';
 
 const statusNextMap = {
@@ -91,6 +93,23 @@ const BookingsManagement = () => {
       }
     } catch (error) {
       toast.error(error.response?.data?.message || 'Failed to confirm payment');
+    }
+  };
+
+  const handleGenerateRiderLink = async (bookingId) => {
+    try {
+      const response = await deliveryService.generateLinks({ bookingId });
+      const url = response.data.riderLink;
+      
+      // Attempt copy to clipboard
+      navigator.clipboard.writeText(url);
+      toast.success('Rider Link Generated & Copied!', {
+        description: 'You can now share this secure link with the rider.',
+        icon: <Link2 className="text-primary-600" />
+      });
+      fetchBookings();
+    } catch (error) {
+      toast.error('Failed to generate tracking link');
     }
   };
 
@@ -488,20 +507,32 @@ const BookingsManagement = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch pt-2">
-                <div className="lg:col-span-12">
-                  <div className={`${selectedBooking.isRevenueRecorded ? 'bg-primary-600 shadow-primary-100' : 'bg-slate-800 shadow-slate-200'} rounded-[2rem] p-6 text-white shadow-xl flex items-center justify-between group overflow-hidden relative`}>
-                    <div className="absolute top-[-50%] right-[-10%] w-48 h-48 bg-white/10 rounded-full blur-2xl" />
-                    <div className="relative z-10">
-                      <label className="text-[8px] font-black text-primary-100 uppercase tracking-[0.3em] block mb-1 opacity-70">Booking Price (NET)</label>
-                      <span className="text-3xl font-black tracking-tighter">₱{selectedBooking.totalPrice?.toLocaleString()}</span>
-                    </div>
-                    <div className={`relative z-10 ${selectedBooking.isRevenueRecorded ? 'bg-white/20 text-white' : 'bg-amber-500 text-white'} px-4 py-2 rounded-2xl text-[9px] font-black uppercase tracking-widest border border-white/20`}>
-                      {selectedBooking.isRevenueRecorded ? 'PAID & RECORDED' : 'AWAITING PAYMENT'}
+              {/* Staff Delivery Link Action */}
+              {user?.role !== 'customer' && selectedBooking.isHomeService && selectedBooking.status !== 'cancelled' && selectedBooking.status !== 'completed' && (
+                <div className="p-6 bg-primary-50 rounded-[2rem] border border-primary-100 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-white rounded-xl shadow-sm border border-primary-100 flex items-center justify-center text-primary-600">
+                        <Truck className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-black text-slate-900 uppercase tracking-tighter leading-none mb-0.5">Staff Dispatch</h4>
+                        <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest leading-none">Home Service Logistics</p>
+                      </div>
                     </div>
                   </div>
+                  <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest leading-relaxed">
+                    Generate actual online booking link for riders/staff. This link provides pinpoint GPS navigation to the service address.
+                  </p>
+                  <button
+                    onClick={() => handleGenerateRiderLink(selectedBooking._id)}
+                    className={`w-full py-3.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all shadow-lg flex items-center justify-center gap-2 group ${selectedBooking.delivery ? 'bg-emerald-600 text-white hover:bg-emerald-700' : 'bg-slate-900 text-white hover:bg-primary-600'}`}
+                  >
+                    <Link2 className="h-4 w-4 group-hover:rotate-12 transition-transform" />
+                    {selectedBooking.delivery ? 'Copy Tracking Link' : 'Generate Online Link'}
+                  </button>
                 </div>
-              </div>
+              )}
 
               {/* QR Protocol - Only for Approved Bookings */}
               {selectedBooking.status === 'approved' && (

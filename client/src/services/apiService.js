@@ -376,7 +376,7 @@ export const petProfileService = {
 
 // Delivery services
 export const deliveryService = {
-  generateLinks: (orderId) => api.post('/deliveries/generate', { orderId }),
+  generateLinks: (params) => api.post('/deliveries/generate', typeof params === 'string' ? { orderId: params } : params),
   getTracking: (token) => api.get(`/deliveries/track/${token}`),
   updateStatus: (token, status) => api.patch(`/deliveries/status/${token}`, { status }),
   updateLocation: (token, locationData) => api.patch(`/deliveries/location/${token}`, locationData),
