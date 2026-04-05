@@ -48,6 +48,8 @@ const updateStoreValidation = [
 // Protected routes (literal paths MUST come before /:id wildcard)
 router.get('/my-store', authenticate, adminOrStaff, getMyStore);
 router.put('/my-store', authenticate, adminOnly, updateStoreValidation, updateStore);
+router.get('/settings', authenticate, adminOrStaff, getMyStore);
+router.put('/settings', authenticate, adminOnly, updateStoreValidation, updateStore);
 router.get('/dashboard/stats', authenticate, adminOrStaff, getStoreDashboard);
 router.post('/', authenticate, adminOnly, createStoreValidation, createStore);
 

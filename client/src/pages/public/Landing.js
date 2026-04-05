@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Heart, Package, Calendar, ArrowRight, LogIn, Sparkles, Users, TrendingUp, Star } from 'lucide-react';
+import { Heart, Package, Calendar, ArrowRight, LogIn, Sparkles, Users, TrendingUp, Star, Store } from 'lucide-react';
 import { petService, productService, serviceService } from '../../services/apiService';
 import { useAuth } from '../../contexts/AuthContext';
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/Card';
@@ -58,6 +58,10 @@ const Landing = () => {
             <span className={`text-2xl font-black tracking-tighter ${isScrolled ? 'text-primary-600' : 'text-slate-900'}`}>Pawzzle</span>
           </Link>
           <div className="flex items-center gap-6">
+            <Link to="/seller-join" className="hidden md:flex items-center gap-2 text-xs font-black uppercase tracking-widest text-primary-600 hover:text-primary-700 transition-colors">
+              <Store className="h-4 w-4" />
+              Be a Seller
+            </Link>
             {!isAuthenticated ? (
               <>
                 <Link to="/login" className="text-sm font-black uppercase tracking-widest text-slate-600 hover:text-primary-600 transition-colors">Sign In</Link>
@@ -95,23 +99,27 @@ const Landing = () => {
               Connect with verified shelters, browse premium pet supplies, and book expert services. Everything your furry friend needs, all in one premium platform.
             </p>
 
-            <div className="flex flex-col sm:flex-row gap-4 justify-center animate-slide-up" style={{ animationDelay: '0.4s' }}>
-              {!isAuthenticated ? (
-                <Link to="/login" className="btn btn-primary px-10 py-5 text-lg group shadow-xl shadow-primary-200">
-                  Get Started
-                  <ArrowRight className="h-5 w-5 group-hover:translate-x-2 transition-transform" />
+              <div className="flex flex-col sm:flex-row gap-4 justify-center animate-slide-up" style={{ animationDelay: '0.4s' }}>
+                {!isAuthenticated ? (
+                  <Link to="/login" className="btn btn-primary px-10 py-5 text-lg group shadow-xl shadow-primary-200">
+                    Get Started
+                    <ArrowRight className="h-5 w-5 group-hover:translate-x-2 transition-transform" />
+                  </Link>
+                ) : (
+                  <Link to="/home" className="btn btn-primary px-10 py-5 text-lg group shadow-xl shadow-primary-200">
+                    Go to Dashboard
+                    <ArrowRight className="h-5 w-5 group-hover:translate-x-2 transition-transform" />
+                  </Link>
+                )}
+                <Link to="/seller-join" className="btn btn-outline px-10 py-5 text-lg border-2 border-primary-600/20 text-primary-600 hover:bg-primary-50 bg-white/50 backdrop-blur-sm">
+                  <Store className="h-5 w-5 mr-1" />
+                  Be a Seller
                 </Link>
-              ) : (
-                <Link to="/home" className="btn btn-primary px-10 py-5 text-lg group shadow-xl shadow-primary-200">
-                  Go to Dashboard
-                  <ArrowRight className="h-5 w-5 group-hover:translate-x-2 transition-transform" />
+                <Link to="/pets" className="btn btn-outline px-10 py-5 text-lg border-2 border-slate-200 hover:border-primary-600 bg-white/50 backdrop-blur-sm">
+                  <Heart className="h-5 w-5 mr-1" />
+                  Browse Pets
                 </Link>
-              )}
-              <Link to="/pets" className="btn btn-outline px-10 py-5 text-lg border-2 border-slate-200 hover:border-primary-600 bg-white/50 backdrop-blur-sm">
-                <Heart className="h-5 w-5 mr-1" />
-                Browse Pets
-              </Link>
-            </div>
+              </div>
           </div>
         </div>
 

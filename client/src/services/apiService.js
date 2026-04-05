@@ -288,8 +288,8 @@ export const storeService = {
   createStore: (storeData) => api.post('/stores', storeData),
   updateStore: (id, storeData) => api.put('/stores/my-store', storeData),
   deleteStore: (id) => api.delete(`/stores/${id}`),
-  getSettings: () => api.get('/store/settings'),
-  updateSettings: (settings) => api.put('/store/settings', settings),
+  getSettings: () => api.get('/stores/settings'),
+  updateSettings: (settings) => api.put('/stores/settings', settings),
   getStoreByOwner: (ownerId) => api.get(`/stores/owner/${ownerId}`)
 };
 

@@ -334,7 +334,7 @@ const getAllServices = async (req, res) => {
 const getServiceById = async (req, res) => {
   try {
     console.log('🔍 Fetching service by ID:', req.params.id);
-    const service = await Service.findById(req.params.id).populate('store', 'name contactInfo.address businessHours');
+    const service = await Service.findById(req.params.id).populate('store', 'name contactInfo.address businessHours bookingSettings');
     if (!service || service.isDeleted) {
       console.log('⚠️ Service not found (or deleted):', req.params.id);
       return res.status(404).json({ message: 'Service not found' });

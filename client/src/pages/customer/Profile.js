@@ -2229,15 +2229,15 @@ const Profile = () => {
                                         <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Upload Photo</p>
                                     </div>
                                 )}
+                                <div className="absolute inset-0 bg-primary-600/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity pointer-events-none">
+                                    <Upload className="h-8 w-8 text-white" />
+                                </div>
                                 <input 
                                     type="file" 
                                     accept="image/*" 
                                     onChange={handlePetPhotoChange}
-                                    className="absolute inset-0 opacity-0 cursor-pointer" 
+                                    className="absolute inset-0 opacity-0 cursor-pointer z-10" 
                                 />
-                                <div className="absolute inset-0 bg-primary-600/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                                    <Upload className="h-8 w-8 text-white" />
-                                </div>
                            </div>
                            <p className="text-[8px] font-black text-slate-300 uppercase tracking-widest text-center">Identity Scan Required</p>
                         </div>

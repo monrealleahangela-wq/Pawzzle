@@ -21,6 +21,7 @@ import OAuthCallback from './pages/auth/OAuthCallback';
 
 // Public Pages
 import Landing from './pages/public/Landing';
+import SellerJoin from './pages/public/SellerJoin';
 
 // Customer Pages
 import Home from './pages/customer/Home';
@@ -118,6 +119,7 @@ function App() {
                 <Route path="/register" element={<Register />} />
                 <Route path="/forgot-password" element={<ForgotPassword />} />
                 <Route path="/oauth-callback" element={<OAuthCallback />} />
+                <Route path="/seller-join" element={<SellerJoin />} />
                 <Route path="/rider-track/:token" element={<DeliveryTracking isRider={true} />} />
                 <Route path="/track/:token" element={<DeliveryTracking isRider={false} />} />
 

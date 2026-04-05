@@ -295,6 +295,14 @@ const updateStore = async (req, res) => {
       delete updateData.businessHours;
     }
 
+    if (updateData.bookingSettings) {
+      store.bookingSettings = {
+        ...store.bookingSettings?.toObject?.() || store.bookingSettings,
+        ...updateData.bookingSettings
+      };
+      delete updateData.bookingSettings;
+    }
+
     // Apply remaining updates
     Object.assign(store, updateData);
 

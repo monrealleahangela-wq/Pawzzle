@@ -73,13 +73,19 @@ const storeSchema = new mongoose.Schema({
     youtube: String
   },
   businessHours: {
-    monday: { open: String, close: String, closed: { type: Boolean, default: false } },
-    tuesday: { open: String, close: String, closed: { type: Boolean, default: false } },
-    wednesday: { open: String, close: String, closed: { type: Boolean, default: false } },
-    thursday: { open: String, close: String, closed: { type: Boolean, default: false } },
-    friday: { open: String, close: String, closed: { type: Boolean, default: false } },
-    saturday: { open: String, close: String, closed: { type: Boolean, default: false } },
-    sunday: { open: String, close: String, closed: { type: Boolean, default: false } }
+    monday: { open: { type: String, default: '09:00' }, close: { type: String, default: '17:00' }, closed: { type: Boolean, default: false } },
+    tuesday: { open: { type: String, default: '09:00' }, close: { type: String, default: '17:00' }, closed: { type: Boolean, default: false } },
+    wednesday: { open: { type: String, default: '09:00' }, close: { type: String, default: '17:00' }, closed: { type: Boolean, default: false } },
+    thursday: { open: { type: String, default: '09:00' }, close: { type: String, default: '17:00' }, closed: { type: Boolean, default: false } },
+    friday: { open: { type: String, default: '09:00' }, close: { type: String, default: '17:00' }, closed: { type: Boolean, default: false } },
+    saturday: { open: { type: String, default: '09:00' }, close: { type: String, default: '17:00' }, closed: { type: Boolean, default: false } },
+    sunday: { open: { type: String, default: '09:00' }, close: { type: String, default: '17:00' }, closed: { type: Boolean, default: false } }
+  },
+  bookingSettings: {
+    slotDuration: { type: Number, default: 60 }, // minutes
+    allowInstantBooking: { type: Boolean, default: true },
+    bufferTime: { type: Number, default: 0 }, // minutes between slots
+    maxBookingsPerSlot: { type: Number, default: 1 }
   },
   specialties: [{
     type: String,
