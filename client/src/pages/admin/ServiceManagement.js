@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 
 import { serviceService, adminServiceService, uploadService, getImageUrl } from '../../services/apiService';
+import { SERVICE_CATEGORIES } from '../../constants/serviceCategories';
 
 const PhilippinePeso = ({ className }) => (
   <svg
@@ -42,6 +43,7 @@ const ServiceManagement = () => {
     name: '',
     description: '',
     category: 'grooming',
+    subCategory: 'Bathing & Drying',
     duration: 30,
     price: 0,
     homeServiceAvailable: false,
@@ -54,18 +56,7 @@ const ServiceManagement = () => {
 
   const [formData, setFormData] = useState(initialFormState);
 
-  const categories = [
-    { value: 'grooming', label: 'Grooming', icon: '✨' },
-    { value: 'veterinary', label: 'Veterinary', icon: '🏥' },
-    { value: 'training', label: 'Training', icon: '🎯' },
-    { value: 'boarding', label: 'Boarding', icon: '🏠' },
-    { value: 'walking', label: 'Walking', icon: '🚶' },
-    { value: 'daycare', label: 'Daycare', icon: '☀️' },
-    { value: 'health_check', label: 'Health Check', icon: '🩺' },
-    { value: 'consultation', label: 'Consultation', icon: '💬' },
-    { value: 'emergency', label: 'Emergency', icon: '🚨' },
-    { value: 'other', label: 'Other', icon: '📦' }
-  ];
+  const categories = SERVICE_CATEGORIES;
 
   useEffect(() => { fetchServices(); }, []);
 
@@ -158,7 +149,7 @@ const ServiceManagement = () => {
     }
   };
 
-  const getCategoryIcon = (cat) => categories.find(c => c.value === cat)?.icon || '📦';
+  const getCategoryIcon = (cat) => categories.find(c => c.id === cat)?.icon || '📦';
 
   const durationPresets = [15, 30, 45, 60, 90, 120, 180];
 
@@ -247,7 +238,7 @@ const ServiceManagement = () => {
             >
               <option value="" className="bg-slate-900 text-white font-black">ALL SERVICES: VIEW ALL</option>
               {categories.map(c => (
-                <option key={c.value} value={c.value} className="bg-slate-900 text-white font-black">{c.label.toUpperCase()}</option>
+                <option key={c.id} value={c.id} className="bg-slate-900 text-white font-black">{c.label.toUpperCase()}</option>
               ))}
             </select>
             <ChevronDown className="absolute right-6 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500 pointer-events-none" />
@@ -375,13 +366,26 @@ const ServiceManagement = () => {
                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Service Category</label>
                         <div className="grid grid-cols-2 gap-2">
                           {categories.map(c => (
-                            <button key={c.value} type="button" onClick={() => setFormData(p => ({ ...p, category: c.value }))}
-                              className={`p-4 rounded-2xl text-left transition-all border-2 flex items-center gap-3 ${formData.category === c.value ? 'bg-indigo-50 border-indigo-300 shadow-lg' : 'bg-slate-50 border-slate-50 hover:border-slate-200'}`}>
+                            <button key={c.id} type="button" onClick={() => setFormData(p => ({ ...p, category: c.id, subCategory: c.subServices[0] }))}
+                              className={`p-4 rounded-2xl text-left transition-all border-2 flex items-center gap-3 ${formData.category === c.id ? 'bg-indigo-50 border-indigo-300 shadow-lg' : 'bg-slate-50 border-slate-50 hover:border-slate-200'}`}>
                               <span className="text-lg">{c.icon}</span>
                               <span className="text-[10px] font-black uppercase tracking-widest">{c.label}</span>
                             </button>
                           ))}
                         </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Sub-Service Type</label>
+                        <select 
+                          value={formData.subCategory} 
+                          onChange={e => setFormData(p => ({ ...p, subCategory: e.target.value }))}
+                          className="w-full px-6 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl text-[12px] font-black uppercase outline-none focus:ring-4 focus:ring-indigo-500/10"
+                        >
+                          {categories.find(c => c.id === formData.category)?.subServices.map(sub => (
+                            <option key={sub} value={sub}>{sub.toUpperCase()}</option>
+                          ))}
+                        </select>
                       </div>
                     </div>
 

@@ -163,7 +163,7 @@ const Landing = () => {
                 <Calendar className="text-white h-8 w-8" />
               </div>
               <h3 className="text-2xl font-bold text-slate-900 mb-3">Expert Care Services</h3>
-              <p className="text-slate-600">Book grooming, veterinary appointments, and training sessions with highly rated local professionals.</p>
+              <p className="text-slate-600">Book professional grooming, health check-ups, pet boarding, and specialized home services from certified experts.</p>
             </div>
           </div>
         </div>

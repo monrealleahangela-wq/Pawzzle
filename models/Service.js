@@ -22,7 +22,11 @@ const serviceSchema = new mongoose.Schema({
   },
   category: {
     type: String,
-    enum: ['grooming', 'veterinary', 'training', 'boarding', 'walking', 'daycare', 'health_check', 'consultation', 'emergency', 'other'],
+    enum: ['grooming', 'health_wellness', 'boarding_hotel', 'pet_services', 'other'],
+    required: true
+  },
+  subCategory: {
+    type: String,
     required: true
   },
   duration: {

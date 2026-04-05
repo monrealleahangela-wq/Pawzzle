@@ -226,7 +226,7 @@ const Layout = () => {
       )}
 
       {/* Main Content Area */}
-      <div className={`flex-1 flex flex-col min-w-0 ${isLandingPage ? '' : 'lg:pl-20 pt-16'}`}>
+      <div className={`flex-1 flex flex-col min-w-0 ${isLandingPage ? '' : 'lg:pl-20 pt-16'} main-content-area`}>
         {!isLandingPage && (
           <header className={`fixed top-0 left-0 lg:left-20 right-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-200 h-16 flex items-center px-4 justify-between shadow-sm`}>
              <Link to="/" className="lg:hidden flex items-center gap-2">

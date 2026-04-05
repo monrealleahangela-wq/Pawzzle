@@ -5,6 +5,7 @@ import { serviceService, getImageUrl } from '../../services/apiService';
 import { getCitiesByProvince } from '../../constants/locationConstants';
 import { useAuth } from '../../contexts/AuthContext';
 import { Calendar, Clock, DollarSign, MapPin, Users, Star, ChevronRight, Store, Filter, Navigation, Search } from 'lucide-react';
+import { SERVICE_CATEGORIES, getCategoryLabel } from '../../constants/serviceCategories';
 
 const CAVITE_CITIES = getCitiesByProvince('cavite');
 
@@ -46,14 +47,8 @@ const Services = () => {
   const [userLocation, setUserLocation] = useState(null);
 
   const categories = [
-    { value: 'all', label: 'All Services' },
-    { value: 'grooming', label: 'Grooming' },
-    { value: 'veterinary', label: 'Veterinary' },
-    { value: 'training', label: 'Training' },
-    { value: 'boarding', label: 'Boarding' },
-    { value: 'walking', label: 'Walking' },
-    { value: 'daycare', label: 'Daycare' },
-    { value: 'other', label: 'Other' }
+    { id: 'all', label: 'All Services' },
+    ...SERVICE_CATEGORIES
   ];
 
   useEffect(() => {
@@ -229,9 +224,9 @@ const Services = () => {
         <div className="flex-1 flex items-center gap-3 overflow-x-auto pb-4 scrollbar-hide w-full">
           {categories.map((category) => (
             <button
-              key={category.value}
-              onClick={() => handleCategoryChange(category.value)}
-              className={`px-8 py-3 rounded-2xl font-black text-xs uppercase tracking-widest transition-all whitespace-nowrap shadow-sm border ${selectedCategory === category.value
+              key={category.id}
+              onClick={() => handleCategoryChange(category.id)}
+              className={`px-8 py-3 rounded-2xl font-black text-xs uppercase tracking-widest transition-all whitespace-nowrap shadow-sm border ${selectedCategory === category.id
                 ? 'bg-primary-600 text-white border-primary-600 shadow-lg shadow-primary-100'
                 : 'bg-white text-slate-500 border-slate-100 hover:border-primary-300'
                 }`}
@@ -295,7 +290,7 @@ const Services = () => {
                 <img src={getImageUrl(service.images[0])} alt={service.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></div>
                 <span className="absolute bottom-3 left-4 text-[8px] sm:text-[10px] font-black uppercase tracking-widest text-white bg-primary-600/90 px-3 py-1 rounded-full backdrop-blur-md">
-                  {service.category}
+                  {getCategoryLabel(service.category)}
                 </span>
               </div>
             ) : (
@@ -307,9 +302,14 @@ const Services = () => {
                 <div className="space-y-0.5 w-full min-w-0">
                   {!service.images?.[0] && (
                     <span className="text-[7px] sm:text-[9px] font-black uppercase tracking-[0.1em] text-primary-500">
-                      {service.category}
+                      {getCategoryLabel(service.category)}
                     </span>
                   )}
+                  <div className="flex items-center gap-1.5 mt-1 mb-1">
+                    <span className="px-1.5 py-0.5 bg-slate-100 text-slate-600 text-[6px] sm:text-[8px] font-black rounded uppercase tracking-widest">
+                      {service.subCategory}
+                    </span>
+                  </div>
                   <h3 className="text-xs sm:text-lg font-black text-slate-900 leading-tight group-hover:text-primary-600 transition-colors truncate min-h-[1rem] sm:min-h-[2.5rem]">
                     {service.name}
                   </h3>

@@ -220,7 +220,7 @@ const CustomerDSS = () => {
                                     {[
                                         { title: "Data Collection", desc: "We analyze pet type, breed, precise age, and historical health records for high-fidelity profiling.", icon: ClipboardCheck },
                                         { title: "Pattern Matching", desc: "Our engine cross-references your profile with popular services among thousands of similar pets.", icon: Zap },
-                                        { title: "Smart Categorization", desc: "Prioritizes grooming, vaccinations, tick protection, and boarding based on current life stages.", icon: ShieldAlert },
+                                        { title: "Smart Categorization", desc: "Prioritizes grooming, health & wellness, boarding, and pet services based on current life stages.", icon: ShieldAlert },
                                         { title: "Predictive Output", desc: "Generates actionable clinical recommendations for a proactive wellness journey.", icon: CheckCircle2 }
                                     ].map((step, i) => (
                                         <div key={i} className="flex gap-6 group">
