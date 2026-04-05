@@ -88,12 +88,18 @@ const GoogleMap = ({ address, storeName, onCoordinatesUpdate, coordinates: propC
   }, [address, propCoordinates]);
 
   const getDirectionsUrl = () => {
+    if (coordinates) {
+      return `https://www.google.com/maps/dir/?api=1&destination=${coordinates.lat},${coordinates.lon || coordinates.lng}`;
+    }
     if (!address) return '#';
     const encodedAddress = encodeURIComponent(address);
     return `https://www.google.com/maps/dir/?api=1&destination=${encodedAddress}`;
   };
 
   const getViewOnMapUrl = () => {
+    if (coordinates) {
+      return `https://www.google.com/maps/search/?api=1&query=${coordinates.lat},${coordinates.lon || coordinates.lng}`;
+    }
     if (!address) return '#';
     const encodedAddress = encodeURIComponent(address);
     return `https://www.google.com/maps/search/?api=1&query=${encodedAddress}`;

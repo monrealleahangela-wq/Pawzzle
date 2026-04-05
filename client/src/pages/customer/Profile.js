@@ -69,7 +69,11 @@ const Profile = () => {
       province: 'cavite', // Automatically set to Cavite
       barangay: '',
       zipCode: '',
-      country: 'PH' // Automatically set to Philippines
+      country: 'PH',
+      coordinates: {
+        lat: 14.3121,
+        lng: 120.9326
+      }
     }
   });
   const [profilePicture, setProfilePicture] = useState(null);
@@ -203,7 +207,11 @@ const Profile = () => {
           province: user.address?.province || 'cavite',
           barangay: user.address?.barangay || '',
           zipCode: user.address?.zipCode || '',
-          country: user.address?.country || 'PH'
+          country: user.address?.country || 'PH',
+          coordinates: user.address?.coordinates || {
+            lat: 14.3121,
+            lng: 120.9326
+          }
         }
       });
 
@@ -350,7 +358,11 @@ const Profile = () => {
           province: user.address?.province || 'cavite',
           barangay: user.address?.barangay || '',
           zipCode: user.address?.zipCode || '',
-          country: user.address?.country || 'PH'
+          country: user.address?.country || 'PH',
+          coordinates: user.address?.coordinates || {
+            lat: 14.3121,
+            lng: 120.9326
+          }
         }
       });
     }
@@ -372,7 +384,11 @@ const Profile = () => {
           province: user.address?.province || 'cavite',
           barangay: user.address?.barangay || '',
           zipCode: user.address?.zipCode || '',
-          country: user.address?.country || 'PH'
+          country: user.address?.country || 'PH',
+          coordinates: user.address?.coordinates || {
+            lat: 14.3121,
+            lng: 120.9326
+          }
         }
       });
     }
@@ -1217,7 +1233,11 @@ const Profile = () => {
                                 street: location.street || location.full,
                                 city: location.city.toLowerCase().replace(/\s+/g, '_').replace('municipality_of_', ''),
                                 barangay: location.barangay.toLowerCase().replace(/\s+/g, '_'),
-                                zipCode: location.zipCode || prev.address.zipCode
+                                zipCode: location.zipCode || prev.address.zipCode,
+                                coordinates: {
+                                  lat: location.lat,
+                                  lng: location.lng
+                                }
                               }
                             }));
                           }}

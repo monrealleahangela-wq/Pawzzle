@@ -36,7 +36,11 @@ const StoreApplication = () => {
         barangay: '',
         state: 'cavite',
         zipCode: '',
-        country: 'PH'
+        country: 'PH',
+        coordinates: {
+          lat: 14.3121,
+          lng: 120.9326
+        }
       }
     },
     paymentInfo: {
@@ -605,7 +609,11 @@ const StoreApplication = () => {
                             street: location.street || location.full,
                             city: location.city.toLowerCase().replace(/\s+/g, '_').replace('municipality_of_', ''),
                             barangay: location.barangay.toLowerCase().replace(/\s+/g, '_'),
-                            zipCode: location.zipCode || prev.contactInfo.address.zipCode
+                            zipCode: location.zipCode || prev.contactInfo.address.zipCode,
+                            coordinates: {
+                              lat: location.lat,
+                              lng: location.lng
+                            }
                           }
                         }
                       }));

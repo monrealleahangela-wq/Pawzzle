@@ -226,9 +226,29 @@ const DeliveryTracking = () => {
             <Marker position={[delivery.riderLocation.lat, delivery.riderLocation.lng]} icon={riderIcon} />
           )}
           
-          {/* Static Locations (Mocked for Demo if not in order) */}
-          <Marker position={[14.6091, 121.0223]} icon={storeIcon} />
-          <Marker position={[14.5826, 120.9787]} icon={homeIcon} />
+          {/* Real Locations from Order (Fallback to Hardcoded for Demo if missing) */}
+          {delivery.order?.store?.contactInfo?.address?.coordinates?.lat && (
+            <Marker 
+              position={[
+                delivery.order.store.contactInfo.address.coordinates.lat, 
+                delivery.order.store.contactInfo.address.coordinates.lng
+              ]} 
+              icon={storeIcon} 
+            />
+          )}
+          
+          {delivery.order?.shippingAddress?.coordinates?.lat ? (
+            <Marker 
+              position={[
+                delivery.order.shippingAddress.coordinates.lat, 
+                delivery.order.shippingAddress.coordinates.lng
+              ]} 
+              icon={homeIcon} 
+            />
+          ) : (
+            // Fallback for older orders without coordinates
+            <Marker position={[14.5826, 120.9787]} icon={homeIcon} />
+          )}
 
           {/* Route History */}
           <Polyline positions={delivery.locationHistory.map(l => [l.lat, l.lng])} color="#f43f5e" weight={2} dashArray="5, 10" />
@@ -254,6 +274,17 @@ const DeliveryTracking = () => {
                   <p className="text-xs font-bold truncate">{delivery.order?.shippingAddress?.street}, {delivery.order?.shippingAddress?.barangay}</p>
                 </div>
                 <div className="flex gap-2">
+                  {role === 'rider' && (
+                    <a 
+                      href={`https://www.google.com/maps/dir/?api=1&destination=${delivery.order?.shippingAddress?.coordinates?.lat || delivery.order?.shippingAddress?.street},${delivery.order?.shippingAddress?.coordinates?.lng || ''}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="p-4 bg-primary-600 text-white rounded-2xl hover:bg-primary-500 transition-all shadow-lg active:scale-95"
+                      title="Navigate to Customer"
+                    >
+                      <Navigation className="h-5 w-5" />
+                    </a>
+                  )}
                   <a href={`tel:${role === 'rider' ? delivery.order?.customer?.phoneNumber : delivery.order?.store?.phoneNumber}`} 
                     className="p-4 bg-slate-900 text-white rounded-2xl hover:bg-rose-500 transition-all shadow-lg active:scale-95">
                     <Phone className="h-5 w-5" />

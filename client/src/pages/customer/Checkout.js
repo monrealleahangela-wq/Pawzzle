@@ -46,7 +46,11 @@ const Checkout = () => {
     province: 'cavite', // Automatically set to Cavite
     barangay: user?.address?.barangay || '',
     zipCode: user?.address?.zipCode || '',
-    country: 'PH' // Automatically set to Philippines
+    country: 'PH',
+    coordinates: user?.address?.coordinates || {
+      lat: 14.3121,
+      lng: 120.9326
+    }
   });
 
   const [phoneNumber, setPhoneNumber] = useState(user?.phone || '');
@@ -215,7 +219,11 @@ const Checkout = () => {
       province: 'cavite', // Always Cavite
       barangay: user?.address?.barangay || '',
       zipCode: user?.address?.zipCode || '',
-      country: 'PH' // Always Philippines
+      country: 'PH',
+      coordinates: user?.address?.coordinates || {
+        lat: 14.3121,
+        lng: 120.9326
+      }
     };
     setShippingAddress(profileAddress);
     setPhoneNumber(user?.phone || '');
@@ -730,7 +738,11 @@ const Checkout = () => {
                             street: location.street || location.full,
                             city: location.city.toLowerCase().replace(/\s+/g, '_').replace('municipality_of_', ''),
                             barangay: location.barangay.toLowerCase().replace(/\s+/g, '_'),
-                            zipCode: location.zipCode || prev.zipCode
+                            zipCode: location.zipCode || prev.zipCode,
+                            coordinates: {
+                              lat: location.lat,
+                              lng: location.lng
+                            }
                           }));
                         }}
                         initialAddress={shippingAddress.street}

@@ -593,6 +593,7 @@ const StoreDetail = () => {
                     <GoogleMap 
                       address={`${store.contactInfo?.address?.street}, ${store.contactInfo?.address?.city}, ${store.contactInfo?.address?.state}`}
                       storeName={store.name}
+                      coordinates={store.contactInfo?.address?.coordinates}
                       className="w-full"
                     />
                   </div>

@@ -70,7 +70,11 @@ const userSchema = new mongoose.Schema({
     barangay: { type: String, required: false },
     state: String,
     zipCode: String,
-    country: String
+    country: String,
+    coordinates: {
+      lat: { type: Number },
+      lng: { type: Number }
+    }
   },
   isActive: {
     type: Boolean,

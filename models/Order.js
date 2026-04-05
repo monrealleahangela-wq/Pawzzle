@@ -91,7 +91,11 @@ const orderSchema = new mongoose.Schema({
     province: { type: String },
     barangay: { type: String },
     zipCode: { type: String },
-    country: { type: String }
+    country: { type: String },
+    coordinates: {
+      lat: { type: Number },
+      lng: { type: Number }
+    }
   },
   phoneNumber: {
     type: String,

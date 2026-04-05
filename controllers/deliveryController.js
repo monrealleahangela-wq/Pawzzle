@@ -58,7 +58,7 @@ const getDeliveryByToken = async (req, res) => {
         path: 'order',
         populate: [
           { path: 'customer', select: 'firstName lastName phoneNumber' },
-          { path: 'store', select: 'name address phoneNumber' }
+          { path: 'store', select: 'name contactInfo' }
         ]
       });
 
@@ -71,7 +71,7 @@ const getDeliveryByToken = async (req, res) => {
           path: 'order',
           populate: [
             { path: 'customer', select: 'firstName lastName phoneNumber' },
-            { path: 'store', select: 'name address phoneNumber' }
+            { path: 'store', select: 'name contactInfo' }
           ]
         });
       role = 'customer';
