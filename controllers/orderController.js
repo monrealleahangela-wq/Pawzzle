@@ -83,6 +83,7 @@ const getAllOrders = async (req, res) => {
     const orders = await Order.find(filter)
       .populate('customer', 'username firstName lastName email')
       .populate('store', 'name')
+      .populate('delivery', 'status trackingToken isLive riderLocation')
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(parseInt(limit));
@@ -110,7 +111,8 @@ const getOrderById = async (req, res) => {
   try {
     const order = await Order.findById(req.params.id)
       .populate('customer', 'username firstName lastName email phone address')
-      .populate('store');
+      .populate('store')
+      .populate('delivery');
 
     if (!order) {
       return res.status(404).json({ message: 'Order not found' });

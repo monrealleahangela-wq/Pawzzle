@@ -374,4 +374,13 @@ export const petProfileService = {
   deletePet: (id) => api.delete(`/pet-profiles/${id}`)
 };
 
+// Delivery services
+export const deliveryService = {
+  generateLinks: (orderId) => api.post('/deliveries/generate', { orderId }),
+  getTracking: (token) => api.get(`/deliveries/track/${token}`),
+  updateStatus: (token, status) => api.patch(`/deliveries/status/${token}`, { status }),
+  updateLocation: (token, locationData) => api.patch(`/deliveries/location/${token}`, locationData),
+  sendMessage: (token, messageData) => api.post(`/deliveries/chat/${token}`, messageData)
+};
+
 export default api;

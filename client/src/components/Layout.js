@@ -51,61 +51,6 @@ const Layout = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
 
-  // Paw Print Cursor Trail Intelligence
-  useEffect(() => {
-    const coords = { x: 0, y: 0 };
-    const circles = [];
-    const colors = ["#5d4037", "#8d6e63", "#ffb74d"];
-    
-    // Create trail elements
-    for(let i=0; i<12; i++) {
-      const circle = document.createElement("div");
-      circle.className = "cursor-trail";
-      circle.style.backgroundColor = colors[i % colors.length];
-      // Size fades out
-      circle.style.width = `${12 - i}px`;
-      circle.style.height = `${12 - i}px`;
-      // Small random paw-like offset
-      circle.style.borderRadius = "50%"; 
-      document.body.appendChild(circle);
-      circles.push({ el: circle, x: 0, y: 0 });
-    }
-
-    const handleMouseMove = (e) => {
-      coords.x = e.clientX;
-      coords.y = e.clientY;
-    };
-
-    window.addEventListener("mousemove", handleMouseMove);
-
-    const animateCircles = () => {
-      let x = coords.x;
-      let y = coords.y;
-      
-      circles.forEach((circle, index) => {
-        circle.el.style.left = x - 6 + "px";
-        circle.el.style.top = y - 6 + "px";
-        circle.el.style.transform = `scale(${(circles.length - index) / circles.length})`;
-        
-        circle.x = x;
-        circle.y = y;
-
-        const nextCircle = circles[index + 1] || circles[0];
-        x += (nextCircle.x - x) * 0.3;
-        y += (nextCircle.y - y) * 0.3;
-      });
-      
-      requestAnimationFrame(animateCircles);
-    };
-
-    animateCircles();
-
-    return () => {
-      window.removeEventListener("mousemove", handleMouseMove);
-      circles.forEach(c => c.el.remove());
-    };
-  }, []);
-
   // Handle body scroll locking when mobile menu is open
   useEffect(() => {
     if (isMobileMenuOpen) {
@@ -120,15 +65,6 @@ const Layout = () => {
       document.body.style.height = '';
     };
   }, [isMobileMenuOpen]);
-
-  // Debug logging
-  console.log('🔍 Layout Debug:', {
-    user: user ? `${user.firstName} (${user.role})` : 'No user',
-    isAuthenticated,
-    userRole: user?.role,
-    navItems: user?.role === 'customer' ? 'customerNavItems' :
-      user?.role === 'super_admin' ? 'superAdminNavItems' : 'adminNavItems'
-  });
 
   const handleLogout = () => {
     setShowLogoutModal(true);
@@ -145,12 +81,12 @@ const Layout = () => {
 
   const customerNavItems = [
     { path: '/home', label: 'Home', icon: House },
-    { path: '/pets', label: 'Explore Pets', icon: Heart },
+    { path: '/pets', label: 'Pets', icon: Heart },
     { path: '/products', label: 'Products', icon: Package },
     { path: '/services', label: 'Services', icon: Calendar },
-    { path: '/orders', label: 'Transactions', icon: ShoppingBag },
+    { path: '/orders', label: 'Orders', icon: ShoppingBag },
     { path: '/vouchers', label: 'Vouchers', icon: Ticket },
-    { path: '/insights', label: 'AI Care Advisor', icon: Brain },
+    { path: '/insights', label: 'AI Advisor', icon: Brain },
   ];
 
   const adminNavItems = [
@@ -164,89 +100,29 @@ const Layout = () => {
     { type: 'label', label: 'Operations' },
     { path: '/admin/orders', label: 'Orders', icon: ShoppingCart },
     { path: '/admin/bookings', label: 'Bookings', icon: Calendar },
-    { path: '/admin/customers', label: 'Customer Database', icon: Users },
-    { path: '/admin/chat', label: 'Chat', icon: MessageSquare },
-    { path: '/admin/reviews', label: 'Store Reviews', icon: Star },
-    { type: 'label', label: 'Finance & Store' },
-    { path: '/admin/vouchers', label: 'Vouchers', icon: Ticket },
-    { path: '/admin/payouts', label: 'My Earnings', icon: Wallet },
-    { path: '/admin/store', label: 'Store Management', icon: Building },
-    { path: '/admin/settings', label: 'Store Settings', icon: Settings },
-    { path: '/admin/staff', label: 'Staff Management', icon: Users },
-  ];
-
-  // Order Processing Staff nav
-  const orderStaffNavItems = [
-    { type: 'label', label: 'Sales & Bookings' },
-    { path: '/admin/dashboard', label: 'Dashboard', icon: Activity },
-    { path: '/admin/orders', label: 'Orders', icon: ShoppingCart },
-    { path: '/admin/bookings', label: 'Bookings', icon: Calendar },
-    { path: '/admin/customers', label: 'Customer Database', icon: Users },
-    { path: '/admin/insights', label: 'Intelligence', icon: Brain },
-  ];
-
-  // Inventory Staff nav
-  const inventoryStaffNavItems = [
-    { type: 'label', label: 'Inventory' },
-    { path: '/admin/dashboard', label: 'Dashboard', icon: Activity },
-    { path: '/admin/pets', label: 'Pets', icon: Heart },
-    { path: '/admin/products', label: 'Products', icon: Package },
-    { path: '/admin/insights', label: 'Intelligence', icon: Brain },
-  ];
-
-  // Service Staff nav
-  const serviceStaffNavItems = [
-    { type: 'label', label: 'Services' },
-    { path: '/admin/dashboard', label: 'Dashboard', icon: Activity },
-    { path: '/admin/services', label: 'Services', icon: Calendar },
-    { path: '/admin/bookings', label: 'Bookings', icon: Calendar },
-    { path: '/admin/insights', label: 'Intelligence', icon: Brain },
-  ];
-
-  // Delivery Staff nav
-  const deliveryStaffNavItems = [
-    { type: 'label', label: 'Logistics' },
-    { path: '/admin/dashboard', label: 'Dashboard', icon: Activity },
-    { path: '/admin/orders', label: 'Orders', icon: ShoppingCart },
     { path: '/admin/customers', label: 'Customers', icon: Users },
-    { path: '/admin/insights', label: 'Intelligence', icon: Brain },
-  ];
-
-  // General Staff nav (for managers or staff with no specific role)
-  const generalStaffNavItems = [
-    { type: 'label', label: 'Store Overview' },
-    { path: '/admin/dashboard', label: 'Dashboard', icon: Activity },
-    { type: 'label', label: 'Management' },
-    { path: '/admin/pets', label: 'Pets', icon: Heart },
-    { path: '/admin/products', label: 'Products', icon: Package },
-    { path: '/admin/services', label: 'Services', icon: Calendar },
-    { type: 'label', label: 'Operations' },
-    { path: '/admin/orders', label: 'Orders', icon: ShoppingCart },
-    { path: '/admin/bookings', label: 'Bookings', icon: Calendar },
-    { path: '/admin/customers', label: 'Customer Database', icon: Users },
     { path: '/admin/chat', label: 'Chat', icon: MessageSquare },
-    { path: '/admin/reviews', label: 'Store Reviews', icon: Star },
-    { path: '/admin/insights', label: 'Intelligence', icon: Brain },
+    { path: '/admin/reviews', label: 'Reviews', icon: Star },
+    { type: 'label', label: 'Settings' },
+    { path: '/admin/vouchers', label: 'Vouchers', icon: Ticket },
+    { path: '/admin/payouts', label: 'Payouts', icon: Wallet },
+    { path: '/admin/store', label: 'Store', icon: Building },
+    { path: '/admin/settings', label: 'Settings', icon: Settings },
+    { path: '/admin/staff', label: 'Staff', icon: Users },
   ];
 
   const superAdminNavItems = [
-    { type: 'label', label: 'System Overview' },
+    { type: 'label', label: 'Admin' },
     { path: '/superadmin/dashboard', label: 'Dashboard', icon: Activity },
-    { path: '/superadmin/insights', label: 'Platform DSS', icon: Brain },
+    { path: '/superadmin/insights', label: 'DSS', icon: Brain },
     { path: '/superadmin/system-analytics', label: 'Analytics', icon: TrendingUp },
-    { type: 'label', label: 'Management' },
-    { path: '/superadmin/permissions', label: 'Role Permissions', icon: ShieldAlert },
+    { type: 'label', label: 'Accounts' },
     { path: '/superadmin/account-management', label: 'Accounts', icon: Users },
-    { path: '/superadmin/store-applications', label: 'Store Applications', icon: FileText },
-    { type: 'label', label: 'Operations' },
+    { path: '/superadmin/store-applications', label: 'Applications', icon: FileText },
+    { type: 'label', label: 'System' },
     { path: '/superadmin/transaction-history', label: 'Transactions', icon: DollarSign },
     { path: '/superadmin/booking-history', label: 'Bookings', icon: Calendar },
-    { path: '/superadmin/payouts', label: 'Payout Requests', icon: Wallet },
-    { type: 'label', label: 'Content & Safety' },
-    { path: '/superadmin/reports', label: 'Safety Reports', icon: ShieldAlert },
-    { path: '/superadmin/support', label: 'Support Requests', icon: MessageSquare },
-    { path: '/superadmin/feedback', label: 'Platform Feedback', icon: MessageSquare },
-    { path: '/superadmin/activity-history', label: 'Activity Audit', icon: Zap },
+    { path: '/superadmin/payouts', label: 'Payouts', icon: Wallet },
     { path: '/superadmin/archive', label: 'Archive', icon: Archive },
   ];
 
@@ -260,49 +136,25 @@ const Layout = () => {
 
   const navItems = user?.role === 'customer' ? customerNavItems :
     user?.role === 'super_admin' ? superAdminNavItems :
-      user?.role === 'staff' ?
-        (user?.staffType === 'order_staff' ? orderStaffNavItems :
-          user?.staffType === 'inventory_staff' ? inventoryStaffNavItems :
-            user?.staffType === 'service_staff' ? serviceStaffNavItems :
-              user?.staffType === 'delivery_staff' ? deliveryStaffNavItems : generalStaffNavItems) :
+      user?.role === 'staff' ? adminNavItems : // Simplified staff nav for now
         !user ? publicNavItems : adminNavItems;
-
-  // Debug: Log navigation items
-  console.log('🔍 Navigation Debug:', {
-    userRole: user?.role,
-    navItemsCount: navItems.length,
-    navItems: navItems.map(item => item.label),
-    customerNavItems: customerNavItems.map(item => item.label)
-  });
 
   const [scrollProgress, setScrollProgress] = useState(0);
   const [isScrolled, setIsScrolled] = useState(false);
 
   useEffect(() => {
-    let scrollHeight = document.documentElement.scrollHeight - window.innerHeight;
-    
-    const handleResize = () => {
-      scrollHeight = document.documentElement.scrollHeight - window.innerHeight;
-    };
-
     const handleScroll = () => {
+      const scrollHeight = document.documentElement.scrollHeight - window.innerHeight;
       const currentScroll = window.pageYOffset;
       if (scrollHeight > 0) {
         setScrollProgress((currentScroll / scrollHeight) * 100);
       }
       setIsScrolled(currentScroll > 40);
     };
-
     window.addEventListener('scroll', handleScroll, { passive: true });
-    window.addEventListener('resize', handleResize);
-    
-    return () => {
-      window.removeEventListener('scroll', handleScroll);
-      window.removeEventListener('resize', handleResize);
-    };
+    return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Bottom Nav Items for Mobile App Feel
   const getBottomNavItems = () => {
     if (user?.role === 'customer') {
       return [
@@ -310,41 +162,6 @@ const Layout = () => {
         { path: '/pets', label: 'Pets', icon: Heart },
         { path: '/products', label: 'Shop', icon: ShoppingBag },
         { path: '/services', label: 'Services', icon: Calendar },
-        { path: '/profile', label: 'Me', icon: User },
-      ];
-    }
-    if (user?.role === 'super_admin') {
-      return [
-        { path: '/superadmin/dashboard', label: 'Home', icon: House },
-        { path: '/superadmin/store-applications', label: 'Stores', icon: Building },
-        { path: '/superadmin/insights', label: 'Stats', icon: Activity },
-        { path: '/superadmin/reports', label: 'Safety', icon: ShieldAlert },
-        { path: '/profile', label: 'Admin', icon: User },
-      ];
-    }
-    if (user?.role === 'admin') {
-      return [
-        { path: '/admin/dashboard', label: 'Home', icon: House },
-        { path: '/admin/orders', label: 'Orders', icon: ShoppingCart },
-        { path: '/admin/bookings', label: 'Bookings', icon: Calendar },
-        { path: '/admin/chat', label: 'Chat', icon: MessageSquare },
-        { path: '/profile', label: 'Me', icon: User },
-      ];
-    }
-    if (user?.role === 'staff' && user?.staffType === 'delivery_staff') {
-      return [
-        { path: '/admin/dashboard', label: 'Home', icon: House },
-        { path: '/admin/orders', label: 'Deliveries', icon: ShoppingCart },
-        { path: '/admin/customers', label: 'Customers', icon: Users },
-        { path: '/profile', label: 'Me', icon: User },
-      ];
-    }
-    if (user?.role === 'staff') {
-      return [
-        { path: '/admin/dashboard', label: 'Home', icon: House },
-        { path: '/admin/orders', label: 'Orders', icon: ShoppingCart },
-        { path: '/admin/bookings', label: 'Bookings', icon: Calendar },
-        { path: '/admin/chat', label: 'Chat', icon: MessageSquare },
         { path: '/profile', label: 'Me', icon: User },
       ];
     }
@@ -361,316 +178,119 @@ const Layout = () => {
   const isLandingPage = location.pathname === '/' && !isAuthenticated;
 
   return (
-    <div className={`min-h-screen bg-primary-50 transition-colors duration-500 flex flex-col lg:flex-row overflow-x-hidden ${isLandingPage ? '!bg-transparent' : ''}`}>
+    <div className={`min-h-screen bg-slate-50 flex flex-col lg:flex-row overflow-x-hidden ${isLandingPage ? '!bg-transparent' : ''}`}>
       {/* Scroll Progress */}
       {!isLandingPage && (
-        <div className="scroll-progress" style={{ width: `${scrollProgress}%` }} />
+        <div className="fixed top-0 left-0 h-1 bg-primary-600 z-[100] transition-all" style={{ width: `${scrollProgress}%` }} />
       )}
 
-      {/* Sidebar - Desktop Only with Premium Deep Brown Palette */}
+      {/* Sidebar - Desktop */}
       {!isLandingPage && (
-        <aside className={`hidden lg:flex fixed left-0 top-0 h-full w-20 hover:w-64 bg-[#2D1B14] z-[70] flex-col transition-all duration-300 group shadow-2xl overflow-hidden border-r border-white/5`}>
-          {/* Sidebar Logo Area */}
-          <Link
-            to={!user ? '/' : user?.role === 'customer' ? '/home' : user?.role === 'super_admin' ? '/superadmin/dashboard' : '/admin/dashboard'}
-            className="p-6 flex items-center gap-4 transition-all"
-          >
-            <div className="w-8 h-8 flex-shrink-0 relative">
-              <img
-                src="/images/logo.png"
-                alt="Logo"
-                className="w-full h-full object-contain transition-transform duration-500 group-hover:scale-110 drop-shadow-xl"
-                onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}
-              />
-            </div>
-            <span className="text-xl font-black text-white tracking-tighter transition-all duration-300 whitespace-nowrap opacity-0 group-hover:opacity-100">
-              PAWZZLE
-            </span>
+        <aside className={`hidden lg:flex fixed left-0 top-0 h-full w-20 hover:w-64 bg-white z-[70] flex-col transition-all duration-200 group shadow-sm border-r border-slate-200`}>
+          <Link to="/" className="p-6 flex items-center gap-3">
+            <img src="/images/logo.png" alt="Logo" className="w-8 h-8 object-contain" />
+            <span className="text-xl font-bold text-primary-600 opacity-0 group-hover:opacity-100 transition-opacity">PAWZZLE</span>
           </Link>
 
-          {/* Sidebar Navigation */}
-          <nav className="flex-1 px-4 py-4 space-y-2 overflow-y-auto no-scrollbar scroll-smooth">
+          <nav className="flex-1 px-4 py-4 space-y-1 overflow-y-auto no-scrollbar">
             {navItems.map((item, idx) => {
               if (item.type === 'label') {
                 return (
-                  <div key={`label-${idx}`} className="pt-6 pb-2 pl-3 transition-opacity duration-300">
-                    <span className={`text-[9px] font-black text-amber-100/30 uppercase tracking-[0.3em] whitespace-nowrap transition-all opacity-0 group-hover:opacity-100 hidden group-hover:block`}>{item.label}</span>
-                    <div className={`h-px w-6 bg-white/10 mt-1 block group-hover:hidden ml-1`} />
+                  <div key={idx} className="pt-4 pb-2 pl-3">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity">{item.label}</span>
                   </div>
                 );
               }
-
               const Icon = item.icon;
               const active = isActivePath(item.path);
               return (
                 <Link
                   key={item.path}
                   to={item.path}
-                  className={`flex items-center gap-4 p-3 rounded-2xl transition-all duration-300 relative ${active
-                    ? 'bg-amber-600/10 text-amber-500 shadow-xl shadow-black/20'
-                    : 'text-amber-50/40 hover:bg-white/5 hover:text-white'
-                    }`}
+                  className={`flex items-center gap-4 p-3 rounded-xl transition-colors ${active ? 'bg-primary-50 text-primary-600 font-bold' : 'text-slate-500 hover:bg-slate-50'}`}
                 >
-                  <div className="w-6 h-6 flex items-center justify-center flex-shrink-0">
-                    <Icon className="h-5 w-5" />
-                  </div>
-                  <span className={`text-[11px] font-black uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-all duration-300 whitespace-nowrap`}>
-                    {item.label}
-                  </span>
+                  <Icon className="h-5 w-5 shrink-0" />
+                  <span className="text-sm opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">{item.label}</span>
                 </Link>
               );
             })}
           </nav>
 
-          {/* Sidebar Footer */}
-          <div className="p-4 border-t border-white/5 h-16" />
+          <div className="p-4 border-t border-slate-100">
+             <button onClick={handleLogout} className="flex items-center gap-4 p-3 w-full text-slate-500 hover:text-rose-600 transition-colors">
+               <LogOut className="h-5 w-5 shrink-0" />
+               <span className="text-sm opacity-0 group-hover:opacity-100 transition-opacity">Logout</span>
+             </button>
+          </div>
         </aside>
       )}
 
-      {/* Main Content Area - Stable Header with Centered HUD Pill */}
-      <div className={`flex-1 transition-all duration-500 w-full min-w-0 bg-[#F8F7F4] ${isLandingPage ? '!bg-transparent !pl-0 !pt-0' : 'lg:pl-20 pt-24'}`}>
-        {/* Header - Fixed to ensure it persists on scroll */}
+      {/* Main Content Area */}
+      <div className={`flex-1 flex flex-col min-w-0 ${isLandingPage ? '' : 'lg:pl-20 pt-16'}`}>
         {!isLandingPage && (
-          <header className={`fixed top-0 left-0 lg:left-20 right-0 z-30 transition-all duration-300 pointer-events-none ${isScrolled ? 'pt-2' : 'pt-4'}`}>
-          <div className="container-custom pointer-events-auto">
-            <div className="flex justify-between items-center bg-white/95 backdrop-blur-md rounded-3xl p-3 shadow-2xl shadow-slate-200/50 border border-slate-50 gap-4">
-              {/* Mobile Only: Logo */}
-              <Link
-                to={!user ? '/' : user?.role === 'customer' ? '/home' : user?.role === 'super_admin' ? '/superadmin/dashboard' : '/admin/dashboard'}
-                className="flex lg:hidden items-center space-x-2 group shrink-0"
-              >
-                <div className="relative">
-                  <img src="/images/logo.png" className="h-8 w-auto object-contain transition-all duration-500 group-hover:scale-110 drop-shadow-xl" />
-                </div>
-                <span className={`text-lg font-black tracking-tighter text-primary-600 logo-text sm:inline`}>
-                  PAWZZLE
-                </span>
-              </Link>
+          <header className={`fixed top-0 left-0 lg:left-20 right-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-200 h-16 flex items-center px-4 justify-between shadow-sm`}>
+             <Link to="/" className="lg:hidden flex items-center gap-2">
+               <img src="/images/logo.png" alt="Logo" className="h-8 w-8 object-contain" />
+               <span className="font-bold text-primary-600">PAWZZLE</span>
+             </Link>
 
-              {/* UTILITY MODULE: Right Aligned Actions */}
-              <div className="flex items-center gap-2 group-actions pr-1 ml-auto">
-                {/* Global Theme Toggle */}
-                <button
-                  onClick={toggleTheme}
-                  className="p-3 bg-white border border-slate-100 rounded-xl text-slate-400 hover:text-amber-500 hover:bg-amber-50 transition-all shadow-sm flex items-center justify-center shrink-0"
-                  title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
-                >
-                  {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+             <div className="flex items-center gap-3 ml-auto">
+                <button onClick={toggleTheme} className="p-2 text-slate-500 hover:bg-slate-100 rounded-lg">
+                   {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
                 </button>
-
-                {user ? (
-                  <>
-                    <NotificationBell />
-                    
-                    {user?.role === 'customer' && (
-                      <Link
-                        to="/cart"
-                        className="p-3 bg-white border border-slate-100 rounded-xl text-slate-400 hover:text-primary-600 hover:bg-primary-50 hover:border-primary-100 transition-all shadow-sm relative shrink-0"
-                        title="View Cart"
-                      >
-                        <ShoppingCart className="h-4 w-4" />
-                        {getTotalItems() > 0 && (
-                          <span className="absolute -top-1 -right-1 bg-primary-600 text-white text-[8px] font-black w-4 h-4 rounded-full flex items-center justify-center border-2 border-white shadow-sm font-sans">
-                            {getTotalItems()}
-                          </span>
-                        )}
-                      </Link>
-                    )}
-                    <Link
-                      to="/profile"
-                      className="p-1 px-1.5 bg-[#2D1B14] text-white rounded-xl shadow-xl hover:bg-amber-600 transition-all flex items-center justify-center shrink-0"
-                      title="View Profile"
-                    >
-                      <div className="w-8 h-8 rounded-lg overflow-hidden flex items-center justify-center text-[11px] font-black tracking-tighter">
-                        {user?.avatar || user?.profilePicture ? (
-                          <img src={user?.avatar || user?.profilePicture} alt="" className="w-full h-full object-cover" />
-                        ) : (
-                          user?.firstName?.[0]?.toUpperCase() || 'P'
-                        )}
-                      </div>
-                    </Link>
-    
-                    <button
-                      onClick={handleLogout}
-                      className="hidden lg:flex p-3 bg-white border border-slate-100 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 hover:border-rose-100 transition-all shadow-sm flex items-center justify-center shrink-0"
-                    >
-                      <LogOut className="h-4 w-4" />
-                    </button>
-                  </>
-                ) : (
-                  <div className="flex items-center gap-4 px-2">
-                    <Link 
-                      to="/login" 
-                      className="text-[10px] font-black uppercase tracking-widest text-slate-600 hover:text-primary-600 transition-colors"
-                    >
-                      Sign In
-                    </Link>
-                    <Link 
-                      to="/register" 
-                      className="px-6 py-2.5 bg-primary-600 text-white rounded-xl text-[10px] font-black uppercase tracking-[0.2em] shadow-lg shadow-primary-100 hover:bg-primary-700 transition-all active:scale-95"
-                    >
-                      Join
-                    </Link>
-                  </div>
+                {user && (
+                   <>
+                     <NotificationBell />
+                     <Link to="/profile" className="flex items-center gap-2 border border-slate-200 p-1 rounded-full pr-3 bg-white hover:bg-slate-50">
+                        <div className="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center text-primary-700 font-bold overflow-hidden text-xs">
+                          {user.firstName[0]}
+                        </div>
+                        <span className="text-sm font-medium text-slate-700 hidden sm:block">{user.firstName}</span>
+                     </Link>
+                   </>
                 )}
-
-                {/* Mobile Menu Icon */}
-                <button
-                  onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                  className="lg:hidden p-3 bg-slate-50 rounded-xl text-slate-900 border border-slate-100"
-                >
-                  <Menu className="h-5 w-5" />
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Mobile Navigation Drawer (Overlay) */}
-          {isMobileMenuOpen && (
-            <div className="lg:hidden fixed inset-0 z-[100] animate-fade-in pointer-events-auto">
-              <div 
-                className="absolute inset-0 bg-primary-900/40 backdrop-blur-sm" 
-                onClick={() => setIsMobileMenuOpen(false)}
-              />
-              <div className="absolute top-0 right-0 h-full w-4/5 max-w-xs bg-white shadow-2xl p-6 flex flex-col overflow-y-auto">
-                <div className="flex items-center justify-between mb-8">
-                    <div className="flex items-center gap-3">
-                      {user ? (
-                        <>
-                          <div className="w-10 h-10 bg-primary-600 rounded-xl flex items-center justify-center text-white font-black overflow-hidden">
-                            {user?.avatar || user?.profilePicture ? (
-                              <img src={user?.avatar || user?.profilePicture} alt="" className="w-full h-full object-cover" />
-                            ) : (
-                              user?.firstName?.[0]?.toUpperCase() || 'P'
-                            )}
-                          </div>
-                          <div>
-                            <p className="text-sm font-black text-slate-900 uppercase tracking-tight">{user?.firstName}</p>
-                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none">{user?.role?.replace('_', ' ')}</p>
-                          </div>
-                        </>
-                      ) : (
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center text-slate-400">
-                            <User className="h-5 w-5" />
-                          </div>
-                          <div>
-                            <p className="text-xs font-black text-slate-900 uppercase tracking-tight leading-none mb-1">Welcome <span className="text-primary-600 italic">Guest</span></p>
-                            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest leading-none">Accessing Public Tabs</p>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                   <button onClick={() => setIsMobileMenuOpen(false)} className="p-2 bg-slate-50 rounded-xl text-slate-400">
-                     <X className="h-5 w-5" />
-                   </button>
-                </div>
-
-                <div className="flex-1 space-y-6">
-                  {navItems.reduce((acc, item, idx) => {
-                    if (item.type === 'label') {
-                      acc.push(
-                        <div key={`mlabel-${idx}`} className="pt-2 border-t border-slate-50 mt-4 first:pt-0 first:border-0 first:mt-0">
-                          <span className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em]">{item.label}</span>
-                        </div>
-                      );
-                    } else {
-                      const Icon = item.icon;
-                      const active = isActivePath(item.path);
-                      acc.push(
-                        <Link
-                          key={item.path}
-                          to={item.path}
-                          onClick={() => setIsMobileMenuOpen(false)}
-                          className={`flex items-center gap-4 p-3.5 rounded-2xl transition-all ${active
-                            ? 'bg-primary-50 text-primary-600 font-black shadow-sm border border-primary-100'
-                            : 'text-slate-500 font-bold hover:bg-slate-50'
-                            }`}
-                        >
-                          <Icon className={`h-5 w-5 ${active ? 'text-primary-600' : 'text-slate-400'}`} />
-                          <span className="text-xs uppercase tracking-wider">{item.label}</span>
-                          <ChevronRight className="ml-auto h-4 w-4 opacity-30" />
-                        </Link>
-                      );
-                    }
-                    return acc;
-                  }, [])}
-                </div>
-
-              </div>
-            </div>
-          )}
-        </header>
+                {!user && (
+                   <Link to="/login" className="px-4 py-2 bg-primary-600 text-white rounded-lg text-sm font-bold shadow-sm">Sign In</Link>
+                )}
+             </div>
+          </header>
         )}
 
-        {/* Logout Confirmation Modal */}
-        {showLogoutModal && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[70]">
-            <div className="bg-white rounded-xl p-6 max-w-sm mx-4 shadow-2xl border border-primary-100 animate-scale-in">
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">Confirm Logout</h3>
-              <p className="text-sm text-primary-600 mb-6">Are you sure you want to logout? This will terminate your secure session.</p>
-              <div className="flex gap-3 justify-center">
-                <button
-                  onClick={() => {
-                    setShowLogoutModal(false);
-                    logout();
-                  }}
-                  className="px-5 py-2 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700 transition-colors shadow-lg shadow-primary-200"
-                >
-                  Yes, Logout
-                </button>
-                <button
-                  onClick={() => setShowLogoutModal(false)}
-                  className="px-5 py-2 bg-primary-100 text-primary-700 text-sm font-medium rounded-lg hover:bg-primary-200 transition-colors"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Main content Area Scrollable */}
-        <main className="container-custom py-6 pb-36 lg:pb-6">
-          <div className="w-full">
-            <Outlet />
-          </div>
+        <main className={`flex-1 p-4 lg:p-6 pb-24 lg:pb-6 ${isLandingPage ? 'p-0' : ''}`}>
+           <Outlet />
         </main>
+
+        {/* Mobile Bottom Nav */}
+        {!isLandingPage && (
+          <nav className="lg:hidden fixed bottom-4 left-1/2 -translate-x-1/2 w-[95%] max-w-sm bg-white border border-slate-200 rounded-2xl shadow-lg flex justify-around p-2 z-[60]">
+             {bottomNavItems.map(item => {
+                const Icon = item.icon;
+                const active = isActivePath(item.path);
+                return (
+                   <Link key={item.path} to={item.path} className={`flex flex-col items-center p-2 rounded-xl transition-colors ${active ? 'text-primary-600 bg-primary-50' : 'text-slate-400'}`}>
+                      <Icon size={20} />
+                      <span className="text-[10px] font-bold mt-1">{item.label}</span>
+                   </Link>
+                );
+             })}
+          </nav>
+        )}
       </div>
 
-      {/* Floating Bottom Navigation for Mobile */}
-      <nav id="mobile-bottom-nav" className="lg:hidden fixed bottom-6 left-1/2 -translate-x-1/2 w-[92%] max-w-lg bg-white/90 backdrop-blur-2xl border border-white/20 px-2 py-3 rounded-[2.5rem] z-[50] flex justify-around items-center shadow-[0_15px_50px_rgba(0,0,0,0.15)] ring-1 ring-black/5 transition-all duration-300">
-        {bottomNavItems.map((item) => {
-          const Icon = item.icon;
-          const active = isActivePath(item.path);
-          return (
-            <Link
-              key={item.path}
-              to={item.path}
-              className={`flex flex-col items-center gap-1.5 px-3 py-1 rounded-2xl transition-all ${active ? 'text-primary-600 scale-110' : 'text-slate-400'}`}
-            >
-              <div className={`relative p-2 rounded-[1.2rem] transition-all ${active ? 'bg-primary-50 shadow-sm' : ''}`}>
-                <Icon className={`h-5 w-5 ${active ? 'stroke-[2.5px]' : 'stroke-2'}`} />
-                {item.label === 'Cart' && getTotalItems() > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-secondary-500 text-white text-[8px] rounded-full h-4 w-4 flex items-center justify-center font-bold shadow-lg">
-                    {getTotalItems()}
-                  </span>
-                )}
+      {showLogoutModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[200] flex items-center justify-center p-4">
+           <div className="bg-white rounded-xl p-6 w-full max-w-sm shadow-xl">
+              <h2 className="text-lg font-bold mb-2">Logout</h2>
+              <p className="text-slate-500 mb-6">Are you sure you want to sign out?</p>
+              <div className="flex gap-3">
+                 <button onClick={confirmLogout} className="flex-1 py-2 bg-rose-600 text-white rounded-lg font-bold">Yes, Sign Out</button>
+                 <button onClick={() => setShowLogoutModal(false)} className="flex-1 py-2 bg-slate-100 text-slate-700 rounded-lg font-bold">Cancel</button>
               </div>
-              <span className={`text-[9px] font-black uppercase tracking-tighter transition-all ${active ? 'opacity-100' : 'opacity-60'}`}>
-                {item.label}
-              </span>
-            </Link>
-          );
-        })}
-      </nav>
-
-      {/* Floating Chat Manager for Customers */}
-      {user?.role === 'customer' && (
-        <FloatingChatManager currentUser={user} />
+           </div>
+        </div>
       )}
 
-      {/* Mandatory Password Change enforcement */}
+      {user?.role === 'customer' && <FloatingChatManager currentUser={user} />}
       <PasswordChangeModal />
     </div>
   );

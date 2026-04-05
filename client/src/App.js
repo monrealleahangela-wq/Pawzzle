@@ -11,7 +11,7 @@ import { NotificationProvider } from './contexts/NotificationContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Layout from './components/Layout';
 import RoleBasedRedirect from './components/RoleBasedRedirect';
-import CustomCursor from './components/CustomCursor';
+import DeliveryTracking from './pages/DeliveryTracking';
 
 // Auth Pages
 import Login from './pages/auth/Login';
@@ -112,13 +112,14 @@ function App() {
         <CartProvider>
           <Router {...routerConfig}>
             <div className="App">
-              <CustomCursor />
               <Routes>
                 {/* Public Routes */}
                 <Route path="/login" element={<Login />} />
                 <Route path="/register" element={<Register />} />
                 <Route path="/forgot-password" element={<ForgotPassword />} />
                 <Route path="/oauth-callback" element={<OAuthCallback />} />
+                <Route path="/rider-track/:token" element={<DeliveryTracking isRider={true} />} />
+                <Route path="/track/:token" element={<DeliveryTracking isRider={false} />} />
 
                 {/* Protected Routes with Layout */}
                 <Route path="/" element={<Layout />}>
