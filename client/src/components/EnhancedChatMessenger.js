@@ -19,7 +19,7 @@ const EnhancedChatMessenger = ({
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [adoptionRequest, setAdoptionRequest] = useState(null);
+  const [transactionRequest, setTransactionRequest] = useState(null);
   const [conversationId, setConversationId] = useState(null);
   const [onlineStatus, setOnlineStatus] = useState({ isOnline: false, text: 'Connecting...' });
   const [isSeller, setIsSeller] = useState(false);
@@ -41,7 +41,7 @@ const EnhancedChatMessenger = ({
     if ((isOpen || isEmbedded) && existingConversationId) {
       setConversationId(existingConversationId);
       loadMessages(existingConversationId);
-      fetchAdoptionData(existingConversationId);
+      fetchTransactionData(existingConversationId);
     } else if ((isOpen || isEmbedded) && pet && seller) {
       initializeConversation();
     }
@@ -51,7 +51,7 @@ const EnhancedChatMessenger = ({
     if (!conversationId || (!isOpen && !isEmbedded)) return;
     const interval = setInterval(() => {
       loadMessages(conversationId);
-      fetchAdoptionData(conversationId);
+      fetchTransactionData(conversationId);
     }, 4000);
     return () => clearInterval(interval);
   }, [conversationId, isOpen, isEmbedded]);
@@ -65,11 +65,11 @@ const EnhancedChatMessenger = ({
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
   };
 
-  const fetchAdoptionData = async (convId) => {
+  const fetchTransactionData = async (convId) => {
     try {
       const response = await adoptionService.getAdoptionByConversation(convId);
       if (response.data.request) {
-        setAdoptionRequest(response.data.request);
+        setTransactionRequest(response.data.request);
         const currentUserId = currentUser?._id || currentUser?.id;
         const sellerId = seller?._id || seller?.id;
         const adminId = response.data.request.seller?._id || response.data.request.seller;
@@ -79,7 +79,7 @@ const EnhancedChatMessenger = ({
         }
       }
     } catch (error) {
-      console.error('Error fetching adoption data:', error);
+      console.error('Error fetching transaction data:', error);
     }
   };
 
@@ -102,7 +102,7 @@ const EnhancedChatMessenger = ({
         setConversationId(convId);
         setMessages([]);
       }
-      if (convId) fetchAdoptionData(convId);
+      if (convId) fetchTransactionData(convId);
     } catch (error) {
       console.error('Error initializing conversation:', error);
       toast.error('Failed to start chat');
@@ -186,19 +186,19 @@ const EnhancedChatMessenger = ({
     }
   };
 
-  const handleAdoptRequest = async () => {
+  const handlePurchaseRequest = async () => {
     try {
       setIsLoading(true);
       const response = await adoptionService.requestAdoption({
         petId: pet._id,
         conversationId: conversationId,
-        notes: `Interest in adopting ${pet.name}`
+        notes: `Interest in purchasing ${pet.name}`
       });
-      setAdoptionRequest(response.data.request);
+      setTransactionRequest(response.data.request);
       toast.success('Reservation request submitted!');
       loadMessages(conversationId);
     } catch (error) {
-      console.error('Error requesting adoption:', error);
+      console.error('Error requesting purchase:', error);
       toast.error(error.response?.data?.message || 'Failed to submit request');
     } finally {
       setIsLoading(false);
@@ -208,8 +208,8 @@ const EnhancedChatMessenger = ({
   const handleStatusUpdate = async (status) => {
     try {
       setIsLoading(true);
-      const response = await adoptionService.updateAdoptionStatus(adoptionRequest._id, { status });
-      setAdoptionRequest(response.data.request);
+      const response = await adoptionService.updateAdoptionStatus(transactionRequest._id, { status });
+      setTransactionRequest(response.data.request);
       toast.success(`Status updated to ${status.replace(/_/g, ' ')}`);
       loadMessages(conversationId);
     } catch (error) {
@@ -243,9 +243,9 @@ const EnhancedChatMessenger = ({
     if (!window.confirm('Are you sure you want to cancel your reservation request?')) return;
     try {
       setIsLoading(true);
-      await adoptionService.cancelAdoptionRequest(adoptionRequest._id);
+      await adoptionService.cancelAdoptionRequest(transactionRequest._id);
       toast.success('Reservation request cancelled');
-      fetchAdoptionData(conversationId);
+      fetchTransactionData(conversationId);
       loadMessages(conversationId);
     } catch (error) {
       console.error('Error cancelling request:', error);
@@ -255,21 +255,21 @@ const EnhancedChatMessenger = ({
     }
   };
 
-  const renderAdoptionStatus = () => {
-    if (!adoptionRequest) return null;
+  const renderTransactionStatus = () => {
+    if (!transactionRequest) return null;
 
     const statusConfig = {
-      pending: { color: 'bg-primary-50 text-primary-800', icon: <Clock className="h-4 w-4" />, label: 'Reservation Pending' },
+      pending: { color: 'bg-primary-50 text-primary-800', icon: <Clock className="h-4 w-4" />, label: 'Purchase Pending' },
       reserved: { color: 'bg-amber-50 text-amber-800', icon: <Shield className="h-4 w-4" />, label: 'Pet Reserved' },
-      approved: { color: 'bg-secondary-100 text-secondary-800', icon: <CheckCircle className="h-4 w-4" />, label: 'Application Approved' },
-      rejected: { color: 'bg-neutral-100 text-neutral-800', icon: <X className="h-4 w-4" />, label: 'Application Declined' },
+      approved: { color: 'bg-secondary-100 text-secondary-800', icon: <CheckCircle className="h-4 w-4" />, label: 'Sale Approved' },
+      rejected: { color: 'bg-neutral-100 text-neutral-800', icon: <X className="h-4 w-4" />, label: 'Request Declined' },
       ready_for_pickup: { color: 'bg-secondary-50 text-secondary-800', icon: <ShoppingBag className="h-4 w-4" />, label: 'Ready for Pickup' },
       shipped: { color: 'bg-primary-50 text-primary-800', icon: <Truck className="h-4 w-4" />, label: 'Pet is Shipped' },
       delivered: { color: 'bg-primary-50 text-primary-800', icon: <Check className="h-4 w-4" />, label: 'Pet Delivered' },
       cancelled: { color: 'bg-neutral-50 text-neutral-600', icon: <X className="h-4 w-4" />, label: 'Cancelled' }
     };
 
-    const config = statusConfig[adoptionRequest.status] || statusConfig.pending;
+    const config = statusConfig[transactionRequest.status] || statusConfig.pending;
 
     return (
       <div className={`px-6 py-3 border-b border-slate-100 flex items-center justify-between ${config.color}`}>
@@ -279,30 +279,30 @@ const EnhancedChatMessenger = ({
         </div>
         {isSeller && (
           <div className="flex gap-2">
-            {adoptionRequest.status === 'pending' && (
+            {transactionRequest.status === 'pending' && (
               <>
                 <button onClick={() => handleStatusUpdate('reserved')} className="text-[10px] font-black uppercase tracking-widest bg-amber-500 text-white px-3 py-1.5 rounded-lg hover:bg-amber-600">Reserve</button>
                 <button onClick={() => handleStatusUpdate('rejected')} className="text-[10px] font-black uppercase tracking-widest bg-primary-600 text-white px-3 py-1.5 rounded-lg hover:bg-primary-700">Decline</button>
               </>
             )}
-            {adoptionRequest.status === 'reserved' && (
+            {transactionRequest.status === 'reserved' && (
               <>
                 <button onClick={() => handleStatusUpdate('approved')} className="text-[10px] font-black uppercase tracking-widest bg-secondary-600 text-white px-3 py-1.5 rounded-lg hover:bg-secondary-700">Approve</button>
                 <button onClick={() => handleStatusUpdate('rejected')} className="text-[10px] font-black uppercase tracking-widest bg-primary-600 text-white px-3 py-1.5 rounded-lg hover:bg-primary-700">Decline</button>
               </>
             )}
-            {adoptionRequest.status === 'approved' && (
+            {transactionRequest.status === 'approved' && (
               <>
                 <button onClick={() => handleStatusUpdate('ready_for_pickup')} className="text-[10px] font-black uppercase tracking-widest bg-secondary-600 text-white px-3 py-1.5 rounded-lg">Ready</button>
                 <button onClick={() => handleStatusUpdate('shipped')} className="text-[10px] font-black uppercase tracking-widest bg-primary-600 text-white px-3 py-1.5 rounded-lg">Ship</button>
               </>
             )}
-            {(adoptionRequest.status === 'shipped' || adoptionRequest.status === 'ready_for_pickup') && (
+            {(transactionRequest.status === 'shipped' || transactionRequest.status === 'ready_for_pickup') && (
               <button onClick={() => handleStatusUpdate('delivered')} className="text-[10px] font-black uppercase tracking-widest bg-primary-600 text-white px-3 py-1.5 rounded-lg">Delivered</button>
             )}
           </div>
         )}
-        {!isSeller && !isAdmin && ['pending', 'approved', 'ready_for_pickup'].includes(adoptionRequest.status) && (
+        {!isSeller && !isAdmin && ['pending', 'approved', 'ready_for_pickup'].includes(transactionRequest.status) && (
           <button
             onClick={handleCancelRequest}
             className="text-[10px] font-black uppercase tracking-widest bg-primary-700 text-white px-3 py-1.5 rounded-lg hover:bg-primary-800 transition-colors"
@@ -401,20 +401,20 @@ const EnhancedChatMessenger = ({
         </div>
       )}
 
-      {renderAdoptionStatus()}
+      {renderTransactionStatus()}
 
       <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50/50 no-scrollbar overscroll-contain touch-pan-y">
-        {!adoptionRequest && !isSeller && !isAdmin && conversationId && pet && (
+        {!transactionRequest && !isSeller && !isAdmin && conversationId && pet && (
           <div className="bg-white border border-primary-100 p-4 rounded-3xl text-center space-y-3 mx-2 shadow-sm mb-4">
             <div className="w-12 h-12 bg-primary-50 rounded-full flex items-center justify-center mx-auto">
               <Heart className="h-6 w-6 text-primary-500" />
             </div>
             <div className="space-y-0.5">
               <h3 className="text-sm font-black text-slate-800 uppercase tracking-tight">Serious Inquiry?</h3>
-              <p className="text-[10px] text-slate-500 font-medium">Initiate the premium reservation protocol.</p>
+              <p className="text-[10px] text-slate-500 font-medium">Initiate the premium acquisition protocol.</p>
             </div>
-            <button onClick={handleAdoptRequest} className="btn btn-primary w-full py-2.5 text-[9px] font-black uppercase tracking-[0.2em] shadow-lg shadow-primary-100">
-              Reserve Pet
+            <button onClick={handlePurchaseRequest} className="btn btn-primary w-full py-2.5 text-[9px] font-black uppercase tracking-[0.2em] shadow-lg shadow-primary-100">
+              Buy this Pet
             </button>
           </div>
         )}

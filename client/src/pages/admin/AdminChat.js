@@ -93,7 +93,7 @@ const AdminChat = () => {
 
     const matchesFilter = filter === 'all' ||
       (filter === 'unread' && conv.unreadCount > 0) ||
-      (filter === 'adoption' && conv.type === 'adoption');
+      (filter === 'sales' && conv.type === 'adoption');
 
     return matchesSearch && matchesFilter;
   });
@@ -160,7 +160,7 @@ const AdminChat = () => {
               </div>
 
               <div className="flex gap-1 p-1 bg-slate-50 rounded-lg">
-                {['all', 'unread', 'adoption'].map((f) => (
+                {['all', 'unread', 'sales'].map((f) => (
                   <button
                     key={f}
                     onClick={() => setFilter(f)}
@@ -247,7 +247,7 @@ const AdminChat = () => {
                         <div className="flex items-center gap-2">
                             <span className="text-[9px] font-black text-emerald-500 uppercase tracking-widest">Online</span>
                             <div className="w-1 h-1 rounded-full bg-slate-200" />
-                            <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">{selectedConversation.type}</span>
+                            <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">{selectedConversation.type === 'adoption' ? 'Pet Sale' : selectedConversation.type}</span>
                         </div>
                         </div>
                     </button>

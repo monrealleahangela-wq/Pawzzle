@@ -3,7 +3,7 @@ import { useNavigate, useParams, Link, useLocation } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { orderService, adminOrderService, paymentService, deliveryService, getImageUrl } from '../../services/apiService';
 import { useAuth } from '../../contexts/AuthContext';
-import { Heart, Package, ArrowLeft, Truck, CreditCard, MapPin, Store, Star, CheckCircle, AlertCircle, Link2 } from 'lucide-react';
+import { Heart, Package, ArrowLeft, Truck, CreditCard, MapPin, Store, Star, CheckCircle, AlertCircle, Link2, Navigation } from 'lucide-react';
 import OrderReviewModal from '../../components/OrderReviewModal';
 
 const OrderDetail = () => {
@@ -107,6 +107,17 @@ const OrderDetail = () => {
       fetchOrder(); // Refresh to show delivery status if needed
     } catch (error) {
       toast.error('Failed to generate tracking link');
+    }
+  };
+
+  const handleViewLiveTracking = async () => {
+    try {
+      const response = await deliveryService.getTrackingForOrder(id);
+      if (response.data.delivery?.riderToken) {
+        navigate(`/rider-track/${response.data.delivery.riderToken}`);
+      }
+    } catch (error) {
+      toast.error('No active tracking found for this order');
     }
   };
 
@@ -439,7 +450,40 @@ const OrderDetail = () => {
             </div>
           )}
 
-          {/* Staff Delivery Link Action */}
+          {/* Customer Live Tracking Action */}
+          {user?.role === 'customer' && order.deliveryMethod === 'delivery' && order.delivery && order.status !== 'cancelled' && order.status !== 'delivered' && (
+            <div className="card p-6 border-2 border-primary-500 bg-primary-900 text-white shadow-2xl shadow-primary-200 overflow-hidden relative">
+              <div className="absolute top-[-50%] right-[-10%] w-64 h-64 bg-white/10 rounded-full blur-3xl animate-pulse" />
+              <div className="relative z-10 space-y-4">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center border border-white/20">
+                    <Truck className="h-6 w-6 text-white" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-black uppercase tracking-tighter leading-none mb-1">Live Tracking</h2>
+                    <p className="text-[10px] font-bold text-primary-200 uppercase tracking-widest leading-none">Rider Dispatched & En Route</p>
+                  </div>
+                </div>
+                <p className="text-[11px] text-primary-100 font-bold uppercase tracking-widest leading-relaxed opacity-80">
+                  Track your pet or products in real-time with our high-precision GPS tracking system. See your rider's exact location on the map.
+                </p>
+                <button
+                  onClick={() => {
+                    // We need the tracking token for the customer
+                    deliveryService.getTrackingForOrder(order._id).then(res => {
+                      if (res.data.delivery?.trackingToken) {
+                        navigate(`/track/${res.data.delivery.trackingToken}`);
+                      }
+                    });
+                  }}
+                  className="w-full py-4 bg-white text-primary-900 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-slate-900 hover:text-white transition-all shadow-xl flex items-center justify-center gap-2 group"
+                >
+                  <Navigation className="h-4 w-4 group-hover:rotate-12 transition-transform" />
+                  View Live Map Now
+                </button>
+              </div>
+            </div>
+          )}
           {user?.role !== 'customer' && order.deliveryMethod === 'delivery' && order.status !== 'cancelled' && order.status !== 'delivered' && (
             <div className="card p-6 border-2 border-primary-100 bg-primary-50/10">
               <h2 className="text-sm font-black text-slate-900 uppercase tracking-widest mb-4 flex items-center gap-2">
@@ -458,10 +502,19 @@ const OrderDetail = () => {
                   {order.delivery ? 'Copy Rider Tracking Link' : 'Generate Delivery Link'}
                 </button>
                 {order.delivery && (
-                  <div className="flex items-center gap-2 justify-center">
-                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                    <span className="text-[8px] font-black text-emerald-600 uppercase tracking-widest">Link Active & Secure</span>
-                  </div>
+                  <>
+                    <button
+                      onClick={handleViewLiveTracking}
+                      className="w-full py-4 bg-white border-2 border-slate-900 text-slate-900 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-slate-900 hover:text-white transition-all shadow-md flex items-center justify-center gap-2"
+                    >
+                      <Navigation className="h-4 w-4" />
+                      View Live Map (Seller)
+                    </button>
+                    <div className="flex items-center gap-2 justify-center">
+                      <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                      <span className="text-[8px] font-black text-emerald-600 uppercase tracking-widest">Link Active & Secure</span>
+                    </div>
+                  </>
                 )}
               </div>
             </div>

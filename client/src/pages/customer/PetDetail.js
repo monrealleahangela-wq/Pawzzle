@@ -180,7 +180,7 @@ const PetDetail = () => {
           <div className="bg-slate-900 p-4 sm:p-8 rounded-[2.5rem] shadow-2xl relative overflow-hidden group">
             <div className="absolute top-0 right-0 w-32 h-32 bg-primary-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
 
-            <h3 className="text-white text-[10px] sm:text-base font-black uppercase tracking-widest mb-4 sm:mb-6 relative z-10 italic">Inquire for Adoption</h3>
+            <h3 className="text-white text-[10px] sm:text-base font-black uppercase tracking-widest mb-4 sm:mb-6 relative z-10 italic">Inquire for Purchase</h3>
 
             <div className="flex flex-col gap-2 relative z-10">
               <button
@@ -196,7 +196,7 @@ const PetDetail = () => {
                     <MessageSquare className="h-5 w-5" />
                     Chat with seller
                   </>
-                ) : pet.status === 'reserved' ? 'Reserved' : 'Adopted'}
+                ) : pet.status === 'reserved' ? 'Reserved' : 'Purchased'}
               </button>
             </div>
           </div>

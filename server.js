@@ -16,6 +16,9 @@ const io = socketIo(server, {
   }
 });
 
+// Make io accessible to our routers/controllers
+app.set('socketio', io);
+
 // Middleware
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));

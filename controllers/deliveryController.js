@@ -124,6 +124,30 @@ const getDeliveryByToken = async (req, res) => {
   }
 };
 
+// Private: Get delivery metadata by Order ID (Regular portal access)
+const getDeliveryByOrder = async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const delivery = await Delivery.findOne({ order: orderId }).select('trackingToken riderToken status isLive');
+    if (!delivery) return res.status(404).json({ message: 'No delivery active' });
+    res.json({ delivery });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// Private: Get delivery metadata by Booking ID (Regular portal access)
+const getDeliveryByBooking = async (req, res) => {
+  try {
+    const { bookingId } = req.params;
+    const delivery = await Delivery.findOne({ booking: bookingId }).select('trackingToken riderToken status isLive');
+    if (!delivery) return res.status(404).json({ message: 'No delivery active' });
+    res.json({ delivery });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
 // Rider: Update status
 const updateDeliveryStatus = async (req, res) => {
   try {
@@ -147,7 +171,11 @@ const updateDeliveryStatus = async (req, res) => {
 
     await delivery.save();
     
-    // TODO: Socket emit statusUpdate
+    // Trigger Socket emit for real-time status update
+    const io = req.app.get('socketio');
+    if (io) {
+      io.to(`delivery_${delivery._id}`).emit('statusChanged', { deliveryId: delivery._id, status: delivery.status });
+    }
     
     res.json({ success: true, status: delivery.status });
   } catch (error) {
@@ -170,7 +198,11 @@ const updateLocation = async (req, res) => {
 
     await delivery.save();
     
-    // TODO: Socket emit locationUpdate
+    // Trigger Socket emit for real-time location update
+    const io = req.app.get('socketio');
+    if (io) {
+      io.to(`delivery_${delivery._id}`).emit('locationUpdate', { deliveryId: delivery._id, lat, lng, heading, speed });
+    }
     
     res.json({ success: true });
   } catch (error) {
@@ -195,7 +227,11 @@ const sendDeliveryMessage = async (req, res) => {
     delivery.chat.push(message);
     await delivery.save();
 
-    // TODO: Socket emit newMessage
+    // Trigger Socket emit for real-time chat message
+    const io = req.app.get('socketio');
+    if (io) {
+      io.to(`delivery_${delivery._id}`).emit('newMessage', { deliveryId: delivery._id, ...message });
+    }
     
     res.status(201).json({ message });
   } catch (error) {
@@ -207,6 +243,8 @@ const sendDeliveryMessage = async (req, res) => {
 module.exports = {
   generateDeliveryLinks,
   getDeliveryByToken,
+  getDeliveryByOrder,
+  getDeliveryByBooking,
   updateDeliveryStatus,
   updateLocation,
   sendDeliveryMessage

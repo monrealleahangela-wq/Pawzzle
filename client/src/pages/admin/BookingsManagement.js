@@ -22,8 +22,10 @@ import {
   Eye,
   Plus,
   Link2,
-  Truck
+  Truck,
+  Navigation
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 const statusNextMap = {
   'pending': 'approved',
@@ -33,6 +35,7 @@ const statusNextMap = {
 };
 
 const BookingsManagement = () => {
+  const navigate = useNavigate();
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState('all');
@@ -110,6 +113,17 @@ const BookingsManagement = () => {
       fetchBookings();
     } catch (error) {
       toast.error('Failed to generate tracking link');
+    }
+  };
+
+  const handleViewLiveTracking = async (bookingId) => {
+    try {
+      const response = await deliveryService.getTrackingForBooking(bookingId);
+      if (response.data.delivery?.riderToken) {
+        navigate(`/rider-track/${response.data.delivery.riderToken}`);
+      }
+    } catch (error) {
+      toast.error('No active tracking found for this booking');
     }
   };
 
@@ -531,6 +545,16 @@ const BookingsManagement = () => {
                     <Link2 className="h-4 w-4 group-hover:rotate-12 transition-transform" />
                     {selectedBooking.delivery ? 'Copy Tracking Link' : 'Generate Online Link'}
                   </button>
+
+                  {selectedBooking.delivery && (
+                    <button
+                      onClick={() => handleViewLiveTracking(selectedBooking._id)}
+                      className="w-full py-3.5 bg-white border-2 border-slate-900 text-slate-900 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-slate-900 hover:text-white transition-all shadow-md flex items-center justify-center gap-2"
+                    >
+                      <Navigation className="h-4 w-4" />
+                      View Live Map (Staff)
+                    </button>
+                  )}
                 </div>
               )}
 

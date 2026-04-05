@@ -5,8 +5,10 @@ import L from 'leaflet';
 import axios from 'axios';
 import { 
   MapPin, Phone, MessageSquare, Navigation, CheckCircle, Package, Truck, 
-  Clock, ArrowLeft, Send, User, Store, ShieldCheck, AlertCircle
+  Clock, ArrowLeft, Send, User, Store as StoreIcon, ShieldCheck, AlertCircle,
+  Map as MapIcon, Info, Navigation2
 } from 'lucide-react';
+import { Popup } from 'react-leaflet';
 import socket from '../utils/socket';
 import { toast } from 'react-toastify';
 
@@ -49,6 +51,9 @@ const DeliveryTracking = () => {
   const [error, setError] = useState(null);
   const [chatOpen, setChatOpen] = useState(false);
   const [newMessage, setNewMessage] = useState('');
+  const [routeData, setRouteData] = useState(null);
+  const [directions, setDirections] = useState([]);
+  const [showDirections, setShowDirections] = useState(false);
   const chatEndRef = useRef(null);
   
   const isRiderRoute = location.pathname.includes('/rider-track/');
@@ -129,12 +134,46 @@ const DeliveryTracking = () => {
     }
   };
 
+  useEffect(() => {
+    if (delivery?.riderLocation?.lat && targetCoords?.lat) {
+      fetchRoute(
+        delivery.riderLocation.lat, 
+        delivery.riderLocation.lng, 
+        targetCoords.lat, 
+        targetCoords.lng
+      );
+    }
+  }, [delivery?._id, targetCoords?.lat]);
+
   const updateRiderLocation = async (lat, lng, heading, speed) => {
     try {
       socket.emit('updateLocation', { deliveryId: delivery._id, lat, lng, heading, speed });
       await axios.patch(`${process.env.REACT_APP_API_URL || '/api'}/deliveries/location/${token}`, { lat, lng, heading, speed });
+      
+      // Update directions if destination exists
+      if (targetCoords?.lat) {
+        fetchRoute(lat, lng, targetCoords.lat, targetCoords.lng);
+      }
     } catch (err) {
       console.error('Location sync failed');
+    }
+  };
+
+  const fetchRoute = async (startLat, startLng, endLat, endLng) => {
+    try {
+      const url = `https://router.project-osrm.org/route/v1/driving/${startLng},${startLat};${endLng},${endLat}?overview=full&geometries=geojson&steps=true`;
+      const res = await axios.get(url);
+      if (res.data.routes && res.data.routes[0]) {
+        const route = res.data.routes[0];
+        setRouteData(route.geometry.coordinates.map(c => [c[1], c[0]]));
+        setDirections(route.legs[0].steps.map(s => ({
+          instruction: s.maneuver.instruction,
+          distance: s.distance,
+          name: s.name
+        })));
+      }
+    } catch (err) {
+      console.error('Routing failed:', err);
     }
   };
 
@@ -188,6 +227,18 @@ const DeliveryTracking = () => {
     delivered: 100
   };
 
+  // Compute Target Information
+  const storeCoords = delivery?.order?.store?.contactInfo?.address?.coordinates;
+  const customerCoords = delivery?.order?.shippingAddress?.coordinates;
+  const isToStore = delivery?.status === 'pending' || delivery?.status === 'picked_up';
+  
+  const targetCoords = isToStore ? storeCoords : customerCoords;
+  const targetLabel = isToStore ? 'Pickup: Store' : 'Delivery: Customer';
+  const targetAddress = isToStore 
+    ? `${delivery?.order?.store?.name} (Store)`
+    : `${delivery?.order?.shippingAddress?.street}, ${delivery?.order?.shippingAddress?.barangay}`;
+  const targetPhone = isToStore ? delivery?.order?.store?.phone : delivery?.order?.customer?.phoneNumber;
+
   return (
     <div className="flex flex-col min-h-[100dvh] bg-slate-50 overflow-hidden font-inter">
       {/* Header */}
@@ -219,39 +270,71 @@ const DeliveryTracking = () => {
           className="w-full h-full"
           zoomControl={false}
         >
-          <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+          <TileLayer url="https://{s}.tile.osm.org/{z}/{x}/{y}.png" />
           <RecenterMap coords={delivery.riderLocation} />
           
+          {/* Marker Logic */}
           {delivery.riderLocation?.lat && (
-            <Marker position={[delivery.riderLocation.lat, delivery.riderLocation.lng]} icon={riderIcon} />
+            <Marker position={[delivery.riderLocation.lat, delivery.riderLocation.lng]} icon={riderIcon}>
+              <Popup className="custom-popup">
+                <div className="p-2 text-center">
+                  <p className="text-[10px] font-black uppercase text-rose-500 mb-1">Rider</p>
+                  <p className="text-[11px] font-bold text-slate-800">Cyrus the Great</p>
+                </div>
+              </Popup>
+            </Marker>
           )}
           
-          {/* Real Locations from Order (Fallback to Hardcoded for Demo if missing) */}
-          {delivery.order?.store?.contactInfo?.address?.coordinates?.lat && (
-            <Marker 
-              position={[
-                delivery.order.store.contactInfo.address.coordinates.lat, 
-                delivery.order.store.contactInfo.address.coordinates.lng
-              ]} 
-              icon={storeIcon} 
-            />
+          {storeCoords?.lat && (
+            <Marker position={[storeCoords.lat, storeCoords.lng]} icon={storeIcon}>
+              <Popup>
+                <div className="p-2">
+                  <p className="text-[10px] font-black uppercase text-primary-600 mb-1">Pickup Point</p>
+                  <p className="text-[11px] font-bold text-slate-800">{delivery.order?.store?.name}</p>
+                  <p className="text-[9px] text-slate-500 font-medium">{delivery.order?.store?.contactInfo?.address?.street}</p>
+                </div>
+              </Popup>
+            </Marker>
           )}
           
-          {delivery.order?.shippingAddress?.coordinates?.lat ? (
-            <Marker 
-              position={[
-                delivery.order.shippingAddress.coordinates.lat, 
-                delivery.order.shippingAddress.coordinates.lng
-              ]} 
-              icon={homeIcon} 
-            />
-          ) : (
-            // Fallback for older orders without coordinates
-            <Marker position={[14.5826, 120.9787]} icon={homeIcon} />
+          {customerCoords?.lat && (
+            <Marker position={[customerCoords.lat, customerCoords.lng]} icon={homeIcon}>
+              <Popup>
+                <div className="p-2">
+                  <p className="text-[10px] font-black uppercase text-emerald-600 mb-1">Delivery Point</p>
+                  <p className="text-[11px] font-bold text-slate-800">{delivery.order?.customer?.firstName} {delivery.order?.customer?.lastName}</p>
+                  <p className="text-[9px] text-slate-500 font-medium">{delivery.order?.shippingAddress?.street}</p>
+                </div>
+              </Popup>
+            </Marker>
           )}
 
-          {/* Route History */}
-          <Polyline positions={delivery.locationHistory.map(l => [l.lat, l.lng])} color="#f43f5e" weight={2} dashArray="5, 10" />
+          {/* ROAD-FOLLOWING ROUTE LINE */}
+          {routeData && (
+            <Polyline 
+              positions={routeData} 
+              color="#3b82f6" 
+              weight={6} 
+              opacity={0.8}
+            />
+          )}
+
+          {/* Fallback Direct Line if routing fails */}
+          {!routeData && delivery.riderLocation?.lat && targetCoords?.lat && (
+            <Polyline 
+              positions={[
+                [delivery.riderLocation.lat, delivery.riderLocation.lng],
+                [targetCoords.lat, targetCoords.lng]
+              ]} 
+              color="#3b82f6" 
+              weight={4} 
+              dashArray="5, 10" 
+              opacity={0.5}
+            />
+          )}
+
+          {/* Route History (Breadcrumbs) */}
+          <Polyline positions={delivery.locationHistory.map(l => [l.lat, l.lng])} color="#64748b" weight={2} opacity={0.3} />
         </MapContainer>
         
         {/* Floating Controls (Mobile Bottom Sheet Style) */}
@@ -270,23 +353,32 @@ const DeliveryTracking = () => {
               {/* Action/Info Buttons */}
               <div className="flex items-center gap-4">
                 <div className="flex-1">
-                  <h4 className="text-[10px] font-black uppercase text-slate-500 mb-1">Destination</h4>
-                  <p className="text-xs font-bold truncate">{delivery.order?.shippingAddress?.street}, {delivery.order?.shippingAddress?.barangay}</p>
+                  <h4 className="text-[10px] font-black uppercase text-rose-500 mb-1">{targetLabel}</h4>
+                  <p className="text-xs font-bold truncate text-slate-800">{targetAddress}</p>
                 </div>
                 <div className="flex gap-2">
                   {role === 'rider' && (
+                    <button 
+                      onClick={() => setShowDirections(!showDirections)}
+                      className={`p-4 rounded-2xl transition-all shadow-lg active:scale-95 ${showDirections ? 'bg-primary-600 text-white' : 'bg-slate-100 text-slate-600'}`}
+                      title="Show Turn-by-Turn"
+                    >
+                      <Navigation2 className="h-5 w-5" />
+                    </button>
+                  )}
+                  {role === 'rider' && (
                     <a 
-                      href={`https://www.google.com/maps/dir/?api=1&destination=${delivery.order?.shippingAddress?.coordinates?.lat || delivery.order?.shippingAddress?.street},${delivery.order?.shippingAddress?.coordinates?.lng || ''}`}
+                      href={`https://www.google.com/maps/dir/?api=1&destination=${targetCoords?.lat || ''},${targetCoords?.lng || ''}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="p-4 bg-primary-600 text-white rounded-2xl hover:bg-primary-500 transition-all shadow-lg active:scale-95"
-                      title="Navigate to Customer"
+                      className="p-4 bg-slate-900 text-white rounded-2xl hover:bg-slate-800 transition-all shadow-lg active:scale-95"
+                      title={`Navigate Outside`}
                     >
                       <Navigation className="h-5 w-5" />
                     </a>
                   )}
                   <a href={`tel:${role === 'rider' ? delivery.order?.customer?.phoneNumber : delivery.order?.store?.phoneNumber}`} 
-                    className="p-4 bg-slate-900 text-white rounded-2xl hover:bg-rose-500 transition-all shadow-lg active:scale-95">
+                    className="p-4 bg-slate-100 text-slate-600 rounded-2xl hover:bg-rose-50 transition-all shadow-lg active:scale-95">
                     <Phone className="h-5 w-5" />
                   </a>
                   <button onClick={() => setChatOpen(true)} className="p-4 bg-rose-500 text-white rounded-2xl hover:rotate-12 transition-all shadow-xl shadow-rose-200">
@@ -294,6 +386,28 @@ const DeliveryTracking = () => {
                   </button>
                 </div>
               </div>
+
+              {/* Turn-by-Turn Directions Panel */}
+              {showDirections && directions.length > 0 && (
+                <div className="max-h-48 overflow-y-auto no-scrollbar py-2 space-y-3">
+                  <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest border-b border-slate-100 pb-2">Turn-by-Turn Guide</p>
+                  {directions.map((step, i) => (
+                    <div key={i} className="flex items-start gap-3">
+                      <div className="w-6 h-6 rounded-lg bg-primary-50 flex items-center justify-center shrink-0">
+                        <Navigation className={`h-3 w-3 text-primary-600 ${i === 0 ? 'animate-bounce' : ''}`} />
+                      </div>
+                      <div>
+                        <p className={`text-[11px] leading-tight ${i === 0 ? 'font-black text-slate-900' : 'font-bold text-slate-500'}`}>
+                          {step.instruction}
+                        </p>
+                        <p className="text-[9px] font-medium text-slate-400">
+                          {step.distance > 1000 ? `${(step.distance/1000).toFixed(1)} km` : `${Math.round(step.distance)} m`}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
 
               {/* Rider Only controls */}
               {role === 'rider' && delivery.isLive && (
