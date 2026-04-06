@@ -63,29 +63,13 @@ const Checkout = () => {
   const [myVouchers, setMyVouchers] = useState([]);
   const [showVoucherModal, setShowVoucherModal] = useState(false);
 
-  // Payment options based on delivery method
+  // Payment options - Online Only consistent with minimalist design
   const getPaymentOptions = () => {
-    const onlinePayments = [
-      { value: 'credit_card', label: 'Credit Card' },
-      { value: 'debit_card', label: 'Debit Card' },
-      { value: 'paypal', label: 'PayPal' },
-      { value: 'gcash', label: 'GCash' },
-      { value: 'maya', label: 'Maya' },
-      { value: 'dob', label: 'Online Banking' }
+    return [
+      { value: 'gcash', label: 'GCash', icon: <CreditCard className="h-4 w-4" /> },
+      { value: 'maya', label: 'Maya', icon: <CreditCard className="h-4 w-4" /> },
+      { value: 'bank_transfer', label: 'Bank Transfer', icon: <Package className="h-4 w-4" /> }
     ];
-
-    if (deliveryMethod === 'delivery') {
-      return [
-        ...onlinePayments,
-        { value: 'cash_on_delivery', label: 'Cash on Delivery' }
-      ];
-    } else {
-      // Pickup options - no cash on delivery
-      return [
-        ...onlinePayments,
-        { value: 'cash_on_pickup', label: 'Cash on Pickup' }
-      ];
-    }
   };
   const [deliveryMethod, setDeliveryMethod] = useState('delivery'); // 'delivery' or 'pickup'
   const [notes, setNotes] = useState('');
@@ -103,7 +87,7 @@ const Checkout = () => {
 
   // Reset payment method when delivery method changes
   useEffect(() => {
-    setPaymentMethod('credit_card'); // Reset to default when delivery method changes
+    setPaymentMethod('gcash'); // Default to GCash
   }, [deliveryMethod]);
 
   const [storeAddresses, setStoreAddresses] = useState({});
@@ -244,15 +228,10 @@ const Checkout = () => {
 
   const getPaymentIcon = (value) => {
     switch (value) {
-      case 'credit_card':
-      case 'debit_card': return <CreditCard className="h-6 w-6" />;
-      case 'paypal': return <ShoppingBag className="h-6 w-6" />;
       case 'gcash':
-      case 'maya':
-      case 'dob': return <CreditCard className="h-6 w-6" />; // Using CreditCard as fallback icon
-      case 'cash_on_delivery':
-      case 'cash_on_pickup': return <Truck className="h-6 w-6" />;
-      default: return <Package className="h-6 w-6" />;
+      case 'maya': return <CreditCard className="h-5 w-5" />;
+      case 'bank_transfer': return <Package className="h-5 w-5" />;
+      default: return <CreditCard className="h-5 w-5" />;
     }
   };
 
@@ -330,22 +309,28 @@ const Checkout = () => {
         const orderId = response.data.order._id;
 
         // Handle PayMongo redirection for online payments
-        const onlinePaymentMethods = ['credit_card', 'debit_card', 'gcash', 'maya', 'paypal', 'dob'];
+        // Handle Online Redirects
+        const onlinePaymentMethods = ['gcash', 'maya', 'bank_transfer'];
         if (onlinePaymentMethods.includes(paymentMethod)) {
+          // If bank transfer, we might show details instead of automatic checkout, 
+          // but for now, we'll try the same gateway flow or redirect to order details
           try {
-            toast.info(`Redirecting to ${paymentMethod.toUpperCase()}...`);
+            toast.info(`Redirecting to Secure ${paymentMethod.toUpperCase()} Portal...`);
             const paymentResponse = await paymentService.createCheckoutSession(orderId);
             if (paymentResponse.data && paymentResponse.data.checkoutUrl) {
-              // Clear items and redirect
               clearSelectedItems();
               window.location.href = paymentResponse.data.checkoutUrl;
               return;
             } else {
-              throw new Error('Payment gateway unavailable');
+              // Fallback for methods without automatic session (like manual bank transfer)
+              toast.success('Order secured! Please complete payout using provided details.');
+              clearSelectedItems();
+              navigate(`/orders/${orderId}`);
+              return;
             }
           } catch (paymentError) {
             console.error('Payment Error:', paymentError);
-            toast.error('Order secured, but payment initialization failed. You can try again from your dashboard.');
+            toast.error('Order secured, but portal initialization failed. Attempt via dashboard.');
             navigate(`/orders/${orderId}`);
             return;
           }
@@ -854,29 +839,44 @@ const Checkout = () => {
 
         {/* Payment & Order Summary */}
         <div className="space-y-6">
-          {/* Payment Method */}
-          <div className="card p-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">
-              <CreditCard className="inline h-5 w-5 mr-2" />
-              Payment Method
-            </h2>
-            <div className="grid grid-cols-2 gap-3">
+          {/* Payment Method Selection - Standardized Compact HUD */}
+          <div className="card p-6 border-2 border-slate-50/50">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-black text-slate-900 uppercase tracking-tighter">
+                <CreditCard className="inline h-5 w-5 mr-2 text-primary-600" />
+                Payment Method
+              </h2>
+              <span className="text-[10px] font-black text-primary-600 bg-primary-50 px-2 py-0.5 rounded-full uppercase tracking-widest">Online Only</span>
+            </div>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
               {getPaymentOptions().map((method) => (
                 <button
                   key={method.value}
                   type="button"
                   onClick={() => setPaymentMethod(method.value)}
-                  className={`flex items-center gap-3 p-4 rounded-xl border-2 transition-all text-left ${paymentMethod === method.value
-                    ? 'border-primary-600 bg-primary-50 text-primary-900 shadow-md'
-                    : 'border-slate-100 hover:border-slate-200 text-slate-500 bg-white'
+                  className={`flex flex-col items-center justify-center gap-2 p-4 rounded-2xl border-2 transition-all group ${paymentMethod === method.value
+                    ? 'border-primary-600 bg-primary-50/50 shadow-sm'
+                    : 'border-slate-100 hover:border-slate-200 bg-white'
                     }`}
                 >
-                  <div className={`p-2 rounded-lg ${paymentMethod === method.value ? 'bg-primary-600 text-white' : 'bg-slate-50 text-slate-400'}`}>
+                  <div className={`p-2 rounded-xl transition-all ${paymentMethod === method.value ? 'bg-primary-600 text-white shadow-md' : 'bg-slate-50 text-slate-400 group-hover:bg-slate-100'}`}>
                     {getPaymentIcon(method.value)}
                   </div>
-                  <span className="text-sm font-bold leading-tight">{method.label}</span>
+                  <span className={`text-[10px] font-black uppercase tracking-tight transition-colors ${paymentMethod === method.value ? 'text-primary-900' : 'text-slate-500'}`}>
+                    {method.label}
+                  </span>
                 </button>
               ))}
+            </div>
+            
+            <div className="mt-4 p-3 bg-slate-50 rounded-xl border border-slate-100 border-dashed">
+              <div className="flex items-start gap-2">
+                <Info className="h-3 w-3 text-slate-400 mt-0.5 shrink-0" />
+                <p className="text-[9px] font-bold text-slate-500 uppercase tracking-tight leading-relaxed">
+                  Your payment is processed via a secure encrypted gateway. Manual bank transfers require verification within 24 hours.
+                </p>
+              </div>
             </div>
           </div>
 
@@ -1064,10 +1064,7 @@ const Checkout = () => {
                 ) : (
                   <>
                     <ShoppingBag className="h-4 w-4" />
-                    {['cash_on_delivery', 'cash_on_pickup'].includes(paymentMethod) 
-                      ? 'Confirm Order' 
-                      : `Pay via ${paymentMethod.replace('_', ' ')}`
-                    }
+                    Place Order & Pay
                   </>
                 )}
               </button>

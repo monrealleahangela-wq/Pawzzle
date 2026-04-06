@@ -194,7 +194,7 @@ const AdminOrders = () => {
                       </td>
                       <td className="px-6 py-4">
                         <p className="font-medium text-slate-900">₱{(order.totalAmount || 0).toLocaleString()}</p>
-                        <p className="text-xs text-slate-500 uppercase">{order.paymentMethod?.split('_').pop() || 'CASH'}</p>
+                        <p className="text-xs text-slate-500 uppercase">{order.paymentMethod ? order.paymentMethod.replace('_', ' ') : 'PENDING'}</p>
                       </td>
                       <td className="px-6 py-4">
                         <span className={`px-2 py-1 rounded-md text-xs font-medium border ${getStatusStyle(order.status)}`}>

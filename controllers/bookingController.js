@@ -163,6 +163,7 @@ const createBooking = async (req, res) => {
       isHomeService,
       serviceAddress: isHomeService ? serviceAddress : undefined,
       totalPrice: basePrice - discountAmount,
+      paymentMethod: req.body.paymentMethod || 'pending',
       voucher: appliedVoucherId,
       discountAmount,
       notes
@@ -687,14 +688,15 @@ const validateBookingQR = async (req, res) => {
     }
     await booking.save();
 
+    // Populate for the frontend response
+    await booking.populate([
+      { path: 'customer', select: 'firstName lastName email' },
+      { path: 'service', select: 'name' }
+    ]);
+
     res.json({
       message: 'Booking validated successfully!',
-      bookingInfo: {
-        customerName: `${booking.customer.firstName} ${booking.customer.lastName}`,
-        petName: booking.pet.name,
-        service: booking.service.name,
-        time: booking.startTime
-      }
+      booking: booking
     });
 
   } catch (error) {

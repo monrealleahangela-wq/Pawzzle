@@ -315,7 +315,9 @@ const BookingsManagement = () => {
                     </td>
                     <td className="px-6 py-3.5">
                       <p className="text-[12px] font-black text-slate-900 tracking-tighter leading-none">₱{booking.totalPrice?.toLocaleString()}</p>
-                      <p className="text-[8px] font-bold text-slate-400 uppercase italic">NET</p>
+                      <p className="text-[8px] font-bold text-slate-400 uppercase italic">
+                        {booking.paymentMethod ? booking.paymentMethod.replace('_', ' ') : 'NET'}
+                      </p>
                     </td>
                     <td className="px-6 py-3.5">
                       <span className={`px-4 py-1 rounded-full text-[8px] font-black uppercase tracking-[0.2em] border-2 ${getStatusStyle(booking.status)}`}>

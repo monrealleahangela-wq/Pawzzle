@@ -326,7 +326,7 @@ const OrderDetail = () => {
               {/* Pay Now Button for online payments that are not yet paid */}
               {order.paymentStatus !== 'paid' &&
                 order.status !== 'cancelled' &&
-                ['gcash', 'maya', 'credit_card', 'debit_card', 'dob', 'dob_ubp', 'card', 'paypal'].includes(order.paymentMethod) && (
+                ['gcash', 'maya', 'bank_transfer'].includes(order.paymentMethod) && (
                   <button
                     onClick={async () => {
                       try {

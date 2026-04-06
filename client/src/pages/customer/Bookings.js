@@ -69,7 +69,8 @@ const Bookings = ({ isSubcomponent = false }) => {
       city: '',
       province: ''
     },
-    notes: ''
+    notes: '',
+    paymentMethod: 'gcash'
   });
   const [submitting, setSubmitting] = useState(false);
   const [existingBookings, setExistingBookings] = useState([]);
@@ -587,6 +588,7 @@ const Bookings = ({ isSubcomponent = false }) => {
         isHomeService: bookingForm.isHomeService,
         serviceAddress: bookingForm.isHomeService ? bookingForm.serviceAddress : undefined,
         notes: bookingForm.notes,
+        paymentMethod: bookingForm.paymentMethod,
         voucherCode: appliedVoucher ? voucherCode : null,
         totalPrice: totalAmount
       };
@@ -1319,6 +1321,42 @@ const Bookings = ({ isSubcomponent = false }) => {
                           <span className="text-xs font-black">- ₱{appliedVoucher.discountAmount.toLocaleString()}</span>
                         </div>
                       )}
+
+                      {/* Standardized Online Payment Selection */}
+                      <div className="pt-6 mt-6 border-t border-slate-100">
+                        <div className="flex items-center justify-between mb-4 px-1">
+                          <div>
+                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.3em] mb-1">Payment Method</p>
+                            <p className="text-[8px] text-slate-400 font-bold uppercase tracking-tight italic">Online automated payout only</p>
+                          </div>
+                          <span className="px-2 py-1 bg-primary-50 text-primary-600 rounded-md text-[8px] font-black uppercase tracking-widest">Secure</span>
+                        </div>
+                        
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                          {[
+                            { id: 'gcash', label: 'GCash', icon: CreditCard },
+                            { id: 'maya', label: 'Maya', icon: CreditCard },
+                            { id: 'bank_transfer', label: 'Bank Transfer', icon: Building }
+                          ].map((method) => (
+                            <button
+                              key={method.id}
+                              type="button"
+                              onClick={() => setBookingForm(prev => ({ ...prev, paymentMethod: method.id }))}
+                              className={`flex flex-col items-center justify-center gap-2 p-4 rounded-2xl border-2 transition-all group ${bookingForm.paymentMethod === method.id
+                                ? 'border-primary-600 bg-primary-50/50 shadow-sm'
+                                : 'border-slate-50 hover:border-slate-100 bg-slate-50/30'
+                                }`}
+                            >
+                              <div className={`p-2.5 rounded-xl transition-all ${bookingForm.paymentMethod === method.id ? 'bg-primary-600 text-white shadow-md' : 'bg-white text-slate-300 group-hover:text-slate-400'}`}>
+                                <method.icon size={16} />
+                              </div>
+                              <span className={`text-[9px] font-black uppercase tracking-tight transition-colors ${bookingForm.paymentMethod === method.id ? 'text-primary-900' : 'text-slate-400'}`}>
+                                {method.label}
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
 
                       <div className="flex items-center justify-between pt-4 border-t border-slate-50">
                         <span className="text-[9px] font-black text-slate-900 uppercase tracking-widest">Total Amount</span>

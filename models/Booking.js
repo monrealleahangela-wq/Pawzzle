@@ -87,8 +87,8 @@ const bookingSchema = new mongoose.Schema({
   }],
   paymentMethod: {
     type: String,
-    enum: ['online', 'in_person', 'pending'],
-    default: 'pending'
+    enum: ['gcash', 'maya', 'bank_transfer', 'pending'],
+    required: true
   },
   paymentStatus: {
     type: String,
