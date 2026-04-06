@@ -10,6 +10,7 @@ const QRScannerModal = ({ isOpen, onClose, onScanSuccess }) => {
   const [error, setError] = useState(null);
   const [isScannerStarted, setIsScannerStarted] = useState(false);
   const [status, setStatus] = useState('Standby');
+  const isProcessingRef = useRef(false);
   
   const scannerRef = useRef(null);
   const isInitializingRef = useRef(false);
@@ -33,12 +34,13 @@ const QRScannerModal = ({ isOpen, onClose, onScanSuccess }) => {
   }, []);
 
   const handleInternalScan = useCallback(async (decodedText) => {
-    if (isProcessing) return;
+    if (isProcessingRef.current) return;
     
     try {
+      isProcessingRef.current = true;
       setIsProcessing(true);
       setError(null);
-      setStatus('Validating...');
+      setStatus('Validating Protocol...');
       
       // Stop scanner immediately
       await stopScanner();
@@ -51,9 +53,10 @@ const QRScannerModal = ({ isOpen, onClose, onScanSuccess }) => {
       setError(err.response?.data?.message || 'Invalid or unregistered booking protocol');
       setStatus('Error');
     } finally {
+      isProcessingRef.current = false;
       setIsProcessing(false);
     }
-  }, [isProcessing, stopScanner]);
+  }, [stopScanner]);
 
   const startScanner = useCallback(async () => {
     // Multi-instance prevention
@@ -138,17 +141,23 @@ const QRScannerModal = ({ isOpen, onClose, onScanSuccess }) => {
         setStatus('Hub Locked');
       }
     } finally {
-      if (currentAttempt === startAttemptRef.current) {
-        isInitializingRef.current = false;
-      }
+      isInitializingRef.current = false;
     }
   }, [handleInternalScan, stopScanner]);
 
+  // Stable Effect - Only depends on isOpen
   useEffect(() => {
     let active = true;
+    
     if (isOpen) {
       const init = async () => {
-        await new Promise(r => setTimeout(r, 600)); // Safer wait for modal animations
+        // Clear previous state
+        setScanResult(null);
+        setError(null);
+        setIsProcessing(false);
+        isProcessingRef.current = false;
+        
+        await new Promise(r => setTimeout(r, 800)); // Increased delay for DOM stability
         if (active) startScanner();
       };
       init();
@@ -158,7 +167,8 @@ const QRScannerModal = ({ isOpen, onClose, onScanSuccess }) => {
       active = false;
       stopScanner();
     };
-  }, [isOpen, startScanner, stopScanner]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen]); 
 
   const handleReset = () => {
     setScanResult(null);
@@ -170,8 +180,8 @@ const QRScannerModal = ({ isOpen, onClose, onScanSuccess }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[1000] flex items-center justify-center p-0 sm:p-4 bg-slate-950/95 transition-all animate-fade-in pb-20 sm:pb-0">
-      <div className="bg-white dark:bg-slate-900 w-full max-w-lg sm:rounded-[3rem] h-full sm:h-auto shadow-2xl flex flex-col overflow-hidden animate-scale-in border border-white/10">
+    <div className="fixed inset-0 z-[1000] flex items-center justify-center p-0 sm:p-4 bg-black/95 transition-all animate-fade-in pb-20 sm:pb-0 font-['Outfit']">
+      <div className="bg-slate-900 w-full max-w-lg sm:rounded-[3rem] h-full sm:h-auto shadow-2xl flex flex-col overflow-hidden animate-scale-in border border-white/10 ring-1 ring-white/5">
         
         {/* Header */}
         <div className="px-6 py-4 bg-slate-900 border-b border-white/5 flex items-center justify-between shrink-0">
