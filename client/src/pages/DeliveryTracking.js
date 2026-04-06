@@ -321,11 +321,12 @@ const DeliveryTracking = () => {
         )}
 
         {/* State 2: Interactive Map (The Interactive Zone) */}
-        <div className="flex-1 relative z-10 border-b border-slate-200 bg-slate-100 shadow-inner group">
+        <div className="flex-1 relative z-10 border-b border-slate-200 bg-slate-100 shadow-inner group min-h-[350px]">
           <MapContainer 
+            key={delivery?._id}
             center={[delivery.riderLocation?.lat || 14.5995, delivery.riderLocation?.lng || 120.9842]} 
             zoom={16} 
-            style={{ height: '100%', width: '100%' }}
+            style={{ height: '100%', width: '100%', minHeight: '350px' }}
             zoomControl={false}
           >
             <TileLayer 
