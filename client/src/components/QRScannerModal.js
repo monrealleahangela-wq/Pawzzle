@@ -70,67 +70,126 @@ const QRScannerModal = ({ isOpen, onClose, onScanSuccess }) => {
   };
 
   useEffect(() => {
-    if (isOpen) {
-      // Small delay to ensure the DOM element is rendered
-      const timer = setTimeout(() => {
-        startScanner();
-      }, 300);
-      return () => {
-        clearTimeout(timer);
-        stopScanner();
-      };
-    } else {
-      stopScanner();
-    }
+    let scanInstance = null;
+
+    const init = async () => {
+      if (isOpen) {
+        // Small delay to ensure DOM is ready and previous instances are fully cleaned up
+        await new Promise(r => setTimeout(r, 400));
+        
+        try {
+          // Initialize scanner instance
+          const html5QrCode = new Html5Qrcode(readerId);
+          scannerRef.current = html5QrCode;
+          scanInstance = html5QrCode;
+
+          const config = { 
+            fps: 15, 
+            qrbox: { width: 250, height: 250 },
+            aspectRatio: 1.0
+          };
+
+          await html5QrCode.start(
+            { facingMode: "environment" }, 
+            config,
+            onScan
+          );
+          setIsScannerStarted(true);
+          setError(null);
+        } catch (err) {
+          console.error('Failed to start scanner:', err);
+          setIsScannerStarted(false);
+          setError('Camera access denied or device not found. Please ensure you have granted permission.');
+        }
+      }
+    };
+
+    init();
+
+    return () => {
+      if (scanInstance && scanInstance.isScanning) {
+        scanInstance.stop().then(() => {
+          setIsScannerStarted(false);
+          scannerRef.current = null;
+        }).catch(err => console.error('Cleanup error:', err));
+      }
+    };
   }, [isOpen]);
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in">
-      <div className="bg-white w-full max-w-md rounded-[2.5rem] shadow-2xl overflow-hidden animate-scale-in border border-white">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-md animate-fade-in">
+      <div className="bg-white w-full max-w-md rounded-[2.5rem] shadow-[0_20px_50px_rgba(0,0,0,0.2)] overflow-hidden animate-scale-in border border-slate-100/50">
         {/* Header */}
-        <div className="px-8 py-6 bg-slate-900 text-white flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-primary-500 rounded-xl shadow-lg shadow-primary-500/20">
+        <div className="px-8 py-6 bg-slate-900 text-white flex items-center justify-between relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-primary-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+          <div className="flex items-center gap-3 relative z-10">
+            <div className="p-2 bg-primary-500 rounded-xl shadow-lg shadow-primary-500/20 ring-4 ring-primary-500/10">
               <QrCode className="h-5 w-5 text-white" />
             </div>
             <div>
               <h3 className="text-lg font-black uppercase tracking-tight leading-none mb-1">Service Scan</h3>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest italic leading-none">Booking Validator v2.0</p>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none">Booking Validator v2.1</p>
             </div>
           </div>
           <button 
-            onClick={() => {
-                stopScanner();
-                onClose();
-            }} 
-            className="p-2 bg-white/5 hover:bg-white/10 rounded-xl transition-colors"
+            onClick={onClose} 
+            className="p-2 hover:bg-white/10 rounded-xl transition-colors relative z-10 active:scale-90"
           >
             <X className="h-6 w-6" />
           </button>
         </div>
 
         <div className="p-8">
-          {!scanResult && !error && !isProcessing && (
-            <div className="space-y-6">
-              <div id={readerId} className="overflow-hidden rounded-[2rem] border-4 border-slate-100 bg-slate-50 relative aspect-square shadow-inner">
+          {/* CRITICAL: The scanner container MUST be always present in the DOM when open to avoid "White Screen" or "Lost Target" errors */}
+          <div className={`space-y-6 ${(scanResult || error || isProcessing) ? 'hidden' : 'block'}`}>
+            <div className="relative group">
+               {/* Decorative border */}
+               <div id={readerId} className="overflow-hidden rounded-[2.2rem] border-4 border-slate-100 bg-slate-50 relative aspect-square shadow-inner transition-all group-hover:border-primary-500/20 lg:min-h-[300px]">
                 {!isScannerStarted && (
-                   <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
-                      <div className="w-10 h-10 border-4 border-primary-500 border-t-transparent rounded-full animate-spin" />
-                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Initializing Lens...</p>
+                   <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-slate-50/50 backdrop-blur-sm z-10">
+                      <div className="relative">
+                        <div className="w-12 h-12 border-4 border-slate-200 border-t-primary-500 rounded-full animate-spin" />
+                        <div className="absolute inset-0 flex items-center justify-center">
+                           <QrCode className="h-5 w-5 text-primary-500/50" />
+                        </div>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-900">Activating Optical Lens</p>
+                        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1">Please Wait...</p>
+                      </div>
                    </div>
                 )}
               </div>
-              <div className="text-center">
-                <p className="text-xs font-black text-slate-900 uppercase tracking-widest mb-1.5">Position QR Code</p>
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-relaxed max-w-[200px] mx-auto opacity-70">Scanner will auto-detect and validate the client booking.</p>
-              </div>
+              
+              {/* Scan Overlay UI */}
+              {isScannerStarted && (
+                <div className="absolute inset-0 pointer-events-none z-10 border-[30px] border-black/20 rounded-[2.2rem]">
+                  <div className="w-full h-full border-2 border-white/50 rounded-2xl relative">
+                    {/* Corner corners */}
+                    <div className="absolute -top-1 -left-1 w-6 h-6 border-t-4 border-l-4 border-primary-500 rounded-tl-lg" />
+                    <div className="absolute -top-1 -right-1 w-6 h-6 border-t-4 border-r-4 border-primary-500 rounded-tr-lg" />
+                    <div className="absolute -bottom-1 -left-1 w-6 h-6 border-b-4 border-l-4 border-primary-500 rounded-bl-lg" />
+                    <div className="absolute -bottom-1 -right-1 w-6 h-6 border-b-4 border-r-4 border-primary-500 rounded-br-lg" />
+                    
+                    {/* Scanning animation line */}
+                    <div className="absolute top-0 left-0 w-full h-0.5 bg-gradient-to-r from-transparent via-primary-500 to-transparent animate-scan-line" />
+                  </div>
+                </div>
+              )}
             </div>
-          )}
+            
+            <div className="text-center">
+              <p className="text-xs font-black text-slate-900 uppercase tracking-widest mb-1.5 flex items-center justify-center gap-2">
+                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> Position QR Code
+              </p>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-relaxed max-w-[200px] mx-auto opacity-70">Detection is fully automated. Keep the code within the frame.</p>
+            </div>
+          </div>
 
           {isProcessing && (
-            <div className="flex flex-col items-center justify-center py-16 gap-6">
+            <div className="flex flex-col items-center justify-center py-16 gap-8 animate-in fade-in zoom-in-95 duration-300">
               <div className="relative">
                 <div className="w-20 h-20 border-8 border-slate-100 border-t-primary-500 rounded-full animate-spin" />
                 <div className="absolute inset-0 flex items-center justify-center">

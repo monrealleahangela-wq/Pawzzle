@@ -502,3 +502,15 @@ code {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+/* ── QR Scanner Scan Line ── */
+@keyframes scan-line {
+  0% { top: 0%; opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { top: 100%; opacity: 0; }
+}
+
+.animate-scan-line {
+  animation: scan-line 2s linear infinite;
+}

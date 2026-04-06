@@ -8,8 +8,7 @@ const productSchema = new mongoose.Schema({
   },
   category: {
     type: String,
-    required: true,
-    enum: ['food', 'toys', 'toy', 'accessories', 'accessory', 'grooming', 'health', 'housing', 'training', 'other']
+    required: true
   },
   description: {
     type: String,
@@ -105,6 +104,21 @@ const productSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
+  sku: {
+    type: String,
+    trim: true,
+    index: true
+  },
+  variations: [{
+    name: String,
+    description: String,
+    options: [{
+      value: String,
+      price: Number,
+      stock: Number,
+      sku: String
+    }]
+  }],
   ratings: {
     average: {
       type: Number,

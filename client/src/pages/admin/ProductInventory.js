@@ -117,7 +117,10 @@ const ProductInventory = () => {
     hasNoGtin: false,
     images: [],
     video: null,
-    variations: [], // { name: '', description: '', images: [], options: [{ price: '', stock: '', sku: '' }] }
+    price: '',
+    stockQuantity: '',
+    sku: '',
+    variations: [], // { name: '', description: '', images: [], options: [{ value: '', price: '', stock: '', sku: '' }] }
     shipping: {
       weight: '',
       parcelSize: { length: '', width: '', height: '' },
@@ -206,6 +209,10 @@ const ProductInventory = () => {
         ...product,
         mainCategory: product.category || 'Pet Food',
         subCategory: product.subCategory || 'Others',
+        price: product.price || '',
+        stockQuantity: product.stockQuantity || '',
+        sku: product.sku || '',
+        variations: product.variations || [],
         shipping: {
           ...initialProductState.shipping,
           ...product.shipping
@@ -241,12 +248,18 @@ const ProductInventory = () => {
       const userData = JSON.parse(localStorage.getItem('user') || '{}');
       const isAdminOrStaff = userData.role === 'admin' || userData.role === 'super_admin' || userData.role === 'staff';
 
-      // Flatten payload for backend compatibility if needed
+      // Flatten payload for backend compatibility
+      const hasVariations = productForm.variations.length > 0;
+      const firstOpt = productForm.variations[0]?.options[0];
+      
       const payload = {
         ...productForm,
-        category: productForm.mainCategory, // Backwards compatibility
-        price: productForm.variations[0]?.options[0]?.price || 0, // Fallback for list view
-        stockQuantity: productForm.variations[0]?.options[0]?.stock || 0
+        category: productForm.mainCategory,
+        // If variations exist, use first option as primary representation for listings
+        // Otherwise, use top-level fields
+        price: hasVariations ? (firstOpt?.price || 0) : (productForm.price || 0),
+        stockQuantity: hasVariations ? (firstOpt?.stock || 0) : (productForm.stockQuantity || 0),
+        sku: hasVariations ? (firstOpt?.sku || '') : (productForm.sku || '')
       };
 
       if (editingProduct) {
@@ -807,109 +820,238 @@ const ProductInventory = () => {
 
                   {activeSections.sales && (
                     <div className="p-8 border-t border-slate-50 space-y-10 animate-in slide-in-from-top-2 duration-300">
-                       <div className="flex items-center justify-between">
-                         <h5 className="text-[11px] font-black text-slate-400 uppercase tracking-[0.3em]">Variation Management</h5>
-                         <button 
+                        <div className="flex items-center justify-between">
+                          <h5 className="text-[11px] font-black text-slate-400 uppercase tracking-[0.3em]">Variation Management</h5>
+                          <button 
                             type="button" 
-                            onClick={() => setProductForm(p => ({ ...p, variations: [...p.variations, { name: '', description: '', options: [{ value: '', price: '', stock: '', sku: '' }] }] }))}
-                            className="px-6 py-2 bg-slate-900 text-white rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-primary-600 transition-all"
+                            onClick={() => setProductForm(p => ({ 
+                              ...p, 
+                              variations: [...p.variations, { 
+                                name: '', 
+                                description: '', 
+                                options: [{ value: '', price: '', stock: '', sku: '' }] 
+                              }] 
+                            }))}
+                            className="px-6 py-2 bg-slate-900 text-white rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-primary-600 transition-all shadow-lg active:scale-95"
                           >
-                           + Add Variation Group
-                         </button>
-                       </div>
+                            + Add Variation Group
+                          </button>
+                        </div>
 
-                       {productForm.variations.length === 0 ? (
-                         <div className="p-12 bg-slate-50 rounded-[2.5rem] border-2 border-dashed border-slate-100 flex flex-col items-center gap-4">
-                            <Box className="h-12 w-12 text-slate-200" />
-                            <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest">No variations identified. Using base configuration.</p>
-                            <div className="grid grid-cols-3 gap-6 w-full max-w-2xl mt-4">
-                                <div className="space-y-2">
-                                  <label className="text-[9px] font-black text-slate-400 uppercase text-center block">Global Price</label>
-                                  <input type="number" className="w-full px-4 py-3 bg-white border border-slate-100 rounded-xl text-center text-xs font-black shadow-inner" placeholder="0.00" />
-                                </div>
-                                <div className="space-y-2">
-                                  <label className="text-[9px] font-black text-slate-400 uppercase text-center block">Stock Volume</label>
-                                  <input type="number" className="w-full px-4 py-3 bg-white border border-slate-100 rounded-xl text-center text-xs font-black shadow-inner" placeholder="0" />
-                                </div>
-                                <div className="space-y-2">
-                                  <label className="text-[9px] font-black text-slate-400 uppercase text-center block">Base SKU</label>
-                                  <input type="text" className="w-full px-4 py-3 bg-white border border-slate-100 rounded-xl text-center text-xs font-black shadow-inner" placeholder="SKU-..." />
-                                </div>
-                            </div>
-                         </div>
-                       ) : (
-                         <div className="space-y-8">
-                            {productForm.variations.map((v, idx) => (
-                              <div key={idx} className="p-8 bg-slate-50/50 rounded-[2.5rem] border border-slate-100 space-y-6">
-                                <div className="flex items-center justify-between">
-                                   <div className="flex items-center gap-3">
-                                      <div className="w-8 h-8 bg-white border border-slate-200 rounded-lg flex items-center justify-center text-[10px] font-black text-slate-900">{idx + 1}</div>
-                                      <span className="text-[10px] font-black text-slate-900 uppercase tracking-widest">Group Definition</span>
-                                   </div>
-                                   <button type="button" onClick={() => setProductForm(p => ({ ...p, variations: p.variations.filter((_, i) => i !== idx) }))} className="text-rose-500 hover:text-rose-600">
-                                      <Trash2 className="h-4 w-4" />
-                                   </button>
-                                </div>
-
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {productForm.variations.length === 0 ? (
+                          <div className="p-12 bg-slate-50 rounded-[2.5rem] border-2 border-dashed border-slate-100 flex flex-col items-center gap-4">
+                             <Box className="h-12 w-12 text-slate-200" />
+                             <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest text-center">No variations identified.<br/>Using base product configuration.</p>
+                             <div className="grid grid-cols-3 gap-6 w-full max-w-2xl mt-4">
+                                 <div className="space-y-2 text-center">
+                                   <label className="text-[9px] font-black text-slate-400 uppercase block tracking-widest">Base Price</label>
                                    <input 
-                                    className="w-full px-6 py-4 bg-white border border-slate-100 rounded-2xl text-[11px] font-black uppercase outline-none focus:border-primary-500"
-                                    placeholder="VARIATION NAME (COLOR, SIZE, ETC.)"
-                                    value={v.name}
-                                    onChange={(e) => {
-                                      const newV = [...productForm.variations];
-                                      newV[idx].name = e.target.value;
-                                      setProductForm(p => ({ ...p, variations: newV }));
-                                    }}
+                                    type="number" 
+                                    value={productForm.price}
+                                    onChange={(e) => setProductForm(p => ({ ...p, price: e.target.value }))}
+                                    className="w-full px-4 py-3 bg-white border border-slate-100 rounded-xl text-center text-xs font-black shadow-inner outline-none focus:border-primary-500" 
+                                    placeholder="0.00" 
                                    />
+                                 </div>
+                                 <div className="space-y-2 text-center">
+                                   <label className="text-[9px] font-black text-slate-400 uppercase block tracking-widest">Base Stock</label>
                                    <input 
-                                    className="w-full px-6 py-4 bg-white border border-slate-100 rounded-2xl text-[11px] font-black uppercase outline-none focus:border-primary-500"
-                                    placeholder="DESCRIPTION / EXPLANATION"
-                                    value={v.description}
-                                    onChange={(e) => {
-                                      const newV = [...productForm.variations];
-                                      newV[idx].description = e.target.value;
-                                      setProductForm(p => ({ ...p, variations: newV }));
-                                    }}
+                                    type="number" 
+                                    value={productForm.stockQuantity}
+                                    onChange={(e) => setProductForm(p => ({ ...p, stockQuantity: e.target.value }))}
+                                    className="w-full px-4 py-3 bg-white border border-slate-100 rounded-xl text-center text-xs font-black shadow-inner outline-none focus:border-primary-500" 
+                                    placeholder="0" 
                                    />
-                                </div>
+                                 </div>
+                                 <div className="space-y-2 text-center">
+                                   <label className="text-[9px] font-black text-slate-400 uppercase block tracking-widest">Base SKU</label>
+                                   <input 
+                                    type="text" 
+                                    value={productForm.sku}
+                                    onChange={(e) => setProductForm(p => ({ ...p, sku: e.target.value }))}
+                                    className="w-full px-4 py-3 bg-white border border-slate-100 rounded-xl text-center text-xs font-black shadow-inner outline-none focus:border-primary-500" 
+                                    placeholder="SKU-..." 
+                                   />
+                                 </div>
+                             </div>
+                          </div>
+                        ) : (
+                          <div className="space-y-8">
+                             {productForm.variations.map((v, idx) => (
+                               <div key={idx} className="p-8 bg-slate-50/50 rounded-[2.5rem] border border-slate-100 space-y-6 animate-in slide-in-from-top-2">
+                                 <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-3">
+                                       <div className="w-8 h-8 bg-white border border-slate-200 rounded-lg flex items-center justify-center text-[10px] font-black text-slate-900 shadow-sm">{idx + 1}</div>
+                                       <span className="text-[10px] font-black text-slate-900 uppercase tracking-widest">Variation Setup</span>
+                                    </div>
+                                    <button 
+                                      type="button" 
+                                      onClick={() => setProductForm(p => ({ ...p, variations: p.variations.filter((_, i) => i !== idx) }))} 
+                                      className="w-8 h-8 flex items-center justify-center text-rose-500 hover:bg-rose-50 rounded-lg transition-colors"
+                                    >
+                                       <Trash2 className="h-4 w-4" />
+                                    </button>
+                                 </div>
 
-                                <div className="bg-white rounded-[2rem] border border-slate-100 overflow-hidden">
-                                   <table className="w-full border-collapse">
-                                      <thead>
-                                         <tr className="bg-slate-900/5 divide-x divide-slate-200/40">
-                                            <th className="px-6 py-4 text-center text-[9px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-200/40">Option</th>
-                                            <th className="px-6 py-4 text-center text-[9px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-200/40">Price</th>
-                                            <th className="px-6 py-4 text-center text-[9px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-200/40">Stock</th>
-                                            <th className="px-6 py-4 text-center text-[9px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-200/40">SKU</th>
-                                            <th className="px-6 py-4 text-center text-[9px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-200/40">Actions</th>
-                                         </tr>
-                                      </thead>
-                                      <tbody className="divide-y divide-slate-100">
-                                         {v.options.map((opt, oIdx) => (
-                                           <tr key={oIdx} className="divide-x divide-slate-100">
-                                              <td className="p-2"><input className="w-full px-4 py-3 text-center text-xs font-black uppercase outline-none" placeholder="RED" value={opt.value} /></td>
-                                              <td className="p-2"><input className="w-full px-4 py-3 text-center text-xs font-black uppercase outline-none" placeholder="0.00" value={opt.price} /></td>
-                                              <td className="p-2"><input className="w-full px-4 py-3 text-center text-xs font-black uppercase outline-none" placeholder="0" value={opt.stock} /></td>
-                                              <td className="p-2"><input className="w-full px-4 py-3 text-center text-xs font-black uppercase outline-none" placeholder="SKU-..." value={opt.sku} /></td>
-                                              <td className="p-2 text-center">
-                                                <button type="button" className="text-slate-300 hover:text-rose-500"><Trash2 size={14}/></button>
-                                              </td>
-                                           </tr>
-                                         ))}
-                                      </tbody>
-                                   </table>
-                                   <div className="p-4 bg-slate-50 flex items-center justify-between">
-                                      <button type="button" className="text-[9px] font-black text-primary-600 uppercase tracking-widest hover:underline">+ Add Option</button>
-                                      <div className="flex gap-2">
-                                         <button type="button" className="px-4 py-2 bg-emerald-600 text-white rounded-lg text-[8px] font-black uppercase tracking-widest shadow-lg shadow-emerald-200">Apply to All</button>
-                                      </div>
-                                   </div>
-                                </div>
-                              </div>
-                            ))}
-                         </div>
-                       )}
+                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div className="space-y-2">
+                                      <label className="text-[9px] font-black text-slate-400 uppercase px-2 tracking-widest">Group Name</label>
+                                      <input 
+                                       className="w-full px-6 py-4 bg-white border border-slate-100 rounded-2xl text-[11px] font-black uppercase outline-none focus:border-primary-500 shadow-sm"
+                                       placeholder="E.G. COLOR, SIZE, MATERIAL"
+                                       value={v.name}
+                                       onChange={(e) => {
+                                         const newV = [...productForm.variations];
+                                         newV[idx].name = e.target.value;
+                                         setProductForm(p => ({ ...p, variations: newV }));
+                                       }}
+                                      />
+                                    </div>
+                                    <div className="space-y-2">
+                                      <label className="text-[9px] font-black text-slate-400 uppercase px-2 tracking-widest">Short Description</label>
+                                      <input 
+                                       className="w-full px-6 py-4 bg-white border border-slate-100 rounded-2xl text-[11px] font-black uppercase outline-none focus:border-primary-500 shadow-sm"
+                                       placeholder="OPTIONAL EXPLANATION..."
+                                       value={v.description}
+                                       onChange={(e) => {
+                                         const newV = [...productForm.variations];
+                                         newV[idx].description = e.target.value;
+                                         setProductForm(p => ({ ...p, variations: newV }));
+                                       }}
+                                      />
+                                    </div>
+                                 </div>
+
+                                 <div className="bg-white rounded-[2.5rem] border border-slate-100 overflow-hidden shadow-sm">
+                                    <div className="overflow-x-auto no-scrollbar">
+                                      <table className="w-full border-collapse">
+                                         <thead>
+                                            <tr className="bg-slate-900/[0.02] divide-x divide-slate-100">
+                                               <th className="px-6 py-4 text-center text-[9px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">Variation Option</th>
+                                               <th className="px-6 py-4 text-center text-[9px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">Price (₱)</th>
+                                               <th className="px-6 py-4 text-center text-[9px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">Stock</th>
+                                               <th className="px-6 py-4 text-center text-[9px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">SKU</th>
+                                               <th className="px-6 py-4 text-center text-[9px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">Remove</th>
+                                            </tr>
+                                         </thead>
+                                         <tbody className="divide-y divide-slate-50">
+                                            {v.options.map((opt, oIdx) => (
+                                              <tr key={oIdx} className="divide-x divide-slate-50 group/row hover:bg-slate-50/50 transition-colors">
+                                                 <td className="p-2">
+                                                   <input 
+                                                      className="w-full px-4 py-3 text-center text-[11px] font-black uppercase outline-none bg-transparent" 
+                                                      placeholder="RED, XL, ETC." 
+                                                      value={opt.value} 
+                                                      onChange={(e) => {
+                                                        const newV = [...productForm.variations];
+                                                        newV[idx].options[oIdx].value = e.target.value;
+                                                        setProductForm(p => ({ ...p, variations: newV }));
+                                                      }}
+                                                   />
+                                                 </td>
+                                                 <td className="p-2">
+                                                   <input 
+                                                      type="number"
+                                                      className="w-full px-4 py-3 text-center text-[11px] font-black uppercase outline-none bg-transparent" 
+                                                      placeholder="0.00" 
+                                                      value={opt.price} 
+                                                      onChange={(e) => {
+                                                        const newV = [...productForm.variations];
+                                                        newV[idx].options[oIdx].price = e.target.value;
+                                                        setProductForm(p => ({ ...p, variations: newV }));
+                                                      }}
+                                                   />
+                                                 </td>
+                                                 <td className="p-2">
+                                                   <input 
+                                                      type="number"
+                                                      className="w-full px-4 py-3 text-center text-[11px] font-black uppercase outline-none bg-transparent" 
+                                                      placeholder="0" 
+                                                      value={opt.stock} 
+                                                      onChange={(e) => {
+                                                        const newV = [...productForm.variations];
+                                                        newV[idx].options[oIdx].stock = e.target.value;
+                                                        setProductForm(p => ({ ...p, variations: newV }));
+                                                      }}
+                                                   />
+                                                 </td>
+                                                 <td className="p-2">
+                                                   <input 
+                                                      className="w-full px-4 py-3 text-center text-[11px] font-black uppercase outline-none bg-transparent" 
+                                                      placeholder="SKU-..." 
+                                                      value={opt.sku} 
+                                                      onChange={(e) => {
+                                                        const newV = [...productForm.variations];
+                                                        newV[idx].options[oIdx].sku = e.target.value;
+                                                        setProductForm(p => ({ ...p, variations: newV }));
+                                                      }}
+                                                   />
+                                                 </td>
+                                                 <td className="p-2 text-center">
+                                                   <button 
+                                                      type="button" 
+                                                      onClick={() => {
+                                                        const newV = [...productForm.variations];
+                                                        newV[idx].options = newV[idx].options.filter((_, i) => i !== oIdx);
+                                                        // Ensure at least one option always exists
+                                                        if (newV[idx].options.length === 0) {
+                                                          newV[idx].options = [{ value: '', price: '', stock: '', sku: '' }];
+                                                        }
+                                                        setProductForm(p => ({ ...p, variations: newV }));
+                                                      }}
+                                                      className="p-2 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-all"
+                                                   >
+                                                      <Trash2 size={14}/>
+                                                   </button>
+                                                 </td>
+                                              </tr>
+                                            ))}
+                                         </tbody>
+                                      </table>
+                                    </div>
+                                    <div className="p-5 bg-slate-100/50 flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-slate-100">
+                                       <button 
+                                          type="button" 
+                                          onClick={() => {
+                                            const newV = [...productForm.variations];
+                                            newV[idx].options.push({ value: '', price: '', stock: '', sku: '' });
+                                            setProductForm(p => ({ ...p, variations: newV }));
+                                          }}
+                                          className="flex items-center gap-2 group"
+                                       >
+                                          <div className="w-6 h-6 rounded-full bg-slate-900 flex items-center justify-center text-white scale-75 group-hover:scale-100 transition-transform">
+                                            <Plus size={12} />
+                                          </div>
+                                          <span className="text-[10px] font-black text-slate-900 uppercase tracking-widest">Add Option Line</span>
+                                       </button>
+                                       
+                                       <div className="flex gap-2">
+                                          <button 
+                                            type="button" 
+                                            onClick={() => {
+                                              const newV = [...productForm.variations];
+                                              const basePrice = newV[idx].options[0].price;
+                                              const baseStock = newV[idx].options[0].stock;
+                                              
+                                              newV[idx].options = newV[idx].options.map(opt => ({
+                                                ...opt,
+                                                price: basePrice,
+                                                stock: baseStock
+                                              }));
+                                              setProductForm(p => ({ ...p, variations: newV }));
+                                              toast.info('Applied top values to all options');
+                                            }}
+                                            className="px-6 py-2.5 bg-emerald-600 text-white rounded-xl text-[9px] font-black uppercase tracking-[0.2em] shadow-lg shadow-emerald-200 hover:scale-[1.02] active:scale-95 transition-all"
+                                          >
+                                            Apply Price/Stock to All
+                                          </button>
+                                       </div>
+                                    </div>
+                                 </div>
+                               </div>
+                             ))}
+                          </div>
+                        )}
                     </div>
                   )}
                 </section>
