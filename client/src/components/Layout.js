@@ -189,7 +189,7 @@ const Layout = () => {
   const isLandingPage = location.pathname === '/' && !isAuthenticated;
 
   return (
-    <div className={`min-h-screen bg-slate-50 flex flex-col lg:flex-row overflow-x-hidden ${isLandingPage ? '!bg-transparent' : ''}`}>
+    <div className={`min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col lg:flex-row overflow-x-hidden transition-colors duration-300 ${isLandingPage ? '!bg-transparent' : ''}`}>
       {/* Scroll Progress */}
       {!isLandingPage && (
         <div className="fixed top-0 left-0 h-1 bg-primary-600 z-[100] transition-all" style={{ width: `${scrollProgress}%` }} />
@@ -197,7 +197,7 @@ const Layout = () => {
 
       {/* Sidebar - Desktop */}
       {!isLandingPage && (
-        <aside className={`hidden lg:flex fixed left-0 top-0 h-full w-20 hover:w-64 bg-white z-[70] flex-col transition-all duration-200 group shadow-sm border-r border-slate-200`}>
+        <aside className={`hidden lg:flex fixed left-0 top-0 h-full w-20 hover:w-64 bg-white dark:bg-slate-900 z-[70] flex-col transition-all duration-300 group shadow-sm border-r border-slate-200 dark:border-slate-800`}>
           <Link to="/" className="p-6 flex items-center gap-3">
             <img src="/images/logo.png" alt="Logo" className="w-8 h-8 object-contain" />
             <span className="text-xl font-bold text-primary-600 opacity-0 group-hover:opacity-100 transition-opacity">PAWZZLE</span>
@@ -208,7 +208,7 @@ const Layout = () => {
               if (item.type === 'label') {
                 return (
                   <div key={idx} className="pt-4 pb-2 pl-3">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity">{item.label}</span>
+                    <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity">{item.label}</span>
                   </div>
                 );
               }
@@ -218,7 +218,7 @@ const Layout = () => {
                 <Link
                   key={item.path}
                   to={item.path}
-                  className={`flex items-center gap-4 p-3 rounded-xl transition-colors ${active ? 'bg-primary-50 text-primary-600 font-bold' : 'text-slate-500 hover:bg-slate-50'}`}
+                  className={`flex items-center gap-4 p-3 rounded-xl transition-colors ${active ? 'bg-primary-50 dark:bg-primary-900/20 text-primary-600 font-bold' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
                 >
                   <Icon className="h-5 w-5 shrink-0" />
                   <span className="text-sm opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">{item.label}</span>
@@ -227,7 +227,7 @@ const Layout = () => {
             })}
           </nav>
 
-          <div className="p-4 border-t border-slate-100">
+          <div className="p-4 border-t border-slate-100 dark:border-slate-800">
              <button onClick={handleLogout} className="flex items-center gap-4 p-3 w-full text-slate-500 hover:text-rose-600 transition-colors">
                <LogOut className="h-5 w-5 shrink-0" />
                <span className="text-sm opacity-0 group-hover:opacity-100 transition-opacity">Logout</span>
@@ -239,11 +239,11 @@ const Layout = () => {
       {/* Main Content Area */}
       <div className={`flex-1 flex flex-col min-w-0 ${isLandingPage ? '' : 'lg:pl-20 pt-16'} main-content-area`}>
         {!isLandingPage && (
-          <header className={`fixed top-0 left-0 lg:left-20 right-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-200 h-16 flex items-center px-4 justify-between shadow-sm`}>
+          <header className={`fixed top-0 left-0 lg:left-20 right-0 z-50 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 h-16 flex items-center px-4 justify-between shadow-sm transition-all duration-300`}>
              <div className="lg:hidden flex items-center gap-3">
                <button 
                  onClick={() => setIsMobileMenuOpen(true)}
-                 className="p-2 -ml-2 text-slate-500 hover:bg-slate-100 rounded-xl"
+                 className="p-2 -ml-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl"
                >
                  <Menu className="h-6 w-6" />
                </button>
@@ -254,17 +254,17 @@ const Layout = () => {
              </div>
 
              <div className="flex items-center gap-3 ml-auto">
-                <button onClick={toggleTheme} className="p-2 text-slate-500 hover:bg-slate-100 rounded-lg">
-                   {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
+                <button onClick={toggleTheme} className="p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors">
+                   {theme === 'dark' ? <Sun size={20} className="text-amber-400 transition-all scale-110" /> : <Moon size={20} className="text-slate-600" />}
                 </button>
                 {user && (
                    <>
                      <NotificationBell />
-                     <Link to="/profile" className="flex items-center gap-2 border border-slate-200 p-1 rounded-full pr-3 bg-white hover:bg-slate-50">
-                        <div className="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center text-primary-700 font-bold overflow-hidden text-xs">
+                     <Link to="/profile" className="flex items-center gap-2 border border-slate-200 dark:border-slate-700 p-1 rounded-full pr-3 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all">
+                        <div className="w-8 h-8 rounded-full bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center text-primary-700 dark:text-primary-400 font-bold overflow-hidden text-xs">
                           {user.firstName[0]}
                         </div>
-                        <span className="text-sm font-medium text-slate-700 hidden sm:block">{user.firstName}</span>
+                        <span className="text-sm font-medium text-slate-700 dark:text-slate-300 hidden sm:block">{user.firstName}</span>
                      </Link>
                    </>
                 )}
@@ -281,12 +281,12 @@ const Layout = () => {
 
         {/* Mobile Bottom Nav */}
         {!isLandingPage && (
-          <nav className="lg:hidden fixed bottom-4 left-1/2 -translate-x-1/2 w-[95%] max-w-sm bg-white border border-slate-200 rounded-2xl shadow-lg flex justify-around p-2 z-[60]">
+          <nav className="lg:hidden fixed bottom-4 left-1/2 -translate-x-1/2 w-[95%] max-w-sm bg-white dark:bg-slate-900/90 dark:backdrop-blur-md border border-slate-200 dark:border-slate-800 rounded-2xl shadow-lg flex justify-around p-2 z-[60] transition-colors duration-300">
              {bottomNavItems.map(item => {
                 const Icon = item.icon;
                 const active = isActivePath(item.path);
                 return (
-                   <Link key={item.path} to={item.path} className={`flex flex-col items-center p-2 rounded-xl transition-colors ${active ? 'text-primary-600 bg-primary-50' : 'text-slate-400'}`}>
+                   <Link key={item.path} to={item.path} className={`flex flex-col items-center p-2 rounded-xl transition-colors ${active ? 'text-primary-600 bg-primary-50 dark:bg-primary-900/20' : 'text-slate-400 dark:text-slate-500'}`}>
                       <Icon size={20} />
                       <span className="text-[10px] font-bold mt-1">{item.label}</span>
                    </Link>
@@ -303,9 +303,9 @@ const Layout = () => {
           onClick={() => setIsMobileMenuOpen(false)}
         />
         <aside 
-          className={`absolute top-0 left-0 h-full w-[280px] bg-white shadow-2xl transition-transform duration-500 ease-out border-r border-slate-100 ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}
+          className={`absolute top-0 left-0 h-full w-[280px] bg-white dark:bg-slate-900 shadow-2xl transition-transform duration-500 ease-out border-r border-slate-100 dark:border-slate-800 ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}
         >
-          <div className="p-6 border-b border-slate-100 flex items-center justify-between">
+          <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
             <Link to="/" className="flex items-center gap-2" onClick={() => setIsMobileMenuOpen(false)}>
               <img src="/images/logo.png" alt="Logo" className="h-8 w-8 object-contain" />
               <span className="font-extrabold text-primary-600 tracking-tighter uppercase">PAWZZLE</span>

@@ -106,23 +106,23 @@ const Dashboard = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#FAF9F6] p-4 sm:p-6 lg:p-12 space-y-8 sm:space-y-12 pb-20 sm:pb-40 font-['Outfit'] relative overflow-hidden">
+    <div className="min-h-screen bg-[#FAF9F6] dark:bg-slate-950 p-4 sm:p-6 lg:p-12 space-y-8 sm:space-y-12 pb-20 sm:pb-40 font-['Outfit'] relative overflow-hidden transition-colors duration-500">
       {/* Precision Decorative Underlay */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden opacity-30">
-        <div className="absolute top-[-20%] right-[-10%] w-[60%] h-[60%] bg-amber-100/40 rounded-full blur-[160px] animate-spin-slow" />
-        <div className="absolute bottom-[-15%] left-[-10%] w-[50%] h-[50%] bg-[#5D4037]/5 rounded-full blur-[140px] animate-blob-move" />
+        <div className="absolute top-[-20%] right-[-10%] w-[60%] h-[60%] bg-amber-100/40 dark:bg-amber-900/10 rounded-full blur-[160px] animate-spin-slow" />
+        <div className="absolute bottom-[-15%] left-[-10%] w-[50%] h-[50%] bg-[#5D4037]/5 dark:bg-slate-800/20 rounded-full blur-[140px] animate-blob-move" />
       </div>
 
       {/* ── High-Aspect Header ── */}
-      <header className="relative z-10 flex flex-col md:flex-row md:items-end justify-between gap-6 sm:gap-8 border-b border-[#5D4037]/5 pb-8 sm:pb-12">
+      <header className="relative z-10 flex flex-col md:flex-row md:items-end justify-between gap-6 sm:gap-8 border-b border-[#5D4037]/5 dark:border-slate-800 pb-8 sm:pb-12">
         <div className="space-y-4 sm:space-y-6">
           <div className="flex items-center gap-3 sm:gap-4">
-            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-[#211510] text-amber-500 rounded-xl sm:rounded-2xl flex items-center justify-center shadow-2xl transition-transform hover:scale-110">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-[#211510] dark:bg-slate-900 text-amber-500 rounded-xl sm:rounded-2xl flex items-center justify-center shadow-2xl transition-transform hover:scale-110">
               <Activity className="h-5 w-5 sm:h-6 sm:w-6" />
             </div>
             <div className="space-y-0.5 sm:space-y-1">
               <span className="text-[9px] sm:text-[10px] font-black text-amber-600 uppercase tracking-[0.4em] sm:tracking-[0.5em]">COMMAND TERMINAL</span>
-              <p className="text-[9px] sm:text-[11px] font-bold text-[#5D4037]/30 uppercase tracking-[0.2em] sm:tracking-[0.3em] flex items-center gap-2 sm:gap-3">
+              <p className="text-[9px] sm:text-[11px] font-bold text-[#5D4037]/30 dark:text-slate-500 uppercase tracking-[0.2em] sm:tracking-[0.3em] flex items-center gap-2 sm:gap-3">
                 <span className="flex h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
                 Live Telemetry: Active
               </p>
@@ -130,7 +130,7 @@ const Dashboard = () => {
           </div>
           
           <div className="space-y-1">
-             <h1 className="text-3xl sm:text-5xl lg:text-7xl font-black text-[#3D2B23] uppercase tracking-[-0.04em] leading-[0.9] sm:leading-[0.85]">
+             <h1 className="text-3xl sm:text-5xl lg:text-7xl font-black text-[#3D2B23] dark:text-slate-100 uppercase tracking-[-0.04em] leading-[0.9] sm:leading-[0.85]">
                 {user?.store?.name || 'Vanguard'} <br /> 
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-500 to-amber-700 italic">Flagship Overview .</span>
              </h1>
@@ -139,7 +139,7 @@ const Dashboard = () => {
 
         <button
           onClick={handleRefreshRole}
-          className="group relative px-6 sm:px-10 py-4 sm:py-5 bg-[#211510] text-white rounded-xl sm:rounded-2xl overflow-hidden transition-all active:scale-95 shadow-[0_20px_40px_rgba(0,0,0,0.15)] flex items-center gap-3 sm:gap-4"
+          className="group relative px-6 sm:px-10 py-4 sm:py-5 bg-[#211510] dark:bg-slate-900 text-white rounded-xl sm:rounded-2xl overflow-hidden transition-all active:scale-95 shadow-[0_20px_40px_rgba(0,0,0,0.15)] flex items-center gap-3 sm:gap-4 border border-white/5"
         >
           <div className="absolute inset-0 bg-amber-600 translate-y-full group-hover:translate-y-0 transition-transform duration-500 opacity-20" />
           <RefreshCw className={`h-4 w-4 sm:h-5 sm:w-5 text-amber-500 ${refreshingRole ? 'animate-spin' : 'group-hover:rotate-180 transition-transform duration-700'}`} />
@@ -162,30 +162,30 @@ const Dashboard = () => {
           <Link
             key={i}
             to={stat.link}
-            className="group relative bg-white rounded-[2.5rem] p-8 border border-[#5D4037]/5 transition-all duration-500 hover:shadow-[0_40px_80px_-15px_rgba(93,64,55,0.12)] hover:-translate-y-2 overflow-hidden"
+            className="group relative bg-white dark:bg-slate-900 rounded-[2rem] p-5 sm:p-8 border border-[#5D4037]/5 dark:border-slate-800 transition-all duration-500 hover:shadow-[0_40px_80px_-15px_rgba(0,0,0,0.3)] hover:-translate-y-2 overflow-hidden"
           >
-            <div className="absolute top-0 right-0 w-32 h-32 bg-amber-50 rounded-bl-[4rem] -translate-y-16 translate-x-16 opacity-0 group-hover:opacity-100 transition-all duration-700" />
+            <div className="absolute top-0 right-0 w-32 h-32 bg-amber-50 dark:bg-amber-900/5 rounded-bl-[4rem] -translate-y-16 translate-x-16 opacity-0 group-hover:opacity-100 transition-all duration-700" />
 
-            <div className="flex justify-between items-start mb-10 relative z-10">
-              <div className="w-14 h-14 bg-[#FAF9F6] border border-[#5D4037]/5 text-amber-600 rounded-2xl flex items-center justify-center transition-all group-hover:bg-amber-600 group-hover:text-white shadow-sm">
-                <stat.icon className="h-6 w-6" />
+            <div className="flex justify-between items-start mb-6 sm:mb-10 relative z-10">
+              <div className="w-10 h-10 sm:w-14 sm:h-14 bg-[#FAF9F6] dark:bg-slate-800 border border-[#5D4037]/5 dark:border-slate-700 text-amber-600 rounded-xl sm:rounded-2xl flex items-center justify-center transition-all group-hover:bg-amber-600 group-hover:text-white shadow-sm">
+                <stat.icon className="h-5 w-5 sm:h-6 sm:w-6" />
               </div>
-              <div className={`px-4 py-1.5 rounded-xl text-[10px] font-black flex items-center gap-2 ${stat.growth >= 0 ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-rose-50 text-rose-600 border border-rose-100'}`}>
+              <div className={`px-3 sm:px-4 py-1.5 rounded-xl text-[9px] sm:text-[10px] font-black flex items-center gap-2 ${stat.growth >= 0 ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 border border-emerald-100 dark:border-emerald-800' : 'bg-rose-50 dark:bg-rose-900/20 text-rose-600 border border-rose-100 dark:border-rose-800'}`}>
                 <ArrowUp className={`h-3 w-3 transition-transform ${stat.growth < 0 ? 'rotate-180' : ''}`} />
                 {stat.growth >= 0 ? '+' : ''}{stat.growth}%
               </div>
             </div>
 
             <div className="relative z-10 space-y-1">
-              <p className="text-[10px] font-black text-[#5D4037]/30 uppercase tracking-[0.4em]">{stat.label}</p>
-              <div className="flex items-baseline gap-4">
-                <span className="text-5xl font-black text-[#3D2B23] tracking-[-0.05em] leading-none">{stat.value}</span>
-                <span className="text-[9px] font-black text-[#5D4037]/20 uppercase tracking-[0.2em]">{stat.sub}</span>
+              <p className="text-[9px] sm:text-[10px] font-black text-[#5D4037]/30 dark:text-slate-500 uppercase tracking-[0.4em]">{stat.label}</p>
+              <div className="flex items-baseline gap-2 sm:gap-4">
+                <span className="text-2xl sm:text-5xl font-black text-[#3D2B23] dark:text-slate-100 tracking-[-0.05em] leading-none">{stat.value}</span>
+                <span className="text-[8px] sm:text-[9px] font-black text-[#5D4037]/20 uppercase tracking-[0.2em]">{stat.sub}</span>
               </div>
             </div>
             
-            <div className="mt-8 pt-6 border-t border-[#5D4037]/5 flex items-center justify-between opacity-40 group-hover:opacity-100 transition-opacity">
-               <span className="text-[9px] font-black uppercase tracking-widest text-amber-700">Detailed Analytics</span>
+            <div className="mt-6 sm:mt-8 pt-4 sm:pt-6 border-t border-[#5D4037]/5 dark:border-slate-800 flex items-center justify-between opacity-40 group-hover:opacity-100 transition-opacity">
+               <span className="text-[8px] sm:text-[9px] font-black uppercase tracking-widest text-amber-700 dark:text-amber-500">Detailed Analytics</span>
                <ChevronRight className="h-4 w-4 text-amber-600 group-hover:translate-x-2 transition-transform" />
             </div>
           </Link>
@@ -195,56 +195,53 @@ const Dashboard = () => {
       <div className="relative z-10 grid grid-cols-1 xl:grid-cols-12 gap-10 pb-40">
         {/* Recent Transaction Log */}
         {(['admin', 'super_admin'].includes(user?.role) || ['order_staff', 'delivery_staff', 'general'].includes(user?.staffType)) && (
-          <div className="xl:col-span-8 bg-white rounded-[3.5rem] border border-[#5D4037]/5 p-10 shadow-[0_40px_100px_-30px_rgba(0,0,0,0.05)] flex flex-col">
-            <div className="flex items-center justify-between mb-12">
+          <div className="xl:col-span-8 bg-white dark:bg-slate-900 rounded-[2.2rem] sm:rounded-[3.5rem] border border-[#5D4037]/5 dark:border-slate-800 p-6 sm:p-10 shadow-[0_40px_100px_-30px_rgba(0,0,0,0.1)] flex flex-col transition-all">
+            <div className="flex items-center justify-between mb-8 sm:mb-12">
               <div className="space-y-2">
-                <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-[#FAF9F6] border border-[#5D4037]/5 rounded-full">
+                <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-[#FAF9F6] dark:bg-slate-800 border border-[#5D4037]/5 dark:border-slate-700 rounded-full">
                   <ShoppingCart className="h-3.5 w-3.5 text-amber-600" />
-                  <span className="text-[9px] font-black text-[#5D4037]/40 uppercase tracking-[0.3em]">TRANSACTION FEED</span>
+                  <span className="text-[9px] font-black text-[#5D4037]/40 dark:text-slate-500 uppercase tracking-[0.3em]">TRANSACTION FEED</span>
                 </div>
-                <h2 className="text-3xl font-black text-[#3D2B23] uppercase tracking-tighter">Recent Logistics</h2>
+                <h2 className="text-2xl sm:text-3xl font-black text-[#3D2B23] dark:text-slate-100 uppercase tracking-tighter">Recent Logistics</h2>
               </div>
-              <Link to="/admin/orders" className="group flex items-center gap-2 px-8 py-4 bg-[#211510] text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-amber-600 transition-all shadow-xl">
+              <Link to="/admin/orders" className="group hidden sm:flex items-center gap-2 px-8 py-4 bg-[#211510] dark:bg-slate-800 text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-amber-600 transition-all shadow-xl">
                 ACCESS ALL <ChevronRight className="h-4 w-4 group-hover:translate-x-2 transition-transform" />
               </Link>
             </div>
 
-            <div className="space-y-4">
+            <div className="space-y-3 sm:space-y-4">
               {stats.recentOrders.length > 0 ? stats.recentOrders.map(order => (
-                <Link to={`/admin/orders?id=${order._id}`} key={order._id} className="group flex items-center justify-between p-6 bg-[#FAF9F6]/50 rounded-[2.2rem] border border-transparent hover:border-amber-500/20 hover:bg-white hover:shadow-2xl transition-all duration-500">
-                  <div className="flex items-center gap-8 min-w-0">
-                    <div className="w-16 h-16 rounded-[1.4rem] bg-white border border-[#5D4037]/5 flex items-center justify-center shrink-0 group-hover:bg-[#211510] transition-all shadow-sm">
-                      <ShoppingBag className="h-7 w-7 text-amber-500/30 group-hover:text-amber-500 transition-colors" />
+                <Link to={`/admin/orders?id=${order._id}`} key={order._id} className="group flex items-center justify-between p-4 sm:p-6 bg-[#FAF9F6]/50 dark:bg-slate-800/50 rounded-[1.8rem] sm:rounded-[2.2rem] border border-transparent hover:border-amber-500/20 hover:bg-white dark:hover:bg-slate-800 hover:shadow-2xl transition-all duration-500">
+                  <div className="flex items-center gap-4 sm:gap-8 min-w-0">
+                    <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-[1.2rem] sm:rounded-[1.4rem] bg-white dark:bg-slate-900 border border-[#5D4037]/5 dark:border-slate-700 flex items-center justify-center shrink-0 group-hover:bg-[#211510] transition-all shadow-sm">
+                      <ShoppingBag className="h-6 w-6 sm:h-7 sm:w-7 text-amber-500/30 group-hover:text-amber-500 transition-colors" />
                     </div>
                     <div className="min-w-0 space-y-1">
-                      <p className="text-[14px] font-black text-[#3D2B23] uppercase tracking-tight mb-1 group-hover:text-amber-700 transition-colors">ID: #{order.orderNumber.slice(-8).toUpperCase()}</p>
-                      <div className="flex items-center gap-4">
-                        <p className="text-[12px] font-black text-amber-600 tracking-tight">₱{order.totalAmount?.toLocaleString()}</p>
+                      <p className="text-[12px] sm:text-[14px] font-black text-[#3D2B23] dark:text-slate-100 uppercase tracking-tight group-hover:text-amber-700 dark:group-hover:text-amber-500 transition-colors">ID: #{order.orderNumber.slice(-8).toUpperCase()}</p>
+                      <div className="flex items-center gap-2 sm:gap-4">
+                        <p className="text-[11px] sm:text-[12px] font-black text-amber-600 tracking-tight">₱{order.totalAmount?.toLocaleString()}</p>
                         <div className="w-1 h-1 rounded-full bg-[#5D4037]/20" />
-                        <p className="text-[10px] font-bold text-[#5D4037]/30 uppercase tracking-widest">
+                        <p className="text-[9px] sm:text-[10px] font-bold text-[#5D4037]/30 dark:text-slate-500 uppercase tracking-widest">
                           {new Date(order.createdAt).toLocaleDateString('en-GB')}
                         </p>
                       </div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-6">
-                    <span className={`px-6 py-2 rounded-2xl text-[9px] font-black uppercase tracking-[0.2em] border shadow-sm ${order.status === 'delivered' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' :
-                      order.status === 'processing' ? 'bg-amber-50 text-amber-700 border-amber-100' :
-                        'bg-stone-50 text-stone-600 border-stone-100'
+                  <div className="flex items-center gap-3 sm:gap-6">
+                    <span className={`px-4 sm:px-6 py-1.5 sm:py-2 rounded-xl sm:rounded-2xl text-[8px] sm:text-[9px] font-black uppercase tracking-[0.2em] border shadow-sm ${order.status === 'delivered' ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 border-emerald-100 dark:border-emerald-800' :
+                      order.status === 'processing' ? 'bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 border-amber-100 dark:border-amber-800' :
+                        'bg-stone-50 dark:bg-slate-800 text-stone-600 dark:text-slate-400 border-stone-100 dark:border-slate-700'
                       }`}>
                       {order.status}
                     </span>
-                    <div className="w-10 h-10 rounded-full border border-amber-100 flex items-center justify-center opacity-0 group-hover:opacity-100 group-hover:translate-x-2 transition-all">
-                       <ChevronRight className="h-5 w-5 text-amber-600" />
-                    </div>
                   </div>
                 </Link>
               )) : (
                 <div className="flex flex-col items-center justify-center py-20 opacity-20 space-y-6">
-                  <div className="w-24 h-24 bg-[#FAF9F6] border border-[#5D4037]/5 rounded-full flex items-center justify-center">
-                    <Activity className="h-10 w-10 text-[#5D4037]" />
+                  <div className="w-24 h-24 bg-[#FAF9F6] dark:bg-slate-800 border border-[#5D4037]/5 dark:border-slate-700 rounded-full flex items-center justify-center">
+                    <Activity className="h-10 w-10 text-[#5D4037] dark:text-slate-400" />
                   </div>
-                  <p className="text-[11px] font-black text-[#5D4037] uppercase tracking-[0.5em]">NO LIVE TRANSACTIONS DETECTED</p>
+                  <p className="text-[11px] font-black text-[#5D4037] dark:text-slate-400 uppercase tracking-[0.5em]">NO LIVE TRANSACTIONS DETECTED</p>
                 </div>
               )}
             </div>
@@ -255,36 +252,37 @@ const Dashboard = () => {
         <div className="xl:col-span-4 space-y-10">
           {/* Intelligence Matrix */}
           {stats.recommendations.length > 0 && (['admin', 'super_admin'].includes(user?.role) || user?.staffType === 'general') && (
-            <div className="bg-white rounded-[3rem] p-10 border border-[#5D4037]/5 shadow-[0_40px_100px_-30px_rgba(0,0,0,0.05)] relative overflow-hidden group">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-amber-50 rounded-bl-[4rem] opacity-0 group-hover:opacity-100 transition-opacity" />
+            <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] sm:rounded-[3rem] p-8 sm:p-10 border border-[#5D4037]/5 dark:border-slate-800 shadow-[0_40px_100px_-30px_rgba(0,0,0,0.1)] relative overflow-hidden group">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-amber-50 dark:bg-amber-900/5 rounded-bl-[4rem] opacity-0 group-hover:opacity-100 transition-opacity" />
               
-              <div className="flex items-center gap-4 mb-10">
-                <div className="w-12 h-12 bg-amber-50 text-amber-600 rounded-2xl flex items-center justify-center shadow-inner">
+              <div className="flex items-center gap-4 mb-8 sm:mb-10">
+                <div className="w-12 h-12 bg-amber-50 dark:bg-slate-800 text-amber-600 rounded-2xl flex items-center justify-center shadow-inner">
                   <Sparkles size={20} />
                 </div>
                 <div>
-                   <h2 className="text-[11px] font-black text-[#5D4037]/40 uppercase tracking-[0.5em]">STRATEGIC INTEL</h2>
-                   <p className="text-[9px] font-black text-[#5D4037]/20 uppercase tracking-widest">Real-time Optimization</p>
+                   <h2 className="text-[10px] sm:text-[11px] font-black text-[#5D4037]/40 dark:text-slate-500 uppercase tracking-[0.5em]">STRATEGIC INTEL</h2>
+                   <p className="text-[8px] sm:text-[9px] font-black text-[#5D4037]/20 dark:text-slate-600 uppercase tracking-widest">Real-time Optimization</p>
                 </div>
               </div>
-              <div className="space-y-6">
+              <div className="space-y-4 sm:space-y-6">
                 {stats.recommendations.map((rec, i) => (
-                  <div key={i} className="p-6 bg-[#FAF9F6] rounded-[1.8rem] border border-transparent hover:border-amber-100 hover:bg-white transition-all duration-500">
-                    <p className="text-[11px] font-black text-[#3D2B23] uppercase tracking-tight mb-2 flex items-center gap-2">
+                  <div key={i} className="p-5 sm:p-6 bg-[#FAF9F6] dark:bg-slate-800/50 rounded-[1.5rem] sm:rounded-[1.8rem] border border-transparent hover:border-amber-100 dark:hover:border-amber-900/30 hover:bg-white dark:hover:bg-slate-800 transition-all duration-500">
+                    <p className="text-[11px] font-black text-[#3D2B23] dark:text-slate-100 uppercase tracking-tight mb-2 flex items-center gap-2">
                        <div className="w-1 h-3 bg-amber-500 rounded-full" />
                        {rec.title}
                     </p>
-                    <p className="text-[10px] font-bold text-[#5D4037]/40 uppercase leading-relaxed italic line-clamp-3">
+                    <p className="text-[10px] font-bold text-[#5D4037]/40 dark:text-slate-500 uppercase leading-relaxed italic line-clamp-3">
                       "{rec.message}"
                     </p>
                   </div>
                 ))}
-                <Link to="/admin/insights" className="flex items-center justify-center gap-3 pt-4 text-[10px] font-black text-amber-700 uppercase tracking-[0.3em] hover:gap-5 transition-all">
-                  FULL MATRIC ANALYSIS <ChevronRight size={14} />
-                </Link>
               </div>
             </div>
           )}
+          
+          <Link to="/admin/insights" className="flex items-center justify-center gap-3 pt-6 text-[10px] font-black text-amber-700 dark:text-amber-500 uppercase tracking-[0.3em] hover:gap-5 transition-all">
+             FULL MATRIX ANALYSIS <ChevronRight size={14} />
+          </Link>
 
           {/* Rapid Protocols */}
           <div className="bg-[#211510] rounded-[3.5rem] p-10 shadow-[0_60px_120px_-20px_rgba(0,0,0,0.4)] relative overflow-hidden group">
