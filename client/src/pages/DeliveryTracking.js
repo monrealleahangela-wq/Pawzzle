@@ -39,6 +39,10 @@ function RecenterMap({ coords }) {
     if (coords && coords.lat && coords.lng) {
       map.setView([coords.lat, coords.lng], 16);
     }
+    // Force Leaflet to recalculate its container size
+    setTimeout(() => {
+      map.invalidateSize();
+    }, 100);
   }, [coords, map]);
   return null;
 }
@@ -321,12 +325,12 @@ const DeliveryTracking = () => {
         )}
 
         {/* State 2: Interactive Map (The Interactive Zone) */}
-        <div className="flex-1 relative z-10 border-b border-slate-200 bg-slate-100 shadow-inner group min-h-[350px]">
+        <div className="flex-1 relative z-10 border-b border-slate-200 bg-slate-100 shadow-inner group min-h-[450px]">
           <MapContainer 
             key={delivery?._id}
             center={[delivery.riderLocation?.lat || 14.5995, delivery.riderLocation?.lng || 120.9842]} 
             zoom={16} 
-            style={{ height: '100%', width: '100%', minHeight: '350px' }}
+            style={{ position: 'absolute', top: 0, left: 0, height: '100%', width: '100%', minHeight: '450px' }}
             zoomControl={false}
           >
             <TileLayer 
