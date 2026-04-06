@@ -168,6 +168,7 @@ const createAdminService = async (req, res) => {
             email: req.user.email,
             address: {
               street: '123 Default Street',
+              barangay: 'Default Barangay',
               city: 'Default City',
               state: 'Default State',
               zipCode: '00000',
