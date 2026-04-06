@@ -45,6 +45,8 @@ import authService from '../../services/authService';
 import PlatformFeedbackModal from '../../components/PlatformFeedbackModal';
 import { Heart as HeartIcon, MessageSquare, Briefcase, Globe, ShieldCheck, Users, Info } from 'lucide-react';
 import MapPicker from '../../components/MapPicker';
+import LogoutModal from '../../components/auth/LogoutModal';
+import { getImageUrl as getImageUrlHelper } from '../../utils/imageHelper';
 
 import { useTheme } from '../../contexts/ThemeContext';
 
@@ -56,6 +58,7 @@ const Profile = () => {
   const [addressInputType, setAddressInputType] = useState('manual'); // 'manual' or 'map'
   const [showUpgradeForm, setShowUpgradeForm] = useState(false);
   const [application, setApplication] = useState(null);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [upgradeLoading, setUpgradeLoading] = useState(false);
   const [formData, setFormData] = useState({
     username: '',
@@ -978,11 +981,7 @@ const Profile = () => {
 
               {/* Logout Button */}
               <button
-                onClick={() => {
-                  if (window.confirm('Are you sure you want to log out?')) {
-                    logout();
-                  }
-                }}
+                onClick={() => setShowLogoutConfirm(true)}
                 className="w-full flex items-center justify-center gap-2 px-6 py-4 rounded-xl sm:rounded-2xl bg-rose-50 text-rose-600 font-black text-[10px] sm:text-xs uppercase tracking-[0.2em] hover:bg-rose-600 hover:text-white transition-all shadow-sm border border-rose-100 group"
               >
                 <LogOut className="h-4 w-4 group-hover:rotate-12 transition-transform" />
@@ -990,6 +989,12 @@ const Profile = () => {
               </button>
             </div>
           </div>
+
+          <LogoutModal 
+            isOpen={showLogoutConfirm}
+            onClose={() => setShowLogoutConfirm(false)}
+            onConfirm={logout}
+          />
 
           {/* Main Content Area - High Density */}
           <div className="lg:col-span-8 min-w-0 w-full">
