@@ -107,7 +107,7 @@ const SuperAdminDashboard = () => {
       </header>
 
       {/* Stats */}
-      <div className="relative z-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
+      <div className="relative z-10 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3 lg:gap-4">
         {[
           { label: 'Total Users', value: stats.totalUsers, icon: Users, color: 'indigo', growth: stats.userGrowth },
           { label: 'Total Orders', value: stats.totalOrders, icon: ShoppingBag, color: 'primary', growth: stats.orderGrowth },
@@ -115,27 +115,22 @@ const SuperAdminDashboard = () => {
           { label: 'Platform Fees', value: `₱${(stats.totalPlatformFees || 0).toLocaleString()}`, icon: DollarSign, color: 'blue', growth: 15.7 },
           { label: 'Pending Apps', value: stats.pendingApplications, icon: Settings, color: 'amber', growth: 0 }
         ].map((stat, i) => (
-          <div key={i} className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-4 sm:p-6 rounded-2xl sm:rounded-[2rem] shadow-sm hover:shadow-xl transition-all group overflow-hidden">
-            <div className="flex flex-row sm:flex-col justify-between items-center sm:items-start gap-4 sm:gap-6 relative z-10">
-              <div className="flex items-center gap-4 w-full sm:w-auto">
-                <div className={`p-2.5 sm:p-3 bg-${stat.color}-50 dark:bg-${stat.color}-900/20 text-${stat.color}-600 rounded-xl sm:rounded-2xl shrink-0`}>
+          <div key={i} className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-3.5 sm:p-4 rounded-xl sm:rounded-[1.5rem] shadow-sm hover:shadow-xl transition-all group overflow-hidden">
+            <div className="flex items-center justify-between gap-3 relative z-10 w-full">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className={`p-2 sm:p-2.5 bg-${stat.color}-50 dark:bg-${stat.color}-900/20 text-${stat.color}-600 rounded-lg sm:rounded-xl shrink-0`}>
                   <stat.icon className="h-4 w-4 sm:h-5 sm:w-5" />
                 </div>
-                <div className="sm:hidden min-w-0">
-                  <p className="text-[8px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest truncate">{stat.label}</p>
-                  <p className="text-xl font-black text-slate-900 dark:text-slate-100 tracking-tighter leading-none">{stat.value}</p>
+                <div className="min-w-0">
+                  <p className="text-[8px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest truncate mb-0.5">{stat.label}</p>
+                  <p className="text-lg sm:text-xl font-black text-slate-900 dark:text-slate-100 tracking-tighter leading-none">{stat.value}</p>
                 </div>
-              </div>
-              
-              <div className="hidden sm:block">
-                <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] mb-1">{stat.label}</p>
-                <p className="text-2xl font-black text-slate-900 dark:text-slate-100 tracking-tighter leading-none">{stat.value}</p>
               </div>
 
               {stat.growth > 0 && (
-                <div className="flex items-center gap-1 px-2 py-0.5 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg text-[9px] font-black text-emerald-500">
-                  <TrendingUp className="h-2.5 w-2.5" />
-                  <span>+{stat.growth}%</span>
+                <div className="flex items-center gap-1 px-1.5 py-0.5 bg-emerald-50 dark:bg-emerald-900/20 rounded-md text-[8px] font-black text-emerald-500 shrink-0">
+                  <TrendingUp className="h-2 w-2" />
+                  <span>{stat.growth}%</span>
                 </div>
               )}
             </div>

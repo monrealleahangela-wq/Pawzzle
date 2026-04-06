@@ -150,7 +150,7 @@ const Dashboard = () => {
       </header>
 
       {/* ── Precision Metrics Grid ── */}
-      <div className="relative z-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-8">
+      <div className="relative z-10 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
         {[
           { label: 'FLEET COMPANIONS', value: stats.totalPets, icon: Heart, color: 'amber', link: '/admin/pets', sub: 'In Network', growth: stats.growth.pets, show: ['admin', 'super_admin'].includes(user?.role) || ['inventory_staff', 'general'].includes(user?.staffType) },
           { label: 'HARDWARE UNITS', value: stats.totalProducts, icon: Package, color: 'stone', link: '/admin/products', sub: 'Active Stock', growth: stats.growth.products, show: ['admin', 'super_admin'].includes(user?.role) || ['inventory_staff', 'general'].includes(user?.staffType) },
@@ -162,39 +162,32 @@ const Dashboard = () => {
           <Link
             key={i}
             to={stat.link}
-            className="group relative bg-white dark:bg-slate-900 rounded-2xl sm:rounded-[2rem] p-4 sm:p-8 border border-[#5D4037]/5 dark:border-slate-800 transition-all duration-500 hover:shadow-[0_40px_80px_-15px_rgba(0,0,0,0.3)] hover:-translate-y-1 overflow-hidden"
+            className="group relative bg-white dark:bg-slate-900 rounded-[1.5rem] sm:rounded-[1.8rem] p-4 sm:p-5 border border-[#5D4037]/5 dark:border-slate-800 transition-all duration-500 hover:shadow-[0_40px_80px_-15px_rgba(0,0,0,0.3)] hover:-translate-y-1 overflow-hidden"
           >
-            <div className="absolute top-0 right-0 w-24 h-24 bg-amber-50 dark:bg-amber-900/5 rounded-bl-[3rem] -translate-y-12 translate-x-12 opacity-0 group-hover:opacity-100 transition-all duration-700" />
+            <div className="absolute top-0 right-0 w-32 h-32 bg-amber-50 dark:bg-amber-900/5 rounded-bl-[4rem] -translate-y-16 translate-x-16 opacity-0 group-hover:opacity-100 transition-all duration-700" />
 
-            <div className="flex flex-row sm:flex-col justify-between items-center sm:items-start gap-4 sm:gap-0 relative z-10">
-              <div className="flex items-center gap-4 sm:mb-10 w-full sm:w-auto">
-                <div className="w-10 h-10 sm:w-14 sm:h-14 bg-[#FAF9F6] dark:bg-slate-800 border border-[#5D4037]/5 dark:border-slate-700 text-amber-600 rounded-xl sm:rounded-2xl flex items-center justify-center transition-all group-hover:bg-amber-600 group-hover:text-white shadow-sm shrink-0">
-                  <stat.icon className="h-5 w-5 sm:h-6 sm:w-6" />
+            <div className="flex items-center justify-between gap-4 relative z-10 w-full">
+              <div className="flex items-center gap-4 min-w-0">
+                <div className="w-12 h-12 sm:w-14 sm:h-14 bg-[#FAF9F6] dark:bg-slate-800 border border-[#5D4037]/5 dark:border-slate-700 text-amber-600 rounded-xl sm:rounded-2xl flex items-center justify-center transition-all group-hover:bg-amber-600 group-hover:text-white shadow-sm shrink-0">
+                  <stat.icon className="h-6 w-6" />
                 </div>
-                <div className="sm:hidden min-w-0">
-                  <p className="text-[8px] font-black text-[#5D4037]/30 dark:text-slate-500 uppercase tracking-[0.3em] truncate">{stat.label}</p>
-                  <p className="text-xl font-black text-[#3D2B23] dark:text-slate-100 tracking-tighter leading-none">{stat.value}</p>
-                </div>
-              </div>
-
-              <div className="hidden sm:block space-y-1">
-                <p className="text-[9px] sm:text-[10px] font-black text-[#5D4037]/30 dark:text-slate-500 uppercase tracking-[0.4em]">{stat.label}</p>
-                <div className="flex items-baseline gap-2 sm:gap-4">
-                  <span className="text-2xl sm:text-5xl font-black text-[#3D2B23] dark:text-slate-100 tracking-[-0.05em] leading-none">{stat.value}</span>
-                  <span className="text-[8px] sm:text-[9px] font-black text-[#5D4037]/20 uppercase tracking-[0.2em]">{stat.sub}</span>
+                <div className="min-w-0">
+                  <p className="text-[8px] sm:text-[9px] font-black text-[#5D4037]/40 dark:text-slate-500 uppercase tracking-[0.2em] mb-0.5 truncate">{stat.label}</p>
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-xl sm:text-3xl font-black text-[#3D2B23] dark:text-slate-100 tracking-[-0.04em] leading-none">{stat.value}</span>
+                    <span className="hidden lg:inline text-[8px] font-black text-[#5D4037]/20 uppercase tracking-widest">{stat.sub}</span>
+                  </div>
                 </div>
               </div>
 
-              <div className={`px-2 py-1 rounded-lg sm:px-4 sm:py-1.5 sm:rounded-xl text-[8px] sm:text-[10px] font-black flex items-center gap-1.5 sm:gap-2 ${stat.growth >= 0 ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 border border-emerald-100 dark:border-emerald-800' : 'bg-rose-50 dark:bg-rose-900/20 text-rose-600 border border-rose-100 dark:border-rose-800'}`}>
-                <ArrowUp className={`h-2.5 w-2.5 sm:h-3 sm:w-3 transition-transform ${stat.growth < 0 ? 'rotate-180' : ''}`} />
+              <div className={`shrink-0 px-2 py-1 sm:px-3 sm:py-1.5 rounded-lg sm:rounded-xl text-[9px] sm:text-[10px] font-black flex items-center gap-1.5 ${stat.growth >= 0 ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 border border-emerald-100 dark:border-emerald-800' : 'bg-rose-50 dark:bg-rose-900/20 text-rose-600 border border-rose-100 dark:border-rose-800'}`}>
+                <ArrowUp className={`h-3 w-3 transition-transform ${stat.growth < 0 ? 'rotate-180' : ''}`} />
                 {stat.growth >= 0 ? '+' : ''}{stat.growth}%
               </div>
             </div>
             
-            <div className="hidden sm:flex mt-6 sm:mt-8 pt-4 sm:pt-6 border-t border-[#5D4037]/5 dark:border-slate-800 items-center justify-between opacity-40 group-hover:opacity-100 transition-opacity">
-               <span className="text-[8px] sm:text-[9px] font-black uppercase tracking-widest text-amber-700 dark:text-amber-500">Analytics</span>
-               <ChevronRight className="h-4 w-4 text-amber-600 group-hover:translate-x-2 transition-transform" />
-            </div>
+            {/* Minimal Focus Accent */}
+            <div className="absolute bottom-0 left-0 w-full h-1 bg-amber-600/0 group-hover:bg-amber-600/10 transition-all rounded-b-[1.5rem]" />
           </Link>
         ))}
       </div>
