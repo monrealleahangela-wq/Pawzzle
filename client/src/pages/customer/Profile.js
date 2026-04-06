@@ -46,7 +46,6 @@ import PlatformFeedbackModal from '../../components/PlatformFeedbackModal';
 import { Heart as HeartIcon, MessageSquare, Briefcase, Globe, ShieldCheck, Users, Info } from 'lucide-react';
 import MapPicker from '../../components/MapPicker';
 import LogoutModal from '../../components/auth/LogoutModal';
-import { getImageUrl as getImageUrlHelper } from '../../utils/imageHelper';
 
 import { useTheme } from '../../contexts/ThemeContext';
 
