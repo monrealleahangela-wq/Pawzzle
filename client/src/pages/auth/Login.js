@@ -66,6 +66,11 @@ const Login = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!captchaToken) {
+      toast.error('Security check failed. Please verify you are not a robot.');
+      return;
+    }
+
     setLoading(true);
     setDeactivationInfo(null);
     localStorage.removeItem('token');

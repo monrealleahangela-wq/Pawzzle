@@ -67,6 +67,11 @@ const Register = () => {
       return;
     }
 
+    if (!captchaToken) {
+      toast.error('Security check failed. Please verify you are not a robot.');
+      return;
+    }
+
     setLoading(true);
 
     try {
