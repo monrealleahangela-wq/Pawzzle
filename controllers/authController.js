@@ -9,6 +9,7 @@ const Store = require('../models/Store');
 const path = require('path');
 const fs = require('fs');
 const ActivityLog = require('../models/ActivityLog');
+const { verifyRecaptcha } = require('../utils/captchaVerifier');
 
 // Enhanced DNS Resolver
 const dnsResolver = new (require('dns').promises.Resolver)();
@@ -37,7 +38,13 @@ const sendRegisterOTP = async (req, res) => {
       return res.status(400).json({ errors: errors.array() });
     }
 
-    const { username, email, password, firstName, lastName, phone, address, role } = req.body;
+    const { username, email, password, firstName, lastName, phone, address, role, captchaToken } = req.body;
+
+    // Verify Captcha before anything else
+    const isHuman = await verifyRecaptcha(captchaToken);
+    if (!isHuman) {
+      return res.status(400).json({ message: 'Kindly complete the "I am not a robot" check to proceed.' });
+    }
 
     // ─── Email Validity Check (Exists + Not Disposable) ─────────────────────
     const emailValidation = await validateEmail(email);
@@ -303,7 +310,13 @@ const login = async (req, res) => {
       return res.status(400).json({ errors: errors.array() });
     }
 
-    const { email, password } = req.body; // Actually this could be email or username 
+    const { email, password, captchaToken } = req.body; // Actually this could be email or username 
+
+    // Verify Captcha before anything else
+    const isHuman = await verifyRecaptcha(captchaToken);
+    if (!isHuman) {
+      return res.status(400).json({ message: 'Security check failed. Please verify you are not a robot.' });
+    }
 
     const user = await User.findOne({
       $or: [{ email: email }, { username: email }],
