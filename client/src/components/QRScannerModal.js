@@ -61,11 +61,14 @@ const QRScannerModal = ({ isOpen, onClose, onScanSuccess }) => {
       const qrConfig = {
         fps: 10,
         qrbox: (viewWidth, viewHeight) => {
+           if (viewWidth < 40 || viewHeight < 40) return { width: 250, height: 250 };
            const min = Math.min(viewWidth, viewHeight);
            return { width: min * 0.7, height: min * 0.7 };
         },
         aspectRatio: 1.0,
         disableFlip: false,
+        rememberLastUsedCamera: true,
+        supportedScanTypes: [0] // Force only QR
       };
 
       await html5QrCode.start(
@@ -91,8 +94,11 @@ const QRScannerModal = ({ isOpen, onClose, onScanSuccess }) => {
     if (isOpen) {
       // Short delay to ensure modal animation is complete and DOM is stable
       const timer = setTimeout(() => {
-        if (isMounted) startScanner();
-      }, 500);
+        if (isMounted) {
+          console.log("🚀 Stability reached, engaging optics...");
+          startScanner();
+        }
+      }, 800); // Increased delay for slower mobile GPUs
 
       return () => {
         isMounted = false;
@@ -153,13 +159,19 @@ const QRScannerModal = ({ isOpen, onClose, onScanSuccess }) => {
                  >
                     {/* Placeholder while camera loads */}
                     {!isScannerStarted && (
-                       <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-slate-50 dark:bg-slate-900 z-10">
+                       <button 
+                         onClick={startScanner}
+                         className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-slate-50 dark:bg-slate-900 z-10 w-full h-full cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-all border-none outline-none"
+                        >
                           <div className="relative">
-                            <div className="w-16 h-16 border-4 border-slate-200 dark:border-slate-700 border-t-primary-600 rounded-full animate-spin" />
+                            <div className={`w-16 h-16 border-4 border-slate-200 dark:border-slate-700 ${status === 'Initializing Camera...' ? 'border-t-primary-600 animate-spin' : ''} rounded-full`} />
                             <Camera className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-6 w-6 text-slate-300 dark:text-slate-600" />
                           </div>
-                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Activating Optics...</p>
-                       </div>
+                          <div className="space-y-1">
+                             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{status === 'Initializing Camera...' ? 'Activating Optics...' : 'Tap to Start Camera'}</p>
+                             {status === 'Failed' && <p className="text-[8px] font-bold text-rose-500 uppercase tracking-widest">Protocol Connection Error</p>}
+                          </div>
+                       </button>
                     )}
                  </div>
 
@@ -295,10 +307,25 @@ const QRScannerModal = ({ isOpen, onClose, onScanSuccess }) => {
           object-fit: cover !important;
           width: 100% !important;
           height: 100% !important;
-          border-radius: 1.8rem !important;
+          border-radius: 2rem !important;
+          display: block !important;
+          min-height: 280px !important;
         }
         #${readerId} {
           position: relative !important;
+          min-height: 280px !important;
+          display: flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          background: #000 !important;
+        }
+        #${readerId} > div {
+          width: 100% !important;
+          height: 100% !important;
+        }
+        #${readerId}__scan_region {
+           border-radius: 2rem !important;
+           overflow: hidden !important;
         }
       `}} />
     </div>
