@@ -209,26 +209,26 @@ const Dashboard = () => {
               </Link>
             </div>
 
-            <div className="space-y-3 sm:space-y-4">
+            <div className="space-y-2 sm:space-y-3">
               {stats.recentOrders.length > 0 ? stats.recentOrders.map(order => (
-                <Link to={`/admin/orders?id=${order._id}`} key={order._id} className="group flex flex-col sm:flex-row sm:items-center justify-between p-4 sm:p-6 bg-[#FAF9F6]/50 dark:bg-slate-800/50 rounded-[1.8rem] sm:rounded-[2.2rem] border border-transparent hover:border-amber-500/20 hover:bg-white dark:hover:bg-slate-800 hover:shadow-2xl transition-all duration-500 gap-4 sm:gap-0">
-                  <div className="flex items-center gap-4 sm:gap-8 min-w-0">
-                    <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-[1.2rem] sm:rounded-[1.4rem] bg-white dark:bg-slate-900 border border-[#5D4037]/5 dark:border-slate-700 flex items-center justify-center shrink-0 group-hover:bg-[#211510] transition-all shadow-sm">
-                      <ShoppingBag className="h-6 w-6 sm:h-7 sm:w-7 text-amber-500/30 group-hover:text-amber-500 transition-colors" />
+                <Link to={`/admin/orders?id=${order._id}`} key={order._id} className="group flex items-center justify-between p-3 sm:p-4 bg-[#FAF9F6]/50 dark:bg-slate-800/50 rounded-xl sm:rounded-2xl border border-transparent hover:border-amber-500/20 hover:bg-white dark:hover:bg-slate-800 hover:shadow-xl transition-all duration-500 gap-4">
+                  <div className="flex items-center gap-3 sm:gap-6 min-w-0 flex-1">
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl bg-white dark:bg-slate-900 border border-[#5D4037]/5 dark:border-slate-700 flex items-center justify-center shrink-0 group-hover:bg-[#211510] transition-all shadow-sm">
+                      <ShoppingBag className="h-5 w-5 sm:h-6 sm:w-6 text-amber-500/30 group-hover:text-amber-500 transition-colors" />
                     </div>
-                    <div className="min-w-0 space-y-1">
-                      <p className="text-[12px] sm:text-[14px] font-black text-[#3D2B23] dark:text-slate-100 uppercase tracking-tight group-hover:text-amber-700 dark:group-hover:text-amber-500 transition-colors truncate">ID: #{order.orderNumber.slice(-8).toUpperCase()}</p>
-                      <div className="flex items-center gap-2 sm:gap-4">
-                        <p className="text-[11px] sm:text-[12px] font-black text-amber-600 tracking-tight">₱{order.totalAmount?.toLocaleString()}</p>
-                        <div className="w-1 h-1 rounded-full bg-[#5D4037]/20" />
-                        <p className="text-[9px] sm:text-[10px] font-bold text-[#5D4037]/30 dark:text-slate-500 uppercase tracking-widest">
+                    <div className="min-w-0">
+                      <p className="text-[10px] sm:text-[12px] font-black text-[#3D2B23] dark:text-slate-100 uppercase tracking-tight group-hover:text-amber-700 dark:group-hover:text-amber-500 transition-colors truncate">ID: #{order.orderNumber.slice(-8).toUpperCase()}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="text-[9px] sm:text-[11px] font-black text-amber-600 tracking-tight shrink-0">₱{order.totalAmount?.toLocaleString()}</p>
+                        <div className="w-1 h-1 rounded-full bg-[#5D4037]/20 shrink-0" />
+                        <p className="text-[8px] sm:text-[9px] font-bold text-[#5D4037]/30 dark:text-slate-500 uppercase tracking-widest truncate">
                           {new Date(order.createdAt).toLocaleDateString('en-GB')}
                         </p>
                       </div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-3 sm:gap-6 self-end sm:self-center">
-                    <span className={`px-4 sm:px-6 py-1.5 sm:py-2 rounded-xl sm:rounded-2xl text-[8px] sm:text-[9px] font-black uppercase tracking-[0.2em] border shadow-sm ${order.status === 'delivered' ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 border-emerald-100 dark:border-emerald-800' :
+                  <div className="shrink-0">
+                    <span className={`px-3 py-1 sm:px-4 sm:py-1.5 rounded-lg sm:rounded-xl text-[7px] sm:text-[9px] font-black uppercase tracking-[0.1em] border shadow-sm ${order.status === 'delivered' ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 border-emerald-100 dark:border-emerald-800' :
                       order.status === 'processing' ? 'bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 border-amber-100 dark:border-amber-800' :
                         'bg-stone-50 dark:bg-slate-800 text-stone-600 dark:text-slate-400 border-stone-100 dark:border-slate-700'
                       }`}>
@@ -237,11 +237,11 @@ const Dashboard = () => {
                   </div>
                 </Link>
               )) : (
-                <div className="flex flex-col items-center justify-center py-20 opacity-20 space-y-6">
-                  <div className="w-24 h-24 bg-[#FAF9F6] dark:bg-slate-800 border border-[#5D4037]/5 dark:border-slate-700 rounded-full flex items-center justify-center">
-                    <Activity className="h-10 w-10 text-[#5D4037] dark:text-slate-400" />
+                <div className="flex flex-col items-center justify-center py-12 opacity-20 space-y-4">
+                  <div className="w-16 h-16 bg-[#FAF9F6] dark:bg-slate-800 border border-[#5D4037]/5 dark:border-slate-700 rounded-full flex items-center justify-center">
+                    <Activity className="h-8 w-8 text-[#5D4037] dark:text-slate-400" />
                   </div>
-                  <p className="text-[11px] font-black text-[#5D4037] dark:text-slate-400 uppercase tracking-[0.5em]">NO LIVE TRANSACTIONS DETECTED</p>
+                  <p className="text-[9px] font-black text-[#5D4037] dark:text-slate-400 uppercase tracking-[0.5em]">NO LIVE LOGISTICS</p>
                 </div>
               )}
             </div>
