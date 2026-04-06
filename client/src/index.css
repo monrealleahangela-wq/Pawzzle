@@ -245,211 +245,70 @@ code {
    ══════════════════════════════════════════ */
 @media (max-width: 639px) {
 
-  /* Container: tighter horizontal padding */
-  .container-custom {
-    @apply px-3.5 !important;
-    padding-top: var(--sat);
+  /* ── Ultra-Compact Padding Overrides ── */
+  .p-24, .py-24, .p-20, .py-20, .p-16, .py-16 { @apply py-6 px-4 !important; }
+  .p-12, .py-12, .p-10, .py-10 { @apply py-4 px-3.5 !important; }
+  .p-8, .p-6 { @apply p-4 !important; }
+  .p-5 { @apply p-3 !important; }
+  .p-4 { @apply p-2.5 !important; }
+  
+  /* Horizontal Padding */
+  .px-20, .px-16, .px-12, .px-10 { @apply px-3.5 !important; }
+  .px-8, .px-6 { @apply px-3 !important; }
+
+  /* ── High-Density Spacing ── */
+  [class*="space-y-32"], [class*="space-y-24"], [class*="space-y-20"] { @apply space-y-6 !important; }
+  [class*="space-y-16"], [class*="space-y-12"] { @apply space-y-4 !important; }
+  [class*="space-y-10"], [class*="space-y-8"] { @apply space-y-3 !important; }
+  [class*="space-y-6"], [class*="space-y-4"] { @apply space-y-2 !important; }
+
+  /* ── Precision Gap Management ── */
+  .gap-12, .gap-10, .gap-8 { @apply gap-4 !important; }
+  .gap-6, .gap-5 { @apply gap-3 !important; }
+  .gap-4 { @apply gap-2 !important; }
+
+  /* ── Card & Content Compacting ── */
+  .rounded-\[4rem\], .rounded-\[3rem\], .rounded-\[40px\], .rounded-\[32px\] { 
+    @apply rounded-2xl !important; 
+  }
+  
+  .card { 
+    @apply p-4 !important; 
+    border-radius: 1.25rem !important; 
   }
 
-  /* Full screen fill */
-  .min-h-screen {
-    min-height: 100dvh !important;
-  }
+  /* ── Typography Scale-Down ── */
+  h1 { @apply text-xl !important; }
+  h2 { @apply text-lg !important; }
+  h3 { @apply text-base !important; }
+  h4 { @apply text-[14px] !important; }
+  p { @apply text-[10px] leading-relaxed !important; }
+  span { font-size: 0.75rem; }
+  
+  /* Dashboard specific typography */
+  .stat-card-value { @apply text-2xl !important; letter-spacing: -0.05em !important; }
+  .stat-card-label { @apply text-[9px] !important; }
 
-  /* Typography - tighter & smaller */
-  h1 {
-    @apply text-xl !important;
+  /* ── Grid Optimization ── */
+  /* Force 2 columns for most grids to save vertical space */
+  .grid-cols-2, .grid-cols-3, .grid-cols-4, .grid-cols-5 { 
+    @apply grid-cols-2 !important; 
   }
-
-  h2 {
-    @apply text-xl !important;
+  
+  /* Compact Table View */
+  table th, table td { @apply p-2 text-[9px] !important; }
+  
+  /* ── App feel specifics ── */
+  .container-custom { @apply px-3 !important; }
+  
+  .min-h-screen { min-height: 100dvh !important; }
+  
+  .btn { 
+    @apply py-2 px-4 text-[9px] !important; 
+    border-radius: 0.75rem !important; 
   }
-
-  h3 {
-    @apply text-lg !important;
-  }
-
-  h4 {
-    @apply text-base !important;
-  }
-
-  p {
-    @apply text-[10px] leading-relaxed !important;
-  }
-
-  /* Buttons - slimmer */
-  .btn {
-    @apply py-2 px-4 text-[0.7rem] !important;
-    letter-spacing: 0.05em !important;
-    border-radius: 0.75rem !important;
-  }
-
-  .btn-lg {
-    @apply py-2.5 !important;
-  }
-
-  .btn-sm {
-    @apply py-1.5 px-3 text-[0.6rem] !important;
-  }
-
-  /* Inputs - slimmer */
-  .input {
-    @apply py-2 text-xs !important;
-    padding-right: 0.75rem;
-    border-radius: 0.75rem !important;
-  }
-
-  .input-with-icon {
-    @apply pl-12 !important;
-    padding-left: 3rem !important;
-  }
-
-  .input-with-icon-right {
-    @apply pr-12 !important;
-    padding-right: 3rem !important;
-  }
-
-  .input-with-both-icons {
-    @apply pl-12 pr-12 !important;
-    padding-left: 3rem !important;
-    padding-right: 3rem !important;
-  }
-
-  .input-icon {
-    @apply left-4 !important;
-  }
-
-  .input-icon-right {
-    @apply right-4 !important;
-  }
-
-  /* Spacing - significantly reduced */
-  /* Target space-y utilities */
-  [class*="space-y-24"],
-  [class*="space-y-20"] {
-    @apply space-y-8 !important;
-  }
-
-  [class*="space-y-16"],
-  [class*="space-y-12"] {
-    @apply space-y-6 !important;
-  }
-
-  [class*="space-y-10"],
-  [class*="space-y-8"] {
-    @apply space-y-4 !important;
-  }
-
-  /* Target gap utilities */
-  [class*="gap-12"],
-  [class*="gap-10"],
-  [class*="gap-8"] {
-    @apply gap-3 !important;
-  }
-
-  /* Padding - crushed, but preserve specific side padding if needed */
-  /* We use more specific selectors to avoid hitting pl- and pr- unnecessarily */
-  .p-20,
-  .p-16,
-  .p-12,
-  .py-20,
-  .py-16,
-  .py-12,
-  .px-20,
-  .px-16,
-  .px-12,
-  .p-14,
-  .py-14,
-  .px-14 {
-    @apply p-4 !important;
-  }
-
-  .p-10,
-  .p-8,
-  .p-6,
-  .py-10,
-  .py-8,
-  .py-6,
-  .px-10,
-  .px-8,
-  .px-6 {
-    @apply p-2 !important;
-  }
-
-  /* Rounding - softened for small screens */
-  .rounded-\[3rem\],
-  .rounded-\[40px\],
-  .rounded-\[32px\] {
-    @apply rounded-2xl !important;
-  }
-
-  /* Force 2 columns on mobile if they were 3+ for better fit */
-  .grid-cols-3,
-  .grid-cols-4,
-  .grid-cols-5 {
-    @apply grid-cols-2 !important;
-  }
-
-  /* Cards - tighter */
-  .card {
-    @apply p-4 !important;
-    border-radius: 1rem !important;
-  }
-
-  /* Table Compacting */
-  table {
-    @apply text-[10px] !important;
-  }
-
-  th,
-  td {
-    @apply p-2 !important;
-  }
-
-  /* Dashboard Specific */
-  .stat-card-value {
-    @apply text-2xl !important;
-  }
-
-  /* ── Mobile App Specifics ── */
-  * {
-    -webkit-tap-highlight-color: transparent;
-    touch-action: manipulation;
-  }
-
-  .mobile-nav-active {
-    @apply animate-bounce shadow-[0_0_20px_rgba(83,49,20,0.3)];
-  }
-
-  /* Compact Grids for small stats */
-  .grid-compact {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
-    gap: 0.5rem;
-  }
-
-  /* Touch Feedback */
-  .btn:active, 
-  .card-interactive:active {
-    transform: scale(0.96);
-    transition: transform 0.1s ease;
-  }
-
-  /* Hide Desktop only elements */
-  .desktop-only {
-    display: none !important;
-  }
-
-  /* Bottom Nav Safe Area */
-  nav.fixed.bottom-0 {
-    padding-bottom: calc(0.75rem + var(--sab)) !important;
-    height: auto !important;
-  }
-
-  /* Prevent logo text overlap on tiny screens */
-  .logo-text {
-    display: none;
-  }
+  
+  .logo-text { display: none; }
 }
 
 @media (min-width: 640px) {

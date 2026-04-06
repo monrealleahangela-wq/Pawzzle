@@ -106,7 +106,7 @@ const Dashboard = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#FAF9F6] p-6 lg:p-12 space-y-12 pb-40 font-['Outfit'] relative overflow-hidden">
+    <div className="min-h-screen bg-[#FAF9F6] p-4 sm:p-6 lg:p-12 space-y-8 sm:space-y-12 pb-20 sm:pb-40 font-['Outfit'] relative overflow-hidden">
       {/* Precision Decorative Underlay */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden opacity-30">
         <div className="absolute top-[-20%] right-[-10%] w-[60%] h-[60%] bg-amber-100/40 rounded-full blur-[160px] animate-spin-slow" />
@@ -114,23 +114,23 @@ const Dashboard = () => {
       </div>
 
       {/* ── High-Aspect Header ── */}
-      <header className="relative z-10 flex flex-col md:flex-row md:items-end justify-between gap-8 border-b border-[#5D4037]/5 pb-12">
-        <div className="space-y-6">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-[#211510] text-amber-500 rounded-2xl flex items-center justify-center shadow-2xl transition-transform hover:scale-110">
-              <Activity className="h-6 w-6" />
+      <header className="relative z-10 flex flex-col md:flex-row md:items-end justify-between gap-6 sm:gap-8 border-b border-[#5D4037]/5 pb-8 sm:pb-12">
+        <div className="space-y-4 sm:space-y-6">
+          <div className="flex items-center gap-3 sm:gap-4">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-[#211510] text-amber-500 rounded-xl sm:rounded-2xl flex items-center justify-center shadow-2xl transition-transform hover:scale-110">
+              <Activity className="h-5 w-5 sm:h-6 sm:w-6" />
             </div>
-            <div className="space-y-1">
-              <span className="text-[10px] font-black text-amber-600 uppercase tracking-[0.5em]">COMMAND TERMINAL</span>
-              <p className="text-[11px] font-bold text-[#5D4037]/30 uppercase tracking-[0.3em] flex items-center gap-3">
-                <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+            <div className="space-y-0.5 sm:space-y-1">
+              <span className="text-[9px] sm:text-[10px] font-black text-amber-600 uppercase tracking-[0.4em] sm:tracking-[0.5em]">COMMAND TERMINAL</span>
+              <p className="text-[9px] sm:text-[11px] font-bold text-[#5D4037]/30 uppercase tracking-[0.2em] sm:tracking-[0.3em] flex items-center gap-2 sm:gap-3">
+                <span className="flex h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
                 Live Telemetry: Active
               </p>
             </div>
           </div>
           
           <div className="space-y-1">
-             <h1 className="text-5xl sm:text-7xl font-black text-[#3D2B23] uppercase tracking-[-0.04em] leading-[0.85]">
+             <h1 className="text-3xl sm:text-5xl lg:text-7xl font-black text-[#3D2B23] uppercase tracking-[-0.04em] leading-[0.9] sm:leading-[0.85]">
                 {user?.store?.name || 'Vanguard'} <br /> 
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-500 to-amber-700 italic">Flagship Overview .</span>
              </h1>
@@ -139,18 +139,18 @@ const Dashboard = () => {
 
         <button
           onClick={handleRefreshRole}
-          className="group relative px-10 py-5 bg-[#211510] text-white rounded-2xl overflow-hidden transition-all active:scale-95 shadow-[0_20px_40px_rgba(0,0,0,0.15)] flex items-center gap-4"
+          className="group relative px-6 sm:px-10 py-4 sm:py-5 bg-[#211510] text-white rounded-xl sm:rounded-2xl overflow-hidden transition-all active:scale-95 shadow-[0_20px_40px_rgba(0,0,0,0.15)] flex items-center gap-3 sm:gap-4"
         >
           <div className="absolute inset-0 bg-amber-600 translate-y-full group-hover:translate-y-0 transition-transform duration-500 opacity-20" />
-          <RefreshCw className={`h-5 w-5 text-amber-500 ${refreshingRole ? 'animate-spin' : 'group-hover:rotate-180 transition-transform duration-700'}`} />
-          <span className="text-[11px] font-black uppercase tracking-[0.3em] relative z-10">
+          <RefreshCw className={`h-4 w-4 sm:h-5 sm:w-5 text-amber-500 ${refreshingRole ? 'animate-spin' : 'group-hover:rotate-180 transition-transform duration-700'}`} />
+          <span className="text-[9px] sm:text-[11px] font-black uppercase tracking-[0.2em] sm:tracking-[0.3em] relative z-10">
             {refreshingRole ? 'CALIBRATING...' : 'SYNC PROTOCOLS'}
           </span>
         </button>
       </header>
 
       {/* ── Precision Metrics Grid ── */}
-      <div className="relative z-10 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+      <div className="relative z-10 grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-8">
         {[
           { label: 'FLEET COMPANIONS', value: stats.totalPets, icon: Heart, color: 'amber', link: '/admin/pets', sub: 'In Network', growth: stats.growth.pets, show: ['admin', 'super_admin'].includes(user?.role) || ['inventory_staff', 'general'].includes(user?.staffType) },
           { label: 'HARDWARE UNITS', value: stats.totalProducts, icon: Package, color: 'stone', link: '/admin/products', sub: 'Active Stock', growth: stats.growth.products, show: ['admin', 'super_admin'].includes(user?.role) || ['inventory_staff', 'general'].includes(user?.staffType) },

@@ -73,7 +73,7 @@ const SuperAdminDashboard = () => {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50/30 p-4 lg:p-8 space-y-10 pb-32">
+    <div className="min-h-screen bg-slate-50/30 p-4 lg:p-8 space-y-8 sm:space-y-10 pb-20 sm:pb-32">
       {/* Decoration */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden opacity-30">
         <div className="absolute top-[-10%] right-[-10%] w-[40%] h-[40%] bg-primary-600/5 rounded-full blur-[120px]" />
@@ -81,33 +81,33 @@ const SuperAdminDashboard = () => {
       </div>
 
       {/* Header */}
-      <header className="relative z-10 flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-slate-100 pb-10">
+      <header className="relative z-10 flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-slate-100 pb-8 sm:pb-10">
         <div>
           <div className="flex items-center gap-3 mb-4">
             <div className="p-2 bg-slate-900 text-white rounded-2xl shadow-2xl">
               <Shield className="h-4 w-4" />
             </div>
-            <span className="text-[10px] font-black text-primary-600 uppercase tracking-[0.4em]">SUPER ADMIN PANEL</span>
+            <span className="text-[9px] sm:text-[10px] font-black text-primary-600 uppercase tracking-[0.4em]">SUPER ADMIN PANEL</span>
           </div>
-          <h1 className="text-4xl sm:text-6xl font-black text-slate-900 uppercase tracking-tighter leading-[0.8] mb-4">
+          <h1 className="text-3xl sm:text-6xl font-black text-slate-900 uppercase tracking-tighter leading-[0.9] sm:leading-[0.8] mb-4">
             System <br /> <span className="text-primary-600 italic">Overview</span>
           </h1>
-          <p className="text-[11px] font-bold text-slate-400 uppercase tracking-[0.3em] flex items-center gap-3">
-            <Activity className="h-3.5 w-3.5 text-emerald-500" />
+          <p className="text-[10px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-[0.2em] sm:tracking-[0.3em] flex items-center gap-2 sm:gap-3">
+            <Activity className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-emerald-500" />
             Real-time platform monitoring
           </p>
         </div>
 
         <div className="flex items-center gap-3">
-          <div className="px-5 py-2.5 bg-slate-900 text-white rounded-2xl flex items-center gap-3 shadow-xl">
-            <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            <span className="text-[10px] font-black uppercase tracking-widest">System Online</span>
+          <div className="px-4 sm:px-5 py-2 sm:py-2.5 bg-slate-900 text-white rounded-xl sm:rounded-2xl flex items-center gap-3 shadow-xl">
+            <div className="w-1.5 sm:w-2 h-1.5 sm:h-2 rounded-full bg-emerald-500 animate-pulse" />
+            <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest">System Online</span>
           </div>
         </div>
       </header>
 
       {/* Stats */}
-      <div className="relative z-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="relative z-10 grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
         {[
           { label: 'Total Users', value: stats.totalUsers, icon: Users, color: 'indigo', growth: stats.userGrowth },
           { label: 'Total Orders', value: stats.totalOrders, icon: ShoppingBag, color: 'primary', growth: stats.orderGrowth },
