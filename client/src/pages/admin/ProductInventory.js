@@ -257,8 +257,8 @@ const ProductInventory = () => {
         category: productForm.mainCategory,
         // If variations exist, use first option as primary representation for listings
         // Otherwise, use top-level fields
-        price: hasVariations ? (firstOpt?.price || 0) : (productForm.price || 0),
-        stockQuantity: hasVariations ? (firstOpt?.stock || 0) : (productForm.stockQuantity || 0),
+        price: Number(hasVariations ? (firstOpt?.price || 0) : (productForm.price || 0)),
+        stockQuantity: Number(hasVariations ? (firstOpt?.stock || 0) : (productForm.stockQuantity || 0)),
         sku: hasVariations ? (firstOpt?.sku || '') : (productForm.sku || '')
       };
 
