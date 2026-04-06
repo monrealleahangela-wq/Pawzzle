@@ -13,30 +13,26 @@ const QRScannerModal = ({ isOpen, onClose, onScanSuccess }) => {
   
   const scannerRef = useRef(null);
   const isInitializingRef = useRef(false);
-  const readerId = 'qr-reader-hub-v3'; // Unique ID for this version
+  const readerId = 'qr-reader-hub-stable-v4';
+  const startAttemptRef = useRef(0);
 
   const stopScanner = useCallback(async () => {
     if (scannerRef.current) {
       try {
         if (scannerRef.current.isScanning) {
           await scannerRef.current.stop();
-          console.log("Scanner stopped successfully");
         }
-        // Always try to clear to be safe
-        try {
-          await scannerRef.current.clear();
-        } catch (e) { /* ignore clear errors */ }
       } catch (err) {
-        console.error('Failed to stop scanner:', err);
+        console.warn('Scanner stop warning (soft fail):', err);
       } finally {
         scannerRef.current = null;
         setIsScannerStarted(false);
+        isInitializingRef.current = false;
       }
     }
   }, []);
 
   const handleInternalScan = useCallback(async (decodedText) => {
-    // Prevent double processing
     if (isProcessing) return;
     
     try {
@@ -44,7 +40,7 @@ const QRScannerModal = ({ isOpen, onClose, onScanSuccess }) => {
       setError(null);
       setStatus('Validating...');
       
-      // Stop scanner immediately to freeze the frame and free hardware
+      // Stop scanner immediately
       await stopScanner();
 
       const response = await axios.post('/api/bookings/validate-qr', { bookingId: decodedText });
@@ -60,76 +56,109 @@ const QRScannerModal = ({ isOpen, onClose, onScanSuccess }) => {
   }, [isProcessing, stopScanner]);
 
   const startScanner = useCallback(async () => {
+    // Multi-instance prevention
     if (isInitializingRef.current) return;
-    
-    // Cleanup any existing instance
-    if (scannerRef.current) await stopScanner();
-    
     isInitializingRef.current = true;
-    setStatus('Initializing Optics...');
+    
+    startAttemptRef.current += 1;
+    const currentAttempt = startAttemptRef.current;
+
+    setStatus('Probing Hardware...');
     setError(null);
 
+    // Initial hardware warmup
     try {
-      // Small delay to ensure DOM is ready and stable
-      await new Promise(resolve => setTimeout(resolve, 300));
+      await stopScanner();
       
+      // Ensure DOM node exists before starting
+      let element = document.getElementById(readerId);
+      let retryCount = 0;
+      while (!element && retryCount < 10) {
+        await new Promise(r => setTimeout(r, 100));
+        element = document.getElementById(readerId);
+        retryCount++;
+      }
+
+      if (!element) throw new Error('Visual hub node not found in DOM');
+      if (currentAttempt !== startAttemptRef.current) return;
+
       const html5QrCode = new Html5Qrcode(readerId);
       scannerRef.current = html5QrCode;
 
+      // Configuration for high-performance mobile scanning
       const qrConfig = {
-        fps: 15,
+        fps: 20,
         qrbox: (viewWidth, viewHeight) => {
            const min = Math.min(viewWidth, viewHeight);
-           const size = Math.floor(min * 0.7);
+           const size = Math.floor(min * 0.75);
            return { width: size, height: size };
         },
         aspectRatio: 1.0,
         disableFlip: false,
-        rememberLastUsedCamera: true
+        rememberLastUsedCamera: true,
+        supportedScanTypes: [0] // QR only for faster processing
       };
 
-      await html5QrCode.start(
-        { facingMode: "environment" },
-        qrConfig,
-        (text) => handleInternalScan(text),
-        () => {} // Silent failures for frames with no QR
-      );
+      // Try Environment facing first, fallback to first camera if needed
+      try {
+        await html5QrCode.start(
+          { facingMode: "environment" },
+          qrConfig,
+          (text) => handleInternalScan(text),
+          () => {} // Silent non-matches
+        );
+      } catch (innerErr) {
+        console.warn('FacingMode Environment failed, trying default camera...');
+        const cameras = await Html5Qrcode.getCameras();
+        if (cameras && cameras.length > 0) {
+          const backCamera = cameras.find(c => c.label.toLowerCase().includes('back')) || cameras[0];
+          await html5QrCode.start(
+            backCamera.id,
+            qrConfig,
+            (text) => handleInternalScan(text)
+          );
+        } else {
+          throw innerErr;
+        }
+      }
 
-      setIsScannerStarted(true);
-      setStatus('Scanning Live');
-      console.log("Scanner protocol active");
+      if (currentAttempt === startAttemptRef.current) {
+        setIsScannerStarted(true);
+        setStatus('Live Optics Active');
+      }
     } catch (err) {
-      console.error('QR Start Error:', err);
-      const isPermissionError = err?.toString().includes('NotAllowedError') || err?.toString().includes('Permission');
-      setError(isPermissionError ? 
-        'Camera access denied. Please enable permissions in your browser settings to continue.' : 
-        'Hardware link failure. Ensure you are on a secure connection (HTTPS) and camera is not used by another app.');
-      setStatus('Failed');
+      console.error('Core Scanner Error:', err);
+      if (currentAttempt === startAttemptRef.current) {
+        const errStr = err?.toString() || '';
+        if (errStr.includes('NotAllowedError') || errStr.includes('Permission')) {
+          setError('Camera access denied. Please click "Allow" when prompted or check browser settings.');
+        } else {
+          setError('Hardware link failure. Ensure no other apps are using the camera and you are on a secure (HTTPS) link.');
+        }
+        setStatus('Hub Locked');
+      }
     } finally {
-      isInitializingRef.current = false;
+      if (currentAttempt === startAttemptRef.current) {
+        isInitializingRef.current = false;
+      }
     }
   }, [handleInternalScan, stopScanner]);
 
   useEffect(() => {
+    let active = true;
     if (isOpen) {
-      // Delay to handle modal transition
-      const timer = setTimeout(() => {
-        startScanner();
-      }, 500);
-
-      return () => {
-        clearTimeout(timer);
-        stopScanner();
+      const init = async () => {
+        await new Promise(r => setTimeout(r, 600)); // Safer wait for modal animations
+        if (active) startScanner();
       };
-    } else {
-      stopScanner();
-      // Reset states when closing
-      setScanResult(null);
-      setError(null);
-      setIsProcessing(false);
-      setStatus('Standby');
+      init();
     }
-  }, [isOpen]); // Minimal dependencies to prevent restart loops
+
+    return () => {
+      active = false;
+      stopScanner();
+    };
+  }, [isOpen, startScanner, stopScanner]);
 
   const handleReset = () => {
     setScanResult(null);
