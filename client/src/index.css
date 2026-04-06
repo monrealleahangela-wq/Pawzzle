@@ -295,7 +295,6 @@ code {
   /* Inputs - slimmer */
   .input {
     @apply py-2 text-xs !important;
-    padding-left: 0.75rem;
     padding-right: 0.75rem;
     border-radius: 0.75rem !important;
   }

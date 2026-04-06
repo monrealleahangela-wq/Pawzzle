@@ -39,10 +39,23 @@ function RecenterMap({ coords }) {
     if (coords && coords.lat && coords.lng) {
       map.setView([coords.lat, coords.lng], 16);
     }
-    // Force Leaflet to recalculate its container size
-    setTimeout(() => {
-      map.invalidateSize();
-    }, 100);
+    // Force Leaflet to recalculate its container size several times to ensure stability
+    const redraw = () => {
+      if (map) {
+        map.invalidateSize();
+        // Also force a redraw by triggering a slight window resize event back to normal
+        window.dispatchEvent(new Event('resize'));
+      }
+    };
+    
+    redraw();
+    const t1 = setTimeout(redraw, 100);
+    const t2 = setTimeout(redraw, 1000);
+    
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+    };
   }, [coords, map]);
   return null;
 }
