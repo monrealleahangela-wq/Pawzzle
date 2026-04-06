@@ -85,6 +85,7 @@ const Layout = () => {
     { path: '/pets', label: 'Pets', icon: Heart },
     { path: '/products', label: 'Products', icon: Package },
     { path: '/services', label: 'Services', icon: Calendar },
+    { path: '/cart', label: 'Cart', icon: ShoppingCart },
     { path: '/orders', label: 'Orders', icon: ShoppingBag },
     { path: '/vouchers', label: 'Vouchers', icon: Ticket },
     { path: '/insights', label: 'AI Advisor', icon: Brain },
@@ -257,9 +258,17 @@ const Layout = () => {
                 <button onClick={toggleTheme} className="p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors">
                    {theme === 'dark' ? <Sun size={20} className="text-amber-400 transition-all scale-110" /> : <Moon size={20} className="text-slate-600" />}
                 </button>
-                {user && (
-                   <>
-                     <NotificationBell />
+                 {user && (
+                    <>
+                      <Link to="/cart" className="p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors relative">
+                        <ShoppingCart size={20} />
+                        {getTotalItems() > 0 && (
+                          <span className="absolute top-0 right-0 w-4 h-4 bg-primary-600 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                            {getTotalItems()}
+                          </span>
+                        )}
+                      </Link>
+                      <NotificationBell />
                      <Link to="/profile" className="flex items-center gap-2 border border-slate-200 dark:border-slate-700 p-1 rounded-full pr-3 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all">
                         <div className="w-8 h-8 rounded-full bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center text-primary-700 dark:text-primary-400 font-bold overflow-hidden text-xs">
                           {user.firstName[0]}
