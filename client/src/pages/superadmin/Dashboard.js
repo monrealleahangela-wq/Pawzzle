@@ -107,29 +107,37 @@ const SuperAdminDashboard = () => {
       </header>
 
       {/* Stats */}
-      <div className="relative z-10 grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
+      <div className="relative z-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
         {[
           { label: 'Total Users', value: stats.totalUsers, icon: Users, color: 'indigo', growth: stats.userGrowth },
           { label: 'Total Orders', value: stats.totalOrders, icon: ShoppingBag, color: 'primary', growth: stats.orderGrowth },
           { label: 'Gross Volume', value: `₱${stats.totalRevenue.toLocaleString()}`, icon: DollarSign, color: 'emerald', growth: 15.7 },
-          { label: 'Platform Fees (10%)', value: `₱${(stats.totalPlatformFees || 0).toLocaleString()}`, icon: DollarSign, color: 'blue', growth: 15.7 },
-          { label: 'Pending Store Apps', value: stats.pendingApplications, icon: Settings, color: 'amber', growth: 0 }
+          { label: 'Platform Fees', value: `₱${(stats.totalPlatformFees || 0).toLocaleString()}`, icon: DollarSign, color: 'blue', growth: 15.7 },
+          { label: 'Pending Apps', value: stats.pendingApplications, icon: Settings, color: 'amber', growth: 0 }
         ].map((stat, i) => (
-          <div key={i} className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-6 rounded-[2rem] shadow-sm hover:shadow-xl transition-all group overflow-hidden">
-            <div className="flex justify-between items-start mb-6">
-              <div className={`p-3 bg-${stat.color}-50 dark:bg-${stat.color}-900/20 text-${stat.color}-600 rounded-2xl`}>
-                <stat.icon className="h-5 w-5" />
+          <div key={i} className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-4 sm:p-6 rounded-2xl sm:rounded-[2rem] shadow-sm hover:shadow-xl transition-all group overflow-hidden">
+            <div className="flex flex-row sm:flex-col justify-between items-center sm:items-start gap-4 sm:gap-6 relative z-10">
+              <div className="flex items-center gap-4 w-full sm:w-auto">
+                <div className={`p-2.5 sm:p-3 bg-${stat.color}-50 dark:bg-${stat.color}-900/20 text-${stat.color}-600 rounded-xl sm:rounded-2xl shrink-0`}>
+                  <stat.icon className="h-4 w-4 sm:h-5 sm:w-5" />
+                </div>
+                <div className="sm:hidden min-w-0">
+                  <p className="text-[8px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest truncate">{stat.label}</p>
+                  <p className="text-xl font-black text-slate-900 dark:text-slate-100 tracking-tighter leading-none">{stat.value}</p>
+                </div>
               </div>
+              
+              <div className="hidden sm:block">
+                <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] mb-1">{stat.label}</p>
+                <p className="text-2xl font-black text-slate-900 dark:text-slate-100 tracking-tighter leading-none">{stat.value}</p>
+              </div>
+
               {stat.growth > 0 && (
-                <div className="flex items-center gap-1 text-[10px] font-black text-emerald-500">
-                  <TrendingUp className="h-3 w-3" />
+                <div className="flex items-center gap-1 px-2 py-0.5 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg text-[9px] font-black text-emerald-500">
+                  <TrendingUp className="h-2.5 w-2.5" />
                   <span>+{stat.growth}%</span>
                 </div>
               )}
-            </div>
-            <div>
-              <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] mb-1">{stat.label}</p>
-              <p className="text-2xl font-black text-slate-900 dark:text-slate-100 tracking-tighter leading-none">{stat.value}</p>
             </div>
           </div>
         ))}
@@ -184,13 +192,13 @@ const SuperAdminDashboard = () => {
                 { to: "/superadmin/store-applications", label: "Store Requests", icon: Settings, desc: "Review new stores" },
                 { to: "/superadmin/system-analytics", label: "Analytics", icon: Activity, desc: "System performance" }
               ].map((action, i) => (
-                <Link key={i} to={action.to} className="flex items-center gap-4 p-4 bg-white/5 hover:bg-white/10 rounded-2xl transition-all group/item active:scale-[0.98]">
-                  <div className="w-12 h-12 bg-white/5 rounded-2xl flex items-center justify-center text-white/40 group-hover/item:bg-primary-600 group-hover/item:text-white transition-all">
-                    <action.icon className="h-5 w-5" />
+                <Link key={i} to={action.to} className="flex items-center gap-3 sm:gap-4 p-3 sm:p-4 bg-white/5 hover:bg-white/10 rounded-xl sm:rounded-2xl transition-all group/item active:scale-[0.98]">
+                  <div className="w-10 h-10 sm:w-12 sm:h-12 bg-white/5 rounded-xl flex items-center justify-center text-white/40 group-hover/item:bg-primary-600 group-hover/item:text-white transition-all">
+                    <action.icon className="h-4 w-4 sm:h-5 sm:w-5" />
                   </div>
-                  <div>
-                    <p className="text-[10px] font-black text-white uppercase tracking-widest leading-none mb-1">{action.label}</p>
-                    <p className="text-[8px] font-bold text-white/30 uppercase tracking-[0.2em]">{action.desc}</p>
+                  <div className="min-w-0">
+                    <p className="text-[9px] sm:text-[10px] font-black text-white uppercase tracking-widest leading-none mb-1 truncate">{action.label}</p>
+                    <p className="text-[7.5px] sm:text-[8px] font-bold text-white/30 uppercase tracking-[0.2em] truncate">{action.desc}</p>
                   </div>
                 </Link>
               ))}
