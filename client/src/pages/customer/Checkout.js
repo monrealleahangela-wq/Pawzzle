@@ -4,7 +4,7 @@ import { toast } from 'react-toastify';
 import { useCart } from '../../contexts/CartContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { orderService, userService, paymentService, storeService, voucherService, getImageUrl } from '../../services/apiService';
-import { Heart, Package, CreditCard, Truck, Edit2, ShoppingBag, Store, CheckCircle, AlertCircle, MapPin, Tag, Ticket, X, ChevronRight } from 'lucide-react';
+import { Heart, Package, CreditCard, Truck, Edit2, ShoppingBag, Store, CheckCircle, AlertCircle, MapPin, Tag, Ticket, X, ChevronRight, Building } from 'lucide-react';
 import { getCitiesByProvince, getBarangaysByCity } from '../../constants/locationConstants';
 import MapPicker from '../../components/MapPicker';
 import { Info } from 'lucide-react';
@@ -68,7 +68,7 @@ const Checkout = () => {
     return [
       { value: 'gcash', label: 'GCash', icon: <CreditCard className="h-4 w-4" /> },
       { value: 'maya', label: 'Maya', icon: <CreditCard className="h-4 w-4" /> },
-      { value: 'bank_transfer', label: 'Bank Transfer', icon: <Package className="h-4 w-4" /> }
+      { value: 'bank_transfer', label: 'Bank Transfer', icon: <Building className="h-4 w-4" /> }
     ];
   };
   const [deliveryMethod, setDeliveryMethod] = useState('delivery'); // 'delivery' or 'pickup'
@@ -861,7 +861,7 @@ const Checkout = () => {
                     }`}
                 >
                   <div className={`p-2 rounded-xl transition-all ${paymentMethod === method.value ? 'bg-primary-600 text-white shadow-md' : 'bg-slate-50 text-slate-400 group-hover:bg-slate-100'}`}>
-                    {getPaymentIcon(method.value)}
+                    {method.icon}
                   </div>
                   <span className={`text-[10px] font-black uppercase tracking-tight transition-colors ${paymentMethod === method.value ? 'text-primary-900' : 'text-slate-500'}`}>
                     {method.label}
