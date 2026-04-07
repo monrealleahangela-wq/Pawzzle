@@ -510,6 +510,23 @@ const rejectVerification = async (req, res) => {
   }
 };
 
+// Get all store locations for map (Filtered for Cavite only)
+const getStoreLocations = async (req, res) => {
+  try {
+    const stores = await Store.find({
+      isActive: true,
+      isDeleted: { $ne: true },
+      name: { $ne: 'Admin Pet Store' },
+      'contactInfo.address.state': /Cavite/i
+    }).select('name logo slug contactInfo.phone contactInfo.email contactInfo.address');
+
+    res.json({ stores });
+  } catch (error) {
+    console.error('Get store locations error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
 module.exports = {
   getAllStores,
   getStoreById,
@@ -521,6 +538,7 @@ module.exports = {
   toggleStoreStatus,
   featureStore,
   getStoreByOwner,
+  getStoreLocations,
   submitVerification,
   approveVerification,
   rejectVerification

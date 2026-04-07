@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { 
@@ -79,6 +79,7 @@ const MapController = ({ center, zoom }) => {
 };
 
 const FindShops = () => {
+  const location = useLocation();
   const [stores, setStores] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -89,38 +90,51 @@ const FindShops = () => {
   const [mapZoom, setMapZoom] = useState(11);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
+  const handleStoreSelect = (store) => {
+    setSelectedStore(store);
+    if (store.contactInfo?.address?.coordinates?.lat) {
+      setMapCenter([store.contactInfo.address.coordinates.lat, store.contactInfo.address.coordinates.lng]);
+      setMapZoom(15);
+    }
+    // On mobile, close sidebar when selecting a store
+    if (window.innerWidth < 1024) {
+      setIsSidebarOpen(false);
+    }
+  };
+
   useEffect(() => {
     const fetchStores = async () => {
       try {
         setLoading(true);
-        const response = await storeService.getAllStores();
-        const fetchedStores = response.data.stores || response.data || [];
+        const response = await storeService.getStoreLocations();
+        const fetchedStores = response.data.stores || [];
         
-        // Strictly filter for Cavite shops only
+        // Sanity filter for shops with coordinates (though backend should have them)
         const caviteStores = fetchedStores.filter(store => {
-          const state = store.contactInfo?.address?.state?.toLowerCase() || '';
-          const city = store.contactInfo?.address?.city?.toLowerCase() || '';
-          const addressText = `${store.contactInfo?.address?.street} ${store.contactInfo?.address?.barangay} ${store.contactInfo?.address?.city} ${store.contactInfo?.address?.state}`.toLowerCase();
-          
           const coords = store.contactInfo?.address?.coordinates;
-          const isInCaviteBounds = coords?.lat && coords?.lng && isWithinCavite(coords.lat, coords.lng);
-          
-          const isCaviteText = state.includes('cavite') || city.includes('cavite') || addressText.includes('cavite');
-          
-          // Must be in Cavite text or within bounds
-          return (isCaviteText || isInCaviteBounds) && store.name?.toLowerCase() !== 'admin pet store';
+          return coords?.lat && coords?.lng;
         });
 
         setStores(caviteStores);
+
+        // Check for ?store=ID in URL
+        const queryParams = new URLSearchParams(location.search);
+        const storeId = queryParams.get('store');
+        if (storeId) {
+          const targetStore = caviteStores.find(s => s._id === storeId);
+          if (targetStore) {
+            handleStoreSelect(targetStore);
+          }
+        }
       } catch (error) {
-        console.error('Error fetching stores:', error);
-        toast.error('Failed to load store locations');
+        console.error('Error fetching store locations:', error);
+        toast.error('Failed to load store GPS coordinates');
       } finally {
         setLoading(false);
       }
     };
     fetchStores();
-  }, []);
+  }, [location.search]);
 
   const filteredStores = useMemo(() => {
     return stores.filter(store => {
@@ -134,18 +148,6 @@ const FindShops = () => {
       return matchesSearch && matchesMuni;
     });
   }, [stores, searchTerm, selectedMunicipality]);
-
-  const handleStoreSelect = (store) => {
-    setSelectedStore(store);
-    if (store.contactInfo?.address?.coordinates?.lat) {
-      setMapCenter([store.contactInfo.address.coordinates.lat, store.contactInfo.address.coordinates.lng]);
-      setMapZoom(15);
-    }
-    // On mobile, close sidebar when selecting a store
-    if (window.innerWidth < 1024) {
-      setIsSidebarOpen(false);
-    }
-  };
 
   const getUserLocation = () => {
     if (!navigator.geolocation) {

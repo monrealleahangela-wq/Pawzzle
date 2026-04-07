@@ -13,6 +13,7 @@ const {
   toggleStoreStatus,
   featureStore,
   getStoreByOwner,
+  getStoreLocations,
   submitVerification,
   approveVerification,
   rejectVerification
@@ -58,6 +59,7 @@ router.post('/', authenticate, adminOnly, createStoreValidation, createStore);
 
 // Public routes with parameter (must come AFTER literal paths)
 router.get('/', getAllStores);
+router.get('/locations', getStoreLocations);
 router.get('/owner/:ownerId', getStoreByOwner);
 router.get('/:id', getStoreById);
 router.get('/:id/details', getStoreDetails);

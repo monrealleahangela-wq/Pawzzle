@@ -294,6 +294,7 @@ export const storeService = {
   getSettings: () => api.get('/stores/settings'),
   updateSettings: (settings) => api.put('/stores/settings', settings),
   getStoreByOwner: (ownerId) => api.get(`/stores/owner/${ownerId}`),
+  getStoreLocations: () => api.get('/stores/locations'),
   submitVerification: (data) => api.post('/stores/my-store/verify', data),
   approveVerification: (id) => api.post(`/stores/${id}/approve-verification`),
   rejectVerification: (id, reason) => api.post(`/stores/${id}/reject-verification`, { reason })

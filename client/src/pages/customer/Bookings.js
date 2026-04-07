@@ -1557,23 +1557,33 @@ const Bookings = ({ isSubcomponent = false }) => {
                 </div>
 
                 <div className="flex flex-col sm:flex-row items-center justify-between gap-6 pt-6 border-t border-slate-50 relative z-10">
-                  <div className="flex items-center gap-4">
-                    <a
-                      href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-                        `${booking.store?.contactInfo?.address?.street || ''}, ${booking.store?.contactInfo?.address?.city || ''}, ${booking.store?.contactInfo?.address?.state || ''}`
-                      )}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-2 p-3 bg-slate-50 rounded-2xl border border-slate-100 hover:border-primary-300 transition-all group/store"
-                    >
-                      <Store className="h-3.5 w-3.5 text-primary-600 group-hover/store:scale-110 transition-transform" />
-                      <div className="flex flex-col">
-                        <span className="text-[10px] font-black text-slate-900 uppercase tracking-widest leading-none mb-0.5">{booking.store?.name || 'Store'}</span>
-                        <span className="text-[8px] font-bold text-slate-400 uppercase tracking-tight flex items-center gap-1">
-                          <MapPin className="h-2 w-2 text-primary-500" /> {booking.store?.contactInfo?.address?.street ? `${booking.store.contactInfo.address.street}, ${booking.store.contactInfo.address.city}` : booking.store?.contactInfo?.address?.city || 'CAVITE'}
-                        </span>
-                      </div>
-                    </a>
+                  <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                    <div className="flex flex-wrap items-center gap-3">
+                      <a
+                        href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+                          `${booking.store?.contactInfo?.address?.street || ''}, ${booking.store?.contactInfo?.address?.city || ''}, ${booking.store?.contactInfo?.address?.state || ''}`
+                        )}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 p-2.5 bg-slate-50 rounded-2xl border border-slate-100 hover:border-primary-300 transition-all group/store"
+                      >
+                        <Store className="h-3.5 w-3.5 text-primary-600 group-hover/store:scale-110 transition-transform" />
+                        <div className="flex flex-col">
+                          <span className="text-[9px] font-black text-slate-900 uppercase tracking-widest leading-none mb-0.5">{booking.store?.name || 'Store'}</span>
+                          <span className="text-[7.5px] font-bold text-slate-400 uppercase tracking-tight flex items-center gap-1">
+                            <MapPin className="h-2 w-2 text-primary-500" /> {booking.store?.contactInfo?.address?.city || 'CAVITE'}
+                          </span>
+                        </div>
+                      </a>
+
+                      <Link
+                        to={`/find-shops?store=${booking.store?._id || booking.store}`}
+                        className="flex items-center gap-2 p-2.5 bg-primary-50 text-primary-600 rounded-2xl border border-primary-100 hover:bg-primary-600 hover:text-white transition-all group/gps shadow-sm"
+                      >
+                        <Navigation className="h-3.5 w-3.5 group-hover/gps:rotate-12 transition-transform" />
+                        <span className="text-[9px] font-black uppercase tracking-widest leading-none">GPS</span>
+                      </Link>
+                    </div>
                   </div>
 
                   <div className="flex gap-3 w-full sm:w-auto">
