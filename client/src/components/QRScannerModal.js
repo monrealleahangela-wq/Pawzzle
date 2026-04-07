@@ -58,10 +58,22 @@ const QRScannerModal = ({ isOpen, onClose, onScanSuccess }) => {
       await stopScanner();
 
       // Determine validation endpoint based on protocol or context
-      const endpoint = decodedText.startsWith('ORD-') || decodedText.length > 20 ? '/orders/validate-qr' : '/bookings/validate-qr';
-      const payload = decodedText.startsWith('ORD-') ? { orderId: decodedText } : { bookingId: decodedText };
+      const isOrder = decodedText.startsWith('ORD-') || decodedText.length > 20;
+      let endpoint = isOrder ? '/orders/validate-qr' : '/bookings/validate-qr';
+      const payload = { orderId: decodedText, bookingId: decodedText };
 
-      const response = await api.post(endpoint, payload);
+      let response;
+      try {
+        response = await api.post(endpoint, payload);
+      } catch (err) {
+        // Fallback: If it's a 24-char ID and order validation failed with 404, try booking
+        if (err.response?.status === 404 && isOrder) {
+          endpoint = '/bookings/validate-qr';
+          response = await api.post(endpoint, payload);
+        } else {
+          throw err;
+        }
+      }
       setScanResult(response.data.order || response.data.booking);
       toast.success('Protocol Authenticated');
     } catch (err) {
