@@ -67,6 +67,11 @@ const isWithinCavite = (lat, lng) => {
     lng <= CAVITE_BOUNDS.maxLng;
 };
 
+const normalizeString = (str) => {
+  if (!str) return '';
+  return str.toString().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+};
+
 // Component to handle map centering and movement
 const MapController = ({ center, zoom }) => {
   const map = useMap();
@@ -114,7 +119,7 @@ const FindShops = () => {
         const queryParams = new URLSearchParams(location.search);
         const storeId = queryParams.get('store');
         if (storeId) {
-          const targetStore = caviteStores.find(s => s._id === storeId);
+          const targetStore = fetchedStores.find(s => s._id === storeId);
           if (targetStore) {
             handleStoreSelect(targetStore);
           }
