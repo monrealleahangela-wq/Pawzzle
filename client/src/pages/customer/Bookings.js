@@ -38,6 +38,12 @@ const Bookings = ({ isSubcomponent = false }) => {
   const [loading, setLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
+  const calculateAge = (birthday) => {
+    if (!birthday) return 1;
+    const birthDate = new Date(birthday);
+    const age = Math.floor((new Date() - birthDate) / (1000 * 60 * 60 * 24 * 365.25));
+    return age > 0 ? age : 1;
+  };
   const [showMobileFilters, setShowMobileFilters] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [showBookingForm, setShowBookingForm] = useState(false);
@@ -223,7 +229,7 @@ const Bookings = ({ isSubcomponent = false }) => {
         type: pet.type,
         breed: pet.breed,
         size: pet.size,
-        age: Math.floor((new Date() - new Date(pet.birthday)) / (1000 * 60 * 60 * 24 * 365.25)) || 1,
+        age: calculateAge(pet.birthday),
         gender: pet.gender || 'Male',
         weight: pet.weight,
         color: pet.color || '',
@@ -978,7 +984,7 @@ const Bookings = ({ isSubcomponent = false }) => {
                                 setSelectedPetProfile(pet);
                                 setBookingForm(prev => ({
                                   ...prev,
-                                  pet: { name: pet.name, type: pet.type, breed: pet.breed, size: pet.size || 'Small', age: String(pet.age), weight: String(pet.weight) }
+                                  pet: { name: pet.name, type: pet.type, breed: pet.breed, size: pet.size || 'Small', age: calculateAge(pet.birthday), weight: String(pet.weight) }
                                 }));
                               }}
                               className={`flex-shrink-0 min-w-[160px] p-4 rounded-2xl border-2 text-left transition-all ${
@@ -996,7 +1002,7 @@ const Bookings = ({ isSubcomponent = false }) => {
                                 </div>
                               </div>
                               <p className="text-[8px] font-bold text-slate-500 uppercase tracking-wide">{pet.breed}</p>
-                              <p className="text-[8px] text-slate-400 font-bold mt-0.5">{pet.age}yr · {pet.weight}kg · <span className="text-primary-500">{pet.size || 'Small'}</span></p>
+                              <p className="text-[8px] text-slate-400 font-bold mt-0.5">{calculateAge(pet.birthday)}yr · {pet.weight}kg · <span className="text-primary-500">{pet.size || 'Small'}</span></p>
                               {isSelected && (
                                 <div className="flex items-center gap-1 mt-2">
                                   <CheckCircle className="h-3 w-3 text-primary-500" />
