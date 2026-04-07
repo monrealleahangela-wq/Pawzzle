@@ -97,35 +97,42 @@ const PawCursor = () => {
             
             <div
                 ref={cursorRef}
-                className="absolute top-0 left-0 will-change-transform"
+                className="absolute top-0 left-0 pointer-events-none"
                 style={{ 
                     transform: 'translate3d(-100px, -100px, 0)',
-                    transition: 'none' 
+                    transition: 'none',
+                    willChange: 'transform',
+                    zIndex: 999999
                 }}
             >
-                {/* Offset Container: Aligns the 'toe' of the paw to the mouse point (Top-Center) */}
+                {/* 
+                  PRECISION ALIGNMENT: 
+                  The Lucide PawPrint has approx 7px of top padding in a 24px box.
+                  By translating Y by -30% to -35%, we place the 'toes' exactly on the X/Y coordinate.
+                */}
                 <div 
                     className="relative"
                     style={{ 
-                        transform: 'translate(-50%, -10%)', // Tip-aligned instead of center-aligned
+                        transform: 'translate(-50%, -32%)', 
                         transition: 'none'
                     }}
                 >
                     <div 
-                        className="transition-transform duration-200 ease-out flex items-center justify-center"
+                        className="flex items-center justify-center"
                         style={{
-                            transform: `scale(${isPressed ? 0.7 : isHovering ? 1.2 : 1})`,
+                            transition: 'transform 0.15s ease-out, color 0.2s ease',
+                            transform: `scale(${isPressed ? 0.75 : isHovering ? 1.2 : 1.0})`,
                             color: isHovering ? '#c2410c' : '#533114'
                         }}
                     >
-                        <div className={`relative transition-transform duration-300 ${isHovering ? 'rotate-[15deg]' : 'rotate-0'}`}>
+                        <div className={`relative transition-transform duration-300 ${isHovering ? 'rotate-[12deg]' : 'rotate-0'}`}>
                             <PawPrint 
                                 size={22} 
                                 fill="currentColor" 
-                                className={`filter drop-shadow-[0_2px_3px_rgba(0,0,0,0.3)] transition-opacity duration-200 ${isHovering ? 'opacity-90' : 'opacity-100'}`} 
+                                className={`filter drop-shadow-[0_2px_4px_rgba(0,0,0,0.3)] ${isHovering ? 'opacity-90' : 'opacity-100'}`} 
                             />
                             {isHovering && (
-                                <div className="absolute inset-0 bg-primary-400/40 blur-xl rounded-full -z-10 animate-pulse" />
+                                <div className="absolute inset-0 bg-primary-400/30 blur-xl rounded-full -z-10 animate-pulse" />
                             )}
                         </div>
                     </div>
