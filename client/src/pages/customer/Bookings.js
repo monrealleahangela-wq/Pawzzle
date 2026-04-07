@@ -141,10 +141,13 @@ const Bookings = ({ isSubcomponent = false }) => {
         return currentMins < bEndMins && selEndMins > bStartMins;
       });
 
-      slots.push({
-        time: timeStr,
-        available: !isPast && !isBooked
-      });
+      // ONLY add slot if it's NOT in the past (requirement: "Only show slots that are current or future")
+      if (!isPast) {
+        slots.push({
+          time: timeStr,
+          available: !isBooked
+        });
+      }
 
       currentMins += duration + buffer;
     }

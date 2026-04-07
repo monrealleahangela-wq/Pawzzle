@@ -9,21 +9,64 @@ const PetProfile = require('../models/PetProfile');
 const RevenueService = require('../services/revenueService');
 const { createNotification } = require('./notificationController');
 
-// Auto-cancels bookings that are still pending and whose date has passed
+// Auto-cancels bookings that are still pending and whose date has passed or unapproved for too long
 const autoCancelExpiredBookings = async (filterBase = {}) => {
   try {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
+    const now = new Date();
 
+    // 1. Cancel unapproved bookings after 30 minutes
+    const unapprovedLimit = new Date();
+    unapprovedLimit.setMinutes(unapprovedLimit.getMinutes() - 30);
+
+    const unapprovedQuery = {
+      ...filterBase,
+      status: 'pending',
+      createdAt: { $lt: unapprovedLimit }
+    };
+
+    const unapprovedBookings = await Booking.find(unapprovedQuery);
+    if (unapprovedBookings.length > 0) {
+      const ids = unapprovedBookings.map(b => b._id);
+      await Booking.updateMany(
+        { _id: { $in: ids } },
+        { 
+          $set: { 
+            status: 'cancelled', 
+            adminNotes: 'Automatically cancelled: Booking was not approved by the store within the 30-minute confirmation window.' 
+          } 
+        }
+      );
+
+      // Notify customers
+      for (const b of unapprovedBookings) {
+        await createNotification({
+          recipient: b.customer,
+          sender: b.addedBy, // Store owner
+          type: 'booking_status',
+          title: 'Booking Auto-Cancelled',
+          message: `Your booking for ${b.service?.name || 'service'} was cancelled because the store didn't approve it within 30 minutes.`,
+          relatedId: b._id,
+          relatedModel: 'Booking'
+        });
+        
+        // Revert voucher
+        if (b.voucher) {
+          await Voucher.findByIdAndUpdate(b.voucher, { $inc: { usedCount: -1 } });
+        }
+      }
+      console.log(`🕒 Auto-cancelled ${unapprovedBookings.length} unapproved bookings`);
+    }
+
+    // 2. Cancel expired/late bookings (Original logic)
     const expiredQuery = {
       ...filterBase,
       status: { $in: ['pending', 'approved', 'confirmed'] },
       $or: [
         { bookingDate: { $lt: today } },
         {
-          bookingDate: today,
-          // Handle same day late arrivals (30 mins past startTime)
-          // This is a simplified check, ideally should use a more robust time comparison
+          bookingDate: today
         }
       ]
     };
@@ -31,7 +74,6 @@ const autoCancelExpiredBookings = async (filterBase = {}) => {
     const expiredBookings = await Booking.find(expiredQuery);
     
     // Filter for today's late arrivals
-    const now = new Date();
     const finalExpired = expiredBookings.filter(b => {
       if (new Date(b.bookingDate) < today) return true;
       
@@ -89,6 +131,14 @@ const createBooking = async (req, res) => {
       notes,
       voucherCode
     } = req.body;
+
+    // Check if booking date/time is in the past
+    const [year, month, day] = bookingDate.split('-').map(Number);
+    const [hour, minute] = startTime.split(':').map(Number);
+    const selectedDateTime = new Date(year, month - 1, day, hour, minute);
+    if (selectedDateTime <= new Date()) {
+      return res.status(400).json({ message: 'Cannot book a service for a past date or time' });
+    }
 
     // Get service details
     const service = await Service.findById(serviceId).populate('store');

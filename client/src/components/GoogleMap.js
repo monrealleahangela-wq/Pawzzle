@@ -1,7 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ExternalLink, Navigation, MapPin, Maximize2 } from 'lucide-react';
 
-const GoogleMap = ({ address, storeName, onCoordinatesUpdate, coordinates: propCoordinates, className = '' }) => {
+const GoogleMap = ({ 
+  address, 
+  storeName, 
+  onCoordinatesUpdate, 
+  coordinates: propCoordinates, 
+  onDirectionsClick,
+  onViewOnMapClick,
+  className = '' 
+}) => {
   const [coordinates, setCoordinates] = useState(propCoordinates || null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -190,6 +198,12 @@ const GoogleMap = ({ address, storeName, onCoordinatesUpdate, coordinates: propC
       <div className="flex flex-col sm:flex-row gap-3">
         <a
           href={getDirectionsUrl()}
+          onClick={(e) => {
+            if (onDirectionsClick) {
+                e.preventDefault();
+                onDirectionsClick();
+            }
+          }}
           target="_blank"
           rel="noopener noreferrer"
           className="flex-1 flex items-center justify-center gap-3 px-8 py-5 bg-primary-600 text-white rounded-[1.8rem] font-black uppercase tracking-[0.2em] text-[10px] hover:bg-primary-500 transition-all shadow-xl shadow-primary-900/10 hover:shadow-primary-600/20 hover:-translate-y-0.5 active:scale-95"
@@ -199,6 +213,12 @@ const GoogleMap = ({ address, storeName, onCoordinatesUpdate, coordinates: propC
         </a>
         <a
           href={getViewOnMapUrl()}
+          onClick={(e) => {
+            if (onViewOnMapClick) {
+                e.preventDefault();
+                onViewOnMapClick();
+            }
+          }}
           target="_blank"
           rel="noopener noreferrer"
           className="flex-1 sm:flex-[0.6] flex items-center justify-center gap-3 px-8 py-5 bg-slate-900 text-white rounded-[1.8rem] font-black uppercase tracking-[0.2em] text-[10px] hover:bg-black transition-all shadow-xl hover:-translate-y-0.5 active:scale-95"

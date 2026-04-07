@@ -105,6 +105,21 @@ const FindShops = () => {
   const [distance, setDistance] = useState(null);
   const [activeInstruction, setActiveInstruction] = useState(0);
 
+  const searchParams = new URLSearchParams(useLocation().search);
+  const shopIdFromQuery = searchParams.get('shop');
+
+  // Handle shop from query params
+  useEffect(() => {
+    if (shopIdFromQuery && stores.length > 0) {
+        const store = stores.find(s => s._id === shopIdFromQuery);
+        if (store) {
+            handleStoreSelect(store);
+            // Auto start directions if shop is from query
+            setTimeout(() => getDirections(store), 500);
+        }
+    }
+  }, [shopIdFromQuery, stores]);
+
   const handleStoreSelect = (store) => {
     setSelectedStore(store);
     // Don't interrupt navigation if already active

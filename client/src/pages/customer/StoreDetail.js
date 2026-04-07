@@ -595,6 +595,8 @@ const StoreDetail = () => {
                       storeName={store.name}
                       coordinates={store.contactInfo?.address?.coordinates}
                       className="w-full"
+                      onDirectionsClick={() => navigate(`/find-shops?shop=${store._id}`)}
+                      onViewOnMapClick={() => navigate(`/find-shops?shop=${store._id}`)}
                     />
                   </div>
                 </div>
