@@ -93,7 +93,7 @@ const PawCursor = () => {
 
     return (
         <div className="fixed inset-0 pointer-events-none z-[999999] overflow-hidden">
-            <div id="paw-trail-container" className="absolute inset-0" />
+            <div id="paw-trail-container" className="absolute inset-0 pointer-events-none" />
             
             <div
                 ref={cursorRef}

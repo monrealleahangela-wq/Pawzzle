@@ -16,13 +16,6 @@ body {
   min-height: 100vh;
   min-height: 100dvh;
   cursor: none !important; /* Hide default cursor */
-  /* Universal Scale Management */
-  @media (min-width: 1024px) {
-    zoom: 0.8;
-  }
-  @media (max-width: 1023px) {
-    zoom: 1;
-  }
 }
 
 /* Ensure all clickable elements also hide the cursor */
