@@ -361,8 +361,8 @@ const EnhancedChatMessenger = ({
 
   const messengerContent = (
     <div
-      className={`flex flex-col h-full bg-white transition-transform duration-300 ease-out min-h-0
-        ${!isEmbedded ? 'rounded-3xl shadow-2xl max-w-lg w-full h-[65vh] sm:h-[600px] overflow-hidden border border-white/20' : ''}`}
+      className={`flex flex-col h-full bg-white transition-transform duration-300 ease-out min-h-0 overflow-hidden
+        ${!isEmbedded ? 'rounded-3xl shadow-2xl max-w-lg w-full h-[85vh] sm:h-[600px] border border-white/20' : ''}`}
     >
       {!isEmbedded && (
         <div className="px-5 py-3 bg-neutral-900 text-white flex items-center justify-between">
