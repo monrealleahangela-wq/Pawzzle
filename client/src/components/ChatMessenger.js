@@ -109,7 +109,7 @@ const ChatMessenger = ({ isOpen, onClose, pet, seller, currentUser }) => {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[80vh] flex flex-col">
+      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 h-[60vh] max-h-[60vh] flex flex-col overflow-hidden">
         {/* Header */}
         <div className="flex-shrink-0 flex items-center justify-between p-4 border-b z-10 bg-white rounded-t-lg">
           <div className="flex items-center space-x-3">
