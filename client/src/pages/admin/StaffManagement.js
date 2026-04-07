@@ -295,16 +295,17 @@ const StaffManagement = () => {
                         </p>
                     </div>
                 ) : (
-                    <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden shadow-sm">
-                        <div className="overflow-x-auto">
+                    <div className="bg-white rounded-3xl border border-slate-100 overflow-hidden shadow-sm">
+                        {/* Desktop Table View (Hidden on Mobile) */}
+                        <div className="hidden sm:block overflow-x-auto">
                             <table className="w-full">
                                 <thead>
-                                    <tr className="border-b border-slate-50">
-                                        <th className="text-left px-6 py-3.5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Staff Member</th>
-                                        <th className="text-left px-6 py-3.5 text-[10px] font-black text-slate-400 uppercase tracking-widest hidden sm:table-cell">Contact</th>
-                                        <th className="text-left px-6 py-3.5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Role</th>
-                                        <th className="text-left px-6 py-3.5 text-[10px] font-black text-slate-400 uppercase tracking-widest hidden sm:table-cell">Status</th>
-                                        <th className="text-right px-6 py-3.5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Actions</th>
+                                    <tr className="border-b border-slate-50 bg-slate-50/30">
+                                        <th className="text-left px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Staff Member</th>
+                                        <th className="text-left px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest hidden lg:table-cell">Contact Info</th>
+                                        <th className="text-left px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Role</th>
+                                        <th className="text-left px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest hidden md:table-cell">Status</th>
+                                        <th className="text-right px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-50">
@@ -312,74 +313,45 @@ const StaffManagement = () => {
                                         const typeInfo = STAFF_TYPES.find(t => t.id === member.staffType);
                                         const Icon = typeInfo?.icon || Shield;
                                         return (
-                                            <tr key={member._id} className={`hover:bg-slate-50/50 transition-colors ${!member.isActive ? 'opacity-50' : ''}`}>
-                                                <td className="px-6 py-3.5">
+                                            <tr key={member._id} className={`hover:bg-slate-50/50 transition-colors ${!member.isActive ? 'opacity-60' : ''}`}>
+                                                <td className="px-6 py-4">
                                                     <div className="flex items-center gap-3">
-                                                        <div className="w-9 h-9 rounded-2xl bg-slate-100 flex items-center justify-center font-black text-slate-500 text-sm shrink-0">
+                                                        <div className="w-10 h-10 rounded-2xl bg-slate-100 flex items-center justify-center font-black text-slate-500 text-xs shrink-0 border border-slate-200">
                                                             {member.firstName[0]}{member.lastName[0]}
                                                         </div>
                                                         <div>
-                                                            <p className="font-black text-slate-900 text-sm">{member.firstName} {member.lastName}</p>
-                                                            <p className="text-slate-400 text-xs">@{member.username}</p>
+                                                            <p className="font-black text-slate-900 text-[13px] leading-tight">{member.firstName} {member.lastName}</p>
+                                                            <p className="text-slate-400 text-[10px] font-bold uppercase tracking-tighter">@{member.username}</p>
                                                         </div>
                                                     </div>
                                                 </td>
-                                                <td className="px-6 py-3.5 hidden sm:table-cell">
-                                                    <p className="text-slate-600 text-xs">{member.email}</p>
-                                                    {member.phone && <p className="text-slate-400 text-xs">{member.phone}</p>}
+                                                <td className="px-6 py-4 hidden lg:table-cell">
+                                                    <p className="text-slate-600 text-xs font-medium">{member.email}</p>
+                                                    {member.phone && <p className="text-slate-400 text-[10px]">{member.phone}</p>}
                                                 </td>
-                                                <td className="px-6 py-3.5">
-                                                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-[10px] font-black uppercase tracking-widest ${TYPE_STYLES[member.staffType]}`}>
-                                                        <Icon className="h-3 w-3" />
-                                                        {typeInfo?.label || member.staffType}
+                                                <td className="px-6 py-4">
+                                                    <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-xl border text-[9px] font-black uppercase tracking-widest ${TYPE_STYLES[member.staffType]}`}>
+                                                        <Icon className="h-3.5 w-3.5" />
+                                                        {typeInfo?.label}
                                                     </span>
                                                 </td>
-                                                <td className="px-6 py-3.5 hidden sm:table-cell">
-                                                    <div className="flex flex-col gap-1.5">
-                                                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest ${member.isActive ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-600'}`}>
+                                                <td className="px-6 py-4 hidden md:table-cell">
+                                                    <div className="flex flex-col gap-1">
+                                                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest ${member.isActive ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-600'}`}>
                                                             <span className={`w-1.5 h-1.5 rounded-full ${member.isActive ? 'bg-emerald-500' : 'bg-rose-400'}`} />
-                                                            {member.isActive ? 'Active' : 'Inactive'}
+                                                            {member.isActive ? 'Active' : 'Offline'}
                                                         </span>
-                                                        {member.isActive && (
-                                                            <div className="flex items-center gap-1.5 pl-1">
-                                                                <div className={`w-1 h-1 rounded-full ${member.lastSeen && (new Date() - new Date(member.lastSeen)) < 5 * 60 * 1000 ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)] animate-pulse' : 'bg-slate-300'}`} />
-                                                                <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none">
-                                                                    {member.lastSeen && (new Date() - new Date(member.lastSeen)) < 5 * 60 * 1000 ? 'Online' : 'Offline'}
-                                                                </span>
-                                                            </div>
+                                                        {member.isActive && member.lastSeen && (new Date() - new Date(member.lastSeen)) < 5 * 60 * 1000 && (
+                                                            <span className="text-[7px] font-black text-emerald-500 uppercase tracking-widest ml-1 animate-pulse">Live Now</span>
                                                         )}
                                                     </div>
                                                 </td>
-                                                <td className="px-6 py-3.5">
-                                                    <div className="flex items-center justify-end gap-1.5">
-                                                        <button
-                                                            onClick={() => openEdit(member)}
-                                                            title="Edit"
-                                                            className="p-2 rounded-2xl text-slate-400 hover:bg-slate-100 hover:text-slate-900 transition-all"
-                                                        >
-                                                            <Edit2 className="h-3.5 w-3.5" />
-                                                        </button>
-                                                        <button
-                                                            onClick={() => { setResetTarget(member); setNewPassword(''); }}
-                                                            title="Reset Password"
-                                                            className="p-2 rounded-2xl text-slate-400 hover:bg-amber-50 hover:text-amber-600 transition-all"
-                                                        >
-                                                            <Key className="h-3.5 w-3.5" />
-                                                        </button>
-                                                        <button
-                                                            onClick={() => handleToggle(member._id)}
-                                                            title={member.isActive ? 'Deactivate' : 'Activate'}
-                                                            className={`p-2 rounded-2xl transition-all ${member.isActive ? 'text-slate-400 hover:bg-rose-50 hover:text-rose-600' : 'text-slate-400 hover:bg-emerald-50 hover:text-emerald-600'}`}
-                                                        >
-                                                            <Power className="h-3.5 w-3.5" />
-                                                        </button>
-                                                        <button
-                                                            onClick={() => handleDelete(member._id, `${member.firstName} ${member.lastName}`)}
-                                                            title="Remove"
-                                                            className="p-2 rounded-2xl text-slate-400 hover:bg-rose-50 hover:text-rose-600 transition-all"
-                                                        >
-                                                            <Trash2 className="h-3.5 w-3.5" />
-                                                        </button>
+                                                <td className="px-6 py-4 text-right">
+                                                    <div className="flex items-center justify-end gap-1">
+                                                        <button onClick={() => openEdit(member)} className="p-2 rounded-xl text-slate-400 hover:bg-slate-100 hover:text-slate-900 transition-all"><Edit2 className="h-4 w-4" /></button>
+                                                        <button onClick={() => { setResetTarget(member); setNewPassword(''); }} className="p-2 rounded-xl text-slate-400 hover:bg-amber-50 hover:text-amber-600 transition-all"><Key className="h-4 w-4" /></button>
+                                                        <button onClick={() => handleToggle(member._id)} className={`p-2 rounded-xl transition-all ${member.isActive ? 'text-slate-400 hover:bg-rose-50 hover:text-rose-600' : 'text-slate-400 hover:bg-emerald-50 hover:text-emerald-600'}`}><Power className="h-4 w-4" /></button>
+                                                        <button onClick={() => handleDelete(member._id, `${member.firstName} ${member.lastName}`)} className="p-2 rounded-xl text-slate-400 hover:bg-rose-50 hover:text-rose-600 transition-all"><Trash2 className="h-4 w-4" /></button>
                                                     </div>
                                                 </td>
                                             </tr>
@@ -387,6 +359,40 @@ const StaffManagement = () => {
                                     })}
                                 </tbody>
                             </table>
+                        </div>
+
+                        {/* Mobile Card View (Compact List) */}
+                        <div className="sm:hidden divide-y divide-slate-100">
+                            {filtered.map(member => {
+                                const typeInfo = STAFF_TYPES.find(t => t.id === member.staffType);
+                                const Icon = typeInfo?.icon || Shield;
+                                return (
+                                    <div key={member._id} className={`p-3 flex items-center justify-between gap-3 ${!member.isActive ? 'opacity-60' : ''}`}>
+                                        <div className="flex items-center gap-3 min-w-0">
+                                            <div className="w-8 h-8 rounded-xl bg-slate-100 flex items-center justify-center font-black text-slate-500 text-[10px] shrink-0 border border-slate-200">
+                                                {member.firstName[0]}{member.lastName[0]}
+                                            </div>
+                                            <div className="min-w-0">
+                                                <p className="font-black text-slate-900 text-[12px] truncate leading-tight">{member.firstName} {member.lastName}</p>
+                                                <div className="flex items-center gap-2 mt-0.5">
+                                                    <span className={`text-[8px] font-black uppercase tracking-tighter ${member.isActive ? 'text-emerald-600' : 'text-rose-500'}`}>
+                                                        {member.isActive ? 'ACTIVE' : 'OFFLINE'}
+                                                    </span>
+                                                    <span className="text-slate-300">/</span>
+                                                    <span className={`text-[8px] font-black uppercase tracking-tighter ${TYPE_STYLES[member.staffType].split(' ')[1].replace('700', '600')}`}>
+                                                        {typeInfo?.label.split(' ')[0]}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-1 shrink-0">
+                                            <button onClick={() => openEdit(member)} className="p-2 bg-slate-50 text-slate-400 rounded-lg"><Edit2 className="h-3 w-3" /></button>
+                                            <button onClick={() => handleToggle(member._id)} className={`p-2 rounded-lg ${member.isActive ? 'bg-rose-50 text-rose-400' : 'bg-emerald-50 text-emerald-400'}`}><Power className="h-3 w-3" /></button>
+                                            <button onClick={() => handleDelete(member._id, `${member.firstName} ${member.lastName}`)} className="p-2 bg-rose-50 text-rose-400 rounded-lg"><Trash2 className="h-3 w-3" /></button>
+                                        </div>
+                                    </div>
+                                );
+                            })}
                         </div>
                     </div>
                 )}
