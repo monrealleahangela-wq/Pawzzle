@@ -9,10 +9,14 @@ const ChatMessenger = ({ isOpen, onClose, pet, seller, currentUser }) => {
   const [adoptionStatus, setAdoptionStatus] = useState('pending');
   const messagesEndRef = useRef(null);
 
+  const messagesContainerRef = useRef(null);
+
   useEffect(() => {
     // Scroll to bottom when new messages arrive
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+    if (messagesContainerRef.current) {
+        messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+    }
+  }, [messages, isOpen]);
 
   useEffect(() => {
     // Initialize chat with welcome message
@@ -107,7 +111,7 @@ const ChatMessenger = ({ isOpen, onClose, pet, seller, currentUser }) => {
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[80vh] flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b">
+        <div className="flex-shrink-0 flex items-center justify-between p-4 border-b z-10 bg-white rounded-t-lg">
           <div className="flex items-center space-x-3">
             <div className="w-10 h-10 bg-gradient-to-r from-primary-600 to-secondary-600 rounded-full flex items-center justify-center text-white font-bold">
               {pet?.name?.[0]?.toUpperCase()}
@@ -126,43 +130,52 @@ const ChatMessenger = ({ isOpen, onClose, pet, seller, currentUser }) => {
         </div>
 
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        <div 
+          ref={messagesContainerRef}
+          className="flex-1 overflow-y-auto p-4 space-y-4 overscroll-contain bg-slate-50/30 scroll-smooth"
+        >
           {messages.map((message) => (
             <div
               key={message.id}
               className={`flex ${message.sender === 'customer' ? 'justify-end' : 'justify-start'}`}
             >
               <div
-                className={`max-w-xs px-4 py-2 rounded-lg ${message.isSystem
-                    ? 'bg-gray-100 text-gray-700 text-sm'
+                className={`max-w-[85%] px-4 py-2 rounded-2xl shadow-sm ${message.isSystem
+                    ? 'bg-gray-100 text-gray-700 text-[10px] uppercase font-bold tracking-widest'
                     : message.sender === 'customer'
-                      ? 'bg-primary-600 text-white'
-                      : 'bg-gray-200 text-gray-900'
+                      ? 'bg-primary-600 text-white rounded-tr-none'
+                      : 'bg-white text-gray-900 rounded-tl-none border border-slate-100'
                   }`}
               >
                 {message.isSystem && (
-                  <div className="flex items-center space-x-1 mb-1">
+                  <div className="flex items-center space-x-1 mb-1 opacity-60">
                     <Clock className="h-3 w-3" />
-                    <span className="text-xs font-medium">Pet Info</span>
+                    <span>Pet Info</span>
                   </div>
                 )}
                 {message.type === 'image' || (typeof message.content === 'string' && (message.content.startsWith('/uploads/') || message.content.startsWith('http'))) ? (
                   <img
                     src={message.content}
                     alt="Sent"
-                    className="rounded-lg max-h-48 object-cover cursor-pointer hover:opacity-90 transition-opacity"
+                    className="rounded-xl max-h-64 object-cover cursor-pointer hover:opacity-95 transition-all shadow-sm"
                     onClick={() => window.open(message.content, '_blank')}
+                    onLoad={() => {
+                        if (messagesContainerRef.current) {
+                            messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+                        }
+                    }}
                   />
                 ) : (
-                  <p className="text-sm">{message.content}</p>
+                  <p className="text-sm leading-relaxed">{message.content}</p>
                 )}
-                <p className="text-xs opacity-70 mt-1">
-                  {message.timestamp.toLocaleTimeString()}
-                </p>
+                <div className="flex items-center justify-end gap-1 mt-1 opacity-50">
+                  <span className="text-[9px]">
+                    {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                </div>
               </div>
             </div>
           ))}
-          <div ref={messagesEndRef} />
         </div>
 
         {/* Adoption Status */}
@@ -179,7 +192,7 @@ const ChatMessenger = ({ isOpen, onClose, pet, seller, currentUser }) => {
         )}
 
         {/* Input */}
-        <div className="p-4 border-t">
+        <div className="flex-shrink-0 p-4 border-t bg-white rounded-b-lg">
           {adoptionStatus === 'pending' ? (
             <div className="flex space-x-2">
               <input
