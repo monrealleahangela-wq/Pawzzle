@@ -106,7 +106,7 @@ const Dashboard = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#FAF9F6] dark:bg-slate-950 p-4 sm:p-6 lg:p-12 space-y-8 sm:space-y-12 pb-20 sm:pb-40 font-['Outfit'] relative overflow-hidden transition-colors duration-500">
+    <div className="min-h-screen bg-[#FAF9F6] dark:bg-slate-950 p-2 sm:p-4 lg:p-6 space-y-6 sm:space-y-8 pb-10 sm:pb-20 font-['Outfit'] relative overflow-hidden transition-colors duration-500">
       {/* Precision Decorative Underlay */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden opacity-30">
         <div className="absolute top-[-20%] right-[-10%] w-[60%] h-[60%] bg-amber-100/40 dark:bg-amber-900/10 rounded-full blur-[160px] animate-spin-slow" />

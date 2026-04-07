@@ -44,32 +44,32 @@ code {
 
 /* ── Buttons ── */
 .btn {
-  @apply px-4 py-2 sm:px-5 sm:py-2.5 rounded-lg font-bold text-[10px] sm:text-xs uppercase tracking-widest transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 active:scale-95 text-center;
+  @apply px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg font-bold text-[9px] sm:text-[10px] uppercase tracking-widest transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 active:scale-95 text-center;
 }
 
 .btn-primary {
-  @apply bg-primary-600 text-white hover:bg-primary-700 focus:ring-primary-500 shadow-md hover:shadow-lg;
+  @apply bg-primary-600 text-white hover:bg-primary-700 focus:ring-primary-500 shadow-sm hover:shadow-md;
 }
 
 .btn-secondary {
-  @apply bg-secondary-500 text-white hover:bg-secondary-600 focus:ring-secondary-400 shadow-md hover:shadow-lg;
+  @apply bg-secondary-500 text-white hover:bg-secondary-600 focus:ring-secondary-400 shadow-sm hover:shadow-md;
 }
 
 .btn-outline {
-  @apply border-2 border-primary-300 bg-white text-primary-700 hover:bg-primary-50 focus:ring-primary-400;
+  @apply border border-primary-200 bg-white text-primary-700 hover:bg-primary-50 focus:ring-primary-400;
 }
 
 .btn-danger {
-  @apply bg-red-600 text-white hover:bg-red-700 focus:ring-red-500 shadow-md;
+  @apply bg-red-600 text-white hover:bg-red-700 focus:ring-red-500 shadow-sm;
 }
 
 .btn-green {
-  @apply bg-green-600 text-white hover:bg-green-700 focus:ring-green-500 shadow-md;
+  @apply bg-green-600 text-white hover:bg-green-700 focus:ring-green-500 shadow-sm;
 }
 
 /* ── Inputs ── */
 .input {
-  @apply w-full py-2.5 px-4 border border-primary-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400 focus:border-primary-400 transition-all duration-200 bg-white;
+  @apply w-full py-2 px-3 border border-primary-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400 focus:border-primary-400 transition-all duration-200 bg-white text-[11px];
 }
 
 .input-container {
@@ -77,55 +77,55 @@ code {
 }
 
 .input-with-icon {
-  @apply pl-12 pr-4 !important;
-  padding-left: 3rem !important;
+  @apply pl-10 pr-3 !important;
+  padding-left: 2.5rem !important;
 }
 
 .input-with-icon-right {
-  @apply pr-12 pl-4 !important;
-  padding-right: 3rem !important;
+  @apply pr-10 pl-3 !important;
+  padding-right: 2.5rem !important;
 }
 
 .input-with-both-icons {
-  @apply pl-12 pr-12 !important;
-  padding-left: 3rem !important;
-  padding-right: 3rem !important;
+  @apply pl-10 pr-10 !important;
+  padding-left: 2.5rem !important;
+  padding-right: 2.5rem !important;
 }
 
 .input-icon {
-  @apply absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none z-10 flex items-center justify-center;
+  @apply absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none z-10 flex items-center justify-center;
 }
 
 .input-icon-right {
-  @apply absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 z-10 flex items-center justify-center;
+  @apply absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 z-10 flex items-center justify-center;
 }
 
 /* ── Cards ── */
 .card {
-  @apply bg-white rounded-2xl sm:rounded-3xl shadow-sm border border-primary-100 hover:shadow-xl hover:shadow-primary-100/20 transition-all duration-500 overflow-hidden;
+  @apply bg-white rounded-xl sm:rounded-2xl shadow-sm border border-primary-50 hover:shadow-lg hover:shadow-primary-100/10 transition-all duration-500 overflow-hidden;
 }
 
 /* ── Navigation ── */
 .nav-link {
-  @apply px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200;
+  @apply px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-200;
 }
 
 .nav-link-active {
-  @apply bg-primary-100 text-primary-800 font-semibold;
+  @apply bg-primary-50 text-primary-800 font-semibold;
 }
 
 .nav-link-inactive {
-  @apply text-primary-700/70 hover:text-primary-800 hover:bg-primary-50;
+  @apply text-primary-700/60 hover:text-primary-800 hover:bg-primary-50;
 }
 
 /* ── Loading ── */
 .loading-spinner {
-  @apply animate-spin rounded-full h-8 w-8 border-2 border-primary-200 border-t-primary-600;
+  @apply animate-spin rounded-full h-6 w-6 border-2 border-primary-200 border-t-primary-600;
 }
 
 /* ── Layout ── */
 .container-custom {
-  @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+  @apply max-w-6xl mx-auto px-3 sm:px-4 lg:px-6;
 }
 
 @layer utilities {
@@ -251,75 +251,70 @@ code {
 }
 
 /* ══════════════════════════════════════════
-   MOBILE COMPACT GLOBAL OVERRIDES
-   Applied at < 640px to tighten ALL pages
+   UNIVERSAL COMPACT GLOBAL OVERRIDES
+   Applied to ALL users and ALL devices
    ══════════════════════════════════════════ */
+
+/* ── Ultra-Compact Padding Overrides ── */
+.p-24, .py-24, .p-20, .py-20, .p-16, .py-16 { padding: 1rem !important; }
+.p-12, .py-12, .p-10, .py-10 { padding: 0.75rem !important; }
+.p-8, .p-6, .p-5 { padding: 0.5rem !important; }
+.p-4 { padding: 0.35rem !important; }
+
+/* Horizontal Padding */
+.px-24, .px-20, .px-16 { padding-left: 1rem !important; padding-right: 1rem !important; }
+.px-12, .px-10, .px-8, .px-6 { padding-left: 0.65rem !important; padding-right: 0.65rem !important; }
+
+/* ── High-Density Spacing ── */
+[class*="space-y-32"], [class*="space-y-24"], [class*="space-y-20"] { margin-top: 1.25rem !important; }
+[class*="space-y-32"] > *:not(:first-child), 
+[class*="space-y-24"] > *:not(:first-child), 
+[class*="space-y-20"] > *:not(:first-child) { margin-top: 1.25rem !important; }
+
+[class*="space-y-16"], [class*="space-y-12"] { margin-top: 0.85rem !important; }
+[class*="space-y-16"] > *:not(:first-child), 
+[class*="space-y-12"] > *:not(:first-child) { margin-top: 0.85rem !important; }
+
+[class*="space-y-10"], [class*="space-y-8"], [class*="space-y-6"] { margin-top: 0.65rem !important; }
+[class*="space-y-10"] > *:not(:first-child), 
+[class*="space-y-8"] > *:not(:first-child), 
+[class*="space-y-6"] > *:not(:first-child) { margin-top: 0.65rem !important; }
+
+[class*="space-y-4"] > *:not(:first-child) { margin-top: 0.35rem !important; }
+
+/* ── Precision Gap Management ── */
+.gap-12, .gap-10, .gap-8 { gap: 0.75rem !important; }
+.gap-6, .gap-5, .gap-4 { gap: 0.5rem !important; }
+
+/* ── Card & Content Compacting ── */
+.rounded-\[4rem\], .rounded-\[3rem\], .rounded-\[40px\], .rounded-\[32px\] { 
+  border-radius: 0.85rem !important; 
+}
+
+.card { 
+  @apply rounded-xl !important; 
+  padding: 10px !important; 
+}
+
+/* ── Typography Scale-Down ── */
+h1 { font-size: 1.4rem !important; }
+h2 { font-size: 1.15rem !important; }
+h3 { font-size: 0.95rem !important; }
+h4 { font-size: 0.85rem !important; }
+p { font-size: 11px !important; line-height: 1.4 !important; }
+span { font-size: 9px !important; }
+
+/* Compact Table View */
+table th, table td { padding: 4px 8px !important; font-size: 10px !important; }
+
 @media (max-width: 639px) {
-
-  /* ── Ultra-Compact Padding Overrides ── */
-  .p-24, .py-24, .p-20, .py-20, .p-16, .py-16 { @apply py-6 px-4 !important; }
-  .p-12, .py-12, .p-10, .py-10 { @apply py-4 px-3.5 !important; }
-  .p-8, .p-6 { @apply p-4 !important; }
-  .p-5 { @apply p-3 !important; }
-  .p-4 { @apply p-2.5 !important; }
+  /* Mobile-specific further tightening */
+  .p-24, .py-24, .p-20, .py-20, .p-16, .py-16 { padding: 0.75rem !important; }
+  h1 { font-size: 1.2rem !important; }
   
-  /* Horizontal Padding */
-  .px-20, .px-16, .px-12, .px-10 { @apply px-3.5 !important; }
-  .px-8, .px-6 { @apply px-3 !important; }
-
-  /* ── High-Density Spacing ── */
-  [class*="space-y-32"], [class*="space-y-24"], [class*="space-y-20"] { @apply space-y-6 !important; }
-  [class*="space-y-16"], [class*="space-y-12"] { @apply space-y-4 !important; }
-  [class*="space-y-10"], [class*="space-y-8"] { @apply space-y-3 !important; }
-  [class*="space-y-6"], [class*="space-y-4"] { @apply space-y-2 !important; }
-
-  /* ── Precision Gap Management ── */
-  .gap-12, .gap-10, .gap-8 { @apply gap-4 !important; }
-  .gap-6, .gap-5 { @apply gap-3 !important; }
-  .gap-4 { @apply gap-2 !important; }
-
-  /* ── Card & Content Compacting ── */
-  .rounded-\[4rem\], .rounded-\[3rem\], .rounded-\[40px\], .rounded-\[32px\] { 
-    @apply rounded-2xl !important; 
-  }
-  
-  .card { 
-    @apply p-4 !important; 
-    border-radius: 1.25rem !important; 
-  }
-
-  /* ── Typography Scale-Down ── */
-  h1 { @apply text-xl !important; }
-  h2 { @apply text-lg !important; }
-  h3 { @apply text-base !important; }
-  h4 { @apply text-[14px] !important; }
-  p { @apply text-[10px] leading-relaxed !important; }
-  span { font-size: 0.75rem; }
-  
-  /* Dashboard specific typography */
-  .stat-card-value { @apply text-2xl !important; letter-spacing: -0.05em !important; }
-  .stat-card-label { @apply text-[9px] !important; }
-
-  /* ── Grid Optimization ── */
-  /* Force 2 columns for most grids to save vertical space - using raw CSS to avoid Tailwind circular dependency */
   .grid-cols-2, .grid-cols-3, .grid-cols-4, .grid-cols-5 { 
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
   }
-  
-  /* Compact Table View */
-  table th, table td { @apply p-2 text-[9px] !important; }
-  
-  /* ── App feel specifics ── */
-  .container-custom { @apply px-3 !important; }
-  
-  .min-h-screen { min-height: 100dvh !important; }
-  
-  .btn { 
-    @apply py-2 px-4 text-[9px] !important; 
-    border-radius: 0.75rem !important; 
-  }
-  
-  .logo-text { display: none; }
 }
 
 @media (min-width: 640px) {

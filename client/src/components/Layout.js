@@ -287,7 +287,7 @@ const Layout = () => {
           </header>
         )}
 
-        <main className={`flex-1 p-4 lg:p-6 pb-24 lg:pb-6 ${isLandingPage ? 'p-0' : ''}`}>
+        <main className={`flex-1 p-2 lg:p-4 pb-12 lg:pb-4 ${isLandingPage ? 'p-0' : ''}`}>
            <Outlet />
         </main>
 
