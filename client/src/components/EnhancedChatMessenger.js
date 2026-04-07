@@ -25,6 +25,7 @@ const EnhancedChatMessenger = ({
   const [isSeller, setIsSeller] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
   const messagesEndRef = useRef(null);
+  const messagesContainerRef = useRef(null);
   const fileInputRef = useRef(null);
 
 
@@ -57,12 +58,16 @@ const EnhancedChatMessenger = ({
   }, [conversationId, isOpen, isEmbedded]);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    if (messagesContainerRef.current) {
+        messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+    }
   }, [messages]);
 
   // Handle image load scroll
   const handleImageLoad = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    if (messagesContainerRef.current) {
+        messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+    }
   };
 
   const fetchTransactionData = async (convId) => {
@@ -272,7 +277,7 @@ const EnhancedChatMessenger = ({
     const config = statusConfig[transactionRequest.status] || statusConfig.pending;
 
     return (
-      <div className={`px-6 py-3 border-b border-slate-100 flex items-center justify-between ${config.color}`}>
+      <div className={`flex-shrink-0 px-6 py-3 border-b border-slate-100 flex items-center justify-between z-10 ${config.color}`}>
         <div className="flex items-center gap-2">
           {config.icon}
           <span className="text-xs font-black uppercase tracking-widest">{config.label}</span>
@@ -365,7 +370,7 @@ const EnhancedChatMessenger = ({
         ${!isEmbedded ? 'rounded-3xl shadow-2xl max-w-lg w-full h-[65vh] sm:h-[600px] overflow-hidden border border-white/20' : ''}`}
     >
       {!isEmbedded && (
-        <div className="px-5 py-3 bg-neutral-900 text-white flex items-center justify-between">
+        <div className="flex-shrink-0 px-5 py-3 bg-neutral-900 text-white flex items-center justify-between z-10">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-primary-500 rounded-xl flex items-center justify-center font-black text-base shadow-lg rotate-3 uppercase">
               {pet?.name?.[0] || 'P'}
@@ -403,7 +408,10 @@ const EnhancedChatMessenger = ({
 
       {renderTransactionStatus()}
 
-      <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50/50 no-scrollbar overscroll-contain touch-pan-y">
+      <div 
+        ref={messagesContainerRef}
+        className="flex-1 flex-grow basis-0 overflow-y-auto p-4 space-y-4 bg-slate-50/50 no-scrollbar overscroll-contain touch-pan-y scroll-smooth"
+      >
         {!transactionRequest && !isSeller && !isAdmin && conversationId && pet && (
           <div className="bg-white border border-primary-100 p-4 rounded-3xl text-center space-y-3 mx-2 shadow-sm mb-4">
             <div className="w-12 h-12 bg-primary-50 rounded-full flex items-center justify-center mx-auto">
@@ -422,7 +430,7 @@ const EnhancedChatMessenger = ({
         <div ref={messagesEndRef} />
       </div>
 
-      <div className="p-4 bg-white border-t border-slate-100">
+      <div className="flex-shrink-0 p-4 bg-white border-t border-slate-100 z-10">
         <div className="flex items-center gap-3 bg-slate-50 rounded-full p-1.5 pl-4 border border-slate-100">
           <button onClick={() => fileInputRef.current?.click()} className="w-8 h-8 rounded-full bg-white flex items-center justify-center text-slate-400 hover:text-primary-500 shadow-sm transition-colors shrink-0">
             <Camera className="h-4 w-4" />

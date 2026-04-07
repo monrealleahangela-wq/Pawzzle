@@ -62,9 +62,13 @@ const FloatingChatManager = ({ currentUser }) => {
     return () => window.removeEventListener('storage', handleStorageChange);
   }, []);
 
+  const messagesContainerRef = React.useRef(null);
+
   // Scroll to bottom
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (messagesContainerRef.current) {
+        messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+    }
   }, [messages, showChatWindow]);
 
   // Refresh conversations periodically
@@ -416,7 +420,7 @@ const FloatingChatManager = ({ currentUser }) => {
                 /* Chat Window */
                 <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
                   {/* Chat Header */}
-                  <div className="p-3 border-b bg-gray-50 flex items-center justify-between">
+                  <div className="flex-shrink-0 p-3 border-b bg-gray-50 flex items-center justify-between z-10">
                     <div className="flex items-center space-x-2">
                       <button
                         onClick={() => setShowChatWindow(false)}
@@ -464,7 +468,10 @@ const FloatingChatManager = ({ currentUser }) => {
                   </div>
 
                   {/* Messages */}
-                  <div className="flex-1 overflow-y-auto p-3 space-y-3 bg-gray-50/50 overscroll-contain touch-pan-y">
+                  <div 
+                    ref={messagesContainerRef}
+                    className="flex-1 flex-grow basis-0 overflow-y-auto p-3 space-y-3 bg-gray-50/50 overscroll-contain touch-pan-y scroll-smooth"
+                  >
                     {messages.map((message) => {
                       const senderId = message.sender?._id || message.sender;
                       const isOwnMessage = senderId === (currentUser?._id || currentUser?.id);
@@ -493,7 +500,11 @@ const FloatingChatManager = ({ currentUser }) => {
                                 alt="Sent"
                                 className="rounded-lg max-h-48 object-cover cursor-pointer hover:opacity-90 transition-opacity"
                                 onClick={() => window.open(message.content, '_blank')}
-                                onLoad={() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })}
+                                onLoad={() => {
+                                    if (messagesContainerRef.current) {
+                                        messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+                                    }
+                                }}
                               />
                             ) : (
                               <p className="text-sm leading-relaxed">{message.content}</p>
@@ -511,7 +522,7 @@ const FloatingChatManager = ({ currentUser }) => {
                   </div>
 
                   {/* Input */}
-                  <div className="p-3 border-t bg-white">
+                  <div className="flex-shrink-0 p-3 border-t bg-white z-10">
                     <div className="flex items-center space-x-2">
                       <button
                         onClick={() => fileInputRef.current?.click()}

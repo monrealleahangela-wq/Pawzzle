@@ -2,14 +2,14 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
-import { 
-  MapPin, 
-  Search, 
-  Navigation, 
-  Phone, 
-  Mail, 
-  ChevronRight, 
-  Clock, 
+import {
+  MapPin,
+  Search,
+  Navigation,
+  Phone,
+  Mail,
+  ChevronRight,
+  Clock,
   Store as StoreIcon,
   Info,
   Filter,
@@ -46,9 +46,9 @@ L.Marker.prototype.options.icon = DefaultIcon;
 
 // Cavite Municipalities and Cities
 const CAVITE_MUNICIPALITIES = [
-  'Dasmariñas', 'Imus', 'Bacoor', 'Tagaytay', 'Silang', 'General Trias', 
-  'Trece Martires', 'Kawit', 'Noveleta', 'Rosario', 'Cavite City', 
-  'Carmona', 'Gen. Mariano Alvarez', 'Tanza', 'Naic', 'Maragondon', 
+  'Dasmariñas', 'Imus', 'Bacoor', 'Tagaytay', 'Silang', 'General Trias',
+  'Trece Martires', 'Kawit', 'Noveleta', 'Rosario', 'Cavite City',
+  'Carmona', 'Gen. Mariano Alvarez', 'Tanza', 'Naic', 'Maragondon',
   'Ternate', 'Magallanes', 'Alfonso', 'Mendez', 'Indang', 'Amadeo', 'General Aguinaldo'
 ];
 
@@ -61,10 +61,10 @@ const CAVITE_BOUNDS = {
 };
 
 const isWithinCavite = (lat, lng) => {
-  return lat >= CAVITE_BOUNDS.minLat && 
-         lat <= CAVITE_BOUNDS.maxLat && 
-         lng >= CAVITE_BOUNDS.minLng && 
-         lng <= CAVITE_BOUNDS.maxLng;
+  return lat >= CAVITE_BOUNDS.minLat &&
+    lat <= CAVITE_BOUNDS.maxLat &&
+    lng >= CAVITE_BOUNDS.minLng &&
+    lng <= CAVITE_BOUNDS.maxLng;
 };
 
 // Component to handle map centering and movement
@@ -108,7 +108,7 @@ const FindShops = () => {
         setLoading(true);
         const response = await storeService.getStoreLocations();
         const fetchedStores = response.data.stores || [];
-        
+
         // Sanity filter for shops with coordinates (though backend should have them)
         const caviteStores = fetchedStores.filter(store => {
           const coords = store.contactInfo?.address?.coordinates;
@@ -138,13 +138,13 @@ const FindShops = () => {
 
   const filteredStores = useMemo(() => {
     return stores.filter(store => {
-      const matchesSearch = store.name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                           store.contactInfo.address.city.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           store.contactInfo.address.barangay.toLowerCase().includes(searchTerm.toLowerCase());
-      
-      const matchesMuni = selectedMunicipality === 'All Cavite' || 
-                         store.contactInfo.address.city === selectedMunicipality;
-      
+      const matchesSearch = store.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        store.contactInfo.address.city.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        store.contactInfo.address.barangay.toLowerCase().includes(searchTerm.toLowerCase());
+
+      const matchesMuni = selectedMunicipality === 'All Cavite' ||
+        store.contactInfo.address.city === selectedMunicipality;
+
       return matchesSearch && matchesMuni;
     });
   }, [stores, searchTerm, selectedMunicipality]);
@@ -197,7 +197,7 @@ const FindShops = () => {
     <div className="h-[calc(100vh-64px)] sm:h-[calc(100vh-80px)] flex flex-col lg:flex-row relative overflow-hidden bg-slate-50 dark:bg-slate-950">
       {/* Sidebar Overlay for Mobile */}
       {!isSidebarOpen && (
-        <button 
+        <button
           onClick={() => setIsSidebarOpen(true)}
           className="lg:hidden absolute bottom-24 left-1/2 -translate-x-1/2 z-[1001] bg-primary-600 text-white px-6 py-3 rounded-full shadow-2xl font-black uppercase tracking-widest text-[10px] flex items-center gap-2 animate-bounce"
         >
@@ -222,7 +222,7 @@ const FindShops = () => {
                 <span className="text-[8px] font-black uppercase tracking-widest text-primary-700 dark:text-primary-400">Cavite Operationalized</span>
               </div>
             </div>
-            <button 
+            <button
               onClick={() => setIsSidebarOpen(false)}
               className="lg:hidden p-2 bg-slate-50 dark:bg-slate-800 text-slate-400 rounded-xl"
             >
@@ -234,7 +234,7 @@ const FindShops = () => {
             {/* Search Input */}
             <div className="relative group">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300 group-focus-within:text-primary-600 transition-colors" />
-              <input 
+              <input
                 type="text"
                 placeholder="Search shops or areas..."
                 value={searchTerm}
@@ -245,25 +245,23 @@ const FindShops = () => {
 
             {/* Municipality Filter */}
             <div className="flex flex-wrap gap-2 max-h-[100px] overflow-y-auto no-scrollbar py-1">
-              <button 
+              <button
                 onClick={() => setSelectedMunicipality('All Cavite')}
-                className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest border transition-all ${
-                  selectedMunicipality === 'All Cavite' 
-                  ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 border-slate-900 dark:border-white shadow-lg' 
-                  : 'bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-100 dark:border-slate-700 hover:border-slate-300'
-                }`}
+                className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest border transition-all ${selectedMunicipality === 'All Cavite'
+                    ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 border-slate-900 dark:border-white shadow-lg'
+                    : 'bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-100 dark:border-slate-700 hover:border-slate-300'
+                  }`}
               >
                 All Regions
               </button>
               {CAVITE_MUNICIPALITIES.map(muni => (
-                <button 
+                <button
                   key={muni}
                   onClick={() => setSelectedMunicipality(muni)}
-                  className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest border transition-all ${
-                    selectedMunicipality === muni 
-                    ? 'bg-primary-600 text-white border-primary-600 shadow-lg' 
-                    : 'bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-100 dark:border-slate-700 hover:border-slate-300'
-                  }`}
+                  className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest border transition-all ${selectedMunicipality === muni
+                      ? 'bg-primary-600 text-white border-primary-600 shadow-lg'
+                      : 'bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-100 dark:border-slate-700 hover:border-slate-300'
+                    }`}
                 >
                   {muni}
                 </button>
@@ -276,13 +274,13 @@ const FindShops = () => {
         <div className="flex-1 overflow-y-auto px-4 py-6 space-y-4 no-scrollbar">
           {filteredStores.length > 0 ? (
             filteredStores.map(store => (
-              <div 
+              <div
                 key={store._id}
                 onClick={() => handleStoreSelect(store)}
                 className={`
                   group p-4 rounded-2xl border transition-all cursor-pointer h-full
-                  ${selectedStore?._id === store._id 
-                    ? 'bg-primary-50 dark:bg-primary-900/10 border-primary-200 dark:border-primary-800 shadow-lg' 
+                  ${selectedStore?._id === store._id
+                    ? 'bg-primary-50 dark:bg-primary-900/10 border-primary-200 dark:border-primary-800 shadow-lg'
                     : 'bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800 hover:border-primary-100 dark:hover:border-primary-900 shadow-sm'}
                 `}
               >
@@ -298,7 +296,7 @@ const FindShops = () => {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex justify-between items-start gap-2">
-                       <h4 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white uppercase truncate tracking-tight">
+                      <h4 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white uppercase truncate tracking-tight">
                         {store.name}
                       </h4>
                       {store.verificationStatus === 'verified' && (
@@ -312,7 +310,7 @@ const FindShops = () => {
                       {store.contactInfo.address.city}, Cavite
                     </p>
                     <div className="flex flex-wrap gap-1.5 mt-3">
-                       <span className="px-2 py-0.5 bg-slate-50 dark:bg-slate-800 text-[8px] font-black uppercase text-slate-400 tracking-widest rounded-md">
+                      <span className="px-2 py-0.5 bg-slate-50 dark:bg-slate-800 text-[8px] font-black uppercase text-slate-400 tracking-widest rounded-md">
                         {store.businessType?.replace('_', ' ')}
                       </span>
                     </div>
@@ -341,13 +339,13 @@ const FindShops = () => {
                       </div>
                     </div>
                     <div className="flex gap-2">
-                       <button 
+                      <button
                         onClick={() => getDirections(store)}
                         className="flex-1 flex items-center justify-center gap-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest hover:scale-105 transition-all"
                       >
                         <Navigation className="h-3 w-3" /> Get Directions
                       </button>
-                      <Link 
+                      <Link
                         to={`/stores/${store._id}`}
                         className="p-2.5 bg-slate-50 dark:bg-slate-800 text-slate-400 hover:text-primary-600 rounded-xl transition-all"
                       >
@@ -364,7 +362,7 @@ const FindShops = () => {
                 <StoreIcon className="h-8 w-8" />
               </div>
               <p className="text-xs font-black uppercase text-slate-400 tracking-widest italic">No shops deployed in this sector.</p>
-              <button 
+              <button
                 onClick={() => { setSearchTerm(''); setSelectedMunicipality('All Cavite'); }}
                 className="text-[10px] font-black text-primary-600 uppercase tracking-widest hover:underline"
               >
@@ -377,9 +375,9 @@ const FindShops = () => {
 
       {/* Map Content */}
       <div className="flex-1 relative z-0">
-        <MapContainer 
-          center={mapCenter} 
-          zoom={mapZoom} 
+        <MapContainer
+          center={mapCenter}
+          zoom={mapZoom}
           style={{ height: '100%', width: '100%' }}
           zoomControl={false}
         >
@@ -387,10 +385,10 @@ const FindShops = () => {
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
           />
-          
+
           {/* Controls Overlay */}
           <div className="absolute top-4 right-4 z-[999] space-y-2">
-            <button 
+            <button
               onClick={getUserLocation}
               className="w-12 h-12 bg-white dark:bg-slate-900 text-slate-900 dark:text-white rounded-2xl shadow-2xl border border-slate-100 dark:border-slate-800 flex items-center justify-center hover:bg-slate-50 dark:hover:bg-slate-800 transition-all active:scale-95"
             >
@@ -402,11 +400,11 @@ const FindShops = () => {
           {filteredStores.map(store => {
             const coords = store.contactInfo?.address?.coordinates;
             if (!coords?.lat || !coords?.lng) return null;
-            
+
             const isActive = selectedStore?._id === store._id;
 
             return (
-              <Marker 
+              <Marker
                 key={store._id}
                 position={[coords.lat, coords.lng]}
                 icon={isActive ? ActiveIcon : DefaultIcon}
@@ -415,17 +413,17 @@ const FindShops = () => {
                 }}
               >
                 <Popup className="pawzzle-popup">
-                   <div className="p-1 space-y-2">
-                    <img 
-                      src={getImageUrl(store.coverImage || store.logo)} 
-                      alt={store.name} 
-                      className="w-full h-24 object-cover rounded-lg mb-2" 
+                  <div className="p-1 space-y-2">
+                    <img
+                      src={getImageUrl(store.coverImage || store.logo)}
+                      alt={store.name}
+                      className="w-full h-24 object-cover rounded-lg mb-2"
                     />
                     <h4 className="font-black text-slate-900 uppercase text-xs m-0">{store.name}</h4>
                     <p className="text-[10px] font-bold text-slate-500 m-0 uppercase tracking-tight">
                       {store.contactInfo.address.city}, Cavite
                     </p>
-                    <button 
+                    <button
                       onClick={() => getDirections(store)}
                       className="w-full py-2 bg-primary-600 text-white rounded-lg text-[9px] font-black uppercase tracking-widest mt-2"
                     >
@@ -439,7 +437,7 @@ const FindShops = () => {
 
           {/* User Location Marker */}
           {userLocation && (
-            <Marker 
+            <Marker
               position={[userLocation.lat, userLocation.lng]}
               icon={L.divIcon({
                 className: 'custom-user-marker',
@@ -454,20 +452,21 @@ const FindShops = () => {
         {/* Legend / Status Overlay */}
         <div className="absolute bottom-10 left-6 z-[999] hidden sm:block">
           <div className="px-4 py-2 bg-slate-900/90 backdrop-blur-md text-white rounded-xl border border-white/10 shadow-2xl flex items-center gap-4">
-             <div className="flex items-center gap-1.5">
-               <div className="w-2 h-2 bg-primary-500 rounded-full shadow-[0_0_8px_rgba(245,158,11,0.5)]"></div>
-               <span className="text-[9px] font-black uppercase tracking-[0.1em]">Verifyed Shops</span>
-             </div>
-             <div className="w-px h-3 bg-white/20"></div>
-             <div className="flex items-center gap-1.5">
-               <div className="w-2 h-2 bg-blue-500 rounded-full shadow-[0_0_8px_rgba(59,130,246,0.5)]"></div>
-               <span className="text-[9px] font-black uppercase tracking-[0.1em]">Your Position</span>
-             </div>
+            <div className="flex items-center gap-1.5">
+              <div className="w-2 h-2 bg-primary-500 rounded-full shadow-[0_0_8px_rgba(245,158,11,0.5)]"></div>
+              <span className="text-[9px] font-black uppercase tracking-[0.1em]">Verified Shops</span>
+            </div>
+            <div className="w-px h-3 bg-white/20"></div>
+            <div className="flex items-center gap-1.5">
+              <div className="w-2 h-2 bg-blue-500 rounded-full shadow-[0_0_8px_rgba(59,130,246,0.5)]"></div>
+              <span className="text-[9px] font-black uppercase tracking-[0.1em]">Your Position</span>
+            </div>
           </div>
         </div>
       </div>
 
-      <style dangerouslySetInnerHTML={{ __html: `
+      <style dangerouslySetInnerHTML={{
+        __html: `
         .pawzzle-popup .leaflet-popup-content-wrapper {
           border-radius: 1.5rem !important;
           padding: 0 !important;

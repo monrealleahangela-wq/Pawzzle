@@ -216,7 +216,7 @@ const AdminChat = () => {
             {selectedConversation ? (
               <>
                 {/* Minimalist Chat Header */}
-                <header className="px-4 md:px-6 py-3.5 border-b border-slate-50 flex items-center justify-between bg-white/80 backdrop-blur-md z-10">
+                <header className="flex-shrink-0 px-4 md:px-6 py-3.5 border-b border-slate-50 flex items-center justify-between bg-white/80 backdrop-blur-md z-20">
                   <div className="flex items-center gap-3">
                     <button
                       onClick={() => setSelectedConversation(null)}
@@ -267,7 +267,7 @@ const AdminChat = () => {
                   </div>
                 </header>
 
-                <div className="flex-1 relative">
+                <div className="flex-1 relative min-h-0">
                   <EnhancedChatMessenger
                     isOpen={true}
                     onClose={() => setSelectedConversation(null)}
