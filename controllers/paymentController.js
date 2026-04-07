@@ -6,6 +6,7 @@ const Pet = require('../models/Pet');
 const StockSyncService = require('../services/stockSyncService');
 const RevenueService = require('../services/revenueService');
 const { createNotification } = require('./notificationController');
+const { internalCreateDelivery } = require('./deliveryController');
 
 const PAYMONGO_SECRET_KEY = process.env.PAYMONGO_SECRET_KEY;
 const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER;
@@ -174,6 +175,11 @@ const handleWebhook = async (req, res) => {
                     relatedModel: 'Order'
                 });
 
+                // Auto-generate delivery links if it's a delivery order
+                if (order.deliveryMethod === 'delivery') {
+                    await internalCreateDelivery({ orderId: order._id });
+                }
+
                 console.log(`✅ Order #${orderNumber} marked as PAID`);
             }
         } else if (eventType === 'checkout_session.payment.failed' || eventType === 'payment.failed') {
@@ -287,6 +293,11 @@ const verifyPayment = async (req, res) => {
                     relatedId: order._id,
                     relatedModel: 'Order'
                 });
+
+                // Auto-generate delivery links if it's a delivery order
+                if (order.deliveryMethod === 'delivery') {
+                    await internalCreateDelivery({ orderId: order._id });
+                }
 
                 return res.json({ status: 'paid', order });
             }

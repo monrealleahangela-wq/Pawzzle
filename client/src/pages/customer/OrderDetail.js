@@ -113,8 +113,8 @@ const OrderDetail = () => {
   const handleViewLiveTracking = async () => {
     try {
       const response = await deliveryService.getTrackingForOrder(id);
-      if (response.data.delivery?.riderToken) {
-        navigate(`/rider-track/${response.data.delivery.riderToken}`);
+      if (response.data.delivery?.trackingToken) {
+        navigate(`/track/${response.data.delivery.trackingToken}`);
       }
     } catch (error) {
       toast.error('No active tracking found for this order');

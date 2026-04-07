@@ -9,6 +9,36 @@ if (!CLIENT_URL || CLIENT_URL.includes('localhost')) {
     CLIENT_URL = isProduction ? 'https://pawzzle.io' : 'http://localhost:3000';
 }
 
+// Internal: Create delivery record and link to order/booking
+const internalCreateDelivery = async ({ orderId, bookingId }) => {
+  const query = orderId ? { order: orderId } : { booking: bookingId };
+  let delivery = await Delivery.findOne(query);
+  
+  if (delivery) return delivery;
+
+  const order = orderId ? await Order.findById(orderId) : null;
+  const booking = bookingId ? await Booking.findById(bookingId) : null;
+  
+  if (!order && !booking) return null;
+
+  delivery = new Delivery({
+    order: orderId || null,
+    booking: bookingId || null,
+    riderToken: crypto.randomBytes(32).toString('hex'),
+    trackingToken: crypto.randomBytes(32).toString('hex'),
+    status: 'pending'
+  });
+
+  await delivery.save();
+
+  if (order) {
+    order.delivery = delivery._id;
+    await order.save();
+  }
+  
+  return delivery;
+};
+
 // Generate unique delivery links (Rider & Customer)
 const generateDeliveryLinks = async (req, res) => {
   try {
@@ -18,41 +48,10 @@ const generateDeliveryLinks = async (req, res) => {
       return res.status(400).json({ message: 'Order ID or Booking ID is required' });
     }
     
-    const query = orderId ? { order: orderId } : { booking: bookingId };
-    let delivery = await Delivery.findOne(query);
+    const delivery = await internalCreateDelivery({ orderId, bookingId });
     
-    if (delivery) {
-      return res.json({ 
-        message: 'Delivery links already exist', 
-        riderLink: `${CLIENT_URL}/rider-track/${delivery.riderToken}`,
-        customerLink: `${CLIENT_URL}/track/${delivery.trackingToken}`
-      });
-    }
-
-    const order = orderId ? await Order.findById(orderId).populate('customer store') : null;
-    const booking = bookingId ? await Booking.findById(bookingId).populate('customer store service') : null;
-    
-    if (!order && !booking) {
+    if (!delivery) {
       return res.status(404).json({ message: 'Order or Booking not found' });
-    }
-
-    delivery = new Delivery({
-      order: orderId || null,
-      booking: bookingId || null,
-      riderToken: crypto.randomBytes(32).toString('hex'),
-      trackingToken: crypto.randomBytes(32).toString('hex'),
-      status: 'pending'
-    });
-
-    await delivery.save();
-
-    // Link delivery back to order/booking
-    if (order) {
-      order.delivery = delivery._id;
-      await order.save();
-    } else if (booking) {
-      // Assuming Booking schema might eventually have a delivery field
-      // but for now the link exists in Delivery model
     }
 
     res.status(201).json({
@@ -247,5 +246,6 @@ module.exports = {
   getDeliveryByBooking,
   updateDeliveryStatus,
   updateLocation,
-  sendDeliveryMessage
+  sendDeliveryMessage,
+  internalCreateDelivery
 };

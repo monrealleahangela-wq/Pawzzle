@@ -9,6 +9,7 @@ const RevenueService = require('../services/revenueService');
 const { createNotification } = require('./notificationController');
 const User = require('../models/User');
 const Voucher = require('../models/Voucher');
+const { internalCreateDelivery } = require('./deliveryController');
 
 // Get all orders (Admin only) or user's own orders (Customer)
 const getAllOrders = async (req, res) => {
@@ -331,6 +332,12 @@ const updateOrderStatus = async (req, res) => {
     // 1. DEDUCT stock (Inactive -> Active)
     if (activeStatuses.includes(status) && inactiveStatuses.includes(oldStatus)) {
       console.log(`🔄 Order ${order._id} moving to ${status}. Deducting stock...`);
+      
+      // Auto-generate delivery links if it's a delivery order and status is confirmed or beyond
+      if (order.deliveryMethod === 'delivery' && (status === 'confirmed' || status === 'processing')) {
+        await internalCreateDelivery({ orderId: order._id });
+      }
+
       for (const item of order.items) {
         if (item.itemType === 'product') {
           try {
@@ -535,6 +542,12 @@ const confirmOrderPayment = async (req, res) => {
 
       // DEDUCT stock if moving from pending to confirmed
       console.log(`🔄 Order ${order._id} paid and moving to confirmed. Deducting stock...`);
+      
+      // Auto-generate delivery links if it's a delivery order
+      if (order.deliveryMethod === 'delivery') {
+        await internalCreateDelivery({ orderId: order._id });
+      }
+
       for (const item of order.items) {
         if (item.itemType === 'product') {
           try {

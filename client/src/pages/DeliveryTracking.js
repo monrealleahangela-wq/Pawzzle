@@ -72,15 +72,14 @@ const DeliveryTracking = () => {
   const [routeData, setRouteData] = useState(null);
   const [directions, setDirections] = useState([]);
   const [showDirections, setShowDirections] = useState(false);
-  const chatEndRef = useRef(null);
+  const [eta, setEta] = useState(null);
+  const [isNearby, setIsNearby] = useState(false);
   
   const isRiderRoute = location.pathname.includes('/rider-track/');
 
   useEffect(() => {
     fetchDelivery();
-    
-    socket.connect();
-    
+    if (!socket.connected) socket.connect();
     return () => {
       socket.disconnect();
     };
@@ -91,11 +90,27 @@ const DeliveryTracking = () => {
       socket.emit('joinDelivery', delivery._id);
       
       socket.on('locationUpdate', (data) => {
-        setDelivery(prev => ({
-          ...prev,
-          riderLocation: { ...prev.riderLocation, lat: data.lat, lng: data.lng, lastUpdated: new Date() },
-          locationHistory: [...(prev.locationHistory || []), { lat: data.lat, lng: data.lng }]
-        }));
+        setDelivery(prev => {
+          const updated = {
+            ...prev,
+            riderLocation: { ...prev.riderLocation, lat: data.lat, lng: data.lng, lastUpdated: new Date() },
+            locationHistory: [...(prev.locationHistory || []), { lat: data.lat, lng: data.lng }]
+          };
+          
+          // Check if nearby (approx < 500m)
+          if (targetCoords?.lat) {
+            const dist = calculateDistance(data.lat, data.lng, targetCoords.lat, targetCoords.lng);
+            if (dist < 0.5 && !isNearby) {
+              setIsNearby(true);
+              toast.success('🎉 Rider is nearby! Please prepare to receive your order.', {
+                position: "top-center",
+                autoClose: 10000,
+                icon: '🛵'
+              });
+            }
+          }
+          return updated;
+        });
       });
 
       socket.on('statusChanged', (data) => {
@@ -189,6 +204,20 @@ const DeliveryTracking = () => {
     }
   };
 
+  const calculateDistance = (lat1, lon1, lat2, lon2) => {
+    const R = 6371; // Radius of the earth in km
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = 
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+      Math.sin(dLon / 2) * Math.sin(dLon / 2)
+      ;
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    const d = R * c; // Distance in km
+    return d;
+  };
+
   const fetchRoute = async (startLat, startLng, endLat, endLng) => {
     try {
       const url = `https://router.project-osrm.org/route/v1/driving/${startLng},${startLat};${endLng},${endLat}?overview=full&geometries=geojson&steps=true`;
@@ -196,6 +225,7 @@ const DeliveryTracking = () => {
       if (res.data.routes && res.data.routes[0]) {
         const route = res.data.routes[0];
         setRouteData(route.geometry.coordinates.map(c => [c[1], c[0]]));
+        setEta(Math.ceil(route.duration / 60)); // Duration is in seconds
         setDirections(route.legs[0].steps.map(s => ({
           instruction: s.maneuver.instruction,
           distance: s.distance,
@@ -292,7 +322,7 @@ const DeliveryTracking = () => {
               <div className="flex justify-between items-center px-1">
                 <span className="text-[9px] font-black uppercase text-slate-400 tracking-[0.2em] italic">Delivery Phase</span>
                 <span className="text-[10px] font-black uppercase text-rose-500 tracking-wider">
-                  {statusProgress[delivery.status]}% Complete
+                  {delivery.status === 'delivered' ? 'COMPLETED' : (eta ? `Estimated Arrival: ${eta} mins` : `${statusProgress[delivery.status]}% Complete`)}
                 </span>
               </div>
               <div className="relative h-2 bg-slate-100 rounded-full overflow-hidden">
