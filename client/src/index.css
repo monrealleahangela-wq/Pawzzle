@@ -15,6 +15,13 @@ body {
   background-color: #533114; /* Match app theme for overscroll */
   min-height: 100vh;
   min-height: 100dvh;
+  /* Universal Scale Management */
+  @media (min-width: 1024px) {
+    zoom: 0.8;
+  }
+  @media (max-width: 1023px) {
+    zoom: 1;
+  }
 }
 
 /* Globally hide scrollbars */
