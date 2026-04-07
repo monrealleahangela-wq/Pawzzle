@@ -18,6 +18,7 @@ import {
   Camera,
   Globe,
   Navigation,
+  Shield,
   Map as MapIcon
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
