@@ -74,6 +74,7 @@ const DeliveryTracking = () => {
   const [showDirections, setShowDirections] = useState(false);
   const [eta, setEta] = useState(null);
   const [isNearby, setIsNearby] = useState(false);
+  const chatEndRef = useRef(null);
   
   const isRiderRoute = location.pathname.includes('/rider-track/');
 
