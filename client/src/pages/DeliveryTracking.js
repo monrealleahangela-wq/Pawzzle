@@ -103,11 +103,13 @@ const DeliveryTracking = () => {
             const dist = calculateDistance(data.lat, data.lng, targetCoords.lat, targetCoords.lng);
             if (dist < 0.5 && !isNearby) {
               setIsNearby(true);
-              toast.success('🎉 Rider is nearby! Please prepare to receive your order.', {
-                position: "top-center",
-                autoClose: 10000,
-                icon: '🛵'
-              });
+              if (role === 'customer') {
+                toast.success('🎉 Rider is nearby! Please prepare to receive your order.', {
+                  position: "top-center",
+                  autoClose: 10000,
+                  icon: '🛵'
+                });
+              }
             }
           }
           return updated;
@@ -130,7 +132,7 @@ const DeliveryTracking = () => {
       socket.off('statusChanged');
       socket.off('newMessage');
     };
-  }, [delivery?._id]);
+  }, [delivery?._id, role]);
 
   useEffect(() => {
     if (chatOpen) chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });

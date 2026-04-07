@@ -98,6 +98,66 @@ const createCheckoutSession = async (req, res) => {
 };
 
 /**
+ * Create a PayMongo Checkout Session for a Booking
+ */
+const createBookingCheckoutSession = async (req, res) => {
+    try {
+        const { bookingId } = req.params;
+        const Booking = require('../models/Booking');
+        const booking = await Booking.findById(bookingId).populate('customer').populate('service');
+
+        if (!booking) {
+            return res.status(404).json({ message: 'Booking not found' });
+        }
+
+        if (booking.status === 'cancelled') {
+            return res.status(400).json({ message: 'Cannot pay for a canceled booking' });
+        }
+
+        const amountInCentavos = Math.round(booking.totalPrice * 100);
+        const data = {
+            data: {
+                attributes: {
+                    send_email_receipt: true,
+                    show_description: true,
+                    show_line_items: true,
+                    description: `Booking for ${booking.service.name}`,
+                    line_items: [{
+                        amount: amountInCentavos,
+                        currency: 'PHP',
+                        name: booking.service.name,
+                        quantity: 1
+                    }],
+                    payment_method_types: ['card', 'gcash', 'paymaya', 'dob', 'dob_ubp'],
+                    success_url: `${FRONTEND_URL}/bookings?payment=success&id=${booking._id}`,
+                    cancel_url: `${FRONTEND_URL}/bookings?payment=cancelled`,
+                    reference_number: `BK-${booking._id.toString().slice(-8).toUpperCase()}`
+                }
+            }
+        };
+
+        const response = await axios.post('https://api.paymongo.com/v1/checkout_sessions', data, {
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Basic ${Buffer.from(PAYMONGO_SECRET_KEY + ':').toString('base64')}`
+            }
+        });
+
+        const session = response.data.data;
+        booking.paymentDetails = {
+            sessionId: session.id,
+            checkoutUrl: session.attributes.checkout_url
+        };
+        await booking.save();
+
+        res.json({ checkoutUrl: session.attributes.checkout_url });
+    } catch (error) {
+        console.error('PayMongo Create Booking Session Error:', error.response?.data || error.message);
+        res.status(500).json({ message: 'Failed to create payment session' });
+    }
+};
+
+/**
  * Handle PayMongo Webhook
  */
 const handleWebhook = async (req, res) => {
@@ -109,9 +169,37 @@ const handleWebhook = async (req, res) => {
 
         if (eventType === 'checkout_session.payment.paid') {
             const checkoutSession = event.attributes.data;
-            const orderNumber = checkoutSession.attributes.reference_number;
+            const ref = checkoutSession.attributes.reference_number;
             const paymentData = checkoutSession.attributes.payments[0];
 
+            if (ref && ref.startsWith('BK-')) {
+                // It's a booking
+                const Booking = require('../models/Booking');
+                // We stored the session ID in booking.paymentDetails.sessionId
+                const booking = await Booking.findOne({ 'paymentDetails.sessionId': checkoutSession.id });
+                if (booking) {
+                    booking.paymentStatus = 'paid';
+                    booking.paymentMethod = paymentData.attributes.source.type;
+                    booking.paymentDetails.paymentId = paymentData.id;
+                    await booking.save();
+                    
+                    // Note: Seller still needs to "Approve" it to generate QR (per requirement)
+                    // But we can notify the seller that payment was received
+                    await createNotification({
+                        recipient: booking.addedBy,
+                        sender: booking.customer,
+                        type: 'booking_status',
+                        title: 'Booking Payment Received',
+                        message: `Payment for booking #${booking._id.toString().slice(-8).toUpperCase()} has been received. You can now approve this booking.`,
+                        relatedId: booking._id,
+                        relatedModel: 'Booking'
+                    });
+                    console.log(`✅ Booking ${booking._id} marked as PAID via webhook`);
+                }
+                return res.sendStatus(200);
+            }
+
+            const orderNumber = checkoutSession.attributes.reference_number;
             const order = await Order.findOne({ orderNumber });
 
             if (order) {
@@ -313,6 +401,7 @@ const verifyPayment = async (req, res) => {
 
 module.exports = {
     createCheckoutSession,
+    createBookingCheckoutSession,
     handleWebhook,
     verifyPayment
 };

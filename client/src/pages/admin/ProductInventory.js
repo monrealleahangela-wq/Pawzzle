@@ -403,34 +403,35 @@ const ProductInventory = () => {
       <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
         {activeTab === 'products' ? (
           <div className="space-y-8">
-            {/* Catalog Identity HUD Filter - High Contrast & Always Visible */}
-            <div className="bg-slate-900 p-2 rounded-[1.5rem] shadow-xl border border-slate-800">
+            <div className="bg-slate-900 p-2 rounded-[2rem] shadow-xl border border-slate-800">
                 <div className="grid grid-cols-1 md:grid-cols-12 gap-2">
                     <div className="md:col-span-6 relative group">
-                        <div className="absolute left-5 top-1/2 -translate-y-1/2 flex items-center gap-3">
+                        <div className="absolute left-6 top-1/2 -translate-y-1/2">
                             <Search className="h-4 w-4 text-slate-500 group-focus-within:text-primary-500 transition-colors" />
                         </div>
                         <input
-                            type="text" value={productSearchInput} onChange={(e) => setProductSearchInput(e.target.value)}
-                            placeholder=""
-                            className="w-full pl-14 pr-4 py-3.5 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl outline-none focus:ring-2 focus:ring-primary-500/50 placeholder:text-slate-600 transition-all font-sans input-with-icon"
+                            type="text" 
+                            value={productSearchInput} 
+                            onChange={(e) => setProductSearchInput(e.target.value)}
+                            placeholder="SEARCH CATALOG ASSETS..."
+                            className="w-full pl-16 pr-4 py-4 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl outline-none focus:ring-2 focus:ring-primary-500/20 transition-all placeholder:text-slate-600 font-sans"
                         />
                     </div>
-                    <div className="md:col-span-4 relative">
-                        <div className="absolute left-5 top-1/2 -translate-y-1/2">
+                    <div className="md:col-span-4 relative group">
+                        <div className="absolute left-6 top-1/2 -translate-y-1/2">
                             <Layers className="h-3.5 w-3.5 text-primary-500" />
                         </div>
                         <select
                             value={productFilters.category} 
                             onChange={(e) => setProductFilters(prev => ({ ...prev, category: e.target.value }))}
-                            className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-2xl pl-14 pr-10 py-3.5 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer font-sans"
+                            className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-2xl pl-16 pr-10 py-4 outline-none focus:ring-2 focus:ring-primary-500/20 appearance-none transition-all cursor-pointer font-sans"
                         >
                             <option value="" className="bg-slate-900 text-white font-black">ALL CATEGORIES: VIEW ALL</option>
                             {Object.keys(categoryHierarchy).map(c => (
                               <option key={c} value={c} className="bg-slate-900 text-white font-black">{c.toUpperCase()}</option>
                             ))}
                         </select>
-                        <ChevronDown className="absolute right-6 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-500 pointer-events-none" />
+                        <ChevronDown className="absolute right-6 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500 pointer-events-none" />
                     </div>
                 </div>
             </div>
@@ -523,17 +524,18 @@ const ProductInventory = () => {
 
             {/* Stock List */}
             <div className="bg-white rounded-[3rem] border border-slate-100 shadow-xl overflow-hidden">
-            {/* Inventory HUD Filter - High Contrast & Always Visible */}
-            <div className="bg-slate-900 p-2 rounded-[1.5rem] shadow-xl border border-slate-800">
+            <div className="bg-slate-900 p-2 rounded-[2rem] shadow-xl border border-slate-800">
                 <div className="grid grid-cols-1 md:grid-cols-12 gap-2">
                     <div className="md:col-span-12 relative group">
-                        <div className="absolute left-5 top-1/2 -translate-y-1/2 flex items-center gap-3">
+                        <div className="absolute left-6 top-1/2 -translate-y-1/2">
                             <Search className="h-4 w-4 text-slate-500 group-focus-within:text-primary-500 transition-colors" />
                         </div>
                         <input
-                            type="text" value={inventorySearchInput} onChange={(e) => setInventorySearchInput(e.target.value)}
-                            placeholder=""
-                            className="w-full pl-14 pr-4 py-3.5 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl outline-none focus:ring-2 focus:ring-primary-500/50 placeholder:text-slate-600 transition-all font-sans"
+                            type="text" 
+                            value={inventorySearchInput} 
+                            onChange={(e) => setInventorySearchInput(e.target.value)}
+                            placeholder="SEARCH INVENTORY..."
+                            className="w-full pl-16 pr-4 py-4 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl outline-none focus:ring-2 focus:ring-primary-500/20 transition-all placeholder:text-slate-600 font-sans"
                         />
                     </div>
                 </div>

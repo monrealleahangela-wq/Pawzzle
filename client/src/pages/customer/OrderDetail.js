@@ -401,7 +401,7 @@ const OrderDetail = () => {
           </div>
 
           {/* Order Actions */}
-          {order.status === 'pending' && (
+          {order.status === 'pending' && order.paymentStatus !== 'paid' && (
             <div className="card p-6 border-2 border-rose-100">
               <h2 className="text-lg font-black text-slate-900 uppercase tracking-tight mb-4 flex items-center gap-2">
                 <AlertCircle className="h-5 w-5 text-rose-500" />

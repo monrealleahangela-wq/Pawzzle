@@ -589,15 +589,24 @@ const StoreDetail = () => {
                       <p className="text-[8px] sm:text-sm font-bold truncate tracking-widest uppercase flex-1">{link.text}</p>
                     </a>
                   ))}
-                  <div className="pt-4 sm:pt-6">
-                    <GoogleMap 
-                      address={`${store.contactInfo?.address?.street}, ${store.contactInfo?.address?.city}, ${store.contactInfo?.address?.state}`}
-                      storeName={store.name}
-                      coordinates={store.contactInfo?.address?.coordinates}
-                      className="w-full"
-                      onDirectionsClick={() => navigate(`/find-shops?shop=${store._id}`)}
-                      onViewOnMapClick={() => navigate(`/find-shops?shop=${store._id}`)}
-                    />
+                  <div 
+                    className="pt-4 sm:pt-6 cursor-pointer group"
+                    onClick={() => navigate(`/find-shops?shop=${store._id}`)}
+                  >
+                    <div className="relative">
+                      <GoogleMap 
+                        address={`${store.contactInfo?.address?.street}, ${store.contactInfo?.address?.city}, ${store.contactInfo?.address?.state}`}
+                        storeName={store.name}
+                        coordinates={store.contactInfo?.address?.coordinates}
+                        className="w-full pointer-events-none sm:pointer-events-auto"
+                        onDirectionsClick={() => navigate(`/find-shops?shop=${store._id}`)}
+                        onViewOnMapClick={() => navigate(`/find-shops?shop=${store._id}`)}
+                      />
+                      <div className="absolute inset-0 bg-transparent z-10 sm:hidden" />
+                      <div className="absolute bottom-4 right-4 bg-slate-900/80 backdrop-blur-md text-white text-[8px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full opacity-0 group-hover:opacity-100 transition-all shadow-xl">
+                        View Full Map
+                      </div>
+                    </div>
                   </div>
                 </div>
                 <button onClick={handleDownloadStoreCard} className="w-full py-3 sm:py-5 bg-white text-slate-900 rounded-lg sm:rounded-[2rem] font-black uppercase tracking-widest text-[8px] sm:text-xs active:scale-95 transition-transform shadow-xl">

@@ -149,13 +149,15 @@ const AdminChat = () => {
             {/* Search & Filter - Compact */}
             <div className="p-3 border-b border-slate-50 space-y-3">
               <div className="relative group">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                <div className="absolute left-4 top-1/2 -translate-y-1/2">
+                  <Search className="h-3.5 w-3.5 text-slate-400 group-focus-within:text-primary-500 transition-colors" />
+                </div>
                 <input
                   type="text"
-                  placeholder="find customer..."
+                  placeholder="FIND CUSTOMER..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-9 pr-4 py-2 bg-slate-50/50 border border-slate-100 text-[10px] font-bold uppercase tracking-widest rounded-2xl outline-none focus:bg-white focus:ring-2 focus:ring-primary-500/10 transition-all"
+                  className="w-full pl-11 pr-4 py-2.5 bg-slate-50/80 border border-slate-100 text-[9px] font-black uppercase tracking-[0.2em] rounded-2xl outline-none focus:bg-white focus:ring-2 focus:ring-primary-500/10 transition-all placeholder:text-slate-300"
                 />
               </div>
 

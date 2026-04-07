@@ -229,9 +229,9 @@ const Bookings = ({ isSubcomponent = false }) => {
         type: pet.type,
         breed: pet.breed,
         size: pet.size,
-        age: calculateAge(pet.birthday),
+        age: String(calculateAge(pet.birthday)),
         gender: pet.gender || 'Male',
-        weight: pet.weight,
+        weight: String(pet.weight || '5.0'),
         color: pet.color || '',
         photo: pet.photo || null,
         vaccinationStatus: pet.vaccinationStatus || 'Pending',
@@ -336,6 +336,18 @@ const Bookings = ({ isSubcomponent = false }) => {
     } catch (error) {
       console.error('Error cancelling booking:', error);
       toast.error('Failed to cancel appointment');
+    }
+  };
+
+  const handlePayment = async (bookingId) => {
+    try {
+      toast.info('Initialising secure payment...');
+      const response = await paymentService.createBookingCheckoutSession(bookingId);
+      if (response.data.checkoutUrl) {
+        window.location.href = response.data.checkoutUrl;
+      }
+    } catch (error) {
+      toast.error('Failed to initialise payment');
     }
   };
 
@@ -602,7 +614,18 @@ const Bookings = ({ isSubcomponent = false }) => {
         totalPrice: totalAmount
       };
 
-      await bookingService.createBooking(bookingData);
+      const response = await bookingService.createBooking(bookingData);
+      
+      // If it's a GCash or other online payment, redirect to PayMongo
+      if (['gcash', 'maya', 'bank_transfer'].includes(bookingForm.paymentMethod)) {
+        toast.info('Redirecting to secure payment...');
+        const paymentResponse = await paymentService.createBookingCheckoutSession(response.data._id);
+        if (paymentResponse.data.checkoutUrl) {
+          window.location.href = paymentResponse.data.checkoutUrl;
+          return;
+        }
+      }
+
       toast.success('Booking created successfully!');
 
       // Reset form and refresh bookings
@@ -984,7 +1007,14 @@ const Bookings = ({ isSubcomponent = false }) => {
                                 setSelectedPetProfile(pet);
                                 setBookingForm(prev => ({
                                   ...prev,
-                                  pet: { name: pet.name, type: pet.type, breed: pet.breed, size: pet.size || 'Small', age: calculateAge(pet.birthday), weight: String(pet.weight) }
+                                  pet: { 
+                                    name: pet.name, 
+                                    type: pet.type, 
+                                    breed: pet.breed, 
+                                    size: pet.size || 'Small', 
+                                    age: String(calculateAge(pet.birthday)), 
+                                    weight: String(pet.weight || '5.0') 
+                                  }
                                 }));
                               }}
                               className={`flex-shrink-0 min-w-[160px] p-4 rounded-2xl border-2 text-left transition-all ${
@@ -1799,34 +1829,37 @@ const Bookings = ({ isSubcomponent = false }) => {
                       <span className="px-5 py-2 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] flex items-center gap-2">
                         <CheckCircle size={14} /> Protocol Used / Completed
                       </span>
-                    ) : (new Date(`${selectedBooking.bookingDate.split('T')[0]}T${selectedBooking.endTime}`) < new Date()) ? (
+                    ) : (selectedBooking.status === 'no_show') ? (
                       <span className="px-5 py-2 bg-rose-500/20 text-rose-400 border border-rose-500/30 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] flex items-center gap-2">
                         <AlertCircle size={14} /> QR Code Expired
                       </span>
-                    ) : (selectedBooking.status === 'confirmed' || selectedBooking.status === 'approved') ? (
+                    ) : (selectedBooking.status === 'approved') ? (
                       <span className="px-5 py-2 bg-primary-500/20 text-primary-400 border border-primary-500/30 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] flex items-center gap-2 animate-pulse">
                         <Activity size={14} /> QR Code Active / Ready
                       </span>
                     ) : (
                       <span className="px-5 py-2 bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] flex items-center gap-2">
-                        <Clock size={14} /> Pending Confirmation
+                        <Clock size={14} /> Awaiting Approval
                       </span>
                     )}
                   </div>
 
                   <div className={`relative z-10 w-56 h-56 bg-white p-6 rounded-[2.5rem] shadow-[0_0_50px_rgba(255,255,255,0.2)] flex items-center justify-center transition-all duration-700 ${
-                    (selectedBooking.isScanned || (new Date(`${selectedBooking.bookingDate.split('T')[0]}T${selectedBooking.endTime}`) < new Date())) 
+                    (selectedBooking.isScanned || selectedBooking.status === 'no_show') 
                     ? 'opacity-40 grayscale blur-[2px] scale-95' 
                     : 'group-hover:scale-105'
                   }`}>
-                    {selectedBooking.qrCode ? (
+                    {selectedBooking.qrCode && selectedBooking.status === 'approved' ? (
                       <img 
                         src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${selectedBooking.qrCode}`} 
                         alt="Booking QR" 
                         className="w-full h-full object-contain"
                       />
                     ) : (
-                      <div className="text-slate-200"><Activity size={64} /></div>
+                      <div className="text-slate-200 flex flex-col items-center gap-4">
+                        <Activity size={64} className="opacity-20" />
+                        <span className="text-[10px] font-black uppercase tracking-widest opacity-40">Secured Payload</span>
+                      </div>
                     )}
                   </div>
 
@@ -1835,11 +1868,11 @@ const Bookings = ({ isSubcomponent = false }) => {
                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-relaxed">
                       {selectedBooking.isScanned 
                         ? "This QR code has already been scanned and processed by our staff. Verification completed."
-                        : (new Date(`${selectedBooking.bookingDate.split('T')[0]}T${selectedBooking.endTime}`) < new Date())
-                        ? "The scheduled time for this service has passed. This QR code is now expired."
-                        : (selectedBooking.status === 'confirmed' || selectedBooking.status === 'approved')
+                        : (selectedBooking.status === 'no_show')
+                        ? "The scheduled time for this service has passed or the QR was used after the cutoff. This QR code is now expired."
+                        : (selectedBooking.status === 'approved')
                         ? "Present this code to the store staff. Scanning this will verify your identity and initiate the 'Processing' phase."
-                        : "Your QR code will activate once the store confirms your booking request."}
+                        : "Your QR code will be generated and activated once the store verifies your payment and approves your booking."}
                     </p>
                   </div>
                 </div>
@@ -1869,23 +1902,33 @@ const Bookings = ({ isSubcomponent = false }) => {
               )}
             </div>
 
-            <footer className="shrink-0 p-10 sm:p-14 bg-slate-50 border-t border-slate-100 flex flex-wrap gap-6 relative z-10">
-              {selectedBooking.status === 'pending' && (
+              {/* Actions */}
+              <footer className="shrink-0 p-10 sm:p-14 bg-slate-50 border-t border-slate-100 flex flex-wrap gap-6 relative z-10">
+                {selectedBooking.status === 'pending' && selectedBooking.paymentStatus !== 'paid' && (
+                  <button
+                    onClick={() => handlePayment(selectedBooking._id)}
+                    className="flex-1 min-w-[200px] px-10 py-6 bg-emerald-600 text-white rounded-[2rem] text-[11px] font-black uppercase tracking-[0.3em] hover:bg-emerald-700 transition-all active:scale-[0.98] shadow-xl shadow-emerald-200 flex items-center justify-center gap-3"
+                  >
+                    <CreditCard className="h-5 w-5" />
+                    Pay Now (PayMongo)
+                  </button>
+                )}
+                {selectedBooking.status === 'pending' && (
+                  <button
+                    onClick={() => handleCancelBooking(selectedBooking._id)}
+                    className="flex-1 min-w-[280px] px-10 py-6 bg-rose-50 border-2 border-rose-200 text-rose-600 rounded-[2rem] text-[11px] font-black uppercase tracking-[0.4em] shadow-xl shadow-rose-100 hover:bg-rose-600 hover:text-white hover:border-rose-600 transition-all active:scale-[0.98] group flex items-center justify-center gap-4"
+                  >
+                    <X className="h-5 w-5" />
+                    Cancel Booking
+                  </button>
+                )}
                 <button
-                  onClick={() => handleCancelBooking(selectedBooking._id)}
-                  className="flex-1 min-w-[280px] px-10 py-6 bg-rose-50 border-2 border-rose-200 text-rose-600 rounded-[2rem] text-[11px] font-black uppercase tracking-[0.4em] shadow-xl shadow-rose-100 hover:bg-rose-600 hover:text-white hover:border-rose-600 transition-all active:scale-[0.98] group flex items-center justify-center gap-4"
+                  onClick={() => setSelectedBooking(null)}
+                  className="flex-1 px-10 py-6 bg-slate-900 text-white rounded-[2rem] text-[11px] font-black uppercase tracking-[0.3em] hover:bg-primary-600 transition-all active:scale-[0.98]"
                 >
-                  <X className="h-5 w-5" />
-                  Cancel Booking
+                  Close
                 </button>
-              )}
-              <button
-                onClick={() => setSelectedBooking(null)}
-                className="flex-1 px-10 py-6 bg-slate-900 text-white rounded-[2rem] text-[11px] font-black uppercase tracking-[0.3em] hover:bg-primary-600 transition-all active:scale-[0.98]"
-              >
-                Close
-              </button>
-            </footer>
+              </footer>
           </div>
         </div>
       )}

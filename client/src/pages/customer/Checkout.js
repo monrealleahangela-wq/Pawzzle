@@ -85,11 +85,11 @@ const Checkout = () => {
     }
     setEditAddress(false);
     
-    // Synchronize phone number only if not manually edited and current state is empty
-    if (user?.phone && !phoneNumber && !hasPhoneBeenManuallyEdited) {
+    // Synchronize phone number only if not manually edited
+    if (user?.phone && !hasPhoneBeenManuallyEdited && phoneNumber !== user.phone) {
       setPhoneNumber(user.phone);
     }
-  }, [user, phoneNumber, hasPhoneBeenManuallyEdited]);
+  }, [user?.phone, hasPhoneBeenManuallyEdited, phoneNumber]);
 
   // Reset payment method when delivery method changes
   useEffect(() => {

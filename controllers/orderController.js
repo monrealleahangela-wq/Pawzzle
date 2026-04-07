@@ -442,9 +442,9 @@ const cancelOrder = async (req, res) => {
       return res.status(403).json({ message: 'Access denied' });
     }
 
-    // Check if order can be cancelled
-    if (['shipped', 'delivered'].includes(order.status)) {
-      return res.status(400).json({ message: 'Order cannot be cancelled in current status' });
+    // Check if order can be cancelled - only pending orders can be cancelled by customers
+    if (['confirmed', 'processing', 'shipped', 'delivered'].includes(order.status)) {
+      return res.status(400).json({ message: 'Order cannot be cancelled once confirmed or processed' });
     }
 
     // Restore product stock for cancelled orders ONLY if stock was already deducted (confirmed or beyond)

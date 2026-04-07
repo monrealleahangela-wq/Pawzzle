@@ -163,15 +163,17 @@ const VoucherManagement = () => {
                 </button>
             </div>
 
-            <div className="bg-slate-900 p-2 rounded-2xl shadow-xl">
+            <div className="bg-slate-900 p-2 rounded-2xl shadow-xl border border-slate-800">
                 <div className="relative group">
-                    <Search className="absolute left-5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500 group-focus-within:text-primary-500" />
+                    <div className="absolute left-6 top-1/2 -translate-y-1/2">
+                        <Search className="h-4 w-4 text-slate-500 group-focus-within:text-primary-500 transition-colors" />
+                    </div>
                     <input
                         type="text"
-                        placeholder="Search by voucher code..."
+                        placeholder="SEARCH BY VOUCHER CODE..."
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
-                        className="w-full pl-14 pr-4 py-3.5 bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl outline-none focus:ring-1 focus:ring-primary-500 placeholder:text-slate-600"
+                        className="w-full pl-16 pr-4 py-4 bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl outline-none focus:ring-1 focus:ring-primary-500 placeholder:text-slate-600 transition-all font-sans"
                     />
                 </div>
             </div>

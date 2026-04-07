@@ -403,11 +403,16 @@ const AdminPets = () => {
                 <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-900">Filters</span>
               </div>
 
-              <div className="input-container group">
-                <Search className="input-icon h-4 w-4 text-slate-400 group-focus-within:text-primary-600 transition-colors" />
+              <div className="relative group">
+                <div className="absolute left-5 top-1/2 -translate-y-1/2">
+                   <Search className="h-4 w-4 text-slate-400 group-focus-within:text-primary-600 transition-colors" />
+                </div>
                 <input
-                  type="text" placeholder="SEARCH PETS..." value={filters.search} onChange={e => handleFilterChange('search', e.target.value)}
-                  className="input input-with-icon bg-slate-50 border-slate-100 rounded-2xl text-[10px] font-black uppercase tracking-widest outline-none focus:ring-2 focus:ring-primary-600/10 placeholder:text-slate-300"
+                  type="text" 
+                  placeholder="SEARCH PETS..." 
+                  value={filters.search} 
+                  onChange={e => handleFilterChange('search', e.target.value)}
+                  className="w-full pl-12 pr-4 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl text-[10px] font-black uppercase tracking-widest outline-none focus:ring-2 focus:ring-primary-600/10 placeholder:text-slate-300 transition-all font-sans"
                 />
               </div>
 
@@ -536,14 +541,16 @@ const AdminPets = () => {
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Monitor and manage all pet sales transactions</p>
             </div>
             <div className="flex items-center gap-3">
-              <div className="input-container group">
-                <Search className="input-icon h-4 w-4 text-slate-400" />
+              <div className="relative group">
+                <div className="absolute left-5 top-1/2 -translate-y-1/2">
+                    <Search className="h-4 w-4 text-slate-400" />
+                </div>
                 <input
                   type="text"
                   placeholder="SEARCH TRANSACTIONS..."
                   value={adoptionSearch}
                   onChange={(e) => setAdoptionSearch(e.target.value)}
-                  className="input input-with-icon bg-slate-50 border-slate-100 rounded-2xl text-[10px] font-black uppercase outline-none focus:ring-2 focus:ring-rose-500/10 w-64 placeholder:text-slate-300"
+                  className="w-64 pl-12 pr-4 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl text-[10px] font-black uppercase outline-none focus:ring-2 focus:ring-rose-500/10 placeholder:text-slate-300 transition-all font-sans"
                 />
               </div>
             </div>

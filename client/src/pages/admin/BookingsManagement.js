@@ -238,13 +238,13 @@ const BookingsManagement = () => {
       <div className="relative z-10 bg-slate-900 p-2 rounded-[1.5rem] shadow-xl border border-slate-800">
         <div className="grid grid-cols-1 md:grid-cols-12 gap-2">
           <div className="md:col-span-6 relative group">
-            <div className="absolute left-6 top-1/2 -translate-y-1/2 flex items-center">
+            <div className="absolute left-6 top-1/2 -translate-y-1/2">
               <Search className="h-4 w-4 text-slate-500 group-focus-within:text-primary-500 transition-colors" />
             </div>
             <input
               type="text"
               placeholder="SEARCH BOOKINGS..."
-              className="w-full pl-16 pr-4 py-4 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl outline-none focus:ring-2 focus:ring-primary-500/50 placeholder:text-slate-600 transition-all font-sans input-with-icon"
+              className="w-full pl-16 pr-4 py-4 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl outline-none focus:ring-2 focus:ring-primary-500/50 placeholder:text-slate-600 transition-all font-sans"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -265,6 +265,7 @@ const BookingsManagement = () => {
                 <option value="completed" className="bg-slate-900 text-white font-black">COMPLETED</option>
                 <option value="cancelled" className="bg-slate-900 text-white font-black text-rose-400">CANCELLED</option>
              </select>
+             <ChevronDown className="absolute right-6 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500 pointer-events-none" />
           </div>
         </div>
       </div>
@@ -684,7 +685,7 @@ const BookingsManagement = () => {
                   onClick={() => confirmBookingPayment(selectedBooking._id)}
                   className="px-6 py-3.5 bg-emerald-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-700 transition-all active:scale-[0.98] shadow-lg shadow-emerald-900/10 flex items-center gap-2"
                 >
-                  <ShieldCheck className="h-4 w-4" /> Confirm Payment
+                  <ShieldCheck className="h-4 w-4" /> Approve Payment
                 </button>
               )}
               {(user?.role === 'admin' || user?.role === 'staff') && selectedBooking.status !== 'completed' && selectedBooking.status !== 'cancelled' && (

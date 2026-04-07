@@ -216,8 +216,7 @@ const createBooking = async (req, res) => {
       paymentMethod: req.body.paymentMethod || 'pending',
       voucher: appliedVoucherId,
       discountAmount,
-      notes,
-      qrCode: `BK-${Math.random().toString(36).substr(2, 9).toUpperCase()}-${Date.now().toString().slice(-4)}`
+      notes
     });
 
     await booking.save();
@@ -446,13 +445,27 @@ const updateBookingStatus = async (req, res) => {
 
     res.json(booking);
 
-    // Notify customer about booking status update
+    // Multi-phase Notification Standardization
+    let notificationTitle = 'Booking Status Updated';
+    let notificationMessage = `Your booking for ${booking.service.name} has been ${status}.`;
+
+    if (status === 'processing') {
+      notificationTitle = 'Service Started';
+      notificationMessage = 'Staff has started your pet service.';
+    } else if (status === 'finished') {
+      notificationTitle = 'Service Finished';
+      notificationMessage = 'Staff has finished the service.';
+    } else if (status === 'completed') {
+      notificationTitle = 'Service Complete';
+      notificationMessage = 'Service complete! Thank you for visiting us.';
+    }
+
     await createNotification({
       recipient: booking.customer._id,
       sender: req.user._id,
       type: 'booking_status',
-      title: 'Booking Status Updated',
-      message: `Your booking for ${booking.service.name} has been ${status}.`,
+      title: notificationTitle,
+      message: notificationMessage,
       relatedId: booking._id,
       relatedModel: 'Booking'
     });
@@ -673,18 +686,25 @@ const confirmBookingPayment = async (req, res) => {
     // Record revenue and update store stats via central service
     await RevenueService.recordPayment('booking', booking._id);
 
+    // Update status to approved and generate QR code
+    booking.paymentStatus = 'paid';
+    booking.status = 'approved';
+    booking.qrCode = `BK-${Math.random().toString(36).substr(2, 8).toUpperCase()}-${Date.now().toString().slice(-4)}`;
+    
+    await booking.save();
+
     res.json({
-      message: 'Payment confirmed successfully',
+      message: 'Payment verified and QR Code generated.',
       booking: await Booking.findById(booking._id).populate('customer', 'firstName lastName email phone').populate('service', 'name category')
     });
 
-    // Notify customer about payment confirmation
+    // Notify customer about payment confirmation and QR activation
     await createNotification({
       recipient: booking.customer,
       sender: req.user._id,
       type: 'booking_status',
-      title: 'Booking Payment Confirmed',
-      message: `Your payment for booking for ${booking.service?.name || 'service'} has been confirmed.`,
+      title: 'Payment Approved',
+      message: 'Your booking is paid and approved! QR code is now generated. See you at our store!',
       relatedId: booking._id,
       relatedModel: 'Booking'
     });
@@ -751,20 +771,29 @@ const validateBookingQR = async (req, res) => {
       });
     }
 
-    // 5. Check expiration (Service time has passed)
-    // Requirement: "The QR code must also automatically expire after the booked service time has passed"
+    // 5. Check if too early or expired (Strict time restriction)
     const now = new Date();
+    const serviceDate = new Date(booking.bookingDate);
+    
+    const [startH, startM] = booking.startTime.split(':');
+    const serviceStart = new Date(serviceDate);
+    serviceStart.setHours(parseInt(startH), parseInt(startM), 0, 0);
+
     const [endH, endM] = booking.endTime.split(':');
-    const serviceEnd = new Date(booking.bookingDate);
+    const serviceEnd = new Date(serviceDate);
     serviceEnd.setHours(parseInt(endH), parseInt(endM), 0, 0);
 
-    if (now > serviceEnd) {
-      booking.status = 'no_show';
-      booking.adminNotes = `Automatically marked as expired/no_show: QR scanned after end time (${booking.endTime}).`;
-      await booking.save();
+    // If scanned before or after the booking time
+    if (now < serviceStart || now > serviceEnd) {
+      if (now > serviceEnd) {
+        booking.status = 'no_show';
+        booking.adminNotes = `Marked as no_show: QR scanned after end time (${booking.endTime}).`;
+        await booking.save();
+      }
+      
       return res.status(400).json({ 
-        message: 'QR Code Expired', 
-        details: `The scheduled service time (${booking.endTime}) has already passed.` 
+        message: 'QR Code Inactive', 
+        details: 'QR is currently not active. It will be active during your booking time.'
       });
     }
 
@@ -778,13 +807,13 @@ const validateBookingQR = async (req, res) => {
     
     await booking.save();
 
-    // Notify customer about successful scan
+    // Notify customer about successful scan (Started)
     await createNotification({
       recipient: booking.customer._id,
       sender: req.user._id,
       type: 'booking_status',
-      title: 'Booking Validated',
-      message: `Your booking for ${booking.service.name} has been successfully scanned and is now being processed.`,
+      title: 'Service Started',
+      message: 'Staff has started your pet service.',
       relatedId: booking._id,
       relatedModel: 'Booking'
     });
