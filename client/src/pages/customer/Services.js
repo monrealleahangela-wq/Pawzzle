@@ -120,7 +120,7 @@ const Services = () => {
 
     setLoading(true);
     toast.info('Acquiring location...');
-    
+
     const options = {
       enableHighAccuracy: true,
       timeout: 10000,
@@ -220,60 +220,60 @@ const Services = () => {
         </div>
 
         <div className="flex flex-col md:flex-row gap-6 items-center">
-        {/* Modern Horizontal Filter Scrolling */}
-        <div className="flex-1 flex items-center gap-3 overflow-x-auto pb-4 scrollbar-hide w-full">
-          {categories.map((category) => (
+          {/* Modern Horizontal Filter Scrolling */}
+          <div className="flex-1 flex items-center gap-3 overflow-x-auto pb-4 scrollbar-hide w-full">
+            {categories.map((category) => (
+              <button
+                key={category.id}
+                onClick={() => handleCategoryChange(category.id)}
+                className={`px-8 py-3 rounded-2xl font-black text-xs uppercase tracking-widest transition-all whitespace-nowrap shadow-sm border ${selectedCategory === category.id
+                  ? 'bg-primary-600 text-white border-primary-600 shadow-lg shadow-primary-100'
+                  : 'bg-white text-slate-500 border-slate-100 hover:border-primary-300'
+                  }`}
+              >
+                {category.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Location Filters */}
+          <div className="flex flex-wrap items-center gap-4 w-full md:w-auto">
+            {/* City Selector */}
+            <div className="relative w-full md:w-48">
+              <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-primary-500" />
+              <select
+                value={filters.city}
+                onChange={(e) => {
+                  setFilters(prev => ({ ...prev, city: e.target.value, nearMe: false }));
+                }}
+                className="w-full !pl-20 !pr-12 py-3 bg-white border border-slate-100 rounded-2xl text-xs font-black uppercase tracking-widest text-slate-700 outline-none focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 transition-all shadow-sm"
+              >
+                <option value="">All Regions</option>
+                {CAVITE_CITIES.map(c => (
+                  <option key={c.value} value={c.value}>{c.label}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Near Me Button */}
             <button
-              key={category.id}
-              onClick={() => handleCategoryChange(category.id)}
-              className={`px-8 py-3 rounded-2xl font-black text-xs uppercase tracking-widest transition-all whitespace-nowrap shadow-sm border ${selectedCategory === category.id
-                ? 'bg-primary-600 text-white border-primary-600 shadow-lg shadow-primary-100'
+              onClick={() => {
+                if (filters.nearMe) {
+                  setFilters(prev => ({ ...prev, nearMe: false }));
+                } else {
+                  handleNearMe();
+                }
+              }}
+              className={`flex items-center gap-2 px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-widest transition-all shadow-sm border w-full md:w-auto justify-center ${filters.nearMe
+                ? 'bg-secondary-600 text-white border-secondary-600 shadow-lg shadow-secondary-200'
                 : 'bg-white text-slate-500 border-slate-100 hover:border-primary-300'
                 }`}
             >
-              {category.label}
+              <Navigation className={`h-4 w-4 ${filters.nearMe ? 'animate-pulse' : ''}`} />
+              {filters.nearMe ? 'GPS Active' : 'Near Me'}
             </button>
-          ))}
-        </div>
-
-        {/* Location Filters */}
-        <div className="flex flex-wrap items-center gap-4 w-full md:w-auto">
-          {/* City Selector */}
-          <div className="relative w-full md:w-48">
-            <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-primary-500" />
-            <select
-              value={filters.city}
-              onChange={(e) => {
-                setFilters(prev => ({ ...prev, city: e.target.value, nearMe: false }));
-              }}
-              className="w-full !pl-20 !pr-12 py-3 bg-white border border-slate-100 rounded-2xl text-xs font-black uppercase tracking-widest text-slate-700 outline-none focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 transition-all shadow-sm"
-            >
-              <option value="">All Regions</option>
-              {CAVITE_CITIES.map(c => (
-                <option key={c.value} value={c.value}>{c.label}</option>
-              ))}
-            </select>
           </div>
-
-          {/* Near Me Button */}
-          <button
-            onClick={() => {
-              if (filters.nearMe) {
-                setFilters(prev => ({ ...prev, nearMe: false }));
-              } else {
-                handleNearMe();
-              }
-            }}
-            className={`flex items-center gap-2 px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-widest transition-all shadow-sm border w-full md:w-auto justify-center ${filters.nearMe
-              ? 'bg-secondary-600 text-white border-secondary-600 shadow-lg shadow-secondary-200'
-              : 'bg-white text-slate-500 border-slate-100 hover:border-primary-300'
-              }`}
-          >
-            <Navigation className={`h-4 w-4 ${filters.nearMe ? 'animate-pulse' : ''}`} />
-            {filters.nearMe ? 'GPS Active' : 'Near Me'}
-          </button>
         </div>
-      </div>
       </div>
 
       {/* Services Grid with Premium Cards */}
@@ -353,7 +353,7 @@ const Services = () => {
 
                 {/* Store Identifier - Fixed at Bottom */}
                 {service.store && (
-                  <Link 
+                  <Link
                     to={`/stores/${service.store._id}`}
                     className="flex items-center gap-3 p-2 bg-slate-50 rounded-xl border border-slate-100 group-hover:bg-primary-50 group-hover:border-primary-100 transition-all hover:scale-[1.02] active:scale-95"
                   >
@@ -383,7 +383,7 @@ const Services = () => {
                   onClick={() => handleBookService(service._id)}
                   className="btn btn-primary w-full py-2.5 sm:py-3 text-[10px] font-black uppercase tracking-widest shadow-lg shadow-primary-100 group/btn"
                 >
-                  Confirm Booking
+                  Book now
                 </button>
               </div>
             </div>
