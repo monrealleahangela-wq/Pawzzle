@@ -97,25 +97,37 @@ const PawCursor = () => {
             
             <div
                 ref={cursorRef}
-                className="absolute top-0 left-0 transition-none will-change-transform"
-                style={{ transform: 'translate3d(-100px, -100px, 0)' }}
+                className="absolute top-0 left-0 will-change-transform"
+                style={{ 
+                    transform: 'translate3d(-100px, -100px, 0)',
+                    transition: 'none' 
+                }}
             >
+                {/* Offset Container: Aligns the 'toe' of the paw to the mouse point (Top-Center) */}
                 <div 
-                    className="flex items-center justify-center transition-all duration-150 ease-out"
-                    style={{
-                        transform: `translate(-50%, -50%) scale(${isPressed ? 0.8 : isHovering ? 1.3 : 1})`,
-                        color: isHovering ? '#c2410c' : '#533114'
+                    className="relative"
+                    style={{ 
+                        transform: 'translate(-50%, -10%)', // Tip-aligned instead of center-aligned
+                        transition: 'none'
                     }}
                 >
-                    <div className={`relative transition-transform duration-300 ${isHovering ? 'rotate-12' : ''}`}>
-                        <PawPrint 
-                            size={24} 
-                            fill="currentColor" 
-                            className={`filter drop-shadow-md transition-all ${isHovering ? 'opacity-90' : 'opacity-100'}`} 
-                        />
-                        {isHovering && (
-                            <div className="absolute inset-0 bg-primary-400/30 blur-xl rounded-full -z-10 animate-pulse" />
-                        )}
+                    <div 
+                        className="transition-transform duration-200 ease-out flex items-center justify-center"
+                        style={{
+                            transform: `scale(${isPressed ? 0.7 : isHovering ? 1.2 : 1})`,
+                            color: isHovering ? '#c2410c' : '#533114'
+                        }}
+                    >
+                        <div className={`relative transition-transform duration-300 ${isHovering ? 'rotate-[15deg]' : 'rotate-0'}`}>
+                            <PawPrint 
+                                size={22} 
+                                fill="currentColor" 
+                                className={`filter drop-shadow-[0_2px_3px_rgba(0,0,0,0.3)] transition-opacity duration-200 ${isHovering ? 'opacity-90' : 'opacity-100'}`} 
+                            />
+                            {isHovering && (
+                                <div className="absolute inset-0 bg-primary-400/40 blur-xl rounded-full -z-10 animate-pulse" />
+                            )}
+                        </div>
                     </div>
                 </div>
             </div>
