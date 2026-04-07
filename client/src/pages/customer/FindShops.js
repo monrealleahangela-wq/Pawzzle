@@ -138,12 +138,16 @@ const FindShops = () => {
 
   const filteredStores = useMemo(() => {
     return stores.filter(store => {
+      const storeCity = normalizeString(store.contactInfo?.address?.city);
+      const searchNorm = normalizeString(searchTerm);
+      const muniNorm = normalizeString(selectedMunicipality);
+
       const matchesSearch = store.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        store.contactInfo.address.city.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        store.contactInfo.address.barangay.toLowerCase().includes(searchTerm.toLowerCase());
+        storeCity.includes(searchNorm) ||
+        normalizeString(store.contactInfo?.address?.barangay).includes(searchNorm);
 
       const matchesMuni = selectedMunicipality === 'All Cavite' ||
-        store.contactInfo.address.city === selectedMunicipality;
+        storeCity === muniNorm;
 
       return matchesSearch && matchesMuni;
     });
