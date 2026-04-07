@@ -926,7 +926,7 @@ const AdminPets = () => {
                           ) : (
                             <img src={getImageUrl(url)} alt="" className="w-full h-full object-cover" />
                           )}
-                          <button onClick={() => setPetForm(p => ({ ...prev, vetRecords: p.vetRecords.filter((_, idx) => idx !== i) }))}
+                          <button onClick={() => setPetForm(p => ({ ...p, vetRecords: p.vetRecords.filter((_, idx) => idx !== i) }))}
                             className="absolute inset-0 bg-rose-500/90 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                             <Trash2 className="h-6 w-6 text-white" />
                           </button>

@@ -32,7 +32,9 @@ import {
   Menu,
   Video,
   FileText,
-  Table
+  Table,
+  MapPin,
+  Clock
 } from 'lucide-react';
 
 const PhilippinePeso = ({ className }) => (
@@ -61,7 +63,7 @@ const ProductInventory = () => {
   // Modal States
   const [showProductModal, setShowProductModal] = useState(false);
   const [showInventoryModal, setShowInventoryModal] = useState(false);
-  const [modalTab, setModalTab] = useState('essential'); // essential, tactical, discovery
+  const [modalTab, setModalTab] = useState('edit'); // edit or preview
   const [editingProduct, setEditingProduct] = useState(null);
   const [selectedInventoryItem, setSelectedInventoryItem] = useState(null);
 
@@ -74,26 +76,11 @@ const ProductInventory = () => {
   const [inventorySearchInput, setInventorySearchInput] = useState('');
 
   const categoryHierarchy = {
-    'Pet Food': [
-      'Dog Food', 'Dog Treats', 'Cat Food', 'Cat Treats', 'Small Pet Food', 
-      'Small Pet Treats', 'Aquarium Pet Food', 'Bird Feed', 'Reptile Food', 'Others'
-    ],
-    'Pet Accessories': [
-      'Bowls and Feeders', 'Travel Essentials', 'Dishes, Collars, Harnesses, and Muzzles',
-      'Toys (Dog & Cat)', 'Toys (Small Pet)', 'Toys (Bird)', 'Toys (Others)',
-      'Pet Furniture (Beds/Mats)', 'Pet Furniture (Houses)', 'Pet Furniture (Habitats)',
-      'Pet Furniture (Cages/Crates)', 'Pet Furniture (Scratching Pads)', 'Pet Furniture (Others)',
-      'Aquarium Needs', 'Litter (Cat)', 'Litter (Small Pet)', 'Diapers', 
-      'Training Pads', 'Poop Bags/Scoopers', 'Litter Others',
-      'Grooming (Hair)', 'Grooming (Oral)', 'Grooming (Claw)', 'Grooming (Others)'
-    ],
-    'Pet Clothing and Accessories': [
-      'Clothing', 'Wet Weather Gear', 'Boots/Socks/Protectors', 'Neck Accessories',
-      'Eyewear', 'Hair Accessories', 'Hats', 'Others'
-    ],
-    'Pet Health Care': [
-      'Anti-Fleas and Ticks', 'Medication', 'Vitamins and Supplements (Permit Required)', 'Others'
-    ]
+    'Pet Food': ['Dog Food', 'Cat Food', 'Small Pet Food', 'Others'],
+    'Pet Accessories': ['Bowls/Feeders', 'Toys', 'Furniture', 'Grooming', 'Others'],
+    'Pet Clothing': ['Clothing', 'Accessories', 'Others'],
+    'Pet Health Care': ['Vitamins', 'Medication', 'Others'],
+    'Others': ['Miscellaneous']
   };
 
   const [inventoryForm, setInventoryForm] = useState({
@@ -110,32 +97,42 @@ const ProductInventory = () => {
   // Form States
   const initialProductState = {
     name: '',
-    mainCategory: 'Pet Food',
-    subCategory: 'Dog Food',
+    category: 'Pet Food',
+    brand: '',
+    sku: '',
     description: '',
-    gtin: '',
-    hasNoGtin: false,
-    images: [],
-    video: null,
+    shortDescription: '',
     price: '',
     stockQuantity: '',
-    sku: '',
-    variations: [], // { name: '', description: '', images: [], options: [{ value: '', price: '', stock: '', sku: '' }] }
-    shipping: {
-      weight: '',
-      parcelSize: { length: '', width: '', height: '' },
-      fee: ''
-    },
-    permit: null,
-    isFeatured: false
+    stockStatus: 'in_stock',
+    lowStockThreshold: 5,
+    maxOrderQuantity: '',
+    images: [],
+    video: '',
+    coverImage: '',
+    variants: [], // { combination: '', price: '', stock: '', sku: '', type: 'Size' }
+    fulfillmentType: 'pickup_only',
+    pickupInstructions: '',
+    visibility: 'published',
+    tags: [],
+    collectionGroup: '',
+    warrantyInfo: '',
+    returnPolicy: '',
+    expiryDate: '',
+    ingredients: '',
+    usageInstructions: ''
   };
 
   const [productForm, setProductForm] = useState(initialProductState);
   const [activeSections, setActiveSections] = useState({
     basic: true,
-    categories: true,
-    sales: true,
-    shipping: true
+    pricing: true,
+    stock: true,
+    variants: false,
+    media: true,
+    fulfillment: true,
+    organization: true,
+    additional: false
   });
 
   const fetchProducts = useCallback(async () => {
@@ -201,22 +198,25 @@ const ProductInventory = () => {
   }, [productSearchInput, inventorySearchInput, activeTab]);
 
   const handleOpenProductModal = (product = null) => {
-    setActiveSections({ basic: true, categories: true, sales: true, shipping: true });
+    setActiveSections({
+      basic: true,
+      pricing: true,
+      stock: true,
+      variants: false,
+      media: true,
+      fulfillment: true,
+      organization: true,
+      additional: false
+    });
+    setModalTab('edit'); // edit or preview
     if (product) {
       setEditingProduct(product);
       setProductForm({
         ...initialProductState,
         ...product,
-        mainCategory: product.category || 'Pet Food',
-        subCategory: product.subCategory || 'Others',
         price: product.price || '',
         stockQuantity: product.stockQuantity || '',
-        sku: product.sku || '',
-        variations: product.variations || [],
-        shipping: {
-          ...initialProductState.shipping,
-          ...product.shipping
-        }
+        sku: product.sku || ''
       });
     } else {
       setEditingProduct(null);
@@ -226,21 +226,20 @@ const ProductInventory = () => {
   };
 
   const handleProductSubmit = async (e) => {
-    e.preventDefault();
+    if (e) e.preventDefault();
     
-    // Validation
+    // Validations
+    if (!productForm.name || !productForm.category || !productForm.sku) {
+      return toast.warn('Aquisition Error: Name, Category, and SKU are required.');
+    }
+    if (Number(productForm.price) <= 0) {
+      return toast.warn('Price must be greater than 0.');
+    }
     if (productForm.images.length < 1) {
-      return toast.warn('Aquisition Error: Minimum 1 image required.');
+      return toast.warn('Media Error: Minimum 1 image required.');
     }
-    if (productForm.images.length > 9) {
-      return toast.warn('Aquisition Error: Maximum 9 images allowed.');
-    }
-    if (productForm.subCategory.includes('Vitamins') && !productForm.permit) {
-      // In a real app we'd check if a file was uploaded
-      // return toast.warn('Verificaton Error: Health permit required for Vitamins.');
-    }
-    if (!productForm.hasNoGtin && !productForm.gtin) {
-      return toast.warn('Data Error: GTIN required unless "No GTIN" is specified.');
+    if (productForm.images.length > 10) {
+      return toast.warn('Media Error: Maximum 10 images allowed.');
     }
 
     setSubmitting(true);
@@ -248,18 +247,10 @@ const ProductInventory = () => {
       const userData = JSON.parse(localStorage.getItem('user') || '{}');
       const isAdminOrStaff = userData.role === 'admin' || userData.role === 'super_admin' || userData.role === 'staff';
 
-      // Flatten payload for backend compatibility
-      const hasVariations = productForm.variations.length > 0;
-      const firstOpt = productForm.variations[0]?.options[0];
-      
       const payload = {
         ...productForm,
-        category: productForm.mainCategory,
-        // If variations exist, use first option as primary representation for listings
-        // Otherwise, use top-level fields
-        price: Number(hasVariations ? (firstOpt?.price || 0) : (productForm.price || 0)),
-        stockQuantity: Number(hasVariations ? (firstOpt?.stock || 0) : (productForm.stockQuantity || 0)),
-        sku: hasVariations ? (firstOpt?.sku || '') : (productForm.sku || '')
+        price: Number(productForm.price),
+        stockQuantity: Number(productForm.stockQuantity || 0)
       };
 
       if (editingProduct) {
@@ -269,13 +260,13 @@ const ProductInventory = () => {
       } else {
         if (isAdminOrStaff) await adminProductService.createProduct(payload);
         else await productService.createProduct(payload);
-        toast.success('Asset acquired and logged.');
+        toast.success(`Asset "${productForm.name}" acquired and logged.`);
       }
 
       setShowProductModal(false);
       fetchProducts();
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Synchronization failure.');
+      toast.error(error.response?.data?.message || 'Synchronization failure. Ensure SKU is unique.');
     } finally {
       setSubmitting(false);
     }
@@ -612,523 +603,575 @@ const ProductInventory = () => {
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-2 overflow-hidden">
           <div className="bg-white w-full max-w-4xl rounded-[2rem] overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300 flex flex-col max-h-[95vh] border border-slate-200">
             {/* Modal Header */}
-            <header className="p-5 border-b border-slate-100 flex items-center justify-between bg-white shrink-0">
-              <div className="flex items-center gap-5">
-                <div className="w-10 h-10 bg-primary-600 rounded-xl flex items-center justify-center shadow-2xl shadow-primary-200">
-                  <Package className="h-5 w-5 text-white" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2 mb-0.5">
-                    <Shield className="h-2.5 w-2.5 text-primary-600" />
-                    <span className="text-[8px] font-black text-primary-600 uppercase tracking-[0.4em] leading-none">Action : {editingProduct ? 'Update' : 'Asset'}</span>
+            <header className="p-5 border-b border-slate-100 bg-white shrink-0">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-5">
+                  <div className="w-10 h-10 bg-primary-600 rounded-xl flex items-center justify-center shadow-2xl shadow-primary-200">
+                    <Package className="h-5 w-5 text-white" />
                   </div>
-                  <h3 className="text-xl font-black uppercase text-slate-900 tracking-tighter leading-none">{editingProduct ? 'Edit Product' : 'Add New Product'}</h3>
+                  <div>
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <Shield className="h-2.5 w-2.5 text-primary-600" />
+                      <span className="text-[8px] font-black text-primary-600 uppercase tracking-[0.4em] leading-none">Catalog : {editingProduct ? 'Modifying Asset' : 'New Acquisition'}</span>
+                    </div>
+                    <h3 className="text-xl font-black uppercase text-slate-900 tracking-tighter leading-none">{editingProduct ? 'Edit Product' : 'Add New Product'}</h3>
+                  </div>
                 </div>
+                <button onClick={() => setShowProductModal(false)} className="p-2.5 bg-slate-50 text-slate-400 rounded-xl hover:bg-rose-50 hover:text-rose-600 transition-all active:scale-95">
+                  <X className="h-4 w-4" />
+                </button>
               </div>
-              <button onClick={() => setShowProductModal(false)} className="p-2.5 bg-slate-50 text-slate-400 rounded-xl hover:bg-rose-50 hover:text-rose-600 transition-all active:scale-95">
-                <X className="h-4 w-4" />
-              </button>
+
+              {/* Form Tabs */}
+              <div className="flex gap-2 p-1 bg-slate-50 rounded-xl w-fit">
+                <button
+                  onClick={() => setModalTab('edit')}
+                  className={`px-6 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${modalTab === 'edit' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                >
+                  Configure Details
+                </button>
+                <button
+                  onClick={() => setModalTab('preview')}
+                  className={`px-6 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${modalTab === 'preview' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                >
+                  Live Preview
+                </button>
+              </div>
             </header>
 
             <div className="flex-1 overflow-y-auto p-8 no-scrollbar bg-slate-50/30">
               <div className="max-w-4xl mx-auto space-y-6">
                 
-                {/* 1. Basic Information */}
-                <section className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
-                  <button 
-                    onClick={() => setActiveSections(p => ({ ...p, basic: !p.basic }))}
-                    className="w-full px-6 py-4 flex items-center justify-between hover:bg-slate-50 transition-all"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 bg-primary-50 text-primary-600 rounded-lg flex items-center justify-center">
-                        <Info className="h-4 w-4" />
-                      </div>
-                      <h4 className="text-base font-black uppercase tracking-tight text-slate-900">A. Basic Information</h4>
-                    </div>
-                    {activeSections.basic ? <ChevronUp className="h-4 w-4 text-slate-400" /> : <ChevronDown className="h-4 w-4 text-slate-400" />}
-                  </button>
-                  
-                  {activeSections.basic && (
-                    <div className="p-6 border-t border-slate-50 space-y-6 animate-in slide-in-from-top-2 duration-300">
-                      {/* Images */}
-                      <div className="space-y-4">
-                        <div className="flex items-center justify-between">
-                          <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest">Product Images (1–9)</label>
-                          <span className={`text-[10px] font-bold ${productForm.images.length >= 1 && productForm.images.length <= 9 ? 'text-emerald-500' : 'text-rose-500'}`}>
-                            {productForm.images.length}/9 Images
-                          </span>
-                        </div>
-                        <div className="grid grid-cols-3 sm:grid-cols-5 gap-4">
-                          {productForm.images.map((img, i) => (
-                            <div key={i} className="aspect-square bg-slate-50 rounded-2xl border-2 border-slate-100 relative group overflow-hidden">
-                              <img src={getImageUrl(img)} alt="" className="w-full h-full object-cover" />
-                              <button 
-                                type="button" 
-                                onClick={() => setProductForm(p => ({ ...p, images: p.images.filter((_, idx) => idx !== i) }))}
-                                className="absolute inset-0 bg-rose-600/90 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
-                              >
-                                <Trash2 className="h-5 w-5 text-white" />
-                              </button>
-                            </div>
-                          ))}
-                          {productForm.images.length < 9 && (
-                            <label className="aspect-square border-2 border-dashed border-slate-200 rounded-2xl flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-primary-500 hover:bg-primary-50 transition-all group">
-                              <Plus className="h-6 w-6 text-slate-300 group-hover:text-primary-600" />
-                              <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Upload Image</span>
-                              <input type="file" multiple accept="image/*" className="hidden" onChange={handleImageUpload} />
-                            </label>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Video (Optional) */}
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                        <div className="space-y-4">
-                          <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest block">Product Video (Optional)</label>
-                          <div className="p-6 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-100 flex flex-col items-center justify-center gap-3">
-                            <Video className="h-8 w-8 text-slate-300" />
-                            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Connect Visual Stream</span>
+                {modalTab === 'edit' ? (
+                  <>
+                    {/* 1. Basic Product Information */}
+                    <section className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
+                      <button 
+                        onClick={() => setActiveSections(p => ({ ...p, basic: !p.basic }))}
+                        className="w-full px-6 py-4 flex items-center justify-between hover:bg-slate-50 transition-all font-sans"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 bg-primary-50 text-primary-600 rounded-lg flex items-center justify-center">
+                            <Info className="h-4 w-4" />
                           </div>
+                          <h4 className="text-[11px] font-black uppercase tracking-widest text-slate-900">1. Basic Information</h4>
                         </div>
-
-                        <div className="space-y-6">
+                        {activeSections.basic ? <ChevronUp className="h-4 w-4 text-slate-400" /> : <ChevronDown className="h-4 w-4 text-slate-400" />}
+                      </button>
+                      
+                      {activeSections.basic && (
+                        <div className="p-6 border-t border-slate-50 grid grid-cols-1 md:grid-cols-2 gap-6 animate-in slide-in-from-top-2 duration-300">
                           <div className="space-y-2">
-                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Product Name *</label>
+                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Product Name / Title *</label>
                             <input 
-                              type="text" 
-                              required
-                              value={productForm.name}
+                              type="text" required value={productForm.name}
                               onChange={e => setProductForm(p => ({ ...p, name: e.target.value }))}
-                              className="w-full px-6 py-4 bg-slate-50 border-2 border-slate-50 rounded-2xl text-[12px] font-black uppercase tracking-tight focus:border-primary-500 outline-none transition-all"
-                              placeholder="Product identifier..."
+                              className="w-full px-5 py-3.5 bg-slate-50 border-2 border-slate-50 rounded-xl text-[12px] font-black uppercase outline-none focus:border-primary-500 transition-all"
+                              placeholder="Name..."
                             />
                           </div>
-
                           <div className="space-y-2">
-                            <div className="flex items-center justify-between px-1">
-                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">GTIN</label>
-                                <label className="flex items-center gap-2 cursor-pointer group">
-                                    <input 
-                                        type="checkbox" 
-                                        checked={productForm.hasNoGtin} 
-                                        onChange={e => setProductForm(p => ({ ...p, hasNoGtin: e.target.checked, gtin: e.target.checked ? '' : p.gtin }))} 
-                                        className="hidden" 
-                                    />
-                                    <div className={`w-4 h-4 rounded border-2 transition-all ${productForm.hasNoGtin ? 'bg-primary-600 border-primary-600' : 'border-slate-200'}`} />
-                                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">This product has no GTIN</span>
-                                </label>
-                            </div>
+                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">SKU (Unique Identifier) *</label>
                             <input 
-                              type="text" 
-                              disabled={productForm.hasNoGtin}
-                              value={productForm.gtin}
-                              onChange={e => setProductForm(p => ({ ...p, gtin: e.target.value }))}
-                              className={`w-full px-6 py-4 bg-slate-50 border-2 rounded-2xl text-[12px] font-black uppercase tracking-tight outline-none transition-all ${productForm.hasNoGtin ? 'opacity-30 border-slate-50' : 'border-slate-50 focus:border-primary-500'}`}
-                              placeholder="Global Trade Item Number..."
+                              type="text" required value={productForm.sku}
+                              onChange={e => setProductForm(p => ({ ...p, sku: e.target.value }))}
+                              className="w-full px-5 py-3.5 bg-slate-50 border-2 border-slate-50 rounded-xl text-[12px] font-black uppercase outline-none focus:border-primary-500 transition-all"
+                              placeholder="SKU-123..."
                             />
                           </div>
-                        </div>
-                      </div>
-
-                       {/* Description */}
-                       <div className="space-y-2">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Detailed Description</label>
-                        <textarea 
-                          value={productForm.description}
-                          onChange={e => setProductForm(p => ({ ...p, description: e.target.value }))}
-                          className="w-full px-8 py-8 bg-slate-50 border-2 border-slate-50 rounded-3xl text-[14px] font-medium leading-relaxed outline-none focus:border-primary-500 transition-all h-48 resize-none shadow-inner"
-                          placeholder="Technical specs and narrative..."
-                        />
-                      </div>
-                    </div>
-                  )}
-                </section>
-
-                {/* 2. Categories */}
-                <section className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
-                   <button 
-                    onClick={() => setActiveSections(p => ({ ...p, categories: !p.categories }))}
-                    className="w-full px-8 py-6 flex items-center justify-between hover:bg-slate-50 transition-all"
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center">
-                        <Layers className="h-5 w-5" />
-                      </div>
-                      <h4 className="text-lg font-black uppercase tracking-tight text-slate-900">B. Categories</h4>
-                    </div>
-                    {activeSections.categories ? <ChevronUp className="h-5 w-5 text-slate-400" /> : <ChevronDown className="h-5 w-5 text-slate-400" />}
-                  </button>
-
-                  {activeSections.categories && (
-                    <div className="p-8 border-t border-slate-50 space-y-8 animate-in slide-in-from-top-2 duration-300">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                        <div className="space-y-2">
-                          <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest px-1">Main Category</label>
-                          <select 
-                            value={productForm.mainCategory}
-                            onChange={e => setProductForm(p => ({ ...p, mainCategory: e.target.value, subCategory: categoryHierarchy[e.target.value][0] }))}
-                            className="w-full px-6 py-4 bg-slate-50 border-2 border-slate-50 rounded-2xl text-[12px] font-black uppercase outline-none focus:border-primary-500 appearance-none"
-                          >
-                            {Object.keys(categoryHierarchy).map(k => <option key={k} value={k}>{k}</option>)}
-                          </select>
-                        </div>
-                        <div className="space-y-2">
-                          <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest px-1">Sub-Category</label>
-                          <select 
-                            value={productForm.subCategory}
-                            onChange={e => setProductForm(p => ({ ...p, subCategory: e.target.value }))}
-                            className="w-full px-6 py-4 bg-slate-50 border-2 border-slate-50 rounded-2xl text-[12px] font-black uppercase outline-none focus:border-primary-500 appearance-none"
-                          >
-                            {categoryHierarchy[productForm.mainCategory]?.map(s => <option key={s} value={s}>{s}</option>)}
-                          </select>
-                        </div>
-                      </div>
-
-                      {productForm.subCategory.includes('Vitamins') && (
-                        <div className="p-8 bg-rose-50 rounded-[2rem] border border-rose-100 flex flex-col md:flex-row items-center gap-6">
-                            <div className="w-16 h-16 bg-rose-600 text-white rounded-2xl flex items-center justify-center shrink-0 shadow-lg">
-                                <Shield className="h-8 w-8" />
-                            </div>
-                            <div className="flex-1">
-                                <p className="text-[12px] font-black text-rose-700 uppercase tracking-widest mb-1">Health Permit Required</p>
-                                <p className="text-[10px] text-rose-600 font-bold uppercase tracking-widest">Vitamins & Supplements require verified documentation from regulatory assets.</p>
-                            </div>
-                            <label className="px-8 py-3 bg-white border-2 border-rose-200 text-rose-600 rounded-xl text-[10px] font-black uppercase tracking-widest cursor-pointer hover:bg-rose-600 hover:text-white hover:border-rose-600 transition-all">
-                                Upload Permit
-                                <input type="file" className="hidden" />
-                            </label>
+                          <div className="space-y-2">
+                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Category *</label>
+                            <select 
+                              value={productForm.category}
+                              onChange={e => setProductForm(p => ({ ...p, category: e.target.value }))}
+                              className="w-full px-5 py-3.5 bg-slate-50 border-2 border-slate-50 rounded-xl text-[12px] font-black uppercase outline-none focus:border-primary-500 appearance-none"
+                            >
+                              <option value="Pet Food">Pet Food</option>
+                              <option value="Pet Accessories">Pet Accessories</option>
+                              <option value="Pet Clothing">Pet Clothing</option>
+                              <option value="Pet Health Care">Pet Health Care</option>
+                              <option value="Others">Others</option>
+                            </select>
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Brand (Optional)</label>
+                            <input 
+                              type="text" value={productForm.brand}
+                              onChange={e => setProductForm(p => ({ ...p, brand: e.target.value }))}
+                              className="w-full px-5 py-3.5 bg-slate-50 border-2 border-slate-50 rounded-xl text-[12px] font-black uppercase outline-none focus:border-primary-500 transition-all"
+                              placeholder="Acme Co."
+                            />
+                          </div>
+                          <div className="col-span-full space-y-2">
+                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Short Description (Preview Text) *</label>
+                            <input 
+                              type="text" required value={productForm.shortDescription}
+                              onChange={e => setProductForm(p => ({ ...p, shortDescription: e.target.value }))}
+                              className="w-full px-5 py-3.5 bg-slate-50 border-2 border-slate-50 rounded-xl text-[12px] font-bold outline-none focus:border-primary-500 transition-all"
+                              placeholder="A brief summary for listings..."
+                            />
+                          </div>
+                          <div className="col-span-full space-y-2">
+                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Detailed Description *</label>
+                            <textarea 
+                              value={productForm.description}
+                              onChange={e => setProductForm(p => ({ ...p, description: e.target.value }))}
+                              className="w-full px-5 py-4 bg-slate-50 border-2 border-slate-50 rounded-2xl text-[12px] font-medium leading-relaxed outline-none focus:border-primary-500 transition-all h-32 resize-none"
+                              placeholder="Technical specifications and detailed narrative..."
+                            />
+                          </div>
                         </div>
                       )}
-                    </div>
-                  )}
-                </section>
+                    </section>
 
-                {/* 3. Sales Information */}
-                <section className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
-                   <button 
-                    onClick={() => setActiveSections(p => ({ ...p, sales: !p.sales }))}
-                    className="w-full px-8 py-6 flex items-center justify-between hover:bg-slate-50 transition-all"
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center">
-                        <Tag className="h-5 w-5" />
-                      </div>
-                      <h4 className="text-lg font-black uppercase tracking-tight text-slate-900">2. Sales Information</h4>
-                    </div>
-                    {activeSections.sales ? <ChevronUp className="h-5 w-5 text-slate-400" /> : <ChevronDown className="h-5 w-5 text-slate-400" />}
-                  </button>
-
-                  {activeSections.sales && (
-                    <div className="p-8 border-t border-slate-50 space-y-10 animate-in slide-in-from-top-2 duration-300">
-                        <div className="flex items-center justify-between">
-                          <h5 className="text-[11px] font-black text-slate-400 uppercase tracking-[0.3em]">Variation Management</h5>
-                          <button 
-                            type="button" 
-                            onClick={() => setProductForm(p => ({ 
-                              ...p, 
-                              variations: [...p.variations, { 
-                                name: '', 
-                                description: '', 
-                                options: [{ value: '', price: '', stock: '', sku: '' }] 
-                              }] 
-                            }))}
-                            className="px-6 py-2 bg-slate-900 text-white rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-primary-600 transition-all shadow-lg active:scale-95"
-                          >
-                            + Add Variation Group
-                          </button>
-                        </div>
-
-                        {productForm.variations.length === 0 ? (
-                          <div className="p-12 bg-slate-50 rounded-[2.5rem] border-2 border-dashed border-slate-100 flex flex-col items-center gap-4">
-                             <Box className="h-12 w-12 text-slate-200" />
-                             <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest text-center">No variations identified.<br/>Using base product configuration.</p>
-                             <div className="grid grid-cols-3 gap-6 w-full max-w-2xl mt-4">
-                                 <div className="space-y-2 text-center">
-                                   <label className="text-[9px] font-black text-slate-400 uppercase block tracking-widest">Base Price</label>
-                                   <input 
-                                    type="number" 
-                                    value={productForm.price}
-                                    onChange={(e) => setProductForm(p => ({ ...p, price: e.target.value }))}
-                                    className="w-full px-4 py-3 bg-white border border-slate-100 rounded-xl text-center text-xs font-black shadow-inner outline-none focus:border-primary-500" 
-                                    placeholder="0.00" 
-                                   />
-                                 </div>
-                                 <div className="space-y-2 text-center">
-                                   <label className="text-[9px] font-black text-slate-400 uppercase block tracking-widest">Base Stock</label>
-                                   <input 
-                                    type="number" 
-                                    value={productForm.stockQuantity}
-                                    onChange={(e) => setProductForm(p => ({ ...p, stockQuantity: e.target.value }))}
-                                    className="w-full px-4 py-3 bg-white border border-slate-100 rounded-xl text-center text-xs font-black shadow-inner outline-none focus:border-primary-500" 
-                                    placeholder="0" 
-                                   />
-                                 </div>
-                                 <div className="space-y-2 text-center">
-                                   <label className="text-[9px] font-black text-slate-400 uppercase block tracking-widest">Base SKU</label>
-                                   <input 
-                                    type="text" 
-                                    value={productForm.sku}
-                                    onChange={(e) => setProductForm(p => ({ ...p, sku: e.target.value }))}
-                                    className="w-full px-4 py-3 bg-white border border-slate-100 rounded-xl text-center text-xs font-black shadow-inner outline-none focus:border-primary-500" 
-                                    placeholder="SKU-..." 
-                                   />
-                                 </div>
-                             </div>
+                    {/* 2. Pricing */}
+                    <section className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
+                      <button 
+                        onClick={() => setActiveSections(p => ({ ...p, pricing: !p.pricing }))}
+                        className="w-full px-6 py-4 flex items-center justify-between hover:bg-slate-50 transition-all font-sans"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 bg-emerald-50 text-emerald-600 rounded-lg flex items-center justify-center">
+                            <PhilippinePeso className="h-4 w-4" />
                           </div>
-                        ) : (
-                          <div className="space-y-8">
-                             {productForm.variations.map((v, idx) => (
-                               <div key={idx} className="p-8 bg-slate-50/50 rounded-[2.5rem] border border-slate-100 space-y-6 animate-in slide-in-from-top-2">
-                                 <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-3">
-                                       <div className="w-8 h-8 bg-white border border-slate-200 rounded-lg flex items-center justify-center text-[10px] font-black text-slate-900 shadow-sm">{idx + 1}</div>
-                                       <span className="text-[10px] font-black text-slate-900 uppercase tracking-widest">Variation Setup</span>
-                                    </div>
-                                    <button 
-                                      type="button" 
-                                      onClick={() => setProductForm(p => ({ ...p, variations: p.variations.filter((_, i) => i !== idx) }))} 
-                                      className="w-8 h-8 flex items-center justify-center text-rose-500 hover:bg-rose-50 rounded-lg transition-colors"
-                                    >
-                                       <Trash2 className="h-4 w-4" />
-                                    </button>
-                                 </div>
-
-                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <div className="space-y-2">
-                                      <label className="text-[9px] font-black text-slate-400 uppercase px-2 tracking-widest">Group Name</label>
-                                      <input 
-                                       className="w-full px-6 py-4 bg-white border border-slate-100 rounded-2xl text-[11px] font-black uppercase outline-none focus:border-primary-500 shadow-sm"
-                                       placeholder="E.G. COLOR, SIZE, MATERIAL"
-                                       value={v.name}
-                                       onChange={(e) => {
-                                         const newV = [...productForm.variations];
-                                         newV[idx].name = e.target.value;
-                                         setProductForm(p => ({ ...p, variations: newV }));
-                                       }}
-                                      />
-                                    </div>
-                                    <div className="space-y-2">
-                                      <label className="text-[9px] font-black text-slate-400 uppercase px-2 tracking-widest">Short Description</label>
-                                      <input 
-                                       className="w-full px-6 py-4 bg-white border border-slate-100 rounded-2xl text-[11px] font-black uppercase outline-none focus:border-primary-500 shadow-sm"
-                                       placeholder="OPTIONAL EXPLANATION..."
-                                       value={v.description}
-                                       onChange={(e) => {
-                                         const newV = [...productForm.variations];
-                                         newV[idx].description = e.target.value;
-                                         setProductForm(p => ({ ...p, variations: newV }));
-                                       }}
-                                      />
-                                    </div>
-                                 </div>
-
-                                 <div className="bg-white rounded-[2.5rem] border border-slate-100 overflow-hidden shadow-sm">
-                                    <div className="overflow-x-auto no-scrollbar">
-                                      <table className="w-full border-collapse">
-                                         <thead>
-                                            <tr className="bg-slate-900/[0.02] divide-x divide-slate-100">
-                                               <th className="px-6 py-4 text-center text-[9px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">Variation Option</th>
-                                               <th className="px-6 py-4 text-center text-[9px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">Price (₱)</th>
-                                               <th className="px-6 py-4 text-center text-[9px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">Stock</th>
-                                               <th className="px-6 py-4 text-center text-[9px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">SKU</th>
-                                               <th className="px-6 py-4 text-center text-[9px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">Remove</th>
-                                            </tr>
-                                         </thead>
-                                         <tbody className="divide-y divide-slate-50">
-                                            {v.options.map((opt, oIdx) => (
-                                              <tr key={oIdx} className="divide-x divide-slate-50 group/row hover:bg-slate-50/50 transition-colors">
-                                                 <td className="p-2">
-                                                   <input 
-                                                      className="w-full px-4 py-3 text-center text-[11px] font-black uppercase outline-none bg-transparent" 
-                                                      placeholder="RED, XL, ETC." 
-                                                      value={opt.value} 
-                                                      onChange={(e) => {
-                                                        const newV = [...productForm.variations];
-                                                        newV[idx].options[oIdx].value = e.target.value;
-                                                        setProductForm(p => ({ ...p, variations: newV }));
-                                                      }}
-                                                   />
-                                                 </td>
-                                                 <td className="p-2">
-                                                   <input 
-                                                      type="number"
-                                                      className="w-full px-4 py-3 text-center text-[11px] font-black uppercase outline-none bg-transparent" 
-                                                      placeholder="0.00" 
-                                                      value={opt.price} 
-                                                      onChange={(e) => {
-                                                        const newV = [...productForm.variations];
-                                                        newV[idx].options[oIdx].price = e.target.value;
-                                                        setProductForm(p => ({ ...p, variations: newV }));
-                                                      }}
-                                                   />
-                                                 </td>
-                                                 <td className="p-2">
-                                                   <input 
-                                                      type="number"
-                                                      className="w-full px-4 py-3 text-center text-[11px] font-black uppercase outline-none bg-transparent" 
-                                                      placeholder="0" 
-                                                      value={opt.stock} 
-                                                      onChange={(e) => {
-                                                        const newV = [...productForm.variations];
-                                                        newV[idx].options[oIdx].stock = e.target.value;
-                                                        setProductForm(p => ({ ...p, variations: newV }));
-                                                      }}
-                                                   />
-                                                 </td>
-                                                 <td className="p-2">
-                                                   <input 
-                                                      className="w-full px-4 py-3 text-center text-[11px] font-black uppercase outline-none bg-transparent" 
-                                                      placeholder="SKU-..." 
-                                                      value={opt.sku} 
-                                                      onChange={(e) => {
-                                                        const newV = [...productForm.variations];
-                                                        newV[idx].options[oIdx].sku = e.target.value;
-                                                        setProductForm(p => ({ ...p, variations: newV }));
-                                                      }}
-                                                   />
-                                                 </td>
-                                                 <td className="p-2 text-center">
-                                                   <button 
-                                                      type="button" 
-                                                      onClick={() => {
-                                                        const newV = [...productForm.variations];
-                                                        newV[idx].options = newV[idx].options.filter((_, i) => i !== oIdx);
-                                                        // Ensure at least one option always exists
-                                                        if (newV[idx].options.length === 0) {
-                                                          newV[idx].options = [{ value: '', price: '', stock: '', sku: '' }];
-                                                        }
-                                                        setProductForm(p => ({ ...p, variations: newV }));
-                                                      }}
-                                                      className="p-2 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-all"
-                                                   >
-                                                      <Trash2 size={14}/>
-                                                   </button>
-                                                 </td>
-                                              </tr>
-                                            ))}
-                                         </tbody>
-                                      </table>
-                                    </div>
-                                    <div className="p-5 bg-slate-100/50 flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-slate-100">
-                                       <button 
-                                          type="button" 
-                                          onClick={() => {
-                                            const newV = [...productForm.variations];
-                                            newV[idx].options.push({ value: '', price: '', stock: '', sku: '' });
-                                            setProductForm(p => ({ ...p, variations: newV }));
-                                          }}
-                                          className="flex items-center gap-2 group"
-                                       >
-                                          <div className="w-6 h-6 rounded-full bg-slate-900 flex items-center justify-center text-white scale-75 group-hover:scale-100 transition-transform">
-                                            <Plus size={12} />
-                                          </div>
-                                          <span className="text-[10px] font-black text-slate-900 uppercase tracking-widest">Add Option Line</span>
-                                       </button>
-                                       
-                                       <div className="flex gap-2">
-                                          <button 
-                                            type="button" 
-                                            onClick={() => {
-                                              const newV = [...productForm.variations];
-                                              const basePrice = newV[idx].options[0].price;
-                                              const baseStock = newV[idx].options[0].stock;
-                                              
-                                              newV[idx].options = newV[idx].options.map(opt => ({
-                                                ...opt,
-                                                price: basePrice,
-                                                stock: baseStock
-                                              }));
-                                              setProductForm(p => ({ ...p, variations: newV }));
-                                              toast.info('Applied top values to all options');
-                                            }}
-                                            className="px-6 py-2.5 bg-emerald-600 text-white rounded-xl text-[9px] font-black uppercase tracking-[0.2em] shadow-lg shadow-emerald-200 hover:scale-[1.02] active:scale-95 transition-all"
-                                          >
-                                            Apply Price/Stock to All
-                                          </button>
-                                       </div>
-                                    </div>
-                                 </div>
-                               </div>
-                             ))}
-                          </div>
-                        )}
-                    </div>
-                  )}
-                </section>
-
-                {/* 4. Shipping */}
-                <section className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden mb-12">
-                   <button 
-                    onClick={() => setActiveSections(p => ({ ...p, shipping: !p.shipping }))}
-                    className="w-full px-8 py-6 flex items-center justify-between hover:bg-slate-50 transition-all"
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 bg-amber-50 text-amber-600 rounded-xl flex items-center justify-center">
-                        <TrendingDown className="h-5 w-5" />
-                      </div>
-                      <h4 className="text-lg font-black uppercase tracking-tight text-slate-900">3. Shipping</h4>
-                    </div>
-                    {activeSections.shipping ? <ChevronUp className="h-5 w-5 text-slate-400" /> : <ChevronDown className="h-5 w-5 text-slate-400" />}
-                  </button>
-
-                  {activeSections.shipping && (
-                    <div className="p-8 border-t border-slate-50 space-y-10 animate-in slide-in-from-top-2 duration-300">
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                           <div className="space-y-4">
-                              <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest block">Actual Weight (kg)</label>
-                              <div className="relative">
-                                <Scale className="absolute left-5 top-1/2 -translate-y-1/2 h-4 w-4 text-primary-600" />
-                                <input 
-                                  type="number" 
-                                  className="w-full pl-14 pr-8 py-4 bg-slate-50 border-2 border-slate-50 rounded-2xl text-[12px] font-black outline-none focus:border-primary-500 transition-all" 
-                                  placeholder="0.00" 
-                                  value={productForm.shipping.weight}
-                                  onChange={e => setProductForm(p => ({ ...p, shipping: { ...p.shipping, weight: e.target.value } }))}
-                                />
-                              </div>
-                           </div>
-
-                           <div className="md:col-span-2 bg-slate-900 p-8 rounded-[2.5rem] text-white">
-                              <p className="text-[10px] font-black text-primary-500 uppercase tracking-widest mb-6">Parcel Size Dimensions (cm)</p>
-                              <div className="grid grid-cols-3 gap-6">
-                                 {['length', 'width', 'height'].map(dim => (
-                                    <div key={dim} className="space-y-2">
-                                       <label className="text-[8px] font-black text-white/40 uppercase tracking-widest text-center block">{dim}</label>
-                                       <input 
-                                          type="number" 
-                                          className="w-full py-4 bg-white/5 border border-white/10 rounded-2xl text-center text-[12px] font-black text-white outline-none focus:bg-white focus:text-slate-900 transition-all"
-                                          placeholder="0"
-                                          value={productForm.shipping.parcelSize[dim]}
-                                          onChange={e => setProductForm(p => ({ 
-                                            ...p, 
-                                            shipping: { 
-                                              ...p.shipping, 
-                                              parcelSize: { ...p.shipping.parcelSize, [dim]: e.target.value } 
-                                            } 
-                                          }))}
-                                       />
-                                    </div>
-                                 ))}
-                              </div>
-                           </div>
+                          <h4 className="text-[11px] font-black uppercase tracking-widest text-slate-900">2. Pricing</h4>
                         </div>
-
-                        <div className="space-y-4">
-                           <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest block">Standard Shipping Fee (₱)</label>
-                           <div className="relative max-w-sm">
-                             <PhilippinePeso className="absolute left-5 top-1/2 -translate-y-1/2 h-5 w-5 text-primary-600" />
-                             <input 
-                                type="number" 
-                                className="w-full pl-14 pr-8 py-4 bg-slate-50 border-2 border-slate-50 rounded-2xl text-[14px] font-black outline-none focus:border-primary-500 transition-all" 
+                        {activeSections.pricing ? <ChevronUp className="h-4 w-4 text-slate-400" /> : <ChevronDown className="h-4 w-4 text-slate-400" />}
+                      </button>
+                      
+                      {activeSections.pricing && (
+                        <div className="p-6 border-t border-slate-50 animate-in slide-in-from-top-2 duration-300">
+                          <div className="max-w-xs space-y-2">
+                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Unit Price (₱) *</label>
+                            <div className="relative">
+                              <PhilippinePeso className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                              <input 
+                                type="number" required value={productForm.price}
+                                onChange={e => setProductForm(p => ({ ...p, price: e.target.value }))}
+                                className="w-full pl-10 pr-5 py-3.5 bg-slate-50 border-2 border-slate-50 rounded-xl text-[16px] font-black tracking-tighter outline-none focus:border-primary-500 transition-all"
                                 placeholder="0.00"
-                                value={productForm.shipping.fee}
-                                onChange={e => setProductForm(p => ({ ...p, shipping: { ...p.shipping, fee: e.target.value } }))}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </section>
+
+                    {/* 3. Inventory & Stock */}
+                    <section className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
+                      <button 
+                        onClick={() => setActiveSections(p => ({ ...p, stock: !p.stock }))}
+                        className="w-full px-6 py-4 flex items-center justify-between hover:bg-slate-50 transition-all font-sans"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 bg-amber-50 text-amber-600 rounded-lg flex items-center justify-center">
+                            <Package className="h-4 w-4" />
+                          </div>
+                          <h4 className="text-[11px] font-black uppercase tracking-widest text-slate-900">3. Inventory & Stock</h4>
+                        </div>
+                        {activeSections.stock ? <ChevronUp className="h-4 w-4 text-slate-400" /> : <ChevronDown className="h-4 w-4 text-slate-400" />}
+                      </button>
+                      
+                      {activeSections.stock && (
+                        <div className="p-6 border-t border-slate-50 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 animate-in slide-in-from-top-2 duration-300">
+                          <div className="space-y-2">
+                             <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Stock Quantity</label>
+                             <input 
+                               type="number" value={productForm.stockQuantity}
+                               onChange={e => setProductForm(p => ({ ...p, stockQuantity: e.target.value }))}
+                               className="w-full px-5 py-3.5 bg-slate-50 border-2 border-slate-50 rounded-xl text-[12px] font-black outline-none focus:border-primary-500 transition-all"
+                             />
+                          </div>
+                          <div className="space-y-2">
+                             <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Status</label>
+                             <select 
+                               value={productForm.stockStatus}
+                               onChange={e => setProductForm(p => ({ ...p, stockStatus: e.target.value }))}
+                               className="w-full px-5 py-3.5 bg-slate-50 border-2 border-slate-50 rounded-xl text-[10px] font-black uppercase outline-none focus:border-primary-500 appearance-none"
+                             >
+                               <option value="in_stock">In Stock</option>
+                               <option value="out_of_stock">Out of Stock</option>
+                             </select>
+                          </div>
+                          <div className="space-y-2">
+                             <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Low Stock Alert</label>
+                             <input 
+                               type="number" value={productForm.lowStockThreshold}
+                               onChange={e => setProductForm(p => ({ ...p, lowStockThreshold: e.target.value }))}
+                               className="w-full px-5 py-3.5 bg-slate-50 border-2 border-slate-50 rounded-xl text-[12px] font-black outline-none focus:border-primary-500 transition-all"
+                             />
+                          </div>
+                          <div className="space-y-2">
+                             <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Max per Order</label>
+                             <input 
+                               type="number" value={productForm.maxOrderQuantity}
+                               onChange={e => setProductForm(p => ({ ...p, maxOrderQuantity: e.target.value }))}
+                               className="w-full px-5 py-3.5 bg-slate-50 border-2 border-slate-50 rounded-xl text-[12px] font-black outline-none focus:border-primary-500 transition-all"
+                               placeholder="Unlimited"
+                             />
+                          </div>
+                        </div>
+                      )}
+                    </section>
+
+                    {/* 4. Variants (Optional) */}
+                    <section className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
+                      <button 
+                        onClick={() => setActiveSections(p => ({ ...p, variants: !p.variants }))}
+                        className="w-full px-6 py-4 flex items-center justify-between hover:bg-slate-50 transition-all font-sans"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 bg-indigo-50 text-indigo-600 rounded-lg flex items-center justify-center">
+                            <Layers className="h-4 w-4" />
+                          </div>
+                          <h4 className="text-[11px] font-black uppercase tracking-widest text-slate-900">4. Variants (Optional)</h4>
+                        </div>
+                        {activeSections.variants ? <ChevronUp className="h-4 w-4 text-slate-400" /> : <ChevronDown className="h-4 w-4 text-slate-400" />}
+                      </button>
+                      
+                      {activeSections.variants && (
+                        <div className="p-6 border-t border-slate-50 space-y-6 animate-in slide-in-from-top-2 duration-300">
+                           <div className="flex justify-end">
+                              <button 
+                                onClick={() => setProductForm(p => ({ ...p, variants: [...p.variants, { combination: '', price: '', stock: '', sku: '', type: 'Size' }] }))}
+                                className="px-4 py-2 bg-slate-900 text-white rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-primary-600 transition-all"
+                              >
+                                + Add Variant
+                              </button>
+                           </div>
+                           
+                           {productForm.variants.length > 0 ? (
+                             <div className="overflow-x-auto no-scrollbar">
+                               <table className="w-full border-collapse">
+                                 <thead>
+                                   <tr className="bg-slate-50/50">
+                                     <th className="px-4 py-3 text-left text-[8px] font-black text-slate-400 uppercase tracking-widest border-b">Type</th>
+                                     <th className="px-4 py-3 text-left text-[8px] font-black text-slate-400 uppercase tracking-widest border-b">Combination</th>
+                                     <th className="px-4 py-3 text-left text-[8px] font-black text-slate-400 uppercase tracking-widest border-b">Price</th>
+                                     <th className="px-4 py-3 text-left text-[8px] font-black text-slate-400 uppercase tracking-widest border-b">Stock</th>
+                                     <th className="px-4 py-3 text-left text-[8px] font-black text-slate-400 uppercase tracking-widest border-b">SKU</th>
+                                     <th className="px-4 py-3 text-center text-[8px] font-black text-slate-400 uppercase tracking-widest border-b">Action</th>
+                                   </tr>
+                                 </thead>
+                                 <tbody className="divide-y divide-slate-50">
+                                   {productForm.variants.map((v, i) => (
+                                     <tr key={i}>
+                                       <td className="p-2">
+                                          <select 
+                                            value={v.type} onChange={e => { const vn = [...productForm.variants]; vn[i].type = e.target.value; setProductForm(p => ({ ...p, variants: vn })); }}
+                                            className="w-full px-2 py-2 bg-slate-50 border-none rounded text-[10px] font-black uppercase outline-none"
+                                          >
+                                            <option value="Size">Size</option>
+                                            <option value="Color">Color</option>
+                                            <option value="Weight">Weight</option>
+                                            <option value="Volume">Volume</option>
+                                          </select>
+                                       </td>
+                                       <td className="p-2">
+                                          <input 
+                                            type="text" value={v.combination} onChange={e => { const vn = [...productForm.variants]; vn[i].combination = e.target.value; setProductForm(p => ({ ...p, variants: vn })); }}
+                                            className="w-full px-2 py-2 bg-slate-50 border-none rounded text-[10px] font-bold outline-none" placeholder="Red, XL..."
+                                          />
+                                       </td>
+                                       <td className="p-2">
+                                          <input 
+                                            type="number" value={v.price} onChange={e => { const vn = [...productForm.variants]; vn[i].price = e.target.value; setProductForm(p => ({ ...p, variants: vn })); }}
+                                            className="w-full px-2 py-2 bg-slate-50 border-none rounded text-[10px] font-bold outline-none" placeholder="0.00"
+                                          />
+                                       </td>
+                                       <td className="p-2">
+                                          <input 
+                                            type="number" value={v.stock} onChange={e => { const vn = [...productForm.variants]; vn[i].stock = e.target.value; setProductForm(p => ({ ...p, variants: vn })); }}
+                                            className="w-full px-2 py-2 bg-slate-50 border-none rounded text-[10px] font-bold outline-none" placeholder="0"
+                                          />
+                                       </td>
+                                       <td className="p-2">
+                                          <input 
+                                            type="text" value={v.sku} onChange={e => { const vn = [...productForm.variants]; vn[i].sku = e.target.value; setProductForm(p => ({ ...p, variants: vn })); }}
+                                            className="w-full px-2 py-2 bg-slate-50 border-none rounded text-[10px] font-bold outline-none" placeholder="SKU-..."
+                                          />
+                                       </td>
+                                       <td className="p-2 text-center">
+                                          <button onClick={() => setProductForm(p => ({ ...p, variants: p.variants.filter((_, idx) => idx !== i) }))} className="text-rose-500 hover:scale-110 transition-transform"><Trash2 className="h-3.5 w-3.5"/></button>
+                                       </td>
+                                     </tr>
+                                   ))}
+                                 </tbody>
+                               </table>
+                             </div>
+                           ) : (
+                             <div className="p-10 border-2 border-dashed border-slate-100 rounded-3xl flex flex-col items-center justify-center text-slate-300 gap-2">
+                                <Box className="h-8 w-8" />
+                                <span className="text-[9px] font-black uppercase tracking-widest">No variants defined. Using base configuration.</span>
+                             </div>
+                           )}
+                        </div>
+                      )}
+                    </section>
+
+                    {/* 5. Media (Required) */}
+                    <section className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
+                      <button 
+                        onClick={() => setActiveSections(p => ({ ...p, media: !p.media }))}
+                        className="w-full px-6 py-4 flex items-center justify-between hover:bg-slate-50 transition-all font-sans"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 bg-pink-50 text-pink-600 rounded-lg flex items-center justify-center">
+                            <ImageIcon className="h-4 w-4" />
+                          </div>
+                          <h4 className="text-[11px] font-black uppercase tracking-widest text-slate-900">5. Media *</h4>
+                        </div>
+                        {activeSections.media ? <ChevronUp className="h-4 w-4 text-slate-400" /> : <ChevronDown className="h-4 w-4 text-slate-400" />}
+                      </button>
+                      
+                      {activeSections.media && (
+                        <div className="p-6 border-t border-slate-50 space-y-6 animate-in slide-in-from-top-2 duration-300">
+                          <div className="space-y-4">
+                            <div className="flex items-center justify-between">
+                              <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Images (Min 1, Max 10)</label>
+                              <span className={`text-[10px] font-bold ${productForm.images.length >= 1 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                                {productForm.images.length}/10 Images
+                              </span>
+                            </div>
+                            <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                              {productForm.images.map((img, i) => (
+                                <div key={i} className="aspect-square bg-slate-50 rounded-xl border-2 border-slate-100 relative group overflow-hidden">
+                                  <img src={getImageUrl(img)} alt="" className="w-full h-full object-cover" />
+                                  <button 
+                                    type="button" 
+                                    onClick={() => setProductForm(p => ({ ...p, images: p.images.filter((_, idx) => idx !== i) }))}
+                                    className="absolute inset-0 bg-rose-600/90 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+                                  >
+                                    <Trash2 className="h-4 w-4 text-white" />
+                                  </button>
+                                </div>
+                              ))}
+                              {productForm.images.length < 10 && (
+                                <label className="aspect-square border-2 border-dashed border-slate-200 rounded-xl flex flex-col items-center justify-center gap-1 cursor-pointer hover:border-primary-500 hover:bg-primary-50 transition-all group">
+                                  <Plus className="h-4 w-4 text-slate-300 group-hover:text-primary-600" />
+                                  <span className="text-[7px] font-black text-slate-400 uppercase tracking-widest">Upload</span>
+                                  <input type="file" multiple accept="image/*" className="hidden" onChange={handleImageUpload} />
+                                </label>
+                              )}
+                            </div>
+                          </div>
+                          
+                          <div className="space-y-4">
+                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block">Video Stream (Optional URL)</label>
+                            <div className="relative">
+                              <Video className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                              <input 
+                                type="text" value={productForm.video}
+                                onChange={e => setProductForm(p => ({ ...p, video: e.target.value }))}
+                                className="w-full pl-10 pr-5 py-3.5 bg-slate-50 border-2 border-slate-50 rounded-xl text-[12px] font-medium outline-none focus:border-primary-500 transition-all"
+                                placeholder="Youtube or direct link..."
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </section>
+
+                    {/* 6. Fulfillment (Pickup Only) */}
+                    <section className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
+                      <button 
+                        onClick={() => setActiveSections(p => ({ ...p, fulfillment: !p.fulfillment }))}
+                        className="w-full px-6 py-4 flex items-center justify-between hover:bg-slate-50 transition-all font-sans"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 bg-rose-50 text-rose-600 rounded-lg flex items-center justify-center">
+                            <MapPin className="h-4 w-4" />
+                          </div>
+                          <h4 className="text-[11px] font-black uppercase tracking-widest text-slate-900">6. Fulfillment</h4>
+                        </div>
+                        {activeSections.fulfillment ? <ChevronUp className="h-4 w-4 text-slate-400" /> : <ChevronDown className="h-4 w-4 text-slate-400" />}
+                      </button>
+                      
+                      {activeSections.fulfillment && (
+                        <div className="p-6 border-t border-slate-50 space-y-6 animate-in slide-in-from-top-2 duration-300">
+                           <div className="p-5 bg-rose-50/50 rounded-2xl border border-rose-100 flex items-center gap-4">
+                              <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-rose-600 shadow-sm">
+                                <Shield className="h-5 w-5" />
+                              </div>
+                              <div>
+                                <p className="text-[11px] font-black text-rose-900 uppercase tracking-widest">Enforced: Store Pickup Only</p>
+                                <p className="text-[9px] text-rose-600 font-bold uppercase tracking-widest">Delivery and shipping protocols are restricted for this asset class.</p>
+                              </div>
+                           </div>
+                           
+                           <div className="space-y-2">
+                             <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Pickup Instructions (Optional)</label>
+                             <textarea 
+                               value={productForm.pickupInstructions}
+                               onChange={e => setProductForm(p => ({ ...p, pickupInstructions: e.target.value }))}
+                               className="w-full px-5 py-4 bg-slate-50 border-2 border-slate-50 rounded-2xl text-[12px] font-medium outline-none focus:border-primary-500 transition-all h-24 resize-none"
+                               placeholder="Specify location details, operational hours, or identification requirements..."
                              />
                            </div>
                         </div>
+                      )}
+                    </section>
+
+                    {/* 7. Product Organization */}
+                    <section className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
+                      <button 
+                        onClick={() => setActiveSections(p => ({ ...p, organization: !p.organization }))}
+                        className="w-full px-6 py-4 flex items-center justify-between hover:bg-slate-50 transition-all font-sans"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 bg-teal-50 text-teal-600 rounded-lg flex items-center justify-center">
+                            <Tag className="h-4 w-4" />
+                          </div>
+                          <h4 className="text-[11px] font-black uppercase tracking-widest text-slate-900">7. Organization</h4>
+                        </div>
+                        {activeSections.organization ? <ChevronUp className="h-4 w-4 text-slate-400" /> : <ChevronDown className="h-4 w-4 text-slate-400" />}
+                      </button>
+                      
+                      {activeSections.organization && (
+                        <div className="p-6 border-t border-slate-50 grid grid-cols-1 md:grid-cols-2 gap-6 animate-in slide-in-from-top-2 duration-300">
+                          <div className="space-y-2">
+                             <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Visibility Status</label>
+                             <select 
+                               value={productForm.visibility}
+                               onChange={e => setProductForm(p => ({ ...p, visibility: e.target.value }))}
+                               className="w-full px-5 py-3.5 bg-slate-50 border-2 border-slate-50 rounded-xl text-[10px] font-black uppercase outline-none focus:border-primary-500 appearance-none"
+                             >
+                               <option value="published">Published (Live)</option>
+                               <option value="draft">Draft (Hidden)</option>
+                               <option value="scheduled">Scheduled</option>
+                             </select>
+                          </div>
+                          <div className="space-y-2">
+                             <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Collection / Group</label>
+                             <input 
+                               type="text" value={productForm.collectionGroup}
+                               onChange={e => setProductForm(p => ({ ...p, collectionGroup: e.target.value }))}
+                               className="w-full px-5 py-3.5 bg-slate-50 border-2 border-slate-50 rounded-xl text-[12px] font-black uppercase outline-none focus:border-primary-500 transition-all"
+                               placeholder="Summer 2024, Clearance..."
+                             />
+                          </div>
+                        </div>
+                      )}
+                    </section>
+
+                    {/* 8. Additional Details (Optional) */}
+                    <section className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden mb-8">
+                      <button 
+                        onClick={() => setActiveSections(p => ({ ...p, additional: !p.additional }))}
+                        className="w-full px-6 py-4 flex items-center justify-between hover:bg-slate-50 transition-all font-sans"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 bg-slate-50 text-slate-600 rounded-lg flex items-center justify-center">
+                            <FileText className="h-4 w-4" />
+                          </div>
+                          <h4 className="text-[11px] font-black uppercase tracking-widest text-slate-900">8. Additional Details</h4>
+                        </div>
+                        {activeSections.additional ? <ChevronUp className="h-4 w-4 text-slate-400" /> : <ChevronDown className="h-4 w-4 text-slate-400" />}
+                      </button>
+                      
+                      {activeSections.additional && (
+                        <div className="p-6 border-t border-slate-50 grid grid-cols-1 md:grid-cols-2 gap-8 animate-in slide-in-from-top-2 duration-300">
+                           <div className="space-y-2">
+                             <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1 flex items-center gap-2"><Clock className="h-2.5 w-2.5" /> Expiry Date</label>
+                             <input 
+                               type="date" value={productForm.expiryDate}
+                               onChange={e => setProductForm(p => ({ ...p, expiryDate: e.target.value }))}
+                               className="w-full px-5 py-3.5 bg-slate-50 border-2 border-slate-50 rounded-xl text-[12px] font-bold outline-none focus:border-primary-500 transition-all"
+                             />
+                           </div>
+                           <div className="space-y-2">
+                             <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Warranty Info</label>
+                             <input 
+                               type="text" value={productForm.warrantyInfo}
+                               onChange={e => setProductForm(p => ({ ...p, warrantyInfo: e.target.value }))}
+                               className="w-full px-5 py-3.5 bg-slate-50 border-2 border-slate-50 rounded-xl text-[12px] font-bold outline-none focus:border-primary-500 transition-all"
+                               placeholder="e.g. 1 Year Local Warranty"
+                             />
+                           </div>
+                           <div className="md:col-span-2 space-y-2">
+                             <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Usage Instructions / Ingredients</label>
+                             <textarea 
+                               value={productForm.usageInstructions}
+                               onChange={e => setProductForm(p => ({ ...p, usageInstructions: e.target.value }))}
+                               className="w-full px-5 py-4 bg-slate-50 border-2 border-slate-50 rounded-2xl text-[12px] font-medium outline-none focus:border-primary-500 transition-all h-24 resize-none"
+                               placeholder="How to use or composition details..."
+                             />
+                           </div>
+                        </div>
+                      )}
+                    </section>
+                  </>
+                ) : (
+                  <div className="animate-in fade-in duration-500">
+                    {/* Live Preview Container */}
+                    <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-2xl overflow-hidden mb-12">
+                       <div className="aspect-square md:aspect-video bg-slate-100 relative group">
+                          {productForm.images.length > 0 ? (
+                            <img src={getImageUrl(productForm.images[0])} alt="Preview" className="w-full h-full object-cover" />
+                          ) : (
+                            <div className="w-full h-full flex flex-col items-center justify-center text-slate-300 gap-4">
+                               <ImageIcon size={48} />
+                               <span className="text-[10px] font-black uppercase tracking-widest">No Media Synchronized</span>
+                            </div>
+                          )}
+                          <div className="absolute top-6 left-6 flex gap-2">
+                             <span className="px-4 py-1.5 bg-white/90 backdrop-blur-md rounded-full text-[9px] font-black uppercase tracking-widest text-slate-900 border border-white/20">Preview Mode</span>
+                             <span className="px-4 py-1.5 bg-emerald-500 text-white rounded-full text-[9px] font-black uppercase tracking-widest shadow-lg">{productForm.stockStatus === 'in_stock' ? 'In Stock' : 'Out of Stock'}</span>
+                          </div>
+                       </div>
+                       
+                       <div className="p-10 space-y-8">
+                          <div className="space-y-2">
+                             <div className="flex items-center gap-2">
+                                <span className="text-[10px] font-black text-primary-600 uppercase tracking-[0.3em]">{productForm.category || 'Asset Class'}</span>
+                                <span className="text-slate-300">•</span>
+                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">SKU: {productForm.sku || 'PENDING'}</span>
+                             </div>
+                             <h2 className="text-4xl font-black uppercase tracking-tighter text-slate-900 leading-tight">{productForm.name || 'Undefined Asset'}</h2>
+                             <p className="text-[14px] font-medium text-slate-500 leading-relaxed max-w-2xl">{productForm.shortDescription || 'No preview description provided.'}</p>
+                          </div>
+                          
+                          <div className="flex items-baseline gap-2">
+                             <span className="text-[18px] font-black text-slate-900">₱</span>
+                             <span className="text-5xl font-black tracking-tighter text-slate-900">{Number(productForm.price).toLocaleString()}</span>
+                          </div>
+                          
+                          <div className="p-8 bg-slate-50 rounded-3xl border border-slate-100 flex flex-wrap gap-10">
+                             <div className="space-y-1">
+                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Fulfillment Type</p>
+                                <div className="flex items-center gap-2 text-slate-900">
+                                   <MapPin size={14} className="text-primary-600" />
+                                   <span className="text-[12px] font-black uppercase">Store Pickup Only</span>
+                                </div>
+                             </div>
+                             <div className="space-y-1">
+                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Available Stock</p>
+                                <div className="flex items-center gap-2 text-slate-900">
+                                   <Package size={14} className="text-primary-600" />
+                                   <span className="text-[12px] font-black uppercase">{productForm.stockQuantity || 0} Units</span>
+                                </div>
+                             </div>
+                             {productForm.brand && (
+                               <div className="space-y-1">
+                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Brand Authority</p>
+                                <div className="flex items-center gap-2 text-slate-900">
+                                   <Shield size={14} className="text-primary-600" />
+                                   <span className="text-[12px] font-black uppercase">{productForm.brand}</span>
+                                </div>
+                             </div>
+                             )}
+                          </div>
+                          
+                          <div className="space-y-4">
+                             <h4 className="text-[11px] font-black uppercase tracking-widest text-slate-900 border-b border-slate-100 pb-2">Technical Description</h4>
+                             <div className="text-[13px] text-slate-600 font-medium leading-loose whitespace-pre-wrap">
+                                {productForm.description || 'Detailed technical analysis pending...'}
+                             </div>
+                          </div>
+                       </div>
                     </div>
-                  )}
-                </section>
+                  </div>
+                )}
               </div>
             </div>
 
