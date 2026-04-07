@@ -203,19 +203,29 @@ const updateProduct = async (req, res) => {
       return res.status(404).json({ message: 'Product not found' });
     }
 
-    // Check permissions: Owner, store staff, or super admin
-    const isOwner = product.addedBy.toString() === (req.user.id || req.user._id).toString();
+    // Check permissions safely
+    const userId = (req.user._id || req.user.id).toString();
+    const isOwner = product.addedBy && product.addedBy.toString() === userId;
     const isStoreStaff = req.user.role === 'staff' && req.user.store && product.store && product.store.toString() === req.user.store.toString();
-    const Store = require('../models/Store');
-    const isStoreOwner = req.user.role === 'admin' && product.store && (await Store.findById(product.store))?.owner.toString() === req.user._id.toString();
-
-    if (req.user.role !== 'super_admin' && !isOwner && !isStoreStaff && !isStoreOwner) {
-      return res.status(403).json({ message: 'Access denied' });
+    
+    let isStoreOwner = false;
+    if (req.user.role === 'admin' && product.store) {
+      const Store = require('../models/Store');
+      const store = await Store.findById(product.store);
+      isStoreOwner = store && store.owner && store.owner.toString() === userId;
     }
 
-    const { stockQuantity, ...updateData } = req.body;
+    if (req.user.role !== 'super_admin' && !isOwner && !isStoreStaff && !isStoreOwner) {
+      return res.status(403).json({ message: 'Access denied. You do not have permission to update this asset.' });
+    }
+
+    // Protect immutable/critical fields
+    const { stockQuantity, _id, id, store, addedBy, ...updateData } = req.body;
+    
+    // Explicitly update only mutable fields
     Object.assign(product, updateData);
 
+    // Ensure store resolution if missing
     if (!product.store) {
       product.store = await resolveAdminStore(req.user);
     }
@@ -230,7 +240,15 @@ const updateProduct = async (req, res) => {
     });
   } catch (error) {
     console.error('Update product error:', error);
-    res.status(500).json({ message: 'Server error' });
+    
+    // Specifically handle unique constraint violations (e.g., SKU already in use)
+    if (error.code === 11000) {
+      return res.status(400).json({ 
+        message: 'Conflict: The provided SKU is already assigned to another product. Catalog identifiers must be unique.' 
+      });
+    }
+    
+    res.status(500).json({ message: 'Internal server error during asset synchronization' });
   }
 };
 
