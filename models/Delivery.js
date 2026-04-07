@@ -66,7 +66,22 @@ const deliverySchema = new mongoose.Schema({
   isLive: {
     type: Boolean,
     default: true
-  }
+  },
+  riderVehicleInfo: {
+    type: String,
+    trim: true
+  },
+  isRiderVerified: {
+    type: Boolean,
+    default: false
+  },
+  complaints: [{
+    content: { type: String, required: true },
+    type: { type: String, enum: ['suspicious_location', 'damaged_items', 'other'] },
+    status: { type: String, enum: ['pending', 'resolved'], default: 'pending' },
+    createdAt: { type: Date, default: Date.now },
+    resolvedAt: { type: Date }
+  }]
 }, {
   timestamps: true
 });

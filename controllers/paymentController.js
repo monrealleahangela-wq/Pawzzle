@@ -181,20 +181,27 @@ const handleWebhook = async (req, res) => {
                     booking.paymentStatus = 'paid';
                     booking.paymentMethod = paymentData.attributes.source.type;
                     booking.paymentDetails.paymentId = paymentData.id;
+                    
+                    // Ensure the booking isn't cancelled if it was auto-cancelled while paying
+                    // Status remains 'pending' (awaiting seller approval)
+                    if (booking.status === 'cancelled') {
+                        booking.status = 'pending';
+                    }
+                    
                     await booking.save();
                     
-                    // Note: Seller still needs to "Approve" it to generate QR (per requirement)
-                    // But we can notify the seller that payment was received
+                    // Requirement: Seller sees a notification of the payment awaiting approval
                     await createNotification({
                         recipient: booking.addedBy,
                         sender: booking.customer,
                         type: 'booking_status',
                         title: 'Booking Payment Received',
-                        message: `Payment for booking #${booking._id.toString().slice(-8).toUpperCase()} has been received. You can now approve this booking.`,
+                        message: `Payment for booking #${booking._id.toString().slice(-8).toUpperCase()} has been received. This booking is now AWAITING APPROVAL.`,
                         relatedId: booking._id,
                         relatedModel: 'Booking'
                     });
-                    console.log(`✅ Booking ${booking._id} marked as PAID via webhook`);
+                    
+                    console.log(`✅ Booking ${booking._id} marked as PAID via webhook. Awaiting Seller Approval.`);
                 }
                 return res.sendStatus(200);
             }

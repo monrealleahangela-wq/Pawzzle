@@ -239,6 +239,65 @@ const sendDeliveryMessage = async (req, res) => {
   }
 };
 
+// Rider: Verify Identity before starting
+const verifyRider = async (req, res) => {
+  try {
+    const { token } = req.params;
+    const { riderName, riderPhone, riderVehicleInfo } = req.body;
+
+    const delivery = await Delivery.findOne({ riderToken: token });
+    if (!delivery || !delivery.isLive) return res.status(403).json({ message: 'Unauthorized link' });
+
+    delivery.riderName = riderName;
+    delivery.riderPhone = riderPhone;
+    delivery.riderVehicleInfo = riderVehicleInfo;
+    delivery.isRiderVerified = true;
+    
+    await delivery.save();
+    res.json({ success: true, message: 'Rider verified' });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// Customer: Submit Complaint
+const submitComplaint = async (req, res) => {
+  try {
+    const { token } = req.params;
+    const { content, type } = req.body;
+
+    const delivery = await Delivery.findOne({ trackingToken: token });
+    if (!delivery) return res.status(404).json({ message: 'Delivery not found' });
+
+    delivery.complaints.push({ content, type, status: 'pending' });
+    await delivery.save();
+    res.status(201).json({ success: true, message: 'Complaint submitted' });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// Admin/Seller: Resolve Complaint
+const resolveComplaint = async (req, res) => {
+  try {
+    const { deliveryId, complaintId } = req.params;
+    
+    const delivery = await Delivery.findById(deliveryId);
+    if (!delivery) return res.status(404).json({ message: 'Delivery not found' });
+
+    const complaint = delivery.complaints.id(complaintId);
+    if (!complaint) return res.status(404).json({ message: 'Complaint not found' });
+
+    complaint.status = 'resolved';
+    complaint.resolvedAt = new Date();
+    
+    await delivery.save();
+    res.json({ success: true, message: 'Complaint resolved' });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
 module.exports = {
   generateDeliveryLinks,
   getDeliveryByToken,
@@ -247,5 +306,8 @@ module.exports = {
   updateDeliveryStatus,
   updateLocation,
   sendDeliveryMessage,
+  verifyRider,
+  submitComplaint,
+  resolveComplaint,
   internalCreateDelivery
 };

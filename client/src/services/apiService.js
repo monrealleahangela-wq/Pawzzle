@@ -390,7 +390,10 @@ export const deliveryService = {
   getTrackingForBooking: (bookingId) => api.get(`/deliveries/booking/${bookingId}`),
   updateStatus: (token, status) => api.patch(`/deliveries/status/${token}`, { status }),
   updateLocation: (token, locationData) => api.patch(`/deliveries/location/${token}`, locationData),
-  sendMessage: (token, messageData) => api.post(`/deliveries/chat/${token}`, messageData)
+  sendMessage: (token, messageData) => api.post(`/deliveries/chat/${token}`, messageData),
+  verifyRider: (token, data) => api.patch(`/deliveries/verify/${token}`, data),
+  submitComplaint: (token, data) => api.post(`/deliveries/complaint/${token}`, data),
+  resolveComplaint: (deliveryId, complaintId) => api.patch(`/deliveries/resolve-complaint/${deliveryId}/${complaintId}`)
 };
 
 export default api;

@@ -254,7 +254,7 @@ const StaffManagement = () => {
                 <div className="bg-slate-900 p-2 rounded-[2rem] shadow-xl border border-slate-800 mb-8">
                     <div className="grid grid-cols-1 md:grid-cols-12 gap-2">
                         <div className="md:col-span-6 relative group">
-                            <div className="absolute left-6 top-1/2 -translate-y-1/2">
+                            <div className="absolute left-6 top-1/2 -translate-y-1/2 flex items-center justify-center pointer-events-none">
                                 <Search className="h-4 w-4 text-slate-500 group-focus-within:text-primary-500 transition-colors" />
                             </div>
                             <input
@@ -262,7 +262,7 @@ const StaffManagement = () => {
                                 value={searchQuery} 
                                 onChange={(e) => setSearchQuery(e.target.value)}
                                 placeholder="SEARCH STAFF MEMBERS..."
-                                className="w-full pl-16 pr-4 py-4 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl outline-none focus:ring-2 focus:ring-primary-500/20 transition-all placeholder:text-slate-600 font-sans"
+                                className="w-full pl-14 pr-4 py-4 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl outline-none focus:ring-2 focus:ring-primary-500/20 transition-all placeholder:text-slate-600 font-sans"
                             />
                         </div>
                         <div className="md:col-span-4 relative group">

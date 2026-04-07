@@ -149,7 +149,10 @@ const BookingsManagement = () => {
     return matchesStatus && matchesSearch;
   });
 
-  const getStatusStyle = (status) => {
+  const getStatusStyle = (status, paymentStatus) => {
+    if (status === 'pending' && paymentStatus === 'paid') {
+      return 'bg-amber-600 text-white border-amber-500 shadow-amber-200 animate-pulse';
+    }
     switch (status) {
       case 'pending': return 'bg-amber-500 text-white border-amber-400 shadow-amber-200';
       case 'approved': return 'bg-primary-600 text-white border-primary-500 shadow-primary-200';
@@ -239,13 +242,13 @@ const BookingsManagement = () => {
       <div className="relative z-10 bg-slate-900 p-2 rounded-[1.5rem] shadow-xl border border-slate-800">
         <div className="grid grid-cols-1 md:grid-cols-12 gap-2">
           <div className="md:col-span-6 relative group">
-            <div className="absolute left-6 top-1/2 -translate-y-1/2">
+            <div className="absolute left-6 top-1/2 -translate-y-1/2 flex items-center justify-center pointer-events-none">
               <Search className="h-4 w-4 text-slate-500 group-focus-within:text-primary-500 transition-colors" />
             </div>
             <input
               type="text"
               placeholder="SEARCH BOOKINGS..."
-              className="w-full pl-16 pr-4 py-4 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl outline-none focus:ring-2 focus:ring-primary-500/50 placeholder:text-slate-600 transition-all font-sans"
+              className="w-full pl-14 pr-4 py-4 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl outline-none focus:ring-2 focus:ring-primary-500/50 placeholder:text-slate-600 transition-all font-sans"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -324,8 +327,8 @@ const BookingsManagement = () => {
                     </td>
                     <td className="px-6 py-3.5">
                       <div className="flex flex-col gap-1">
-                        <span className={`px-4 py-1 rounded-full text-[8px] font-black uppercase tracking-[0.2em] border-2 w-fit ${getStatusStyle(booking.status)}`}>
-                          {booking.status === 'no_show' ? 'EXPIRED' : booking.status.replace('_', ' ')}
+                        <span className={`px-4 py-1 rounded-full text-[8px] font-black uppercase tracking-[0.2em] border-2 w-fit ${getStatusStyle(booking.status, booking.paymentStatus)}`}>
+                          {booking.status === 'pending' && booking.paymentStatus === 'paid' ? 'PAID - AWAITING APPROVAL' : (booking.status === 'no_show' ? 'EXPIRED' : booking.status.replace('_', ' '))}
                         </span>
                         {booking.isScanned && (
                           <span className="text-[7px] font-black text-emerald-600 uppercase tracking-widest flex items-center gap-1">
@@ -684,9 +687,10 @@ const BookingsManagement = () => {
               {(user?.role === 'admin' || user?.role === 'staff') && !selectedBooking.isRevenueRecorded && selectedBooking.status !== 'cancelled' && (
                 <button
                   onClick={() => confirmBookingPayment(selectedBooking._id)}
-                  className="px-6 py-3.5 bg-emerald-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-700 transition-all active:scale-[0.98] shadow-lg shadow-emerald-900/10 flex items-center gap-2"
+                  className={`px-6 py-3.5 ${selectedBooking.paymentStatus === 'paid' ? 'bg-amber-600 animate-bounce' : 'bg-emerald-600'} text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:opacity-90 transition-all active:scale-[0.98] shadow-lg shadow-emerald-900/10 flex items-center gap-2`}
                 >
-                  <ShieldCheck className="h-4 w-4" /> Approve Payment
+                  <ShieldCheck className="h-4 w-4" /> 
+                  {selectedBooking.paymentStatus === 'paid' ? 'CONFIRM PAID BOOKING' : 'Approve Payment'}
                 </button>
               )}
               {(user?.role === 'admin' || user?.role === 'staff') && selectedBooking.status !== 'completed' && selectedBooking.status !== 'cancelled' && (

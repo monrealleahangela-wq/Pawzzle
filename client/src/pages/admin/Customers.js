@@ -69,7 +69,7 @@ const Customers = () => {
 
                 <div className="bg-slate-900 p-2 rounded-2xl shadow-xl border border-slate-800">
                     <div className="relative group">
-                        <div className="absolute left-6 top-1/2 -translate-y-1/2">
+                        <div className="absolute left-6 top-1/2 -translate-y-1/2 flex items-center justify-center pointer-events-none">
                             <Search className="h-4 w-4 text-slate-500 group-focus-within:text-primary-500 transition-colors" />
                         </div>
                         <input
@@ -77,7 +77,7 @@ const Customers = () => {
                             placeholder="SEARCH CUSTOMERS BY NAME, EMAIL, OR PHONE..."
                             value={searchQuery}
                             onChange={e => setSearchQuery(e.target.value)}
-                            className="w-full pl-16 pr-12 py-4 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl outline-none focus:ring-2 focus:ring-primary-500/20 transition-all placeholder:text-slate-600"
+                            className="w-full pl-14 pr-12 py-4 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl outline-none focus:ring-2 focus:ring-primary-500/20 transition-all placeholder:text-slate-600 font-sans"
                         />
                         {searchQuery && (
                             <button

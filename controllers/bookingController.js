@@ -23,6 +23,7 @@ const autoCancelExpiredBookings = async (filterBase = {}) => {
     const unapprovedQuery = {
       ...filterBase,
       status: 'pending',
+      paymentStatus: { $ne: 'paid' }, // Skip if already paid
       createdAt: { $lt: unapprovedLimit }
     };
 
@@ -313,15 +314,16 @@ const getCustomerBookings = async (req, res) => {
   try {
     const { status, page = 1, limit = 10 } = req.query;
 
-    let filter = { customer: req.user._id };
-    if (status) filter.status = status;
-
-    // Run auto-cleanup for this customer's expired bookings
+    // 1. Ensure expired bookings are handled before fetching
     await autoCancelExpiredBookings({ customer: req.user._id });
+
+    // 2. Build filter
+    let filter = { customer: req.user._id };
+    if (status && status !== 'all') filter.status = status;
 
     const skip = (page - 1) * limit;
     const bookings = await Booking.find(filter)
-      .populate('service', 'name category duration')
+      .populate('service', 'name category duration price homeServicePrice')
       .populate('store', 'name contactInfo.address')
       .sort({ bookingDate: -1, startTime: -1 })
       .skip(skip)
@@ -330,6 +332,7 @@ const getCustomerBookings = async (req, res) => {
     const total = await Booking.countDocuments(filter);
 
     res.json({
+      success: true,
       bookings,
       pagination: {
         currentPage: parseInt(page),
@@ -340,8 +343,8 @@ const getCustomerBookings = async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Get customer bookings error:', error);
-    res.status(500).json({ message: 'Server error' });
+    console.error('❌ Get customer bookings error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
 

@@ -119,7 +119,7 @@ const Orders = () => {
                     <div className="p-4 sm:p-6 bg-slate-50 flex flex-col sm:flex-row justify-between items-center gap-4">
                       <p className="text-xs text-slate-500">Ordered on {new Date(order.orderDate).toLocaleDateString()}</p>
                       <div className="flex gap-2 w-full sm:w-auto">
-                        {order.delivery && (
+                        {order.delivery && (order.delivery.status === 'picked_up' || order.delivery.status === 'in_transit') && (
                           <Link to={`/track/${order.delivery.trackingToken}`} className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-rose-500 text-white rounded-lg text-sm font-bold shadow-sm hover:bg-rose-600 transition-colors">
                             <MapPin className="h-4 w-4" /> Live Track
                           </Link>

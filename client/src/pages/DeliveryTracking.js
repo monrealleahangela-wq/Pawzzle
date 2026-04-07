@@ -12,6 +12,7 @@ import {
 import { Popup } from 'react-leaflet';
 import socket from '../utils/socket';
 import { toast } from 'react-toastify';
+import { deliveryService, getImageUrl } from '../services/apiService';
 
 // Define custom icons for the map
 const riderIcon = new L.Icon({
@@ -75,6 +76,19 @@ const DeliveryTracking = () => {
   const [eta, setEta] = useState(null);
   const [isNearby, setIsNearby] = useState(false);
   const chatEndRef = useRef(null);
+  
+  // Verification & Complaint State
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [verificationForm, setVerificationForm] = useState({
+    riderName: '',
+    riderPhone: '',
+    riderVehicleInfo: ''
+  });
+  const [showComplaintModal, setShowComplaintModal] = useState(false);
+  const [complaintForm, setComplaintForm] = useState({
+    type: 'other',
+    content: ''
+  });
   
   const isRiderRoute = location.pathname.includes('/rider-track/');
 
@@ -251,6 +265,39 @@ const DeliveryTracking = () => {
     }
   };
 
+  const handleRiderVerification = async (e) => {
+    e.preventDefault();
+    if (!verificationForm.riderName || !verificationForm.riderPhone) {
+      return toast.warning('Please complete all required fields');
+    }
+
+    try {
+      setIsVerifying(true);
+      await deliveryService.verifyRider(token, verificationForm);
+      toast.success('Identity verified! Starting delivery mission.');
+      fetchDelivery();
+    } catch (err) {
+      toast.error('Verification failed. Please try again.');
+    } finally {
+      setIsVerifying(false);
+    }
+  };
+
+  const handleSubmitComplaint = async (e) => {
+    e.preventDefault();
+    if (!complaintForm.content.trim()) return;
+
+    try {
+      await deliveryService.submitComplaint(token, complaintForm);
+      toast.success('Complaint submitted. We will review this immediately.');
+      setShowComplaintModal(false);
+      setComplaintForm({ type: 'other', content: '' });
+      fetchDelivery();
+    } catch (err) {
+      toast.error('Failed to submit complaint.');
+    }
+  };
+
   const sendMessage = async (e) => {
     e.preventDefault();
     if (!newMessage.trim()) return;
@@ -349,10 +396,21 @@ const DeliveryTracking = () => {
               </div>
 
               <div className="flex items-center gap-2 w-full sm:w-auto shrink-0">
-                <a href={`tel:${role === 'rider' ? delivery.order?.customer?.phoneNumber : delivery.order?.store?.phoneNumber}`} 
-                  className="flex-1 sm:flex-none p-4 bg-slate-50 text-slate-600 rounded-2xl hover:bg-rose-50 hover:text-rose-500 transition-all border border-slate-100 flex items-center justify-center">
-                  <Phone className="h-5 w-5" />
-                </a>
+                {/* Remove call button for rider per requirement */}
+                {role !== 'rider' && (
+                  <a href={`tel:${delivery.order?.store?.phoneNumber}`} 
+                    className="flex-1 sm:flex-none p-4 bg-slate-50 text-slate-600 rounded-2xl hover:bg-rose-50 hover:text-rose-500 transition-all border border-slate-100 flex items-center justify-center">
+                    <Phone className="h-5 w-5" />
+                  </a>
+                )}
+                
+                {role === 'customer' && (
+                  <button onClick={() => setShowComplaintModal(true)} 
+                    className="flex-1 sm:flex-none p-4 bg-rose-50 text-rose-600 rounded-2xl hover:bg-rose-600 hover:text-white transition-all border-2 border-rose-100 flex items-center justify-center">
+                    <AlertCircle className="h-5 w-5" />
+                  </button>
+                )}
+
                 <button onClick={() => setChatOpen(true)} 
                   className="flex-1 sm:flex-none p-4 bg-rose-500 text-white rounded-2xl hover:bg-rose-600 transition-all shadow-lg shadow-rose-100 flex items-center justify-center group">
                   <MessageSquare className="h-5 w-5 group-hover:scale-110 transition-transform" />
@@ -368,6 +426,62 @@ const DeliveryTracking = () => {
               </div>
             </div>
           </section>
+        )}
+
+        {/* Rider Verification Overlay */}
+        {role === 'rider' && !delivery.isRiderVerified && (
+          <div className="fixed inset-0 z-[100] bg-white flex flex-col p-8 overflow-y-auto">
+            <div className="max-w-md mx-auto w-full pt-12">
+              <div className="w-20 h-20 bg-slate-900 text-white rounded-[2rem] flex items-center justify-center mb-8 mx-auto">
+                <ShieldCheck className="h-10 w-10" />
+              </div>
+              <h2 className="text-3xl font-black uppercase tracking-tighter text-center mb-2">Identity Verification</h2>
+              <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest text-center mb-10 leading-loose">Please provide your details before starting the delivery mission</p>
+              
+              <form onSubmit={handleRiderVerification} className="space-y-6">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Rider Full Name</label>
+                  <input 
+                    type="text" 
+                    required
+                    value={verificationForm.riderName}
+                    onChange={(e) => setVerificationForm({...verificationForm, riderName: e.target.value})}
+                    placeholder="Enter your name"
+                    className="w-full bg-slate-50 border-2 border-slate-100 px-6 py-5 rounded-[1.5rem] text-sm font-bold focus:border-slate-900 outline-none transition-all"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Contact Number</label>
+                  <input 
+                    type="tel" 
+                    required
+                    value={verificationForm.riderPhone}
+                    onChange={(e) => setVerificationForm({...verificationForm, riderPhone: e.target.value})}
+                    placeholder="Enter phone number"
+                    className="w-full bg-slate-50 border-2 border-slate-100 px-6 py-5 rounded-[1.5rem] text-sm font-bold focus:border-slate-900 outline-none transition-all"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Vehicle Info (e.g., Honda Click - RED)</label>
+                  <input 
+                    type="text" 
+                    value={verificationForm.riderVehicleInfo}
+                    onChange={(e) => setVerificationForm({...verificationForm, riderVehicleInfo: e.target.value})}
+                    placeholder="Optional details"
+                    className="w-full bg-slate-50 border-2 border-slate-100 px-6 py-5 rounded-[1.5rem] text-sm font-bold focus:border-slate-900 outline-none transition-all"
+                  />
+                </div>
+
+                <button 
+                  type="submit" 
+                  disabled={isVerifying}
+                  className="w-full py-6 bg-slate-900 text-white rounded-[2rem] text-[11px] font-black uppercase tracking-[0.4em] shadow-2xl transition-all active:scale-95 disabled:opacity-50 mt-4"
+                >
+                  {isVerifying ? 'Verifying Identity...' : 'Confirm & Start Mission'}
+                </button>
+              </form>
+            </div>
+          </div>
         )}
 
         {/* State 2: Interactive Map (The Interactive Zone) */}
@@ -523,6 +637,58 @@ const DeliveryTracking = () => {
           </form>
         </div>
       </div>
+      {/* Complaint Modal */}
+      {showComplaintModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
+          <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setShowComplaintModal(false)}></div>
+          <div className="relative w-full max-w-md bg-white rounded-[3rem] shadow-2xl p-8 overflow-hidden">
+            <h3 className="text-2xl font-black uppercase tracking-tighter mb-2">Report Delivery Issue</h3>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-8">Tell us what's wrong with your delivery</p>
+
+            <form onSubmit={handleSubmitComplaint} className="space-y-6">
+              <div className="space-y-2">
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Issue Type</label>
+                <select 
+                  value={complaintForm.type}
+                  onChange={(e) => setComplaintForm({...complaintForm, type: e.target.value})}
+                  className="w-full bg-slate-50 border-2 border-slate-100 px-6 py-4 rounded-[1.5rem] text-sm font-bold outline-none"
+                >
+                  <option value="suspicious_location">Suspicious Location</option>
+                  <option value="damaged_items">Damaged Items</option>
+                  <option value="other">Other Issue</option>
+                </select>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Details</label>
+                <textarea 
+                  required
+                  value={complaintForm.content}
+                  onChange={(e) => setComplaintForm({...complaintForm, content: e.target.value})}
+                  placeholder="Describe the problem..."
+                  className="w-full bg-slate-50 border-2 border-slate-100 px-6 py-4 rounded-[1.5rem] text-sm font-bold h-32 resize-none outline-none"
+                />
+              </div>
+
+              <div className="flex gap-3">
+                <button 
+                  type="button"
+                  onClick={() => setShowComplaintModal(false)}
+                  className="flex-1 py-4 border-2 border-slate-100 text-slate-500 rounded-[2rem] text-[10px] font-black uppercase tracking-widest"
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit"
+                  className="flex-1 py-4 bg-rose-500 text-white rounded-[2rem] text-[10px] font-black uppercase tracking-widest shadow-xl shadow-rose-100"
+                >
+                  Submit Report
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

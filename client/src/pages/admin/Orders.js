@@ -120,7 +120,7 @@ const AdminOrders = () => {
       <div className="bg-slate-900 p-2 rounded-[2rem] shadow-xl border border-slate-800 mb-8">
         <div className="flex flex-col md:flex-row gap-2">
           <div className="flex-1 relative group">
-            <div className="absolute left-6 top-1/2 -translate-y-1/2">
+            <div className="absolute left-6 top-1/2 -translate-y-1/2 flex items-center justify-center pointer-events-none">
               <Search className="h-4 w-4 text-slate-500 group-focus-within:text-primary-500 transition-colors" />
             </div>
             <input
@@ -128,7 +128,7 @@ const AdminOrders = () => {
               placeholder="SEARCH BY ID OR CUSTOMER..."
               value={filters.search}
               onChange={(e) => handleFilterChange('search', e.target.value)}
-              className="w-full pl-16 pr-4 py-4 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl outline-none focus:ring-2 focus:ring-primary-500/20 transition-all placeholder:text-slate-600"
+              className="w-full pl-14 pr-4 py-4 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl outline-none focus:ring-2 focus:ring-primary-500/20 transition-all placeholder:text-slate-600 font-sans"
             />
           </div>
           <div className="md:w-64 relative group">
