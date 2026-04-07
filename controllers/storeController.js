@@ -516,9 +516,7 @@ const getStoreLocations = async (req, res) => {
     const stores = await Store.find({
       isActive: true,
       isDeleted: { $ne: true },
-      verificationStatus: 'verified',
-      name: { $ne: 'Admin Pet Store' },
-      'contactInfo.address.state': /Cavite/i
+      name: { $ne: 'Admin Pet Store' }
     }).select('name logo slug contactInfo.phone contactInfo.email contactInfo.address verificationStatus');
 
     res.json({ stores });

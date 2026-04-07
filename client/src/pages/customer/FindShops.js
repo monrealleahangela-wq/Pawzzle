@@ -108,14 +108,7 @@ const FindShops = () => {
         setLoading(true);
         const response = await storeService.getStoreLocations();
         const fetchedStores = response.data.stores || [];
-
-        // Sanity filter for shops with coordinates (though backend should have them)
-        const caviteStores = fetchedStores.filter(store => {
-          const coords = store.contactInfo?.address?.coordinates;
-          return coords?.lat && coords?.lng;
-        });
-
-        setStores(caviteStores);
+        setStores(fetchedStores);
 
         // Check for ?store=ID in URL
         const queryParams = new URLSearchParams(location.search);
