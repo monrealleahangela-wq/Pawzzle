@@ -103,11 +103,24 @@ const Search = () => {
         storeService.getAllStores(params)
       ]);
 
+      // STRICT CAVITE FILTERING: Only allow items from stores in Cavite
+      const isCavite = (store) => {
+        if (!store) return false;
+        const address = store.contactInfo?.address;
+        if (!address) return false;
+        
+        const state = (address.state || '').toLowerCase();
+        const city = (address.city || '').toLowerCase();
+        const street = (address.street || '').toLowerCase();
+        
+        return state.includes('cavite') || city.includes('cavite') || street.includes('cavite');
+      };
+
       setResults({
-        pets: petsResponse.data.pets || [],
-        products: productsResponse.data.products || [],
-        services: servicesResponse.data.services || [],
-        stores: storesResponse.data.stores || storesResponse.data || []
+        pets: (petsResponse.data.pets || []).filter(p => isCavite(p.store)),
+        products: (productsResponse.data.products || []).filter(p => isCavite(p.store)),
+        services: (servicesResponse.data.services || []).filter(s => isCavite(s.store)),
+        stores: (storesResponse.data.stores || storesResponse.data || []).filter(s => isCavite(s))
       });
     } catch (error) {
       console.error('Search error:', error);

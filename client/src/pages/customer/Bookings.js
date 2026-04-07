@@ -1697,6 +1697,15 @@ const Bookings = ({ isSubcomponent = false }) => {
                           : selectedBooking.serviceAddress?.city || 'VIEW IN GOOGLE MAPS'}
                     </span>
                   </a>
+                  {!selectedBooking.isHomeService && (
+                    <Link
+                      to={`/find-shops?store=${selectedBooking.store?._id || selectedBooking.store}`}
+                      className="mt-2 text-[10px] font-black text-primary-600 hover:text-primary-700 transition-all uppercase tracking-widest flex items-center gap-1.5 group/gps"
+                    >
+                      <Navigation className="h-3 w-3 group-hover/gps:rotate-12 transition-transform" />
+                      Open Shop GPS (Internal)
+                    </Link>
+                  )}
                 </div>
               </div>
 

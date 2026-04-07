@@ -264,24 +264,35 @@ const OrderDetail = () => {
                   </div>
 
                   {order.store?.contactInfo?.address ? (
-                    <a
-                      href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-                        `${order.store.contactInfo.address.street}, ${order.store.contactInfo.address.barangay}, ${order.store.contactInfo.address.city}, Cavite, Philippines`
-                      )}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="group flex items-start gap-3 p-4 bg-slate-50 rounded-2xl border border-slate-100 hover:border-primary-200 hover:bg-primary-50 transition-all"
-                    >
-                      <MapPin className="h-5 w-5 text-slate-400 group-hover:text-primary-600 shrink-0 mt-0.5" />
-                      <div className="text-sm">
-                        <p className="font-medium text-slate-700 group-hover:text-primary-900 transition-colors">
-                          {order.store.contactInfo.address.street}, {order.store.contactInfo.address.barangay}, {order.store.contactInfo.address.city}
-                        </p>
-                        <p className="text-xs text-primary-600 font-bold mt-1 inline-flex items-center gap-1 group-hover:underline">
-                          View on Google Maps →
-                        </p>
-                      </div>
-                    </a>
+                    <div className="space-y-3">
+                      <a
+                        href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+                          `${order.store.contactInfo.address.street}, ${order.store.contactInfo.address.barangay}, ${order.store.contactInfo.address.city}, Cavite, Philippines`
+                        )}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="group flex items-start gap-3 p-4 bg-slate-50 rounded-2xl border border-slate-100 hover:border-primary-200 hover:bg-primary-50 transition-all"
+                      >
+                        <MapPin className="h-5 w-5 text-slate-400 group-hover:text-primary-600 shrink-0 mt-0.5" />
+                        <div className="text-sm">
+                          <p className="font-medium text-slate-700 group-hover:text-primary-900 transition-colors">
+                            {order.store.contactInfo.address.street}, {order.store.contactInfo.address.barangay}, {order.store.contactInfo.address.city}
+                          </p>
+                          <p className="text-xs text-primary-600 font-bold mt-1 inline-flex items-center gap-1 group-hover:underline">
+                            View on Google Maps →
+                          </p>
+                        </div>
+                      </a>
+                      
+                      {/* NEW: Link to Internal Shop GPS */}
+                      <Link
+                        to={`/find-shops?store=${order.store._id}`}
+                        className="w-full py-3 bg-primary-600 text-white rounded-xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-primary-700 transition-all shadow-lg flex items-center justify-center gap-2 group"
+                      >
+                        <Navigation className="h-4 w-4 group-hover:rotate-12 transition-transform" />
+                        Open Shop GPS (Internal)
+                      </Link>
+                    </div>
                   ) : (
                     <p className="text-sm text-slate-500 italic">Address information currently unavailable.</p>
                   )}

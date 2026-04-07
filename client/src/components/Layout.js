@@ -35,7 +35,8 @@ import {
   Zap,
   Moon,
   Sun,
-  PawPrint
+  PawPrint,
+  MapPin
 } from 'lucide-react';
 import FloatingChatManager from './FloatingChatManager';
 import NotificationBell from './NotificationBell';
@@ -88,6 +89,7 @@ const Layout = () => {
     { path: '/cart', label: 'Cart', icon: ShoppingCart },
     { path: '/orders', label: 'Orders', icon: ShoppingBag },
     { path: '/vouchers', label: 'Vouchers', icon: Ticket },
+    { path: '/find-shops', label: 'Find Shops', icon: MapPin },
     { path: '/insights', label: 'AI Advisor', icon: Brain },
   ];
 
@@ -133,6 +135,7 @@ const Layout = () => {
     { path: '/pets', label: 'Pets', icon: Heart },
     { path: '/products', label: 'Products', icon: Package },
     { path: '/services', label: 'Services', icon: Calendar },
+    { path: '/find-shops', label: 'Find Shops', icon: MapPin },
     { path: '/search', label: 'Search', icon: Search }
   ];
 
@@ -171,7 +174,7 @@ const Layout = () => {
     if (user?.role === 'customer') {
       return [
         { path: '/home', label: 'Home', icon: House },
-        { path: '/pets', label: 'Pets', icon: Heart },
+        { path: '/find-shops', label: 'Navigation', icon: MapPin },
         { path: '/products', label: 'Shop', icon: ShoppingBag },
         { path: '/services', label: 'Services', icon: Calendar },
         { path: '/profile', label: 'Me', icon: User },

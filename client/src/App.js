@@ -46,6 +46,7 @@ import Adoptions from './pages/customer/Adoptions';
 import CustomerDSS from './pages/customer/DSS';
 import CustomerVouchers from './pages/customer/Vouchers';
 import AppealForm from './pages/customer/AppealForm';
+import FindShops from './pages/customer/FindShops';
 
 // Admin Pages
 import AdminDashboard from './pages/admin/Dashboard';
@@ -134,6 +135,7 @@ function App() {
                   <Route path="services" element={<Services />} />
                   <Route path="stores" element={<Stores />} />
                   <Route path="stores/:storeId" element={<StoreDetail />} />
+                  <Route path="find-shops" element={<FindShops />} />
                   <Route path="search" element={<Search />} />
                   <Route path="profile" element={<ProtectedRoute roles={['customer', 'admin', 'super_admin']}><Profile /></ProtectedRoute>} />
                   <Route path="cart" element={<ProtectedRoute roles={['customer', 'admin', 'super_admin']}><Cart /></ProtectedRoute>} />

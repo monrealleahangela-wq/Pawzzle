@@ -43,8 +43,25 @@ const Stores = () => {
                 setLoading(true);
                 const response = await storeService.getAllStores();
                 const fetchedStores = response.data.stores || response.data || [];
-                // Filter out Admin Pet Store as per user request
-                setStores(fetchedStores.filter(s => s.name?.toLowerCase() !== 'admin pet store'));
+                
+                // STRICT CAVITE FILTERING: Only allow stores in Cavite
+                const isCavite = (store) => {
+                    if (!store) return false;
+                    const address = store.contactInfo?.address;
+                    if (!address) return false;
+                    
+                    const state = (address.state || '').toLowerCase();
+                    const city = (address.city || '').toLowerCase();
+                    const street = (address.street || '').toLowerCase();
+                    
+                    return state.includes('cavite') || city.includes('cavite') || street.includes('cavite');
+                };
+
+                const filtered = fetchedStores.filter(s => 
+                    s.name?.toLowerCase() !== 'admin pet store' && isCavite(s)
+                );
+                
+                setStores(filtered);
             } catch (error) {
                 console.error('Error fetching stores:', error);
             } finally {
