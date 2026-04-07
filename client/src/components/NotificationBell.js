@@ -47,8 +47,14 @@ const NotificationBell = () => {
             }
         } else if (notification.type === 'new_follow') {
             navigate('/profile?tab=followers');
-        } else if (notification.type === 'report') {
-            navigate(`/appeal/${notification.relatedId}`);
+        } else if (notification.type === 'chat_message') {
+            if (user?.role === 'admin' || user?.role === 'staff') {
+                navigate('/admin/chat');
+            } else {
+                // For customers, the floating chat is always available.
+                // We can navigate them to home or just close the dropdown.
+                setIsOpen(false);
+            }
         }
     };
 

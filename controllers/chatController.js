@@ -1,5 +1,7 @@
 const Conversation = require('../models/Conversation');
 const Message = require('../models/Message');
+const Notification = require('../models/Notification');
+const User = require('../models/User');
 
 // Get all conversations for the current user
 const getConversations = async (req, res) => {
@@ -219,6 +221,38 @@ const sendMessage = async (req, res) => {
     });
 
     await message.save();
+
+    // Update conversation last message
+    conversation.lastMessage = {
+      content: message.type === 'image' ? 'Sent an image' : content,
+      type: message.type,
+      sender: req.user._id,
+      timestamp: message.createdAt
+    };
+    await conversation.save();
+
+    // Create notifications for other participants
+    const otherParticipants = conversation.participants.filter(
+      p => p.user.toString() !== req.user._id.toString()
+    );
+
+    for (const participant of otherParticipants) {
+      try {
+        const notification = new Notification({
+          recipient: participant.user,
+          sender: req.user._id,
+          type: 'chat_message',
+          title: `New Message from ${req.user.firstName || 'Customer'}`,
+          message: message.type === 'image' ? 'Sent an image' : content.substring(0, 50) + (content.length > 50 ? '...' : ''),
+          relatedId: conversation._id,
+          relatedModel: 'Conversation'
+        });
+        await notification.save();
+      } catch (notifError) {
+        console.error('Error creating chat notification:', notifError);
+        // Don't fail the message send if notification fails
+      }
+    }
 
     // Populate sender info before returning
     await message.populate('sender', 'firstName lastName role lastSeen');

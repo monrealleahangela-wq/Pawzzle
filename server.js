@@ -89,6 +89,21 @@ io.on('connection', (socket) => {
     console.log(`📡 Client joined delivery room: delivery_${deliveryId}`);
   });
 
+  socket.on('joinConversation', (conversationId) => {
+    socket.join(`conversation_${conversationId}`);
+    console.log(`📡 Client joined conversation room: conversation_${conversationId}`);
+  });
+
+  socket.on('typing', (data) => {
+    // data: { conversationId, userId, userName }
+    socket.to(`conversation_${data.conversationId}`).emit('userTyping', data);
+  });
+
+  socket.on('stopTyping', (data) => {
+    // data: { conversationId, userId }
+    socket.to(`conversation_${data.conversationId}`).emit('userStopTyping', data);
+  });
+
   socket.on('updateLocation', (data) => {
     // data: { deliveryId, lat, lng, heading, speed }
     io.to(`delivery_${data.deliveryId}`).emit('locationUpdate', data);

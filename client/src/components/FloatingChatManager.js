@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { MessageSquare, X, Minimize2, Maximize2, Send, Search, User, Clock, Check, Camera, Image as ImageIcon, ChevronLeft } from 'lucide-react';
 import { chatService } from '../services/chatService';
 import { toast } from 'react-toastify';
-
 import { uploadService, storeService } from '../services/apiService';
+import socket from '../utils/socket';
 
 const FloatingChatManager = ({ currentUser }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -24,6 +24,8 @@ const FloatingChatManager = ({ currentUser }) => {
   const [dragY, setDragY] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const [startY, setStartY] = useState(0);
+  const [typingUser, setTypingUser] = useState(null);
+  const typingTimeoutRef = React.useRef(null);
 
   useEffect(() => {
     if (isOpen && !isMinimized) {
@@ -126,14 +128,38 @@ const FloatingChatManager = ({ currentUser }) => {
     }
   };
 
-  // Poll for new messages when a conversation is open
+  // Join room and listen for real-time events when chat is open
   useEffect(() => {
     if (!selectedConversation || !showChatWindow) return;
+
+    if (!socket.connected) {
+      socket.connect();
+    }
+
+    socket.emit('joinConversation', selectedConversation._id);
+
+    socket.on('userTyping', (data) => {
+      if (data.userId !== (currentUser?._id || currentUser?.id)) {
+        setTypingUser(data.userName);
+      }
+    });
+
+    socket.on('userStopTyping', (data) => {
+      if (data.userId !== (currentUser?._id || currentUser?.id)) {
+        setTypingUser(null);
+      }
+    });
+
     const interval = setInterval(() => {
       fetchMessages(selectedConversation._id);
     }, 3000);
-    return () => clearInterval(interval);
-  }, [selectedConversation, showChatWindow]);
+
+    return () => {
+      clearInterval(interval);
+      socket.off('userTyping');
+      socket.off('userStopTyping');
+    };
+  }, [selectedConversation, showChatWindow, currentUser]);
 
   const handleSendMessage = async () => {
     if (!newMessage.trim() || !selectedConversation) return;
@@ -146,6 +172,9 @@ const FloatingChatManager = ({ currentUser }) => {
     setIsLoading(true);
     const savedMessage = newMessage;
     setNewMessage('');
+    
+    // Stop typing immediately when sending
+    handleStopTyping();
 
     try {
       const response = await chatService.sendMessage(selectedConversation._id, messageData);
@@ -157,6 +186,38 @@ const FloatingChatManager = ({ currentUser }) => {
       setNewMessage(savedMessage);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleTyping = () => {
+    if (!selectedConversation || !currentUser) return;
+
+    socket.emit('typing', {
+      conversationId: selectedConversation._id,
+      userId: currentUser._id || currentUser.id,
+      userName: currentUser.firstName || 'Someone'
+    });
+
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+    }
+
+    typingTimeoutRef.current = setTimeout(() => {
+      handleStopTyping();
+    }, 1500);
+  };
+
+  const handleStopTyping = () => {
+    if (!selectedConversation || !currentUser) return;
+
+    socket.emit('stopTyping', {
+      conversationId: selectedConversation._id,
+      userId: currentUser._id || currentUser.id
+    });
+
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+      typingTimeoutRef.current = null;
     }
   };
 
@@ -518,10 +579,23 @@ const FloatingChatManager = ({ currentUser }) => {
                         </div>
                       );
                     })}
-                    <div ref={messagesEndRef} />
-                  </div>
+                      <div ref={messagesEndRef} />
+                    </div>
 
-                  {/* Input */}
+                    {typingUser && (
+                      <div className="px-5 py-1 flex items-center gap-2 animate-fade-in transition-all">
+                        <div className="flex gap-1">
+                          <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce [animation-delay:-0.3s]"></span>
+                          <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce [animation-delay:-0.15s]"></span>
+                          <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce"></span>
+                        </div>
+                        <span className="text-[10px] font-bold text-gray-400 italic">
+                          {typingUser} is typing...
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Input */}
                   <div className="flex-shrink-0 p-3 border-t bg-white z-10">
                     <div className="flex items-center space-x-2">
                       <button
@@ -541,7 +615,10 @@ const FloatingChatManager = ({ currentUser }) => {
                       <input
                         type="text"
                         value={newMessage}
-                        onChange={(e) => setNewMessage(e.target.value)}
+                        onChange={(e) => {
+                          setNewMessage(e.target.value);
+                          handleTyping();
+                        }}
                         onKeyPress={handleKeyPress}
                         placeholder="Type a message..."
                         className="flex-1 px-4 py-2 bg-gray-50 border-none rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"

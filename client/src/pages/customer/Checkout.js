@@ -54,6 +54,7 @@ const Checkout = () => {
   });
 
   const [phoneNumber, setPhoneNumber] = useState(user?.phone || '');
+  const [hasPhoneBeenManuallyEdited, setHasPhoneBeenManuallyEdited] = useState(false);
   const [cities, setCities] = useState([]);
   const [barangays, setBarangays] = useState([]);
   const [paymentMethod, setPaymentMethod] = useState('credit_card');
@@ -83,7 +84,12 @@ const Checkout = () => {
       setBarangays(getBarangaysByCity(user.address.city));
     }
     setEditAddress(false);
-  }, [user]);
+    
+    // Synchronize phone number only if not manually edited and current state is empty
+    if (user?.phone && !phoneNumber && !hasPhoneBeenManuallyEdited) {
+      setPhoneNumber(user.phone);
+    }
+  }, [user, phoneNumber, hasPhoneBeenManuallyEdited]);
 
   // Reset payment method when delivery method changes
   useEffect(() => {
@@ -630,10 +636,15 @@ const Checkout = () => {
             </label>
             <input
               type="tel"
+              id="checkout-phone-number"
+              name="phoneNumber"
               className="input"
               placeholder="Enter your phone number"
               value={phoneNumber}
-              onChange={(e) => setPhoneNumber(e.target.value)}
+              onChange={(e) => {
+                setPhoneNumber(e.target.value);
+                setHasPhoneBeenManuallyEdited(true);
+              }}
               required
             />
             <p className="text-xs text-gray-500 mt-1">We'll use this to contact you about your order.</p>

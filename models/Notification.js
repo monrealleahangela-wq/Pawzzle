@@ -23,7 +23,8 @@ const notificationSchema = new mongoose.Schema({
             'system',
             'report',
             'user_action',
-            'new_follow'
+            'new_follow',
+            'chat_message'
         ],
         required: true
     },
@@ -41,7 +42,7 @@ const notificationSchema = new mongoose.Schema({
     },
     relatedModel: {
         type: String, // 'Order', 'Booking', 'StoreApplication', etc.
-        enum: ['Order', 'Booking', 'StoreApplication', 'Inventory', 'Report', 'User']
+        enum: ['Order', 'Booking', 'StoreApplication', 'Inventory', 'Report', 'User', 'Conversation']
     },
     isRead: {
         type: Boolean,

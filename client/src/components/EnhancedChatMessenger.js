@@ -4,6 +4,7 @@ import { Send, X, User, Clock, Check, Phone, Mail, MapPin, Heart, AlertCircle, S
 import { chatService } from '../services/chatService';
 import { adoptionService, uploadService } from '../services/apiService';
 import UserReportModal from './UserReportModal';
+import socket from '../utils/socket';
 
 const EnhancedChatMessenger = ({
   isOpen,
@@ -24,6 +25,8 @@ const EnhancedChatMessenger = ({
   const [onlineStatus, setOnlineStatus] = useState({ isOnline: false, text: 'Connecting...' });
   const [isSeller, setIsSeller] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
+  const [typingUser, setTypingUser] = useState(null);
+  const typingTimeoutRef = useRef(null);
   const messagesEndRef = useRef(null);
   const messagesContainerRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -50,12 +53,41 @@ const EnhancedChatMessenger = ({
 
   useEffect(() => {
     if (!conversationId || (!isOpen && !isEmbedded)) return;
+
+    // Connect socket if not connected
+    if (!socket.connected) {
+      socket.connect();
+    }
+
+    // Join the conversation room
+    socket.emit('joinConversation', conversationId);
+
+    // Listen for real-time events
+    socket.on('userTyping', (data) => {
+      if (data.userId !== (currentUser?._id || currentUser?.id)) {
+        setTypingUser(data.userName);
+      }
+    });
+
+    socket.on('userStopTyping', (data) => {
+      if (data.userId !== (currentUser?._id || currentUser?.id)) {
+        setTypingUser(null);
+      }
+    });
+
+    // We can also listen for new messages real-time if we want to replace polling
+    // But for now let's keep polling for messages as extra safety or replace it if we're confident
     const interval = setInterval(() => {
       loadMessages(conversationId);
       fetchTransactionData(conversationId);
     }, 4000);
-    return () => clearInterval(interval);
-  }, [conversationId, isOpen, isEmbedded]);
+
+    return () => {
+      clearInterval(interval);
+      socket.off('userTyping');
+      socket.off('userStopTyping');
+    };
+  }, [conversationId, isOpen, isEmbedded, currentUser]);
 
   useEffect(() => {
     if (messagesContainerRef.current) {
@@ -148,6 +180,9 @@ const EnhancedChatMessenger = ({
     setIsLoading(true);
     const savedMessage = newMessage;
     setNewMessage('');
+    
+    // Stop typing immediately when sending
+    handleStopTyping();
 
     try {
       const response = await chatService.sendMessage(conversationId, messageData);
@@ -159,6 +194,41 @@ const EnhancedChatMessenger = ({
       setNewMessage(savedMessage);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleTyping = () => {
+    if (!conversationId || !currentUser) return;
+
+    // Emit typing event
+    socket.emit('typing', {
+      conversationId,
+      userId: currentUser._id || currentUser.id,
+      userName: currentUser.firstName || 'Someone'
+    });
+
+    // Clear existing timeout
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+    }
+
+    // Set timeout to stop typing indicator after 1.5s
+    typingTimeoutRef.current = setTimeout(() => {
+      handleStopTyping();
+    }, 1500);
+  };
+
+  const handleStopTyping = () => {
+    if (!conversationId || !currentUser) return;
+    
+    socket.emit('stopTyping', {
+      conversationId,
+      userId: currentUser._id || currentUser.id
+    });
+    
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+      typingTimeoutRef.current = null;
     }
   };
 
@@ -430,6 +500,19 @@ const EnhancedChatMessenger = ({
         <div ref={messagesEndRef} />
       </div>
 
+      {typingUser && (
+        <div className="px-6 py-1 flex items-center gap-2 animate-fade-in transition-all">
+          <div className="flex gap-1">
+            <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce [animation-delay:-0.3s]"></span>
+            <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce [animation-delay:-0.15s]"></span>
+            <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce"></span>
+          </div>
+          <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 italic">
+            {typingUser} is typing...
+          </span>
+        </div>
+      )}
+
       <div className="flex-shrink-0 p-4 bg-white border-t border-slate-100 z-10">
         <div className="flex items-center gap-3 bg-slate-50 rounded-full p-1.5 pl-4 border border-slate-100">
           <button onClick={() => fileInputRef.current?.click()} className="w-8 h-8 rounded-full bg-white flex items-center justify-center text-slate-400 hover:text-primary-500 shadow-sm transition-colors shrink-0">
@@ -439,7 +522,10 @@ const EnhancedChatMessenger = ({
           <textarea
             rows="1"
             value={newMessage}
-            onChange={(e) => setNewMessage(e.target.value)}
+            onChange={(e) => {
+              setNewMessage(e.target.value);
+              handleTyping();
+            }}
             onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendMessage(); } }}
             placeholder="Write a message..."
             className="flex-1 bg-transparent border-none focus:ring-0 text-sm font-medium text-slate-700 py-2 resize-none max-h-24"
