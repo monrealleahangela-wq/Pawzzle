@@ -351,7 +351,10 @@ const updateOrderStatus = async (req, res) => {
             return res.status(400).json({ message: `Failed to update: ${stockError.message}` });
           }
         } else if (item.itemType === 'pet') {
-          await Pet.findByIdAndUpdate(item.itemId, { isAvailable: false });
+          await Pet.findByIdAndUpdate(item.itemId, { 
+            isAvailable: false,
+            status: 'reserved'
+          });
         }
       }
     }
@@ -375,7 +378,10 @@ const updateOrderStatus = async (req, res) => {
             console.error(`❌ Stock restoration failed:`, restoreError);
           }
         } else if (item.itemType === 'pet') {
-          await Pet.findByIdAndUpdate(item.itemId, { isAvailable: true });
+          await Pet.findByIdAndUpdate(item.itemId, { 
+            isAvailable: true,
+            status: 'available'
+          });
         }
       }
     }
@@ -544,10 +550,12 @@ const confirmOrderPayment = async (req, res) => {
             }
           } catch (stockError) {
             console.error(`❌ Stock deduction failed for order ${order._id}:`, stockError.message);
-            // We continue as payment is already confirmed
           }
         } else if (item.itemType === 'pet') {
-          await Pet.findByIdAndUpdate(item.itemId, { isAvailable: false });
+          await Pet.findByIdAndUpdate(item.itemId, { 
+            isAvailable: false, 
+            status: 'reserved' 
+          });
         }
       }
     }
@@ -601,6 +609,16 @@ const confirmOrderPickup = async (req, res) => {
     order.status = 'delivered';
     order.payoutStatus = 'released';
     order.pickupSession.verifiedAt = new Date();
+
+    // Mark pets as SOLD
+    for (const item of order.items) {
+      if (item.itemType === 'pet') {
+        await Pet.findByIdAndUpdate(item.itemId, { 
+          isAvailable: false, 
+          status: 'sold' 
+        });
+      }
+    }
 
     // Calculate Platform Commission (e.g., 10%)
     const commissionRate = 0.10;

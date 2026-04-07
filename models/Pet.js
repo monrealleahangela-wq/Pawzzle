@@ -59,24 +59,81 @@ const petSchema = new mongoose.Schema({
     type: Boolean,
     default: true
   },
+  listingType: {
+    type: String,
+    enum: ['sale', 'adoption'],
+    default: 'sale'
+  },
+  weight: {
+    type: Number
+  },
+  quantity: {
+    type: Number,
+    default: 1,
+    min: 0
+  },
+  isNegotiable: {
+    type: Boolean,
+    default: false
+  },
+  dewormed: {
+    type: Boolean,
+    default: false
+  },
+  spayedNeutered: {
+    type: Boolean,
+    default: false
+  },
+  healthCondition: {
+    type: String,
+    enum: ['healthy', 'needs_monitoring', 'condition_present'],
+    default: 'healthy'
+  },
+  vetRecords: [{
+    type: String // URL to images or PDFs
+  }],
+  proofOfOwnership: [{
+    type: String // URL to images or PDFs
+  }],
+  permits: [{
+    type: String // Required for breeders/stores
+  }],
+  pickupAvailability: {
+    type: String,
+    enum: ['same_day', 'next_day', 'scheduled'],
+    default: 'scheduled'
+  },
+  fulfillmentType: {
+    type: String,
+    enum: ['pickup_only', 'shipping', 'both'],
+    default: 'pickup_only'
+  },
+  paymentType: {
+    type: String,
+    enum: ['online_only', 'cod', 'any'],
+    default: 'online_only'
+  },
   status: {
     type: String,
-    enum: ['available', 'reserved', 'adopted'],
+    enum: ['available', 'reserved', 'sold', 'adopted'],
     default: 'available'
   },
   vaccinationStatus: {
     type: String,
-    enum: ['not_vaccinated', 'partially_vaccinated', 'fully_vaccinated'],
-    default: 'not_vaccinated'
+    enum: ['complete', 'partial', 'none'],
+    default: 'none'
   },
-  healthStatus: {
-    type: String,
-    enum: ['excellent', 'good', 'fair', 'needs_attention'],
-    default: 'good'
+  createdAt: {
+    type: Date,
+    default: Date.now
   },
-  specialNeeds: {
-    type: String,
-    trim: true
+  updatedAt: {
+    type: Date,
+    default: Date.now
+  },
+  isDeleted: {
+    type: Boolean,
+    default: false
   },
   addedBy: {
     type: mongoose.Schema.Types.ObjectId,
@@ -96,15 +153,6 @@ const petSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
-  vaccinationRecords: [{
-    vaccine: String,
-    date: Date,
-    imageUrl: String
-  }],
-  dewormingRecords: [{
-    date: Date,
-    imageUrl: String
-  }],
   temperament: {
     type: String,
     trim: true
@@ -119,18 +167,6 @@ const petSchema = new mongoose.Schema({
   pickupInstructions: {
     type: String,
     trim: true
-  },
-  createdAt: {
-    type: Date,
-    default: Date.now
-  },
-  updatedAt: {
-    type: Date,
-    default: Date.now
-  },
-  isDeleted: {
-    type: Boolean,
-    default: false
   },
   adoptionDetails: {
     requirements: { type: String, trim: true },
@@ -152,12 +188,8 @@ petSchema.pre('save', function (next) {
   this.updatedAt = Date.now();
 
   // Sync isAvailable with status
-  if (this.status === 'adopted' || this.status === 'reserved') {
+  if (this.status === 'adopted' || this.status === 'reserved' || this.status === 'sold') {
     this.isAvailable = false;
-  } else if (this.status === 'available') {
-    // Only set to true if it was explicitly intended or if it was currently unavailable
-    // We don't want to force it to true if an admin manually set isAvailable to false
-    // but kept status 'available'.
   }
 
   next();

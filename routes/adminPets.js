@@ -27,8 +27,12 @@ const createPetValidation = [
   body('size').isIn(['small', 'medium', 'large', 'extra_large']).withMessage('Invalid size'),
   body('description').trim().notEmpty().withMessage('Description is required'),
   body('price').isFloat({ min: 0 }).withMessage('Price must be a positive number'),
-  body('vaccinationStatus').optional().isIn(['not_vaccinated', 'partially_vaccinated', 'fully_vaccinated']).withMessage('Invalid vaccination status'),
-  body('healthStatus').optional().isIn(['excellent', 'good', 'fair', 'needs_attention']).withMessage('Invalid health status')
+  body('vaccinationStatus').optional().isIn(['complete', 'partial', 'none']).withMessage('Invalid vaccination status'),
+  body('healthStatus').optional().isIn(['excellent', 'good', 'fair', 'needs_attention']).withMessage('Invalid health status'),
+  body('healthCondition').optional().isIn(['healthy', 'needs_monitoring', 'condition_present']).withMessage('Invalid health condition'),
+  body('listingType').optional().isIn(['sale', 'adoption']).withMessage('Invalid listing type'),
+  body('fulfillmentType').optional().isIn(['pickup_only', 'shipping', 'both']).withMessage('Invalid fulfillment type'),
+  body('paymentType').optional().isIn(['online_only', 'cod', 'any']).withMessage('Invalid payment type')
 ];
 
 const updatePetValidation = [
@@ -41,8 +45,9 @@ const updatePetValidation = [
   body('size').optional().isIn(['small', 'medium', 'large', 'extra_large']).withMessage('Invalid size'),
   body('description').optional().trim().notEmpty().withMessage('Description cannot be empty'),
   body('price').optional().isFloat({ min: 0 }).withMessage('Price must be a positive number'),
-  body('vaccinationStatus').optional().isIn(['not_vaccinated', 'partially_vaccinated', 'fully_vaccinated']).withMessage('Invalid vaccination status'),
-  body('healthStatus').optional().isIn(['excellent', 'good', 'fair', 'needs_attention']).withMessage('Invalid health status')
+  body('vaccinationStatus').optional().isIn(['complete', 'partial', 'none']).withMessage('Invalid vaccination status'),
+  body('healthStatus').optional().isIn(['excellent', 'good', 'fair', 'needs_attention']).withMessage('Invalid health status'),
+  body('healthCondition').optional().isIn(['healthy', 'needs_monitoring', 'condition_present']).withMessage('Invalid health condition')
 ];
 
 // Debug endpoint to check all pets and their owners

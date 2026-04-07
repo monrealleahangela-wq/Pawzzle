@@ -27,16 +27,28 @@ const AdminPets = () => {
   const initialPetState = {
     name: '', species: 'dog', breed: '', age: '', ageUnit: 'years',
     ageYears: '', ageMonths: '', birthday: '',
-    gender: 'male', size: 'medium', color: '', description: '', price: '',
-    vaccinationStatus: 'not_vaccinated', healthStatus: 'good',
+    gender: 'male', size: 'medium', weight: '', color: '', description: '', price: '',
+    vaccinationStatus: 'none', healthStatus: 'good',
+    healthCondition: 'healthy',
+    isNegotiable: false,
+    dewormed: false,
+    spayedNeutered: false,
+    listingType: 'sale',
+    quantity: 1,
     specialNeeds: '', images: [], isAvailable: true,
     pedigreePapers: false,
     vaccinationRecords: [],
     dewormingRecords: [],
+    vetRecords: [],
+    permits: [],
+    proofOfOwnership: [],
     temperament: '',
     videos: [],
     location: '',
+    pickupAvailability: 'scheduled',
     pickupInstructions: '',
+    fulfillmentType: 'pickup_only',
+    paymentType: 'online_only',
     approvalStatus: 'pending',
     adoptionDetails: {
       requirements: '', trialPeriod: '', homeCheck: false,
@@ -215,11 +227,28 @@ const AdminPets = () => {
         finalUnit = 'months';
       }
 
+      if (petForm.listingType === 'sale' && (parseFloat(petForm.price) <= 0 || !petForm.price)) {
+        toast.error('Selling price must be greater than 0');
+        setSubmitting(false);
+        return;
+      }
+
+      if (petForm.description.length < 50) {
+        toast.error('Description must be at least 50 characters');
+        setSubmitting(false);
+        return;
+      }
+
+      // Enforce strict system defaults for this flow
       const payload = { 
         ...petForm, 
         age: finalAge, 
         ageUnit: finalUnit,
-        price: parseFloat(petForm.price) || 0 
+        price: parseFloat(petForm.price) || 0,
+        weight: parseFloat(petForm.weight) || 0,
+        quantity: parseInt(petForm.quantity) || 1,
+        fulfillmentType: 'pickup_only',
+        paymentType: 'online_only'
       };
       if (editingPet) {
         await adminPetService.updatePet(editingPet._id, payload);
@@ -280,6 +309,25 @@ const AdminPets = () => {
     } catch (error) {
       console.error('Upload Error:', error);
       toast.error('Upload failed. Please ensure file is valid JPG or PNG.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+  
+  const handleFileUpload = async (e, field) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    setSubmitting(true);
+    const formData = new FormData();
+    for (let i = 0; i < files.length; i++) formData.append('images', files[i]);
+    try {
+      const response = await uploadService.uploadMultipleImages(formData);
+      const newUrls = response.data.urls || response.data.imageUrls || [];
+      setPetForm(prev => ({ ...prev, [field]: [...prev[field], ...newUrls] }));
+      toast.success('Documents uploaded successfully');
+    } catch (error) {
+      console.error('Upload Error:', error);
+      toast.error('Upload failed. Check file types (Images/PDF only).');
     } finally {
       setSubmitting(false);
     }
@@ -629,11 +677,11 @@ const AdminPets = () => {
             {/* Tabs */}
             <nav className="px-5 py-2 border-b border-slate-50 flex gap-3 overflow-x-auto no-scrollbar shrink-0 bg-slate-50/50">
               {[
-                { id: 'identity', label: 'Basic Info', icon: Info },
-                { id: 'health', label: 'Health & Vax', icon: Activity },
-                { id: 'commerce', label: 'Sales & Docs', icon: ClipboardList },
-                { id: 'adoption', label: 'Pickup Details', icon: PawPrint },
-                { id: 'gallery', label: 'Gallery', icon: ImageIcon }
+                { id: 'identity', label: '1. Basic Info', icon: Info },
+                { id: 'health', label: '2. Health', icon: Activity },
+                { id: 'commerce', label: '3. Pricing & Docs', icon: ClipboardList },
+                { id: 'pickup', label: '4. Pickup', icon: Home },
+                { id: 'gallery', label: '5. Photos', icon: ImageIcon }
               ].map(tab => (
                 <button key={tab.id} onClick={() => setModalTab(tab.id)}
                   className={`px-5 py-2.5 rounded-xl flex items-center gap-2 text-[9px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${modalTab === tab.id ? 'bg-white text-rose-500 shadow-sm border border-slate-100' : 'text-slate-400 hover:text-slate-600'}`}>
@@ -760,17 +808,17 @@ const AdminPets = () => {
                     </div>
                   </div>
 
-                  {/* Row 4: Price & Color */}
+                  {/* Row 4: Weight & Color */}
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1.5">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Selling Price (₱)</label>
-                      <input type="number" required value={petForm.price} onChange={e => setPetForm(p => ({ ...p, price: e.target.value }))}
-                        className="w-full px-5 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl text-lg font-black outline-none transition-all focus:ring-4 focus:ring-rose-500/5" placeholder="0.00" />
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Weight (KG)</label>
+                      <input type="number" value={petForm.weight} onChange={e => setPetForm(p => ({ ...p, weight: e.target.value }))}
+                        className="w-full px-5 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl text-[11px] font-black outline-none transition-all focus:ring-4 focus:ring-rose-500/5" placeholder="Optional" />
                     </div>
                     <div className="space-y-1.5">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Variant / Color</label>
-                      <input type="text" value={petForm.color} onChange={e => setPetForm(p => ({ ...p, color: e.target.value }))}
-                        className="w-full px-5 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl text-[11px] font-black uppercase outline-none transition-all focus:ring-4 focus:ring-rose-500/5" placeholder="E.G. GOLDEN, BLACK..." />
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Color / Markings</label>
+                      <input type="text" required value={petForm.color} onChange={e => setPetForm(p => ({ ...p, color: e.target.value }))}
+                        className="w-full px-5 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl text-[11px] font-black uppercase outline-none transition-all focus:ring-4 focus:ring-rose-500/5" placeholder="E.G. BRINDLE, SPOTTED..." />
                     </div>
                   </div>
 
@@ -809,136 +857,224 @@ const AdminPets = () => {
                 </div>
               )}
 
-              {/* STAGE 2: HEALTH & STATUS */}
+              {/* STAGE 2: HEALTH PROTOCOLS */}
               {modalTab === 'health' && (
-                <div className="space-y-10 animate-in fade-in slide-in-from-right-4 duration-500">
-                  <div className="grid grid-cols-1 gap-6">
-                    <div className="bg-emerald-600 border border-emerald-500 rounded-[3rem] p-10 text-white relative overflow-hidden">
-                      <Shield className="absolute top-10 right-10 w-32 h-32 opacity-10 pointer-events-none" />
-                      <h4 className="text-[12px] font-black text-emerald-200 uppercase tracking-[0.4em] mb-8">Health Protocols</h4>
-                      <div className="space-y-4">
+                <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-500">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Vaccination Status */}
+                    <div className="bg-slate-900 border border-white/5 rounded-[2.5rem] p-8 text-white relative overflow-hidden">
+                      <Shield className="absolute top-6 right-6 w-24 h-24 opacity-10 pointer-events-none" />
+                      <h4 className="text-[10px] font-black text-rose-500 uppercase tracking-[0.4em] mb-6">Vaccination Status</h4>
+                      <div className="space-y-3">
                         {[
-                          { v: 'fully_vaccinated', l: 'Fully Vaccinated ✓', desc: 'All primary and booster protocols complete' },
-                          { v: 'partially_vaccinated', l: 'Partially Vaccinated ~', desc: 'Pending additional primary or booster doses' },
-                          { v: 'not_vaccinated', l: 'Not Vaccinated ✗', desc: 'No immunization records on file' }
+                          { v: 'complete', l: 'Protocol Complete ✓' },
+                          { v: 'partial', l: 'Partially Vaccinated ~' },
+                          { v: 'none', l: 'No Immunization Records ✗' }
                         ].map(opt => (
                           <button key={opt.v} type="button" onClick={() => setPetForm(p => ({ ...p, vaccinationStatus: opt.v }))}
-                            className={`w-full p-5 rounded-2xl text-left transition-all border-2 ${petForm.vaccinationStatus === opt.v ? 'bg-white/20 border-white shadow-xl' : 'bg-white/5 border-white/10 hover:bg-white/10'}`}>
-                            <p className="text-[11px] font-black uppercase tracking-widest mb-1">{opt.l}</p>
-                            <p className="text-[9px] font-bold text-emerald-200/60 uppercase tracking-widest">Update this pet's vaccination status</p>
+                            className={`w-full p-4 rounded-xl text-left transition-all border-2 ${petForm.vaccinationStatus === opt.v ? 'bg-white/10 border-rose-500 shadow-lg' : 'bg-white/5 border-white/10 hover:bg-white/10'}`}>
+                            <p className="text-[10px] font-black uppercase tracking-widest">{opt.l}</p>
                           </button>
                         ))}
                       </div>
                     </div>
 
-                    <div className="bg-slate-900 border border-white/5 rounded-[3rem] p-10 text-white relative overflow-hidden">
-                      <Activity className="absolute top-10 right-10 w-32 h-32 opacity-10 pointer-events-none" />
-                      <h4 className="text-[12px] font-black text-primary-500 uppercase tracking-[0.4em] mb-8">Health Condition</h4>
-                      <div className="space-y-4">
+                    {/* Quick Toggles */}
+                    <div className="space-y-4">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Medical Flags</label>
+                      <div className="grid grid-cols-2 gap-4">
                         {[
-                          { v: 'excellent', l: 'Excellent', desc: 'Peak health, no concerns' },
-                          { v: 'good', l: 'Good', desc: 'Healthy with minor observation notes' },
-                          { v: 'fair', l: 'Fair', desc: 'Requires monitoring or minor treatment' },
-                          { v: 'needs_attention', l: 'Needs Attention', desc: 'Immediate veterinary intervention recommended' }
-                        ].map(opt => (
-                          <button key={opt.v} type="button" onClick={() => setPetForm(p => ({ ...p, healthStatus: opt.v }))}
-                            className={`w-full p-5 rounded-2xl text-left transition-all border-2 ${petForm.healthStatus === opt.v ? 'bg-white/20 border-primary-500 shadow-xl' : 'bg-white/5 border-white/10 hover:bg-white/10'}`}>
-                            <p className="text-[11px] font-black uppercase tracking-widest mb-1">{opt.l}</p>
-                            <p className="text-[9px] font-bold text-white/40 uppercase tracking-widest">{opt.desc}</p>
+                          { id: 'dewormed', label: 'Dewormed', icon: CheckCircle },
+                          { id: 'spayedNeutered', label: 'Spayed/Neutered', icon: Shield }
+                        ].map(item => (
+                          <button key={item.id} type="button" onClick={() => setPetForm(p => ({ ...p, [item.id]: !p[item.id] }))}
+                            className={`p-6 rounded-[2rem] border-2 transition-all flex flex-col items-center gap-3 ${petForm[item.id] ? 'bg-emerald-50 border-emerald-200 text-emerald-600' : 'bg-slate-50 border-slate-100 text-slate-400'}`}>
+                            <item.icon className="h-6 w-6" />
+                            <span className="text-[9px] font-black uppercase tracking-widest">{item.label}</span>
                           </button>
                         ))}
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Current Condition</label>
+                        <select value={petForm.healthCondition} onChange={e => setPetForm(p => ({ ...p, healthCondition: e.target.value }))}
+                          className="w-full px-5 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl text-[11px] font-black uppercase appearance-none outline-none">
+                          <option value="healthy">Healthy (Clear Bill)</option>
+                          <option value="needs_monitoring">Needs Monitoring</option>
+                          <option value="condition_present">With Existing Condition</option>
+                        </select>
                       </div>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Special Needs</label>
-                      <textarea value={petForm.specialNeeds} onChange={e => setPetForm(p => ({ ...p, specialNeeds: e.target.value }))}
-                        className="w-full px-8 py-6 bg-slate-50 border border-slate-100 rounded-2xl text-[12px] font-medium h-36 resize-none outline-none shadow-inner" placeholder="Allergies, diet, or behavior notes..." />
-                    </div>
-                    <div className={`${petForm.status === 'adopted' ? 'bg-rose-500' : petForm.status === 'reserved' ? 'bg-amber-500' : 'bg-emerald-500'} p-8 rounded-2xl flex items-center justify-between shadow-xl self-start transition-colors`}>
-                      <div className="flex items-center gap-6">
-                        <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center shadow-lg">
-                          {petForm.status === 'adopted' ? <UserCheck className="h-8 w-8 text-rose-500" /> : <CheckCircle className={`h-8 w-8 ${petForm.isAvailable ? 'text-emerald-500' : 'text-slate-300'}`} />}
-                        </div>
-                        <div>
-                          <p className="text-[12px] font-black text-white uppercase tracking-widest mb-1">
-                            {petForm.status === 'adopted' ? 'SUBJECT SOLD' : petForm.status === 'reserved' ? 'SUBJECT RESERVED' : 'Available for Sale'}
-                          </p>
-                          <p className="text-[10px] font-bold text-white/60 uppercase tracking-widest">
-                            {petForm.status === 'adopted' ? 'This pet has been sold' : petForm.status === 'reserved' ? 'Sale process in progress' : 'Show in public catalog'}
-                          </p>
-                        </div>
+                  {/* Vet Records Upload */}
+                  <div className="bg-slate-50 border border-slate-100 rounded-[2.5rem] p-8">
+                    <div className="flex items-center justify-between mb-6">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 bg-slate-900 text-white rounded-xl"><Activity className="h-4 w-4" /></div>
+                        <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-900">Veterinary / Health Records</h4>
                       </div>
-                      <button type="button"
-                        disabled={petForm.status === 'adopted'}
-                        onClick={() => setPetForm(p => ({ ...p, isAvailable: !p.isAvailable, status: !p.isAvailable ? 'available' : p.status }))}
-                        className={`w-16 h-8 rounded-full relative transition-all border-4 border-white ${petForm.isAvailable ? 'bg-slate-900' : 'bg-white/20'} ${petForm.status === 'adopted' ? 'opacity-50 cursor-not-allowed' : ''}`}>
-                        <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${petForm.isAvailable ? 'left-9' : 'left-1'}`} />
-                      </button>
+                      <label className="px-6 py-2 bg-slate-900 text-white rounded-xl text-[9px] font-black uppercase tracking-widest cursor-pointer hover:bg-rose-500 transition-all">
+                        Upload Record
+                        <input type="file" multiple accept="image/*, application/pdf" className="hidden" onChange={(e) => handleFileUpload(e, 'vetRecords')} />
+                      </label>
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                      {petForm.vetRecords.map((url, i) => (
+                        <div key={i} className="aspect-[4/3] bg-white rounded-xl border border-slate-200 overflow-hidden relative group">
+                          {url.endsWith('.pdf') ? (
+                            <div className="w-full h-full flex items-center justify-center bg-slate-100 text-[8px] font-black text-slate-400 uppercase tracking-widest">PDF DOC</div>
+                          ) : (
+                            <img src={getImageUrl(url)} alt="" className="w-full h-full object-cover" />
+                          )}
+                          <button onClick={() => setPetForm(p => ({ ...prev, vetRecords: p.vetRecords.filter((_, idx) => idx !== i) }))}
+                            className="absolute inset-0 bg-rose-500/90 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                            <Trash2 className="h-6 w-6 text-white" />
+                          </button>
+                        </div>
+                      ))}
+                      {petForm.vetRecords.length === 0 && (
+                        <div className="col-span-full py-8 text-center bg-white/50 border border-dashed border-slate-200 rounded-2xl">
+                          <span className="text-[9px] font-bold text-slate-300 uppercase tracking-[0.2em]">No health records uploaded yet</span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
               )}
 
-              {/* STAGE 3: SALES DETAILS */}
-              {modalTab === 'adoption' && (
+              {/* STAGE 3: PRICING & COMMERCE */}
+              {modalTab === 'commerce' && (
+                <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-500">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-4">
+                      <div className="p-8 bg-slate-900 rounded-[2.5rem] border border-white/5 text-white">
+                        <div className="flex items-center gap-3 mb-6">
+                          <Zap className="h-4 w-4 text-rose-500" />
+                          <h4 className="text-[10px] font-black uppercase tracking-widest text-primary-500">Sales Configuration</h4>
+                        </div>
+                        <div className="space-y-4">
+                          <div className="space-y-2">
+                             <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Selling Price (PHP)</label>
+                             <input type="number" required value={petForm.price} onChange={e => setPetForm(p => ({ ...p, price: e.target.value }))}
+                               className="w-full px-6 py-4 bg-white/5 border border-white/10 rounded-2xl text-xl font-black outline-none focus:ring-4 focus:ring-rose-500/20" placeholder="0.00" />
+                          </div>
+                          <div className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/5">
+                            <span className="text-[10px] font-black uppercase tracking-widest">Price Negotiable?</span>
+                            <button type="button" onClick={() => setPetForm(p => ({ ...p, isNegotiable: !p.isNegotiable }))}
+                              className={`w-12 h-6 rounded-full relative transition-all ${petForm.isNegotiable ? 'bg-primary-600' : 'bg-white/10'}`}>
+                              <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${petForm.isNegotiable ? 'left-7' : 'left-1'}`} />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="p-8 bg-emerald-50 rounded-[2.5rem] border border-emerald-100">
+                         <div className="flex items-center gap-3 mb-4">
+                            <CheckCircle className="h-4 w-4 text-emerald-500" />
+                            <h4 className="text-[10px] font-black uppercase tracking-widest text-emerald-600">Inventory Status</h4>
+                         </div>
+                         <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-1.5">
+                               <label className="text-[9px] font-black text-emerald-900/40 uppercase tracking-widest">Stock Quantity</label>
+                               <input type="number" value={petForm.quantity} onChange={e => setPetForm(p => ({ ...p, quantity: e.target.value }))}
+                                 className="w-full px-4 py-3 bg-white border border-emerald-200 rounded-xl text-[11px] font-black outline-none" />
+                            </div>
+                            <div className="space-y-1.5">
+                               <label className="text-[9px] font-black text-emerald-900/40 uppercase tracking-widest">Current Status</label>
+                               <select value={petForm.status} onChange={e => setPetForm(p => ({ ...p, status: e.target.value }))}
+                                 className="w-full px-4 py-3 bg-white border border-emerald-200 rounded-xl text-[11px] font-black uppercase outline-none">
+                                  <option value="available">Available</option>
+                                  <option value="reserved">Reserved</option>
+                                  <option value="sold">Sold</option>
+                               </select>
+                            </div>
+                         </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-4">
+                       <div className="p-6 bg-slate-50 border border-slate-100 rounded-[2.5rem]">
+                          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 block mb-4">Breeder / Store Documents</label>
+                          <div className="space-y-4">
+                             <div className="flex items-center justify-between p-4 bg-white rounded-2xl border border-slate-100 shadow-sm">
+                                <div>
+                                   <p className="text-[10px] font-black uppercase">Selling Permits</p>
+                                   <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">REQUIRED FOR STORES/BREEDERS</p>
+                                </div>
+                                <label className="p-2 bg-slate-900 text-white rounded-xl cursor-pointer hover:bg-rose-500 transition-colors">
+                                   <Plus className="h-4 w-4" />
+                                   <input type="file" multiple className="hidden" onChange={e => handleFileUpload(e, 'permits')} />
+                                </label>
+                             </div>
+                             <div className="flex items-center justify-between p-4 bg-white rounded-2xl border border-slate-100 shadow-sm">
+                                <div>
+                                   <p className="text-[10px] font-black uppercase">Proof of Ownership</p>
+                                   <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">RECOMMENDED FOR ALL SELLERS</p>
+                                </div>
+                                <label className="p-2 bg-slate-900 text-white rounded-xl cursor-pointer hover:bg-rose-500 transition-colors">
+                                   <Plus className="h-4 w-4" />
+                                   <input type="file" multiple className="hidden" onChange={e => handleFileUpload(e, 'proofOfOwnership')} />
+                                </label>
+                             </div>
+                          </div>
+                       </div>
+
+                       <div className="p-6 bg-rose-50 rounded-[2.5rem] border border-rose-100">
+                          <h4 className="text-[10px] font-black text-rose-500 uppercase tracking-widest flex items-center gap-2 mb-3">
+                             <Shield className="h-3 w-3" /> System Enforced Policy
+                          </h4>
+                          <ul className="space-y-2">
+                             <li className="flex items-center gap-2 text-[8px] font-black text-rose-400 uppercase tracking-widest">
+                                <CheckCircle className="h-2.5 w-2.5" /> Online Payment Only
+                             </li>
+                             <li className="flex items-center gap-2 text-[8px] font-black text-rose-400 uppercase tracking-widest">
+                                <CheckCircle className="h-2.5 w-2.5" /> Store Pickup Fulfilment
+                             </li>
+                             <li className="flex items-center gap-2 text-[8px] font-black text-rose-400 uppercase tracking-widest opacity-50">
+                                <XCircle className="h-2.5 w-2.5 text-slate-300" /> No Delivery / No COD
+                             </li>
+                          </ul>
+                       </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* STAGE 4: PICKUP DETAILS */}
+              {modalTab === 'pickup' && (
                 <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-500">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-2">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Sales Terms / Requirements</label>
-                      <textarea
-                        value={petForm.adoptionDetails?.requirements}
-                        onChange={e => setPetForm(p => ({ ...p, adoptionDetails: { ...p.adoptionDetails, requirements: e.target.value } }))}
-                        className="w-full px-6 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl text-[12px] h-32 resize-none outline-none focus:ring-2 focus:ring-rose-500/10"
-                        placeholder="E.g. Fenced yard, experience with large breeds..."
-                      />
+                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Pickup Availability</label>
+                       <select value={petForm.pickupAvailability} onChange={e => setPetForm(p => ({ ...p, pickupAvailability: e.target.value }))}
+                         className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-[11px] font-black uppercase outline-none transition-all focus:ring-4 focus:ring-rose-500/5">
+                          <option value="scheduled">By Appointment / Scheduled</option>
+                          <option value="same_day">Same Day Pickup Available</option>
+                          <option value="next_day">Next Day Pickup Available</option>
+                       </select>
                     </div>
                     <div className="space-y-2">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Return Period & Source Info</label>
-                      <div className="space-y-4">
-                        <input
-                          type="text"
-                          value={petForm.adoptionDetails?.trialPeriod}
-                          onChange={e => setPetForm(p => ({ ...p, adoptionDetails: { ...p.adoptionDetails, trialPeriod: e.target.value } }))}
-                          className="w-full px-6 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl text-[11px] font-black uppercase outline-none"
-                          placeholder="Trial Period (e.g. 2 Weeks)"
-                        />
-                        <input
-                          type="text"
-                          value={petForm.adoptionDetails?.rescuePartner}
-                          onChange={e => setPetForm(p => ({ ...p, adoptionDetails: { ...p.adoptionDetails, rescuePartner: e.target.value } }))}
-                          className="w-full px-6 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl text-[11px] font-black uppercase outline-none"
-                          placeholder="Rescue Partner / Original Shelter"
-                        />
-                      </div>
+                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Pickup Location (Store Info)</label>
+                       <div className="p-4 bg-slate-900 rounded-2xl border border-white/5 text-white">
+                          <div className="flex items-center gap-3">
+                             <Home className="h-4 w-4 text-rose-500" />
+                             <div>
+                                <p className="text-[10px] font-black uppercase tracking-widest">Verified Multi-Vendor Hub</p>
+                                <p className="text-[8px] font-bold text-white/40 uppercase tracking-widest italic">Calculated from seller profile</p>
+                             </div>
+                          </div>
+                       </div>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                    {[
-                      { id: 'isKidFriendly', label: 'Kid Friendly', icon: Users2 },
-                      { id: 'isPetFriendly', label: 'Pet Friendly', icon: PawPrint },
-                      { id: 'homeCheck', label: 'Home Check Required', icon: Home },
-                      { id: 'transportAvailable', label: 'Transport Available', icon: Truck },
-                    ].map(toggle => (
-                      <button
-                        key={toggle.id}
-                        type="button"
-                        onClick={() => setPetForm(p => ({
-                          ...p,
-                          adoptionDetails: { ...p.adoptionDetails, [toggle.id]: !p.adoptionDetails[toggle.id] }
-                        }))}
-                        className={`p-6 rounded-2xl border-2 transition-all flex flex-col items-center gap-3 ${petForm.adoptionDetails?.[toggle.id]
-                          ? 'bg-rose-50 border-rose-200 text-rose-600'
-                          : 'bg-slate-50 border-slate-100 text-slate-400 hover:border-slate-200'
-                          }`}
-                      >
-                        <toggle.icon className="h-6 w-6" />
-                        <span className="text-[9px] font-black uppercase tracking-widest text-center">{toggle.label}</span>
-                      </button>
-                    ))}
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 underline decoration-rose-500/30 underline-offset-4">Specific Pickup Instructions</label>
+                    <textarea
+                      value={petForm.pickupInstructions}
+                      onChange={e => setPetForm(p => ({ ...p, pickupInstructions: e.target.value }))}
+                      className="w-full px-8 py-6 bg-slate-50 border border-slate-100 rounded-2xl text-[12px] h-40 resize-none outline-none focus:ring-4 focus:ring-rose-500/5 shadow-inner"
+                      placeholder="E.g. Please bring a carry crate, visit us between 10AM-5PM, entrance near the park..."
+                    />
                   </div>
                 </div>
               )}
@@ -990,16 +1126,18 @@ const AdminPets = () => {
               <button disabled={submitting} type="button"
                 onClick={(e) => {
                   if (modalTab === 'identity') setModalTab('health');
-                  else if (modalTab === 'health') setModalTab('adoption');
-                  else if (modalTab === 'adoption') setModalTab('gallery');
+                  else if (modalTab === 'health') setModalTab('commerce');
+                  else if (modalTab === 'commerce') setModalTab('pickup');
+                  else if (modalTab === 'pickup') setModalTab('gallery');
                   else handleSubmit(e);
                 }}
                 className="flex-1 py-3.5 bg-rose-500 text-white rounded-2xl text-[11px] font-black uppercase tracking-widest hover:bg-slate-900 hover:scale-[1.02] transition-all shadow-2xl shadow-rose-200 flex items-center justify-center gap-4 active:scale-95 disabled:opacity-50">
                 {submitting ? 'Saving...' : (
-                  modalTab === 'identity' ? 'Next: Health & Status' :
-                    modalTab === 'health' ? 'Next: Adoption Info' :
-                      modalTab === 'adoption' ? 'Next: Pet Gallery' :
-                        editingPet ? 'Save Changes' : 'Add Pet'
+                  modalTab === 'identity' ? 'Next: Health Protocols' :
+                    modalTab === 'health' ? 'Next: Pricing & Docs' :
+                      modalTab === 'commerce' ? 'Next: Pickup Details' :
+                        modalTab === 'pickup' ? 'Next: Pet Gallery' :
+                          editingPet ? 'Save Changes' : 'Add Pet'
                 )}
                 {modalTab !== 'gallery' ? <ChevronRight className="h-5 w-5" /> : <ArrowUpRight className="h-5 w-5" />}
               </button>
