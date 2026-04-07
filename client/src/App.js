@@ -12,6 +12,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 import Layout from './components/Layout';
 import RoleBasedRedirect from './components/RoleBasedRedirect';
 import DeliveryTracking from './pages/DeliveryTracking';
+import PawCursor from './components/PawCursor';
 
 // Auth Pages
 import Login from './pages/auth/Login';
@@ -114,6 +115,7 @@ function App() {
         <CartProvider>
           <Router {...routerConfig}>
             <div className="App">
+              <PawCursor />
               <Routes>
                 {/* Public Routes */}
                 <Route path="/login" element={<Login />} />
