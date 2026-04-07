@@ -17,8 +17,10 @@ const QRScannerModal = ({ isOpen, onClose, onScanSuccess }) => {
   const scannerEngineRef = useRef(null);
   const streamRef = useRef(null);
   const scanTimerRef = useRef(null);
+  const isProcessingRef = useRef(false);
 
   const stopScanner = useCallback(async () => {
+    isProcessingRef.current = false;
     if (scanTimerRef.current) {
       clearInterval(scanTimerRef.current);
       scanTimerRef.current = null;
@@ -44,9 +46,10 @@ const QRScannerModal = ({ isOpen, onClose, onScanSuccess }) => {
   }, []);
 
   const handleDecodedText = useCallback(async (decodedText) => {
-    if (isProcessing) return;
+    if (isProcessingRef.current) return;
     
     try {
+      isProcessingRef.current = true;
       setIsProcessing(true);
       setError(null);
       setStatus('Validating...');
@@ -67,8 +70,9 @@ const QRScannerModal = ({ isOpen, onClose, onScanSuccess }) => {
       setDebugInfo('Hardware/Credential mismatch detected.');
     } finally {
       setIsProcessing(false);
+      isProcessingRef.current = false;
     }
-  }, [isProcessing, stopScanner]);
+  }, [stopScanner]);
 
   const startScanner = useCallback(async () => {
     setError(null);
@@ -150,17 +154,19 @@ const QRScannerModal = ({ isOpen, onClose, onScanSuccess }) => {
       setStatus('System Offline');
       setDebugInfo(err.message);
     }
-  }, [handleDecodedText, isProcessing, stopScanner]);
+  }, [handleDecodedText, stopScanner]);
 
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen && !scanResult && !error) {
       const wait = setTimeout(startScanner, 800);
       return () => {
         clearTimeout(wait);
         stopScanner();
       };
+    } else if (!isOpen) {
+        stopScanner();
     }
-  }, [isOpen, startScanner, stopScanner]);
+  }, [isOpen, scanResult, error, startScanner, stopScanner]);
 
   if (!isOpen) return null;
 
@@ -268,10 +274,16 @@ const QRScannerModal = ({ isOpen, onClose, onScanSuccess }) => {
                     </div>
 
                     <button 
-                      onClick={() => { onScanSuccess(); onClose(); }}
-                      className="w-full py-6 bg-white text-emerald-600 rounded-3xl text-[12px] font-black uppercase tracking-[0.4em] shadow-2xl hover:scale-105 active:scale-95 transition-all"
+                      onClick={() => { setScanResult(null); startScanner(); }}
+                      className="flex-1 w-full flex items-center justify-center gap-3 px-8 py-5 bg-white text-emerald-600 rounded-[2rem] font-black text-[12px] uppercase tracking-widest hover:bg-emerald-50 active:scale-95 transition-all shadow-xl shadow-emerald-900/10"
                     >
-                      CONTINUE PROTOCOL
+                      <RefreshCcw className="h-5 w-5" /> RE-ENGAGE OPTICS
+                    </button>
+                    <button 
+                      onClick={() => { onScanSuccess(); onClose(); }}
+                      className="flex-1 w-full flex items-center justify-center gap-3 px-8 py-5 bg-emerald-900 text-white rounded-[2rem] font-black text-[12px] uppercase tracking-widest hover:bg-emerald-800 active:scale-95 transition-all shadow-xl shadow-emerald-900/20"
+                    >
+                      <Lock className="h-5 w-5" /> CONTINUE PROTOCOL
                     </button>
                   </div>
                </div>

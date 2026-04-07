@@ -240,38 +240,47 @@ const AdminSettings = () => {
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] px-2 mb-4">Working Cycle (Per Day)</p>
-                  <div className="space-y-2">
+                <div className="space-y-4">
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] px-2">Operational Working Protocol (Per Cycle)</p>
+                  <div className="grid grid-cols-1 gap-4">
                     {days.map(day => {
                       const hours = storeSettings.businessHours[day];
                       return (
-                        <div key={day} className={`flex flex-col sm:flex-row items-center justify-between p-3 sm:p-4 rounded-2xl border transition-all gap-4 sm:gap-2 ${hours.closed ? 'bg-slate-50/50 border-slate-100 opacity-60' : 'bg-white border-slate-100 shadow-sm'}`}>
-                           <div className="flex items-center gap-3 w-full sm:w-auto min-w-[100px]">
-                              <button 
-                                type="button"
-                                onClick={() => handleHoursChange(day, 'closed', !hours.closed)}
-                                className={`w-7 h-7 rounded-lg flex items-center justify-center transition-all shrink-0 ${hours.closed ? 'bg-rose-100 text-rose-600' : 'bg-emerald-100 text-emerald-600'}`}
-                              >
-                                {hours.closed ? <XCircle className="h-4 w-4" /> : <CheckCircle className="h-4 w-4" />}
-                              </button>
-                              <span className="text-[9px] font-black uppercase tracking-wider text-slate-900 truncate">{day}</span>
+                        <div key={day} className={`group relative flex flex-col sm:flex-row sm:items-center justify-between p-5 rounded-[1.8rem] border transition-all gap-5 sm:gap-2 ${hours.closed ? 'bg-slate-50/50 border-slate-100 opacity-60' : 'bg-white border-slate-100 shadow-sm hover:shadow-md hover:border-primary-100'}`}>
+                           {/* Left Segment: Identity & Control */}
+                           <div className="flex items-center gap-4 shrink-0 justify-between sm:justify-start w-full sm:w-auto">
+                              <div className="flex items-center gap-3">
+                                 <button 
+                                   type="button"
+                                   onClick={() => handleHoursChange(day, 'closed', !hours.closed)}
+                                   className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all shadow-sm ${hours.closed ? 'bg-rose-100 text-rose-600' : 'bg-emerald-100 text-emerald-600'}`}
+                                 >
+                                   {hours.closed ? <XCircle className="h-5 w-5" /> : <CheckCircle className="h-5 w-5" />}
+                                 </button>
+                                 <span className="text-[12px] font-black uppercase tracking-[0.2em] text-slate-900 group-hover:text-primary-600 transition-colors">{day}</span>
+                              </div>
+                              <div className="sm:hidden">
+                                 {hours.closed && <span className="text-[8px] font-black text-rose-400 uppercase tracking-widest bg-rose-50 px-3 py-1 rounded-lg border border-rose-100/50">SUSPENDED</span>}
+                              </div>
                            </div>
                            
+                           {/* Right Segment: Time Calibration */}
                            {!hours.closed ? (
-                             <div className="flex items-center gap-2 animate-in fade-in w-full sm:w-auto justify-end">
-                                <div className="flex items-center gap-1.5 bg-slate-50 px-2 py-1.5 rounded-lg border border-slate-100 shrink-0">
-                                   <Clock3 className="h-3 w-3 text-slate-400" />
-                                   <input type="time" value={hours.open} onChange={(e) => handleHoursChange(day, 'open', e.target.value)} className="bg-transparent text-[9px] font-black outline-none w-20 sm:w-16" />
+                             <div className="flex items-center gap-3 animate-in fade-in slide-in-from-right-3 w-full sm:w-auto">
+                                <div className="flex-1 sm:flex-none flex items-center gap-2.5 bg-slate-50 border border-slate-100 px-4 py-2.5 rounded-2xl group-focus-within:border-primary-500 transition-all">
+                                   <Clock3 className="h-4 w-4 text-slate-400" />
+                                   <input type="time" value={hours.open} onChange={(e) => handleHoursChange(day, 'open', e.target.value)} className="bg-transparent text-[11px] font-black outline-none w-full sm:w-[70px] uppercase" />
                                 </div>
-                                <span className="text-slate-300 font-bold text-[9px]">/</span>
-                                <div className="flex items-center gap-1.5 bg-slate-50 px-2 py-1.5 rounded-lg border border-slate-100 shrink-0">
-                                   <Clock3 className="h-3 w-3 text-slate-400" />
-                                   <input type="time" value={hours.close} onChange={(e) => handleHoursChange(day, 'close', e.target.value)} className="bg-transparent text-[9px] font-black outline-none w-20 sm:w-16" />
+                                <span className="text-slate-300 font-bold text-[11px] shrink-0">/</span>
+                                <div className="flex-1 sm:flex-none flex items-center gap-2.5 bg-slate-50 border border-slate-100 px-4 py-2.5 rounded-2xl group-focus-within:border-primary-500 transition-all">
+                                   <Clock3 className="h-4 w-4 text-slate-400" />
+                                   <input type="time" value={hours.close} onChange={(e) => handleHoursChange(day, 'close', e.target.value)} className="bg-transparent text-[11px] font-black outline-none w-full sm:w-[70px] uppercase" />
                                 </div>
                              </div>
                            ) : (
-                             <span className="text-[8px] font-black text-rose-400 uppercase tracking-widest bg-rose-50 px-3 py-1 rounded-lg border border-rose-100/50">SUSPENDED</span>
+                             <div className="hidden sm:flex items-center justify-end animate-in fade-in">
+                                <span className="text-[10px] font-black text-rose-400 uppercase tracking-[0.2em] bg-rose-50 px-5 py-2 rounded-xl border border-rose-100/40 shadow-sm">Protocol Suspended</span>
+                             </div>
                            )}
                         </div>
                       )
