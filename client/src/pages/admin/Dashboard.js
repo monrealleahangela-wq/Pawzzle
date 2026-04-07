@@ -317,12 +317,12 @@ const Dashboard = () => {
 
           {/* Resource Alert Matrix */}
           {(['admin', 'super_admin'].includes(user?.role) || ['inventory_staff', 'general'].includes(user?.staffType)) && stats.lowStockProducts.length > 0 ? (
-            <div className="bg-rose-600 rounded-[3rem] p-10 text-white shadow-[0_40px_80px_-20px_rgba(225,29,72,0.4)] relative overflow-hidden group">
+            <div className="bg-rose-600 rounded-[2rem] sm:rounded-[3rem] p-6 sm:p-10 text-white shadow-[0_40px_80px_-20px_rgba(225,29,72,0.4)] relative overflow-hidden group">
               <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent pointer-events-none" />
               
-              <div className="flex items-center gap-6 mb-10">
-                <div className="w-14 h-14 bg-white/20 backdrop-blur-xl rounded-[1.4rem] flex items-center justify-center animate-pulse">
-                  <AlertCircle className="h-7 w-7 text-white" />
+              <div className="flex items-center gap-4 sm:gap-6 mb-8 sm:mb-10">
+                <div className="w-12 h-12 sm:w-14 sm:h-14 bg-white/20 backdrop-blur-xl rounded-xl sm:rounded-[1.4rem] flex items-center justify-center animate-pulse">
+                  <AlertCircle className="h-6 w-6 sm:h-7 sm:w-7 text-white" />
                 </div>
                 <div>
                   <h2 className="text-[11px] font-black uppercase tracking-[0.5em] text-white/80">RESOURCE DEPLETION</h2>
@@ -345,9 +345,9 @@ const Dashboard = () => {
               </div>
             </div>
           ) : (['admin', 'super_admin'].includes(user?.role) || ['inventory_staff', 'general'].includes(user?.staffType)) && (
-            <div className="bg-emerald-600 rounded-[3rem] p-10 text-white shadow-[0_40px_80px_-20px_rgba(5,150,105,0.3)] flex flex-col items-center justify-center text-center space-y-6 relative overflow-hidden group">
+            <div className="bg-emerald-600 rounded-[2rem] sm:rounded-[3rem] p-6 sm:p-10 text-white shadow-[0_40px_80px_-20px_rgba(5,150,105,0.3)] flex flex-col items-center justify-center text-center space-y-6 relative overflow-hidden group">
               <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent pointer-events-none" />
-              <div className="w-20 h-20 bg-white/20 backdrop-blur-xl rounded-full flex items-center justify-center group-hover:scale-110 transition-transform duration-700 shadow-2xl">
+              <div className="w-16 h-16 sm:w-20 sm:h-20 bg-white/20 backdrop-blur-xl rounded-full flex items-center justify-center group-hover:scale-110 transition-transform duration-700 shadow-2xl">
                 <Shield className="h-10 w-10 text-white" />
               </div>
               <div className="space-y-2">

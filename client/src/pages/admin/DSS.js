@@ -65,14 +65,14 @@ const AdminDSS = () => {
     const isStaff = roleProfile?.isStaff;
     const staffType = roleProfile?.staffType?.replace('_', ' ');
 
-    const cardClass = "bg-white border border-slate-100 rounded-2xl p-8 shadow-sm hover:shadow-xl transition-all duration-500 overflow-hidden relative group";
+    const cardClass = "bg-white border border-slate-100 rounded-2xl p-5 sm:p-8 shadow-sm hover:shadow-xl transition-all duration-500 overflow-hidden relative group";
     const labelClass = "text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4 block";
     const titleClass = "text-xl font-black text-slate-900 tracking-tight mb-6 flex items-center gap-3 uppercase";
 
     return (
         <div className="max-w-7xl mx-auto space-y-10 pb-32 animate-in fade-in duration-700">
             {/* Header Hero Section */}
-            <div className="relative bg-slate-900 rounded-[3.5rem] p-12 md:p-16 overflow-hidden shadow-2xl">
+            <div className="relative bg-slate-900 rounded-[2rem] sm:rounded-[3.5rem] p-6 sm:p-12 md:p-16 overflow-hidden shadow-2xl">
                 <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-primary-600/10 rounded-full blur-[120px] -mr-32 -mt-32 animate-pulse" />
                 <div className="absolute bottom-0 left-0 w-[300px] h-[300px] bg-indigo-500/10 rounded-full blur-[100px] -ml-16 -mb-16" />
 
@@ -85,10 +85,10 @@ const AdminDSS = () => {
                     </div>
 
                     <div className="max-w-3xl">
-                        <h1 className="text-4xl md:text-7xl font-black uppercase tracking-tighter leading-none mb-6 text-white">
+                        <h1 className="text-3xl sm:text-5xl md:text-7xl font-black uppercase tracking-tighter leading-none mb-6 text-white">
                             {isStaff ? `${staffType}` : 'Autonomous'} <br /> <span className="text-primary-500 italic">Intelligence</span>
                         </h1>
-                        <p className="text-sm md:text-lg font-bold text-slate-400 max-w-xl leading-relaxed">
+                        <p className="text-xs sm:text-sm md:text-lg font-bold text-slate-400 max-w-xl leading-relaxed">
                             {isStaff 
                                 ? `Specialized decision support for ${staffType} protocols. Analyze store-specific data to optimize your assigned operations.`
                                 : 'Analyze current stock levels and sales velocity to automate procurement and maximize marketplace efficiency.'
@@ -110,7 +110,7 @@ const AdminDSS = () => {
             </div>
 
             {/* Navigation Tabs */}
-            <div className="flex gap-2 p-1.5 bg-slate-100 rounded-2xl w-fit mx-auto shadow-inner">
+            <div className="flex flex-wrap sm:flex-nowrap gap-1.5 p-1.5 bg-slate-100 rounded-2xl w-full sm:w-fit mx-auto shadow-inner">
                 {[
                     { id: 'inventory', label: 'Smart Alerts', icon: AlertCircle },
                     { id: 'sales', label: 'Sales Velocity', icon: BarChart3 },
@@ -119,12 +119,12 @@ const AdminDSS = () => {
                     <button
                         key={tab.id}
                         onClick={() => setActiveTab(tab.id)}
-                        className={`flex items-center gap-2 px-8 py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === tab.id
+                        className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 sm:px-8 py-3 rounded-[1rem] sm:rounded-2xl text-[9px] sm:text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === tab.id
                             ? 'bg-slate-900 text-white shadow-xl translate-y-[-1px]'
                             : 'text-slate-400 hover:text-slate-600'
                             }`}
                     >
-                        <tab.icon size={14} />
+                        <tab.icon size={12} />
                         {tab.label}
                     </button>
                 ))}
@@ -139,8 +139,8 @@ const AdminDSS = () => {
                         <div className="lg:col-span-8 space-y-6">
                             <div className="flex items-center justify-between px-4">
                                 <div className="flex items-center gap-3">
-                                    <Sparkles size={20} className="text-primary-600" />
-                                    <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tight">Active Reprocurement Alerts</h2>
+                                    <Sparkles size={18} className="text-primary-600" />
+                                    <h2 className="text-xl sm:text-2xl font-black text-slate-900 uppercase tracking-tight">Active Alerts</h2>
                                 </div>
                                 <button onClick={fetchInsights} className="p-3 bg-white border border-slate-100 text-slate-400 rounded-2xl hover:text-primary-600 transition-all">
                                     <RefreshCw size={14} />
@@ -176,9 +176,9 @@ const AdminDSS = () => {
                                         </div>
                                     ))
                                 ) : (
-                                    <div className="bg-slate-50 border-2 border-dashed border-slate-200 rounded-[3rem] p-20 text-center">
-                                        <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center mx-auto mb-6 shadow-xl border border-slate-100">
-                                            <CheckCircle className="text-emerald-500" size={40} />
+                                    <div className="bg-slate-50 border-2 border-dashed border-slate-200 rounded-[2rem] sm:rounded-[3rem] p-10 sm:p-20 text-center">
+                                        <div className="w-16 h-16 sm:w-20 sm:h-20 bg-white rounded-full flex items-center justify-center mx-auto mb-6 shadow-xl border border-slate-100">
+                                            <CheckCircle className="text-emerald-500" size={32} />
                                         </div>
                                         <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight mb-3">Inventory Healthy</h3>
                                         <p className="text-sm font-bold text-slate-400 max-w-md mx-auto leading-relaxed uppercase tracking-widest">
@@ -329,7 +329,7 @@ const AdminDSS = () => {
                         </div>
 
                         <div className="space-y-6">
-                            <div className="bg-slate-900 rounded-[3rem] p-10 text-white shadow-2xl">
+                            <div className="bg-slate-900 rounded-[2rem] sm:rounded-[3rem] p-6 sm:p-10 text-white shadow-2xl">
                                 <h3 className="text-xl font-black uppercase tracking-tight mb-6">Restock Priority Matrix</h3>
                                 <div className="space-y-4">
                                     {[
@@ -349,7 +349,7 @@ const AdminDSS = () => {
                                 </div>
                             </div>
 
-                            <div className="bg-primary-600 rounded-[3rem] p-10 text-white shadow-xl flex gap-6 items-center">
+                            <div className="bg-primary-600 rounded-[2rem] sm:rounded-[3rem] p-6 sm:p-10 text-white shadow-xl flex flex-col sm:flex-row gap-6 items-center">
                                 <div className="p-4 bg-white/10 rounded-2xl backdrop-blur-md">
                                     <ShoppingBag size={32} />
                                 </div>
