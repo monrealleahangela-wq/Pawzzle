@@ -1769,21 +1769,58 @@ const Bookings = ({ isSubcomponent = false }) => {
                 </div>
               </div>
 
-              {/* QR Protocol - Critical for Approved Entry */}
-              {selectedBooking.status === 'approved' && (
+              {/* QR Protocol - Secured Booking Verification */}
+              {selectedBooking.paymentStatus === 'paid' && !['cancelled', 'no_show'].includes(selectedBooking.status) && (
                 <div className="bg-slate-900 p-10 rounded-[2.5rem] text-white flex flex-col items-center text-center gap-8 relative overflow-hidden group">
                   <div className="absolute top-0 right-0 w-64 h-64 bg-primary-600/10 rounded-full blur-[90px] pointer-events-none" />
-                  <div className="relative z-10 w-56 h-56 bg-white p-6 rounded-[2.5rem] shadow-[0_0_50px_rgba(255,255,255,0.2)] flex items-center justify-center group-hover:scale-105 transition-transform duration-700">
-                    <img 
-                      src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${selectedBooking._id}`} 
-                      alt="Booking QR" 
-                      className="w-full h-full object-contain"
-                    />
+                  
+                  {/* QR Status Banner */}
+                  <div className="relative z-10 w-full flex justify-center mb-2">
+                    {selectedBooking.isScanned ? (
+                      <span className="px-5 py-2 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] flex items-center gap-2">
+                        <CheckCircle size={14} /> Protocol Used / Completed
+                      </span>
+                    ) : (new Date(`${selectedBooking.bookingDate.split('T')[0]}T${selectedBooking.endTime}`) < new Date()) ? (
+                      <span className="px-5 py-2 bg-rose-500/20 text-rose-400 border border-rose-500/30 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] flex items-center gap-2">
+                        <AlertCircle size={14} /> QR Code Expired
+                      </span>
+                    ) : (selectedBooking.status === 'confirmed' || selectedBooking.status === 'approved') ? (
+                      <span className="px-5 py-2 bg-primary-500/20 text-primary-400 border border-primary-500/30 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] flex items-center gap-2 animate-pulse">
+                        <Activity size={14} /> QR Code Active / Ready
+                      </span>
+                    ) : (
+                      <span className="px-5 py-2 bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] flex items-center gap-2">
+                        <Clock size={14} /> Pending Confirmation
+                      </span>
+                    )}
                   </div>
+
+                  <div className={`relative z-10 w-56 h-56 bg-white p-6 rounded-[2.5rem] shadow-[0_0_50px_rgba(255,255,255,0.2)] flex items-center justify-center transition-all duration-700 ${
+                    (selectedBooking.isScanned || (new Date(`${selectedBooking.bookingDate.split('T')[0]}T${selectedBooking.endTime}`) < new Date())) 
+                    ? 'opacity-40 grayscale blur-[2px] scale-95' 
+                    : 'group-hover:scale-105'
+                  }`}>
+                    {selectedBooking.qrCode ? (
+                      <img 
+                        src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${selectedBooking.qrCode}`} 
+                        alt="Booking QR" 
+                        className="w-full h-full object-contain"
+                      />
+                    ) : (
+                      <div className="text-slate-200"><Activity size={64} /></div>
+                    )}
+                  </div>
+
                   <div className="relative z-10 max-w-sm">
                     <h4 className="text-2xl font-black uppercase tracking-tighter mb-3">Service Entry QR</h4>
                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-relaxed">
-                      Present this code to the store staff. Scanning this will verify your identity and initiate the 'Processing' phase of your protocol.
+                      {selectedBooking.isScanned 
+                        ? "This QR code has already been scanned and processed by our staff. Verification completed."
+                        : (new Date(`${selectedBooking.bookingDate.split('T')[0]}T${selectedBooking.endTime}`) < new Date())
+                        ? "The scheduled time for this service has passed. This QR code is now expired."
+                        : (selectedBooking.status === 'confirmed' || selectedBooking.status === 'approved')
+                        ? "Present this code to the store staff. Scanning this will verify your identity and initiate the 'Processing' phase."
+                        : "Your QR code will activate once the store confirms your booking request."}
                     </p>
                   </div>
                 </div>

@@ -82,6 +82,15 @@ const bookingSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
+  scannedAt: {
+    type: Date,
+    default: null
+  },
+  scannedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null
+  },
   servicePhotos: [{
     type: String // URLs of photos uploaded by staff/groomers after service
   }],

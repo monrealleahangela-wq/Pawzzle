@@ -1,52 +1,87 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { PawPrint } from 'lucide-react';
 
 const PawCursor = () => {
-    const [mousePos, setMousePos] = useState({ x: -100, y: -100 });
-    const [pawPrints, setPawPrints] = useState([]);
+    const cursorRef = useRef(null);
     const [isHovering, setIsHovering] = useState(false);
     const [isPressed, setIsPressed] = useState(false);
+    const [isTouch, setIsTouch] = useState(false);
     const lastPos = useRef({ x: 0, y: 0 });
-    const distanceThreshold = 60; // Distance to travel before dropping another print
+    const distanceThreshold = 60;
+    const maxTrail = 8; // Slightly fewer for better performance
 
     useEffect(() => {
+        // Detect touch device
+        setIsTouch('ontouchstart' in window || navigator.maxTouchPoints > 0);
+
+        const cursor = cursorRef.current;
+        if (!cursor) return;
+
         const handleMouseMove = (e) => {
             const { clientX, clientY } = e;
-            setMousePos({ x: clientX, y: clientY });
+            
+            // Direct DOM update for instant response
+            requestAnimationFrame(() => {
+                if (cursor) {
+                    cursor.style.transform = `translate3d(${clientX}px, ${clientY}px, 0)`;
+                }
+            });
 
-            // Detect if hovering over clickable elements
+            // Detect hover
             const target = e.target;
             const isClickable = target.closest('a, button, select, input, [role="button"], .clickable');
             setIsHovering(!!isClickable);
 
-            // Calculate distance from last paw print
+            // Trail Logic
             const dist = Math.sqrt(
                 Math.pow(clientX - lastPos.current.x, 2) + 
                 Math.pow(clientY - lastPos.current.y, 2)
             );
 
             if (dist > distanceThreshold) {
-                const angle = Math.atan2(clientY - lastPos.current.y, clientX - lastPos.current.x) * (180 / Math.PI) + 90;
-                
-                const newPrint = {
-                    id: Date.now(),
-                    x: clientX,
-                    y: clientY,
-                    angle: angle,
-                    side: Math.random() > 0.5 ? 'left' : 'right' // Alternate paws
-                };
-
-                setPawPrints(prev => [...prev.slice(-12), newPrint]); // Keep last 12 prints
+                dropTrail(clientX, clientY, lastPos.current);
                 lastPos.current = { x: clientX, y: clientY };
+            }
+        };
+
+        const dropTrail = (x, y, prevPos) => {
+            const angle = Math.atan2(y - prevPos.y, x - prevPos.x) * (180 / Math.PI) + 90;
+            const side = Math.random() > 0.5 ? 'left' : 'right';
+            
+            const trailContainer = document.getElementById('paw-trail-container');
+            if (!trailContainer) return;
+
+            const print = document.createElement('div');
+            print.className = 'absolute pointer-events-none transition-all duration-1000 opacity-30 scale-50 ease-out';
+            print.style.left = `${x + (side === 'left' ? -15 : 15)}px`;
+            print.style.top = `${y}px`;
+            print.style.transform = `translate(-50%, -50%) rotate(${angle + (side === 'left' ? -15 : 15)}deg)`;
+            print.style.color = '#713f12';
+            print.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M11 15.5c.34-.14.7-.22 1.08-.22.38 0 .74.08 1.08.22.6.24.96.84.96 1.5 0 1.1-.9 2-2 2s-2-.9-2-2c0-.66.36-1.26.96-1.5zM12 11c1.1 0 2 .9 2 2s-.9 2-2 2-2-.9-2-2 .9-2 2-2zM4.5 13c1.1 0 2 .9 2 2s-.9 2-2 2-2-.9-2-2 .9-2 2-2zM19.5 13c1.1 0 2 .9 2 2s-.9 2-2 2-2-.9-2-2 .9-2 2-2zM8.5 7c1.1 0 2 .9 2 2s-.9 2-2 2-2-.9-2-2 .9-2 2-2zM15.5 7c1.1 0 2 .9 2 2s-.9 2-2 2-2-.9-2-2 .9-2 2-2z"/></svg>';
+            
+            trailContainer.appendChild(print);
+
+            // Fade and remove
+            setTimeout(() => {
+                print.style.opacity = '0';
+                print.style.transform = `translate(-50%, -50%) rotate(${angle}deg) scale(0.3)`;
+                setTimeout(() => print.remove(), 1000);
+            }, 600);
+
+            // Cleanup old ones if too many
+            if (trailContainer.children.length > maxTrail) {
+                const oldest = trailContainer.children[0];
+                if (oldest) oldest.remove();
             }
         };
 
         const handleMouseDown = () => setIsPressed(true);
         const handleMouseUp = () => setIsPressed(false);
 
-        window.addEventListener('mousemove', handleMouseMove);
+        window.addEventListener('mousemove', handleMouseMove, { passive: true });
         window.addEventListener('mousedown', handleMouseDown);
         window.addEventListener('mouseup', handleMouseUp);
+        
         return () => {
             window.removeEventListener('mousemove', handleMouseMove);
             window.removeEventListener('mousedown', handleMouseDown);
@@ -54,67 +89,34 @@ const PawCursor = () => {
         };
     }, []);
 
-    useEffect(() => {
-        const timer = setInterval(() => {
-            setPawPrints(prev => prev.filter(p => Date.now() - p.id < 2000));
-        }, 100);
-        return () => clearInterval(timer);
-    }, []);
-
-    // Hide default cursor globally
-    useEffect(() => {
-        const style = document.createElement('style');
-        style.innerHTML = `
-            * {
-                cursor: none !important;
-            }
-            a, button, select, input, [role="button"] {
-                cursor: none !important;
-            }
-        `;
-        document.head.appendChild(style);
-        return () => document.head.removeChild(style);
-    }, []);
+    if (isTouch) return null;
 
     return (
-        <div className="fixed inset-0 pointer-events-none z-[99999] overflow-hidden">
-            {/* Trail */}
-            {pawPrints.map(print => (
-                <div
-                    key={print.id}
-                    className="absolute transition-opacity duration-1000 opacity-30 scale-75"
+        <div className="fixed inset-0 pointer-events-none z-[999999] overflow-hidden">
+            <div id="paw-trail-container" className="absolute inset-0" />
+            
+            <div
+                ref={cursorRef}
+                className="absolute top-0 left-0 transition-none will-change-transform"
+                style={{ transform: 'translate3d(-100px, -100px, 0)' }}
+            >
+                <div 
+                    className="flex items-center justify-center transition-all duration-150 ease-out"
                     style={{
-                        left: print.x + (print.side === 'left' ? -10 : 10),
-                        top: print.y,
-                        transform: `translate(-50%, -50%) rotate(${print.angle + (print.side === 'left' ? -15 : 15)}deg)`,
-                        color: '#713f12' // primary-900 equivalent
+                        transform: `translate(-50%, -50%) scale(${isPressed ? 0.8 : isHovering ? 1.3 : 1})`,
+                        color: isHovering ? '#c2410c' : '#533114'
                     }}
                 >
-                    <PawPrint size={14} fill="currentColor" />
-                </div>
-            ))}
-
-            {/* Main Cursor Container */}
-            <div
-                className="absolute flex items-center justify-center transition-all duration-150 ease-out"
-                style={{
-                    left: mousePos.x,
-                    top: mousePos.y,
-                    transform: `translate(-50%, -50%) scale(${isPressed ? 0.8 : isHovering ? 1.4 : 1})`,
-                    color: isHovering ? '#c2410c' : '#533114' // primary-700 or dark brown
-                }}
-            >
-                <div className={`relative transition-transform duration-300 ${isHovering ? 'rotate-12' : ''}`}>
-                    <PawPrint 
-                        size={28} 
-                        fill="currentColor" 
-                        className={`filter drop-shadow-md transition-all ${isHovering ? 'opacity-90' : 'opacity-100'}`} 
-                    />
-                    
-                    {/* Hover Glow */}
-                    {isHovering && (
-                        <div className="absolute inset-0 bg-primary-400/20 blur-xl rounded-full -z-10 animate-pulse" />
-                    )}
+                    <div className={`relative transition-transform duration-300 ${isHovering ? 'rotate-12' : ''}`}>
+                        <PawPrint 
+                            size={24} 
+                            fill="currentColor" 
+                            className={`filter drop-shadow-md transition-all ${isHovering ? 'opacity-90' : 'opacity-100'}`} 
+                        />
+                        {isHovering && (
+                            <div className="absolute inset-0 bg-primary-400/30 blur-xl rounded-full -z-10 animate-pulse" />
+                        )}
+                    </div>
                 </div>
             </div>
         </div>

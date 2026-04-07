@@ -13,7 +13,7 @@ const {
   cancelBooking,
   validateBookingQR
 } = require('../controllers/bookingController');
-const { authenticate, superAdminOnly } = require('../middleware/auth');
+const { authenticate, superAdminOnly, adminOrStaff } = require('../middleware/auth');
 const { storeAdminOnly, canAccessStore } = require('../middleware/storeAuth');
 
 // Validation rules
@@ -55,6 +55,6 @@ router.get('/all', authenticate, getAllBookings);
 // Store admin routes
 router.get('/store/:storeId', authenticate, storeAdminOnly, getStoreBookings);
 router.put('/:bookingId/status', authenticate, storeAdminOnly, updateStatusValidation, updateBookingStatus);
-router.post('/validate-qr', authenticate, storeAdminOnly, validateBookingQR);
+router.post('/validate-qr', authenticate, adminOrStaff, validateBookingQR);
 
 module.exports = router;

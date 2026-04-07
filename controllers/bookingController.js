@@ -166,7 +166,8 @@ const createBooking = async (req, res) => {
       paymentMethod: req.body.paymentMethod || 'pending',
       voucher: appliedVoucherId,
       discountAmount,
-      notes
+      notes,
+      qrCode: `BK-${Math.random().toString(36).substr(2, 9).toUpperCase()}-${Date.now().toString().slice(-4)}`
     });
 
     await booking.save();
@@ -646,57 +647,109 @@ const confirmBookingPayment = async (req, res) => {
 // Validate booking via QR scan (Staff/Admin)
 const validateBookingQR = async (req, res) => {
   try {
-    const { bookingId } = req.body;
+    const { qrCode } = req.body;
     
-    const booking = await Booking.findById(bookingId)
-      .populate('customer', 'firstName lastName')
+    if (!qrCode) {
+      return res.status(400).json({ message: 'QR Code is required' });
+    }
+
+    const booking = await Booking.findOne({ qrCode })
+      .populate('customer', 'firstName lastName email')
       .populate('service', 'name');
 
     if (!booking) {
-      return res.status(404).json({ message: 'Booking not found' });
+      return res.status(404).json({ message: 'Invalid QR Code: Booking not found' });
     }
 
+    // NEW: Multi-vendor safety check (Ensure staff scans only their store's bookings)
+    const scanner = req.user;
+    const isStoreOwner = scanner.role === 'admin' && booking.store && booking.store.owner && booking.store.owner.toString() === scanner._id.toString();
+    const isStoreStaff = scanner.role === 'staff' && scanner.store && booking.store && booking.store._id.toString() === scanner.store.toString();
+    const isSuperAdmin = scanner.role === 'super_admin';
+
+    if (!isSuperAdmin && !isStoreOwner && !isStoreStaff) {
+      return res.status(403).json({ message: 'Access Denied: You can only scan bookings for your own store.' });
+    }
+
+    // 1. Check if already used
     if (booking.isScanned) {
-      return res.status(400).json({ message: 'Booking already validated/scanned' });
-    }
-
-    if (['cancelled', 'no_show', 'completed'].includes(booking.status)) {
-      return res.status(400).json({ message: `Cannot validate: Booking is already ${booking.status}` });
-    }
-
-    // Expiry Check (30 min window from startTime)
-    const now = new Date();
-    const [h, m] = booking.startTime.split(':');
-    const scheduled = new Date(booking.bookingDate);
-    scheduled.setHours(parseInt(h), parseInt(m), 0, 0);
-    const expiry = new Date(scheduled.getTime() + 30 * 60000);
-
-    if (now > expiry) {
-      booking.status = 'cancelled';
-      booking.adminNotes = 'Automatically cancelled: scanned more than 30 minutes after scheduled time.';
-      await booking.save();
       return res.status(400).json({ 
-        message: 'Booking expired', 
-        details: 'QR code is only valid up to 30 minutes after the scheduled time.' 
+        message: 'QR Code Already Used', 
+        details: `This booking was already scanned on ${new Date(booking.scannedAt).toLocaleString()} by staff.`
       });
     }
 
-    // Valid Scan
-    booking.isScanned = true;
-    if (['pending', 'approved', 'confirmed'].includes(booking.status)) {
-      booking.status = 'processing';
+    // 2. Check if cancelled
+    if (booking.status === 'cancelled') {
+      return res.status(400).json({ message: 'QR Code Rejected: Booking has been cancelled.' });
     }
+
+    // 3. Check if confirmed (Active)
+    // Requirement: "The QR code should only become active after the owner or service staff confirms the booking."
+    if (booking.status !== 'confirmed' && booking.status !== 'approved') {
+      return res.status(400).json({ 
+        message: 'QR Code Inactive', 
+        details: `This booking is currently ${booking.status}. It must be 'confirmed' to be active.`
+      });
+    }
+
+    // 4. Check payment status
+    if (booking.paymentStatus !== 'paid') {
+      return res.status(400).json({ 
+        message: 'Payment Required', 
+        details: 'This booking has not been paid for yet. QR codes are only valid for paid bookings.'
+      });
+    }
+
+    // 5. Check expiration (Service time has passed)
+    // Requirement: "The QR code must also automatically expire after the booked service time has passed"
+    const now = new Date();
+    const [endH, endM] = booking.endTime.split(':');
+    const serviceEnd = new Date(booking.bookingDate);
+    serviceEnd.setHours(parseInt(endH), parseInt(endM), 0, 0);
+
+    if (now > serviceEnd) {
+      booking.status = 'no_show';
+      booking.adminNotes = `Automatically marked as expired/no_show: QR scanned after end time (${booking.endTime}).`;
+      await booking.save();
+      return res.status(400).json({ 
+        message: 'QR Code Expired', 
+        details: `The scheduled service time (${booking.endTime}) has already passed.` 
+      });
+    }
+
+    // 6. Valid Scan - Success!
+    booking.isScanned = true;
+    booking.scannedAt = new Date();
+    booking.scannedBy = req.user._id;
+    
+    // Transition to processing state
+    booking.status = 'processing';
+    
     await booking.save();
 
-    // Populate for the frontend response
-    await booking.populate([
-      { path: 'customer', select: 'firstName lastName email' },
-      { path: 'service', select: 'name' }
-    ]);
+    // Notify customer about successful scan
+    await createNotification({
+      recipient: booking.customer._id,
+      sender: req.user._id,
+      type: 'booking_status',
+      title: 'Booking Validated',
+      message: `Your booking for ${booking.service.name} has been successfully scanned and is now being processed.`,
+      relatedId: booking._id,
+      relatedModel: 'Booking'
+    });
 
     res.json({
-      message: 'Booking validated successfully!',
-      booking: booking
+      message: 'Booking Validated Successfully!',
+      booking: {
+        _id: booking._id,
+        customerName: `${booking.customer.firstName} ${booking.customer.lastName}`,
+        serviceName: booking.service.name,
+        petName: booking.pet.name,
+        time: `${booking.startTime} - ${booking.endTime}`,
+        scannedAt: booking.scannedAt,
+        status: booking.status
+      }
     });
 
   } catch (error) {

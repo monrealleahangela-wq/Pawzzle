@@ -15,6 +15,7 @@ body {
   background-color: #533114; /* Match app theme for overscroll */
   min-height: 100vh;
   min-height: 100dvh;
+  cursor: none !important; /* Hide default cursor */
   /* Universal Scale Management */
   @media (min-width: 1024px) {
     zoom: 0.8;
@@ -22,6 +23,16 @@ body {
   @media (max-width: 1023px) {
     zoom: 1;
   }
+}
+
+/* Ensure all clickable elements also hide the cursor */
+a, button, select, input, textarea, [role="button"], .clickable {
+  cursor: none !important;
+}
+
+/* Fallback for when custom cursor is disabled or debugging */
+.show-cursor, .show-cursor * {
+  cursor: auto !important;
 }
 
 /* Globally hide scrollbars */

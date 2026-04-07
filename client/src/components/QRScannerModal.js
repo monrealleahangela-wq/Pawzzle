@@ -58,9 +58,15 @@ const QRScannerModal = ({ isOpen, onClose, onScanSuccess }) => {
       await stopScanner();
 
       // Determine validation endpoint based on protocol or context
-      const isOrder = decodedText.startsWith('ORD-') || decodedText.length > 20;
+      const isOrder = decodedText.startsWith('ORD-');
+      const isBooking = decodedText.startsWith('BK-');
+      
       let endpoint = isOrder ? '/orders/validate-qr' : '/bookings/validate-qr';
-      const payload = { orderId: decodedText, bookingId: decodedText };
+      const payload = { 
+        orderId: decodedText, 
+        bookingId: decodedText,
+        qrCode: decodedText // Universal field for new logic
+      };
 
       let response;
       try {

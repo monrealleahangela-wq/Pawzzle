@@ -156,6 +156,7 @@ const BookingsManagement = () => {
       case 'finished': return 'bg-emerald-600 text-white border-emerald-500 shadow-emerald-200';
       case 'completed': return 'bg-slate-900 text-white border-slate-700 shadow-slate-300';
       case 'cancelled': return 'bg-rose-500 text-white border-rose-400 shadow-rose-200';
+      case 'no_show': return 'bg-slate-400 text-white border-slate-300 opacity-60';
       default: return 'bg-slate-400 text-white border-slate-300';
     }
   };
@@ -320,9 +321,16 @@ const BookingsManagement = () => {
                       </p>
                     </td>
                     <td className="px-6 py-3.5">
-                      <span className={`px-4 py-1 rounded-full text-[8px] font-black uppercase tracking-[0.2em] border-2 ${getStatusStyle(booking.status)}`}>
-                        {booking.status.replace('_', ' ')}
-                      </span>
+                      <div className="flex flex-col gap-1">
+                        <span className={`px-4 py-1 rounded-full text-[8px] font-black uppercase tracking-[0.2em] border-2 w-fit ${getStatusStyle(booking.status)}`}>
+                          {booking.status === 'no_show' ? 'EXPIRED' : booking.status.replace('_', ' ')}
+                        </span>
+                        {booking.isScanned && (
+                          <span className="text-[7px] font-black text-emerald-600 uppercase tracking-widest flex items-center gap-1">
+                            <ShieldCheck className="h-2.5 w-2.5" /> QR VERIFIED
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-6 py-3.5 text-right">
                       <div className="p-2.5 bg-slate-50 text-slate-400 rounded-lg group-hover:bg-slate-900 group-hover:text-white transition-all inline-block">
@@ -514,6 +522,25 @@ const BookingsManagement = () => {
                   </div>
                 )}
               </div>
+
+
+              {/* Scan Verification - NEW SECTION */}
+              {selectedBooking.isScanned && (
+                <div className="p-6 bg-emerald-50 rounded-[2.5rem] border border-emerald-100 flex items-center gap-6">
+                  <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center text-emerald-600 shadow-sm border border-emerald-50">
+                    <ShieldCheck className="h-8 w-8" />
+                  </div>
+                  <div>
+                    <label className="text-[9px] font-black text-emerald-600 uppercase tracking-[0.4em] block mb-1">Scan Verified</label>
+                    <p className="text-[12px] font-black text-slate-900 uppercase tracking-tight leading-none mb-1">
+                      Validated by: {selectedBooking.scannedBy?.firstName || 'Staff Holder'} {selectedBooking.scannedBy?.lastName || ''}
+                    </p>
+                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">
+                      Confirmed on: {new Date(selectedBooking.scannedAt).toLocaleString()}
+                    </p>
+                  </div>
+                </div>
+              )}
 
               {/* Schedule */}
               <div className="bg-slate-900 p-6 rounded-[2rem] text-white flex flex-col sm:flex-row items-center justify-between gap-6 relative overflow-hidden group">
