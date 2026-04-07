@@ -7,7 +7,10 @@ const {
   getOrderById,
   createOrder,
   updateOrderStatus,
-  cancelOrder
+  confirmOrderPickup,
+  confirmOrderPayment,
+  cancelOrder,
+  validateOrderQR
 } = require('../controllers/orderController');
 const { authenticate, adminOrStaff, customerOnly } = require('../middleware/auth');
 
@@ -19,7 +22,7 @@ const createOrderValidation = [
   body('items.*.quantity').isInt({ min: 1 }).withMessage('Quantity must be at least 1'),
   body('deliveryMethod').isIn(['delivery', 'pickup']).withMessage('Invalid delivery method'),
   body('phoneNumber').notEmpty().withMessage('Phone number is required'),
-  body('paymentMethod').isIn(['credit_card', 'debit_card', 'paypal', 'gcash', 'maya', 'cash_on_delivery', 'cash_on_pickup']).withMessage('Invalid payment method'),
+  body('paymentMethod').isIn(['gcash', 'maya', 'bank_transfer', 'pending']).withMessage('Invalid payment method'),
   body('notes').optional().trim()
 ];
 
@@ -35,8 +38,11 @@ router.get('/:id', authenticate, getOrderById);
 // Customer only routes
 router.post('/', authenticate, customerOnly, createOrderValidation, createOrder);
 router.patch('/:id/cancel', authenticate, cancelOrder);
+router.post('/:id/confirm-pickup', authenticate, customerOnly, confirmOrderPickup);
 
 // Admin/Staff routes
 router.patch('/:id/status', authenticate, adminOrStaff, updateOrderStatusValidation, updateOrderStatus);
+router.post('/:id/confirm-payment', authenticate, adminOrStaff, confirmOrderPayment);
+router.post('/validate-qr', authenticate, adminOrStaff, validateOrderQR);
 
 module.exports = router;

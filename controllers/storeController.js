@@ -438,6 +438,78 @@ const getStoreByOwner = async (req, res) => {
   }
 };
 
+// Submit store verification documents (Store Owner)
+const submitVerification = async (req, res) => {
+  try {
+    const { idImage, selfieImage, phoneVerified, emailVerified, breederPermit, businessPermit, payoutAccount } = req.body;
+
+    const store = await Store.findOne({ owner: req.user.id });
+    if (!store) return res.status(404).json({ message: 'Store not found' });
+
+    store.verification = {
+      idImage: idImage || store.verification.idImage,
+      selfieImage: selfieImage || store.verification.selfieImage,
+      phoneVerified: phoneVerified ?? store.verification.phoneVerified,
+      emailVerified: emailVerified ?? store.verification.emailVerified,
+      breederPermit: breederPermit || store.verification.breederPermit,
+      businessPermit: businessPermit || store.verification.businessPermit,
+      adminNotes: 'Verification recently submitted and pending review.'
+    };
+    
+    if (payoutAccount) {
+      store.payoutAccount = payoutAccount;
+    }
+
+    store.verificationStatus = 'pending';
+    await store.save();
+
+    res.json({ message: 'Verification documents submitted successfully', store });
+  } catch (error) {
+    console.error('Submit verification error:', error);
+    res.status(500).json({ message: 'Server error during submission' });
+  }
+};
+
+// Approve store verification (Super Admin)
+const approveVerification = async (req, res) => {
+  try {
+    const store = await Store.findById(req.params.id);
+    if (!store) return res.status(404).json({ message: 'Store not found' });
+
+    store.verificationStatus = 'verified';
+    store.verification.verifiedAt = new Date();
+    store.verification.adminNotes = 'Identity and documents verified by Super Admin.';
+    
+    await store.save();
+
+    res.json({ message: 'Store successfully verified!', store });
+  } catch (error) {
+    console.error('Approve verification error:', error);
+    res.status(500).json({ message: 'Server error during verification approval' });
+  }
+};
+
+// Reject store verification (Super Admin)
+const rejectVerification = async (req, res) => {
+  try {
+    const { reason } = req.body;
+    if (!reason) return res.status(400).json({ message: 'Rejection reason is required' });
+
+    const store = await Store.findById(req.params.id);
+    if (!store) return res.status(404).json({ message: 'Store not found' });
+
+    store.verificationStatus = 'pending'; // Reset or keep as pending
+    store.verification.adminNotes = `Rejection Reason: ${reason}`;
+    
+    await store.save();
+
+    res.json({ message: 'Verification rejected', store });
+  } catch (error) {
+    console.error('Reject verification error:', error);
+    res.status(500).json({ message: 'Server error during verification rejection' });
+  }
+};
+
 module.exports = {
   getAllStores,
   getStoreById,
@@ -448,5 +520,8 @@ module.exports = {
   getStoreDashboard,
   toggleStoreStatus,
   featureStore,
-  getStoreByOwner
+  getStoreByOwner,
+  submitVerification,
+  approveVerification,
+  rejectVerification
 };

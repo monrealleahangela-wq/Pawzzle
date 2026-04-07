@@ -12,7 +12,10 @@ const {
   getStoreDashboard,
   toggleStoreStatus,
   featureStore,
-  getStoreByOwner
+  getStoreByOwner,
+  submitVerification,
+  approveVerification,
+  rejectVerification
 } = require('../controllers/storeController');
 const { authenticate, superAdminOnly, authorize, adminOnly, adminOrStaff } = require('../middleware/auth');
 
@@ -58,6 +61,11 @@ router.get('/', getAllStores);
 router.get('/owner/:ownerId', getStoreByOwner);
 router.get('/:id', getStoreById);
 router.get('/:id/details', getStoreDetails);
+
+// Seller Verification & Payout Management
+router.post('/my-store/verify', authenticate, adminOnly, submitVerification);
+router.post('/:id/approve-verification', authenticate, superAdminOnly, approveVerification);
+router.post('/:id/reject-verification', authenticate, superAdminOnly, rejectVerification);
 
 // Super Admin only routes
 router.patch('/:id/toggle-status', authenticate, superAdminOnly, toggleStoreStatus);

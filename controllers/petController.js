@@ -10,7 +10,10 @@ const getAllPets = async (req, res) => {
 
     const { species, breed, size, gender, minAge, maxAge, minPrice, maxPrice, search, isAvailable, city, page = 1, limit = 10 } = req.query;
 
-    const filter = { isDeleted: { $ne: true } };
+    const filter = {
+      isDeleted: { $ne: true },
+      approvalStatus: 'approved' // Only show approved pets to buyers
+    };
 
     // Filter by City (if provided, we need to find stores in that city first)
     if (city) {

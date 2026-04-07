@@ -26,16 +26,49 @@ const AdminPets = () => {
 
   const initialPetState = {
     name: '', species: 'dog', breed: '', age: '', ageUnit: 'years',
-    ageYears: '', ageMonths: '', birthday: '', // Frontend helper fields
+    ageYears: '', ageMonths: '', birthday: '',
     gender: 'male', size: 'medium', color: '', description: '', price: '',
     vaccinationStatus: 'not_vaccinated', healthStatus: 'good',
     specialNeeds: '', images: [], isAvailable: true,
+    pedigreePapers: false,
+    vaccinationRecords: [],
+    dewormingRecords: [],
+    temperament: '',
+    videos: [],
+    location: '',
+    pickupInstructions: '',
+    approvalStatus: 'pending',
     adoptionDetails: {
       requirements: '', trialPeriod: '', homeCheck: false,
       rescuePartner: '', transportAvailable: false,
       isKidFriendly: true, isPetFriendly: true
     },
     status: 'available'
+  };
+
+  const handleApprove = async (id) => {
+    const notes = window.prompt('Admin Notes (Internal):');
+    try {
+      await adminPetService.approvePet(id, notes || '');
+      toast.success('Listing Approved');
+      fetchPets();
+      setShowAddForm(false);
+    } catch (error) {
+      toast.error('Approval failed');
+    }
+  };
+
+  const handleReject = async (id) => {
+    const notes = window.prompt('Reason for Rejection (Required):');
+    if (!notes) return;
+    try {
+      await adminPetService.rejectPet(id, notes);
+      toast.success('Listing Rejected');
+      fetchPets();
+      setShowAddForm(false);
+    } catch (error) {
+      toast.error('Rejection failed');
+    }
   };
 
   const [petForm, setPetForm] = useState(initialPetState);
@@ -387,6 +420,13 @@ const AdminPets = () => {
                           }`}>
                           {pet.status?.toUpperCase() || (pet.isAvailable ? 'AVAILABLE' : 'RESERVED')}
                         </span>
+                        <span className={`px-2.5 py-1 rounded-2xl text-[9px] font-black uppercase tracking-wider shadow-sm ${
+                          pet.approvalStatus === 'approved' ? 'bg-emerald-100 text-emerald-600 border border-emerald-200' :
+                          pet.approvalStatus === 'rejected' ? 'bg-rose-100 text-rose-600 border border-rose-200' :
+                          'bg-amber-100 text-amber-600 border border-amber-200'
+                        }`}>
+                          {pet.approvalStatus?.toUpperCase() || 'PENDING'}
+                        </span>
                         <span className={`px-2.5 py-1 rounded-2xl text-[9px] font-black uppercase tracking-wider shadow-sm bg-${getVaccColor(pet.vaccinationStatus)}-500 text-white`}>
                           {pet.vaccinationStatus === 'fully_vaccinated' ? 'FULLY VAX' : pet.vaccinationStatus === 'partially_vaccinated' ? 'PARTIAL VAX' : 'NO VAX'}
                         </span>
@@ -590,9 +630,10 @@ const AdminPets = () => {
             <nav className="px-5 py-2 border-b border-slate-50 flex gap-3 overflow-x-auto no-scrollbar shrink-0 bg-slate-50/50">
               {[
                 { id: 'identity', label: 'Basic Info', icon: Info },
-                { id: 'health', label: 'Health', icon: Activity },
-                { id: 'adoption', label: 'Sales Details', icon: PawPrint },
-                { id: 'gallery', label: 'Images', icon: ImageIcon }
+                { id: 'health', label: 'Health & Vax', icon: Activity },
+                { id: 'commerce', label: 'Sales & Docs', icon: ClipboardList },
+                { id: 'adoption', label: 'Pickup Details', icon: PawPrint },
+                { id: 'gallery', label: 'Gallery', icon: ImageIcon }
               ].map(tab => (
                 <button key={tab.id} onClick={() => setModalTab(tab.id)}
                   className={`px-5 py-2.5 rounded-xl flex items-center gap-2 text-[9px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${modalTab === tab.id ? 'bg-white text-rose-500 shadow-sm border border-slate-100' : 'text-slate-400 hover:text-slate-600'}`}>

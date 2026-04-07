@@ -440,9 +440,9 @@ const StoreApplications = () => {
                       )}
 
                       {/* Government ID */}
-                      {selectedApplication.governmentIdUrl && (
+                      {(selectedApplication.governmentIdUrl || selectedApplication.verification?.idImage) && (
                         <a 
-                          href={getImageUrl(selectedApplication.governmentIdUrl)}
+                          href={getImageUrl(selectedApplication.governmentIdUrl || selectedApplication.verification?.idImage)}
                           target="_blank" rel="noopener noreferrer"
                           className="flex items-center justify-between p-6 bg-white rounded-2xl border border-slate-100 hover:border-primary-500 hover:shadow-xl transition-all group/doc"
                         >
@@ -456,6 +456,26 @@ const StoreApplications = () => {
                             </div>
                           </div>
                           <ExternalLink className="h-4 w-4 text-slate-300 group-hover/doc:text-emerald-600 transition-all" />
+                        </a>
+                      )}
+
+                      {/* Selfie Verification */}
+                      {selectedApplication.verification?.selfieImage && (
+                        <a 
+                          href={getImageUrl(selectedApplication.verification.selfieImage)}
+                          target="_blank" rel="noopener noreferrer"
+                          className="flex items-center justify-between p-6 bg-white rounded-2xl border border-slate-100 hover:border-emerald-500 hover:shadow-xl transition-all group/doc"
+                        >
+                          <div className="flex items-center gap-4">
+                            <div className="p-3 bg-rose-50 text-rose-500 rounded-2xl group-hover/doc:bg-rose-500 group-hover/doc:text-white transition-colors">
+                              <Camera className="h-5 w-5" />
+                            </div>
+                            <div>
+                              <p className="text-[10px] font-black text-slate-900 uppercase tracking-widest">Selfie Verification</p>
+                              <p className="text-[8px] font-bold text-slate-400 uppercase tracking-tighter">Biometric Check</p>
+                            </div>
+                          </div>
+                          <ExternalLink className="h-4 w-4 text-slate-300 group-hover/doc:text-rose-600 transition-all" />
                         </a>
                       )}
 

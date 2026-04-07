@@ -295,6 +295,7 @@ const StoreManagement = () => {
                 { id: 'info', icon: Building, label: 'Basic Info' },
                 { id: 'hours', icon: Clock, label: 'Business Hours' },
                 { id: 'social', icon: Globe, label: 'Social Media' },
+                { id: 'verification', icon: Shield, label: 'Trust & Verification' },
                 { id: 'preview', icon: Eye, label: 'Store Preview' }
               ].map((item) => (
                 <button key={item.id} onClick={() => setActiveTab(item.id)}
@@ -424,6 +425,101 @@ const StoreManagement = () => {
                         </div>
                       </div>
                     </div>
+                  </div>
+                </div>
+              )}
+
+              {activeTab === 'verification' && (
+                <div className="space-y-12 animate-in fade-in slide-in-from-right-12 duration-700">
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-3xl font-black text-slate-900 uppercase">Trust & Status</h2>
+                    <span className={`px-5 py-2.5 rounded-full text-[10px] font-black uppercase tracking-[0.2em] shadow-lg ${
+                      store.verificationStatus === 'verified' ? 'bg-emerald-500 text-white' :
+                      store.verificationStatus === 'pending' ? 'bg-amber-500 text-white animate-pulse' :
+                      'bg-slate-200 text-slate-500'
+                    }`}>
+                      {store.verificationStatus?.replace('_', ' ') || 'Unverified'}
+                    </span>
+                  </div>
+
+                  <div className="bg-slate-900 border border-white/5 rounded-[3rem] p-10 text-white relative overflow-hidden">
+                    <Shield className="absolute top-10 right-10 w-32 h-32 opacity-10 pointer-events-none" />
+                    <h4 className="text-[12px] font-black text-indigo-400 uppercase tracking-[0.4em] mb-8">Identity Audit</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                       <div className="space-y-4">
+                          <label className="text-[10px] font-black text-white/30 uppercase tracking-widest px-2 transition-colors">Valid Govt ID Photo</label>
+                          <div className="relative group cursor-pointer border-2 border-dashed border-white/10 rounded-2xl p-4 hover:border-indigo-500 transition-all flex flex-col items-center justify-center h-48 bg-white/5">
+                            {store.verification?.idImage ? (
+                               <img src={getImageUrl(store.verification.idImage)} alt="ID" className="w-full h-full object-contain rounded-xl" />
+                            ) : (
+                               <>
+                                 <Plus className="h-8 w-8 text-white/20 group-hover:text-indigo-500 transition-all mb-2" />
+                                 <span className="text-[9px] font-black uppercase tracking-widest text-white/20">Upload Govt ID</span>
+                               </>
+                            )}
+                            <input type="file" className="absolute inset-0 opacity-0 cursor-pointer" onChange={async (e) => {
+                               const formData = new FormData();
+                               formData.append('image', e.target.files[0]);
+                               const res = await uploadService.uploadImage(formData);
+                               setStore(p => ({ ...p, verification: { ...p.verification, idImage: res.data.imageUrl } }));
+                            }} />
+                          </div>
+                       </div>
+                       <div className="space-y-4">
+                          <label className="text-[10px] font-black text-white/30 uppercase tracking-widest px-2">Selfie with ID</label>
+                          <div className="relative group cursor-pointer border-2 border-dashed border-white/10 rounded-2xl p-4 hover:border-emerald-500 transition-all flex flex-col items-center justify-center h-48 bg-white/5">
+                             {store.verification?.selfieImage ? (
+                               <img src={getImageUrl(store.verification.selfieImage)} alt="Selfie" className="w-full h-full object-contain rounded-xl" />
+                             ) : (
+                               <>
+                                 <Plus className="h-8 w-8 text-white/20 group-hover:text-emerald-500 transition-all mb-2" />
+                                 <span className="text-[9px] font-black uppercase tracking-widest text-white/20">Upload Selfie</span>
+                               </>
+                             )}
+                             <input type="file" className="absolute inset-0 opacity-0 cursor-pointer" onChange={async (e) => {
+                               const formData = new FormData();
+                               formData.append('image', e.target.files[0]);
+                               const res = await uploadService.uploadImage(formData);
+                               setStore(p => ({ ...p, verification: { ...p.verification, selfieImage: res.data.imageUrl } }));
+                            }} />
+                          </div>
+                       </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-white border border-slate-100 rounded-[3rem] p-10 shadow-xl overflow-hidden">
+                    <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.4em] mb-8">Payout Matrix</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                       <div className="space-y-4">
+                          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Method</label>
+                          <select value={store.payoutAccount?.method || 'gcash'} onChange={(e) => setStore(p => ({ ...p, payoutAccount: { ...p.payoutAccount, method: e.target.value } }))}
+                            className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-[12px] font-black uppercase outline-none focus:ring-4 focus:ring-indigo-500/5 transition-all appearance-none cursor-pointer">
+                            <option value="gcash">GCASH</option>
+                            <option value="maya">MAYA</option>
+                            <option value="bank_transfer">BANK TRANSFER</option>
+                          </select>
+                       </div>
+                       <div className="space-y-4">
+                          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Account Number / Name</label>
+                          <input type="text" value={store.payoutAccount?.number || ''} onChange={(e) => setStore(p => ({ ...p, payoutAccount: { ...p.payoutAccount, number: e.target.value } }))}
+                            className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-[12px] font-black outline-none focus:ring-4 focus:ring-indigo-500/5 transition-all" placeholder="Enter Account Details..." />
+                       </div>
+                    </div>
+                  </div>
+
+                  <div className="pt-6">
+                    <button onClick={async () => {
+                       try {
+                         setSaving(true);
+                         await storeService.submitVerification(store);
+                         toast.success('Trust Documents Submitted for Audit!');
+                         fetchMyStore();
+                       } catch (e) { toast.error('Submission failed'); }
+                       finally { setSaving(false); }
+                    }} className="w-full py-5 bg-indigo-600 text-white rounded-[2rem] font-black uppercase text-[11px] tracking-widest hover:bg-slate-900 transition-all shadow-2xl active:scale-95 flex items-center justify-center gap-3">
+                      <Shield className="h-4 w-4" />
+                      Submit Verification Bundle
+                    </button>
                   </div>
                 </div>
               )}

@@ -246,34 +246,32 @@ const AdminSettings = () => {
                     {days.map(day => {
                       const hours = storeSettings.businessHours[day];
                       return (
-                        <div key={day} className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${hours.closed ? 'bg-slate-50/50 border-slate-100 opacity-50' : 'bg-white border-slate-100 shadow-sm'}`}>
-                           <div className="flex items-center gap-4 w-32">
+                        <div key={day} className={`flex flex-col sm:flex-row items-center justify-between p-3 sm:p-4 rounded-2xl border transition-all gap-4 sm:gap-2 ${hours.closed ? 'bg-slate-50/50 border-slate-100 opacity-60' : 'bg-white border-slate-100 shadow-sm'}`}>
+                           <div className="flex items-center gap-3 w-full sm:w-auto min-w-[100px]">
                               <button 
                                 type="button"
                                 onClick={() => handleHoursChange(day, 'closed', !hours.closed)}
-                                className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${hours.closed ? 'bg-rose-100 text-rose-600' : 'bg-emerald-100 text-emerald-600'}`}
+                                className={`w-7 h-7 rounded-lg flex items-center justify-center transition-all shrink-0 ${hours.closed ? 'bg-rose-100 text-rose-600' : 'bg-emerald-100 text-emerald-600'}`}
                               >
                                 {hours.closed ? <XCircle className="h-4 w-4" /> : <CheckCircle className="h-4 w-4" />}
                               </button>
-                              <span className="text-[10px] font-black uppercase tracking-widest text-slate-900">{day}</span>
+                              <span className="text-[9px] font-black uppercase tracking-wider text-slate-900 truncate">{day}</span>
                            </div>
                            
-                           {!hours.closed && (
-                             <div className="flex items-center gap-4 animate-in fade-in">
-                               <div className="flex items-center gap-2 bg-slate-50 px-3 py-2 rounded-xl">
-                                  <Clock3 className="h-3 w-3 text-slate-400" />
-                                  <input type="time" value={hours.open} onChange={(e) => handleHoursChange(day, 'open', e.target.value)} className="bg-transparent text-[10px] font-black outline-none" />
-                               </div>
-                               <span className="text-slate-300">/</span>
-                               <div className="flex items-center gap-2 bg-slate-50 px-3 py-2 rounded-xl">
-                                  <Clock3 className="h-3 w-3 text-slate-400" />
-                                  <input type="time" value={hours.close} onChange={(e) => handleHoursChange(day, 'close', e.target.value)} className="bg-transparent text-[10px] font-black outline-none" />
-                               </div>
+                           {!hours.closed ? (
+                             <div className="flex items-center gap-2 animate-in fade-in w-full sm:w-auto justify-end">
+                                <div className="flex items-center gap-1.5 bg-slate-50 px-2 py-1.5 rounded-lg border border-slate-100 shrink-0">
+                                   <Clock3 className="h-3 w-3 text-slate-400" />
+                                   <input type="time" value={hours.open} onChange={(e) => handleHoursChange(day, 'open', e.target.value)} className="bg-transparent text-[9px] font-black outline-none w-20 sm:w-16" />
+                                </div>
+                                <span className="text-slate-300 font-bold text-[9px]">/</span>
+                                <div className="flex items-center gap-1.5 bg-slate-50 px-2 py-1.5 rounded-lg border border-slate-100 shrink-0">
+                                   <Clock3 className="h-3 w-3 text-slate-400" />
+                                   <input type="time" value={hours.close} onChange={(e) => handleHoursChange(day, 'close', e.target.value)} className="bg-transparent text-[9px] font-black outline-none w-20 sm:w-16" />
+                                </div>
                              </div>
-                           )}
-                           
-                           {hours.closed && (
-                             <span className="text-[10px] font-black text-rose-400 uppercase tracking-widest">Operation Suspended</span>
+                           ) : (
+                             <span className="text-[8px] font-black text-rose-400 uppercase tracking-widest bg-rose-50 px-3 py-1 rounded-lg border border-rose-100/50">SUSPENDED</span>
                            )}
                         </div>
                       )

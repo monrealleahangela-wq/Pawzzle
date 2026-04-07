@@ -227,21 +227,25 @@ const StaffManagement = () => {
                     ))}
                 </div>
 
-                {/* Staff Type Cards */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                {/* Staff Type Cards - Compact Horizontal Layout */}
+                <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
                     {STAFF_TYPES.map(t => {
                         const Icon = t.icon;
+                        const isActive = filterType === t.id;
                         return (
                             <div
                                 key={t.id}
-                                onClick={() => setFilterType(filterType === t.id ? '' : t.id)}
-                                className={`bg-white rounded-2xl border p-5 cursor-pointer transition-all shadow-sm hover:shadow-md ${filterType === t.id ? 'border-slate-900 ring-2 ring-slate-900' : 'border-slate-100'}`}
+                                onClick={() => setFilterType(isActive ? '' : t.id)}
+                                className={`flex items-center gap-3 bg-white rounded-2xl border p-3 cursor-pointer transition-all shadow-sm hover:shadow-md ${isActive ? 'border-primary-600 ring-4 ring-primary-50' : 'border-slate-100 hover:border-slate-200'}`}
                             >
-                                <div className={`inline-flex p-2.5 rounded-2xl bg-${t.color}-50 mb-3`}>
-                                    <Icon className={`h-5 w-5 text-${t.color}-600`} />
+                                <div className={`shrink-0 p-2 rounded-xl bg-${t.color}-50`}>
+                                    <Icon className={`h-4 w-4 text-${t.color}-600`} />
                                 </div>
-                                <h3 className="font-black text-slate-900 text-sm">{t.label} Staff</h3>
-                                <p className="text-slate-400 text-xs mt-1 leading-relaxed">{t.description}</p>
+                                <div className="min-w-0 flex-1">
+                                    <h3 className="font-black text-slate-900 text-[11px] leading-none mb-1">{t.label}</h3>
+                                    <p className="text-slate-400 text-[9px] font-bold uppercase tracking-tight truncate leading-none">{t.description}</p>
+                                </div>
+                                {isActive && <Check className="h-3.5 w-3.5 text-primary-600 shrink-0" />}
                             </div>
                         );
                     })}

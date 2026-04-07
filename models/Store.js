@@ -105,6 +105,22 @@ const storeSchema = new mongoose.Schema({
     enum: ['verified', 'pending', 'suspended'],
     default: 'verified'
   },
+  verification: {
+    idImage: { type: String },
+    selfieImage: { type: String },
+    phoneVerified: { type: Boolean, default: false },
+    emailVerified: { type: Boolean, default: false },
+    breederPermit: { type: String },
+    businessPermit: { type: String },
+    verifiedAt: { type: Date },
+    adminNotes: { type: String }
+  },
+  payoutAccount: {
+    accountName: { type: String },
+    accountNumber: { type: String },
+    bankName: { type: String },
+    type: { type: String, enum: ['gcash', 'maya', 'bank_transfer'] }
+  },
   isActive: {
     type: Boolean,
     default: true

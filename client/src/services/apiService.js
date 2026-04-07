@@ -11,7 +11,7 @@ export const getImageUrl = (path) => {
 // The "Golden Solution": Automatically use the current domain for API requests
 const API_BASE_URL = process.env.REACT_APP_API_URL || `${window.location.origin}/api`;
 
-const api = axios.create({
+export const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json'
@@ -95,7 +95,9 @@ export const adminPetService = {
   getPetById: (id) => api.get(`/admin/pets/${id}`),
   createPet: (petData) => api.post('/admin/pets', petData),
   updatePet: (id, petData) => api.put(`/admin/pets/${id}`, petData),
-  deletePet: (id) => api.delete(`/admin/pets/${id}`)
+  deletePet: (id) => api.delete(`/admin/pets/${id}`),
+  approvePet: (id, adminNotes) => api.post(`/admin/pets/${id}/approve`, { adminNotes }),
+  rejectPet: (id, adminNotes) => api.post(`/admin/pets/${id}/reject`, { adminNotes })
 };
 
 // Product services
@@ -124,6 +126,7 @@ export const orderService = {
   getOrderById: (id) => api.get(`/orders/${id}`),
   createOrder: (orderData) => api.post('/orders', orderData),
   updateOrderStatus: (id, statusData) => api.patch(`/orders/${id}/status`, statusData),
+  confirmPickup: (id) => api.post(`/orders/${id}/confirm-pickup`),
   cancelOrder: (id) => api.patch(`/orders/${id}/cancel`)
 };
 
@@ -132,7 +135,7 @@ export const adminOrderService = {
   getAllOrders: (params) => api.get('/admin/orders', { params }),
   getOrderById: (id) => api.get(`/admin/orders/${id}`),
   updateOrderStatus: (id, statusData) => api.patch(`/admin/orders/${id}/status`, statusData),
-  confirmPayment: (id) => api.patch(`/admin/orders/${id}/confirm-payment`),
+  confirmPayment: (id) => api.post(`/admin/orders/${id}/confirm-payment`),
   cancelOrder: (id) => api.patch(`/admin/orders/${id}/cancel`)
 };
 
@@ -290,7 +293,10 @@ export const storeService = {
   deleteStore: (id) => api.delete(`/stores/${id}`),
   getSettings: () => api.get('/stores/settings'),
   updateSettings: (settings) => api.put('/stores/settings', settings),
-  getStoreByOwner: (ownerId) => api.get(`/stores/owner/${ownerId}`)
+  getStoreByOwner: (ownerId) => api.get(`/stores/owner/${ownerId}`),
+  submitVerification: (data) => api.post('/stores/my-store/verify', data),
+  approveVerification: (id) => api.post(`/stores/${id}/approve-verification`),
+  rejectVerification: (id, reason) => api.post(`/stores/${id}/reject-verification`, { reason })
 };
 
 // Adoption services

@@ -150,7 +150,10 @@ const createOrder = async (req, res) => {
       return res.status(400).json({ errors: errors.array() });
     }
 
-    const { items, shippingAddress, paymentMethod, notes, deliveryMethod, phoneNumber, shippingFee, voucherCode } = req.body;
+    const { items, shippingAddress, paymentMethod, notes, deliveryMethod: requestedMethod, phoneNumber, shippingFee, voucherCode } = req.body;
+
+    const hasPet = items.some(item => item.itemType === 'pet');
+    const deliveryMethod = hasPet ? 'pickup' : requestedMethod;
 
     if (!items || items.length === 0) {
       return res.status(400).json({ message: 'Order must contain at least one item' });
@@ -573,11 +576,127 @@ const confirmOrderPayment = async (req, res) => {
   }
 };
 
+// Confirm order pickup (Buyer confirming they received the pet/item)
+const confirmOrderPickup = async (req, res) => {
+  try {
+    const order = await Order.findById(req.params.id);
+
+    if (!order) {
+      return res.status(404).json({ message: 'Order not found' });
+    }
+
+    // Only buyer can confirm pickup for their own order
+    if (order.customer.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: 'Access denied. Only the buyer can confirm receipt' });
+    }
+
+    if (order.paymentStatus !== 'paid') {
+      return res.status(400).json({ message: 'Order must be paid before confirming pickup' });
+    }
+
+    if (order.status === 'delivered') {
+      return res.status(400).json({ message: 'Pickup has already been confirmed' });
+    }
+
+    order.status = 'delivered';
+    order.payoutStatus = 'released';
+    order.pickupSession.verifiedAt = new Date();
+
+    // Calculate Platform Commission (e.g., 10%)
+    const commissionRate = 0.10;
+    order.platformCommission = order.totalAmount * commissionRate;
+    const netPayout = order.totalAmount - order.platformCommission;
+
+    await order.save();
+
+    // Update Store Balance
+    if (order.store) {
+      const store = await Store.findById(order.store);
+      if (store) {
+        store.balance = (store.balance || 0) + netPayout;
+        store.stats.totalRevenue = (store.stats.totalRevenue || 0) + order.totalAmount;
+        store.stats.totalPlatformFees = (store.stats.totalPlatformFees || 0) + order.platformCommission;
+        await store.save();
+      }
+    }
+
+    res.json({
+      message: 'Pickup confirmed and payout released to seller',
+      order: await Order.findById(order._id).populate('customer', 'username firstName lastName email')
+    });
+
+    // Notify seller about payout release
+    await createNotification({
+      recipient: order.addedBy,
+      sender: req.user._id,
+      type: 'payout_released',
+      title: 'Payout Released',
+      message: `Pickup confirmed for order #${order._id.toString().slice(-6)}. ₱${netPayout.toLocaleString()} has been added to your balance.`,
+      relatedId: order._id,
+      relatedModel: 'Order'
+    });
+  } catch (error) {
+    console.error('Confirm pickup error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// Validate Order QR code (Seller scanning Buyer's order)
+const validateOrderQR = async (req, res) => {
+  try {
+    const { orderId } = req.body;
+    if (!orderId) return res.status(400).json({ message: 'Order protocol identifier required' });
+
+    const order = await Order.findById(orderId)
+      .populate('customer', 'firstName lastName email')
+      .populate('items.productId'); // If products exist
+
+    if (!order) return res.status(404).json({ message: 'Order protocol not found in mainframe' });
+
+    // Verify scan ownership (Seller must own the store associated with this order or be super_admin)
+    const isSuperAdmin = req.user.role === 'super_admin';
+    const isStoreOwner = req.user.store && order.store && req.user.store.toString() === order.store.toString();
+
+    if (!isSuperAdmin && !isStoreOwner) {
+      return res.status(403).json({ 
+        message: 'Access Denied: Protocol Mismatch', 
+        details: 'You are not authorized to validate this specific order protocol.' 
+      });
+    }
+
+    if (order.paymentStatus !== 'paid') {
+      return res.status(400).json({ 
+        message: 'Financial protocol incomplete. This order is UNPAID.',
+        details: 'Escrow must be funded via Online Payment before physical pickup can proceed.'
+      });
+    }
+
+    // Mark as validated/scanned
+    order.isScanned = true;
+    if (order.status === 'confirmed' || order.status === 'processing') {
+      // order.status = 'delivered'; // Optionally auto-deliver or let seller hit continue
+    }
+    await order.save();
+
+    res.json({
+      message: 'Order protocol authenticated successfully!',
+      order: order,
+      protocolStatus: 'READY_FOR_PICKUP'
+    });
+
+  } catch (error) {
+    console.error('Order QR Validation error:', error);
+    res.status(500).json({ message: 'Internal protocol error' });
+  }
+};
+
 module.exports = {
   getAllOrders,
   getOrderById,
   createOrder,
   updateOrderStatus,
   confirmOrderPayment,
-  cancelOrder
+  confirmOrderPickup,
+  cancelOrder,
+  validateOrderQR
 };

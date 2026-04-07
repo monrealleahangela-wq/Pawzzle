@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { Html5Qrcode } from 'html5-qrcode';
+import { api, getImageUrl } from '../services/apiService';
 import { X, QrCode, User, Calendar, Clock, AlertCircle, CheckCircle, RefreshCcw, Camera, Lock, ShieldAlert } from 'lucide-react';
-import axios from 'axios';
 import { toast } from 'react-toastify';
 
 const QRScannerModal = ({ isOpen, onClose, onScanSuccess }) => {
@@ -54,11 +54,15 @@ const QRScannerModal = ({ isOpen, onClose, onScanSuccess }) => {
       
       await stopScanner();
 
-      const response = await axios.post('/api/bookings/validate-qr', { bookingId: decodedText });
-      setScanResult(response.data.booking);
+      // Determine validation endpoint based on protocol or context
+      const endpoint = decodedText.startsWith('ORD-') || decodedText.length > 20 ? '/orders/validate-qr' : '/bookings/validate-qr';
+      const payload = decodedText.startsWith('ORD-') ? { orderId: decodedText } : { bookingId: decodedText };
+
+      const response = await api.post(endpoint, payload);
+      setScanResult(response.data.order || response.data.booking);
       toast.success('Protocol Authenticated');
     } catch (err) {
-      setError(err.response?.data?.message || 'Invalid or unregistered booking protocol');
+      setError(err.response?.data?.message || 'Invalid or unregistered protocol identifier');
       setStatus('System Lockout');
       setDebugInfo('Hardware/Credential mismatch detected.');
     } finally {
@@ -76,23 +80,34 @@ const QRScannerModal = ({ isOpen, onClose, onScanSuccess }) => {
 
       const constraints = {
         video: { 
-          facingMode: "environment",
-          width: { ideal: 1280 },
-          height: { ideal: 720 }
+          facingMode: { exact: "environment" }, // Prioritize rear camera
+          width: { ideal: 1920 },
+          height: { ideal: 1080 }
         }
       };
 
-      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      let stream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia(constraints);
+      } catch (e) {
+        // Fallback for desktop or non-standard hardware
+        stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      }
+
       streamRef.current = stream;
 
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
-        videoRef.current.onloadedmetadata = () => {
-           videoRef.current.play();
-           setIsScannerStarted(true);
-           setStatus('Optics Online');
-           setDebugInfo('Frame synchronization established.');
-        };
+        videoRef.current.setAttribute('autoplay', '');
+        videoRef.current.setAttribute('muted', '');
+        videoRef.current.setAttribute('playsinline', '');
+        
+        // Force play and ensure it's not hidden
+        await videoRef.current.play();
+        
+        setIsScannerStarted(true);
+        setStatus('Optics Online');
+        setDebugInfo('High-speed synchronization established.');
       }
 
       const engine = new Html5Qrcode('qr-decoder-engine'); 
@@ -102,105 +117,106 @@ const QRScannerModal = ({ isOpen, onClose, onScanSuccess }) => {
         if (!videoRef.current || !canvasRef.current || !scannerEngineRef.current || isProcessing) return;
 
         try {
-          const canvas = canvasRef.current;
           const video = videoRef.current;
-          const context = canvas.getContext('2d');
+          const canvas = canvasRef.current;
+          const context = canvas.getContext('2d', { alpha: false });
           
+          if (video.readyState < 2) return; // Wait for metadata
+
           if (canvas.width !== video.videoWidth) canvas.width = video.videoWidth;
           if (canvas.height !== video.videoHeight) canvas.height = video.videoHeight;
           
           context.drawImage(video, 0, 0, canvas.width, canvas.height);
           
           canvas.toBlob(async (blob) => {
-            if (!blob || !scannerEngineRef.current) return;
+            if (!blob || !scannerEngineRef.current || isProcessing) return;
             try {
               const file = new File([blob], "frame.jpg", { type: "image/jpeg" });
               const result = await scannerEngineRef.current.scanFile(file, true);
-              if (result) handleDecodedText(result);
-            } catch (ignore) {
-            }
-          }, 'image/jpeg', 0.8);
+              if (result && !isProcessing) handleDecodedText(result);
+            } catch (ignore) {}
+          }, 'image/jpeg', 0.5); // Lower quality for speed
 
-        } catch (e) {
-        }
-      }, 200);
+        } catch (e) {}
+      }, 300);
 
     } catch (err) {
       console.error('Critical Hardware Failure:', err);
-      let errMsg = 'Optic Array Failed. Ensure HTTPS link and camera permissions are enabled.';
-      if (err.name === 'NotAllowedError') errMsg = 'Camera permission denied. Please re-enable access.';
-      if (err.name === 'NotFoundError') errMsg = 'No Rear-Facing camera found on this unit.';
+      let errMsg = 'Hardware Link Failed. Ensure HTTPS and camera permissions are active.';
+      if (err.name === 'NotAllowedError') errMsg = 'Camera permission denied. Access is required for sync.';
+      if (err.name === 'NotFoundError') errMsg = 'No supported camera found on this hardware.';
       
       setError(errMsg);
-      setStatus('System Shutdown');
+      setStatus('System Offline');
       setDebugInfo(err.message);
     }
   }, [handleDecodedText, isProcessing, stopScanner]);
 
   useEffect(() => {
     if (isOpen) {
-      const t = setTimeout(startScanner, 1000);
+      const wait = setTimeout(startScanner, 800);
       return () => {
-        clearTimeout(t);
+        clearTimeout(wait);
         stopScanner();
       };
     }
-  }, [isOpen]);
+  }, [isOpen, startScanner, stopScanner]);
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[1000] flex items-center justify-center p-0 sm:p-4 bg-black animate-fade-in pb-20 sm:pb-0 font-['Outfit']">
-      <div className="bg-slate-950 w-full max-w-lg sm:rounded-[3rem] h-full sm:h-auto shadow-2xl flex flex-col overflow-hidden animate-scale-in border border-white/5">
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-0 sm:p-4 bg-slate-950/95 backdrop-blur-xl animate-fade-in font-['Outfit']">
+      <div className="bg-black w-full max-w-lg sm:rounded-[3rem] h-[100dvh] sm:h-auto shadow-2xl flex flex-col overflow-hidden animate-scale-in border border-white/10">
         
-        <div className="px-6 py-5 bg-black border-b border-white/5 flex items-center justify-between shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-primary-600 rounded-xl">
-               <QrCode className="h-5 w-5 text-white" />
+        <div className="px-8 py-6 bg-black border-b border-white/5 flex items-center justify-between shrink-0">
+          <div className="flex items-center gap-4">
+            <div className="p-2.5 bg-rose-600 rounded-2xl shadow-lg shadow-rose-500/20">
+               <QrCode className="h-6 w-6 text-white" />
             </div>
             <div>
-               <h3 className="text-[12px] font-black text-white uppercase tracking-tighter leading-none mb-1">Optical Protocol Hub</h3>
-               <div className="flex items-center gap-2">
-                  <div className={`w-1.5 h-1.5 rounded-full ${isScannerStarted ? 'bg-emerald-500 animate-pulse shadow-[0_0_8px_#10b981]' : 'bg-rose-500'}`} />
-                  <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">{status}</p>
+               <h3 className="text-[14px] font-black text-white uppercase tracking-tighter leading-none mb-1.5 text-rose-500">Optic-IV Terminal</h3>
+               <div className="flex items-center gap-2.5">
+                  <div className={`w-2 h-2 rounded-full ${isScannerStarted ? 'bg-emerald-500 animate-pulse shadow-[0_0_12px_#10b981]' : 'bg-rose-500 shadow-[0_0_12px_#f43f5e]'}`} />
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{status}</p>
                </div>
             </div>
           </div>
-          <button onClick={onClose} className="p-3 hover:bg-white/10 rounded-2xl transition-all">
-            <X className="h-6 w-6 text-white" />
+          <button onClick={onClose} className="p-4 hover:bg-white/10 rounded-2xl transition-all group">
+            <X className="h-6 w-6 text-white group-hover:rotate-90 transition-transform" />
           </button>
         </div>
 
-        <div className="flex-1 p-6 flex flex-col items-center justify-center min-h-[450px]">
+        <div className="flex-1 p-8 flex flex-col items-center justify-center">
           
-          <div className={`relative w-full aspect-square mx-auto max-w-[320px] mb-8 ${(scanResult || error || isProcessing) ? 'hidden' : 'block'}`}>
-            <div className="w-full h-full rounded-[2.5rem] border-[6px] border-white/5 bg-black overflow-hidden shadow-2xl relative flex items-center justify-center ring-1 ring-white/10">
+          <div className={`relative w-full aspect-square mx-auto max-w-[340px] mb-10 ${(scanResult || error || isProcessing) ? 'hidden' : 'block'}`}>
+            <div className="w-full h-full rounded-[3rem] border-[8px] border-white/5 bg-black overflow-hidden shadow-2xl relative flex items-center justify-center ring-2 ring-white/10">
                
                <video
                  ref={videoRef}
                  autoPlay
                  playsInline
                  muted
-                 className="w-full h-full object-cover"
+                 className="w-full h-full object-cover rounded-[2.5rem]"
+                 style={{ minHeight: '100%', minWidth: '100%' }}
                />
 
                {!isScannerStarted && !error && (
-                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-6 bg-slate-950 z-30">
-                     <div className="w-20 h-20 border-4 border-slate-900 border-t-primary-600 animate-spin rounded-full" />
-                     <p className="text-[10px] font-black text-white uppercase tracking-widest animate-pulse">{status}</p>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-8 bg-slate-950 z-30">
+                     <div className="w-24 h-24 border-b-4 border-rose-600 animate-spin rounded-full" />
+                     <p className="text-[11px] font-black text-white uppercase tracking-[0.4em] animate-pulse">{status}</p>
                   </div>
                )}
                
                {isScannerStarted && (
                   <div className="absolute inset-0 pointer-events-none z-20 flex items-center justify-center">
-                    <div className="w-4/5 h-4/5 border-[45px] border-black/60 rounded-[2.5rem]" />
-                    <div className="absolute inset-0 border border-white/10 rounded-[2.5rem]" />
-                    <div className="absolute w-full h-[2px] bg-gradient-to-r from-transparent via-primary-500 to-transparent animate-scan-line shadow-[0_0_15px_#2563eb]" />
+                    <div className="w-full h-full border-[60px] border-black/70" />
+                    <div className="absolute inset-[60px] border-2 border-white/20 rounded-3xl" />
+                    <div className="absolute w-full h-[3px] bg-gradient-to-r from-transparent via-rose-500 to-transparent animate-scan-line shadow-[0_0_20px_#f43f5e]" />
                     
-                    <div className="absolute top-8 left-8 w-8 h-8 border-t-4 border-l-4 border-primary-500 rounded-tl-xl" />
-                    <div className="absolute top-8 right-8 w-8 h-8 border-t-4 border-r-4 border-primary-500 rounded-tr-xl" />
-                    <div className="absolute bottom-8 left-8 w-8 h-8 border-b-4 border-l-4 border-primary-500 rounded-bl-xl" />
-                    <div className="absolute bottom-8 right-8 w-8 h-8 border-b-4 border-r-4 border-primary-500 rounded-br-xl" />
+                    <div className="absolute top-[68px] left-[68px] w-10 h-10 border-t-4 border-l-4 border-rose-500 rounded-tl-2xl shadow-[-4px_-4px_10px_rgba(244,63,94,0.3)]" />
+                    <div className="absolute top-[68px] right-[68px] w-10 h-10 border-t-4 border-r-4 border-rose-500 rounded-tr-2xl shadow-[4px_-4px_10px_rgba(244,63,94,0.3)]" />
+                    <div className="absolute bottom-[68px] left-[68px] w-10 h-10 border-b-4 border-l-4 border-rose-500 rounded-bl-2xl shadow-[-4px_4px_10px_rgba(244,63,94,0.3)]" />
+                    <div className="absolute bottom-[68px] right-[68px] w-10 h-10 border-b-4 border-r-4 border-rose-500 rounded-br-2xl shadow-[4px_4px_10px_rgba(244,63,94,0.3)]" />
                   </div>
                )}
             </div>

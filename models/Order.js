@@ -136,6 +136,22 @@ const orderSchema = new mongoose.Schema({
     checkoutUrl: { type: String },
     paymentIntentId: { type: String }
   },
+  platformCommission: {
+    type: Number,
+    default: 0
+  },
+  payoutStatus: {
+    type: String,
+    enum: ['pending', 'held', 'released', 'disputed', 'refunded'],
+    default: 'pending'
+  },
+  pickupSession: {
+    code: { type: String },
+    verifiedAt: { type: Date },
+    scheduledDate: { type: Date },
+    instructions: { type: String },
+    location: { type: String }
+  },
   reviewStatus: {
     isRated: { type: Boolean, default: false },
     reviewId: { type: mongoose.Schema.Types.ObjectId, ref: 'Review' }

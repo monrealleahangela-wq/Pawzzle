@@ -3,7 +3,9 @@ const { body } = require('express-validator');
 const router = express.Router();
 
 const {
-  getAllAdminPets
+  getAllAdminPets,
+  approvePet,
+  rejectPet
 } = require('../controllers/adminPetController');
 
 const {
@@ -73,5 +75,9 @@ router.get('/:id', authenticate, adminOrStaff, getPetById);
 router.post('/', authenticate, adminOrStaff, createPetValidation, createPet);
 router.put('/:id', authenticate, adminOrStaff, updatePetValidation, updatePet);
 router.delete('/:id', authenticate, adminOrStaff, deletePet);
+
+// Listing Moderation
+router.post('/:id/approve', authenticate, adminOrStaff, approvePet);
+router.post('/:id/reject', authenticate, adminOrStaff, rejectPet);
 
 module.exports = router;

@@ -87,6 +87,39 @@ const petSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Store'
   },
+  approvalStatus: {
+    type: String,
+    enum: ['pending', 'approved', 'rejected'],
+    default: 'pending'
+  },
+  pedigreePapers: {
+    type: Boolean,
+    default: false
+  },
+  vaccinationRecords: [{
+    vaccine: String,
+    date: Date,
+    imageUrl: String
+  }],
+  dewormingRecords: [{
+    date: Date,
+    imageUrl: String
+  }],
+  temperament: {
+    type: String,
+    trim: true
+  },
+  videos: [{
+    type: String
+  }],
+  location: {
+    type: String,
+    trim: true
+  },
+  pickupInstructions: {
+    type: String,
+    trim: true
+  },
   createdAt: {
     type: Date,
     default: Date.now
