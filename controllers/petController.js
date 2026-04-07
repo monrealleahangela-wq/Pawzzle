@@ -12,7 +12,7 @@ const getAllPets = async (req, res) => {
 
     const filter = {
       isDeleted: { $ne: true },
-      approvalStatus: 'approved' // Only show approved pets to buyers
+      approvalStatus: { $in: ['approved', 'pending'] } // Show both pending and approved to buyers
     };
 
     // Filter by City (if provided, we need to find stores in that city first)

@@ -147,7 +147,7 @@ const petSchema = new mongoose.Schema({
   approvalStatus: {
     type: String,
     enum: ['pending', 'approved', 'rejected'],
-    default: 'pending'
+    default: 'approved'
   },
   pedigreePapers: {
     type: Boolean,

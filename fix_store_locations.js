@@ -32,6 +32,8 @@ async function updateStoresToCavite() {
                 lat: location.lat,
                 lng: location.lng
             };
+            store.verificationStatus = 'verified';
+            store.isActive = true;
 
             await store.save();
             console.log(`Updated Store: "${store.name}" -> ${location.city}, Cavite`);
