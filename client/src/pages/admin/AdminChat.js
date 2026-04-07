@@ -118,8 +118,8 @@ const AdminChat = () => {
   }
 
   return (
-    <div className="h-screen bg-white md:bg-slate-50/30 overflow-hidden">
-      <div className="max-w-[1600px] mx-auto h-screen flex flex-col md:p-4 lg:p-6 overflow-hidden">
+    <div className="min-h-screen bg-white md:bg-slate-50/30">
+      <div className="max-w-[1600px] mx-auto min-h-screen flex flex-col md:p-4 lg:p-6">
 
         {/* Compact Header */}
         <header className="flex items-center justify-between px-4 py-3.5 md:px-0 md:pb-6">
