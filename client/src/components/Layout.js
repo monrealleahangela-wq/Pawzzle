@@ -44,6 +44,7 @@ import NotificationBell from './NotificationBell';
 import PasswordChangeModal from './auth/PasswordChangeModal';
 import LogoutModal from './auth/LogoutModal';
 import { useTheme } from '../contexts/ThemeContext';
+import BottomNavBar from './BottomNavBar';
 
 const Layout = () => {
   const { user, logout, loading, isAuthenticated } = useAuth();
@@ -199,53 +200,6 @@ const Layout = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  const getBottomNavItems = () => {
-    if (user?.role === 'super_admin') {
-      return [
-        { path: '/superadmin/dashboard', label: 'Dashboard', icon: Activity },
-        { path: '/superadmin/account-management', label: 'Accounts', icon: Users },
-        { path: '/superadmin/transaction-history', label: 'Txns', icon: ShoppingCart },
-        { path: '/superadmin/booking-history', label: 'Bookings', icon: Calendar },
-        { path: '/profile', label: 'Me', icon: User },
-      ];
-    }
-    if (user?.role === 'admin') {
-      return [
-        { path: '/admin/dashboard', label: 'Dashboard', icon: Activity },
-        { path: '/admin/orders', label: 'Orders', icon: ShoppingCart },
-        { path: '/admin/bookings', label: 'Bookings', icon: Calendar },
-        { path: '/admin/chat', label: 'Chat', icon: MessageSquare },
-        { path: '/profile', label: 'Me', icon: User },
-      ];
-    }
-    if (user?.role === 'staff') {
-      const staffType = user?.staffType;
-      const base = [{ path: '/admin/dashboard', label: 'Hub', icon: Activity }];
-      if (staffType === 'inventory_staff') return [...base, { path: '/admin/pets', label: 'Pets', icon: Heart }, { path: '/admin/products', label: 'Products', icon: Package }, { path: '/profile', label: 'Me', icon: User }];
-      if (staffType === 'order_staff')     return [...base, { path: '/admin/orders', label: 'Orders', icon: ShoppingCart }, { path: '/admin/bookings', label: 'Bookings', icon: Calendar }, { path: '/profile', label: 'Me', icon: User }];
-      if (staffType === 'service_staff')   return [...base, { path: '/admin/services', label: 'Services', icon: Calendar }, { path: '/admin/bookings', label: 'Bookings', icon: Calendar }, { path: '/profile', label: 'Me', icon: User }];
-      if (staffType === 'delivery_staff')  return [...base, { path: '/admin/orders', label: 'Delivery', icon: ShoppingCart }, { path: '/admin/customers', label: 'Customers', icon: Users }, { path: '/profile', label: 'Me', icon: User }];
-      return [...base, { path: '/profile', label: 'Me', icon: User }];
-    }
-    if (user?.role === 'customer') {
-      return [
-        { path: '/home', label: 'Home', icon: House },
-        { path: '/find-shops', label: 'Navigation', icon: MapPin },
-        { path: '/products', label: 'Shop', icon: ShoppingBag },
-        { path: '/services', label: 'Services', icon: Calendar },
-        { path: '/profile', label: 'Me', icon: User },
-      ];
-    }
-    return [
-      { path: '/home', label: 'Home', icon: House },
-      { path: '/pets', label: 'Pets', icon: Heart },
-      { path: '/products', label: 'Shop', icon: ShoppingBag },
-      { path: '/services', label: 'Services', icon: Calendar },
-      { path: '/login', label: 'Login', icon: User },
-    ];
-  };
-
-  const bottomNavItems = getBottomNavItems();
   const isLandingPage = location.pathname === '/' && !isAuthenticated;
 
   return (
@@ -351,21 +305,8 @@ const Layout = () => {
            <Outlet />
         </main>
 
-        {/* Mobile Bottom Nav */}
-        {!isLandingPage && (
-          <nav className="lg:hidden fixed bottom-4 left-1/2 -translate-x-1/2 w-[95%] max-w-sm bg-white dark:bg-slate-900/90 dark:backdrop-blur-md border border-slate-200 dark:border-slate-800 rounded-2xl shadow-lg flex justify-around p-2 z-[60] transition-colors duration-300">
-             {bottomNavItems.map(item => {
-                const Icon = item.icon;
-                const active = isActivePath(item.path);
-                return (
-                   <Link key={item.path} to={item.path} className={`flex flex-col items-center p-2 rounded-xl transition-colors ${active ? 'text-primary-600 bg-primary-50 dark:bg-primary-900/20' : 'text-slate-400 dark:text-slate-500'}`}>
-                      <Icon size={20} />
-                      <span className="text-[10px] font-bold mt-1">{item.label}</span>
-                   </Link>
-                );
-             })}
-          </nav>
-        )}
+        {/* Mobile Bottom Nav – now handled by the dedicated BottomNavBar component */}
+        {!isLandingPage && <BottomNavBar />}
       </div>
 
       {/* Mobile Drawer */}
