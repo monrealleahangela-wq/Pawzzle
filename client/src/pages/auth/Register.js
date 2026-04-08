@@ -281,10 +281,10 @@ const Register = () => {
                <p className="text-[9px] font-black text-primary/30 uppercase tracking-widest">Passphrase must include Upper, Lower & Symbol</p>
             </div>
 
-            {/* reCAPTCHA - Clipped to hide test warning */}
+            {/* reCAPTCHA - Clipped to hide test warning with refined offset */}
             <div className="flex justify-center py-2">
-               <div className="relative overflow-hidden w-[304px] h-[78px] rounded-lg border border-primary/10 bg-white">
-                  <div className="absolute -top-[44px] left-0">
+               <div className="relative overflow-hidden w-[304px] h-[78px] rounded-xl border border-primary/10 bg-white shadow-sm">
+                  <div className="absolute -top-[26px] left-0">
                     <ReCAPTCHA
                       sitekey="6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI"
                       onChange={(token) => setCaptchaToken(token)}
