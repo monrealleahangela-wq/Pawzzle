@@ -116,6 +116,44 @@ const Layout = () => {
     { path: '/admin/staff', label: 'Staff', icon: Users },
   ];
 
+  // Dynamic nav that shows only modules relevant to this staff member's role
+  const getStaffNavItems = (staffType) => {
+    const base = [{ type: 'label', label: 'Overview' }, { path: '/admin/dashboard', label: 'Dashboard', icon: Activity }];
+    switch (staffType) {
+      case 'inventory_staff':
+        return [
+          ...base,
+          { type: 'label', label: 'Inventory' },
+          { path: '/admin/pets', label: 'Pets', icon: Heart },
+          { path: '/admin/products', label: 'Products & Stock', icon: Package },
+        ];
+      case 'order_staff':
+        return [
+          ...base,
+          { type: 'label', label: 'Operations' },
+          { path: '/admin/orders', label: 'Orders', icon: ShoppingCart },
+          { path: '/admin/bookings', label: 'Bookings', icon: Calendar },
+          { path: '/admin/customers', label: 'Customers', icon: Users },
+        ];
+      case 'service_staff':
+        return [
+          ...base,
+          { type: 'label', label: 'Services' },
+          { path: '/admin/services', label: 'Services', icon: Calendar },
+          { path: '/admin/bookings', label: 'Bookings', icon: Calendar },
+        ];
+      case 'delivery_staff':
+        return [
+          ...base,
+          { type: 'label', label: 'Logistics' },
+          { path: '/admin/orders', label: 'Orders / Delivery', icon: ShoppingCart },
+          { path: '/admin/customers', label: 'Customers', icon: Users },
+        ];
+      default:
+        return base;
+    }
+  };
+
   const superAdminNavItems = [
     { type: 'label', label: 'Admin' },
     { path: '/superadmin/dashboard', label: 'Dashboard', icon: Activity },
@@ -142,7 +180,7 @@ const Layout = () => {
 
   const navItems = user?.role === 'customer' ? customerNavItems :
     user?.role === 'super_admin' ? superAdminNavItems :
-      user?.role === 'staff' ? adminNavItems : // Simplified staff nav for now
+      user?.role === 'staff' ? getStaffNavItems(user?.staffType) :
         !user ? publicNavItems : adminNavItems;
 
   const [scrollProgress, setScrollProgress] = useState(0);
@@ -162,15 +200,32 @@ const Layout = () => {
   }, []);
 
   const getBottomNavItems = () => {
-    if (user?.role === 'admin' || user?.role === 'staff' || user?.role === 'super_admin') {
-      const base = user.role === 'super_admin' ? '/superadmin' : '/admin';
+    if (user?.role === 'super_admin') {
       return [
-        { path: `${base}/dashboard`, label: 'Dashboard', icon: Activity },
+        { path: '/superadmin/dashboard', label: 'Dashboard', icon: Activity },
+        { path: '/superadmin/account-management', label: 'Accounts', icon: Users },
+        { path: '/superadmin/transaction-history', label: 'Txns', icon: ShoppingCart },
+        { path: '/superadmin/booking-history', label: 'Bookings', icon: Calendar },
+        { path: '/profile', label: 'Me', icon: User },
+      ];
+    }
+    if (user?.role === 'admin') {
+      return [
+        { path: '/admin/dashboard', label: 'Dashboard', icon: Activity },
         { path: '/admin/orders', label: 'Orders', icon: ShoppingCart },
         { path: '/admin/bookings', label: 'Bookings', icon: Calendar },
         { path: '/admin/chat', label: 'Chat', icon: MessageSquare },
         { path: '/profile', label: 'Me', icon: User },
       ];
+    }
+    if (user?.role === 'staff') {
+      const staffType = user?.staffType;
+      const base = [{ path: '/admin/dashboard', label: 'Hub', icon: Activity }];
+      if (staffType === 'inventory_staff') return [...base, { path: '/admin/pets', label: 'Pets', icon: Heart }, { path: '/admin/products', label: 'Products', icon: Package }, { path: '/profile', label: 'Me', icon: User }];
+      if (staffType === 'order_staff')     return [...base, { path: '/admin/orders', label: 'Orders', icon: ShoppingCart }, { path: '/admin/bookings', label: 'Bookings', icon: Calendar }, { path: '/profile', label: 'Me', icon: User }];
+      if (staffType === 'service_staff')   return [...base, { path: '/admin/services', label: 'Services', icon: Calendar }, { path: '/admin/bookings', label: 'Bookings', icon: Calendar }, { path: '/profile', label: 'Me', icon: User }];
+      if (staffType === 'delivery_staff')  return [...base, { path: '/admin/orders', label: 'Delivery', icon: ShoppingCart }, { path: '/admin/customers', label: 'Customers', icon: Users }, { path: '/profile', label: 'Me', icon: User }];
+      return [...base, { path: '/profile', label: 'Me', icon: User }];
     }
     if (user?.role === 'customer') {
       return [

@@ -9,8 +9,17 @@ import {
   adminBookingService,
   dssService
 } from '../../services/apiService';
-import { Heart, Package, ShoppingCart, Plus, Calendar, RefreshCw, Activity, ArrowUp, ChevronRight, AlertCircle, ShoppingBag, Shield, Brain, Sparkles, TrendingUp } from 'lucide-react';
+import { Heart, Package, ShoppingCart, Plus, Calendar, RefreshCw, Activity, ArrowUp, ChevronRight, AlertCircle, ShoppingBag, Shield, Brain, Sparkles, TrendingUp, User } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { Link } from 'react-router-dom';
+import { getImageUrl } from '../../services/apiService';
+
+const STAFF_TYPE_CONFIG = {
+  inventory_staff:  { label: 'Inventory Staff',  color: 'amber',   desc: 'Manages pets, products & stock levels' },
+  order_staff:      { label: 'Order Staff',       color: 'blue',    desc: 'Processes customer orders & confirmations' },
+  service_staff:    { label: 'Service Staff',     color: 'purple',  desc: 'Manages bookings & appointment schedules' },
+  delivery_staff:   { label: 'Delivery Staff',    color: 'green',   desc: 'Handles logistics & delivery tracking' },
+};
 
 const Dashboard = () => {
   const { user, refreshUserRole } = useAuth();
@@ -148,14 +157,63 @@ const Dashboard = () => {
           </span>
         </button>
       </header>
+      {/* ── Staff Profile Card (Staff-only) ── */}
+      {user?.role === 'staff' && (
+        <div className="relative z-10 bg-white dark:bg-slate-900 rounded-[2rem] border border-[#5D4037]/5 dark:border-slate-800 p-6 sm:p-8 shadow-lg flex flex-col sm:flex-row items-start sm:items-center gap-6 animate-in fade-in duration-700">
+          {/* Avatar */}
+          <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-[1.5rem] bg-amber-50 dark:bg-slate-800 border-2 border-amber-100 dark:border-amber-900/40 flex items-center justify-center text-amber-600 overflow-hidden shrink-0 shadow-inner">
+            {user.avatar || user.profilePicture ? (
+              <img src={getImageUrl(user.avatar || user.profilePicture)} alt="" className="w-full h-full object-cover" />
+            ) : (
+              <User className="h-8 w-8" />
+            )}
+          </div>
+          {/* Info */}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-3 mb-1">
+              <h2 className="text-xl sm:text-2xl font-black text-[#3D2B23] dark:text-slate-100 uppercase tracking-tighter truncate">
+                {user.firstName} {user.lastName}
+              </h2>
+              <span className="shrink-0 flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800 text-[9px] font-black text-emerald-600 uppercase tracking-widest">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                Online
+              </span>
+            </div>
+            <p className="text-[10px] font-black text-amber-600 uppercase tracking-[0.3em] mb-1">
+              {STAFF_TYPE_CONFIG[user?.staffType]?.label || 'Staff Member'}
+            </p>
+            <p className="text-[9px] font-bold text-[#5D4037]/40 dark:text-slate-500 uppercase tracking-widest truncate">
+              {STAFF_TYPE_CONFIG[user?.staffType]?.desc || 'General operations'}
+            </p>
+            <div className="flex items-center gap-4 mt-2">
+              <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">{user.email}</span>
+              {user.phone && (
+                <>
+                  <div className="w-1 h-1 rounded-full bg-slate-200" />
+                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">{user.phone}</span>
+                </>
+              )}
+            </div>
+          </div>
+          {/* Profile Link */}
+          <Link
+            to="/profile"
+            className="shrink-0 flex items-center gap-3 px-6 py-3 bg-[#211510] dark:bg-slate-800 text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-amber-600 transition-all shadow-xl group"
+          >
+            View Profile
+            <ChevronRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
+          </Link>
+        </div>
+      )}
+
 
       {/* ── Precision Metrics Grid ── */}
       <div className="relative z-10 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
         {[
-          { label: 'FLEET COMPANIONS', value: stats.totalPets, icon: Heart, color: 'amber', link: '/admin/pets', sub: 'In Network', growth: stats.growth.pets, show: ['admin', 'super_admin'].includes(user?.role) || ['inventory_staff', 'general'].includes(user?.staffType) },
-          { label: 'HARDWARE UNITS', value: stats.totalProducts, icon: Package, color: 'stone', link: '/admin/products', sub: 'Active Stock', growth: stats.growth.products, show: ['admin', 'super_admin'].includes(user?.role) || ['inventory_staff', 'general'].includes(user?.staffType) },
-          { label: 'NODE TRANSACTIONS', value: stats.totalOrders, icon: ShoppingBag, color: 'slate', link: '/admin/orders', sub: 'Verified', growth: stats.growth.orders, show: ['admin', 'super_admin'].includes(user?.role) || ['order_staff', 'delivery_staff', 'general'].includes(user?.staffType) },
-          { label: 'SERVICE WINDOWS', value: stats.totalBookings, icon: Calendar, color: 'emerald', link: '/admin/bookings', sub: 'Scheduled', growth: stats.growth.bookings, show: ['admin', 'super_admin'].includes(user?.role) || ['service_staff', 'order_staff', 'general'].includes(user?.staffType) },
+          { label: 'FLEET COMPANIONS', value: stats.totalPets, icon: Heart, color: 'amber', link: '/admin/pets', sub: 'In Network', growth: stats.growth.pets, show: ['admin', 'super_admin'].includes(user?.role) || user?.staffType === 'inventory_staff' },
+          { label: 'HARDWARE UNITS', value: stats.totalProducts, icon: Package, color: 'stone', link: '/admin/products', sub: 'Active Stock', growth: stats.growth.products, show: ['admin', 'super_admin'].includes(user?.role) || user?.staffType === 'inventory_staff' },
+          { label: 'NODE TRANSACTIONS', value: stats.totalOrders, icon: ShoppingBag, color: 'slate', link: '/admin/orders', sub: 'Verified', growth: stats.growth.orders, show: ['admin', 'super_admin'].includes(user?.role) || ['order_staff', 'delivery_staff'].includes(user?.staffType) },
+          { label: 'SERVICE WINDOWS', value: stats.totalBookings, icon: Calendar, color: 'emerald', link: '/admin/bookings', sub: 'Scheduled', growth: stats.growth.bookings, show: ['admin', 'super_admin'].includes(user?.role) || ['service_staff', 'order_staff'].includes(user?.staffType) },
           { label: 'NETWORK REVENUE', value: `₱${stats.netEarnings.toLocaleString()}`, icon: TrendingUp, color: 'primary', link: '/admin/insights', sub: 'Gross Profit', growth: stats.growth.revenue, show: ['admin', 'super_admin'].includes(user?.role) },
           { label: 'LIQUID ASSETS', value: `₱${stats.availableBalance.toLocaleString()}`, icon: Shield, color: 'amber', link: '/admin/payouts', sub: 'Operational', growth: stats.growth.balance, show: ['admin', 'super_admin'].includes(user?.role) }
         ].filter(s => s.show).map((stat, i) => (
@@ -251,7 +309,7 @@ const Dashboard = () => {
         {/* Intelligence & Protocols */}
         <div className="xl:col-span-4 space-y-10">
           {/* Intelligence Matrix */}
-          {stats.recommendations.length > 0 && (['admin', 'super_admin'].includes(user?.role) || user?.staffType === 'general') && (
+          {stats.recommendations.length > 0 && ['admin', 'super_admin'].includes(user?.role) && (
             <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] sm:rounded-[3rem] p-8 sm:p-10 border border-[#5D4037]/5 dark:border-slate-800 shadow-[0_40px_100px_-30px_rgba(0,0,0,0.1)] relative overflow-hidden group">
               <div className="absolute top-0 right-0 w-32 h-32 bg-amber-50 dark:bg-amber-900/5 rounded-bl-[4rem] opacity-0 group-hover:opacity-100 transition-opacity" />
               
@@ -296,10 +354,11 @@ const Dashboard = () => {
 
             <div className="space-y-4 relative z-10">
               {[
-                { to: "/admin/insights", label: "Strategic Intelligence", icon: Brain, desc: "Neural optimization core", show: ['admin', 'super_admin'].includes(user?.role) || user?.staffType === 'general' },
-                { to: "/admin/pets", label: "Deploy Companion", icon: Plus, desc: "Synchronize new biological unit", show: ['admin', 'super_admin'].includes(user?.role) || ['inventory_staff', 'general'].includes(user?.staffType) },
-                { to: "/admin/products", label: "Catalog Hardware", icon: Package, desc: "Index new structural equipment", show: ['admin', 'super_admin'].includes(user?.role) || ['inventory_staff', 'general'].includes(user?.staffType) },
-                { to: "/admin/bookings", label: "Operational Calendar", icon: Calendar, desc: "Synchronize service nodes", show: ['admin', 'super_admin'].includes(user?.role) || ['service_staff', 'order_staff', 'general'].includes(user?.staffType) },
+                { to: "/admin/insights", label: "Strategic Intelligence", icon: Brain, desc: "Neural optimization core", show: ['admin', 'super_admin'].includes(user?.role) },
+                { to: "/admin/pets", label: "Deploy Companion", icon: Plus, desc: "Synchronize new biological unit", show: ['admin', 'super_admin'].includes(user?.role) || user?.staffType === 'inventory_staff' },
+                { to: "/admin/products", label: "Catalog Hardware", icon: Package, desc: "Index new structural equipment", show: ['admin', 'super_admin'].includes(user?.role) || user?.staffType === 'inventory_staff' },
+                { to: "/admin/bookings", label: "Operational Calendar", icon: Calendar, desc: "Synchronize service nodes", show: ['admin', 'super_admin'].includes(user?.role) || ['service_staff', 'order_staff'].includes(user?.staffType) },
+                { to: "/admin/orders", label: "Order Queue", icon: ShoppingCart, desc: "Process pending transactions", show: ['order_staff', 'delivery_staff'].includes(user?.staffType) },
               ].filter(action => action.show).map((action, i) => (
                 <Link key={i} to={action.to} className="group/btn relative flex items-center gap-4 sm:gap-6 p-3 sm:p-5 bg-white/5 hover:bg-white/10 rounded-xl sm:rounded-[1.8rem] transition-all active:scale-[0.97] border border-white/5">
                   <div className="w-10 h-10 sm:w-14 sm:h-14 bg-white/5 rounded-lg sm:rounded-2xl flex items-center justify-center shrink-0 group-hover/btn:bg-amber-600 transition-all duration-500">
@@ -316,7 +375,7 @@ const Dashboard = () => {
           </div>
 
           {/* Resource Alert Matrix */}
-          {(['admin', 'super_admin'].includes(user?.role) || ['inventory_staff', 'general'].includes(user?.staffType)) && stats.lowStockProducts.length > 0 ? (
+          {(['admin', 'super_admin'].includes(user?.role) || user?.staffType === 'inventory_staff') && stats.lowStockProducts.length > 0 ? (
             <div className="bg-rose-600 rounded-[2rem] sm:rounded-[3rem] p-6 sm:p-10 text-white shadow-[0_40px_80px_-20px_rgba(225,29,72,0.4)] relative overflow-hidden group">
               <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent pointer-events-none" />
               
@@ -344,7 +403,7 @@ const Dashboard = () => {
                 </Link>
               </div>
             </div>
-          ) : (['admin', 'super_admin'].includes(user?.role) || ['inventory_staff', 'general'].includes(user?.staffType)) && (
+          ) : (['admin', 'super_admin'].includes(user?.role) || user?.staffType === 'inventory_staff') && (
             <div className="bg-emerald-600 rounded-[2rem] sm:rounded-[3rem] p-6 sm:p-10 text-white shadow-[0_40px_80px_-20px_rgba(5,150,105,0.3)] flex flex-col items-center justify-center text-center space-y-6 relative overflow-hidden group">
               <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent pointer-events-none" />
               <div className="w-16 h-16 sm:w-20 sm:h-20 bg-white/20 backdrop-blur-xl rounded-full flex items-center justify-center group-hover:scale-110 transition-transform duration-700 shadow-2xl">
