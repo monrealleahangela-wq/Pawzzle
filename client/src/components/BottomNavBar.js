@@ -194,7 +194,7 @@ const BottomNavBar = () => {
 
   return (
     <nav
-      className="lg:hidden fixed bottom-6 left-1/2 -translate-x-1/2 w-[92%] max-w-sm z-[60]"
+      className="lg:hidden fixed bottom-6 left-1/2 -translate-x-1/2 w-[92%] max-w-sm z-[60] pointer-events-none"
       aria-label="Mobile navigation"
     >
       {/* Glass pill container */}
@@ -208,6 +208,7 @@ const BottomNavBar = () => {
         overflow-x-auto no-scrollbar
         touch-pan-x
         transition-colors duration-300
+        pointer-events-auto
       ">
         {navItems.map((item) => {
           const Icon   = item.icon;
