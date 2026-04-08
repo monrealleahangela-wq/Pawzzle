@@ -39,7 +39,7 @@ const Customers = () => {
 
     const getStatusColor = (status) => {
         if (['completed', 'delivered'].includes(status)) return 'text-emerald-600 bg-emerald-50 border-emerald-200';
-        if (['pending'].includes(status)) return 'text-amber-600 bg-amber-50 border-amber-200';
+        if (['pending'].includes(status)) return 'text-primary-600 bg-secondary-50 border-secondary-200';
         if (['cancelled', 'failed', 'refused'].includes(status)) return 'text-rose-600 bg-rose-50 border-rose-200';
         return 'text-blue-600 bg-blue-50 border-blue-200';
     };
@@ -126,7 +126,7 @@ const Customers = () => {
                                         <div className="flex-1 min-w-0">
                                             <div className="flex items-center gap-2">
                                                 <p className="font-black text-slate-900 text-base truncate">{customer.firstName} {customer.lastName}</p>
-                                                {customer.totalInteractions >= 5 && <Star className="h-3.5 w-3.5 text-amber-400 fill-amber-400 shrink-0" title="Frequent Customer" />}
+                                                {customer.totalInteractions >= 5 && <Star className="h-3.5 w-3.5 text-secondary-400 fill-secondary-400 shrink-0" title="Frequent Customer" />}
                                             </div>
                                             <p className="text-slate-500 text-xs font-medium truncate">{customer.email} {customer.phone && `· ${customer.phone}`}</p>
                                         </div>
@@ -203,7 +203,7 @@ const Customers = () => {
                                                                         </div>
                                                                         <div className="text-right">
                                                                             <p className="text-sm font-black text-slate-900">₱{order.totalAmount.toLocaleString()}</p>
-                                                                            <p className={`text-[9px] font-bold uppercase ${order.paymentStatus === 'paid' ? 'text-emerald-500' : 'text-amber-500'}`}>{order.paymentStatus}</p>
+                                                                            <p className={`text-[9px] font-bold uppercase ${order.paymentStatus === 'paid' ? 'text-emerald-500' : 'text-secondary-500'}`}>{order.paymentStatus}</p>
                                                                         </div>
                                                                     </div>
                                                                 </Link>

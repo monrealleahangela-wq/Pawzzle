@@ -32,7 +32,15 @@ const createPetValidation = [
   body('healthCondition').optional().isIn(['healthy', 'needs_monitoring', 'condition_present']).withMessage('Invalid health condition'),
   body('listingType').optional().isIn(['sale', 'adoption']).withMessage('Invalid listing type'),
   body('fulfillmentType').optional().isIn(['pickup_only', 'shipping', 'both']).withMessage('Invalid fulfillment type'),
-  body('paymentType').optional().isIn(['online_only', 'cod', 'any']).withMessage('Invalid payment type')
+  body('paymentType').optional().isIn(['online_only', 'cod', 'any']).withMessage('Invalid payment type'),
+  body('birthday').optional().isISO8601().toDate().withMessage('Valid birthday is required')
+    .custom((value) => {
+      const today = new Date();
+      if (value > today) {
+        throw new Error('Birth date cannot be in the future.');
+      }
+      return true;
+    }),
 ];
 
 const updatePetValidation = [

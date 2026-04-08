@@ -183,11 +183,11 @@ const StoreApplication = () => {
 
   const getStatusColor = (status) => {
     const colors = {
-      pending: 'bg-amber-100 text-amber-800',
+      pending: 'bg-secondary-100 text-primary-800',
       under_review: 'bg-primary-100 text-primary-800',
       approved: 'bg-emerald-100 text-emerald-800',
       rejected: 'bg-rose-100 text-rose-800',
-      requires_more_info: 'bg-orange-100 text-orange-800'
+      requires_more_info: 'bg-secondary-100 text-orange-800'
     };
     return colors[status] || 'bg-slate-100 text-slate-800';
   };
@@ -295,7 +295,7 @@ const StoreApplication = () => {
             <div className="grid grid-cols-2 gap-4">
               {[
                 { label: 'Classification', value: application.businessType.replace('_', ' '), icon: Briefcase },
-                { label: 'Trust Index', value: `${application.verificationScore}%`, icon: Shield, color: application.verificationScore >= 85 ? 'text-emerald-600' : 'text-amber-600' },
+                { label: 'Trust Index', value: `${application.verificationScore}%`, icon: Shield, color: application.verificationScore >= 85 ? 'text-emerald-600' : 'text-primary-600' },
                 { label: 'Frequency', value: `${application.yearsInBusiness || 0} Years`, icon: Check },
                 { label: 'Employees', value: application.numberOfEmployees || 1, icon: Users }
               ].map((stat, i) => (
@@ -311,9 +311,9 @@ const StoreApplication = () => {
           </div>
 
           {(application.status === 'rejected' || application.status === 'requires_more_info') && (
-            <div className={`p-8 rounded-[2rem] border animate-slide-up ${application.status === 'rejected' ? 'bg-rose-50 border-rose-100' : 'bg-orange-50 border-orange-100'}`}>
+            <div className={`p-8 rounded-[2rem] border animate-slide-up ${application.status === 'rejected' ? 'bg-rose-50 border-rose-100' : 'bg-secondary-50 border-secondary-100'}`}>
                <div className="flex items-center gap-3 mb-4">
-                 <div className={`p-2 rounded-lg ${application.status === 'rejected' ? 'bg-rose-600 text-white' : 'bg-orange-600 text-white'}`}>
+                 <div className={`p-2 rounded-lg ${application.status === 'rejected' ? 'bg-rose-600 text-white' : 'bg-primary-600 text-white'}`}>
                    <AlertCircle className="h-5 w-5" />
                  </div>
                  <h4 className={`text-sm font-black uppercase tracking-widest ${application.status === 'rejected' ? 'text-rose-900' : 'text-orange-900'}`}>
@@ -338,7 +338,7 @@ const StoreApplication = () => {
                {(application.status === 'rejected' || application.status === 'requires_more_info') && (
                  <button 
                    onClick={handleReapply}
-                   className={`mt-6 px-8 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest text-white transition-all shadow-lg ${application.status === 'rejected' ? 'bg-rose-600 hover:bg-slate-900' : 'bg-orange-600 hover:bg-slate-900'}`}
+                   className={`mt-6 px-8 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest text-white transition-all shadow-lg ${application.status === 'rejected' ? 'bg-rose-600 hover:bg-slate-900' : 'bg-primary-600 hover:bg-slate-900'}`}
                  >
                    {application.status === 'rejected' ? 'Re-apply with Corrected Documents' : 'Submit Required Corrections'}
                  </button>

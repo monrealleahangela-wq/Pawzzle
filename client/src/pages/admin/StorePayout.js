@@ -11,7 +11,7 @@ const METHOD_ICONS = { gcash: Smartphone, maya: Smartphone, bank_transfer: Landm
 const METHOD_COLORS = { gcash: 'text-blue-500', maya: 'text-green-500', bank_transfer: 'text-slate-600' };
 
 const STATUS_STYLES = {
-    pending: 'bg-amber-50 text-amber-700 border-amber-200',
+    pending: 'bg-secondary-50 text-primary-700 border-secondary-200',
     processing: 'bg-blue-50 text-blue-700 border-blue-200',
     completed: 'bg-emerald-50 text-emerald-700 border-emerald-200',
     rejected: 'bg-rose-50 text-rose-700 border-rose-200'
@@ -153,12 +153,12 @@ const StorePayout = () => {
                         <h2 className="font-black text-slate-900 uppercase tracking-tighter">Withdraw Earnings</h2>
 
                         {(stats?.payoutMethods || []).length === 0 ? (
-                            <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-start gap-3">
-                                <BadgeCheck className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
+                            <div className="bg-secondary-50 border border-secondary-200 rounded-2xl p-4 flex items-start gap-3">
+                                <BadgeCheck className="h-5 w-5 text-secondary-500 shrink-0 mt-0.5" />
                                 <div>
-                                    <p className="font-black text-amber-800 text-sm">Add a payout method first</p>
-                                    <p className="text-amber-600 text-xs mt-0.5">Go to the "Payout Methods" tab to add your GCash, Maya, or bank account.</p>
-                                    <button onClick={() => setTab('methods')} className="mt-2 text-[10px] font-black uppercase tracking-widest text-amber-700 underline underline-offset-2">
+                                    <p className="font-black text-primary-800 text-sm">Add a payout method first</p>
+                                    <p className="text-primary-600 text-xs mt-0.5">Go to the "Payout Methods" tab to add your GCash, Maya, or bank account.</p>
+                                    <button onClick={() => setTab('methods')} className="mt-2 text-[10px] font-black uppercase tracking-widest text-primary-700 underline underline-offset-2">
                                         Add Method →
                                     </button>
                                 </div>

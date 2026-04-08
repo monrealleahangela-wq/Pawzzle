@@ -83,7 +83,7 @@ const AdminOrders = () => {
 
   const getStatusStyle = (status) => {
     switch (status) {
-      case 'pending': return 'bg-amber-100 text-amber-700 border-amber-200';
+      case 'pending': return 'bg-secondary-100 text-primary-700 border-secondary-200';
       case 'confirmed': return 'bg-blue-100 text-blue-700 border-blue-200';
       case 'processing': return 'bg-primary-100 text-primary-700 border-primary-200';
       case 'shipped': return 'bg-indigo-100 text-indigo-700 border-indigo-200';

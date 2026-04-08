@@ -71,7 +71,7 @@ const ReviewModal = ({
                                 className="focus:outline-none transition-transform hover:scale-110 active:scale-95"
                             >
                                 <Star
-                                    className={`h-8 w-8 ${star <= rating ? 'fill-amber-400 text-amber-400' : 'text-slate-200'
+                                    className={`h-8 w-8 ${star <= rating ? 'fill-secondary-400 text-secondary-400' : 'text-slate-200'
                                         }`}
                                 />
                             </button>

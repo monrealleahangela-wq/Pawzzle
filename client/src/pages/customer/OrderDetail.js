@@ -138,7 +138,7 @@ const OrderDetail = () => {
 
   const getStatusColor = (status) => {
     const colors = {
-      pending: 'bg-yellow-100 text-yellow-800',
+      pending: 'bg-secondary-100 text-primary-800',
       confirmed: 'bg-primary-100 text-primary-800',
       processing: 'bg-secondary-100 text-secondary-800',
       shipped: 'bg-primary-100 text-primary-800',
@@ -339,7 +339,7 @@ const OrderDetail = () => {
               </div>
               <div className="flex justify-between items-center pb-2 border-b border-slate-50">
                 <span className="text-slate-500 font-bold uppercase tracking-widest text-[10px]">Status</span>
-                <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-widest ${order.paymentStatus === 'paid' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-widest ${order.paymentStatus === 'paid' ? 'bg-emerald-100 text-emerald-700' : 'bg-secondary-100 text-primary-700'}`}>
                   {order.paymentStatus?.replace(/_/g, ' ')}
                 </span>
               </div>
@@ -439,7 +439,7 @@ const OrderDetail = () => {
               <div className="space-y-3">
                 <div className="p-4 bg-white rounded-2xl border border-emerald-100 flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                        <Star className="h-5 w-5 text-amber-400 fill-current" />
+                        <Star className="h-5 w-5 text-secondary-400 fill-current" />
                         <span className="text-[10px] font-black text-slate-900 uppercase tracking-widest">Feedback Requested</span>
                     </div>
                 </div>

@@ -420,11 +420,11 @@ const TransactionHistory = () => {
               </div>
 
               {selectedTransaction.notes && (
-                <div className="bg-amber-50/50 border border-amber-100 rounded-[2rem] p-8">
-                  <h3 className="text-[9px] font-black text-amber-600 uppercase tracking-widest mb-2 flex items-center gap-2">
+                <div className="bg-secondary-50/50 border border-secondary-100 rounded-[2rem] p-8">
+                  <h3 className="text-[9px] font-black text-primary-600 uppercase tracking-widest mb-2 flex items-center gap-2">
                     <Target className="h-3 w-3" /> Special Notes
                   </h3>
-                  <p className="text-[11px] font-medium text-amber-900 uppercase tracking-tight italic">"{selectedTransaction.notes}"</p>
+                  <p className="text-[11px] font-medium text-primary-900 uppercase tracking-tight italic">"{selectedTransaction.notes}"</p>
                 </div>
               )}
             </div>

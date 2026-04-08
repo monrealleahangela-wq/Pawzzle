@@ -451,7 +451,7 @@ const Products = () => {
                       </h3>
                       {product.ratings && product.ratings.count > 0 && (
                         <div className="flex items-center gap-1 mt-1.5 opacity-80 group-hover:opacity-100 transition-opacity">
-                          <Star className="w-3 h-3 text-amber-400 fill-amber-400" />
+                          <Star className="w-3 h-3 text-secondary-400 fill-secondary-400" />
                           <span className="text-[10px] font-bold text-slate-600">
                             {product.ratings.average.toFixed(1)} <span className="text-slate-400 font-normal">({product.ratings.count})</span>
                           </span>

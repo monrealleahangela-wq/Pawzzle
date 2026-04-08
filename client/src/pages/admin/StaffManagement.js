@@ -41,7 +41,7 @@ const STAFF_TYPES = [
 
 const TYPE_STYLES = {
     order_staff: 'bg-blue-50 text-blue-700 border-blue-200',
-    inventory_staff: 'bg-amber-50 text-amber-700 border-amber-200',
+    inventory_staff: 'bg-secondary-50 text-primary-700 border-secondary-200',
     service_staff: 'bg-purple-50 text-purple-700 border-purple-200',
     delivery_staff: 'bg-green-50 text-green-700 border-green-200'
 };
@@ -351,7 +351,7 @@ const StaffManagement = () => {
                                                 <td className="px-6 py-4 text-right">
                                                     <div className="flex items-center justify-end gap-1">
                                                         <button onClick={() => openEdit(member)} className="p-2 rounded-xl text-slate-400 hover:bg-slate-100 hover:text-slate-900 transition-all"><Edit2 className="h-4 w-4" /></button>
-                                                        <button onClick={() => { setResetTarget(member); setNewPassword(''); }} className="p-2 rounded-xl text-slate-400 hover:bg-amber-50 hover:text-amber-600 transition-all"><Key className="h-4 w-4" /></button>
+                                                        <button onClick={() => { setResetTarget(member); setNewPassword(''); }} className="p-2 rounded-xl text-slate-400 hover:bg-secondary-50 hover:text-primary-600 transition-all"><Key className="h-4 w-4" /></button>
                                                         <button onClick={() => handleToggle(member._id)} className={`p-2 rounded-xl transition-all ${member.isActive ? 'text-slate-400 hover:bg-rose-50 hover:text-rose-600' : 'text-slate-400 hover:bg-emerald-50 hover:text-emerald-600'}`}><Power className="h-4 w-4" /></button>
                                                         <button onClick={() => handleDelete(member._id, `${member.firstName} ${member.lastName}`)} className="p-2 rounded-xl text-slate-400 hover:bg-rose-50 hover:text-rose-600 transition-all"><Trash2 className="h-4 w-4" /></button>
                                                     </div>
@@ -610,9 +610,9 @@ const StaffManagement = () => {
                             <button onClick={() => setResetTarget(null)} className="p-2 rounded-2xl hover:bg-slate-50 text-slate-400"><X className="h-5 w-5" /></button>
                         </div>
 
-                        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-3 flex items-start gap-2">
-                            <AlertCircle className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
-                            <p className="text-amber-700 text-xs">Share the new password with the staff member securely. They can change it after logging in.</p>
+                        <div className="bg-secondary-50 border border-secondary-200 rounded-2xl p-3 flex items-start gap-2">
+                            <AlertCircle className="h-4 w-4 text-secondary-500 shrink-0 mt-0.5" />
+                            <p className="text-primary-700 text-xs">Share the new password with the staff member securely. They can change it after logging in.</p>
                         </div>
 
                         <div>
@@ -630,7 +630,7 @@ const StaffManagement = () => {
                             <button
                                 onClick={handleResetPassword}
                                 disabled={resetting}
-                                className="flex-1 py-3.5 bg-amber-500 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-amber-600 transition-all disabled:opacity-50"
+                                className="flex-1 py-3.5 bg-secondary-500 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-primary-600 transition-all disabled:opacity-50"
                             >
                                 {resetting ? 'Resetting...' : 'Reset Password'}
                             </button>

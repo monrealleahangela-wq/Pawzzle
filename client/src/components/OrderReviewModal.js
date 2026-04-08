@@ -61,7 +61,7 @@ const OrderReviewModal = ({ isOpen, onClose, item, orderId, onReviewSubmitted })
                         className="focus:outline-none transition-transform hover:scale-110"
                     >
                         <Star
-                            className={`h-8 w-8 ${star <= rating ? 'fill-amber-400 text-amber-400' : 'text-slate-200'
+                            className={`h-8 w-8 ${star <= rating ? 'fill-secondary-400 text-secondary-400' : 'text-slate-200'
                                 }`}
                         />
                     </button>
@@ -84,7 +84,7 @@ const OrderReviewModal = ({ isOpen, onClose, item, orderId, onReviewSubmitted })
                                 className="focus:outline-none transition-transform hover:scale-110"
                             >
                                 <Star
-                                    className={`h-6 w-6 ${star <= rating ? 'fill-amber-400 text-amber-400' : 'text-slate-200'
+                                    className={`h-6 w-6 ${star <= rating ? 'fill-secondary-400 text-secondary-400' : 'text-slate-200'
                                         }`}
                                 />
                             </button>

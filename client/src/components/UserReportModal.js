@@ -103,7 +103,7 @@ const UserReportModal = ({ isOpen, onClose, reportedUser }) => {
                         </div>
 
                         <div className="flex items-start gap-4 p-6 bg-slate-50 rounded-3xl border border-slate-100">
-                            <AlertTriangle className="h-10 w-10 text-amber-500 shrink-0" />
+                            <AlertTriangle className="h-10 w-10 text-secondary-500 shrink-0" />
                             <p className="text-[11px] font-bold text-slate-500 leading-relaxed italic uppercase tracking-tight">
                                 Filing a false report is a violation of platform guidelines and may result in penalties to your shop account.
                             </p>

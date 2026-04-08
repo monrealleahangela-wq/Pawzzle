@@ -359,7 +359,7 @@ const FloatingChatManager = ({ currentUser }) => {
               {unreadCount > 99 ? '99+' : unreadCount}
             </span>
           )}
-          <span className="absolute bottom-full right-0 mb-2 bg-amber-900 text-white text-sm px-3 py-1 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+          <span className="absolute bottom-full right-0 mb-2 bg-primary-900 text-white text-sm px-3 py-1 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
             Chat with Sellers
           </span>
         </button>

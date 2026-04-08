@@ -135,7 +135,7 @@ const ReviewManagement = () => {
                                                     <p className="text-xs sm:text-lg font-black text-slate-900 uppercase tracking-tight">{review.user?.firstName || review.user?.username}</p>
                                                     <div className="flex items-center gap-1">
                                                         {[...Array(5)].map((_, i) => (
-                                                            <Star key={i} className={`h-2.5 w-2.5 ${i < review.rating ? 'fill-amber-400 text-amber-400' : 'text-slate-100'}`} />
+                                                            <Star key={i} className={`h-2.5 w-2.5 ${i < review.rating ? 'fill-secondary-400 text-secondary-400' : 'text-slate-100'}`} />
                                                         ))}
                                                     </div>
                                                 </div>

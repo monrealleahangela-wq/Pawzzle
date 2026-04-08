@@ -361,7 +361,7 @@ const StoreDetail = () => {
                   </span>
                 )}
                 {store.verificationStatus === 'pending' && (
-                  <span className="px-2 py-0.5 bg-amber-500 text-white rounded-full text-[7px] sm:text-[10px] font-black uppercase tracking-widest shadow-lg">
+                  <span className="px-2 py-0.5 bg-secondary-500 text-white rounded-full text-[7px] sm:text-[10px] font-black uppercase tracking-widest shadow-lg">
                     Pending
                   </span>
                 )}
@@ -392,9 +392,9 @@ const StoreDetail = () => {
                 )}
               </h1>
               {store.ratings && store.ratings.count > 0 && (
-                <div className="flex items-center gap-1.5 mt-2 bg-amber-50/80 backdrop-blur-md rounded-xl px-3 py-1.5 w-fit border border-amber-100 mb-2">
-                  <Star className="w-4 h-4 text-amber-500 fill-amber-500" />
-                  <span className="text-xs font-black text-amber-700 tracking-wider">
+                <div className="flex items-center gap-1.5 mt-2 bg-secondary-50/80 backdrop-blur-md rounded-xl px-3 py-1.5 w-fit border border-secondary-100 mb-2">
+                  <Star className="w-4 h-4 text-secondary-500 fill-secondary-500" />
+                  <span className="text-xs font-black text-primary-700 tracking-wider">
                     {store.ratings.average.toFixed(1)} <span className="font-bold opacity-70">({store.ratings.count})</span>
                   </span>
                 </div>

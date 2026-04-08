@@ -76,7 +76,7 @@ const AppealForm = () => {
                         <ArrowLeft className="h-4 w-4 group-hover:-translate-x-1 transition-transform" />
                         <span className="text-[10px] font-black uppercase tracking-widest">Back to Profile</span>
                     </button>
-                    <div className="flex items-center gap-2 px-3 py-1 bg-amber-100 text-amber-600 rounded-full">
+                    <div className="flex items-center gap-2 px-3 py-1 bg-secondary-100 text-primary-600 rounded-full">
                         <Shield className="h-3 w-3" />
                         <span className="text-[8px] font-black uppercase tracking-widest">Enforcement Dispute</span>
                     </div>

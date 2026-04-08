@@ -136,7 +136,7 @@ const ForgotPassword = () => {
       <div className="max-w-md w-full animate-fade-in">
         <div className="glass-morphism rounded-[40px] p-8 md:p-12 border border-white/40 shadow-2xl relative">
           {/* Header Icon */}
-          <div className="absolute -top-12 left-1/2 -translate-x-1/2 w-24 h-24 bg-gradient-to-br from-primary-500 to-amber-500 rounded-3xl flex items-center justify-center shadow-xl shadow-primary-200 rotate-6 group hover:rotate-12 transition-transform duration-500">
+          <div className="absolute -top-12 left-1/2 -translate-x-1/2 w-24 h-24 bg-gradient-to-br from-primary-500 to-secondary-500 rounded-3xl flex items-center justify-center shadow-xl shadow-primary-200 rotate-6 group hover:rotate-12 transition-transform duration-500">
             {step === 3 ? (
               <CheckCircle className="h-12 w-12 text-white" />
             ) : (

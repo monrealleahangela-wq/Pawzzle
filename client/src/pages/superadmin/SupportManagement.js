@@ -129,7 +129,7 @@ const SupportManagement = () => {
 
     const getStatusColor = (status) => {
         switch (status) {
-            case 'pending': return 'bg-amber-100 text-amber-700 border-amber-200';
+            case 'pending': return 'bg-secondary-100 text-primary-700 border-secondary-200';
             case 'in_review': return 'bg-blue-100 text-blue-700 border-blue-200';
             case 'resolved': return 'bg-emerald-100 text-emerald-700 border-emerald-200';
             case 'closed': return 'bg-slate-100 text-slate-700 border-slate-200';

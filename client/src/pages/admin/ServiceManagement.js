@@ -469,7 +469,7 @@ const ServiceManagement = () => {
                   {/* Requirements */}
                   <div className="space-y-3">
                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 flex items-center gap-2">
-                      <AlertTriangle className="h-4 w-4 text-amber-500" /> Requirements & Notes
+                      <AlertTriangle className="h-4 w-4 text-secondary-500" /> Requirements & Notes
                     </label>
                     <textarea value={formData.requirements} onChange={e => setFormData(p => ({ ...p, requirements: e.target.value }))}
                       className="w-full px-8 py-8 bg-slate-50 border border-slate-100 rounded-2xl text-[12px] font-medium leading-relaxed h-44 resize-none outline-none shadow-inner"

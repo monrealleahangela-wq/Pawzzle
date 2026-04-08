@@ -115,8 +115,8 @@ const LineChart = ({ data, className, height = 300 }) => {
         {/* Gradient definition */}
         <defs>
           <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor="#533114" />
-            <stop offset="100%" stopColor="#A08B80" />
+            <stop offset="0%" stopColor="#8B4513" />
+            <stop offset="100%" stopColor="#BFA6A0" />
           </linearGradient>
         </defs>
 
@@ -131,7 +131,7 @@ const LineChart = ({ data, className, height = 300 }) => {
                 cy={y}
                 r="3"
                 fill="white"
-                stroke="#533114"
+                stroke="#8B4513"
                 strokeWidth="2"
                 className="hover:r-4 transition-all duration-200 cursor-pointer"
               />
@@ -169,7 +169,7 @@ const PieChart = ({ data, className, size = 200 }) => {
   let currentAngle = 0;
 
   const colors = [
-    '#533114', '#A08B80', '#2E2D2D', '#797878', '#454545', '#724E31'
+    '#8B4513', '#BFA6A0', '#2E2D2D', '#797878', '#454545', '#8B4513'
   ];
 
   return (

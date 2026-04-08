@@ -500,6 +500,9 @@ const Profile = () => {
     if (!birthday) return 'N/A';
     const birthDate = new Date(birthday);
     const today = new Date();
+    
+    if (birthDate > today) return 'Future Date';
+    
     let years = today.getFullYear() - birthDate.getFullYear();
     const m = today.getMonth() - birthDate.getMonth();
     if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
@@ -538,6 +541,11 @@ const Profile = () => {
     e.preventDefault();
     if (petForm.weight < 1 || petForm.weight > 50) {
       toast.error('Weight must be between 1 and 50 kg');
+      return;
+    }
+
+    if (new Date(petForm.birthday) > new Date()) {
+      toast.error('Birth date cannot be in the future.');
       return;
     }
 
@@ -1101,7 +1109,7 @@ const Profile = () => {
                               </div>
                               <div className="text-right">
                                 <p className="text-[11px] sm:text-sm font-black text-slate-900 leading-none mb-1">₱{order.totalAmount?.toLocaleString()}</p>
-                                <span className={`px-1.5 py-0.5 rounded text-[7px] sm:text-[9px] font-black uppercase tracking-widest ${order.status === 'delivered' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-amber-50 text-amber-600 border border-amber-100'}`}>
+                                <span className={`px-1.5 py-0.5 rounded text-[7px] sm:text-[9px] font-black uppercase tracking-widest ${order.status === 'delivered' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-secondary-50 text-primary-600 border border-secondary-100'}`}>
                                   {order.status}
                                 </span>
                               </div>
@@ -1117,7 +1125,7 @@ const Profile = () => {
                           {adoptions.map(req => (
                             <div key={req._id} className="py-3 flex items-center justify-between group cursor-pointer border-b border-slate-50 hover:bg-slate-50 transition-colors px-1 sm:px-2">
                               <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg bg-amber-50/30 border border-amber-100 flex items-center justify-center text-amber-600 group-hover:bg-amber-600 group-hover:text-white transition-all">
+                                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg bg-secondary-50/30 border border-secondary-100 flex items-center justify-center text-primary-600 group-hover:bg-primary-600 group-hover:text-white transition-all">
                                   <HeartIcon className="h-4 w-4 sm:h-5 sm:w-5" />
                                 </div>
                                 <div className="min-w-0">
@@ -1126,7 +1134,7 @@ const Profile = () => {
                                 </div>
                               </div>
                               <div className="text-right">
-                                <span className={`px-1.5 py-0.5 rounded text-[7px] sm:text-[9px] font-black uppercase tracking-widest ${['approved', 'ready_for_pickup', 'shipped', 'delivered'].includes(req.status) ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : req.status === 'rejected' || req.status === 'cancelled' ? 'bg-rose-50 text-rose-600 border border-rose-100' : 'bg-amber-50 text-amber-600 border border-amber-100'}`}>
+                                <span className={`px-1.5 py-0.5 rounded text-[7px] sm:text-[9px] font-black uppercase tracking-widest ${['approved', 'ready_for_pickup', 'shipped', 'delivered'].includes(req.status) ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : req.status === 'rejected' || req.status === 'cancelled' ? 'bg-rose-50 text-rose-600 border border-rose-100' : 'bg-secondary-50 text-primary-600 border border-secondary-100'}`}>
                                   {req.status?.replace(/_/g, ' ')}
                                 </span>
                               </div>
@@ -1876,22 +1884,22 @@ const Profile = () => {
                     <div className="space-y-4 sm:space-y-8">
                       {application ? (
                         <div className="relative group">
-                          <div className="absolute inset-0 bg-amber-500/5 rounded-2xl sm:rounded-[2.5rem] blur-xl"></div>
-                          <div className="relative bg-white p-6 sm:p-10 rounded-2xl sm:rounded-[2.5rem] border border-amber-100 shadow-xl shadow-amber-900/5">
+                          <div className="absolute inset-0 bg-secondary-500/5 rounded-2xl sm:rounded-[2.5rem] blur-xl"></div>
+                          <div className="relative bg-white p-6 sm:p-10 rounded-2xl sm:rounded-[2.5rem] border border-secondary-100 shadow-xl shadow-primary-900/5">
                             <div className="flex items-center justify-between mb-6 sm:mb-8">
                               <div className="flex items-center gap-3 sm:gap-4">
-                                <div className="w-10 h-10 sm:w-14 sm:h-14 bg-amber-50 rounded-xl sm:rounded-2xl flex items-center justify-center text-amber-600">
+                                <div className="w-10 h-10 sm:w-14 sm:h-14 bg-secondary-50 rounded-xl sm:rounded-2xl flex items-center justify-center text-primary-600">
                                   <Clock className="h-5 w-5 sm:h-7 sm:w-7" />
                                 </div>
                                 <div>
-                                  <p className="text-[7px] sm:text-[10px] font-black text-amber-600 uppercase tracking-widest leading-none mb-0.5">Application {application.status}</p>
+                                  <p className="text-[7px] sm:text-[10px] font-black text-primary-600 uppercase tracking-widest leading-none mb-0.5">Application {application.status}</p>
                                   <h4 className="text-sm sm:text-2xl font-black text-slate-900 uppercase tracking-tight truncate">{application.businessName}</h4>
                                 </div>
                               </div>
                               <span className={`px-2 py-0.5 sm:px-4 sm:py-1.5 rounded sm:rounded-full text-[7px] sm:text-[10px] font-black uppercase tracking-widest border ${
                                 application.status === 'approved' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
                                 application.status === 'rejected' ? 'bg-rose-50 text-rose-600 border-rose-100' :
-                                'bg-amber-50 text-amber-600 border-amber-100'
+                                'bg-secondary-50 text-primary-600 border-secondary-100'
                               }`}>
                                 {application.status}
                               </span>
@@ -1906,11 +1914,11 @@ const Profile = () => {
                                <div className="space-y-2 mb-8 animate-in fade-in slide-in-from-top-4 duration-1000">
                                  <div className="flex justify-between items-end">
                                    <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Verification Strength</p>
-                                   <p className="text-xs font-black text-amber-600 italic">Level {application.verificationLevel || 1}</p>
+                                   <p className="text-xs font-black text-primary-600 italic">Level {application.verificationLevel || 1}</p>
                                  </div>
                                  <div className="h-3 bg-slate-100 rounded-full overflow-hidden p-0.5 border border-slate-50">
                                    <div 
-                                     className="h-full bg-gradient-to-r from-amber-500 to-primary-600 rounded-full transition-all duration-[2000ms] shadow-sm relative overflow-hidden"
+                                     className="h-full bg-gradient-to-r from-secondary-500 to-primary-600 rounded-full transition-all duration-[2000ms] shadow-sm relative overflow-hidden"
                                      style={{ width: `${Math.max(15, application.verificationScore || 25)}%` }}
                                    >
                                      <div className="absolute inset-0 bg-white/20 animate-pulse" />
@@ -2350,7 +2358,7 @@ const Profile = () => {
                 {/* 2. Lifecycle & Growth */}
                 <div className="space-y-10">
                     <div className="flex items-center gap-4 border-b border-slate-50 pb-3">
-                        <Zap className="h-4 w-4 text-amber-500" />
+                        <Zap className="h-4 w-4 text-secondary-500" />
                         <h3 className="text-[10px] font-black text-slate-800 uppercase tracking-[0.3em]">Lifecycle & Calibration</h3>
                     </div>
                     
@@ -2361,6 +2369,7 @@ const Profile = () => {
                                 required
                                 type="date" 
                                 value={petForm.birthday}
+                                max={new Date().toISOString().split('T')[0]}
                                 onChange={(e) => setPetForm({ ...petForm, birthday: e.target.value })}
                                 className="w-full px-4 py-4 bg-slate-50 border-2 border-slate-50 rounded-2xl focus:bg-white focus:border-primary-500 outline-none font-bold text-xs sm:text-sm transition-all shadow-sm"
                             />

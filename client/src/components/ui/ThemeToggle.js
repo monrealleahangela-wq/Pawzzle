@@ -15,7 +15,7 @@ export const ThemeToggle = ({ className, ...props }) => {
       {...props}
     >
       {theme === 'dark' ? (
-        <Sun className="h-5 w-5 text-yellow-500" />
+        <Sun className="h-5 w-5 text-secondary-500" />
       ) : (
         <Moon className="h-5 w-5 text-neutral-700" />
       )}

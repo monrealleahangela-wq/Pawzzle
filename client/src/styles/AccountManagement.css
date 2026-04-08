@@ -7,7 +7,7 @@
 }
 
 .stat-card {
-  background: linear-gradient(135deg, #533114 0%, #A08B80 100%);
+  background: linear-gradient(135deg, #8B4513 0%, #BFA6A0 100%);
   color: white;
   padding: 1.5rem;
   border-radius: 0.75rem;
@@ -120,7 +120,7 @@
 
 .role-badge.admin {
   background-color: #ECE6E1;
-  color: #533114;
+  color: #8B4513;
 }
 
 .role-badge.customer {
@@ -166,9 +166,9 @@
 }
 
 .action-button.credentials {
-  background-color: #533114;
+  background-color: #8B4513;
   color: white;
-  border-color: #533114;
+  border-color: #8B4513;
 }
 
 .action-button.credentials:hover {
@@ -348,11 +348,11 @@
 }
 
 .activity-dot.pet {
-  background-color: #533114;
+  background-color: #8B4513;
 }
 
 .activity-dot.product {
-  background-color: #A08B80;
+  background-color: #BFA6A0;
 }
 
 .activity-dot.order {
@@ -385,7 +385,7 @@
   display: inline-flex;
   align-items: center;
   padding: 0.5rem 1rem;
-  background: linear-gradient(135deg, #533114 0%, #A08B80 100%);
+  background: linear-gradient(135deg, #8B4513 0%, #BFA6A0 100%);
   color: white;
   border: none;
   border-radius: 0.5rem;
@@ -447,8 +447,8 @@
 
 .filter-select:focus {
   outline: none;
-  border-color: #533114;
-  box-shadow: 0 0 0 3px rgba(83, 49, 20, 0.1);
+  border-color: #8B4513;
+  box-shadow: 0 0 0 3px rgba(139, 69, 19, 0.1);
 }
 
 .pagination {
@@ -473,8 +473,8 @@
 
 .pagination button:hover:not(:disabled) {
   background-color: #F5F2F0;
-  border-color: #533114;
-  color: #533114;
+  border-color: #8B4513;
+  color: #8B4513;
 }
 
 .pagination button:disabled {

@@ -3,16 +3,16 @@
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Outfit:wght@300;400;500;600;700;800&display=swap');
 
 :root {
-  --primary: #533114;
-  --primary-glow: rgba(83, 49, 20, 0.4);
-  --secondary: #A08B80;
+  --primary: #8B4513;
+  --primary-glow: rgba(139, 69, 19, 0.4);
+  --secondary: #BFA6A0;
   --accent: #2E2D2D;
-  --success: #806F66;
-  --warning: #B7A79F;
-  --error: #533114;
-  --neutral-50: #F5F2F0;
-  --neutral-100: #ECE6E1;
-  --neutral-200: #D1C2B5;
+  --success: #917871;
+  --warning: #D9D0C9;
+  --error: #8B4513;
+  --neutral-50: #FDF5F0;
+  --neutral-100: #FBEBDD;
+  --neutral-200: #F7D0B2;
   --neutral-800: #1A1A1A;
   --neutral-900: #010000;
   --glass: rgba(255, 255, 255, 0.7);
@@ -32,8 +32,8 @@ body {
   color: var(--neutral-800);
   background: var(--neutral-50);
   background-image:
-    radial-gradient(at 0% 0%, rgba(83, 49, 20, 0.05) 0px, transparent 50%),
-    radial-gradient(at 100% 0%, rgba(160, 139, 128, 0.05) 0px, transparent 50%),
+    radial-gradient(at 0% 0%, rgba(139, 69, 19, 0.05) 0px, transparent 50%),
+    radial-gradient(at 100% 0%, rgba(191, 166, 160, 0.05) 0px, transparent 50%),
     radial-gradient(at 100% 100%, rgba(46, 45, 45, 0.05) 0px, transparent 50%);
   min-height: 100vh;
   overflow-x: hidden;
@@ -90,7 +90,7 @@ h1, h2, h3, h4, .font-heading {
   -webkit-backdrop-filter: blur(6px) saturate(180%);
   backdrop-filter: blur(6px) saturate(180%);
   border: 1px solid var(--glass-border);
-  box-shadow: 0 4px 12px 0 rgba(83, 49, 20, 0.05); /* Reduced shadow */
+  box-shadow: 0 4px 12px 0 rgba(139, 69, 19, 0.05); /* Reduced shadow */
 }
 
 /* ══════════════════════════════════════════
@@ -200,13 +200,13 @@ h1, h2, h3, h4, .font-heading {
 .btn-secondary {
   background: linear-gradient(135deg, var(--secondary), var(--accent));
   color: white !important;
-  box-shadow: 0 4px 10px -4px rgba(160, 139, 128, 0.3);
+  box-shadow: 0 4px 10px -4px rgba(191, 166, 160, 0.3);
   border: none;
 }
 
 .btn-secondary:hover {
   transform: translateY(-1.5px);
-  box-shadow: 0 6px 12px -4px rgba(160, 139, 128, 0.4);
+  box-shadow: 0 6px 12px -4px rgba(191, 166, 160, 0.4);
 }
 
 .btn-outline {
@@ -218,7 +218,7 @@ h1, h2, h3, h4, .font-heading {
 .btn-outline:hover {
   border-color: var(--primary);
   color: var(--primary);
-  background: rgba(83, 49, 20, 0.03);
+  background: rgba(139, 69, 19, 0.03);
   transform: translateY(-1px);
 }
 
@@ -343,7 +343,7 @@ select:focus {
 }
 
 .badge-success {
-  background: rgba(160, 139, 128, 0.15);
+  background: rgba(191, 166, 160, 0.15);
   color: var(--secondary);
 }
 
@@ -353,7 +353,7 @@ select:focus {
 }
 
 .badge-error {
-  background: rgba(83, 49, 20, 0.1);
+  background: rgba(139, 69, 19, 0.1);
   color: var(--primary);
 }
 
@@ -446,11 +446,11 @@ select:focus {
 
   0%,
   100% {
-    box-shadow: 0 0 0 0 rgba(83, 49, 20, 0);
+    box-shadow: 0 0 0 0 rgba(139, 69, 19, 0);
   }
 
   50% {
-    box-shadow: 0 0 24px 6px rgba(83, 49, 20, 0.18);
+    box-shadow: 0 0 24px 6px rgba(139, 69, 19, 0.18);
   }
 }
 
@@ -539,7 +539,7 @@ select:focus {
 }
 
 .text-gradient-shimmer {
-  background: linear-gradient(90deg, #533114 0%, #A08B80 40%, #2E2D2D 60%, #533114 100%);
+  background: linear-gradient(90deg, #8B4513 0%, #BFA6A0 40%, #2E2D2D 60%, #8B4513 100%);
   background-size: 200% auto;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -554,5 +554,5 @@ select:focus {
 
 .card-interactive:hover {
   transform: translateY(-6px) scale(1.015);
-  box-shadow: 0 24px 48px -12px rgba(83, 49, 20, 0.14);
+  box-shadow: 0 24px 48px -12px rgba(139, 69, 19, 0.14);
 }

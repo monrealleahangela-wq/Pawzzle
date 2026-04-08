@@ -126,7 +126,7 @@ const SuperAdminDSS = () => {
                 <div className="lg:col-span-8 space-y-8">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
-                            <Flame size={24} className="text-orange-500" />
+                            <Flame size={24} className="text-secondary-500" />
                             <h2 className="text-3xl font-black text-slate-900 uppercase tracking-tight">Marketplace Throughput</h2>
                         </div>
                         <div className="flex items-center gap-2">
@@ -189,7 +189,7 @@ const SuperAdminDSS = () => {
 
                     <div className="space-y-4">
                         {recommendations.map((rec, i) => (
-                            <div key={i} className={`${cardClass} border-l-8 ${rec.type === 'critical' ? 'border-l-rose-500' : rec.type === 'warning' ? 'border-l-amber-500' : 'border-l-indigo-500'}`}>
+                            <div key={i} className={`${cardClass} border-l-8 ${rec.type === 'critical' ? 'border-l-rose-500' : rec.type === 'warning' ? 'border-l-secondary-500' : 'border-l-indigo-500'}`}>
                                 <div className="flex items-center gap-3 mb-4">
                                     {rec.type === 'critical' ? <Shield size={16} className="text-rose-500" /> : <Info size={16} className="text-slate-400" />}
                                     <p className="text-[10px] font-black uppercase text-slate-900 tracking-widest">{rec.title}</p>
@@ -256,7 +256,7 @@ const SuperAdminDSS = () => {
                     <div className="grid grid-cols-2 gap-8 mb-12">
                         <div className="p-8 bg-slate-50 rounded-[2rem] border border-slate-100">
                              <div className="flex items-center gap-3 mb-4">
-                                <Zap size={16} className="text-amber-500" />
+                                <Zap size={16} className="text-secondary-500" />
                                 <span className="text-[10px] font-black text-slate-400 tracking-widest uppercase italic">Pace Rating</span>
                              </div>
                              <div className="flex items-end gap-3 mb-2">
@@ -264,7 +264,7 @@ const SuperAdminDSS = () => {
                                 <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 opacity-50">Trans/24h</span>
                              </div>
                              <div className="h-1 w-full bg-slate-200 rounded-full overflow-hidden">
-                                 <div className="h-full bg-amber-500 rounded-full" style={{ width: `${Math.min(100, (velocity.current / (velocity.previous || 1)) * 50)}%` }} />
+                                 <div className="h-full bg-secondary-500 rounded-full" style={{ width: `${Math.min(100, (velocity.current / (velocity.previous || 1)) * 50)}%` }} />
                              </div>
                         </div>
                         <div className="p-8 bg-slate-900 rounded-[2rem] text-white">

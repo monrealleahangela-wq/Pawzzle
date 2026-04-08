@@ -188,9 +188,9 @@ const ProductDetail = () => {
             </div>
 
             {product.ratings && product.ratings.count > 0 && (
-              <div className="flex items-center gap-1.5 mt-3 bg-amber-50 rounded-xl px-3 py-1.5 w-fit border border-amber-100">
-                <Star className="w-4 h-4 text-amber-500 fill-amber-500" />
-                <span className="text-xs font-black text-amber-700 tracking-wider">
+              <div className="flex items-center gap-1.5 mt-3 bg-secondary-50 rounded-xl px-3 py-1.5 w-fit border border-secondary-100">
+                <Star className="w-4 h-4 text-secondary-500 fill-secondary-500" />
+                <span className="text-xs font-black text-primary-700 tracking-wider">
                   {product.ratings.average.toFixed(1)} <span className="font-bold opacity-70">({product.ratings.count} REVIEWS)</span>
                 </span>
               </div>

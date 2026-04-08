@@ -7,7 +7,7 @@ import Adoptions from './Adoptions';
 import Bookings from './Bookings';
 
 const STATUS_META = {
-  pending: { label: 'Pending', color: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-100', icon: Clock },
+  pending: { label: 'Pending', color: 'text-primary-600', bg: 'bg-secondary-50', border: 'border-secondary-100', icon: Clock },
   confirmed: { label: 'Confirmed', color: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-100', icon: CheckCircle },
   processing: { label: 'Processing', color: 'text-primary-600', bg: 'bg-primary-50', border: 'border-primary-100', icon: Package },
   shipped: { label: 'Shipped', color: 'text-indigo-600', bg: 'bg-indigo-50', border: 'border-indigo-100', icon: Truck },
@@ -132,7 +132,7 @@ const Orders = () => {
                             onClick={() => setRatingOrder(order)}
                             className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-lg text-sm font-bold hover:bg-slate-50 transition-colors"
                           >
-                            <Star className="h-4 w-4 text-amber-500" /> Review
+                            <Star className="h-4 w-4 text-secondary-500" /> Review
                           </button>
                         )}
                       </div>

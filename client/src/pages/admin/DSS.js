@@ -150,11 +150,11 @@ const AdminDSS = () => {
                             <div className="grid grid-cols-1 gap-4">
                                 {recommendations.filter(r => r.type === 'restock').length > 0 ? (
                                     recommendations.filter(r => r.type === 'restock').map((rec, i) => (
-                                        <div key={i} className={`${cardClass} border-l-8 ${rec.priority === 'critical' ? 'border-l-rose-500' : 'border-l-amber-500'}`}>
+                                        <div key={i} className={`${cardClass} border-l-8 ${rec.priority === 'critical' ? 'border-l-rose-500' : 'border-l-secondary-500'}`}>
                                             <div className="flex flex-col md:flex-row justify-between gap-6">
                                                 <div className="flex-1">
                                                     <div className="flex items-center gap-3 mb-4">
-                                                        <div className={`px-3 py-1 rounded-lg text-[8px] font-black uppercase tracking-widest ${rec.priority === 'critical' ? 'bg-rose-50 text-rose-600' : 'bg-amber-50 text-amber-600'}`}>
+                                                        <div className={`px-3 py-1 rounded-lg text-[8px] font-black uppercase tracking-widest ${rec.priority === 'critical' ? 'bg-rose-50 text-rose-600' : 'bg-secondary-50 text-primary-600'}`}>
                                                             {rec.priority} Alert
                                                         </div>
                                                         <span className="text-[9px] font-bold text-slate-300 uppercase tracking-widest">Velocity: {rec.velocity} units/day</span>
@@ -206,7 +206,7 @@ const AdminDSS = () => {
                                     </div>
                                     <div className="flex items-center justify-between">
                                         <div className="flex items-center gap-3">
-                                            <div className="w-3 h-3 rounded-full bg-amber-500" />
+                                            <div className="w-3 h-3 rounded-full bg-secondary-500" />
                                             <p className="text-[10px] font-black text-slate-900 uppercase tracking-widest">Below Threshold</p>
                                         </div>
                                         <p className="text-lg font-black text-slate-900">{inventory.levels.low}</p>
@@ -238,7 +238,7 @@ const AdminDSS = () => {
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                         <div className={cardClass}>
                             <h2 className={titleClass}>
-                                <Flame size={20} className="text-orange-500" />
+                                <Flame size={20} className="text-secondary-500" />
                                 High Velocity Products
                             </h2>
                             <div className="space-y-4">
@@ -334,7 +334,7 @@ const AdminDSS = () => {
                                 <div className="space-y-4">
                                     {[
                                         { label: "Critical Priority", desc: "Depletion estimated within 3 days", color: "bg-rose-500" },
-                                        { label: "High Priority", desc: "Depletion estimated within 7 days", color: "bg-amber-500" },
+                                        { label: "High Priority", desc: "Depletion estimated within 7 days", color: "bg-secondary-500" },
                                         { label: "Medium Priority", desc: "Depletion estimated within 14 days", color: "bg-blue-500" },
                                         { label: "Low Priority", desc: "Safe inventory levels detected", color: "bg-emerald-500" }
                                     ].map((item, i) => (

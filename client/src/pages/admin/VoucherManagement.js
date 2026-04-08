@@ -241,7 +241,7 @@ const VoucherManagement = () => {
                                 </button>
                                 <button
                                     onClick={() => handleToggleStatus(voucher._id)}
-                                    className={`flex-1 p-3 ${voucher.isActive ? 'bg-emerald-50 text-emerald-600 hover:bg-emerald-600' : 'bg-amber-50 text-amber-600 hover:bg-amber-600'} rounded-2xl hover:text-white transition-all flex items-center justify-center`}
+                                    className={`flex-1 p-3 ${voucher.isActive ? 'bg-emerald-50 text-emerald-600 hover:bg-emerald-600' : 'bg-secondary-50 text-primary-600 hover:bg-primary-600'} rounded-2xl hover:text-white transition-all flex items-center justify-center`}
                                 >
                                     {voucher.isActive ? <ToggleRight className="h-5 w-5" /> : <ToggleLeft className="h-5 w-5" />}
                                 </button>

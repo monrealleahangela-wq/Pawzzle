@@ -400,7 +400,7 @@ const StoreManagement = () => {
                           <button
                             type="button"
                             onClick={() => setShowMapPicker(!showMapPicker)}
-                            className={`flex items-center gap-3 px-6 py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] transition-all border-2 ${showMapPicker ? 'bg-amber-50 border-amber-500 text-amber-700' : 'bg-white border-slate-100 text-slate-500 hover:border-indigo-500 hover:text-indigo-600'}`}
+                            className={`flex items-center gap-3 px-6 py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] transition-all border-2 ${showMapPicker ? 'bg-secondary-50 border-secondary-500 text-primary-700' : 'bg-white border-slate-100 text-slate-500 hover:border-indigo-500 hover:text-indigo-600'}`}
                           >
                             <MapIcon className={`h-4 w-4 ${showMapPicker ? 'animate-bounce' : ''}`} />
                             {showMapPicker ? 'CLOSE MAP INTELLIGENCE' : 'ACTIVATE MAP CALIBRATION'}
@@ -436,7 +436,7 @@ const StoreManagement = () => {
                     <h2 className="text-3xl font-black text-slate-900 uppercase">Trust & Status</h2>
                     <span className={`px-5 py-2.5 rounded-full text-[10px] font-black uppercase tracking-[0.2em] shadow-lg ${
                       store.verificationStatus === 'verified' ? 'bg-emerald-500 text-white' :
-                      store.verificationStatus === 'pending' ? 'bg-amber-500 text-white animate-pulse' :
+                      store.verificationStatus === 'pending' ? 'bg-secondary-500 text-white animate-pulse' :
                       'bg-slate-200 text-slate-500'
                     }`}>
                       {store.verificationStatus?.replace('_', ' ') || 'Unverified'}

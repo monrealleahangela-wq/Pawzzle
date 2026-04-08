@@ -360,7 +360,7 @@ const Pets = () => {
 
                     <div className="absolute top-3 right-3 flex flex-col gap-1.5">
                       <span className={`px-2.5 py-1 rounded-xl text-[8px] font-black uppercase tracking-wider shadow-sm backdrop-blur-md border border-white/20 ${pet.status === 'available' ? 'bg-emerald-500/90 text-white' :
-                        pet.status === 'reserved' ? 'bg-amber-500/90 text-white' :
+                        pet.status === 'reserved' ? 'bg-secondary-500/90 text-white' :
                           'bg-rose-500/90 text-white'
                         }`}>
                         {pet.status?.toUpperCase() || (pet.isAvailable ? 'LIVE' : 'SYNC_OFF')}
@@ -381,7 +381,7 @@ const Pets = () => {
                       </h3>
                       {pet.ratings && pet.ratings.count > 0 && (
                         <div className="flex items-center gap-1 mt-1.5 opacity-80 group-hover:opacity-100 transition-opacity">
-                          <Star className="w-3 h-3 text-amber-400 fill-amber-400" />
+                          <Star className="w-3 h-3 text-secondary-400 fill-secondary-400" />
                           <span className="text-[10px] font-bold text-slate-600">
                             {pet.ratings.average.toFixed(1)} <span className="text-slate-400 font-normal">({pet.ratings.count})</span>
                           </span>

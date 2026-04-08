@@ -9,7 +9,14 @@ const petValidation = [
   body('type').trim().notEmpty().withMessage('Pet type is required'),
   body('breed').trim().notEmpty().withMessage('Pet breed is required'),
   body('size').isIn(['Small', 'Medium', 'Large', 'Extra Large']).withMessage('Invalid size'),
-  body('birthday').isISO8601().toDate().withMessage('Valid birthday is required'),
+  body('birthday').isISO8601().toDate().withMessage('Valid birthday is required')
+    .custom((value) => {
+      const today = new Date();
+      if (value > today) {
+        throw new Error('Birth date cannot be in the future.');
+      }
+      return true;
+    }),
   body('gender').isIn(['Male', 'Female']).withMessage('Invalid gender'),
   body('weight').isFloat({ min: 1, max: 50 }).withMessage('Weight must be between 1 and 50 kg'),
 ];

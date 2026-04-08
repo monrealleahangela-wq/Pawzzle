@@ -30,7 +30,7 @@ const Adoptions = ({ isSubcomponent = false }) => {
     };
 
     const statusConfig = {
-        pending: { color: 'bg-yellow-100 text-yellow-800', icon: <Clock className="h-4 w-4" />, label: 'Pending' },
+        pending: { color: 'bg-secondary-100 text-primary-800', icon: <Clock className="h-4 w-4" />, label: 'Pending' },
         approved: { color: 'bg-green-100 text-green-800', icon: <CheckCircle className="h-4 w-4" />, label: 'Approved' },
         rejected: { color: 'bg-red-100 text-red-800', icon: <XCircle className="h-4 w-4" />, label: 'Declined' },
         ready_for_pickup: { color: 'bg-secondary-100 text-secondary-800', icon: <Package className="h-4 w-4" />, label: 'Ready for Pickup' },

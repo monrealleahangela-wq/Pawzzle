@@ -468,7 +468,7 @@ const BookingHistory = () => {
                                                 )}
                                             </div>
 
-                                            <div className="flex items-center gap-3 p-4 bg-amber-500/10 border border-amber-500/20 rounded-2xl text-amber-400">
+                                            <div className="flex items-center gap-3 p-4 bg-secondary-500/10 border border-secondary-500/20 rounded-2xl text-secondary-400">
                                                 <Activity className="h-5 w-5 shrink-0" />
                                                 <p className="text-[10px] font-black uppercase tracking-widest leading-relaxed">
                                                     The customer was instructed to present these documents for verification upon arrival.
@@ -478,21 +478,21 @@ const BookingHistory = () => {
                                     </div>
 
                                     {(selectedBooking.notes || selectedBooking.adminNotes) && (
-                                        <div className="bg-amber-50/50 border border-amber-100 rounded-[2rem] p-8">
-                                            <h3 className="text-[9px] font-black text-amber-600 uppercase tracking-widest mb-4 flex items-center gap-2">
+                                        <div className="bg-secondary-50/50 border border-secondary-100 rounded-[2rem] p-8">
+                                            <h3 className="text-[9px] font-black text-primary-600 uppercase tracking-widest mb-4 flex items-center gap-2">
                                                 <Target className="h-3 w-3" /> Special Notes
                                             </h3>
                                             <div className="space-y-4">
                                                 {selectedBooking.notes && (
                                                     <div>
-                                                        <p className="text-[8px] font-black text-amber-500/60 uppercase tracking-widest mb-1">Customer Notes</p>
-                                                        <p className="text-[11px] font-medium text-amber-900 uppercase tracking-tight italic">"{selectedBooking.notes}"</p>
+                                                        <p className="text-[8px] font-black text-secondary-500/60 uppercase tracking-widest mb-1">Customer Notes</p>
+                                                        <p className="text-[11px] font-medium text-primary-900 uppercase tracking-tight italic">"{selectedBooking.notes}"</p>
                                                     </div>
                                                 )}
                                                 {selectedBooking.adminNotes && (
                                                     <div>
-                                                        <p className="text-[8px] font-black text-amber-500/60 uppercase tracking-widest mb-1">Staff Notes</p>
-                                                        <p className="text-[11px] font-medium text-amber-900 uppercase tracking-tight italic">"{selectedBooking.adminNotes}"</p>
+                                                        <p className="text-[8px] font-black text-secondary-500/60 uppercase tracking-widest mb-1">Staff Notes</p>
+                                                        <p className="text-[11px] font-medium text-primary-900 uppercase tracking-tight italic">"{selectedBooking.adminNotes}"</p>
                                                     </div>
                                                 )}
                                             </div>

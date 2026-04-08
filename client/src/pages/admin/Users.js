@@ -162,7 +162,7 @@ const AdminUsers = () => {
 
                   {/* Role */}
                   <div className="lg:col-span-2 flex lg:justify-center">
-                    <span className={`px-2 py-0.5 rounded text-[8px] sm:text-[10px] font-black uppercase tracking-widest border ${user.role === 'super_admin' ? 'border-amber-200 bg-amber-50 text-amber-700' :
+                    <span className={`px-2 py-0.5 rounded text-[8px] sm:text-[10px] font-black uppercase tracking-widest border ${user.role === 'super_admin' ? 'border-secondary-200 bg-secondary-50 text-primary-700' :
                       user.role === 'admin' ? 'border-primary-100 bg-primary-50 text-primary-600' :
                         'border-slate-100 bg-slate-50 text-slate-500'
                       }`}>

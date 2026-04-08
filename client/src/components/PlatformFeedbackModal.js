@@ -10,7 +10,7 @@ const PlatformFeedbackModal = ({ isOpen, onClose }) => {
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     const categories = [
-        { name: 'General', icon: Smile, color: 'text-amber-500 bg-amber-50' },
+        { name: 'General', icon: Smile, color: 'text-secondary-500 bg-secondary-50' },
         { name: 'UI/UX', icon: Layout, color: 'text-blue-500 bg-blue-50' },
         { name: 'Performance', icon: Zap, color: 'text-emerald-500 bg-emerald-50' },
         { name: 'Bug Report', icon: Bug, color: 'text-rose-500 bg-rose-50' },

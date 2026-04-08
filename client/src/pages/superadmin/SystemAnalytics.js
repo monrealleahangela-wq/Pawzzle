@@ -223,7 +223,7 @@ const SystemAnalytics = () => {
         <div className="bg-white border border-slate-100 rounded-2xl p-8 shadow-sm h-fit">
           <div className="flex items-center justify-between mb-8">
             <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest flex items-center gap-2">
-              <Zap className="h-4 w-4 text-amber-500" /> Live Activity Log
+              <Zap className="h-4 w-4 text-secondary-500" /> Live Activity Log
             </h3>
             <span className="text-[8px] font-black text-slate-400 bg-slate-50 px-2 py-1 rounded uppercase">Real-time</span>
           </div>

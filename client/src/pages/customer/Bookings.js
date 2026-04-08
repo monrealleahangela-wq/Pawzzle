@@ -533,11 +533,11 @@ const Bookings = ({ isSubcomponent = false }) => {
 
   const getStatusColor = (status) => {
     const colors = {
-      pending: 'bg-amber-50 text-amber-600 border-amber-100',
-      approved: 'bg-primary-50 text-amber-600 border-amber-100',
-      processing: 'bg-orange-50 text-orange-600 border-orange-100',
+      pending: 'bg-secondary-50 text-primary-600 border-secondary-100',
+      approved: 'bg-primary-50 text-primary-600 border-secondary-100',
+      processing: 'bg-secondary-50 text-primary-600 border-secondary-100',
       finished: 'bg-emerald-50 text-emerald-600 border-emerald-100',
-      completed: 'bg-[#533114] text-white border-amber-900',
+      completed: 'bg-[#8B4513] text-white border-primary-900',
       cancelled: 'bg-rose-50 text-rose-600 border-rose-100'
     };
     return colors[status] || 'bg-gray-50 text-gray-600';
@@ -836,16 +836,16 @@ const Bookings = ({ isSubcomponent = false }) => {
 
                     {/* Requirements Section */}
                     {selectedService.requirements && (
-                      <div className="mt-10 p-7 bg-white/50 backdrop-blur-sm rounded-[2rem] border border-amber-200/40 relative overflow-hidden group">
-                        <div className="absolute top-0 right-0 w-24 h-24 bg-amber-500/5 rounded-full blur-2xl -mr-12 -mt-12 transition-all duration-700 group-hover:scale-150" />
+                      <div className="mt-10 p-7 bg-white/50 backdrop-blur-sm rounded-[2rem] border border-secondary-200/40 relative overflow-hidden group">
+                        <div className="absolute top-0 right-0 w-24 h-24 bg-secondary-500/5 rounded-full blur-2xl -mr-12 -mt-12 transition-all duration-700 group-hover:scale-150" />
                         
                         <div className="flex items-center gap-4 mb-6 relative z-10">
-                          <div className="w-10 h-10 rounded-2xl bg-amber-50 flex items-center justify-center border border-amber-100/50 shadow-sm">
-                            <ShieldCheck className="h-5 w-5 text-amber-600" />
+                          <div className="w-10 h-10 rounded-2xl bg-secondary-50 flex items-center justify-center border border-secondary-100/50 shadow-sm">
+                            <ShieldCheck className="h-5 w-5 text-primary-600" />
                           </div>
                           <div>
-                            <h4 className="text-[10px] font-black text-amber-900 uppercase tracking-widest leading-none mb-1">Customer Requirements</h4>
-                            <p className="text-[8px] font-bold text-amber-700/60 uppercase tracking-tight italic">Essential details for verification</p>
+                            <h4 className="text-[10px] font-black text-primary-900 uppercase tracking-widest leading-none mb-1">Customer Requirements</h4>
+                            <p className="text-[8px] font-bold text-primary-700/60 uppercase tracking-tight italic">Essential details for verification</p>
                           </div>
                         </div>
 
@@ -858,9 +858,9 @@ const Bookings = ({ isSubcomponent = false }) => {
                           ))}
                         </div>
                         
-                        <div className="mt-6 flex items-start gap-2.5 p-3.5 bg-amber-500/5 rounded-xl border border-amber-500/10 relative z-10">
-                          <AlertCircle className="h-3.5 w-3.5 text-amber-600 shrink-0 mt-0.5" />
-                          <p className="text-[8px] font-bold text-amber-900/70 uppercase tracking-wide leading-relaxed">
+                        <div className="mt-6 flex items-start gap-2.5 p-3.5 bg-secondary-500/5 rounded-xl border border-secondary-500/10 relative z-10">
+                          <AlertCircle className="h-3.5 w-3.5 text-primary-600 shrink-0 mt-0.5" />
+                          <p className="text-[8px] font-bold text-primary-900/70 uppercase tracking-wide leading-relaxed">
                             Please present these documents to our staff upon arrival to ensure a smooth check-in process.
                           </p>
                         </div>
@@ -1728,7 +1728,7 @@ const Bookings = ({ isSubcomponent = false }) => {
               <div className="relative pt-4 pb-12">
                 <div className="absolute left-[5%] right-[5%] top-1/2 -translate-y-1/2 h-1 bg-slate-100 rounded-full" />
                 <div
-                  className="absolute left-[5%] top-1/2 -translate-y-1/2 h-1 bg-amber-600 rounded-full transition-all duration-1000 ease-in-out shadow-[0_0_20px_rgba(217,119,6,0.5)]"
+                  className="absolute left-[5%] top-1/2 -translate-y-1/2 h-1 bg-primary-600 rounded-full transition-all duration-1000 ease-in-out shadow-[0_0_20px_rgba(217,119,6,0.5)]"
                   style={{ width: `${Math.max(0, (getPhaseIndex(selectedBooking.status) / 4) * 90)}%` }}
                 />
 
@@ -1739,13 +1739,13 @@ const Bookings = ({ isSubcomponent = false }) => {
                     const isCurrent = idx === currentIdx;
                     return (
                       <div key={phase} className="flex flex-col items-center gap-4">
-                        <div className={`w-10 h-10 rounded-2xl border-4 transition-all duration-700 flex items-center justify-center ${isPassed ? 'bg-amber-600 border-white ring-8 ring-amber-50 shadow-xl' :
-                          isCurrent ? 'bg-amber-600 border-white ring-8 ring-amber-50 animate-pulse shadow-xl shadow-amber-200' :
+                        <div className={`w-10 h-10 rounded-2xl border-4 transition-all duration-700 flex items-center justify-center ${isPassed ? 'bg-primary-600 border-white ring-8 ring-secondary-50 shadow-xl' :
+                          isCurrent ? 'bg-primary-600 border-white ring-8 ring-secondary-50 animate-pulse shadow-xl shadow-secondary-200' :
                             'bg-white border-slate-100'
                           }`}>
                           {(isPassed || isCurrent) && <CheckCircle className="h-4 w-4 text-white" />}
                         </div>
-                        <span className={`text-[10px] font-black uppercase tracking-[0.2em] px-3 py-1 rounded-lg ${isCurrent ? 'bg-amber-900 text-white' : isPassed ? 'text-amber-700 bg-amber-50' : 'text-slate-300'}`}>
+                        <span className={`text-[10px] font-black uppercase tracking-[0.2em] px-3 py-1 rounded-lg ${isCurrent ? 'bg-primary-900 text-white' : isPassed ? 'text-primary-700 bg-secondary-50' : 'text-slate-300'}`}>
                           {phase.replace('_', ' ')}
                         </span>
                       </div>
@@ -1919,7 +1919,7 @@ const Bookings = ({ isSubcomponent = false }) => {
                       <span className={`px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest ${
                         selectedBooking.paymentStatus === 'paid'
                           ? 'bg-emerald-50 text-emerald-700 border border-emerald-100'
-                          : 'bg-amber-50 text-amber-700 border border-amber-100'
+                          : 'bg-secondary-50 text-primary-700 border border-secondary-100'
                       }`}>
                         {selectedBooking.paymentStatus === 'paid' ? `✅ ${selectedBooking.paymentMethod || 'Online Payment'}` : '⏳ Pending'}
                       </span>

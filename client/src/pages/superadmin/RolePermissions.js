@@ -90,16 +90,16 @@ const RolePermissions = () => {
     <div className="space-y-6 animate-fade-in relative z-10 w-full max-w-7xl mx-auto">
       {/* Header Area */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center p-6 bg-[#1f1614] rounded-[24px] shadow-2xl border border-white/5 relative overflow-hidden group">
-        <div className="absolute top-0 right-0 w-64 h-64 bg-amber-500/10 rounded-full blur-[80px] -mr-32 -mt-32 pointer-events-none transition-transform duration-700 group-hover:scale-150" />
+        <div className="absolute top-0 right-0 w-64 h-64 bg-secondary-500/10 rounded-full blur-[80px] -mr-32 -mt-32 pointer-events-none transition-transform duration-700 group-hover:scale-150" />
         <div className="relative z-10 space-y-2">
           <div className="flex items-center gap-3">
-            <Shield className="h-8 w-8 text-amber-500" />
-            <h1 className="text-3xl font-black text-amber-50 uppercase tracking-tight">Permissions</h1>
+            <Shield className="h-8 w-8 text-secondary-500" />
+            <h1 className="text-3xl font-black text-secondary-50 uppercase tracking-tight">Permissions</h1>
           </div>
-          <p className="text-amber-100/60 font-medium">Manage role permissions for platform users.</p>
+          <p className="text-secondary-100/60 font-medium">Manage role permissions for platform users.</p>
         </div>
         <div className="relative z-10 mt-4 md:mt-0 flex gap-3">
-          <button className="px-5 py-2.5 rounded-xl border border-amber-500/30 text-amber-500 hover:bg-amber-500/10 transition-colors flex items-center gap-2 font-bold text-sm">
+          <button className="px-5 py-2.5 rounded-xl border border-secondary-500/30 text-secondary-500 hover:bg-secondary-500/10 transition-colors flex items-center gap-2 font-bold text-sm">
             <RefreshCcw className="h-4 w-4" /> Refresh
           </button>
           <button className="px-5 py-2.5 rounded-xl border border-[#10b981]/30 text-[#10b981] hover:bg-[#10b981]/10 transition-colors font-bold text-sm">
@@ -114,8 +114,8 @@ const RolePermissions = () => {
         {/* Role Header */}
         <div className="p-6 border-b border-white/10 bg-[#160e0d] flex justify-between items-center">
           <div>
-            <h2 className="text-xl font-bold text-amber-50 tracking-wide">Owner</h2>
-            <p className="text-xs text-amber-100/50 mt-1">Role Key: Owner</p>
+            <h2 className="text-xl font-bold text-secondary-50 tracking-wide">Owner</h2>
+            <p className="text-xs text-secondary-100/50 mt-1">Role Key: Owner</p>
           </div>
           <button className="px-8 py-2.5 rounded-xl bg-[#10b981] hover:bg-[#0ea5e9] hover:bg-emerald-400 text-white transition-colors flex items-center gap-2 font-bold text-sm shadow-lg shadow-emerald-500/20">
             <Save className="h-4 w-4" /> Save
@@ -138,7 +138,7 @@ const RolePermissions = () => {
             <div key={resource.id} className="grid grid-cols-6 gap-4 p-4 px-6 items-center hover:bg-white/[0.02] transition-colors">
               <div className="col-span-1 space-y-1">
                 <div className="flex items-center gap-2">
-                  <span className="text-sm font-bold text-amber-50">{resource.title}</span>
+                  <span className="text-sm font-bold text-secondary-50">{resource.title}</span>
                 </div>
                 <p className="text-[11px] text-[#a89b98] leading-tight pr-4">{resource.description}</p>
               </div>

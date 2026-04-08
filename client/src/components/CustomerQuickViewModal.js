@@ -30,7 +30,7 @@ const CustomerQuickViewModal = ({ isOpen, onClose, customerId }) => {
 
     const getStatusColor = (status) => {
         if (['completed', 'delivered'].includes(status)) return 'text-emerald-600 bg-emerald-50 border-emerald-200';
-        if (['pending'].includes(status)) return 'text-amber-600 bg-amber-50 border-amber-200';
+        if (['pending'].includes(status)) return 'text-primary-600 bg-secondary-50 border-secondary-200';
         if (['cancelled', 'failed', 'refused'].includes(status)) return 'text-rose-600 bg-rose-50 border-rose-200';
         return 'text-blue-600 bg-blue-50 border-blue-200';
     };

@@ -463,7 +463,7 @@ const ProductInventory = () => {
                       </span>
                     </div>
                     {product.isFeatured && (
-                      <div className="absolute top-2 left-2 bg-amber-400 text-white p-1.5 rounded-lg shadow-lg">
+                      <div className="absolute top-2 left-2 bg-secondary-400 text-white p-1.5 rounded-lg shadow-lg">
                         <Star className="h-3 w-3 fill-current" />
                       </div>
                     )}
@@ -580,7 +580,7 @@ const ProductInventory = () => {
                         </td>
                         <td className="px-10 py-6 text-center">
                           <span className={`inline-flex px-4 py-2 rounded-2xl text-[9px] font-black uppercase tracking-widest border-2 ${item.currentStock === 0 ? 'bg-rose-50 text-rose-600 border-rose-100' :
-                            item.currentStock <= item.reorderLevel ? 'bg-amber-50 text-amber-600 border-amber-100' :
+                            item.currentStock <= item.reorderLevel ? 'bg-secondary-50 text-primary-600 border-secondary-100' :
                               'bg-emerald-50 text-emerald-600 border-emerald-100'
                             }`}>
                             {item.currentStock === 0 ? 'OUT OF STOCK' : item.currentStock <= item.reorderLevel ? 'LOW STOCK' : 'IN STOCK'}
@@ -767,7 +767,7 @@ const ProductInventory = () => {
                         className="w-full px-6 py-4 flex items-center justify-between hover:bg-slate-50 transition-all font-sans"
                       >
                         <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 bg-amber-50 text-amber-600 rounded-lg flex items-center justify-center">
+                          <div className="w-8 h-8 bg-secondary-50 text-primary-600 rounded-lg flex items-center justify-center">
                             <Package className="h-4 w-4" />
                           </div>
                           <h4 className="text-[11px] font-black uppercase tracking-widest text-slate-900">3. Inventory & Stock</h4>

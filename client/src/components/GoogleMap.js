@@ -173,9 +173,9 @@ const GoogleMap = ({
             </div>
             
             {!loading && (
-              <div className="mt-8 flex items-center gap-2 px-4 py-2 bg-amber-50 rounded-xl border border-amber-100">
-                <div className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
-                <span className="text-[9px] font-black text-amber-700 uppercase tracking-widest">Manual calibration recommended</span>
+              <div className="mt-8 flex items-center gap-2 px-4 py-2 bg-secondary-50 rounded-xl border border-secondary-100">
+                <div className="w-1.5 h-1.5 rounded-full bg-secondary-400 animate-pulse" />
+                <span className="text-[9px] font-black text-primary-700 uppercase tracking-widest">Manual calibration recommended</span>
               </div>
             )}
           </div>

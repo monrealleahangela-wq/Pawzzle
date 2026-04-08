@@ -335,7 +335,7 @@ const EnhancedChatMessenger = ({
 
     const statusConfig = {
       pending: { color: 'bg-primary-50 text-primary-800', icon: <Clock className="h-4 w-4" />, label: 'Purchase Pending' },
-      reserved: { color: 'bg-amber-50 text-amber-800', icon: <Shield className="h-4 w-4" />, label: 'Pet Reserved' },
+      reserved: { color: 'bg-secondary-50 text-primary-800', icon: <Shield className="h-4 w-4" />, label: 'Pet Reserved' },
       approved: { color: 'bg-secondary-100 text-secondary-800', icon: <CheckCircle className="h-4 w-4" />, label: 'Sale Approved' },
       rejected: { color: 'bg-neutral-100 text-neutral-800', icon: <X className="h-4 w-4" />, label: 'Request Declined' },
       ready_for_pickup: { color: 'bg-secondary-50 text-secondary-800', icon: <ShoppingBag className="h-4 w-4" />, label: 'Ready for Pickup' },
@@ -356,7 +356,7 @@ const EnhancedChatMessenger = ({
           <div className="flex gap-2">
             {transactionRequest.status === 'pending' && (
               <>
-                <button onClick={() => handleStatusUpdate('reserved')} className="text-[10px] font-black uppercase tracking-widest bg-amber-500 text-white px-3 py-1.5 rounded-lg hover:bg-amber-600">Reserve</button>
+                <button onClick={() => handleStatusUpdate('reserved')} className="text-[10px] font-black uppercase tracking-widest bg-secondary-500 text-white px-3 py-1.5 rounded-lg hover:bg-primary-600">Reserve</button>
                 <button onClick={() => handleStatusUpdate('rejected')} className="text-[10px] font-black uppercase tracking-widest bg-primary-600 text-white px-3 py-1.5 rounded-lg hover:bg-primary-700">Decline</button>
               </>
             )}

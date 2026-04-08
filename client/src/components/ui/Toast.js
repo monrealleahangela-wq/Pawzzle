@@ -75,12 +75,12 @@ const ToastItem = ({ toast, onDismiss }) => {
     error: {
       bg: 'bg-red-50 border-red-100',
       icon: XCircle,
-      iconColor: 'text-[#533114]',
+      iconColor: 'text-[#8B4513]',
       titleColor: 'text-primary-950',
       descriptionColor: 'text-primary-900'
     },
     warning: {
-      bg: 'bg-amber-50 border-amber-100',
+      bg: 'bg-secondary-50 border-secondary-100',
       icon: AlertCircle,
       iconColor: 'text-[#B7A79F]',
       titleColor: 'text-primary-950',

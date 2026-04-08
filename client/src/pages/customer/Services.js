@@ -315,7 +315,7 @@ const Services = () => {
                   </h3>
                   {service.ratings && service.ratings.count > 0 && (
                     <div className="flex items-center gap-1 mt-0.5 opacity-80 group-hover:opacity-100 transition-opacity">
-                      <Star className="w-2.5 h-2.5 text-amber-400 fill-amber-400" />
+                      <Star className="w-2.5 h-2.5 text-secondary-400 fill-secondary-400" />
                       <span className="text-[9px] font-bold text-slate-600">
                         {service.ratings.average.toFixed(1)} <span className="text-slate-400 font-normal">({service.ratings.count})</span>
                       </span>

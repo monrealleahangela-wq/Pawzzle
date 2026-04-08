@@ -265,8 +265,8 @@ const Stores = () => {
                                         </div>
                                         <div className="flex flex-col items-center">
                                             <span className="text-[6px] sm:text-[10px] font-black text-slate-300 uppercase tracking-widest sm:mb-1">Rating</span>
-                                            <span className="flex items-center gap-1 px-1.5 sm:px-3 py-0.5 sm:py-1 bg-amber-50 text-amber-600 rounded-full text-[6px] sm:text-[10px] font-black">
-                                                <Star className="h-2 w-2 sm:h-3 sm:w-3 fill-amber-500 text-amber-500" />
+                                            <span className="flex items-center gap-1 px-1.5 sm:px-3 py-0.5 sm:py-1 bg-secondary-50 text-primary-600 rounded-full text-[6px] sm:text-[10px] font-black">
+                                                <Star className="h-2 w-2 sm:h-3 sm:w-3 fill-secondary-500 text-secondary-500" />
                                                 {store.ratings?.average || '0.0'}
                                             </span>
                                         </div>

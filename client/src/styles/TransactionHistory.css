@@ -58,12 +58,12 @@
 
 .stat-card .stat-icon.revenue {
   background-color: #F5F2F0;
-  color: #A08B80;
+  color: #BFA6A0;
 }
 
 .stat-card .stat-icon.orders {
   background-color: #ECE6E1;
-  color: #533114;
+  color: #8B4513;
 }
 
 .stat-card .stat-icon.completed {
@@ -73,7 +73,7 @@
 
 .stat-card .stat-icon.pending {
   background-color: #F5F2F0;
-  color: #A08B80;
+  color: #BFA6A0;
 }
 
 .transaction-table {
@@ -167,17 +167,17 @@
 
 .status-badge.pending {
   background-color: #F5F2F0;
-  color: #A08B80;
+  color: #BFA6A0;
 }
 
 .status-badge.confirmed {
   background-color: #ECE6E1;
-  color: #533114;
+  color: #8B4513;
 }
 
 .status-badge.processing {
   background-color: #F7F3F1;
-  color: #724E31;
+  color: #8B4513;
 }
 
 .status-badge.shipped {
@@ -408,7 +408,7 @@
   display: inline-flex;
   align-items: center;
   padding: 0.5rem 1rem;
-  background: linear-gradient(135deg, #533114 0%, #A08B80 100%);
+  background: linear-gradient(135deg, #8B4513 0%, #BFA6A0 100%);
   color: white;
   border: none;
   border-radius: 0.5rem;

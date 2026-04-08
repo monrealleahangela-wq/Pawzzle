@@ -199,6 +199,13 @@ const AdminPets = () => {
     e.preventDefault();
     setSubmitting(true);
     try {
+      // Validate Future Date
+      if (petForm.birthday && new Date(petForm.birthday) > new Date()) {
+        toast.error('Birth date cannot be in the future.');
+        setSubmitting(false);
+        return;
+      }
+
       // Validate Age
       const years = parseInt(petForm.ageYears) || 0;
       const months = parseInt(petForm.ageMonths) || 0;
@@ -279,6 +286,12 @@ const AdminPets = () => {
     if (!birthDate) return;
     const birth = new Date(birthDate);
     const today = new Date();
+
+    if (birth > today) {
+      toast.error('Birth date cannot be in the future');
+      return;
+    }
+
     let years = today.getFullYear() - birth.getFullYear();
     let months = today.getMonth() - birth.getMonth();
     
@@ -468,7 +481,7 @@ const AdminPets = () => {
                       </div>
                       <div className="absolute top-2 right-2 flex flex-col gap-1.5">
                         <span className={`px-2.5 py-1 rounded-2xl text-[9px] font-black uppercase tracking-wider shadow-sm ${pet.status === 'available' ? 'bg-emerald-500 text-white' :
-                          pet.status === 'reserved' ? 'bg-amber-500 text-white' :
+                          pet.status === 'reserved' ? 'bg-secondary-500 text-white' :
                             'bg-rose-500 text-white'
                           }`}>
                           {pet.status?.toUpperCase() || (pet.isAvailable ? 'AVAILABLE' : 'RESERVED')}
@@ -476,7 +489,7 @@ const AdminPets = () => {
                         <span className={`px-2.5 py-1 rounded-2xl text-[9px] font-black uppercase tracking-wider shadow-sm ${
                           pet.approvalStatus === 'approved' ? 'bg-emerald-100 text-emerald-600 border border-emerald-200' :
                           pet.approvalStatus === 'rejected' ? 'bg-rose-100 text-rose-600 border border-rose-200' :
-                          'bg-amber-100 text-amber-600 border border-amber-200'
+                          'bg-secondary-100 text-primary-600 border border-secondary-200'
                         }`}>
                           {pet.approvalStatus?.toUpperCase() || 'PENDING'}
                         </span>
@@ -618,7 +631,7 @@ const AdminPets = () => {
                         <div className="flex flex-col gap-1.5">
                           <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest w-fit border ${req.status === 'approved' ? 'bg-emerald-50 border-emerald-100 text-emerald-600' :
                             req.status === 'rejected' ? 'bg-rose-50 border-rose-100 text-rose-600' :
-                              req.status === 'pending' ? 'bg-amber-50 border-amber-100 text-amber-600' :
+                              req.status === 'pending' ? 'bg-secondary-50 border-secondary-100 text-primary-600' :
                                 'bg-slate-50 border-slate-100 text-slate-600'
                             }`}>
                             {req.status.replace(/_/g, ' ')}
@@ -770,8 +783,8 @@ const AdminPets = () => {
                     <div className="grid grid-cols-12 gap-6">
                       <div className="col-span-12 md:col-span-4 space-y-1.5">
                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Birth Date</label>
-                        <input type="date" value={petForm.birthday} onChange={e => calculateAge(e.target.value)}
-                          className="w-full px-4 py-3.5 bg-white border border-slate-100 rounded-2xl text-[11px] font-black outline-none focus:ring-4 focus:ring-rose-500/5 cursor-pointer transition-all" />
+                        <input type="date" value={petForm.birthday} max={new Date().toISOString().split('T')[0]} onChange={e => calculateAge(e.target.value)}
+                          className="w-full px-4 py-3.5 bg-white border border-slate-100 rounded-2xl text-[11px] font-black outline-none focus:ring-4 focus:ring-primary-500/5 cursor-pointer transition-all" />
                       </div>
                       <div className="col-span-6 md:col-span-4 space-y-1.5">
                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1 block opacity-60">Age in Years</label>

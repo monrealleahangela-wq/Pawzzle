@@ -157,10 +157,10 @@ const BookingsManagement = () => {
 
   const getStatusStyle = (status, paymentStatus) => {
     if (status === 'pending' && paymentStatus === 'paid') {
-      return 'bg-amber-600 text-white border-amber-500 shadow-amber-200 animate-pulse';
+      return 'bg-primary-600 text-white border-secondary-500 shadow-secondary-200 animate-pulse';
     }
     switch (status) {
-      case 'pending': return 'bg-amber-500 text-white border-amber-400 shadow-amber-200';
+      case 'pending': return 'bg-secondary-500 text-white border-secondary-400 shadow-secondary-200';
       case 'approved': return 'bg-primary-600 text-white border-primary-500 shadow-primary-200';
       case 'processing': return 'bg-indigo-500 text-white border-indigo-400 shadow-indigo-200';
       case 'finished': return 'bg-emerald-600 text-white border-emerald-500 shadow-emerald-200';
@@ -521,9 +521,9 @@ const BookingsManagement = () => {
 
                 {/* Tactical Intel */}
                 {selectedBooking.pet?.specialNotes && (
-                  <div className="p-4 bg-amber-50 rounded-2xl border border-amber-100">
-                    <p className="text-[8px] font-black text-amber-600 uppercase tracking-widest mb-1.5">Staff Alert / Special Notes</p>
-                    <p className="text-[10px] font-bold text-amber-900 italic leading-relaxed">"{selectedBooking.pet.specialNotes}"</p>
+                  <div className="p-4 bg-secondary-50 rounded-2xl border border-secondary-100">
+                    <p className="text-[8px] font-black text-primary-600 uppercase tracking-widest mb-1.5">Staff Alert / Special Notes</p>
+                    <p className="text-[10px] font-bold text-primary-900 italic leading-relaxed">"{selectedBooking.pet.specialNotes}"</p>
                   </div>
                 )}
               </div>
@@ -606,7 +606,7 @@ const BookingsManagement = () => {
               {/* ── Payment Approval Panel (seller side) ── */}
               {/* When customer has paid but seller hasn't approved yet */}
               {selectedBooking.status === 'pending' && selectedBooking.paymentStatus === 'paid' && !selectedBooking.isRevenueRecorded && (user?.role === 'admin' || user?.role === 'staff') && (
-                <div className="p-8 bg-amber-600 rounded-[2.5rem] text-white flex flex-col gap-6 relative overflow-hidden group shadow-2xl shadow-amber-200">
+                <div className="p-8 bg-primary-600 rounded-[2.5rem] text-white flex flex-col gap-6 relative overflow-hidden group shadow-2xl shadow-secondary-200">
                   <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent pointer-events-none" />
                   <div className="relative z-10 space-y-2">
                     <div className="flex items-center gap-3">
@@ -621,7 +621,7 @@ const BookingsManagement = () => {
                   </div>
                   <button
                     onClick={() => confirmBookingPayment(selectedBooking._id)}
-                    className="relative z-10 w-full py-4 bg-white text-amber-700 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-amber-50 transition-all active:scale-[0.98] shadow-xl flex items-center justify-center gap-2"
+                    className="relative z-10 w-full py-4 bg-white text-primary-700 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-secondary-50 transition-all active:scale-[0.98] shadow-xl flex items-center justify-center gap-2"
                   >
                     <ShieldCheck className="h-4 w-4" />
                     Approve Payment
@@ -637,7 +637,7 @@ const BookingsManagement = () => {
                       <h4 className="text-xl font-black text-slate-900 uppercase tracking-tighter leading-none mb-1">Service Documentation</h4>
                       <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Multi-angle visual forensics</p>
                     </div>
-                    <div className="w-10 h-10 bg-[#533114] rounded-xl flex items-center justify-center text-white">
+                    <div className="w-10 h-10 bg-[#8B4513] rounded-xl flex items-center justify-center text-white">
                       <Camera className="h-5 w-5" />
                     </div>
                   </div>
@@ -701,9 +701,9 @@ const BookingsManagement = () => {
                   onClick={() => {
                     updateBookingStatus(selectedBooking._id, statusNextMap[selectedBooking.status]);
                   }}
-                  className="flex-1 min-w-[200px] px-6 py-3.5 bg-[#533114] text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] shadow-lg hover:bg-amber-600 transition-all active:scale-[0.98] group flex items-center justify-center gap-3"
+                  className="flex-1 min-w-[200px] px-6 py-3.5 bg-[#8B4513] text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] shadow-lg hover:bg-primary-600 transition-all active:scale-[0.98] group flex items-center justify-center gap-3"
                 >
-                  <TrendingUp className="h-4 w-4 opacity-50 text-amber-400" />
+                  <TrendingUp className="h-4 w-4 opacity-50 text-secondary-400" />
                   Update Status to {(statusNextMap[selectedBooking.status] || '').replace('_', ' ')}
                 </button>
               )}

@@ -65,13 +65,13 @@ const PasswordChangeModal = () => {
                         </p>
                     </div>
 
-                    <div className="bg-amber-50 border border-amber-100 rounded-2xl p-4 flex items-start gap-4">
-                        <div className="p-2 bg-white rounded-xl text-amber-500 shrink-0">
+                    <div className="bg-secondary-50 border border-secondary-100 rounded-2xl p-4 flex items-start gap-4">
+                        <div className="p-2 bg-white rounded-xl text-secondary-500 shrink-0">
                             <Lock className="h-4 w-4" />
                         </div>
                         <div>
-                            <p className="text-[11px] font-black text-amber-900 uppercase tracking-widest leading-none mb-1">Temporary Credentials Detected</p>
-                            <p className="text-[10px] font-medium text-amber-700 leading-relaxed">For your protection, you must replace the system-generated password with a secure personal one before proceeding.</p>
+                            <p className="text-[11px] font-black text-primary-900 uppercase tracking-widest leading-none mb-1">Temporary Credentials Detected</p>
+                            <p className="text-[10px] font-medium text-primary-700 leading-relaxed">For your protection, you must replace the system-generated password with a secure personal one before proceeding.</p>
                         </div>
                     </div>
 

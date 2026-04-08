@@ -159,6 +159,14 @@ const createPet = async (req, res) => {
     }
 
     console.log('📦 Creating pet with data:', { ...req.body, addedBy: req.user._id, store: store._id });
+    
+    // Validate Birthday (Cannot be in the future)
+    if (req.body.birthday) {
+      const bday = new Date(req.body.birthday);
+      if (bday > new Date()) {
+        return res.status(400).json({ message: 'Birth date cannot be in the future' });
+      }
+    }
 
     const petData = {
       ...req.body,
@@ -233,6 +241,15 @@ const updatePet = async (req, res) => {
 
     // List of fields that shouldn't be updated directly via this endpoint
     const { _id, id, addedBy, store, createdAt, updatedAt, ratings, ...updateData } = req.body;
+    
+    // Validate Birthday (Cannot be in the future)
+    if (updateData.birthday) {
+      const bday = new Date(updateData.birthday);
+      if (bday > new Date()) {
+        return res.status(400).json({ message: 'Birth date cannot be in the future' });
+      }
+    }
+
     console.log('📝 updatePet CLEANED DATA:', updateData);
     
     // Ensure store is set if missing (for legacy data or manual fixes)

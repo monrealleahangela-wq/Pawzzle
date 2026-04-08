@@ -94,7 +94,7 @@ const ReportManagement = () => {
 
     const getStatusColor = (status) => {
         switch (status) {
-            case 'pending': return 'bg-amber-100 text-amber-600 border-amber-200';
+            case 'pending': return 'bg-secondary-100 text-primary-600 border-secondary-200';
             case 'investigating': return 'bg-purple-100 text-purple-600 border-purple-200';
             case 'reviewed': return 'bg-blue-100 text-blue-600 border-blue-200';
             case 'resolved': return 'bg-emerald-100 text-emerald-600 border-emerald-200';

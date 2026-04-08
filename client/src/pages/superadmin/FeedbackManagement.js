@@ -112,7 +112,7 @@ const FeedbackManagement = () => {
 
     const getStatusColor = (status) => {
         switch (status) {
-            case 'pending': return 'bg-amber-100 text-amber-700 border-amber-200';
+            case 'pending': return 'bg-secondary-100 text-primary-700 border-secondary-200';
             case 'reviewed': return 'bg-blue-100 text-blue-700 border-blue-200';
             case 'implemented': return 'bg-emerald-100 text-emerald-700 border-emerald-200';
             case 'dismissed': return 'bg-slate-100 text-slate-700 border-slate-200';
@@ -230,7 +230,7 @@ const FeedbackManagement = () => {
                                             </span>
                                             <div className="flex gap-0.5 ml-2">
                                                 {[...Array(5)].map((_, i) => (
-                                                    <Star key={i} className={`h-2.5 w-2.5 ${i < item.rating ? 'fill-amber-400 text-amber-400' : 'text-slate-100'}`} />
+                                                    <Star key={i} className={`h-2.5 w-2.5 ${i < item.rating ? 'fill-secondary-400 text-secondary-400' : 'text-slate-100'}`} />
                                                 ))}
                                             </div>
                                         </div>

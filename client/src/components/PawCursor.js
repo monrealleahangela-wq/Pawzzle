@@ -122,7 +122,7 @@ const PawCursor = () => {
                         style={{
                             transition: 'transform 0.15s ease-out, color 0.2s ease',
                             transform: `scale(${isPressed ? 0.75 : isHovering ? 1.2 : 1.0})`,
-                            color: isHovering ? '#c2410c' : '#533114'
+                            color: isHovering ? '#c2410c' : '#8B4513'
                         }}
                     >
                         <div className={`relative transition-transform duration-300 ${isHovering ? 'rotate-[12deg]' : 'rotate-0'}`}>
