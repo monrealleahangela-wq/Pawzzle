@@ -273,14 +273,16 @@ const Layout = () => {
                 </button>
                  {user && (
                     <>
-                      <Link to="/cart" className="p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors relative">
-                        <ShoppingCart size={20} />
-                        {getTotalItems() > 0 && (
-                          <span className="absolute top-0 right-0 w-4 h-4 bg-primary-600 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
-                            {getTotalItems()}
-                          </span>
-                        )}
-                      </Link>
+                      {user.role === 'customer' && (
+                        <Link to="/cart" className="p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors relative">
+                          <ShoppingCart size={20} />
+                          {getTotalItems() > 0 && (
+                            <span className="absolute top-0 right-0 w-4 h-4 bg-primary-600 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                              {getTotalItems()}
+                            </span>
+                          )}
+                        </Link>
+                      )}
                       <NotificationBell />
                      <Link to="/profile" className="flex items-center gap-2 border border-slate-200 dark:border-slate-700 p-1 rounded-full pr-3 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all">
                         <div className="w-8 h-8 rounded-full bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center text-primary-700 dark:text-primary-400 font-bold overflow-hidden text-xs shadow-inner">
