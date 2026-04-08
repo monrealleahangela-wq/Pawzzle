@@ -89,7 +89,7 @@ const Landing = () => {
             <div className="space-y-10 text-center lg:text-left">
               <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary-50 border border-primary-100 rounded-full animate-fade-in shadow-sm">
                 <Sparkles className="h-4 w-4 text-primary-600 animate-pulse" />
-                <span className="text-xs font-black text-primary-700 uppercase tracking-widest">The Future of Pet Adoption</span>
+                <span className="text-xs font-black text-primary-700 uppercase tracking-widest">The Future of Pet Care</span>
               </div>
 
               <h1 className="text-5xl md:text-7xl lg:text-8xl font-black tracking-tight text-slate-900 leading-[1.05] animate-slide-up">
@@ -98,7 +98,7 @@ const Landing = () => {
               </h1>
 
               <p className="text-lg md:text-xl text-slate-600 max-w-2xl mx-auto lg:mx-0 leading-relaxed animate-slide-up" style={{ animationDelay: '0.2s' }}>
-                Connect with verified shelters, browse premium pet supplies, and book expert services. Everything your furry friend needs, all in one premium platform.
+                Connect with verified sellers, browse premium pet supplies, and book expert services. Everything your furry friend needs, all in one premium platform.
               </p>
 
               <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start animate-slide-up" style={{ animationDelay: '0.4s' }}>
@@ -144,7 +144,7 @@ const Landing = () => {
                     <Heart className="text-primary-600 h-6 w-6" />
                   </div>
                   <div>
-                    <p className="text-sm font-black text-slate-800 tracking-tight">500+ Adoptions</p>
+                    <p className="text-sm font-black text-slate-800 tracking-tight">500+ Connections</p>
                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">This month</p>
                   </div>
                 </div>
@@ -174,8 +174,8 @@ const Landing = () => {
               <div className="w-16 h-16 bg-primary-600 rounded-2xl flex items-center justify-center mb-6 group-hover:rotate-6 transition-transform">
                 <Heart className="text-white h-8 w-8" />
               </div>
-              <h3 className="text-2xl font-bold text-slate-900 mb-3">Compassionate Adoption</h3>
-              <p className="text-slate-600">Find pets from verified shelters. Our platform ensures a safe and loving transition for every animal.</p>
+              <h3 className="text-2xl font-bold text-slate-900 mb-3">Compassionate Care</h3>
+              <p className="text-slate-600">Find pets from our community. Our platform ensures a safe and loving transition for every animal.</p>
             </div>
 
             <div className="card group hover:bg-slate-50 border-none shadow-none hover:shadow-2xl transition-all duration-500">
@@ -254,7 +254,7 @@ const Landing = () => {
               <p className="text-xl text-primary-100 leading-relaxed font-medium">
                 {isAuthenticated
                   ? 'Ready to make another addition to your family? Our community is here to support you in finding the perfect companion.'
-                  : 'Join thousands of happy families who found their perfect match. Adoption is an act of love.'}
+                  : 'Join thousands of happy families who found their perfect companion. Finding a pet is an act of love.'}
               </p>
               <div className="flex flex-col sm:flex-row gap-6 justify-center">
                 {!isAuthenticated ? (
