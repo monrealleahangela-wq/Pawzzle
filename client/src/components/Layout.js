@@ -218,11 +218,11 @@ const Layout = () => {
 
       {/* Sidebar - Desktop */}
       {!isLandingPage && (
-        <aside className={`hidden lg:flex fixed left-4 top-4 h-[calc(100vh-2rem)] w-20 hover:w-64 bg-white/80 dark:bg-slate-900/80 backdrop-blur-2xl z-[70] flex-col transition-all duration-500 cubic-bezier(0.4, 0, 0.2, 1) group shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.2)] border border-slate-200/50 dark:border-slate-800/50 rounded-[2rem] overflow-hidden`}>
+        <aside className={`hidden lg:flex fixed left-4 top-4 h-[calc(100vh-2rem)] w-20 hover:w-64 bg-white/80 dark:bg-slate-900/80 backdrop-blur-2xl z-[70] flex-col transition-all duration-700 cubic-bezier(0.4, 0, 0.2, 1) group shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.2)] border border-slate-200/50 dark:border-slate-800/50 rounded-[2rem] overflow-hidden`}>
           <Link to="/" className="p-6 flex items-center gap-3 relative overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-br from-primary-500/10 to-indigo-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+            <div className="absolute inset-0 bg-gradient-to-br from-primary-500/10 to-amber-700/10 opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
             <img src="/images/logo.png" alt="Logo" className="w-8 h-8 object-contain shrink-0 drop-shadow-md z-10" />
-            <span className="text-xl font-black bg-clip-text text-transparent bg-gradient-to-r from-primary-600 to-indigo-600 dark:from-primary-400 dark:to-indigo-400 opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-10 tracking-tighter">PAWZZLE</span>
+            <span className="text-xl font-black bg-clip-text text-transparent bg-gradient-to-r from-primary-600 to-amber-800 dark:from-primary-400 dark:to-amber-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-10 tracking-tighter">PAWZZLE</span>
           </Link>
 
           <nav className="flex-1 px-4 py-4 space-y-2 overflow-y-auto no-scrollbar relative z-10">
@@ -240,15 +240,15 @@ const Layout = () => {
                 <Link
                   key={item.path}
                   to={item.path}
-                  className={`flex items-center gap-4 p-3 rounded-2xl transition-all duration-300 relative overflow-hidden group/item ${
+                  className={`flex items-center gap-4 p-3 rounded-2xl transition-all duration-500 relative overflow-hidden group/item ${
                     active 
-                      ? 'bg-gradient-to-r from-primary-500 to-indigo-500 text-white shadow-lg shadow-primary-500/25 scale-[1.02]' 
-                      : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100/50 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-white'
+                      ? 'bg-gradient-to-r from-primary-600 to-amber-700 text-white shadow-lg shadow-primary-900/20 scale-[1.02]' 
+                      : 'text-slate-500 dark:text-slate-400 hover:bg-orange-50 dark:hover:bg-amber-900/20 hover:text-amber-800 dark:hover:text-amber-500'
                   }`}
                 >
-                  <Icon className={`h-5 w-5 shrink-0 transition-transform duration-300 ${active ? 'scale-110' : 'group-hover/item:scale-110'}`} />
+                  <Icon className={`h-5 w-5 shrink-0 transition-transform duration-500 ${active ? 'scale-110' : 'group-hover/item:scale-110'}`} />
                   <span className="text-sm font-bold opacity-0 group-hover:opacity-100 transition-opacity duration-300 whitespace-nowrap tracking-wide flex-1">{item.label}</span>
-                  {active && <div className="absolute inset-0 bg-white/20 opacity-0 group-hover/item:opacity-100 transition-opacity duration-300 rounded-2xl"></div>}
+                  {active && <div className="absolute inset-0 bg-white/20 opacity-0 group-hover/item:opacity-100 transition-opacity duration-500 rounded-2xl"></div>}
                 </Link>
               );
             })}

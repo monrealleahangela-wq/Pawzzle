@@ -394,7 +394,9 @@ const Bookings = ({ isSubcomponent = false }) => {
 
   const getPhaseIndex = (status) => {
     const phases = ['pending', 'approved', 'processing', 'finished', 'completed'];
-    return phases.indexOf(status);
+    // Map 'confirmed' to 'approved' for progress consistency
+    const effectiveStatus = status === 'confirmed' ? 'approved' : status;
+    return phases.indexOf(effectiveStatus);
   };
 
   // Fetch existing bookings for the selected service to show availability
@@ -536,10 +538,10 @@ const Bookings = ({ isSubcomponent = false }) => {
   const getStatusColor = (status) => {
     const colors = {
       pending: 'bg-amber-50 text-amber-600 border-amber-100',
-      approved: 'bg-primary-50 text-primary-600 border-primary-100',
-      processing: 'bg-indigo-50 text-indigo-600 border-indigo-100',
+      approved: 'bg-primary-50 text-amber-600 border-amber-100',
+      processing: 'bg-orange-50 text-orange-600 border-orange-100',
       finished: 'bg-emerald-50 text-emerald-600 border-emerald-100',
-      completed: 'bg-slate-900 text-white border-slate-700',
+      completed: 'bg-[#533114] text-white border-amber-900',
       cancelled: 'bg-rose-50 text-rose-600 border-rose-100'
     };
     return colors[status] || 'bg-gray-50 text-gray-600';
@@ -1730,8 +1732,8 @@ const Bookings = ({ isSubcomponent = false }) => {
               <div className="relative pt-4 pb-12">
                 <div className="absolute left-[5%] right-[5%] top-1/2 -translate-y-1/2 h-1 bg-slate-100 rounded-full" />
                 <div
-                  className="absolute left-[5%] top-1/2 -translate-y-1/2 h-1 bg-primary-600 rounded-full transition-all duration-1000 ease-in-out shadow-[0_0_20px_rgba(37,99,235,0.5)]"
-                  style={{ width: `${Math.max(0, (getPhaseIndex(selectedBooking.status) / 3) * 90)}%` }}
+                  className="absolute left-[5%] top-1/2 -translate-y-1/2 h-1 bg-amber-600 rounded-full transition-all duration-1000 ease-in-out shadow-[0_0_20px_rgba(217,119,6,0.5)]"
+                  style={{ width: `${Math.max(0, (getPhaseIndex(selectedBooking.status) / 4) * 90)}%` }}
                 />
 
                 <div className="relative z-10 flex justify-between">
@@ -1741,13 +1743,13 @@ const Bookings = ({ isSubcomponent = false }) => {
                     const isCurrent = idx === currentIdx;
                     return (
                       <div key={phase} className="flex flex-col items-center gap-4">
-                        <div className={`w-10 h-10 rounded-2xl border-4 transition-all duration-700 flex items-center justify-center ${isPassed ? 'bg-primary-600 border-white ring-8 ring-primary-50 shadow-xl' :
-                          isCurrent ? 'bg-primary-600 border-white ring-8 ring-primary-50 animate-pulse shadow-xl shadow-primary-200' :
+                        <div className={`w-10 h-10 rounded-2xl border-4 transition-all duration-700 flex items-center justify-center ${isPassed ? 'bg-amber-600 border-white ring-8 ring-amber-50 shadow-xl' :
+                          isCurrent ? 'bg-amber-600 border-white ring-8 ring-amber-50 animate-pulse shadow-xl shadow-amber-200' :
                             'bg-white border-slate-100'
                           }`}>
                           {(isPassed || isCurrent) && <CheckCircle className="h-4 w-4 text-white" />}
                         </div>
-                        <span className={`text-[10px] font-black uppercase tracking-[0.2em] px-3 py-1 rounded-lg ${isCurrent ? 'bg-slate-900 text-white' : isPassed ? 'text-primary-600 bg-primary-50' : 'text-slate-300'}`}>
+                        <span className={`text-[10px] font-black uppercase tracking-[0.2em] px-3 py-1 rounded-lg ${isCurrent ? 'bg-amber-900 text-white' : isPassed ? 'text-amber-700 bg-amber-50' : 'text-slate-300'}`}>
                           {phase.replace('_', ' ')}
                         </span>
                       </div>

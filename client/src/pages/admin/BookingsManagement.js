@@ -637,7 +637,7 @@ const BookingsManagement = () => {
                       <h4 className="text-xl font-black text-slate-900 uppercase tracking-tighter leading-none mb-1">Service Documentation</h4>
                       <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Multi-angle visual forensics</p>
                     </div>
-                    <div className="w-10 h-10 bg-slate-900 rounded-xl flex items-center justify-center text-white">
+                    <div className="w-10 h-10 bg-[#533114] rounded-xl flex items-center justify-center text-white">
                       <Camera className="h-5 w-5" />
                     </div>
                   </div>
@@ -701,9 +701,9 @@ const BookingsManagement = () => {
                   onClick={() => {
                     updateBookingStatus(selectedBooking._id, statusNextMap[selectedBooking.status]);
                   }}
-                  className="flex-1 min-w-[200px] px-6 py-3.5 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] shadow-lg hover:bg-primary-600 transition-all active:scale-[0.98] group flex items-center justify-center gap-3"
+                  className="flex-1 min-w-[200px] px-6 py-3.5 bg-[#533114] text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] shadow-lg hover:bg-amber-600 transition-all active:scale-[0.98] group flex items-center justify-center gap-3"
                 >
-                  <TrendingUp className="h-4 w-4 opacity-50 text-emerald-400" />
+                  <TrendingUp className="h-4 w-4 opacity-50 text-amber-400" />
                   Update Status to {(statusNextMap[selectedBooking.status] || '').replace('_', ' ')}
                 </button>
               )}
