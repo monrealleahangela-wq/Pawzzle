@@ -153,7 +153,7 @@ h1, h2, h3, h4, .font-heading {
 /* Specific Component Shrinkage */
 .main-content-area .card { padding: 0.75rem !important; }
 .main-content-area .btn { padding: 4px 10px !important; font-size: 10px !important; }
-.main-content-area .input { padding: 6px 10px !important; font-size: 11px !important; height: auto !important; }
+.main-content-area .input { padding: 6px 10px; font-size: 11px !important; height: auto !important; }
 
 /* Dashboard Pulse & Charts */
 .main-content-area .text-5xl, .main-content-area .text-7xl { font-size: 1.75rem !important; line-height: 1 !important; }
@@ -242,11 +242,6 @@ h1, h2, h3, h4, .font-heading {
 
 /* Inputs & Forms - More Compact */
 .input,
-input[type="text"],
-input[type="email"],
-input[type="password"],
-input[type="number"],
-input[type="date"],
 select,
 textarea {
   width: 100%;
