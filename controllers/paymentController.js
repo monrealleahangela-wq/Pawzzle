@@ -196,7 +196,7 @@ const handleWebhook = async (req, res) => {
                         sender: booking.customer,
                         type: 'booking_status',
                         title: '💳 Payment Received – Approval Needed',
-                        message: `A customer has paid for booking #${booking._id.toString().slice(-8).toUpperCase()}. Please review and approve to generate their QR entry code.`,
+                        message: `A customer has paid for booking #${booking._id.toString().slice(-8).toUpperCase()}. Please review and approve it.`,
                         relatedId: booking._id,
                         relatedModel: 'Booking'
                     });
@@ -207,7 +207,7 @@ const handleWebhook = async (req, res) => {
                         sender: booking.addedBy,
                         type: 'booking_status',
                         title: '✅ Payment Received – Awaiting Approval',
-                        message: `Your payment for booking #${booking._id.toString().slice(-8).toUpperCase()} has been received! The seller will review and approve it shortly. Your QR entry code will be sent once approved.`,
+                        message: `Your payment for booking #${booking._id.toString().slice(-8).toUpperCase()} has been received! The seller will review and approve it shortly.`,
                         relatedId: booking._id,
                         relatedModel: 'Booking'
                     });

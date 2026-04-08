@@ -689,10 +689,8 @@ const confirmBookingPayment = async (req, res) => {
       // Record revenue and update store stats via central service
     await RevenueService.recordPayment('booking', booking._id);
 
-    // Update status to approved and generate QR code
     booking.paymentStatus = 'paid';
     booking.status = 'approved';
-    booking.qrCode = `BK-${Math.random().toString(36).substr(2, 8).toUpperCase()}-${Date.now().toString().slice(-4)}`;
     
     await booking.save();
 
@@ -701,17 +699,17 @@ const confirmBookingPayment = async (req, res) => {
       .populate('service', 'name category');
 
     res.json({
-      message: 'Payment approved and QR Code generated for customer.',
+      message: 'Payment approved successfully.',
       booking: populatedBooking
     });
 
-    // Notify customer: payment approved, QR is now ready
+    // Notify customer: payment approved
     await createNotification({
       recipient: booking.customer,
       sender: req.user._id,
       type: 'booking_status',
-      title: '✅ Booking Approved – QR Code Ready',
-      message: `Your payment for ${populatedBooking.service?.name || 'your service'} has been approved! Your QR entry code is now active. Present it to the staff upon arrival.`,
+      title: '✅ Booking Approved',
+      message: `Your payment for ${populatedBooking.service?.name || 'your service'} has been approved! Your booking is now confirmed.`,
       relatedId: booking._id,
       relatedModel: 'Booking'
     });

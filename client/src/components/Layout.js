@@ -218,18 +218,19 @@ const Layout = () => {
 
       {/* Sidebar - Desktop */}
       {!isLandingPage && (
-        <aside className={`hidden lg:flex fixed left-0 top-0 h-full w-20 hover:w-64 bg-white dark:bg-slate-900 z-[70] flex-col transition-all duration-300 group shadow-sm border-r border-slate-200 dark:border-slate-800`}>
-          <Link to="/" className="p-6 flex items-center gap-3">
-            <img src="/images/logo.png" alt="Logo" className="w-8 h-8 object-contain" />
-            <span className="text-xl font-bold text-primary-600 opacity-0 group-hover:opacity-100 transition-opacity">PAWZZLE</span>
+        <aside className={`hidden lg:flex fixed left-4 top-4 h-[calc(100vh-2rem)] w-20 hover:w-64 bg-white/80 dark:bg-slate-900/80 backdrop-blur-2xl z-[70] flex-col transition-all duration-500 cubic-bezier(0.4, 0, 0.2, 1) group shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.2)] border border-slate-200/50 dark:border-slate-800/50 rounded-[2rem] overflow-hidden`}>
+          <Link to="/" className="p-6 flex items-center gap-3 relative overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-br from-primary-500/10 to-indigo-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+            <img src="/images/logo.png" alt="Logo" className="w-8 h-8 object-contain shrink-0 drop-shadow-md z-10" />
+            <span className="text-xl font-black bg-clip-text text-transparent bg-gradient-to-r from-primary-600 to-indigo-600 dark:from-primary-400 dark:to-indigo-400 opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-10 tracking-tighter">PAWZZLE</span>
           </Link>
 
-          <nav className="flex-1 px-4 py-4 space-y-1 overflow-y-auto no-scrollbar">
+          <nav className="flex-1 px-4 py-4 space-y-2 overflow-y-auto no-scrollbar relative z-10">
             {navItems.map((item, idx) => {
               if (item.type === 'label') {
                 return (
-                  <div key={idx} className="pt-4 pb-2 pl-3">
-                    <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity">{item.label}</span>
+                  <div key={idx} className="pt-5 pb-2 pl-3">
+                    <span className="text-[9px] font-black text-slate-400/80 dark:text-slate-500/80 uppercase tracking-[0.3em] opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-x-[-10px] group-hover:translate-x-0">{item.label}</span>
                   </div>
                 );
               }
@@ -239,28 +240,33 @@ const Layout = () => {
                 <Link
                   key={item.path}
                   to={item.path}
-                  className={`flex items-center gap-4 p-3 rounded-xl transition-colors ${active ? 'bg-primary-50 dark:bg-primary-900/20 text-primary-600 font-bold' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
+                  className={`flex items-center gap-4 p-3 rounded-2xl transition-all duration-300 relative overflow-hidden group/item ${
+                    active 
+                      ? 'bg-gradient-to-r from-primary-500 to-indigo-500 text-white shadow-lg shadow-primary-500/25 scale-[1.02]' 
+                      : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100/50 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-white'
+                  }`}
                 >
-                  <Icon className="h-5 w-5 shrink-0" />
-                  <span className="text-sm opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">{item.label}</span>
+                  <Icon className={`h-5 w-5 shrink-0 transition-transform duration-300 ${active ? 'scale-110' : 'group-hover/item:scale-110'}`} />
+                  <span className="text-sm font-bold opacity-0 group-hover:opacity-100 transition-opacity duration-300 whitespace-nowrap tracking-wide flex-1">{item.label}</span>
+                  {active && <div className="absolute inset-0 bg-white/20 opacity-0 group-hover/item:opacity-100 transition-opacity duration-300 rounded-2xl"></div>}
                 </Link>
               );
             })}
           </nav>
 
-          <div className="p-4 border-t border-slate-100 dark:border-slate-800">
-             <button onClick={handleLogout} className="flex items-center gap-4 p-3 w-full text-slate-500 hover:text-rose-600 transition-colors">
-               <LogOut className="h-5 w-5 shrink-0" />
-               <span className="text-sm opacity-0 group-hover:opacity-100 transition-opacity">Logout</span>
+          <div className="p-4 relative z-10">
+             <button onClick={handleLogout} className="flex items-center gap-4 p-3 w-full rounded-2xl text-slate-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 hover:text-rose-600 transition-all duration-300 group/btn">
+               <LogOut className="h-5 w-5 shrink-0 group-hover/btn:-translate-x-1 transition-transform" />
+               <span className="text-sm font-bold opacity-0 group-hover:opacity-100 transition-opacity duration-300 tracking-wide">Logout</span>
              </button>
           </div>
         </aside>
       )}
 
       {/* Main Content Area */}
-      <div className={`flex-1 flex flex-col min-w-0 ${isLandingPage ? '' : 'lg:pl-20 pt-16'} main-content-area`}>
+      <div className={`flex-1 flex flex-col min-w-0 ${isLandingPage ? '' : 'lg:pl-[112px] pt-16'} main-content-area`}>
         {!isLandingPage && (
-          <header className={`fixed top-0 left-0 lg:left-20 right-0 z-50 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 h-16 flex items-center px-4 justify-between shadow-sm transition-all duration-300`}>
+          <header className={`fixed top-0 left-0 lg:left-[112px] right-0 z-50 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 h-16 flex items-center px-4 justify-between shadow-sm transition-all duration-300`}>
              <div className="lg:hidden flex items-center gap-3">
                <button 
                  onClick={() => setIsMobileMenuOpen(true)}
