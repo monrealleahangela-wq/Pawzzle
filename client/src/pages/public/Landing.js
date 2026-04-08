@@ -84,22 +84,24 @@ const Landing = () => {
       {/* Hero Section */}
       <section className="relative pt-32 pb-20 lg:pt-48 lg:pb-32 overflow-hidden">
         <div className="container-custom relative z-10">
-          <div className="max-w-4xl mx-auto text-center space-y-10">
-            <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary-50 border border-primary-100 rounded-full animate-fade-in">
-              <Sparkles className="h-4 w-4 text-primary-600 animate-pulse" />
-              <span className="text-sm font-bold text-primary-700 uppercase tracking-wider">The Future of Pet Adoption</span>
-            </div>
+          <div className="grid lg:grid-cols-2 gap-12 items-center">
+            {/* Text Content */}
+            <div className="space-y-10 text-center lg:text-left">
+              <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary-50 border border-primary-100 rounded-full animate-fade-in shadow-sm">
+                <Sparkles className="h-4 w-4 text-primary-600 animate-pulse" />
+                <span className="text-xs font-black text-primary-700 uppercase tracking-widest">The Future of Pet Adoption</span>
+              </div>
 
-            <h1 className="text-5xl md:text-7xl lg:text-8xl font-black tracking-tight text-slate-900 leading-[1.1] animate-slide-up">
-              Find Your New
-              <span className="block italic text-transparent bg-clip-text bg-gradient-to-r from-primary-600 via-secondary-600 to-primary-600">Best Friend</span>
-            </h1>
+              <h1 className="text-5xl md:text-7xl lg:text-8xl font-black tracking-tight text-slate-900 leading-[1.05] animate-slide-up">
+                Find Your New
+                <span className="block italic text-transparent bg-clip-text bg-gradient-to-r from-primary-600 via-secondary-600 to-primary-600">Best Friend</span>
+              </h1>
 
-            <p className="text-lg md:text-xl text-slate-600 max-w-2xl mx-auto leading-relaxed animate-slide-up" style={{ animationDelay: '0.2s' }}>
-              Connect with verified shelters, browse premium pet supplies, and book expert services. Everything your furry friend needs, all in one premium platform.
-            </p>
+              <p className="text-lg md:text-xl text-slate-600 max-w-2xl mx-auto lg:mx-0 leading-relaxed animate-slide-up" style={{ animationDelay: '0.2s' }}>
+                Connect with verified shelters, browse premium pet supplies, and book expert services. Everything your furry friend needs, all in one premium platform.
+              </p>
 
-              <div className="flex flex-col sm:flex-row gap-4 justify-center animate-slide-up" style={{ animationDelay: '0.4s' }}>
+              <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start animate-slide-up" style={{ animationDelay: '0.4s' }}>
                 {!isAuthenticated ? (
                   <Link to="/login" className="btn btn-primary px-10 py-5 text-lg group shadow-xl shadow-primary-200">
                     Get Started
@@ -111,29 +113,55 @@ const Landing = () => {
                     <ArrowRight className="h-5 w-5 group-hover:translate-x-2 transition-transform" />
                   </Link>
                 )}
-                <Link to="/seller-join" className="btn btn-outline px-10 py-5 text-lg border-2 border-primary-600/20 text-primary-600 hover:bg-primary-50 bg-white/50 backdrop-blur-sm">
-                  <Store className="h-5 w-5 mr-1" />
-                  Be a Seller
-                </Link>
-                <Link to="/pets" className="btn btn-outline px-10 py-5 text-lg border-2 border-slate-200 hover:border-primary-600 bg-white/50 backdrop-blur-sm">
-                  <Heart className="h-5 w-5 mr-1" />
-                  Browse Pets
-                </Link>
+                <div className="flex gap-4">
+                  <Link to="/pets" className="btn btn-outline flex-1 sm:flex-initial px-8 py-5 text-lg border-2 border-slate-200 hover:border-primary-600 bg-white/50 backdrop-blur-sm">
+                    <Heart className="h-5 w-5 mr-1" />
+                    Browse Pets
+                  </Link>
+                </div>
               </div>
-          </div>
-        </div>
+            </div>
 
-        {/* Floating elements for visual depth */}
-        <div className="absolute top-1/4 left-10 float-animation hidden xl:block opacity-40">
-          <div className="p-4 glass-morphism rounded-2xl shadow-xl flex items-center gap-3">
-            <div className="w-10 h-10 bg-primary-100 rounded-full flex items-center justify-center"><Heart className="text-primary-600 h-5 w-5" /></div>
-            <div><p className="text-xs font-bold text-slate-800">500+ Adoptions</p><p className="text-[10px] text-slate-500">This month</p></div>
-          </div>
-        </div>
-        <div className="absolute bottom-1/4 right-10 float-animation hidden xl:block opacity-40" style={{ animationDelay: '-3s' }}>
-          <div className="p-4 glass-morphism rounded-2xl shadow-xl flex items-center gap-3">
-            <div className="w-10 h-10 bg-secondary-100 rounded-full flex items-center justify-center"><Package className="text-secondary-600 h-5 w-5" /></div>
-            <div><p className="text-xs font-bold text-slate-800">Premium Care</p><p className="text-[10px] text-slate-500">Top Rated</p></div>
+            {/* Hero Image */}
+            <div className="relative animate-fade-in hidden lg:block" style={{ animationDelay: '0.6s' }}>
+              <div className="relative z-10 rounded-[3rem] overflow-hidden shadow-2xl rotate-2 transition-transform hover:rotate-0 duration-700 group border-4 border-white">
+                <img 
+                  src="/images/landing_hero.png" 
+                  alt="Happy Cat and Owner" 
+                  className="w-full h-auto object-cover scale-105 group-hover:scale-100 transition-transform duration-700" 
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-primary-900/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+              </div>
+              
+              {/* Decorative elements */}
+              <div className="absolute -top-6 -right-6 w-32 h-32 bg-secondary-200 rounded-full blur-3xl opacity-60 animate-pulse"></div>
+              <div className="absolute -bottom-10 -left-10 w-48 h-48 bg-primary-200 rounded-full blur-3xl opacity-40 animate-pulse" style={{ animationDelay: '-2s' }}></div>
+              
+              {/* Floating badges */}
+              <div className="absolute -top-10 -left-10 float-animation z-20">
+                <div className="p-4 glass-morphism rounded-3xl shadow-xl flex items-center gap-3 animate-slide-up" style={{ animationDelay: '1s' }}>
+                  <div className="w-12 h-12 bg-primary-100 rounded-full flex items-center justify-center shadow-inner">
+                    <Heart className="text-primary-600 h-6 w-6" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-black text-slate-800 tracking-tight">500+ Adoptions</p>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">This month</p>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="absolute -bottom-8 -right-8 float-animation z-20" style={{ animationDelay: '-3s' }}>
+                <div className="p-4 glass-morphism rounded-3xl shadow-xl flex items-center gap-3 animate-slide-up" style={{ animationDelay: '1.2s' }}>
+                  <div className="w-12 h-12 bg-secondary-100 rounded-full flex items-center justify-center shadow-inner">
+                    <Star className="text-secondary-600 h-6 w-6" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-black text-slate-800 tracking-tight">Top Rated Care</p>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">By verified owners</p>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </section>
