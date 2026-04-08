@@ -190,13 +190,24 @@ const handleWebhook = async (req, res) => {
                     
                     await booking.save();
                     
-                    // Requirement: Seller sees a notification of the payment awaiting approval
+                    // Notify seller: payment received, approval needed
                     await createNotification({
                         recipient: booking.addedBy,
                         sender: booking.customer,
                         type: 'booking_status',
-                        title: 'Booking Payment Received',
-                        message: `Payment for booking #${booking._id.toString().slice(-8).toUpperCase()} has been received. This booking is now AWAITING APPROVAL.`,
+                        title: '💳 Payment Received – Approval Needed',
+                        message: `A customer has paid for booking #${booking._id.toString().slice(-8).toUpperCase()}. Please review and approve to generate their QR entry code.`,
+                        relatedId: booking._id,
+                        relatedModel: 'Booking'
+                    });
+
+                    // Notify customer: payment received, waiting for approval
+                    await createNotification({
+                        recipient: booking.customer,
+                        sender: booking.addedBy,
+                        type: 'booking_status',
+                        title: '✅ Payment Received – Awaiting Approval',
+                        message: `Your payment for booking #${booking._id.toString().slice(-8).toUpperCase()} has been received! The seller will review and approve it shortly. Your QR entry code will be sent once approved.`,
                         relatedId: booking._id,
                         relatedModel: 'Booking'
                     });

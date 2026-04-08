@@ -686,7 +686,7 @@ const confirmBookingPayment = async (req, res) => {
       return res.status(400).json({ message: 'Booking is already marked as paid' });
     }
 
-    // Record revenue and update store stats via central service
+      // Record revenue and update store stats via central service
     await RevenueService.recordPayment('booking', booking._id);
 
     // Update status to approved and generate QR code
@@ -696,18 +696,33 @@ const confirmBookingPayment = async (req, res) => {
     
     await booking.save();
 
+    const populatedBooking = await Booking.findById(booking._id)
+      .populate('customer', 'firstName lastName email phone')
+      .populate('service', 'name category');
+
     res.json({
-      message: 'Payment verified and QR Code generated.',
-      booking: await Booking.findById(booking._id).populate('customer', 'firstName lastName email phone').populate('service', 'name category')
+      message: 'Payment approved and QR Code generated for customer.',
+      booking: populatedBooking
     });
 
-    // Notify customer about payment confirmation and QR activation
+    // Notify customer: payment approved, QR is now ready
     await createNotification({
       recipient: booking.customer,
       sender: req.user._id,
       type: 'booking_status',
-      title: 'Payment Approved',
-      message: 'Your booking is paid and approved! QR code is now generated. See you at our store!',
+      title: '✅ Booking Approved – QR Code Ready',
+      message: `Your payment for ${populatedBooking.service?.name || 'your service'} has been approved! Your QR entry code is now active. Present it to the staff upon arrival.`,
+      relatedId: booking._id,
+      relatedModel: 'Booking'
+    });
+
+    // Notify store owner: revenue recorded
+    await createNotification({
+      recipient: booking.addedBy,
+      sender: booking.customer,
+      type: 'booking_status',
+      title: 'Revenue Recorded',
+      message: `Payment for booking #${String(booking._id).slice(-6).toUpperCase()} has been confirmed and revenue has been recorded.`,
       relatedId: booking._id,
       relatedModel: 'Booking'
     });
