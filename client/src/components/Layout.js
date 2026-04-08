@@ -181,8 +181,7 @@ const Layout = () => {
     { path: '/pets', label: 'Pets', icon: Heart },
     { path: '/products', label: 'Products', icon: Package },
     { path: '/services', label: 'Services', icon: Calendar },
-    { path: '/find-shops', label: 'Find Shops', icon: MapPin },
-    { path: '/search', label: 'Search', icon: Search }
+    { path: '/find-shops', label: 'Find Shops', icon: MapPin }
   ];
 
   const navItems = user?.role === 'customer' ? customerNavItems :
