@@ -141,6 +141,11 @@ const bookingSchema = new mongoose.Schema({
     isRated: { type: Boolean, default: false },
     reviewId: { type: mongoose.Schema.Types.ObjectId, ref: 'Review' }
   },
+  paymentDetails: {
+    sessionId: { type: String },
+    checkoutUrl: { type: String },
+    paymentId: { type: String }
+  },
   createdAt: {
     type: Date,
     default: Date.now

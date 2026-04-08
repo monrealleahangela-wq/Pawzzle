@@ -313,7 +313,8 @@ export const adoptionService = {
 export const paymentService = {
   createCheckoutSession: (orderId) => api.post(`/payment/create-checkout-session/${orderId}`),
   createBookingCheckoutSession: (bookingId) => api.post(`/payment/create-booking-checkout-session/${bookingId}`),
-  verifyPayment: (orderId) => api.get(`/payment/verify/${orderId}`)
+  verifyPayment: (orderId) => api.get(`/payment/verify/${orderId}`),
+  verifyBookingPayment: (bookingId) => api.get(`/payment/verify/${bookingId}`)
 };
 
 // Voucher services (Customer)

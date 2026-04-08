@@ -254,23 +254,19 @@ const Bookings = ({ isSubcomponent = false }) => {
     const bookingId = searchParams.get('id');
 
     if (paymentStatus === 'success') {
-      toast.success('Payment successful! Your appointment is being verified.', {
-        id: 'payment-success', // Prevent duplicate toasts
-        duration: 5000
+      toast.success('Payment authorized. Verifying with sanctuary...', {
+        id: 'payment-success',
+        duration: 3000
       });
       
-      // If we have a booking ID, select it to show details immediately
       if (bookingId) {
-        // We'll find it in the refreshed list or fetch it specifically if needed
-        // For now, let's wait for fetchBookings to complete then locate and select it
-        const findAndSelect = (bookingsList) => {
-           const found = bookingsList.find(b => b._id === bookingId);
-           if (found) setSelectedBooking(found);
-        };
-        
-        // Wrap fetchBookings to handle selection after load
-        const refreshAndSelect = async () => {
-          try {
+        // Trigger manual verification to ensure DB is updated
+        paymentService.verifyBookingPayment(bookingId)
+          .then(async (res) => {
+            if (res.data.status === 'paid') {
+              toast.success('Payment successfully verified!');
+            }
+            // Refresh list anyway
             const params = {
               status: filterStatus !== 'all' ? filterStatus : undefined,
               search: searchTerm || undefined,
@@ -282,11 +278,11 @@ const Bookings = ({ isSubcomponent = false }) => {
             setBookings(newList);
             const target = newList.find(b => b._id === bookingId);
             if (target) setSelectedBooking(target);
-          } catch (err) {
-            console.error('Error refreshing after payment:', err);
-          }
-        };
-        refreshAndSelect();
+          })
+          .catch(err => {
+            console.error('Payment verification failed:', err);
+            fetchBookings(); // Fallback to normal refresh
+          });
       }
     }
   }, [filterStatus, searchTerm, searchParams]);

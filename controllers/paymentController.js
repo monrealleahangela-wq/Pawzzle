@@ -313,22 +313,30 @@ const handleWebhook = async (req, res) => {
  */
 const verifyPayment = async (req, res) => {
     try {
-        const { orderId } = req.params;
-        const order = await Order.findById(orderId);
+        const { orderId } = req.params; // Generic ID for both Order and Booking
+        
+        let target = await Order.findById(orderId);
+        let type = 'order';
 
-        if (!order) {
-            return res.status(404).json({ message: 'Order not found' });
+        if (!target) {
+            const Booking = require('../models/Booking');
+            target = await Booking.findById(orderId);
+            type = 'booking';
         }
 
-        if (order.paymentStatus === 'paid') {
-            return res.json({ status: 'paid', order });
+        if (!target) {
+            return res.status(404).json({ message: 'Record not found' });
         }
 
-        if (!order.paymentDetails || !order.paymentDetails.sessionId) {
-            return res.status(400).json({ message: 'No payment session found for this order' });
+        if (target.paymentStatus === 'paid') {
+            return res.json({ status: 'paid', [type]: target });
         }
 
-        const response = await axios.get(`https://api.paymongo.com/v1/checkout_sessions/${order.paymentDetails.sessionId}`, {
+        if (!target.paymentDetails || !target.paymentDetails.sessionId) {
+            return res.status(400).json({ message: 'No payment session found for this record' });
+        }
+
+        const response = await axios.get(`https://api.paymongo.com/v1/checkout_sessions/${target.paymentDetails.sessionId}`, {
             headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Basic ${Buffer.from(PAYMONGO_SECRET_KEY + ':').toString('base64')}`
@@ -342,74 +350,72 @@ const verifyPayment = async (req, res) => {
             const successfulPayment = payments.find(p => p.attributes.status === 'paid');
             
             if (successfulPayment) {
-                console.log(`🔍 Manual verification confirmed payment for order #${order.orderNumber}`);
+                console.log(`🔍 Manual verification confirmed payment for ${type} #${target._id}`);
                 
-                if (order.status === 'cancelled') {
-                    order.paymentStatus = 'paid';
-                    order.paymentMethod = successfulPayment.attributes.source.type;
-                    order.paymentDetails = {
-                        ...order.paymentDetails,
-                        paymentId: successfulPayment.id,
-                        amountPaid: successfulPayment.attributes.amount / 100,
-                        transactionDate: new Date(successfulPayment.attributes.paid_at * 1000)
-                    };
-                    await order.save();
-                    return res.json({ status: 'paid', message: 'Paid but order was already cancelled', order });
-                }
-
-                order.paymentStatus = 'paid';
-                order.status = 'confirmed'; 
-                order.paymentMethod = successfulPayment.attributes.source.type;
-                order.paymentDetails = {
-                    ...order.paymentDetails,
+                target.paymentStatus = 'paid';
+                target.paymentMethod = successfulPayment.attributes.source.type;
+                target.paymentDetails = {
+                    ...target.paymentDetails,
                     paymentId: successfulPayment.id,
-                    amountPaid: successfulPayment.attributes.amount / 100,
-                    transactionDate: new Date(successfulPayment.attributes.paid_at * 1000)
                 };
 
-                for (const item of order.items) {
-                    if (item.itemType === 'product') {
-                        try {
-                            const product = await Product.findById(item.itemId);
-                            if (product) {
-                                const sellerStore = await Store.findOne({ owner: product.addedBy });
-                                if (sellerStore) {
-                                    await StockSyncService.reduceStockOnOrder(item.itemId, item.quantity, sellerStore._id);
-                                } else {
-                                    product.stockQuantity -= item.quantity;
-                                    await product.save();
+                if (type === 'order') {
+                    if (target.status !== 'cancelled') {
+                        target.status = 'confirmed';
+                        
+                        // Deduct stock and update pet availability
+                        for (const item of target.items) {
+                            if (item.itemType === 'product') {
+                                try {
+                                    const product = await Product.findById(item.itemId);
+                                    if (product) {
+                                        const sellerStore = await Store.findOne({ owner: product.addedBy });
+                                        if (sellerStore) {
+                                            await StockSyncService.reduceStockOnOrder(item.itemId, item.quantity, sellerStore._id);
+                                        } else {
+                                            product.stockQuantity -= item.quantity;
+                                            await product.save();
+                                        }
+                                    }
+                                } catch (stockError) {
+                                    console.error(`❌ Stock deduction failed for order ${target._id}:`, stockError.message);
                                 }
+                            } else if (item.itemType === 'pet') {
+                                await Pet.findByIdAndUpdate(item.itemId, { isAvailable: false });
                             }
-                        } catch (stockError) {
-                            console.error(`❌ Stock deduction failed for order ${order._id}:`, stockError.message);
                         }
-                    } else if (item.itemType === 'pet') {
-                        await Pet.findByIdAndUpdate(item.itemId, { isAvailable: false });
+
+                        // Record revenue
+                        await RevenueService.recordPayment('order', target._id);
+
+                        // Auto-generate delivery links
+                        if (target.deliveryMethod === 'delivery') {
+                            await internalCreateDelivery({ orderId: target._id });
+                        }
                     }
+                } else {
+                    // Booking specific updates
+                    if (target.status === 'cancelled') {
+                        target.status = 'pending';
+                    }
+                    // Notify seller and customer
+                    await createNotification({
+                        recipient: target.addedBy,
+                        sender: target.customer,
+                        type: 'booking_status',
+                        title: '💳 Payment Received – Approval Needed',
+                        message: `A customer has paid for booking #${target._id.toString().slice(-8).toUpperCase()}. Please review and approve it.`,
+                        relatedId: target._id,
+                        relatedModel: 'Booking'
+                    });
                 }
 
-                // Record revenue and update store stats via central service
-                await RevenueService.recordPayment('order', order._id);
-                await createNotification({
-                    recipient: order.addedBy,
-                    sender: order.customer,
-                    type: 'order_status',
-                    title: 'Order Paid',
-                    message: `Order #${order.orderNumber} has been paid via ${order.paymentMethod}.`,
-                    relatedId: order._id,
-                    relatedModel: 'Order'
-                });
-
-                // Auto-generate delivery links if it's a delivery order
-                if (order.deliveryMethod === 'delivery') {
-                    await internalCreateDelivery({ orderId: order._id });
-                }
-
-                return res.json({ status: 'paid', order });
+                await target.save();
+                return res.json({ status: 'paid', [type]: target });
             }
         }
 
-        return res.json({ status: order.paymentStatus, message: 'Payment still pending on PayMongo' });
+        return res.json({ status: target.paymentStatus, message: 'Payment still pending on PayMongo' });
 
     } catch (error) {
         console.error('Verify Payment Error:', error.response?.data || error.message);
