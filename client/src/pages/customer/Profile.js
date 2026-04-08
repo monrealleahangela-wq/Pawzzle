@@ -217,8 +217,9 @@ const Profile = () => {
         }
       });
 
-      setProfilePicture(user.avatar || user.profilePicture || null);
-      setPreviewImage(user.avatar || user.profilePicture || null);
+      const currentAvatar = user.avatar || user.profilePicture || null;
+      setProfilePicture(currentAvatar);
+      setPreviewImage(currentAvatar);
 
       // Fetch user's store application status
       fetchApplicationStatus();
@@ -427,6 +428,7 @@ const Profile = () => {
         return;
       }
       setProfilePicture(file);
+      setIsEditing(true); // Automatically enter edit mode when photo is changed
       const reader = new FileReader();
       reader.onloadend = () => {
         setPreviewImage(reader.result);
@@ -461,7 +463,8 @@ const Profile = () => {
       }
       const updatePayload = {
         ...saveData,
-        avatar: finalAvatar
+        avatar: finalAvatar,
+        profilePicture: finalAvatar // Keep both for backward compatibility if any component still uses it
       };
       const response = await userService.updateUser(userId, updatePayload);
       if (response.data) {
@@ -895,8 +898,8 @@ const Profile = () => {
               
               <div className="relative z-10 text-center">
                 <div className="mx-auto w-32 h-32 sm:w-44 sm:h-44 rounded-[3rem] p-2 bg-white/50 backdrop-blur-xl border border-white/50 shadow-2xl relative group overflow-hidden mb-6">
-                  {previewImage || user.profilePicture ? (
-                    <img src={previewImage || getImageUrl(user.profilePicture)} alt="Profile" className="w-full h-full object-cover rounded-[2.5rem] transition-transform duration-700 group-hover:scale-110" />
+                  {previewImage || user.avatar || user.profilePicture ? (
+                    <img src={previewImage || getImageUrl(user.avatar || user.profilePicture)} alt="Profile" className="w-full h-full object-cover rounded-[2.5rem] transition-transform duration-700 group-hover:scale-110" />
                   ) : (
                     <div className="w-full h-full bg-slate-100 rounded-[2.5rem] flex items-center justify-center text-slate-300">
                       <User className="h-16 w-16" />
@@ -904,7 +907,7 @@ const Profile = () => {
                   )}
                   <label className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-all cursor-pointer flex flex-col items-center justify-center gap-2 backdrop-blur-sm">
                     <Camera className="h-8 w-8 text-white animate-bounce-subtle" />
-                    <span className="text-[10px] font-black text-white uppercase tracking-widest">Update HUD</span>
+                    <span className="text-[10px] font-black text-white uppercase tracking-widest">{isEditing ? 'Change Photo' : 'Update Profile'}</span>
                     <input type="file" className="hidden" onChange={handleImageChange} accept="image/*" />
                   </label>
                 </div>
@@ -912,6 +915,30 @@ const Profile = () => {
                 <h1 className="text-3xl sm:text-4xl font-black text-slate-900 uppercase tracking-tighter leading-tight mb-2">
                   {user.firstName ? `${user.firstName} ${user.lastName}` : user.username}
                 </h1>
+                
+                {isEditing && (
+                  <div className="flex items-center justify-center gap-3 mt-4 animate-in slide-in-from-bottom-4 duration-500">
+                    <button 
+                      onClick={handleSave}
+                      disabled={loading}
+                      className="px-6 py-3 bg-primary-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] hover:bg-primary-700 transition-all shadow-xl shadow-primary-100 flex items-center gap-2"
+                    >
+                      {loading ? (
+                        <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                      ) : (
+                        <Save className="h-3.5 w-3.5" />
+                      )}
+                      Commit
+                    </button>
+                    <button 
+                      onClick={handleCancel}
+                      className="px-6 py-3 bg-slate-100 text-slate-600 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] hover:bg-slate-200 transition-all flex items-center gap-2"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                      Abort
+                    </button>
+                  </div>
+                )}
                 
                 <div className="flex flex-col items-center gap-3">
                   <span className="text-slate-400 font-bold text-[10px] uppercase tracking-widest bg-slate-50 px-4 py-1.5 rounded-full border border-slate-100">@{user.username}</span>

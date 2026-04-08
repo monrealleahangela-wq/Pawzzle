@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate, Outlet } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useCart } from '../contexts/CartContext';
+import { getImageUrl } from '../services/apiService';
 import {
   Heart,
   Package,
@@ -273,10 +274,14 @@ const Layout = () => {
                       </Link>
                       <NotificationBell />
                      <Link to="/profile" className="flex items-center gap-2 border border-slate-200 dark:border-slate-700 p-1 rounded-full pr-3 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all">
-                        <div className="w-8 h-8 rounded-full bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center text-primary-700 dark:text-primary-400 font-bold overflow-hidden text-xs">
-                          {user.firstName[0]}
+                        <div className="w-8 h-8 rounded-full bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center text-primary-700 dark:text-primary-400 font-bold overflow-hidden text-xs shadow-inner">
+                          {user.avatar || user.profilePicture ? (
+                            <img src={getImageUrl(user.avatar || user.profilePicture)} alt="" className="w-full h-full object-cover" />
+                          ) : (
+                            user.firstName ? user.firstName[0] : <User className="h-4 w-4" />
+                          )}
                         </div>
-                        <span className="text-sm font-medium text-slate-700 dark:text-slate-300 hidden sm:block">{user.firstName}</span>
+                        <span className="text-sm font-medium text-slate-700 dark:text-slate-300 hidden sm:block truncate max-w-[100px]">{user.firstName}</span>
                      </Link>
                    </>
                 )}
