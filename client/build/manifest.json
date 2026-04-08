@@ -1,15 +1,25 @@
 {
-  "short_name": "Pet Shop",
-  "name": "Pet Shop Platform",
+  "short_name": "Pawzzle",
+  "name": "Pawzzle: Pet Shop & Care Platform",
+  "description": "Premium platform for pet care, products, and community connections.",
   "icons": [
     {
-      "src": "favicon.ico",
-      "sizes": "64x64 32x32 24x24 16x16",
-      "type": "image/x-icon"
+      "src": "images/icons/logo-192.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "images/icons/logo-512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any maskable"
     }
   ],
   "start_url": ".",
   "display": "standalone",
-  "theme_color": "#000000",
-  "background_color": "#ffffff"
+  "theme_color": "#8B4513",
+  "background_color": "#F8FAFC",
+  "orientation": "portrait-primary",
+  "scope": "/"
 }
