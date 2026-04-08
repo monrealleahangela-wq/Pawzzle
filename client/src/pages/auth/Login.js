@@ -4,7 +4,6 @@ import { toast } from 'react-toastify';
 import { useAuth } from '../../contexts/AuthContext';
 import { Heart, Mail, Lock, Eye, EyeOff, AlertCircle, Send, MessageSquare, X } from 'lucide-react';
 import { supportService } from '../../services/apiService';
-import ReCAPTCHA from 'react-google-recaptcha';
 
 const BACKEND = process.env.REACT_APP_API_URL?.replace('/api', '') || 'http://localhost:5000';
 
@@ -24,7 +23,6 @@ const Login = () => {
   const [formData, setFormData] = useState({ email: '', password: '' });
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [captchaToken, setCaptchaToken] = useState(null);
 
   const { login, verify2FA } = useAuth();
   const navigate = useNavigate();
@@ -65,19 +63,13 @@ const Login = () => {
   }, []);
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!captchaToken) {
-      toast.error('Security check failed. Please verify you are not a robot.');
-      return;
-    }
-
     setLoading(true);
     setDeactivationInfo(null);
     localStorage.removeItem('token');
     localStorage.removeItem('user');
 
     try {
-      const result = await login({ ...formData, captchaToken });
+      const result = await login({ ...formData });
       if (result.twoFactorRequired) {
         setTwoFactorRequired(true);
         setLoginEmail(result.email);
@@ -245,16 +237,6 @@ const Login = () => {
                 <Link to="/forgot-password" size="sm" className="text-xs font-bold text-primary-600 hover:text-primary-700">
                   Forgot password?
                 </Link>
-              </div>
-
-              {/* reCAPTCHA - Real Functional Check */}
-              <div className="flex justify-center pt-2">
-                 <ReCAPTCHA
-                   sitekey="6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI"
-                   onChange={(token) => setCaptchaToken(token)}
-                   onExpired={() => setCaptchaToken(null)}
-                   theme="light"
-                 />
               </div>
 
               <button

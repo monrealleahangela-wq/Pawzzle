@@ -4,7 +4,6 @@ import { toast } from 'react-toastify';
 import { useAuth } from '../../contexts/AuthContext';
 import authService from '../../services/authService';
 import { Heart, Mail, Lock, User, Eye, EyeOff, ArrowLeft, ShieldCheck, RefreshCw, Sparkles } from 'lucide-react';
-import ReCAPTCHA from 'react-google-recaptcha';
 
 const Register = () => {
   const [formData, setFormData] = useState({
@@ -27,7 +26,6 @@ const Register = () => {
   });
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [captchaToken, setCaptchaToken] = useState(null);
 
   // OTP state
   const [step, setStep] = useState(1); // 1: form, 2: OTP verification
@@ -67,17 +65,12 @@ const Register = () => {
       return;
     }
 
-    if (!captchaToken) {
-      toast.error('Security check failed. Please verify you are not a robot.');
-      return;
-    }
-
     setLoading(true);
 
     try {
       const { confirmPassword, ...registerData } = formData;
       // We send the simplified data. Backend fields like firstName/lastName are now optional.
-      const result = await authService.sendRegisterOTP({ ...registerData, captchaToken });
+      const result = await authService.sendRegisterOTP({ ...registerData });
 
       if (result.success) {
         toast.success(result.message || 'Verification code sent!');
@@ -279,15 +272,6 @@ const Register = () => {
             <div className="flex items-center gap-2 px-2">
                <Sparkles className="h-3 w-3 text-accent" />
                <p className="text-[9px] font-black text-primary/30 uppercase tracking-widest">Passphrase must include Upper, Lower & Symbol</p>
-            </div>
-
-            {/* reCAPTCHA - Real Functional Check */}
-            <div className="flex justify-center py-2">
-               <ReCAPTCHA
-                 sitekey="6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI"
-                 onChange={(token) => setCaptchaToken(token)}
-                 onExpired={() => setCaptchaToken(null)}
-               />
             </div>
 
             <button type="submit" disabled={loading} className="btn-fun w-full py-6 text-sm shadow-hover">
