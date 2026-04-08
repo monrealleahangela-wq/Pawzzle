@@ -336,10 +336,11 @@ const ProductInventory = () => {
         await inventoryService.adminAddToInventory({
           productId: inventoryForm.productId,
           quantity: Number(inventoryForm.quantity),
+          operation: inventoryForm.operation,
           reorderLevel: Number(inventoryForm.reorderLevel),
           notes: inventoryForm.notes
         });
-        toast.success('Product added to inventory');
+        toast.success(`Inventory stock updated successfully via ${inventoryForm.operation}`);
       }
 
       setShowInventoryModal(false);

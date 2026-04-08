@@ -528,10 +528,24 @@ const addToAdminInventory = async (req, res) => {
 
     const existingInventory = await Inventory.findOne({ store: storeId, product: productId });
     if (existingInventory) {
-      // If it already exists, just treat this as an ADD operation to the existing stock
-      console.log('🔄 Product already in inventory, transitioning to update for store:', storeId);
+      // If it already exists, update based on the specified operation
+      console.log(`🔄 Product already in inventory, applying ${req.body.operation || 'add'} operation for store:`, storeId);
       const oldQuantity = existingInventory.quantity;
-      existingInventory.quantity += (quantity || 0);
+      const operation = req.body.operation || 'add';
+      const changeQty = quantity || 0;
+
+      switch (operation) {
+        case 'add':
+          existingInventory.quantity += changeQty;
+          break;
+        case 'subtract':
+          existingInventory.quantity = Math.max(0, existingInventory.quantity - changeQty);
+          break;
+        case 'set':
+        default:
+          existingInventory.quantity = changeQty;
+          break;
+      }
 
       // Update other fields if provided and not set
       if (reorderLevel) existingInventory.reorderLevel = reorderLevel;
@@ -542,15 +556,18 @@ const addToAdminInventory = async (req, res) => {
       await StockSyncService.updateProductStockFromInventory(productId);
 
       return res.status(200).json({
-        message: `Added ${quantity} to existing stock`,
+        message: `Updated stock (${operation}) from ${oldQuantity} to ${existingInventory.quantity}`,
         inventory: await Inventory.findById(existingInventory._id).populate('product', 'name brand category price images')
       });
     }
 
+    // Calculate initial quantity for a new record based on operation
+    const initialQuantity = req.body.operation === 'subtract' ? 0 : (quantity || 0);
+
     const inventory = new Inventory({
       store: storeId,
       product: productId,
-      quantity: quantity || 0,
+      quantity: initialQuantity,
       reorderLevel: reorderLevel || 10,
       maxStock: maxStock || 1000,
       location,

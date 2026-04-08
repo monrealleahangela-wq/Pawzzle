@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { bookingService, serviceService, voucherService, getImageUrl, petProfileService, paymentService } from '../../services/apiService';
 import { toast } from 'react-toastify';
-import { Clock, User, MapPin, Phone, Mail, DollarSign, CheckCircle, XCircle, AlertCircle, Filter, Search, Calendar, ArrowLeft, ChevronLeft, ChevronRight, Store, X, Activity, ShieldCheck, TrendingUp, Tag, Ticket, Bell, Building, Heart, PawPrint, Trash2, Star, Camera, Eye, CreditCard, Navigation } from 'lucide-react';
+import { Clock, User, MapPin, Phone, Mail, DollarSign, CheckCircle, XCircle, AlertCircle, Filter, Search, Calendar, ArrowLeft, ChevronLeft, ChevronRight, Store, X, Activity, ShieldCheck, TrendingUp, Tag, Ticket, Bell, Building, Heart, PawPrint, Trash2, Star, Camera, Eye, CreditCard, Navigation, Receipt } from 'lucide-react';
 import ReviewModal from '../../components/ReviewModal';
 
 const StoreHoursHint = ({ bookingDate, businessHours }) => {
@@ -1859,61 +1859,85 @@ const Bookings = ({ isSubcomponent = false }) => {
                 </div>
               </div>
 
-              {/* QR Protocol - Secured Booking Verification */}
-              {selectedBooking.paymentStatus === 'paid' && !['cancelled', 'no_show'].includes(selectedBooking.status) && (
-                <div className="bg-slate-900 p-10 rounded-[2.5rem] text-white flex flex-col items-center text-center gap-8 relative overflow-hidden group">
-                  <div className="absolute top-0 right-0 w-64 h-64 bg-primary-600/10 rounded-full blur-[90px] pointer-events-none" />
-                  
-                  {/* QR Status Banner */}
-                  <div className="relative z-10 w-full flex justify-center mb-2">
-                    {selectedBooking.isScanned ? (
-                      <span className="px-5 py-2 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] flex items-center gap-2">
-                        <CheckCircle size={14} /> Protocol Used / Completed
-                      </span>
-                    ) : (selectedBooking.status === 'no_show') ? (
-                      <span className="px-5 py-2 bg-rose-500/20 text-rose-400 border border-rose-500/30 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] flex items-center gap-2">
-                        <AlertCircle size={14} /> QR Code Expired
-                      </span>
-                    ) : (selectedBooking.status === 'approved') ? (
-                      <span className="px-5 py-2 bg-primary-500/20 text-primary-400 border border-primary-500/30 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] flex items-center gap-2 animate-pulse">
-                        <Activity size={14} /> QR Code Active / Ready
-                      </span>
-                    ) : (
-                      <span className="px-5 py-2 bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] flex items-center gap-2">
-                        <Clock size={14} /> Awaiting Approval
-                      </span>
-                    )}
-                  </div>
-
-                  <div className={`relative z-10 w-56 h-56 bg-white p-6 rounded-[2.5rem] shadow-[0_0_50px_rgba(255,255,255,0.2)] flex items-center justify-center transition-all duration-700 ${
-                    (selectedBooking.isScanned || selectedBooking.status === 'no_show') 
-                    ? 'opacity-40 grayscale blur-[2px] scale-95' 
-                    : 'group-hover:scale-105'
+              {/* ── Digital Receipt ── */}
+              {!['cancelled', 'no_show'].includes(selectedBooking.status) && (
+                <div className="rounded-[2.5rem] overflow-hidden border border-slate-100 shadow-xl">
+                  <div className={`p-8 flex items-center justify-between ${
+                    selectedBooking.status === 'approved' || selectedBooking.paymentStatus === 'paid'
+                      ? 'bg-emerald-600 text-white' : 'bg-slate-900 text-white'
                   }`}>
-                    {selectedBooking.qrCode && selectedBooking.status === 'approved' ? (
-                      <img 
-                        src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${selectedBooking.qrCode}`} 
-                        alt="Booking QR" 
-                        className="w-full h-full object-contain"
-                      />
-                    ) : (
-                      <div className="text-slate-200 flex flex-col items-center gap-4">
-                        <Activity size={64} className="opacity-20" />
-                        <span className="text-[10px] font-black uppercase tracking-widest opacity-40">Secured Payload</span>
-                      </div>
-                    )}
+                    <div>
+                      <p className="text-[9px] font-black uppercase tracking-[0.4em] opacity-70 mb-1">
+                        {selectedBooking.paymentStatus === 'paid' ? 'Official Booking Receipt' : 'Pending Receipt'}
+                      </p>
+                      <h4 className="text-2xl font-black uppercase tracking-tighter">
+                        {selectedBooking.status === 'approved' ? '✅ Booking Confirmed' :
+                         selectedBooking.status === 'pending' && selectedBooking.paymentStatus === 'paid' ? '⏳ Awaiting Confirmation' :
+                         selectedBooking.status === 'processing' ? '⚙️ Service In Progress' :
+                         selectedBooking.status === 'finished' ? '🎉 Service Finished' :
+                         selectedBooking.status === 'completed' ? '✅ Completed' :
+                         '⏳ Payment Pending'}
+                      </h4>
+                    </div>
+                    <Receipt className="h-10 w-10 opacity-30" />
                   </div>
 
-                  <div className="relative z-10 max-w-sm">
-                    <h4 className="text-2xl font-black uppercase tracking-tighter mb-3">Service Entry QR</h4>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-relaxed">
-                      {selectedBooking.isScanned 
-                        ? "This QR code has already been scanned and processed by our staff. Verification completed."
-                        : (selectedBooking.status === 'no_show')
-                        ? "The scheduled time for this service has passed or the QR was used after the cutoff. This QR code is now expired."
-                        : (selectedBooking.status === 'approved')
-                        ? "Present this code to the store staff. Scanning this will verify your identity and initiate the 'Processing' phase."
-                        : "Your QR code will be generated and activated once the store verifies your payment and approves your booking."}
+                  <div className="bg-white p-8 space-y-5">
+                    <div className="flex items-center justify-between pb-4 border-b border-dashed border-slate-100">
+                      <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Booking ID</span>
+                      <span className="text-[11px] font-black text-slate-900 uppercase font-mono">#{selectedBooking._id.slice(-12).toUpperCase()}</span>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Service</span>
+                      <span className="text-[11px] font-black text-slate-900 uppercase">{selectedBooking.service?.name}</span>
+                    </div>
+
+                    <div className="flex items-start justify-between">
+                      <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-0.5">Schedule</span>
+                      <div className="text-right">
+                        <p className="text-[11px] font-black text-slate-900 uppercase">{new Date(selectedBooking.bookingDate).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}</p>
+                        <p className="text-[10px] font-bold text-primary-600">{selectedBooking.startTime} – {selectedBooking.endTime}</p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Pet</span>
+                      <span className="text-[11px] font-black text-slate-900 uppercase">{selectedBooking.pet?.name} ({selectedBooking.pet?.type})</span>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Store</span>
+                      <span className="text-[11px] font-black text-slate-900 uppercase">{selectedBooking.store?.name}</span>
+                    </div>
+
+                    <div className="flex items-center justify-between pb-4 border-b border-dashed border-slate-100">
+                      <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Total</span>
+                      <span className="text-xl font-black text-slate-900 tracking-tighter">₱{(selectedBooking.totalPrice || 0).toLocaleString()}</span>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Payment</span>
+                      <span className={`px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest ${
+                        selectedBooking.paymentStatus === 'paid'
+                          ? 'bg-emerald-50 text-emerald-700 border border-emerald-100'
+                          : 'bg-amber-50 text-amber-700 border border-amber-100'
+                      }`}>
+                        {selectedBooking.paymentStatus === 'paid' ? `✅ ${selectedBooking.paymentMethod || 'Online Payment'}` : '⏳ Pending'}
+                      </span>
+                    </div>
+
+                    {/* Navigate to Store */}
+                    <Link
+                      to={`/find-shops?store=${selectedBooking.store?._id || selectedBooking.store}`}
+                      onClick={() => setSelectedBooking(null)}
+                      className="mt-2 w-full flex items-center justify-center gap-3 py-4 bg-primary-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-primary-700 transition-all active:scale-[0.98] shadow-lg shadow-primary-200"
+                    >
+                      <Navigation className="h-4 w-4" />
+                      Navigate to Store
+                    </Link>
+                    <p className="text-center text-[8px] font-bold text-slate-300 uppercase tracking-[0.3em]">
+                      Show this receipt to the staff upon arrival
                     </p>
                   </div>
                 </div>
