@@ -37,7 +37,11 @@ import {
   Moon,
   Sun,
   PawPrint,
-  MapPin
+  MapPin,
+  AlertCircle,
+  HelpCircle,
+  History,
+  ShieldCheck
 } from 'lucide-react';
 import FloatingChatManager from './FloatingChatManager';
 import NotificationBell from './NotificationBell';
@@ -160,11 +164,17 @@ const Layout = () => {
     { type: 'label', label: 'Accounts' },
     { path: '/superadmin/account-management', label: 'Accounts', icon: Users },
     { path: '/superadmin/store-applications', label: 'Applications', icon: FileText },
+    { path: '/superadmin/permissions', label: 'Permissions', icon: ShieldAlert },
     { type: 'label', label: 'System' },
     { path: '/superadmin/transaction-history', label: 'Transactions', icon: DollarSign },
     { path: '/superadmin/booking-history', label: 'Bookings', icon: Calendar },
     { path: '/superadmin/payouts', label: 'Payouts', icon: Wallet },
     { path: '/superadmin/archive', label: 'Archive', icon: Archive },
+    { type: 'label', label: 'Moderation' },
+    { path: '/superadmin/reports', label: 'Reports', icon: AlertCircle },
+    { path: '/superadmin/feedback', label: 'Feedback', icon: Star },
+    { path: '/superadmin/support', label: 'Support', icon: HelpCircle },
+    { path: '/superadmin/activity-history', label: 'Activity', icon: History },
   ];
 
   const publicNavItems = [

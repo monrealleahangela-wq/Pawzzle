@@ -129,7 +129,7 @@ const ReportManagement = () => {
             <input
                             type="text" placeholder="SEARCH BY REPORTER, USER, OR DETAILS..."
                             value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full pl-14 pr-5 py-3.5 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl outline-none focus:ring-2 focus:ring-rose-500/50 placeholder:text-slate-600 transition-all font-sans"
+                            className="w-full pl-16 pr-5 py-3.5 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl outline-none focus:ring-2 focus:ring-rose-500/50 placeholder:text-slate-600 transition-all font-sans"
                         />
           </form>
                     <div className="md:col-span-3 relative">

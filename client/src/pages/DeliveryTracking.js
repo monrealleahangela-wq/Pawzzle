@@ -5,7 +5,7 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import axios from 'axios';
 import { 
-  MapPin, Phone, MessageSquare, Navigation, CheckCircle, Package, Truck, 
+  MapPin, MessageSquare, Navigation, CheckCircle, Package, Truck, 
   Clock, ArrowLeft, Send, User, Store as StoreIcon, ShieldCheck, AlertCircle,
   Map as MapIcon, Info, Navigation2
 } from 'lucide-react';
@@ -396,13 +396,6 @@ const DeliveryTracking = () => {
               </div>
 
               <div className="flex items-center gap-2 w-full sm:w-auto shrink-0">
-                {/* Remove call button for rider per requirement */}
-                {role !== 'rider' && (
-                  <a href={`tel:${delivery.order?.store?.phoneNumber}`} 
-                    className="flex-1 sm:flex-none p-4 bg-slate-50 text-slate-600 rounded-2xl hover:bg-rose-50 hover:text-rose-500 transition-all border border-slate-100 flex items-center justify-center">
-                    <Phone className="h-5 w-5" />
-                  </a>
-                )}
                 
                 {role === 'customer' && (
                   <button onClick={() => setShowComplaintModal(true)} 

@@ -173,7 +173,7 @@ const VoucherManagement = () => {
                         placeholder="SEARCH BY VOUCHER CODE..."
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
-                        className="w-full pl-14 pr-4 py-4 bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl outline-none focus:ring-1 focus:ring-primary-500 placeholder:text-slate-600 transition-all font-sans"
+                        className="w-full pl-16 pr-4 py-4 bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl outline-none focus:ring-1 focus:ring-primary-500 placeholder:text-slate-600 transition-all font-sans"
                     />
                 </div>
             </div>

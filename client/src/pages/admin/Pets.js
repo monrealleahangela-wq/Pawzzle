@@ -412,7 +412,7 @@ const AdminPets = () => {
                   placeholder="SEARCH PETS..." 
                   value={filters.search} 
                   onChange={e => handleFilterChange('search', e.target.value)}
-                  className="w-full pl-14 pr-4 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl text-[10px] font-black uppercase tracking-widest outline-none focus:ring-2 focus:ring-primary-600/10 placeholder:text-slate-300 transition-all font-sans"
+                  className="w-full pl-16 pr-4 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl text-[10px] font-black uppercase tracking-widest outline-none focus:ring-2 focus:ring-primary-600/10 placeholder:text-slate-300 transition-all font-sans"
                 />
               </div>
 
@@ -550,7 +550,7 @@ const AdminPets = () => {
                   placeholder="SEARCH TRANSACTIONS..."
                   value={adoptionSearch}
                   onChange={(e) => setAdoptionSearch(e.target.value)}
-                  className="w-64 pl-14 pr-4 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl text-[10px] font-black uppercase outline-none focus:ring-2 focus:ring-primary-600/10 placeholder:text-slate-300 transition-all font-sans"
+                  className="w-64 pl-16 pr-4 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl text-[10px] font-black uppercase outline-none focus:ring-2 focus:ring-primary-600/10 placeholder:text-slate-300 transition-all font-sans"
                 />
               </div>
             </div>

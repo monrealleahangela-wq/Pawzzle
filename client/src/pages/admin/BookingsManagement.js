@@ -24,17 +24,15 @@ import {
   Plus,
   Link2,
   Truck,
-  Navigation,
-  QrCode
+  Navigation
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import QRScannerModal from '../../components/QRScannerModal';
 
-// statusNextMap: 'approved' is intentionally excluded — the seller advances past
-// 'approved' ONLY by scanning the customer QR code, never by a button click.
+
+// Simple linear state transition mapping for manual progressing
 const statusNextMap = {
   'pending': 'approved',
-  // 'approved' → 'processing' happens via QR scan only
+  'approved': 'processing',
   'processing': 'finished',
   'finished': 'completed'
 };
@@ -47,7 +45,6 @@ const BookingsManagement = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [user, setUser] = useState(null);
-  const [isScannerOpen, setIsScannerOpen] = useState(false);
 
   useEffect(() => {
     const userData = JSON.parse(localStorage.getItem('user') || '{}');
@@ -96,7 +93,7 @@ const BookingsManagement = () => {
     try {
       const res = await adminBookingService.confirmPayment(bookingId);
       const updated = res.data.booking;
-      toast.success('✅ Payment approved! QR code generated for the customer.');
+      toast.success('✅ Payment approved!');
       fetchBookings();
       if (selectedBooking && selectedBooking._id === bookingId) {
         setSelectedBooking(prev => ({
@@ -216,12 +213,6 @@ const BookingsManagement = () => {
           </div>
         </div>
         <div className="flex flex-wrap gap-3">
-          <button
-            onClick={() => setIsScannerOpen(true)}
-            className="group px-6 py-3.5 bg-emerald-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-emerald-700 transition-all flex items-center gap-3 shadow-lg shadow-emerald-900/10"
-          >
-            <QrCode className="h-4 w-4" /> Scan QR Code
-          </button>
           <Link
             to="/admin/services"
             className="group px-6 py-3.5 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-primary-600 transition-all flex items-center gap-3"
@@ -257,7 +248,7 @@ const BookingsManagement = () => {
             <input
               type="text"
               placeholder="SEARCH BOOKINGS..."
-              className="w-full pl-14 pr-4 py-4 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl outline-none focus:ring-2 focus:ring-primary-500/50 placeholder:text-slate-600 transition-all font-sans"
+              className="w-full pl-16 pr-4 py-4 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl outline-none focus:ring-2 focus:ring-primary-500/50 placeholder:text-slate-600 transition-all font-sans"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -625,7 +616,7 @@ const BookingsManagement = () => {
                     <h4 className="text-2xl font-black uppercase tracking-tighter">Payment Received</h4>
                     <p className="text-[10px] font-bold text-white/70 uppercase tracking-widest leading-relaxed">
                       The customer has successfully paid for this booking.
-                      Click <strong>Approve Payment</strong> to confirm and generate their QR entry code.
+                      Click <strong>Approve Payment</strong> to confirm their booking.
                     </p>
                   </div>
                   <button
@@ -633,31 +624,7 @@ const BookingsManagement = () => {
                     className="relative z-10 w-full py-4 bg-white text-amber-700 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-amber-50 transition-all active:scale-[0.98] shadow-xl flex items-center justify-center gap-2"
                   >
                     <ShieldCheck className="h-4 w-4" />
-                    Approve Payment & Generate QR
-                  </button>
-                </div>
-              )}
-
-              {/* ── QR Protocol ── Seller sees only a 'scan' reminder, NOT the QR itself */}
-              {selectedBooking.status === 'approved' && (
-                <div className="p-8 bg-slate-900 rounded-[2.5rem] text-white flex flex-col items-center text-center gap-6 relative overflow-hidden group">
-                  <div className="absolute top-0 right-0 w-32 h-32 bg-primary-600/10 rounded-full blur-3xl" />
-                  <div className="relative z-10">
-                    <div className="flex items-center justify-center gap-3 mb-4">
-                      <div className="w-3 h-3 bg-emerald-500 rounded-full animate-pulse" />
-                      <span className="text-[9px] font-black text-emerald-400 uppercase tracking-[0.4em]">Booking Approved</span>
-                    </div>
-                    <h4 className="text-xl font-black uppercase tracking-tighter mb-2">QR Code Sent to Customer</h4>
-                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest leading-relaxed max-w-[280px]">
-                      The customer has received their QR entry code. Ask them to present it when they arrive.
-                      Use the <strong className="text-primary-400">Scan QR</strong> button above to scan and start the service.
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => setIsScannerOpen(true)}
-                    className="relative z-10 px-8 py-3 bg-primary-600 text-white rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-primary-500 active:scale-95 transition-all shadow-xl shadow-primary-900/40 flex items-center gap-2"
-                  >
-                    <QrCode className="h-4 w-4" /> Scan Customer QR to Start
+                    Approve Payment
                   </button>
                 </div>
               )}
@@ -729,7 +696,6 @@ const BookingsManagement = () => {
               {(user?.role === 'admin' || user?.role === 'staff') &&
                selectedBooking.status !== 'completed' &&
                selectedBooking.status !== 'cancelled' &&
-               selectedBooking.status !== 'approved' && // Must scan QR to go from approved → processing
                statusNextMap[selectedBooking.status] && (
                 <button
                   onClick={() => {
@@ -764,15 +730,7 @@ const BookingsManagement = () => {
         </div>
       )}
 
-      {/* QR Scanner Modal */}
-      <QRScannerModal 
-        isOpen={isScannerOpen} 
-        onClose={() => setIsScannerOpen(false)} 
-        onScanSuccess={() => {
-            setIsScannerOpen(false);
-            fetchBookings();
-        }}
-      />
+      
     </div>
   );
 };

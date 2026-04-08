@@ -262,7 +262,7 @@ const StaffManagement = () => {
                                 value={searchQuery} 
                                 onChange={(e) => setSearchQuery(e.target.value)}
                                 placeholder="SEARCH STAFF MEMBERS..."
-                                className="w-full pl-14 pr-4 py-4 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl outline-none focus:ring-2 focus:ring-primary-500/20 transition-all placeholder:text-slate-600 font-sans"
+                                className="w-full pl-16 pr-4 py-4 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl outline-none focus:ring-2 focus:ring-primary-500/20 transition-all placeholder:text-slate-600 font-sans"
                             />
                         </div>
                         <div className="md:col-span-4 relative group">
