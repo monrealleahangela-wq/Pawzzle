@@ -3,7 +3,7 @@ import { useNavigate, useParams, Link, useLocation } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { orderService, adminOrderService, paymentService, deliveryService, getImageUrl } from '../../services/apiService';
 import { useAuth } from '../../contexts/AuthContext';
-import { Heart, Package, ArrowLeft, Truck, CreditCard, MapPin, Store, Star, CheckCircle, AlertCircle, Link2, Navigation } from 'lucide-react';
+import { Heart, Package, ArrowLeft, Truck, CreditCard, MapPin, Store, Star, CheckCircle, AlertCircle, Link2, Navigation, Phone, Activity } from 'lucide-react';
 import OrderReviewModal from '../../components/OrderReviewModal';
 
 const OrderDetail = () => {
