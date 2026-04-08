@@ -253,12 +253,14 @@ const Layout = () => {
             })}
           </nav>
 
-          <div className="p-4 relative z-10">
-             <button onClick={handleLogout} className="flex items-center gap-4 p-3 w-full rounded-2xl text-slate-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 hover:text-rose-600 transition-all duration-300 group/btn">
-               <LogOut className="h-5 w-5 shrink-0 group-hover/btn:-translate-x-1 transition-transform" />
-               <span className="text-sm font-bold opacity-0 group-hover:opacity-100 transition-opacity duration-300 tracking-wide">Logout</span>
-             </button>
-          </div>
+          {user && (
+            <div className="p-4 relative z-10">
+               <button onClick={handleLogout} className="flex items-center gap-4 p-3 w-full rounded-2xl text-slate-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 hover:text-rose-600 transition-all duration-300 group/btn">
+                 <LogOut className="h-5 w-5 shrink-0 group-hover/btn:-translate-x-1 transition-transform" />
+                 <span className="text-sm font-bold opacity-0 group-hover:opacity-100 transition-opacity duration-300 tracking-wide">Logout</span>
+               </button>
+            </div>
+          )}
         </aside>
       )}
 
@@ -370,18 +372,20 @@ const Layout = () => {
             })}
           </nav>
 
-          <div className="absolute bottom-0 left-0 right-0 p-6 border-t border-slate-50 bg-slate-50/50">
-             <button 
-               onClick={() => {
-                 setIsMobileMenuOpen(false);
-                 handleLogout();
-               }}
-               className="flex items-center gap-4 p-4 w-full bg-white text-slate-500 hover:text-rose-600 rounded-2xl border border-slate-100 shadow-sm transition-all active:scale-[0.98]"
-             >
-               <LogOut className="h-5 w-5 shrink-0" />
-               <span className="text-sm font-bold uppercase tracking-tight">Logout System</span>
-             </button>
-          </div>
+          {user && (
+            <div className="absolute bottom-0 left-0 right-0 p-6 border-t border-slate-50 bg-slate-50/50">
+               <button 
+                 onClick={() => {
+                   setIsMobileMenuOpen(false);
+                   handleLogout();
+                 }}
+                 className="flex items-center gap-4 p-4 w-full bg-white text-slate-500 hover:text-rose-600 rounded-2xl border border-slate-100 shadow-sm transition-all active:scale-[0.98]"
+               >
+                 <LogOut className="h-5 w-5 shrink-0" />
+                 <span className="text-sm font-bold uppercase tracking-tight">Logout System</span>
+               </button>
+            </div>
+          )}
         </aside>
       </div>
       <LogoutModal 
