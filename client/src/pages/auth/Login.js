@@ -4,7 +4,7 @@ import { toast } from 'react-toastify';
 import { useAuth } from '../../contexts/AuthContext';
 import { Heart, Mail, Lock, Eye, EyeOff, AlertCircle, Send, MessageSquare, X } from 'lucide-react';
 import { supportService } from '../../services/apiService';
-import ReCAPTCHA from 'react-google-recaptcha';
+import PremiumCaptcha from '../../components/PremiumCaptcha';
 
 const BACKEND = process.env.REACT_APP_API_URL?.replace('/api', '') || 'http://localhost:5000';
 
@@ -247,18 +247,9 @@ const Login = () => {
                 </Link>
               </div>
 
-              {/* reCAPTCHA - Clipped to hide test warning with refined offset */}
+              {/* Premium Human Verification - No glitches, perfect alignment */}
               <div className="flex justify-center pt-2">
-                <div className="relative overflow-hidden w-[304px] h-[78px] rounded-xl border border-slate-100 bg-white shadow-sm">
-                  <div className="absolute -top-[26px] left-0">
-                    <ReCAPTCHA
-                      sitekey="6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI"
-                      onChange={(token) => setCaptchaToken(token)}
-                      onExpired={() => setCaptchaToken(null)}
-                      theme="light"
-                    />
-                  </div>
-                </div>
+                <PremiumCaptcha onVerify={(token) => setCaptchaToken(token)} />
               </div>
 
               <button

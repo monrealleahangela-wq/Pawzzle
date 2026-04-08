@@ -4,7 +4,7 @@ import { toast } from 'react-toastify';
 import { useAuth } from '../../contexts/AuthContext';
 import authService from '../../services/authService';
 import { Heart, Mail, Lock, User, Eye, EyeOff, ArrowLeft, ShieldCheck, RefreshCw, Sparkles } from 'lucide-react';
-import ReCAPTCHA from 'react-google-recaptcha';
+import PremiumCaptcha from '../../components/PremiumCaptcha';
 
 const Register = () => {
   const [formData, setFormData] = useState({
@@ -281,17 +281,9 @@ const Register = () => {
                <p className="text-[9px] font-black text-primary/30 uppercase tracking-widest">Passphrase must include Upper, Lower & Symbol</p>
             </div>
 
-            {/* reCAPTCHA - Clipped to hide test warning with refined offset */}
+            {/* Premium Human Verification - No glitches, perfect alignment */}
             <div className="flex justify-center py-2">
-               <div className="relative overflow-hidden w-[304px] h-[78px] rounded-xl border border-primary/10 bg-white shadow-sm">
-                  <div className="absolute -top-[26px] left-0">
-                    <ReCAPTCHA
-                      sitekey="6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI"
-                      onChange={(token) => setCaptchaToken(token)}
-                      onExpired={() => setCaptchaToken(null)}
-                    />
-                  </div>
-               </div>
+               <PremiumCaptcha onVerify={(token) => setCaptchaToken(token)} />
             </div>
 
             <button type="submit" disabled={loading} className="btn-fun w-full py-6 text-sm shadow-hover">
