@@ -175,11 +175,12 @@ const updateInventoryQuantity = async (req, res) => {
       return res.status(404).json({ message: 'Inventory item not found' });
     }
 
-    // Verify store access
-    if (req.user.role === 'admin') {
-      const adminStore = await resolveAdminStore(req.user);
-      if (inventory.store.toString() !== adminStore.toString()) {
-        return res.status(403).json({ message: 'Access denied' });
+    // Verify store access (Super admin bypasses this)
+    if (req.user.role !== 'super_admin') {
+      const userStoreId = await resolveAdminStore(req.user);
+      if (!userStoreId || inventory.store.toString() !== userStoreId.toString()) {
+        console.log(`🚫 Inventory Update blocked: User store ${userStoreId} != inventory store ${inventory.store}`);
+        return res.status(403).json({ message: 'Access denied. You can only update inventory for your own store.' });
       }
     }
 
@@ -516,12 +517,21 @@ const addToAdminInventory = async (req, res) => {
       return res.status(404).json({ message: 'Product not found' });
     }
 
-    // Security: Only allow admin to add their own products to their inventory
-    // Super-admins can add any product to their store
-    if (req.user.role !== 'super_admin' && product.addedBy.toString() !== req.user._id.toString()) {
-      return res.status(403).json({
-        message: 'Access denied. You can only add your own products to your inventory.'
-      });
+    // Security: Only allow users to add products belonging to their store
+    // Super-admins can add any product to any store inventory
+    if (req.user.role !== 'super_admin') {
+      const userStoreId = await resolveAdminStore(req.user);
+      
+      // Check if product belongs to user's store OR if user added the product
+      const isProductFromSameStore = product.store && userStoreId && product.store.toString() === userStoreId.toString();
+      const isProductAddedByUser = product.addedBy.toString() === req.user._id.toString();
+      
+      if (!isProductFromSameStore && !isProductAddedByUser) {
+        console.log(`🚫 Inventory Add blocked: Product store ${product.store} != user store ${userStoreId}`);
+        return res.status(403).json({
+          message: 'Access denied. You can only add products belonging to your store to your inventory.'
+        });
+      }
     }
 
     const storeId = await resolveAdminStore(req.user);
