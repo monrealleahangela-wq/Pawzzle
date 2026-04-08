@@ -164,14 +164,14 @@ function App() {
                   <Route path="admin/orders" element={<ProtectedRoute roles={['admin', 'super_admin', 'staff']} staffTypes={['order_staff', 'delivery_staff']}><AdminOrders /></ProtectedRoute>} />
                   <Route path="admin/orders/:id" element={<ProtectedRoute roles={['admin', 'super_admin', 'staff']} staffTypes={['order_staff', 'delivery_staff']}><OrderDetail /></ProtectedRoute>} />
 
-                  {/* Bookings - order_staff and service_staff */}
-                  <Route path="admin/bookings" element={<ProtectedRoute roles={['admin', 'super_admin', 'staff']} staffTypes={['order_staff', 'service_staff']}><BookingsManagement /></ProtectedRoute>} />
+                  {/* Bookings - service_staff only */}
+                  <Route path="admin/bookings" element={<ProtectedRoute roles={['admin', 'super_admin', 'staff']} staffTypes={['service_staff']}><BookingsManagement /></ProtectedRoute>} />
 
                   {/* Services - service_staff only */}
                   <Route path="admin/services" element={<ProtectedRoute roles={['admin', 'super_admin', 'staff']} staffTypes={['service_staff']}><ServiceManagement /></ProtectedRoute>} />
 
-                  {/* Customers - order_staff and delivery_staff */}
-                  <Route path="admin/customers" element={<ProtectedRoute roles={['admin', 'super_admin', 'staff']} staffTypes={['order_staff', 'delivery_staff']}><Customers /></ProtectedRoute>} />
+                  {/* Customers - order_staff only */}
+                  <Route path="admin/customers" element={<ProtectedRoute roles={['admin', 'super_admin', 'staff']} staffTypes={['order_staff']}><Customers /></ProtectedRoute>} />
 
                   {/* Admin-only routes (no staff access) */}
                   <Route path="admin/chat" element={<ProtectedRoute roles={['admin', 'super_admin']}><AdminChat /></ProtectedRoute>} />

@@ -88,9 +88,9 @@ const BASE_CONFIGS = {
    ───────────────────────────────────────────── */
 const STAFF_TYPE_CONFIGS = {
   inventory_staff: [DASH_NAV, PET_NAV, PERMISSION_NAV_MAP.inventory, PROF_NAV],
-  order_staff:     [DASH_NAV, PERMISSION_NAV_MAP.orders, PERMISSION_NAV_MAP.bookings, PERMISSION_NAV_MAP.customers, PROF_NAV],
+  order_staff:     [DASH_NAV, PERMISSION_NAV_MAP.orders, PERMISSION_NAV_MAP.customers, PROF_NAV],
   service_staff:   [DASH_NAV, PERMISSION_NAV_MAP.services, PERMISSION_NAV_MAP.bookings, PROF_NAV],
-  delivery_staff:  [DASH_NAV, { path: '/admin/orders', label: 'Delivery', icon: Truck }, PERMISSION_NAV_MAP.customers, PROF_NAV],
+  delivery_staff:  [DASH_NAV, { path: '/admin/orders', label: 'Delivery', icon: Truck }, PROF_NAV],
 };
 
 /* ─────────────────────────────────────────────

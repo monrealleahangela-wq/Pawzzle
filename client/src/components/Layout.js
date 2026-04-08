@@ -117,7 +117,6 @@ const Layout = () => {
     { path: '/admin/staff', label: 'Staff', icon: Users },
   ];
 
-  // Dynamic nav that shows only modules relevant to this staff member's role
   const getStaffNavItems = (staffType) => {
     const base = [{ type: 'label', label: 'Overview' }, { path: '/admin/dashboard', label: 'Dashboard', icon: Activity }];
     switch (staffType) {
@@ -126,20 +125,19 @@ const Layout = () => {
           ...base,
           { type: 'label', label: 'Inventory' },
           { path: '/admin/pets', label: 'Pets', icon: Heart },
-          { path: '/admin/products', label: 'Products & Stock', icon: Package },
+          { path: '/admin/products', label: 'Products', icon: Package },
         ];
       case 'order_staff':
         return [
           ...base,
-          { type: 'label', label: 'Operations' },
+          { type: 'label', label: 'Order Processing' },
           { path: '/admin/orders', label: 'Orders', icon: ShoppingCart },
-          { path: '/admin/bookings', label: 'Bookings', icon: Calendar },
           { path: '/admin/customers', label: 'Customers', icon: Users },
         ];
       case 'service_staff':
         return [
           ...base,
-          { type: 'label', label: 'Services' },
+          { type: 'label', label: 'Bookings & Services' },
           { path: '/admin/services', label: 'Services', icon: Calendar },
           { path: '/admin/bookings', label: 'Bookings', icon: Calendar },
         ];
@@ -147,8 +145,7 @@ const Layout = () => {
         return [
           ...base,
           { type: 'label', label: 'Logistics' },
-          { path: '/admin/orders', label: 'Orders / Delivery', icon: ShoppingCart },
-          { path: '/admin/customers', label: 'Customers', icon: Users },
+          { path: '/admin/orders', label: 'Deliveries', icon: ShoppingCart },
         ];
       default:
         return base;
