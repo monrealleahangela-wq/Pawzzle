@@ -406,22 +406,24 @@ const EnhancedChatMessenger = ({
             </div>
           )}
 
-          <div className={`relative px-4 py-3 rounded-2xl shadow-sm ${isSystemMessage
+          <div className={`relative px-4 py-3 rounded-2xl shadow-sm break-words ${isSystemMessage
             ? 'bg-slate-50 text-slate-400 italic text-xs'
             : isOwnMessage
               ? 'bg-primary-600 text-white rounded-tr-sm'
               : 'bg-white border border-slate-100 text-slate-700 rounded-tl-sm'
             }`}>
             {isImage ? (
-              <img
-                src={message.content}
-                alt="Sent"
-                className="rounded-xl max-h-60 object-cover cursor-pointer"
-                onLoad={handleImageLoad}
-                onClick={() => window.open(message.content, '_blank')}
-              />
+              <div className="max-w-full">
+                <img
+                  src={message.content}
+                  alt="Sent"
+                  className="rounded-xl max-h-60 sm:max-h-80 w-auto max-w-full object-contain cursor-pointer"
+                  onLoad={handleImageLoad}
+                  onClick={() => window.open(message.content, '_blank')}
+                />
+              </div>
             ) : (
-              <p className="text-sm font-medium leading-relaxed">{message.content}</p>
+              <p className="text-sm font-medium leading-relaxed whitespace-pre-wrap">{message.content}</p>
             )}
           </div>
           {!isSystemMessage && (
@@ -437,7 +439,7 @@ const EnhancedChatMessenger = ({
   const messengerContent = (
     <div
       className={`flex flex-col h-full bg-white transition-transform duration-300 ease-out min-h-0
-        ${!isEmbedded ? 'rounded-3xl shadow-2xl max-w-lg w-full h-[55vh] sm:h-[450px] overflow-hidden border border-white/20' : ''}`}
+        ${!isEmbedded ? 'rounded-3xl shadow-2xl max-w-lg w-full h-full sm:h-[500px] overflow-hidden border border-white/20' : ''}`}
     >
       {!isEmbedded && (
         <div className="flex-shrink-0 px-5 py-3 bg-neutral-900 text-white flex items-center justify-between z-10">
@@ -480,11 +482,11 @@ const EnhancedChatMessenger = ({
 
       <div 
         ref={messagesContainerRef}
-        className="flex-1 flex-grow basis-0 overflow-y-auto p-4 space-y-4 bg-slate-50/50 no-scrollbar overscroll-contain touch-pan-y scroll-smooth"
+        className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50/50 no-scrollbar overscroll-contain touch-pan-y scroll-smooth min-h-0"
       >
         {!transactionRequest && !isSeller && !isAdmin && conversationId && pet && (
-          <div className="bg-white border border-primary-100 p-4 rounded-3xl text-center space-y-3 mx-2 shadow-sm mb-4">
-            <div className="w-12 h-12 bg-primary-50 rounded-full flex items-center justify-center mx-auto">
+          <div className="bg-white border border-secondary-100 p-4 rounded-3xl text-center space-y-3 mx-2 shadow-sm mb-4">
+            <div className="w-12 h-12 bg-secondary-50 rounded-full flex items-center justify-center mx-auto">
               <Heart className="h-6 w-6 text-primary-500" />
             </div>
             <div className="space-y-0.5">
@@ -544,8 +546,8 @@ const EnhancedChatMessenger = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-neutral-900/60 backdrop-blur-[2px] flex items-center justify-center z-[100] p-4 sm:p-6 font-sans transition-colors duration-300">
-      <div className="w-full max-w-lg">
+    <div className="fixed inset-0 bg-neutral-900/60 backdrop-blur-[2px] flex items-center justify-center z-[100] sm:p-6 font-sans transition-colors duration-300">
+      <div className="w-full max-w-lg h-full sm:h-auto">
         {messengerContent}
       </div>
 

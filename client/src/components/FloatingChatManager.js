@@ -369,8 +369,8 @@ const FloatingChatManager = ({ currentUser }) => {
       {isOpen && (
         <div 
           className={`fixed transition-all duration-300 ease-out sm:transition-none overflow-hidden
-            ${isMinimized ? 'bottom-32 sm:bottom-6 h-14' : 'bottom-0 sm:bottom-6 sm:right-6 h-[70vh] sm:h-[600px] sm:w-96'}
-            right-0 left-0 sm:left-auto bg-white rounded-t-3xl sm:rounded-lg shadow-2xl z-40 flex flex-col`}
+            ${isMinimized ? 'bottom-32 sm:bottom-6 h-14' : 'bottom-0 sm:bottom-6 sm:right-6 h-full sm:h-[600px] sm:w-96'}
+            right-0 left-0 sm:left-auto bg-white rounded-t-3xl sm:rounded-lg shadow-2xl z-40 flex flex-col max-h-screen sm:max-h-[85vh]`}
           style={{ 
             transform: `translateY(${dragY}px)`,
             opacity: isDragging ? 0.9 : 1
@@ -531,7 +531,7 @@ const FloatingChatManager = ({ currentUser }) => {
                   {/* Messages */}
                   <div 
                     ref={messagesContainerRef}
-                    className="flex-1 flex-grow basis-0 overflow-y-auto p-3 space-y-3 bg-gray-50/50 overscroll-contain touch-pan-y scroll-smooth"
+                    className="flex-1 overflow-y-auto p-3 space-y-3 bg-gray-50/50 overscroll-contain touch-pan-y scroll-smooth min-h-0"
                   >
                     {messages.map((message) => {
                       const senderId = message.sender?._id || message.sender;
@@ -542,9 +542,9 @@ const FloatingChatManager = ({ currentUser }) => {
                       return (
                         <div
                           key={message._id}
-                          className={`flex flex-col ${isOwnMessage ? 'items-end' : 'items-start'}`}
+                          className={`flex flex-col ${isOwnMessage ? 'items-end' : 'items-start'} animate-fade-in`}
                         >
-                          <div className={`max-w-[85%] px-3 py-2 rounded-2xl shadow-sm ${isSystem
+                          <div className={`max-w-[85%] px-3 py-2 rounded-2xl shadow-sm break-words ${isSystem
                             ? 'mx-auto bg-gray-100 text-gray-500 text-[10px] w-full text-center italic'
                             : isOwnMessage
                               ? 'bg-primary-700 text-white rounded-tr-none'
@@ -556,19 +556,21 @@ const FloatingChatManager = ({ currentUser }) => {
                               </p>
                             )}
                             {isImage ? (
-                              <img
-                                src={message.content}
-                                alt="Sent"
-                                className="rounded-lg max-h-48 object-cover cursor-pointer hover:opacity-90 transition-opacity"
-                                onClick={() => window.open(message.content, '_blank')}
-                                onLoad={() => {
-                                    if (messagesContainerRef.current) {
-                                        messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
-                                    }
-                                }}
-                              />
+                              <div className="max-w-full">
+                                <img
+                                  src={message.content}
+                                  alt="Sent"
+                                  className="rounded-lg max-h-48 sm:max-h-64 w-auto max-w-full object-contain cursor-pointer hover:opacity-90 transition-opacity"
+                                  onClick={() => window.open(message.content, '_blank')}
+                                  onLoad={() => {
+                                      if (messagesContainerRef.current) {
+                                          messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+                                      }
+                                  }}
+                                />
+                              </div>
                             ) : (
-                              <p className="text-sm leading-relaxed">{message.content}</p>
+                              <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
                             )}
                           </div>
                           {!isSystem && (

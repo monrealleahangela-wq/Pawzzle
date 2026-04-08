@@ -108,8 +108,8 @@ const ChatMessenger = ({ isOpen, onClose, pet, seller, currentUser }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 h-[60vh] max-h-[60vh] flex flex-col overflow-hidden">
+    <div className="fixed inset-0 bg-neutral-900/60 backdrop-blur-[2px] flex items-center justify-center z-[100] sm:p-6 font-sans">
+      <div className="bg-white rounded-[2rem] shadow-2xl max-w-2xl w-full h-full sm:h-[60vh] flex flex-col overflow-hidden border border-white/20">
         {/* Header */}
         <div className="flex-shrink-0 flex items-center justify-between p-4 border-b z-10 bg-white rounded-t-lg">
           <div className="flex items-center space-x-3">
@@ -132,7 +132,7 @@ const ChatMessenger = ({ isOpen, onClose, pet, seller, currentUser }) => {
         {/* Messages */}
         <div 
           ref={messagesContainerRef}
-          className="flex-1 overflow-y-auto p-4 space-y-4 overscroll-contain bg-slate-50/30 scroll-smooth"
+          className="flex-1 overflow-y-auto p-4 space-y-4 overscroll-contain bg-slate-50/30 scroll-smooth min-h-0"
         >
           {messages.map((message) => (
             <div
@@ -154,19 +154,21 @@ const ChatMessenger = ({ isOpen, onClose, pet, seller, currentUser }) => {
                   </div>
                 )}
                 {message.type === 'image' || (typeof message.content === 'string' && (message.content.startsWith('/uploads/') || message.content.startsWith('http'))) ? (
-                  <img
-                    src={message.content}
-                    alt="Sent"
-                    className="rounded-xl max-h-64 object-cover cursor-pointer hover:opacity-95 transition-all shadow-sm"
-                    onClick={() => window.open(message.content, '_blank')}
-                    onLoad={() => {
-                        if (messagesContainerRef.current) {
-                            messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
-                        }
-                    }}
-                  />
+                  <div className="max-w-full">
+                    <img
+                      src={message.content}
+                      alt="Sent"
+                      className="rounded-xl max-h-64 sm:max-h-80 w-auto max-w-full object-contain cursor-pointer hover:opacity-95 transition-all shadow-sm"
+                      onClick={() => window.open(message.content, '_blank')}
+                      onLoad={() => {
+                          if (messagesContainerRef.current) {
+                              messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+                          }
+                      }}
+                    />
+                  </div>
                 ) : (
-                  <p className="text-sm leading-relaxed">{message.content}</p>
+                  <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">{message.content}</p>
                 )}
                 <div className="flex items-center justify-end gap-1 mt-1 opacity-50">
                   <span className="text-[9px]">
