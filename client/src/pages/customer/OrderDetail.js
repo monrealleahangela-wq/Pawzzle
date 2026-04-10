@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams, Link, useLocation } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import { orderService, adminOrderService, paymentService, deliveryService, getImageUrl } from '../../services/apiService';
+import { orderService, adminOrderService, paymentService, deliveryService, reviewService, getImageUrl } from '../../services/apiService';
 import { useAuth } from '../../contexts/AuthContext';
-import { Heart, Package, ArrowLeft, Truck, CreditCard, MapPin, Store, Star, CheckCircle, AlertCircle, Link2, Navigation, Phone, Activity } from 'lucide-react';
+import { Heart, Package, ArrowLeft, Truck, CreditCard, MapPin, Store, Star, CheckCircle, AlertCircle, Link2, Navigation, Phone, Activity, ChevronDown, ChevronUp, MessageSquare, FileText, Share2, ClipboardCheck } from 'lucide-react';
 import OrderReviewModal from '../../components/OrderReviewModal';
 
 const OrderDetail = () => {
@@ -16,6 +16,11 @@ const OrderDetail = () => {
   const [reviewItem, setReviewItem] = useState(null);
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
   const [hasAutoReviewed, setHasAutoReviewed] = useState(false);
+  const [reviews, setReviews] = useState([]);
+  const [isShippingCollapsed, setIsShippingCollapsed] = useState(user?.role !== 'customer');
+  const [isPaymentCollapsed, setIsPaymentCollapsed] = useState(user?.role !== 'customer');
+  const [isTimelineCollapsed, setIsTimelineCollapsed] = useState(user?.role !== 'customer');
+  const [isGeneratingInvoice, setIsGeneratingInvoice] = useState(false);
 
   useEffect(() => {
     if (order && !hasAutoReviewed && new URLSearchParams(location.search).get('review') === 'true') {
@@ -63,12 +68,71 @@ const OrderDetail = () => {
   const fetchOrder = async () => {
     try {
       const response = await orderService.getOrderById(id);
-      setOrder(response.data.order);
+      const orderData = response.data.order;
+      setOrder(orderData);
+      
+      // Fetch reviews if user is a seller and order is delivered/completed/finalized
+      if (user?.role !== 'customer' && ['delivered', 'completed', 'finalized'].includes(orderData.status)) {
+        fetchOrderReviews(orderData);
+      }
     } catch (error) {
       toast.error('Failed to load order details');
     } finally {
       setLoading(false);
     }
+  };
+
+  const fetchOrderReviews = async (orderData) => {
+    try {
+      const reviewsData = [];
+      for (const item of orderData.items) {
+        const response = await reviewService.getTargetReviews(item.itemType, item.itemId);
+        const itemReviews = response.data.reviews.filter(r => r.orderId === orderData._id || r.customer?._id === orderData.customer?._id);
+        reviewsData.push(...itemReviews);
+      }
+      setReviews(reviewsData);
+    } catch (error) {
+      console.error('Failed to fetch reviews:', error);
+    }
+  };
+
+  const status = order?.status;
+
+  const handleFinalizeOrder = async () => {
+    try {
+      await adminOrderService.updateOrderStatus(id, { status: 'finalized' });
+      toast.success('Order finalized successfully');
+      fetchOrder();
+    } catch (error) {
+      toast.error('Failed to finalize order');
+    }
+  };
+
+  const handleGenerateInvoice = async () => {
+    setIsGeneratingInvoice(true);
+    toast.info('Generating invoice...', { autoClose: 2000 });
+    
+    // Simulate invoice generation
+    setTimeout(() => {
+      setIsGeneratingInvoice(false);
+      const invoiceData = `
+        PAWZZLE INVOICE
+        Order ID: ${order.orderNumber}
+        Date: ${new Date(order.orderDate).toLocaleDateString()}
+        Customer: ${order.customer?.firstName} ${order.customer?.lastName}
+        Total Amount: ₱${order.totalAmount.toLocaleString()}
+        Status: ${order.status.toUpperCase()}
+      `;
+      const blob = new Blob([invoiceData], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `Invoice-${order.orderNumber}.txt`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      toast.success('Invoice generated and downloaded!');
+    }, 2000);
   };
 
   const handleCancelOrder = async () => {
@@ -143,6 +207,8 @@ const OrderDetail = () => {
       processing: 'bg-secondary-100 text-secondary-800',
       shipped: 'bg-primary-100 text-primary-800',
       delivered: 'bg-green-100 text-green-800',
+      completed: 'bg-blue-100 text-blue-800',
+      finalized: 'bg-slate-900 text-white',
       cancelled: 'bg-red-100 text-red-800'
     };
     return colors[status] || 'bg-gray-100 text-gray-800';
@@ -197,9 +263,14 @@ const OrderDetail = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Order Items */}
+        {/* Order Items & Revenue Breakdown */}
         <div className="card p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Order Items</h2>
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-lg font-black text-slate-900 uppercase tracking-tight">Order Items</h2>
+            {user?.role !== 'customer' && (
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">Revenue Breakdown</span>
+            )}
+          </div>
           <div className="space-y-4">
             {order.items.map((item, index) => (
               <div key={index} className="flex items-start gap-4 pb-4 border-b last:border-b-0 animate-slide-up" style={{ animationDelay: `${index * 50}ms` }}>
@@ -228,7 +299,7 @@ const OrderDetail = () => {
                     {item.itemType} • {item.quantity} × ₱{item.price?.toLocaleString()}
                   </p>
 
-                  {order.status === 'delivered' && (
+                  {user?.role === 'customer' && order.status === 'delivered' && (
                     <button
                       onClick={() => openReviewModal(item)}
                       className="mt-3 flex items-center gap-1.5 px-3 py-1 bg-primary-100 text-primary-700 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-primary-600 hover:text-white transition-all shadow-sm"
@@ -244,23 +315,63 @@ const OrderDetail = () => {
                     </span>
                   </div>
                 </div>
-                <span className="hidden sm:block font-black text-slate-900">
-                  ₱{(item.price * item.quantity).toLocaleString()}
-                </span>
+                <div className="text-right">
+                  <span className="hidden sm:block font-black text-slate-900">
+                    ₱{(item.price * item.quantity).toLocaleString()}
+                  </span>
+                  {user?.role !== 'customer' && (
+                    <p className="text-[9px] font-bold text-emerald-600 uppercase tracking-widest mt-1">
+                      +₱{(item.price * item.quantity * 0.9).toLocaleString()} Net
+                    </p>
+                  )}
+                </div>
               </div>
             ))}
           </div>
+
+          {/* New Transaction Summary for Sellers */}
+          {user?.role !== 'customer' && (
+            <div className="mt-6 pt-6 border-t space-y-3">
+              <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-widest text-slate-500">
+                <span>Subtotal</span>
+                <span>₱{(order.totalAmount - order.shippingFee + order.discountAmount).toLocaleString()}</span>
+              </div>
+              {order.discountAmount > 0 && (
+                <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-widest text-rose-500">
+                  <span>Voucher Discount</span>
+                  <span>-₱{order.discountAmount.toLocaleString()}</span>
+                </div>
+              )}
+              <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-widest text-slate-500">
+                <span>Shipping Fee</span>
+                <span>₱{order.shippingFee.toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-slate-900 pt-2 border-t border-slate-50">
+                <span>Total Payment Received</span>
+                <span className="text-sm">₱{order.totalAmount.toLocaleString()}</span>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Order Details */}
         <div className="space-y-6">
-          {/* Delivery Information */}
-          <div className="card p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">
-              <Truck className="inline h-5 w-5 mr-2" />
-              {order.deliveryMethod === 'pickup' ? 'Pickup Information' : 'Shipping Address'}
-            </h2>
-            <div className="space-y-1 text-sm">
+          {/* Delivery Information - Collapsible for Sellers */}
+          <div className="card overflow-hidden">
+            <button 
+              onClick={() => user?.role !== 'customer' && setIsShippingCollapsed(!isShippingCollapsed)}
+              className={`w-full p-6 flex justify-between items-center hover:bg-slate-50 transition-colors ${user?.role !== 'customer' ? 'cursor-pointer' : 'cursor-default'}`}
+            >
+              <h2 className="text-lg font-black text-slate-900 uppercase tracking-tight flex items-center gap-2">
+                <Truck className="h-5 w-5 text-primary-600" />
+                {order.deliveryMethod === 'pickup' ? 'Pickup Info' : 'Shipping Address'}
+              </h2>
+              {user?.role !== 'customer' && (
+                isShippingCollapsed ? <ChevronDown className="h-5 w-5 text-slate-400" /> : <ChevronUp className="h-5 w-5 text-slate-400" />
+              )}
+            </button>
+            
+            <div className={`px-6 pb-6 space-y-1 text-sm ${user?.role !== 'customer' && isShippingCollapsed ? 'hidden' : 'block'}`}>
               {order.deliveryMethod === 'pickup' ? (
                 <div className="space-y-4">
                   <div className="flex items-start gap-3">
@@ -294,7 +405,6 @@ const OrderDetail = () => {
                         </div>
                       </a>
                       
-                      {/* NEW: Link to Internal Shop GPS */}
                       <Link
                         to={`/find-shops?store=${order.store._id}`}
                         className="w-full py-3 bg-primary-600 text-white rounded-xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-primary-700 transition-all shadow-lg flex items-center justify-center gap-2 group"
@@ -311,28 +421,61 @@ const OrderDetail = () => {
                   </p>
                 </div>
               ) : (
-                <>
-                  <p className="font-medium">{order.customer?.firstName} {order.customer?.lastName}</p>
-                  <p>{order.shippingAddress?.street || 'No street specified'}</p>
-                  <p>
+                <div className="space-y-2">
+                  <p className="font-black text-slate-900 uppercase">{order.customer?.firstName} {order.customer?.lastName}</p>
+                  <p className="text-slate-600 font-medium">{order.shippingAddress?.street || 'No street specified'}</p>
+                  <p className="text-slate-600 font-medium">
                     {order.shippingAddress?.city || 'No city'}, {order.shippingAddress?.province || order.shippingAddress?.state || 'No province'} {order.shippingAddress?.zipCode || ''}
                   </p>
-                  <p>{order.shippingAddress?.country || 'Philippines'}</p>
-                </>
+                  <p className="text-slate-600 font-medium">{order.shippingAddress?.country || 'Philippines'}</p>
+                  
+                  {user?.role !== 'customer' && (
+                    <div className="flex gap-2 mt-4">
+                      <a 
+                        href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${order.shippingAddress?.street}, ${order.shippingAddress?.city}, Philippines`)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex-1 py-3 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-primary-600 transition-all flex items-center justify-center gap-2 shadow-sm"
+                      >
+                        <MapPin className="h-4 w-4" />
+                        Directions
+                      </a>
+                      <button 
+                        onClick={() => navigate(`/admin/chat?userId=${order.customer?._id}`)}
+                        className="flex-1 py-3 bg-primary-100 text-primary-700 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-primary-600 hover:text-white transition-all flex items-center justify-center gap-2 shadow-sm"
+                      >
+                        <MessageSquare className="h-4 w-4" />
+                        Message
+                      </button>
+                    </div>
+                  )}
+                </div>
               )}
               {order.phoneNumber && (
-                <p className="mt-2 text-gray-700"><strong>Contact:</strong> {order.phoneNumber}</p>
+                <p className="mt-4 p-3 bg-orange-50 border border-orange-100 rounded-xl text-orange-900 font-black flex items-center gap-2">
+                  <Phone className="h-4 w-4" />
+                  {order.phoneNumber}
+                </p>
               )}
             </div>
           </div>
 
-          {/* Payment Information */}
-          <div className="card p-6">
-            <h2 className="text-sm font-black text-slate-900 uppercase tracking-widest mb-4 flex items-center gap-2">
-              <CreditCard className="h-4 w-4 text-primary-600" />
-              {user?.role === 'customer' ? 'Payment Summary' : 'Payment Information'}
-            </h2>
-            <div className="space-y-4 text-sm">
+          {/* Payment Information - Collapsible for Sellers */}
+          <div className="card overflow-hidden">
+            <button 
+              onClick={() => user?.role !== 'customer' && setIsPaymentCollapsed(!isPaymentCollapsed)}
+              className={`w-full p-6 flex justify-between items-center hover:bg-slate-50 transition-colors ${user?.role !== 'customer' ? 'cursor-pointer' : 'cursor-default'}`}
+            >
+              <h2 className="text-sm font-black text-slate-900 uppercase tracking-widest flex items-center gap-2">
+                <CreditCard className="h-4 w-4 text-primary-600" />
+                {user?.role === 'customer' ? 'Payment Summary' : 'Payment Information'}
+              </h2>
+              {user?.role !== 'customer' && (
+                isPaymentCollapsed ? <ChevronDown className="h-5 w-5 text-slate-400" /> : <ChevronUp className="h-5 w-5 text-slate-400" />
+              )}
+            </button>
+            
+            <div className={`px-6 pb-6 space-y-4 text-sm ${user?.role !== 'customer' && isPaymentCollapsed ? 'hidden' : 'block'}`}>
               <div className="flex justify-between items-center pb-2 border-b border-slate-50">
                 <span className="text-slate-500 font-bold uppercase tracking-widest text-[10px]">Method</span>
                 <span className="font-black text-slate-900 uppercase">{order.paymentMethod?.replace(/_/g, ' ')}</span>
@@ -344,8 +487,7 @@ const OrderDetail = () => {
                 </span>
               </div>
 
-              {/* Pay Now Button for online payments that are not yet paid */}
-              {order.paymentStatus !== 'paid' &&
+              {user?.role === 'customer' && order.paymentStatus !== 'paid' &&
                 order.status !== 'cancelled' &&
                 ['gcash', 'maya', 'bank_transfer'].includes(order.paymentMethod) && (
                   <button
@@ -366,7 +508,6 @@ const OrderDetail = () => {
                   </button>
                 )}
 
-              {/* Admin Manual Confirmation Button */}
               {user?.role !== 'customer' && order.paymentStatus !== 'paid' && order.status !== 'cancelled' && (
                 <button
                   onClick={handleConfirmPayment}
@@ -377,8 +518,7 @@ const OrderDetail = () => {
                 </button>
               )}
 
-              {/* Manual Refresh Status Button if Pending */}
-              {order.paymentStatus !== 'paid' && order.status !== 'cancelled' && order.paymentDetails?.sessionId && (
+              {order.paymentDetails?.sessionId && order.paymentStatus !== 'paid' && order.status !== 'cancelled' && (
                 <button
                   onClick={async () => {
                     const toastId = toast.loading('Verifying payment with PayMongo...');
@@ -410,8 +550,8 @@ const OrderDetail = () => {
             </div>
           </div>
 
-          {/* Order Actions */}
-          {order.status === 'pending' && order.paymentStatus !== 'paid' && (
+          {/* Order Actions for Customers (Pending) */}
+          {user?.role === 'customer' && order.status === 'pending' && order.paymentStatus !== 'paid' && (
             <div className="card p-6 border-2 border-rose-100">
               <h2 className="text-lg font-black text-slate-900 uppercase tracking-tight mb-4 flex items-center gap-2">
                 <AlertCircle className="h-5 w-5 text-rose-500" />
@@ -426,88 +566,191 @@ const OrderDetail = () => {
             </div>
           )}
 
-          {order.status === 'delivered' && (
+          {/* Key Actions for Sellers (Post-Delivery Operations) */}
+          {user?.role !== 'customer' && ['delivered', 'completed', 'finalized'].includes(order.status) && (
+            <div className="card p-6 border-2 border-primary-500 bg-primary-50/5 shadow-2xl shadow-primary-100">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-xl font-black text-slate-900 uppercase tracking-tighter flex items-center gap-3">
+                  <div className="p-2 bg-primary-600 text-white rounded-xl shadow-lg">
+                    <ClipboardCheck className="h-6 w-6" />
+                  </div>
+                  Seller Operations
+                </h2>
+                <span className="text-[10px] font-black text-primary-600 bg-primary-100 px-3 py-1 rounded-full uppercase tracking-widest">
+                  Post-Delivery Sync
+                </span>
+              </div>
+              
+              <div className="grid grid-cols-1 gap-4">
+                {order.status !== 'finalized' && (
+                  <button
+                    onClick={handleFinalizeOrder}
+                    className="w-full py-5 bg-slate-900 text-white rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] hover:bg-primary-600 transition-all shadow-xl flex items-center justify-center gap-3 group relative overflow-hidden"
+                  >
+                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:animate-shimmer" />
+                    <CheckCircle className="h-5 w-5 group-hover:scale-110 transition-transform" />
+                    Mark Order as Finalized
+                  </button>
+                )}
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <button
+                    onClick={handleGenerateInvoice}
+                    disabled={isGeneratingInvoice}
+                    className="py-4 bg-white border-2 border-slate-200 text-slate-900 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:border-primary-600 hover:text-primary-600 transition-all flex items-center justify-center gap-2 active:scale-95"
+                  >
+                    <FileText className="h-5 w-5" />
+                    {isGeneratingInvoice ? 'Drafting...' : 'Invoice/Receipt'}
+                  </button>
+                  <button
+                    onClick={() => {
+                        const feedbackSection = document.getElementById('feedback-section');
+                        if (feedbackSection) feedbackSection.scrollIntoView({ behavior: 'smooth' });
+                    }}
+                    className="py-4 bg-white border-2 border-slate-200 text-slate-900 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:border-primary-600 hover:text-primary-600 transition-all flex items-center justify-center gap-2 active:scale-95"
+                  >
+                    <Star className="h-5 w-5" />
+                    View Feedback
+                  </button>
+                </div>
+
+                <div className="pt-2">
+                  <button 
+                    onClick={() => navigate(`/admin/chat?userId=${order.customer?._id}`)}
+                    className="w-full py-4 bg-primary-100 text-primary-700 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-primary-600 hover:text-white transition-all flex items-center justify-center gap-2 group"
+                  >
+                    <MessageSquare className="h-5 w-5 group-hover:rotate-12 transition-transform" />
+                    Chat with Customer
+                  </button>
+                  <p className="text-[9px] font-bold text-slate-400 text-center mt-3 uppercase tracking-[0.2em]">
+                    Reference ID: #{order.orderNumber} • Placed {new Date(order.orderDate).toLocaleDateString()}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Customer Feedback Card (Only for Customers) */}
+          {user?.role === 'customer' && order.status === 'delivered' && (
             <div className="card p-6 border-2 border-emerald-100 bg-emerald-50/20">
               <h2 className="text-lg font-black text-slate-900 uppercase tracking-tight mb-4 flex items-center gap-2">
                 <CheckCircle className="h-5 w-5 text-emerald-500" />
                 Order Completed
               </h2>
               <p className="text-xs text-slate-500 font-bold uppercase tracking-widest mb-6 leading-relaxed">
-                This order has been successfully delivered. Please take a moment to review the items to help other customers and help us improve.
+                This order has been successfully delivered. Please take a moment to review the items to help our community improve.
               </p>
               
-              <div className="space-y-3">
-                <div className="p-4 bg-white rounded-2xl border border-emerald-100 flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                        <Star className="h-5 w-5 text-secondary-400 fill-current" />
-                        <span className="text-[10px] font-black text-slate-900 uppercase tracking-widest">Feedback Requested</span>
-                    </div>
-                </div>
-
-                {user?.role === 'customer' && (
-                  <button 
-                    onClick={() => {
-                        if (order.items.length === 1) {
-                            openReviewModal(order.items[0]);
-                        } else {
-                            // More robust way to find the items heading
-                            const headings = Array.from(document.querySelectorAll('h2'));
-                            const itemHeading = headings.find(h => h.textContent.includes('Order Items'));
-                            if (itemHeading) {
-                                itemHeading.scrollIntoView({ behavior: 'smooth' });
-                                toast.info('Please select which item you want to review below!', { icon: '⭐' });
-                            } else {
-                                window.scrollTo({ top: 300, behavior: 'smooth' });
-                            }
+              <button 
+                onClick={() => {
+                    if (order.items.length === 1) {
+                        openReviewModal(order.items[0]);
+                    } else {
+                        const headings = Array.from(document.querySelectorAll('h2'));
+                        const itemHeading = headings.find(h => h.textContent.includes('Order Items'));
+                        if (itemHeading) {
+                            itemHeading.scrollIntoView({ behavior: 'smooth' });
+                            toast.info('Please select an item to review below!', { icon: '⭐' });
                         }
-                    }}
-                    className="w-full py-4 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-primary-600 transition-all shadow-xl hover:scale-[1.02] flex items-center justify-center gap-2 group"
-                  >
-                    <Star className="h-4 w-4 group-hover:rotate-12 transition-transform" />
-                    Write a Review Now
-                  </button>
-                )}
-              </div>
+                    }
+                }}
+                className="w-full py-4 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-primary-600 transition-all shadow-xl flex items-center justify-center gap-2"
+              >
+                <Star className="h-4 w-4" />
+                Write a Review
+              </button>
             </div>
           )}
 
-          {/* Enhanced Delivery & Complaint Tracking */}
+          {/* Enhanced Delivery & Complaint Tracking - Collapsible for Sellers */}
           {order.deliveryMethod === 'delivery' && order.delivery && (
             <div className={`card overflow-hidden border-2 ${order.delivery.complaints?.some(c => c.status === 'pending') ? 'border-rose-100 shadow-rose-50' : 'border-slate-100'}`}>
-              <div className="p-6 bg-slate-50 border-b border-slate-100">
-                <div className="flex justify-between items-center mb-4">
-                  <h2 className="text-sm font-black text-slate-900 uppercase tracking-widest flex items-center gap-2">
-                    <Truck className="h-4 w-4 text-primary-600" />
-                    Delivery Timeline
-                  </h2>
+              <button 
+                onClick={() => user?.role !== 'customer' && setIsTimelineCollapsed(!isTimelineCollapsed)}
+                className={`w-full p-6 flex justify-between items-center bg-slate-50 border-b border-slate-100 hover:bg-slate-100 transition-colors ${user?.role !== 'customer' ? 'cursor-pointer' : 'cursor-default'}`}
+              >
+                <h2 className="text-sm font-black text-slate-900 uppercase tracking-widest flex items-center gap-2">
+                  <Truck className="h-4 w-4 text-primary-600" />
+                  Delivery Timeline
+                </h2>
+                <div className="flex items-center gap-3">
                   <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border ${order.delivery.isRiderVerified ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-slate-100 text-slate-500 border-slate-200'}`}>
                     {order.delivery.isRiderVerified ? 'Rider Verified' : 'Awaiting Rider'}
                   </span>
+                  {user?.role !== 'customer' && (
+                    isTimelineCollapsed ? <ChevronDown className="h-5 w-5 text-slate-400" /> : <ChevronUp className="h-5 w-5 text-slate-400" />
+                  )}
                 </div>
+              </button>
 
-                {order.delivery.riderName && (
-                  <div className="flex items-center gap-4 bg-white p-4 rounded-2xl border border-slate-100 mb-4 shadow-sm">
-                    <div className="w-10 h-10 bg-slate-900 text-white rounded-xl flex items-center justify-center font-black">
-                      {order.delivery.riderName.charAt(0).toUpperCase()}
+              <div className={user?.role !== 'customer' && isTimelineCollapsed ? 'hidden' : 'block'}>
+                <div className="p-6 space-y-4">
+                  {order.delivery.riderName && (
+                    <div className="flex items-center gap-4 bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
+                      <div className="w-10 h-10 bg-slate-900 text-white rounded-xl flex items-center justify-center font-black">
+                        {order.delivery.riderName.charAt(0).toUpperCase()}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Assigned Rider</p>
+                        <p className="text-sm font-black text-slate-900 truncate uppercase">{order.delivery.riderName}</p>
+                      </div>
+                      {user?.role !== 'customer' && order.delivery.riderPhone && (
+                        <a href={`tel:${order.delivery.riderPhone}`} className="p-3 bg-slate-50 text-slate-600 rounded-xl border border-slate-100 hover:bg-rose-50 hover:text-rose-500 transition-all">
+                          <Phone className="h-4 w-4" />
+                        </a>
+                      )}
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Assigned Rider</p>
-                      <p className="text-sm font-black text-slate-900 truncate uppercase">{order.delivery.riderName}</p>
+                  )}
+                  
+                  {order.delivery.deliveredAt && (
+                    <div className="p-5 bg-emerald-50 border-2 border-emerald-100 rounded-2xl flex flex-col gap-3 relative overflow-hidden">
+                      <div className="absolute top-0 right-0 p-3">
+                        <CheckCircle className="h-10 w-10 text-emerald-100 rotate-12" />
+                      </div>
+                      <div className="flex items-center gap-3 relative z-10">
+                        <div className="p-2 bg-emerald-600 text-white rounded-lg shadow-sm">
+                          <ClipboardCheck className="h-4 w-4" />
+                        </div>
+                        <div>
+                          <p className="text-[10px] font-black text-slate-900 uppercase tracking-[0.15em]">Delivery Verification</p>
+                          <p className="text-sm font-black text-emerald-700 uppercase tracking-tighter">
+                            Delivered at {new Date(order.delivery.deliveredAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • {new Date(order.delivery.deliveredAt).toLocaleDateString()}
+                          </p>
+                        </div>
+                      </div>
+                      
+                      {order.delivery.proofOfDelivery?.photo && (
+                        <div className="mt-2 space-y-2 relative z-10">
+                          <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+                            <FileText className="h-3 w-3" />
+                            Registered Visual Proof
+                          </p>
+                          <img 
+                            src={getImageUrl(order.delivery.proofOfDelivery.photo)} 
+                            alt="Proof of Delivery" 
+                            className="w-full h-48 object-cover rounded-xl border border-white shadow-md"
+                          />
+                        </div>
+                      )}
                     </div>
-                    {user?.role !== 'customer' && order.delivery.riderPhone && (
-                      <a href={`tel:${order.delivery.riderPhone}`} className="p-3 bg-slate-50 text-slate-600 rounded-xl border border-slate-100 hover:bg-rose-50 hover:text-rose-500 transition-all">
-                        <Phone className="h-4 w-4" />
-                      </a>
-                    )}
-                  </div>
-                )}
-                
-                {order.delivery.riderVehicleInfo && (
-                  <div className="flex items-center gap-2 px-1 text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-4">
-                    <Activity className="h-3.5 w-3.5" />
-                    {order.delivery.riderVehicleInfo}
-                  </div>
-                )}
+                  )}
+                  
+                  {order.delivery.riderVehicleInfo && (
+                    <div className="flex items-center gap-2 px-1 text-[9px] font-black text-slate-400 uppercase tracking-widest">
+                      <Activity className="h-3.5 w-3.5 text-primary-500" />
+                      Transport: {order.delivery.riderVehicleInfo}
+                    </div>
+                  )}
+
+                  {user?.role !== 'customer' && (
+                    <div className="pt-2">
+                      <button className="w-full py-4 bg-rose-50 text-rose-600 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-rose-600 hover:text-white transition-all border-2 border-rose-100 active:scale-95 flex items-center justify-center gap-2">
+                        <AlertCircle className="h-4 w-4" />
+                        Report Delivery Issue
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* Complaints List */}
@@ -588,7 +831,7 @@ const OrderDetail = () => {
               </div>
             </div>
           )}
-          {user?.role !== 'customer' && order.deliveryMethod === 'delivery' && order.status !== 'cancelled' && order.status !== 'delivered' && (
+          {user?.role !== 'customer' && order.deliveryMethod === 'delivery' && !['cancelled', 'delivered', 'completed', 'finalized'].includes(order.status) && (
             <div className="card p-6 border-2 border-primary-100 bg-primary-50/10">
               <h2 className="text-sm font-black text-slate-900 uppercase tracking-widest mb-4 flex items-center gap-2">
                 <Truck className="h-4 w-4 text-primary-600" />
@@ -621,6 +864,47 @@ const OrderDetail = () => {
                   </>
                 )}
               </div>
+            </div>
+          )}
+
+          {/* Feedback Section for Sellers */}
+          {user?.role !== 'customer' && ['delivered', 'completed', 'finalized'].includes(order.status) && (
+            <div id="feedback-section" className="card p-6 border-2 border-secondary-100 bg-secondary-50/10">
+              <h2 className="text-sm font-black text-slate-900 uppercase tracking-widest mb-4 flex items-center gap-2">
+                <Star className="h-4 w-4 text-secondary-500" />
+                Customer Feedback
+              </h2>
+              {reviews.length > 0 ? (
+                <div className="space-y-4">
+                  {reviews.map((review) => (
+                    <div key={review._id} className="p-4 bg-white rounded-2xl border border-secondary-100 shadow-sm">
+                      <div className="flex justify-between items-center mb-2">
+                        <div className="flex items-center gap-1">
+                          {[...Array(5)].map((_, i) => (
+                            <Star key={i} className={`h-3 w-3 ${i < review.rating ? 'text-secondary-400 fill-current' : 'text-slate-200'}`} />
+                          ))}
+                        </div>
+                        <span className="text-[9px] font-bold text-slate-400 uppercase">{new Date(review.createdAt).toLocaleDateString()}</span>
+                      </div>
+                      <p className="text-xs text-slate-700 font-medium italic mb-2">"{review.comment}"</p>
+                      <div className="flex justify-between items-center">
+                        <span className="text-[9px] font-black text-slate-900 uppercase tracking-widest">By: {review.customer?.firstName}</span>
+                        <button 
+                          onClick={() => navigate(`/admin/chat?userId=${order.customer?._id}`)}
+                          className="text-[9px] font-black text-primary-600 uppercase tracking-widest hover:underline"
+                        >
+                          Reply via Chat →
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-6">
+                  <Star className="h-8 w-8 text-slate-200 mx-auto mb-2" />
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">No feedback received yet</p>
+                </div>
+              )}
             </div>
           )}
         </div>

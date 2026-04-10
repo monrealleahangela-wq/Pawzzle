@@ -16,7 +16,7 @@ const { authenticate, adminOrStaff } = require('../middleware/auth');
 
 // Validation rules
 const updateOrderStatusValidation = [
-  body('status').isIn(['pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled']).withMessage('Invalid order status')
+  body('status').isIn(['pending', 'confirmed', 'processing', 'shipped', 'delivered', 'completed', 'finalized', 'cancelled']).withMessage('Invalid order status')
 ];
 
 // Admin routes (filtered by user's store)

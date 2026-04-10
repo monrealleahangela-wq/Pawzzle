@@ -326,7 +326,7 @@ const updateOrderStatus = async (req, res) => {
     if (trackingNumber) order.trackingNumber = trackingNumber;
 
     // Bidirectional Stock Sync
-    const activeStatuses = ['confirmed', 'processing', 'shipped', 'delivered'];
+    const activeStatuses = ['confirmed', 'processing', 'shipped', 'delivered', 'completed', 'finalized'];
     const inactiveStatuses = ['pending', 'cancelled'];
 
     // 1. DEDUCT stock (Inactive -> Active)

@@ -40,7 +40,7 @@ app.use(passport.initialize());
 // Database Connection
 mongoose.connect(process.env.MONGODB_URI)
   .then(() => console.log('✅ MongoDB connected successfully'))
-  .catch((error) => console.error('❌ MongoDB connection error:', error.message));
+  .catch((error) => console.error('❌ MongoDB connection error:', error));
 
 // Routes
 app.use('/api/auth', require('./routes/auth'));

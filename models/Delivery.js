@@ -81,7 +81,13 @@ const deliverySchema = new mongoose.Schema({
     status: { type: String, enum: ['pending', 'resolved'], default: 'pending' },
     createdAt: { type: Date, default: Date.now },
     resolvedAt: { type: Date }
-  }]
+  }],
+  proofOfDelivery: {
+    photo: { type: String },
+    signature: { type: String },
+    method: { type: String, enum: ['photo', 'qr', 'signature'] },
+    timestamp: { type: Date }
+  }
 }, {
   timestamps: true
 });
