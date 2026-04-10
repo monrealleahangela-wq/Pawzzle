@@ -329,27 +329,50 @@ const OrderDetail = () => {
             ))}
           </div>
 
-          {/* New Transaction Summary for Sellers */}
+          {/* Transaction Summary for Sellers */}
           {user?.role !== 'customer' && (
-            <div className="mt-6 pt-6 border-t space-y-3">
-              <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-widest text-slate-500">
-                <span>Subtotal</span>
-                <span>₱{(order.totalAmount - order.shippingFee + order.discountAmount).toLocaleString()}</span>
+            <div className="mt-8 pt-6 border-t border-slate-100 space-y-4">
+              <div className="flex items-center gap-2 mb-2">
+                <FileText className="h-4 w-4 text-primary-600" />
+                <h3 className="text-[11px] font-black text-slate-900 uppercase tracking-widest">Financial Summary</h3>
               </div>
-              {order.discountAmount > 0 && (
-                <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-widest text-rose-500">
-                  <span>Voucher Discount</span>
-                  <span>-₱{order.discountAmount.toLocaleString()}</span>
+              <div className="bg-slate-50 rounded-2xl p-4 space-y-3 border border-slate-100">
+                <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-widest text-slate-500">
+                  <span>Subtotal</span>
+                  <span className="text-slate-900">₱{(order.totalAmount - order.shippingFee + order.discountAmount).toLocaleString()}</span>
+                </div>
+                {order.discountAmount > 0 && (
+                  <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-widest text-rose-500">
+                    <span>Voucher Discount</span>
+                    <span>-₱{order.discountAmount.toLocaleString()}</span>
+                  </div>
+                )}
+                <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-widest text-slate-500">
+                  <span>Shipping Fee</span>
+                  <span className="text-slate-900">₱{order.shippingFee.toLocaleString()}</span>
+                </div>
+                <div className="pt-3 border-t border-slate-200 flex justify-between items-end">
+                  <div>
+                    <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Earnings</p>
+                    <p className="text-xl font-black text-primary-600 tracking-tighter leading-none">
+                      ₱{order.totalAmount.toLocaleString()}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Method</p>
+                    <p className="text-[10px] font-black text-slate-900 uppercase tracking-tight">
+                      {order.paymentMethod?.replace(/_/g, ' ')}
+                    </p>
+                  </div>
+                </div>
+              </div>
+              
+              {order.paymentDetails?.referenceNumber && (
+                <div className="flex items-center justify-between px-4 py-2 bg-emerald-50 rounded-xl border border-emerald-100">
+                  <span className="text-[9px] font-black text-emerald-700 uppercase tracking-widest">Ref Number</span>
+                  <span className="text-[10px] font-black text-slate-900 select-all font-mono uppercase">{order.paymentDetails.referenceNumber}</span>
                 </div>
               )}
-              <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-widest text-slate-500">
-                <span>Shipping Fee</span>
-                <span>₱{order.shippingFee.toLocaleString()}</span>
-              </div>
-              <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-slate-900 pt-2 border-t border-slate-50">
-                <span>Total Payment Received</span>
-                <span className="text-sm">₱{order.totalAmount.toLocaleString()}</span>
-              </div>
             </div>
           )}
         </div>
