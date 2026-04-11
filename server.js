@@ -137,7 +137,10 @@ if (isProduction && buildPath) {
 }
 
 const PORT = process.env.PORT || 5000;
-server.listen(PORT, '0.0.0.0', () => {
+if (process.env.NODE_ENV !== 'production') {
+  server.listen(PORT, () => {
     console.log(`✅ Server is running on port ${PORT}`);
-    console.log(`🌐 Real-time Socket.io active`);
-});
+  });
+}
+
+module.exports = app;
