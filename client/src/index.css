@@ -15,13 +15,8 @@ body {
   background-color: #8B4513; /* Match new brown theme */
   min-height: 100vh;
   min-height: 100dvh;
-  cursor: none !important; /* Hide default cursor */
 }
 
-/* Ensure all clickable elements also hide the cursor */
-a, button, select, input, textarea, [role="button"], .clickable {
-  cursor: none !important;
-}
 
 /* Fallback for when custom cursor is disabled or debugging */
 .show-cursor, .show-cursor * {
