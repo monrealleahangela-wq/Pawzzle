@@ -79,7 +79,7 @@ app.get('/api/public-audit-apps', async (req, res) => {
 app.get('/api/dump-apps', async (req, res) => {
   try {
     const StoreApplication = require('./models/StoreApplication');
-    const apps = await StoreApplication.find({ isDeleted: false }).limit(50).select('_id status businessName createdAt');
+    const apps = await StoreApplication.find({}).limit(100).select('_id status businessName isDeleted createdAt');
     res.json({ count: apps.length, data: apps });
   } catch (e) {
     res.status(500).json({ error: e.message });
