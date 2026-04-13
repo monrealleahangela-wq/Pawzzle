@@ -74,16 +74,11 @@ const createTransporter = async () => {
   const user = process.env.EMAIL_USER || 'pawzzle.spark@gmail.com';
   const pass = process.env.EMAIL_PASS || 'aknzqkqqdumntchq';
 
-  // Optimized SMTP transport using secure port 465 for higher deliverability on cloudy environments
+  // Robust Gmail transporter config (Matches working emailService.js)
   const transporter = nodemailer.createTransport({
     service: 'gmail',
-    host: 'smtp.gmail.com',
-    port: 465,
-    secure: true,
     auth: { user, pass },
-    pool: true,
-    maxConnections: 1,
-    connectionTimeout: 60000,
+    connectionTimeout: 30000,
     tls: {
       rejectUnauthorized: false
     }
@@ -167,7 +162,7 @@ const sendRegistrationOTP = async (email, otp, firstName, userData = null) => {
     `);
 
     // 2. PRIMARY Delivery (Direct SMTP / Gmail)
-    // Most reliable for "Real Emails" from the configured account
+    let smtpErrorMessage = 'No SMTP error captured';
     try {
       console.log('🔄 Attempting SMTP Delivery (Primary)...');
       const { transporter, fromEmail } = await createTransporter();
@@ -180,6 +175,7 @@ const sendRegistrationOTP = async (email, otp, firstName, userData = null) => {
       console.log('✅ SMTP Delivery Successful');
       return true;
     } catch (smtpError) {
+      smtpErrorMessage = smtpError.message;
       console.warn('⚠️ SMTP Delivery Failed, falling back to Resend:', smtpError.message);
     }
 
@@ -187,7 +183,7 @@ const sendRegistrationOTP = async (email, otp, firstName, userData = null) => {
     const resendSuccess = await sendWithResend(email, '🔐 Verify Your Pawzzle Account', bodyHtml);
     if (resendSuccess) return true;
 
-    throw new Error('All email delivery methods failed.');
+    throw new Error(`All email delivery methods failed. (SMTP Error: ${smtpErrorMessage})`);
   } catch (error) {
     console.error('❌ DISPATCH FAILURE:', { email, error: error.message });
     throw error;
