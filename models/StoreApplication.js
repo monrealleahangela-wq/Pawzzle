@@ -19,11 +19,11 @@ const storeApplicationSchema = new mongoose.Schema({
   businessLicense: {
     number: {
       type: String,
-      required: true
+      required: false
     },
     issuingAuthority: {
       type: String,
-      required: true
+      required: false
     },
     issueDate: {
       type: Date,
@@ -40,7 +40,7 @@ const storeApplicationSchema = new mongoose.Schema({
   },
   taxId: {
     type: String,
-    required: true
+    required: false
   },
   contactInfo: {
     phone: {

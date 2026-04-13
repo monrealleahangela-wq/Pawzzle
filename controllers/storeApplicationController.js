@@ -131,14 +131,11 @@ const submitApplication = async (req, res) => {
     application.autoVerify();
 
     // All applications now require manual review by Super Admin
-    // We set status based on score but DO NOT auto-approve
-    if (application.verificationScore >= 60) {
-      application.status = 'under_review';
-      application.reviewNotes = 'Application submitted and awaiting manual review';
-    } else {
-      application.status = 'requires_more_info';
-      application.reviewNotes = 'Application submitted but may require additional documentation due to low verification score';
-    }
+    // We set status to under_review to ensure it appears in the admin dashboard
+    application.status = 'under_review';
+    application.reviewNotes = application.verificationScore >= 60 
+      ? 'Application submitted and awaiting manual review'
+      : 'Application submitted but may require additional documentation due to low verification score';
 
     await application.save();
 

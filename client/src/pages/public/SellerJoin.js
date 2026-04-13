@@ -284,7 +284,7 @@ const SellerJoin = () => {
                             required 
                             value={regData.password} 
                             onChange={handleRegChange} 
-                            className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-xs font-bold outline-none focus:ring-4 focus:ring-primary-500/5 pr-14" 
+                            className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-xs font-bold outline-none focus:ring-4 focus:ring-primary-500/5 pr-14 appearance-none [&::-ms-reveal]:hidden [&::-ms-clear]:hidden" 
                         />
                         <button 
                             type="button" 
@@ -304,7 +304,7 @@ const SellerJoin = () => {
                             required 
                             value={regData.confirmPassword} 
                             onChange={handleRegChange} 
-                            className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-xs font-bold outline-none focus:ring-4 focus:ring-primary-500/5 pr-14" 
+                            className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-xs font-bold outline-none focus:ring-4 focus:ring-primary-500/5 pr-14 appearance-none [&::-ms-reveal]:hidden [&::-ms-clear]:hidden" 
                         />
                         <button 
                             type="button" 
@@ -359,19 +359,9 @@ const SellerJoin = () => {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                   <div className="space-y-1.5">
+                   <div className="col-span-2 space-y-1.5">
                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Commercial Store Name</label>
                       <input type="text" required value={storeData.businessName} onChange={(e) => handleStoreChange('businessName', e.target.value)} className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-xs font-bold uppercase outline-none focus:ring-4 focus:ring-primary-500/5" />
-                   </div>
-                   <div className="space-y-1.5">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Business Classification</label>
-                      <select value={storeData.businessType} onChange={(e) => handleStoreChange('businessType', e.target.value)} className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-xs font-bold uppercase outline-none focus:ring-4 focus:ring-primary-500/5">
-                         <option value="pet_store">Pet Store</option>
-                         <option value="breeder">Breeder</option>
-                         <option value="veterinary">Veterinary Clinic</option>
-                         <option value="grooming">Pet Grooming</option>
-                         <option value="other">Other</option>
-                      </select>
                    </div>
                 </div>
 
