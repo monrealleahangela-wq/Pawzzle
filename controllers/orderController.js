@@ -273,7 +273,7 @@ const createOrder = async (req, res) => {
       phoneNumber,
       paymentMethod,
       notes,
-      status: 'pending' // Orders start as pending and require admin confirmation
+      status: 'pending_payment' // Orders start as awaiting payment protocol
     };
 
     console.log('📝 Creating order with data:', JSON.stringify(orderData, null, 2));
