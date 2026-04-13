@@ -25,7 +25,7 @@ const getTransporter = () => {
     console.log(`[EmailService] Creating transporter for: ${user}`);
 
     return nodemailer.createTransport({
-        host: 'smtp.gmail.com',
+        host: 'ipv4.smtp.gmail.com',
         port: 465,
         secure: true,
         auth: {
