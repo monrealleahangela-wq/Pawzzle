@@ -6,11 +6,8 @@ const dns = require('dns');
 // CRITICAL: Ensure DNS resolution works for Email/DB on restricted networks
 try {
   dns.setServers(['8.8.8.8', '8.8.4.4', '1.1.1.1']);
-  if (dns.setDefaultResultOrder) {
-    dns.setDefaultResultOrder('ipv4first');
-  }
 } catch (e) {
-  console.warn('[OTP Service] DNS override failed');
+  console.warn('[Server] DNS override failed');
 }
 
 const Otp = require('../models/Otp');
@@ -80,7 +77,7 @@ const createTransporter = async () => {
   // Robust Gmail transporter config (Matches working emailService.js)
   // FORCE family: 4 to resolve ENETUNREACH IPv6 errors on restricted cloud hosts
   const transporter = nodemailer.createTransport({
-    host: 'ipv4.smtp.gmail.com',
+    host: 'smtp.gmail.com',
     port: 465,
     secure: true,
     auth: {
@@ -88,6 +85,7 @@ const createTransporter = async () => {
         pass: pass
     },
     family: 4, // FORCE IPv4 for Render/Vercel network compatibility
+    localAddress: '0.0.0.0', // Force local IPv4 interface
     connectionTimeout: 30000,
     greetingTimeout: 30000,
     socketTimeout: 30000,

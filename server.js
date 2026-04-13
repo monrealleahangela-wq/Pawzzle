@@ -6,9 +6,6 @@ const dns = require('dns');
 // CRITICAL: Ensure DNS resolution works for Email/DB on restricted networks
 try {
   dns.setServers(['8.8.8.8', '8.8.4.4', '1.1.1.1']);
-  if (dns.setDefaultResultOrder) {
-    dns.setDefaultResultOrder('ipv4first');
-  }
 } catch (e) {
   console.warn('[Server] DNS override failed');
 }
