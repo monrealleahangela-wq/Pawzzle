@@ -216,9 +216,14 @@ const updateStaff = async (req, res) => {
         const { id } = req.params;
         const { firstName, lastName, phone, staffType, isActive, permissions } = req.body;
 
-        const staff = await User.findOne({ _id: id, store: req.user.store, role: 'staff' });
+        const query = { _id: id, role: 'staff' };
+        if (req.user.role !== 'super_admin') {
+            query.store = req.user.store;
+        }
+
+        const staff = await User.findOne(query);
         if (!staff) {
-            return res.status(404).json({ message: 'Staff member not found' });
+            return res.status(404).json({ message: 'Staff member not found or access denied' });
         }
 
         if (firstName) staff.firstName = firstName;
@@ -226,7 +231,11 @@ const updateStaff = async (req, res) => {
         if (phone !== undefined) staff.phone = phone;
         if (staffType) staff.staffType = staffType;
         if (isActive !== undefined) staff.isActive = isActive;
-        if (permissions) staff.permissions = permissions;
+        
+        if (permissions) {
+            staff.permissions = permissions;
+            staff.markModified('permissions'); // Ensure Mongoose detects object structure changes
+        }
 
         await staff.save();
 

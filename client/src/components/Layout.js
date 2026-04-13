@@ -120,39 +120,52 @@ const Layout = () => {
     { path: '/admin/staff', label: 'Staff', icon: Users },
   ];
 
-  const getStaffNavItems = (staffType) => {
-    const base = [{ type: 'label', label: 'Overview' }, { path: '/admin/dashboard', label: 'Dashboard', icon: Activity }];
-    switch (staffType) {
-      case 'inventory_staff':
-        return [
-          ...base,
-          { type: 'label', label: 'Inventory' },
-          { path: '/admin/pets', label: 'Pets', icon: Heart },
-          { path: '/admin/products', label: 'Products', icon: Package },
-        ];
-      case 'order_staff':
-        return [
-          ...base,
-          { type: 'label', label: 'Order Processing' },
-          { path: '/admin/orders', label: 'Orders', icon: ShoppingCart },
-          { path: '/admin/customers', label: 'Customers', icon: Users },
-        ];
-      case 'service_staff':
-        return [
-          ...base,
-          { type: 'label', label: 'Bookings & Services' },
-          { path: '/admin/services', label: 'Services', icon: Calendar },
-          { path: '/admin/bookings', label: 'Bookings', icon: Calendar },
-        ];
-      case 'delivery_staff':
-        return [
-          ...base,
-          { type: 'label', label: 'Logistics' },
-          { path: '/admin/orders', label: 'Deliveries', icon: ShoppingCart },
-        ];
-      default:
-        return base;
+  const getStaffNavItems = (user) => {
+    const permissions = user?.permissions || {};
+    const base = [
+      { type: 'label', label: 'Overview' }, 
+      { path: '/admin/dashboard', label: 'Dashboard', icon: Activity },
+      { path: '/admin/insights', label: 'Intelligence', icon: Brain },
+    ];
+
+    const items = [...base];
+
+    // Catalog Section
+    const catalogItems = [];
+    if (permissions.pets?.view) catalogItems.push({ path: '/admin/pets', label: 'Pets', icon: Heart });
+    if (permissions.inventory?.view) catalogItems.push({ path: '/admin/products', label: 'Products', icon: Package });
+    if (permissions.services?.view) catalogItems.push({ path: '/admin/services', label: 'Services', icon: Calendar });
+    
+    if (catalogItems.length > 0) {
+      items.push({ type: 'label', label: 'Catalog' });
+      items.push(...catalogItems);
     }
+
+    // Operations Section
+    const opsItems = [];
+    if (permissions.orders?.view) opsItems.push({ path: '/admin/orders', label: 'Orders', icon: ShoppingCart });
+    if (permissions.bookings?.view) opsItems.push({ path: '/admin/bookings', label: 'Bookings', icon: Calendar });
+    if (permissions.customers?.view) opsItems.push({ path: '/admin/customers', label: 'Customers', icon: Users });
+    if (permissions.admin_chat?.view) opsItems.push({ path: '/admin/chat', label: 'Chat', icon: MessageSquare });
+    if (permissions.reviews?.view) opsItems.push({ path: '/admin/reviews', label: 'Reviews', icon: Star });
+
+    if (opsItems.length > 0) {
+      items.push({ type: 'label', label: 'Operations' });
+      items.push(...opsItems);
+    }
+
+    // Marketing/Tools Section
+    const toolItems = [];
+    if (permissions.vouchers?.view) toolItems.push({ path: '/admin/vouchers', label: 'Vouchers', icon: Ticket });
+    if (permissions.analytics?.view) toolItems.push({ path: '/admin/stats', label: 'Stats', icon: TrendingUp });
+    if (permissions.staff?.view) toolItems.push({ path: '/admin/staff', label: 'Staff', icon: Users });
+
+    if (toolItems.length > 0) {
+      items.push({ type: 'label', label: 'Management' });
+      items.push(...toolItems);
+    }
+
+    return items;
   };
 
   const superAdminNavItems = [
@@ -186,7 +199,7 @@ const Layout = () => {
 
   const navItems = user?.role === 'customer' ? customerNavItems :
     user?.role === 'super_admin' ? superAdminNavItems :
-      user?.role === 'staff' ? getStaffNavItems(user?.staffType) :
+      user?.role === 'staff' ? getStaffNavItems(user) :
         !user ? publicNavItems : adminNavItems;
 
   const [scrollProgress, setScrollProgress] = useState(0);

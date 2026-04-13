@@ -184,7 +184,9 @@ const verifyRegisterOTP = async (req, res) => {
         address: user.address,
         role: user.role,
         avatar: user.avatar,
-        store: user.store
+        store: user.store,
+        staffType: user.staffType,
+        permissions: user.permissions
       }
     });
   } catch (error) {
@@ -293,7 +295,8 @@ const register = async (req, res) => {
         id: user._id, username: user.username, email: user.email,
         firstName: user.firstName, lastName: user.lastName,
         phone: user.phone, address: user.address,
-        role: user.role, avatar: user.avatar, store: user.store
+        role: user.role, avatar: user.avatar, store: user.store,
+        staffType: user.staffType, permissions: user.permissions
       }
     });
   } catch (error) {
@@ -414,6 +417,7 @@ const login = async (req, res) => {
         firstName: user.firstName, lastName: user.lastName,
         phone: user.phone, address: user.address,
         role: user.role, avatar: user.avatar, store: user.store,
+        staffType: user.staffType, permissions: user.permissions,
         requiresPasswordChange: user.requiresPasswordChange
       }
     });
@@ -482,7 +486,8 @@ const updateProfile = async (req, res) => {
         id: user._id, username: user.username, email: user.email,
         firstName: user.firstName, lastName: user.lastName,
         phone: user.phone, address: user.address,
-        role: user.role, avatar: user.avatar, store: user.store
+        role: user.role, avatar: user.avatar, store: user.store,
+        staffType: user.staffType, permissions: user.permissions
       }
     });
   } catch (error) {
@@ -723,7 +728,8 @@ const verify2FA = async (req, res) => {
         id: user._id, username: user.username, email: user.email,
         firstName: user.firstName, lastName: user.lastName,
         phone: user.phone, address: user.address,
-        role: user.role, avatar: user.avatar, store: user.store
+        role: user.role, avatar: user.avatar, store: user.store,
+        staffType: user.staffType, permissions: user.permissions
       }
     });
 
