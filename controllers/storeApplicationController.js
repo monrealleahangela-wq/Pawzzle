@@ -167,10 +167,11 @@ const submitApplication = async (req, res) => {
 // Get all applications (Super Admin only)
 const getAllApplications = async (req, res) => {
   try {
-    const { status, page = 1, limit = 50 } = req.query; // Increased limit to ensure all 11 show
+    const { status, page = 1, limit = 50 } = req.query;
     console.log('🔍 FETCHING APPLICATIONS. Filters:', { status, page, limit });
     
-    const filter = { isDeleted: false };
+    // Use $ne: true to catch records where the field is missing entirely
+    const filter = { isDeleted: { $ne: true } };
     
     if (status && status !== 'all') {
       if (status === 'under_review' || status === 'pending') {
@@ -441,9 +442,10 @@ const restoreApplication = async (req, res) => {
 // Audit count for debugging
 const getAuditCount = async (req, res) => {
   try {
-    const total = await StoreApplication.countDocuments({});
+    const total = await StoreApplication.countDocuments({ isDeleted: { $ne: true } });
     const deleted = await StoreApplication.countDocuments({ isDeleted: true });
     const statusCounts = await StoreApplication.aggregate([
+      { $match: { isDeleted: { $ne: true } } },
       { $group: { _id: "$status", count: { $sum: 1 } } }
     ]);
     res.json({ total_records: total, deleted_records: deleted, status_breakdown: statusCounts });

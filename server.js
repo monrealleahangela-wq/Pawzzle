@@ -62,43 +62,8 @@ app.get('/api/auth/debug-env', (req, res) => {
   });
 });
 
-// Public Audit Link (Temporal)
-app.get('/api/public-audit-apps', async (req, res) => {
-  try {
-    const StoreApplication = require('./models/StoreApplication');
-    const total = await StoreApplication.countDocuments({});
-    const deleted = await StoreApplication.countDocuments({ isDeleted: true });
-    const statuses = await StoreApplication.aggregate([{ $group: { _id: "$status", count: { $sum: 1 } } }]);
-    res.json({ total, deleted, statuses });
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
-});
-
-// Deep Dump (Temporal)
-app.get('/api/dump-apps', async (req, res) => {
-  try {
-    const StoreApplication = require('./models/StoreApplication');
-    const apps = await StoreApplication.find({}).limit(100).select('_id status businessName isDeleted createdAt');
-    res.json({ count: apps.length, data: apps });
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
-});
-
-// Database Debug (Temporal)
-app.get('/api/db-debug', (req, res) => {
-  const mongoose = require('mongoose');
-  const rawUri = process.env.MONGODB_URI || 'NOT_FOUND';
-  const maskedUri = rawUri.replace(/:([^:@]+)@/, ':****@'); // Hide password
-  
-  res.json({
-    db_name: mongoose.connection.name,
-    is_connected: mongoose.connection.readyState === 1,
-    host: mongoose.connection.host,
-    uri_used: maskedUri
-  });
-});
+// Final health check
+app.get('/api/health', (req, res) => res.status(200).json({ status: 'OK', version: 'v3-stable' }));
 
 // Routes
 app.use('/api/auth', require('./routes/auth'));
