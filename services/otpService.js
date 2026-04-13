@@ -41,7 +41,7 @@ const sendWithResend = async (to, subject, html) => {
 
   try {
     const response = await axios.post('https://api.resend.com/emails', {
-      from: 'Pawzzle Security <onboarding@resend.dev>',
+      from: 'Pawzzle <no-reply@pawzzle.io>',
       to: [to],
       subject: subject,
       html: html
