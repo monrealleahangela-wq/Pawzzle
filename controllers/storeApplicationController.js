@@ -5,8 +5,7 @@ const Store = require('../models/Store');
 const multer = require('multer');
 const path = require('path');
 const { createNotification } = require('./notificationController');
-const { CloudinaryStorage } = require('multer-storage-cloudinary');
-const cloudinary = require('cloudinary').v2;
+const { uploadDoc, cloudinary } = require('../middleware/upload');
 
 // Configure multer for file uploads
 // Configure Cloudinary storage for documents
@@ -70,7 +69,7 @@ const submitApplication = async (req, res) => {
     const applicationData = {
       ...req.body,
       applicant: req.user.id,
-      businessLicense: safeParse(req.body.businessLicense),
+      businessLicense: safeParse(req.body.businessLicense) || {},
       contactInfo: safeParse(req.body.contactInfo),
       socialMedia: safeParse(req.body.socialMedia),
       references: safeParse(req.body.references),
