@@ -159,17 +159,25 @@ const Register = () => {
 
   if (step === 2) {
     return (
-      <div className="min-h-screen relative flex items-center justify-center p-6 overflow-hidden bg-[#fafaf7]">
-        <div className="max-w-md w-full animate-pop">
-          <div className="card-paw-interactive p-8 md:p-12 text-center relative group">
-            <div className="absolute -top-10 left-1/2 -translate-x-1/2 w-20 h-20 bg-primary rounded-3xl flex items-center justify-center shadow-hover rotate-6">
-              <ShieldCheck className="h-10 w-10 text-white" />
+      <div className="min-h-screen relative flex items-center justify-center p-6 overflow-hidden">
+        {/* Decorative Blobs */}
+        <div className="fixed inset-0 z-[-1] pointer-events-none">
+          <div className="absolute top-[-10%] right-[-10%] w-[600px] h-[600px] bg-primary-50 rounded-full blur-[120px] animate-blob" />
+          <div className="absolute bottom-[-10%] left-[-10%] w-[500px] h-[500px] bg-secondary-50 rounded-full blur-[100px] animate-blob" style={{ animationDelay: '-3s' }} />
+        </div>
+
+        <div className="max-w-md w-full animate-fade-in">
+          <div className="glass-morphism rounded-[40px] p-10 md:p-12 border border-white/40 shadow-2xl relative">
+            <div className="absolute -top-12 left-1/2 -translate-x-1/2 w-24 h-24 bg-gradient-to-br from-primary-500 to-secondary-500 rounded-3xl flex items-center justify-center shadow-xl shadow-primary-200 rotate-6 group hover:rotate-12 transition-transform duration-500 overflow-hidden p-4">
+               <ShieldCheck className="h-12 w-12 text-white" />
             </div>
-            <div className="mt-8 mb-8 space-y-3">
-              <h2 className="text-3xl font-black text-header tracking-tighter">Secure Access</h2>
-              <p className="text-primary/50 font-medium text-sm">We sent a 6-digit code to <span className="text-primary font-black">{formData.email}</span></p>
+
+            <div className="text-center mt-8 mb-10 space-y-2">
+              <h2 className="text-3xl font-black text-slate-900 tracking-tight uppercase">Secure Verification</h2>
+              <p className="text-slate-500 font-medium text-xs">A 6-digit code has been sent to <span className="text-primary-600 font-black">{formData.email}</span></p>
             </div>
-            <div className="flex justify-center gap-2 mb-8">
+
+            <div className="flex justify-center gap-2 mb-10">
               {otpDigits.map((digit, index) => (
                 <input
                   key={index}
@@ -177,23 +185,26 @@ const Register = () => {
                   type="text" inputMode="numeric" maxLength={1}
                   value={digit} onChange={(e) => handleOtpChange(index, e.target.value)}
                   onKeyDown={(e) => handleOtpKeyDown(index, e)}
-                  className="w-12 h-16 text-center text-2xl font-black rounded-2xl border-2 border-primary/10 focus:border-accent focus:ring-4 focus:ring-accent/10 outline-none transition-all"
+                  className="w-11 h-16 text-center text-2xl font-black rounded-2xl border border-slate-100 bg-white/50 focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 outline-none transition-all shadow-sm"
                 />
               ))}
             </div>
-            <div className="mb-6">
+
+            <div className="mb-8 text-center">
               {resendCooldown > 0 ? (
-                <p className="text-[10px] font-black text-primary/30 uppercase tracking-[0.2em]">Resend in {resendCooldown}s</p>
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest bg-slate-50 py-2 px-4 rounded-full inline-block">Resend available in {resendCooldown}s</p>
               ) : (
-                <button onClick={handleResendOTP} className="text-[10px] font-black text-accent uppercase tracking-[0.2em] flex items-center gap-2 mx-auto">
-                  <RefreshCw className="h-3 w-3" /> Resend Code
+                <button onClick={handleResendOTP} className="text-[10px] font-black text-primary-600 uppercase tracking-widest flex items-center gap-2 mx-auto hover:text-primary-700 hover:scale-105 transition-all">
+                  <RefreshCw className="h-3 w-3" /> Resend Verification Code
                 </button>
               )}
             </div>
-            <button onClick={handleVerifyOTP} disabled={otpLoading} className="btn-fun w-full py-5">
+
+            <button onClick={handleVerifyOTP} disabled={otpLoading} className="btn btn-primary w-full py-5 text-xs font-black uppercase tracking-[0.2em] shadow-xl shadow-primary-100">
               {otpLoading ? 'Verifying...' : 'Complete Registration'}
             </button>
-            <button onClick={() => setStep(1)} className="mt-6 text-xs text-primary/40 font-bold uppercase tracking-widest flex items-center justify-center gap-2 mx-auto">
+
+            <button onClick={() => setStep(1)} className="mt-8 text-[10px] text-slate-400 font-black uppercase tracking-widest flex items-center justify-center gap-2 mx-auto hover:text-slate-600">
                <ArrowLeft className="h-3 w-3" /> Start Over
             </button>
           </div>
@@ -203,99 +214,106 @@ const Register = () => {
   }
 
   return (
-    <div className="min-h-screen relative flex items-center justify-center p-6 overflow-hidden bg-[#fafaf7]">
-      <div className="max-w-md w-full animate-slide-up">
-        <div className="card-paw-interactive p-8 md:p-12 space-y-10 group">
-          <div className="flex flex-col items-center gap-4 text-center">
-            <div className="w-16 h-16 bg-primary rounded-3xl flex items-center justify-center text-white shadow-fun rotate-[-10deg] group-hover:rotate-0 transition-transform">
-               <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C10.34 2 9 3.34 9 5c0 1.66 1.34 3 3 3s3-1.34 3-3c0-1.66-1.34-3-3-3zM5 8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3zm14 0c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3zm12 11c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5z"/></svg>
-            </div>
-            <div className="space-y-2">
-              <h1 className="text-4xl font-black text-header tracking-tighter leading-none">Join the <span className="text-accent underline decoration-8 decoration-accent/20 underline-offset-4">Pack.</span></h1>
-              <p className="text-sm text-primary/50 font-medium">Register in seconds with zero friction.</p>
-            </div>
+    <div className="min-h-screen relative flex items-center justify-center p-6 overflow-hidden">
+      {/* Decorative Blobs */}
+      <div className="fixed inset-0 z-[-1] pointer-events-none">
+        <div className="absolute top-[-10%] right-[-10%] w-[600px] h-[600px] bg-primary-50 rounded-full blur-[120px] animate-blob" />
+        <div className="absolute bottom-[-10%] left-[-10%] w-[500px] h-[500px] bg-secondary-50 rounded-full blur-[100px] animate-blob" style={{ animationDelay: '-3s' }} />
+      </div>
+
+      <div className="max-w-md w-full animate-fade-in">
+        <div className="glass-morphism rounded-[40px] p-10 md:p-12 border border-white/40 shadow-2xl relative">
+          <div className="absolute -top-12 left-1/2 -translate-x-1/2 w-24 h-24 bg-gradient-to-br from-primary-500 to-secondary-500 rounded-3xl flex items-center justify-center shadow-xl shadow-primary-200 rotate-6 group hover:rotate-12 transition-transform duration-500 overflow-hidden p-4">
+            <img src="/images/logo.png" alt="Logo" className="w-full h-full object-contain" />
+          </div>
+
+          <div className="text-center mt-8 mb-10 space-y-2">
+            <h2 className="text-3xl font-black text-slate-900 tracking-tight">Join the Pack</h2>
+            <p className="text-slate-500 font-medium">Create your premium pet profile</p>
           </div>
 
           <form className="space-y-6" onSubmit={handleSubmit}>
-            <div className="space-y-2">
-              <label className="text-[10px] font-black uppercase tracking-[0.2em] text-primary/40 ml-1">Username / Name</label>
-              <div className="relative group/input">
-                <User className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-primary/20 group-focus-within/input:text-accent transition-colors" />
-                <input
-                  name="username" type="text" required
-                  className="w-full pl-12 pr-4 py-5 bg-primary/5 border border-transparent rounded-[1.5rem] focus:bg-white focus:border-accent focus:ring-4 focus:ring-accent/10 outline-none transition-all font-bold text-header"
-                  placeholder="TheLuckyPaw"
-                  value={formData.username}
-                  onChange={handleChange}
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-[10px] font-black uppercase tracking-[0.2em] text-primary/40 ml-1">Email Address</label>
-              <div className="relative group/input">
-                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-primary/20 group-focus-within/input:text-accent transition-colors" />
-                <input
-                  name="email" type="email" required
-                  className="w-full pl-12 pr-4 py-5 bg-primary/5 border border-transparent rounded-[1.5rem] focus:bg-white focus:border-accent focus:ring-4 focus:ring-accent/10 outline-none transition-all font-bold text-header"
-                  placeholder="woof@example.com"
-                  value={formData.email}
-                  onChange={handleChange}
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-4">
               <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-primary/40 ml-1">Passphrase</label>
-                <div className="relative group/input">
-                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-primary/20" />
+                <label className="text-xs font-black uppercase tracking-widest text-slate-400 ml-1">Username / Name</label>
+                <div className="input-container group">
+                  <User className="input-icon h-5 w-5" />
                   <input
-                    name="password" type={showPassword ? 'text' : 'password'} required
-                    className="w-full pl-12 pr-10 py-5 bg-primary/5 border border-transparent rounded-[1.5rem] focus:bg-white focus:border-accent focus:ring-4 focus:ring-accent/10 outline-none transition-all font-bold text-header"
-                    placeholder="••••••••"
-                    value={formData.password}
-                    onChange={handleChange}
-                  />
-                  <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-primary/20 hover:text-accent">
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-primary/40 ml-1">Confirm</label>
-                <div className="relative group/input">
-                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-primary/20" />
-                  <input
-                    name="confirmPassword" type={showPassword ? 'text' : 'password'} required
-                    className="w-full pl-12 pr-4 py-5 bg-primary/5 border border-transparent rounded-[1.5rem] focus:bg-white focus:border-accent focus:ring-4 focus:ring-accent/10 outline-none transition-all font-bold text-header"
-                    placeholder="••••••••"
-                    value={formData.confirmPassword}
+                    name="username" type="text" required
+                    className="input input-with-icon bg-white/50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 outline-none transition-all font-medium text-slate-700 py-4"
+                    placeholder="TheLuckyPaw"
+                    value={formData.username}
                     onChange={handleChange}
                   />
                 </div>
               </div>
+
+              <div className="space-y-2">
+                <label className="text-xs font-black uppercase tracking-widest text-slate-400 ml-1">Email Address</label>
+                <div className="input-container group">
+                  <Mail className="input-icon h-5 w-5" />
+                  <input
+                    name="email" type="email" required
+                    className="input input-with-icon bg-white/50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 outline-none transition-all font-medium text-slate-700 py-4"
+                    placeholder="woof@example.com"
+                    value={formData.email}
+                    onChange={handleChange}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-xs font-black uppercase tracking-widest text-slate-400 ml-1">Passphrase</label>
+                  <div className="input-container group">
+                    <Lock className="input-icon h-4 w-4" />
+                    <input
+                      name="password" type={showPassword ? 'text' : 'password'} required
+                      className="input input-with-both-icons bg-white/50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 outline-none transition-all font-medium text-slate-700 py-4 text-xs"
+                      placeholder="••••••••"
+                      value={formData.password}
+                      onChange={handleChange}
+                    />
+                    <button type="button" onClick={() => setShowPassword(!showPassword)} className="input-icon-right pointer-events-auto hover:text-primary-500">
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-black uppercase tracking-widest text-slate-400 ml-1">Confirm</label>
+                  <div className="input-container group">
+                    <Lock className="input-icon h-4 w-4" />
+                    <input
+                      name="confirmPassword" type={showPassword ? 'text' : 'password'} required
+                      className="input input-with-icon bg-white/50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 outline-none transition-all font-medium text-slate-700 py-4 text-xs"
+                      placeholder="••••••••"
+                      value={formData.confirmPassword}
+                      onChange={handleChange}
+                    />
+                  </div>
+                </div>
+              </div>
             </div>
 
-            <div className="flex items-center gap-2 px-2">
-               <Sparkles className="h-3 w-3 text-accent" />
-               <p className="text-[9px] font-black text-primary/30 uppercase tracking-widest">Passphrase must include Upper, Lower & Symbol</p>
+            <div className="flex items-center gap-2 px-1">
+               <Sparkles className="h-3 w-3 text-primary-500" />
+               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Upper, Lower, Number & Symbol</p>
             </div>
 
             {/* Premium Human Verification - No glitches, perfect alignment */}
-            <div className="flex justify-center py-2">
+            <div className="flex justify-center pt-2">
                <PremiumCaptcha onVerify={(token) => setCaptchaToken(token)} />
             </div>
 
-            <button type="submit" disabled={loading} className="btn-fun w-full py-6 text-sm shadow-hover">
-              {loading ? 'Processing...' : 'Get Instant Access'}
+            <button type="submit" disabled={loading} className="btn btn-primary w-full py-5 text-xs font-black uppercase tracking-[0.2em] shadow-xl shadow-primary-100">
+              {loading ? 'Processing...' : 'Create Account'}
             </button>
           </form>
 
-          <div className="pt-8 border-t border-primary/5 text-center">
-            <p className="text-xs text-primary/40 font-bold uppercase tracking-widest">
+          <div className="mt-10 pt-8 border-t border-slate-100 text-center">
+            <p className="text-sm text-slate-500 font-medium">
               Already have an account?{' '}
-              <Link to="/login" className="text-accent hover:underline decoration-2 underline-offset-4 decoration-accent/30">Sign In</Link>
+              <Link to="/login" className="text-primary-600 font-black hover:underline underline-offset-4">Sign In</Link>
             </p>
           </div>
         </div>

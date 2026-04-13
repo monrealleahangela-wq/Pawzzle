@@ -152,7 +152,9 @@ const sendRegistrationOTP = async (email, otp, firstName) => {
     await transporter.sendMail({ from: `"Pawzzle" <${fromEmail}>`, to: email, subject: '🔐 Verify Your Pawzzle Account', html: bodyHtml });
     return true;
   } catch (error) {
-    console.error('❌ Error sending registration OTP email:', error.message);
+    console.error('❌ CRITICAL: REGISTRATION OTP DELIVERY FAILURE');
+    console.error('Recipient:', email);
+    console.error('Error Details:', error);
     return false; // Return false so we catch real errors in production
   }
 };
