@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { toast } from 'react-toastify';
-import { Send, X, User, Clock, Check, Phone, Mail, MapPin, Heart, AlertCircle, ShoppingBag, Truck, CheckCircle, Camera, Shield } from 'lucide-react';
+import { Send, X, User, Clock, Check, Phone, Mail, MapPin, Heart, AlertCircle, ShoppingBag, Truck, CheckCircle, Camera, Shield, ArrowLeft } from 'lucide-react';
 import { chatService } from '../services/chatService';
 import { adoptionService, uploadService } from '../services/apiService';
 import UserReportModal from './UserReportModal';
