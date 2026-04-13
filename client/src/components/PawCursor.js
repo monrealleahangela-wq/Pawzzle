@@ -7,8 +7,8 @@ const PawCursor = () => {
     const [isPressed, setIsPressed] = useState(false);
     const [isTouch, setIsTouch] = useState(false);
     const lastPos = useRef({ x: 0, y: 0 });
-    const distanceThreshold = 60;
-    const maxTrail = 8; // Slightly fewer for better performance
+    const distanceThreshold = 45;
+    const maxTrail = 15; 
 
     useEffect(() => {
         // Detect touch device
@@ -29,7 +29,7 @@ const PawCursor = () => {
 
             // Detect hover
             const target = e.target;
-            const isClickable = target.closest('a, button, select, input, [role="button"], .clickable');
+            const isClickable = target.closest('a, button, select, input, [role="button"], .clickable, .cursor-pointer');
             setIsHovering(!!isClickable);
 
             // Trail Logic
@@ -52,23 +52,26 @@ const PawCursor = () => {
             if (!trailContainer) return;
 
             const print = document.createElement('div');
-            print.className = 'absolute pointer-events-none transition-all duration-1000 opacity-30 scale-50 ease-out';
-            print.style.left = `${x + (side === 'left' ? -15 : 15)}px`;
+            // High contrast color for trail (Semi-transparent cream)
+            print.className = 'absolute pointer-events-none transition-all duration-1500 opacity-20 scale-50 ease-out';
+            print.style.left = `${x + (side === 'left' ? -18 : 18)}px`;
             print.style.top = `${y}px`;
-            print.style.transform = `translate(-50%, -50%) rotate(${angle + (side === 'left' ? -15 : 15)}deg)`;
-            print.style.color = '#713f12';
-            print.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M11 15.5c.34-.14.7-.22 1.08-.22.38 0 .74.08 1.08.22.6.24.96.84.96 1.5 0 1.1-.9 2-2 2s-2-.9-2-2c0-.66.36-1.26.96-1.5zM12 11c1.1 0 2 .9 2 2s-.9 2-2 2-2-.9-2-2 .9-2 2-2zM4.5 13c1.1 0 2 .9 2 2s-.9 2-2 2-2-.9-2-2 .9-2 2-2zM19.5 13c1.1 0 2 .9 2 2s-.9 2-2 2-2-.9-2-2 .9-2 2-2zM8.5 7c1.1 0 2 .9 2 2s-.9 2-2 2-2-.9-2-2 .9-2 2-2zM15.5 7c1.1 0 2 .9 2 2s-.9 2-2 2-2-.9-2-2 .9-2 2-2z"/></svg>';
+            print.style.transform = `translate(-50%, -50%) rotate(${angle + (side === 'left' ? -10 : 10)}deg)`;
+            print.style.color = '#FBEBDD'; 
+            print.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M11 15.5c.34-.14.7-.22 1.08-.22.38 0 .74.08 1.08.22.6.24.96.84.96 1.5 0 1.1-.9 2-2 2s-2-.9-2-2c0-.66.36-1.26.96-1.5zM12 11c1.1 0 2 .9 2 2s-.9 2-2 2-2-.9-2-2 .9-2 2-2zM4.5 13c1.1 0 2 .9 2 2s-.9 2-2 2-2-.9-2-2 .9-2 2-2zM19.5 13c1.1 0 2 .9 2 2s-.9 2-2 2-2-.9-2-2 .9-2 2-2zM8.5 7c1.1 0 2 .9 2 2s-.9 2-2 2-2-.9-2-2 .9-2 2-2zM15.5 7c1.1 0 2 .9 2 2s-.9 2-2 2-2-.9-2-2 .9-2 2-2z"/></svg>';
             
             trailContainer.appendChild(print);
 
-            // Fade and remove
-            setTimeout(() => {
-                print.style.opacity = '0';
-                print.style.transform = `translate(-50%, -50%) rotate(${angle}deg) scale(0.3)`;
-                setTimeout(() => print.remove(), 1000);
-            }, 600);
+            // Smooth fade out
+            requestAnimationFrame(() => {
+                setTimeout(() => {
+                    print.style.opacity = '0';
+                    print.style.transform = `translate(-50%, -50%) rotate(${angle}deg) scale(0.2)`;
+                    setTimeout(() => print.remove(), 1000);
+                }, 800);
+            });
 
-            // Cleanup old ones if too many
+            // Limit trail length for memory
             if (trailContainer.children.length > maxTrail) {
                 const oldest = trailContainer.children[0];
                 if (oldest) oldest.remove();
@@ -105,34 +108,30 @@ const PawCursor = () => {
                     zIndex: 999999
                 }}
             >
-                {/* 
-                  PRECISION ALIGNMENT: 
-                  The Lucide PawPrint has approx 7px of top padding in a 24px box.
-                  By translating Y by -30% to -35%, we place the 'toes' exactly on the X/Y coordinate.
-                */}
                 <div 
                     className="relative"
                     style={{ 
-                        transform: 'translate(-50%, -32%)', 
-                        transition: 'none'
+                        transform: 'translate(-50%, -35%)', 
+                        transition: 'transform 0.1s ease-out'
                     }}
                 >
                     <div 
                         className="flex items-center justify-center"
                         style={{
-                            transition: 'transform 0.15s ease-out, color 0.2s ease',
-                            transform: `scale(${isPressed ? 0.75 : isHovering ? 1.2 : 1.0})`,
-                            color: isHovering ? '#c2410c' : '#8B4513'
+                            transition: 'transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), color 0.3s ease',
+                            transform: `scale(${isPressed ? 0.7 : isHovering ? 1.4 : 1.0})`,
+                            // Vanilla/Cream color for maximum visibility against brown theme
+                            color: isHovering ? '#FB923C' : '#FBEBDD' 
                         }}
                     >
-                        <div className={`relative transition-transform duration-300 ${isHovering ? 'rotate-[12deg]' : 'rotate-0'}`}>
+                        <div className={`relative transition-all duration-300 ${isHovering ? 'rotate-[15deg]' : 'rotate-0'}`}>
                             <PawPrint 
-                                size={22} 
+                                size={26} 
                                 fill="currentColor" 
-                                className={`filter drop-shadow-[0_2px_4px_rgba(0,0,0,0.3)] ${isHovering ? 'opacity-90' : 'opacity-100'}`} 
+                                className={`filter drop-shadow-[0_2px_8px_rgba(0,0,0,0.5)] ${isHovering ? 'opacity-100' : 'opacity-90'}`} 
                             />
                             {isHovering && (
-                                <div className="absolute inset-0 bg-primary-400/30 blur-xl rounded-full -z-10 animate-pulse" />
+                                <div className="absolute inset-0 bg-orange-400/40 blur-2xl rounded-full -z-10 animate-pulse" />
                             )}
                         </div>
                     </div>
