@@ -78,9 +78,9 @@ const sendRegisterOTP = async (req, res) => {
       console.error('📧 Delivery error:', deliveryError.message);
       if (deliveryError.message.includes('wait')) return res.status(429).json({ message: deliveryError.message });
       
-      // Req 5: Error handling
+      // Req 5: Error handling - including real error in message for easier debugging
       return res.status(500).json({ 
-        message: 'Failed to send verification email. Please check your spelling or try again later.',
+        message: `Verification Failure: ${deliveryError.message}. Please check your spelling or contact support if the issue persists.`,
         error: deliveryError.message 
       });
     }
@@ -165,7 +165,10 @@ const resendRegisterOTP = async (req, res) => {
       return res.json({ success: true, message: 'A new verification code has been sent.' });
     } catch (err) {
       if (err.message.includes('wait')) return res.status(429).json({ message: err.message });
-      return res.status(500).json({ message: 'Failed to resend code.' });
+      return res.status(500).json({ 
+        message: `Failed to resend code: ${err.message}`, 
+        error: err.message 
+      });
     }
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
@@ -366,7 +369,10 @@ const resendPasswordResetOTP = async (req, res) => {
     res.json({ success: true, message: 'OTP resent successfully' });
   } catch (err) {
     console.error('Resend password OTP error:', err);
-    res.status(500).json({ message: err.message || 'Failed to resend OTP' });
+    res.status(500).json({ 
+      message: `Failed to resend OTP: ${err.message}`, 
+      error: err.message || 'Internal Server Error' 
+    });
   }
 };
 
