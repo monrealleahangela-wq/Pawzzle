@@ -63,6 +63,73 @@ const ProductInventory = () => {
   const [inventory, setInventory] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  // Modal States
+  const [showProductModal, setShowProductModal] = useState(false);
+  const [showInventoryModal, setShowInventoryModal] = useState(false);
+  const [modalTab, setModalTab] = useState('edit'); // edit or preview
+  const [editingProduct, setEditingProduct] = useState(null);
+  const [selectedInventoryItem, setSelectedInventoryItem] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  // Filters
+  const [productFilters, setProductFilters] = useState({ category: '', search: '' });
+  const [inventoryFilters, setInventoryFilters] = useState({ status: '', search: '' });
+  const [productSearchInput, setProductSearchInput] = useState('');
+  const [inventorySearchInput, setInventorySearchInput] = useState('');
+
+  const [summary, setSummary] = useState({ totalItems: 0, lowStockItems: 0, outOfStockItems: 0, totalValue: 0 });
+  const [pagination, setPagination] = useState({ currentPage: 1, totalPages: 1, hasNext: false, hasPrev: false });
+
+  // Form States
+  const [inventoryForm, setInventoryForm] = useState({
+    productId: '',
+    quantity: 0,
+    operation: 'add',
+    reorderLevel: 10,
+    notes: ''
+  });
+
+  // Form States
+  const initialProductState = {
+    name: '',
+    category: 'Pet Food',
+    brand: '',
+    sku: '',
+    description: '',
+    shortDescription: '',
+    price: '',
+    stockQuantity: '',
+    stockStatus: 'in_stock',
+    lowStockThreshold: 5,
+    maxOrderQuantity: '',
+    images: [],
+    video: '',
+    coverImage: '',
+    variants: [], // { combination: '', price: '', stock: '', sku: '', type: 'Size' }
+    fulfillmentType: 'pickup_only',
+    pickupInstructions: '',
+    visibility: 'published',
+    tags: [],
+    collectionGroup: '',
+    warrantyInfo: '',
+    returnPolicy: '',
+    expiryDate: '',
+    ingredients: '',
+    usageInstructions: ''
+  };
+
+  const [productForm, setProductForm] = useState(initialProductState);
+  const [activeSections, setActiveSections] = useState({
+    basic: true,
+    pricing: true,
+    stock: true,
+    variants: false,
+    media: true,
+    fulfillment: true,
+    organization: true,
+    additional: false
+  });
+
   // Permission Checks
   const isAdmin = ['admin', 'super_admin'].includes(user?.role);
 
@@ -126,22 +193,7 @@ const ProductInventory = () => {
   const canCreate = isAdmin || user?.permissions?.inventory?.create || user?.permissions?.inventory?.fullAccess;
   const canUpdate = isAdmin || user?.permissions?.inventory?.update || user?.permissions?.inventory?.fullAccess;
   const canDelete = isAdmin || user?.permissions?.inventory?.delete || user?.permissions?.inventory?.fullAccess;
-  const canAdjustStock = canUpdate; // Using update for stock adjustments
-
-  // Modal States
-  const [showProductModal, setShowProductModal] = useState(false);
-  const [showInventoryModal, setShowInventoryModal] = useState(false);
-  const [modalTab, setModalTab] = useState('edit'); // edit or preview
-  const [editingProduct, setEditingProduct] = useState(null);
-  const [selectedInventoryItem, setSelectedInventoryItem] = useState(null);
-
-  const [submitting, setSubmitting] = useState(false);
-
-  // Filters
-  const [productFilters, setProductFilters] = useState({ category: '', search: '' });
-  const [inventoryFilters, setInventoryFilters] = useState({ status: '', search: '' });
-  const [productSearchInput, setProductSearchInput] = useState('');
-  const [inventorySearchInput, setInventorySearchInput] = useState('');
+  const canAdjustStock = canUpdate;
 
   const categoryHierarchy = {
     'Pet Food': ['Dog Food', 'Cat Food', 'Small Pet Food', 'Others'],
@@ -150,58 +202,6 @@ const ProductInventory = () => {
     'Pet Health Care': ['Vitamins', 'Medication', 'Others'],
     'Others': ['Miscellaneous']
   };
-
-  const [inventoryForm, setInventoryForm] = useState({
-    productId: '',
-    quantity: 0,
-    operation: 'add',
-    reorderLevel: 10,
-    notes: ''
-  });
-
-  const [summary, setSummary] = useState({ totalItems: 0, lowStockItems: 0, outOfStockItems: 0, totalValue: 0 });
-  const [pagination, setPagination] = useState({ currentPage: 1, totalPages: 1, hasNext: false, hasPrev: false });
-
-  // Form States
-  const initialProductState = {
-    name: '',
-    category: 'Pet Food',
-    brand: '',
-    sku: '',
-    description: '',
-    shortDescription: '',
-    price: '',
-    stockQuantity: '',
-    stockStatus: 'in_stock',
-    lowStockThreshold: 5,
-    maxOrderQuantity: '',
-    images: [],
-    video: '',
-    coverImage: '',
-    variants: [], // { combination: '', price: '', stock: '', sku: '', type: 'Size' }
-    fulfillmentType: 'pickup_only',
-    pickupInstructions: '',
-    visibility: 'published',
-    tags: [],
-    collectionGroup: '',
-    warrantyInfo: '',
-    returnPolicy: '',
-    expiryDate: '',
-    ingredients: '',
-    usageInstructions: ''
-  };
-
-  const [productForm, setProductForm] = useState(initialProductState);
-  const [activeSections, setActiveSections] = useState({
-    basic: true,
-    pricing: true,
-    stock: true,
-    variants: false,
-    media: true,
-    fulfillment: true,
-    organization: true,
-    additional: false
-  });
 
 
   useEffect(() => {
