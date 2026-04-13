@@ -51,6 +51,17 @@ mongoose.connect(process.env.MONGODB_URI)
   .then(() => console.log('✅ MongoDB connected successfully'))
   .catch((error) => console.error('❌ MongoDB connection error:', error));
 
+// Debug Env (Temporal for checking Resend Key)
+app.get('/api/auth/debug-env', (req, res) => {
+  res.json({
+    status: 'online',
+    resend_key_present: !!process.env.RESEND_API_KEY,
+    resend_key_length: process.env.RESEND_API_KEY ? process.env.RESEND_API_KEY.length : 0,
+    node_env: process.env.NODE_ENV,
+    time: new Date().toISOString()
+  });
+});
+
 // Routes
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/users', require('./routes/users'));
