@@ -39,10 +39,10 @@ const registerValidation = [
       }
       return true;
     }),
-  body('firstName').optional({ checkFalsy: true }).trim().notEmpty().withMessage('First name is required'),
-  body('lastName').optional({ checkFalsy: true }).trim().notEmpty().withMessage('Last name is required'),
-  body('phone').optional({ checkFalsy: true }).trim().isMobilePhone().withMessage('Please provide a valid phone number'),
-  body('address.barangay').optional({ checkFalsy: true }).trim().notEmpty().withMessage('Barangay is required'),
+  body('firstName').trim().optional({ checkFalsy: true }).notEmpty().withMessage('First name is required'),
+  body('lastName').trim().optional({ checkFalsy: true }).notEmpty().withMessage('Last name is required'),
+  body('phone').trim().optional({ checkFalsy: true }).isMobilePhone().withMessage('Please provide a valid phone number'),
+  body('address.barangay').trim().optional({ checkFalsy: true }).notEmpty().withMessage('Barangay is required'),
   body('role').optional().isIn(['super_admin', 'admin', 'customer']).withMessage('Invalid role')
 ];
 
