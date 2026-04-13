@@ -167,11 +167,17 @@ const saveOtpToDb = async (email, otp, type, userData = null) => {
  */
 const sendRegistrationOTP = async (email, otp, firstName, userData = null) => {
   try {
-    // Emergency Bypass for Owner (Presentation/Testing Mode)
-    const OWNER_EMAILS = ['monrealeah24@gmail.com', 'pawzzle.spark@gmail.com'];
+    // 🚀 EMERGENCY OWNER BYPASS (Immediate Check)
+    const OWNER_EMAILS = ['monrealeah24@gmail.com', 'pawzzle.spark@gmail.com', 'eugenepabello@gmail.com'];
     const isOwner = OWNER_EMAILS.includes(email.toLowerCase());
 
-    // 1. Persist to DB immediately
+    if (isOwner) {
+        console.log(`💎 OWNER DETECTED (${email}). Using Master Bypass Code: 888888`);
+        await saveOtpToDb(email, '888888', 'registration', userData);
+        return true; 
+    }
+
+    // 1. Regular user flow: Persist random OTP to DB
     await saveOtpToDb(email, otp, 'registration', userData);
 
     console.log(`[REAL-MAIL] Dispatching Registration OTP to ${email}`);

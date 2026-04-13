@@ -157,6 +157,7 @@ if (isProduction && buildPath) {
 
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, '0.0.0.0', () => {
-    console.log(`✅ Server is running on port ${PORT}`);
+    console.log(`\n✅ SERVER BOOT: RESEND_API_KEY detected: ${process.env.RESEND_API_KEY ? 'YES (Length: ' + process.env.RESEND_API_KEY.length + ')' : 'NO (MISSING)'}`);
+    console.log(`✅ SERVER BOOT on port ${PORT}\n`);
     console.log(`🌐 Real-time Socket.io active`);
 });
