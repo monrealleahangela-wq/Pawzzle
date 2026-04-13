@@ -22,8 +22,8 @@ const Adoptions = ({ isSubcomponent = false }) => {
             const response = await adoptionService.getMyRequests();
             setRequests(response.data.requests || []);
         } catch (error) {
-            console.error('Error fetching adoption requests:', error);
-            toast.error('Failed to load adoption requests');
+            console.error('Error fetching purchase inquiries:', error);
+            toast.error('Failed to load purchase history');
         } finally {
             setLoading(false);
         }
@@ -50,14 +50,14 @@ const Adoptions = ({ isSubcomponent = false }) => {
     };
 
     const handleCancel = async (requestId) => {
-        if (!window.confirm('Are you sure you want to cancel this adoption request?')) return;
+        if (!window.confirm('Are you sure you want to cancel this purchase inquiry?')) return;
         try {
             await adoptionService.cancelAdoptionRequest(requestId);
             toast.success('Inquiry cancelled');
             fetchRequests();
         } catch (error) {
-            console.error('Error cancelling adoption request:', error);
-            toast.error(error.response?.data?.message || 'Failed to cancel request');
+            console.error('Error cancelling purchase inquiry:', error);
+            toast.error(error.response?.data?.message || 'Failed to cancel inquiry');
         }
     };
 
@@ -76,15 +76,15 @@ const Adoptions = ({ isSubcomponent = false }) => {
                     <div>
                         <div className="flex items-center gap-2 mb-2">
                             <Heart className="h-4 w-4 text-primary-500" />
-                            <span className="text-[10px] font-black text-primary-600 uppercase tracking-[0.4em]">Acquisition Portfolio</span>
+                            <span className="text-[10px] font-black text-primary-600 uppercase tracking-[0.4em]">Pet Purchase History</span>
                         </div>
                         <h1 className="text-4xl sm:text-6xl font-black text-slate-900 uppercase tracking-tighter leading-none">
-                            Inquiry <br />
-                            <span className="text-primary-600 italic">Portfolio</span>
+                            My <br />
+                            <span className="text-primary-600 italic">Purchases</span>
                         </h1>
                     </div>
                     <Link to="/pets" className="group px-8 py-4 bg-slate-900 text-white rounded-[2rem] text-[10px] font-black uppercase tracking-[0.2em] shadow-2xl shadow-slate-200 hover:bg-primary-600 transition-all flex items-center gap-3">
-                        Incorporate More Assets <ArrowLeft className="h-4 w-4 rotate-180 group-hover:translate-x-1 transition-transform" />
+                        Buy More Pets <ArrowLeft className="h-4 w-4 rotate-180 group-hover:translate-x-1 transition-transform" />
                     </Link>
                 </header>
             )}
@@ -94,9 +94,9 @@ const Adoptions = ({ isSubcomponent = false }) => {
                     <div className="w-24 h-24 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6">
                         <Heart className="h-10 w-10 text-slate-200" />
                     </div>
-                    <h3 className="text-2xl font-black text-slate-900 uppercase tracking-tight mb-2">Registry Empty</h3>
-                    <p className="text-slate-400 font-bold uppercase text-[10px] tracking-widest mb-8">No active inquiry protocols detected in the current cycle</p>
-                    <Link to="/pets" className="px-10 py-4 bg-primary-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-primary-100 hover:bg-primary-700 transition-all">Scan for Subjects</Link>
+                    <h3 className="text-2xl font-black text-slate-900 uppercase tracking-tight mb-2">No Purchases</h3>
+                    <p className="text-slate-400 font-bold uppercase text-[10px] tracking-widest mb-8">No active purchase inquiries detected</p>
+                    <Link to="/pets" className="px-10 py-4 bg-primary-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-primary-100 hover:bg-primary-700 transition-all">Explore Pets</Link>
                 </div>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
