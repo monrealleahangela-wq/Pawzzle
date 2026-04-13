@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { toast } from 'react-toastify';
-import { Send, X, User, Clock, Check, Phone, Mail, MapPin, Heart, AlertCircle, ShoppingBag, Truck, CheckCircle, Camera, Shield, ArrowLeft } from 'lucide-react';
+import { Send, X, User, Clock, Check, Phone, Mail, MapPin, Heart, AlertCircle, ShoppingBag, Truck, CheckCircle, Camera, Shield, ArrowLeft, ChevronDown } from 'lucide-react';
 import { chatService } from '../services/chatService';
 import { adoptionService, uploadService } from '../services/apiService';
 import UserReportModal from './UserReportModal';
@@ -27,10 +27,11 @@ const EnhancedChatMessenger = ({
   const [isSeller, setIsSeller] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
   const [typingUser, setTypingUser] = useState(null);
-  const typingTimeoutRef = useRef(null);
   const messagesEndRef = useRef(null);
   const messagesContainerRef = useRef(null);
   const fileInputRef = useRef(null);
+  const isFirstLoad = useRef(true);
+  const [showScrollButton, setShowScrollButton] = useState(false);
 
 
   useEffect(() => {
@@ -76,30 +77,65 @@ const EnhancedChatMessenger = ({
       }
     });
 
-    // We can also listen for new messages real-time if we want to replace polling
-    // But for now let's keep polling for messages as extra safety or replace it if we're confident
+    socket.on('newMessage', (message) => {
+      if (message.conversation?.toString() === conversationId || message.conversation === conversationId) {
+        setMessages(prev => {
+          const exists = prev.some(m => m._id === message._id);
+          if (exists) return prev;
+          return [...prev, message];
+        });
+        if (onMessageUpdate) onMessageUpdate();
+      }
+    });
+
+    // We keep polling as extra safety but with a longer interval
     const interval = setInterval(() => {
       loadMessages(conversationId);
       fetchTransactionData(conversationId);
-    }, 4000);
+    }, 10000);
 
     return () => {
       clearInterval(interval);
       socket.off('userTyping');
       socket.off('userStopTyping');
+      socket.off('newMessage');
     };
   }, [conversationId, isOpen, isEmbedded, currentUser]);
 
+  const handleScroll = () => {
+    if (!messagesContainerRef.current) return;
+    const { scrollTop, scrollHeight, clientHeight } = messagesContainerRef.current;
+    const isAtBottom = scrollHeight - scrollTop - clientHeight < 150;
+    setShowScrollButton(!isAtBottom);
+  };
+
   useEffect(() => {
-    if (messagesContainerRef.current) {
+    if (messagesContainerRef.current && messages.length > 0) {
+      if (isFirstLoad.current) {
         messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+        isFirstLoad.current = false;
+      } else {
+        const { scrollTop, scrollHeight, clientHeight } = messagesContainerRef.current;
+        const isAtBottom = scrollHeight - scrollTop - clientHeight < 400;
+        if (isAtBottom) {
+          messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+        }
+      }
     }
   }, [messages]);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
 
   // Handle image load scroll
   const handleImageLoad = () => {
     if (messagesContainerRef.current) {
-        messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+      const { scrollTop, scrollHeight, clientHeight } = messagesContainerRef.current;
+      const isAtBottom = scrollHeight - scrollTop - clientHeight < 400;
+      if (isAtBottom) {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      }
     }
   };
 
@@ -491,8 +527,17 @@ const EnhancedChatMessenger = ({
 
       <div 
         ref={messagesContainerRef}
-        className="flex-1 overflow-y-auto p-4 pb-20 space-y-4 bg-slate-50/50 no-scrollbar overscroll-contain touch-pan-y scroll-smooth min-h-0"
+        onScroll={handleScroll}
+        className="flex-1 overflow-y-auto p-4 pb-24 space-y-4 bg-slate-50/50 no-scrollbar overscroll-contain touch-pan-y scroll-smooth min-h-0 relative"
       >
+        {showScrollButton && (
+          <button 
+            onClick={scrollToBottom}
+            className="fixed bottom-24 right-8 bg-white/90 backdrop-blur-sm text-primary-600 p-3 rounded-full shadow-lg border border-primary-100 hover:bg-primary-50 transition-all z-[60] animate-bounce"
+          >
+            <ChevronDown className="h-5 w-5" />
+          </button>
+        )}
         {!transactionRequest && !isSeller && !isAdmin && conversationId && pet && (
           <div className="bg-white border border-secondary-100 p-4 rounded-3xl text-center space-y-3 mx-2 shadow-sm mb-4">
             <div className="w-12 h-12 bg-secondary-50 rounded-full flex items-center justify-center mx-auto">

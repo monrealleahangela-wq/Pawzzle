@@ -262,6 +262,12 @@ const sendMessage = async (req, res) => {
     // Populate sender info before returning
     await message.populate('sender', 'firstName lastName role lastSeen');
 
+    // Emit real-time message via socket.io
+    const io = req.app.get('socketio');
+    if (io) {
+      io.to(`conversation_${conversationId}`).emit('newMessage', message);
+    }
+
     res.status(201).json({ message });
   } catch (error) {
     console.error('Send message error:', error);
