@@ -34,7 +34,7 @@ const normalizeString = (str) => {
 };
 
 const Services = () => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const navigate = useNavigate();
   const [services, setServices] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -109,7 +109,6 @@ const Services = () => {
 
     // SECURITY: Professional Sellers should only see their own context.
     // If the user is a seller, we filter the marketplace to keep them focused on their business.
-    const { user } = useAuth();
     if (user?.role === 'seller' || user?.role === 'store_owner') {
       const storeId = user.store?._id || user._id; // Depending on how store is linked
       result = result.filter(s => s.store?._id === storeId || s.store === storeId);

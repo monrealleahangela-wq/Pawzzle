@@ -4,6 +4,7 @@ import { bookingService, serviceService, voucherService, getImageUrl, petProfile
 import { toast } from 'react-toastify';
 import { Clock, User, MapPin, Phone, Mail, DollarSign, CheckCircle, XCircle, AlertCircle, Filter, Search, Calendar, ArrowLeft, ChevronLeft, ChevronRight, Store, X, Activity, ShieldCheck, TrendingUp, Tag, Ticket, Bell, Building, Heart, PawPrint, Trash2, Star, Camera, Eye, CreditCard, Navigation, Receipt } from 'lucide-react';
 import ReviewModal from '../../components/ReviewModal';
+import { useAuth } from '../../contexts/AuthContext';
 
 const StoreHoursHint = ({ bookingDate, businessHours }) => {
   const dayNames = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
@@ -34,6 +35,7 @@ const getSizeSurcharge = (size, serviceName = '') => {
 };
 
 const Bookings = ({ isSubcomponent = false }) => {
+  const { user } = useAuth();
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState('all');
