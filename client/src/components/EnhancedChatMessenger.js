@@ -270,7 +270,7 @@ const EnhancedChatMessenger = ({
         notes: `Interest in purchasing ${pet.name}`
       });
       setTransactionRequest(response.data.request);
-      toast.success('Reservation request submitted!');
+      toast.success('Inquiry submitted!');
       loadMessages(conversationId);
     } catch (error) {
       console.error('Error requesting purchase:', error);
@@ -319,7 +319,7 @@ const EnhancedChatMessenger = ({
     try {
       setIsLoading(true);
       await adoptionService.cancelAdoptionRequest(transactionRequest._id);
-      toast.success('Reservation request cancelled');
+      toast.success('Inquiry cancelled');
       fetchTransactionData(conversationId);
       loadMessages(conversationId);
     } catch (error) {
@@ -491,7 +491,7 @@ const EnhancedChatMessenger = ({
             </div>
             <div className="space-y-0.5">
               <h3 className="text-sm font-black text-slate-800 uppercase tracking-tight">Serious Inquiry?</h3>
-              <p className="text-[10px] text-slate-500 font-medium">Initiate the premium acquisition protocol.</p>
+              <p className="text-[10px] text-slate-500 font-medium">Initiate the premium inquiry protocol.</p>
             </div>
             <button onClick={handlePurchaseRequest} className="btn btn-primary w-full py-2.5 text-[9px] font-black uppercase tracking-[0.2em] shadow-lg shadow-primary-100">
               Buy this Pet

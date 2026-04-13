@@ -125,7 +125,7 @@ const CustomerDSS = () => {
                             </div>
                             <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight mb-3">No Active Pet Profiles</h3>
                             <p className="text-sm font-bold text-slate-400 max-w-md mx-auto mb-10 leading-relaxed uppercase tracking-widest">
-                                Adopt a pet or book a service to unlock deep health insights and smart care roadmaps.
+                                Inquire for a pet or book a service to unlock deep health insights and smart care roadmaps.
                             </p>
                             <Link to="/pets" className="px-10 py-5 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-primary-600 transition-all shadow-2xl">
                                 Discover Pets

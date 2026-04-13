@@ -318,7 +318,7 @@ const Stores = () => {
                             {[
                                 { icon: Package, label: 'Inventory' },
                                 { icon: Scissors, label: 'Booking' },
-                                { icon: Heart, label: 'Adoption' }
+                                { icon: Heart, label: 'Inquiry' }
                             ].map((item, i) => (
                                 <div key={i} className="flex flex-col items-center gap-2">
                                     <item.icon className="h-5 w-5 sm:h-8 sm:w-8 text-primary-500" />

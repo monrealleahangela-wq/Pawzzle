@@ -1129,7 +1129,7 @@ const Profile = () => {
                                   <HeartIcon className="h-4 w-4 sm:h-5 sm:w-5" />
                                 </div>
                                 <div className="min-w-0">
-                                  <p className="text-[10px] sm:text-sm font-black text-slate-900 tracking-tight leading-none mb-1">Adopting {req.pet?.name || 'Pet'}</p>
+                                  <p className="text-[10px] sm:text-sm font-black text-slate-900 tracking-tight leading-none mb-1">Inquiry for {req.pet?.name || 'Pet'}</p>
                                   <p className="text-[8px] sm:text-xs font-bold text-slate-400 uppercase tracking-tighter">{new Date(req.createdAt).toLocaleDateString('en-PH', { day: 'numeric', month: 'short' })}</p>
                                 </div>
                               </div>

@@ -53,7 +53,7 @@ const Adoptions = ({ isSubcomponent = false }) => {
         if (!window.confirm('Are you sure you want to cancel this adoption request?')) return;
         try {
             await adoptionService.cancelAdoptionRequest(requestId);
-            toast.success('Adoption request cancelled');
+            toast.success('Inquiry cancelled');
             fetchRequests();
         } catch (error) {
             console.error('Error cancelling adoption request:', error);
@@ -79,8 +79,8 @@ const Adoptions = ({ isSubcomponent = false }) => {
                             <span className="text-[10px] font-black text-primary-600 uppercase tracking-[0.4em]">Acquisition Portfolio</span>
                         </div>
                         <h1 className="text-4xl sm:text-6xl font-black text-slate-900 uppercase tracking-tighter leading-none">
-                            Adoption <br />
-                            <span className="text-primary-600 italic">Manifest</span>
+                            Inquiry <br />
+                            <span className="text-primary-600 italic">Portfolio</span>
                         </h1>
                     </div>
                     <Link to="/pets" className="group px-8 py-4 bg-slate-900 text-white rounded-[2rem] text-[10px] font-black uppercase tracking-[0.2em] shadow-2xl shadow-slate-200 hover:bg-primary-600 transition-all flex items-center gap-3">
@@ -95,7 +95,7 @@ const Adoptions = ({ isSubcomponent = false }) => {
                         <Heart className="h-10 w-10 text-slate-200" />
                     </div>
                     <h3 className="text-2xl font-black text-slate-900 uppercase tracking-tight mb-2">Registry Empty</h3>
-                    <p className="text-slate-400 font-bold uppercase text-[10px] tracking-widest mb-8">No active adoption protocols detected in the current cycle</p>
+                    <p className="text-slate-400 font-bold uppercase text-[10px] tracking-widest mb-8">No active inquiry protocols detected in the current cycle</p>
                     <Link to="/pets" className="px-10 py-4 bg-primary-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-primary-100 hover:bg-primary-700 transition-all">Scan for Subjects</Link>
                 </div>
             ) : (

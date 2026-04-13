@@ -171,7 +171,7 @@ const Home = () => {
     '🛒 Curated supplies · top brands',
     '✂️ Expert grooming · elite salons',
     '🏠 Home & walk-in services',
-    '❤️ Adoption drives · find your match',
+    '❤️ Pet inquiries · find your match',
     '🌟 1,200+ happy owners',
   ];
 
@@ -213,7 +213,7 @@ const Home = () => {
           <div className="relative z-10 text-center space-y-6 sm:space-y-10">
             <div className="inline-flex items-center gap-3 px-5 py-2.5 bg-white border border-primary-50 rounded-full shadow-[0_10px_25px_rgba(0,0,0,0.03)] selection:bg-primary-100">
               <div className="w-2 h-2 rounded-full bg-primary-500 animate-pulse" />
-              <span className="text-[10px] font-black text-secondary-900/40 uppercase tracking-[0.4em]">PET ADOPTION NETWORK</span>
+              <span className="text-[10px] font-black text-secondary-900/40 uppercase tracking-[0.4em]">MODERN PET NETWORK</span>
             </div>
 
             <h1 className="text-4xl sm:text-8xl font-black tracking-[-0.05em] leading-[0.88] uppercase text-primary-950">
@@ -375,7 +375,7 @@ const Home = () => {
                   )}
                   <div className="absolute top-4 left-4 flex flex-col gap-2">
                     <span className={`px-4 py-1.5 rounded-2xl text-[8px] font-black uppercase tracking-[0.2em] backdrop-blur-xl border border-white/20 shadow-2xl ${pet.status === 'available' ? 'bg-emerald-500/90 text-white' : 'bg-rose-500/90 text-white'}`}>
-                      {pet.status === 'available' ? 'AVAILABLE' : 'ADOPTED'}
+                      {pet.status === 'available' ? 'AVAILABLE' : 'RESERVED'}
                     </span>
                   </div>
                 </div>

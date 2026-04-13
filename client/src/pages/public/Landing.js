@@ -174,7 +174,7 @@ const Landing = () => {
               <div className="w-16 h-16 bg-primary-600 rounded-2xl flex items-center justify-center mb-6 group-hover:rotate-6 transition-transform">
                 <Heart className="text-white h-8 w-8" />
               </div>
-              <h3 className="text-2xl font-bold text-slate-900 mb-3">Safe Adoptions</h3>
+              <h3 className="text-2xl font-bold text-slate-900 mb-3">Safe Inquiries</h3>
               <p className="text-slate-600">Find pets from our trusted community. Our platform makes it easy and safe to find a new home for every animal.</p>
             </div>
 

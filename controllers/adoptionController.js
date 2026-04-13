@@ -53,12 +53,12 @@ const createAdoptionRequest = async (req, res) => {
         const systemMsg = new Message({
             conversation: conversationId,
             sender: req.user._id,
-            content: 'A new adoption request has been submitted.',
+            content: 'A new inquiry has been submitted.',
             type: 'system'
         });
         await systemMsg.save();
 
-        res.status(201).json({ message: 'Adoption request submitted successfully', request: adoptionRequest });
+        res.status(201).json({ message: 'Inquiry submitted successfully', request: adoptionRequest });
     } catch (error) {
         console.error('Create adoption request error:', error);
         res.status(500).json({ message: 'Server error' });
@@ -135,7 +135,7 @@ const updateAdoptionStatus = async (req, res) => {
         const systemMsg = new Message({
             conversation: request.conversation._id,
             sender: req.user._id,
-            content: `Adoption status has been updated to: ${statusLabels[status] || status}` + (reason ? `\nReason: ${reason}` : ''),
+            content: `Inquiry status has been updated to: ${statusLabels[status] || status}` + (reason ? `\nReason: ${reason}` : ''),
             type: 'system'
         });
         await systemMsg.save();
@@ -229,12 +229,12 @@ const cancelAdoptionRequest = async (req, res) => {
         const systemMsg = new Message({
             conversation: request.conversation,
             sender: req.user._id,
-            content: 'Adoption request has been cancelled by the customer.',
+            content: 'Inquiry has been cancelled by the customer.',
             type: 'system'
         });
         await systemMsg.save();
 
-        res.json({ message: 'Adoption request cancelled successfully', request });
+        res.json({ message: 'Inquiry cancelled successfully', request });
     } catch (error) {
         console.error('Cancel adoption request error:', error);
         res.status(500).json({ message: 'Server error' });
