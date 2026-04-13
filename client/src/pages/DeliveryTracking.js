@@ -7,7 +7,7 @@ import axios from 'axios';
 import { 
   MapPin, MessageSquare, Navigation, CheckCircle, Package, Truck, 
   Clock, ArrowLeft, Send, User, Store as StoreIcon, ShieldCheck, AlertCircle,
-  Map as MapIcon, Info, Navigation2
+  Map as MapIcon, Info, Navigation2, X
 } from 'lucide-react';
 import { Popup } from 'react-leaflet';
 import socket from '../utils/socket';
