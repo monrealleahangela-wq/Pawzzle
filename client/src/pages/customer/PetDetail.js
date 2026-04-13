@@ -98,7 +98,7 @@ const PetDetail = () => {
                 pet.status === 'reserved' ? 'bg-primary-600/90 text-white' :
                   'bg-rose-600/90 text-white'
                 }`}>
-                {pet.status?.toUpperCase() || (pet.isAvailable ? 'Active' : 'Sold')}
+                {pet.status === 'adopted' ? 'SOLD' : (pet.status?.toUpperCase() || (pet.isAvailable ? 'Active' : 'Sold'))}
               </span>
             </div>
           </div>
@@ -196,7 +196,7 @@ const PetDetail = () => {
                     <MessageSquare className="h-5 w-5" />
                     Chat with seller
                   </>
-                ) : pet.status === 'reserved' ? 'Reserved' : 'Purchased'}
+                ) : pet.status === 'reserved' ? 'Reserved' : 'Sold'}
               </button>
             </div>
           </div>

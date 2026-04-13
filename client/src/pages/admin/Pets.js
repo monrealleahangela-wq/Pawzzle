@@ -498,7 +498,7 @@ const AdminPets = () => {
                           pet.status === 'reserved' ? 'bg-secondary-500 text-white' :
                             'bg-rose-500 text-white'
                           }`}>
-                          {pet.status?.toUpperCase() || (pet.isAvailable ? 'AVAILABLE' : 'RESERVED')}
+                          {pet.status === 'adopted' ? 'SOLD' : pet.status?.toUpperCase() || (pet.isAvailable ? 'AVAILABLE' : 'RESERVED')}
                         </span>
                         <span className={`px-2.5 py-1 rounded-2xl text-[9px] font-black uppercase tracking-wider shadow-sm ${
                           pet.approvalStatus === 'approved' ? 'bg-emerald-100 text-emerald-600 border border-emerald-200' :

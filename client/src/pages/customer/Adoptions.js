@@ -137,7 +137,7 @@ const Adoptions = ({ isSubcomponent = false }) => {
 
                                 <div className="bg-slate-50/50 rounded-[2rem] p-5 mb-8 border border-slate-100 flex flex-col gap-4">
                                     <div className="flex items-center justify-between text-[9px] font-bold text-slate-500 uppercase tracking-widest">
-                                        <span className="flex items-center gap-2 italic opacity-60"><Clock className="h-3 w-3" /> Sync Date</span>
+                                        <span className="flex items-center gap-2 italic opacity-60"><Clock className="h-3 w-3" /> Purchase Date</span>
                                         <span className="text-slate-900">{new Date(request.createdAt).toLocaleDateString()}</span>
                                     </div>
                                     <div className="flex items-center justify-between text-[9px] font-bold text-slate-500 uppercase tracking-widest">
@@ -168,7 +168,7 @@ const Adoptions = ({ isSubcomponent = false }) => {
                                             onClick={() => handleCancel(request._id)}
                                             className="w-full py-4 text-rose-500 text-[10px] font-black uppercase tracking-widest hover:bg-rose-50 rounded-2xl transition-all border border-transparent hover:border-rose-100"
                                         >
-                                            Decommission Protocol
+                                            Cancel Inquiry
                                         </button>
                                     )}
                                 </div>
