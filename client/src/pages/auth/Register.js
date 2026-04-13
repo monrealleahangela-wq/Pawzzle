@@ -268,7 +268,7 @@ const Register = () => {
                     <Lock className="input-icon h-4 w-4" />
                     <input
                       name="password" type={showPassword ? 'text' : 'password'} required
-                      className="input input-with-both-icons bg-white/50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 outline-none transition-all font-medium text-slate-700 py-4 text-xs"
+                      className="input input-with-both-icons bg-white/50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 outline-none transition-all font-medium text-slate-700 py-4 text-xs select-none [appearance:none] [&::-ms-reveal]:hidden [&::-ms-clear]:hidden [&::-webkit-credentials-store-indicator]:hidden"
                       placeholder="••••••••"
                       value={formData.password}
                       onChange={handleChange}
@@ -284,7 +284,7 @@ const Register = () => {
                     <Lock className="input-icon h-4 w-4" />
                     <input
                       name="confirmPassword" type={showPassword ? 'text' : 'password'} required
-                      className="input input-with-icon bg-white/50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 outline-none transition-all font-medium text-slate-700 py-4 text-xs"
+                      className="input input-with-icon bg-white/50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 outline-none transition-all font-medium text-slate-700 py-4 text-xs select-none [appearance:none] [&::-ms-reveal]:hidden [&::-ms-clear]:hidden [&::-webkit-credentials-store-indicator]:hidden"
                       placeholder="••••••••"
                       value={formData.confirmPassword}
                       onChange={handleChange}

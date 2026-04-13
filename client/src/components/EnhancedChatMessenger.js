@@ -439,7 +439,7 @@ const EnhancedChatMessenger = ({
   const messengerContent = (
     <div
       className={`flex flex-col h-full bg-white transition-transform duration-300 ease-out min-h-0
-        ${!isEmbedded ? 'rounded-3xl shadow-2xl max-w-lg w-full h-full sm:h-[500px] overflow-hidden border border-white/20' : ''}`}
+        ${!isEmbedded ? 'rounded-t-[2.5rem] sm:rounded-3xl shadow-2xl max-w-lg w-full h-full sm:h-[600px] overflow-hidden border border-white/20' : ''}`}
     >
       {!isEmbedded && (
         <div className="flex-shrink-0 px-5 py-3 bg-neutral-900 text-white flex items-center justify-between z-10">
@@ -515,7 +515,7 @@ const EnhancedChatMessenger = ({
         </div>
       )}
 
-      <div className="flex-shrink-0 p-4 bg-white border-t border-slate-100 z-10">
+      <div className="flex-shrink-0 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:pb-4 bg-white border-t border-slate-100 z-10">
         <div className="flex items-center gap-3 bg-slate-50 rounded-full p-1.5 pl-4 border border-slate-100">
           <button onClick={() => fileInputRef.current?.click()} className="w-8 h-8 rounded-full bg-white flex items-center justify-center text-slate-400 hover:text-primary-500 shadow-sm transition-colors shrink-0">
             <Camera className="h-4 w-4" />
@@ -546,8 +546,8 @@ const EnhancedChatMessenger = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-neutral-900/60 backdrop-blur-[2px] flex items-center justify-center z-[100] sm:p-6 font-sans transition-colors duration-300">
-      <div className="w-full max-w-lg h-full sm:h-auto">
+    <div className="fixed inset-0 bg-neutral-900/60 backdrop-blur-[2px] flex items-end sm:items-center justify-center z-[100] sm:p-6 font-sans transition-colors duration-300">
+      <div className="w-full max-w-lg h-[92%] sm:h-auto">
         {messengerContent}
       </div>
 

@@ -8,6 +8,11 @@ const axios = require('axios');
 const verifyRecaptcha = async (token) => {
   if (!token) return false;
   
+  // Custom Pawzzle Manual Verification bypass for PremiumCaptcha component
+  if (token === 'manual_verification_success') {
+    return true;
+  }
+  
   const secretKey = process.env.RECAPTCHA_SECRET_KEY || '6LeIxAcTAAAAAGG-vFI1TnRWxMZNFuojJ4WifJWe';
 
   try {

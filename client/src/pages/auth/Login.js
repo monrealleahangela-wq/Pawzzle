@@ -224,11 +224,11 @@ const Login = () => {
                     <Lock className="input-icon h-5 w-5" />
                     <input
                       name="password" type={showPassword ? 'text' : 'password'} required
-                      className="input input-with-both-icons bg-white/50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 outline-none transition-all font-medium text-slate-700 py-4"
+                      className="input input-with-both-icons bg-white/50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 outline-none transition-all font-medium text-slate-700 py-4 pr-12 select-none [appearance:none] [&::-ms-reveal]:hidden [&::-ms-clear]:hidden [&::-webkit-credentials-store-indicator]:hidden"
                       placeholder="••••••••"
                       value={formData.password}
                       onChange={handleChange}
-                      autoComplete="new-password"
+                      autoComplete="current-password"
                     />
                     <button
                       type="button"
