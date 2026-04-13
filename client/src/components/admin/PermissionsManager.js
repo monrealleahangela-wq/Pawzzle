@@ -45,24 +45,6 @@ const RESOURCE_MAP = [
         label: 'Customer Relations', 
         description: 'View customer history, profiles, and communications.',
         icon: Users 
-    },
-    { 
-        key: 'staff', 
-        label: 'Team Management', 
-        description: 'Manage staff accounts, invitations, and permissions.',
-        icon: Shield 
-    },
-    { 
-        key: 'vouchers', 
-        label: 'Promo & Vouchers', 
-        description: 'Create and distribute discounts and promotions.',
-        icon: Tag 
-    },
-    { 
-        key: 'analytics', 
-        label: 'Store Insights', 
-        description: 'View revenue reports, trends, and store performance.',
-        icon: PieChart 
     }
 ];
 
