@@ -130,7 +130,7 @@ const Pets = () => {
         });
         setFilters(prev => ({ ...prev, nearMe: true, city: '' }));
         setLoading(false);
-        toast.success('Location acquired! Sorting nearest companions.');
+        toast.success('Location found! Showing nearby pets.');
       },
       (error) => {
         setLoading(false);
@@ -179,7 +179,7 @@ const Pets = () => {
               <Search className="input-icon h-4 w-4 text-slate-400" />
               <input
                 type="text"
-                placeholder="SEARCH BREED..."
+                placeholder="SEARCH BY BREED..."
                 className="input input-with-icon border-none rounded-xl text-[10px] sm:text-sm font-bold uppercase tracking-widest bg-slate-50 focus:ring-2 focus:ring-primary-500/20 transition-all font-sans"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -223,7 +223,7 @@ const Pets = () => {
                 }}
                 className="text-[8px] font-black text-primary-600 uppercase tracking-widest"
               >
-                RESET
+                CLEAR
               </button>
             </div>
 
@@ -255,17 +255,17 @@ const Pets = () => {
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest ml-1">Species</label>
+                <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest ml-1">Pet Type</label>
                 <select
                   className="w-full px-3 py-2 bg-slate-50 rounded-xl text-[10px] font-black uppercase tracking-tight border-none"
                   value={filters.species}
                   onChange={(e) => handleFilterChange('species', e.target.value)}
                 >
                   <option value="">All Species</option>
-                  <option value="dog">Canine</option>
-                  <option value="cat">Feline</option>
-                  <option value="bird">Avian</option>
-                  <option value="fish">Aquatic</option>
+                  <option value="dog">Dog</option>
+                  <option value="cat">Cat</option>
+                  <option value="bird">Bird</option>
+                  <option value="fish">Fish</option>
                 </select>
               </div>
 
@@ -363,7 +363,7 @@ const Pets = () => {
                         pet.status === 'reserved' ? 'bg-secondary-500/90 text-white' :
                           'bg-rose-500/90 text-white'
                         }`}>
-                        {pet.status?.toUpperCase() || (pet.isAvailable ? 'LIVE' : 'SYNC_OFF')}
+                        {pet.isAvailable ? 'AVAILABLE' : 'RESERVED'}
                       </span>
                       <span className="px-2.5 py-1 bg-slate-900/90 backdrop-blur-md rounded-xl text-[8px] font-black uppercase tracking-widest text-white border border-white/10 shadow-sm">
                         VERIFIED
@@ -374,7 +374,7 @@ const Pets = () => {
                   <div className="p-4 flex-1 flex flex-col relative z-10">
                     <div className="mb-3">
                       <p className="text-[8px] font-black text-slate-400 uppercase tracking-[0.25em] leading-none mb-1.5 truncate">
-                        {pet.breed || 'Biological Unit'}
+                        {pet.breed || 'Pet'}
                       </p>
                       <h3 className="text-[11px] sm:text-xl font-black text-slate-900 leading-tight uppercase truncate group-hover:text-primary-600 transition-colors">
                         {pet.name}
@@ -410,7 +410,7 @@ const Pets = () => {
                         to={`/pets/${pet._id}`}
                         className="flex-1 sm:flex-none px-4 py-2.5 bg-slate-900 text-white rounded-xl text-[9px] font-black uppercase tracking-[0.2em] shadow-lg shadow-slate-200 hover:bg-primary-600 transition-all active:scale-95 text-center"
                       >
-                        Details
+                        View Info
                       </Link>
                     </div>
 

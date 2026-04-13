@@ -268,7 +268,7 @@ const OrderDetail = () => {
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-lg font-black text-slate-900 uppercase tracking-tight">Order Items</h2>
             {user?.role !== 'customer' && (
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">Revenue Breakdown</span>
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">Earnings Detail</span>
             )}
           </div>
           <div className="space-y-4">
@@ -334,7 +334,7 @@ const OrderDetail = () => {
             <div className="mt-8 pt-6 border-t border-slate-100 space-y-4">
               <div className="flex items-center gap-2 mb-2">
                 <FileText className="h-4 w-4 text-primary-600" />
-                <h3 className="text-[11px] font-black text-slate-900 uppercase tracking-widest">Financial Summary</h3>
+                <h3 className="text-[11px] font-black text-slate-900 uppercase tracking-widest">Pricing Summary</h3>
               </div>
               <div className="bg-slate-50 rounded-2xl p-4 space-y-3 border border-slate-100">
                 <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-widest text-slate-500">

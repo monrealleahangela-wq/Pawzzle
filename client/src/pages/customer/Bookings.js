@@ -256,7 +256,7 @@ const Bookings = ({ isSubcomponent = false }) => {
     const bookingId = searchParams.get('id');
 
     if (paymentStatus === 'success') {
-      toast.success('Payment authorized. Verifying with sanctuary...', {
+      toast.success('Payment authorized. Verifying with store...', {
         id: 'payment-success',
         duration: 3000
       });
@@ -388,7 +388,7 @@ const Bookings = ({ isSubcomponent = false }) => {
 
   const handlePayment = async (bookingId) => {
     try {
-      toast.info('Initialising secure payment...');
+      toast.info('Starting checkout...');
       const response = await paymentService.createBookingCheckoutSession(bookingId);
       if (response.data.checkoutUrl) {
         window.location.href = response.data.checkoutUrl;
@@ -675,7 +675,7 @@ const Bookings = ({ isSubcomponent = false }) => {
         }
       }
 
-      toast.success('Booking created successfully!');
+      toast.success('Appointment booked successfully!');
 
       // Reset form and refresh bookings
       setBookingForm({
@@ -819,18 +819,18 @@ const Bookings = ({ isSubcomponent = false }) => {
                     )}
                   </div>
                   <div className="relative z-10">
-                    <p className="text-[9px] font-black text-primary-600 uppercase tracking-[0.3em] mb-3">Service Details</p>
+                    <p className="text-[9px] font-black text-primary-600 uppercase tracking-[0.3em] mb-3">Service Info</p>
                     <h3 className="text-2xl font-black text-slate-900 uppercase tracking-tighter mb-2">{selectedService.name}</h3>
-                    <p className="text-sm text-slate-500 leading-relaxed mb-6">{selectedService.description || 'Professional pet service by vetted specialists.'}</p>
+                    <p className="text-sm text-slate-500 leading-relaxed mb-6">{selectedService.description || 'Professional pet service by our expert team.'}</p>
 
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                       {[
                         { label: 'Duration', value: `${selectedService.duration || '—'} MIN`, icon: Clock },
                         { label: 'Price', value: `₱${selectedService.price?.toLocaleString()}`, icon: DollarSign },
-                        { label: 'Provider', value: selectedService.store?.name || 'Elite Partner', icon: Store },
+                        { label: 'Store', value: selectedService.store?.name || 'Partner Store', icon: Store },
                         { label: 'Location', value: selectedService.store?.contactInfo?.address?.city || 'Local Hub', icon: MapPin },
                         { label: 'Home Visit', value: selectedService.homeServiceAvailable ? 'Available' : 'In-Store', icon: Phone },
-                        { label: 'Clients', value: 'Vetted', icon: User },
+                        { label: 'Users', value: 'Verified', icon: User },
                       ].map(({ label, value, icon: Icon }) => (
                         <div key={label} className="group bg-white/40 backdrop-blur-md rounded-3xl p-5 border border-white/60 shadow-sm hover:shadow-xl hover:shadow-slate-200/50 hover:-translate-y-1 transition-all duration-300">
                           <div className="flex items-center gap-2.5 mb-2.5">
@@ -854,8 +854,8 @@ const Bookings = ({ isSubcomponent = false }) => {
                             <ShieldCheck className="h-5 w-5 text-primary-600" />
                           </div>
                           <div>
-                            <h4 className="text-[10px] font-black text-primary-900 uppercase tracking-widest leading-none mb-1">Customer Requirements</h4>
-                            <p className="text-[8px] font-bold text-primary-700/60 uppercase tracking-tight italic">Essential details for verification</p>
+                            <h4 className="text-[10px] font-black text-primary-900 uppercase tracking-widest leading-none mb-1">What you need</h4>
+                            <p className="text-[8px] font-bold text-primary-700/60 uppercase tracking-tight italic">Bring these for your visit</p>
                           </div>
                         </div>
 
@@ -1147,7 +1147,7 @@ const Bookings = ({ isSubcomponent = false }) => {
                   <div className="mt-8">
                     <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-2 px-1">Special Notes (Optional)</label>
                     <textarea name="notes" value={bookingForm.notes} onChange={handleFormChange} rows={3}
-                      placeholder="e.g. Sensitive skin, allergic to latex, needs extra calming…"
+                      placeholder="e.g. Sensitive skin, needs extra care…"
                       className="w-full px-5 py-5 bg-white/40 backdrop-blur-md border border-slate-100 rounded-[1.5rem] text-[13px] font-black text-slate-900 uppercase tracking-tight focus:outline-none focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 focus:bg-white transition-all resize-none shadow-sm placeholder:text-slate-300" />
                   </div>
                 </div>
@@ -1271,8 +1271,8 @@ const Bookings = ({ isSubcomponent = false }) => {
                     <div className="pt-8 border-t border-slate-100">
                       <div className="flex items-center justify-between mb-4">
                         <div>
-                           <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] mb-1">Promotional Voucher</p>
-                           <p className="text-[8px] text-slate-400 font-bold uppercase tracking-tight italic">Unlock sanctuary exclusive deals</p>
+                           <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] mb-1">Voucher</p>
+                           <p className="text-[8px] text-slate-400 font-bold uppercase tracking-tight italic">Get discounts on services</p>
                         </div>
                         {appliedVoucher && (
                           <span className="px-3 py-1.5 bg-emerald-500/10 text-emerald-600 rounded-full text-[8px] font-black uppercase tracking-widest flex items-center gap-1.5 animate-pulse">
@@ -1289,7 +1289,7 @@ const Bookings = ({ isSubcomponent = false }) => {
                              </div>
                              <input
                               type="text"
-                               placeholder="SECRET CODE..."
+                               placeholder="PROMO CODE..."
                               className={`w-full !pl-16 pr-5 py-5 bg-slate-50 border-2 rounded-[1.5rem] outline-none transition-all font-black text-xs uppercase tracking-[0.25em] shadow-sm ${appliedVoucher 
                                 ? 'border-emerald-500/20 bg-emerald-50 text-emerald-700' 
                                 : 'border-slate-50 bg-slate-50/50 focus:border-primary-500/20 focus:bg-white text-slate-900 placeholder:text-slate-300'
@@ -1367,7 +1367,7 @@ const Bookings = ({ isSubcomponent = false }) => {
                                   <Tag size={20} />
                                 </div>
                                 <div>
-                                  <p className="text-[10px] font-black text-emerald-700 uppercase tracking-[0.2em] mb-0.5">{appliedVoucher.code} DEPLOYED</p>
+                                  <p className="text-[10px] font-black text-emerald-700 uppercase tracking-[0.2em] mb-0.5">{appliedVoucher.code} APPLIED</p>
                                   <p className="text-[12px] font-black text-emerald-900 uppercase">Saving ₱{appliedVoucher.discountAmount.toLocaleString()}</p>
                                 </div>
                               </div>
@@ -1379,7 +1379,7 @@ const Bookings = ({ isSubcomponent = false }) => {
 
                     <div className="flex flex-col gap-2 pt-5 border-t border-slate-100">
                       <div className="flex items-center justify-between text-slate-500">
-                        <span className="text-[9px] font-black uppercase tracking-widest">Base Service</span>
+                        <span className="text-[9px] font-black uppercase tracking-widest">Service Fee</span>
                         <span className="text-xs font-black">₱{(selectedService.price || 0).toLocaleString()}</span>
                       </div>
                       

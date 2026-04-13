@@ -143,7 +143,7 @@ const Products = () => {
       });
       setFilters(prev => ({ ...prev, nearMe: true, city: '' }));
       setLoading(false);
-      toast.success('Location acquired! Sorting nearest supplies.');
+      toast.success('Location found! Showing nearby items.');
     };
 
     const error = (err) => {
@@ -265,7 +265,7 @@ const Products = () => {
               <Search className="input-icon h-4 w-4 text-slate-400" />
               <input
                 type="text"
-                placeholder="SEARCH PRODUCTS..."
+                placeholder="SEARCH FOR ITEMS..."
                 className="input input-with-icon border-none rounded-xl text-[10px] sm:text-sm font-bold uppercase tracking-widest bg-slate-50 focus:ring-2 focus:ring-primary-500/20 transition-all"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -309,7 +309,7 @@ const Products = () => {
                 }}
                 className="text-[8px] font-black text-primary-600 uppercase tracking-widest"
               >
-                RESET
+                CLEAR
               </button>
             </div>
 
@@ -383,7 +383,7 @@ const Products = () => {
                     />
                     <div className="w-8 h-4.5 bg-slate-200 rounded-full peer peer-checked:bg-primary-600 transition-all after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-3.5 after:w-3.5 after:transition-all peer-checked:after:translate-x-3.5"></div>
                   </div>
-                  <span className="text-[10px] font-black text-slate-900 uppercase tracking-widest">In Stock Only</span>
+                  <span className="text-[10px] font-black text-slate-900 uppercase tracking-widest">Only In Stock</span>
                 </label>
               </div>
 
@@ -478,7 +478,7 @@ const Products = () => {
                         <Link
                           to={`/products/${product._id}`}
                           className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center bg-slate-50 hover:bg-slate-200 rounded-lg sm:rounded-xl transition-colors shadow-sm"
-                          title="View Details"
+                          title="View Info"
                         >
                           <Eye className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-slate-600" />
                         </Link>

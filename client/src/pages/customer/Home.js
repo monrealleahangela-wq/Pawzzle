@@ -99,7 +99,7 @@ const Home = () => {
     }
 
     setNearMeLoading(true);
-    toast.info('Scanning proximity...');
+    toast.info('Finding nearby stores...');
 
     navigator.geolocation.getCurrentPosition(
       async (position) => {
@@ -129,13 +129,13 @@ const Home = () => {
 
           setNearbyStores(filtered);
           if (filtered.length === 0) {
-            toast.info('No bases found within 5km radius.');
+            toast.info('No stores found within 5km radius.');
           } else {
-            toast.success(`Found ${filtered.length} bases nearby!`);
+            toast.success(`Found ${filtered.length} stores nearby!`);
           }
         } catch (error) {
           console.error('Error fetching nearby stores:', error);
-          toast.error('Failed to retrieve nearby bases');
+          toast.error('Failed to find nearby stores');
         } finally {
           setNearMeLoading(false);
         }
@@ -213,24 +213,22 @@ const Home = () => {
           <div className="relative z-10 text-center space-y-6 sm:space-y-10">
             <div className="inline-flex items-center gap-3 px-5 py-2.5 bg-white border border-primary-50 rounded-full shadow-[0_10px_25px_rgba(0,0,0,0.03)] selection:bg-primary-100">
               <div className="w-2 h-2 rounded-full bg-primary-500 animate-pulse" />
-              <span className="text-[10px] font-black text-secondary-900/40 uppercase tracking-[0.4em]">ELITE ADOPTION NETWORK</span>
+              <span className="text-[10px] font-black text-secondary-900/40 uppercase tracking-[0.4em]">PET ADOPTION NETWORK</span>
             </div>
 
             <h1 className="text-4xl sm:text-8xl font-black tracking-[-0.05em] leading-[0.88] uppercase text-primary-950">
-              Secure Your <br />
+              Find Your <br />
               <span className="italic text-transparent bg-clip-text bg-gradient-to-r from-primary-500 to-secondary-500">Best Friend .</span>
             </h1>
 
-            <p className="text-[10px] sm:text-lg text-primary-900/50 max-w-xl mx-auto font-medium leading-relaxed uppercase tracking-tight">
-              Access curated high-pedigree companions through the world's most <span className="text-primary-600">secure biological network</span>.
-            </p>
+              Find your perfect pet through the world's most <span className="text-primary-600">secure platform</span>.
 
             <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 justify-center pt-4">
               <Link to="/pets" className="group relative px-12 py-5 bg-gradient-to-br from-primary-800 to-primary-950 text-white rounded-2xl text-[11px] sm:text-xs font-black uppercase tracking-[0.3em] shadow-[0_25px_50px_rgba(0,0,0,0.2)] hover:shadow-primary-900/30 active:scale-95 transition-all flex items-center justify-center gap-3">
-                VIEW FLEET <ChevronRight className="h-5 w-5 group-hover:translate-x-2 transition-transform" />
+                VIEW PETS <ChevronRight className="h-5 w-5 group-hover:translate-x-2 transition-transform" />
               </Link>
               <Link to="/products" className="px-12 py-5 bg-white border-2 border-primary-50 text-primary-800 rounded-2xl text-[11px] sm:text-xs font-black uppercase tracking-[0.3em] hover:bg-primary-50 hover:border-primary-200 transition-all active:scale-95">
-                SHOP NETWORK
+                SHOP SUPPLIES
               </Link>
             </div>
           </div>
@@ -252,19 +250,19 @@ const Home = () => {
 
       {/* ── High-Fidelity Stats Cluster ── */}
       <section className="grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-8">
-        <StatCard icon={Heart} label="Available companions" target={500} suffix="+" color="primary" />
-        <StatCard icon={Users} label="Verified Owners" target={1200} suffix="+" color="secondary" />
-        <StatCard icon={Shield} label="Protocol Integrity" target={99} suffix="%" color="slate" />
+        <StatCard icon={Heart} label="Available Pets" target={500} suffix="+" color="primary" />
+        <StatCard icon={Users} label="Happy Owners" target={1200} suffix="+" color="secondary" />
+        <StatCard icon={Shield} label="Safe & Secure" target={99} suffix="%" color="slate" />
       </section>
 
       {/* ── Modular Quick Nav ── */}
       <section className="flex gap-4 overflow-x-auto pb-4 scrollbar-none px-1">
         {[
-          { label: 'Companions', to: '/pets', icon: Heart },
-          { label: 'Hardware', to: '/products', icon: Package },
-          { label: 'Logistics', to: '/services', icon: Sparkles },
-          { label: 'Hub Centers', to: '/stores', icon: MapPin },
-          { label: 'Operations', to: '/bookings', icon: Clock },
+          { label: 'Pets', to: '/pets', icon: Heart },
+          { label: 'Products', to: '/products', icon: Package },
+          { label: 'Services', to: '/services', icon: Sparkles },
+          { label: 'Stores', to: '/stores', icon: MapPin },
+          { label: 'Bookings', to: '/bookings', icon: Clock },
         ].map(({ label, to, icon: Icon }) => (
           <Link key={label} to={to}
             className="flex items-center gap-3 px-8 py-4 bg-white/80 backdrop-blur-xl border border-primary-50 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] text-primary-800/60 hover:border-primary-500/30 hover:text-primary-900 hover:shadow-2xl hover:bg-white transition-all whitespace-nowrap shrink-0 shadow-[0_10px_30px_rgba(0,0,0,0.03)]">
@@ -279,10 +277,10 @@ const Home = () => {
           <div className="space-y-2">
              <div className="inline-flex items-center gap-2 px-3 py-1 bg-secondary-50 border border-secondary-100 rounded-full">
                 <Navigation className="h-3 w-3 text-primary-600" />
-                <span className="text-[9px] font-black text-primary-700 uppercase tracking-widest">LOGISTICS GRID</span>
+                <span className="text-[9px] font-black text-primary-700 uppercase tracking-widest">STORE MAP</span>
              </div>
             <h2 className="text-3xl sm:text-5xl font-black text-[#5D4037] uppercase tracking-[-0.03em] leading-none">
-              Nearby <span className="italic text-primary-600">Stations .</span>
+              Nearby <span className="italic text-primary-600">Stores .</span>
             </h2>
           </div>
           <button
@@ -292,7 +290,7 @@ const Home = () => {
           >
             <div className={`absolute inset-0 bg-secondary-500/20 translate-y-full group-hover:translate-y-0 transition-transform duration-500`} />
             <Navigation className={`h-4 w-4 relative z-10 ${nearMeLoading ? 'animate-spin' : ''}`} />
-            <span className="relative z-10">{nearMeLoading ? 'SCANNING...' : 'SCAN PROXIMITY'}</span>
+            <span className="relative z-10">{nearMeLoading ? 'SEARCHING...' : 'FIND NEAR ME'}</span>
           </button>
         </div>
 
@@ -333,7 +331,7 @@ const Home = () => {
           </div>
         ) : !nearMeLoading && userLocation && (
           <div className="py-20 text-center bg-white/40 backdrop-blur-md rounded-[3rem] border border-dashed border-primary-900/10">
-            <p className="text-[11px] font-black text-primary-900/30 uppercase tracking-[0.4em]">NO ACTIVE HUBS DETECTED IN OPERATIONAL RADIUS</p>
+            <p className="text-[11px] font-black text-primary-900/30 uppercase tracking-[0.4em]">NO STORES FOUND NEARBY</p>
           </div>
         )}
       </section>
@@ -344,10 +342,10 @@ const Home = () => {
           <div className="space-y-2">
              <div className="inline-flex items-center gap-2 px-3 py-1 bg-rose-50 border border-rose-100 rounded-full">
                 <Heart className="h-3 w-3 text-rose-500" />
-                <span className="text-[9px] font-black text-rose-700 uppercase tracking-widest">BIOLOGICAL STATUS: LIVE</span>
+                <span className="text-[9px] font-black text-rose-700 uppercase tracking-widest">NEW PETS AVAILABLE</span>
              </div>
             <h2 className="text-3xl sm:text-5xl font-black text-[#3D2B23] uppercase tracking-[-0.03em] leading-none">
-              Live <span className="italic text-primary-600">Companions .</span>
+              Available <span className="italic text-primary-600">Pets .</span>
             </h2>
           </div>
           <Link to="/pets" className="group text-[10px] font-black text-[#5D4037]/40 uppercase tracking-[0.3em] hover:text-primary-600 transition-all flex items-center gap-3">
@@ -377,7 +375,7 @@ const Home = () => {
                   )}
                   <div className="absolute top-4 left-4 flex flex-col gap-2">
                     <span className={`px-4 py-1.5 rounded-2xl text-[8px] font-black uppercase tracking-[0.2em] backdrop-blur-xl border border-white/20 shadow-2xl ${pet.status === 'available' ? 'bg-emerald-500/90 text-white' : 'bg-rose-500/90 text-white'}`}>
-                      {pet.status === 'available' ? 'ACTIVE' : 'LOCKED'}
+                      {pet.status === 'available' ? 'AVAILABLE' : 'ADOPTED'}
                     </span>
                   </div>
                 </div>
@@ -385,7 +383,7 @@ const Home = () => {
 
               <div className="p-6 sm:p-8 flex-1 flex flex-col relative z-10 space-y-6">
                 <div className="space-y-2">
-                  <p className="text-[10px] font-black text-secondary-600/60 uppercase tracking-[0.4em] truncate">{pet.breed || 'HIGH PEDIGREE'}</p>
+                  <p className="text-[10px] font-black text-secondary-600/60 uppercase tracking-[0.4em] truncate">{pet.breed || 'PET'}</p>
                   <h3 className="text-xl sm:text-3xl font-black text-primary-950 uppercase tracking-tighter truncate group-hover:text-primary-600 transition-colors leading-none">{pet.name}</h3>
                 </div>
 
@@ -404,7 +402,6 @@ const Home = () => {
                       <p className="text-[9px] font-black text-primary-900/30 uppercase tracking-[0.3em]">SECURE ACCESS</p>
                       <p className="text-2xl sm:text-3xl font-black text-primary-950 tracking-tighter leading-none">₱{pet.price?.toLocaleString()}</p>
                    </div>
-                   <Link to={`/pets/${pet._id}`} className="w-14 h-14 bg-primary-950 text-white rounded-2xl flex items-center justify-center shadow-xl hover:bg-primary-600 active:scale-90 transition-all">
                       <ArrowRight className="h-6 w-6" />
                    </Link>
                 </div>
@@ -421,14 +418,14 @@ const Home = () => {
             <div className="space-y-2">
                <div className="inline-flex items-center gap-2 px-3 py-1 bg-secondary-50 border border-secondary-100 rounded-full">
                   <Package className="h-3 w-3 text-primary-600" />
-                  <span className="text-[9px] font-black text-primary-700 uppercase tracking-widest">HARDWARE ECOSYSTEM</span>
+                  <span className="text-[9px] font-black text-primary-700 uppercase tracking-widest">PET SUPPLIES</span>
                </div>
               <h2 className="text-3xl sm:text-5xl font-black text-[#3D2B23] uppercase tracking-[-0.03em] leading-none">
-                Elite <span className="italic text-primary-600">Supplies .</span>
+                Best <span className="italic text-primary-600">Supplies .</span>
               </h2>
             </div>
             <Link to="/products" className="group text-[10px] font-black text-primary-900/40 uppercase tracking-[0.3em] hover:text-primary-600 transition-all flex items-center gap-3">
-              EXPLORE HUB <div className="w-8 h-8 rounded-full border border-primary-500/10 flex items-center justify-center group-hover:bg-primary-50 transition-all">
+              SHOP ALL <div className="w-8 h-8 rounded-full border border-primary-500/10 flex items-center justify-center group-hover:bg-primary-50 transition-all">
                 <ChevronRight className="h-4 w-4" />
               </div>
             </Link>
@@ -449,7 +446,7 @@ const Home = () => {
                   )}
                    {/* Stock Indicator HUD */}
                    <div className="absolute top-3 right-3 px-3 py-1 bg-white/90 backdrop-blur-md rounded-xl text-[8px] font-black uppercase tracking-widest text-primary-900 border border-white/50 shadow-xl opacity-0 group-hover/img:opacity-100 transition-opacity">
-                      {product.stockQuantity > 5 ? 'IN STOCK' : 'CRITICAL'}
+                      {product.stockQuantity > 5 ? 'IN STOCK' : 'LOW STOCK'}
                    </div>
 
                   <button
@@ -494,9 +491,9 @@ const Home = () => {
       {/* ── Operational Integrity Grid ── */}
       <section className="grid grid-cols-1 sm:grid-cols-3 gap-8">
         {[
-          { icon: Crown, title: 'Verified Units', desc: 'Every companion undergoes tactical health screening by our elite vetting core.', color: 'primary' },
-          { icon: Shield, title: 'Encrypted Escrow', desc: 'All transactions are secured via high-level protocol validation.', color: 'secondary' },
-          { icon: Zap, title: 'Instant Logistics', desc: 'Secure grooming, medical, and behavioral services with one-tap deployment.', color: 'slate' },
+          { icon: Crown, title: 'Healthy Pets', desc: 'Every pet undergoes thorough health screening by our expert vets.', color: 'primary' },
+          { icon: Shield, title: 'Secure Payment', desc: 'All transactions are protected and kept safe on our platform.', color: 'secondary' },
+          { icon: Zap, title: 'Quick Services', desc: 'Book grooming, medical, and training services with one tap.', color: 'slate' },
         ].map(({ icon: Icon, title, desc, color }, i) => (
           <div key={i} className={`bg-white rounded-[3.5rem] border border-primary-50 p-10 relative overflow-hidden transition-all duration-500 hover:shadow-[0_40px_80px_rgba(139,69,19,0.1)] hover:-translate-y-2 animate-card-appear`}
             style={{ animationDelay: `${i * 0.12}s` }}>
@@ -519,24 +516,23 @@ const Home = () => {
           <div className="relative z-10 space-y-10">
             <div className="inline-flex items-center gap-3 px-6 py-2 bg-white/5 border border-white/10 rounded-full">
               <TrendingUp className="h-4 w-4 text-secondary-400" />
-              <span className="text-[10px] sm:text-[11px] font-black uppercase tracking-[0.4em] text-secondary-400">NETWORK EXPANSION</span>
+              <span className="text-[10px] sm:text-[11px] font-black uppercase tracking-[0.4em] text-secondary-400">JOIN OUR COMMUNITY</span>
             </div>
             <h2 className="text-4xl sm:text-8xl font-black tracking-[-0.05em] uppercase leading-[0.85] text-white">
-              {isAuthenticated ? `Operational Status` : 'Initiate'}
               <br />
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-secondary-400 to-secondary-600 italic">
-                {isAuthenticated ? 'OPTIMAL .' : 'PROTOCOL .'}
+                {isAuthenticated ? 'READY .' : 'JOIN US .'}
               </span>
             </h2>
             <p className="text-[12px] sm:text-lg text-white/40 max-w-lg mx-auto font-black uppercase tracking-[0.2em] leading-relaxed">
               {isAuthenticated
-                ? 'Your premium biological fleet is secured. Deployment ready.'
-                : 'Authenticate your access to secure elite hardware and companions today.'}
+                ? 'Welcome back to the family. Your pets are waiting.'
+                : 'Join us today to find your new best friend and get the best pet care.'}
             </p>
             <div className="flex flex-col sm:flex-row gap-6 justify-center pt-4">
               <Link to={isAuthenticated ? '/pets' : '/register'}
                 className="group relative px-16 py-6 bg-secondary-500 text-white rounded-2xl text-sm font-black uppercase tracking-[0.3em] hover:bg-secondary-600 active:scale-95 transition-all shadow-[0_20px_50px_rgba(191,166,160,0.4)] flex items-center justify-center gap-4">
-                {isAuthenticated ? 'VIEW NEW FLEET' : 'REGISTER CORE'}
+                {isAuthenticated ? 'VIEW MY PETS' : 'SIGN UP NOW'}
                 <ArrowRight className="h-5 w-5 group-hover:translate-x-3 transition-transform" />
               </Link>
             </div>

@@ -90,7 +90,7 @@ const PetDetail = () => {
             ) : (
               <div className="flex flex-col items-center justify-center text-slate-300">
                 <Heart className="h-16 w-16 mb-2 opacity-20" />
-                <p className="font-black uppercase tracking-widest text-[8px] opacity-40">No Visuals</p>
+                <p className="font-black uppercase tracking-widest text-[8px] opacity-40">No Images</p>
               </div>
             )}
             <div className="absolute top-3 right-3">
@@ -98,7 +98,7 @@ const PetDetail = () => {
                 pet.status === 'reserved' ? 'bg-primary-600/90 text-white' :
                   'bg-rose-600/90 text-white'
                 }`}>
-                {pet.status?.toUpperCase() || (pet.isAvailable ? 'Active' : 'Deployed')}
+                {pet.status?.toUpperCase() || (pet.isAvailable ? 'Active' : 'Sold')}
               </span>
             </div>
           </div>
@@ -144,12 +144,12 @@ const PetDetail = () => {
               <div className="flex items-center gap-1.5 mb-4 bg-secondary-50 rounded-xl px-3 py-1.5 w-fit border border-secondary-100">
                 <Star className="w-4 h-4 text-secondary-500 fill-secondary-500" />
                 <span className="text-xs font-black text-primary-700 tracking-wider">
-                  {pet.ratings.average.toFixed(1)} <span className="font-bold opacity-70">({pet.ratings.count} REVIEWS)</span>
+                  {pet.ratings.average.toFixed(1)} <span className="font-bold opacity-70">({pet.ratings.count} reviews)</span>
                 </span>
               </div>
             )}
             <p className="text-[11px] sm:text-base font-bold text-slate-500 leading-relaxed italic">
-              "{pet.description || 'Superior selection awaiting a premium deployment environment.'}"
+              "{pet.description || 'Looking for a new loving home!'}"
             </p>
           </div>
 
@@ -159,8 +159,8 @@ const PetDetail = () => {
               { label: 'Breed', value: pet.breed },
               { label: 'Age', value: `${pet.age} ${pet.ageUnit}` },
               { label: 'Gender', value: pet.gender },
-              { label: 'Pet Size', value: pet.size },
-              { label: 'Health Status', value: pet.vaccinationStatus.replace('_', ' ') }
+              { label: 'Size', value: pet.size },
+              { label: 'Health', value: pet.vaccinationStatus.replace('_', ' ') }
             ].map((stat, i) => (
               <div key={i} className="bg-slate-50 p-3 sm:p-4 rounded-2xl border border-slate-100 flex flex-col justify-center">
                 <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-0.5">{stat.label}</p>
@@ -171,7 +171,7 @@ const PetDetail = () => {
 
           {pet.specialNeeds && (
             <div className="bg-rose-50 p-4 rounded-2xl border border-rose-100">
-              <h3 className="text-[9px] font-black text-rose-600 uppercase tracking-widest mb-1">Critical Requirements</h3>
+              <h3 className="text-[9px] font-black text-rose-600 uppercase tracking-widest mb-1">Special Needs</h3>
               <p className="text-[11px] font-bold text-rose-800 leading-relaxed">{pet.specialNeeds}</p>
             </div>
           )}
@@ -180,7 +180,7 @@ const PetDetail = () => {
           <div className="bg-slate-900 p-4 sm:p-8 rounded-[2.5rem] shadow-2xl relative overflow-hidden group">
             <div className="absolute top-0 right-0 w-32 h-32 bg-primary-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
 
-            <h3 className="text-white text-[10px] sm:text-base font-black uppercase tracking-widest mb-4 sm:mb-6 relative z-10 italic">Inquire for Purchase</h3>
+            <h3 className="text-white text-[10px] sm:text-base font-black uppercase tracking-widest mb-4 sm:mb-6 relative z-10 italic">Talk to the Seller</h3>
 
             <div className="flex flex-col gap-2 relative z-10">
               <button

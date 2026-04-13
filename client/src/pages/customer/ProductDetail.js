@@ -147,7 +147,7 @@ const ProductDetail = () => {
     <div className="max-w-6xl mx-auto space-y-4 sm:space-y-8 animate-fade-in pb-24 px-1 sm:px-0">
       <Link to="/products" className="inline-flex items-center text-[10px] sm:text-sm font-black text-slate-400 hover:text-primary-600 uppercase tracking-widest transition-all px-2 md:px-0">
         <ArrowLeft className="h-3 w-3 mr-1.5" />
-        Back to Stock
+        Back to Products
       </Link>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-10">
@@ -199,10 +199,10 @@ const ProductDetail = () => {
 
           <div className="grid grid-cols-2 gap-2 sm:gap-4">
             {[
-              { label: 'Classification', value: product.category },
-              { label: 'Origin', value: product.brand || 'Premium' },
-              { label: 'Mass', value: `${product.weight || '0'} ${product.weightUnit || 'kg'}` },
-              { label: 'Deployment', value: product.suitableFor?.[0] || 'Universal' }
+              { label: 'Category', value: product.category },
+              { label: 'Brand', value: product.brand || 'Premium' },
+              { label: 'Weight', value: `${product.weight || '0'} ${product.weightUnit || 'kg'}` },
+              { label: 'Good for', value: product.suitableFor?.[0] || 'All pets' }
             ].map((stat, i) => (
               <div key={i} className="bg-slate-50 p-3 sm:p-5 rounded-2xl border border-slate-100">
                 <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-0.5">{stat.label}</p>
@@ -212,9 +212,9 @@ const ProductDetail = () => {
           </div>
 
           <div className="space-y-2">
-            <h3 className="text-[10px] font-black text-slate-900 uppercase tracking-widest">Operational Intel</h3>
+            <h3 className="text-[10px] font-black text-slate-900 uppercase tracking-widest">Description</h3>
             <p className="text-[11px] sm:text-base font-bold text-slate-500 leading-relaxed italic pr-4">
-              "{product.description || 'Superior selection awaiting a premium deployment environment.'}"
+              "{product.description || 'A great product for your pet.'}"
             </p>
           </div>
 
@@ -247,7 +247,7 @@ const ProductDetail = () => {
                 )}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-[9px] font-black text-primary-500 uppercase tracking-[0.2em] mb-1">Verified Base</p>
+                <p className="text-[9px] font-black text-primary-500 uppercase tracking-[0.2em] mb-1">Verified Seller</p>
                 <h4 className="text-base sm:text-xl font-black text-slate-900 truncate uppercase tracking-tight">{product.store.name}</h4>
                 <div className="flex items-center gap-1.5 mt-1 sm:mt-2">
                   <MapPin className="h-3 w-3 text-slate-300" />
@@ -257,7 +257,7 @@ const ProductDetail = () => {
                       product.store.contactInfo?.address?.barangay,
                       product.store.contactInfo?.address?.city,
                       product.store.contactInfo?.address?.state
-                    ].filter(Boolean).join(', ') || 'Cavite Operating Zone'}
+                    ].filter(Boolean).join(', ') || 'Cavite'}
                   </span>
                 </div>
               </div>
@@ -273,17 +273,17 @@ const ProductDetail = () => {
             
             {user?.role === 'seller' || user?.role === 'store_owner' ? (
               <div className="relative z-10 text-center py-4">
-                <p className="text-white text-[11px] font-black uppercase tracking-[0.2em] opacity-80 mb-2">Professional Account</p>
+                <p className="text-white text-[11px] font-black uppercase tracking-[0.2em] opacity-80 mb-2">Seller Account</p>
                 <div className="p-4 bg-white/5 border border-white/10 rounded-2xl">
                   <p className="text-white/60 text-[10px] font-bold uppercase tracking-widest leading-relaxed">
-                    Store owners are restricted from marketplace purchases to maintain professional accountability.
+                    Sellers are not allowed to buy items on the marketplace.
                   </p>
                 </div>
               </div>
             ) : (
               <>
                 <div className="flex items-center justify-between mb-6 relative z-10">
-                  <h3 className="text-white text-base font-black uppercase tracking-widest italic">Acquisition</h3>
+                  <h3 className="text-white text-base font-black uppercase tracking-widest italic">Options</h3>
                   <div className="flex items-center gap-4 bg-white/10 rounded-xl p-1 px-4 border border-white/10">
                     <button onClick={() => setQuantity(Math.max(1, quantity - 1))} className="text-slate-400 hover:text-white"><Minus className="h-4 w-4" /></button>
                     <span className="w-8 text-center text-white font-black">{quantity}</span>
@@ -300,7 +300,7 @@ const ProductDetail = () => {
                       : 'bg-slate-800 text-slate-500 cursor-not-allowed'
                       }`}
                   >
-                    {product.stockQuantity === 0 ? 'Asset Depleted' : `Add to Cart`}
+                    {product.stockQuantity === 0 ? 'Out of Stock' : `Add to Cart`}
                   </button>
                   <button
                     onClick={handleBuyNow}
@@ -310,7 +310,7 @@ const ProductDetail = () => {
                       : 'bg-slate-800 text-slate-500 cursor-not-allowed'
                       }`}
                   >
-                    {product.stockQuantity === 0 ? 'Asset Depleted' : `Buy Now [₱${(product.price * quantity).toLocaleString()}]`}
+                    {product.stockQuantity === 0 ? 'Out of Stock' : `Buy Now [₱${(product.price * quantity).toLocaleString()}]`}
                   </button>
                 </div>
               </>

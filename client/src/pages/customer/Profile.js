@@ -936,14 +936,14 @@ const Profile = () => {
                       ) : (
                         <Save className="h-3.5 w-3.5" />
                       )}
-                      Commit
+                      Save
                     </button>
                     <button 
                       onClick={handleCancel}
                       className="px-6 py-3 bg-slate-100 text-slate-600 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] hover:bg-slate-200 transition-all flex items-center gap-2"
                     >
                       <X className="h-3.5 w-3.5" />
-                      Abort
+                      Cancel
                     </button>
                   </div>
                 )}
@@ -993,7 +993,7 @@ const Profile = () => {
                   { id: 'following', icon: User, label: 'Following', role: ['customer', 'admin'] },
                   { id: 'security', icon: Shield, label: 'Security' },
                   { id: 'store', icon: Building, label: 'My Store', role: 'admin' },
-                  { id: 'upgrade', icon: Store, label: 'Partner Program', role: 'customer' }
+                  { id: 'upgrade', icon: Store, label: 'Become a Seller', role: 'customer' }
                 ].filter(item => {
                   if (!item.role) return true;
                   if (Array.isArray(item.role)) return item.role.includes(user.role);
@@ -1155,18 +1155,18 @@ const Profile = () => {
                       <div className="text-center sm:text-left">
                         <div className="flex items-center justify-center sm:justify-start gap-3 mb-3">
                           <HeartIcon className="h-5 w-5 text-primary-400 fill-primary-400" />
-                          <span className="text-[10px] font-black uppercase tracking-[0.4em] text-primary-300">WE VALUE YOUR INTEL</span>
+                          <span className="text-[10px] font-black uppercase tracking-[0.4em] text-primary-300">WE VALUE YOUR FEEDBACK</span>
                         </div>
-                        <h3 className="text-3xl sm:text-4xl font-black uppercase tracking-tighter mb-3 leading-none">Help us <span className="text-primary-500 italic">Evolve</span></h3>
+                        <h3 className="text-3xl sm:text-4xl font-black uppercase tracking-tighter mb-3 leading-none">Help us <span className="text-primary-500 italic">Improve</span></h3>
                         <p className="text-[11px] text-slate-400 font-bold uppercase tracking-widest max-w-[400px] leading-relaxed">
-                          Your feedback allows us to calibrate the platform for the the elite pet care experience.
+                          Your feedback allows us to improve the platform for the best pet care experience.
                         </p>
                       </div>
                       <button 
                          onClick={() => setShowFeedbackModal(true)}
                          className="px-10 py-5 bg-white text-slate-900 rounded-[2rem] text-[11px] font-black uppercase tracking-[0.2em] shadow-xl hover:bg-primary-500 hover:text-white transition-all active:scale-95 whitespace-nowrap"
                       >
-                        Initiate Calibration
+                        Send Feedback
                       </button>
                     </div>
                   </div>
@@ -1341,8 +1341,8 @@ const Profile = () => {
                         <HeartIcon className="h-6 w-6 text-primary-600" />
                       </div>
                       <div>
-                        <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight">Personal Pet Fleet</h2>
-                        <p className="text-xs text-slate-400 font-bold uppercase tracking-widest leading-none mt-1">Manage your pet asset profiles</p>
+                        <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight">My Pets</h2>
+                        <p className="text-xs text-slate-400 font-bold uppercase tracking-widest leading-none mt-1">Manage your pet profiles</p>
                       </div>
                     </div>
                     <button 
@@ -1350,7 +1350,7 @@ const Profile = () => {
                       className="bg-primary-600 hover:bg-primary-700 text-white px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-xl shadow-primary-100 flex items-center justify-center gap-2 group"
                     >
                       <Plus className="h-4 w-4 group-hover:rotate-90 transition-transform duration-300" />
-                      Register New Pet
+                      Add New Pet
                     </button>
                   </div>
 
@@ -1364,15 +1364,15 @@ const Profile = () => {
                       <div className="w-20 h-20 bg-white rounded-3xl shadow-xl flex items-center justify-center mx-auto mb-6">
                         <HeartIcon className="h-8 w-8 text-primary-200" />
                       </div>
-                      <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight mb-2">No Pets On Guard</h3>
+                      <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight mb-2">No Pets Found</h3>
                       <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest max-w-xs mx-auto mb-8">
-                        You haven't registered any pet profiles yet. Start building your fleet for easier service booking.
+                        You haven't added any pet profiles yet. Add your pets here for easier service booking.
                       </p>
                       <button 
                         onClick={() => { resetPetForm(); setShowPetModal(true); }}
                         className="bg-white text-primary-600 border-2 border-primary-100 hover:border-primary-600 px-8 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all shadow-sm"
                       >
-                        Initiate First Registration
+                        Add Your First Pet
                       </button>
                     </div>
                   ) : (
@@ -1414,7 +1414,7 @@ const Profile = () => {
                           </div>
 
                           <button onClick={() => handleEditPet(pet)} className="mt-8 w-full py-4 bg-slate-900 text-white rounded-2xl text-[9px] font-black uppercase tracking-widest hover:bg-primary-600 transition-all opacity-0 group-hover:opacity-100 translate-y-4 group-hover:translate-y-0 duration-300">
-                             Open Dossier
+                             View Profile
                           </button>
                         </div>
                       ))}
@@ -1427,7 +1427,7 @@ const Profile = () => {
                          <div className="w-16 h-16 bg-white rounded-2xl shadow-lg flex items-center justify-center text-slate-300 group-hover:text-primary-500 transition-colors">
                             <Plus className="h-8 w-8" />
                          </div>
-                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Enlist More</p>
+                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Add Pet</p>
                       </button>
                     </div>
                   )}
@@ -1474,8 +1474,8 @@ const Profile = () => {
                           <Lock className="h-5 w-5 sm:h-8 sm:w-8" />
                         </div>
                         <div>
-                          <h4 className="font-black text-slate-900 text-xs sm:text-lg uppercase tracking-tight mb-0.5">Security Updates</h4>
-                          <p className="text-[8px] sm:text-sm text-slate-400 font-bold uppercase tracking-tight opacity-70 leading-none">Modify your access credentials</p>
+                          <h4 className="font-black text-slate-900 text-xs sm:text-lg uppercase tracking-tight mb-0.5">Change Password</h4>
+                          <p className="text-[8px] sm:text-sm text-slate-400 font-bold uppercase tracking-tight opacity-70 leading-none">Update your login information</p>
                         </div>
                       </div>
 
