@@ -75,12 +75,21 @@ const createTransporter = async () => {
   const pass = process.env.EMAIL_PASS || 'aknzqkqqdumntchq';
 
   // Robust Gmail transporter config (Matches working emailService.js)
+  // FORCE family: 4 to resolve ENETUNREACH IPv6 errors on restricted cloud hosts
   const transporter = nodemailer.createTransport({
-    service: 'gmail',
-    auth: { user, pass },
+    host: 'smtp.gmail.com',
+    port: 465,
+    secure: true,
+    auth: {
+        user: user,
+        pass: pass
+    },
+    family: 4, // FORCE IPv4 for Render/Vercel network compatibility
     connectionTimeout: 30000,
+    greetingTimeout: 30000,
+    socketTimeout: 30000,
     tls: {
-      rejectUnauthorized: false
+        rejectUnauthorized: false
     }
   });
 

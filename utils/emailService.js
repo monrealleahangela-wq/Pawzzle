@@ -25,11 +25,14 @@ const getTransporter = () => {
     console.log(`[EmailService] Creating transporter for: ${user}`);
 
     return nodemailer.createTransport({
-        service: 'gmail',
+        host: 'smtp.gmail.com',
+        port: 465,
+        secure: true,
         auth: {
             user: user,
             pass: pass
         },
+        family: 4, // FORCE IPv4 for Render/Vercel network compatibility
         connectionTimeout: 30000,
         greetingTimeout: 30000,
         socketTimeout: 30000,
