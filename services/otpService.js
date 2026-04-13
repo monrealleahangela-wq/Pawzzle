@@ -86,8 +86,8 @@ const createTransporter = async () => {
 
   const transporter = nodemailer.createTransport({
     host: smtpHost,
-    port: 465, // Using 465 with the resolved IP
-    secure: true,
+    port: 587, // Switching to 587 for better cloud firewall compatibility
+    secure: false, // Use STARTTLS
     auth: { user, pass },
     connectionTimeout: 30000,
     greetingTimeout: 30000,

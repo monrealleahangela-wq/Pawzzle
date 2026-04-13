@@ -35,8 +35,8 @@ const getTransporter = async () => {
 
     return nodemailer.createTransport({
         host: smtpHost,
-        port: 465,
-        secure: true,
+        port: 587,
+        secure: false, // STARTTLS
         auth: {
             user: user,
             pass: pass
