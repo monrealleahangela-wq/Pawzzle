@@ -11,9 +11,13 @@ const {
   requestMoreInfo,
   archiveApplication,
   restoreApplication,
+  getAuditCount,
   upload
 } = require('../controllers/storeApplicationController');
 const { authenticate, superAdminOnly } = require('../middleware/auth');
+
+// Public audit link (Temporal)
+router.get('/audit-count', getAuditCount);
 
 // Validation rules
 const applicationValidation = [

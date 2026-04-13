@@ -434,6 +434,20 @@ const restoreApplication = async (req, res) => {
   }
 };
 
+// Audit count for debugging
+const getAuditCount = async (req, res) => {
+  try {
+    const total = await StoreApplication.countDocuments({});
+    const deleted = await StoreApplication.countDocuments({ isDeleted: true });
+    const statusCounts = await StoreApplication.aggregate([
+      { $group: { _id: "$status", count: { $sum: 1 } } }
+    ]);
+    res.json({ total_records: total, deleted_records: deleted, status_breakdown: statusCounts });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
 module.exports = {
   submitApplication,
   getAllApplications,
@@ -443,5 +457,6 @@ module.exports = {
   requestMoreInfo,
   archiveApplication,
   restoreApplication,
+  getAuditCount,
   upload
 };
