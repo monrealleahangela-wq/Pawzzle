@@ -27,6 +27,7 @@ const EnhancedChatMessenger = ({
   const [isSeller, setIsSeller] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
   const [typingUser, setTypingUser] = useState(null);
+  const typingTimeoutRef = useRef(null);
   const messagesEndRef = useRef(null);
   const messagesContainerRef = useRef(null);
   const fileInputRef = useRef(null);
