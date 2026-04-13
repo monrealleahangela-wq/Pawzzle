@@ -399,9 +399,10 @@ const Home = () => {
 
                 <div className="flex justify-between items-center mt-auto">
                    <div className="space-y-1">
-                      <p className="text-[9px] font-black text-primary-900/30 uppercase tracking-[0.3em]">SECURE ACCESS</p>
+                      <p className="text-[9px] font-black text-primary-900/30 uppercase tracking-[0.3em]">PRICE</p>
                       <p className="text-2xl sm:text-3xl font-black text-primary-950 tracking-tighter leading-none">₱{pet.price?.toLocaleString()}</p>
                    </div>
+                   <Link to={`/pets/${pet._id}`} className="w-14 h-14 bg-primary-950 text-white rounded-2xl flex items-center justify-center shadow-xl hover:bg-primary-600 active:scale-90 transition-all">
                       <ArrowRight className="h-6 w-6" />
                    </Link>
                 </div>
