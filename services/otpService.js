@@ -148,31 +148,11 @@ const sendRegistrationOTP = async (email, otp, firstName, userData = null) => {
     }
 
     // FINAL FAILURE REPORTING
-    const finalErrorMessage = `EMAIL DELIVERY FAILED. \n- Resend API: ${resendError || 'Unknown Error'} \n- SMTP: ${smtpErrors}`;
+    const finalErrorMessage = `Email delivery failed. Resend: ${resendError || 'unknown'}. SMTP: ${smtpErrors || 'all ports blocked'}`;
     throw new Error(finalErrorMessage);
 
   } catch (error) {
-    const OWNER_EMAILS = [
-      'monrealeah24@gmail.com', 
-      'pawzzle.spark@gmail.com', 
-      'eugenepabello@gmail.com', 
-      'monrealeah@gmail.com',
-      'monrealeahangela.wq@gmail.com'
-    ];
-    
-    if (OWNER_EMAILS.includes(email.toLowerCase())) {
-      console.log('💎 [OWNER BYPASS] Email delivery failed, but allowing code 888888 entry.');
-      try {
-        await Otp.findOneAndUpdate(
-          { email: email.toLowerCase(), type: 'registration' }, 
-          { otp: '888888' }, 
-          { sort: { createdAt: -1 }, upsert: true }
-        );
-        return true; // Return true to allow UI to proceed
-      } catch (dbErr) {
-        console.error('Bypass DB Update failed:', dbErr.message);
-      }
-    }
+    console.error('❌ sendRegistrationOTP FAILED:', error.message);
     throw error;
   }
 };
