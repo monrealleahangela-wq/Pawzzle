@@ -60,7 +60,7 @@ const SellerJoin = () => {
   const [files, setFiles] = useState({
     governmentId: null,
     businessRegistration: null,
-    licenseDocument: null
+    birRegistration: null
   });
 
   useEffect(() => {
@@ -183,7 +183,7 @@ const SellerJoin = () => {
       // Append files
       if (files.governmentId) formData.append('governmentId', files.governmentId);
       if (files.businessRegistration) formData.append('businessRegistration', files.businessRegistration);
-      if (files.licenseDocument) formData.append('licenseDocument', files.licenseDocument);
+      if (files.birRegistration) formData.append('birRegistration', files.birRegistration);
 
       await storeApplicationService.submitApplication(formData);
       setSubmitted(true);
@@ -284,7 +284,7 @@ const SellerJoin = () => {
                             required 
                             value={regData.password} 
                             onChange={handleRegChange} 
-                            className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-xs font-bold outline-none focus:ring-4 focus:ring-primary-500/5 pr-14 appearance-none [&::-ms-reveal]:hidden [&::-ms-clear]:hidden" 
+                            className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-xs font-bold outline-none focus:ring-4 focus:ring-primary-500/5 pr-14 select-none [appearance:none] [&::-ms-reveal]:hidden [&::-ms-clear]:hidden [&::-webkit-credentials-store-indicator]:hidden" 
                         />
                         <button 
                             type="button" 
@@ -304,7 +304,7 @@ const SellerJoin = () => {
                             required 
                             value={regData.confirmPassword} 
                             onChange={handleRegChange} 
-                            className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-xs font-bold outline-none focus:ring-4 focus:ring-primary-500/5 pr-14 appearance-none [&::-ms-reveal]:hidden [&::-ms-clear]:hidden" 
+                            className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-xs font-bold outline-none focus:ring-4 focus:ring-primary-500/5 pr-14 select-none [appearance:none] [&::-ms-reveal]:hidden [&::-ms-clear]:hidden [&::-webkit-credentials-store-indicator]:hidden" 
                         />
                         <button 
                             type="button" 
@@ -510,7 +510,7 @@ const SellerJoin = () => {
                    {[
                      { id: 'governmentId', label: 'Authorized Owner ID (Passport/License)', icon: User },
                      { id: 'businessRegistration', label: 'Business Registration (DTI/SEC)', icon: Building2 },
-                     { id: 'licenseDocument', label: 'Tax Certification (BIR 2303)', icon: FileCheck }
+                     { id: 'birRegistration', label: 'Tax Certification (BIR 2303)', icon: FileCheck }
                    ].map((doc) => (
                      <div key={doc.id} className="p-6 bg-slate-50 border border-slate-100 rounded-[2rem] flex flex-col md:flex-row items-center justify-between gap-6 hover:border-primary-200 transition-colors group">
                         <div className="flex items-center gap-4">
@@ -528,7 +528,7 @@ const SellerJoin = () => {
                             </div>
                             <input 
                                 type="file" 
-                                required={doc.id !== 'licenseDocument'} 
+                                required={doc.id !== 'licenseDocument' && doc.id !== 'birRegistration'} 
                                 onChange={(e) => handleFileChange(e, doc.id)} 
                                 className="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-10" 
                             />

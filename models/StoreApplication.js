@@ -256,7 +256,7 @@ storeApplicationSchema.methods.autoVerify = function () {
   const checks = this.verificationChecks;
 
   // Check if license is not expired
-  if (this.businessLicense.expiryDate && new Date(this.businessLicense.expiryDate) > new Date()) {
+  if (this.businessLicense?.expiryDate && new Date(this.businessLicense.expiryDate) > new Date()) {
     checks.licenseValid = true;
   }
 
@@ -266,7 +266,7 @@ storeApplicationSchema.methods.autoVerify = function () {
   }
 
   // Check insurance expiry
-  if (this.insurance.expiryDate && new Date(this.insurance.expiryDate) > new Date()) {
+  if (this.insurance?.expiryDate && new Date(this.insurance.expiryDate) > new Date()) {
     checks.insuranceValid = true;
   }
 
@@ -279,7 +279,7 @@ storeApplicationSchema.methods.autoVerify = function () {
   }
 
   // Basic reference validation
-  if (this.references.length >= 2) {
+  if (this.references?.length >= 2) {
     checks.referencesValid = true;
   }
 
