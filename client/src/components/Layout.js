@@ -48,7 +48,6 @@ import NotificationBell from './NotificationBell';
 import PasswordChangeModal from './auth/PasswordChangeModal';
 import LogoutModal from './auth/LogoutModal';
 import { useTheme } from '../contexts/ThemeContext';
-import BottomNavBar from './BottomNavBar';
 
 const Layout = () => {
   const { user, logout, loading, isAuthenticated } = useAuth();
@@ -329,12 +328,11 @@ const Layout = () => {
           </header>
         )}
 
-        <main className={`flex-1 p-2 lg:p-4 pb-28 lg:pb-4 ${isLandingPage ? 'p-0' : ''}`}>
+        <main className={`flex-1 p-2 lg:p-4 ${isLandingPage ? 'p-0' : ''}`}>
            <Outlet />
         </main>
 
-        {/* Mobile Bottom Nav – now handled by the dedicated BottomNavBar component */}
-        {!isLandingPage && <BottomNavBar />}
+        {/* Mobile Bottom Nav deactivated as per user request */}
       </div>
 
       {/* Mobile Drawer */}
