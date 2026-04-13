@@ -441,24 +441,30 @@ const EnhancedChatMessenger = ({
       className={`flex flex-col h-full bg-white transition-transform duration-300 ease-out min-h-0
         ${!isEmbedded ? 'rounded-t-[2.5rem] sm:rounded-3xl shadow-2xl max-w-lg w-full h-full sm:h-[600px] overflow-hidden border border-white/20' : ''}`}
     >
-      {!isEmbedded && (
-        <div className="flex-shrink-0 px-5 py-3 bg-neutral-900 text-white flex items-center justify-between z-10">
+      {(!isEmbedded || window.innerWidth < 640) && (
+        <div className={`flex-shrink-0 px-5 py-3 flex items-center justify-between z-10 ${
+          isEmbedded ? 'bg-white border-b border-slate-100' : 'bg-neutral-900 text-white'
+        }`}>
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-primary-500 rounded-xl flex items-center justify-center font-black text-base shadow-lg rotate-3 uppercase">
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black text-base shadow-lg rotate-3 uppercase ${
+              isEmbedded ? 'bg-primary-600 text-white' : 'bg-primary-500'
+            }`}>
               {pet?.name?.[0] || 'P'}
             </div>
             <div>
-              <h3 className="text-base font-black tracking-tight">{pet?.name || 'Inquiry'}</h3>
+              <h3 className={`text-base font-black tracking-tight ${isEmbedded ? 'text-slate-900' : 'text-white'}`}>
+                {pet?.name || 'Inquiry'}
+              </h3>
               <div className="flex items-center gap-2 text-[9px] font-black uppercase tracking-widest transition-all">
                 <div className={`w-1 h-1 rounded-full ${onlineStatus.isOnline ? 'bg-secondary-500 animate-pulse' : 'bg-slate-400'}`} />
-                <span className={onlineStatus.isOnline ? 'text-secondary-400 font-bold' : 'text-slate-400'}>
+                <span className={onlineStatus.isOnline ? (isEmbedded ? 'text-secondary-600 font-bold' : 'text-secondary-400 font-bold') : 'text-slate-400'}>
                   {onlineStatus.text}
                 </span>
               </div>
             </div>
           </div>
           <div className="flex items-center gap-2">
-            {isSeller && (
+            {!isEmbedded && isSeller && (
               <button
                 onClick={() => setShowReportModal(true)}
                 className="w-8 h-8 rounded-full bg-rose-500/10 text-rose-500 flex items-center justify-center hover:bg-rose-500/20 transition-colors"
@@ -469,10 +475,12 @@ const EnhancedChatMessenger = ({
             )}
             <button 
               onClick={onClose} 
-              className="w-9 h-9 rounded-lg bg-white/10 flex items-center justify-center hover:bg-white/20 transition-all border border-white/10 group"
+              className={`w-9 h-9 rounded-lg flex items-center justify-center transition-all group border ${
+                isEmbedded ? 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50' : 'bg-white/10 text-white border-white/10 hover:bg-white/20'
+              }`}
               title="Close Chat"
             >
-              <X className="h-5 w-5 text-white group-hover:scale-110 transition-transform" />
+              <ArrowLeft className={`h-5 w-5 ${!isEmbedded ? 'group-hover:scale-110' : ''} transition-transform`} />
             </button>
           </div>
         </div>
