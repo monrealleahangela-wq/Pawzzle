@@ -71,13 +71,11 @@ const createTransporter = async () => {
           rejectUnauthorized: false
         }
     } : {
-        host: 'smtp.gmail.com',
-        port: 587,
-        secure: false, // Required false for port 587 STARTTLS upgrade
+        service: 'gmail',
         auth: { user, pass },
-        connectionTimeout: 30000,
-        greetingTimeout: 30000,
-        socketTimeout: 30000,
+        connectionTimeout: 60000,
+        greetingTimeout: 60000,
+        socketTimeout: 60000,
         tls: {
           rejectUnauthorized: false
         }
