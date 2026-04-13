@@ -170,8 +170,8 @@ const getAllApplications = async (req, res) => {
     const { status, page = 1, limit = 10 } = req.query;
     const filter = { isDeleted: false };
     if (status) {
-      if (status === 'under_review') {
-        filter.status = { $in: ['pending', 'under_review', 'under review'] };
+      if (status === 'under_review' || status === 'pending') {
+        filter.status = { $in: ['pending', 'under_review', 'under review', 'submitted'] };
       } else if (status === 'archived') {
         filter.isDeleted = true;
       } else {
