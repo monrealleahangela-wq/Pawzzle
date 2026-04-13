@@ -148,11 +148,11 @@ const sendRegistrationOTP = async (email, otp, firstName, userData = null) => {
     }
 
     // FINAL FAILURE REPORTING
-    const finalErrorMessage = `Email delivery failed. Resend: ${resendError || 'unknown'}. SMTP: ${smtpErrors || 'all ports blocked'}`;
+    const finalErrorMessage = `[v3-Master] Email delivery failed. Resend: ${resendError || 'none'}. SMTP: ${smtpErrors || 'blocked'}`;
     throw new Error(finalErrorMessage);
 
   } catch (error) {
-    console.error('❌ sendRegistrationOTP FAILED:', error.message);
+    console.error('❌ [v3-Master] sendRegistrationOTP FAILED:', error.message);
     throw error;
   }
 };

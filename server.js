@@ -1,4 +1,5 @@
-// Server main entry point - Updated: 2026-04-05
+require('dotenv').config();
+// Server main entry point - Updated: 2026-04-14
 const express = require('express');
 const mongoose = require('mongoose');
 const dns = require('dns');
@@ -14,7 +15,6 @@ const cors = require('cors');
 const path = require('path');
 const http = require('http');
 const socketIo = require('socket.io');
-require('dotenv').config();
 
 const app = express();
 const server = http.createServer(app);
@@ -157,7 +157,7 @@ if (isProduction && buildPath) {
 
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, '0.0.0.0', () => {
-    console.log(`\n✅ SERVER BOOT: RESEND_API_KEY detected: ${process.env.RESEND_API_KEY ? 'YES (Length: ' + process.env.RESEND_API_KEY.length + ')' : 'NO (MISSING)'}`);
-    console.log(`✅ SERVER BOOT on port ${PORT}\n`);
-    console.log(`🌐 Real-time Socket.io active`);
+    console.log(`\n🚀 [MASTER V3] SERVER STARTUP`);
+    console.log(`✅ RESEND_API_KEY: ${process.env.RESEND_API_KEY ? 'IS CONFIGURED (Length: ' + process.env.RESEND_API_KEY.length + ')' : 'MISSING'}`);
+    console.log(`✅ PORT: ${PORT}\n`);
 });
