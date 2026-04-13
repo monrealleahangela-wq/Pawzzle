@@ -177,6 +177,13 @@ const StoreApplications = () => {
         </div>
       </div>
 
+      {/* Raw Count HUD for Verification */}
+      <div className="flex gap-4 mb-2">
+        <div className="px-4 py-2 bg-slate-100 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-500">
+          Database Total: <span className="text-slate-900">{applications.length} visible</span>
+        </div>
+      </div>
+
       {applications.length === 0 ? (
         <div className="text-center py-20 bg-white border border-slate-100 rounded-[3rem]">
           <Building className="h-12 w-12 text-slate-100 mx-auto mb-4" />
