@@ -89,10 +89,14 @@ app.get('/api/dump-apps', async (req, res) => {
 // Database Debug (Temporal)
 app.get('/api/db-debug', (req, res) => {
   const mongoose = require('mongoose');
+  const rawUri = process.env.MONGODB_URI || 'NOT_FOUND';
+  const maskedUri = rawUri.replace(/:([^:@]+)@/, ':****@'); // Hide password
+  
   res.json({
     db_name: mongoose.connection.name,
     is_connected: mongoose.connection.readyState === 1,
-    host: mongoose.connection.host
+    host: mongoose.connection.host,
+    uri_used: maskedUri
   });
 });
 
