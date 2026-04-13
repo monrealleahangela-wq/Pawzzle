@@ -316,128 +316,103 @@ const createOrder = async (req, res) => {
   }
 };
 
-// Update order status (Admin only)
+// Update order status (State Machine Logic)
 const updateOrderStatus = async (req, res) => {
   try {
-    const { status, trackingNumber } = req.body;
-
+    const { status, trackingNumber, description } = req.body;
     const order = await Order.findById(req.params.id);
 
-    if (!order) {
-      return res.status(404).json({ message: 'Order not found' });
+    if (!order) return res.status(404).json({ message: 'Order not found' });
+
+    const VALID_NEXT_STATES = {
+      'pending_payment': ['paid', 'cancelled', 'payment_failed'],
+      'paid': ['awaiting_confirmation', 'cancelled'],
+      'awaiting_confirmation': ['confirmed', 'cancelled'],
+      'confirmed': ['preparing', 'cancelled'],
+      'preparing': ['ready_for_pickup', 'cancelled'],
+      'ready_for_pickup': ['rider_assigned', 'cancelled'],
+      'rider_assigned': ['picked_up', 'delivery_failed'],
+      'picked_up': ['in_transit', 'delivery_failed'],
+      'in_transit': ['delivered', 'delivery_failed'],
+      'delivered': ['completed', 'returned'],
+      'completed': [],
+      'cancelled': [],
+      'payment_failed': ['paid', 'pending_payment'],
+    };
+
+    // If setting same status, just update tracking/description
+    if (status === order.status) {
+       if (trackingNumber) order.trackingNumber = trackingNumber;
+       await order.save();
+       return res.json({ message: 'Order metadata updated', order });
+    }
+
+    // Validate Transition (Bypass for super_admin for recovery)
+    if (req.user.role !== 'super_admin') {
+      const allowedNext = VALID_NEXT_STATES[order.status] || [];
+      if (!allowedNext.includes(status)) {
+        return res.status(400).json({ 
+          message: `Illegal transition from ${order.status} to ${status}`,
+          allowed: allowedNext
+        });
+      }
     }
 
     const oldStatus = order.status;
-    order.status = status || order.status;
+    order.status = status;
     if (trackingNumber) order.trackingNumber = trackingNumber;
 
-    // Bidirectional Stock Sync
-    const activeStatuses = ['confirmed', 'processing', 'shipped', 'delivered', 'completed', 'finalized'];
-    const inactiveStatuses = ['pending', 'cancelled'];
+    // Record in Timeline
+    order.fulfillmentTimeline.push({
+      status: status,
+      actor: req.user._id,
+      description: description || `Order status updated from ${oldStatus.replace('_', ' ')} to ${status.replace('_', ' ')}`
+    });
 
-    // 1. DEDUCT stock (Inactive -> Active)
-    if (activeStatuses.includes(status) && inactiveStatuses.includes(oldStatus)) {
-      console.log(`🔄 Order ${order._id} moving to ${status}. Deducting stock...`);
-      
-      // Auto-generate delivery links if it's a delivery order and status is confirmed or beyond
-      if (order.deliveryMethod === 'delivery' && (status === 'confirmed' || status === 'processing')) {
-        await internalCreateDelivery({ orderId: order._id });
-      }
-
+    // Handle Side Effects
+    // 1. Stock Deduction on Confirmation
+    if (status === 'confirmed' && (oldStatus === 'paid' || oldStatus === 'awaiting_confirmation')) {
       for (const item of order.items) {
         if (item.itemType === 'product') {
-          try {
-            const product = await Product.findById(item.itemId);
-            if (product) {
-              const sellerStore = await Store.findOne({ owner: product.addedBy });
-              if (sellerStore) {
-                await StockSyncService.reduceStockOnOrder(item.itemId, item.quantity, sellerStore._id);
-              } else {
-                product.stockQuantity -= item.quantity;
-                await product.save();
-              }
-            }
-          } catch (stockError) {
-            console.error(`❌ Stock deduction failed:`, stockError);
-            order.status = oldStatus;
-            await order.save();
-            return res.status(400).json({ message: `Failed to update: ${stockError.message}` });
-          }
+          await StockSyncService.reduceStockOnOrder(item.itemId, item.quantity, order.store);
         } else if (item.itemType === 'pet') {
-          await Pet.findByIdAndUpdate(item.itemId, { 
-            isAvailable: false,
-            status: 'reserved'
-          });
-        }
-      }
-    }
-      // 2. RESTORE stock (Active -> Inactive)
-    else if (inactiveStatuses.includes(status) && activeStatuses.includes(oldStatus)) {
-      console.log(`🔄 Order ${order._id} reverted to ${status}. Restoring stock...`);
-      for (const item of order.items) {
-        if (item.itemType === 'product') {
-          try {
-            const product = await Product.findById(item.itemId);
-            if (product) {
-              const sellerStore = await Store.findOne({ owner: product.addedBy });
-              if (sellerStore) {
-                await StockSyncService.addStockOnRestock(item.itemId, item.quantity, sellerStore._id);
-              } else {
-                product.stockQuantity += item.quantity;
-                await product.save();
-              }
-            }
-          } catch (restoreError) {
-            console.error(`❌ Stock restoration failed:`, restoreError);
-          }
-        } else if (item.itemType === 'pet') {
-          await Pet.findByIdAndUpdate(item.itemId, { 
-            isAvailable: true,
-            status: 'available'
-          });
+          await Pet.findByIdAndUpdate(item.itemId, { isAvailable: false, status: 'reserved' });
         }
       }
     }
 
-    // 3. REVERSE revenue if cancelled after payment
-    if (status === 'cancelled' && oldStatus !== 'cancelled' && order.isRevenueRecorded) {
-      await RevenueService.reversePayment('order', order._id);
+    // 2. Delivery Creation on Ready for Pickup
+    if (status === 'ready_for_pickup' && order.deliveryMethod === 'delivery') {
+      await internalCreateDelivery({ orderId: order._id });
     }
 
+    // 3. Mark Payouts/Revenue
     if (status === 'delivered') {
       order.deliveryDate = new Date();
+      order.payoutStatus = 'released';
     }
 
     await order.save();
+    
+    const populatedOrder = await Order.findById(order._id)
+      .populate('customer', 'username firstName lastName email')
+      .populate('delivery');
 
-    const updatedOrder = await Order.findById(order._id)
-      .populate('customer', 'username firstName lastName email');
+    res.json({ message: `Order moved to ${status}`, order: populatedOrder });
 
-    res.json({
-      message: 'Order status updated successfully',
-      order: updatedOrder
-    });
-
-    // Real-time Order Emission
-    const io = req.app.get('socketio');
-    if (io) {
-      io.to(`store_${order.store}`).emit('orderUpdate', updatedOrder);
-      io.to('admin_global').emit('orderUpdate', updatedOrder);
-    }
-
-    // Notify customer about order status update
+    // Global Notification
     await createNotification({
       recipient: order.customer,
       sender: req.user._id,
       type: 'order_status',
       title: 'Order Status Updated',
-      message: `Your order status has been updated to: ${status}.`,
+      message: `Progress: Your order is now ${status.replace('_', ' ')}.`,
       relatedId: order._id,
       relatedModel: 'Order'
     });
   } catch (error) {
     console.error('Update order status error:', error);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ message: 'Transition error: ' + error.message });
   }
 };
 

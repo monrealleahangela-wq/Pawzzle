@@ -76,8 +76,23 @@ const orderSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['pending', 'confirmed', 'processing', 'shipped', 'delivered', 'completed', 'finalized', 'cancelled'],
-    default: 'pending'
+    enum: [
+      'pending_payment', 'paid', 'awaiting_confirmation', 'confirmed', 
+      'preparing', 'ready_for_pickup', 'rider_assigned', 'picked_up', 
+      'in_transit', 'delivered', 'completed', 'cancelled', 
+      'payment_failed', 'delivery_failed', 'refunded', 'returned'
+    ],
+    default: 'pending_payment'
+  },
+  fulfillmentTimeline: [{
+    status: String,
+    timestamp: { type: Date, default: Date.now },
+    description: String,
+    actor: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
+  }],
+  conversation: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Conversation'
   },
   deliveryMethod: {
     type: String,

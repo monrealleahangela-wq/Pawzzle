@@ -7,12 +7,17 @@ import Adoptions from './Adoptions';
 import Bookings from './Bookings';
 
 const STATUS_META = {
-  pending: { label: 'Pending', color: 'text-primary-600', bg: 'bg-secondary-50', border: 'border-secondary-100', icon: Clock },
-  confirmed: { label: 'Confirmed', color: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-100', icon: CheckCircle },
-  processing: { label: 'Processing', color: 'text-primary-600', bg: 'bg-primary-50', border: 'border-primary-100', icon: Package },
-  shipped: { label: 'Shipped', color: 'text-indigo-600', bg: 'bg-indigo-50', border: 'border-indigo-100', icon: Truck },
-  delivered: { label: 'Delivered', color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-100', icon: CheckCircle },
-  cancelled: { label: 'Cancelled', color: 'text-rose-600', bg: 'bg-rose-50', border: 'border-rose-100', icon: XCircle },
+  pending_payment: { label: 'Awaiting Payment', color: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-100', icon: Clock },
+  paid: { label: 'Payment Received', color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-100', icon: CheckCircle },
+  awaiting_confirmation: { label: 'Processing', color: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-100', icon: Package },
+  confirmed: { label: 'Confirmed', color: 'text-indigo-600', bg: 'bg-indigo-50', border: 'border-indigo-100', icon: CheckCircle },
+  preparing: { label: 'Merchant Packing', color: 'text-purple-600', bg: 'bg-purple-50', border: 'border-purple-100', icon: Package },
+  ready_for_pickup: { label: 'Awaiting Rider', color: 'text-sky-600', bg: 'bg-sky-50', border: 'border-sky-100', icon: Truck },
+  rider_assigned: { label: 'Rider Coming', color: 'text-rose-600', bg: 'bg-rose-50', border: 'border-rose-100', icon: MapPin },
+  picked_up: { label: 'In Transit', color: 'text-orange-600', bg: 'bg-orange-50', border: 'border-orange-100', icon: Truck },
+  in_transit: { label: 'Out for Delivery', color: 'text-orange-600', bg: 'bg-orange-50', border: 'border-orange-100', icon: Truck },
+  delivered: { label: 'Delivered', color: 'text-emerald-700', bg: 'bg-emerald-50', border: 'border-emerald-200', icon: CheckCircle },
+  cancelled: { label: 'Cancelled', color: 'text-slate-400', bg: 'bg-slate-50', border: 'border-slate-100', icon: XCircle },
 };
 
 const Orders = () => {
@@ -119,8 +124,8 @@ const Orders = () => {
                     <div className="p-4 sm:p-6 bg-slate-50 flex flex-col sm:flex-row justify-between items-center gap-4">
                       <p className="text-xs text-slate-500">Ordered on {new Date(order.orderDate).toLocaleDateString()}</p>
                       <div className="flex gap-2 w-full sm:w-auto">
-                        {order.delivery && (order.delivery.status === 'picked_up' || order.delivery.status === 'in_transit') && (
-                          <Link to={`/track/${order.delivery.trackingToken}`} className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-rose-500 text-white rounded-lg text-sm font-bold shadow-sm hover:bg-rose-600 transition-colors">
+                        {order.delivery && ['rider_assigned', 'picked_up', 'in_transit'].includes(order.status) && (
+                          <Link to={`/track/${order.delivery.trackingToken}`} className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-rose-500 text-white rounded-lg text-sm font-bold shadow-lg shadow-rose-100 hover:bg-rose-600 transition-colors animate-pulse">
                             <MapPin className="h-4 w-4" /> Live Track
                           </Link>
                         )}

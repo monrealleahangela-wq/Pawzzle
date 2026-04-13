@@ -147,7 +147,7 @@ const getDeliveryByBooking = async (req, res) => {
   }
 };
 
-// Rider: Update status
+// Rider: Update status (Synced with Order State Machine)
 const updateDeliveryStatus = async (req, res) => {
   try {
     const { token } = req.params;
@@ -162,15 +162,29 @@ const updateDeliveryStatus = async (req, res) => {
 
     delivery.status = status;
     if (status === 'picked_up') delivery.pickedUpAt = new Date();
+    
+    // Sync to Order
+    if (delivery.order) {
+       const order = await Order.findById(delivery.order);
+       if (order) {
+          order.status = status; // Map: picked_up -> picked_up, in_transit -> in_transit
+          order.fulfillmentTimeline.push({
+            status: status,
+            actor: req.user?._id || null, // Rider actor
+            description: `Rider updated mission status to: ${status.replace('_', ' ')}`
+          });
+          await order.save();
+       }
+    }
+
     if (status === 'delivered') {
       delivery.deliveredAt = new Date();
       delivery.isLive = false;
-      await Order.findByIdAndUpdate(delivery.order, { status: 'delivered' });
+      if (delivery.order) await Order.findByIdAndUpdate(delivery.order, { status: 'delivered', deliveryDate: new Date() });
     }
 
     await delivery.save();
     
-    // Trigger Socket emit for real-time status update
     const io = req.app.get('socketio');
     if (io) {
       io.to(`delivery_${delivery._id}`).emit('statusChanged', { deliveryId: delivery._id, status: delivery.status });

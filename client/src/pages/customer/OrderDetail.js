@@ -202,16 +202,62 @@ const OrderDetail = () => {
 
   const getStatusColor = (status) => {
     const colors = {
-      pending: 'bg-secondary-100 text-primary-800',
-      confirmed: 'bg-primary-100 text-primary-800',
-      processing: 'bg-secondary-100 text-secondary-800',
-      shipped: 'bg-primary-100 text-primary-800',
-      delivered: 'bg-green-100 text-green-800',
-      completed: 'bg-blue-100 text-blue-800',
-      finalized: 'bg-slate-900 text-white',
-      cancelled: 'bg-red-100 text-red-800'
+      pending_payment: 'bg-amber-100 text-amber-800 border-amber-200',
+      paid: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+      awaiting_confirmation: 'bg-blue-100 text-blue-800 border-blue-200',
+      confirmed: 'bg-indigo-100 text-indigo-800 border-indigo-200',
+      preparing: 'bg-purple-100 text-purple-800 border-purple-200',
+      ready_for_pickup: 'bg-sky-100 text-sky-800 border-sky-200',
+      rider_assigned: 'bg-rose-100 text-rose-800 border-rose-200',
+      picked_up: 'bg-orange-100 text-orange-800 border-orange-200',
+      in_transit: 'bg-orange-100 text-orange-800 border-orange-200',
+      delivered: 'bg-emerald-600 text-white border-emerald-700',
+      completed: 'bg-slate-900 text-white border-slate-900',
+      cancelled: 'bg-red-100 text-red-800 border-red-200'
     };
     return colors[status] || 'bg-gray-100 text-gray-800';
+  };
+
+  const FulfillmentTimeline = () => {
+    if (!order.fulfillmentTimeline || order.fulfillmentTimeline.length === 0) return null;
+    
+    return (
+      <div className="card p-6 mt-6">
+        <h2 className="text-lg font-black text-slate-900 uppercase tracking-tight mb-6 flex items-center gap-2">
+          <Activity className="h-5 w-5 text-primary-600" />
+          Fulfillment Track
+        </h2>
+        <div className="relative pl-6 border-l-2 border-slate-100 space-y-8 pb-4">
+          {order.fulfillmentTimeline.slice().reverse().map((entry, idx) => (
+            <div key={idx} className="relative">
+              <div className="absolute -left-[31px] top-1.5 w-4 h-4 rounded-full border-4 border-white bg-primary-600 shadow-sm shadow-primary-200 animate-pulse"></div>
+              <div className="flex flex-col">
+                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                  {new Date(entry.timestamp).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}
+                </span>
+                <h4 className="text-sm font-black text-slate-900 uppercase mt-1">
+                  {entry.status.replace(/_/g, ' ')}
+                </h4>
+                <p className="text-xs text-slate-500 font-medium mt-1 leading-relaxed">
+                  {entry.description}
+                </p>
+              </div>
+            </div>
+          ))}
+          {/* Default Start */}
+          <div className="relative">
+             <div className="absolute -left-[31px] top-1.5 w-4 h-4 rounded-full border-4 border-white bg-slate-300"></div>
+             <div className="flex flex-col opacity-50">
+                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                  {new Date(order.orderDate).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}
+                </span>
+                <h4 className="text-sm font-black text-slate-900 uppercase mt-1">Order Placed</h4>
+                <p className="text-xs text-slate-500 font-medium mt-1">Our system has received your order protocol.</p>
+             </div>
+          </div>
+        </div>
+      </div>
+    );
   };
 
   if (loading) {
@@ -379,6 +425,9 @@ const OrderDetail = () => {
 
         {/* Order Details */}
         <div className="space-y-6">
+          {/* Fulfillment Track */}
+          <FulfillmentTimeline />
+
           {/* Delivery Information - Collapsible for Sellers */}
           <div className="card overflow-hidden">
             <button 
@@ -464,7 +513,7 @@ const OrderDetail = () => {
                         Directions
                       </a>
                       <button 
-                        onClick={() => navigate(`/admin/chat?userId=${order.customer?._id}`)}
+                        onClick={() => navigate(`/admin/chat?userId=${order.customer?._id}&orderId=${order._id}`)}
                         className="flex-1 py-3 bg-primary-100 text-primary-700 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-primary-600 hover:text-white transition-all flex items-center justify-center gap-2 shadow-sm"
                       >
                         <MessageSquare className="h-4 w-4" />
@@ -639,7 +688,7 @@ const OrderDetail = () => {
 
                 <div className="pt-2">
                   <button 
-                    onClick={() => navigate(`/admin/chat?userId=${order.customer?._id}`)}
+                    onClick={() => navigate(`/admin/chat?userId=${order.customer?._id}&orderId=${order._id}`)}
                     className="w-full py-4 bg-primary-100 text-primary-700 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-primary-600 hover:text-white transition-all flex items-center justify-center gap-2 group"
                   >
                     <MessageSquare className="h-5 w-5 group-hover:rotate-12 transition-transform" />
