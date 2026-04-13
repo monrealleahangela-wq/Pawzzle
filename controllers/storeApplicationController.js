@@ -6,6 +6,7 @@ const multer = require('multer');
 const path = require('path');
 const { createNotification } = require('./notificationController');
 const { uploadDoc, cloudinary } = require('../middleware/upload');
+const { CloudinaryStorage } = require('multer-storage-cloudinary');
 
 // Configure multer for file uploads
 // Configure Cloudinary storage for documents

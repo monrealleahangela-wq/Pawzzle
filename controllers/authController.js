@@ -38,7 +38,17 @@ const sendRegisterOTP = async (req, res) => {
       return res.status(400).json({ errors: errors.array() });
     }
 
-    const { username, email, password, firstName, lastName, phone, address, role, captchaToken } = req.body;
+    let { username, email, password, firstName, lastName, phone, address, role, captchaToken } = req.body;
+    
+    // Auto-generate username if not provided
+    if (!username && email) {
+      username = email.split('@')[0];
+    }
+    
+    // Ensure defaults
+    firstName = firstName || '';
+    lastName = lastName || '';
+    address = address || {};
 
     // Verify Captcha before anything else
     const isHuman = await verifyRecaptcha(captchaToken);
@@ -254,7 +264,12 @@ const register = async (req, res) => {
       return res.status(400).json({ errors: errors.array() });
     }
 
-    const { username, email, password, firstName, lastName, phone, address, role } = req.body;
+    let { username, email, password, firstName, lastName, phone, address, role } = req.body;
+
+    // Auto-generate username if not provided
+    if (!username && email) {
+      username = email.split('@')[0];
+    }
 
     const existingEmail = await User.findOne({ email, isDeleted: false });
     if (existingEmail) {

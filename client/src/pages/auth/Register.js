@@ -135,7 +135,8 @@ const Register = () => {
         toast.error(result.message || 'Verification failed');
       }
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Invalid verification code');
+      const errorMsg = error.response?.data?.errors?.[0]?.msg || error.response?.data?.message || 'Invalid verification code';
+      toast.error(errorMsg);
       setOtpDigits(['', '', '', '', '', '']);
       otpRefs.current[0]?.focus();
     } finally {

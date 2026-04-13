@@ -118,7 +118,8 @@ const SellerJoin = () => {
       // Pre-fill store email with the registered email
       handleStoreChange('contactInfo.email', regData.email);
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Registration failed');
+      const errorMsg = err.response?.data?.errors?.[0]?.msg || err.response?.data?.message || 'Registration failed';
+      toast.error(errorMsg);
     } finally {
       setLoading(false);
     }
@@ -189,7 +190,8 @@ const SellerJoin = () => {
       setSubmitted(true);
       toast.success('Seller application submitted successfully!');
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Application submission failed');
+      const errorMsg = err.response?.data?.errors?.[0]?.msg || err.response?.data?.message || 'Application submission failed';
+      toast.error(errorMsg);
     } finally {
       setLoading(false);
     }

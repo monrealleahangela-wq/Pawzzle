@@ -23,7 +23,7 @@ const { authenticate } = require('../middleware/auth');
 
 // Validation rules
 const registerValidation = [
-  body('username').trim().isLength({ min: 3, max: 50 }).withMessage('Username must be between 3 and 50 characters'),
+  body('username').optional().trim().isLength({ min: 3, max: 50 }).withMessage('Username must be between 3 and 50 characters'),
   body('email').isEmail().normalizeEmail().withMessage('Please provide a valid email'),
   body('password')
     .isLength({ min: 8 })
@@ -39,10 +39,10 @@ const registerValidation = [
       }
       return true;
     }),
-  body('firstName').trim().notEmpty().withMessage('First name is required'),
-  body('lastName').trim().notEmpty().withMessage('Last name is required'),
+  body('firstName').optional().trim().notEmpty().withMessage('First name is required'),
+  body('lastName').optional().trim().notEmpty().withMessage('Last name is required'),
   body('phone').optional().trim().isMobilePhone().withMessage('Please provide a valid phone number'),
-  body('address.barangay').trim().notEmpty().withMessage('Barangay is required'),
+  body('address.barangay').optional().trim().notEmpty().withMessage('Barangay is required'),
   body('role').optional().isIn(['super_admin', 'admin', 'customer']).withMessage('Invalid role')
 ];
 
