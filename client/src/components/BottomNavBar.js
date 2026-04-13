@@ -60,6 +60,7 @@ const BASE_CONFIGS = {
   customer: [
     { path: '/home',       label: 'Home',     icon: House },
     { path: '/find-shops', label: 'Shops',    icon: MapPin },
+    { path: '/messages',   label: 'Chat',     icon: MessageSquare },
     { path: '/products',   label: 'Shop',     icon: ShoppingBag },
     { path: '/services',   label: 'Services', icon: Calendar },
     PROF_NAV,
@@ -69,14 +70,14 @@ const BASE_CONFIGS = {
     { path: '/admin/dashboard', label: 'Dashboard', icon: Activity },
     { path: '/admin/orders',    label: 'Orders',     icon: ShoppingCart },
     { path: '/admin/bookings',  label: 'Bookings',   icon: Calendar },
-    { path: '/admin/chat',      label: 'Chat',       icon: MessageSquare },
+    { path: '/messages',        label: 'Chat',       icon: MessageSquare },
     PROF_NAV,
   ],
 
   super_admin: [
     { path: '/superadmin/dashboard',           label: 'Dashboard', icon: Activity },
     { path: '/superadmin/account-management',  label: 'Accounts',  icon: Users },
-    { path: '/superadmin/transaction-history', label: 'Txns',      icon: ShoppingCart },
+    { path: '/messages',                       label: 'Chat',      icon: MessageSquare },
     { path: '/superadmin/booking-history',     label: 'Bookings',  icon: Calendar },
     PROF_NAV,
   ],

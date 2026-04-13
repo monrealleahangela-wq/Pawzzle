@@ -8,10 +8,12 @@ const getConversations = async (req, res) => {
   try {
     console.log('💬 getConversations called for user:', req.user._id, 'Role:', req.user.role);
 
-    // Filter to only show conversations with at least one message
+    // Filter to only show conversations with at least one message and NOT archived or deleted
     let filter = {
       'participants.user': req.user._id,
-      'lastMessage.content': { $exists: true, $ne: null }
+      'lastMessage.content': { $exists: true, $ne: null },
+      status: 'active',
+      isDeleted: false
     };
 
     // Multi-tenant isolation for admins/staff: only show conversations related to their store
@@ -85,8 +87,11 @@ const getAdminChats = async (req, res) => {
   try {
     console.log('💬 getAdminChats called for user:', req.user._id, 'Role:', req.user.role);
 
-    // Filter to only show conversations with at least one message
-    let filter = { 'lastMessage.content': { $exists: true, $ne: null } };
+    // Filter to only show conversations with at least one message and NOT deleted
+    let filter = { 
+      'lastMessage.content': { $exists: true, $ne: null },
+      isDeleted: false
+    };
 
     // Multi-tenant isolation for admins/staff: only show conversations related to their store
     if (req.user.role === 'admin' || req.user.role === 'staff') {
@@ -418,6 +423,63 @@ const updateAdoptionStatus = async (req, res) => {
   }
 };
 
+// Archive a conversation
+const archiveConversation = async (req, res) => {
+  try {
+    const { conversationId } = req.params;
+    await Conversation.findByIdAndUpdate(conversationId, { status: 'archived' });
+    res.json({ success: true, message: 'Conversation archived' });
+  } catch (error) {
+    console.error('Archive conversation error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// Permanently delete a conversation (soft delete)
+const deleteConversation = async (req, res) => {
+  try {
+    const { conversationId } = req.params;
+    await Conversation.findByIdAndUpdate(conversationId, { isDeleted: true });
+    res.json({ success: true, message: 'Conversation deleted' });
+  } catch (error) {
+    console.error('Delete conversation error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// Restore an archived conversation
+const restoreConversation = async (req, res) => {
+  try {
+    const { conversationId } = req.params;
+    await Conversation.findByIdAndUpdate(conversationId, { status: 'active' });
+    res.json({ success: true, message: 'Conversation restored' });
+  } catch (error) {
+    console.error('Restore conversation error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// Get archived conversations
+const getArchivedConversations = async (req, res) => {
+  try {
+    let filter = {
+      'participants.user': req.user._id,
+      status: 'archived',
+      isDeleted: false
+    };
+
+    const conversations = await Conversation.find(filter)
+      .populate('participants.user', 'firstName lastName email role lastSeen')
+      .populate('pet', 'name breed species images price')
+      .sort({ updatedAt: -1 });
+
+    res.json({ conversations });
+  } catch (error) {
+    console.error('Get archived conversations error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
 module.exports = {
   getConversations,
   getAdminChats,
@@ -427,5 +489,9 @@ module.exports = {
   getConversationByPet,
   markAsRead,
   getUnreadCount,
-  updateAdoptionStatus
+  updateAdoptionStatus,
+  archiveConversation,
+  deleteConversation,
+  restoreConversation,
+  getArchivedConversations
 };

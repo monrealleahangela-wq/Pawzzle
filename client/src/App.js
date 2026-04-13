@@ -13,6 +13,8 @@ import Layout from './components/Layout';
 import RoleBasedRedirect from './components/RoleBasedRedirect';
 import DeliveryTracking from './pages/DeliveryTracking';
 import PawCursor from './components/PawCursor';
+import ChatManagement from './pages/shared/ChatManagement';
+import ChatWindow from './pages/shared/ChatWindow';
 
 // Auth Pages
 import Login from './pages/auth/Login';
@@ -150,6 +152,9 @@ function App() {
                   <Route path="insights" element={<ProtectedRoute roles={['customer', 'admin', 'super_admin']}><CustomerDSS /></ProtectedRoute>} />
                   <Route path="vouchers" element={<ProtectedRoute roles={['customer', 'admin', 'super_admin']}><CustomerVouchers /></ProtectedRoute>} />
                   <Route path="appeal/:reportId" element={<ProtectedRoute roles={['customer', 'admin', 'super_admin']}><AppealForm /></ProtectedRoute>} />
+                  <Route path="messages" element={<ProtectedRoute roles={['customer', 'admin', 'super_admin']}><ChatManagement /></ProtectedRoute>} />
+                  <Route path="messages/:id" element={<ProtectedRoute roles={['customer', 'admin', 'super_admin']}><ChatWindow /></ProtectedRoute>} />
+                  <Route path="archived-messages" element={<ProtectedRoute roles={['customer', 'admin', 'super_admin']}><ChatManagement initialView="archived" /></ProtectedRoute>} />
 
                   {/* Admin Routes */}
                   {/* Dashboard - all staff types can see */}

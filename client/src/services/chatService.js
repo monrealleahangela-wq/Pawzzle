@@ -62,5 +62,29 @@ export const chatService = {
   // Admin send message (uses the same endpoint — auth determines access)
   adminSendMessage: async (conversationId, messageData) => {
     return chatService.sendMessage(conversationId, messageData);
+  },
+  
+  // Get archived conversations
+  getArchivedConversations: async () => {
+    const response = await api.get('/chats/archived');
+    return response;
+  },
+
+  // Archive conversation
+  archiveConversation: async (conversationId) => {
+    const response = await api.patch(`/chats/${conversationId}/archive`);
+    return response;
+  },
+
+  // Delete conversation
+  deleteConversation: async (conversationId) => {
+    const response = await api.delete(`/chats/${conversationId}`);
+    return response;
+  },
+
+  // Restore conversation
+  restoreConversation: async (conversationId) => {
+    const response = await api.patch(`/chats/${conversationId}/restore`);
+    return response;
   }
 };
