@@ -151,6 +151,47 @@ const StoreApplication = () => {
     setFiles(prev => ({ ...prev, [fileType]: file }));
   };
 
+  const [locating, setLocating] = useState(false);
+
+  const handleGetCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      return toast.error('Geolocation is not supported by your browser');
+    }
+
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        try {
+          const { latitude, longitude } = position.coords;
+          const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&addressdetails=1`);
+          const data = await response.json();
+          
+          if (data.address) {
+            const addr = data.address;
+            const street = addr.road || addr.suburb || addr.building || '';
+            const city = (addr.city || addr.town || addr.municipality || '').toLowerCase();
+            const barangay = (addr.village || addr.neighbourhood || addr.suburb || '').toLowerCase();
+            
+            handleChange('contactInfo.address.street', street);
+            handleChange('contactInfo.address.city', city);
+            handleChange('contactInfo.address.barangay', barangay);
+            handleChange('contactInfo.address.zipCode', addr.postcode || '');
+            
+            toast.success('Location detected! Please verify the details.');
+          }
+        } catch (err) {
+          toast.error('Could not resolve location address');
+        } finally {
+          setLocating(false);
+        }
+      },
+      (err) => {
+        toast.error('Failed to get location: ' + err.message);
+        setLocating(false);
+      }
+    );
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -636,7 +677,18 @@ const StoreApplication = () => {
                       </select>
                     </div>
                     <div className="col-span-2 space-y-1.5">
-                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Street Address *</label>
+                      <div className="flex items-center justify-between ml-1">
+                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Street Address *</label>
+                        <button 
+                          type="button"
+                          onClick={handleGetCurrentLocation}
+                          disabled={locating}
+                          className="flex items-center gap-1.5 text-[9px] font-black text-primary-600 uppercase tracking-widest hover:text-primary-700 transition-colors disabled:opacity-50"
+                        >
+                          <MapPin size={12} className={locating ? 'animate-bounce' : ''} />
+                          {locating ? 'Detecting...' : 'Use Current Location'}
+                        </button>
+                      </div>
                       <input type="text" className={`input-premium ${isFieldBroken('address') ? 'border-rose-500 ring-2 ring-rose-100' : ''}`} value={formData.contactInfo.address.street} onChange={(e) => handleChange('contactInfo.address.street', e.target.value)} required />
                     </div>
                   </div>
