@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { useAuth } from '../../contexts/AuthContext';
@@ -7,8 +7,11 @@ import {
   Store, User, Mail, Phone, MapPin, 
   ShieldCheck, Upload, ArrowRight, CheckCircle2,
   AlertCircle, Building2, FileCheck, Info,
-  ChevronRight, Lock, Eye, EyeOff
+  ChevronRight, Lock, Eye, EyeOff, Map as MapIcon,
+  Search
 } from 'lucide-react';
+import { getCitiesByProvince, getBarangaysByCity } from '../../constants/locationConstants';
+import MapPicker from '../../components/MapPicker';
 
 const SellerJoin = () => {
   const { register, isAuthenticated, user } = useAuth();
@@ -16,6 +19,9 @@ const SellerJoin = () => {
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState(isAuthenticated ? 2 : 1);
   const [submitted, setSubmitted] = useState(false);
+  const [addressInputType, setAddressInputType] = useState('map'); // 'map' or 'manual'
+  const [cities, setCities] = useState([]);
+  const [barangays, setBarangays] = useState([]);
 
   const [regData, setRegData] = useState({
     firstName: '',
@@ -42,7 +48,11 @@ const SellerJoin = () => {
         state: 'cavite',
         barangay: '',
         zipCode: '',
-        country: 'PH'
+        country: 'PH',
+        coordinates: {
+          lat: 14.3121,
+          lng: 120.9326
+        }
       }
     }
   });
@@ -52,6 +62,13 @@ const SellerJoin = () => {
     businessRegistration: null,
     licenseDocument: null
   });
+
+  useEffect(() => {
+    setCities(getCitiesByProvince('cavite'));
+    if (storeData.contactInfo.address.city) {
+      setBarangays(getBarangaysByCity(storeData.contactInfo.address.city));
+    }
+  }, [storeData.contactInfo.address.city]);
 
   const handleRegChange = (e) => {
     setRegData({ ...regData, [e.target.name]: e.target.value });
@@ -64,7 +81,14 @@ const SellerJoin = () => {
         const [p, c, g] = parts;
         setStoreData(prev => ({
           ...prev,
-          [p]: { ...prev[p], [c]: { ...prev[p][c], [g]: value } }
+          [p]: { 
+            ...prev[p], 
+            [c]: { 
+              ...prev[p][c], 
+              [g]: value,
+              ...(g === 'city' ? { barangay: '' } : {})
+            } 
+          }
         }));
       } else {
         const [p, c] = parts;
@@ -110,7 +134,7 @@ const SellerJoin = () => {
       async (position) => {
         try {
           const { latitude, longitude } = position.coords;
-          // Use OpenStreetMap Nominatim for free reverse geocoding
+          setAddressInputType('manual');
           const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&addressdetails=1`);
           const data = await response.json();
           
@@ -124,6 +148,7 @@ const SellerJoin = () => {
             handleStoreChange('contactInfo.address.city', city);
             handleStoreChange('contactInfo.address.barangay', barangay);
             handleStoreChange('contactInfo.address.zipCode', addr.postcode || '');
+            handleStoreChange('contactInfo.address.coordinates', { lat: latitude, lng: longitude });
             
             toast.success('Location detected! Please verify the details.');
           }
@@ -305,13 +330,31 @@ const SellerJoin = () => {
 
            {step === 2 && (
              <form onSubmit={() => setStep(3)} className="p-8 md:p-12 space-y-8 animate-in slide-in-from-right duration-500">
-                <div className="flex items-center gap-4 mb-8">
-                   <div className="w-12 h-12 bg-primary-600 text-white rounded-2xl flex items-center justify-center">
-                      <Store className="h-5 w-5" />
+                <div className="flex items-center justify-between gap-4 mb-4">
+                   <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 bg-primary-600 text-white rounded-2xl flex items-center justify-center">
+                         <Store className="h-5 w-5" />
+                      </div>
+                      <div>
+                         <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight">Step 2: Store Identity</h2>
+                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Define your business presence</p>
+                      </div>
                    </div>
-                   <div>
-                      <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight">Step 2: Store Identity</h2>
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Define your business presence</p>
+                   <div className="flex bg-slate-100 p-1 rounded-xl">
+                      <button
+                        type="button"
+                        onClick={() => setAddressInputType('map')}
+                        className={`px-4 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${addressInputType === 'map' ? 'bg-white text-primary-600 shadow-sm' : 'text-slate-400'}`}
+                      >
+                        Map GPS
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setAddressInputType('manual')}
+                        className={`px-4 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${addressInputType === 'manual' ? 'bg-white text-primary-600 shadow-sm' : 'text-slate-400'}`}
+                      >
+                        Manual
+                      </button>
                    </div>
                 </div>
 
@@ -343,31 +386,107 @@ const SellerJoin = () => {
                    </div>
                 </div>
 
-                <div className="space-y-1.5">
-                   <div className="flex items-center justify-between ml-1 mb-1">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Base Hub Address (Street/Building)</label>
-                      <button 
-                         type="button"
-                         onClick={handleGetCurrentLocation}
-                         disabled={locating}
-                         className="flex items-center gap-1.5 text-[9px] font-black text-primary-600 uppercase tracking-widest hover:text-primary-700 transition-colors disabled:opacity-50"
-                      >
-                         <MapPin size={12} className={locating ? 'animate-bounce' : ''} />
-                         {locating ? 'Detecting...' : 'Use Current Location'}
-                      </button>
-                   </div>
-                   <input type="text" required value={storeData.contactInfo.address.street} onChange={(e) => handleStoreChange('contactInfo.address.street', e.target.value)} className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-xs font-bold uppercase outline-none focus:ring-4 focus:ring-primary-500/5" />
-                </div>
+                <div className="space-y-6">
+                   {addressInputType === 'map' ? (
+                     <div className="space-y-4">
+                        <div className="flex items-center justify-between px-2">
+                           <h3 className="text-[10px] font-black text-slate-900 uppercase tracking-widest flex items-center gap-2">
+                              <MapIcon className="h-4 w-4 text-primary-600" /> Interaction Map
+                           </h3>
+                           <button 
+                             type="button"
+                             onClick={handleGetCurrentLocation}
+                             disabled={locating}
+                             className="flex items-center gap-1.5 text-[9px] font-black text-primary-600 uppercase tracking-widest hover:text-primary-700 transition-colors disabled:opacity-50"
+                           >
+                              <MapPin size={12} className={locating ? 'animate-bounce' : ''} />
+                              {locating ? 'Detecting...' : 'Pin Current GPS'}
+                           </button>
+                        </div>
+                        <div className="h-[350px] rounded-[2rem] overflow-hidden border-2 border-slate-100 shadow-inner">
+                          <MapPicker 
+                            onLocationSelected={(location) => {
+                              setStoreData(prev => ({
+                                ...prev,
+                                contactInfo: {
+                                  ...prev.contactInfo,
+                                  address: {
+                                    ...prev.contactInfo.address,
+                                    street: location.street || location.full,
+                                    city: location.city.toLowerCase().replace(/\s+/g, '_').replace('municipality_of_', ''),
+                                    barangay: location.barangay.toLowerCase().replace(/\s+/g, '_'),
+                                    zipCode: location.zipCode || prev.contactInfo.address.zipCode,
+                                    coordinates: {
+                                      lat: location.lat,
+                                      lng: location.lng
+                                    }
+                                  }
+                                }
+                              }));
+                            }}
+                            initialAddress={storeData.contactInfo.address.street}
+                          />
+                        </div>
+                        <div className="p-4 bg-primary-50 rounded-2xl border border-primary-100">
+                           <p className="text-[9px] font-black text-primary-700 uppercase tracking-widest mb-1">Detected Address</p>
+                           <p className="text-[10px] font-bold text-slate-600 uppercase">{storeData.contactInfo.address.street || 'Drop a pin on the map...'}</p>
+                        </div>
+                     </div>
+                   ) : (
+                     <div className="space-y-6 animate-fade-in">
+                        <div className="flex items-center justify-between ml-1">
+                           <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Address Specifications</label>
+                           <button 
+                              type="button"
+                              onClick={handleGetCurrentLocation}
+                              disabled={locating}
+                              className="flex items-center gap-1.5 text-[9px] font-black text-primary-600 uppercase tracking-widest hover:text-primary-700 transition-colors disabled:opacity-50"
+                           >
+                              <MapPin size={12} className={locating ? 'animate-bounce' : ''} />
+                              {locating ? 'Detecting...' : 'Use Current Location'}
+                           </button>
+                        </div>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                           <div className="space-y-1.5">
+                              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">City / Municipality *</label>
+                              <select 
+                                required 
+                                value={storeData.contactInfo.address.city} 
+                                onChange={(e) => handleStoreChange('contactInfo.address.city', e.target.value)} 
+                                className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-xs font-bold uppercase outline-none focus:ring-4 focus:ring-primary-500/5"
+                              >
+                                <option value="">Select City</option>
+                                {cities.map(city => <option key={city.value} value={city.value}>{city.label}</option>)}
+                              </select>
+                           </div>
+                           <div className="space-y-1.5">
+                              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Barangay *</label>
+                              <select 
+                                required 
+                                value={storeData.contactInfo.address.barangay} 
+                                onChange={(e) => handleStoreChange('contactInfo.address.barangay', e.target.value)} 
+                                disabled={!storeData.contactInfo.address.city}
+                                className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-xs font-bold uppercase outline-none focus:ring-4 focus:ring-primary-500/5"
+                              >
+                                <option value="">Select Barangay</option>
+                                {barangays.map(bg => <option key={bg.value} value={bg.value}>{bg.label}</option>)}
+                              </select>
+                           </div>
+                        </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                   <div className="space-y-1.5">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">City / Municipality</label>
-                      <input type="text" required value={storeData.contactInfo.address.city} onChange={(e) => handleStoreChange('contactInfo.address.city', e.target.value)} className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-xs font-bold uppercase outline-none focus:ring-4 focus:ring-primary-500/5" />
-                   </div>
-                   <div className="space-y-1.5">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Barangay</label>
-                      <input type="text" required value={storeData.contactInfo.address.barangay} onChange={(e) => handleStoreChange('contactInfo.address.barangay', e.target.value)} className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-xs font-bold uppercase outline-none focus:ring-4 focus:ring-primary-500/5" />
-                   </div>
+                        <div className="space-y-1.5">
+                           <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Street / Building Info *</label>
+                           <input 
+                              type="text" 
+                              required 
+                              value={storeData.contactInfo.address.street} 
+                              onChange={(e) => handleStoreChange('contactInfo.address.street', e.target.value)} 
+                              className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-xs font-bold uppercase outline-none focus:ring-4 focus:ring-primary-500/5" 
+                           />
+                        </div>
+                     </div>
+                   )}
                 </div>
 
                 <div className="space-y-1.5">
