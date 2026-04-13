@@ -10,9 +10,14 @@ const Otp = require('../models/Otp');
 
 // Log OTP to a file for easy retrieval during development
 const logOTPToFile = (type, email, otp) => {
-  const logPath = path.join(process.cwd(), 'LATEST_OTP.txt');
-  const logEntry = `[${new Date().toLocaleString()}] ${type} for ${email}: ${otp}\n`;
-  fs.appendFileSync(logPath, logEntry);
+  try {
+    const logPath = path.join(process.cwd(), 'LATEST_OTP.txt');
+    const logEntry = `[${new Date().toLocaleString()}] ${type} for ${email}: ${otp}\n`;
+    fs.appendFileSync(logPath, logEntry);
+  } catch (err) {
+    // Fail silently in production (e.g. Render/Vercel read-only systems)
+    console.warn('⚠️  Unable to write OTP log to file (common in production):', err.message);
+  }
 };
 
 // Generate 6-digit OTP
@@ -20,8 +25,9 @@ const generateOTP = () => {
   return Math.floor(100000 + Math.random() * 900000).toString();
 };
 
-// Helper Function to send via Resend API (HTTP approach avoids SMTP local blocks)
+// Helper Function to send via Resend API (Using axios for better fallback/error data)
 const sendWithResend = async (to, subject, html) => {
+  const axios = require('axios');
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) {
     console.log('⚠️  RESEND_API_KEY not found. Skipping Resend.');
@@ -29,30 +35,27 @@ const sendWithResend = async (to, subject, html) => {
   }
 
   try {
-    const response = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
+    const response = await axios.post('https://api.resend.com/emails', {
+      from: 'Pawzzle <onboarding@resend.dev>', // Resend trial requires this from address
+      to: [to],
+      subject: subject,
+      html: html
+    }, {
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${apiKey}`
-      },
-      body: JSON.stringify({
-        from: 'Pawzzle <onboarding@resend.dev>', // Resend trial requires this from address
-        to: [to],
-        subject: subject,
-        html: html
-      })
+      }
     });
 
-    const data = await response.json();
-    if (response.ok) {
-      console.log('✨ Email sent successfully via RESEND API!', data.id);
+    if (response.status === 200 || response.status === 201) {
+      console.log('✨ Email sent successfully via RESEND API!', response.data.id);
       return true;
     } else {
-      console.error('❌ RESEND API ERROR:', data);
+      console.error('❌ RESEND API ERROR:', response.data);
       return false;
     }
   } catch (error) {
-    console.error('❌ RESEND FETCH ERROR:', error.message);
+    console.error('❌ RESEND POST FAILURE:', error.response?.data || error.message);
     return false;
   }
 };
@@ -62,9 +65,12 @@ const createTransporter = async () => {
   const user = process.env.EMAIL_USER || 'pawzzle.spark@gmail.com';
   const pass = process.env.EMAIL_PASS || 'aknzqkqqdumntchq';
 
-  // Optimized Gmail transport for cloud hosting (Render/Vercel)
+  // Optimized SMTP transport using secure port 465 for higher deliverability on cloudy environments
   const transporter = nodemailer.createTransport({
     service: 'gmail',
+    host: 'smtp.gmail.com',
+    port: 465,
+    secure: true,
     auth: { user, pass },
     pool: true,
     maxConnections: 1,
@@ -151,25 +157,31 @@ const sendRegistrationOTP = async (email, otp, firstName, userData = null) => {
       </p>
     `);
 
-    // 2. Primary Delivery (Resend API)
+    // 2. PRIMARY Delivery (Direct SMTP / Gmail)
+    // Most reliable for "Real Emails" from the configured account
+    try {
+      console.log('🔄 Attempting SMTP Delivery (Primary)...');
+      const { transporter, fromEmail } = await createTransporter();
+      await transporter.sendMail({ 
+        from: `"Pawzzle Security" <${fromEmail}>`, 
+        to: email, 
+        subject: '🔐 Verify Your Pawzzle Account', 
+        html: bodyHtml 
+      });
+      console.log('✅ SMTP Delivery Successful');
+      return true;
+    } catch (smtpError) {
+      console.warn('⚠️ SMTP Delivery Failed, falling back to Resend:', smtpError.message);
+    }
+
+    // 3. FALLBACK Delivery (Resend API)
     const resendSuccess = await sendWithResend(email, '🔐 Verify Your Pawzzle Account', bodyHtml);
     if (resendSuccess) return true;
 
-    // 3. Fallback (Direct SMTP)
-    console.log('🔄 Fallback to SMTP triggered...');
-    const { transporter, fromEmail } = await createTransporter();
-    await transporter.sendMail({ 
-      from: `"Pawzzle Security" <${fromEmail}>`, 
-      to: email, 
-      subject: '🔐 Verify Your Pawzzle Account', 
-      html: bodyHtml 
-    });
-
-    console.log('✅ SMTP Delivery Successful');
-    return true;
+    throw new Error('All email delivery methods failed.');
   } catch (error) {
     console.error('❌ DISPATCH FAILURE:', { email, error: error.message });
-    throw error; // Bubbles to controller (Required Fix 5)
+    throw error;
   }
 };
 
@@ -181,11 +193,15 @@ const sendPasswordResetOTP = async (email, otp) => {
       <p style="font-size:14px;color:#78350f;margin:0 0 24px;">Enter this code to reset your password:</p>
       <div style="font-size:40px;font-weight:900;color:#1e293b;letter-spacing:8px;font-family:monospace;text-align:center;">${otp}</div>
     `);
-    const sent = await sendWithResend(email, '🔑 Reset Your Pawzzle Password', bodyHtml);
-    if (sent) return true;
-    const { transporter, fromEmail } = await createTransporter();
-    await transporter.sendMail({ from: `"Pawzzle" <${fromEmail}>`, to: email, subject: '🔑 Reset Your Pawzzle Password', html: bodyHtml });
-    return true;
+    
+    // SMTP First
+    try {
+      const { transporter, fromEmail } = await createTransporter();
+      await transporter.sendMail({ from: `"Pawzzle" <${fromEmail}>`, to: email, subject: '🔑 Reset Your Pawzzle Password', html: bodyHtml });
+      return true;
+    } catch (e) {
+      return await sendWithResend(email, '🔑 Reset Your Pawzzle Password', bodyHtml);
+    }
   } catch (error) { throw error; }
 };
 
@@ -196,11 +212,15 @@ const sendLoginOTP = async (email, otp, firstName) => {
       <p style="font-size:15px;color:#451a03;margin:0 0 8px;font-weight:700;">Login Verification</p>
       <div style="font-size:40px;font-weight:900;color:#6d7c45;letter-spacing:10px;font-family:monospace;text-align:center;">${otp}</div>
     `);
-    const sent = await sendWithResend(email, '🛡 Pawzzle Login Verification', bodyHtml);
-    if (sent) return true;
-    const { transporter, fromEmail } = await createTransporter();
-    await transporter.sendMail({ from: `"Pawzzle" <${fromEmail}>`, to: email, subject: '🛡 Pawzzle Login Verification', html: bodyHtml });
-    return true;
+    
+    // SMTP First
+    try {
+      const { transporter, fromEmail } = await createTransporter();
+      await transporter.sendMail({ from: `"Pawzzle" <${fromEmail}>`, to: email, subject: '🛡 Pawzzle Login Verification', html: bodyHtml });
+      return true;
+    } catch (e) {
+      return await sendWithResend(email, '🛡 Pawzzle Login Verification', bodyHtml);
+    }
   } catch (error) { throw error; }
 };
 

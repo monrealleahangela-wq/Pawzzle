@@ -168,10 +168,12 @@ const submitApplication = async (req, res) => {
 const getAllApplications = async (req, res) => {
   try {
     const { status, page = 1, limit = 10 } = req.query;
-    const filter = {};
+    const filter = { isDeleted: false };
     if (status) {
       if (status === 'under_review') {
         filter.status = { $in: ['pending', 'under_review', 'under review'] };
+      } else if (status === 'archived') {
+        filter.isDeleted = true;
       } else {
         filter.status = status;
       }
@@ -382,6 +384,56 @@ const requestMoreInfo = async (req, res) => {
   }
 };
 
+// Archive application (Soft Delete)
+const archiveApplication = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const application = await StoreApplication.findById(id);
+
+    if (!application) {
+      return res.status(404).json({ message: 'Application not found' });
+    }
+
+    application.isDeleted = true;
+    application.deletedAt = new Date();
+    await application.save();
+
+    res.json({ 
+      success: true, 
+      message: 'Application moved to archive successfully',
+      id: application._id
+    });
+  } catch (error) {
+    console.error('Archive application error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// Restore application from archive
+const restoreApplication = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const application = await StoreApplication.findById(id);
+
+    if (!application) {
+      return res.status(404).json({ message: 'Application not found' });
+    }
+
+    application.isDeleted = false;
+    application.deletedAt = null;
+    await application.save();
+
+    res.json({ 
+      success: true, 
+      message: 'Application restored from archive successfully',
+      id: application._id
+    });
+  } catch (error) {
+    console.error('Restore application error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
 module.exports = {
   submitApplication,
   getAllApplications,
@@ -389,5 +441,7 @@ module.exports = {
   reviewApplication,
   getUserApplication,
   requestMoreInfo,
+  archiveApplication,
+  restoreApplication,
   upload
 };

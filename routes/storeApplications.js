@@ -9,6 +9,8 @@ const {
   reviewApplication,
   getUserApplication,
   requestMoreInfo,
+  archiveApplication,
+  restoreApplication,
   upload
 } = require('../controllers/storeApplicationController');
 const { authenticate, superAdminOnly } = require('../middleware/auth');
@@ -81,5 +83,7 @@ router.get('/', authenticate, superAdminOnly, getAllApplications);
 router.get('/:id', authenticate, superAdminOnly, getApplicationById);
 router.put('/:id/review', authenticate, superAdminOnly, reviewValidation, reviewApplication);
 router.put('/:id/request-info', authenticate, superAdminOnly, requestMoreInfo);
+router.delete('/:id', authenticate, superAdminOnly, archiveApplication);
+router.patch('/:id/restore', authenticate, superAdminOnly, restoreApplication);
 
 module.exports = router;

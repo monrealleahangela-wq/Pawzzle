@@ -102,11 +102,16 @@ const verifyRegisterOTP = async (req, res) => {
     
     if (!storedData) return res.status(400).json({ message: 'Verification session expired. Please register again.' });
 
-    if (otp?.toString().trim() !== storedData.otp?.toString().trim()) {
+    // Standardization: Compare OTPs as trimmed strings to prevent type mismatch (Numeric vs String)
+    const submittedOtp = otp.toString().trim();
+    const serverOtp = storedData.otp.toString().trim();
+
+    if (submittedOtp !== serverOtp) {
       return res.status(400).json({ message: 'Invalid verification code. Please check your email inbox.' });
     }
 
     const { userData } = storedData;
+    if (!userData) return res.status(400).json({ message: 'Registration data corrupted. Please start over.' });
 
     // Last-second check for duplicates
     const conflict = await User.findOne({ $or: [{ email: userData.email }, { username: userData.username }], isDeleted: false });
@@ -172,14 +177,20 @@ const resendRegisterOTP = async (req, res) => {
  */
 const login = async (req, res) => {
   try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+
     const { email, password, captchaToken } = req.body;
 
     const isHuman = await verifyRecaptcha(captchaToken);
     if (!isHuman) return res.status(400).json({ message: 'Security check failed.' });
 
-    const user = await User.findOne({ $or: [{ email }, { username: email }], isDeleted: false }).populate('store');
-    if (!user) return res.status(401).json({ message: 'Invalid credentials' });
+    const user = await User.findOne({ 
+      $or: [{ email: email.toLowerCase() }, { username: email }], 
+      isDeleted: false 
+    }).populate('store');
 
+    if (!user) return res.status(401).json({ message: 'Invalid credentials' });
     if (!user.isActive) return res.status(403).json({ message: 'Account disabled. Contact support.' });
 
     const isMatch = await user.comparePassword(password);
@@ -201,27 +212,50 @@ const login = async (req, res) => {
     return res.json({
       success: true,
       token,
-      user: { id: user._id, username: user.username, email: user.email, role: user.role }
+      user: { 
+        id: user._id, 
+        username: user.username, 
+        email: user.email, 
+        role: user.role,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        store: user.store
+      }
     });
   } catch (error) {
-    res.status(500).json({ message: 'Login error' });
+    console.error('Login error:', error);
+    res.status(500).json({ message: 'Login failed due to server error' });
   }
 };
 
 const verify2FA = async (req, res) => {
   try {
     const { email, otp } = req.body;
+    if (!email || !otp) return res.status(400).json({ message: 'Email and code are required' });
+
     const stored = await Otp.findOne({ email: email.toLowerCase(), type: 'login' }).sort({ createdAt: -1 });
     
-    if (!stored || otp !== stored.otp) return res.status(400).json({ message: 'Invalid or expired code.' });
+    if (!stored || otp.toString().trim() !== stored.otp.toString().trim()) {
+      return res.status(400).json({ message: 'Invalid or expired code.' });
+    }
 
-    const user = await User.findOne({ email: email.toLowerCase() }).populate('store');
+    const user = await User.findOne({ email: email.toLowerCase(), isDeleted: false }).populate('store');
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
     await Otp.deleteMany({ email: email.toLowerCase(), type: 'login' });
 
     const token = generateToken(user._id);
-    res.json({ success: true, token, user: { id: user._id, username: user.username, email: user.email, role: user.role } });
+    res.json({ 
+      success: true, 
+      token, 
+      user: { 
+        id: user._id, username: user.username, email: user.email, role: user.role,
+        firstName: user.firstName, lastName: user.lastName, store: user.store
+      } 
+    });
   } catch (error) {
-    res.status(500).json({ message: '2FA verification error' });
+    console.error('2FA verification error:', error);
+    res.status(500).json({ message: 'Security verification failed' });
   }
 };
 
@@ -242,55 +276,98 @@ const requestPasswordResetOTP = async (req, res) => {
 
 const verifyOTPAndResetPassword = async (req, res) => {
   try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+
     const { email, otp, newPassword } = req.body;
+    if (!email || !otp) return res.status(400).json({ message: 'Email and code are required' });
+
     const stored = await Otp.findOne({ email: email.toLowerCase(), type: 'password_reset' }).sort({ createdAt: -1 });
 
-    if (!stored || otp !== stored.otp) return res.status(400).json({ message: 'Invalid code.' });
+    if (!stored || otp.toString().trim() !== stored.otp.toString().trim()) {
+      return res.status(400).json({ message: 'Invalid or expired code.' });
+    }
 
-    const user = await User.findOne({ email });
-    const salt = await bcrypt.genSalt(10);
-    user.password = await bcrypt.hash(newPassword, salt);
+    const user = await User.findOne({ email: email.toLowerCase(), isDeleted: false });
+    if (!user) return res.status(404).json({ message: 'Associated user account not found.' });
+
+    // Hashing is handled by the model's pre-save hook, so we assign directly
+    user.password = newPassword;
     await user.save();
 
     await Otp.deleteMany({ email: email.toLowerCase(), type: 'password_reset' });
-    res.json({ success: true, message: 'Password reset successful.' });
+    res.json({ success: true, message: 'Password reset successful. You can now login with your new password.' });
   } catch (err) {
-    res.status(500).json({ message: 'Reset failed.' });
+    console.error('Reset password error:', err);
+    res.status(500).json({ message: 'Reset failed' });
   }
 };
 
 // Generic Profile & Utility Methods (Simplified for brevity as they were stable)
 const getCurrentUser = async (req, res) => {
-  const user = await User.findById(req.user._id).select('-password').populate('store');
-  res.json({ user });
+  try {
+    const user = await User.findById(req.user._id).select('-password').populate('store');
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    res.json({ user });
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to fetch user data' });
+  }
 };
 
 const updateProfile = async (req, res) => {
-  const user = await User.findByIdAndUpdate(req.user._id, req.body, { new: true });
-  res.json({ success: true, user });
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+
+    const user = await User.findByIdAndUpdate(req.user._id, req.body, { new: true }).populate('store');
+    res.json({ success: true, user });
+  } catch (error) {
+    res.status(500).json({ message: 'Profile update failed' });
+  }
 };
 
 const changePassword = async (req, res) => {
-  const { currentPassword, newPassword } = req.body;
-  const user = await User.findById(req.user._id);
-  if (!user || !(await user.comparePassword(currentPassword))) return res.status(400).json({ message: 'Wrong password' });
-  user.password = newPassword;
-  await user.save();
-  res.json({ success: true });
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+
+    const { currentPassword, newPassword } = req.body;
+    const user = await User.findById(req.user._id);
+    if (!user || !(await user.comparePassword(currentPassword))) return res.status(400).json({ message: 'Current password incorrect' });
+    
+    user.password = newPassword;
+    await user.save();
+    res.json({ success: true, message: 'Password changed successfully' });
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to change password' });
+  }
 };
 
 const toggle2FA = async (req, res) => {
-  const user = await User.findById(req.user._id);
-  user.twoFactorEnabled = req.body.enabled;
-  await user.save();
-  res.json({ success: true, enabled: user.twoFactorEnabled });
+  try {
+    const user = await User.findById(req.user._id);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    
+    user.twoFactorEnabled = req.body.enabled;
+    await user.save();
+    res.json({ success: true, enabled: user.twoFactorEnabled });
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to toggle 2FA' });
+  }
 };
 
 const resendPasswordResetOTP = async (req, res) => {
+  try {
     const { email } = req.body;
+    if (!email) return res.status(400).json({ message: 'Email is required' });
+
     const otp = otpService.generateOTP();
     await otpService.sendPasswordResetOTP(email, otp);
-    res.json({ success: true });
+    res.json({ success: true, message: 'OTP resent successfully' });
+  } catch (err) {
+    console.error('Resend password OTP error:', err);
+    res.status(500).json({ message: err.message || 'Failed to resend OTP' });
+  }
 };
 
 // Legacy Placeholder

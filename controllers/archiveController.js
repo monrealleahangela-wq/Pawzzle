@@ -13,7 +13,8 @@ const modelMap = {
     stores: Store,
     users: User,
     bookings: Booking,
-    orders: Order
+    orders: Order,
+    storeApplications: require('../models/StoreApplication')
 };
 
 const labelMap = {
@@ -23,7 +24,8 @@ const labelMap = {
     stores: { name: 'name', secondary: 'businessType' },
     users: { name: 'username', secondary: 'email' },
     bookings: { name: 'status', secondary: 'notes' },
-    orders: { name: 'orderNumber', secondary: 'status' }
+    orders: { name: 'orderNumber', secondary: 'status' },
+    storeApplications: { name: 'businessName', secondary: 'businessType' }
 };
 
 // Get all archived (soft-deleted) items across all types
@@ -71,6 +73,8 @@ const getArchivedItems = async (req, res) => {
                     query = query.populate('customer', 'firstName lastName').populate('service', 'name');
                 } else if (t === 'orders') {
                     query = query.populate('customer', 'firstName lastName');
+                } else if (t === 'storeApplications') {
+                    query = query.populate('applicant', 'username firstName lastName');
                 }
 
                 if (type !== 'all') {
