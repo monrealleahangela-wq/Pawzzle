@@ -17,7 +17,6 @@ const STAFF_TYPE_CONFIG = {
   inventory_staff:  { label: 'Inventory Staff',  color: 'amber',   desc: 'Manages pets, products & stock levels' },
   order_staff:      { label: 'Order Staff',       color: 'blue',    desc: 'Processes customer orders & confirmations' },
   service_staff:    { label: 'Service Staff',     color: 'purple',  desc: 'Manages bookings & appointment schedules' },
-  delivery_staff:   { label: 'Delivery Staff',    color: 'green',   desc: 'Handles logistics & delivery tracking' },
 };
 
 const Dashboard = () => {
@@ -211,7 +210,7 @@ const Dashboard = () => {
         {[
           { label: 'FLEET COMPANIONS', value: stats.totalPets, icon: Heart, color: 'amber', link: '/admin/pets', sub: 'In Network', growth: stats.growth.pets, show: ['admin', 'super_admin'].includes(user?.role) || user?.staffType === 'inventory_staff' },
           { label: 'HARDWARE UNITS', value: stats.totalProducts, icon: Package, color: 'stone', link: '/admin/products', sub: 'Active Stock', growth: stats.growth.products, show: ['admin', 'super_admin'].includes(user?.role) || user?.staffType === 'inventory_staff' },
-          { label: 'NODE TRANSACTIONS', value: stats.totalOrders, icon: ShoppingBag, color: 'slate', link: '/admin/orders', sub: 'Verified', growth: stats.growth.orders, show: ['admin', 'super_admin'].includes(user?.role) || ['order_staff', 'delivery_staff'].includes(user?.staffType) },
+          { label: 'NODE TRANSACTIONS', value: stats.totalOrders, icon: ShoppingBag, color: 'slate', link: '/admin/orders', sub: 'Verified', growth: stats.growth.orders, show: ['admin', 'super_admin'].includes(user?.role) || user?.staffType === 'order_staff' },
           { label: 'SERVICE WINDOWS', value: stats.totalBookings, icon: Calendar, color: 'emerald', link: '/admin/bookings', sub: 'Scheduled', growth: stats.growth.bookings, show: ['admin', 'super_admin'].includes(user?.role) || ['service_staff', 'order_staff'].includes(user?.staffType) },
           { label: 'NETWORK REVENUE', value: `₱${stats.netEarnings.toLocaleString()}`, icon: TrendingUp, color: 'primary', link: '/admin/insights', sub: 'Gross Profit', growth: stats.growth.revenue, show: ['admin', 'super_admin'].includes(user?.role) },
           { label: 'LIQUID ASSETS', value: `₱${stats.availableBalance.toLocaleString()}`, icon: Shield, color: 'amber', link: '/admin/payouts', sub: 'Operational', growth: stats.growth.balance, show: ['admin', 'super_admin'].includes(user?.role) }
@@ -251,7 +250,7 @@ const Dashboard = () => {
 
       <div className="relative z-10 grid grid-cols-1 xl:grid-cols-12 gap-10 pb-40">
         {/* Recent Transaction Log */}
-        {(['admin', 'super_admin'].includes(user?.role) || ['order_staff', 'delivery_staff', 'general'].includes(user?.staffType)) && (
+        {(['admin', 'super_admin'].includes(user?.role) || ['order_staff', 'general'].includes(user?.staffType)) && (
           <div className="xl:col-span-8 bg-white dark:bg-slate-900 rounded-[2.2rem] sm:rounded-[3.5rem] border border-[#5D4037]/5 dark:border-slate-800 p-6 sm:p-10 shadow-[0_40px_100px_-30px_rgba(0,0,0,0.1)] flex flex-col transition-all">
             <div className="flex items-center justify-between mb-8 sm:mb-12">
               <div className="space-y-2">
@@ -259,7 +258,7 @@ const Dashboard = () => {
                   <ShoppingCart className="h-3.5 w-3.5 text-primary-600" />
                   <span className="text-[9px] font-black text-[#5D4037]/40 dark:text-slate-500 uppercase tracking-[0.3em]">TRANSACTION FEED</span>
                 </div>
-                <h2 className="text-2xl sm:text-3xl font-black text-[#3D2B23] dark:text-slate-100 uppercase tracking-tighter">Recent Logistics</h2>
+                <h2 className="text-2xl sm:text-3xl font-black text-[#3D2B23] dark:text-slate-100 uppercase tracking-tighter">Recent Transactions</h2>
               </div>
               <Link to="/admin/orders" className="group hidden sm:flex items-center gap-2 px-8 py-4 bg-[#211510] dark:bg-slate-800 text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-primary-600 transition-all shadow-xl">
                 ACCESS ALL <ChevronRight className="h-4 w-4 group-hover:translate-x-2 transition-transform" />
@@ -298,7 +297,7 @@ const Dashboard = () => {
                   <div className="w-16 h-16 bg-[#FAF9F6] dark:bg-slate-800 border border-[#5D4037]/5 dark:border-slate-700 rounded-full flex items-center justify-center">
                     <Activity className="h-8 w-8 text-[#5D4037] dark:text-slate-400" />
                   </div>
-                  <p className="text-[9px] font-black text-[#5D4037] dark:text-slate-400 uppercase tracking-[0.5em]">NO LIVE LOGISTICS</p>
+                  <p className="text-[9px] font-black text-[#5D4037] dark:text-slate-400 uppercase tracking-[0.5em]">STATION IDLE</p>
                 </div>
               )}
             </div>
@@ -357,7 +356,7 @@ const Dashboard = () => {
                 { to: "/admin/pets", label: "Deploy Companion", icon: Plus, desc: "Synchronize new biological unit", show: ['admin', 'super_admin'].includes(user?.role) || user?.staffType === 'inventory_staff' },
                 { to: "/admin/products", label: "Catalog Hardware", icon: Package, desc: "Index new structural equipment", show: ['admin', 'super_admin'].includes(user?.role) || user?.staffType === 'inventory_staff' },
                 { to: "/admin/bookings", label: "Operational Calendar", icon: Calendar, desc: "Synchronize service nodes", show: ['admin', 'super_admin'].includes(user?.role) || ['service_staff', 'order_staff'].includes(user?.staffType) },
-                { to: "/admin/orders", label: "Order Queue", icon: ShoppingCart, desc: "Process pending transactions", show: ['order_staff', 'delivery_staff'].includes(user?.staffType) },
+                { to: "/admin/orders", label: "Order Queue", icon: ShoppingCart, desc: "Process pending transactions", show: user?.staffType === 'order_staff' },
               ].filter(action => action.show).map((action, i) => (
                 <Link key={i} to={action.to} className="group/btn relative flex items-center gap-4 sm:gap-6 p-3 sm:p-5 bg-white/5 hover:bg-white/10 rounded-xl sm:rounded-[1.8rem] transition-all active:scale-[0.97] border border-white/5">
                   <div className="w-10 h-10 sm:w-14 sm:h-14 bg-white/5 rounded-lg sm:rounded-2xl flex items-center justify-center shrink-0 group-hover/btn:bg-primary-600 transition-all duration-500">

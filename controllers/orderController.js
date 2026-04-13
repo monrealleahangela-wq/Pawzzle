@@ -335,20 +335,6 @@ const updateOrderStatus = async (req, res) => {
       // Auto-generate delivery links if it's a delivery order and status is confirmed or beyond
       if (order.deliveryMethod === 'delivery' && (status === 'confirmed' || status === 'processing')) {
         await internalCreateDelivery({ orderId: order._id });
-        
-        // Notify Delivery Staff
-        try {
-          const { notifyStoreStaff } = require('./notificationController');
-          await notifyStoreStaff(order.store, 'delivery_staff', {
-            type: 'new_order', // Or 'delivery_alert'
-            title: 'Package Ready for Dispatch',
-            message: `Order #${order._id.toString().slice(-6)} is ready for delivery. Tracking links have been generated.`,
-            relatedId: order._id,
-            relatedModel: 'Order'
-          });
-        } catch (err) {
-          console.error('⚠️ Delivery notification failed:', err.message);
-        }
       }
 
       for (const item of order.items) {

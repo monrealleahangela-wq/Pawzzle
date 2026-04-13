@@ -160,9 +160,9 @@ function App() {
                   <Route path="admin/products" element={<ProtectedRoute roles={['admin', 'super_admin', 'staff']} staffTypes={['inventory_staff']}><ProductInventory /></ProtectedRoute>} />
                   <Route path="admin/inventory" element={<ProtectedRoute roles={['admin', 'super_admin', 'staff']} staffTypes={['inventory_staff']}><ProductInventory /></ProtectedRoute>} />
 
-                  {/* Orders - order_staff and delivery_staff */}
-                  <Route path="admin/orders" element={<ProtectedRoute roles={['admin', 'super_admin', 'staff']} staffTypes={['order_staff', 'delivery_staff']}><AdminOrders /></ProtectedRoute>} />
-                  <Route path="admin/orders/:id" element={<ProtectedRoute roles={['admin', 'super_admin', 'staff']} staffTypes={['order_staff', 'delivery_staff']}><OrderDetail /></ProtectedRoute>} />
+                  {/* Orders - order_staff only */}
+                  <Route path="admin/orders" element={<ProtectedRoute roles={['admin', 'super_admin', 'staff']} staffTypes={['order_staff']}><AdminOrders /></ProtectedRoute>} />
+                  <Route path="admin/orders/:id" element={<ProtectedRoute roles={['admin', 'super_admin', 'staff']} staffTypes={['order_staff']}><OrderDetail /></ProtectedRoute>} />
 
                   {/* Bookings - service_staff only */}
                   <Route path="admin/bookings" element={<ProtectedRoute roles={['admin', 'super_admin', 'staff']} staffTypes={['service_staff']}><BookingsManagement /></ProtectedRoute>} />
