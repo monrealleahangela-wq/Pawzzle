@@ -539,7 +539,6 @@ const StoreApplication = () => {
                   <option value="">Select type</option>
                   <option value="pet_store">Pet Store</option>
                   <option value="breeder">Breeder</option>
-                  <option value="shelter">Animal Shelter</option>
                   <option value="veterinary">Veterinary Clinic</option>
                   <option value="grooming">Pet Grooming</option>
                   <option value="training">Pet Training</option>

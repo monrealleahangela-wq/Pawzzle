@@ -249,7 +249,6 @@ const SellerJoin = () => {
                       <select value={storeData.businessType} onChange={(e) => handleStoreChange('businessType', e.target.value)} className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-xs font-bold uppercase outline-none focus:ring-4 focus:ring-primary-500/5">
                          <option value="pet_store">Pet Store</option>
                          <option value="breeder">Breeder</option>
-                         <option value="shelter">Animal Shelter</option>
                          <option value="veterinary">Veterinary Clinic</option>
                          <option value="grooming">Pet Grooming</option>
                          <option value="other">Other</option>
