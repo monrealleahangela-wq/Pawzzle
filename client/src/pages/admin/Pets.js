@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { adminPetService, uploadService, adoptionService, getImageUrl } from '../../services/apiService';
+import { useAuth } from '../../contexts/AuthContext';
 import {
   Heart, Plus, Edit, Trash2, Filter, X, Save, Search, ChevronLeft, ChevronRight,
   Activity, Shield, Image as ImageIcon, Zap, Target, ArrowUpRight, Star, Info,

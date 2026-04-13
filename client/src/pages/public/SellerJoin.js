@@ -202,9 +202,9 @@ const SellerJoin = () => {
            <div className="w-20 h-20 bg-emerald-500 text-white rounded-[2rem] flex items-center justify-center mx-auto mb-8 shadow-2xl shadow-emerald-200">
               <CheckCircle2 className="h-10 w-10" />
            </div>
-           <h1 className="text-3xl font-black text-slate-900 uppercase tracking-tighter mb-4">Application Pending</h1>
+           <h1 className="text-3xl font-black text-slate-900 uppercase tracking-tighter mb-4">Application Sent</h1>
            <p className="text-slate-500 font-medium leading-relaxed mb-10">
-             Your application to become a seller has been received! Our administration team will review your documents within 24-48 hours.
+             We have received your application to become a seller! We will review your documents within 24-48 hours.
            </p>
            <Link to="/home" className="btn btn-primary w-full py-4 text-xs font-black uppercase tracking-[0.3em]">
              Go to Home
@@ -220,10 +220,10 @@ const SellerJoin = () => {
         <div className="mb-12 text-center">
            <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary-50 rounded-full mb-6">
               <Store className="h-4 w-4 text-primary-600" />
-              <span className="text-[10px] font-black text-primary-700 uppercase tracking-[0.2em]">Seller Onboarding Protocol</span>
+              <span className="text-[10px] font-black text-primary-700 uppercase tracking-[0.2em]">Seller Sign Up</span>
            </div>
-           <h1 className="text-4xl md:text-5xl font-black text-slate-900 uppercase tracking-tighter mb-4">Join Our <span className="text-primary-600">Merchant Fleet</span></h1>
-           <p className="text-slate-400 font-bold text-[11px] uppercase tracking-[0.3em]">Structured application for professional pet stores & breeders</p>
+           <h1 className="text-4xl md:text-5xl font-black text-slate-900 uppercase tracking-tighter mb-4">Join Our <span className="text-primary-600">Seller Community</span></h1>
+           <p className="text-slate-400 font-bold text-[11px] uppercase tracking-[0.3em]">Apply for your pet store or breeding business</p>
         </div>
 
         {/* Progress Tracker */}
@@ -253,8 +253,8 @@ const SellerJoin = () => {
                       <Lock className="h-5 w-5" />
                    </div>
                    <div>
-                      <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight">Step 1: Create Owner Account</h2>
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Initialize your credentials for the platform</p>
+                      <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight">Step 1: Your Info</h2>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Create your login details</p>
                    </div>
                 </div>
 
@@ -318,7 +318,7 @@ const SellerJoin = () => {
                 </div>
 
                 <button type="submit" disabled={loading} className="w-full py-5 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.4em] hover:bg-primary-600 transition-all flex items-center justify-center gap-3 group">
-                   {loading ? 'Initializing...' : 'Next Step: Store Info'}
+                   {loading ? 'Setting up...' : 'Next: Store Info'}
                    <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
                 </button>
 
@@ -336,8 +336,8 @@ const SellerJoin = () => {
                          <Store className="h-5 w-5" />
                       </div>
                       <div>
-                         <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight">Step 2: Store Identity</h2>
-                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Define your business presence</p>
+                         <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight">Step 2: Store Details</h2>
+                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Tell us about your business</p>
                       </div>
                    </div>
                    <div className="flex bg-slate-100 p-1 rounded-xl">
@@ -418,8 +418,8 @@ const SellerJoin = () => {
                           />
                         </div>
                         <div className="p-4 bg-primary-50 rounded-2xl border border-primary-100">
-                           <p className="text-[9px] font-black text-primary-700 uppercase tracking-widest mb-1">Detected Address</p>
-                           <p className="text-[10px] font-bold text-slate-600 uppercase">{storeData.contactInfo.address.street || 'Drop a pin on the map...'}</p>
+                           <p className="text-[9px] font-black text-primary-700 uppercase tracking-widest mb-1">Store Address</p>
+                           <p className="text-[10px] font-bold text-slate-600 uppercase">{storeData.contactInfo.address.street || 'Pick your location on the map...'}</p>
                         </div>
                      </div>
                    ) : (
@@ -502,7 +502,7 @@ const SellerJoin = () => {
                    </div>
                    <div>
                       <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight">Step 3: Verification</h2>
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Verify business legitimacy</p>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Upload your documents</p>
                    </div>
                 </div>
 
@@ -540,14 +540,14 @@ const SellerJoin = () => {
                 <div className="p-6 bg-primary-50 rounded-[2rem] border border-primary-100 flex gap-4">
                    <Info className="h-5 w-5 text-primary-600 shrink-0" />
                    <p className="text-[9px] font-bold text-primary-700 uppercase leading-relaxed tracking-wide">
-                     By submitting, you agree to our Merchant Protocol. All sellers undergo an initial 30-day monitoring period to ensure compliance with our pet safety standards.
+                     By submitting, you agree to our Terms. All sellers are checked to ensure they follow our pet safety standards.
                    </p>
                 </div>
 
                 <div className="flex gap-4">
                    <button type="button" onClick={() => setStep(2)} className="flex-1 py-4 bg-slate-100 text-slate-500 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-slate-200 transition-all">Previous</button>
                    <button type="submit" disabled={loading} className="flex-[2] py-4 bg-primary-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.4em] hover:bg-slate-900 transition-all shadow-xl shadow-primary-200 disabled:opacity-50">
-                      {loading ? 'Transmitting Data...' : 'Submit Application Protocol'}
+                      {loading ? 'Submitting...' : 'Submit Your Application'}
                    </button>
                 </div>
              </form>

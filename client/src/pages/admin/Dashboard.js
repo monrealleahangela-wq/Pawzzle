@@ -154,7 +154,7 @@ const Dashboard = () => {
           <div className="absolute inset-0 bg-primary-600 translate-y-full group-hover:translate-y-0 transition-transform duration-500 opacity-20" />
           <RefreshCw className={`h-4 w-4 sm:h-5 sm:w-5 text-secondary-500 ${refreshingRole ? 'animate-spin' : 'group-hover:rotate-180 transition-transform duration-700'}`} />
           <span className="text-[9px] sm:text-[11px] font-black uppercase tracking-[0.2em] sm:tracking-[0.3em] relative z-10">
-            {refreshingRole ? 'CALIBRATING...' : 'SYNC PROTOCOLS'}
+            {refreshingRole ? 'REFRESHING...' : 'UPDATE DATA'}
           </span>
         </button>
       </header>
@@ -211,12 +211,12 @@ const Dashboard = () => {
       {/* ── Precision Metrics Grid ── */}
       <div className="relative z-10 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
         {[
-          { label: 'FLEET COMPANIONS', value: stats.totalPets, icon: Heart, color: 'amber', link: '/admin/pets', sub: 'In Network', growth: stats.growth.pets, show: isAdmin || hasPerm('inventory') },
-          { label: 'HARDWARE UNITS', value: stats.totalProducts, icon: Package, color: 'stone', link: '/admin/products', sub: 'Active Stock', growth: stats.growth.products, show: isAdmin || hasPerm('inventory') },
-          { label: 'NODE TRANSACTIONS', value: stats.totalOrders, icon: ShoppingBag, color: 'slate', link: '/admin/orders', sub: 'Verified', growth: stats.growth.orders, show: isAdmin || hasPerm('orders') },
-          { label: 'SERVICE WINDOWS', value: stats.totalBookings, icon: Calendar, color: 'emerald', link: '/admin/bookings', sub: 'Scheduled', growth: stats.growth.bookings, show: isAdmin || hasPerm('bookings') || hasPerm('services') },
-          { label: 'NETWORK REVENUE', value: `₱${stats.netEarnings.toLocaleString()}`, icon: TrendingUp, color: 'primary', link: '/admin/insights', sub: 'Gross Profit', growth: stats.growth.revenue, show: isAdmin },
-          { label: 'LIQUID ASSETS', value: `₱${stats.availableBalance.toLocaleString()}`, icon: Shield, color: 'amber', link: '/admin/payouts', sub: 'Operational', growth: stats.growth.balance, show: isAdmin }
+          { label: 'AVAILABLE PETS', value: stats.totalPets, icon: Heart, color: 'amber', link: '/admin/pets', sub: 'In Shop', growth: stats.growth.pets, show: isAdmin || hasPerm('inventory') },
+          { label: 'SHOP PRODUCTS', value: stats.totalProducts, icon: Package, color: 'stone', link: '/admin/products', sub: 'In Stock', growth: stats.growth.products, show: isAdmin || hasPerm('inventory') },
+          { label: 'STORE ORDERS', value: stats.totalOrders, icon: ShoppingBag, color: 'slate', link: '/admin/orders', sub: 'Processed', growth: stats.growth.orders, show: isAdmin || hasPerm('orders') },
+          { label: 'SERVICE BOOKINGS', value: stats.totalBookings, icon: Calendar, color: 'emerald', link: '/admin/bookings', sub: 'Scheduled', growth: stats.growth.bookings, show: isAdmin || hasPerm('bookings') || hasPerm('services') },
+          { label: 'TOTAL REVENUE', value: `₱${stats.netEarnings.toLocaleString()}`, icon: TrendingUp, color: 'primary', link: '/admin/insights', sub: 'Gross Profit', growth: stats.growth.revenue, show: isAdmin },
+          { label: 'AVAILABLE BALANCE', value: `₱${stats.availableBalance.toLocaleString()}`, icon: Shield, color: 'amber', link: '/admin/payouts', sub: 'For Payout', growth: stats.growth.balance, show: isAdmin }
         ].filter(s => s.show).map((stat, i) => (
           <Link
             key={i}
@@ -264,7 +264,7 @@ const Dashboard = () => {
                 <h2 className="text-2xl sm:text-3xl font-black text-[#3D2B23] dark:text-slate-100 uppercase tracking-tighter">Recent Transactions</h2>
               </div>
               <Link to="/admin/orders" className="group hidden sm:flex items-center gap-2 px-8 py-4 bg-[#211510] dark:bg-slate-800 text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-primary-600 transition-all shadow-xl">
-                ACCESS ALL <ChevronRight className="h-4 w-4 group-hover:translate-x-2 transition-transform" />
+                VIEW ALL <ChevronRight className="h-4 w-4 group-hover:translate-x-2 transition-transform" />
               </Link>
             </div>
 
@@ -300,7 +300,7 @@ const Dashboard = () => {
                   <div className="w-16 h-16 bg-[#FAF9F6] dark:bg-slate-800 border border-[#5D4037]/5 dark:border-slate-700 rounded-full flex items-center justify-center">
                     <Activity className="h-8 w-8 text-[#5D4037] dark:text-slate-400" />
                   </div>
-                  <p className="text-[9px] font-black text-[#5D4037] dark:text-slate-400 uppercase tracking-[0.5em]">STATION IDLE</p>
+                  <p className="text-[9px] font-black text-[#5D4037] dark:text-slate-400 uppercase tracking-[0.5em]">NO RECENT ORDERS</p>
                 </div>
               )}
             </div>
@@ -319,8 +319,8 @@ const Dashboard = () => {
                   <Sparkles size={20} />
                 </div>
                 <div>
-                   <h2 className="text-[10px] sm:text-[11px] font-black text-[#5D4037]/40 dark:text-slate-500 uppercase tracking-[0.5em]">STRATEGIC INTEL</h2>
-                   <p className="text-[8px] sm:text-[9px] font-black text-[#5D4037]/20 dark:text-slate-600 uppercase tracking-widest">Real-time Optimization</p>
+                   <h2 className="text-[10px] sm:text-[11px] font-black text-[#5D4037]/40 dark:text-slate-500 uppercase tracking-[0.5em]">STORE TIPS</h2>
+                   <p className="text-[8px] sm:text-[9px] font-black text-[#5D4037]/20 dark:text-slate-600 uppercase tracking-widest">Real-time Advice</p>
                 </div>
               </div>
               <div className="space-y-4 sm:space-y-6">
@@ -341,7 +341,7 @@ const Dashboard = () => {
           
           {isAdmin && (
             <Link to="/admin/insights" className="flex items-center justify-center gap-3 pt-6 text-[10px] font-black text-primary-700 dark:text-secondary-500 uppercase tracking-[0.3em] hover:gap-5 transition-all">
-               FULL MATRIX ANALYSIS <ChevronRight size={14} />
+               VIEW FULL ANALYSIS <ChevronRight size={14} />
             </Link>
           )}
 
@@ -352,7 +352,7 @@ const Dashboard = () => {
 
             <div className="flex items-center gap-4 mb-12">
                <div className="w-4 h-4 bg-secondary-500 rounded-full animate-pulse shadow-[0_0_20px_rgba(245,158,11,0.5)]" />
-               <h2 className="text-[11px] font-black text-secondary-500/60 uppercase tracking-[0.6em]">RAPID PROTOCOLS</h2>
+               <h2 className="text-[11px] font-black text-secondary-500/60 uppercase tracking-[0.6em]">QUICK ACTIONS</h2>
             </div>
 
             <div className="space-y-4 relative z-10">
@@ -387,8 +387,8 @@ const Dashboard = () => {
                   <AlertCircle className="h-6 w-6 sm:h-7 sm:w-7 text-white" />
                 </div>
                 <div>
-                  <h2 className="text-[11px] font-black uppercase tracking-[0.5em] text-white/80">RESOURCE DEPLETION</h2>
-                  <p className="text-[10px] font-black uppercase tracking-widest text-white/40">Critical Inventory Matrix</p>
+                  <h2 className="text-[11px] font-black uppercase tracking-[0.5em] text-white/80">LOW STOCK ALERT</h2>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-white/40">Critical Inventory</p>
                 </div>
               </div>
 
@@ -402,7 +402,7 @@ const Dashboard = () => {
                   </div>
                 ))}
                 <Link to="/admin/products" className="group flex items-center justify-center gap-4 pt-4 text-[10px] font-black uppercase tracking-[0.3em] text-white/60 hover:text-white transition-all">
-                  INITIATE REPLENISHMENT <ChevronRight size={14} className="group-hover:translate-x-2 transition-transform" />
+                  RESTOCK ITEMS <ChevronRight size={14} className="group-hover:translate-x-2 transition-transform" />
                 </Link>
               </div>
             </div>
@@ -413,10 +413,10 @@ const Dashboard = () => {
                 <Shield className="h-10 w-10 text-white" />
               </div>
               <div className="space-y-2">
-                 <p className="text-[12px] font-black uppercase tracking-[0.6em]">System Integral</p>
+                 <p className="text-[12px] font-black uppercase tracking-[0.6em]">All Systems Clear</p>
                  <div className="flex items-center gap-2 justify-center">
                     <div className="w-2 h-2 rounded-full bg-white animate-pulse" />
-                    <p className="text-[10px] font-bold text-white/50 uppercase tracking-[0.3em]">Operational Stability 100%</p>
+                    <p className="text-[10px] font-bold text-white/50 uppercase tracking-[0.3em]">Shop status is stable</p>
                  </div>
               </div>
             </div>

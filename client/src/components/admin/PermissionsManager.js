@@ -18,32 +18,32 @@ const ACTION_MAP = [
 const RESOURCE_MAP = [
     { 
         key: 'inventory', 
-        label: 'Pet & Product Inventory', 
-        description: 'Manage pet listings, stock items, and availability.',
+        label: 'Pets & Products', 
+        description: 'Manage pet listings and products in your shop.',
         icon: Package 
     },
     { 
         key: 'orders', 
-        label: 'Store Orders', 
-        description: 'Process customer purchases, pickups, and shipping.',
+        label: 'Shop Orders', 
+        description: 'Process customer orders, pickups, and shipping.',
         icon: ShoppingCart 
     },
     { 
         key: 'bookings', 
-        label: 'Booking Schedules', 
-        description: 'Manage grooming, vet, and training appointments.',
+        label: 'Service Bookings', 
+        description: 'Manage grooming and vet appointments.',
         icon: Calendar 
     },
     { 
         key: 'services', 
-        label: 'Service Menu', 
-        description: 'Define available services, pricing, and durations.',
+        label: 'Services List', 
+        description: 'Set up the services and prices you offer.',
         icon: Store 
     },
     { 
         key: 'customers', 
-        label: 'Customer Relations', 
-        description: 'View customer history, profiles, and communications.',
+        label: 'Customers', 
+        description: 'View customer info and their past orders.',
         icon: Users 
     }
 ];
