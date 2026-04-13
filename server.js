@@ -75,6 +75,16 @@ app.get('/api/public-audit-apps', async (req, res) => {
   }
 });
 
+// Database Debug (Temporal)
+app.get('/api/db-debug', (req, res) => {
+  const mongoose = require('mongoose');
+  res.json({
+    db_name: mongoose.connection.name,
+    is_connected: mongoose.connection.readyState === 1,
+    host: mongoose.connection.host
+  });
+});
+
 // Routes
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/users', require('./routes/users'));
