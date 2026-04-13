@@ -80,12 +80,7 @@ const Register = () => {
       const result = await authService.sendRegisterOTP({ ...registerData, captchaToken });
 
       if (result.success) {
-        if (result.deliveryMethod === 'bypass' && result.otp) {
-          toast.info(`[RECOVERY MODE] Verification code: ${result.otp}`, { autoClose: false });
-        } else {
-          toast.success(result.message || 'Verification code sent!');
-        }
-        setDeliveryMethod(result.deliveryMethod || 'email');
+        toast.success(result.message || 'Verification code sent!');
         setStep(2);
         setResendCooldown(60);
         setTimeout(() => otpRefs.current[0]?.focus(), 300);

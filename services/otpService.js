@@ -1,6 +1,12 @@
 const nodemailer = require('nodemailer');
 const fs = require('fs');
 const path = require('path');
+const Otp = require('../models/Otp');
+
+/**
+ * otpService.js
+ * Handles generation, persistent storage, and delivery of OTP codes via Email/SMS.
+ */
 
 // Log OTP to a file for easy retrieval during development
 const logOTPToFile = (type, email, otp) => {
@@ -14,11 +20,11 @@ const generateOTP = () => {
   return Math.floor(100000 + Math.random() * 900000).toString();
 };
 
-// Helper Function to send via Resend API (More reliable on Render as it uses HTTP/S)
+// Helper Function to send via Resend API (HTTP approach avoids SMTP local blocks)
 const sendWithResend = async (to, subject, html) => {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) {
-    console.log('⚠️  RESEND_API_KEY not found. Falling back to other methods.');
+    console.log('⚠️  RESEND_API_KEY not found. Skipping Resend.');
     return null;
   }
 
@@ -30,7 +36,7 @@ const sendWithResend = async (to, subject, html) => {
         'Authorization': `Bearer ${apiKey}`
       },
       body: JSON.stringify({
-        from: 'Pawzzle <hello@pawzzle.io>',
+        from: 'Pawzzle <onboarding@resend.dev>', // Resend trial requires this from address
         to: [to],
         subject: subject,
         html: html
@@ -56,49 +62,19 @@ const createTransporter = async () => {
   const user = process.env.EMAIL_USER || 'pawzzle.spark@gmail.com';
   const pass = process.env.EMAIL_PASS || 'aknzqkqqdumntchq';
 
-  const isUserDefault = user === 'your-email@gmail.com';
-  const isPassDefault = pass === 'your-app-password';
+  // Optimized Gmail transport for cloud hosting (Render/Vercel)
+  const transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: { user, pass },
+    pool: true,
+    maxConnections: 1,
+    connectionTimeout: 60000,
+    tls: {
+      rejectUnauthorized: false
+    }
+  });
 
-  if (!isUserDefault && !isPassDefault) {
-    const isHostinger = process.env.EMAIL_SERVICE === 'hostinger' || user.endsWith('@pawzzle.io');
-    const config = isHostinger ? {
-        host: 'smtp.hostinger.com',
-        port: 587,
-        secure: false,
-        auth: { user, pass },
-        connectionTimeout: 30000,
-        tls: {
-          rejectUnauthorized: false
-        }
-    } : {
-        service: 'gmail',
-        auth: { user, pass },
-        connectionTimeout: 60000,
-        greetingTimeout: 60000,
-        socketTimeout: 60000,
-        tls: {
-          rejectUnauthorized: false
-        }
-    };
-    
-    return {
-      transporter: nodemailer.createTransport(config),
-      fromEmail: user,
-      isEthereal: false
-    };
-  }
-
-  const testAccount = await nodemailer.createTestAccount();
-  return {
-    transporter: nodemailer.createTransport({
-      host: 'smtp.ethereal.email',
-      port: 587,
-      secure: false,
-      auth: { user: testAccount.user, pass: testAccount.pass }
-    }),
-    fromEmail: testAccount.user,
-    isEthereal: true
-  };
+  return { transporter, fromEmail: user };
 };
 
 // Branded email template wrapper
@@ -106,95 +82,126 @@ const wrapInTemplate = (title, body) => `
 <!DOCTYPE html>
 <html>
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
-<body style="margin:0;padding:0;background-color:#f8fafc;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;">
-  <div style="max-width:520px;margin:40px auto;background:#ffffff;border-radius:24px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.06);">
-    <div style="background:linear-gradient(135deg,#6d7c45 0%,#8fa75a 50%,#a3b86c 100%);padding:36px 32px;text-align:center;">
-      <h1 style="margin:0;color:#ffffff;font-size:28px;font-weight:900;letter-spacing:-1px;text-transform:uppercase;">PAWZZLE</h1>
-      <p style="margin:6px 0 0;color:rgba(255,255,255,0.8);font-size:11px;font-weight:700;letter-spacing:3px;text-transform:uppercase;">${title}</p>
+<body style="margin:0;padding:0;background-color:#fefce8;font-family:sans-serif;">
+  <div style="max-width:520px;margin:40px auto;background:#ffffff;border-radius:24px;border:1px solid #fef08a;overflow:hidden;box-shadow:0 10px 40px -10px rgba(161,98,7,0.1);">
+    <div style="background:linear-gradient(135deg,#6d7c45 0%,#8fa75a 100%);padding:40px 32px;text-align:center;">
+      <h1 style="margin:0;color:#ffffff;font-size:32px;font-weight:900;letter-spacing:-1px;">PAWZZLE</h1>
+      <p style="margin:8px 0 0;color:rgba(255,255,255,0.9);font-size:10px;font-weight:800;letter-spacing:4px;text-transform:uppercase;">${title}</p>
     </div>
-    <div style="padding:36px 32px;">${body}</div>
-    <div style="padding:20px 32px;background:#f8fafc;border-top:1px solid #e2e8f0;text-align:center;">
-      <p style="margin:0;color:#94a3b8;font-size:11px;font-weight:600;">This is an automated message from Pawzzle Pet Platform</p>
-      <p style="margin:4px 0 0;color:#cbd5e1;font-size:10px;">© ${new Date().getFullYear()} Pawzzle. All rights reserved.</p>
+    <div style="padding:40px 32px;">${body}</div>
+    <div style="padding:24px 32px;background:#fffbeb;text-align:center;border-top:1px solid #fef3c7;">
+      <p style="margin:0;color:#92400e;font-size:11px;font-weight:700;">Secure Delivery Platform</p>
     </div>
   </div>
 </body>
 </html>
 `;
 
-// Send Registration OTP email
-const sendRegistrationOTP = async (email, otp, firstName) => {
+// Persistent OTP and cooldown check (Required Fix 3 & 6)
+const saveOtpToDb = async (email, otp, type, userData = null) => {
+  const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes expiry
+  
+  // Cooldown enforcement: 60s (Requirement 6)
+  const lastOtp = await Otp.findOne({ email, type }).sort({ createdAt: -1 });
+  if (lastOtp && (Date.now() - lastOtp.createdAt.getTime()) < 60000) {
+    const remaining = 60 - Math.floor((Date.now() - lastOtp.createdAt.getTime()) / 1000);
+    throw new Error(`Please wait ${remaining} seconds before requesting a new code.`);
+  }
+
+  // Clear previous codes for this email
+  await Otp.deleteMany({ email, type });
+
+  const otpDoc = new Otp({
+    email,
+    otp,
+    type,
+    userData,
+    expiresAt
+  });
+
+  return await otpDoc.save();
+};
+
+/**
+ * Send Registration OTP email
+ * @param {string} email - Recipient
+ * @param {string} otp - 6 digit code
+ * @param {string} firstName - User's name
+ * @param {object} userData - Full registration payload (state preservation)
+ */
+const sendRegistrationOTP = async (email, otp, firstName, userData = null) => {
   try {
-    // 🔑 EMERGENCY LOG
-    console.log('-------------------------------------------');
-    console.log(`🔑 REGISTRATION OTP for ${email}: [ ${otp} ]`);
-    console.log('-------------------------------------------');
+    // 1. Persist to DB immediately
+    await saveOtpToDb(email, otp, 'registration', userData);
 
-    logOTPToFile('REGISTRATION_OTP_EMAIL', email, otp);
+    console.log(`[REAL-MAIL] Dispatching Registration OTP to ${email}`);
+    logOTPToFile('REGISTRATION', email, otp);
 
-    const bodyHtml = wrapInTemplate('Email Verification', `
-      <p style="font-size:15px;color:#334155;margin:0 0 8px;font-weight:600;">Hello ${firstName || 'there'},</p>
-      <p style="font-size:14px;color:#64748b;margin:0 0 28px;line-height:1.6;">
-        Welcome to Pawzzle! Please verify your email address by entering the code below to complete your registration.
+    const bodyHtml = wrapInTemplate('Secure Verification', `
+      <p style="font-size:16px;color:#451a03;margin:0 0 12px;font-weight:700;">Hello ${firstName || 'Future Pet Owner'},</p>
+      <p style="font-size:14px;color:#78350f;margin:0 0 32px;line-height:1.6;">
+        Welcome to Pawzzle! To ensure the security of our community, please enter the following verification code to activate your account:
       </p>
-      <div style="background:#f1f5f9;border:2px dashed #cbd5e1;border-radius:16px;padding:24px;text-align:center;margin:0 0 28px;">
-        <p style="margin:0 0 8px;color:#94a3b8;font-size:10px;font-weight:800;letter-spacing:3px;text-transform:uppercase;">Your Verification Code</p>
-        <div style="font-size:36px;font-weight:900;color:#1e293b;letter-spacing:8px;font-family:monospace;">${otp}</div>
+      <div style="background:#fff7ed;border:2px solid #fdba74;border-radius:20px;padding:32px;text-align:center;margin:0 0 32px;">
+        <div style="font-size:42px;font-weight:900;color:#7c2d12;letter-spacing:10px;font-family:monospace;">${otp}</div>
+        <p style="margin:16px 0 0;color:#ea580c;font-size:11px;font-weight:800;text-transform:uppercase;">Expires in 10 minutes</p>
       </div>
+      <p style="font-size:12px;color:#9a3412;margin:0;font-weight:600;text-align:center;">
+        If you didn't request this code, you can safely ignore this email.
+      </p>
     `);
 
-    const sent = await sendWithResend(email, '🔐 Verify Your Pawzzle Account', bodyHtml);
-    if (sent) return true;
+    // 2. Primary Delivery (Resend API)
+    const resendSuccess = await sendWithResend(email, '🔐 Verify Your Pawzzle Account', bodyHtml);
+    if (resendSuccess) return true;
 
+    // 3. Fallback (Direct SMTP)
+    console.log('🔄 Fallback to SMTP triggered...');
     const { transporter, fromEmail } = await createTransporter();
-    await transporter.sendMail({ from: `"Pawzzle" <${fromEmail}>`, to: email, subject: '🔐 Verify Your Pawzzle Account', html: bodyHtml });
+    await transporter.sendMail({ 
+      from: `"Pawzzle Security" <${fromEmail}>`, 
+      to: email, 
+      subject: '🔐 Verify Your Pawzzle Account', 
+      html: bodyHtml 
+    });
+
+    console.log('✅ SMTP Delivery Successful');
     return true;
   } catch (error) {
-    console.error('❌ CRITICAL: REGISTRATION OTP DELIVERY FAILURE');
-    console.error('Recipient:', email);
-    console.error('Error Details:', error);
-    return false; // Return false so we catch real errors in production
+    console.error('❌ DISPATCH FAILURE:', { email, error: error.message });
+    throw error; // Bubbles to controller (Required Fix 5)
   }
 };
 
 const sendPasswordResetOTP = async (email, otp) => {
   try {
-    const bodyHtml = wrapInTemplate('Password Reset', `
-      <p style="font-size:15px;color:#334155;margin:0 0 8px;font-weight:600;">Password Reset Request</p>
-      <div style="font-size:36px;font-weight:900;color:#1e293b;letter-spacing:8px;font-family:monospace;">${otp}</div>
+    await saveOtpToDb(email, otp, 'password_reset');
+    const bodyHtml = wrapInTemplate('Security Alert', `
+      <p style="font-size:15px;color:#451a03;margin:0 0 8px;font-weight:700;">Password Reset Request</p>
+      <p style="font-size:14px;color:#78350f;margin:0 0 24px;">Enter this code to reset your password:</p>
+      <div style="font-size:40px;font-weight:900;color:#1e293b;letter-spacing:8px;font-family:monospace;text-align:center;">${otp}</div>
     `);
     const sent = await sendWithResend(email, '🔑 Reset Your Pawzzle Password', bodyHtml);
     if (sent) return true;
-
     const { transporter, fromEmail } = await createTransporter();
     await transporter.sendMail({ from: `"Pawzzle" <${fromEmail}>`, to: email, subject: '🔑 Reset Your Pawzzle Password', html: bodyHtml });
     return true;
-  } catch (error) { 
-    console.error('❌ Error sending password reset email:', error.message);
-    return false; 
-  }
+  } catch (error) { throw error; }
 };
 
 const sendLoginOTP = async (email, otp, firstName) => {
   try {
-    console.log('-------------------------------------------');
-    console.log(`🛡️ LOGIN 2FA OTP for ${email}: [ ${otp} ]`);
-    console.log('-------------------------------------------');
-    
-    const bodyHtml = wrapInTemplate('2FA Verification', `
-      <p style="font-size:15px;color:#334155;margin:0 0 8px;font-weight:600;">Login Verification</p>
-      <div style="font-size:36px;font-weight:900;color:#6d7c45;letter-spacing:8px;font-family:monospace;">${otp}</div>
+    await saveOtpToDb(email, otp, 'login');
+    const bodyHtml = wrapInTemplate('Identity Guard', `
+      <p style="font-size:15px;color:#451a03;margin:0 0 8px;font-weight:700;">Login Verification</p>
+      <div style="font-size:40px;font-weight:900;color:#6d7c45;letter-spacing:10px;font-family:monospace;text-align:center;">${otp}</div>
     `);
-    const sent = await sendWithResend(email, '🛡 Pawzzle Login Verification Code', bodyHtml);
+    const sent = await sendWithResend(email, '🛡 Pawzzle Login Verification', bodyHtml);
     if (sent) return true;
-
     const { transporter, fromEmail } = await createTransporter();
-    await transporter.sendMail({ from: `"Pawzzle" <${fromEmail}>`, to: email, subject: '🛡 Pawzzle Login Verification Code', html: bodyHtml });
+    await transporter.sendMail({ from: `"Pawzzle" <${fromEmail}>`, to: email, subject: '🛡 Pawzzle Login Verification', html: bodyHtml });
     return true;
-  } catch (error) { 
-    console.error('❌ Error sending login OTP email:', error.message);
-    return true; 
-  }
+  } catch (error) { throw error; }
 };
 
 const sendSMS_OTP = async (phoneNumber, otp) => {
