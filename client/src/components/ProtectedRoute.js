@@ -2,7 +2,7 @@ import React from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
-const ProtectedRoute = ({ children, roles = [], staffTypes = [] }) => {
+const ProtectedRoute = ({ children, roles = [], staffTypes = [], requiredPermission = null }) => {
   const { isAuthenticated, user, loading } = useAuth();
 
   if (loading) {
@@ -33,9 +33,18 @@ const ProtectedRoute = ({ children, roles = [], staffTypes = [] }) => {
     }
   }
 
-  // If user is staff AND staffTypes restriction is specified, enforce it
-  if (user?.role === 'staff' && staffTypes.length > 0) {
-    if (!staffTypes.includes(user?.staffType)) {
+  // Enhanced Staff Access Logic
+  if (user?.role === 'staff') {
+    // 1. If a specific permission is required, check the matrix first
+    if (requiredPermission) {
+      const perms = user.permissions?.[requiredPermission];
+      const hasPerm = perms?.view || perms?.fullAccess || perms?.create || perms?.update || perms?.delete;
+      
+      if (hasPerm) return children;
+    }
+
+    // 2. Fallback to traditional staffType check if specified
+    if (staffTypes.length > 0 && !staffTypes.includes(user?.staffType)) {
       return <Navigate to="/admin/dashboard" replace />;
     }
   }

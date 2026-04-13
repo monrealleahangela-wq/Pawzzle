@@ -112,6 +112,9 @@ const Dashboard = () => {
     );
   }
 
+  const hasPerm = (res) => user?.permissions?.[res]?.view || user?.permissions?.[res]?.fullAccess;
+  const isAdmin = ['admin', 'super_admin'].includes(user?.role);
+
   return (
     <div className="min-h-screen bg-[#FAF9F6] dark:bg-slate-950 p-2 sm:p-4 lg:p-6 space-y-6 sm:space-y-8 pb-10 sm:pb-20 font-['Outfit'] relative overflow-hidden transition-colors duration-500">
       {/* Precision Decorative Underlay */}
@@ -208,12 +211,12 @@ const Dashboard = () => {
       {/* ── Precision Metrics Grid ── */}
       <div className="relative z-10 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
         {[
-          { label: 'FLEET COMPANIONS', value: stats.totalPets, icon: Heart, color: 'amber', link: '/admin/pets', sub: 'In Network', growth: stats.growth.pets, show: ['admin', 'super_admin'].includes(user?.role) || user?.staffType === 'inventory_staff' },
-          { label: 'HARDWARE UNITS', value: stats.totalProducts, icon: Package, color: 'stone', link: '/admin/products', sub: 'Active Stock', growth: stats.growth.products, show: ['admin', 'super_admin'].includes(user?.role) || user?.staffType === 'inventory_staff' },
-          { label: 'NODE TRANSACTIONS', value: stats.totalOrders, icon: ShoppingBag, color: 'slate', link: '/admin/orders', sub: 'Verified', growth: stats.growth.orders, show: ['admin', 'super_admin'].includes(user?.role) || user?.staffType === 'order_staff' },
-          { label: 'SERVICE WINDOWS', value: stats.totalBookings, icon: Calendar, color: 'emerald', link: '/admin/bookings', sub: 'Scheduled', growth: stats.growth.bookings, show: ['admin', 'super_admin'].includes(user?.role) || ['service_staff', 'order_staff'].includes(user?.staffType) },
-          { label: 'NETWORK REVENUE', value: `₱${stats.netEarnings.toLocaleString()}`, icon: TrendingUp, color: 'primary', link: '/admin/insights', sub: 'Gross Profit', growth: stats.growth.revenue, show: ['admin', 'super_admin'].includes(user?.role) },
-          { label: 'LIQUID ASSETS', value: `₱${stats.availableBalance.toLocaleString()}`, icon: Shield, color: 'amber', link: '/admin/payouts', sub: 'Operational', growth: stats.growth.balance, show: ['admin', 'super_admin'].includes(user?.role) }
+          { label: 'FLEET COMPANIONS', value: stats.totalPets, icon: Heart, color: 'amber', link: '/admin/pets', sub: 'In Network', growth: stats.growth.pets, show: isAdmin || hasPerm('inventory') },
+          { label: 'HARDWARE UNITS', value: stats.totalProducts, icon: Package, color: 'stone', link: '/admin/products', sub: 'Active Stock', growth: stats.growth.products, show: isAdmin || hasPerm('inventory') },
+          { label: 'NODE TRANSACTIONS', value: stats.totalOrders, icon: ShoppingBag, color: 'slate', link: '/admin/orders', sub: 'Verified', growth: stats.growth.orders, show: isAdmin || hasPerm('orders') },
+          { label: 'SERVICE WINDOWS', value: stats.totalBookings, icon: Calendar, color: 'emerald', link: '/admin/bookings', sub: 'Scheduled', growth: stats.growth.bookings, show: isAdmin || hasPerm('bookings') || hasPerm('services') },
+          { label: 'NETWORK REVENUE', value: `₱${stats.netEarnings.toLocaleString()}`, icon: TrendingUp, color: 'primary', link: '/admin/insights', sub: 'Gross Profit', growth: stats.growth.revenue, show: isAdmin },
+          { label: 'LIQUID ASSETS', value: `₱${stats.availableBalance.toLocaleString()}`, icon: Shield, color: 'amber', link: '/admin/payouts', sub: 'Operational', growth: stats.growth.balance, show: isAdmin }
         ].filter(s => s.show).map((stat, i) => (
           <Link
             key={i}
@@ -250,7 +253,7 @@ const Dashboard = () => {
 
       <div className="relative z-10 grid grid-cols-1 xl:grid-cols-12 gap-10 pb-40">
         {/* Recent Transaction Log */}
-        {(['admin', 'super_admin'].includes(user?.role) || ['order_staff', 'general'].includes(user?.staffType)) && (
+        {(isAdmin || hasPerm('orders') || ['order_staff', 'general'].includes(user?.staffType)) && (
           <div className="xl:col-span-8 bg-white dark:bg-slate-900 rounded-[2.2rem] sm:rounded-[3.5rem] border border-[#5D4037]/5 dark:border-slate-800 p-6 sm:p-10 shadow-[0_40px_100px_-30px_rgba(0,0,0,0.1)] flex flex-col transition-all">
             <div className="flex items-center justify-between mb-8 sm:mb-12">
               <div className="space-y-2">
@@ -307,7 +310,7 @@ const Dashboard = () => {
         {/* Intelligence & Protocols */}
         <div className="xl:col-span-4 space-y-10">
           {/* Intelligence Matrix */}
-          {stats.recommendations.length > 0 && ['admin', 'super_admin'].includes(user?.role) && (
+          {stats.recommendations.length > 0 && isAdmin && (
             <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] sm:rounded-[3rem] p-8 sm:p-10 border border-[#5D4037]/5 dark:border-slate-800 shadow-[0_40px_100px_-30px_rgba(0,0,0,0.1)] relative overflow-hidden group">
               <div className="absolute top-0 right-0 w-32 h-32 bg-secondary-50 dark:bg-primary-900/5 rounded-bl-[4rem] opacity-0 group-hover:opacity-100 transition-opacity" />
               
@@ -336,9 +339,11 @@ const Dashboard = () => {
             </div>
           )}
           
-          <Link to="/admin/insights" className="flex items-center justify-center gap-3 pt-6 text-[10px] font-black text-primary-700 dark:text-secondary-500 uppercase tracking-[0.3em] hover:gap-5 transition-all">
-             FULL MATRIX ANALYSIS <ChevronRight size={14} />
-          </Link>
+          {isAdmin && (
+            <Link to="/admin/insights" className="flex items-center justify-center gap-3 pt-6 text-[10px] font-black text-primary-700 dark:text-secondary-500 uppercase tracking-[0.3em] hover:gap-5 transition-all">
+               FULL MATRIX ANALYSIS <ChevronRight size={14} />
+            </Link>
+          )}
 
           {/* Rapid Protocols */}
           <div className="bg-[#211510] rounded-[3.5rem] p-10 shadow-[0_60px_120px_-20px_rgba(0,0,0,0.4)] relative overflow-hidden group">
@@ -352,11 +357,11 @@ const Dashboard = () => {
 
             <div className="space-y-4 relative z-10">
               {[
-                { to: "/admin/insights", label: "Strategic Intelligence", icon: Brain, desc: "Neural optimization core", show: ['admin', 'super_admin'].includes(user?.role) },
-                { to: "/admin/pets", label: "Deploy Companion", icon: Plus, desc: "Synchronize new biological unit", show: ['admin', 'super_admin'].includes(user?.role) || user?.staffType === 'inventory_staff' },
-                { to: "/admin/products", label: "Catalog Hardware", icon: Package, desc: "Index new structural equipment", show: ['admin', 'super_admin'].includes(user?.role) || user?.staffType === 'inventory_staff' },
-                { to: "/admin/bookings", label: "Operational Calendar", icon: Calendar, desc: "Synchronize service nodes", show: ['admin', 'super_admin'].includes(user?.role) || ['service_staff', 'order_staff'].includes(user?.staffType) },
-                { to: "/admin/orders", label: "Order Queue", icon: ShoppingCart, desc: "Process pending transactions", show: user?.staffType === 'order_staff' },
+                { to: "/admin/insights", label: "Strategic Intelligence", icon: Brain, desc: "Neural optimization core", show: isAdmin || hasPerm('analytics') },
+                { to: "/admin/pets", label: "Deploy Companion", icon: Plus, desc: "Synchronize new biological unit", show: isAdmin || hasPerm('inventory') },
+                { to: "/admin/products", label: "Catalog Hardware", icon: Package, desc: "Index new structural equipment", show: isAdmin || hasPerm('inventory') },
+                { to: "/admin/bookings", label: "Operational Calendar", icon: Calendar, desc: "Synchronize service nodes", show: isAdmin || hasPerm('bookings') || hasPerm('services') },
+                { to: "/admin/orders", label: "Order Queue", icon: ShoppingCart, desc: "Process pending transactions", show: isAdmin || hasPerm('orders') },
               ].filter(action => action.show).map((action, i) => (
                 <Link key={i} to={action.to} className="group/btn relative flex items-center gap-4 sm:gap-6 p-3 sm:p-5 bg-white/5 hover:bg-white/10 rounded-xl sm:rounded-[1.8rem] transition-all active:scale-[0.97] border border-white/5">
                   <div className="w-10 h-10 sm:w-14 sm:h-14 bg-white/5 rounded-lg sm:rounded-2xl flex items-center justify-center shrink-0 group-hover/btn:bg-primary-600 transition-all duration-500">
@@ -373,7 +378,7 @@ const Dashboard = () => {
           </div>
 
           {/* Resource Alert Matrix */}
-          {(['admin', 'super_admin'].includes(user?.role) || user?.staffType === 'inventory_staff') && stats.lowStockProducts.length > 0 ? (
+          {(isAdmin || hasPerm('inventory')) && stats.lowStockProducts.length > 0 ? (
             <div className="bg-rose-600 rounded-[2rem] sm:rounded-[3rem] p-6 sm:p-10 text-white shadow-[0_40px_80px_-20px_rgba(225,29,72,0.4)] relative overflow-hidden group">
               <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent pointer-events-none" />
               
@@ -401,7 +406,7 @@ const Dashboard = () => {
                 </Link>
               </div>
             </div>
-          ) : (['admin', 'super_admin'].includes(user?.role) || user?.staffType === 'inventory_staff') && (
+          ) : (isAdmin || hasPerm('inventory')) && (
             <div className="bg-emerald-600 rounded-[2rem] sm:rounded-[3rem] p-6 sm:p-10 text-white shadow-[0_40px_80px_-20px_rgba(5,150,105,0.3)] flex flex-col items-center justify-center text-center space-y-6 relative overflow-hidden group">
               <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent pointer-events-none" />
               <div className="w-16 h-16 sm:w-20 sm:h-20 bg-white/20 backdrop-blur-xl rounded-full flex items-center justify-center group-hover:scale-110 transition-transform duration-700 shadow-2xl">

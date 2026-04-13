@@ -132,7 +132,7 @@ const Layout = () => {
 
     // Catalog Section
     const catalogItems = [];
-    if (permissions.pets?.view) catalogItems.push({ path: '/admin/pets', label: 'Pets', icon: Heart });
+    if (permissions.inventory?.view) catalogItems.push({ path: '/admin/pets', label: 'Pets', icon: Heart });
     if (permissions.inventory?.view) catalogItems.push({ path: '/admin/products', label: 'Products', icon: Package });
     if (permissions.services?.view) catalogItems.push({ path: '/admin/services', label: 'Services', icon: Calendar });
     
