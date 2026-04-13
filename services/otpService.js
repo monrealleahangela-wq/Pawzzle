@@ -74,23 +74,27 @@ const createTransporter = async () => {
   const user = process.env.EMAIL_USER || 'pawzzle.spark@gmail.com';
   const pass = process.env.EMAIL_PASS || 'aknzqkqqdumntchq';
 
-  // Robust Gmail transporter config (Matches working emailService.js)
-  // FORCE family: 4 to resolve ENETUNREACH IPv6 errors on restricted cloud hosts
+  // Manual DNS lookup to force IPv4 and bypass ENETUNREACH/BIND issues
+  let smtpHost = 'smtp.gmail.com';
+  try {
+    const { address } = await require('dns').promises.lookup('smtp.gmail.com', { family: 4 });
+    smtpHost = address;
+    console.log(`📡 Resolved smtp.gmail.com to IPv4: ${smtpHost}`);
+  } catch (dnsErr) {
+    console.warn('⚠️ IPv4 DNS lookup failed, falling back to hostname:', dnsErr.message);
+  }
+
   const transporter = nodemailer.createTransport({
-    host: 'smtp.gmail.com',
-    port: 465,
+    host: smtpHost,
+    port: 465, // Using 465 with the resolved IP
     secure: true,
-    auth: {
-        user: user,
-        pass: pass
-    },
-    family: 4, // FORCE IPv4 for Render/Vercel network compatibility
-    localAddress: '0.0.0.0', // Force local IPv4 interface
+    auth: { user, pass },
     connectionTimeout: 30000,
     greetingTimeout: 30000,
     socketTimeout: 30000,
     tls: {
-        rejectUnauthorized: false
+      rejectUnauthorized: false,
+      servername: 'smtp.gmail.com' // CRITICAL: Required for SNI when connecting via IP
     }
   });
 

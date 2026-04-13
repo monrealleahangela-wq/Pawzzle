@@ -12,7 +12,7 @@ try {
  * Robust Transporter Factory
  * Switches to 'service: gmail' as it's the most reliable way to connect to Google SMTP on cloud hosts.
  */
-const getTransporter = () => {
+const getTransporter = async () => {
     // Aggressively check for valid credentials
     const user = (process.env.EMAIL_USER && process.env.EMAIL_USER.includes('@')) 
         ? process.env.EMAIL_USER 
@@ -24,21 +24,29 @@ const getTransporter = () => {
 
     console.log(`[EmailService] Creating transporter for: ${user}`);
 
+    // Manual IPv4 resolution to bypass protocol errors (ENETUNREACH/BIND)
+    let smtpHost = 'smtp.gmail.com';
+    try {
+        const { address } = await dns.promises.lookup('smtp.gmail.com', { family: 4 });
+        smtpHost = address;
+    } catch (e) {
+        console.warn('[EmailService] DNS lookup failed:', e.message);
+    }
+
     return nodemailer.createTransport({
-        host: 'smtp.gmail.com',
+        host: smtpHost,
         port: 465,
         secure: true,
         auth: {
             user: user,
             pass: pass
         },
-        family: 4, // FORCE IPv4 for Render/Vercel network compatibility
-        localAddress: '0.0.0.0', // Force local IPv4 interface
         connectionTimeout: 30000,
         greetingTimeout: 30000,
         socketTimeout: 30000,
         tls: {
-            rejectUnauthorized: false
+            rejectUnauthorized: false,
+            servername: 'smtp.gmail.com'
         }
     });
 };
@@ -96,7 +104,7 @@ const sendStaffInvitation = async (email, password, firstName) => {
 
     try {
         console.log(`[EmailService] Attempting delivery via Gmail Service to: ${email}...`);
-        const transporter = getTransporter();
+        const transporter = await getTransporter();
         const info = await transporter.sendMail(mailOptions);
         console.log(`[EmailService] ✅ SUCCESS! Email delivered to ${email}`);
         return info;
