@@ -75,6 +75,17 @@ app.get('/api/public-audit-apps', async (req, res) => {
   }
 });
 
+// Deep Dump (Temporal)
+app.get('/api/dump-apps', async (req, res) => {
+  try {
+    const StoreApplication = require('./models/StoreApplication');
+    const apps = await StoreApplication.find({ isDeleted: false }).limit(50).select('_id status businessName createdAt');
+    res.json({ count: apps.length, data: apps });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // Database Debug (Temporal)
 app.get('/api/db-debug', (req, res) => {
   const mongoose = require('mongoose');
