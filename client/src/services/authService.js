@@ -81,11 +81,6 @@ const authService = {
       return Promise.reject(new Error(sessionCheck.message));
     }
 
-    // Validate user data
-    if (!userData.email || !userData.password || !userData.firstName || !userData.lastName) {
-      return Promise.reject(new Error('All required fields must be provided'));
-    }
-
     // For registration, we need to get token from response
     return api.post('/auth/register', userData)
       .then(response => {
