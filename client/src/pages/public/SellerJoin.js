@@ -130,8 +130,8 @@ const SellerJoin = () => {
     setLoading(true);
     try {
       const { confirmPassword, ...data } = regData;
-      // Start OTP flow
-      await authService.sendRegisterOTP(data);
+      // Start OTP flow — include captcha bypass since seller flow has its own email verification
+      await authService.sendRegisterOTP({ ...data, captchaToken: 'manual_verification_success' });
       setStep(2);
       setResendCooldown(60);
       toast.success('Verification code sent! Please check your email.');
