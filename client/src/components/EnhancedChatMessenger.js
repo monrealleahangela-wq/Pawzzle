@@ -491,7 +491,7 @@ const EnhancedChatMessenger = ({
 
       <div 
         ref={messagesContainerRef}
-        className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50/50 no-scrollbar overscroll-contain touch-pan-y scroll-smooth min-h-0"
+        className="flex-1 overflow-y-auto p-4 pb-20 space-y-4 bg-slate-50/50 no-scrollbar overscroll-contain touch-pan-y scroll-smooth min-h-0"
       >
         {!transactionRequest && !isSeller && !isAdmin && conversationId && pet && (
           <div className="bg-white border border-secondary-100 p-4 rounded-3xl text-center space-y-3 mx-2 shadow-sm mb-4">
@@ -508,7 +508,7 @@ const EnhancedChatMessenger = ({
           </div>
         )}
         {messages.map(renderMessage)}
-        <div ref={messagesEndRef} />
+        <div ref={messagesEndRef} className="h-6" />
       </div>
 
       {typingUser && (
