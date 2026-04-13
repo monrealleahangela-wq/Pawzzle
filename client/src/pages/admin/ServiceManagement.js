@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 
 import { serviceService, adminServiceService, uploadService, getImageUrl } from '../../services/apiService';
+import { useAuth } from '../../contexts/AuthContext';
 import { SERVICE_CATEGORIES } from '../../constants/serviceCategories';
 
 const PhilippinePeso = ({ className }) => (
@@ -28,6 +29,7 @@ const PhilippinePeso = ({ className }) => (
 );
 
 const ServiceManagement = () => {
+  const { user } = useAuth();
   const [services, setServices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -35,6 +37,12 @@ const ServiceManagement = () => {
   const [editingService, setEditingService] = useState(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [serviceToDelete, setServiceToDelete] = useState(null);
+
+  // Permission Checks
+  const isAdmin = ['admin', 'super_admin'].includes(user?.role);
+  const canCreate = isAdmin || user?.permissions?.services?.create || user?.permissions?.services?.fullAccess;
+  const canUpdate = isAdmin || user?.permissions?.services?.update || user?.permissions?.services?.fullAccess;
+  const canDelete = isAdmin || user?.permissions?.services?.delete || user?.permissions?.services?.fullAccess;
   const [submitting, setSubmitting] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCategory, setFilterCategory] = useState('');
@@ -190,10 +198,12 @@ const ServiceManagement = () => {
           >
             <Calendar className="h-4 w-4 text-indigo-600" /> View Bookings
           </Link>
-          <button onClick={() => { resetForm(); setShowModal(true); }}
-            className="px-8 py-3.5 bg-slate-900 text-white rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] hover:bg-indigo-600 transition-all shadow-xl shadow-slate-200 flex items-center gap-3 group">
-            <Plus className="h-4 w-4 group-hover:rotate-90 transition-transform" /> Add New Service
-          </button>
+          {canCreate && (
+            <button onClick={() => { resetForm(); setShowModal(true); }}
+              className="px-8 py-3.5 bg-slate-900 text-white rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] hover:bg-indigo-600 transition-all shadow-xl shadow-slate-200 flex items-center gap-3 group">
+              <Plus className="h-4 w-4 group-hover:rotate-90 transition-transform" /> Add New Service
+            </button>
+          )}
         </div>
       </div>
 
@@ -302,14 +312,18 @@ const ServiceManagement = () => {
 
               {/* Action buttons — always visible */}
               <div className="flex gap-2 mt-3">
-                <button onClick={() => handleEdit(service)}
-                  className="flex-1 py-2.5 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all hover:bg-indigo-600 flex items-center justify-center gap-1.5">
-                  <Edit2 className="h-3.5 w-3.5" /> Edit
-                </button>
-                <button onClick={() => handleDelete(service._id)}
-                  className="px-3 py-2.5 bg-rose-50 text-rose-500 rounded-2xl hover:bg-rose-500 hover:text-white transition-all">
-                  <Trash2 className="h-4 w-4" />
-                </button>
+                {canUpdate && (
+                  <button onClick={() => handleEdit(service)}
+                    className="flex-1 py-2.5 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all hover:bg-indigo-600 flex items-center justify-center gap-1.5">
+                    <Edit2 className="h-3.5 w-3.5" /> Edit
+                  </button>
+                )}
+                {canDelete && (
+                  <button onClick={() => handleDelete(service._id)}
+                    className="px-3 py-2.5 bg-rose-50 text-rose-500 rounded-2xl hover:bg-rose-500 hover:text-white transition-all">
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                )}
               </div>
             </div>
           </div>

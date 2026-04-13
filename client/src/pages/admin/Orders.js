@@ -2,11 +2,18 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { adminOrderService, deliveryService, getImageUrl } from '../../services/apiService';
+import { useAuth } from '../../contexts/AuthContext';
 import { ShoppingBag, Eye, Package, ArrowRight, Filter, ChevronLeft, ChevronRight, Activity, ChevronDown, Search, Link2, Copy, Check } from 'lucide-react';
 
 const AdminOrders = () => {
+  const { user } = useAuth();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  // Permission Checks
+  const isAdmin = ['admin', 'super_admin'].includes(user?.role);
+  const canUpdate = isAdmin || user?.permissions?.orders?.update || user?.permissions?.orders?.fullAccess;
+
   const [filters, setFilters] = useState({
     status: '',
     search: ''
@@ -211,7 +218,7 @@ const AdminOrders = () => {
                           <Link to={`/admin/orders/${order._id}`} className="p-2 bg-slate-100 text-slate-600 rounded-lg hover:bg-slate-200 transition-all">
                             <Eye className="h-4 w-4" />
                           </Link>
-                          {order.paymentStatus !== 'paid' && order.status !== 'cancelled' && (
+                          {canUpdate && order.paymentStatus !== 'paid' && order.status !== 'cancelled' && (
                             <button
                               onClick={() => handleConfirmPayment(order._id)}
                               className="p-2 bg-emerald-50 text-emerald-600 rounded-lg hover:bg-emerald-500 hover:text-white transition-all shadow-sm"
@@ -220,7 +227,7 @@ const AdminOrders = () => {
                               <Check className="h-4 w-4" />
                             </button>
                           )}
-                          {getNextStatus(order.status) && (
+                          {canUpdate && getNextStatus(order.status) && (
                             <button
                                onClick={() => handleGenerateRiderLink(order._id)}
                                className={`p-2 rounded-lg transition-all ${order.delivery ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-100 text-slate-600'}`}
@@ -229,7 +236,7 @@ const AdminOrders = () => {
                                <Link2 className="h-4 w-4" />
                             </button>
                           )}
-                          {getNextStatus(order.status) && (
+                          {canUpdate && getNextStatus(order.status) && (
                             <button
                               onClick={() => handleStatusUpdate(order._id, getNextStatus(order.status))}
                               className="px-3 py-1.5 bg-slate-900 text-white rounded-lg text-xs font-semibold hover:bg-primary-600 transition-all"

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { toast } from 'react-toastify';
 import { productService, adminProductService, inventoryService, uploadService, getImageUrl } from '../../services/apiService';
+import { useAuth } from '../../contexts/AuthContext';
 import {
   Package,
   AlertTriangle,
@@ -55,10 +56,18 @@ const PhilippinePeso = ({ className }) => (
 );
 
 const ProductInventory = () => {
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('products');
   const [products, setProducts] = useState([]);
   const [inventory, setInventory] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  // Permission Checks
+  const isAdmin = ['admin', 'super_admin'].includes(user?.role);
+  const canCreate = isAdmin || user?.permissions?.inventory?.create || user?.permissions?.inventory?.fullAccess;
+  const canUpdate = isAdmin || user?.permissions?.inventory?.update || user?.permissions?.inventory?.fullAccess;
+  const canDelete = isAdmin || user?.permissions?.inventory?.delete || user?.permissions?.inventory?.fullAccess;
+  const canAdjustStock = canUpdate; // Using update for stock adjustments
 
   // Modal States
   const [showProductModal, setShowProductModal] = useState(false);
@@ -374,12 +383,16 @@ const ProductInventory = () => {
         </div>
 
         <div className="flex flex-wrap gap-3 w-full lg:w-auto relative z-10">
-          <button onClick={() => handleOpenProductModal()} className="flex-1 lg:flex-none px-8 py-3.5 bg-slate-900 text-white rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] hover:bg-primary-600 transition-all shadow-xl shadow-slate-200 flex items-center justify-center gap-3 group">
-            <Plus className="h-4 w-4 group-hover:rotate-90 transition-transform" /> Add Product
-          </button>
-          <button onClick={() => handleOpenInventoryModal()} className="flex-1 lg:flex-none px-8 py-3.5 bg-white border-2 border-slate-100 text-slate-600 rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] hover:bg-slate-50 transition-all flex items-center justify-center gap-3">
-            <Zap className="h-4 w-4 text-primary-600 shadow-glow" /> Update Stock
-          </button>
+          {canCreate && (
+            <button onClick={() => handleOpenProductModal()} className="flex-1 lg:flex-none px-8 py-3.5 bg-slate-900 text-white rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] hover:bg-primary-600 transition-all shadow-xl shadow-slate-200 flex items-center justify-center gap-3 group">
+              <Plus className="h-4 w-4 group-hover:rotate-90 transition-transform" /> Add Product
+            </button>
+          )}
+          {canAdjustStock && (
+            <button onClick={() => handleOpenInventoryModal()} className="flex-1 lg:flex-none px-8 py-3.5 bg-white border-2 border-slate-100 text-slate-600 rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] hover:bg-slate-50 transition-all flex items-center justify-center gap-3">
+              <Zap className="h-4 w-4 text-primary-600 shadow-glow" /> Update Stock
+            </button>
+          )}
         </div>
       </div>
 
@@ -485,14 +498,18 @@ const ProductInventory = () => {
                         ₱{(product.price || 0).toLocaleString()}
                       </span>
                       <div className="flex gap-2">
-                        <button onClick={() => handleOpenProductModal(product)}
-                          className="p-2.5 bg-slate-50 text-slate-400 rounded-2xl hover:bg-primary-600 hover:text-white transition-all shadow-sm">
-                          <Edit className="h-4 w-4" />
-                        </button>
-                        <button onClick={() => { if (window.confirm('PURGE_ASSET?')) adminProductService.deleteProduct(product._id).then(fetchProducts) }}
-                          className="p-2.5 bg-slate-50 text-slate-400 rounded-2xl hover:bg-rose-500 hover:text-white transition-all shadow-sm">
-                          <Trash2 className="h-4 w-4" />
-                        </button>
+                        {canUpdate && (
+                          <button onClick={() => handleOpenProductModal(product)}
+                            className="p-2.5 bg-slate-50 text-slate-400 rounded-2xl hover:bg-primary-600 hover:text-white transition-all shadow-sm">
+                            <Edit className="h-4 w-4" />
+                          </button>
+                        )}
+                        {canDelete && (
+                          <button onClick={() => { if (window.confirm('PURGE_ASSET?')) adminProductService.deleteProduct(product._id).then(fetchProducts) }}
+                            className="p-2.5 bg-slate-50 text-slate-400 rounded-2xl hover:bg-rose-500 hover:text-white transition-all shadow-sm">
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -587,9 +604,11 @@ const ProductInventory = () => {
                           </span>
                         </td>
                         <td className="px-10 py-6 text-right">
-                          <button onClick={() => handleOpenInventoryModal(item)} className="px-6 py-3.5 bg-white border-2 border-slate-100 hover:bg-slate-900 hover:border-slate-900 hover:text-white rounded-2xl transition-all text-slate-500 text-[10px] font-black uppercase tracking-widest group-hover:shadow-lg">
-                            Adjust Stock
-                          </button>
+                          {canAdjustStock && (
+                            <button onClick={() => handleOpenInventoryModal(item)} className="px-6 py-3.5 bg-white border-2 border-slate-100 hover:bg-slate-900 hover:border-slate-900 hover:text-white rounded-2xl transition-all text-slate-500 text-[10px] font-black uppercase tracking-widest group-hover:shadow-lg">
+                              Adjust Stock
+                            </button>
+                          )}
                         </td>
                       </tr>
                     ))}

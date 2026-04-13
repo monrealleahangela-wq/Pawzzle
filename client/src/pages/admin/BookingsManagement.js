@@ -46,6 +46,11 @@ const BookingsManagement = () => {
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [user, setUser] = useState(null);
 
+  // Permission Checks
+  const isAdmin = ['admin', 'super_admin'].includes(user?.role);
+  const canUpdate = isAdmin || user?.permissions?.bookings?.update || user?.permissions?.bookings?.fullAccess;
+  const canDelete = isAdmin || user?.permissions?.bookings?.delete || user?.permissions?.bookings?.fullAccess;
+
   useEffect(() => {
     const userData = JSON.parse(localStorage.getItem('user') || '{}');
     setUser(userData);
@@ -73,6 +78,14 @@ const BookingsManagement = () => {
       toast.error('Super admins can only view bookings');
       return;
     }
+    if (!canUpdate && status !== 'cancelled') {
+        toast.error('OPERATOR_RESTRICTED: Insufficient permissions to update booking status');
+        return;
+    }
+    if (status === 'cancelled' && !canDelete) {
+        toast.error('OPERATOR_RESTRICTED: Insufficient permissions to cancel bookings');
+        return;
+    }
     try {
       await adminBookingService.updateBookingStatus(bookingId, status);
       toast.success(`Booking ${status}`);
@@ -89,6 +102,10 @@ const BookingsManagement = () => {
     if (user?.role === 'super_admin') {
       toast.error('Super admins can only view bookings');
       return;
+    }
+    if (!canUpdate) {
+        toast.error('OPERATOR_RESTRICTED: Insufficient permissions to manage payments');
+        return;
     }
     try {
       const res = await adminBookingService.confirmPayment(bookingId);
@@ -605,7 +622,7 @@ const BookingsManagement = () => {
 
               {/* ── Payment Approval Panel (seller side) ── */}
               {/* When customer has paid but seller hasn't approved yet */}
-              {selectedBooking.status === 'pending' && selectedBooking.paymentStatus === 'paid' && !selectedBooking.isRevenueRecorded && (user?.role === 'admin' || user?.role === 'staff') && (
+              {selectedBooking.status === 'pending' && selectedBooking.paymentStatus === 'paid' && !selectedBooking.isRevenueRecorded && canUpdate && (user?.role === 'admin' || user?.role === 'staff') && (
                 <div className="p-8 bg-primary-600 rounded-[2.5rem] text-white flex flex-col gap-6 relative overflow-hidden group shadow-2xl shadow-secondary-200">
                   <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent pointer-events-none" />
                   <div className="relative z-10 space-y-2">
@@ -651,7 +668,7 @@ const BookingsManagement = () => {
                         </div>
                       </div>
                     ))}
-                    {(selectedBooking.status === 'processing' || selectedBooking.status === 'finished') && (selectedBooking.servicePhotos?.length || 0) < 4 && (
+                    {(selectedBooking.status === 'processing' || selectedBooking.status === 'finished') && (selectedBooking.servicePhotos?.length || 0) < 4 && canUpdate && (
                       <label className="aspect-square bg-primary-50 rounded-2xl border-2 border-dashed border-primary-200 flex flex-col items-center justify-center gap-2 cursor-pointer hover:bg-primary-100 transition-all text-primary-600 active:scale-95">
                         <Plus className="h-6 w-6" />
                         <span className="text-[8px] font-black uppercase tracking-widest">Add Snap</span>
@@ -684,7 +701,7 @@ const BookingsManagement = () => {
 
             {/* Actions */}
             <footer className="shrink-0 p-6 sm:p-8 bg-slate-50 border-t border-slate-100 flex flex-wrap gap-4 relative z-10">
-              {(user?.role === 'admin' || user?.role === 'staff') && !selectedBooking.isRevenueRecorded && selectedBooking.status !== 'cancelled' && selectedBooking.paymentStatus !== 'paid' && (
+              {(user?.role === 'admin' || user?.role === 'staff') && !selectedBooking.isRevenueRecorded && selectedBooking.status !== 'cancelled' && selectedBooking.paymentStatus !== 'paid' && canUpdate && (
                 <button
                   onClick={() => confirmBookingPayment(selectedBooking._id)}
                   className="px-6 py-3.5 bg-emerald-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:opacity-90 transition-all active:scale-[0.98] shadow-lg shadow-emerald-900/10 flex items-center gap-2"
@@ -696,7 +713,7 @@ const BookingsManagement = () => {
               {(user?.role === 'admin' || user?.role === 'staff') &&
                selectedBooking.status !== 'completed' &&
                selectedBooking.status !== 'cancelled' &&
-               statusNextMap[selectedBooking.status] && (
+               statusNextMap[selectedBooking.status] && canUpdate && (
                 <button
                   onClick={() => {
                     updateBookingStatus(selectedBooking._id, statusNextMap[selectedBooking.status]);
@@ -707,7 +724,7 @@ const BookingsManagement = () => {
                   Update Status to {(statusNextMap[selectedBooking.status] || '').replace('_', ' ')}
                 </button>
               )}
-              {(user?.role === 'admin' || user?.role === 'staff') && (selectedBooking.status === 'pending' || selectedBooking.status === 'confirmed') && (
+              {(user?.role === 'admin' || user?.role === 'staff') && (selectedBooking.status === 'pending' || selectedBooking.status === 'confirmed') && canDelete && (
                 <button
                   onClick={() => {
                     if (window.confirm('Are you sure you want to cancel this booking?')) {

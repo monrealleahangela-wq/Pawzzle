@@ -10,8 +10,19 @@ import {
 } from 'lucide-react';
 
 const AdminPets = () => {
+  const { user } = useAuth();
   const [pets, setPets] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  // Permission Checks
+  const isAdmin = ['admin', 'super_admin'].includes(user?.role);
+  const canCreate = isAdmin || user?.permissions?.inventory?.create || user?.permissions?.inventory?.fullAccess;
+  const canUpdate = isAdmin || user?.permissions?.inventory?.update || user?.permissions?.inventory?.fullAccess;
+  const canDelete = isAdmin || user?.permissions?.inventory?.delete || user?.permissions?.inventory?.fullAccess;
+  
+  // For Adoption (Sold Pets)
+  const canManageAdoptions = isAdmin || user?.permissions?.orders?.update || user?.permissions?.orders?.fullAccess;
+
   const [showAddForm, setShowAddForm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [searchParams] = useSearchParams();
@@ -385,9 +396,11 @@ const AdminPets = () => {
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" /> Track and manage your pet inventory and sales
           </p>
         </div>
-        <button onClick={handleOpenModal} className="px-8 py-3.5 bg-slate-900 text-white rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] hover:bg-rose-500 transition-all shadow-xl shadow-slate-200 flex items-center gap-3 group">
-          <Plus className="h-4 w-4 group-hover:rotate-90 transition-transform" /> Add New Pet
-        </button>
+        {canCreate && (
+          <button onClick={handleOpenModal} className="px-8 py-3.5 bg-slate-900 text-white rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] hover:bg-rose-500 transition-all shadow-xl shadow-slate-200 flex items-center gap-3 group">
+            <Plus className="h-4 w-4 group-hover:rotate-90 transition-transform" /> Add New Pet
+          </button>
+        )}
       </div>
 
       {/* View Switcher */}
@@ -515,20 +528,24 @@ const AdminPets = () => {
                           ₱{(pet.price || 0).toLocaleString()}
                         </span>
                         <div className="flex gap-1.5 shrink-0">
-                          <button 
-                            onClick={() => handleEditPet(pet._id)}
-                            className="p-2 sm:p-3 bg-slate-900 text-white rounded-2xl hover:bg-rose-500 transition-all shadow-lg active:scale-95"
-                            title="Edit Pet"
-                          >
-                            <Edit className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                          </button>
-                          <button 
-                            onClick={() => handleDeletePet(pet._id)}
-                            className="p-2 sm:p-3 bg-rose-50 text-rose-500 rounded-2xl hover:bg-rose-500 hover:text-white transition-all border border-rose-100 active:scale-95"
-                            title="Delete Pet"
-                          >
-                            <Trash2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                          </button>
+                          {canUpdate && (
+                            <button 
+                              onClick={() => handleEditPet(pet._id)}
+                              className="p-2 sm:p-3 bg-slate-900 text-white rounded-2xl hover:bg-rose-500 transition-all shadow-lg active:scale-95"
+                              title="Edit Pet"
+                            >
+                              <Edit className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                            </button>
+                          )}
+                          {canDelete && (
+                            <button 
+                              onClick={() => handleDeletePet(pet._id)}
+                              className="p-2 sm:p-3 bg-rose-50 text-rose-500 rounded-2xl hover:bg-rose-500 hover:text-white transition-all border border-rose-100 active:scale-95"
+                              title="Delete Pet"
+                            >
+                              <Trash2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                            </button>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -647,7 +664,7 @@ const AdminPets = () => {
                           <Link to={`/admin/chat?conversation=${req.conversation}`} className="p-2.5 bg-slate-50 text-slate-400 rounded-2xl hover:bg-slate-900 hover:text-white transition-all">
                             <MessageSquare className="h-4 w-4" />
                           </Link>
-                          {req.status === 'pending' && (
+                          {req.status === 'pending' && canManageAdoptions && (
                             <>
                               <button onClick={() => handleUpdateAdoptionStatus(req._id, 'approved')} className="p-2.5 bg-emerald-50 text-emerald-600 rounded-2xl hover:bg-emerald-500 hover:text-white transition-all">
                                 <CheckCircle2 className="h-4 w-4" />
@@ -657,7 +674,7 @@ const AdminPets = () => {
                               </button>
                             </>
                           )}
-                          {req.status === 'approved' && (
+                          {req.status === 'approved' && canManageAdoptions && (
                             <button onClick={() => handleUpdateAdoptionStatus(req._id, 'ready_for_pickup')} className="px-4 py-2 bg-slate-900 text-white rounded-2xl text-[9px] font-black uppercase tracking-widest hover:bg-rose-500 transition-all">
                               Ready for Pickup
                             </button>
