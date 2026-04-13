@@ -6,33 +6,35 @@ const PawCursor = () => {
     const [isHovering, setIsHovering] = useState(false);
     const [isPressed, setIsPressed] = useState(false);
     const [isTouch, setIsTouch] = useState(false);
+    const [isActive, setIsActive] = useState(false);
     const lastPos = useRef({ x: 0, y: 0 });
     const distanceThreshold = 45;
     const maxTrail = 15; 
 
     useEffect(() => {
-        // Detect touch device
-        setIsTouch('ontouchstart' in window || navigator.maxTouchPoints > 0);
+        // Detect touch device - custom cursor only for desktop
+        const touchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+        setIsTouch(touchDevice);
+        
+        if (touchDevice) return;
 
-        const cursor = cursorRef.current;
-        if (!cursor) return;
+        // Mark as active for CSS hiding
+        document.documentElement.classList.add('custom-cursor-active');
+        setIsActive(true);
 
         const handleMouseMove = (e) => {
             const { clientX, clientY } = e;
             
-            // Direct DOM update for instant response
             requestAnimationFrame(() => {
-                if (cursor) {
-                    cursor.style.transform = `translate3d(${clientX}px, ${clientY}px, 0)`;
+                if (cursorRef.current) {
+                    cursorRef.current.style.transform = `translate3d(${clientX}px, ${clientY}px, 0)`;
                 }
             });
 
-            // Detect hover
             const target = e.target;
             const isClickable = target.closest('a, button, select, input, [role="button"], .clickable, .cursor-pointer');
             setIsHovering(!!isClickable);
 
-            // Trail Logic
             const dist = Math.sqrt(
                 Math.pow(clientX - lastPos.current.x, 2) + 
                 Math.pow(clientY - lastPos.current.y, 2)
@@ -47,12 +49,10 @@ const PawCursor = () => {
         const dropTrail = (x, y, prevPos) => {
             const angle = Math.atan2(y - prevPos.y, x - prevPos.x) * (180 / Math.PI) + 90;
             const side = Math.random() > 0.5 ? 'left' : 'right';
-            
             const trailContainer = document.getElementById('paw-trail-container');
             if (!trailContainer) return;
 
             const print = document.createElement('div');
-            // High contrast color for trail (Semi-transparent cream)
             print.className = 'absolute pointer-events-none transition-all duration-1500 opacity-20 scale-50 ease-out';
             print.style.left = `${x + (side === 'left' ? -18 : 18)}px`;
             print.style.top = `${y}px`;
@@ -62,7 +62,6 @@ const PawCursor = () => {
             
             trailContainer.appendChild(print);
 
-            // Smooth fade out
             requestAnimationFrame(() => {
                 setTimeout(() => {
                     print.style.opacity = '0';
@@ -71,7 +70,6 @@ const PawCursor = () => {
                 }, 800);
             });
 
-            // Limit trail length for memory
             if (trailContainer.children.length > maxTrail) {
                 const oldest = trailContainer.children[0];
                 if (oldest) oldest.remove();
@@ -86,18 +84,18 @@ const PawCursor = () => {
         window.addEventListener('mouseup', handleMouseUp);
         
         return () => {
+            document.documentElement.classList.remove('custom-cursor-active');
             window.removeEventListener('mousemove', handleMouseMove);
             window.removeEventListener('mousedown', handleMouseDown);
             window.removeEventListener('mouseup', handleMouseUp);
         };
     }, []);
 
-    if (isTouch) return null;
+    if (isTouch || !isActive) return null;
 
     return (
         <div className="fixed inset-0 pointer-events-none z-[999999] overflow-hidden">
             <div id="paw-trail-container" className="absolute inset-0 pointer-events-none" />
-            
             <div
                 ref={cursorRef}
                 className="absolute top-0 left-0 pointer-events-none"
@@ -108,19 +106,12 @@ const PawCursor = () => {
                     zIndex: 999999
                 }}
             >
-                <div 
-                    className="relative"
-                    style={{ 
-                        transform: 'translate(-50%, -35%)', 
-                        transition: 'transform 0.1s ease-out'
-                    }}
-                >
+                <div className="relative" style={{ transform: 'translate(-50%, -35%)', transition: 'transform 0.1s ease-out' }}>
                     <div 
                         className="flex items-center justify-center"
                         style={{
                             transition: 'transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), color 0.3s ease',
                             transform: `scale(${isPressed ? 0.7 : isHovering ? 1.4 : 1.0})`,
-                            // Vanilla/Cream color for maximum visibility against brown theme
                             color: isHovering ? '#FB923C' : '#FBEBDD' 
                         }}
                     >

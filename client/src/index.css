@@ -15,11 +15,13 @@ body {
   background-color: #8B4513; /* Match new brown theme */
   min-height: 100vh;
   min-height: 100dvh;
-  cursor: none !important; /* Hide default system cursor */
 }
 
-/* Ensure all clickable elements also hide the cursor */
-a, button, select, input, textarea, [role="button"], .clickable, .cursor-pointer {
+/* Keep cursor visible as fallback - only hide when PawCursor is confirmed active */
+.custom-cursor-active body, 
+.custom-cursor-active a, 
+.custom-cursor-active button, 
+.custom-cursor-active input {
   cursor: none !important;
 }
 
