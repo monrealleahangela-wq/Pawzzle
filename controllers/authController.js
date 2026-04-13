@@ -43,6 +43,11 @@ const sendRegisterOTP = async (req, res) => {
     // Auto-generate username if not provided
     if (!username && email) {
       username = email.split('@')[0];
+      // Check if this auto-generated username exists
+      const existing = await User.findOne({ username, isDeleted: false });
+      if (existing) {
+        username = `${username}${Math.floor(100 + Math.random() * 900)}`;
+      }
     }
     
     // Ensure defaults
@@ -269,6 +274,10 @@ const register = async (req, res) => {
     // Auto-generate username if not provided
     if (!username && email) {
       username = email.split('@')[0];
+      const existing = await User.findOne({ username, isDeleted: false });
+      if (existing) {
+        username = `${username}${Math.floor(100 + Math.random() * 900)}`;
+      }
     }
 
     const existingEmail = await User.findOne({ email, isDeleted: false });
