@@ -57,15 +57,15 @@ const sendWithResend = async (to, subject, html) => {
     });
 
     if (response.status === 200 || response.status === 201) {
-      console.log('✨ Email sent successfully via RESEND API!', response.data.id);
+      console.log('✨ RESEND SUCCESS:', response.data.id);
       return true;
     } else {
-      console.error('❌ RESEND API ERROR:', response.data);
-      return false;
+      throw new Error(`Resend API refused: ${JSON.stringify(response.data)}`);
     }
   } catch (error) {
-    console.error('❌ RESEND POST FAILURE:', error.response?.data || error.message);
-    return false;
+    const errorMsg = error.response?.data?.message || error.response?.data || error.message;
+    console.error('❌ RESEND API ERROR:', errorMsg);
+    throw new Error(`Resend Error: ${errorMsg}`);
   }
 };
 
@@ -242,36 +242,35 @@ const sendRegistrationOTP = async (email, otp, firstName, userData = null) => {
       }
     }
 
-    // 5. FINAL FALLBACK (Resend API)
-    const resendSuccess = await sendWithResend(email, '🔐 Verify Your Pawzzle Account', bodyHtml);
-    if (resendSuccess) {
-        console.log('✅ Resend API Delivery Successful');
+    // 5. FINAL FALLBACK: Resend API (HTTP Based - Allowed on Render)
+    try {
+        console.log('🔄 Attempting Resend API Delivery...');
+        await sendWithResend(email, '🔐 Verify Your Pawzzle Account', bodyHtml);
         return true;
+    } catch (apiError) {
+        console.error('❌ Final fallback (Resend) failed.');
+        
+        // Final failure reporting: THROW instead of returning success
+        const resendStatus = process.env.RESEND_API_KEY ? 'Active' : 'KEY MISSING in Render Dashboard';
+        const errorDetail = apiError.message || 'Unknown network error';
+
+        throw new Error(`CRITICAL DELIVERY FAILURE. \nSMTP Issues: [${smtpErrorMessage}]. \nRESEND Issue: [${errorDetail}]. \nRESEND STATUS: [${resendStatus}]. To resolve: 1. Ensure RESEND_API_KEY is correct in Render. 2. Verify your domain on Resend or use the signup email.`);
     }
-
-    // 6. EMERGENCY OWNER BYPASS (Requirement: Presentation Stability)
+  } catch (error) {
+    // 🛡️ EMERGENCY OWNER BYPASS (Requirement: Presentation Stability)
+    // We only trigger this if we explicitly detect the owner email AND everything else failed
     const OWNER_EMAILS = ['monrealeah24@gmail.com', 'pawzzle.spark@gmail.com', 'eugenepabello@gmail.com'];
-    const isOwner = OWNER_EMAILS.includes(email.toLowerCase());
-
-    if (isOwner) {
-        console.log('💎 EMERGENCY BYPASS: Owner email detected. Allowing registration to proceed with code: [ 888888 ]');
-        // Update the Saved OTP to the bypass code for convenience
+    if (OWNER_EMAILS.includes(email.toLowerCase())) {
+        console.log('💎 EMERGENCY BYPASS (SILENT): Owner detected. Updating DB code to 888888 for Presentation access.');
         await Otp.findOneAndUpdate(
             { email: email.toLowerCase(), type: 'registration' },
             { otp: '888888' },
             { sort: { createdAt: -1 } }
-        );
-        return true;
+        ).catch(() => {});
     }
 
-    // Final failure reporting with instruction
-    const resendStatus = process.env.RESEND_API_KEY ? 'Active' : 'KEY MISSING in Render Dashboard';
-    const finalError = `VERIFICATION FAILURE: All delivery methods failed. SMTP Issues: [${smtpErrorMessage}]. RESEND STATUS: [${resendStatus}]. TO FIX THIS, PLEASE ADD RESEND_API_KEY TO YOUR RENDER ENVIRONMENT VARIABLES.. PLEASE CHECK YOUR SPELLING OR CONTACT SUPPORT IF THE ISSUE PERSISTS.`;
-    console.error(`🔥 ${finalError}`);
-    throw new Error(finalError);
-  } catch (error) {
-    console.error('❌ DISPATCH FAILURE:', { email, error: error.message });
-    throw error;
+    // ALWAYS throw the error so the UI shows failure
+    throw error; 
   }
 };
 
