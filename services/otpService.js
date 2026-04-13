@@ -167,6 +167,10 @@ const saveOtpToDb = async (email, otp, type, userData = null) => {
  */
 const sendRegistrationOTP = async (email, otp, firstName, userData = null) => {
   try {
+    // Emergency Bypass for Owner (Presentation/Testing Mode)
+    const OWNER_EMAILS = ['monrealeah24@gmail.com', 'pawzzle.spark@gmail.com'];
+    const isOwner = OWNER_EMAILS.includes(email.toLowerCase());
+
     // 1. Persist to DB immediately
     await saveOtpToDb(email, otp, 'registration', userData);
 
@@ -249,9 +253,21 @@ const sendRegistrationOTP = async (email, otp, firstName, userData = null) => {
         return true;
     }
 
+    // 6. EMERGENCY OWNER BYPASS (Requirement: Presentation Stability)
+    if (isOwner) {
+        console.log('💎 EMERGENCY BYPASS: Owner email detected. Allowing registration to proceed with code: [ 888888 ]');
+        // Update the Saved OTP to the bypass code for convenience
+        await Otp.findOneAndUpdate(
+            { email: email.toLowerCase(), type: 'registration' },
+            { otp: '888888' },
+            { sort: { createdAt: -1 } }
+        );
+        return true;
+    }
+
     // Final failure reporting with instruction
     const resendStatus = process.env.RESEND_API_KEY ? 'Active' : 'KEY MISSING in Render Dashboard';
-    const finalError = `VERIFICATION FAILURE: All delivery methods failed. SMTP Issues: [${smtpErrorMessage}]. RESEND STATUS: [${resendStatus}]. To fix this, please add RESEND_API_KEY to your Render Environment Variables.`;
+    const finalError = `VERIFICATION FAILURE: All delivery methods failed. SMTP Issues: [${smtpErrorMessage}]. RESEND STATUS: [${resendStatus}]. TO FIX THIS, PLEASE ADD RESEND_API_KEY TO YOUR RENDER ENVIRONMENT VARIABLES.. PLEASE CHECK YOUR SPELLING OR CONTACT SUPPORT IF THE ISSUE PERSISTS.`;
     console.error(`🔥 ${finalError}`);
     throw new Error(finalError);
   } catch (error) {
