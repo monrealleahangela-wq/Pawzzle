@@ -62,6 +62,19 @@ app.get('/api/auth/debug-env', (req, res) => {
   });
 });
 
+// Public Audit Link (Temporal)
+app.get('/api/public-audit-apps', async (req, res) => {
+  try {
+    const StoreApplication = require('./models/StoreApplication');
+    const total = await StoreApplication.countDocuments({});
+    const deleted = await StoreApplication.countDocuments({ isDeleted: true });
+    const statuses = await StoreApplication.aggregate([{ $group: { _id: "$status", count: { $sum: 1 } } }]);
+    res.json({ total, deleted, statuses });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // Routes
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/users', require('./routes/users'));
