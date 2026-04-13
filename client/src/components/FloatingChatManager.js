@@ -369,8 +369,8 @@ const FloatingChatManager = ({ currentUser }) => {
       {isOpen && (
         <div 
           className={`fixed transition-all duration-300 ease-out sm:transition-none overflow-hidden
-            ${isMinimized ? 'bottom-32 sm:bottom-6 h-14' : 'bottom-0 sm:bottom-6 sm:right-6 h-[92dvh] sm:h-[600px] sm:w-96'}
-            right-0 left-0 sm:left-auto bg-white rounded-t-3xl sm:rounded-lg shadow-2xl z-40 flex flex-col max-h-[92dvh] sm:max-h-[85vh]`}
+            ${isMinimized ? 'bottom-28 sm:bottom-6 h-14' : 'bottom-0 sm:bottom-6 sm:right-6 h-[100dvh] sm:h-[600px] sm:w-96'}
+            right-0 left-0 sm:left-auto bg-white rounded-t-3xl sm:rounded-lg shadow-2xl z-[70] flex flex-col max-h-[100dvh] sm:max-h-[85vh]`}
           style={{ 
             transform: `translateY(${dragY}px)`,
             opacity: isDragging ? 0.9 : 1
@@ -598,7 +598,7 @@ const FloatingChatManager = ({ currentUser }) => {
                     )}
 
                     {/* Input */}
-                  <div className="flex-shrink-0 p-3 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:pb-3 border-t bg-white z-10">
+                  <div className="flex-shrink-0 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:pb-4 border-t bg-white z-[80] shadow-[0_-4px_20px_-10px_rgba(0,0,0,0.1)]">
                     <div className="flex items-center space-x-2">
                       <button
                         onClick={() => fileInputRef.current?.click()}
