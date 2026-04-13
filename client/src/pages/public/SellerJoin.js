@@ -7,7 +7,7 @@ import {
   Store, User, Mail, Phone, MapPin, 
   ShieldCheck, Upload, ArrowRight, CheckCircle2,
   AlertCircle, Building2, FileCheck, Info,
-  ChevronRight, Lock
+  ChevronRight, Lock, Eye, EyeOff
 } from 'lucide-react';
 
 const SellerJoin = () => {
@@ -24,6 +24,10 @@ const SellerJoin = () => {
     password: '',
     confirmPassword: ''
   });
+
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [locating, setLocating] = useState(false);
 
   const [storeData, setStoreData] = useState({
     businessName: '',
@@ -94,6 +98,46 @@ const SellerJoin = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleGetCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      return toast.error('Geolocation is not supported by your browser');
+    }
+
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        try {
+          const { latitude, longitude } = position.coords;
+          // Use OpenStreetMap Nominatim for free reverse geocoding
+          const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&addressdetails=1`);
+          const data = await response.json();
+          
+          if (data.address) {
+            const addr = data.address;
+            const street = addr.road || addr.suburb || addr.building || '';
+            const city = (addr.city || addr.town || addr.municipality || '').toLowerCase();
+            const barangay = (addr.village || addr.neighbourhood || addr.suburb || '').toLowerCase();
+            
+            handleStoreChange('contactInfo.address.street', street);
+            handleStoreChange('contactInfo.address.city', city);
+            handleStoreChange('contactInfo.address.barangay', barangay);
+            handleStoreChange('contactInfo.address.zipCode', addr.postcode || '');
+            
+            toast.success('Location detected! Please verify the details.');
+          }
+        } catch (err) {
+          toast.error('Could not resolve location address');
+        } finally {
+          setLocating(false);
+        }
+      },
+      (err) => {
+        toast.error('Failed to get location: ' + err.message);
+        setLocating(false);
+      }
+    );
   };
 
   const handleApplicationSubmit = async (e) => {
@@ -208,11 +252,43 @@ const SellerJoin = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                    <div className="space-y-1.5">
                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Password</label>
-                      <input type="password" name="password" required value={regData.password} onChange={handleRegChange} className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-xs font-bold outline-none focus:ring-4 focus:ring-primary-500/5" />
+                      <div className="relative">
+                        <input 
+                            type={showPassword ? "text" : "password"} 
+                            name="password" 
+                            required 
+                            value={regData.password} 
+                            onChange={handleRegChange} 
+                            className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-xs font-bold outline-none focus:ring-4 focus:ring-primary-500/5 pr-14" 
+                        />
+                        <button 
+                            type="button" 
+                            onClick={() => setShowPassword(!showPassword)}
+                            className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-primary-600 transition-colors"
+                        >
+                           {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                        </button>
+                      </div>
                    </div>
                    <div className="space-y-1.5">
                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Confirm Password</label>
-                      <input type="password" name="confirmPassword" required value={regData.confirmPassword} onChange={handleRegChange} className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-xs font-bold outline-none focus:ring-4 focus:ring-primary-500/5" />
+                      <div className="relative">
+                        <input 
+                            type={showConfirmPassword ? "text" : "password"} 
+                            name="confirmPassword" 
+                            required 
+                            value={regData.confirmPassword} 
+                            onChange={handleRegChange} 
+                            className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-xs font-bold outline-none focus:ring-4 focus:ring-primary-500/5 pr-14" 
+                        />
+                        <button 
+                            type="button" 
+                            onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                            className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-primary-600 transition-colors"
+                        >
+                           {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                        </button>
+                      </div>
                    </div>
                 </div>
 
@@ -268,7 +344,18 @@ const SellerJoin = () => {
                 </div>
 
                 <div className="space-y-1.5">
-                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Base Hub Address (Street/Building)</label>
+                   <div className="flex items-center justify-between ml-1 mb-1">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Base Hub Address (Street/Building)</label>
+                      <button 
+                         type="button"
+                         onClick={handleGetCurrentLocation}
+                         disabled={locating}
+                         className="flex items-center gap-1.5 text-[9px] font-black text-primary-600 uppercase tracking-widest hover:text-primary-700 transition-colors disabled:opacity-50"
+                      >
+                         <MapPin size={12} className={locating ? 'animate-bounce' : ''} />
+                         {locating ? 'Detecting...' : 'Use Current Location'}
+                      </button>
+                   </div>
                    <input type="text" required value={storeData.contactInfo.address.street} onChange={(e) => handleStoreChange('contactInfo.address.street', e.target.value)} className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-xs font-bold uppercase outline-none focus:ring-4 focus:ring-primary-500/5" />
                 </div>
 
