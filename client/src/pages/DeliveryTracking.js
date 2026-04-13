@@ -584,30 +584,39 @@ const DeliveryTracking = () => {
         </section>
       </main>
 
-      {/* Chat Interface (Slide Up) */}
-      <div className={`fixed inset-0 z-50 transition-transform duration-500 ${chatOpen ? 'translate-y-0' : 'translate-y-full'}`}>
-        <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => setChatOpen(false)}></div>
-        <div className="absolute bottom-0 left-0 right-0 h-[80vh] bg-white rounded-t-[3rem] shadow-2xl flex flex-col p-6 overflow-hidden">
-          <div className="flex items-center justify-between mb-8">
-            <div>
-              <h3 className="text-xl font-black uppercase tracking-tighter">Delivery Chat</h3>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Direct channel to {role === 'rider' ? 'Customer' : 'Rider'}</p>
+      {/* Chat Interface (Minimalist Card) */}
+      <div className={`fixed bottom-6 right-6 z-50 transition-all duration-300 w-[calc(100%-3rem)] sm:w-[380px] origin-bottom-right ${chatOpen ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-10 scale-95 pointer-events-none'}`}>
+        <div className="bg-white rounded-[2rem] shadow-[0_20px_70px_rgba(0,0,0,0.15)] border border-slate-100 flex flex-col overflow-hidden max-h-[500px]">
+          {/* Compact Header */}
+          <div className="px-5 py-4 bg-slate-900 flex items-center justify-between shrink-0">
+            <div className="flex items-center gap-3">
+              <div className="relative">
+                <div className="w-8 h-8 bg-rose-500 rounded-full flex items-center justify-center text-white">
+                  <User className="h-4 w-4" />
+                </div>
+                <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-500 border-2 border-slate-900 rounded-full"></div>
+              </div>
+              <div>
+                <h3 className="text-[11px] font-black text-white uppercase tracking-widest leading-none mb-0.5">DIRECT CHAT</h3>
+                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter leading-none">{role === 'rider' ? 'Customer' : 'Rider'}</p>
+              </div>
             </div>
-            <button onClick={() => setChatOpen(false)} className="p-3 bg-slate-100 rounded-2xl text-slate-400 hover:text-rose-500 transition-colors">
-              <ArrowLeft className="h-6 w-6" />
+            <button onClick={() => setChatOpen(false)} className="p-2 bg-white/10 text-white hover:bg-white/20 rounded-lg transition-colors">
+              <X className="h-4 w-4" />
             </button>
           </div>
 
-          <div className="flex-1 overflow-y-auto no-scrollbar space-y-4 mb-6 pr-2">
+          {/* Messages Area - Compact & Scrollable */}
+          <div className="flex-1 overflow-y-auto no-scrollbar p-5 space-y-3 bg-slate-50/50 min-h-[250px]">
             {(delivery.chat || []).map((msg, i) => (
               <div key={i} className={`flex ${msg.sender === role ? 'justify-end' : 'justify-start'}`}>
-                <div className={`max-w-[80%] p-4 rounded-3xl ${
+                <div className={`max-w-[85%] p-3 px-4 rounded-2xl shadow-sm ${
                   msg.sender === role 
-                    ? 'bg-rose-500 text-white rounded-tr-none shadow-lg' 
-                    : 'bg-slate-100 text-slate-700 rounded-tl-none'
+                    ? 'bg-slate-900 text-white rounded-tr-none' 
+                    : 'bg-white border border-slate-100 text-slate-700 rounded-tl-none'
                 }`}>
-                  <p className="text-sm font-medium">{msg.content}</p>
-                  <p className={`text-[8px] mt-1 font-bold uppercase opacity-40 ${msg.sender === role ? 'text-white text-right' : 'text-slate-400'}`}>
+                  <p className="text-[12px] leading-relaxed font-semibold">{msg.content}</p>
+                  <p className={`text-[8px] mt-1 font-black uppercase opacity-40 ${msg.sender === role ? 'text-white text-right' : 'text-slate-400'}`}>
                     {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   </p>
                 </div>
@@ -616,16 +625,17 @@ const DeliveryTracking = () => {
             <div ref={chatEndRef} />
           </div>
 
-          <form onSubmit={sendMessage} className="flex gap-2">
+          {/* Slim Input Terminal */}
+          <form onSubmit={sendMessage} className="p-4 bg-white border-t border-slate-100 flex gap-2">
             <input 
               type="text" 
               value={newMessage}
               onChange={(e) => setNewMessage(e.target.value)}
-              placeholder="Aa message..."
-              className="flex-1 bg-slate-50 border border-slate-100 px-6 py-4 rounded-2xl text-sm outline-none focus:ring-4 focus:ring-rose-500/5 transition-all"
+              placeholder="Type message..."
+              className="flex-1 bg-slate-50 border-none px-4 py-2.5 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-slate-900/5 transition-all transition-all placeholder:text-slate-300"
             />
-            <button type="submit" className="bg-slate-900 text-white p-4 rounded-2xl hover:bg-rose-500 transition-all shadow-xl active:scale-95">
-              <Send className="h-6 w-6" />
+            <button type="submit" className="bg-slate-900 text-white p-2.5 rounded-xl hover:bg-rose-500 transition-all active:scale-95 shadow-lg shadow-slate-100">
+              <Send className="h-4.5 w-4.5" />
             </button>
           </form>
         </div>
