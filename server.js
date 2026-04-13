@@ -103,6 +103,16 @@ io.on('connection', (socket) => {
     console.log(`📡 Client joined conversation room: conversation_${conversationId}`);
   });
 
+  socket.on('joinStore', (storeId) => {
+    socket.join(`store_${storeId}`);
+    console.log(`🏠 Client joined store room: store_${storeId}`);
+  });
+
+  socket.on('joinAdmin', () => {
+    socket.join('admin_global');
+    console.log(`🛡️ Client joined global admin room`);
+  });
+
   socket.on('typing', (data) => {
     // data: { conversationId, userId, userName }
     socket.to(`conversation_${data.conversationId}`).emit('userTyping', data);

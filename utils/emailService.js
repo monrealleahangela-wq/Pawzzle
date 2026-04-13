@@ -10,9 +10,9 @@ try {
 
 /**
  * Robust Transporter Factory
- * Switches to 'service: gmail' as it's the most reliable way to connect to Google SMTP on cloud hosts.
+ * Switches between ports 587 and 465 with aggressive timeouts
  */
-const getTransporter = async () => {
+const getTransporter = async (useAlternativePort = false) => {
     // Aggressively check for valid credentials
     const user = (process.env.EMAIL_USER && process.env.EMAIL_USER.includes('@')) 
         ? process.env.EMAIL_USER 
@@ -22,9 +22,7 @@ const getTransporter = async () => {
         ? process.env.EMAIL_PASS 
         : 'aknzqkqqdumntchq';
 
-    console.log(`[EmailService] Creating transporter for: ${user}`);
-
-    // Manual IPv4 resolution to bypass protocol errors (ENETUNREACH/BIND)
+    // Manual IPv4 resolution
     let smtpHost = 'smtp.gmail.com';
     try {
         const { address } = await dns.promises.lookup('smtp.gmail.com', { family: 4 });
@@ -33,20 +31,21 @@ const getTransporter = async () => {
         console.warn('[EmailService] DNS lookup failed:', e.message);
     }
 
+    const port = useAlternativePort ? 465 : 587;
+    const secure = useAlternativePort;
+
     return nodemailer.createTransport({
         host: smtpHost,
-        port: 587,
-        secure: false, // STARTTLS
-        auth: {
-            user: user,
-            pass: pass
-        },
-        connectionTimeout: 30000,
-        greetingTimeout: 30000,
-        socketTimeout: 30000,
+        port: port,
+        secure: secure,
+        auth: { user, pass },
+        connectionTimeout: 8000, 
+        greetingTimeout: 8000,
+        socketTimeout: 10000,
         tls: {
             rejectUnauthorized: false,
-            servername: 'smtp.gmail.com'
+            servername: 'smtp.gmail.com',
+            minVersion: 'TLSv1.2'
         }
     });
 };
@@ -95,50 +94,38 @@ const sendStaffInvitation = async (email, password, firstName) => {
         ? process.env.EMAIL_USER 
         : 'pawzzle.spark@gmail.com';
 
-    const mailOptions = {
-        from: `"Pawzzle Support" <${fromUser}>`,
-        to: email,
-        subject: '🔐 Welcome! Your Pawzzle Staff Account is Ready',
-        html: bodyHtml
-    };
-
+    // MULTI-STAGE DELIVERY
     try {
-        console.log(`[EmailService] Attempting delivery via Gmail Service to: ${email}...`);
-        const transporter = await getTransporter();
-        const info = await transporter.sendMail(mailOptions);
-        console.log(`[EmailService] ✅ SUCCESS! Email delivered to ${email}`);
-        return info;
-    } catch (smtpErr) {
-        console.error(`[EmailService] ❌ GMAIL SMTP FAILED:`, smtpErr.message);
-        
-        // Final fallback: Resend API (HTTP Bypass)
-        if (process.env.RESEND_API_KEY) {
-            try {
-                console.log(`[EmailService] Final attempt via Resend API...`);
-                const response = await fetch('https://api.resend.com/emails', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${process.env.RESEND_API_KEY}`
-                    },
-                    body: JSON.stringify({
-                        from: 'Pawzzle <hello@pawzzle.io>',
-                        to: [email],
-                        subject: mailOptions.subject,
-                        html: mailOptions.html
-                    })
-                });
-                if (response.ok) return await response.json();
-            } catch (resendErr) {
-                console.error(`[EmailService] ❌ ALL METHODS EXHAUSTED.`);
-            }
+        console.log('🔄 Staff Invite: Trying SMTP (587)...');
+        const transporter = await getTransporter(false);
+        await transporter.sendMail({
+            from: `"Pawzzle Support" <${fromUser}>`,
+            to: email,
+            subject: '🐾 Welcome to the Pawzzle Team!',
+            html: bodyHtml
+        });
+        console.log('✅ Staff Invite: SMTP (587) Success');
+        return true;
+    } catch (e) {
+        console.warn('⚠️ Staff Invite: SMTP (587) Failed, trying 465...', e.message);
+        try {
+            const transporter = await getTransporter(true);
+            await transporter.sendMail({
+                from: `"Pawzzle Support" <${fromUser}>`,
+                to: email,
+                subject: '🐾 Welcome to the Pawzzle Team!',
+                html: bodyHtml
+            });
+            console.log('✅ Staff Invite: SMTP (465) Success');
+            return true;
+        } catch (e2) {
+            console.error('❌ Staff Invite: All SMTP methods failed:', e2.message);
+            // Optional: Add Resend API fallback here too if key exists
+            throw new Error(`Critical Delivery Failure: ${e2.message}`);
         }
-        
-        throw new Error(`Email delivery system failed (SMTP Error: ${smtpErr.message})`);
     }
 };
 
 module.exports = {
     sendStaffInvitation
 };
-

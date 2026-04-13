@@ -9,6 +9,7 @@ import {
 
 import { serviceService, adminServiceService, uploadService, getImageUrl } from '../../services/apiService';
 import { useAuth } from '../../contexts/AuthContext';
+import { useRealTimeUpdates } from '../../hooks/useRealTimeUpdates';
 import { SERVICE_CATEGORIES } from '../../constants/serviceCategories';
 
 const PhilippinePeso = ({ className }) => (
@@ -30,6 +31,20 @@ const PhilippinePeso = ({ className }) => (
 
 const ServiceManagement = () => {
   const { user } = useAuth();
+
+  // Real-time Updates
+  useRealTimeUpdates({
+    onServiceUpdate: (data) => {
+      console.log('🐾 Real-time service update received:', data);
+      fetchServices();
+      if (data.isDeleted) {
+          toast.info('A service was removed from the catalog.');
+      } else {
+          toast.info(`Service "${data.name || 'catalog item'}" updated in real-time.`);
+      }
+    }
+  });
+
   const [services, setServices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);

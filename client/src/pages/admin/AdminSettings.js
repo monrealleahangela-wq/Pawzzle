@@ -24,9 +24,20 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { formatTime12h } from '../../utils/timeFormatters';
+import { useRealTimeUpdates } from '../../hooks/useRealTimeUpdates';
 
 const AdminSettings = () => {
   const { user } = useAuth();
+
+  // Real-time Updates
+  useRealTimeUpdates({
+    onSettingsUpdate: (data) => {
+      console.log('⚙️ Real-time settings update received:', data);
+      fetchData();
+      toast.info(`System settings updated in real-time.`);
+    }
+  });
+
   const [activeTab, setActiveTab] = useState('global'); // 'global' or 'booking'
   const [globalSettings, setGlobalSettings] = useState({
     freeShipping: true,

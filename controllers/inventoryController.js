@@ -211,9 +211,26 @@ const updateInventoryQuantity = async (req, res) => {
     // Log the inventory change
     console.log(`Inventory updated: ${inventory.product.name} - ${oldQuantity} → ${inventory.quantity}`);
 
+    const updatedInv = await Inventory.findById(id).populate('product', 'name brand category sku price images');
+
+    // Real-time Update Emission
+    const io = req.app.get('socketio');
+    if (io) {
+      const updateData = { 
+        storeId: inventory.store, 
+        inventoryId: id, 
+        productId: inventory.product._id, 
+        quantity: inventory.quantity, 
+        oldQuantity, 
+        operation 
+      };
+      io.to(`store_${inventory.store}`).emit('inventoryUpdate', updateData);
+      io.to('admin_global').emit('inventoryUpdate', updateData);
+    }
+
     res.json({
       message: 'Inventory updated successfully',
-      inventory: await Inventory.findById(id).populate('product', 'name brand category sku price images')
+      inventory: updatedInv
     });
   } catch (error) {
     console.error('Update inventory error:', error);
@@ -585,13 +602,28 @@ const addToAdminInventory = async (req, res) => {
       costPrice: costPrice || product.price,
       notes
     });
-
     await inventory.save();
     await StockSyncService.updateProductStockFromInventory(productId);
 
+    const finalInv = await Inventory.findById(inventory._id).populate('product', 'name brand category sku price images');
+
+    // Real-time Update Emission
+    const io = req.app.get('socketio');
+    if (io) {
+      const updateData = { 
+        storeId, 
+        inventoryId: inventory._id, 
+        productId, 
+        quantity: initialQuantity, 
+        operation: req.body.operation || 'add' 
+      };
+      io.to(`store_${storeId}`).emit('inventoryUpdate', updateData);
+      io.to('admin_global').emit('inventoryUpdate', updateData);
+    }
+
     res.status(201).json({
       message: 'Product added to inventory successfully',
-      inventory: await Inventory.findById(inventory._id).populate('product', 'name brand category sku price images')
+      inventory: finalInv
     });
   } catch (error) {
     console.error('Add to admin inventory error:', error);

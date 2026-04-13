@@ -5,9 +5,26 @@ import { adminOrderService, deliveryService, getImageUrl } from '../../services/
 import { useAuth } from '../../contexts/AuthContext';
 import { ShoppingBag, Eye, Package, ArrowRight, Filter, ChevronLeft, ChevronRight, Activity, ChevronDown, Search, Link2, Copy, Check } from 'lucide-react';
 import { formatTime12h } from '../../utils/timeFormatters';
+import { useRealTimeUpdates } from '../../hooks/useRealTimeUpdates';
 
 const AdminOrders = () => {
   const { user } = useAuth();
+
+  // Real-time Updates
+  useRealTimeUpdates({
+    onOrderUpdate: (data) => {
+      console.log('🛒 Real-time order update received:', data);
+      fetchOrders();
+    },
+    onNewOrder: (data) => {
+      console.log('🆕 Real-time new order received:', data);
+      fetchOrders();
+      toast.info(`New Order #${data._id?.slice(-6).toUpperCase()} received!`, {
+          icon: <ShoppingBag className="text-primary-600" />
+      });
+    }
+  });
+
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
 

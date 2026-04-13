@@ -99,6 +99,13 @@ const createService = async (req, res) => {
     await service.save();
     await service.populate('store', 'name');
 
+    // Real-time Service Emission
+    const io = req.app.get('socketio');
+    if (io) {
+      io.to(`store_${req.params.storeId}`).emit('serviceUpdate', service);
+      io.to('admin_global').emit('serviceUpdate', service);
+    }
+
     res.status(201).json(service);
   } catch (error) {
     console.error('Create service error:', error);
@@ -205,6 +212,13 @@ const createAdminService = async (req, res) => {
     await service.save();
     await service.populate('store', 'name');
 
+    // Real-time Service Emission
+    const io = req.app.get('socketio');
+    if (io) {
+      io.to(`store_${serviceStore}`).emit('serviceUpdate', service);
+      io.to('admin_global').emit('serviceUpdate', service);
+    }
+
     console.log('✅ Admin service created successfully:', service._id);
     res.status(201).json(service);
   } catch (error) {
@@ -238,6 +252,13 @@ const updateService = async (req, res) => {
     Object.assign(service, updates);
     await service.save();
 
+    // Real-time Service Emission
+    const io = req.app.get('socketio');
+    if (io) {
+      io.to(`store_${service.store._id}`).emit('serviceUpdate', service);
+      io.to('admin_global').emit('serviceUpdate', service);
+    }
+
     res.json(service);
   } catch (error) {
     console.error('Update service error:', error);
@@ -265,6 +286,13 @@ const deleteService = async (req, res) => {
     await service.save();
 
     res.json({ message: 'Service deleted successfully' });
+
+    // Real-time Service Emission
+    const io = req.app.get('socketio');
+    if (io) {
+      io.to(`store_${service.store._id}`).emit('serviceUpdate', { _id: req.params.id, isDeleted: true });
+      io.to('admin_global').emit('serviceUpdate', { _id: req.params.id, isDeleted: true });
+    }
   } catch (error) {
     console.error('Delete service error:', error);
     res.status(500).json({ message: 'Server error' });

@@ -238,6 +238,13 @@ const updateUser = async (req, res) => {
 
     const updatedUser = await User.findById(user._id).select('-password').populate('store');
 
+    // Real-time Update Emission
+    const io = req.app.get('socketio');
+    if (io) {
+      io.to(`store_${updatedUser.store?._id}`).emit('userUpdate', updatedUser);
+      io.to('admin_global').emit('userUpdate', updatedUser);
+    }
+
     res.json({
       message: 'User updated successfully',
       user: updatedUser
@@ -424,6 +431,12 @@ const updateAdminSettings = async (req, res) => {
     };
 
     await user.save();
+
+    // Real-time Update Emission
+    const io = req.app.get('socketio');
+    if (io) {
+      io.to('admin_global').emit('settingsUpdate', { type: 'global', settings: user.shippingSettings });
+    }
 
     res.json({
       message: 'Settings updated successfully',

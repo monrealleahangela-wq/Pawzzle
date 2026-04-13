@@ -310,6 +310,13 @@ const updateStore = async (req, res) => {
 
     const updatedStore = await Store.findById(store._id).populate('owner', 'username firstName lastName');
 
+    // Real-time Update Emission
+    const io = req.app.get('socketio');
+    if (io) {
+      io.to(`store_${store._id}`).emit('settingsUpdate', { type: 'store', settings: updatedStore });
+      io.to('admin_global').emit('settingsUpdate', { type: 'store', settings: updatedStore });
+    }
+
     res.json({
       message: 'Store updated successfully',
       store: updatedStore

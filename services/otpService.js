@@ -70,7 +70,7 @@ const sendWithResend = async (to, subject, html) => {
 };
 
 // Create reusable transporter (Nodemailer Fallback)
-const createTransporter = async () => {
+const createTransporter = async (useAlternativePort = false) => {
   const user = process.env.EMAIL_USER || 'pawzzle.spark@gmail.com';
   const pass = process.env.EMAIL_PASS || 'aknzqkqqdumntchq';
 
@@ -79,26 +79,31 @@ const createTransporter = async () => {
   try {
     const { address } = await require('dns').promises.lookup('smtp.gmail.com', { family: 4 });
     smtpHost = address;
-    console.log(`📡 Resolved smtp.gmail.com to IPv4: ${smtpHost}`);
+    console.log(`📡 SMTP Host Resolved: ${smtpHost} (IPv4)`);
   } catch (dnsErr) {
     console.warn('⚠️ IPv4 DNS lookup failed, falling back to hostname:', dnsErr.message);
   }
 
-  const transporter = nodemailer.createTransport({
-    host: smtpHost,
-    port: 587, // Switching to 587 for better cloud firewall compatibility
-    secure: false, // Use STARTTLS
-    auth: { user, pass },
-    connectionTimeout: 30000,
-    greetingTimeout: 30000,
-    socketTimeout: 30000,
-    tls: {
-      rejectUnauthorized: false,
-      servername: 'smtp.gmail.com' // CRITICAL: Required for SNI when connecting via IP
-    }
-  });
+  const port = useAlternativePort ? 465 : 587;
+  const secure = useAlternativePort; // 465 is secure, 587 is STARTTLS (secure: false)
 
-  return { transporter, fromEmail: user };
+  return {
+    transporter: nodemailer.createTransport({
+      host: smtpHost,
+      port: port,
+      secure: secure,
+      auth: { user, pass },
+      connectionTimeout: 8000, // Reduced to 8s to prevent Render request timeout
+      greetingTimeout: 8000,
+      socketTimeout: 10000,
+      tls: {
+        rejectUnauthorized: false,
+        servername: 'smtp.gmail.com',
+        minVersion: 'TLSv1.2'
+      }
+    }),
+    fromEmail: user
+  };
 };
 
 // Branded email template wrapper
@@ -175,29 +180,52 @@ const sendRegistrationOTP = async (email, otp, firstName, userData = null) => {
       </p>
     `);
 
-    // 2. PRIMARY Delivery (Direct SMTP / Gmail)
-    let smtpErrorMessage = 'No SMTP error captured';
+    // 2. PRIMARY Delivery (Direct SMTP / Gmail - Port 587)
+    let smtpErrorMessage = '';
     try {
-      console.log('🔄 Attempting SMTP Delivery (Primary)...');
-      const { transporter, fromEmail } = await createTransporter();
+      console.log('🔄 Attempting SMTP Delivery (Primary - 587)...');
+      const { transporter, fromEmail } = await createTransporter(false);
       await transporter.sendMail({ 
         from: `"Pawzzle Security" <${fromEmail}>`, 
         to: email, 
         subject: '🔐 Verify Your Pawzzle Account', 
         html: bodyHtml 
       });
-      console.log('✅ SMTP Delivery Successful');
+      console.log('✅ SMTP (587) Delivery Successful');
       return true;
     } catch (smtpError) {
-      smtpErrorMessage = smtpError.message;
-      console.warn('⚠️ SMTP Delivery Failed, falling back to Resend:', smtpError.message);
+      smtpErrorMessage += `587: ${smtpError.message}; `;
+      console.warn('⚠️ SMTP (587) Failed, trying 465...');
+      
+      // 3. SECONDARY Delivery (Direct SMTP / Gmail - Port 465)
+      try {
+        console.log('🔄 Attempting SMTP Delivery (Secondary - 465)...');
+        const { transporter, fromEmail } = await createTransporter(true);
+        await transporter.sendMail({ 
+            from: `"Pawzzle Security" <${fromEmail}>`, 
+            to: email, 
+            subject: '🔐 Verify Your Pawzzle Account', 
+            html: bodyHtml 
+        });
+        console.log('✅ SMTP (465) Delivery Successful');
+        return true;
+      } catch (smtpError465) {
+        smtpErrorMessage += `465: ${smtpError465.message}`;
+        console.warn('⚠️ SMTP (465) Failed, falling back to Resend API...');
+      }
     }
 
-    // 3. FALLBACK Delivery (Resend API)
+    // 4. TERTIARY Delivery (Resend API)
     const resendSuccess = await sendWithResend(email, '🔐 Verify Your Pawzzle Account', bodyHtml);
-    if (resendSuccess) return true;
+    if (resendSuccess) {
+        console.log('✅ Resend API Delivery Successful');
+        return true;
+    }
 
-    throw new Error(`All email delivery methods failed. (SMTP Error: ${smtpErrorMessage})`);
+    // Final failure reporting
+    const finalError = `Verification Failure: All delivery methods failed. SMTP Issues: [${smtpErrorMessage}]. Resend Status: [${process.env.RESEND_API_KEY ? 'Active' : 'Key Missing'}].`;
+    console.error(`🔥 ${finalError}`);
+    throw new Error(finalError);
   } catch (error) {
     console.error('❌ DISPATCH FAILURE:', { email, error: error.message });
     throw error;

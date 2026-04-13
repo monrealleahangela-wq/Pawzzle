@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { toast } from 'react-toastify';
 import { productService, adminProductService, inventoryService, uploadService, getImageUrl } from '../../services/apiService';
 import { useAuth } from '../../contexts/AuthContext';
+import { useRealTimeUpdates } from '../../hooks/useRealTimeUpdates';
 import {
   Package,
   AlertTriangle,
@@ -64,6 +65,64 @@ const ProductInventory = () => {
 
   // Permission Checks
   const isAdmin = ['admin', 'super_admin'].includes(user?.role);
+
+  const fetchProducts = useCallback(async () => {
+    try {
+      setLoading(true);
+      const params = { ...productFilters, page: pagination.currentPage, limit: 20 };
+      const userData = JSON.parse(localStorage.getItem('user') || '{}');
+
+      const response = (userData.role === 'admin' || userData.role === 'super_admin' || userData.role === 'staff')
+        ? await adminProductService.getAllProducts(params)
+        : await productService.getAllProducts(params);
+
+      setProducts(response.data.products || []);
+      setPagination(response.data.pagination || pagination);
+    } catch (error) {
+      toast.error('Failed to load products');
+    } finally {
+      setLoading(false);
+    }
+  }, [productFilters, pagination.currentPage]);
+
+  const fetchInventory = useCallback(async () => {
+    try {
+      setLoading(true);
+      const params = { ...inventoryFilters, page: pagination.currentPage, limit: 100 };
+      const response = await inventoryService.adminGetInventory(params);
+
+      const serverInventory = response.data?.inventory || [];
+      const serverSummary = response.data?.summary || summary;
+
+      setInventory(serverInventory.map(item => ({
+        _id: item.product?._id,
+        name: item.product?.name,
+        category: item.product?.category,
+        brand: item.product?.brand,
+        currentStock: item.quantity || 0,
+        reorderLevel: item.reorderLevel || 0,
+        inventoryId: item.inventoryId || item._id,
+        images: item.product?.images || []
+      })));
+
+      setSummary(serverSummary);
+      setPagination(response.data?.pagination || pagination);
+    } catch (error) {
+      toast.error('Failed to load inventory');
+    } finally {
+      setLoading(false);
+    }
+  }, [inventoryFilters, pagination.currentPage]);
+
+  // Real-time Updates
+  useRealTimeUpdates({
+    onInventoryUpdate: (data) => {
+      console.log('📦 Real-time inventory update received:', data);
+      if (activeTab === 'products') fetchProducts();
+      else fetchInventory();
+    }
+  });
+
   const canCreate = isAdmin || user?.permissions?.inventory?.create || user?.permissions?.inventory?.fullAccess;
   const canUpdate = isAdmin || user?.permissions?.inventory?.update || user?.permissions?.inventory?.fullAccess;
   const canDelete = isAdmin || user?.permissions?.inventory?.delete || user?.permissions?.inventory?.fullAccess;

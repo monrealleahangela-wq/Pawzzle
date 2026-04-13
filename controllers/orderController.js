@@ -290,6 +290,13 @@ const createOrder = async (req, res) => {
       order: populatedOrder
     });
 
+    // Real-time Order Emission
+    const io = req.app.get('socketio');
+    if (io) {
+      io.to(`store_${storeId}`).emit('newOrder', populatedOrder);
+      io.to('admin_global').emit('newOrder', populatedOrder);
+    }
+
     // Notify store staff (Order Staff) about new order
     await notifyStoreStaff(storeId, 'order_staff', {
       sender: req.user._id,
@@ -410,6 +417,13 @@ const updateOrderStatus = async (req, res) => {
       message: 'Order status updated successfully',
       order: updatedOrder
     });
+
+    // Real-time Order Emission
+    const io = req.app.get('socketio');
+    if (io) {
+      io.to(`store_${order.store}`).emit('orderUpdate', updatedOrder);
+      io.to('admin_global').emit('orderUpdate', updatedOrder);
+    }
 
     // Notify customer about order status update
     await createNotification({
