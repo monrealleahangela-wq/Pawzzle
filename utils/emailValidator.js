@@ -32,20 +32,29 @@ const DISPOSABLE_DOMAINS = new Set([
  * @returns {Promise<{valid: boolean, reason?: string}>}
  */
 const validateEmail = async (email) => {
-    // 1. Basic format check
+    // 1. Basic format check (Strict RFC-compliant-ish regex)
     const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
     if (!emailRegex.test(email)) {
-        return { valid: false, reason: 'Invalid email format' };
+        return { valid: false, reason: 'Please provide a valid email address format (e.g., user@example.com).' };
     }
 
     const domain = email.split('@')[1].toLowerCase();
 
-    // 2. Block disposable/temporary email providers
-    if (DISPOSABLE_DOMAINS.has(domain)) {
-        return { valid: false, reason: 'Temporary or disposable email addresses are not allowed. Please use a permanent email.' };
+    // 2. Explicitly allow trusted common providers
+    const TRUSTED_DOMAINS = ['gmail.com', 'yahoo.com', 'outlook.com', 'hotmail.com', 'icloud.com'];
+    if (TRUSTED_DOMAINS.includes(domain)) {
+        return { valid: true };
     }
 
-    // 3. Deactivated DNS MX Records check - This caused 400 errors due to flaky ISP firewalls capturing Port 53 packets natively.
+    // 3. Check for disposable domains but allow them with a warning in logs
+    // We no longer block them as per USER request to allow lesser-known/temp domains.
+    if (DISPOSABLE_DOMAINS.has(domain)) {
+        console.warn(`⚠️  User registering with disposable email domain: ${domain}`);
+        // We still allow it to proceed to the OTP stage for verification.
+        return { valid: true };
+    }
+
+    // 4. Fallback: All other validly formatted emails are allowed.
     return { valid: true };
 };
 
