@@ -7,7 +7,7 @@ const Store = require('../models/Store');
 const Voucher = require('../models/Voucher');
 const PetProfile = require('../models/PetProfile');
 const RevenueService = require('../services/revenueService');
-const { createNotification } = require('./notificationController');
+const { createNotification, notifyStoreStaff } = require('./notificationController');
 
 // Auto-cancels bookings that are still pending and whose date has passed or unapproved for too long
 const autoCancelExpiredBookings = async (filterBase = {}) => {
@@ -293,9 +293,8 @@ const createBooking = async (req, res) => {
 
     res.status(201).json(booking);
 
-    // Notify store owner about new booking
-    await createNotification({
-      recipient: booking.addedBy,
+    // Notify store staff (Service Staff) about new booking
+    await notifyStoreStaff(storeId, 'service_staff', {
       sender: req.user._id,
       type: 'new_booking',
       title: 'New Booking Request',

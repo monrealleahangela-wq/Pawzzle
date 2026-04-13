@@ -125,6 +125,30 @@ class StockSyncService {
       await inventory.save();
       console.log('✅ Inventory updated:', { productId, newQuantity: inventory.quantity });
 
+      // Role-Based Notification: Notify Inventory Staff if stock is low or out
+      try {
+        if (inventory.quantity <= inventory.reorderLevel) {
+          const { notifyStoreStaff } = require('../controllers/notificationController');
+          const product = await Product.findById(productId);
+          
+          const isOutOfStock = inventory.quantity === 0;
+          const title = isOutOfStock ? '🚨 Asset Depleted' : '⚠️ Low Stock Alert';
+          const message = isOutOfStock 
+            ? `Critical: ${product.name} is now out of stock in your store.` 
+            : `Warning: ${product.name} has reached low stock level (${inventory.quantity} remaining).`;
+
+          await notifyStoreStaff(storeId, 'inventory_staff', {
+            type: 'inventory_alert',
+            title,
+            message,
+            relatedId: productId,
+            relatedModel: 'Product'
+          });
+        }
+      } catch (notifErr) {
+        console.error('⚠️ Inventory notification failed (non-critical):', notifErr.message);
+      }
+
       // Update product stock (sum across all stores)
       await this.updateProductStockFromInventory(productId);
       console.log('✅ Stock reduction completed for product:', productId);

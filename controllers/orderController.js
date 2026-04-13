@@ -6,7 +6,7 @@ const Product = require('../models/Product');
 const Store = require('../models/Store');
 const StockSyncService = require('../services/stockSyncService');
 const RevenueService = require('../services/revenueService');
-const { createNotification } = require('./notificationController');
+const { createNotification, notifyStoreStaff } = require('./notificationController');
 const User = require('../models/User');
 const Voucher = require('../models/Voucher');
 const { internalCreateDelivery } = require('./deliveryController');
@@ -290,9 +290,8 @@ const createOrder = async (req, res) => {
       order: populatedOrder
     });
 
-    // Notify store owner about new order
-    await createNotification({
-      recipient: adminOwner,
+    // Notify store staff (Order Staff) about new order
+    await notifyStoreStaff(storeId, 'order_staff', {
       sender: req.user._id,
       type: 'new_order',
       title: 'New Order Received',
@@ -336,6 +335,20 @@ const updateOrderStatus = async (req, res) => {
       // Auto-generate delivery links if it's a delivery order and status is confirmed or beyond
       if (order.deliveryMethod === 'delivery' && (status === 'confirmed' || status === 'processing')) {
         await internalCreateDelivery({ orderId: order._id });
+        
+        // Notify Delivery Staff
+        try {
+          const { notifyStoreStaff } = require('./notificationController');
+          await notifyStoreStaff(order.store, 'delivery_staff', {
+            type: 'new_order', // Or 'delivery_alert'
+            title: 'Package Ready for Dispatch',
+            message: `Order #${order._id.toString().slice(-6)} is ready for delivery. Tracking links have been generated.`,
+            relatedId: order._id,
+            relatedModel: 'Order'
+          });
+        } catch (err) {
+          console.error('⚠️ Delivery notification failed:', err.message);
+        }
       }
 
       for (const item of order.items) {

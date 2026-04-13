@@ -81,10 +81,59 @@ const createNotification = async (data) => {
     }
 };
 
+/**
+ * Notify all staff of a store based on their operational role
+ * @param {String} storeId - ID of the store
+ * @param {String|Array} staffTypes - One or more staff roles (e.g., 'order_staff')
+ * @param {Object} data - Notification template (sender, type, title, message, etc.)
+ */
+const notifyStoreStaff = async (storeId, staffTypes, data) => {
+    try {
+        const User = require('../models/User'); // Dynamic import to avoid circular dep
+        
+        const types = Array.isArray(staffTypes) ? staffTypes : [staffTypes];
+        
+        // Find all staff matching the roles for this specific store
+        const staff = await User.find({
+            store: storeId,
+            role: 'staff',
+            staffType: { $in: types },
+            isActive: true,
+            isDeleted: false
+        });
+
+        // Collect recipients (Staff + the Store Owner)
+        const recipients = staff.map(s => s._id);
+        
+        // Find owner of the store to ensure they are always looped in
+        const Store = require('../models/Store');
+        const storeDoc = await Store.findById(storeId);
+        if (storeDoc && storeDoc.owner) {
+            recipients.push(storeDoc.owner);
+        }
+
+        // Create unique notifications for all relevant stakeholders
+        const uniqueRecipients = [...new Set(recipients.map(id => id.toString()))];
+        
+        const notificationPromises = uniqueRecipients.map(recipientId => {
+            return createNotification({
+                ...data,
+                recipient: recipientId
+            });
+        });
+
+        await Promise.all(notificationPromises);
+        console.log(`📡 Broadcasted role-based notification to ${uniqueRecipients.length} stakeholders for store ${storeId}`);
+    } catch (error) {
+        console.error('Error in notifyStoreStaff:', error);
+    }
+};
+
 module.exports = {
     getNotifications,
     markAsRead,
     markAllAsRead,
     deleteNotification,
-    createNotification
+    createNotification,
+    notifyStoreStaff
 };
