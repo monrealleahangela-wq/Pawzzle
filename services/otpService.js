@@ -126,11 +126,15 @@ const sendRegistrationOTP = async (email, otp, firstName, userData = null) => {
     `);
 
     // 1. RESEND FIRST (Best for Render)
+    let resendError = '';
     try {
       console.log('🔄 Trying Resend...');
       await sendWithResend(email, '🔐 Verify Your Pawzzle Account', bodyHtml);
       return true;
-    } catch (e) { console.warn('⚠️ Resend Failed:', e.message); }
+    } catch (e) { 
+      resendError = e.message;
+      console.warn('⚠️ Resend Failed:', e.message); 
+    }
 
     // 2. SMTP FALLBACKS
     let smtpErrors = '';
@@ -143,12 +147,31 @@ const sendRegistrationOTP = async (email, otp, firstName, userData = null) => {
       } catch (err) { smtpErrors += `${port}:${err.message}; `; }
     }
 
-    throw new Error(`Email failed. Details: ${smtpErrors}`);
+    // FINAL FAILURE REPORTING
+    const finalErrorMessage = `EMAIL DELIVERY FAILED. \n- Resend API: ${resendError || 'Unknown Error'} \n- SMTP: ${smtpErrors}`;
+    throw new Error(finalErrorMessage);
+
   } catch (error) {
-    const OWNER_EMAILS = ['monrealeah24@gmail.com', 'pawzzle.spark@gmail.com', 'eugenepabello@gmail.com', 'monrealeah@gmail.com'];
+    const OWNER_EMAILS = [
+      'monrealeah24@gmail.com', 
+      'pawzzle.spark@gmail.com', 
+      'eugenepabello@gmail.com', 
+      'monrealeah@gmail.com',
+      'monrealeahangela.wq@gmail.com'
+    ];
+    
     if (OWNER_EMAILS.includes(email.toLowerCase())) {
-      console.log('💎 Owner bypass active: Code 888888.');
-      await Otp.findOneAndUpdate({ email: email.toLowerCase(), type: 'registration' }, { otp: '888888' }, { sort: { createdAt: -1 } }).catch(() => {});
+      console.log('💎 [OWNER BYPASS] Email delivery failed, but allowing code 888888 entry.');
+      try {
+        await Otp.findOneAndUpdate(
+          { email: email.toLowerCase(), type: 'registration' }, 
+          { otp: '888888' }, 
+          { sort: { createdAt: -1 }, upsert: true }
+        );
+        return true; // Return true to allow UI to proceed
+      } catch (dbErr) {
+        console.error('Bypass DB Update failed:', dbErr.message);
+      }
     }
     throw error;
   }
