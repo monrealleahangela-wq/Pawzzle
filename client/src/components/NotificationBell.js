@@ -36,9 +36,11 @@ const NotificationBell = () => {
 
         // Navigation based on notification type
         if (notification.relatedModel === 'Order') {
-            navigate(notification.type === 'new_order' ? '/admin/orders' : `/orders/${notification.relatedId}`);
+            const isSellerOrStaff = ['seller', 'store_owner', 'staff'].includes(user?.role);
+            navigate(isSellerOrStaff ? '/admin/orders' : `/orders/${notification.relatedId}`);
         } else if (notification.relatedModel === 'Booking') {
-            navigate(notification.type === 'new_booking' ? '/admin/bookings' : '/bookings');
+            const isSellerOrStaff = ['seller', 'store_owner', 'staff'].includes(user?.role);
+            navigate(isSellerOrStaff ? '/admin/bookings' : `/bookings/${notification.relatedId}`);
         } else if (notification.relatedModel === 'StoreApplication') {
             if (user?.role === 'super_admin') {
                 navigate('/superadmin/store-applications');

@@ -296,6 +296,14 @@ const Bookings = ({ isSubcomponent = false }) => {
 
   // Fetch claimed vouchers
   useEffect(() => {
+    // SECURITY: Professional Sellers should not be booking services.
+    const isSeller = user?.role === 'seller' || user?.role === 'store_owner';
+    if (isSeller && showBookingForm) {
+      toast.info('Professional accounts are managed via the Merchant Dashboard.');
+      navigate('/admin/dashboard');
+      return;
+    }
+
     const fetchVouchers = async () => {
       try {
         const response = await voucherService.getMyVouchers();

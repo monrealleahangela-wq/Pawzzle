@@ -78,6 +78,13 @@ const Products = () => {
       const response = await productService.getAllProducts(params);
       let fetchedProducts = response.data.products || [];
 
+      // SECURITY: Professional Sellers should only see their own context.
+      // If the user is a seller, we filter the marketplace to keep them focused on their business.
+      if (user?.role === 'seller' || user?.role === 'store_owner') {
+        const storeId = user.store?._id || user._id; // Depending on how store is linked
+        fetchedProducts = fetchedProducts.filter(p => p.store?._id === storeId || p.store === storeId);
+      }
+
 
       if (filters.nearMe && userLocation) {
         fetchedProducts = fetchedProducts
