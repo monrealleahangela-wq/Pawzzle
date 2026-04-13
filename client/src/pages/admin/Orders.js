@@ -108,7 +108,6 @@ const AdminOrders = () => {
 
   const getStatusStyle = (status) => {
     switch (status) {
-    switch (status) {
       case 'pending_payment': return 'bg-amber-50 text-amber-700 border-amber-100';
       case 'paid': return 'bg-emerald-50 text-emerald-700 border-emerald-100';
       case 'confirmed': return 'bg-blue-50 text-blue-700 border-blue-100';
