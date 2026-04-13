@@ -167,9 +167,12 @@ const submitApplication = async (req, res) => {
 // Get all applications (Super Admin only)
 const getAllApplications = async (req, res) => {
   try {
-    const { status, page = 1, limit = 10 } = req.query;
+    const { status, page = 1, limit = 50 } = req.query; // Increased limit to ensure all 11 show
+    console.log('🔍 FETCHING APPLICATIONS. Filters:', { status, page, limit });
+    
     const filter = { isDeleted: false };
-    if (status) {
+    
+    if (status && status !== 'all') {
       if (status === 'under_review' || status === 'pending') {
         filter.status = { $in: ['pending', 'under_review', 'under review', 'submitted'] };
       } else if (status === 'archived') {
@@ -188,6 +191,7 @@ const getAllApplications = async (req, res) => {
       .limit(parseInt(limit));
 
     const total = await StoreApplication.countDocuments(filter);
+    console.log(`✅ FOUND ${applications.length} applications (Total Filtered: ${total})`);
 
     res.json({
       applications,
