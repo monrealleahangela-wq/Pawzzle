@@ -45,7 +45,7 @@ const sendWithResend = async (to, subject, html) => {
 
   try {
     const response = await axios.post('https://api.resend.com/emails', {
-      from: 'Pawzzle <onboarding@resend.dev>', // Resend trial requires this from address
+      from: 'Pawzzle Security <onboarding@resend.dev>', // Resend trial requires this from address
       to: [to],
       subject: subject,
       html: html
@@ -167,16 +167,6 @@ const saveOtpToDb = async (email, otp, type, userData = null) => {
  */
 const sendRegistrationOTP = async (email, otp, firstName, userData = null) => {
   try {
-    // 🚀 EMERGENCY OWNER BYPASS (Immediate Check)
-    const OWNER_EMAILS = ['monrealeah24@gmail.com', 'pawzzle.spark@gmail.com', 'eugenepabello@gmail.com'];
-    const isOwner = OWNER_EMAILS.includes(email.toLowerCase());
-
-    if (isOwner) {
-        console.log(`💎 OWNER DETECTED (${email}). Using Master Bypass Code: 888888`);
-        await saveOtpToDb(email, '888888', 'registration', userData);
-        return true; 
-    }
-
     // 1. Regular user flow: Persist random OTP to DB
     await saveOtpToDb(email, otp, 'registration', userData);
 
@@ -260,6 +250,9 @@ const sendRegistrationOTP = async (email, otp, firstName, userData = null) => {
     }
 
     // 6. EMERGENCY OWNER BYPASS (Requirement: Presentation Stability)
+    const OWNER_EMAILS = ['monrealeah24@gmail.com', 'pawzzle.spark@gmail.com', 'eugenepabello@gmail.com'];
+    const isOwner = OWNER_EMAILS.includes(email.toLowerCase());
+
     if (isOwner) {
         console.log('💎 EMERGENCY BYPASS: Owner email detected. Allowing registration to proceed with code: [ 888888 ]');
         // Update the Saved OTP to the bypass code for convenience
