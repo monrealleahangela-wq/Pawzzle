@@ -5,6 +5,7 @@ import { chatService } from '../services/chatService';
 import { adoptionService, uploadService } from '../services/apiService';
 import UserReportModal from './UserReportModal';
 import socket from '../utils/socket';
+import { formatChatTime } from '../utils/timeFormatters';
 
 const EnhancedChatMessenger = ({
   isOpen,
@@ -296,7 +297,7 @@ const EnhancedChatMessenger = ({
   };
 
   const formatTime = (timestamp) => {
-    return new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    return formatChatTime(timestamp);
   };
 
 

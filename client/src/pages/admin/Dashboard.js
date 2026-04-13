@@ -12,6 +12,7 @@ import {
 import { Heart, Package, ShoppingCart, Plus, Calendar, RefreshCw, Activity, ArrowUp, ChevronRight, AlertCircle, ShoppingBag, Shield, Brain, Sparkles, TrendingUp, User } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { getImageUrl } from '../../services/apiService';
+import { formatTime12h } from '../../utils/timeFormatters';
 
 const STAFF_TYPE_CONFIG = {
   inventory_staff:  { label: 'Inventory Staff',  color: 'amber',   desc: 'Manages pets, products & stock levels' },
@@ -281,7 +282,7 @@ const Dashboard = () => {
                         <p className="text-[9px] sm:text-[11px] font-black text-primary-600 tracking-tight shrink-0">₱{order.totalAmount?.toLocaleString()}</p>
                         <div className="w-1 h-1 rounded-full bg-[#5D4037]/20 shrink-0" />
                         <p className="text-[8px] sm:text-[9px] font-bold text-[#5D4037]/30 dark:text-slate-500 uppercase tracking-widest truncate">
-                          {new Date(order.createdAt).toLocaleDateString('en-GB')}
+                          {new Date(order.createdAt).toLocaleDateString('en-GB')} {formatTime12h(new Date(order.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }))}
                         </p>
                       </div>
                     </div>

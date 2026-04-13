@@ -1,6 +1,15 @@
 // Server main entry point - Updated: 2026-04-05
 const express = require('express');
 const mongoose = require('mongoose');
+const dns = require('dns');
+
+// CRITICAL: Ensure DNS resolution works on restricted networks (Render/Vercel)
+try {
+  dns.setServers(['8.8.8.8', '8.8.4.4', '1.1.1.1']);
+} catch (e) {
+  console.warn('[Server] DNS override failed');
+}
+
 const cors = require('cors');
 const path = require('path');
 const http = require('http');

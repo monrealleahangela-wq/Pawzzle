@@ -5,6 +5,7 @@ import { toast } from 'react-toastify';
 import { Clock, User, MapPin, Phone, Mail, DollarSign, CheckCircle, XCircle, AlertCircle, Filter, Search, Calendar, ArrowLeft, ChevronLeft, ChevronRight, Store, X, Activity, ShieldCheck, TrendingUp, Tag, Ticket, Bell, Building, Heart, PawPrint, Trash2, Star, Camera, Eye, CreditCard, Navigation, Receipt } from 'lucide-react';
 import ReviewModal from '../../components/ReviewModal';
 import { useAuth } from '../../contexts/AuthContext';
+import { formatTime12h } from '../../utils/timeFormatters';
 
 const StoreHoursHint = ({ bookingDate, businessHours }) => {
   const dayNames = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
@@ -15,7 +16,7 @@ const StoreHoursHint = ({ bookingDate, businessHours }) => {
   return hrs.closed ? (
     <p className="text-[8px] font-black text-rose-500 uppercase tracking-widest mt-1.5 px-1">✗ Store closed on this day</p>
   ) : (
-    <p className="text-[8px] font-black text-emerald-600 uppercase tracking-widest mt-1.5 px-1">✓ Store hours: {hrs.open} – {hrs.close}</p>
+    <p className="text-[8px] font-black text-emerald-600 uppercase tracking-widest mt-1.5 px-1">✓ Store hours: {formatTime12h(hrs.open)} – {formatTime12h(hrs.close)}</p>
   );
 };
 
@@ -469,7 +470,7 @@ const Bookings = ({ isSubcomponent = false }) => {
     const hours = selectedService.store.businessHours[currentDay];
 
     if (!hours || hours.closed) return 'Closed Today';
-    return `${hours.open} - ${hours.close}`;
+    return `${formatTime12h(hours.open)} - ${formatTime12h(hours.close)}`;
   };
 
   const isDateFullyBooked = (day) => {
@@ -966,7 +967,7 @@ const Bookings = ({ isSubcomponent = false }) => {
                                       : 'bg-slate-50 text-slate-300 border-slate-50 cursor-not-allowed opacity-40'
                                 }`}
                               >
-                                {slot.time}
+                                {formatTime12h(slot.time)}
                               </button>
                             ))
                           ) : (
@@ -1609,7 +1610,7 @@ const Bookings = ({ isSubcomponent = false }) => {
                       </div>
                       <div className="flex items-center gap-2">
                         <Clock className="h-3.5 w-3.5 text-primary-600" />
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">{booking.startTime}</p>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">{formatTime12h(booking.startTime)}</p>
                       </div>
                     </div>
                   </div>
@@ -1822,7 +1823,7 @@ const Bookings = ({ isSubcomponent = false }) => {
                 </div>
                 <div className="text-right relative z-10">
                   <label className="text-[9px] font-black text-slate-500 uppercase tracking-[0.4em] block mb-2">Time</label>
-                  <p className="text-5xl font-black tracking-tighter text-primary-500">{selectedBooking.startTime}</p>
+                  <p className="text-5xl font-black tracking-tighter text-primary-500">{formatTime12h(selectedBooking.startTime)}</p>
                 </div>
               </div>
 
@@ -1905,7 +1906,7 @@ const Bookings = ({ isSubcomponent = false }) => {
                       <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-0.5">Schedule</span>
                       <div className="text-right">
                         <p className="text-[11px] font-black text-slate-900 uppercase">{new Date(selectedBooking.bookingDate).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}</p>
-                        <p className="text-[10px] font-bold text-primary-600">{selectedBooking.startTime} – {selectedBooking.endTime}</p>
+                        <p className="text-[10px] font-bold text-primary-600">{formatTime12h(selectedBooking.startTime)} – {formatTime12h(selectedBooking.endTime)}</p>
                       </div>
                     </div>
 

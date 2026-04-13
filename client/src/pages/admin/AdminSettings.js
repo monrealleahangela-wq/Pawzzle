@@ -23,6 +23,7 @@ import {
   Info
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { formatTime12h } from '../../utils/timeFormatters';
 
 const AdminSettings = () => {
   const { user } = useAuth();
@@ -267,14 +268,20 @@ const AdminSettings = () => {
                            {/* Right Segment: Time Calibration */}
                            {!hours.closed ? (
                              <div className="flex items-center gap-3 animate-in fade-in slide-in-from-right-3 w-full sm:w-auto">
-                                <div className="flex-1 sm:flex-none flex items-center gap-2.5 bg-slate-50 border border-slate-100 px-4 py-2.5 rounded-2xl group-focus-within:border-primary-500 transition-all">
-                                   <Clock3 className="h-4 w-4 text-slate-400" />
-                                   <input type="time" value={hours.open} onChange={(e) => handleHoursChange(day, 'open', e.target.value)} className="bg-transparent text-[11px] font-black outline-none w-full sm:w-[70px] uppercase" />
+                                <div className="flex-1 sm:flex-none flex flex-col gap-1">
+                                   <div className="flex items-center gap-2.5 bg-slate-50 border border-slate-100 px-4 py-2.5 rounded-2xl group-focus-within:border-primary-500 transition-all">
+                                      <Clock3 className="h-4 w-4 text-slate-400" />
+                                      <input type="time" value={hours.open} onChange={(e) => handleHoursChange(day, 'open', e.target.value)} className="bg-transparent text-[11px] font-black outline-none w-full sm:w-[70px] uppercase" />
+                                   </div>
+                                   <span className="text-[7px] font-black text-primary-600 text-center uppercase tracking-widest">{formatTime12h(hours.open)}</span>
                                 </div>
-                                <span className="text-slate-300 font-bold text-[11px] shrink-0">/</span>
-                                <div className="flex-1 sm:flex-none flex items-center gap-2.5 bg-slate-50 border border-slate-100 px-4 py-2.5 rounded-2xl group-focus-within:border-primary-500 transition-all">
-                                   <Clock3 className="h-4 w-4 text-slate-400" />
-                                   <input type="time" value={hours.close} onChange={(e) => handleHoursChange(day, 'close', e.target.value)} className="bg-transparent text-[11px] font-black outline-none w-full sm:w-[70px] uppercase" />
+                                <span className="text-slate-300 font-bold text-[11px] shrink-0 mt-[-15px]">/</span>
+                                <div className="flex-1 sm:flex-none flex flex-col gap-1">
+                                   <div className="flex items-center gap-2.5 bg-slate-50 border border-slate-100 px-4 py-2.5 rounded-2xl group-focus-within:border-primary-500 transition-all">
+                                      <Clock3 className="h-4 w-4 text-slate-400" />
+                                      <input type="time" value={hours.close} onChange={(e) => handleHoursChange(day, 'close', e.target.value)} className="bg-transparent text-[11px] font-black outline-none w-full sm:w-[70px] uppercase" />
+                                   </div>
+                                   <span className="text-[7px] font-black text-primary-600 text-center uppercase tracking-widest">{formatTime12h(hours.close)}</span>
                                 </div>
                              </div>
                            ) : (

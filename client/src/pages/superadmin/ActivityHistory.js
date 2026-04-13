@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { toast } from 'react-toastify';
 import { Link } from 'react-router-dom';
 import { userService, petService, productService, orderService } from '../../services/apiService';
+import { formatTime12h } from '../../utils/timeFormatters';
 import {
     Users,
     Heart,
@@ -270,7 +271,7 @@ const ActivityHistory = () => {
                                                 {new Date(activity.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
                                             </div>
                                             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">
-                                                {new Date(activity.date).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}
+                                                {formatTime12h(new Date(activity.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }))}
                                             </span>
                                         </div>
                                     </td>

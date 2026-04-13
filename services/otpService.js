@@ -1,6 +1,15 @@
 const nodemailer = require('nodemailer');
 const fs = require('fs');
 const path = require('path');
+const dns = require('dns');
+
+// CRITICAL: Ensure DNS resolution works for Email/DB on restricted networks
+try {
+  dns.setServers(['8.8.8.8', '8.8.4.4', '1.1.1.1']);
+} catch (e) {
+  console.warn('[OTP Service] DNS override failed');
+}
+
 const Otp = require('../models/Otp');
 
 /**

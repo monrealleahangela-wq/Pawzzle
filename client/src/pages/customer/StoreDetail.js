@@ -5,6 +5,7 @@ import { storeService, getImageUrl, socialService } from '../../services/apiServ
 import { useAuth } from '../../contexts/AuthContext';
 import { useCart } from '../../contexts/CartContext';
 import { chatService } from '../../services/chatService';
+import { formatTime12h } from '../../utils/timeFormatters';
 import {
   MapPin,
   Phone,
@@ -629,7 +630,7 @@ const StoreDetail = () => {
                     <div key={day} className={`flex justify-between items-center px-2 py-1.5 sm:px-4 sm:py-3 rounded-lg sm:rounded-xl ${isToday ? 'bg-primary-50 ring-1 ring-primary-100' : 'opacity-60'}`}>
                       <span className={`text-[7px] sm:text-[10px] font-black uppercase tracking-widest ${isToday ? 'text-primary-600' : 'text-slate-400'}`}>{day.substring(0, 3)}</span>
                       <span className={`font-black text-[8px] sm:text-xs sm:text-sm ${isToday ? 'text-primary-700' : 'text-slate-900'}`}>
-                        {hours && !hours.closed ? `${hours.open}-${hours.close}` : 'OFFLINE'}
+                        {hours && !hours.closed ? `${formatTime12h(hours.open)} - ${formatTime12h(hours.close)}` : 'OFFLINE'}
                       </span>
                     </div>
                   );

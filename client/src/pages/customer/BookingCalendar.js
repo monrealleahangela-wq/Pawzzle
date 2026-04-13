@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { bookingService } from '../../services/apiService';
 import { Calendar, Clock, CheckCircle, XCircle, AlertCircle, Users } from 'lucide-react';
+import { formatTime12h } from '../../utils/timeFormatters';
 
 const BookingCalendar = () => {
   const [bookings, setBookings] = useState([]);
@@ -257,7 +258,7 @@ const BookingCalendar = () => {
               
               <div>
                 <h4 className="font-medium text-gray-900">Time</h4>
-                <p className="text-gray-600">{bookingModal.startTime}</p>
+                <p className="text-gray-600">{formatTime12h(bookingModal.startTime)}</p>
               </div>
               
               <div>

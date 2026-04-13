@@ -4,6 +4,7 @@ import { toast } from 'react-toastify';
 import { adminOrderService, deliveryService, getImageUrl } from '../../services/apiService';
 import { useAuth } from '../../contexts/AuthContext';
 import { ShoppingBag, Eye, Package, ArrowRight, Filter, ChevronLeft, ChevronRight, Activity, ChevronDown, Search, Link2, Copy, Check } from 'lucide-react';
+import { formatTime12h } from '../../utils/timeFormatters';
 
 const AdminOrders = () => {
   const { user } = useAuth();
@@ -182,7 +183,7 @@ const AdminOrders = () => {
                     <tr key={order._id} className="hover:bg-slate-50/30 transition-colors">
                       <td className="px-6 py-4">
                         <p className="font-medium text-slate-900">#{order.orderNumber.slice(-8).toUpperCase()}</p>
-                        <p className="text-xs text-slate-500">{new Date(order.orderDate).toLocaleDateString()}</p>
+                        <p className="text-xs text-slate-500">{new Date(order.orderDate).toLocaleDateString()} {formatTime12h(new Date(order.orderDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }))}</p>
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex flex-col">

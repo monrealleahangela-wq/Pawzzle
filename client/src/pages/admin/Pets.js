@@ -9,6 +9,7 @@ import {
   AlertTriangle, CheckCircle, PawPrint, Home, Truck, Users2, History, ClipboardList,
   Clock, CheckCircle2, XCircle, MessageSquare, ArrowRight, UserCheck, Minus
 } from 'lucide-react';
+import { formatTime12h } from '../../utils/timeFormatters';
 
 const AdminPets = () => {
   const { user } = useAuth();
@@ -658,7 +659,7 @@ const AdminPets = () => {
                       </td>
                       <td className="px-8 py-6 text-[10px] font-bold text-slate-400 uppercase tracking-tighter">
                         {new Date(req.createdAt).toLocaleDateString()} <br />
-                        <span className="opacity-50 italic">{new Date(req.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                        <span className="opacity-50 italic">{formatTime12h(new Date(req.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }))}</span>
                       </td>
                       <td className="px-8 py-6">
                         <div className="flex items-center justify-end gap-2">

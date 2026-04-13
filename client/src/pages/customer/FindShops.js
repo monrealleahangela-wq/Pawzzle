@@ -21,6 +21,7 @@ import { MapContainer, TileLayer, Marker, Popup, useMap, Polyline } from 'react-
 import L from 'leaflet';
 import axios from 'axios';
 import { storeService, getImageUrl } from '../../services/apiService';
+import { formatTime12h } from '../../utils/timeFormatters';
 import { toast } from 'react-toastify';
 import 'leaflet/dist/leaflet.css';
 
@@ -618,7 +619,7 @@ const FindShops = () => {
                     <div className="flex items-center justify-between text-[9px] font-black uppercase tracking-[0.1em] text-slate-400">
                         <div className="flex items-center gap-2">
                             <Clock className="h-3 w-3" />
-                            <span>Arrival 2:45 PM</span>
+                            <span>Arrival {formatTime12h(new Date(Date.now() + (eta || 0) * 60000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }))}</span>
                         </div>
                         <div className="flex items-center gap-2">
                             <Flag className="h-3 w-3" />

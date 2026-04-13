@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { toast } from 'react-toastify';
 import { bookingService } from '../../services/apiService';
+import { formatTime12h } from '../../utils/timeFormatters';
 import {
     Calendar,
     Clock,
@@ -110,7 +111,7 @@ const BookingHistory = () => {
                 b.store?.name || '',
                 b.service?.name || '',
                 b.bookingDate ? new Date(b.bookingDate).toLocaleDateString() : '',
-                `${b.startTime || ''} - ${b.endTime || ''}`,
+                `${formatTime12h(b.startTime) || ''} - ${formatTime12h(b.endTime) || ''}`,
                 b.totalPrice || 0,
                 b.status || '',
                 b.paymentStatus || ''
@@ -266,7 +267,7 @@ const BookingHistory = () => {
                                         </td>
                                         <td className="px-8 py-6">
                                             <div className="text-[10px] font-black text-slate-900 uppercase tracking-tight">{new Date(b.bookingDate).toLocaleDateString()}</div>
-                                            <div className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">{b.startTime} - {b.endTime}</div>
+                                            <div className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">{formatTime12h(b.startTime)} - {formatTime12h(b.endTime)}</div>
                                         </td>
                                         <td className="px-8 py-6">
                                             <span className={`px-2.5 py-1 text-[9px] font-black uppercase tracking-widest rounded-lg border border-${s.color}-100 bg-${s.color}-50 text-${s.color}-600`}>
@@ -413,7 +414,7 @@ const BookingHistory = () => {
                                             <div className="flex justify-between items-center border-b border-slate-50 pb-6">
                                                 <div>
                                                     <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Schedule</p>
-                                                    <p className="text-[12px] font-black text-slate-900 uppercase tracking-widest">{selectedBooking.startTime} » {selectedBooking.endTime}</p>
+                                                    <p className="text-[12px] font-black text-slate-900 uppercase tracking-widest">{formatTime12h(selectedBooking.startTime)} » {formatTime12h(selectedBooking.endTime)}</p>
                                                 </div>
                                                 <div className="text-right">
                                                     <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Payment Status</p>

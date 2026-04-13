@@ -27,6 +27,7 @@ import {
   Navigation
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { formatTime12h, formatDateTime12h } from '../../utils/timeFormatters';
 
 
 // Simple linear state transition mapping for manual progressing
@@ -333,7 +334,7 @@ const BookingsManagement = () => {
                         {new Date(booking.bookingDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
                       </p>
                       <p className="text-[9px] font-bold text-primary-600 uppercase tracking-widest flex items-center gap-1">
-                        <Clock className="h-3 w-3" /> {booking.startTime || new Date(booking.bookingDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        <Clock className="h-3 w-3" /> {formatTime12h(booking.startTime) || formatDateTime12h(booking.bookingDate)}
                       </p>
                     </td>
                     <td className="px-6 py-3.5">
@@ -558,7 +559,7 @@ const BookingsManagement = () => {
                       Validated by: {selectedBooking.scannedBy?.firstName || 'Staff Holder'} {selectedBooking.scannedBy?.lastName || ''}
                     </p>
                     <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">
-                      Confirmed on: {new Date(selectedBooking.scannedAt).toLocaleString()}
+                      Confirmed on: {formatDateTime12h(selectedBooking.scannedAt)}
                     </p>
                   </div>
                 </div>
@@ -579,7 +580,7 @@ const BookingsManagement = () => {
                 </div>
                 <div className="text-right relative z-10">
                   <label className="text-[8px] font-black text-slate-500 uppercase tracking-[0.3em] block mb-1.5">Start Time</label>
-                  <p className="text-3xl font-black tracking-tighter text-primary-500">{selectedBooking.startTime || new Date(selectedBooking.bookingDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                  <p className="text-3xl font-black tracking-tighter text-primary-500">{formatTime12h(selectedBooking.startTime) || formatDateTime12h(selectedBooking.bookingDate)}</p>
                 </div>
               </div>
 

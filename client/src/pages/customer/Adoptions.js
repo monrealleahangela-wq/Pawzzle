@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { Heart, Clock, CheckCircle, XCircle, Package, Truck, MessageSquare, ArrowLeft } from 'lucide-react';
 import { adoptionService } from '../../services/apiService';
+import { formatTime12h } from '../../utils/timeFormatters';
 import { useAuth } from '../../contexts/AuthContext';
 import EnhancedChatMessenger from '../../components/EnhancedChatMessenger';
 
@@ -138,7 +139,7 @@ const Adoptions = ({ isSubcomponent = false }) => {
                                 <div className="bg-slate-50/50 rounded-[2rem] p-5 mb-8 border border-slate-100 flex flex-col gap-4">
                                     <div className="flex items-center justify-between text-[9px] font-bold text-slate-500 uppercase tracking-widest">
                                         <span className="flex items-center gap-2 italic opacity-60"><Clock className="h-3 w-3" /> Purchase Date</span>
-                                        <span className="text-slate-900">{new Date(request.createdAt).toLocaleDateString()}</span>
+                                        <span className="text-slate-900">{new Date(request.createdAt).toLocaleDateString()} {formatTime12h(new Date(request.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }))}</span>
                                     </div>
                                     <div className="flex items-center justify-between text-[9px] font-bold text-slate-500 uppercase tracking-widest">
                                         <span className="flex items-center gap-2 italic opacity-60"><CheckCircle className="h-3 w-3" /> Identity Prime</span>
