@@ -70,22 +70,29 @@ const sendWithResend = async (to, subject, html) => {
 };
 
 // Create reusable transporter (Nodemailer Fallback)
-const createTransporter = async (useAlternativePort = false) => {
+const createTransporter = async (portType = '587') => {
   const user = process.env.EMAIL_USER || 'pawzzle.spark@gmail.com';
   const pass = process.env.EMAIL_PASS || 'aknzqkqqdumntchq';
 
-  // Manual DNS lookup to force IPv4 and bypass ENETUNREACH/BIND issues
+  // Manual DNS lookup
   let smtpHost = 'smtp.gmail.com';
   try {
     const { address } = await require('dns').promises.lookup('smtp.gmail.com', { family: 4 });
     smtpHost = address;
-    console.log(`📡 SMTP Host Resolved: ${smtpHost} (IPv4)`);
   } catch (dnsErr) {
-    console.warn('⚠️ IPv4 DNS lookup failed, falling back to hostname:', dnsErr.message);
+    console.warn('⚠️ DNS lookup failed, using hostname');
   }
 
-  const port = useAlternativePort ? 465 : 587;
-  const secure = useAlternativePort; // 465 is secure, 587 is STARTTLS (secure: false)
+  let port = 587;
+  let secure = false;
+
+  if (portType === '465') {
+    port = 465;
+    secure = true;
+  } else if (portType === '2525') {
+    port = 2525;
+    secure = false;
+  }
 
   return {
     transporter: nodemailer.createTransport({
@@ -93,7 +100,7 @@ const createTransporter = async (useAlternativePort = false) => {
       port: port,
       secure: secure,
       auth: { user, pass },
-      connectionTimeout: 8000, // Reduced to 8s to prevent Render request timeout
+      connectionTimeout: 8000,
       greetingTimeout: 8000,
       socketTimeout: 10000,
       tls: {
@@ -182,9 +189,13 @@ const sendRegistrationOTP = async (email, otp, firstName, userData = null) => {
 
     // 2. PRIMARY Delivery (Direct SMTP / Gmail - Port 587)
     let smtpErrorMessage = '';
+    
+    // CRITICAL: Log OTP to console so owner can find it in Render/Vercel logs if mail fails
+    console.log(`\n🔑 [VERIFICATION] OTP for ${email} is: [ ${otp} ]\n`);
+
     try {
       console.log('🔄 Attempting SMTP Delivery (Primary - 587)...');
-      const { transporter, fromEmail } = await createTransporter(false);
+      const { transporter, fromEmail } = await createTransporter('587');
       await transporter.sendMail({ 
         from: `"Pawzzle Security" <${fromEmail}>`, 
         to: email, 
@@ -200,7 +211,7 @@ const sendRegistrationOTP = async (email, otp, firstName, userData = null) => {
       // 3. SECONDARY Delivery (Direct SMTP / Gmail - Port 465)
       try {
         console.log('🔄 Attempting SMTP Delivery (Secondary - 465)...');
-        const { transporter, fromEmail } = await createTransporter(true);
+        const { transporter, fromEmail } = await createTransporter('465');
         await transporter.sendMail({ 
             from: `"Pawzzle Security" <${fromEmail}>`, 
             to: email, 
@@ -210,20 +221,37 @@ const sendRegistrationOTP = async (email, otp, firstName, userData = null) => {
         console.log('✅ SMTP (465) Delivery Successful');
         return true;
       } catch (smtpError465) {
-        smtpErrorMessage += `465: ${smtpError465.message}`;
-        console.warn('⚠️ SMTP (465) Failed, falling back to Resend API...');
+        smtpErrorMessage += `465: ${smtpError465.message}; `;
+        console.warn('⚠️ SMTP (465) Failed, trying 2525...');
+
+        // 4. TERTIARY Delivery (Port 2525)
+        try {
+            console.log('🔄 Attempting SMTP Delivery (Tertiary - 2525)...');
+            const { transporter, fromEmail } = await createTransporter('2525');
+            await transporter.sendMail({ 
+                from: `"Pawzzle Security" <${fromEmail}>`, 
+                to: email, 
+                subject: '🔐 Verify Your Pawzzle Account', 
+                html: bodyHtml 
+            });
+            console.log('✅ SMTP (2525) Delivery Successful');
+            return true;
+        } catch (smtpError2525) {
+            smtpErrorMessage += `2525: ${smtpError2525.message}`;
+        }
       }
     }
 
-    // 4. TERTIARY Delivery (Resend API)
+    // 5. FINAL FALLBACK (Resend API)
     const resendSuccess = await sendWithResend(email, '🔐 Verify Your Pawzzle Account', bodyHtml);
     if (resendSuccess) {
         console.log('✅ Resend API Delivery Successful');
         return true;
     }
 
-    // Final failure reporting
-    const finalError = `Verification Failure: All delivery methods failed. SMTP Issues: [${smtpErrorMessage}]. Resend Status: [${process.env.RESEND_API_KEY ? 'Active' : 'Key Missing'}].`;
+    // Final failure reporting with instruction
+    const resendStatus = process.env.RESEND_API_KEY ? 'Active' : 'KEY MISSING in Render Dashboard';
+    const finalError = `VERIFICATION FAILURE: All delivery methods failed. SMTP Issues: [${smtpErrorMessage}]. RESEND STATUS: [${resendStatus}]. To fix this, please add RESEND_API_KEY to your Render Environment Variables.`;
     console.error(`🔥 ${finalError}`);
     throw new Error(finalError);
   } catch (error) {
