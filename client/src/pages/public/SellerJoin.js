@@ -3,25 +3,34 @@ import { useNavigate, Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { useAuth } from '../../contexts/AuthContext';
 import storeApplicationService from '../../services/storeApplicationService';
+import authService from '../../services/authService';
 import { 
   Store, User, Mail, Phone, MapPin, 
   ShieldCheck, Upload, ArrowRight, CheckCircle2,
   AlertCircle, Building2, FileCheck, Info,
   ChevronRight, Lock, Eye, EyeOff, Map as MapIcon,
-  Search
+  Search, RefreshCw
 } from 'lucide-react';
 import { getCitiesByProvince, getBarangaysByCity } from '../../constants/locationConstants';
 import MapPicker from '../../components/MapPicker';
 
 const SellerJoin = () => {
-  const { register, isAuthenticated, user } = useAuth();
+  const { register, isAuthenticated, user, completeOAuthLogin } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
-  const [step, setStep] = useState(isAuthenticated ? 2 : 1);
+  
+  // Steps: 1: Owner Profile, 2: Verification, 3: Store Details, 4: Documents
+  const [step, setStep] = useState(isAuthenticated ? 3 : 1);
   const [submitted, setSubmitted] = useState(false);
   const [addressInputType, setAddressInputType] = useState('map'); // 'map' or 'manual'
   const [cities, setCities] = useState([]);
   const [barangays, setBarangays] = useState([]);
+
+  // OTP States
+  const [otpDigits, setOtpDigits] = useState(['', '', '', '', '', '']);
+  const [otpLoading, setOtpLoading] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(0);
+  const otpRefs = React.useRef([]);
 
   const [regData, setRegData] = useState({
     firstName: '',
@@ -70,6 +79,13 @@ const SellerJoin = () => {
     }
   }, [storeData.contactInfo.address.city]);
 
+  useEffect(() => {
+    if (resendCooldown > 0) {
+      const timer = setTimeout(() => setResendCooldown(resendCooldown - 1), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [resendCooldown]);
+
   const handleRegChange = (e) => {
     setRegData({ ...regData, [e.target.name]: e.target.value });
   };
@@ -113,16 +129,50 @@ const SellerJoin = () => {
     }
     setLoading(true);
     try {
-      await register(regData);
+      const { confirmPassword, ...data } = regData;
+      // Start OTP flow
+      await authService.sendRegisterOTP(data);
       setStep(2);
-      // Pre-fill store email with the registered email
+      setResendCooldown(60);
+      toast.success('Verification code sent! Please check your email.');
+      // Pre-fill store email
       handleStoreChange('contactInfo.email', regData.email);
     } catch (err) {
-      const errorMsg = err.response?.data?.errors?.[0]?.msg || err.response?.data?.message || 'Registration failed';
+      const errorMsg = err.response?.data?.errors?.[0]?.msg || err.response?.data?.message || 'Setup failed';
       toast.error(errorMsg);
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleVerifyOTP = async () => {
+    const otp = otpDigits.join('');
+    if (otp.length !== 6) return toast.error('Enter 6-digit code');
+    setOtpLoading(true);
+    try {
+      const result = await authService.verifyRegisterOTP({ email: regData.email, otp });
+      if (result.success && result.token && result.user) {
+        // Log in the user
+        completeOAuthLogin(result.user, result.token);
+        toast.success('Account verified! Continue to store details.');
+        setStep(3);
+      } else {
+         toast.error(result.message || 'Verification failed');
+      }
+    } catch (err) {
+       toast.error(err.response?.data?.message || 'Invalid code');
+    } finally {
+       setOtpLoading(false);
+    }
+  };
+
+  const handleResendOTP = async () => {
+    if (resendCooldown > 0) return;
+    try {
+      await authService.resendRegisterOTP({ email: regData.email });
+      setResendCooldown(60);
+      toast.success('New code sent!');
+    } catch (e) { toast.error('Failed to resend'); }
   };
 
   const handleGetCurrentLocation = () => {
@@ -167,12 +217,10 @@ const SellerJoin = () => {
   };
 
   const handleApplicationSubmit = async (e) => {
-    e.preventDefault();
+    if (e) e.preventDefault();
     setLoading(true);
     try {
       const formData = new FormData();
-      
-      // Append store data
       Object.keys(storeData).forEach(key => {
         if (typeof storeData[key] === 'object') {
           formData.append(key, JSON.stringify(storeData[key]));
@@ -181,7 +229,6 @@ const SellerJoin = () => {
         }
       });
 
-      // Append files
       if (files.governmentId) formData.append('governmentId', files.governmentId);
       if (files.businessRegistration) formData.append('businessRegistration', files.businessRegistration);
       if (files.birRegistration) formData.append('birRegistration', files.birRegistration);
@@ -231,9 +278,10 @@ const SellerJoin = () => {
         {/* Progress Tracker */}
         <div className="flex items-center justify-center gap-4 mb-16 px-4">
            {[
-             { id: 1, label: 'Owner Profile', icon: User },
-             { id: 2, label: 'Store Identity', icon: Store },
-             { id: 3, label: 'Verification', icon: ShieldCheck }
+             { id: 1, label: 'Profile', icon: User },
+             { id: 2, label: 'Verify', icon: ShieldCheck },
+             { id: 3, label: 'Store', icon: Store },
+             { id: 4, label: 'Files', icon: FileCheck }
            ].map((s) => (
              <React.Fragment key={s.id}>
                <div className={`flex items-center gap-3 transition-opacity ${step === s.id ? 'opacity-100' : 'opacity-30'}`}>
@@ -242,7 +290,7 @@ const SellerJoin = () => {
                   </div>
                   <span className="hidden md:block text-[9px] font-black uppercase tracking-widest text-slate-600">{s.label}</span>
                </div>
-               {s.id < 3 && <div className="h-px w-8 bg-slate-200 hidden md:block" />}
+               {s.id < 4 && <div className="h-px w-8 bg-slate-200 hidden md:block" />}
              </React.Fragment>
            ))}
         </div>
@@ -320,7 +368,7 @@ const SellerJoin = () => {
                 </div>
 
                 <button type="submit" disabled={loading} className="w-full py-5 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.4em] hover:bg-primary-600 transition-all flex items-center justify-center gap-3 group">
-                   {loading ? 'Setting up...' : 'Next: Store Info'}
+                   {loading ? 'Setting up...' : 'Next: Verify Email'}
                    <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
                 </button>
 
@@ -331,14 +379,61 @@ const SellerJoin = () => {
            )}
 
            {step === 2 && (
-             <form onSubmit={() => setStep(3)} className="p-8 md:p-12 space-y-8 animate-in slide-in-from-right duration-500">
+              <div className="p-8 md:p-12 space-y-8 animate-in slide-in-from-right duration-500">
+                 <div className="text-center space-y-2">
+                    <ShieldCheck className="h-12 w-12 text-primary-600 mx-auto mb-4" />
+                    <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tight">Check Your Inbox</h2>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-relaxed">
+                       Enter the 6-digit verification code sent to <br/><span className="text-primary-600">{regData.email}</span>
+                    </p>
+                 </div>
+                 
+                 <div className="flex justify-center gap-2">
+                    {otpDigits.map((digit, index) => (
+                      <input
+                        key={index}
+                        ref={el => otpRefs.current[index] = el}
+                        type="text" maxLength={1} value={digit}
+                        onChange={(e) => {
+                          const val = e.target.value.replace(/\D/g, '');
+                          const newOtp = [...otpDigits];
+                          newOtp[index] = val;
+                          setOtpDigits(newOtp);
+                          if (val && index < 5) otpRefs.current[index + 1]?.focus();
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Backspace' && !otpDigits[index] && index > 0) otpRefs.current[index - 1]?.focus();
+                        }}
+                        className="w-12 h-16 text-center text-2xl font-black bg-slate-50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 outline-none transition-all shadow-sm"
+                      />
+                    ))}
+                 </div>
+
+                 <button onClick={handleVerifyOTP} disabled={otpLoading} className="w-full py-5 bg-primary-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.4em] shadow-xl shadow-primary-200">
+                    {otpLoading ? 'Verifying...' : 'Verify & Setup Store'}
+                 </button>
+
+                 <div className="text-center pt-4">
+                    {resendCooldown > 0 ? (
+                      <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-4 py-2 bg-slate-50 rounded-full inline-block">Resend available in {resendCooldown}s</p>
+                    ) : (
+                      <button onClick={handleResendOTP} className="text-[9px] font-black text-primary-600 uppercase tracking-widest flex items-center gap-2 mx-auto hover:text-primary-700">
+                        <RefreshCw size={12} /> Resend Verification Code
+                      </button>
+                    )}
+                 </div>
+              </div>
+           )}
+
+           {step === 3 && (
+             <form onSubmit={() => setStep(4)} className="p-8 md:p-12 space-y-8 animate-in slide-in-from-right duration-500">
                 <div className="flex items-center justify-between gap-4 mb-4">
                    <div className="flex items-center gap-4">
                       <div className="w-12 h-12 bg-primary-600 text-white rounded-2xl flex items-center justify-center">
                          <Store className="h-5 w-5" />
                       </div>
                       <div>
-                         <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight">Step 2: Store Details</h2>
+                         <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight">Step 3: Store Details</h2>
                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Tell us about your business</p>
                       </div>
                    </div>
@@ -429,10 +524,10 @@ const SellerJoin = () => {
                         <div className="flex items-center justify-between ml-1">
                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Address Specifications</label>
                            <button 
-                              type="button"
-                              onClick={handleGetCurrentLocation}
-                              disabled={locating}
-                              className="flex items-center gap-1.5 text-[9px] font-black text-primary-600 uppercase tracking-widest hover:text-primary-700 transition-colors disabled:opacity-50"
+                               type="button"
+                               onClick={handleGetCurrentLocation}
+                               disabled={locating}
+                               className="flex items-center gap-1.5 text-[9px] font-black text-primary-600 uppercase tracking-widest hover:text-primary-700 transition-colors disabled:opacity-50"
                            >
                               <MapPin size={12} className={locating ? 'animate-bounce' : ''} />
                               {locating ? 'Detecting...' : 'Use Current Location'}
@@ -487,23 +582,23 @@ const SellerJoin = () => {
                 </div>
 
                 <div className="flex gap-4">
-                   <button type="button" onClick={() => setStep(1)} className="flex-1 py-4 bg-slate-100 text-slate-500 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-slate-200 transition-all">Previous</button>
-                   <button type="submit" className="flex-[2] py-4 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.4em] hover:bg-primary-600 transition-all flex items-center justify-center gap-3">
+                   <button type="button" onClick={() => setStep(isAuthenticated ? 3 : 2)} className="flex-1 py-4 bg-slate-100 text-slate-500 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-slate-200 transition-all">Previous</button>
+                   <button type="submit" className="flex-[2] py-4 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.4em] hover:bg-primary-600 transition-all flex items-center justify-center gap-3 group">
                       Next Step: Documents
-                      <ArrowRight className="h-4 w-4" />
+                      <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
                    </button>
                 </div>
              </form>
            )}
 
-           {step === 3 && (
+           {step === 4 && (
              <form onSubmit={handleApplicationSubmit} className="p-8 md:p-12 space-y-8 animate-in slide-in-from-right duration-500">
                 <div className="flex items-center gap-4 mb-8">
                    <div className="w-12 h-12 bg-emerald-600 text-white rounded-2xl flex items-center justify-center">
                       <ShieldCheck className="h-5 w-5" />
                    </div>
                    <div>
-                      <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight">Step 3: Verification</h2>
+                      <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight">Step 4: Verification</h2>
                       <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Upload your documents</p>
                    </div>
                 </div>
@@ -547,7 +642,7 @@ const SellerJoin = () => {
                 </div>
 
                 <div className="flex gap-4">
-                   <button type="button" onClick={() => setStep(2)} className="flex-1 py-4 bg-slate-100 text-slate-500 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-slate-200 transition-all">Previous</button>
+                   <button type="button" onClick={() => setStep(3)} className="flex-1 py-4 bg-slate-100 text-slate-500 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-slate-200 transition-all">Previous</button>
                    <button type="submit" disabled={loading} className="flex-[2] py-4 bg-primary-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.4em] hover:bg-slate-900 transition-all shadow-xl shadow-primary-200 disabled:opacity-50">
                       {loading ? 'Submitting...' : 'Submit Your Application'}
                    </button>
