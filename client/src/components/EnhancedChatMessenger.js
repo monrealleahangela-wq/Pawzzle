@@ -485,7 +485,7 @@ const EnhancedChatMessenger = ({
   const messengerContent = (
     <div
       className={`flex flex-col h-full bg-white transition-transform duration-300 ease-out min-h-0
-        ${!isEmbedded ? 'rounded-t-[2.5rem] sm:rounded-3xl shadow-2xl max-w-lg w-full h-full sm:h-[600px] overflow-hidden border border-white/20' : ''}`}
+        ${!isEmbedded ? 'rounded-t-[2.5rem] sm:rounded-3xl shadow-2xl max-w-lg w-full h-full sm:h-[85vh] sm:max-h-[600px] overflow-hidden border border-white/20' : ''}`}
     >
       {(!isEmbedded || window.innerWidth < 640) && (
         <div className={`flex-shrink-0 px-5 py-3 flex items-center justify-between z-10 ${
