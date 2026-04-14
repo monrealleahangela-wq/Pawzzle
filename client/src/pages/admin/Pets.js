@@ -1243,7 +1243,7 @@ const AdminPets = () => {
               )}
             </div>
 
-            {/* Footer */}
+
             <footer className="p-5 bg-white border-t border-slate-50 flex gap-3 shrink-0 relative z-20">
               <button
                 type="button"
