@@ -108,7 +108,7 @@ const sendStaffInvitation = async (email, password, firstName) => {
                 html: bodyHtml
             });
             console.log('✅ [EmailService] Resend API Success:', data.id);
-            return true;
+            return { success: true, provider: 'resend' };
         } catch (resendErr) {
             console.error('⚠️ [EmailService] Resend API failed:', resendErr.message);
             if (resendErr.message?.includes('onboarding@resend.dev')) {
@@ -129,8 +129,8 @@ const sendStaffInvitation = async (email, password, firstName) => {
             subject: '🐾 Welcome to the Pawzzle Team!',
             html: bodyHtml
         });
-        console.log('✅ [EmailService] SMTP (587) Success');
-        return true;
+        console.log('✅ [EmailService] SMTP (465) Success');
+        return { success: true, provider: 'smtp' };
     } catch (e) {
         console.warn(`⚠️ [EmailService] SMTP (587) Failed: ${e.message}. Trying 465...`);
         // STAGE 3: Try SMTP (465)
@@ -144,15 +144,14 @@ const sendStaffInvitation = async (email, password, firstName) => {
                 html: bodyHtml
             });
             console.log('✅ [EmailService] SMTP (465) Success');
-            return true;
+            return { success: true, provider: 'smtp' };
         } catch (e2) {
             console.error('❌ [EmailService] ALL delivery methods failed.');
-            console.error('Final Error Details:', {
-                smtpTarget: 'smtp.gmail.com',
-                resendActive: !!resend,
-                lastError: e2.message
-            });
-            return false;
+            return { 
+                success: false, 
+                errorMessage: e2.message || 'All delivery methods failed',
+                resendActive: !!resend 
+            };
         }
     }
 };

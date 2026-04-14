@@ -185,15 +185,16 @@ const createStaff = async (req, res) => {
 
         // 📧 Send Invitation Email
         console.log(`📧 Dispatching email to: ${cleanEmail}`);
-        let emailSent = false;
+        let emailResult = { success: false };
         try {
-            const result = await sendStaffInvitation(cleanEmail, tempPassword, cleanFirstName);
-            emailSent = result === true;
-            console.log(`✅ [Email Task] Result: ${emailSent ? 'SUCCESS' : 'FAILED'}`);
+            emailResult = await sendStaffInvitation(cleanEmail, tempPassword, cleanFirstName);
+            console.log(`✅ [Email Task] Result: ${emailResult.success ? 'SUCCESS' : 'FAILED'}`, emailResult);
         } catch (emailErr) {
             console.error('❌ [Email Task] Error during execution:', emailErr.message);
-            // We DON'T throw here, so the process continues
+            emailResult = { success: false, error: emailErr.message };
         }
+        
+        const emailSent = emailResult.success;
 
         const staffObj = staff.toObject();
         delete staffObj.password;
@@ -202,9 +203,10 @@ const createStaff = async (req, res) => {
         return res.status(201).json({ 
             message: emailSent 
                 ? 'Staff account created and invitation sent successfully.' 
-                : 'Staff account created, but the invitation email failed. You can see the record in the list.', 
+                : `Staff created, but email failed: ${emailResult.errorMessage || emailResult.error || 'Unknown service error'}.`, 
             staff: staffObj,
             emailSent: emailSent,
+            emailError: emailResult.errorMessage || emailResult.error,
             credentialsProvided: true
         });
     } catch (error) {
