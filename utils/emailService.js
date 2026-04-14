@@ -100,23 +100,28 @@ const sendStaffInvitation = async (email, password, firstName) => {
     // STAGE 1: Try Resend (Highest Reliability)
     if (resend) {
         try {
-            console.log('🔄 Staff Invite: Trying Resend API...');
-            await resend.emails.send({
+            console.log(`🔄 [EmailService] Attempting Resend API for ${email}...`);
+            const data = await resend.emails.send({
                 from: 'Pawzzle <onboarding@resend.dev>',
                 to: email,
                 subject: '🐾 Welcome to the Pawzzle Team!',
                 html: bodyHtml
             });
-            console.log('✅ Staff Invite: Resend API Success');
+            console.log('✅ [EmailService] Resend API Success:', data.id);
             return true;
         } catch (resendErr) {
-            console.warn('⚠️ Resend API failed, falling back to SMTP...', resendErr.message);
+            console.error('⚠️ [EmailService] Resend API failed:', resendErr.message);
+            if (resendErr.message?.includes('onboarding@resend.dev')) {
+                console.warn('💡 [EmailService] Tip: Resend limit - can only send to your own email unless domain is verified.');
+            }
         }
+    } else {
+        console.log('ℹ️ [EmailService] Resend API Key not found, skipping to SMTP.');
     }
 
     // STAGE 2: Try SMTP (587)
     try {
-        console.log('🔄 Staff Invite: Trying SMTP (587)...');
+        console.log(`🔄 [EmailService] Attempting SMTP (587) for ${email}...`);
         const transporter = await getTransporter(false);
         await transporter.sendMail({
             from: `"Pawzzle Support" <${fromUser}>`,
@@ -124,12 +129,13 @@ const sendStaffInvitation = async (email, password, firstName) => {
             subject: '🐾 Welcome to the Pawzzle Team!',
             html: bodyHtml
         });
-        console.log('✅ Staff Invite: SMTP (587) Success');
+        console.log('✅ [EmailService] SMTP (587) Success');
         return true;
     } catch (e) {
-        console.warn('⚠️ Staff Invite: SMTP (587) Failed, trying 465...', e.message);
+        console.warn(`⚠️ [EmailService] SMTP (587) Failed: ${e.message}. Trying 465...`);
         // STAGE 3: Try SMTP (465)
         try {
+            console.log(`🔄 [EmailService] Attempting SMTP (465) for ${email}...`);
             const transporter = await getTransporter(true);
             await transporter.sendMail({
                 from: `"Pawzzle Support" <${fromUser}>`,
@@ -137,11 +143,16 @@ const sendStaffInvitation = async (email, password, firstName) => {
                 subject: '🐾 Welcome to the Pawzzle Team!',
                 html: bodyHtml
             });
-            console.log('✅ Staff Invite: SMTP (465) Success');
+            console.log('✅ [EmailService] SMTP (465) Success');
             return true;
         } catch (e2) {
-            console.error('❌ Staff Invite: All delivery methods failed:', e2.message);
-            return false; // Return false instead of throwing to allow staff creation to succeed
+            console.error('❌ [EmailService] ALL delivery methods failed.');
+            console.error('Final Error Details:', {
+                smtpTarget: 'smtp.gmail.com',
+                resendActive: !!resend,
+                lastError: e2.message
+            });
+            return false;
         }
     }
 };
