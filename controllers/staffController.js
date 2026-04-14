@@ -209,6 +209,15 @@ const createStaff = async (req, res) => {
         });
     } catch (error) {
         console.error('CRITICAL: createStaff catch-all triggered:', error);
+        
+        // Handle Mongoose Validation Errors Specifically
+        if (error.name === 'ValidationError') {
+            const messages = Object.values(error.errors).map(err => err.message);
+            return res.status(400).json({ 
+                message: `Validation Failed: ${messages.join(', ')}` 
+            });
+        }
+
         return res.status(500).json({ 
             message: error.code === 11000 ? 'Identity already exists (Email/Username taken)' : 'Internal server failure during staff boarding', 
             error: error.message
