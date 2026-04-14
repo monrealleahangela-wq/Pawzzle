@@ -175,7 +175,6 @@ const Layout = () => {
     { type: 'label', label: 'Accounts' },
     { path: '/superadmin/account-management', label: 'Accounts', icon: Users },
     { path: '/superadmin/store-applications', label: 'Applications', icon: FileText },
-    { path: '/superadmin/permissions', label: 'Permissions', icon: ShieldAlert },
     { type: 'label', label: 'System' },
     { path: '/superadmin/transaction-history', label: 'Transactions', icon: DollarSign },
     { path: '/superadmin/booking-history', label: 'Bookings', icon: Calendar },

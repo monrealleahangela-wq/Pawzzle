@@ -363,8 +363,8 @@ const Pets = () => {
                         ['reserved', 'approved', 'pickup_scheduling', 'pickup_confirmed'].includes(pet.status) ? 'bg-secondary-500/90 text-white' :
                           'bg-rose-500/90 text-white'
                         }`}>
-                        {['reserved', 'approved', 'pickup_scheduling', 'pickup_confirmed'].includes(pet.status) ? 'RESERVED' : 
-                         ['delivered', 'completed', 'sold', 'adopted'].includes(pet.status) ? 'SOLD' : 'AVAILABLE'}
+                        {['reserved', 'approved', 'pickup_scheduling', 'pickup_confirmed'].includes(pet.status) ? 'RESERVED' :
+                          ['delivered', 'completed', 'sold', 'adopted'].includes(pet.status) ? 'SOLD' : 'AVAILABLE'}
                       </span>
                       {pet.store?.verificationStatus === 'verified' && (
                         <span className="px-2.5 py-1 bg-slate-900/90 backdrop-blur-md rounded-xl text-[8px] font-black uppercase tracking-widest text-white border border-white/10 shadow-sm flex items-center gap-1">
@@ -398,7 +398,7 @@ const Pets = () => {
 
                     <div className="flex justify-between items-center mt-auto gap-3">
                       <div className="flex flex-col">
-                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest -mb-0.5">Adoption Fee</span>
+                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest -mb-0.5">Price</span>
                         <span className="text-sm sm:text-xl font-black text-slate-900 tracking-tighter">₱{pet.price?.toLocaleString()}</span>
                       </div>
 
@@ -411,7 +411,7 @@ const Pets = () => {
                     </div>
 
                     {/* Store Node */}
-                    <Link 
+                    <Link
                       to={`/stores/${pet.store?._id}`}
                       className="mt-4 pt-3 border-t border-slate-50 flex items-center justify-between group/store hover:bg-slate-50/50 transition-colors -mx-4 px-4"
                     >
