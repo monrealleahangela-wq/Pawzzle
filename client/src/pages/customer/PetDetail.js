@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { ArrowLeft, Heart, Calendar, Weight, MapPin, Package, MessageSquare, Star } from 'lucide-react';
-import { petService, getImageUrl } from '../../services/apiService';
+import { petService, getImageUrl, adoptionService } from '../../services/apiService';
+import { chatService } from '../../services/chatService';
 import LoginModal from '../../components/LoginModal';
 import EnhancedChatMessenger from '../../components/EnhancedChatMessenger';
 import { useAuth } from '../../contexts/AuthContext';
@@ -56,16 +57,24 @@ const PetDetail = () => {
     try {
       setLoading(true);
       
-      // Step 1: Ensure conversation exists or get ID
-      const convResponse = await petService.startConversation({ 
-        petId: id, 
-        sellerId: pet.addedBy._id 
-      });
-      
-      const conversationId = convResponse.data.conversation._id;
+      let conversationId;
+      try {
+        const response = await chatService.getConversationByPet(id);
+        if (response.data.conversation) {
+          conversationId = response.data.conversation._id;
+        } else {
+          throw new Error('Not found');
+        }
+      } catch (err) {
+        const convResponse = await chatService.createConversation({ 
+          participantIds: [pet.addedBy._id || pet.addedBy],
+          petId: id, 
+          type: 'adoption'
+        });
+        conversationId = convResponse.data.conversation._id;
+      }
 
-      // Step 2: Create structured inquiry
-      await petService.createAdoptionRequest({
+      await adoptionService.requestAdoption({
         petId: id,
         conversationId,
         ...formData
