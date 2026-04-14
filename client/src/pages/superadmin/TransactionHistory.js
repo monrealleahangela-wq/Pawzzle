@@ -72,7 +72,7 @@ const TransactionHistory = () => {
     } finally {
       setLoading(false);
     }
-  }, [filters, pagination.currentPage, pagination]);
+  }, [filters, pagination]);
 
   useEffect(() => {
     fetchTransactions();

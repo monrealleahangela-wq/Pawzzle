@@ -170,7 +170,7 @@ if (isProduction && buildPath) {
 }
 
 const PORT = process.env.PORT || 5000;
-server.listen(PORT, '0.0.0.0', () => {
+server.listen(PORT, () => {
     console.log(`\n🚀 [MASTER V3] SERVER STARTUP`);
     console.log(`✅ RESEND_API_KEY: ${process.env.RESEND_API_KEY ? 'IS CONFIGURED (Length: ' + process.env.RESEND_API_KEY.length + ')' : 'MISSING'}`);
     console.log(`✅ PORT: ${PORT}\n`);
