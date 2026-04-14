@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, ClipboardCheck, Info, Calendar, MapPin, User, Phone, Heart } from 'lucide-react';
+import { X, ClipboardCheck, Info, Calendar, MapPin, User, Phone, Heart, Wallet, CheckCircle2, Zap } from 'lucide-react';
 import { toast } from 'react-toastify';
 
 const InquiryModal = ({ isOpen, onClose, pet, onSubmit }) => {
@@ -10,7 +10,8 @@ const InquiryModal = ({ isOpen, onClose, pet, onSubmit }) => {
     preferredPickupDate: '',
     interestReason: '',
     previousExperience: '',
-    pickupConfirmation: false
+    pickupConfirmation: false,
+    paymentMethod: ''
   });
 
   if (!isOpen) return null;
@@ -33,6 +34,11 @@ const InquiryModal = ({ isOpen, onClose, pet, onSubmit }) => {
 
     if (selectedDate < today) {
       toast.error('Please select today or a future date only');
+      return;
+    }
+
+    if (!formData.paymentMethod) {
+      toast.error('Please select a payment method');
       return;
     }
 
@@ -154,6 +160,63 @@ const InquiryModal = ({ isOpen, onClose, pet, onSubmit }) => {
                 placeholder="Mention any pets you've owned or currently have..."
                 className="w-full px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-2xl text-xs font-bold text-slate-900 focus:ring-2 focus:ring-primary-500/20 focus:bg-white transition-all outline-none resize-none"
               />
+            </div>
+
+            {/* Payment Section */}
+            <div className="bg-slate-900 rounded-[2rem] p-6 text-white space-y-6 relative overflow-hidden">
+               <div className="absolute top-0 right-0 w-32 h-32 bg-primary-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none" />
+               <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                     <Wallet className="h-4 w-4 text-primary-400" />
+                     <h3 className="text-[10px] font-black uppercase tracking-[0.2em]">Settlement Settings</h3>
+                  </div>
+                  <span className="text-[9px] font-black text-primary-400 uppercase tracking-widest bg-white/5 px-3 py-1 rounded-full border border-white/5">
+                    {pet.paymentConfig === 'deposit_first' ? 'RESERVATION REQUIRED' : 
+                     pet.paymentConfig === 'cash_on_pickup_only' ? 'CASH AT PICKUP' : 'FULL PAYMENT REQUIRED'}
+                  </span>
+               </div>
+
+               {/* Pricing Breakdown */}
+               <div className="grid grid-cols-1 gap-2 p-4 bg-white/5 rounded-2xl border border-white/10">
+                  <div className="flex justify-between items-center">
+                    <span className="text-[9px] font-black text-white/40 uppercase tracking-widest">Total Valuation</span>
+                    <span className="text-sm font-black text-white">₱{pet.price?.toLocaleString()}</span>
+                  </div>
+                  {pet.paymentConfig === 'deposit_first' && (
+                    <>
+                      <div className="flex justify-between items-center pt-2 border-t border-white/5">
+                        <span className="text-[9px] font-black text-primary-400 uppercase tracking-widest">Deposit Amount</span>
+                        <span className="text-sm font-black text-primary-400">₱{pet.depositAmount?.toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-[9px] font-black text-white/40 uppercase tracking-widest italic">Balance Due at Pickup</span>
+                        <span className="text-[11px] font-black text-white/60 italic">₱{(pet.price - (pet.depositAmount || 0)).toLocaleString()}</span>
+                      </div>
+                    </>
+                  )}
+               </div>
+
+               {/* Payment Methods Grid */}
+               <div className="space-y-2">
+                  <label className="text-[9px] font-black text-white/40 uppercase tracking-widest ml-1">Preferred Settlement Method</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {(pet.allowedPaymentMethods || ['gcash', 'maya', 'bank_transfer', 'cash_on_pickup']).map(m => (
+                      <button
+                        key={m}
+                        type="button"
+                        onClick={() => setFormData(p => ({ ...p, paymentMethod: m }))}
+                        className={`flex items-center justify-between p-3 rounded-xl border-2 transition-all ${
+                          formData.paymentMethod === m 
+                            ? 'bg-primary-600 border-primary-500 text-white shadow-lg' 
+                            : 'bg-white/5 border-white/10 text-white/40 hover:bg-white/10'
+                        }`}
+                      >
+                        <span className="text-[9px] font-black uppercase tracking-widest">{m.replace(/_/g, ' ')}</span>
+                        {formData.paymentMethod === m && <CheckCircle2 className="h-3 w-3 text-white" />}
+                      </button>
+                    ))}
+                  </div>
+               </div>
             </div>
 
             {/* Confirmation Toggle */}

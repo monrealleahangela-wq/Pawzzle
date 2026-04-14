@@ -61,7 +61,10 @@ const AdminPets = () => {
     pickupAvailability: 'scheduled',
     pickupInstructions: '',
     fulfillmentType: 'pickup_only',
-    paymentType: 'online_only',
+    allowedPaymentMethods: ['gcash', 'maya', 'bank_transfer', 'cash_on_pickup'],
+    paymentConfig: 'full_payment',
+    depositAmount: 0,
+    paymentType: 'any',
     approvalStatus: 'pending',
     adoptionDetails: {
       requirements: '', trialPeriod: '', homeCheck: false,
@@ -268,7 +271,10 @@ const AdminPets = () => {
         weight: parseFloat(petForm.weight) || 0,
         quantity: parseInt(petForm.quantity) || 1,
         fulfillmentType: 'pickup_only',
-        paymentType: 'online_only'
+        allowedPaymentMethods: petForm.allowedPaymentMethods,
+        paymentConfig: petForm.paymentConfig,
+        depositAmount: parseFloat(petForm.depositAmount) || 0,
+        paymentType: 'any'
       };
       if (editingPet) {
         await adminPetService.updatePet(editingPet._id, payload);
@@ -719,8 +725,9 @@ const AdminPets = () => {
                 { id: 'identity', label: '1. Basic Info', icon: Info },
                 { id: 'health', label: '2. Health', icon: Activity },
                 { id: 'commerce', label: '3. Pricing & Docs', icon: ClipboardList },
-                { id: 'pickup', label: '4. Pickup', icon: Home },
-                { id: 'gallery', label: '5. Photos', icon: ImageIcon }
+                { id: 'payments', label: '4. Payments', icon: Zap },
+                { id: 'pickup', label: '5. Pickup', icon: Home },
+                { id: 'gallery', label: '6. Photos', icon: ImageIcon }
               ].map(tab => (
                 <button key={tab.id} onClick={() => setModalTab(tab.id)}
                   className={`px-5 py-2.5 rounded-xl flex items-center gap-2 text-[9px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${modalTab === tab.id ? 'bg-white text-rose-500 shadow-sm border border-slate-100' : 'text-slate-400 hover:text-slate-600'}`}>
@@ -1063,28 +1070,99 @@ const AdminPets = () => {
                                 </label>
                              </div>
                           </div>
-                       </div>
-
-                       <div className="p-6 bg-rose-50 rounded-[2.5rem] border border-rose-100">
-                          <h4 className="text-[10px] font-black text-rose-500 uppercase tracking-widest flex items-center gap-2 mb-3">
-                             <Shield className="h-3 w-3" /> System Enforced Policy
-                          </h4>
-                          <ul className="space-y-2">
-                             <li className="flex items-center gap-2 text-[8px] font-black text-rose-400 uppercase tracking-widest">
-                                <CheckCircle className="h-2.5 w-2.5" /> Online Payment Only
-                             </li>
-                             <li className="flex items-center gap-2 text-[8px] font-black text-rose-400 uppercase tracking-widest">
-                                <CheckCircle className="h-2.5 w-2.5" /> Store Pickup Fulfilment
-                             </li>
-                             <li className="flex items-center gap-2 text-[8px] font-black text-rose-400 uppercase tracking-widest opacity-50">
-                                <XCircle className="h-2.5 w-2.5 text-slate-300" /> No Delivery / No COD
-                             </li>
-                          </ul>
-                       </div>
-                    </div>
-                  </div>
-                </div>
+                                      </div>
               )}
+
+              {/* STAGE 4: PAYMENT OPTIONS */}
+              {modalTab === 'payments' && (
+                <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-500">
+                  <div className="bg-slate-900 rounded-[2.5rem] p-8 text-white relative overflow-hidden border border-white/5">
+                    <div className="absolute top-0 right-0 w-64 h-64 bg-primary-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none" />
+                    <div className="flex items-center gap-3 mb-8">
+                       <Zap className="h-4 w-4 text-rose-500" />
+                       <h4 className="text-[10px] font-black uppercase tracking-[0.4em] text-primary-500">Payment Methodology</h4>
+                    </div>
+
+                    <div className="space-y-10 relative z-10">
+                      {/* Payment Methods */}
+                      <div className="space-y-4">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Allowed Payment methods</label>
+                        <div className="grid grid-cols-2 gap-3">
+                          {[
+                            { id: 'gcash', label: 'GCash' },
+                            { id: 'maya', label: 'Maya' },
+                            { id: 'bank_transfer', label: 'Bank Transfer' },
+                            { id: 'cash_on_pickup', label: 'Cash on Pickup' }
+                          ].map(method => (
+                            <button
+                              key={method.id}
+                              type="button"
+                              onClick={() => {
+                                const current = petForm.allowedPaymentMethods || [];
+                                if (current.includes(method.id)) {
+                                  setPetForm(p => ({ ...p, allowedPaymentMethods: current.filter(m => m !== method.id) }));
+                                } else {
+                                  setPetForm(p => ({ ...p, allowedPaymentMethods: [...current, method.id] }));
+                                }
+                              }}
+                              className={`flex items-center gap-3 p-4 rounded-2xl border-2 transition-all ${
+                                (petForm.allowedPaymentMethods || []).includes(method.id)
+                                  ? 'bg-white/10 border-rose-500 text-white shadow-lg'
+                                  : 'bg-white/5 border-white/5 text-white/40 hover:bg-white/10'
+                              }`}
+                            >
+                              <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                                (petForm.allowedPaymentMethods || []).includes(method.id) ? 'border-rose-500' : 'border-white/20'
+                              }`}>
+                                {(petForm.allowedPaymentMethods || []).includes(method.id) && <div className="w-2 h-2 bg-rose-500 rounded-full" />}
+                              </div>
+                              <span className="text-[11px] font-black uppercase tracking-widest">{method.label}</span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Payment Configuration */}
+                      <div className="space-y-4 pt-6 border-t border-white/5">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Payment Strategy</label>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                          {[
+                            { id: 'full_payment', label: 'Full Payment', desc: 'Pre-pickup' },
+                            { id: 'deposit_first', label: 'Reservation', desc: 'Deposit + Balance' },
+                            { id: 'cash_on_pickup_only', label: 'Cash Only', desc: 'Pay at Pickup' }
+                          ].map(config => (
+                            <button
+                              key={config.id}
+                              type="button"
+                              onClick={() => setPetForm(p => ({ ...p, paymentConfig: config.id }))}
+                              className={`p-5 rounded-2xl border-2 transition-all flex flex-col gap-2 ${
+                                petForm.paymentConfig === config.id
+                                  ? 'bg-white/10 border-rose-500 text-white shadow-lg'
+                                  : 'bg-white/5 border-white/5 text-white/40 hover:bg-white/10'
+                              }`}
+                            >
+                              <span className="text-[10px] font-black uppercase tracking-widest leading-none">{config.label}</span>
+                              <span className="text-[8px] font-bold opacity-40 uppercase tracking-widest">{config.desc}</span>
+                            </button>
+                          ))}
+                        </div>
+
+                        {petForm.paymentConfig === 'deposit_first' && (
+                          <div className="mt-6 p-6 bg-white/5 rounded-3xl border border-white/10 animate-in zoom-in-95 duration-300">
+                             <label className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] px-1 mb-2 block">Reservation Fee / Deposit (PHP)</label>
+                             <input 
+                               type="number" 
+                               value={petForm.depositAmount} 
+                               onChange={e => setPetForm(p => ({ ...p, depositAmount: e.target.value }))}
+                               className="w-full px-6 py-4 bg-white/5 border-2 border-white/10 rounded-2xl text-xl font-black text-white outline-none focus:border-rose-500 transition-all" 
+                               placeholder="E.G. 2000" 
+                             />
+                             <p className="mt-2 text-[9px] font-bold text-white/30 uppercase tracking-widest italic"> Remaining balance of ₱{(parseFloat(petForm.price || 0) - parseFloat(petForm.depositAmount || 0)).toLocaleString()} will be due on pickup.</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>       )}
 
               {/* STAGE 4: PICKUP DETAILS */}
               {modalTab === 'pickup' && (
@@ -1173,7 +1251,8 @@ const AdminPets = () => {
                 onClick={(e) => {
                   if (modalTab === 'identity') setModalTab('health');
                   else if (modalTab === 'health') setModalTab('commerce');
-                  else if (modalTab === 'commerce') setModalTab('pickup');
+                  else if (modalTab === 'commerce') setModalTab('payments');
+                  else if (modalTab === 'payments') setModalTab('pickup');
                   else if (modalTab === 'pickup') setModalTab('gallery');
                   else handleSubmit(e);
                 }}
@@ -1181,9 +1260,10 @@ const AdminPets = () => {
                 {submitting ? 'Saving...' : (
                   modalTab === 'identity' ? 'Next: Health Protocols' :
                     modalTab === 'health' ? 'Next: Pricing & Docs' :
-                      modalTab === 'commerce' ? 'Next: Pickup Details' :
-                        modalTab === 'pickup' ? 'Next: Pet Gallery' :
-                          editingPet ? 'Save Changes' : 'Add Pet'
+                      modalTab === 'commerce' ? 'Next: Payment Config' :
+                        modalTab === 'payments' ? 'Next: Pickup Details' :
+                          modalTab === 'pickup' ? 'Next: Pet Gallery' :
+                            editingPet ? 'Save Changes' : 'Add Pet'
                 )}
                 {modalTab !== 'gallery' ? <ChevronRight className="h-5 w-5" /> : <ArrowUpRight className="h-5 w-5" />}
               </button>

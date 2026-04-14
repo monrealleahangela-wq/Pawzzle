@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { toast } from 'react-toastify';
-import { Send, X, User, Clock, Check, Phone, Mail, MapPin, Heart, AlertCircle, ShoppingBag, Truck, CheckCircle, Camera, Shield, ArrowLeft, ChevronDown, Calendar } from 'lucide-react';
+import { Send, X, User, Clock, Check, Phone, Mail, MapPin, Heart, AlertCircle, ShoppingBag, Truck, CheckCircle, Camera, Shield, ArrowLeft, ChevronDown, Calendar, CreditCard, Wallet, Banknote, ArrowUpRight, CheckCircle2 } from 'lucide-react';
 import { chatService } from '../services/chatService';
 import { adoptionService, uploadService } from '../services/apiService';
 import UserReportModal from './UserReportModal';
@@ -325,11 +325,48 @@ const EnhancedChatMessenger = ({
       setTransactionRequest(response.data.request);
       toast.success(`Status updated to ${status.replace(/_/g, ' ')}`);
       loadMessages(conversationId);
+      if (onMessageUpdate) onMessageUpdate();
     } catch (error) {
       console.error('Error updating status:', error);
       toast.error('Failed to update status');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleSendPaymentRequest = async () => {
+    try {
+      setIsLoading(true);
+      const response = await adoptionService.sendPaymentRequest(transactionRequest._id);
+      setTransactionRequest(response.data.request);
+      toast.success('Payment request sent to customer');
+      loadMessages(conversationId);
+      if (onMessageUpdate) onMessageUpdate();
+    } catch (error) {
+      console.error('Error sending payment request:', error);
+      toast.error('Failed to send payment request');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleManualPaymentUpdate = async (status, amount) => {
+    try {
+       setIsLoading(true);
+       const response = await adoptionService.updatePaymentStatus(transactionRequest._id, { 
+         status, 
+         amount,
+         notes: `Seller manually updated payment to ${status}`
+       });
+       setTransactionRequest(response.data.request);
+       toast.success('Payment status updated');
+       loadMessages(conversationId);
+       if (onMessageUpdate) onMessageUpdate();
+    } catch (error) {
+       console.error('Error updating payment:', error);
+       toast.error('Update failed');
+    } finally {
+       setIsLoading(false);
     }
   };
 
@@ -385,52 +422,113 @@ const EnhancedChatMessenger = ({
     };
 
     const config = statusConfig[transactionRequest.status] || statusConfig.inquiry_submitted;
+    const payment = transactionRequest.paymentDetails || {};
+    const pricing = payment.pricingBreakdown || {};
 
     return (
-      <div className={`flex-shrink-0 px-6 py-3 border-b border-slate-100 flex items-center justify-between z-10 ${config.color} transition-colors duration-500`}>
-        <div className="flex items-center gap-2">
-          {config.icon}
-          <span className="text-[10px] font-black uppercase tracking-widest">{config.label}</span>
-        </div>
-        
-        <div className="flex gap-2">
-          {isSeller && (
-            <>
-              {transactionRequest.status === 'inquiry_submitted' && (
-                <>
-                  <button onClick={() => handleStatusUpdate('reserved')} className="text-[9px] font-black uppercase tracking-widest bg-amber-500 text-white px-3 py-1.5 rounded-lg hover:bg-amber-600 shadow-sm">Reserve</button>
-                  <button onClick={() => handleStatusUpdate('declined')} className="text-[9px] font-black uppercase tracking-widest bg-white/20 text-current px-3 py-1.5 rounded-lg border border-current hover:bg-white/10">Decline</button>
-                </>
-              )}
-              {transactionRequest.status === 'reserved' && (
-                <>
-                  <button onClick={() => handleStatusUpdate('approved')} className="text-[9px] font-black uppercase tracking-widest bg-emerald-600 text-white px-3 py-1.5 rounded-lg hover:bg-emerald-700 shadow-sm">Approve</button>
-                  <button onClick={() => handleStatusUpdate('inquiry_submitted')} className="text-[9px] font-black uppercase tracking-widest bg-white/20 text-current px-3 py-1.5 rounded-lg border border-current">Release</button>
-                </>
-              )}
-              {transactionRequest.status === 'approved' && (
-                <button onClick={() => handleStatusUpdate('pickup_scheduling')} className="text-[9px] font-black uppercase tracking-widest bg-slate-900 text-white px-3 py-1.5 rounded-lg shadow-sm">Schedule Pickup</button>
-              )}
-              {transactionRequest.status === 'pickup_scheduling' && (
-                <button onClick={() => handleStatusUpdate('pickup_confirmed')} className="text-[9px] font-black uppercase tracking-widest bg-slate-900 text-white px-3 py-1.5 rounded-lg shadow-sm">Confirm Schedule</button>
-              )}
-              {transactionRequest.status === 'pickup_confirmed' && (
-                <button onClick={() => handleStatusUpdate('completed')} className="text-[9px] font-black uppercase tracking-widest bg-emerald-600 text-white px-3 py-1.5 rounded-lg shadow-sm hover:bg-emerald-500 animate-pulse">Mark Handed Over</button>
-              )}
-            </>
-          )}
+      <div className="flex-shrink-0 z-10">
+        <div className={`px-6 py-3 border-b border-slate-100 flex items-center justify-between ${config.color} transition-colors duration-500`}>
+          <div className="flex items-center gap-2">
+            {config.icon}
+            <span className="text-[10px] font-black uppercase tracking-widest">{config.label}</span>
+          </div>
+          
+          <div className="flex gap-2">
+            {isSeller && (
+              <>
+                {transactionRequest.status === 'inquiry_submitted' && (
+                  <>
+                    <button onClick={() => handleStatusUpdate('reserved')} className="text-[9px] font-black uppercase tracking-widest bg-amber-500 text-white px-3 py-1.5 rounded-lg hover:bg-amber-600 shadow-sm">Reserve</button>
+                    <button onClick={() => handleStatusUpdate('declined')} className="text-[9px] font-black uppercase tracking-widest bg-white/20 text-current px-3 py-1.5 rounded-lg border border-current hover:bg-white/10">Decline</button>
+                  </>
+                )}
+                {transactionRequest.status === 'reserved' && (
+                  <>
+                    <button onClick={() => handleStatusUpdate('approved')} className="text-[9px] font-black uppercase tracking-widest bg-emerald-600 text-white px-3 py-1.5 rounded-lg hover:bg-emerald-700 shadow-sm">Approve Buyer</button>
+                    <button onClick={() => handleStatusUpdate('inquiry_submitted')} className="text-[9px] font-black uppercase tracking-widest bg-white/20 text-current px-3 py-1.5 rounded-lg border border-current">Release</button>
+                  </>
+                )}
+                {transactionRequest.status === 'approved' && payment.paymentStatus === 'unpaid' && (
+                  <button onClick={handleSendPaymentRequest} className="text-[9px] font-black uppercase tracking-widest bg-slate-900 text-white px-3 py-1.5 rounded-lg shadow-sm flex items-center gap-2">
+                    <Zap className="h-3 w-3 text-primary-400" /> Send Payment Request
+                  </button>
+                )}
+                {transactionRequest.status === 'approved' && payment.paymentStatus === 'payment_pending' && (
+                  <div className="flex gap-2">
+                    <button onClick={() => handleManualPaymentUpdate(pricing.depositAmount > 0 ? 'deposit_paid' : 'paid_in_full', pricing.depositAmount || pricing.totalPrice)} 
+                      className="text-[9px] font-black uppercase tracking-widest bg-emerald-600 text-white px-3 py-1.5 rounded-lg shadow-sm">
+                      Mark as Paid
+                    </button>
+                  </div>
+                )}
+                {(transactionRequest.status === 'approved' || transactionRequest.status === 'pickup_scheduling') && (payment.paymentStatus === 'paid_in_full' || payment.paymentStatus === 'deposit_paid') && (
+                  <button onClick={() => handleStatusUpdate('pickup_scheduling')} className="text-[9px] font-black uppercase tracking-widest bg-slate-900 text-white px-3 py-1.5 rounded-lg shadow-sm">Schedule Pickup</button>
+                )}
+                {transactionRequest.status === 'pickup_scheduling' && (
+                  <button onClick={() => handleStatusUpdate('pickup_confirmed')} className="text-[9px] font-black uppercase tracking-widest bg-slate-900 text-white px-3 py-1.5 rounded-lg shadow-sm">Confirm Schedule</button>
+                )}
+                {transactionRequest.status === 'pickup_confirmed' && (
+                  <button onClick={() => handleStatusUpdate('completed')} className="text-[9px] font-black uppercase tracking-widest bg-emerald-600 text-white px-3 py-1.5 rounded-lg shadow-sm hover:bg-emerald-500 animate-pulse">Mark Handed Over</button>
+                )}
+              </>
+            )}
 
-          {!isSeller && !isAdmin && (
-            <>
-              {['inquiry_submitted', 'reserved', 'approved'].includes(transactionRequest.status) && (
-                <button onClick={handleCancelRequest} className="text-[9px] font-black uppercase tracking-widest bg-white/20 border border-current px-3 py-1.5 rounded-lg hover:bg-white/10 transition-colors">Cancel Inquiry</button>
-              )}
-              {['pickup_scheduling', 'pickup_confirmed'].includes(transactionRequest.status) && (
-                <button onClick={handleCancelRequest} className="text-[9px] font-black uppercase tracking-widest bg-rose-600 text-white px-3 py-1.5 rounded-lg shadow-sm">Request Cancellation</button>
-              )}
-            </>
-          )}
+            {!isSeller && !isAdmin && (
+              <>
+                {payment.paymentStatus === 'payment_pending' && (
+                  <button onClick={() => handleManualPaymentUpdate(pricing.depositAmount > 0 ? 'deposit_paid' : 'paid_in_full', pricing.depositAmount || pricing.totalPrice)} 
+                    className="text-[9px] font-black uppercase tracking-widest bg-emerald-600 text-white px-3 py-1.5 rounded-lg shadow-sm flex items-center gap-2">
+                    <CheckCircle2 className="h-3 w-3" /> Settle Payment
+                  </button>
+                )}
+                {['inquiry_submitted', 'reserved', 'approved'].includes(transactionRequest.status) && (
+                  <button onClick={handleCancelRequest} className="text-[9px] font-black uppercase tracking-widest bg-white/20 border border-current px-3 py-1.5 rounded-lg hover:bg-white/10 transition-colors">Cancel Inquiry</button>
+                )}
+                {['pickup_scheduling', 'pickup_confirmed'].includes(transactionRequest.status) && (
+                  <button onClick={handleCancelRequest} className="text-[9px] font-black uppercase tracking-widest bg-rose-600 text-white px-3 py-1.5 rounded-lg shadow-sm">Request Cancellation</button>
+                )}
+              </>
+            )}
+          </div>
         </div>
+
+        {/* Payment Dashboard Mini-HUD */}
+        {transactionRequest.status !== 'cancelled' && transactionRequest.status !== 'declined' && (
+          <div className="bg-white border-b border-slate-100 p-4 sm:px-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+             <div className="flex items-center gap-4">
+               <div className={`p-2 rounded-xl ${payment.paymentStatus === 'paid_in_full' ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-400'}`}>
+                 <Wallet className="h-4 w-4" />
+               </div>
+               <div>
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <span className="text-[8px] font-black text-slate-300 uppercase tracking-widest">Financial Status</span>
+                    {payment.method && <span className="text-[8px] font-black text-primary-500 uppercase tracking-widest px-2 bg-primary-50 rounded-full border border-primary-100">{payment.method.replace('_', ' ')}</span>}
+                  </div>
+                  <h4 className="text-[11px] font-black text-slate-900 uppercase tracking-tight flex items-center gap-2">
+                    {payment.paymentStatus?.replace(/_/g, ' ') || 'Unpaid'}
+                    {payment.paymentStatus === 'paid_in_full' && <CheckCircle2 className="h-3 w-3 text-emerald-500" />}
+                  </h4>
+               </div>
+             </div>
+
+             <div className="flex items-center gap-6 sm:px-4 sm:border-l border-slate-50">
+                <div className="text-right">
+                   <p className="text-[8px] font-black text-slate-300 uppercase tracking-widest mb-0.5">Total Valuation</p>
+                   <p className="text-xs font-black text-slate-900">₱{pricing.totalPrice?.toLocaleString()}</p>
+                </div>
+                {pricing.depositAmount > 0 && (
+                  <div className="text-right">
+                    <p className="text-[8px] font-black text-primary-400 uppercase tracking-widest mb-0.5">Deposit Req.</p>
+                    <p className="text-xs font-black text-primary-600">₱{pricing.depositAmount?.toLocaleString()}</p>
+                  </div>
+                )}
+                <div className="text-right">
+                   <p className="text-[8px] font-black text-rose-400 uppercase tracking-widest mb-0.5">Remaining Balance</p>
+                   <p className="text-xs font-black text-rose-600">₱{pricing.balanceDue?.toLocaleString()}</p>
+                </div>
+             </div>
+          </div>
+        )}
       </div>
     );
   };

@@ -25,6 +25,31 @@ const adoptionRequestSchema = new mongoose.Schema({
         ref: 'Conversation',
         required: true
     },
+    paymentDetails: {
+        method: {
+            type: String,
+            enum: ['gcash', 'maya', 'bank_transfer', 'cash_on_pickup']
+        },
+        paymentStatus: {
+            type: String,
+            enum: ['unpaid', 'payment_pending', 'partially_paid', 'deposit_paid', 'paid_in_full', 'payment_failed', 'refunded'],
+            default: 'unpaid'
+        },
+        pricingBreakdown: {
+            totalPrice: Number,
+            depositAmount: { type: Number, default: 0 },
+            paidAmount: { type: Number, default: 0 },
+            balanceDue: { type: Number, default: 0 }
+        },
+        paymentProof: String, // URL to receipt photo
+        paidAt: Date,
+        history: [{
+            status: String,
+            amount: Number,
+            description: String,
+            timestamp: { type: Date, default: Date.now }
+        }]
+    },
     // Structured Inquiry Form Data
     inquiryData: {
         fullName: String,

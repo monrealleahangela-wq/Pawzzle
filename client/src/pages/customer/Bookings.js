@@ -856,38 +856,7 @@ const Bookings = ({ isSubcomponent = false }) => {
                       ))}
                     </div>
 
-                    {/* Requirements Section */}
-                    {selectedService.requirements && (
-                      <div className="mt-10 p-7 bg-white/50 backdrop-blur-sm rounded-[2rem] border border-secondary-200/40 relative overflow-hidden group">
-                        <div className="absolute top-0 right-0 w-24 h-24 bg-secondary-500/5 rounded-full blur-2xl -mr-12 -mt-12 transition-all duration-700 group-hover:scale-150" />
-                        
-                        <div className="flex items-center gap-4 mb-6 relative z-10">
-                          <div className="w-10 h-10 rounded-2xl bg-secondary-50 flex items-center justify-center border border-secondary-100/50 shadow-sm">
-                            <ShieldCheck className="h-5 w-5 text-primary-600" />
-                          </div>
-                          <div>
-                            <h4 className="text-[10px] font-black text-primary-900 uppercase tracking-widest leading-none mb-1">What you need</h4>
-                            <p className="text-[8px] font-bold text-primary-700/60 uppercase tracking-tight italic">Bring these for your visit</p>
-                          </div>
-                        </div>
-
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 relative z-10">
-                          {selectedService.requirements.split(',').map((req, i) => (
-                            <div key={i} className="flex items-center gap-3 bg-white/40 p-3.5 rounded-2xl border border-white/60 shadow-sm hover:translate-x-1 transition-all duration-300">
-                              <CheckCircle className="h-4 w-4 text-emerald-500 shrink-0" />
-                              <span className="text-[9px] font-black text-slate-800 uppercase tracking-tight">{req.trim()}</span>
-                            </div>
-                          ))}
-                        </div>
-                        
-                        <div className="mt-6 flex items-start gap-2.5 p-3.5 bg-secondary-500/5 rounded-xl border border-secondary-500/10 relative z-10">
-                          <AlertCircle className="h-3.5 w-3.5 text-primary-600 shrink-0 mt-0.5" />
-                          <p className="text-[8px] font-bold text-primary-900/70 uppercase tracking-wide leading-relaxed">
-                            Please present these documents to our staff upon arrival to ensure a smooth check-in process.
-                          </p>
-                        </div>
-                      </div>
-                    )}
+                    {/* Requirements Section removed as per user request */}
                   </div>
                 </div>
                 <button type="button" onClick={() => setFormStep(2)}

@@ -438,45 +438,7 @@ const BookingHistory = () => {
                                         </div>
                                     )}
 
-                                    {/* Customer Requirements Section - Added to match customer view */}
-                                    <div className="bg-primary-900 rounded-2xl p-10 text-white relative overflow-hidden shadow-2xl">
-                                        <ShieldCheck className="absolute -bottom-10 -right-10 w-48 h-48 opacity-10 animate-pulse" />
-                                        <div className="relative z-10 space-y-6">
-                                            <div className="flex items-center gap-3">
-                                                <div className="p-3 bg-white/10 backdrop-blur-md rounded-2xl border border-white/20">
-                                                    <AlertCircle className="h-6 w-6 text-primary-400" />
-                                                </div>
-                                                <div>
-                                                    <h3 className="text-xl font-black uppercase tracking-tighter">Customer Requirements</h3>
-                                                    <p className="text-[10px] font-black text-primary-400 uppercase tracking-widest leading-none">Requirements specified for this service</p>
-                                                </div>
-                                            </div>
-
-                                            <div className="grid grid-cols-1 gap-3">
-                                                {selectedBooking.service?.requirements ? (
-                                                    selectedBooking.service.requirements.split(',').map((req, index) => (
-                                                        <div key={index} className="flex items-center gap-4 p-4 bg-white/5 border border-white/10 rounded-2xl group hover:bg-white/10 transition-all">
-                                                            <div className="h-5 w-5 rounded-full border-2 border-primary-500/50 flex items-center justify-center bg-primary-500/10">
-                                                                <CheckCircle className="h-3 w-3 text-primary-500" />
-                                                            </div>
-                                                            <span className="text-[11px] font-black uppercase tracking-widest text-white/90">{req.trim()}</span>
-                                                        </div>
-                                                    ))
-                                                ) : (
-                                                    <div className="text-center py-6 border-2 border-dashed border-white/10 rounded-2xl">
-                                                        <p className="text-[10px] font-black text-white/40 uppercase tracking-widest">No specific requirements set</p>
-                                                    </div>
-                                                )}
-                                            </div>
-
-                                            <div className="flex items-center gap-3 p-4 bg-secondary-500/10 border border-secondary-500/20 rounded-2xl text-secondary-400">
-                                                <Activity className="h-5 w-5 shrink-0" />
-                                                <p className="text-[10px] font-black uppercase tracking-widest leading-relaxed">
-                                                    The customer was instructed to present these documents for verification upon arrival.
-                                                </p>
-                                            </div>
-                                        </div>
-                                    </div>
+                                    {/* Customer Requirements Section removed as per user request */}
 
                                     {(selectedBooking.notes || selectedBooking.adminNotes) && (
                                         <div className="bg-secondary-50/50 border border-secondary-100 rounded-[2rem] p-8">

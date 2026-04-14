@@ -72,7 +72,6 @@ const ServiceManagement = () => {
     homeServiceAvailable: false,
     homeServicePrice: 0,
     maxPetsPerSession: 1,
-    requirements: 'Valid ID and contact details, Pet vaccination record, Pet information (breed, age, health status), Signed service consent or waiver, Appointment confirmation (if required)',
     isActive: true,
     images: []
   };
@@ -126,11 +125,9 @@ const ServiceManagement = () => {
     setModalTab('core');
   };
 
-  const handleEdit = (service) => {
     setFormData({
       ...initialFormState,
-      ...service,
-      requirements: typeof service.requirements === 'string' ? service.requirements : (Array.isArray(service.requirements) ? service.requirements.join(', ') : '')
+      ...service
     });
     setEditingService(service);
     setModalTab('core');
@@ -495,15 +492,7 @@ const ServiceManagement = () => {
                     )}
                   </div>
 
-                  {/* Requirements */}
-                  <div className="space-y-3">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 flex items-center gap-2">
-                      <AlertTriangle className="h-4 w-4 text-secondary-500" /> Requirements & Notes
-                    </label>
-                    <textarea value={formData.requirements} onChange={e => setFormData(p => ({ ...p, requirements: e.target.value }))}
-                      className="w-full px-8 py-8 bg-slate-50 border border-slate-100 rounded-2xl text-[12px] font-medium leading-relaxed h-44 resize-none outline-none shadow-inner"
-                      placeholder="E.G. PET MUST HAVE UP-TO-DATE VACCINATIONS, BRING MEDICAL RECORDS, NO AGGRESSIVE PETS..." />
-                  </div>
+                  {/* Requirements section removed as per user request */}
                 </div>
               )}
 
