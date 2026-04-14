@@ -1,6 +1,7 @@
 const Delivery = require('../models/Delivery');
 const Order = require('../models/Order');
 const Booking = require('../models/Booking');
+const Notification = require('../models/Notification');
 const crypto = require('crypto');
 
 const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER;
@@ -232,6 +233,12 @@ const sendDeliveryMessage = async (req, res) => {
 
     const delivery = await Delivery.findOne({
       $or: [{ riderToken: token }, { trackingToken: token }]
+    }).populate({
+      path: 'order',
+      populate: { path: 'store', populate: { path: 'owner' } }
+    }).populate({
+      path: 'booking',
+      populate: { path: 'store', populate: { path: 'owner' } }
     });
 
     if (!delivery || !delivery.isLive) return res.status(403).json({ message: 'Chat disabled' });
@@ -244,6 +251,39 @@ const sendDeliveryMessage = async (req, res) => {
     const io = req.app.get('socketio');
     if (io) {
       io.to(`delivery_${delivery._id}`).emit('newMessage', { deliveryId: delivery._id, ...message });
+      
+      // If rider sends a message, notify the customer AND the seller
+      if (sender === 'rider') {
+        const customerId = delivery.order?.customer || delivery.booking?.customer;
+        const sellerId = delivery.order?.store?.owner?._id || delivery.booking?.store?.owner?._id;
+        
+        const notificationData = {
+          type: 'chat_message',
+          title: 'Message from Rider',
+          message: `Rider message: "${content.substring(0, 50)}${content.length > 50 ? '...' : ''}"`,
+          relatedId: delivery.order?._id || delivery.booking?._id,
+          relatedModel: delivery.order ? 'Order' : 'Booking',
+          targetUrl: `/track/${delivery.trackingToken}`
+        };
+
+        // Notify Customer
+        if (customerId) {
+          const custNotif = new Notification({ ...notificationData, recipient: customerId });
+          await custNotif.save();
+          io.to(`user_${customerId}`).emit('newNotification', custNotif);
+        }
+        
+        // Notify Seller
+        if (sellerId) {
+          const sellerNotif = new Notification({ 
+            ...notificationData, 
+            recipient: sellerId,
+            message: `[Order Update] Rider sent a message: "${content.substring(0, 50)}${content.length > 50 ? '...' : ''}"`
+          });
+          await sellerNotif.save();
+          io.to(`user_${sellerId}`).emit('newNotification', sellerNotif);
+        }
+      }
     }
     
     res.status(201).json({ message });
