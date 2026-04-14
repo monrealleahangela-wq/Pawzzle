@@ -1070,7 +1070,10 @@ const AdminPets = () => {
                                 </label>
                              </div>
                           </div>
-                                      </div>
+                       </div>
+                    </div>
+                  </div>
+                </div>
               )}
 
               {/* STAGE 4: PAYMENT OPTIONS */}

@@ -125,6 +125,7 @@ const ServiceManagement = () => {
     setModalTab('core');
   };
 
+  const handleEdit = (service) => {
     setFormData({
       ...initialFormState,
       ...service
