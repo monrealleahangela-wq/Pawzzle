@@ -85,34 +85,52 @@ const createAdoptionRequest = async (req, res) => {
             }]
         });
 
+        console.log(`[AdoptionDebug] Inquiry data prepared for pet: ${pet.name}. Saving...`);
         await adoptionRequest.save();
+        console.log(`✅ [AdoptionDebug] Inquiry saved. ID: ${adoptionRequest._id}`);
 
         // Link inquiry to conversation
         conversation.adoptionRequest = adoptionRequest._id;
         await conversation.save();
 
         // Step 1: Send high-level system header
-        const systemHeader = new Message({
-            conversation: conversationId,
-            sender: req.user._id, // System usually acts on behalf of action-taker
-            content: `📢 Purchase inquiry started for ${pet.name}`,
-            type: 'system'
-        });
-        await systemHeader.save();
+        try {
+            const systemHeader = new Message({
+                conversation: conversationId,
+                sender: req.user._id, // System usually acts on behalf of action-taker
+                content: `📢 Purchase inquiry started for ${pet.name}`,
+                type: 'system'
+            });
+            await systemHeader.save();
+        } catch (msgErr) {
+            console.warn('[AdoptionDebug] Failed to send system header:', msgErr.message);
+        }
 
         // Step 2: Send structured inquiry summary into chat
-        const inquirySummary = new Message({
-            conversation: conversationId,
-            sender: req.user._id,
-            content: `📋 **INQUIRY DETAILS**\n**Buyer:** ${fullName}\n**Area:** ${cityArea}\n**Experience:** ${previousExperience}\n**Reason:** ${interestReason}\n**Preferred Pickup:** ${new Date(preferredPickupDate).toLocaleDateString()}`,
-            type: 'text' // Sent as text so it's readable in chat history
-        });
-        await inquirySummary.save();
+        try {
+            const inquirySummary = new Message({
+                conversation: conversationId,
+                sender: req.user._id,
+                content: `📋 **INQUIRY DETAILS**\n**Buyer:** ${fullName || 'N/A'}\n**Area:** ${cityArea || 'N/A'}\n**Experience:** ${previousExperience || 'N/A'}\n**Reason:** ${interestReason || 'N/A'}\n**Preferred Pickup:** ${preferredPickupDate ? new Date(preferredPickupDate).toLocaleDateString() : 'TBD'}`,
+                type: 'text' // Sent as text so it's readable in chat history
+            });
+            await inquirySummary.save();
+        } catch (msgErr) {
+            console.warn('[AdoptionDebug] Failed to send inquiry summary:', msgErr.message);
+        }
 
         res.status(201).json({ message: 'Inquiry submitted successfully', request: adoptionRequest });
     } catch (error) {
         console.error('Create inquiry error:', error);
-        res.status(500).json({ message: 'Server error' });
+        
+        if (error.code === 11000) {
+            return res.status(409).json({ message: 'You already have a record for this pet. Please check your existing inquiries.' });
+        }
+        
+        res.status(500).json({ 
+            message: 'Internal server error during inquiry submission',
+            error: error.message 
+        });
     }
 };
 

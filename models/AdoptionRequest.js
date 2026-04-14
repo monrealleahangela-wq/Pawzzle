@@ -109,7 +109,8 @@ const adoptionRequestSchema = new mongoose.Schema({
 });
 
 // Index for performance
-adoptionRequestSchema.index({ pet: 1, customer: 1 }, { unique: true });
+// Index for performance (Removed unique constraint to allow re-inquiring after cancellation)
+adoptionRequestSchema.index({ pet: 1, customer: 1 });
 adoptionRequestSchema.index({ seller: 1, status: 1 });
 adoptionRequestSchema.index({ customer: 1, status: 1 });
 
