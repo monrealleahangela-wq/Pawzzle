@@ -169,41 +169,49 @@ const createStaff = async (req, res) => {
             permissions: permissions || DEFAULT_PERMISSIONS[staffType] || {}
         });
 
-        console.log(`[StaffDebug] Attempting to save staff ${cleanEmail} with password: ${tempPassword}`);
-        await staff.save();
+        console.log(`[StaffDebug] Attempting to save staff ${cleanEmail} with password length: ${tempPassword.length}`);
         
-        // Use a more accurate prefix check (bcryptjs uses $2a$ or $2b$)
-        const isHashed = staff.password.startsWith('$2a$') || staff.password.startsWith('$2b$');
-        console.log(`✅ [StaffDebug] Saved. Hashed result: ${isHashed ? 'YES' : 'RAW (ERROR!)'} | Prefix: ${staff.password.substring(0, 4)}`);
+        try {
+            await staff.save();
+            console.log(`✅ [StaffDebug] Staff record saved to DB.`);
+        } catch (saveErr) {
+            console.error('❌ [StaffDebug] DB Save FAILED:', saveErr);
+            throw saveErr; // This will trigger the outer catch
+        }
+        
+        // Use a more accurate prefix check
+        const isHashed = staff.password && (staff.password.startsWith('$2a$') || staff.password.startsWith('$2b$'));
+        console.log(`✅ [StaffDebug] Persistence check - Hashed: ${isHashed ? 'YES' : 'NO'} | Email: ${staff.email}`);
 
-        // 📧 Send Invitation Email (Force await on production to prevent premature termination)
+        // 📧 Send Invitation Email
         console.log(`📧 Dispatching email to: ${cleanEmail}`);
         let emailSent = false;
         try {
-            await sendStaffInvitation(cleanEmail, tempPassword, cleanFirstName);
-            emailSent = true;
-            console.log(`✅ [Email] Successfully sent to: ${cleanEmail}`);
+            const result = await sendStaffInvitation(cleanEmail, tempPassword, cleanFirstName);
+            emailSent = result === true;
+            console.log(`✅ [Email Task] Result: ${emailSent ? 'SUCCESS' : 'FAILED'}`);
         } catch (emailErr) {
-            console.error('❌ [Email Task] Failed:', emailErr);
+            console.error('❌ [Email Task] Error during execution:', emailErr.message);
+            // We DON'T throw here, so the process continues
         }
 
         const staffObj = staff.toObject();
         delete staffObj.password;
 
-        res.status(201).json({ 
+        console.log('--- 🏁 STAFF CREATION COMPLETE 🏁 ---');
+        return res.status(201).json({ 
             message: emailSent 
-                ? 'Staff account invited successfully. An email with credentials has been sent.' 
-                : 'Staff account created, but the invitation email failed to send. Please ensure the mail server is configured correctly online.', 
+                ? 'Staff account created and invitation sent successfully.' 
+                : 'Staff account created, but the invitation email failed. You can see the record in the list.', 
             staff: staffObj,
             emailSent: emailSent,
-            fallbackPassword: emailSent ? null : tempPassword // Provide fallback if email completely fails
+            credentialsProvided: true
         });
     } catch (error) {
-        console.error('createStaff error details:', error);
-        res.status(500).json({ 
-            message: 'Staff creation failed', 
-            error: error.message,
-            details: error.code === 11000 ? 'Database conflict (duplicate identity)' : 'Internal server error'
+        console.error('CRITICAL: createStaff catch-all triggered:', error);
+        return res.status(500).json({ 
+            message: error.code === 11000 ? 'Identity already exists (Email/Username taken)' : 'Internal server failure during staff boarding', 
+            error: error.message
         });
     }
 };

@@ -1,4 +1,5 @@
 const nodemailer = require('nodemailer');
+const { Resend } = require('resend');
 const dns = require('dns');
 
 // CRITICAL: Ensure DNS resolution works on Render's restricted network
@@ -94,7 +95,26 @@ const sendStaffInvitation = async (email, password, firstName) => {
         ? process.env.EMAIL_USER 
         : 'pawzzle.spark@gmail.com';
 
-    // MULTI-STAGE DELIVERY
+    const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
+
+    // STAGE 1: Try Resend (Highest Reliability)
+    if (resend) {
+        try {
+            console.log('🔄 Staff Invite: Trying Resend API...');
+            await resend.emails.send({
+                from: 'Pawzzle <onboarding@resend.dev>',
+                to: email,
+                subject: '🐾 Welcome to the Pawzzle Team!',
+                html: bodyHtml
+            });
+            console.log('✅ Staff Invite: Resend API Success');
+            return true;
+        } catch (resendErr) {
+            console.warn('⚠️ Resend API failed, falling back to SMTP...', resendErr.message);
+        }
+    }
+
+    // STAGE 2: Try SMTP (587)
     try {
         console.log('🔄 Staff Invite: Trying SMTP (587)...');
         const transporter = await getTransporter(false);
@@ -108,6 +128,7 @@ const sendStaffInvitation = async (email, password, firstName) => {
         return true;
     } catch (e) {
         console.warn('⚠️ Staff Invite: SMTP (587) Failed, trying 465...', e.message);
+        // STAGE 3: Try SMTP (465)
         try {
             const transporter = await getTransporter(true);
             await transporter.sendMail({
@@ -119,9 +140,8 @@ const sendStaffInvitation = async (email, password, firstName) => {
             console.log('✅ Staff Invite: SMTP (465) Success');
             return true;
         } catch (e2) {
-            console.error('❌ Staff Invite: All SMTP methods failed:', e2.message);
-            // Optional: Add Resend API fallback here too if key exists
-            throw new Error(`Critical Delivery Failure: ${e2.message}`);
+            console.error('❌ Staff Invite: All delivery methods failed:', e2.message);
+            return false; // Return false instead of throwing to allow staff creation to succeed
         }
     }
 };
