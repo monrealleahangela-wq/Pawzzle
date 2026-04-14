@@ -202,10 +202,13 @@ const createStaff = async (req, res) => {
         console.log('--- 🏁 STAFF CREATION COMPLETE 🏁 ---');
         return res.status(201).json({ 
             message: emailSent 
-                ? 'Staff account created and invitation sent successfully.' 
+                ? (emailResult.provider === 'resend' 
+                    ? 'Staff account created. Note: Invitation sent via Resend Onboarding (Check account owner email or spam).' 
+                    : 'Staff account created and invitation sent successfully.')
                 : `Staff created, but email failed: ${emailResult.errorMessage || emailResult.error || 'Unknown service error'}.`, 
             staff: staffObj,
             emailSent: emailSent,
+            emailProvider: emailResult.provider,
             emailError: emailResult.errorMessage || emailResult.error,
             credentialsProvided: true
         });
