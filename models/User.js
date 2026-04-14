@@ -139,6 +139,19 @@ const userSchema = new mongoose.Schema({
   requiresPasswordChange: {
     type: Boolean,
     default: false
+  },
+  // Trust & Reputation Layer
+  isVerified: { type: Boolean, default: false },
+  verificationBadge: { type: String, enum: ['none', 'starter', 'trusted', 'premium'], default: 'none' },
+  reputation: {
+    successfulHandovers: { type: Number, default: 0 },
+    cancellationCount: { type: Number, default: 0 },
+    noShowFlags: { type: Number, default: 0 },
+    lastActiveAt: { type: Date, default: Date.now }
+  },
+  activityStats: {
+    totalInquiriesSubmitted: { type: Number, default: 0 },
+    activePetInquiries: { type: Number, default: 0 }
   }
 });
 

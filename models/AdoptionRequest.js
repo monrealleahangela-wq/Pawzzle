@@ -25,10 +25,37 @@ const adoptionRequestSchema = new mongoose.Schema({
         ref: 'Conversation',
         required: true
     },
+    // Structured Inquiry Form Data
+    inquiryData: {
+        fullName: String,
+        contactNumber: String,
+        cityArea: String,
+        preferredPickupDate: Date,
+        interestReason: String,
+        previousExperience: String,
+        pickupConfirmation: { type: Boolean, default: false }
+    },
+    // Scheduling
+    scheduling: {
+        confirmedDate: Date,
+        timeSlot: String,
+        notes: String
+    },
     status: {
         type: String,
-        enum: ['pending', 'reserved', 'approved', 'rejected', 'ready_for_pickup', 'shipped', 'delivered', 'cancelled'],
-        default: 'pending'
+        enum: [
+            'inquiry_submitted', 
+            'under_review', 
+            'reserved', 
+            'approved', 
+            'pickup_scheduling', 
+            'pickup_confirmed', 
+            'completed', 
+            'cancelled', 
+            'declined', 
+            'expired'
+        ],
+        default: 'inquiry_submitted'
     },
     notes: {
         type: String,
@@ -36,6 +63,7 @@ const adoptionRequestSchema = new mongoose.Schema({
     },
     history: [{
         status: String,
+        description: String,
         updatedAt: {
             type: Date,
             default: Date.now
@@ -46,6 +74,7 @@ const adoptionRequestSchema = new mongoose.Schema({
         },
         reason: String
     }],
+    reservationExpiresAt: Date,
     isDeleted: {
         type: Boolean,
         default: false

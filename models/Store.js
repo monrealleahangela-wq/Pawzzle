@@ -140,7 +140,10 @@ const storeSchema = new mongoose.Schema({
     totalProducts: { type: Number, default: 0 },
     totalOrders: { type: Number, default: 0 },
     totalRevenue: { type: Number, default: 0 },
-    totalPlatformFees: { type: Number, default: 0 }
+    totalPlatformFees: { type: Number, default: 0 },
+    responseRate: { type: Number, default: 0 }, // percentage
+    responseTime: { type: String, default: 'under an hour' }, // human readable
+    activeListingsCount: { type: Number, default: 0 }
   },
   balance: {
     type: Number,

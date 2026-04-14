@@ -3,10 +3,21 @@ const Conversation = require('../models/Conversation');
 const Message = require('../models/Message');
 const Pet = require('../models/Pet');
 
-// Create an adoption request
+// Create a structured pet purchase inquiry
 const createAdoptionRequest = async (req, res) => {
     try {
-        const { petId, conversationId, notes } = req.body;
+        const { 
+            petId, 
+            conversationId, 
+            notes,
+            fullName,
+            contactNumber,
+            cityArea,
+            preferredPickupDate,
+            interestReason,
+            previousExperience,
+            pickupConfirmation 
+        } = req.body;
 
         // Verify pet and conversation
         const pet = await Pet.findById(petId);
@@ -14,19 +25,19 @@ const createAdoptionRequest = async (req, res) => {
             return res.status(404).json({ message: 'Pet not found' });
         }
 
-        if (pet.status !== 'available') {
-            return res.status(400).json({ message: `This pet is currently ${pet.status} and not available for new requests` });
+        if (pet.status !== 'available' && pet.status !== 'available') {
+            return res.status(400).json({ message: `This pet is currently ${pet.status} and not available for new inquiries` });
         }
 
-        const conversation = await Conversation.findById(conversationId);
+        const conversation = await Conversation.findById(conversationId).populate('participants');
         if (!conversation) {
             return res.status(404).json({ message: 'Conversation not found' });
         }
 
-        // Check if a request already exists
-        const existingRequest = await AdoptionRequest.findOne({ pet: petId, customer: req.user._id });
+        // Check if an inquiry already exists
+        const existingRequest = await AdoptionRequest.findOne({ pet: petId, customer: req.user._id, status: { $nin: ['cancelled', 'declined', 'expired'] } });
         if (existingRequest) {
-            return res.status(400).json({ message: 'You already have an active adoption request for this pet', request: existingRequest });
+            return res.status(400).json({ message: 'You already have an active inquiry for this pet', request: existingRequest });
         }
 
         const adoptionRequest = new AdoptionRequest({
@@ -35,32 +46,52 @@ const createAdoptionRequest = async (req, res) => {
             seller: pet.addedBy,
             store: pet.store,
             conversation: conversationId,
+            inquiryData: {
+                fullName,
+                contactNumber,
+                cityArea,
+                preferredPickupDate,
+                interestReason,
+                previousExperience,
+                pickupConfirmation
+            },
             notes,
+            status: 'inquiry_submitted',
             history: [{
-                status: 'pending',
+                status: 'inquiry_submitted',
                 updatedBy: req.user._id,
-                reason: 'Initial request'
+                description: `Initial purchase inquiry started for ${pet.name}`,
+                reason: 'Inquiry Submitted'
             }]
         });
 
         await adoptionRequest.save();
 
-        // Link adoption request to conversation
+        // Link inquiry to conversation
         conversation.adoptionRequest = adoptionRequest._id;
         await conversation.save();
 
-        // Send system message to chat
-        const systemMsg = new Message({
+        // Step 1: Send high-level system header
+        const systemHeader = new Message({
             conversation: conversationId,
-            sender: req.user._id,
-            content: 'A new inquiry has been submitted.',
+            sender: req.user._id, // System usually acts on behalf of action-taker
+            content: `📢 Purchase inquiry started for ${pet.name}`,
             type: 'system'
         });
-        await systemMsg.save();
+        await systemHeader.save();
+
+        // Step 2: Send structured inquiry summary into chat
+        const inquirySummary = new Message({
+            conversation: conversationId,
+            sender: req.user._id,
+            content: `📋 **INQUIRY DETAILS**\n**Buyer:** ${fullName}\n**Area:** ${cityArea}\n**Experience:** ${previousExperience}\n**Reason:** ${interestReason}\n**Preferred Pickup:** ${new Date(preferredPickupDate).toLocaleDateString()}`,
+            type: 'text' // Sent as text so it's readable in chat history
+        });
+        await inquirySummary.save();
 
         res.status(201).json({ message: 'Inquiry submitted successfully', request: adoptionRequest });
     } catch (error) {
-        console.error('Create adoption request error:', error);
+        console.error('Create inquiry error:', error);
         res.status(500).json({ message: 'Server error' });
     }
 };
@@ -89,32 +120,34 @@ const updateAdoptionStatus = async (req, res) => {
         request.history.push({
             status,
             updatedBy: req.user._id,
+            description: `Status changed to ${status.replace(/_/g, ' ')}`,
             reason
         });
         await request.save();
 
-        // Sync Pet status based on adoption status
-        if (status === 'reserved' || status === 'approved' || status === 'ready_for_pickup' || status === 'shipped') {
+        // Sync Pet status based on pet inquiry status
+        if (['reserved', 'approved', 'pickup_scheduling', 'pickup_confirmed'].includes(status)) {
             await Pet.findByIdAndUpdate(request.pet, {
                 status: 'reserved',
-                isAvailable: false // Once reserved/approved/shipped, it shouldn't be available for new requests
+                isAvailable: false 
             });
-        } else if (status === 'delivered') {
+        } else if (status === 'completed') {
+            const pet = await Pet.findById(request.pet);
             await Pet.findByIdAndUpdate(request.pet, {
-                status: 'adopted',
+                status: pet.listingType === 'adoption' ? 'adopted' : 'sold',
                 isAvailable: false
             });
-        } else if (status === 'rejected' || status === 'cancelled') {
-            // Check if there are ANY other active approved/delivered requests for this pet
+        } else if (['declined', 'cancelled', 'expired'].includes(status)) {
+            // Check if there are ANY other active reserved/approved requests for this pet
             const otherActiveRequest = await AdoptionRequest.findOne({
                 pet: request.pet,
                 _id: { $ne: request._id },
-                status: { $in: ['reserved', 'approved', 'ready_for_pickup', 'shipped', 'delivered'] }
+                status: { $in: ['reserved', 'approved', 'pickup_scheduling', 'pickup_confirmed'] }
             });
 
             if (!otherActiveRequest) {
                 const pet = await Pet.findById(request.pet);
-                if (pet && (pet.status === 'reserved' || pet.status === 'adopted')) {
+                if (pet && (pet.status === 'reserved')) {
                     pet.status = 'available';
                     pet.isAvailable = true;
                     await pet.save();
@@ -122,20 +155,24 @@ const updateAdoptionStatus = async (req, res) => {
             }
         }
 
-        // Send system message to chat
+        // Send professional system message to chat
         const statusLabels = {
-            approved: 'approved ✅',
-            rejected: 'rejected ❌',
-            ready_for_pickup: 'ready for pickup 🏪',
-            shipped: 'shipped 🚚',
-            delivered: 'delivered 🏠',
-            cancelled: 'cancelled'
+            inquiry_submitted: 'Inquiry Submitted 📋',
+            under_review: 'Under Review 🔍',
+            reserved: 'Reserved for You 🌟',
+            approved: 'Inquiry Approved ✅',
+            pickup_scheduling: 'Pickup Scheduling 📅',
+            pickup_confirmed: 'Pickup Confirmed 🤝',
+            completed: 'Pet Handed Over 🏠✨',
+            cancelled: 'Cancelled ⚪',
+            declined: 'Declined ❌',
+            expired: 'Reservation Expired ⏰'
         };
 
         const systemMsg = new Message({
             conversation: request.conversation._id,
             sender: req.user._id,
-            content: `Inquiry status has been updated to: ${statusLabels[status] || status}` + (reason ? `\nReason: ${reason}` : ''),
+            content: `📢 Status Update: ${statusLabels[status] || status.replace(/_/g, ' ')}` + (reason ? `\n\nNote: ${reason}` : ''),
             type: 'system'
         });
         await systemMsg.save();
