@@ -719,7 +719,6 @@ const AdminPets = () => {
               </button>
             </header>
 
-            {/* Tabs */}
             <nav className="px-5 py-2 border-b border-slate-50 flex gap-3 overflow-x-auto no-scrollbar shrink-0 bg-slate-50/50">
               {[
                 { id: 'identity', label: '1. Basic Info', icon: Info },
@@ -736,12 +735,9 @@ const AdminPets = () => {
               ))}
             </nav>
 
-            {/* Content Deck */}
             <div className="flex-1 overflow-y-auto p-6 no-scrollbar">
-              {/* STAGE 1: CORE IDENTITY */}
               {modalTab === 'identity' && (
                 <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-500">
-                  {/* Row 0: Profile Image Upload */}
                   <div className="flex flex-col md:flex-row gap-8 items-center bg-slate-900 p-8 rounded-[3rem] text-white relative overflow-hidden border border-white/5">
                     <div className="relative shrink-0 group">
                       <div className="w-40 h-40 rounded-3xl bg-white/5 border-2 border-white/10 overflow-hidden flex items-center justify-center relative shadow-2xl transition-all group-hover:border-rose-500">
@@ -777,14 +773,12 @@ const AdminPets = () => {
                     </div>
                   </div>
 
-                  {/* Row 1: Name */}
                   <div className="space-y-2">
                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 underline decoration-rose-500/30 underline-offset-4">Pet Alias / Name</label>
                     <input type="text" required value={petForm.name} onChange={e => setPetForm(p => ({ ...p, name: e.target.value }))}
                       className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-[14px] font-black uppercase outline-none focus:ring-4 focus:ring-rose-500/5 transition-all" placeholder="Enter Pet Name..." />
                   </div>
 
-                  {/* Row 2: Species + Breed */}
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1.5">
                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Species</label>
@@ -800,7 +794,6 @@ const AdminPets = () => {
                     </div>
                   </div>
 
-                  {/* Row 3: Birthday + Age Units */}
                   <div className="bg-slate-50/50 border border-slate-100 rounded-[2.5rem] p-8">
                     <div className="flex items-center gap-2 mb-6">
                       <Clock className="w-4 h-4 text-slate-400" />
@@ -854,7 +847,6 @@ const AdminPets = () => {
                     </div>
                   </div>
 
-                  {/* Row 4: Weight & Color */}
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1.5">
                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Weight (KG)</label>
@@ -868,7 +860,6 @@ const AdminPets = () => {
                     </div>
                   </div>
 
-                  {/* Row 5: Gender + Size */}
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1.5">
                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Gender</label>
@@ -894,7 +885,6 @@ const AdminPets = () => {
                     </div>
                   </div>
 
-                  {/* Row 6: Description */}
                   <div className="space-y-1.5">
                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Description</label>
                     <textarea required value={petForm.description} onChange={e => setPetForm(p => ({ ...p, description: e.target.value }))}
@@ -903,11 +893,9 @@ const AdminPets = () => {
                 </div>
               )}
 
-              {/* STAGE 2: HEALTH PROTOCOLS */}
               {modalTab === 'health' && (
                 <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-500">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {/* Vaccination Status */}
                     <div className="bg-slate-900 border border-white/5 rounded-[2.5rem] p-8 text-white relative overflow-hidden">
                       <Shield className="absolute top-6 right-6 w-24 h-24 opacity-10 pointer-events-none" />
                       <h4 className="text-[10px] font-black text-rose-500 uppercase tracking-[0.4em] mb-6">Vaccination Status</h4>
@@ -925,7 +913,6 @@ const AdminPets = () => {
                       </div>
                     </div>
 
-                    {/* Quick Toggles */}
                     <div className="space-y-4">
                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Medical Flags</label>
                       <div className="grid grid-cols-2 gap-4">
@@ -952,7 +939,6 @@ const AdminPets = () => {
                     </div>
                   </div>
 
-                  {/* Vet Records Upload */}
                   <div className="bg-slate-50 border border-slate-100 rounded-[2.5rem] p-8">
                     <div className="flex items-center justify-between mb-6">
                       <div className="flex items-center gap-3">
@@ -988,7 +974,6 @@ const AdminPets = () => {
                 </div>
               )}
 
-              {/* STAGE 3: PRICING & COMMERCE */}
               {modalTab === 'commerce' && (
                 <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-500">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -1001,15 +986,8 @@ const AdminPets = () => {
                         <div className="space-y-4">
                          <div className="space-y-2">
                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] px-1 italic">Immediate Listing Price (PHP)</label>
-                           <input 
-                             type="number" 
-                             required 
-                             step="0.01"
-                             value={petForm.price} 
-                             onChange={e => setPetForm(p => ({ ...p, price: e.target.value }))}
-                             className="w-full px-6 py-4 bg-white border-2 border-slate-100 rounded-2xl text-2xl font-black text-slate-900 outline-none focus:border-rose-500 focus:ring-4 focus:ring-rose-500/10 transition-all shadow-inner" 
-                             placeholder="E.G. 15000" 
-                           />
+                           <input type="number" required step="0.01" value={petForm.price} onChange={e => setPetForm(p => ({ ...p, price: e.target.value }))}
+                             className="w-full px-6 py-4 bg-white border-2 border-slate-100 rounded-2xl text-2xl font-black text-slate-900 outline-none focus:border-rose-500 focus:ring-4 focus:ring-rose-500/10 transition-all shadow-inner" placeholder="E.G. 15000" />
                           </div>
                           <div className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/5">
                             <span className="text-[10px] font-black uppercase tracking-widest">Price Negotiable?</span>
@@ -1073,9 +1051,9 @@ const AdminPets = () => {
                        </div>
                     </div>
                   </div>
+                </div>
               )}
 
-              {/* STAGE 4: PAYMENT OPTIONS */}
               {modalTab === 'payments' && (
                 <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-500">
                   <div className="bg-slate-900 rounded-[2.5rem] p-8 text-white relative overflow-hidden border border-white/5">
@@ -1086,7 +1064,6 @@ const AdminPets = () => {
                     </div>
 
                     <div className="space-y-10 relative z-10">
-                      {/* Payment Methods */}
                       <div className="space-y-4">
                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Allowed Payment methods</label>
                         <div className="grid grid-cols-2 gap-3">
@@ -1096,26 +1073,14 @@ const AdminPets = () => {
                             { id: 'bank_transfer', label: 'Bank Transfer' },
                             { id: 'cash_on_pickup', label: 'Cash on Pickup' }
                           ].map(method => (
-                            <button
-                              key={method.id}
-                              type="button"
+                            <button key={method.id} type="button"
                               onClick={() => {
                                 const current = petForm.allowedPaymentMethods || [];
-                                if (current.includes(method.id)) {
-                                  setPetForm(p => ({ ...p, allowedPaymentMethods: current.filter(m => m !== method.id) }));
-                                } else {
-                                  setPetForm(p => ({ ...p, allowedPaymentMethods: [...current, method.id] }));
-                                }
+                                if (current.includes(method.id)) setPetForm(p => ({ ...p, allowedPaymentMethods: current.filter(m => m !== method.id) }));
+                                else setPetForm(p => ({ ...p, allowedPaymentMethods: [...current, method.id] }));
                               }}
-                              className={`flex items-center gap-3 p-4 rounded-2xl border-2 transition-all ${
-                                (petForm.allowedPaymentMethods || []).includes(method.id)
-                                  ? 'bg-white/10 border-rose-500 text-white shadow-lg'
-                                  : 'bg-white/5 border-white/5 text-white/40 hover:bg-white/10'
-                              }`}
-                            >
-                              <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
-                                (petForm.allowedPaymentMethods || []).includes(method.id) ? 'border-rose-500' : 'border-white/20'
-                              }`}>
+                              className={`flex items-center gap-3 p-4 rounded-2xl border-2 transition-all ${(petForm.allowedPaymentMethods || []).includes(method.id) ? 'bg-white/10 border-rose-500 text-white shadow-lg' : 'bg-white/5 border-white/5 text-white/40 hover:bg-white/10'}`}>
+                              <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${(petForm.allowedPaymentMethods || []).includes(method.id) ? 'border-rose-500' : 'border-white/20'}`}>
                                 {(petForm.allowedPaymentMethods || []).includes(method.id) && <div className="w-2 h-2 bg-rose-500 rounded-full" />}
                               </div>
                               <span className="text-[11px] font-black uppercase tracking-widest">{method.label}</span>
@@ -1124,7 +1089,6 @@ const AdminPets = () => {
                         </div>
                       </div>
 
-                      {/* Payment Configuration */}
                       <div className="space-y-4 pt-6 border-t border-white/5">
                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Payment Strategy</label>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -1133,16 +1097,8 @@ const AdminPets = () => {
                             { id: 'deposit_first', label: 'Reservation', desc: 'Deposit + Balance' },
                             { id: 'cash_on_pickup_only', label: 'Cash Only', desc: 'Pay at Pickup' }
                           ].map(config => (
-                            <button
-                              key={config.id}
-                              type="button"
-                              onClick={() => setPetForm(p => ({ ...p, paymentConfig: config.id }))}
-                              className={`p-5 rounded-2xl border-2 transition-all flex flex-col gap-2 ${
-                                petForm.paymentConfig === config.id
-                                  ? 'bg-white/10 border-rose-500 text-white shadow-lg'
-                                  : 'bg-white/5 border-white/5 text-white/40 hover:bg-white/10'
-                              }`}
-                            >
+                            <button key={config.id} type="button" onClick={() => setPetForm(p => ({ ...p, paymentConfig: config.id }))}
+                              className={`p-5 rounded-2xl border-2 transition-all flex flex-col gap-2 ${petForm.paymentConfig === config.id ? 'bg-white/10 border-rose-500 text-white shadow-lg' : 'bg-white/5 border-white/5 text-white/40 hover:bg-white/10'}`}>
                               <span className="text-[10px] font-black uppercase tracking-widest leading-none">{config.label}</span>
                               <span className="text-[8px] font-bold opacity-40 uppercase tracking-widest">{config.desc}</span>
                             </button>
@@ -1152,14 +1108,8 @@ const AdminPets = () => {
                         {petForm.paymentConfig === 'deposit_first' && (
                           <div className="mt-6 p-6 bg-white/5 rounded-3xl border border-white/10 animate-in zoom-in-95 duration-300">
                              <label className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] px-1 mb-2 block">Reservation Fee / Deposit (PHP)</label>
-                             <input 
-                               type="number" 
-                               value={petForm.depositAmount} 
-                               onChange={e => setPetForm(p => ({ ...p, depositAmount: e.target.value }))}
-                               className="w-full px-6 py-4 bg-white/5 border-2 border-white/10 rounded-2xl text-xl font-black text-white outline-none focus:border-rose-500 transition-all" 
-                               placeholder="E.G. 2000" 
-                             />
-                             <p className="mt-2 text-[9px] font-bold text-white/30 uppercase tracking-widest italic"> Remaining balance of ₱{(parseFloat(petForm.price || 0) - parseFloat(petForm.depositAmount || 0)).toLocaleString()} will be due on pickup.</p>
+                             <input type="number" value={petForm.depositAmount} onChange={e => setPetForm(p => ({ ...p, depositAmount: e.target.value }))}
+                               className="w-full px-6 py-4 bg-white/5 border-2 border-white/10 rounded-2xl text-xl font-black text-white outline-none focus:border-rose-500 transition-all" placeholder="E.G. 2000" />
                           </div>
                         )}
                       </div>
@@ -1168,7 +1118,6 @@ const AdminPets = () => {
                 </div>
               )}
 
-              {/* STAGE 4: PICKUP DETAILS */}
               {modalTab === 'pickup' && (
                 <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-500">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -1194,20 +1143,14 @@ const AdminPets = () => {
                        </div>
                     </div>
                   </div>
-
                   <div className="space-y-2">
                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 underline decoration-rose-500/30 underline-offset-4">Specific Pickup Instructions</label>
-                    <textarea
-                      value={petForm.pickupInstructions}
-                      onChange={e => setPetForm(p => ({ ...p, pickupInstructions: e.target.value }))}
-                      className="w-full px-8 py-6 bg-slate-50 border border-slate-100 rounded-2xl text-[12px] h-40 resize-none outline-none focus:ring-4 focus:ring-rose-500/5 shadow-inner"
-                      placeholder="E.g. Please bring a carry crate, visit us between 10AM-5PM, entrance near the park..."
-                    />
+                    <textarea value={petForm.pickupInstructions} onChange={e => setPetForm(p => ({ ...p, pickupInstructions: e.target.value }))}
+                      className="w-full px-8 py-6 bg-slate-50 border border-slate-100 rounded-2xl text-[12px] h-40 resize-none outline-none focus:ring-4 focus:ring-rose-500/5 shadow-inner" placeholder="E.g. Please bring a carry crate, visit us between 10AM-5PM, entrance near the park..." />
                   </div>
                 </div>
               )}
 
-              {/* STAGE 4: VISUAL GALLERY */}
               {modalTab === 'gallery' && (
                 <div className="animate-in fade-in slide-in-from-right-4 duration-500">
                   <div className="p-10 bg-slate-900 rounded-[3rem] text-white relative overflow-hidden shadow-2xl border border-white/5">
@@ -1237,26 +1180,15 @@ const AdminPets = () => {
                         </label>
                       )}
                     </div>
-                    <div className="mt-6 flex justify-between items-center px-1">
-                      <span className="text-[9px] font-bold text-white/30 uppercase tracking-widest">SLOTS: {petForm.images.length}/10</span>
-                    </div>
                   </div>
                 </div>
               )}
             </div>
 
-
             <footer className="p-5 bg-white border-t border-slate-50 flex gap-3 shrink-0 relative z-20">
-              <button
-                type="button"
-                onClick={() => { setShowAddForm(false); setEditingPet(null); }}
-                className="px-8 py-3 bg-slate-50 text-slate-400 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-100 transition-all active:scale-95"
-              >
-                Cancel
-              </button>
-              <button
-                disabled={submitting}
-                type="button"
+              <button type="button" onClick={() => { setShowAddForm(false); setEditingPet(null); }}
+                className="px-8 py-3 bg-slate-50 text-slate-400 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-100 transition-all active:scale-95">Cancel</button>
+              <button disabled={submitting} type="button"
                 onClick={(e) => {
                   if (modalTab === 'identity') setModalTab('health');
                   else if (modalTab === 'health') setModalTab('commerce');
@@ -1265,8 +1197,7 @@ const AdminPets = () => {
                   else if (modalTab === 'pickup') setModalTab('gallery');
                   else handleSubmit(e);
                 }}
-                className="flex-1 py-3.5 bg-rose-500 text-white rounded-2xl text-[11px] font-black uppercase tracking-widest hover:bg-slate-900 hover:scale-[1.02] transition-all shadow-2xl shadow-rose-200 flex items-center justify-center gap-4 active:scale-95 disabled:opacity-50"
-              >
+                className="flex-1 py-3.5 bg-rose-500 text-white rounded-2xl text-[11px] font-black uppercase tracking-widest hover:bg-slate-900 hover:scale-[1.02] transition-all shadow-2xl shadow-rose-200 flex items-center justify-center gap-4 active:scale-95 disabled:opacity-50">
                 {submitting ? 'Saving...' : (
                   modalTab === 'identity' ? 'Next: Health Protocols' :
                     modalTab === 'health' ? 'Next: Pricing & Docs' :
