@@ -96,15 +96,20 @@ const sendStaffInvitation = async (email, password, firstName) => {
     // STAGE 1: Try Resend (Highest Reliability)
     if (resend) {
         try {
-            console.log(`🔄 [EmailService] Attempting Resend API for ${email}...`);
+            const fromEmail = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev';
+            console.log(`🔄 [EmailService] Attempting Resend API for ${email} (From: ${fromEmail})...`);
             const data = await resend.emails.send({
-                from: 'Pawzzle <onboarding@resend.dev>',
+                from: `Pawzzle <${fromEmail}>`,
                 to: email,
                 subject: '🐾 Welcome to the Pawzzle Team!',
                 html: bodyHtml
             });
             console.log('✅ [EmailService] Resend API Success:', data.id);
-            return { success: true, provider: 'resend' };
+            return { 
+                success: true, 
+                provider: 'resend',
+                warning: fromEmail === 'onboarding@resend.dev' ? 'Restricted to account owner only' : null
+            };
         } catch (resendErr) {
             console.error('⚠️ [EmailService] Resend API failed:', resendErr.message);
             if (resendErr.message?.includes('onboarding@resend.dev')) {

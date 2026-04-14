@@ -149,7 +149,20 @@ const createStaff = async (req, res) => {
             };
             console.log('Staff address derived from store contact info.');
         } else {
-            console.log('Using default staff address.');
+            const fromEmail = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev';
+            console.log(`🔄 [EmailService] Attempting Resend API for ${email} (From: ${fromEmail})...`);
+            const data = await resend.emails.send({
+                from: `Pawzzle <${fromEmail}>`,
+                to: email,
+                subject: '🐾 Welcome to the Pawzzle Team!',
+                html: bodyHtml
+            });
+            console.log('✅ [EmailService] Resend API Success:', data.id);
+            return { 
+                success: true, 
+                provider: 'resend',
+                warning: fromEmail === 'onboarding@resend.dev' ? 'Restricted to account owner only' : null
+            };
         }
 
         const staff = new User({
@@ -195,21 +208,27 @@ const createStaff = async (req, res) => {
         }
         
         const emailSent = emailResult.success;
+        const isRestricted = emailResult.warning === 'Restricted to account owner only';
 
         const staffObj = staff.toObject();
         delete staffObj.password;
 
         console.log('--- 🏁 STAFF CREATION COMPLETE 🏁 ---');
+        let message = 'Staff account created and invitation sent successfully.';
+        
+        if (!emailSent) {
+            message = `Staff created, but email failed: ${emailResult.errorMessage || emailResult.error || 'Unknown service error'}.`;
+        } else if (isRestricted) {
+            message = 'Staff created. IMPORTANT: Using Resend demo mode - invitation sent to YOUR email, not the staff member.';
+        }
+
         return res.status(201).json({ 
-            message: emailSent 
-                ? (emailResult.provider === 'resend' 
-                    ? 'Staff account created. Note: Invitation sent via Resend Onboarding (Check account owner email or spam).' 
-                    : 'Staff account created and invitation sent successfully.')
-                : `Staff created, but email failed: ${emailResult.errorMessage || emailResult.error || 'Unknown service error'}.`, 
+            message: message,
             staff: staffObj,
             emailSent: emailSent,
             emailProvider: emailResult.provider,
             emailError: emailResult.errorMessage || emailResult.error,
+            isRestricted: isRestricted,
             credentialsProvided: true
         });
     } catch (error) {
