@@ -91,6 +91,7 @@ const Bookings = ({ isSubcomponent = false }) => {
   const [showVoucherModal, setShowVoucherModal] = useState(false);
   const [savedPets, setSavedPets] = useState([]);
   const [selectedPetProfile, setSelectedPetProfile] = useState(null);
+  const [agreedToPolicy, setAgreedToPolicy] = useState(false);
 
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -631,6 +632,10 @@ const Bookings = ({ isSubcomponent = false }) => {
       return;
     }
 
+    if (!agreedToPolicy) {
+      toast.error('You must agree to the No Refund Policy to proceed.');
+      return;
+    }
     setSubmitting(true);
 
     try {
@@ -1437,7 +1442,27 @@ const Bookings = ({ isSubcomponent = false }) => {
                             (appliedVoucher?.discountAmount || 0)
                           )).toLocaleString()}
                         </span>
-                      </div>
+                    </div>
+
+                    {/* No Refund Policy Agreement */}
+                    <div className="mt-4">
+                      <label className="flex items-start gap-3 p-4 bg-rose-50 rounded-2xl border border-rose-100 cursor-pointer group hover:bg-rose-100/50 transition-all shadow-sm">
+                        <div className="relative flex items-center mt-0.5">
+                          <input
+                            type="checkbox"
+                            checked={agreedToPolicy}
+                            onChange={(e) => setAgreedToPolicy(e.target.checked)}
+                            className="w-5 h-5 rounded-md border-rose-300 text-rose-600 focus:ring-rose-500 cursor-pointer"
+                            required
+                          />
+                        </div>
+                        <div className="space-y-0.5">
+                          <p className="text-[10px] font-black text-rose-900 uppercase tracking-wider">I agree to the No Refund Policy</p>
+                          <p className="text-[8px] font-bold text-rose-600 tracking-tight leading-relaxed">
+                            I understand that booking payments are final and non-refundable. I agree to coordinate directly with the store for any rescheduling or fulfillment concerns.
+                          </p>
+                        </div>
+                      </label>
                     </div>
                   </div>
                 </div>
@@ -1448,7 +1473,9 @@ const Bookings = ({ isSubcomponent = false }) => {
                     ← Edit
                   </button>
                   <button type="submit" disabled={submitting}
-                    className="flex-1 py-5 bg-primary-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.25em] shadow-2xl shadow-primary-200 hover:bg-primary-700 active:scale-95 transition-all flex items-center justify-center gap-3 disabled:opacity-70">
+                    className={`flex-1 py-5 text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.25em] shadow-2xl transition-all flex items-center justify-center gap-3 ${
+                      !agreedToPolicy ? 'bg-slate-300 cursor-not-allowed grayscale shadow-none' : 'bg-primary-600 shadow-primary-200 hover:bg-primary-700 active:scale-95'
+                    }`}>
                     {submitting ? (
                       <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Processing...</>
                     ) : (

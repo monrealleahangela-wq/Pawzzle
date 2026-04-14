@@ -11,7 +11,8 @@ const InquiryModal = ({ isOpen, onClose, pet, onSubmit }) => {
     interestReason: '',
     previousExperience: '',
     pickupConfirmation: false,
-    paymentMethod: ''
+    paymentMethod: pet.allowedPaymentMethods?.[0] || 'gcash',
+    policyAgreed: false
   });
 
   if (!isOpen) return null;
@@ -44,6 +45,11 @@ const InquiryModal = ({ isOpen, onClose, pet, onSubmit }) => {
 
     if (!formData.pickupConfirmation) {
       toast.error('Please confirm that you understand this is for pickup only.');
+      return;
+    }
+
+    if (!formData.policyAgreed) {
+      toast.error('Please agree to the No Refund Policy.');
       return;
     }
     onSubmit(formData);
@@ -234,6 +240,24 @@ const InquiryModal = ({ isOpen, onClose, pet, onSubmit }) => {
                 <p className="text-[10px] font-black text-primary-900 uppercase tracking-wider">I understand this is Pickup-Only</p>
                 <p className="text-[8px] font-bold text-primary-600 tracking-tight leading-relaxed">
                   I agree to coordinate directly with the seller for a safe physical handover. Pawzzle strictly enforces pickup for pet safety.
+                </p>
+              </div>
+            </label>
+            {/* No Refund Policy Agreement */}
+            <label className="flex items-start gap-3 p-3 bg-rose-50 rounded-2xl border border-rose-100 cursor-pointer group hover:bg-rose-100 transition-all">
+              <div className="relative flex items-center mt-0.5">
+                <input
+                  type="checkbox"
+                  name="policyAgreed"
+                  checked={formData.policyAgreed}
+                  onChange={handleChange}
+                  className="w-5 h-5 rounded-md border-rose-300 text-rose-600 focus:ring-rose-500 cursor-pointer"
+                />
+              </div>
+              <div className="space-y-0.5">
+                <p className="text-[10px] font-black text-rose-900 uppercase tracking-wider">I agree to the No Refund Policy</p>
+                <p className="text-[8px] font-bold text-rose-600 tracking-tight leading-relaxed">
+                  I understand that all reservation and full payments are final and non-refundable. Pawzzle enforces a strict no-refund policy for pet safety and seller protection.
                 </p>
               </div>
             </label>

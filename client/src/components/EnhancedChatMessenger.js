@@ -33,6 +33,7 @@ const EnhancedChatMessenger = ({
   const fileInputRef = useRef(null);
   const isFirstLoad = useRef(true);
   const [showScrollButton, setShowScrollButton] = useState(false);
+  const [agreedToPolicy, setAgreedToPolicy] = useState(false);
 
 
   useEffect(() => {
@@ -370,6 +371,10 @@ const EnhancedChatMessenger = ({
     }
   };
   const handlePaymongoCheckout = async () => {
+    if (!agreedToPolicy) {
+      toast.error('Please agree to the No Refund Policy first');
+      return;
+    }
     try {
       setIsLoading(true);
       toast.info('Redirecting to secure payment gateway...');
@@ -493,10 +498,26 @@ const EnhancedChatMessenger = ({
             {!isSeller && !isAdmin && (
               <>
                 {payment.paymentStatus === 'payment_pending' && (
-                  <button onClick={handlePaymongoCheckout} 
-                    className="text-[9px] font-black uppercase tracking-widest bg-emerald-600 text-white px-3 py-1.5 rounded-lg shadow-sm flex items-center gap-2 hover:bg-emerald-700 transition-all active:scale-95">
-                    <CheckCircle2 className="h-3 w-3" /> Secure Payment
-                  </button>
+                  <div className="flex flex-col items-end gap-2">
+                    <label className="flex items-center gap-2 cursor-pointer group">
+                      <input 
+                        type="checkbox" 
+                        checked={agreedToPolicy} 
+                        onChange={(e) => setAgreedToPolicy(e.target.checked)}
+                        className="w-3.5 h-3.5 rounded border-rose-300 text-rose-600 focus:ring-rose-500 cursor-pointer"
+                      />
+                      <span className="text-[8px] font-black text-rose-900/60 uppercase tracking-widest group-hover:text-rose-600 transition-colors">I agree to No Refund Policy</span>
+                    </label>
+                    <button 
+                      onClick={handlePaymongoCheckout} 
+                      disabled={!agreedToPolicy}
+                      className={`text-[9px] font-black uppercase tracking-widest px-3 py-1.5 rounded-lg shadow-sm flex items-center gap-2 transition-all ${
+                        agreedToPolicy ? 'bg-emerald-600 text-white hover:bg-emerald-700 active:scale-95' : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                      }`}
+                    >
+                      <CheckCircle2 className="h-3 w-3" /> Secure Payment
+                    </button>
+                  </div>
                 )}
                 {['inquiry_submitted', 'reserved', 'approved'].includes(transactionRequest.status) && (
                   <button onClick={handleCancelRequest} className="text-[9px] font-black uppercase tracking-widest bg-white/20 border border-current px-3 py-1.5 rounded-lg hover:bg-white/10 transition-colors">Cancel Inquiry</button>
