@@ -1164,7 +1164,9 @@ const AdminPets = () => {
                         )}
                       </div>
                     </div>
-                  </div>       )}
+                  </div>
+                </div>
+              )}
 
               {/* STAGE 4: PICKUP DETAILS */}
               {modalTab === 'pickup' && (
