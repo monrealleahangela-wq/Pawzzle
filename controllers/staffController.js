@@ -63,33 +63,6 @@ const getMyStaff = async (req, res) => {
  * Create a new staff account under the admin's store
  */
 const createStaff = async (req, res) => {
-    try {
-        console.log('--- 🚀 CREATE STAFF API HIT 🚀 ---');
-        const { firstName, lastName, email, username, password, staffType, phone, storeId, permissions } = req.body;
-        
-        const cleanFirstName = firstName ? firstName.trim() : '';
-        const cleanLastName = lastName ? lastName.trim() : '';
-        const cleanEmail = email ? email.trim().toLowerCase() : '';
-        const cleanUsername = username ? username.trim() : '';
-        
-        console.log(`Payload: ${JSON.stringify({ firstName: cleanFirstName, lastName: cleanLastName, email: cleanEmail, username: cleanUsername, staffType, phone, storeId })}`);
-
-        const creatorId = req.user._id || req.user.id;
-        console.log(`Creator ID: ${creatorId}`);
-
-        if (!firstName || !lastName || !email || !username || !staffType) {
-            console.log('❌ Missing required staff fields');
-            return res.status(400).json({ message: 'Missing required staff fields' });
-        }
-
-        // Generate temporary password if not provided
-        const tempPassword = password || crypto.randomBytes(6).toString('hex');
-        console.log(`🔑 Generated Temp Password: ${tempPassword}`);
-
-        // Determine target store
-        let targetStoreId = storeId || req.user.store;
-        if (!targetStoreId) {
-            console.log('Attempting to find admin\'s default store...');
     console.log('--- 🚀 INITIATING STAFF ONBOARDING 🚀 ---');
     try {
         const { firstName, lastName, email, username, phone, staffType, targetStoreId, permissions } = req.body;
@@ -100,10 +73,7 @@ const createStaff = async (req, res) => {
         const cleanFirstName = firstName?.trim();
         const cleanLastName = lastName?.trim();
 
-        console.log(`Payload for ${cleanEmail} (Username: ${cleanUsername})`);
-
         if (!cleanEmail || !cleanFirstName || !cleanLastName || !cleanUsername || !staffType || !targetStoreId) {
-            console.log('❌ MISSING REQUIRED FIELDS');
             return res.status(400).json({ message: 'Missing required staff metadata fields' });
         }
 
@@ -197,9 +167,8 @@ const createStaff = async (req, res) => {
             const messages = Object.values(error.errors).map(err => err.message);
             return res.status(400).json({ message: `Validation Failed: ${messages.join(', ')}` });
         }
-
         return res.status(500).json({ 
-            message: error.code === 11000 ? 'Identity already exists (Email/Username taken)' : 'Internal server failure during staff boarding', 
+            message: error.code === 11000 ? 'Identity already exists' : 'Internal server failure during staff boarding', 
             error: error.message
         });
     }
