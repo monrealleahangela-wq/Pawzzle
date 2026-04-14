@@ -208,7 +208,6 @@ const createStaff = async (req, res) => {
         }
         
         const emailSent = emailResult.success;
-        const emailSent = emailResult.success;
 
         const staffObj = staff.toObject();
         delete staffObj.password;
