@@ -67,7 +67,7 @@ const createAdoptionRequest = async (req, res) => {
             },
             paymentDetails: {
                 method: paymentMethod,
-                paymentStatus: 'unpaid',
+                paymentStatus: paymentMethod === 'paymongo' ? 'payment_pending' : 'unpaid',
                 pricingBreakdown: {
                     totalPrice: pet.price,
                     depositAmount: pet.paymentConfig === 'deposit_first' ? pet.depositAmount : 0,

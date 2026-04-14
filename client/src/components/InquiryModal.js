@@ -11,7 +11,7 @@ const InquiryModal = ({ isOpen, onClose, pet, onSubmit }) => {
     interestReason: '',
     previousExperience: '',
     pickupConfirmation: false,
-    paymentMethod: pet.allowedPaymentMethods?.[0] || 'gcash',
+    paymentMethod: 'paymongo',
     policyAgreed: false
   });
 
@@ -206,7 +206,7 @@ const InquiryModal = ({ isOpen, onClose, pet, onSubmit }) => {
                <div className="space-y-2">
                   <label className="text-[9px] font-black text-white/40 uppercase tracking-widest ml-1">Preferred Settlement Method</label>
                   <div className="grid grid-cols-2 gap-2">
-                    {(pet.allowedPaymentMethods || ['gcash', 'maya', 'bank_transfer', 'cash_on_pickup']).map(m => (
+                    {['paymongo', 'gcash', 'maya', 'bank_transfer', 'cash_on_pickup'].map(m => (
                       <button
                         key={m}
                         type="button"
@@ -217,7 +217,9 @@ const InquiryModal = ({ isOpen, onClose, pet, onSubmit }) => {
                             : 'bg-white/5 border-white/10 text-white/40 hover:bg-white/10'
                         }`}
                       >
-                        <span className="text-[9px] font-black uppercase tracking-widest">{m.replace(/_/g, ' ')}</span>
+                        <span className="text-[9px] font-black uppercase tracking-widest">
+                          {m === 'paymongo' ? 'Verified Online' : m.replace(/_/g, ' ')}
+                        </span>
                         {formData.paymentMethod === m && <CheckCircle2 className="h-3 w-3 text-white" />}
                       </button>
                     ))}

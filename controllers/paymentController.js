@@ -170,13 +170,24 @@ const createAdoptionCheckoutSession = async (req, res) => {
             return res.status(404).json({ message: 'Adoption request not found' });
         }
 
+        // Check if user is the customer or the seller/admin
+        const isCustomer = adoption.customer._id.toString() === req.user.id;
+        const isSeller = adoption.seller.toString() === req.user.id;
+        const isAdmin = req.user.role === 'super_admin';
+
+        if (!isCustomer && !isSeller && !isAdmin) {
+            return res.status(403).json({ message: 'Access denied' });
+        }
+
         if (adoption.status === 'cancelled') {
             return res.status(400).json({ message: 'Cannot pay for a canceled inquiry' });
         }
 
         // Determine amount: if deposit exists and balance is full, pay deposit. Otherwise pay total.
         const pricing = adoption.paymentDetails?.pricingBreakdown || {};
-        const amountToPay = pricing.depositAmount > 0 && adoption.paymentDetails.paymentStatus === 'payment_pending' 
+        const isInitialPayment = !adoption.paymentDetails?.paidAmount || adoption.paymentDetails.paidAmount === 0;
+        
+        const amountToPay = (pricing.depositAmount > 0 && isInitialPayment) 
             ? pricing.depositAmount 
             : (pricing.balanceDue || pricing.totalPrice);
 
@@ -293,11 +304,22 @@ const handleWebhook = async (req, res) => {
                 const adoption = await AdoptionRequest.findOne({ 'paymentDetails.sessionId': checkoutSession.id });
                 if (adoption) {
                     const pricing = adoption.paymentDetails.pricingBreakdown;
-                    const paidAmount = pricing.depositAmount > 0 ? pricing.depositAmount : pricing.totalPrice;
+                    const paidAmountCentavos = paymentData.attributes.amount;
+                    const paidAmount = paidAmountCentavos / 100;
 
-                    adoption.paymentDetails.paymentStatus = pricing.depositAmount > 0 ? 'deposit_paid' : 'paid_in_full';
                     adoption.paymentDetails.paidAmount = (adoption.paymentDetails.paidAmount || 0) + paidAmount;
-                    adoption.paymentDetails.balanceDue = Math.max(0, pricing.totalPrice - adoption.paymentDetails.paidAmount);
+                    adoption.paymentDetails.pricingBreakdown.paidAmount = adoption.paymentDetails.paidAmount;
+                    adoption.paymentDetails.pricingBreakdown.balanceDue = Math.max(0, pricing.totalPrice - adoption.paymentDetails.paidAmount);
+                    
+                    // Determine status based on balance
+                    if (adoption.paymentDetails.pricingBreakdown.balanceDue <= 0) {
+                        adoption.paymentDetails.paymentStatus = 'paid_in_full';
+                    } else if (pricing.depositAmount > 0 && adoption.paymentDetails.paidAmount >= pricing.depositAmount) {
+                        adoption.paymentDetails.paymentStatus = 'deposit_paid';
+                    } else {
+                        adoption.paymentDetails.paymentStatus = 'partially_paid';
+                    }
+
                     adoption.paymentDetails.method = paymentData.attributes.source.type;
                     adoption.paymentDetails.paidAt = new Date();
                     
@@ -307,6 +329,11 @@ const handleWebhook = async (req, res) => {
                         amount: paidAmount,
                         description: `Paid via PayMongo (${adoption.paymentDetails.method})`
                     });
+
+                    // Auto-approve if paid
+                    if (adoption.status === 'inquiry_submitted' || adoption.status === 'under_review') {
+                        adoption.status = 'approved';
+                    }
 
                     await adoption.save();
 

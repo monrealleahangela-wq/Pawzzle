@@ -87,11 +87,29 @@ const PetDetail = () => {
         conversationId = convResponse.data.conversation._id;
       }
 
-      await adoptionService.requestAdoption({
+      const inquiryResponse = await adoptionService.requestAdoption({
         petId: id,
         conversationId,
         ...formData
       });
+
+      const adoptionRequest = inquiryResponse.data.request;
+
+      // Check if PayMongo was selected
+      if (formData.paymentMethod === 'paymongo' && pet.price > 0) {
+        toast.info('Redirecting to secure payment...');
+        try {
+          const checkoutResponse = await paymentService.createAdoptionCheckoutSession(adoptionRequest._id);
+          
+          if (checkoutResponse.data.checkoutUrl) {
+            window.location.href = checkoutResponse.data.checkoutUrl;
+            return; // Exit as we are redirecting
+          }
+        } catch (payErr) {
+          console.error('Payment preparation failed:', payErr);
+          toast.warning('Inquiry submitted, but payment portal failed. You can pay via chat later.');
+        }
+      }
 
       toast.success(`Active inquiry started for ${pet.name}!`);
       setShowInquiryModal(false);

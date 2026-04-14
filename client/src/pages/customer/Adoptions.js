@@ -31,19 +31,28 @@ const Adoptions = ({ isSubcomponent = false }) => {
     };
 
     const statusConfig = {
-        pending: { color: 'bg-secondary-100 text-primary-800', icon: <Clock className="h-4 w-4" />, label: 'Pending' },
-        approved: { color: 'bg-green-100 text-green-800', icon: <CheckCircle className="h-4 w-4" />, label: 'Approved' },
-        rejected: { color: 'bg-red-100 text-red-800', icon: <XCircle className="h-4 w-4" />, label: 'Declined' },
-        ready_for_pickup: { color: 'bg-secondary-100 text-secondary-800', icon: <Package className="h-4 w-4" />, label: 'Ready for Pickup' },
-        shipped: { color: 'bg-primary-100 text-primary-800', icon: <Truck className="h-4 w-4" />, label: 'Shipped' },
-        delivered: { color: 'bg-primary-100 text-primary-800', icon: <CheckCircle className="h-4 w-4" />, label: 'Delivered' },
-        cancelled: { color: 'bg-gray-100 text-gray-800', icon: <XCircle className="h-4 w-4" />, label: 'Cancelled' }
+        inquiry_submitted: { color: 'bg-slate-100 text-slate-800', icon: <Clock className="h-4 w-4" />, label: 'Inquiry Submitted' },
+        under_review: { color: 'bg-indigo-100 text-indigo-800', icon: <Clock className="h-4 w-4" />, label: 'Under Review' },
+        reserved: { color: 'bg-amber-100 text-amber-800', icon: <Clock className="h-4 w-4" />, label: 'Reserved' },
+        approved: { color: 'bg-emerald-100 text-emerald-800', icon: <CheckCircle className="h-4 w-4" />, label: 'Approved' },
+        pickup_scheduling: { color: 'bg-primary-100 text-primary-800', icon: <Clock className="h-4 w-4" />, label: 'Awaiting Schedule' },
+        pickup_confirmed: { color: 'bg-emerald-100 text-emerald-800', icon: <CheckCircle className="h-4 w-4" />, label: 'Pickup Confirmed' },
+        completed: { color: 'bg-primary-600 text-white', icon: <Heart className="h-4 w-4" />, label: 'Purchased' },
+        cancelled: { color: 'bg-gray-100 text-gray-800', icon: <XCircle className="h-4 w-4" />, label: 'Cancelled' },
+        declined: { color: 'bg-rose-100 text-rose-800', icon: <XCircle className="h-4 w-4" />, label: 'Declined' }
+    };
+
+    const paymentConfig = {
+        unpaid: { color: 'bg-slate-50 text-slate-400', label: 'Waiting' },
+        payment_pending: { color: 'bg-amber-100 text-amber-700', label: 'Payment Requested' },
+        deposit_paid: { color: 'bg-emerald-50 text-emerald-600', label: 'Deposit Settled' },
+        paid_in_full: { color: 'bg-emerald-600 text-white', label: 'Fully Paid' }
     };
 
     const getStatusDisplay = (status) => {
-        const config = statusConfig[status] || statusConfig.pending;
+        const config = statusConfig[status] || statusConfig.inquiry_submitted;
         return (
-            <span className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold ${config.color}`}>
+            <span className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${config.color}`}>
                 {config.icon}
                 {config.label}
             </span>
@@ -107,18 +116,21 @@ const Adoptions = ({ isSubcomponent = false }) => {
                             style={{ animationDelay: `${idx * 0.1}s` }}>
                             <div className="absolute top-0 right-0 w-32 h-32 bg-slate-50 rounded-bl-[4rem] -translate-y-16 translate-x-16 group-hover:bg-primary-50 transition-colors duration-500" />
 
-                            <div className="h-56 bg-slate-50 relative overflow-hidden">
+                            <div className="h-48 bg-slate-50 relative overflow-hidden">
                                 {request.pet?.images?.[0] ? (
                                     <img src={request.pet.images[0]} alt={request.pet.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
                                 ) : (
                                     <div className="w-full h-full flex items-center justify-center bg-slate-100"><Heart className="h-12 w-12 text-slate-300" /></div>
                                 )}
-                                <div className="absolute top-4 right-4 z-10">
-                                    <span className={`px-4 py-2 rounded-2xl text-[9px] font-black uppercase tracking-widest shadow-xl backdrop-blur-md border border-white/20 ${request.status === 'approved' ? 'bg-emerald-500/90 text-white' :
-                                            request.status === 'rejected' ? 'bg-rose-500/90 text-white' : 'bg-slate-900/90 text-white'
-                                        }`}>
-                                        {request.status.replace('_', ' ')}
+                                <div className="absolute top-4 right-4 z-10 flex flex-col items-end gap-2">
+                                    <span className={`px-4 py-2 rounded-2xl text-[9px] font-black uppercase tracking-widest shadow-xl backdrop-blur-md border border-white/20 ${statusConfig[request.status]?.color || 'bg-slate-900/90 text-white'}`}>
+                                        {statusConfig[request.status]?.label || request.status.replace('_', ' ')}
                                     </span>
+                                    {request.paymentDetails?.paymentStatus && request.paymentDetails.paymentStatus !== 'unpaid' && (
+                                        <span className={`px-3 py-1.5 rounded-xl text-[8px] font-black uppercase tracking-widest border ${paymentConfig[request.paymentDetails.paymentStatus]?.color || 'bg-slate-50'}`}>
+                                            {paymentConfig[request.paymentDetails.paymentStatus]?.label || request.paymentDetails.paymentStatus.replace('_', ' ')}
+                                        </span>
+                                    )}
                                 </div>
                             </div>
 
@@ -132,11 +144,24 @@ const Adoptions = ({ isSubcomponent = false }) => {
                                     </div>
                                     <div className="text-right shrink-0">
                                         <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Fee</p>
-                                        <p className="text-xl font-black text-slate-900 tracking-tighter leading-none">₱{request.pet?.price || 0}</p>
+                                        <p className="text-xl font-black text-slate-900 tracking-tighter leading-none">₱{request.pet?.price?.toLocaleString() || 0}</p>
                                     </div>
                                 </div>
 
-                                <div className="bg-slate-50/50 rounded-[2rem] p-5 mb-8 border border-slate-100 flex flex-col gap-4">
+                                {request.paymentDetails?.paymentStatus === 'payment_pending' && (
+                                    <button
+                                        onClick={() => setSelectedChat({
+                                            conversationId: request.conversation,
+                                            pet: request.pet,
+                                            seller: request.seller
+                                        })}
+                                        className="w-full mb-6 py-4 bg-emerald-600 text-white rounded-[1.5rem] text-[10px] font-black uppercase tracking-[0.2em] shadow-lg shadow-emerald-100 hover:bg-emerald-700 transition-all flex items-center justify-center gap-2 animate-pulse"
+                                    >
+                                        <Heart className="h-4 w-4 fill-current" /> Complete Secure Payment
+                                    </button>
+                                )}
+
+                                <div className="bg-slate-50/50 rounded-[2rem] p-5 mb-8 border border-slate-100 flex flex-col gap-3">
                                     <div className="flex items-center justify-between text-[9px] font-bold text-slate-500 uppercase tracking-widest">
                                         <span className="flex items-center gap-2 italic opacity-60"><Clock className="h-3 w-3" /> Purchase Date</span>
                                         <span className="text-slate-900">{new Date(request.createdAt).toLocaleDateString()} {formatTime12h(new Date(request.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }))}</span>

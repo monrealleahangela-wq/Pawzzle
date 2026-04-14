@@ -28,11 +28,11 @@ const adoptionRequestSchema = new mongoose.Schema({
     paymentDetails: {
         method: {
             type: String,
-            enum: ['gcash', 'maya', 'bank_transfer', 'cash_on_pickup']
+            enum: ['gcash', 'maya', 'bank_transfer', 'cash_on_pickup', 'paymongo']
         },
         paymentStatus: {
             type: String,
-            enum: ['unpaid', 'payment_pending', 'partially_paid', 'deposit_paid', 'paid_in_full', 'payment_failed', 'refunded'],
+            enum: ['unpaid', 'payment_pending', 'partially_paid', 'deposit_paid', 'paid_in_full', 'payment_failed', 'refunded', 'awaiting_confirmation'],
             default: 'unpaid'
         },
         pricingBreakdown: {
