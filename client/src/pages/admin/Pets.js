@@ -1073,7 +1073,6 @@ const AdminPets = () => {
                        </div>
                     </div>
                   </div>
-                </div>
               )}
 
               {/* STAGE 4: PAYMENT OPTIONS */}
