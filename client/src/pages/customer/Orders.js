@@ -83,8 +83,18 @@ const Orders = () => {
           ) : (
             <div className="grid gap-6">
               {orders.map(order => {
-                const meta = STATUS_META[order.status] || STATUS_META.pending;
+                // Legacy Status Mapper for Backward Compatibility
+                const legacyToNew = {
+                  'pending': 'pending_payment',
+                  'processing': 'awaiting_confirmation',
+                  'shipped': 'picked_up',
+                  'finalized': 'completed'
+                };
+                
+                const effectiveStatus = legacyToNew[order.status] || order.status;
+                const meta = STATUS_META[effectiveStatus] || STATUS_META.pending_payment;
                 const StatusIcon = meta.icon;
+                
                 return (
                   <div key={order._id} className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm hover:shadow-md transition-shadow">
                     <div className="p-4 sm:p-6 border-b border-slate-100 flex flex-wrap justify-between items-center gap-4">
