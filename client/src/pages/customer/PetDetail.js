@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { ArrowLeft, Heart, Calendar, Weight, MapPin, Package, MessageSquare, Star } from 'lucide-react';
-import { petService, getImageUrl, adoptionService, storeService } from '../../services/apiService';
+import { petService, getImageUrl, adoptionService, storeService, paymentService } from '../../services/apiService';
 import { chatService } from '../../services/chatService';
 import LoginModal from '../../components/LoginModal';
 import EnhancedChatMessenger from '../../components/EnhancedChatMessenger';

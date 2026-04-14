@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useAuth } from '../../contexts/AuthContext';
 import { toast } from 'react-toastify';
 import { 
     Users, Plus, Edit2, Trash2, Power, Key, X, Check,
@@ -44,6 +45,7 @@ const defaultForm = {
 };
 
 const StaffManagement = () => {
+    const { user } = useAuth();
     const [staff, setStaff] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
@@ -113,7 +115,19 @@ const StaffManagement = () => {
                 });
                 toast.success('Staff updated successfully');
             } else {
-                const res = await staffService.create(form);
+                // Inject targetstoreId from current user
+                const payload = { 
+                    ...form, 
+                    targetStoreId: user.store?._id || user.store 
+                };
+                
+                if (!payload.targetStoreId) {
+                    toast.error('Store identity missing. Please re-login.');
+                    setSubmitting(false);
+                    return;
+                }
+
+                const res = await staffService.create(payload);
                 toast.success(res.data.message || 'Staff account created successfully');
             }
             setShowModal(false);
