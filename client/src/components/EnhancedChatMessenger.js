@@ -375,7 +375,7 @@ const EnhancedChatMessenger = ({
       inquiry_submitted: { color: 'bg-primary-50 text-primary-800', icon: <Clock className="h-4 w-4" />, label: 'Inquiry Submitted' },
       under_review: { color: 'bg-indigo-50 text-indigo-800', icon: <Clock className="h-4 w-4" />, label: 'Under Review' },
       reserved: { color: 'bg-amber-50 text-amber-800', icon: <Shield className="h-4 w-4" />, label: 'Reserved for You' },
-      approved: { color: 'bg-emerald-50 text-emerald-800', icon: <CheckCircle className="h-4 w-4" />, label: 'Adoption Approved' },
+      approved: { color: 'bg-emerald-50 text-emerald-800', icon: <CheckCircle className="h-4 w-4" />, label: 'Inquiry Approved' },
       pickup_scheduling: { color: 'bg-secondary-50 text-primary-800', icon: <Calendar className="h-4 w-4" />, label: 'Scheduling Pickup' },
       pickup_confirmed: { color: 'bg-secondary-100 text-primary-900', icon: <MapPin className="h-4 w-4" />, label: 'Pickup Confirmed' },
       completed: { color: 'bg-emerald-600 text-white', icon: <Heart className="h-4 w-4" />, label: 'Pet Handed Over' },
@@ -441,6 +441,14 @@ const EnhancedChatMessenger = ({
     const isSystemMessage = message.type === 'system';
     const isImage = message.type === 'image';
 
+    // Scrub out legacy "adoption" terminology from older db records
+    let displayContent = message.content;
+    if (isSystemMessage && displayContent) {
+      displayContent = displayContent.replace(/A new adoption request has been submitted/gi, 'A new purchase inquiry has been submitted');
+      displayContent = displayContent.replace(/adoption request/gi, 'purchase inquiry');
+      displayContent = displayContent.replace(/adoption/gi, 'purchase');
+    }
+
     return (
       <div key={message._id} className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'} animate-fade-in`}>
         <div className={`max-w-[80%] ${isSystemMessage ? 'mx-auto' : ''}`}>
@@ -469,7 +477,7 @@ const EnhancedChatMessenger = ({
                 />
               </div>
             ) : (
-              <p className="text-sm font-medium leading-relaxed whitespace-pre-wrap">{message.content}</p>
+              <p className="text-sm font-medium leading-relaxed whitespace-pre-wrap">{displayContent}</p>
             )}
           </div>
           {!isSystemMessage && (
