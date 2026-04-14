@@ -1245,11 +1245,16 @@ const AdminPets = () => {
 
             {/* Footer */}
             <footer className="p-5 bg-white border-t border-slate-50 flex gap-3 shrink-0 relative z-20">
-              <button type="button" onClick={() => { setShowAddForm(false); setEditingPet(null); }}
-                className="px-8 py-3 bg-slate-50 text-slate-400 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-100 transition-all active:scale-95">
+              <button
+                type="button"
+                onClick={() => { setShowAddForm(false); setEditingPet(null); }}
+                className="px-8 py-3 bg-slate-50 text-slate-400 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-100 transition-all active:scale-95"
+              >
                 Cancel
               </button>
-              <button disabled={submitting} type="button"
+              <button
+                disabled={submitting}
+                type="button"
                 onClick={(e) => {
                   if (modalTab === 'identity') setModalTab('health');
                   else if (modalTab === 'health') setModalTab('commerce');
@@ -1258,7 +1263,8 @@ const AdminPets = () => {
                   else if (modalTab === 'pickup') setModalTab('gallery');
                   else handleSubmit(e);
                 }}
-                className="flex-1 py-3.5 bg-rose-500 text-white rounded-2xl text-[11px] font-black uppercase tracking-widest hover:bg-slate-900 hover:scale-[1.02] transition-all shadow-2xl shadow-rose-200 flex items-center justify-center gap-4 active:scale-95 disabled:opacity-50">
+                className="flex-1 py-3.5 bg-rose-500 text-white rounded-2xl text-[11px] font-black uppercase tracking-widest hover:bg-slate-900 hover:scale-[1.02] transition-all shadow-2xl shadow-rose-200 flex items-center justify-center gap-4 active:scale-95 disabled:opacity-50"
+              >
                 {submitting ? 'Saving...' : (
                   modalTab === 'identity' ? 'Next: Health Protocols' :
                     modalTab === 'health' ? 'Next: Pricing & Docs' :
