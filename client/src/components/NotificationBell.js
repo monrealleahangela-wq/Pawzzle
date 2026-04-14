@@ -40,7 +40,7 @@ const NotificationBell = () => {
             navigate(isSellerOrStaff ? '/admin/orders' : `/orders/${notification.relatedId}`);
         } else if (notification.relatedModel === 'Booking') {
             const isSellerOrStaff = ['seller', 'store_owner', 'staff'].includes(user?.role);
-            navigate(isSellerOrStaff ? '/admin/bookings' : `/bookings/${notification.relatedId}`);
+            navigate(isSellerOrStaff ? `/admin/bookings?id=${notification.relatedId}` : `/bookings?id=${notification.relatedId}`);
         } else if (notification.relatedModel === 'StoreApplication') {
             if (user?.role === 'super_admin') {
                 navigate('/superadmin/store-applications');
