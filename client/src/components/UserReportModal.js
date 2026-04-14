@@ -53,9 +53,9 @@ const UserReportModal = ({ isOpen, onClose, reportedUser }) => {
 
                 {/* Header */}
                 <div className="bg-slate-900 p-8 sm:p-12 relative overflow-hidden">
-                    <div className="absolute top-0 right-0 w-48 h-48 bg-rose-600/10 rounded-full blur-3xl -mr-24 -mt-24"></div>
+                    <div className="absolute top-0 right-0 w-48 h-48 bg-rose-600/10 rounded-full blur-3xl -mr-24 -mt-24 pointer-events-none"></div>
 
-                    <button onClick={onClose} className="absolute top-8 right-8 text-white/40 hover:text-white transition-colors">
+                    <button onClick={onClose} className="absolute top-8 right-8 text-white/40 hover:text-white transition-colors relative z-50">
                         <X className="h-6 w-6" />
                     </button>
 

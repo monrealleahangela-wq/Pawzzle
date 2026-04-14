@@ -34,14 +34,32 @@ const NotificationBell = () => {
         }
         setIsOpen(false);
 
-        // Navigation based on notification type
+        // 1. Explicit Redirect (Priority)
+        if (notification.targetUrl) {
+            navigate(notification.targetUrl);
+            return;
+        }
+
+        // 2. Navigation based on notification data
+        const isSellerOrStaff = ['seller', 'store_owner', 'staff'].includes(user?.role);
+        const isAdmin = ['admin', 'super_admin'].includes(user?.role);
+
         if (notification.relatedModel === 'Order') {
-            const isSellerOrStaff = ['seller', 'store_owner', 'staff'].includes(user?.role);
-            navigate(isSellerOrStaff ? '/admin/orders' : `/orders/${notification.relatedId}`);
+            if (isSellerOrStaff || isAdmin) {
+                // Navigate to the specific order detail for admin/staff
+                navigate(`/admin/orders/${notification.relatedId}`);
+            } else {
+                // Navigate to customer order detail
+                navigate(`/orders/${notification.relatedId}`);
+            }
         } else if (notification.relatedModel === 'Booking') {
-            const isSellerOrStaff = ['seller', 'store_owner', 'staff'].includes(user?.role);
-            navigate(isSellerOrStaff ? `/admin/bookings?id=${notification.relatedId}` : `/bookings?id=${notification.relatedId}`);
-        } else if (notification.relatedModel === 'StoreApplication') {
+            if (isSellerOrStaff || isAdmin) {
+                // BookingsManagement uses query param 'id' to highlight/open
+                navigate(`/admin/bookings?id=${notification.relatedId}`);
+            } else {
+                navigate(`/bookings?id=${notification.relatedId}`);
+            }
+        } else if (notification.relatedModel === 'StoreApplication' || notification.type === 'store_application') {
             if (user?.role === 'super_admin') {
                 navigate('/superadmin/store-applications');
             } else {
@@ -49,14 +67,21 @@ const NotificationBell = () => {
             }
         } else if (notification.type === 'new_follow') {
             navigate('/profile?tab=followers');
-        } else if (notification.type === 'chat_message') {
-            if (user?.role === 'admin' || user?.role === 'staff') {
-                navigate('/admin/chat');
+        } else if (notification.type === 'chat_message' || notification.relatedModel === 'Conversation') {
+            if (isSellerOrStaff || isAdmin) {
+                navigate(`/admin/chat?conversationId=${notification.relatedId}`);
             } else {
-                // For customers, the floating chat is always available.
-                // We can navigate them to home or just close the dropdown.
-                setIsOpen(false);
+                // For customers, try to navigate to messages page or just let floating chat handle it if on home
+                navigate(`/messages/${notification.relatedId}`);
             }
+        } else if (notification.relatedModel === 'Report') {
+            if (user?.role === 'super_admin') {
+                navigate('/superadmin/reports');
+            }
+        } else if (notification.relatedModel === 'User') {
+             if (user?.role === 'super_admin') {
+                navigate(`/superadmin/account-management?search=${notification.relatedId}`);
+             }
         }
     };
 

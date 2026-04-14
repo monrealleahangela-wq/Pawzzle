@@ -26,8 +26,10 @@ const Dashboard = () => {
     totalPets: 0,
     totalProducts: 0,
     totalOrders: 0,
-    totalAdoptions: 0,
+    totalSales: 0,
     totalBookings: 0,
+    responseRate: 100,
+    totalReviews: 0,
     netEarnings: 0,
     availableBalance: 0,
     recentOrders: [],
@@ -68,8 +70,10 @@ const Dashboard = () => {
         totalPets: petsRes.status === 'fulfilled' ? (petsRes.value.data.pagination?.totalPets || 0) : 0,
         totalProducts: productsRes.status === 'fulfilled' ? (productsRes.value.data.pagination?.totalProducts || 0) : 0,
         totalOrders: ordersRes.status === 'fulfilled' ? (ordersRes.value.data.pagination?.totalOrders || 0) : 0,
-        totalAdoptions: adoptionsRes.status === 'fulfilled' ? (adoptionsRes.value.data.requests?.length || 0) : 0,
+        totalSales: adoptionsRes.status === 'fulfilled' ? (adoptionsRes.value.data.requests?.length || 0) : 0,
         totalBookings: bookingsRes.status === 'fulfilled' ? (bookingsRes.value.data.pagination?.total || bookingsRes.value.data.pagination?.totalBookings || 0) : 0,
+        responseRate: dssRes.status === 'fulfilled' ? (dssRes.value.data.overview?.responseRate || 100) : 100,
+        totalReviews: dssRes.status === 'fulfilled' ? (dssRes.value.data.overview?.totalReviews || 0) : 0,
         netEarnings: dssRes.status === 'fulfilled' ? (dssRes.value.data.overview?.totalRevenue || 0) : 0,
         availableBalance: dssRes.status === 'fulfilled' ? (dssRes.value.data.overview?.availableBalance || 0) : 0,
         recentOrders: ordersRes.status === 'fulfilled' ? (ordersRes.value.data.orders || []) : [],
@@ -213,9 +217,11 @@ const Dashboard = () => {
       <div className="relative z-10 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
         {[
           { label: 'AVAILABLE PETS', value: stats.totalPets, icon: Heart, color: 'amber', link: '/admin/pets', sub: 'In Shop', growth: stats.growth.pets, show: isAdmin || hasPerm('inventory') },
-          { label: 'SHOP PRODUCTS', value: stats.totalProducts, icon: Package, color: 'stone', link: '/admin/products', sub: 'In Stock', growth: stats.growth.products, show: isAdmin || hasPerm('inventory') },
+          { label: 'PET SALES', value: stats.totalSales, icon: ShoppingCart, color: 'rose', link: '/admin/pets', sub: 'Completed', growth: stats.growth.adoptions, show: isAdmin || hasPerm('orders') },
           { label: 'STORE ORDERS', value: stats.totalOrders, icon: ShoppingBag, color: 'slate', link: '/admin/orders', sub: 'Processed', growth: stats.growth.orders, show: isAdmin || hasPerm('orders') },
           { label: 'SERVICE BOOKINGS', value: stats.totalBookings, icon: Calendar, color: 'emerald', link: '/admin/bookings', sub: 'Scheduled', growth: stats.growth.bookings, show: isAdmin || hasPerm('bookings') || hasPerm('services') },
+          { label: 'RESPONSE RATE', value: `${stats.responseRate}%`, icon: Activity, color: 'primary', link: '/admin/chat', sub: 'Real-time', growth: 0, show: isAdmin },
+          { label: 'TOTAL REVIEWS', value: stats.totalReviews, icon: Star, color: 'secondary', link: '/admin/reviews', sub: 'Customers', growth: 0, show: isAdmin },
           { label: 'TOTAL REVENUE', value: `₱${stats.netEarnings.toLocaleString()}`, icon: TrendingUp, color: 'primary', link: '/admin/insights', sub: 'Gross Profit', growth: stats.growth.revenue, show: isAdmin },
           { label: 'AVAILABLE BALANCE', value: `₱${stats.availableBalance.toLocaleString()}`, icon: Shield, color: 'amber', link: '/admin/payouts', sub: 'For Payout', growth: stats.growth.balance, show: isAdmin }
         ].filter(s => s.show).map((stat, i) => (

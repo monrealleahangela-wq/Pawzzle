@@ -31,9 +31,9 @@ const AdminPets = () => {
   const navigate = useNavigate();
   const [modalTab, setModalTab] = useState('identity');
   const [activeTab, setActiveTab] = useState('inventory');
-  const [adoptionRequests, setAdoptionRequests] = useState([]);
-  const [fetchingAdoptions, setFetchingAdoptions] = useState(false);
-  const [adoptionSearch, setAdoptionSearch] = useState('');
+  const [salesHistory, setSalesHistory] = useState([]);
+  const [fetchingSales, setFetchingSales] = useState(false);
+  const [saleSearch, setSaleSearch] = useState('');
 
   const [filters, setFilters] = useState({ species: '', size: '', gender: '', isAvailable: '', search: '' });
 
@@ -108,31 +108,31 @@ const AdminPets = () => {
     if (activeTab === 'inventory') {
       fetchPets();
     } else {
-      fetchAdoptionRequests();
+      fetchSalesHistory();
     }
   }, [filters, pagination.currentPage, searchParams, activeTab]);
 
-  const fetchAdoptionRequests = async () => {
+  const fetchSalesHistory = async () => {
     try {
-      setFetchingAdoptions(true);
+      setFetchingSales(true);
       const response = await adoptionService.getMyRequests();
-      setAdoptionRequests(response.data.requests || []);
+      setSalesHistory(response.data.requests || []);
     } catch (error) {
       console.error('Error fetching pet sales history:', error);
       toast.error('Failed to load pet sales history');
     } finally {
-      setFetchingAdoptions(false);
+      setFetchingSales(false);
     }
   };
 
-  const handleUpdateAdoptionStatus = async (requestId, newStatus) => {
+  const handleUpdateSaleStatus = async (requestId, newStatus) => {
     try {
       await adoptionService.updateAdoptionStatus(requestId, { status: newStatus });
-      toast.success(`Request marked as ${newStatus}`);
-      fetchAdoptionRequests();
+      toast.success(`Order marked as ${newStatus}`);
+      fetchSalesHistory();
     } catch (error) {
       console.error('Error updating status:', error);
-      toast.error('Failed to update request status');
+      toast.error('Failed to update order status');
     }
   };
 
@@ -414,10 +414,10 @@ const AdminPets = () => {
           <PawPrint className="h-4 w-4" /> Pet Inventory
         </button>
         <button
-          onClick={() => setActiveTab('adoptions')}
-          className={`px-8 py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all flex items-center gap-3 ${activeTab === 'adoptions' ? 'bg-slate-900 text-white shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}
+          onClick={() => setActiveTab('sales')}
+          className={`px-8 py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all flex items-center gap-3 ${activeTab === 'sales' ? 'bg-slate-900 text-white shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}
         >
-          <History className="h-4 w-4" /> Sold Pets
+          <History className="h-4 w-4" /> Sale History
         </button>
       </div>
 
@@ -579,9 +579,9 @@ const AdminPets = () => {
                 </div>
                 <input
                   type="text"
-                  placeholder="SEARCH TRANSACTIONS..."
-                  value={adoptionSearch}
-                  onChange={(e) => setAdoptionSearch(e.target.value)}
+                  placeholder="SEARCH SALES..."
+                  value={saleSearch}
+                  onChange={(e) => setSaleSearch(e.target.value)}
                   className="w-64 pl-16 pr-4 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl text-[10px] font-black uppercase outline-none focus:ring-2 focus:ring-primary-600/10 placeholder:text-slate-300 transition-all font-sans"
                 />
               </div>
@@ -600,24 +600,24 @@ const AdminPets = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
-                {fetchingAdoptions ? (
+                {fetchingSales ? (
                   Array(5).fill(0).map((_, i) => (
                     <tr key={i} className="animate-pulse">
                       <td colSpan={5} className="px-8 py-6"><div className="h-12 bg-slate-50 rounded-2xl w-full" /></td>
                     </tr>
                   ))
-                ) : adoptionRequests.length === 0 ? (
+                ) : salesHistory.length === 0 ? (
                   <tr>
                     <td colSpan={5} className="px-8 py-20 text-center">
                       <ClipboardList className="h-12 w-12 text-slate-200 mx-auto mb-4" />
-                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">No transactions found</p>
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">No sales records found</p>
                     </td>
                   </tr>
                 ) : (
-                  adoptionRequests.filter(req =>
-                    req.pet?.name?.toLowerCase().includes(adoptionSearch.toLowerCase()) ||
-                    req.customer?.firstName?.toLowerCase().includes(adoptionSearch.toLowerCase()) ||
-                    req.customer?.lastName?.toLowerCase().includes(adoptionSearch.toLowerCase())
+                  salesHistory.filter(req =>
+                    req.pet?.name?.toLowerCase().includes(saleSearch.toLowerCase()) ||
+                    req.customer?.firstName?.toLowerCase().includes(saleSearch.toLowerCase()) ||
+                    req.customer?.lastName?.toLowerCase().includes(saleSearch.toLowerCase())
                   ).map((req) => (
                     <tr key={req._id} className="hover:bg-slate-50/50 transition-colors">
                       <td className="px-8 py-6">
@@ -668,16 +668,16 @@ const AdminPets = () => {
                           </Link>
                           {req.status === 'pending' && canManageAdoptions && (
                             <>
-                              <button onClick={() => handleUpdateAdoptionStatus(req._id, 'approved')} className="p-2.5 bg-emerald-50 text-emerald-600 rounded-2xl hover:bg-emerald-500 hover:text-white transition-all">
+                              <button onClick={() => handleUpdateSaleStatus(req._id, 'approved')} className="p-2.5 bg-emerald-50 text-emerald-600 rounded-2xl hover:bg-emerald-500 hover:text-white transition-all">
                                 <CheckCircle2 className="h-4 w-4" />
                               </button>
-                              <button onClick={() => handleUpdateAdoptionStatus(req._id, 'rejected')} className="p-2.5 bg-rose-50 text-rose-600 rounded-2xl hover:bg-rose-500 hover:text-white transition-all">
+                              <button onClick={() => handleUpdateSaleStatus(req._id, 'rejected')} className="p-2.5 bg-rose-50 text-rose-600 rounded-2xl hover:bg-rose-500 hover:text-white transition-all">
                                 <XCircle className="h-4 w-4" />
                               </button>
                             </>
                           )}
                           {req.status === 'approved' && canManageAdoptions && (
-                            <button onClick={() => handleUpdateAdoptionStatus(req._id, 'ready_for_pickup')} className="px-4 py-2 bg-slate-900 text-white rounded-2xl text-[9px] font-black uppercase tracking-widest hover:bg-rose-500 transition-all">
+                            <button onClick={() => handleUpdateSaleStatus(req._id, 'ready_for_pickup')} className="px-4 py-2 bg-slate-900 text-white rounded-2xl text-[9px] font-black uppercase tracking-widest hover:bg-rose-500 transition-all">
                               Ready for Pickup
                             </button>
                           )}
@@ -992,10 +992,17 @@ const AdminPets = () => {
                           <h4 className="text-[10px] font-black uppercase tracking-widest text-primary-500">Sales Configuration</h4>
                         </div>
                         <div className="space-y-4">
-                           <div className="space-y-2">
-                             <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Selling Price (PHP)</label>
-                             <input type="number" required value={petForm.price} onChange={e => setPetForm(p => ({ ...p, price: e.target.value }))}
-                               className="w-full px-6 py-4 bg-white border border-transparent rounded-2xl text-xl font-black text-slate-900 outline-none focus:border-rose-500 focus:ring-4 focus:ring-rose-500/20 transition-all shadow-inner" placeholder="0.00" />
+                         <div className="space-y-2">
+                           <label className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] px-1 italic">Immediate Listing Price (PHP)</label>
+                           <input 
+                             type="number" 
+                             required 
+                             step="0.01"
+                             value={petForm.price} 
+                             onChange={e => setPetForm(p => ({ ...p, price: e.target.value }))}
+                             className="w-full px-6 py-4 bg-white border-2 border-slate-100 rounded-2xl text-2xl font-black text-slate-900 outline-none focus:border-rose-500 focus:ring-4 focus:ring-rose-500/10 transition-all shadow-inner" 
+                             placeholder="E.G. 15000" 
+                           />
                           </div>
                           <div className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/5">
                             <span className="text-[10px] font-black uppercase tracking-widest">Price Negotiable?</span>

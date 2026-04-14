@@ -38,6 +38,13 @@ const AdminChat = () => {
     fetchConversations();
     fetchUnreadCount();
 
+    // Check for conversationId in URL
+    const params = new URLSearchParams(window.location.search);
+    const convId = params.get('conversationId');
+    if (convId) {
+      autoSelectConversation(convId);
+    }
+
     const interval = setInterval(() => {
       fetchConversations(false);
       fetchUnreadCount();
@@ -45,6 +52,17 @@ const AdminChat = () => {
 
     return () => clearInterval(interval);
   }, []);
+
+  const autoSelectConversation = async (id) => {
+    try {
+      const response = await chatService.getConversationById(id);
+      if (response.data.conversation) {
+        setSelectedConversation(response.data.conversation);
+      }
+    } catch (error) {
+      console.error('Failed to auto-select conversation:', error);
+    }
+  };
 
   const fetchConversations = async (showLoading = true) => {
     try {

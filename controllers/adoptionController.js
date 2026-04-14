@@ -19,6 +19,15 @@ const createAdoptionRequest = async (req, res) => {
             pickupConfirmation 
         } = req.body;
 
+        // Validate that the preferred pickup date is not in the past
+        const selectedDate = new Date(preferredPickupDate);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        if (selectedDate < today) {
+            return res.status(400).json({ message: 'Preferred pick-up date cannot be in the past. Please select today or a future date.' });
+        }
+
         // Verify pet and conversation
         const pet = await Pet.findById(petId);
         if (!pet) {

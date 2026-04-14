@@ -1108,7 +1108,9 @@ const ProductInventory = () => {
                            <div className="space-y-2">
                              <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1 flex items-center gap-2"><Clock className="h-2.5 w-2.5" /> Expiry Date</label>
                              <input 
-                               type="date" value={productForm.expiryDate}
+                               type="date"
+                               min={new Date().toISOString().split('T')[0]}
+                               value={productForm.expiryDate}
                                onChange={e => setProductForm(p => ({ ...p, expiryDate: e.target.value }))}
                                className="w-full px-5 py-3.5 bg-slate-50 border-2 border-slate-50 rounded-xl text-[12px] font-bold outline-none focus:border-primary-500 transition-all"
                              />

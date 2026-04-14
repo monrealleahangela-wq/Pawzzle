@@ -48,6 +48,16 @@ const AccountManagement = () => {
   const [savingPermissions, setSavingPermissions] = useState(false);
 
   useEffect(() => {
+    // Initialize search from URL if present
+    const params = new URLSearchParams(window.location.search);
+    const urlSearch = params.get('search');
+    if (urlSearch && !filters.search) {
+      setSearchTerm(urlSearch);
+      handleFilterChange('search', urlSearch);
+    }
+  }, []);
+
+  useEffect(() => {
     fetchAccounts();
   }, [filters, pagination.currentPage]);
 

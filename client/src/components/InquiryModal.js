@@ -25,6 +25,17 @@ const InquiryModal = ({ isOpen, onClose, pet, onSubmit }) => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
+
+    // Validate that the preferred pickup date is not in the past
+    const selectedDate = new Date(formData.preferredPickupDate);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    if (selectedDate < today) {
+      toast.error('Please select today or a future date only');
+      return;
+    }
+
     if (!formData.pickupConfirmation) {
       toast.error('Please confirm that you understand this is for pickup only.');
       return;
@@ -32,17 +43,19 @@ const InquiryModal = ({ isOpen, onClose, pet, onSubmit }) => {
     onSubmit(formData);
   };
 
+  const todayStr = new Date().toISOString().split('T')[0];
+
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in">
       <div className="bg-white w-full max-w-lg rounded-[2.5rem] overflow-hidden shadow-2xl animate-scale-up border border-slate-100 flex flex-col max-h-[85vh]">
         {/* Header */}
         <div className="bg-slate-900 p-5 sm:p-6 flex items-center justify-between relative overflow-hidden shrink-0">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-primary-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+          <div className="absolute top-0 right-0 w-32 h-32 bg-primary-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none" />
           <div className="relative z-10">
             <h2 className="text-white text-lg sm:text-xl font-black uppercase tracking-tight">Purchase Inquiry</h2>
             <p className="text-primary-400 text-[9px] font-black uppercase tracking-widest mt-0.5 italic">For {pet.name} • {pet.breed}</p>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-full transition-colors relative z-10 text-white">
+          <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-full transition-colors relative z-20 text-white">
             <X className="h-6 w-6" />
           </button>
         </div>
@@ -104,6 +117,7 @@ const InquiryModal = ({ isOpen, onClose, pet, onSubmit }) => {
                   required
                   type="date"
                   name="preferredPickupDate"
+                  min={todayStr}
                   value={formData.preferredPickupDate}
                   onChange={handleChange}
                   className="w-full px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-2xl text-xs font-bold text-slate-900 focus:ring-2 focus:ring-primary-500/20 focus:bg-white transition-all outline-none"

@@ -341,6 +341,7 @@ const VoucherManagement = () => {
                                     <input
                                         type="date"
                                         required
+                                        min={new Date().toISOString().split('T')[0]}
                                         value={formData.startDate}
                                         onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
                                         className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl outline-none focus:ring-1 focus:ring-primary-500 font-bold text-slate-900 text-xs"
@@ -351,6 +352,7 @@ const VoucherManagement = () => {
                                     <input
                                         type="date"
                                         required
+                                        min={formData.startDate || new Date().toISOString().split('T')[0]}
                                         value={formData.endDate}
                                         onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
                                         className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl outline-none focus:ring-1 focus:ring-primary-500 font-bold text-slate-900 text-xs"

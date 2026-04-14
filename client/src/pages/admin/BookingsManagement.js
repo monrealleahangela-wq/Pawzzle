@@ -56,7 +56,25 @@ const BookingsManagement = () => {
     const userData = JSON.parse(localStorage.getItem('user') || '{}');
     setUser(userData);
     fetchBookings();
+
+    // Check for ID in query params to auto-open
+    const queryParams = new URLSearchParams(window.location.search);
+    const bookingId = queryParams.get('id');
+    if (bookingId) {
+       autoSelectBooking(bookingId);
+    }
   }, []);
+
+  const autoSelectBooking = async (id) => {
+    try {
+        const response = await adminBookingService.getBookingById(id);
+        if (response.data.booking) {
+            setSelectedBooking(response.data.booking);
+        }
+    } catch (error) {
+        console.error('Failed to auto-select booking:', error);
+    }
+  };
 
   const fetchBookings = async () => {
     try {

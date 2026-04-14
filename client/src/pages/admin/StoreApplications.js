@@ -70,7 +70,26 @@ const StoreApplications = () => {
 
   useEffect(() => {
     fetchApplications();
+    
+    // Check for ID in URL to auto-open
+    const params = new URLSearchParams(window.location.search);
+    const appId = params.get('id');
+    if (appId) {
+      autoOpenApplication(appId);
+    }
   }, [filters]);
+
+  const autoOpenApplication = async (id) => {
+    try {
+      const response = await storeApplicationService.getApplicationById(id);
+      if (response.data.application) {
+        setSelectedApplication(response.data.application);
+        setShowReviewModal(true);
+      }
+    } catch (error) {
+      console.error('Failed to auto-open application:', error);
+    }
+  };
 
   // Debounce search effect
   useEffect(() => {

@@ -44,6 +44,9 @@ const notificationSchema = new mongoose.Schema({
         type: String, // 'Order', 'Booking', 'StoreApplication', etc.
         enum: ['Order', 'Booking', 'StoreApplication', 'Inventory', 'Report', 'User', 'Conversation']
     },
+    targetUrl: {
+        type: String // Optional: Pre-calculated dynamic URL for convenience
+    },
     isRead: {
         type: Boolean,
         default: false

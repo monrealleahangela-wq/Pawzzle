@@ -287,8 +287,19 @@ const Bookings = ({ isSubcomponent = false }) => {
             fetchBookings(); // Fallback to normal refresh
           });
       }
+    } else if (bookingId) {
+        // If no payment status but we have a bookingId (from notification), find and select it
+        const target = bookings.find(b => b._id === bookingId);
+        if (target) {
+            setSelectedBooking(target);
+        } else {
+            // If not found in current loaded list, try to fetch it specifically or refresh
+            bookingService.getBookingById(bookingId).then(res => {
+                if (res.data.booking) setSelectedBooking(res.data.booking);
+            }).catch(e => console.error(e));
+        }
     }
-  }, [filterStatus, searchTerm, searchParams]);
+  }, [filterStatus, searchTerm, searchParams, bookings.length]);
 
   useEffect(() => {
     const serviceId = searchParams.get('service');
