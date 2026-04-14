@@ -3,6 +3,7 @@ const Order = require('../models/Order');
 const Store = require('../models/Store');
 const Product = require('../models/Product');
 const Pet = require('../models/Pet');
+const AdoptionRequest = require('../models/AdoptionRequest');
 const StockSyncService = require('../services/stockSyncService');
 const RevenueService = require('../services/revenueService');
 const { createNotification } = require('./notificationController');
@@ -158,6 +159,76 @@ const createBookingCheckoutSession = async (req, res) => {
 };
 
 /**
+ * Create a PayMongo Checkout Session for an Adoption
+ */
+const createAdoptionCheckoutSession = async (req, res) => {
+    try {
+        const { requestId } = req.params;
+        const adoption = await AdoptionRequest.findById(requestId).populate('customer').populate('pet');
+
+        if (!adoption) {
+            return res.status(404).json({ message: 'Adoption request not found' });
+        }
+
+        if (adoption.status === 'cancelled') {
+            return res.status(400).json({ message: 'Cannot pay for a canceled inquiry' });
+        }
+
+        // Determine amount: if deposit exists and balance is full, pay deposit. Otherwise pay total.
+        const pricing = adoption.paymentDetails?.pricingBreakdown || {};
+        const amountToPay = pricing.depositAmount > 0 && adoption.paymentDetails.paymentStatus === 'payment_pending' 
+            ? pricing.depositAmount 
+            : (pricing.balanceDue || pricing.totalPrice);
+
+        if (!amountToPay || amountToPay <= 0) {
+            return res.status(400).json({ message: 'Invalid payment amount detected' });
+        }
+
+        const amountInCentavos = Math.round(amountToPay * 100);
+        const data = {
+            data: {
+                attributes: {
+                    send_email_receipt: true,
+                    show_description: true,
+                    show_line_items: true,
+                    description: `Adoption Fee for ${adoption.pet.name}`,
+                    line_items: [{
+                        amount: amountInCentavos,
+                        currency: 'PHP',
+                        name: `Pet Purchase: ${adoption.pet.name}`,
+                        quantity: 1
+                    }],
+                    payment_method_types: ['card', 'gcash', 'paymaya', 'dob', 'dob_ubp'],
+                    success_url: `${FRONTEND_URL}/adoptions?payment=success&id=${adoption._id}`,
+                    cancel_url: `${FRONTEND_URL}/adoptions?payment=cancelled`,
+                    reference_number: `AD-${adoption._id.toString().slice(-8).toUpperCase()}`
+                }
+            }
+        };
+
+        const response = await axios.post('https://api.paymongo.com/v1/checkout_sessions', data, {
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Basic ${Buffer.from(PAYMONGO_SECRET_KEY + ':').toString('base64')}`
+            }
+        });
+
+        const session = response.data.data;
+        
+        // Save session info to adoption
+        if (!adoption.paymentDetails) adoption.paymentDetails = { pricingBreakdown: {} };
+        adoption.paymentDetails.sessionId = session.id;
+        adoption.paymentDetails.checkoutUrl = session.attributes.checkout_url;
+        await adoption.save();
+
+        res.json({ checkoutUrl: session.attributes.checkout_url });
+    } catch (error) {
+        console.error('PayMongo Create Adoption Session Error:', error.response?.data || error.message);
+        res.status(500).json({ message: 'Failed to create payment session' });
+    }
+};
+
+/**
  * Handle PayMongo Webhook
  */
 const handleWebhook = async (req, res) => {
@@ -213,6 +284,42 @@ const handleWebhook = async (req, res) => {
                     });
                     
                     console.log(`✅ Booking ${booking._id} marked as PAID via webhook. Awaiting Seller Approval.`);
+                }
+                return res.sendStatus(200);
+            }
+
+            if (ref && ref.startsWith('AD-')) {
+                // It's an adoption
+                const adoption = await AdoptionRequest.findOne({ 'paymentDetails.sessionId': checkoutSession.id });
+                if (adoption) {
+                    const pricing = adoption.paymentDetails.pricingBreakdown;
+                    const paidAmount = pricing.depositAmount > 0 ? pricing.depositAmount : pricing.totalPrice;
+
+                    adoption.paymentDetails.paymentStatus = pricing.depositAmount > 0 ? 'deposit_paid' : 'paid_in_full';
+                    adoption.paymentDetails.paidAmount = (adoption.paymentDetails.paidAmount || 0) + paidAmount;
+                    adoption.paymentDetails.balanceDue = Math.max(0, pricing.totalPrice - adoption.paymentDetails.paidAmount);
+                    adoption.paymentDetails.method = paymentData.attributes.source.type;
+                    adoption.paymentDetails.paidAt = new Date();
+                    
+                    // Add history
+                    adoption.paymentDetails.history.push({
+                        status: adoption.paymentDetails.paymentStatus,
+                        amount: paidAmount,
+                        description: `Paid via PayMongo (${adoption.paymentDetails.method})`
+                    });
+
+                    await adoption.save();
+
+                    // Notify seller
+                    await createNotification({
+                        recipient: adoption.seller,
+                        sender: adoption.customer,
+                        type: 'adoption_status',
+                        title: '💳 Adoption Payment Received',
+                        message: `Customer paid ₱${paidAmount.toLocaleString()} for ${ref}. Status: ${adoption.paymentDetails.paymentStatus.replace('_', ' ')}.`,
+                        relatedId: adoption._id,
+                        relatedModel: 'AdoptionRequest'
+                    });
                 }
                 return res.sendStatus(200);
             }
@@ -426,6 +533,7 @@ const verifyPayment = async (req, res) => {
 module.exports = {
     createCheckoutSession,
     createBookingCheckoutSession,
+    createAdoptionCheckoutSession,
     handleWebhook,
     verifyPayment
 };

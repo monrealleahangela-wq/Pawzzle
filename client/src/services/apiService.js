@@ -316,6 +316,7 @@ export const adoptionService = {
 export const paymentService = {
   createCheckoutSession: (orderId) => api.post(`/payment/create-checkout-session/${orderId}`),
   createBookingCheckoutSession: (bookingId) => api.post(`/payment/create-booking-checkout-session/${bookingId}`),
+  createAdoptionCheckoutSession: (requestId) => api.post(`/payment/create-adoption-checkout-session/${requestId}`),
   verifyPayment: (orderId) => api.get(`/payment/verify/${orderId}`),
   verifyBookingPayment: (bookingId) => api.get(`/payment/verify/${bookingId}`)
 };

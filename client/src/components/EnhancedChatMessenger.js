@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { toast } from 'react-toastify';
 import { Send, X, User, Clock, Check, Phone, Mail, MapPin, Heart, AlertCircle, ShoppingBag, Truck, CheckCircle, Camera, Shield, ArrowLeft, ChevronDown, Calendar, CreditCard, Wallet, Banknote, ArrowUpRight, CheckCircle2, Zap } from 'lucide-react';
 import { chatService } from '../services/chatService';
-import { adoptionService, uploadService } from '../services/apiService';
+import { adoptionService, uploadService, paymentService } from '../services/apiService';
 import UserReportModal from './UserReportModal';
 import socket from '../utils/socket';
 import { formatChatTime } from '../utils/timeFormatters';
@@ -369,6 +369,23 @@ const EnhancedChatMessenger = ({
        setIsLoading(false);
     }
   };
+  const handlePaymongoCheckout = async () => {
+    try {
+      setIsLoading(true);
+      toast.info('Redirecting to secure payment gateway...');
+      const response = await paymentService.createAdoptionCheckoutSession(transactionRequest._id);
+      if (response.data?.checkoutUrl) {
+        window.location.href = response.data.checkoutUrl;
+      } else {
+        throw new Error('No checkout URL received');
+      }
+    } catch (error) {
+      console.error('Checkout error:', error);
+      toast.error(error.response?.data?.message || 'Failed to initiate payment');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const formatTime = (timestamp) => {
     return formatChatTime(timestamp);
@@ -476,9 +493,9 @@ const EnhancedChatMessenger = ({
             {!isSeller && !isAdmin && (
               <>
                 {payment.paymentStatus === 'payment_pending' && (
-                  <button onClick={() => handleManualPaymentUpdate(pricing.depositAmount > 0 ? 'deposit_paid' : 'paid_in_full', pricing.depositAmount || pricing.totalPrice)} 
-                    className="text-[9px] font-black uppercase tracking-widest bg-emerald-600 text-white px-3 py-1.5 rounded-lg shadow-sm flex items-center gap-2">
-                    <CheckCircle2 className="h-3 w-3" /> Settle Payment
+                  <button onClick={handlePaymongoCheckout} 
+                    className="text-[9px] font-black uppercase tracking-widest bg-emerald-600 text-white px-3 py-1.5 rounded-lg shadow-sm flex items-center gap-2 hover:bg-emerald-700 transition-all active:scale-95">
+                    <CheckCircle2 className="h-3 w-3" /> Secure Payment
                   </button>
                 )}
                 {['inquiry_submitted', 'reserved', 'approved'].includes(transactionRequest.status) && (
