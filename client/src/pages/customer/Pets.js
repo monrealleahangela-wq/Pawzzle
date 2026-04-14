@@ -412,7 +412,7 @@ const Pets = () => {
 
                     {/* Store Node */}
                     <Link 
-                      to={`/find-shops?store=${pet.store?._id}`}
+                      to={`/stores/${pet.store?._id}`}
                       className="mt-4 pt-3 border-t border-slate-50 flex items-center justify-between group/store hover:bg-slate-50/50 transition-colors -mx-4 px-4"
                     >
                       <div className="flex items-center gap-2 min-w-0">

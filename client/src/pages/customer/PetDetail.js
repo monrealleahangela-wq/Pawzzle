@@ -204,7 +204,7 @@ const PetDetail = () => {
                 </div>
               </div>
               <Link 
-                to={`/find-shops?store=${pet.store?._id}`}
+                to={`/stores/${pet.store?._id}`}
                 className="px-4 py-2 bg-slate-900 text-white rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-primary-600 transition-all shadow-lg"
               >
                 Visit Seller Page
