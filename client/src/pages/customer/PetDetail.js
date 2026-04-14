@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { ArrowLeft, Heart, Calendar, Weight, MapPin, Package, MessageSquare, Star } from 'lucide-react';
-import { petService, getImageUrl, adoptionService } from '../../services/apiService';
+import { petService, getImageUrl, adoptionService, storeService } from '../../services/apiService';
 import { chatService } from '../../services/chatService';
 import LoginModal from '../../components/LoginModal';
 import EnhancedChatMessenger from '../../components/EnhancedChatMessenger';
@@ -19,6 +19,7 @@ const PetDetail = () => {
   const [showChat, setShowChat] = useState(false);
   const [showInquiryModal, setShowInquiryModal] = useState(false);
   const [mainImage, setMainImage] = useState(null);
+  const [storeDetails, setStoreDetails] = useState(null);
   const { isAuthenticated, user } = useAuth();
 
   useEffect(() => {
@@ -29,7 +30,19 @@ const PetDetail = () => {
     if (pet && pet.images && pet.images.length > 0) {
       setMainImage(pet.images[0]);
     }
+    if (pet && pet.store && pet.store._id) {
+      fetchStoreDetails(pet.store._id);
+    }
   }, [pet]);
+
+  const fetchStoreDetails = async (storeId) => {
+    try {
+      const response = await storeService.getStoreDetails(storeId);
+      setStoreDetails(response.data);
+    } catch (error) {
+      console.error('Failed to fetch real-time store details', error);
+    }
+  };
 
   const fetchPet = async () => {
     try {
@@ -204,11 +217,11 @@ const PetDetail = () => {
                     <Star className="h-5 w-5 text-primary-600" />
                   )}
                 </div>
-                <div>
+                 <div>
                   <h3 className="text-sm font-black text-slate-900 uppercase">{pet.store?.name || 'Private Seller'}</h3>
                   <div className="flex items-center gap-2 mt-0.5">
                     <span className="text-[8px] font-black text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full uppercase tracking-widest border border-emerald-100">Verified Seller</span>
-                    <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">• {pet.store?.stats?.responseTime || 'under an hour'} response</span>
+                    <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">• {storeDetails?.store?.stats?.responseTime || pet.store?.stats?.responseTime || 'under an hour'} response</span>
                   </div>
                 </div>
               </div>
@@ -222,15 +235,15 @@ const PetDetail = () => {
             
             <div className="grid grid-cols-3 gap-2 border-t border-slate-50 pt-4">
               <div className="text-center">
-                <p className="text-[10px] font-black text-slate-900">{pet.store?.stats?.activeListingsCount || '11+'}</p>
+                <p className="text-[10px] font-black text-slate-900">{storeDetails?.pets?.length || pet.store?.stats?.activeListingsCount || '0'}</p>
                 <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Active Pets</p>
               </div>
               <div className="text-center border-x border-slate-50">
-                <p className="text-[10px] font-black text-slate-900">{pet.store?.stats?.responseRate || '98'}%</p>
+                <p className="text-[10px] font-black text-slate-900">{storeDetails?.store?.stats?.responseRate || pet.store?.stats?.responseRate || '100'}%</p>
                 <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Resp. Rate</p>
               </div>
               <div className="text-center">
-                <p className="text-[10px] font-black text-slate-900">{pet.store?.ratings?.count || '0'}</p>
+                <p className="text-[10px] font-black text-slate-900">{storeDetails?.store?.ratings?.count || pet.store?.ratings?.count || '0'}</p>
                 <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Store Reviews</p>
               </div>
             </div>
