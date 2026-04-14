@@ -94,27 +94,26 @@ const sendStaffInvitation = async (email, password, firstName) => {
     const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
     // STAGE 1: Try Resend (Highest Reliability)
-    if (resend) {
-        try {
-            const fromEmail = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev';
-            console.log(`🔄 [EmailService] Attempting Resend API for ${email} (From: ${fromEmail})...`);
-            const data = await resend.emails.send({
-                from: `Pawzzle <${fromEmail}>`,
-                to: email,
-                subject: '🐾 Welcome to the Pawzzle Team!',
-                html: bodyHtml
-            });
-            console.log('✅ [EmailService] Resend API Success:', data.id);
-            return { 
-                success: true, 
-                provider: 'resend',
-                warning: fromEmail === 'onboarding@resend.dev' ? 'Restricted to account owner only' : null
-            };
+            const fromEmail = process.env.RESEND_FROM_EMAIL;
+            
+            // Only use Resend if we have a verified 'from' address. 
+            // The default 'onboarding@resend.dev' only sends to the account owner, 
+            // which is NOT what we want for "real" staff emails.
+            if (fromEmail) {
+                console.log(`🔄 [EmailService] Attempting Resend API for ${email} (From: ${fromEmail})...`);
+                const data = await resend.emails.send({
+                    from: `Pawzzle <${fromEmail}>`,
+                    to: email,
+                    subject: '🐾 Welcome to the Pawzzle Team!',
+                    html: bodyHtml
+                });
+                console.log('✅ [EmailService] Resend API Success:', data.id);
+                return { success: true, provider: 'resend' };
+            } else {
+                console.log('ℹ️ [EmailService] Custom Resend From-Email not found. Skipping to SMTP for real delivery.');
+            }
         } catch (resendErr) {
             console.error('⚠️ [EmailService] Resend API failed:', resendErr.message);
-            if (resendErr.message?.includes('onboarding@resend.dev')) {
-                console.warn('💡 [EmailService] Tip: Resend limit - can only send to your own email unless domain is verified.');
-            }
         }
     } else {
         console.log('ℹ️ [EmailService] Resend API Key not found, skipping to SMTP.');

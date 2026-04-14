@@ -208,27 +208,22 @@ const createStaff = async (req, res) => {
         }
         
         const emailSent = emailResult.success;
-        const isRestricted = emailResult.warning === 'Restricted to account owner only';
+        const emailSent = emailResult.success;
 
         const staffObj = staff.toObject();
         delete staffObj.password;
 
         console.log('--- 🏁 STAFF CREATION COMPLETE 🏁 ---');
-        let message = 'Staff account created and invitation sent successfully.';
+        let message = emailSent 
+            ? 'Staff account created and invitation sent successfully.' 
+            : `Staff created, but email failed: ${emailResult.errorMessage || emailResult.error || 'Unknown service error'}.`;
         
-        if (!emailSent) {
-            message = `Staff created, but email failed: ${emailResult.errorMessage || emailResult.error || 'Unknown service error'}.`;
-        } else if (isRestricted) {
-            message = 'Staff created. IMPORTANT: Using Resend demo mode - invitation sent to YOUR email, not the staff member.';
-        }
-
         return res.status(201).json({ 
             message: message,
             staff: staffObj,
             emailSent: emailSent,
             emailProvider: emailResult.provider,
             emailError: emailResult.errorMessage || emailResult.error,
-            isRestricted: isRestricted,
             credentialsProvided: true
         });
     } catch (error) {
