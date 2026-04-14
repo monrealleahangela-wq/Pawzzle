@@ -90,53 +90,50 @@ const createStaff = async (req, res) => {
         let targetStoreId = storeId || req.user.store;
         if (!targetStoreId) {
             console.log('Attempting to find admin\'s default store...');
-            const adminStore = await Store.findOne({ owner: req.user._id });
-            if (!adminStore) {
-                console.log('❌ Admin must own a store to hire staff');
-                return res.status(400).json({ message: 'Admin must own a store to hire staff' });
-            }
-            targetStoreId = adminStore._id;
-            console.log(`Default store found: ${targetStoreId}`);
-        } else {
-            console.log(`Target store provided: ${targetStoreId}`);
+    console.log('--- 🚀 INITIATING STAFF ONBOARDING 🚀 ---');
+    try {
+        const { firstName, lastName, email, username, phone, staffType, targetStoreId, permissions } = req.body;
+
+        // Standardize inputs
+        const cleanEmail = email?.trim().toLowerCase();
+        const cleanUsername = username?.trim();
+        const cleanFirstName = firstName?.trim();
+        const cleanLastName = lastName?.trim();
+
+        console.log(`Payload for ${cleanEmail} (Username: ${cleanUsername})`);
+
+        if (!cleanEmail || !cleanFirstName || !cleanLastName || !cleanUsername || !staffType || !targetStoreId) {
+            console.log('❌ MISSING REQUIRED FIELDS');
+            return res.status(400).json({ message: 'Missing required staff metadata fields' });
         }
 
-        // Verify ownership/permission if not super admin
+        // Verify store access
         if (req.user.role !== 'super_admin') {
-            console.log(`Checking store ownership for admin (${req.user._id}) and store (${targetStoreId})...`);
             const isOwner = await Store.findOne({ _id: targetStoreId, owner: req.user._id });
             if (!isOwner) {
-                console.log('❌ Store access denied for this admin');
                 return res.status(403).json({ message: 'Store access denied' });
             }
-            console.log('✅ Admin owns the target store.');
-        } else {
-            console.log('User is super_admin, skipping store ownership check.');
         }
 
-        const validTypes = ['order_staff', 'inventory_staff', 'service_staff'];
-        if (!validTypes.includes(staffType)) {
-            console.log(`❌ INVALID STAFF TYPE: ${staffType}`);
-            return res.status(400).json({ message: 'Invalid staff specialization' });
-        }
-        console.log(`Staff type validated: ${staffType}`);
-
+        // Check uniqueness
         const existingUser = await User.findOne({
             $or: [{ email: cleanEmail }, { username: cleanUsername }],
             isDeleted: false
         });
 
         if (existingUser) {
-            console.log(`❌ CONFLICT: User with email/username already exists: ${cleanEmail}/${cleanUsername}`);
             return res.status(409).json({
                 message: existingUser.email === cleanEmail
-                    ? 'Email is already registered. Please use a different one.'
-                    : 'Username is already taken. Please use a different one.'
+                    ? 'Email is already registered.'
+                    : 'Username is already taken.'
             });
         }
-        console.log('✅ Email and Username are unique.');
 
+        // 🛡️ SECURITY: Generate temporary secure password
+        const tempPassword = crypto.randomBytes(6).toString('hex');
         const store = await Store.findById(targetStoreId);
+        
+        // Use store address as base
         let staffAddress = { street: 'N/A', city: 'N/A', province: 'Cavite', barangay: 'N/A', country: 'PH' };
         if (store?.contactInfo?.address) {
             staffAddress = {
@@ -146,22 +143,6 @@ const createStaff = async (req, res) => {
                 barangay: store.contactInfo.address.barangay || 'N/A',
                 zipCode: store.contactInfo.address.zipCode || '',
                 country: 'PH'
-            };
-            console.log('Staff address derived from store contact info.');
-        } else {
-            const fromEmail = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev';
-            console.log(`🔄 [EmailService] Attempting Resend API for ${email} (From: ${fromEmail})...`);
-            const data = await resend.emails.send({
-                from: `Pawzzle <${fromEmail}>`,
-                to: email,
-                subject: '🐾 Welcome to the Pawzzle Team!',
-                html: bodyHtml
-            });
-            console.log('✅ [EmailService] Resend API Success:', data.id);
-            return { 
-                success: true, 
-                provider: 'resend',
-                warning: fromEmail === 'onboarding@resend.dev' ? 'Restricted to account owner only' : null
             };
         }
 
@@ -177,42 +158,27 @@ const createStaff = async (req, res) => {
             store: targetStoreId,
             createdBy: req.user._id,
             isActive: true,
-            requiresPasswordChange: true, // 🛡️ Enforce first-login change
+            requiresPasswordChange: true,
             address: staffAddress,
             permissions: permissions || DEFAULT_PERMISSIONS[staffType] || {}
         });
 
-        console.log(`[StaffDebug] Attempting to save staff ${cleanEmail} with password length: ${tempPassword.length}`);
-        
-        try {
-            await staff.save();
-            console.log(`✅ [StaffDebug] Staff record saved to DB.`);
-        } catch (saveErr) {
-            console.error('❌ [StaffDebug] DB Save FAILED:', saveErr);
-            throw saveErr; // This will trigger the outer catch
-        }
-        
-        // Use a more accurate prefix check
-        const isHashed = staff.password && (staff.password.startsWith('$2a$') || staff.password.startsWith('$2b$'));
-        console.log(`✅ [StaffDebug] Persistence check - Hashed: ${isHashed ? 'YES' : 'NO'} | Email: ${staff.email}`);
+        await staff.save();
+        console.log('✅ Staff record saved.');
 
         // 📧 Send Invitation Email
-        console.log(`📧 Dispatching email to: ${cleanEmail}`);
         let emailResult = { success: false };
         try {
             emailResult = await sendStaffInvitation(cleanEmail, tempPassword, cleanFirstName);
-            console.log(`✅ [Email Task] Result: ${emailResult.success ? 'SUCCESS' : 'FAILED'}`, emailResult);
         } catch (emailErr) {
-            console.error('❌ [Email Task] Error during execution:', emailErr.message);
+            console.error('❌ Email Task Error:', emailErr.message);
             emailResult = { success: false, error: emailErr.message };
         }
         
         const emailSent = emailResult.success;
-
         const staffObj = staff.toObject();
         delete staffObj.password;
 
-        console.log('--- 🏁 STAFF CREATION COMPLETE 🏁 ---');
         let message = emailSent 
             ? 'Staff account created and invitation sent successfully.' 
             : `Staff created, but email failed: ${emailResult.errorMessage || emailResult.error || 'Unknown service error'}.`;
@@ -227,13 +193,9 @@ const createStaff = async (req, res) => {
         });
     } catch (error) {
         console.error('CRITICAL: createStaff catch-all triggered:', error);
-        
-        // Handle Mongoose Validation Errors Specifically
         if (error.name === 'ValidationError') {
             const messages = Object.values(error.errors).map(err => err.message);
-            return res.status(400).json({ 
-                message: `Validation Failed: ${messages.join(', ')}` 
-            });
+            return res.status(400).json({ message: `Validation Failed: ${messages.join(', ')}` });
         }
 
         return res.status(500).json({ 

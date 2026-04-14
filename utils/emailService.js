@@ -94,6 +94,8 @@ const sendStaffInvitation = async (email, password, firstName) => {
     const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
     // STAGE 1: Try Resend (Highest Reliability)
+    if (resend) {
+        try {
             const fromEmail = process.env.RESEND_FROM_EMAIL;
             
             // Only use Resend if we have a verified 'from' address. 
