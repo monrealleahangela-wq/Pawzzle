@@ -1395,9 +1395,10 @@ const Bookings = ({ isSubcomponent = false }) => {
                           <span className="text-xs font-black">- ₱{appliedVoucher.discountAmount.toLocaleString()}</span>
                         </div>
                       )}
+                    </div>
 
-                      {/* Standardized Online Payment Selection */}
-                      <div className="pt-6 mt-6 border-t border-slate-100">
+                    {/* Standardized Online Payment Selection */}
+                    <div className="pt-6 mt-6 border-t border-slate-100">
                         <div className="flex items-center justify-between mb-4 px-1">
                           <div>
                             <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.3em] mb-1">Payment Method</p>
