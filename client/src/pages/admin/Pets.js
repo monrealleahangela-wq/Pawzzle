@@ -992,10 +992,10 @@ const AdminPets = () => {
                           <h4 className="text-[10px] font-black uppercase tracking-widest text-primary-500">Sales Configuration</h4>
                         </div>
                         <div className="space-y-4">
-                          <div className="space-y-2">
+                           <div className="space-y-2">
                              <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Selling Price (PHP)</label>
                              <input type="number" required value={petForm.price} onChange={e => setPetForm(p => ({ ...p, price: e.target.value }))}
-                               className="w-full px-6 py-4 bg-white/5 border border-white/10 rounded-2xl text-xl font-black outline-none focus:ring-4 focus:ring-rose-500/20" placeholder="0.00" />
+                               className="w-full px-6 py-4 bg-white border border-transparent rounded-2xl text-xl font-black text-slate-900 outline-none focus:border-rose-500 focus:ring-4 focus:ring-rose-500/20 transition-all shadow-inner" placeholder="0.00" />
                           </div>
                           <div className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/5">
                             <span className="text-[10px] font-black uppercase tracking-widest">Price Negotiable?</span>
@@ -1016,12 +1016,12 @@ const AdminPets = () => {
                             <div className="space-y-1.5">
                                <label className="text-[9px] font-black text-emerald-900/40 uppercase tracking-widest">Stock Quantity</label>
                                <input type="number" value={petForm.quantity} onChange={e => setPetForm(p => ({ ...p, quantity: e.target.value }))}
-                                 className="w-full px-4 py-3 bg-white border border-emerald-200 rounded-xl text-[11px] font-black outline-none" />
+                                 className="w-full px-4 py-3 bg-white border border-emerald-200 text-slate-900 rounded-xl text-[11px] font-black outline-none" />
                             </div>
                             <div className="space-y-1.5">
                                <label className="text-[9px] font-black text-emerald-900/40 uppercase tracking-widest">Current Status</label>
                                <select value={petForm.status} onChange={e => setPetForm(p => ({ ...p, status: e.target.value }))}
-                                 className="w-full px-4 py-3 bg-white border border-emerald-200 rounded-xl text-[11px] font-black uppercase outline-none">
+                                 className="w-full px-4 py-3 bg-white border border-emerald-200 text-slate-900 rounded-xl text-[11px] font-black uppercase outline-none">
                                   <option value="available">Available</option>
                                   <option value="reserved">Reserved</option>
                                   <option value="sold">Sold</option>
