@@ -115,7 +115,6 @@ const Layout = () => {
     { path: '/admin/vouchers', label: 'Vouchers', icon: Ticket },
     { path: '/admin/payouts', label: 'Payouts', icon: Wallet },
     { path: '/admin/store', label: 'Store', icon: Building },
-    { path: '/admin/settings', label: 'Settings', icon: Settings },
     { path: '/admin/staff', label: 'Staff', icon: Users },
   ];
 
