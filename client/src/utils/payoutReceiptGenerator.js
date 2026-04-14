@@ -70,7 +70,7 @@ export const generatePayoutReceipt = (payout) => {
     const grossAmount = payout.amount / 0.9;
     const platformFee = grossAmount * 0.1;
     
-    const table = autoTable(doc, {
+    autoTable(doc, {
         startY: 75,
         head: [['DESCRIPTION', 'DETAILS', 'AMOUNT']],
         body: [

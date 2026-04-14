@@ -26,7 +26,6 @@ const SystemAnalytics = () => {
     recentActivity: []
   });
   const [loading, setLoading] = useState(true);
-  const [dateRange, setDateRange] = useState('30d');
 
   const fetchAnalytics = useCallback(async () => {
     try {
@@ -43,7 +42,7 @@ const SystemAnalytics = () => {
         pets: petsResponse.data.pets || [],
         products: productsResponse.data.products || [],
         orders: ordersResponse.data.orders || [],
-        recentActivity: [] // Will derive from others
+        recentActivity: []
       });
     } catch (error) {
       toast.error('Failed to load analytics');
@@ -98,7 +97,6 @@ const SystemAnalytics = () => {
 
   return (
     <div className="space-y-6 pb-20">
-      {/* Super Admin Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-3 border-b border-slate-100 pb-4">
         <div>
           <div className="flex items-center gap-2 mb-1">
@@ -120,7 +118,6 @@ const SystemAnalytics = () => {
         </div>
       </div>
 
-      {/* Key Metrics */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {[
           { label: 'Total Users', value: metrics.totalUsers, icon: Users, color: 'primary', trend: '+12%' },
@@ -141,7 +138,6 @@ const SystemAnalytics = () => {
         ))}
       </div>
 
-      {/* Revenue Overview */}
       <div className="bg-slate-900 rounded-[3rem] p-8 sm:p-12 text-white relative overflow-hidden shadow-2xl">
         <div className="absolute top-0 right-0 p-12 opacity-10">
           <Globe className="w-64 h-64 animate-pulse" />
@@ -168,7 +164,6 @@ const SystemAnalytics = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Distribution */}
         <div className="space-y-4">
           <div className="bg-white border border-slate-100 rounded-2xl p-8 shadow-sm">
             <div className="flex items-center justify-between mb-8">
@@ -219,7 +214,6 @@ const SystemAnalytics = () => {
           </div>
         </div>
 
-        {/* Activity Log */}
         <div className="bg-white border border-slate-100 rounded-2xl p-8 shadow-sm h-fit">
           <div className="flex items-center justify-between mb-8">
             <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest flex items-center gap-2">

@@ -4,12 +4,9 @@ import { orderService } from '../../services/apiService';
 import {
   DollarSign,
   Calendar,
-  User,
   Eye,
-  Filter,
   Search,
   Download,
-  TrendingUp,
   ShoppingCart,
   Package,
   X,
@@ -17,9 +14,7 @@ import {
   Zap,
   Globe,
   PieChart,
-  ArrowRight,
-  Shield,
-  ChevronDown
+  Shield
 } from 'lucide-react';
 
 const TransactionHistory = () => {
@@ -77,7 +72,7 @@ const TransactionHistory = () => {
     } finally {
       setLoading(false);
     }
-  }, [filters, pagination.currentPage]);
+  }, [filters, pagination.currentPage, pagination]);
 
   useEffect(() => {
     fetchTransactions();
