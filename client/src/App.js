@@ -214,8 +214,8 @@ function App() {
                   <Route path="superadmin/activity-history" element={<ProtectedRoute roles={['super_admin']}><ActivityHistory /></ProtectedRoute>} />
                   <Route path="superadmin/suppliers" element={<ProtectedRoute roles={['super_admin']}><SupplierManagement /></ProtectedRoute>} />
 
-                  {/* Supplier Routes */}
-                  <Route path="supplier/dashboard" element={<ProtectedRoute roles={['supplier']}><SupplierDashboard /></ProtectedRoute>} />
+                  {/* Supplier Routes - customers can access to register as supplier */}
+                  <Route path="supplier/dashboard" element={<ProtectedRoute roles={['supplier', 'customer']}><SupplierDashboard /></ProtectedRoute>} />
                 </Route>
 
                 {/* 404 Route */}

@@ -97,6 +97,8 @@ const Layout = () => {
     { path: '/vouchers', label: 'Vouchers', icon: Ticket },
     { path: '/find-shops', label: 'Find Shops', icon: MapPin },
     { path: '/insights', label: 'AI Advisor', icon: Brain },
+    { type: 'label', label: 'More' },
+    { path: '/supplier/dashboard', label: 'Become a Supplier', icon: Truck },
   ];
 
   const adminNavItems = [
