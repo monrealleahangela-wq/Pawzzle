@@ -4,7 +4,7 @@ import {
   Truck, Package, Plus, ShoppingCart, X, Search, ChevronDown, Eye, Clock,
   Minus, CheckCircle, AlertTriangle, TrendingDown, Layers, Star, DollarSign
 } from 'lucide-react';
-import { supplierService, purchaseOrderService, getImageUrl } from '../../services/apiService';
+import { supplierService, purchaseOrderService, getImageUrl, adminProductService } from '../../services/apiService';
 
 const PurchaseOrders = () => {
   const [activeTab, setActiveTab] = useState('orders');
@@ -16,17 +16,21 @@ const PurchaseOrders = () => {
   const [showCatalog, setShowCatalog] = useState(false);
   const [showCheckout, setShowCheckout] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState(null);
+  const [storeProducts, setStoreProducts] = useState([]);
+  const [productMapping, setProductMapping] = useState({});
 
   useEffect(() => { fetchData(); }, []);
 
   const fetchData = async () => {
     try {
-      const [ordRes, supRes] = await Promise.all([
+      const [ordRes, supRes, prodRes] = await Promise.all([
         purchaseOrderService.getAll(),
-        supplierService.browse()
+        supplierService.browse(),
+        adminProductService.getAllProducts()
       ]);
       setOrders(ordRes.data.orders || []);
       setSuppliers(supRes.data.suppliers || []);
+      setStoreProducts(prodRes.data?.products || prodRes.data || []);
     } catch (e) { console.error('Load error:', e); }
     finally { setLoading(false); }
   };
@@ -64,7 +68,11 @@ const PurchaseOrders = () => {
     try {
       const data = {
         supplierId: catalog.supplier._id,
-        items: cart.map(i => ({ supplierProductId: i.supplierProductId, quantity: i.quantity }))
+        items: cart.map(i => ({
+          supplierProductId: i.supplierProductId,
+          quantity: i.quantity,
+          storeProductId: productMapping[i.supplierProductId] || null
+        }))
       };
       await purchaseOrderService.create(data);
       toast.success('Purchase order submitted!');
@@ -282,12 +290,26 @@ const PurchaseOrders = () => {
             <div className="flex-1 overflow-y-auto p-6 space-y-4">
               <div className="text-[9px] font-black text-indigo-600 uppercase tracking-widest">Supplier: {catalog?.supplier?.businessName}</div>
               {cart.map(item => (
-                <div key={item.supplierProductId} className="flex items-center justify-between bg-slate-50 rounded-xl p-4 border border-slate-100">
-                  <div>
-                    <p className="text-xs font-black text-slate-900">{item.product.name}</p>
-                    <p className="text-[9px] text-slate-400">{item.quantity} × ₱{item.product.wholesalePrice.toLocaleString()}</p>
+                <div key={item.supplierProductId} className="bg-slate-50 rounded-xl p-4 border border-slate-100 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs font-black text-slate-900">{item.product.name}</p>
+                      <p className="text-[9px] text-slate-400">{item.quantity} × ₱{item.product.wholesalePrice.toLocaleString()}</p>
+                    </div>
+                    <p className="text-sm font-black text-slate-900">₱{(item.product.wholesalePrice * item.quantity).toLocaleString()}</p>
                   </div>
-                  <p className="text-sm font-black text-slate-900">₱{(item.product.wholesalePrice * item.quantity).toLocaleString()}</p>
+                  <div className="space-y-1">
+                    <label className="text-[8px] font-black text-orange-500 uppercase tracking-widest">Link to Store Product (for auto-stock update)</label>
+                    <select 
+                      value={productMapping[item.supplierProductId] || ''}
+                      onChange={e => setProductMapping(prev => ({ ...prev, [item.supplierProductId]: e.target.value || null }))}
+                      className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-[10px] font-bold outline-none">
+                      <option value="">— No link (manual update later) —</option>
+                      {storeProducts.map(sp => (
+                        <option key={sp._id} value={sp._id}>{sp.name} (SKU: {sp.sku}) — Stock: {sp.stockQuantity}</option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
               ))}
               <div className="bg-indigo-50 rounded-xl p-4 border border-indigo-100 text-right">

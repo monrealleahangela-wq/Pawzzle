@@ -68,6 +68,7 @@ const createPurchaseOrder = async (req, res) => {
 
       resolvedItems.push({
         supplierProduct: product._id,
+        storeProduct: item.storeProductId || null,
         productName: product.name,
         sku: product.sku,
         quantity: item.quantity,
@@ -235,30 +236,134 @@ const confirmDelivery = async (req, res) => {
       return res.status(400).json({ message: 'Order must be in "delivered" status.' });
     }
 
-    // Update store inventory from delivered items
+    const supplier = await Supplier.findById(order.supplier);
+    const updatedProducts = [];
+    const updatedInventory = [];
+
+    // Process each delivered item
     for (const item of order.items) {
       const received = req.body.receivedQuantities?.[item._id.toString()] || item.quantity;
       item.receivedQuantity = received;
 
-      // Find matching inventory item or product
-      if (item.supplierProduct) {
-        // Try to find existing inventory for this product
-        let inventoryItem = await Inventory.findOne({
-          store: order.store,
-          'supplier.email': item.supplierProduct.supplier?.toString()
-        });
+      if (received <= 0) continue;
 
-        // Create or update inventory
-        const existingInv = await Inventory.findOne({
-          store: order.store,
-          notes: { $regex: item.sku || item.productName, $options: 'i' }
-        });
+      // ─── 1. Update the linked store Product ───────────────
+      let storeProduct = null;
+      if (item.storeProduct) {
+        storeProduct = await Product.findById(item.storeProduct);
+      }
 
-        if (existingInv) {
-          existingInv.quantity += received;
-          existingInv.lastRestocked = new Date();
-          await existingInv.save();
+      // Try matching by SKU if no direct link
+      if (!storeProduct && item.sku) {
+        storeProduct = await Product.findOne({ store: order.store, sku: item.sku, isDeleted: { $ne: true } });
+      }
+
+      if (storeProduct) {
+        const prevQty = storeProduct.stockQuantity;
+        storeProduct.stockQuantity += received;
+        storeProduct.stockStatus = storeProduct.stockQuantity > 0 ? 'in_stock' : 'out_of_stock';
+
+        // Link supplier traceability if not already set
+        if (!storeProduct.supplierRef && supplier) {
+          storeProduct.supplierRef = supplier._id;
         }
+        if (!storeProduct.supplierProductRef && item.supplierProduct) {
+          storeProduct.supplierProductRef = item.supplierProduct._id;
+        }
+
+        await storeProduct.save();
+        updatedProducts.push({
+          name: storeProduct.name,
+          sku: storeProduct.sku,
+          prev: prevQty,
+          added: received,
+          now: storeProduct.stockQuantity
+        });
+
+        // ─── 2. Update or create Inventory record ─────────
+        let invRecord = await Inventory.findOne({ store: order.store, product: storeProduct._id });
+
+        if (invRecord) {
+          invRecord.quantity += received;
+          invRecord.lastRestocked = new Date();
+          invRecord.costPrice = item.unitPrice;
+          invRecord.supplierRef = supplier?._id;
+          invRecord.supplierProductRef = item.supplierProduct?._id;
+          invRecord.lastPurchaseOrderRef = order._id;
+          if (supplier) {
+            invRecord.supplier = {
+              name: supplier.businessName,
+              contact: supplier.contactPerson,
+              email: supplier.email,
+              phone: supplier.phone
+            };
+          }
+          await invRecord.save();
+        } else {
+          invRecord = await Inventory.create({
+            store: order.store,
+            product: storeProduct._id,
+            quantity: received,
+            costPrice: item.unitPrice,
+            lastRestocked: new Date(),
+            supplierRef: supplier?._id,
+            supplierProductRef: item.supplierProduct?._id,
+            lastPurchaseOrderRef: order._id,
+            supplier: supplier ? {
+              name: supplier.businessName,
+              contact: supplier.contactPerson,
+              email: supplier.email,
+              phone: supplier.phone
+            } : {}
+          });
+        }
+
+        updatedInventory.push(invRecord._id);
+
+        // ─── 3. Log each stock update ─────────────────────
+        await SupplyChainLog.create({
+          action: 'stock_added',
+          performedBy: req.user._id,
+          userRole: req.user.role,
+          relatedEntity: { type: 'Product', id: storeProduct._id },
+          description: `"${storeProduct.name}" restocked: +${received} (${prevQty} → ${storeProduct.stockQuantity}) from PO ${order.orderNumber}`,
+          store: order.store,
+          supplier: supplier?._id,
+          previousValue: { stock: prevQty },
+          newValue: { stock: storeProduct.stockQuantity }
+        });
+
+        // ─── 4. Send low-stock notification if needed ─────
+        if (invRecord.needsReorder && invRecord.needsReorder()) {
+          await createNotification({
+            recipient: order.seller,
+            type: 'restock_alert',
+            title: 'Stock Still Low',
+            message: `"${storeProduct.name}" is at ${storeProduct.stockQuantity} units (reorder level: ${invRecord.reorderLevel}). Consider ordering more.`,
+            relatedId: storeProduct._id,
+            relatedModel: 'Inventory'
+          });
+        }
+      } else {
+        // No matching store product — log for manual resolution
+        await SupplyChainLog.create({
+          action: 'stock_added',
+          performedBy: req.user._id,
+          userRole: req.user.role,
+          relatedEntity: { type: 'PurchaseOrder', id: order._id },
+          description: `Received ${received}x "${item.productName}" (SKU: ${item.sku || 'N/A'}) but no matching store product found. Manual inventory update needed.`,
+          store: order.store,
+          supplier: supplier?._id
+        });
+      }
+    }
+
+    // Update supplier stock (deduct from available)
+    for (const item of order.items) {
+      if (item.supplierProduct && item.receivedQuantity > 0) {
+        await SupplierProduct.findByIdAndUpdate(item.supplierProduct._id || item.supplierProduct, {
+          $inc: { availableStock: -item.receivedQuantity }
+        });
       }
     }
 
@@ -266,7 +371,7 @@ const confirmDelivery = async (req, res) => {
     order.statusHistory.push({
       status: 'delivery_confirmed',
       changedBy: req.user._id,
-      notes: 'Delivery confirmed and inventory updated',
+      notes: `Delivery confirmed. ${updatedProducts.length} product(s) updated in inventory.`,
       timestamp: new Date()
     });
 
@@ -277,11 +382,17 @@ const confirmDelivery = async (req, res) => {
       performedBy: req.user._id,
       userRole: req.user.role,
       relatedEntity: { type: 'PurchaseOrder', id: order._id },
-      description: `Delivery confirmed for PO ${order.orderNumber}. Inventory updated.`,
-      store: order.store
+      description: `Delivery confirmed for PO ${order.orderNumber}. ${updatedProducts.length} products restocked.`,
+      store: order.store,
+      supplier: supplier?._id,
+      metadata: { updatedProducts }
     });
 
-    res.json({ message: 'Delivery confirmed and inventory updated.', order });
+    res.json({
+      message: 'Delivery confirmed and inventory updated.',
+      order,
+      inventoryUpdates: updatedProducts
+    });
   } catch (error) {
     console.error('Confirm delivery error:', error);
     res.status(500).json({ message: 'Server error' });

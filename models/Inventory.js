@@ -41,6 +41,19 @@ const inventorySchema = new mongoose.Schema({
     email: String,
     phone: String
   },
+  // ── Linked Supplier (new) ─────────────────────────────
+  supplierRef: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Supplier'
+  },
+  supplierProductRef: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'SupplierProduct'
+  },
+  lastPurchaseOrderRef: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'PurchaseOrder'
+  },
   costPrice: {
     type: Number,
     min: 0

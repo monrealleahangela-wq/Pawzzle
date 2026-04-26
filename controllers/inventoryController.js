@@ -446,6 +446,8 @@ const getAdminInventory = async (req, res) => {
         reorderLevel: inv ? inv.reorderLevel : 0,
         costPrice: inv ? inv.costPrice : 0,
         location: inv ? inv.location : null,
+        supplier: inv ? inv.supplier : null,
+        supplierRef: inv ? inv.supplierRef : null,
         updatedAt: inv ? inv.updatedAt : prod.updatedAt,
         inventoryId: inv ? inv._id : null,
         isActive: inv ? inv.isActive : true

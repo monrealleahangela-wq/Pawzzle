@@ -6,6 +6,10 @@ const purchaseOrderItemSchema = new mongoose.Schema({
     ref: 'SupplierProduct',
     required: true
   },
+  storeProduct: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Product'
+  },
   productName: { type: String, required: true },
   sku: { type: String },
   quantity: { type: Number, required: true, min: 1 },

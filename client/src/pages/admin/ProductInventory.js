@@ -169,7 +169,8 @@ const ProductInventory = () => {
         currentStock: item.quantity || 0,
         reorderLevel: item.reorderLevel || 0,
         inventoryId: item.inventoryId || item._id,
-        images: item.product?.images || []
+        images: item.product?.images || [],
+        supplierName: item.supplier?.name || item.supplierRef?.businessName || null
       })));
 
       setSummary(serverSummary);
@@ -576,6 +577,7 @@ const ProductInventory = () => {
                   <thead className="bg-slate-50/50">
                     <tr>
                       <th className="px-10 py-6 text-left text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">Product</th>
+                      <th className="px-6 py-6 text-left text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">Supplier</th>
                       <th className="px-10 py-6 text-center text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">Stock Quantity</th>
                       <th className="px-10 py-6 text-center text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">Status</th>
                       <th className="px-10 py-6 text-right text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">Actions</th>
@@ -600,6 +602,13 @@ const ProductInventory = () => {
                               </div>
                             </div>
                           </div>
+                        </td>
+                        <td className="px-6 py-6">
+                          {item.supplierName ? (
+                            <span className="text-[10px] font-bold text-indigo-600 uppercase tracking-wide">{item.supplierName}</span>
+                          ) : (
+                            <span className="text-[9px] font-bold text-slate-300 uppercase">Not linked</span>
+                          )}
                         </td>
                         <td className="px-10 py-6 text-center">
                           <div className="flex flex-col items-center">

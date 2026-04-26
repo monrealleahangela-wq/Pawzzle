@@ -118,6 +118,15 @@ const productSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Store'
   },
+  // ── Supplier Traceability ─────────────────────────────
+  supplierRef: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Supplier'
+  },
+  supplierProductRef: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'SupplierProduct'
+  },
   ratings: {
     average: {
       type: Number,
