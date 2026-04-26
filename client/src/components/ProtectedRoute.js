@@ -26,6 +26,8 @@ const ProtectedRoute = ({ children, roles = [], staffTypes = [], requiredPermiss
         return <Navigate to="/admin/dashboard" replace />;
       case 'staff':
         return <Navigate to="/admin/dashboard" replace />;
+      case 'supplier':
+        return <Navigate to="/supplier/dashboard" replace />;
       case 'customer':
         return <Navigate to="/home" replace />;
       default:

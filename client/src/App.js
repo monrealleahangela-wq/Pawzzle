@@ -69,6 +69,8 @@ import AdminPayouts from './pages/admin/Payouts';
 import StorePayout from './pages/admin/StorePayout';
 import StaffManagement from './pages/admin/StaffManagement';
 import Customers from './pages/admin/Customers';
+import PurchaseOrders from './pages/admin/PurchaseOrders';
+import SupplyManagement from './pages/admin/SupplyManagement';
 
 // Super Admin Pages
 import SuperAdminDashboard from './pages/superadmin/Dashboard';
@@ -84,6 +86,10 @@ import SuperAdminDSS from './pages/superadmin/DSS';
 import ActivityHistory from './pages/superadmin/ActivityHistory';
 import SupportManagement from './pages/superadmin/SupportManagement';
 import RolePermissions from './pages/superadmin/RolePermissions';
+import SupplierManagement from './pages/superadmin/SupplierManagement';
+
+// Supplier Pages
+import SupplierDashboard from './pages/supplier/SupplierDashboard';
 
 // Not Found
 import NotFound from './pages/NotFound';
@@ -188,6 +194,8 @@ function App() {
                   <Route path="admin/insights" element={<ProtectedRoute roles={['admin', 'super_admin', 'staff']} requiredPermission="analytics"><AdminDSS /></ProtectedRoute>} />
                   <Route path="admin/payouts" element={<ProtectedRoute roles={['admin', 'super_admin']}><StorePayout /></ProtectedRoute>} />
                   <Route path="admin/staff" element={<ProtectedRoute roles={['admin', 'super_admin']}><StaffManagement /></ProtectedRoute>} />
+                  <Route path="admin/purchase-orders" element={<ProtectedRoute roles={['admin', 'super_admin', 'staff']}><PurchaseOrders /></ProtectedRoute>} />
+                  <Route path="admin/supplies" element={<ProtectedRoute roles={['admin', 'super_admin', 'staff']}><SupplyManagement /></ProtectedRoute>} />
                   <Route path="superadmin/payouts" element={<ProtectedRoute roles={['super_admin']}><AdminPayouts /></ProtectedRoute>} />
 
                   {/* Super Admin Routes */}
@@ -204,6 +212,10 @@ function App() {
                   <Route path="superadmin/support" element={<ProtectedRoute roles={['super_admin']}><SupportManagement /></ProtectedRoute>} />
                   <Route path="superadmin/insights" element={<ProtectedRoute roles={['super_admin']}><SuperAdminDSS /></ProtectedRoute>} />
                   <Route path="superadmin/activity-history" element={<ProtectedRoute roles={['super_admin']}><ActivityHistory /></ProtectedRoute>} />
+                  <Route path="superadmin/suppliers" element={<ProtectedRoute roles={['super_admin']}><SupplierManagement /></ProtectedRoute>} />
+
+                  {/* Supplier Routes */}
+                  <Route path="supplier/dashboard" element={<ProtectedRoute roles={['supplier']}><SupplierDashboard /></ProtectedRoute>} />
                 </Route>
 
                 {/* 404 Route */}

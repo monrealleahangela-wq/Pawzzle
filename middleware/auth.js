@@ -99,7 +99,7 @@ const adminOnly = authorize('admin', 'super_admin');
 // Admin, Super Admin, and Staff middleware (for store-level operations)
 const adminOrStaff = (req, res, next) => {
   if (!req.user) return res.status(401).json({ message: 'Not authenticated.' });
-  if (!['admin', 'super_admin', 'staff'].includes(req.user.role)) {
+  if (!['admin', 'super_admin', 'staff', 'supplier'].includes(req.user.role)) {
     return res.status(403).json({ message: 'Access denied. Insufficient permissions.' });
   }
   // Staff must belong to a store

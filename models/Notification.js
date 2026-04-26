@@ -28,7 +28,12 @@ const notificationSchema = new mongoose.Schema({
             'service_update',
             'schedule_change',
             'service_start',
-            'service_complete'
+            'service_complete',
+            'supplier_verification',
+            'purchase_order',
+            'supply_alert',
+            'delivery_update',
+            'restock_alert'
         ],
         required: true
     },
@@ -46,7 +51,7 @@ const notificationSchema = new mongoose.Schema({
     },
     relatedModel: {
         type: String, // 'Order', 'Booking', 'StoreApplication', etc.
-        enum: ['Order', 'Booking', 'StoreApplication', 'Inventory', 'Report', 'User', 'Conversation', 'Service']
+        enum: ['Order', 'Booking', 'StoreApplication', 'Inventory', 'Report', 'User', 'Conversation', 'Service', 'Supplier', 'PurchaseOrder', 'ServiceSupply']
     },
     targetUrl: {
         type: String // Optional: Pre-calculated dynamic URL for convenience

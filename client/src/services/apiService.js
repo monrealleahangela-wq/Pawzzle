@@ -402,4 +402,50 @@ export const deliveryService = {
   resolveComplaint: (deliveryId, complaintId) => api.patch(`/deliveries/resolve-complaint/${deliveryId}/${complaintId}`)
 };
 
+// Supplier services
+export const supplierService = {
+  register: (data) => api.post('/suppliers/register', data),
+  getProfile: () => api.get('/suppliers/me'),
+  updateProfile: (data) => api.put('/suppliers/me', data),
+  getDashboard: () => api.get('/suppliers/dashboard'),
+  // Products
+  addProduct: (data) => api.post('/suppliers/products', data),
+  getProducts: (params) => api.get('/suppliers/products', { params }),
+  updateProduct: (id, data) => api.put(`/suppliers/products/${id}`, data),
+  deleteProduct: (id) => api.delete(`/suppliers/products/${id}`),
+  // Orders (supplier side)
+  getOrders: (params) => api.get('/suppliers/orders', { params }),
+  updateOrderStatus: (id, data) => api.patch(`/suppliers/orders/${id}/status`, data),
+  // Browse (seller side)
+  browse: (params) => api.get('/suppliers/browse', { params }),
+  getCatalog: (supplierId, params) => api.get(`/suppliers/catalog/${supplierId}`, { params }),
+  // Admin
+  adminGetAll: (params) => api.get('/suppliers/admin/all', { params }),
+  adminGetDetails: (id) => api.get(`/suppliers/admin/${id}`),
+  adminVerify: (id, data) => api.patch(`/suppliers/admin/${id}/verify`, data)
+};
+
+// Purchase Order services
+export const purchaseOrderService = {
+  create: (data) => api.post('/purchase-orders', data),
+  getAll: (params) => api.get('/purchase-orders', { params }),
+  getById: (id) => api.get(`/purchase-orders/${id}`),
+  cancel: (id, data) => api.patch(`/purchase-orders/${id}/cancel`, data),
+  confirmDelivery: (id, data) => api.patch(`/purchase-orders/${id}/confirm-delivery`, data),
+  adminGetAll: (params) => api.get('/purchase-orders/admin/all', { params })
+};
+
+// Service Supply services
+export const serviceSupplyService = {
+  add: (data) => api.post('/service-supplies', data),
+  getAll: (params) => api.get('/service-supplies', { params }),
+  update: (id, data) => api.put(`/service-supplies/${id}`, data),
+  delete: (id) => api.delete(`/service-supplies/${id}`),
+  restock: (id, data) => api.patch(`/service-supplies/${id}/restock`, data),
+  deduct: (id, data) => api.patch(`/service-supplies/${id}/deduct`, data),
+  checkAvailability: (params) => api.get('/service-supplies/check-availability', { params }),
+  getAlerts: () => api.get('/service-supplies/alerts'),
+  getLogs: (params) => api.get('/service-supplies/logs', { params })
+};
+
 export default api;

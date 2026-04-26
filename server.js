@@ -102,6 +102,9 @@ app.use('/api/staff', require('./routes/staff'));
 app.use('/api/customers', require('./routes/customers'));
 app.use('/api/social', require('./routes/social'));
 app.use('/api/pet-profiles', require('./routes/petProfiles'));
+app.use('/api/suppliers', require('./routes/suppliers'));
+app.use('/api/purchase-orders', require('./routes/purchaseOrders'));
+app.use('/api/service-supplies', require('./routes/serviceSupplies'));
 
 // Socket.io Real-Time Handler
 io.on('connection', (socket) => {

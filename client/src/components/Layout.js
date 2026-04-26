@@ -41,7 +41,9 @@ import {
   AlertCircle,
   HelpCircle,
   History,
-  ShieldCheck
+  ShieldCheck,
+  Truck,
+  Layers
 } from 'lucide-react';
 import FloatingChatManager from './FloatingChatManager';
 import NotificationBell from './NotificationBell';
@@ -116,6 +118,9 @@ const Layout = () => {
     { path: '/admin/payouts', label: 'Payouts', icon: Wallet },
     { path: '/admin/store', label: 'Store', icon: Building },
     { path: '/admin/staff', label: 'Staff', icon: Users },
+    { type: 'label', label: 'Supply Chain' },
+    { path: '/admin/purchase-orders', label: 'Purchase Orders', icon: Truck },
+    { path: '/admin/supplies', label: 'Supplies', icon: Layers },
   ];
 
   const getStaffNavItems = (user) => {
@@ -184,6 +189,8 @@ const Layout = () => {
     { path: '/superadmin/feedback', label: 'Feedback', icon: Star },
     { path: '/superadmin/support', label: 'Support', icon: HelpCircle },
     { path: '/superadmin/activity-history', label: 'Activity', icon: History },
+    { type: 'label', label: 'Supply Chain' },
+    { path: '/superadmin/suppliers', label: 'Suppliers', icon: Truck },
   ];
 
   const publicNavItems = [
@@ -194,10 +201,16 @@ const Layout = () => {
     { path: '/find-shops', label: 'Find Shops', icon: MapPin }
   ];
 
+  const supplierNavItems = [
+    { type: 'label', label: 'Supplier' },
+    { path: '/supplier/dashboard', label: 'Dashboard', icon: Activity },
+  ];
+
   const navItems = user?.role === 'customer' ? customerNavItems :
     user?.role === 'super_admin' ? superAdminNavItems :
       user?.role === 'staff' ? getStaffNavItems(user) :
-        !user ? publicNavItems : adminNavItems;
+        user?.role === 'supplier' ? supplierNavItems :
+          !user ? publicNavItems : adminNavItems;
 
   const [scrollProgress, setScrollProgress] = useState(0);
   const [isScrolled, setIsScrolled] = useState(false);
