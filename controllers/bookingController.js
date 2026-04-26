@@ -8,6 +8,7 @@ const Voucher = require('../models/Voucher');
 const PetProfile = require('../models/PetProfile');
 const RevenueService = require('../services/revenueService');
 const { createNotification, notifyStoreStaff } = require('./notificationController');
+const { calculateServicePrice, autoAssignStaff, validateBookingRules } = require('../utils/pricingEngine');
 
 // Auto-cancels bookings that are still pending and whose date has passed or unapproved for too long
 const autoCancelExpiredBookings = async (filterBase = {}) => {
@@ -130,7 +131,9 @@ const createBooking = async (req, res) => {
       isHomeService,
       serviceAddress,
       notes,
-      voucherCode
+      voucherCode,
+      selectedAddOns,
+      selectedConditions
     } = req.body;
 
     // Check if booking date/time is in the past
@@ -152,22 +155,37 @@ const createBooking = async (req, res) => {
       return res.status(400).json({ message: 'Home service is not available for this service' });
     }
 
-    // Calculate total price
-    let basePrice = service.price;
-    if (isHomeService) {
-      basePrice += service.homeServicePrice || 0;
+    // ── Validate Booking Rules ──────────────────────────────────────
+    const ruleCheck = await validateBookingRules(service, bookingDate, startTime);
+    if (!ruleCheck.valid) {
+      return res.status(400).json({ message: ruleCheck.reason });
     }
 
-    // Dynamic Surcharge based on pet size (₱50 for Medium, ₱100 for Large, ₱150 for Extra Large)
-    // Applied to Grooming/Bath related services
-    const isGrooming = (service.name || '').toLowerCase().includes('grooming') || (service.name || '').toLowerCase().includes('bath');
-    if (isGrooming && pet.size) {
-      if (pet.size === 'Medium') basePrice += 50;
-      else if (pet.size === 'Large') basePrice += 100;
-      else if (pet.size === 'Extra Large') basePrice += 150;
+    // ── Dynamic Pricing Engine ──────────────────────────────────────
+    const { breakdown, resolvedAddOns } = calculateServicePrice(
+      service,
+      pet || {},
+      { date: bookingDate, startTime, isHomeService },
+      selectedAddOns || [],
+      selectedConditions || []
+    );
+
+    // Resolve selected conditions to full objects for storage
+    const resolvedConditions = [];
+    if (selectedConditions && selectedConditions.length > 0 && service.pricingRules?.condition?.conditions) {
+      for (const condId of selectedConditions) {
+        const condRule = service.pricingRules.condition.conditions.find(c => c.condition === condId);
+        if (condRule) {
+          resolvedConditions.push({
+            condition: condRule.condition,
+            label: condRule.label,
+            fee: condRule.fee
+          });
+        }
+      }
     }
 
-    // Process Voucher if provided
+    // ── Process Voucher ─────────────────────────────────────────────
     let discountAmount = 0;
     let appliedVoucherId = null;
     const storeId = service.store?._id || service.store;
@@ -183,16 +201,16 @@ const createBooking = async (req, res) => {
         const now = new Date();
         const isValidDate = now >= voucher.startDate && now <= voucher.endDate;
         const isWithinLimit = voucher.usageLimit === null || voucher.usedCount < voucher.usageLimit;
-        const meetsMinPurchase = basePrice >= voucher.minPurchase;
+        const meetsMinPurchase = breakdown.subtotal >= voucher.minPurchase;
 
         if (isValidDate && isWithinLimit && meetsMinPurchase) {
           if (voucher.discountType === 'percentage') {
-            discountAmount = (basePrice * (voucher.discountValue / 100));
+            discountAmount = (breakdown.subtotal * (voucher.discountValue / 100));
           } else {
             discountAmount = voucher.discountValue;
           }
 
-          discountAmount = Math.min(discountAmount, basePrice);
+          discountAmount = Math.min(discountAmount, breakdown.subtotal);
           appliedVoucherId = voucher._id;
 
           // Increment used count
@@ -202,18 +220,32 @@ const createBooking = async (req, res) => {
       }
     }
 
+    // Apply discount to breakdown
+    breakdown.discount = discountAmount;
+    breakdown.finalPrice = Math.max(0, breakdown.subtotal - discountAmount);
+
+    // ── Auto-Assign Staff ───────────────────────────────────────────
+    let assignedStaffId = null;
+    if (service.assignedStaff && service.assignedStaff.length > 0) {
+      assignedStaffId = await autoAssignStaff(service, bookingDate, startTime, endTime);
+    }
+
     const booking = new Booking({
       customer: req.user._id,
       addedBy: service.addedBy || (service.store ? service.store.owner : req.user._id),
       service: serviceId,
       store: storeId,
+      staff: assignedStaffId,
       pet,
+      selectedAddOns: resolvedAddOns,
+      selectedConditions: resolvedConditions,
+      pricingBreakdown: breakdown,
       bookingDate,
       startTime,
       endTime,
       isHomeService,
       serviceAddress: isHomeService ? serviceAddress : undefined,
-      totalPrice: basePrice - discountAmount,
+      totalPrice: breakdown.finalPrice,
       paymentMethod: req.body.paymentMethod || 'pending',
       voucher: appliedVoucherId,
       discountAmount,
@@ -288,7 +320,8 @@ const createBooking = async (req, res) => {
     // Auto-populate for return
     await booking.populate([
       { path: 'service', select: 'name duration price' },
-      { path: 'store', select: 'name' }
+      { path: 'store', select: 'name' },
+      { path: 'staff', select: 'firstName lastName' }
     ]);
 
     res.status(201).json(booking);
@@ -307,6 +340,7 @@ const createBooking = async (req, res) => {
     res.status(500).json({ message: error.message || 'Server error' });
   }
 };
+
 
 // Get bookings for a customer
 const getCustomerBookings = async (req, res) => {

@@ -43,6 +43,37 @@ const bookingSchema = new mongoose.Schema({
     groomingPreferences: { type: String, default: 'None' },
     behaviorNotes: { type: String, default: 'Normal' }
   },
+
+  // ── Selected Add-Ons ──────────────────────────
+  selectedAddOns: [{
+    addOnId:  { type: mongoose.Schema.Types.ObjectId },
+    name:     { type: String, required: true },
+    price:    { type: Number, required: true },
+    duration: { type: Number, default: 0 }
+  }],
+
+  // ── Condition Flags (selected by customer during booking) ──
+  selectedConditions: [{
+    condition: { type: String },
+    label:     { type: String },
+    fee:       { type: Number }
+  }],
+
+  // ── Pricing Breakdown (snapshot at booking time) ──
+  pricingBreakdown: {
+    basePrice:        { type: Number, default: 0 },
+    sizeSurcharge:    { type: Number, default: 0 },
+    weightSurcharge:  { type: Number, default: 0 },
+    breedSurcharge:   { type: Number, default: 0 },
+    conditionFees:    { type: Number, default: 0 },
+    timePremium:      { type: Number, default: 0 },
+    addOnsTotal:      { type: Number, default: 0 },
+    homeServiceFee:   { type: Number, default: 0 },
+    subtotal:         { type: Number, default: 0 },
+    discount:         { type: Number, default: 0 },
+    finalPrice:       { type: Number, default: 0 }
+  },
+
   bookingDate: {
     type: Date,
     required: true

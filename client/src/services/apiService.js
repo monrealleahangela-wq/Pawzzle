@@ -218,7 +218,8 @@ export const serviceService = {
   createService: (storeId, serviceData) => api.post(`/services/store/${storeId}`, serviceData),
   createAdminService: (serviceData) => api.post('/services/admin', serviceData), // Admin endpoint without store requirement
   updateService: (id, serviceData) => api.put(`/services/${id}`, serviceData),
-  deleteService: (id) => api.delete(`/services/${id}`)
+  deleteService: (id) => api.delete(`/services/${id}`),
+  calculatePrice: (data) => api.post('/services/calculate-price', data)
 };
 
 // Admin service services (filtered by user's store)

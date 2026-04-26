@@ -1,6 +1,7 @@
 const { validationResult } = require('express-validator');
 const Service = require('../models/Service');
 const Store = require('../models/Store');
+const { calculateServicePrice } = require('../utils/pricingEngine');
 
 const DEFAULT_REQUIREMENTS = [
   "Valid ID and contact details",
@@ -23,6 +24,7 @@ const getStoreServices = async (req, res) => {
 
     const services = await Service.find(filter)
       .populate('store', 'name')
+      .populate('assignedStaff', 'firstName lastName staffType')
       .sort({ createdAt: -1 });
 
     res.json(services);
@@ -46,12 +48,18 @@ const createService = async (req, res) => {
       category,
       subCategory,
       duration,
+      bufferTime,
       price,
       homeServiceAvailable,
       homeServicePrice,
       maxPetsPerSession,
       requirements,
-      images
+      images,
+      pricingRules,
+      addOns,
+      bookingRules,
+      assignedStaff,
+      schedule
     } = req.body;
 
     // Convert requirements array to string if needed and combine with defaults
@@ -88,16 +96,23 @@ const createService = async (req, res) => {
       category,
       subCategory,
       duration,
+      bufferTime: bufferTime || 0,
       price,
       homeServiceAvailable,
       homeServicePrice,
       maxPetsPerSession,
       requirements: requirementsStr,
-      images
+      images,
+      pricingRules: pricingRules || {},
+      addOns: addOns || [],
+      bookingRules: bookingRules || {},
+      assignedStaff: assignedStaff || [],
+      schedule: schedule || {}
     });
 
     await service.save();
     await service.populate('store', 'name');
+    await service.populate('assignedStaff', 'firstName lastName staffType');
 
     // Real-time Service Emission
     const io = req.app.get('socketio');
@@ -127,12 +142,18 @@ const createAdminService = async (req, res) => {
       category,
       subCategory,
       duration,
+      bufferTime,
       price,
       homeServiceAvailable,
       homeServicePrice,
       maxPetsPerSession,
       requirements,
-      images
+      images,
+      pricingRules,
+      addOns,
+      bookingRules,
+      assignedStaff,
+      schedule
     } = req.body;
 
     console.log('🔐 Creating admin service for user:', req.user.email, 'Role:', req.user.role);
@@ -200,17 +221,24 @@ const createAdminService = async (req, res) => {
       category,
       subCategory,
       duration,
+      bufferTime: bufferTime || 0,
       price,
       homeServiceAvailable,
       homeServicePrice,
       maxPetsPerSession,
       requirements: requirementsStr,
       images,
-      createdBy: req.user._id
+      createdBy: req.user._id,
+      pricingRules: pricingRules || {},
+      addOns: addOns || [],
+      bookingRules: bookingRules || {},
+      assignedStaff: assignedStaff || [],
+      schedule: schedule || {}
     });
 
     await service.save();
     await service.populate('store', 'name');
+    await service.populate('assignedStaff', 'firstName lastName staffType');
 
     // Real-time Service Emission
     const io = req.app.get('socketio');
@@ -341,6 +369,7 @@ const getAllServices = async (req, res) => {
     const skip = (page - 1) * limit;
     const services = await Service.find(filter)
       .populate('store', 'name contactInfo.address')
+      .populate('assignedStaff', 'firstName lastName')
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(parseInt(limit));
@@ -367,7 +396,9 @@ const getAllServices = async (req, res) => {
 const getServiceById = async (req, res) => {
   try {
     console.log('🔍 Fetching service by ID:', req.params.id);
-    const service = await Service.findById(req.params.id).populate('store', 'name contactInfo.address businessHours bookingSettings');
+    const service = await Service.findById(req.params.id)
+      .populate('store', 'name contactInfo.address businessHours bookingSettings')
+      .populate('assignedStaff', 'firstName lastName staffType');
     if (!service || service.isDeleted) {
       console.log('⚠️ Service not found (or deleted):', req.params.id);
       return res.status(404).json({ message: 'Service not found' });
@@ -379,6 +410,43 @@ const getServiceById = async (req, res) => {
   }
 };
 
+// ── Price Calculator Endpoint ─────────────────────────────────────────────
+// POST /api/services/calculate-price
+const calculatePrice = async (req, res) => {
+  try {
+    const { serviceId, pet, bookingDate, startTime, isHomeService, selectedAddOns, selectedConditions } = req.body;
+
+    if (!serviceId) {
+      return res.status(400).json({ message: 'Service ID is required' });
+    }
+
+    const service = await Service.findById(serviceId);
+    if (!service || service.isDeleted || !service.isActive) {
+      return res.status(404).json({ message: 'Service not found or unavailable' });
+    }
+
+    const { breakdown, resolvedAddOns } = calculateServicePrice(
+      service,
+      pet || {},
+      { date: bookingDate, startTime, isHomeService },
+      selectedAddOns || [],
+      selectedConditions || []
+    );
+
+    res.json({
+      breakdown,
+      resolvedAddOns,
+      availableAddOns: (service.addOns || []).filter(a => a.isActive),
+      availableConditions: service.pricingRules?.condition?.enabled
+        ? (service.pricingRules.condition.conditions || [])
+        : []
+    });
+  } catch (error) {
+    console.error('Calculate price error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
 module.exports = {
   getStoreServices,
   getServiceById,
@@ -386,5 +454,6 @@ module.exports = {
   createAdminService,
   updateService,
   deleteService,
-  getAllServices
+  getAllServices,
+  calculatePrice
 };

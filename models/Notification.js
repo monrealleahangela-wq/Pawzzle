@@ -24,7 +24,11 @@ const notificationSchema = new mongoose.Schema({
             'report',
             'user_action',
             'new_follow',
-            'chat_message'
+            'chat_message',
+            'service_update',
+            'schedule_change',
+            'service_start',
+            'service_complete'
         ],
         required: true
     },
@@ -42,7 +46,7 @@ const notificationSchema = new mongoose.Schema({
     },
     relatedModel: {
         type: String, // 'Order', 'Booking', 'StoreApplication', etc.
-        enum: ['Order', 'Booking', 'StoreApplication', 'Inventory', 'Report', 'User', 'Conversation']
+        enum: ['Order', 'Booking', 'StoreApplication', 'Inventory', 'Report', 'User', 'Conversation', 'Service']
     },
     targetUrl: {
         type: String // Optional: Pre-calculated dynamic URL for convenience

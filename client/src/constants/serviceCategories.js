@@ -8,7 +8,9 @@ export const SERVICE_CATEGORIES = [
       'Haircut / Trimming',
       'Nail Clipping',
       'Ear Cleaning',
-      'Tick & Flea Treatment'
+      'Tick & Flea Treatment',
+      'De-shedding',
+      'Teeth Cleaning'
     ]
   },
   {
@@ -19,7 +21,9 @@ export const SERVICE_CATEGORIES = [
       'Vaccination',
       'Deworming',
       'Basic Check-Ups',
-      'Pet Vitamins & Supplements'
+      'Pet Vitamins & Supplements',
+      'Veterinary Consultation',
+      'Lab Tests & Diagnostics'
     ]
   },
   {
@@ -29,7 +33,20 @@ export const SERVICE_CATEGORIES = [
     subServices: [
       'Overnight Stay for Pets',
       'Feeding & Care While Owner is Away',
-      'Cage or Open Play Area'
+      'Cage or Open Play Area',
+      'Long-Term Boarding'
+    ]
+  },
+  {
+    id: 'training',
+    label: 'Pet Training',
+    icon: '🎓',
+    subServices: [
+      'Obedience Training',
+      'Puppy Training',
+      'Behavioral Correction',
+      'Agility Training',
+      'Socialization Classes'
     ]
   },
   {
@@ -40,6 +57,17 @@ export const SERVICE_CATEGORIES = [
       'Dog Walking',
       'Pet Sitting (Home Service)',
       'Pet Transportation'
+    ]
+  },
+  {
+    id: 'home_services',
+    label: 'Home Services',
+    icon: '🏡',
+    subServices: [
+      'Mobile Grooming',
+      'In-Home Vet Visit',
+      'Home Training Session',
+      'Home Pet Sitting'
     ]
   },
   {
