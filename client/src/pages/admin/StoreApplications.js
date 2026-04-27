@@ -22,7 +22,8 @@ import {
   Wallet,
   Camera,
   MapPin,
-  Phone
+  Phone,
+  Heart
 } from 'lucide-react';
 
 const StoreApplications = () => {

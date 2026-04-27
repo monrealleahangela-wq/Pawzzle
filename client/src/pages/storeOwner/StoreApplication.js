@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
 import { useAuth } from '../../contexts/AuthContext';
 import storeApplicationService from '../../services/storeApplicationService';
-import { Upload, FileText, AlertCircle, Building, Phone, Mail, MapPin, Check, X, Shield, Users, ArrowRight, ChevronRight, Briefcase, Globe, Info, Wallet, Camera, Truck, Zap } from 'lucide-react';
+import { Upload, FileText, AlertCircle, Building, Phone, Mail, MapPin, Check, X, Shield, Users, ArrowRight, ChevronRight, Briefcase, Globe, Info, Wallet, Camera, Truck, Zap, Heart, Calendar } from 'lucide-react';
 import { getCitiesByProvince, getBarangaysByCity } from '../../constants/locationConstants';
 import MapPicker from '../../components/MapPicker';
 
