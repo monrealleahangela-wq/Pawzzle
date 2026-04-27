@@ -306,6 +306,11 @@ export const storeService = {
   rejectVerification: (id, reason) => api.post(`/stores/${id}/reject-verification`, { reason })
 };
 
+// Public aggregated services
+export const publicService = {
+  getLandingData: () => api.get('/public/landing')
+};
+
 // Adoption services
 export const adoptionService = {
   requestAdoption: (data) => api.post('/adoption/request', data),

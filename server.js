@@ -66,6 +66,7 @@ app.get('/api/auth/debug-env', (req, res) => {
 app.get('/api/health', (req, res) => res.status(200).json({ status: 'OK', version: 'v3-stable' }));
 
 // Routes
+app.use('/api/public', require('./routes/public'));
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/users', require('./routes/users'));
 app.use('/api/deliveries', require('./routes/delivery'));
