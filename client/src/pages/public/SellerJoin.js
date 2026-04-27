@@ -9,7 +9,7 @@ import {
   ShieldCheck, Upload, ArrowRight, CheckCircle2,
   AlertCircle, Building2, FileCheck, Info,
   ChevronRight, Lock, Eye, EyeOff, Map as MapIcon,
-  Search, RefreshCw
+  Search, RefreshCw, Heart, Package, Calendar
 } from 'lucide-react';
 import { getCitiesByProvince, getBarangaysByCity } from '../../constants/locationConstants';
 import MapPicker from '../../components/MapPicker';
@@ -43,11 +43,16 @@ const SellerJoin = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [locating, setLocating] = useState(false);
-
   const [storeData, setStoreData] = useState({
     businessName: '',
     businessType: 'pet_store',
     businessDescription: '',
+    operationalModules: [],
+    hiringStaff: false,
+    staffTypes: [],
+    supplierNeeds: false,
+    inventoryPlans: '',
+    productCategories: [],
     contactInfo: {
       phone: '',
       email: '',
@@ -456,22 +461,108 @@ const SellerJoin = () => {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                   <div className="col-span-2 space-y-1.5">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Commercial Store Name</label>
-                      <input type="text" required value={storeData.businessName} onChange={(e) => handleStoreChange('businessName', e.target.value)} className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-xs font-bold uppercase outline-none focus:ring-4 focus:ring-primary-500/5" />
-                   </div>
-                </div>
+                    <div className="col-span-2 space-y-1.5">
+                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Commercial Store Name</label>
+                       <input type="text" required value={storeData.businessName} onChange={(e) => handleStoreChange('businessName', e.target.value)} className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-xs font-bold uppercase outline-none focus:ring-4 focus:ring-primary-500/5" />
+                    </div>
+                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                   <div className="space-y-1.5">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Official Support Phone</label>
-                      <input type="tel" required value={storeData.contactInfo.phone} onChange={(e) => handleStoreChange('contactInfo.phone', e.target.value)} className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-xs font-bold outline-none focus:ring-4 focus:ring-primary-500/5" />
-                   </div>
-                   <div className="space-y-1.5">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Official Business Email</label>
-                      <input type="email" required value={storeData.contactInfo.email} onChange={(e) => handleStoreChange('contactInfo.email', e.target.value)} className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-xs font-bold outline-none focus:ring-4 focus:ring-primary-500/5" />
-                   </div>
-                </div>
+                 <div className="space-y-4">
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 flex items-center gap-2">
+                       Business Model Selection (Mandatory) *
+                    </label>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                       {[
+                         { id: 'pets', label: 'Pets', icon: Heart, description: 'Sell live pets and animals' },
+                         { id: 'products', label: 'Products', icon: Package, description: 'Sell pet food and supplies' },
+                         { id: 'services', label: 'Services', icon: Calendar, description: 'Grooming, Vet, Boarding, etc.' }
+                       ].map((mod) => (
+                         <button
+                           key={mod.id}
+                           type="button"
+                           onClick={() => {
+                             const current = storeData.operationalModules || [];
+                             const next = current.includes(mod.id) 
+                               ? current.filter(id => id !== mod.id)
+                               : [...current, mod.id];
+                             handleStoreChange('operationalModules', next);
+                           }}
+                           className={`p-4 rounded-2xl border-2 text-left transition-all relative overflow-hidden group ${
+                             storeData.operationalModules.includes(mod.id)
+                               ? 'border-primary-600 bg-primary-50'
+                               : 'border-slate-100 bg-white hover:border-primary-200'
+                           }`}
+                         >
+                           <div className={`w-8 h-8 rounded-lg flex items-center justify-center mb-2 transition-colors ${
+                             storeData.operationalModules.includes(mod.id) ? 'bg-primary-600 text-white' : 'bg-slate-50 text-slate-400'
+                           }`}>
+                             <mod.icon className="h-4 w-4" />
+                           </div>
+                           <p className="text-[10px] font-black uppercase tracking-tight mb-0.5">{mod.label}</p>
+                           <p className="text-[8px] font-bold text-slate-400 uppercase leading-none opacity-80">{mod.description}</p>
+                         </button>
+                       ))}
+                    </div>
+                 </div>
+
+                 {storeData.operationalModules.includes('services') && (
+                    <div className="p-5 bg-secondary-50 border border-secondary-100 rounded-2xl space-y-4 animate-in slide-in-from-top duration-300">
+                       <div className="flex items-center justify-between">
+                          <p className="text-[10px] font-black text-secondary-900 uppercase">Hiring Staff?</p>
+                          <button
+                            type="button"
+                            onClick={() => handleStoreChange('hiringStaff', !storeData.hiringStaff)}
+                            className={`w-10 h-5 rounded-full transition-all relative ${storeData.hiringStaff ? 'bg-primary-600' : 'bg-slate-200'}`}
+                          >
+                            <div className={`absolute top-1 w-3 h-3 rounded-full bg-white transition-all ${storeData.hiringStaff ? 'left-6' : 'left-1'}`} />
+                          </button>
+                       </div>
+                       {storeData.hiringStaff && (
+                          <div className="flex flex-wrap gap-2">
+                             {['vets', 'groomers', 'trainers', 'boarding'].map(s => (
+                                <button
+                                  key={s}
+                                  type="button"
+                                  onClick={() => {
+                                    const curr = storeData.staffTypes || [];
+                                    const next = curr.includes(s) ? curr.filter(i => i !== s) : [...curr, s];
+                                    handleStoreChange('staffTypes', next);
+                                  }}
+                                  className={`px-3 py-1.5 rounded-lg text-[8px] font-black uppercase border transition-all ${storeData.staffTypes.includes(s) ? 'bg-primary-600 border-primary-600 text-white' : 'bg-white border-slate-200 text-slate-400'}`}
+                                >
+                                   {s}
+                                </button>
+                             ))}
+                          </div>
+                       )}
+                    </div>
+                 )}
+
+                 {storeData.operationalModules.includes('products') && (
+                    <div className="p-5 bg-primary-50 border border-primary-100 rounded-2xl space-y-4 animate-in slide-in-from-top duration-300">
+                       <div className="flex items-center justify-between">
+                          <p className="text-[10px] font-black text-primary-900 uppercase">Supplier Access?</p>
+                          <button
+                            type="button"
+                            onClick={() => handleStoreChange('supplierNeeds', !storeData.supplierNeeds)}
+                            className={`w-10 h-5 rounded-full transition-all relative ${storeData.supplierNeeds ? 'bg-primary-600' : 'bg-slate-200'}`}
+                          >
+                            <div className={`absolute top-1 w-3 h-3 rounded-full bg-white transition-all ${storeData.supplierNeeds ? 'left-6' : 'left-1'}`} />
+                          </button>
+                       </div>
+                    </div>
+                 )}
+
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-1.5">
+                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Official Support Phone</label>
+                       <input type="tel" required value={storeData.contactInfo.phone} onChange={(e) => handleStoreChange('contactInfo.phone', e.target.value)} className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-xs font-bold outline-none focus:ring-4 focus:ring-primary-500/5" />
+                    </div>
+                    <div className="space-y-1.5">
+                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Official Business Email</label>
+                       <input type="email" required value={storeData.contactInfo.email} onChange={(e) => handleStoreChange('contactInfo.email', e.target.value)} className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-xs font-bold outline-none focus:ring-4 focus:ring-primary-500/5" />
+                    </div>
+                 </div>
 
                 <div className="space-y-6">
                    {addressInputType === 'map' ? (

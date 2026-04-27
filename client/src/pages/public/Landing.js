@@ -174,24 +174,24 @@ const Landing = () => {
               <div className="w-16 h-16 bg-primary-600 rounded-2xl flex items-center justify-center mb-6 group-hover:rotate-6 transition-transform">
                 <Heart className="text-white h-8 w-8" />
               </div>
-              <h3 className="text-2xl font-bold text-slate-900 mb-3">Safe Inquiries</h3>
-              <p className="text-slate-600">Find pets from our trusted community. Our platform makes it easy and safe to find a new home for every animal.</p>
+              <h3 className="text-2xl font-bold text-slate-900 mb-3">Live Pets</h3>
+              <p className="text-slate-600">Browse verified listings of pets from trusted breeders and shelters. Safe inquiries and adoption protocols guaranteed.</p>
             </div>
 
             <div className="card group hover:bg-slate-50 border-none shadow-none hover:shadow-2xl transition-all duration-500">
               <div className="w-16 h-16 bg-secondary-500 rounded-2xl flex items-center justify-center mb-6 group-hover:rotate-6 transition-transform">
                 <Package className="text-white h-8 w-8" />
               </div>
-              <h3 className="text-2xl font-bold text-slate-900 mb-3">Pet Supplies</h3>
-              <p className="text-slate-600">From quality food to fun toys, we sell items that are tested and safe for your pet's happiness.</p>
+              <h3 className="text-2xl font-bold text-slate-900 mb-3">Supply Chain</h3>
+              <p className="text-slate-600">Access quality food, accessories, and health products. Our sellers provide essentials for every pet's needs.</p>
             </div>
 
             <div className="card group hover:bg-slate-50 border-none shadow-none hover:shadow-2xl transition-all duration-500">
-              <div className="w-16 h-16 bg-secondary-500 rounded-2xl flex items-center justify-center mb-6 group-hover:rotate-6 transition-transform">
+              <div className="w-16 h-16 bg-primary-600 rounded-2xl flex items-center justify-center mb-6 group-hover:rotate-6 transition-transform">
                 <Calendar className="text-white h-8 w-8" />
               </div>
-              <h3 className="text-2xl font-bold text-slate-900 mb-3">Grooming & Health</h3>
-              <p className="text-slate-600">Book professional grooming, check-ups, and pet boarding from certified pros you can trust.</p>
+              <h3 className="text-2xl font-bold text-slate-900 mb-3">Modular Services</h3>
+              <p className="text-slate-600">Grooming, veterinary, and training services. Book professional care tailored to your pet's lifestyle.</p>
             </div>
           </div>
         </div>
@@ -235,6 +235,66 @@ const Landing = () => {
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* For Business Section */}
+      <section className="py-24 bg-slate-900 overflow-hidden relative">
+        <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-primary-600/10 rounded-full blur-[120px] -mr-64 -mt-64"></div>
+        <div className="container-custom relative z-10">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+            <div className="space-y-8">
+              <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/5 rounded-full border border-white/10">
+                <Store className="h-4 w-4 text-primary-400" />
+                <span className="text-[10px] font-black text-primary-400 uppercase tracking-[0.2em]">Business Solutions</span>
+              </div>
+              <h2 className="text-4xl md:text-6xl font-black text-white leading-none tracking-tighter">
+                Scale Your <br />
+                <span className="text-primary-500 italic">Pet Business</span>
+              </h2>
+              <p className="text-lg text-slate-400 max-w-xl leading-relaxed font-medium">
+                Whether you sell live pets, supply chains, or professional services, our modular platform adapts to your operations.
+              </p>
+              <div className="space-y-4">
+                {[
+                  { title: 'Modular Architecture', desc: 'Activate Pets, Products, or Services modules as you grow.' },
+                  { title: 'Operational Excellence', desc: 'Staff management and supplier integration built-in.' },
+                  { title: 'Secured Payments', desc: 'Fast, automated payouts for your successful sales.' }
+                ].map((item, i) => (
+                  <div key={i} className="flex gap-4">
+                    <div className="w-6 h-6 rounded-full bg-primary-600/20 flex items-center justify-center shrink-0 mt-1">
+                      <CheckCircle2 className="h-4 w-4 text-primary-500" />
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-black text-white uppercase tracking-tight">{item.title}</h4>
+                      <p className="text-xs text-slate-500 font-medium">{item.desc}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <Link to="/seller-join" className="inline-flex px-12 py-5 bg-primary-600 text-white rounded-2xl font-black uppercase tracking-[0.2em] text-sm hover:bg-primary-500 transition-all shadow-2xl shadow-primary-900/20 active:scale-95">
+                Join As Seller
+              </Link>
+            </div>
+            <div className="relative group">
+              <div className="absolute inset-0 bg-primary-600/30 rounded-[3rem] blur-3xl opacity-20 group-hover:opacity-40 transition-opacity"></div>
+              <div className="relative rounded-[3rem] border border-white/10 bg-white/5 p-8 backdrop-blur-sm overflow-hidden">
+                <div className="flex items-center gap-4 mb-8">
+                   <div className="flex -space-x-4">
+                      {[1,2,3,4].map(n => <div key={n} className="w-12 h-12 rounded-2xl border-4 border-slate-900 bg-slate-800" />)}
+                   </div>
+                   <div className="text-xs font-black text-white uppercase tracking-widest">+500 Happy Partners</div>
+                </div>
+                <div className="space-y-6">
+                  <div className="h-32 bg-slate-800/50 rounded-2xl animate-pulse"></div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="h-24 bg-slate-800/50 rounded-2xl animate-pulse"></div>
+                    <div className="h-24 bg-slate-800/50 rounded-2xl animate-pulse"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </section>

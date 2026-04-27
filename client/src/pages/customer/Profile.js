@@ -83,6 +83,12 @@ const Profile = () => {
   const [upgradeFormData, setUpgradeFormData] = useState({
     businessName: '',
     businessType: '',
+    operationalModules: [],
+    hiringStaff: false,
+    staffTypes: [],
+    supplierNeeds: false,
+    inventoryPlans: '',
+    productCategories: [],
     legalStructure: 'single_proprietorship',
     yearsInBusiness: 0,
     numberOfEmployees: 1,
@@ -96,7 +102,7 @@ const Profile = () => {
     taxId: '',
     contactInfo: {
       phone: '',
-      email: '',
+      email: user?.email || '',
       address: {
         street: '',
         city: '',
@@ -792,6 +798,12 @@ const Profile = () => {
       formData.append('numberOfEmployees', upgradeFormData.numberOfEmployees);
       formData.append('hasPhysicalStore', upgradeFormData.hasPhysicalStore);
       formData.append('businessDescription', upgradeFormData.businessDescription);
+      
+      // Modular fields
+      formData.append('operationalModules', JSON.stringify(upgradeFormData.operationalModules));
+      formData.append('hiringStaff', upgradeFormData.hiringStaff);
+      formData.append('staffTypes', JSON.stringify(upgradeFormData.staffTypes));
+      formData.append('supplierNeeds', upgradeFormData.supplierNeeds);
 
       // Nested objects
       formData.append('businessLicense', JSON.stringify({
@@ -1969,9 +1981,95 @@ const Profile = () => {
                             <label className="text-[8px] sm:text-xs font-black text-slate-300 uppercase tracking-widest block ml-1">Store Contact Phone *</label>
                             <input required type="tel" name="contactInfo.phone" value={upgradeFormData.contactInfo.phone} onChange={handleUpgradeFormChange} className="w-full px-4 py-3 bg-slate-50 border-2 border-slate-50 rounded-xl focus:border-primary-500 focus:bg-white outline-none font-bold text-sm transition-all" placeholder="09XX XXX XXXX" />
                           </div>
-                          <div className="space-y-1">
-                            <label className="text-[8px] sm:text-xs font-black text-slate-300 uppercase tracking-widest block ml-1">Type of Products/Services *</label>
-                            <select required name="businessType" value={upgradeFormData.businessType} onChange={handleUpgradeFormChange} className="w-full px-4 py-3 bg-slate-50 border-2 border-slate-50 rounded-xl focus:border-primary-500 focus:bg-white outline-none font-bold text-sm transition-all">
+                          <div className="md:col-span-2 space-y-4">
+                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 flex items-center gap-2">
+                               Business Model Selection (Mandatory) *
+                            </label>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                               {[
+                                 { id: 'pets', label: 'Pets', icon: HeartIcon, description: 'Sell live pets and animals' },
+                                 { id: 'products', label: 'Products', icon: Package, description: 'Sell pet food and supplies' },
+                                 { id: 'services', label: 'Services', icon: Calendar, description: 'Grooming, Vet, Boarding, etc.' }
+                               ].map((mod) => (
+                                 <button
+                                   key={mod.id}
+                                   type="button"
+                                   onClick={() => {
+                                     const current = upgradeFormData.operationalModules || [];
+                                     const next = current.includes(mod.id) 
+                                       ? current.filter(id => id !== mod.id)
+                                       : [...current, mod.id];
+                                     setUpgradeFormData(prev => ({ ...prev, operationalModules: next }));
+                                   }}
+                                   className={`p-4 rounded-2xl border-2 text-left transition-all relative overflow-hidden group ${
+                                     upgradeFormData.operationalModules.includes(mod.id)
+                                       ? 'border-primary-600 bg-primary-50'
+                                       : 'border-slate-100 bg-white hover:border-primary-200'
+                                   }`}
+                                 >
+                                   <div className={`w-8 h-8 rounded-lg flex items-center justify-center mb-2 transition-colors ${
+                                     upgradeFormData.operationalModules.includes(mod.id) ? 'bg-primary-600 text-white' : 'bg-slate-50 text-slate-400'
+                                   }`}>
+                                     <mod.icon className="h-4 w-4" />
+                                   </div>
+                                   <p className="text-[10px] font-black uppercase tracking-tight mb-0.5">{mod.label}</p>
+                                   <p className="text-[8px] font-bold text-slate-400 uppercase leading-none opacity-80">{mod.description}</p>
+                                 </button>
+                               ))}
+                            </div>
+                         </div>
+
+                         {upgradeFormData.operationalModules.includes('services') && (
+                            <div className="md:col-span-2 p-5 bg-secondary-50 border border-secondary-100 rounded-2xl space-y-4 animate-in slide-in-from-top duration-300">
+                               <div className="flex items-center justify-between">
+                                  <p className="text-[10px] font-black text-secondary-900 uppercase">Hiring Staff?</p>
+                                  <button
+                                    type="button"
+                                    onClick={() => setUpgradeFormData(prev => ({ ...prev, hiringStaff: !prev.hiringStaff }))}
+                                    className={`w-10 h-5 rounded-full transition-all relative ${upgradeFormData.hiringStaff ? 'bg-primary-600' : 'bg-slate-200'}`}
+                                  >
+                                    <div className={`absolute top-1 w-3 h-3 rounded-full bg-white transition-all ${upgradeFormData.hiringStaff ? 'left-6' : 'left-1'}`} />
+                                  </button>
+                               </div>
+                               {upgradeFormData.hiringStaff && (
+                                  <div className="flex flex-wrap gap-2">
+                                     {['vets', 'groomers', 'trainers', 'boarding'].map(s => (
+                                        <button
+                                          key={s}
+                                          type="button"
+                                          onClick={() => {
+                                            const curr = upgradeFormData.staffTypes || [];
+                                            const next = curr.includes(s) ? curr.filter(i => i !== s) : [...curr, s];
+                                            setUpgradeFormData(prev => ({ ...prev, staffTypes: next }));
+                                          }}
+                                          className={`px-3 py-1.5 rounded-lg text-[8px] font-black uppercase border transition-all ${upgradeFormData.staffTypes.includes(s) ? 'bg-primary-600 border-primary-600 text-white' : 'bg-white border-slate-200 text-slate-400'}`}
+                                        >
+                                           {s}
+                                        </button>
+                                     ))}
+                                  </div>
+                               )}
+                            </div>
+                         )}
+
+                         {upgradeFormData.operationalModules.includes('products') && (
+                            <div className="md:col-span-2 p-5 bg-primary-50 border border-primary-100 rounded-2xl space-y-4 animate-in slide-in-from-top duration-300">
+                               <div className="flex items-center justify-between">
+                                  <p className="text-[10px] font-black text-primary-900 uppercase">Supplier Access?</p>
+                                  <button
+                                    type="button"
+                                    onClick={() => setUpgradeFormData(prev => ({ ...prev, supplierNeeds: !prev.supplierNeeds }))}
+                                    className={`w-10 h-5 rounded-full transition-all relative ${upgradeFormData.supplierNeeds ? 'bg-primary-600' : 'bg-slate-200'}`}
+                                  >
+                                    <div className={`absolute top-1 w-3 h-3 rounded-full bg-white transition-all ${upgradeFormData.supplierNeeds ? 'left-6' : 'left-1'}`} />
+                                  </button>
+                               </div>
+                            </div>
+                         )}
+
+                         <div className="space-y-1">
+                            <label className="text-[8px] sm:text-xs font-black text-slate-300 uppercase tracking-widest block ml-1">Legacy Primary Category *</label>
+                            <select required name="businessType" value={upgradeFormData.businessType} onChange={handleUpgradeFormChange} className="w-full px-4 py-3 bg-slate-50 border-2 border-slate-50 rounded-xl focus:border-primary-500 focus:bg-white outline-none font-bold text-sm transition-all shadow-sm">
                               <option value="">Select Category</option>
                               <option value="pet_store">Pet Store</option>
                               <option value="veterinary">Veterinary Service</option>
