@@ -482,35 +482,33 @@ const StoreApplication = () => {
 
   return (
     <div className="max-w-4xl mx-auto space-y-6 pb-20">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-black text-slate-900 uppercase tracking-tighter">
-            {user.role === 'admin' ? 'Add Store Features' : 'Apply as a Seller'}
-          </h1>
-          <p className="text-slate-500 font-bold text-[11px] uppercase tracking-widest mt-1">
-            {user.role === 'admin' 
-              ? 'Add more products or services to your shop' 
-              : 'Join our platform and start selling today'}
-          </p>
+      <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-12">
+        <div className="space-y-4">
+           <h1 className="text-5xl sm:text-7xl font-black text-neutral-900 uppercase tracking-tighter leading-none">
+             Venture <br />
+             <span className="text-primary italic">Onboarding .</span>
+           </h1>
+           <p className="text-[12px] font-black text-neutral-400 uppercase tracking-[0.4em]">Register your business within the ecosystem</p>
         </div>
-        <div className="flex gap-2">
-          {[1, 2, 3, 4].map(s => (
-            <div key={s} className={`h-1.5 w-8 rounded-full transition-all duration-500 ${currentStep >= s ? 'bg-primary-600' : 'bg-slate-200'}`} />
+        <div className="flex gap-3">
+          {[0, 1, 2, 3, 4].map(s => (
+            <div key={s} className={`h-2 w-12 rounded-full transition-all duration-700 ${currentStep >= s ? 'bg-primary shadow-premium' : 'bg-neutral-100'}`} />
           ))}
         </div>
       </div>
 
       {/* Progress Steps Header */}
-      <div className="grid grid-cols-4 gap-4 p-2 bg-slate-50 rounded-2xl border border-slate-100">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4 p-4 bg-white rounded-[2.5rem] shadow-soft border border-slate-50">
         {[
-          { icon: Building, label: 'Store Info' },
-          { icon: FileText, label: 'Legal Info' },
+          { icon: Info, label: 'Protocols' },
+          { icon: Building, label: 'Identity' },
+          { icon: FileText, label: 'Legal' },
           { icon: Shield, label: 'Verification' },
-          { icon: Users, label: 'Our Team' }
+          { icon: Users, label: 'Workforce' }
         ].map((step, idx) => (
-          <div key={idx} className={`flex items-center justify-center gap-2 py-3 rounded-xl transition-all ${currentStep === idx + 1 ? 'bg-white shadow-sm border border-slate-100' : 'opacity-40'}`}>
-            <step.icon className={`h-4 w-4 ${currentStep === idx + 1 ? 'text-primary-600' : 'text-slate-400'}`} />
-            <span className="text-[9px] font-black uppercase tracking-widest">{step.label}</span>
+          <div key={idx} className={`flex items-center justify-center gap-3 py-4 rounded-[1.5rem] transition-all duration-500 ${currentStep === idx ? 'bg-neutral-900 text-white shadow-strong scale-[1.05]' : 'opacity-40'}`}>
+            <step.icon className="h-4 w-4" />
+            <span className="text-[10px] font-black uppercase tracking-[0.2em]">{step.label}</span>
           </div>
         ))}
       </div>
@@ -529,78 +527,64 @@ const StoreApplication = () => {
         </div>
 
         {currentStep === 0 && (
-          <div className="bg-white rounded-[2rem] p-6 sm:p-10 space-y-8 animate-fade-in relative overflow-hidden shadow-xl border border-slate-100">
-            <div className="absolute top-0 right-0 w-64 h-64 bg-primary-50 rounded-full blur-[100px] -translate-y-20 translate-x-20" />
-            
-            <div className="relative z-10">
-              <div className="flex items-center gap-4 mb-6">
-                <div className="w-14 h-14 bg-primary-600 rounded-[1.5rem] flex items-center justify-center text-white shadow-2xl shadow-primary-200">
-                  <Shield className="h-6 w-6" />
+          <div className="card !rounded-[4rem] p-12 lg:p-20 space-y-16 animate-fade-up border-none shadow-strong bg-white/50 backdrop-blur-3xl">
+            <div className="flex flex-col lg:flex-row items-start gap-16">
+              <div className="lg:w-1/2 space-y-10">
+                <div className="w-24 h-24 bg-neutral-900 text-white rounded-[2rem] flex items-center justify-center shadow-premium ring-8 ring-primary/5">
+                  <Shield size={40} />
                 </div>
-                <div>
-                  <h2 className="text-xl font-black text-slate-900 uppercase tracking-tighter leading-none mb-1">Steps to Apply</h2>
-                  <p className="text-slate-400 font-bold text-[9px] uppercase tracking-widest leading-none">Simple Verification</p>
-                </div>
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
                 <div className="space-y-6">
-                  <h3 className="text-sm font-black text-primary-600 uppercase tracking-[0.2em] border-b border-primary-100 pb-2">Documents Needed</h3>
-                  <ul className="space-y-4">
-                    {[
-                      'Valid Government-Issued ID',
-                      'Business Registration Certificate (DTI/SEC)',
-                      'Mayor\'s / Business Permit',
-                      'BIR Certificate (Form 2303)',
-                      'Barangay Clearance'
-                    ].map((req, i) => (
-                      <li key={i} className="flex items-start gap-3 group">
-                        <div className="w-5 h-5 rounded-full bg-emerald-50 border border-emerald-100 flex items-center justify-center shrink-0 mt-0.5 group-hover:bg-emerald-500 group-hover:border-emerald-500 transition-all">
-                          <Check className="h-3 w-3 text-emerald-600 group-hover:text-white" />
-                        </div>
-                        <span className="text-xs font-bold text-slate-600 uppercase tracking-wide group-hover:text-slate-900 transition-colors">{req}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-
-                <div className="space-y-6">
-                  <h3 className="text-sm font-black text-primary-600 uppercase tracking-[0.2em] border-b border-primary-100 pb-2">Your Information</h3>
-                  <div className="space-y-4">
-                    <div className="flex gap-2 flex-wrap">
-                      {['Store Name', 'Logo', 'Description', 'Base Address', 'Contact', 'Product Index'].map((tag, i) => (
-                        <span key={i} className="px-3 py-1.5 bg-slate-50 text-slate-400 rounded-lg text-[9px] font-black uppercase tracking-widest border border-slate-100">{tag}</span>
-                      ))}
-                    </div>
-                    <div className="p-5 bg-primary-50 rounded-2xl border border-primary-100">
-                      <p className="text-[10px] font-black text-primary-700 uppercase tracking-widest mb-2 flex items-center gap-2">
-                        <Wallet className="h-3 w-3" /> Get Paid
-                      </p>
-                      <p className="text-[9px] text-primary-600 font-medium leading-relaxed uppercase opacity-80">
-                        You need a Bank account or GCash to receive payments.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-12 p-6 bg-slate-900 rounded-[2rem] text-white flex flex-col sm:flex-row items-center justify-between gap-6">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-white/10 rounded-xl flex items-center justify-center">
-                    <AlertCircle className="h-6 w-6 text-primary-400" />
-                  </div>
-                  <p className="text-[10px] font-bold uppercase tracking-widest leading-relaxed max-w-sm">
-                    All submitted applications undergo verification. Once approved, you gain access to the <span className="text-primary-400">Owner Dashboard</span>.
+                  <h2 className="text-4xl font-black text-neutral-900 uppercase tracking-tighter leading-tight">
+                    Onboarding <br />
+                    <span className="text-primary italic">Protocol 1.0 .</span>
+                  </h2>
+                  <p className="text-[13px] font-bold text-neutral-400 uppercase tracking-widest leading-relaxed">
+                    Welcome to the ecosystem. To maintain platform integrity, all ventures must undergo a multi-phase verification process.
                   </p>
                 </div>
-                <button 
+              </div>
+
+              <div className="lg:w-1/2 grid grid-cols-1 gap-6">
+                {[
+                  { icon: FileText, title: 'Document Verification', desc: 'DTI/SEC, BIR, and Local Government permits are required.' },
+                  { icon: Shield, title: 'Network Review', desc: 'Applications are manually vetted by our administrative node.' },
+                  { icon: Users, title: 'Operational Structure', desc: 'Defining your workforce and operational scope is mandatory.' }
+                ].map((item, i) => (
+                  <div key={i} className="flex gap-6 p-8 bg-neutral-50 rounded-[2.5rem] border border-transparent hover:border-primary/10 hover:bg-white hover:shadow-soft transition-all duration-500 group">
+                    <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center text-neutral-300 group-hover:bg-neutral-900 group-hover:text-white transition-all shadow-inner">
+                      <item.icon size={24} />
+                    </div>
+                    <div>
+                      <h4 className="text-[11px] font-black text-neutral-900 uppercase tracking-widest mb-2">{item.title}</h4>
+                      <p className="text-[9px] font-bold text-neutral-400 uppercase tracking-[0.2em]">{item.desc}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex flex-col sm:flex-row items-center gap-10 pt-16 border-t border-slate-50">
+               <div className="flex -space-x-4">
+                  {[1, 2, 3, 4].map(i => (
+                    <div key={i} className="w-12 h-12 rounded-full border-4 border-white bg-neutral-200 overflow-hidden shadow-soft">
+                       <img src={`https://i.pravatar.cc/100?img=${i+10}`} alt="" />
+                    </div>
+                  ))}
+                  <div className="w-12 h-12 rounded-full border-4 border-white bg-neutral-900 text-white flex items-center justify-center text-[9px] font-black">
+                     +1.2k
+                  </div>
+               </div>
+               <div className="flex-1">
+                  <p className="text-[10px] font-black text-neutral-900 uppercase tracking-[0.3em]">Verified Ecosystem Node</p>
+                  <p className="text-[9px] font-bold text-neutral-400 uppercase tracking-widest">Join a community of professional curators and sellers.</p>
+               </div>
+               <button 
                   type="button"
                   onClick={() => setCurrentStep(1)}
-                  className="px-10 py-4 bg-primary-600 hover:bg-white hover:text-slate-900 rounded-xl text-[10px] font-black uppercase tracking-[0.3em] transition-all shadow-xl shadow-primary-900/20 flex items-center gap-2 group shrink-0"
-                >
-                  Start Now <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
-                </button>
-              </div>
+                  className="btn-primary !rounded-[2rem] !px-12 !py-6 flex items-center gap-4 text-[11px] font-black uppercase tracking-[0.3em] active:scale-95 whitespace-nowrap"
+               >
+                  Initialize Onboarding <ArrowRight size={20} className="group-hover:translate-x-2 transition-transform" />
+               </button>
             </div>
           </div>
         )}

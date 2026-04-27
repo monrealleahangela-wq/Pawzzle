@@ -999,33 +999,55 @@ const Profile = () => {
                   </div>
                 )}
                 
-                <div className="flex flex-col items-center gap-3">
-                  <span className="text-slate-400 font-bold text-[10px] uppercase tracking-widest bg-slate-50 px-4 py-1.5 rounded-full border border-slate-100">@{user.username}</span>
-                  <div className="flex items-center gap-2">
-                    <div className="px-3 py-1 bg-slate-900 text-white rounded-lg text-[9px] font-black uppercase tracking-widest shadow-lg shadow-slate-200">
-                      {user.role.replace('_', ' ')}
+                <div className="flex flex-col items-center space-y-6 pt-4">
+                  <div className="relative group/avatar">
+                    <div className="w-36 h-36 rounded-[3rem] bg-neutral-100 overflow-hidden ring-8 ring-primary/5 transition-all duration-700 group-hover/avatar:ring-primary/10 shadow-inner">
+                      {previewImage ? (
+                        <img src={previewImage.startsWith('data:') ? previewImage : getImageUrl(previewImage)} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center bg-primary/5">
+                          <User className="h-16 w-16 text-primary/20" />
+                        </div>
+                      )}
                     </div>
-                    {user.store && (
-                      <div className="px-3 py-1 bg-primary-50 text-primary-600 rounded-lg text-[9px] font-black uppercase tracking-widest border border-primary-100 flex items-center gap-1">
-                        <Building className="h-3 w-3" /> {user.store.name}
-                      </div>
-                    )}
+                    <label className="absolute bottom-1 right-1 w-12 h-12 bg-neutral-900 border-4 border-white text-white rounded-2xl flex items-center justify-center cursor-pointer hover:bg-primary transition-all shadow-premium group-hover/avatar:scale-110">
+                      <Camera size={18} />
+                      <input type="file" className="hidden" onChange={handleImageChange} accept="image/*" />
+                    </label>
+                  </div>
+                  
+                  <div className="text-center space-y-2">
+                    <h2 className="text-3xl font-black text-neutral-900 uppercase tracking-tighter leading-none">{user.firstName} {user.lastName}</h2>
+                    <div className="flex items-center justify-center gap-3">
+                       <span className="px-5 py-1.5 bg-neutral-50 border border-slate-100 rounded-xl text-[10px] font-black text-neutral-400 uppercase tracking-widest">@{user.username}</span>
+                       <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                    </div>
+                    <div className="flex items-center justify-center pt-4 gap-2">
+                      <span className="px-4 py-1.5 bg-neutral-900 text-white rounded-xl text-[9px] font-black uppercase tracking-widest shadow-strong">
+                        {user.role?.replace('_', ' ')}
+                      </span>
+                      {user.store && (
+                        <span className="px-4 py-1.5 bg-primary/5 text-primary border border-primary/10 rounded-xl text-[9px] font-black uppercase tracking-widest">
+                           {user.store.name}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
 
                 {user.role !== 'super_admin' && (
-                  <div className="grid grid-cols-3 gap-2 mt-8 pt-8 border-t border-slate-50">
-                    <div className="text-center">
-                      <p className="text-[8px] font-black text-slate-300 uppercase tracking-widest mb-1.5">Followers</p>
-                      <p className="text-lg font-black text-slate-900 leading-none">{followers.length}</p>
+                  <div className="grid grid-cols-3 gap-6 pt-10 border-t border-slate-50">
+                    <div className="text-center group/stat cursor-pointer">
+                      <p className="text-[9px] font-black text-neutral-300 uppercase tracking-widest mb-2 group-hover/stat:text-primary transition-colors">Followers</p>
+                      <p className="text-2xl font-black text-neutral-900 leading-none">{followers.length}</p>
                     </div>
-                    <div className="text-center border-x border-slate-100 px-2">
-                      <p className="text-[8px] font-black text-slate-300 uppercase tracking-widest mb-1.5">Following</p>
-                      <p className="text-lg font-black text-primary-600 leading-none">{following.length}</p>
+                    <div className="text-center border-x border-slate-100 px-4 group/stat cursor-pointer">
+                      <p className="text-[9px] font-black text-neutral-300 uppercase tracking-widest mb-2 group-hover/stat:text-primary transition-colors">Following</p>
+                      <p className="text-2xl font-black text-neutral-900 leading-none">{following.length}</p>
                     </div>
-                    <div className="text-center">
-                      <p className="text-[8px] font-black text-slate-300 uppercase tracking-widest mb-1.5">Favorites</p>
-                      <p className="text-lg font-black text-rose-500 leading-none">{favorites.length}</p>
+                    <div className="text-center group/stat cursor-pointer">
+                      <p className="text-[9px] font-black text-neutral-300 uppercase tracking-widest mb-2 group-hover/stat:text-rose-500 transition-colors">Favorites</p>
+                      <p className="text-2xl font-black text-neutral-900 leading-none">{favorites.length}</p>
                     </div>
                   </div>
                 )}
@@ -1033,18 +1055,17 @@ const Profile = () => {
             </div>
 
             {/* Navigation Menu - High Density */}
-            <div className="space-y-2">
-              <div className="bg-white/80 backdrop-blur-md rounded-xl sm:rounded-[2rem] shadow-xl shadow-slate-200/20 border border-white p-1 flex lg:block overflow-x-auto no-scrollbar scroll-smooth w-full">
+            <div className="space-y-4">
+              <nav className="bg-white rounded-[2.5rem] shadow-premium border border-slate-50 p-3 lg:flex lg:flex-col overflow-x-auto no-scrollbar scroll-smooth w-full">
                 {[
-                  { id: 'overview', icon: TrendingUp, label: 'Activity' },
-                  { id: 'details', icon: User, label: 'Personal' },
-                  { id: 'pets', icon: PawPrint, label: 'My Pets', role: 'customer' },
-                  { id: 'favorites', icon: HeartIcon, label: 'Favorites', role: ['customer', 'admin'] },
-                  { id: 'followers', icon: Users, label: 'Followers', role: ['customer', 'admin'] },
-                  { id: 'following', icon: User, label: 'Following', role: ['customer', 'admin'] },
-                  { id: 'security', icon: Shield, label: 'Security' },
-                  { id: 'store', icon: Building, label: 'My Store', role: 'admin' },
-                  { id: 'upgrade', icon: Store, label: 'Become a Seller', role: 'customer' }
+                  { id: 'overview', icon: TrendingUp, label: 'Ecosystem activity' },
+                  { id: 'details', icon: User, label: 'Personal records' },
+                  { id: 'pets', icon: PawPrint, label: 'Biological assets', role: 'customer' },
+                  { id: 'favorites', icon: HeartIcon, label: 'Curated list', role: ['customer', 'admin'] },
+                  { id: 'followers', icon: Users, label: 'Platform network', role: ['customer', 'admin'] },
+                  { id: 'security', icon: Shield, label: 'Access control' },
+                  { id: 'store', icon: Building, label: 'Venture node', role: 'admin' },
+                  { id: 'upgrade', icon: Store, label: 'Register as seller', role: 'customer' }
                 ].filter(item => {
                   if (!item.role) return true;
                   if (Array.isArray(item.role)) return item.role.includes(user.role);
@@ -1053,24 +1074,23 @@ const Profile = () => {
                   <button
                     key={item.id}
                     onClick={() => setActiveTab(item.id)}
-                    className={`flex items-center gap-1.5 whitespace-nowrap px-3 sm:px-6 py-2 sm:py-4 rounded-lg sm:rounded-2xl font-black text-[9px] sm:text-xs transition-all duration-300 group ${activeTab === item.id
-                      ? 'bg-slate-900 text-white shadow-xl shadow-slate-200'
-                      : 'text-slate-400 hover:bg-slate-50 hover:text-slate-900'
+                    className={`flex items-center gap-4 whitespace-nowrap px-8 py-5 rounded-[1.5rem] font-black text-[11px] uppercase tracking-widest transition-all duration-500 group ${activeTab === item.id
+                      ? 'bg-neutral-900 text-white shadow-strong scale-[1.02]'
+                      : 'text-neutral-400 hover:bg-neutral-50 hover:text-neutral-900'
                       }`}
                   >
-                    <item.icon className={`h-3 w-3 sm:h-4 sm:w-4 ${activeTab === item.id ? 'text-primary-400' : 'text-slate-300 group-hover:text-primary-500'}`} />
+                    <item.icon className="h-5 w-5" />
                     {item.label}
                   </button>
                 ))}
-              </div>
+              </nav>
 
-              {/* Logout Button */}
               <button
                 onClick={() => setShowLogoutConfirm(true)}
-                className="w-full flex items-center justify-center gap-2 px-6 py-4 rounded-xl sm:rounded-2xl bg-rose-50 text-rose-600 font-black text-[10px] sm:text-xs uppercase tracking-[0.2em] hover:bg-rose-600 hover:text-white transition-all shadow-sm border border-rose-100 group"
+                className="w-full flex items-center justify-center gap-4 px-8 py-6 rounded-[2.5rem] bg-rose-50 text-rose-600 font-black text-[11px] uppercase tracking-[0.3em] hover:bg-rose-600 hover:text-white transition-all shadow-soft border border-rose-100 active:scale-95 group"
               >
-                <LogOut className="h-4 w-4 group-hover:rotate-12 transition-transform" />
-                Log Out
+                <LogOut className="h-5 w-5 group-hover:rotate-12 transition-transform" />
+                Terminate Session
               </button>
             </div>
           </div>

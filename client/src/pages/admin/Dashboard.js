@@ -7,17 +7,17 @@ import {
   adoptionService,
   inventoryService,
   adminBookingService,
-  dssService
+  dssService,
+  getImageUrl
 } from '../../services/apiService';
 import { Heart, Package, ShoppingCart, Plus, Calendar, RefreshCw, Activity, ArrowUp, ChevronRight, AlertCircle, ShoppingBag, Shield, Brain, Sparkles, TrendingUp, User, Star } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
-import { getImageUrl } from '../../services/apiService';
 import { formatTime12h } from '../../utils/timeFormatters';
 
 const STAFF_TYPE_CONFIG = {
-  inventory_staff:  { label: 'Inventory Staff',  color: 'amber',   desc: 'Manages pets, products & stock levels' },
-  order_staff:      { label: 'Order Staff',       color: 'blue',    desc: 'Processes customer orders & confirmations' },
-  service_staff:    { label: 'Service Staff',     color: 'purple',  desc: 'Manages bookings & appointment schedules' },
+  inventory_staff:  { label: 'Inventory Analyst',  color: 'amber',   desc: 'Managing biological & hardware stock levels' },
+  order_staff:      { label: 'Logistics Manager',       color: 'blue',    desc: 'Processing regional order fulfillment' },
+  service_staff:    { label: 'Service Coordinator',     color: 'purple',  desc: 'Orchestrating professional appointments' },
 };
 
 const Dashboard = () => {
@@ -82,6 +82,7 @@ const Dashboard = () => {
         growth: dssRes.status === 'fulfilled' ? (dssRes.value.data.overview?.growth || {}) : {}
       });
     } catch (error) {
+      console.error('Core dash sync failure', error);
     } finally {
       setLoading(false);
     }
@@ -93,6 +94,7 @@ const Dashboard = () => {
       const result = await refreshUserRole();
       if (result.roleChanged) window.location.reload();
     } catch (error) {
+      console.error('Session refresh failed');
     } finally {
       setRefreshingRole(false);
     }
@@ -100,17 +102,15 @@ const Dashboard = () => {
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center h-screen gap-8 bg-[#FAF9F6] font-['Outfit']">
+      <div className="flex flex-col items-center justify-center h-screen gap-12 bg-neutral-50 animate-fade-up">
         <div className="relative">
-          <div className="w-24 h-24 border-[3px] border-[#5D4037]/5 border-t-secondary-500 rounded-full animate-spin-slow"></div>
-          <Activity className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-8 w-8 text-[#5D4037] animate-pulse" />
+          <div className="w-24 h-24 border-4 border-primary/5 border-t-primary rounded-full animate-spin" />
+          <Activity className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-8 w-8 text-primary animate-pulse" />
         </div>
-        <div className="text-center space-y-2">
-          <p className="text-[11px] font-black text-[#5D4037]/40 uppercase tracking-[0.6em] animate-pulse">LOADING DASHBOARD</p>
+        <div className="text-center space-y-4">
+          <p className="text-[12px] font-black text-neutral-400 uppercase tracking-[0.5em] animate-pulse">Syncing Business Core</p>
           <div className="flex gap-2 justify-center">
-            {[0, 1, 2].map(i => (
-              <div key={i} className="w-1.5 h-1.5 rounded-full bg-secondary-500/40 animate-bounce" style={{ animationDelay: `${i * 0.15}s` }} />
-            ))}
+            {[0, 1, 2].map(i => <div key={i} className="w-2 h-2 rounded-full bg-primary/20 animate-bounce" style={{ animationDelay: `${i * 0.2}s` }} />)}
           </div>
         </div>
       </div>
@@ -121,311 +121,213 @@ const Dashboard = () => {
   const isAdmin = ['admin', 'super_admin'].includes(user?.role);
 
   return (
-    <div className="min-h-screen bg-[#FAF9F6] dark:bg-slate-950 p-2 sm:p-4 lg:p-6 space-y-6 sm:space-y-8 pb-10 sm:pb-20 font-['Outfit'] relative overflow-hidden transition-colors duration-500">
-      {/* Precision Decorative Underlay */}
-      <div className="fixed inset-0 pointer-events-none overflow-hidden opacity-30">
-        <div className="absolute top-[-20%] right-[-10%] w-[60%] h-[60%] bg-secondary-100/40 dark:bg-primary-900/10 rounded-full blur-[160px] animate-spin-slow" />
-        <div className="absolute bottom-[-15%] left-[-10%] w-[50%] h-[50%] bg-[#5D4037]/5 dark:bg-slate-800/20 rounded-full blur-[140px] animate-blob-move" />
-      </div>
-
-      {/* ── High-Aspect Header ── */}
-      <header className="relative z-10 flex flex-col md:flex-row md:items-end justify-between gap-6 sm:gap-8 border-b border-[#5D4037]/5 dark:border-slate-800 pb-8 sm:pb-12">
-        <div className="space-y-4 sm:space-y-6">
-          <div className="flex items-center gap-3 sm:gap-4">
-            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-[#211510] dark:bg-slate-900 text-secondary-500 rounded-xl sm:rounded-2xl flex items-center justify-center shadow-2xl transition-transform hover:scale-110">
-              <Activity className="h-5 w-5 sm:h-6 sm:w-6" />
+    <div className="space-y-12 sm:space-y-20 pb-40 relative animate-fade-up">
+      
+      {/* ── Dashboard Context Header ── */}
+      <header className="flex flex-col lg:flex-row lg:items-end justify-between gap-10">
+        <div className="space-y-6">
+          <div className="flex items-center gap-5">
+            <div className="w-16 h-16 bg-neutral-900 text-white rounded-3xl flex items-center justify-center shadow-premium">
+              <Activity className="h-8 w-8" />
             </div>
-            <div className="space-y-0.5 sm:space-y-1">
-              <span className="text-[9px] sm:text-[10px] font-black text-primary-600 uppercase tracking-[0.4em] sm:tracking-[0.5em]">STORE DASHBOARD</span>
-              <p className="text-[9px] sm:text-[11px] font-bold text-[#5D4037]/30 dark:text-slate-500 uppercase tracking-[0.2em] sm:tracking-[0.3em] flex items-center gap-2 sm:gap-3">
-                <span className="flex h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                System Status: Online
-              </p>
+            <div className="space-y-2">
+              <h1 className="text-4xl sm:text-7xl font-black text-neutral-900 uppercase tracking-tighter leading-none">
+                {user?.store?.name || 'Venture'} <br />
+                <span className="text-primary italic">Controller .</span>
+              </h1>
+              <div className="flex items-center gap-4 text-[10px] font-black text-neutral-400 uppercase tracking-[0.4em]">
+                <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                Live Hub Status: Optimized
+              </div>
             </div>
-          </div>
-          
-          <div className="space-y-1">
-             <h1 className="text-3xl sm:text-5xl lg:text-7xl font-black text-[#3D2B23] dark:text-slate-100 uppercase tracking-[-0.04em] leading-[0.9] sm:leading-[0.85]">
-                {user?.store?.name || 'My Store'} <br /> 
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-secondary-500 to-primary-700 italic">Overview .</span>
-             </h1>
           </div>
         </div>
 
-        <button
-          onClick={handleRefreshRole}
-          className="group relative px-6 sm:px-10 py-4 sm:py-5 bg-[#211510] dark:bg-slate-900 text-white rounded-xl sm:rounded-2xl overflow-hidden transition-all active:scale-95 shadow-[0_20px_40px_rgba(0,0,0,0.15)] flex items-center gap-3 sm:gap-4 border border-white/5"
-        >
-          <div className="absolute inset-0 bg-primary-600 translate-y-full group-hover:translate-y-0 transition-transform duration-500 opacity-20" />
-          <RefreshCw className={`h-4 w-4 sm:h-5 sm:w-5 text-secondary-500 ${refreshingRole ? 'animate-spin' : 'group-hover:rotate-180 transition-transform duration-700'}`} />
-          <span className="text-[9px] sm:text-[11px] font-black uppercase tracking-[0.2em] sm:tracking-[0.3em] relative z-10">
-            {refreshingRole ? 'REFRESHING...' : 'REFRESH'}
-          </span>
-        </button>
+        <div className="flex gap-4">
+           <button onClick={handleRefreshRole} className="btn-outline !rounded-2xl !px-8 flex items-center gap-4 text-[10px] font-black uppercase tracking-widest bg-white">
+             <RefreshCw className={`h-4 w-4 ${refreshingRole ? 'animate-spin' : ''}`} />
+             <span>Refetch Session</span>
+           </button>
+           <button className="btn-primary !rounded-2xl !px-10 flex items-center gap-4 text-[10px] font-black uppercase tracking-widest">
+             <Plus className="h-4 w-4" />
+             <span>Create Asset</span>
+           </button>
+        </div>
       </header>
-      {/* ── Staff Profile Card (Staff-only) ── */}
+
+      {/* ── Staff Context Module ── */}
       {user?.role === 'staff' && (
-        <div className="relative z-10 bg-white dark:bg-slate-900 rounded-[2rem] border border-[#5D4037]/5 dark:border-slate-800 p-6 sm:p-8 shadow-lg flex flex-col sm:flex-row items-start sm:items-center gap-6 animate-in fade-in duration-700">
-          {/* Avatar */}
-          <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-[1.5rem] bg-secondary-50 dark:bg-slate-800 border-2 border-secondary-100 dark:border-primary-900/40 flex items-center justify-center text-primary-600 overflow-hidden shrink-0 shadow-inner">
+        <div className="bg-white rounded-[3rem] border border-slate-50 p-10 shadow-medium flex flex-col md:flex-row items-center gap-10 animate-scale-in">
+          <div className="w-24 h-24 rounded-[2rem] bg-neutral-100 flex items-center justify-center text-primary shadow-inner shrink-0 overflow-hidden">
             {user.avatar || user.profilePicture ? (
               <img src={getImageUrl(user.avatar || user.profilePicture)} alt="" className="w-full h-full object-cover" />
-            ) : (
-              <User className="h-8 w-8" />
-            )}
+            ) : <User className="h-10 w-10" />}
           </div>
-          {/* Info */}
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-3 mb-1">
-              <h2 className="text-xl sm:text-2xl font-black text-[#3D2B23] dark:text-slate-100 uppercase tracking-tighter truncate">
-                {user.firstName} {user.lastName}
-              </h2>
-              <span className="shrink-0 flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800 text-[9px] font-black text-emerald-600 uppercase tracking-widest">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                Online
-              </span>
-            </div>
-            <p className="text-[10px] font-black text-primary-600 uppercase tracking-[0.3em] mb-1">
-              {STAFF_TYPE_CONFIG[user?.staffType]?.label || 'Staff Member'}
-            </p>
-            <p className="text-[9px] font-bold text-[#5D4037]/40 dark:text-slate-500 uppercase tracking-widest truncate">
-              {STAFF_TYPE_CONFIG[user?.staffType]?.desc || 'General operations'}
-            </p>
-            <div className="flex items-center gap-4 mt-2">
-              <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">{user.email}</span>
-              {user.phone && (
-                <>
-                  <div className="w-1 h-1 rounded-full bg-slate-200" />
-                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">{user.phone}</span>
-                </>
-              )}
-            </div>
+          <div className="flex-1 text-center md:text-left space-y-3">
+             <div className="flex flex-col md:flex-row md:items-center gap-4">
+                <h2 className="text-3xl font-black text-neutral-900 uppercase tracking-tight">{user.firstName} {user.lastName}</h2>
+                <span className="px-4 py-1.5 bg-neutral-900 text-white rounded-xl text-[9px] font-black uppercase tracking-widest self-center">Personnel Active</span>
+             </div>
+             <p className="text-[11px] font-black text-primary uppercase tracking-[0.3em]">{STAFF_TYPE_CONFIG[user?.staffType]?.label || 'Store Professional'}</p>
+             <p className="text-xs text-neutral-400 font-medium tracking-tight uppercase">{STAFF_TYPE_CONFIG[user?.staffType]?.desc || 'Supporting business operations'}</p>
           </div>
-          {/* Profile Link */}
-          <Link
-            to="/profile"
-            className="shrink-0 flex items-center gap-3 px-6 py-3 bg-[#211510] dark:bg-slate-800 text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-primary-600 transition-all shadow-xl group"
-          >
-            View Profile
-            <ChevronRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
-          </Link>
+          <Link to="/profile" className="btn-outline !rounded-2xl px-10">Access Settings</Link>
         </div>
       )}
 
-
-      {/* ── Precision Metrics Grid ── */}
-      <div className="relative z-10 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
+      {/* ── Key Performance Indicators (KPIs) ── */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
         {[
-          { label: 'AVAILABLE PETS', value: stats.totalPets, icon: Heart, color: 'amber', link: '/admin/pets', sub: 'In Shop', growth: stats.growth.pets, show: isAdmin || hasPerm('inventory') },
-          { label: 'PET SALES', value: stats.totalSales, icon: ShoppingCart, color: 'rose', link: '/admin/pets', sub: 'Adopted', growth: stats.growth.adoptions, show: isAdmin || hasPerm('orders') },
-          { label: 'TOTAL ORDERS', value: stats.totalOrders, icon: ShoppingBag, color: 'slate', link: '/admin/orders', sub: 'Products', growth: stats.growth.orders, show: isAdmin || hasPerm('orders') },
-          { label: 'SERVICE BOOKINGS', value: stats.totalBookings, icon: Calendar, color: 'emerald', link: '/admin/bookings', sub: 'Scheduled', growth: stats.growth.bookings, show: isAdmin || hasPerm('bookings') || hasPerm('services') },
-          { label: 'RESPONSE RATE', value: `${stats.responseRate}%`, icon: Activity, color: 'primary', link: '/admin/chat', sub: 'Real-time', growth: 0, show: isAdmin },
-          { label: 'TOTAL REVIEWS', value: stats.totalReviews, icon: Star, color: 'secondary', link: '/admin/reviews', sub: 'Customers', growth: 0, show: isAdmin },
-          { label: 'TOTAL REVENUE', value: `₱${stats.netEarnings.toLocaleString()}`, icon: TrendingUp, color: 'primary', link: '/admin/insights', sub: 'Total Earned', growth: stats.growth.revenue, show: isAdmin },
-          { label: 'AVAILABLE BALANCE', value: `₱${stats.availableBalance.toLocaleString()}`, icon: Shield, color: 'amber', link: '/admin/payouts', sub: 'To Withdraw', growth: stats.growth.balance, show: isAdmin }
-        ].filter(s => s.show).map((stat, i) => (
-          <Link
-            key={i}
-            to={stat.link}
-            className="group relative bg-white dark:bg-slate-900 rounded-[1.5rem] sm:rounded-[1.8rem] p-4 sm:p-5 border border-[#5D4037]/5 dark:border-slate-800 transition-all duration-500 hover:shadow-[0_40px_80px_-15px_rgba(0,0,0,0.3)] hover:-translate-y-1 overflow-hidden"
-          >
-            <div className="absolute top-0 right-0 w-32 h-32 bg-secondary-50 dark:bg-primary-900/5 rounded-bl-[4rem] -translate-y-16 translate-x-16 opacity-0 group-hover:opacity-100 transition-all duration-700" />
-
-            <div className="flex items-center justify-between gap-4 relative z-10 w-full">
-              <div className="flex items-center gap-4 min-w-0">
-                <div className="w-12 h-12 sm:w-14 sm:h-14 bg-[#FAF9F6] dark:bg-slate-800 border border-[#5D4037]/5 dark:border-slate-700 text-primary-600 rounded-xl sm:rounded-2xl flex items-center justify-center transition-all group-hover:bg-primary-600 group-hover:text-white shadow-sm shrink-0">
-                  <stat.icon className="h-6 w-6" />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-[8px] sm:text-[9px] font-black text-[#5D4037]/40 dark:text-slate-500 uppercase tracking-[0.2em] mb-0.5 truncate">{stat.label}</p>
-                  <div className="flex items-baseline gap-2">
-                    <span className="text-xl sm:text-3xl font-black text-[#3D2B23] dark:text-slate-100 tracking-[-0.04em] leading-none">{stat.value}</span>
-                    <span className="hidden lg:inline text-[8px] font-black text-[#5D4037]/20 uppercase tracking-widest">{stat.sub}</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className={`shrink-0 px-2 py-1 sm:px-3 sm:py-1.5 rounded-lg sm:rounded-xl text-[9px] sm:text-[10px] font-black flex items-center gap-1.5 ${stat.growth >= 0 ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 border border-emerald-100 dark:border-emerald-800' : 'bg-rose-50 dark:bg-rose-900/20 text-rose-600 border border-rose-100 dark:border-rose-800'}`}>
-                <ArrowUp className={`h-3 w-3 transition-transform ${stat.growth < 0 ? 'rotate-180' : ''}`} />
-                {stat.growth >= 0 ? '+' : ''}{stat.growth}%
-              </div>
+          { label: 'Biological Inventory', value: stats.totalPets, icon: Heart, link: '/admin/pets', show: isAdmin || hasPerm('inventory') },
+          { label: 'Regional Fulfilment', value: stats.totalOrders, icon: ShoppingBag, link: '/admin/orders', show: isAdmin || hasPerm('orders') },
+          { label: 'Service Pipeline', value: stats.totalBookings, icon: Calendar, link: '/admin/bookings', show: isAdmin || hasPerm('bookings') || hasPerm('services') },
+          { label: 'Gross Revenue', value: `₱${stats.netEarnings.toLocaleString()}`, icon: TrendingUp, link: '/admin/insights', show: isAdmin },
+          { label: 'Settled Payouts', value: `₱${stats.availableBalance.toLocaleString()}`, icon: Wallet, link: '/admin/payouts', show: isAdmin },
+          { label: 'Market Sentiment', value: `${stats.responseRate}%`, icon: User, link: '/admin/reviews', show: isAdmin }
+        ].filter(s => s.show).map((kpi, i) => (
+          <Link key={i} to={kpi.link} className="card group p-10 relative overflow-hidden transition-all duration-500 hover:bg-neutral-50">
+            <div className="w-14 h-14 bg-neutral-50 rounded-2xl flex items-center justify-center mb-10 group-hover:bg-primary group-hover:text-white transition-all shadow-inner">
+              <kpi.icon className="h-6 w-6" />
             </div>
-            
-            {/* Minimal Focus Accent */}
-            <div className="absolute bottom-0 left-0 w-full h-1 bg-primary-600/0 group-hover:bg-primary-600/10 transition-all rounded-b-[1.5rem]" />
+            <div className="space-y-2">
+               <p className="text-[10px] font-black text-neutral-300 uppercase tracking-[0.4em] leading-none mb-2">{kpi.label}</p>
+               <h3 className="text-4xl font-black text-neutral-950 tracking-tighter leading-none">{kpi.value}</h3>
+            </div>
+            <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-bl-[5rem] -translate-y-16 translate-x-16 group-hover:translate-y-0 group-hover:translate-x-0 transition-all duration-700 pointer-events-none" />
           </Link>
         ))}
       </div>
 
-      <div className="relative z-10 grid grid-cols-1 xl:grid-cols-12 gap-10 pb-40">
-        {/* Recent Transaction Log */}
-        {(isAdmin || hasPerm('orders') || ['order_staff', 'general'].includes(user?.staffType)) && (
-          <div className="xl:col-span-8 bg-white dark:bg-slate-900 rounded-[2.2rem] sm:rounded-[3.5rem] border border-[#5D4037]/5 dark:border-slate-800 p-6 sm:p-10 shadow-[0_40px_100px_-30px_rgba(0,0,0,0.1)] flex flex-col transition-all">
-            <div className="flex items-center justify-between mb-8 sm:mb-12">
-              <div className="space-y-2">
-                <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-[#FAF9F6] dark:bg-slate-800 border border-[#5D4037]/5 dark:border-slate-700 rounded-full">
-                  <ShoppingCart className="h-3.5 w-3.5 text-primary-600" />
-                  <span className="text-[9px] font-black text-[#5D4037]/40 dark:text-slate-500 uppercase tracking-[0.3em]">ORDER FEED</span>
-                </div>
-                <h2 className="text-2xl sm:text-3xl font-black text-[#3D2B23] dark:text-slate-100 uppercase tracking-tighter">Recent Transactions</h2>
-              </div>
-              <Link to="/admin/orders" className="group hidden sm:flex items-center gap-2 px-8 py-4 bg-[#211510] dark:bg-slate-800 text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-primary-600 transition-all shadow-xl">
-                VIEW ALL <ChevronRight className="h-4 w-4 group-hover:translate-x-2 transition-transform" />
-              </Link>
+      {/* ── Operational Grid ── */}
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-10">
+        
+        {/* Logistics Feed */}
+        {(isAdmin || hasPerm('orders')) && (
+          <div className="xl:col-span-8 card !rounded-[3.5rem] p-12 lg:p-16">
+            <div className="flex items-end justify-between mb-16 px-2">
+               <div className="space-y-4">
+                  <h2 className="text-4xl font-black text-neutral-900 uppercase tracking-tighter leading-none">
+                    Logistics <br />
+                    <span className="text-primary italic">Queue .</span>
+                  </h2>
+                  <p className="text-[10px] font-black text-neutral-400 uppercase tracking-[0.3em]">Processing live regional requests</p>
+               </div>
+               <Link to="/admin/orders" className="p-4 bg-neutral-900 text-white rounded-2xl hover:bg-primary transition-all">
+                  <ChevronRight size={24} />
+               </Link>
             </div>
 
-            <div className="space-y-2 sm:space-y-3">
+            <div className="space-y-4">
               {stats.recentOrders.length > 0 ? stats.recentOrders.map(order => (
-                <Link to={`/admin/orders?id=${order._id}`} key={order._id} className="group flex items-center justify-between p-3 sm:p-4 bg-[#FAF9F6]/50 dark:bg-slate-800/50 rounded-xl sm:rounded-2xl border border-transparent hover:border-secondary-500/20 hover:bg-white dark:hover:bg-slate-800 hover:shadow-xl transition-all duration-500 gap-4">
-                  <div className="flex items-center gap-3 sm:gap-6 min-w-0 flex-1">
-                    <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl bg-white dark:bg-slate-900 border border-[#5D4037]/5 dark:border-slate-700 flex items-center justify-center shrink-0 group-hover:bg-[#211510] transition-all shadow-sm">
-                      <ShoppingBag className="h-5 w-5 sm:h-6 sm:w-6 text-secondary-500/30 group-hover:text-secondary-500 transition-colors" />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-[10px] sm:text-[12px] font-black text-[#3D2B23] dark:text-slate-100 uppercase tracking-tight group-hover:text-primary-700 dark:group-hover:text-secondary-500 transition-colors truncate">ID: #{order.orderNumber.slice(-8).toUpperCase()}</p>
-                      <div className="flex items-center gap-2">
-                        <p className="text-[9px] sm:text-[11px] font-black text-primary-600 tracking-tight shrink-0">₱{order.totalAmount?.toLocaleString()}</p>
-                        <div className="w-1 h-1 rounded-full bg-[#5D4037]/20 shrink-0" />
-                        <p className="text-[8px] sm:text-[9px] font-bold text-[#5D4037]/30 dark:text-slate-500 uppercase tracking-widest truncate">
-                          {new Date(order.createdAt).toLocaleDateString('en-GB')} {formatTime12h(new Date(order.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }))}
-                        </p>
+                <Link to={`/admin/orders?id=${order._id}`} key={order._id} className="flex items-center justify-between p-8 bg-neutral-50 rounded-[2.5rem] hover:bg-white hover:shadow-strong transition-all duration-500 group">
+                   <div className="flex items-center gap-8 min-w-0">
+                      <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center shadow-soft shrink-0 group-hover:bg-neutral-900 group-hover:text-white transition-all">
+                         <ShoppingBag size={24} />
                       </div>
-                    </div>
-                  </div>
-                  <div className="shrink-0">
-                    <span className={`px-3 py-1 sm:px-4 sm:py-1.5 rounded-lg sm:rounded-xl text-[7px] sm:text-[9px] font-black uppercase tracking-[0.1em] border shadow-sm ${order.status === 'delivered' ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 border-emerald-100 dark:border-emerald-800' :
-                      order.status === 'processing' ? 'bg-secondary-50 dark:bg-primary-900/20 text-primary-700 dark:text-secondary-400 border-secondary-100 dark:border-primary-800' :
-                        'bg-stone-50 dark:bg-slate-800 text-stone-600 dark:text-slate-400 border-stone-100 dark:border-slate-700'
-                      }`}>
-                      {order.status}
-                    </span>
-                  </div>
+                      <div className="min-w-0">
+                         <p className="text-lg font-black text-neutral-900 uppercase tracking-tight truncate">#{order.orderNumber.slice(-8).toUpperCase()}</p>
+                         <p className="text-xs font-black text-neutral-400 uppercase tracking-widest mt-1">₱{order.totalAmount?.toLocaleString()} · Fulfillment Pending</p>
+                      </div>
+                   </div>
+                   <div className="flex items-center gap-10">
+                      <div className="hidden sm:flex flex-col text-right">
+                         <span className="text-[9px] font-black text-neutral-300 uppercase tracking-[0.2em]">{new Date(order.createdAt).toLocaleDateString()}</span>
+                         <span className="text-[10px] font-black text-neutral-400 uppercase mt-1">{formatTime12h(new Date(order.createdAt).toLocaleTimeString())}</span>
+                      </div>
+                      <div className="px-6 py-2.5 bg-white rounded-xl border border-slate-100 text-[10px] font-black text-neutral-900 uppercase tracking-widest shadow-soft">
+                        {order.status}
+                      </div>
+                   </div>
                 </Link>
               )) : (
-                <div className="flex flex-col items-center justify-center py-12 opacity-20 space-y-4">
-                  <div className="w-16 h-16 bg-[#FAF9F6] dark:bg-slate-800 border border-[#5D4037]/5 dark:border-slate-700 rounded-full flex items-center justify-center">
-                    <Activity className="h-8 w-8 text-[#5D4037] dark:text-slate-400" />
-                  </div>
-                  <p className="text-[9px] font-black text-[#5D4037] dark:text-slate-400 uppercase tracking-[0.5em]">NO RECENT ORDERS</p>
+                <div className="py-24 text-center border-2 border-dashed border-slate-100 rounded-[3rem]">
+                   <p className="text-[11px] font-black text-neutral-200 uppercase tracking-[0.5em]">No logistics pending</p>
                 </div>
               )}
             </div>
           </div>
         )}
 
-        {/* Intelligence & Protocols */}
+        {/* Intelligence Sidebars */}
         <div className="xl:col-span-4 space-y-10">
-          {/* Intelligence Matrix */}
-          {stats.recommendations.length > 0 && isAdmin && (
-            <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] sm:rounded-[3rem] p-8 sm:p-10 border border-[#5D4037]/5 dark:border-slate-800 shadow-[0_40px_100px_-30px_rgba(0,0,0,0.1)] relative overflow-hidden group">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-secondary-50 dark:bg-primary-900/5 rounded-bl-[4rem] opacity-0 group-hover:opacity-100 transition-opacity" />
-              
-              <div className="flex items-center gap-4 mb-8 sm:mb-10">
-                <div className="w-12 h-12 bg-secondary-50 dark:bg-slate-800 text-primary-600 rounded-2xl flex items-center justify-center shadow-inner">
-                  <Sparkles size={20} />
-                </div>
-                <div>
-                   <h2 className="text-[10px] sm:text-[11px] font-black text-[#5D4037]/40 dark:text-slate-500 uppercase tracking-[0.5em]">STORE TIPS</h2>
-                   <p className="text-[8px] sm:text-[9px] font-black text-[#5D4037]/20 dark:text-slate-600 uppercase tracking-widest">Real-time Advice</p>
-                </div>
-              </div>
-              <div className="space-y-4 sm:space-y-6">
-                {stats.recommendations.map((rec, i) => (
-                  <div key={i} className="p-5 sm:p-6 bg-[#FAF9F6] dark:bg-slate-800/50 rounded-[1.5rem] sm:rounded-[1.8rem] border border-transparent hover:border-secondary-100 dark:hover:border-primary-900/30 hover:bg-white dark:hover:bg-slate-800 transition-all duration-500">
-                    <p className="text-[11px] font-black text-[#3D2B23] dark:text-slate-100 uppercase tracking-tight mb-2 flex items-center gap-2">
-                       <div className="w-1 h-3 bg-secondary-500 rounded-full" />
-                       {rec.title}
-                    </p>
-                    <p className="text-[10px] font-bold text-[#5D4037]/40 dark:text-slate-500 uppercase leading-relaxed italic line-clamp-3">
-                      "{rec.message}"
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
           
-          {isAdmin && (
-            <Link to="/admin/insights" className="flex items-center justify-center gap-3 pt-6 text-[10px] font-black text-primary-700 dark:text-secondary-500 uppercase tracking-[0.3em] hover:gap-5 transition-all">
-               VIEW FULL ANALYSIS <ChevronRight size={14} />
-            </Link>
+          {/* Predictive Insights */}
+          {stats.recommendations.length > 0 && isAdmin && (
+            <div className="card p-12 space-y-10">
+               <div className="flex items-center gap-5">
+                  <div className="w-14 h-14 bg-secondary-50 text-secondary-600 rounded-2xl flex items-center justify-center shadow-inner">
+                     <Brain size={24} />
+                  </div>
+                  <div>
+                     <p className="text-[10px] font-black text-neutral-300 uppercase tracking-[0.5em]">AI Advisor</p>
+                     <p className="text-[12px] font-black text-neutral-900 uppercase tracking-tight">Active Recommendations</p>
+                  </div>
+               </div>
+               <div className="space-y-6">
+                  {stats.recommendations.map((rec, i) => (
+                    <div key={i} className="p-8 bg-neutral-50 rounded-[2rem] border border-transparent hover:border-secondary-100 hover:bg-white hover:shadow-soft transition-all duration-500">
+                       <h4 className="text-xs font-black text-neutral-900 uppercase tracking-tight mb-3 flex items-center gap-3">
+                          <Plus className="h-4 w-4 text-secondary-500" />
+                          {rec.title}
+                       </h4>
+                       <p className="text-[11px] text-neutral-400 font-bold uppercase leading-relaxed tracking-widest italic opacity-60">"{rec.message}"</p>
+                    </div>
+                  ))}
+               </div>
+            </div>
           )}
 
-          {/* Rapid Protocols */}
-          <div className="bg-[#211510] rounded-[3.5rem] p-10 shadow-[0_60px_120px_-20px_rgba(0,0,0,0.4)] relative overflow-hidden group">
-            <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10" />
-            <div className="absolute top-0 right-0 w-64 h-64 bg-secondary-500/10 rounded-full -translate-y-24 translate-x-24 blur-[80px] pointer-events-none group-hover:scale-125 transition-transform duration-1000" />
-
-            <div className="flex items-center gap-4 mb-12">
-               <div className="w-4 h-4 bg-secondary-500 rounded-full animate-pulse shadow-[0_0_20px_rgba(245,158,11,0.5)]" />
-               <h2 className="text-[11px] font-black text-secondary-500/60 uppercase tracking-[0.6em]">QUICK ACTIONS</h2>
-            </div>
-
-            <div className="space-y-4 relative z-10">
-              {[
-                { to: "/admin/insights", label: "Business Insights", icon: Brain, desc: "See your shop's performance", show: isAdmin || hasPerm('analytics') },
-                { to: "/admin/pets", label: "Add a Pet", icon: Plus, desc: "List a pet for adoption", show: isAdmin || hasPerm('inventory') },
-                { to: "/admin/products", label: "Add a Product", icon: Package, desc: "List new items for sale", show: isAdmin || hasPerm('inventory') },
-                { to: "/admin/bookings", label: "Manage Bookings", icon: Calendar, desc: "View appointment schedule", show: isAdmin || hasPerm('bookings') || hasPerm('services') },
-                { to: "/admin/orders", label: "Order Queue", icon: ShoppingCart, desc: "Process product orders", show: isAdmin || hasPerm('orders') },
-              ].filter(action => action.show).map((action, i) => (
-                <Link key={i} to={action.to} className="group/btn relative flex items-center gap-4 sm:gap-6 p-3 sm:p-5 bg-white/5 hover:bg-white/10 rounded-xl sm:rounded-[1.8rem] transition-all active:scale-[0.97] border border-white/5">
-                  <div className="w-10 h-10 sm:w-14 sm:h-14 bg-white/5 rounded-lg sm:rounded-2xl flex items-center justify-center shrink-0 group-hover/btn:bg-primary-600 transition-all duration-500">
-                    <action.icon className="h-4 w-4 sm:h-6 sm:w-6 text-white" />
-                  </div>
-                  <div className="flex-1 min-w-0 space-y-0 sm:space-y-1">
-                    <p className="text-[10px] sm:text-[12px] font-black text-white uppercase tracking-[0.1em] sm:tracking-[0.2em]">{action.label}</p>
-                    <p className="text-[8px] sm:text-[9px] font-bold text-white/20 uppercase tracking-widest truncate">{action.desc}</p>
-                  </div>
-                  <ChevronRight className="h-4 w-4 sm:h-5 sm:w-5 text-white/10 group-hover/btn:translate-x-3 group-hover/btn:text-secondary-500 transition-all" />
-                </Link>
-              ))}
-            </div>
+          {/* Rapid Interaction Panel */}
+          <div className="bg-neutral-900 rounded-[4rem] p-12 shadow-premium relative overflow-hidden group">
+             <div className="absolute top-0 right-0 w-64 h-64 bg-primary/10 rounded-full blur-[80px] -translate-y-1/2 translate-x-1/2" />
+             <div className="relative z-10 space-y-10">
+                <div className="flex items-center gap-4">
+                   <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+                   <span className="text-[11px] font-black text-white/40 uppercase tracking-[0.5em]">Quick Protocols</span>
+                </div>
+                <div className="space-y-4">
+                  {[
+                    { to: "/admin/insights", label: "Business Analytics", icon: Brain, show: isAdmin },
+                    { to: "/admin/pets", label: "Asset Deployment", icon: Heart, show: isAdmin || hasPerm('inventory') },
+                    { to: "/admin/products", label: "Inventory Intake", icon: Package, show: isAdmin || hasPerm('inventory') },
+                    { to: "/admin/orders", label: "Logistics Hub", icon: ShoppingBag, show: isAdmin || hasPerm('orders') },
+                  ].filter(a => a.show).map((a, i) => (
+                    <Link key={i} to={a.to} className="flex items-center justify-between p-6 bg-white/5 rounded-[1.8rem] hover:bg-white/10 hover:translate-x-3 transition-all duration-500 group/item">
+                       <div className="flex items-center gap-6">
+                          <div className="w-12 h-12 bg-white/5 rounded-2xl flex items-center justify-center group-hover/item:bg-primary transition-all">
+                             <a.icon size={20} className="text-white" />
+                          </div>
+                          <span className="text-[11px] font-black text-white uppercase tracking-widest">{a.label}</span>
+                       </div>
+                       <ChevronRight className="h-5 w-5 text-white/10 group-hover/item:text-primary transition-all" />
+                    </Link>
+                  ))}
+                </div>
+             </div>
           </div>
 
-          {/* Resource Alert Matrix */}
-          {(isAdmin || hasPerm('inventory')) && stats.lowStockProducts.length > 0 ? (
-            <div className="bg-rose-600 rounded-[2rem] sm:rounded-[3rem] p-6 sm:p-10 text-white shadow-[0_40px_80px_-20px_rgba(225,29,72,0.4)] relative overflow-hidden group">
-              <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent pointer-events-none" />
-              
-              <div className="flex items-center gap-4 sm:gap-6 mb-8 sm:mb-10">
-                <div className="w-12 h-12 sm:w-14 sm:h-14 bg-white/20 backdrop-blur-xl rounded-xl sm:rounded-[1.4rem] flex items-center justify-center animate-pulse">
-                  <AlertCircle className="h-6 w-6 sm:h-7 sm:w-7 text-white" />
-                </div>
-                <div>
-                  <h2 className="text-[11px] font-black uppercase tracking-[0.5em] text-white/80">LOW STOCK ALERT</h2>
-                  <p className="text-[10px] font-black uppercase tracking-widest text-white/40">Critical Inventory</p>
-                </div>
-              </div>
-
-              <div className="space-y-2 sm:space-y-4">
-                {stats.lowStockProducts.slice(0, 3).map(p => (
-                  <div key={p._id} className="flex items-center justify-between p-3 sm:p-5 bg-white/10 backdrop-blur-md rounded-xl sm:rounded-[1.6rem] border border-white/10 group-hover:bg-white/15 transition-all min-w-0 gap-3">
-                    <span className="text-[10px] sm:text-[11px] font-black uppercase tracking-tight truncate flex-1 min-w-0">{p.name}</span>
-                    <div className="px-3 py-1.5 sm:px-4 sm:py-2 bg-white text-rose-600 rounded-lg sm:rounded-xl text-[10px] sm:text-[12px] font-black shadow-lg shrink-0">
-                       {p.stockQuantity}
-                    </div>
+          {/* Operational Risk Radar (Low Stock) */}
+          {(isAdmin || hasPerm('inventory')) && stats.lowStockProducts.length > 0 && (
+            <div className="bg-rose-600 rounded-[3rem] p-12 text-white shadow-strong relative overflow-hidden">
+               <div className="relative z-10 space-y-10">
+                  <div className="flex items-center gap-6">
+                     <div className="w-16 h-16 bg-white/20 rounded-3xl flex items-center justify-center animate-pulse">
+                        <AlertCircle size={28} />
+                     </div>
+                     <div>
+                        <p className="text-[11px] font-black uppercase tracking-[0.4em] opacity-60">Inventory Risk</p>
+                        <p className="text-[12px] font-black uppercase tracking-tight">Resource Depletion</p>
+                     </div>
                   </div>
-                ))}
-                <Link to="/admin/products" className="group flex items-center justify-center gap-4 pt-4 text-[10px] font-black uppercase tracking-[0.3em] text-white/60 hover:text-white transition-all">
-                  RESTOCK ITEMS <ChevronRight size={14} className="group-hover:translate-x-2 transition-transform" />
-                </Link>
-              </div>
-            </div>
-          ) : (isAdmin || hasPerm('inventory')) && (
-            <div className="bg-emerald-600 rounded-[2rem] sm:rounded-[3rem] p-6 sm:p-10 text-white shadow-[0_40px_80px_-20px_rgba(5,150,105,0.3)] flex flex-col items-center justify-center text-center space-y-6 relative overflow-hidden group">
-              <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent pointer-events-none" />
-              <div className="w-16 h-16 sm:w-20 sm:h-20 bg-white/20 backdrop-blur-xl rounded-full flex items-center justify-center group-hover:scale-110 transition-transform duration-700 shadow-2xl">
-                <Shield className="h-10 w-10 text-white" />
-              </div>
-              <div className="space-y-2">
-                 <p className="text-[12px] font-black uppercase tracking-[0.6em]">Looking Good!</p>
-                 <div className="flex items-center gap-2 justify-center">
-                    <div className="w-2 h-2 rounded-full bg-white animate-pulse" />
-                    <p className="text-[10px] font-bold text-white/50 uppercase tracking-[0.3em]">Everything is running smoothly</p>
-                 </div>
-              </div>
+                  <div className="space-y-4">
+                     {stats.lowStockProducts.slice(0, 3).map(p => (
+                       <div key={p._id} className="flex items-center justify-between p-6 bg-white/10 rounded-[1.8rem] border border-white/10">
+                          <span className="text-[10px] font-black uppercase tracking-tight truncate flex-1">{p.name}</span>
+                          <span className="px-5 py-2 bg-white text-rose-600 rounded-xl text-xs font-black shadow-lg">Lvl: {p.stockQuantity}</span>
+                       </div>
+                     ))}
+                  </div>
+               </div>
             </div>
           )}
         </div>

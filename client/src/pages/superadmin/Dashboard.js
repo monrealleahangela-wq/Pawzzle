@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { userService, orderService, dssService } from '../../services/apiService';
+import { userService, dssService } from '../../services/apiService';
 import {
   Users,
-  ShoppingCart,
   ShoppingBag,
   TrendingUp,
   DollarSign,
@@ -11,7 +10,9 @@ import {
   Settings,
   Shield,
   ChevronRight,
-  Brain
+  Brain,
+  Star,
+  Wallet
 } from 'lucide-react';
 
 const SuperAdminDashboard = () => {
@@ -47,14 +48,14 @@ const SuperAdminDashboard = () => {
         totalOrders: dss.orders?.total || 0,
         totalRevenue: dss.revenue?.totalGross || 0,
         totalPlatformFees: dss.revenue?.totalPlatformFees || 0,
-        recentOrders: dss.orders?.recent || [], // Note: Back end currently doesn't return recent orders in dss, I might need to add it or keep the manual fetch for recent list
+        recentOrders: dss.orders?.recent || [], 
         recentUsers,
         userGrowth: 12.5,
         orderGrowth: 8.3,
-        pendingApplications: dss.platform?.pendingApplications || 0 // Need to make sure backend returns this
+        pendingApplications: dss.platform?.pendingApplications || 0
       });
     } catch (error) {
-      console.error('Error fetching dashboard data:', error);
+      console.error('System synchronization failure', error);
     } finally {
       setLoading(false);
     }
@@ -62,187 +63,208 @@ const SuperAdminDashboard = () => {
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center h-screen gap-6 bg-slate-50/50">
+      <div className="flex flex-col items-center justify-center h-screen gap-12 bg-neutral-50 animate-fade-up">
         <div className="relative">
-          <div className="w-16 h-16 border-4 border-slate-100 border-t-primary-600 rounded-full animate-spin"></div>
-          <Activity className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-6 w-6 text-primary-600 animate-pulse" />
+          <div className="w-24 h-24 border-4 border-primary/5 border-t-primary rounded-full animate-spin" />
+          <Shield className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-8 w-8 text-primary animate-pulse" />
         </div>
-        <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.4em]">Loading Dashboard...</p>
+        <div className="text-center space-y-4">
+          <p className="text-[12px] font-black text-neutral-400 uppercase tracking-[0.5em] animate-pulse">Initializing Master Control</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-50/30 dark:bg-slate-950 p-4 lg:p-8 space-y-8 sm:space-y-10 pb-20 sm:pb-32 transition-colors duration-500">
-      {/* Decoration */}
-      <div className="fixed inset-0 pointer-events-none overflow-hidden opacity-30">
-        <div className="absolute top-[-10%] right-[-10%] w-[40%] h-[40%] bg-primary-600/5 dark:bg-primary-900/10 rounded-full blur-[120px]" />
-        <div className="absolute bottom-[-10%] left-[-10%] w-[30%] h-[30%] bg-indigo-500/5 dark:bg-indigo-900/10 rounded-full blur-[100px]" />
-      </div>
-
-      {/* Header */}
-      <header className="relative z-10 flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-slate-100 dark:border-slate-800 pb-8 sm:pb-10">
-        <div>
-          <div className="flex items-center gap-3 mb-4">
-            <div className="p-2 bg-slate-900 dark:bg-slate-800 text-white rounded-2xl shadow-2xl">
-              <Shield className="h-4 w-4" />
-            </div>
-            <span className="text-[9px] sm:text-[10px] font-black text-primary-600 uppercase tracking-[0.4em]">SUPER ADMIN DASHBOARD</span>
-          </div>
-          <h1 className="text-3xl sm:text-6xl font-black text-slate-900 dark:text-slate-100 uppercase tracking-tighter leading-[0.9] sm:leading-[0.8] mb-4">
-            System <br /> <span className="text-primary-600 italic">Status</span>
-          </h1>
-          <p className="text-[10px] sm:text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] sm:tracking-[0.3em] flex items-center gap-2 sm:gap-3">
-            <Activity className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-emerald-500" />
-            Real-time platform monitoring
-          </p>
+    <div className="space-y-16 sm:space-y-24 pb-48 animate-fade-up">
+      
+      {/* ── Global Context Header ── */}
+      <header className="flex flex-col lg:flex-row lg:items-end justify-between gap-12">
+        <div className="space-y-8">
+           <div className="flex items-center gap-6">
+              <div className="w-20 h-20 bg-neutral-900 text-white rounded-[2rem] flex items-center justify-center shadow-premium ring-4 ring-primary/5">
+                 <Shield size={32} />
+              </div>
+              <div className="space-y-2">
+                 <h1 className="text-5xl sm:text-8xl font-black text-neutral-900 uppercase tracking-tighter leading-none">
+                    Master <br />
+                    <span className="text-primary italic">Controller .</span>
+                 </h1>
+                 <div className="flex items-center gap-4 text-[11px] font-black text-neutral-400 uppercase tracking-[0.4em]">
+                    <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                    Global Node Protocol: Active
+                 </div>
+              </div>
+           </div>
         </div>
 
-        <div className="flex items-center gap-3">
-          <div className="px-4 sm:px-5 py-2 sm:py-2.5 bg-slate-900 dark:bg-slate-800 text-white rounded-xl sm:rounded-2xl flex items-center gap-3 shadow-xl">
-            <div className="w-1.5 sm:w-2 h-1.5 sm:h-2 rounded-full bg-emerald-500 animate-pulse" />
-            <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest">System Online</span>
-          </div>
+        <div className="flex gap-4">
+           <div className="px-8 py-4 bg-white border border-slate-100 rounded-2xl flex items-center gap-4 shadow-soft">
+              <Activity className="h-4 w-4 text-emerald-500" />
+              <span className="text-[10px] font-black text-neutral-900 uppercase tracking-widest">Ecosystem Healthy</span>
+           </div>
+           <button className="btn-primary !rounded-2xl !px-12 flex items-center gap-4 text-[10px] font-black uppercase tracking-widest">
+              <TrendingUp className="h-4 w-4" />
+              <span>Full Analytics</span>
+           </button>
         </div>
       </header>
 
-      {/* Stats */}
-      <div className="relative z-10 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3 lg:gap-4">
+      {/* ── Global KPI Matrix ── */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8">
         {[
-          { label: 'Total Users', value: stats.totalUsers, icon: Users, color: 'indigo', growth: stats.userGrowth },
-          { label: 'Total Orders', value: stats.totalOrders, icon: ShoppingBag, color: 'primary', growth: stats.orderGrowth },
-          { label: 'Total Sales', value: `₱${stats.totalRevenue.toLocaleString()}`, icon: DollarSign, color: 'emerald', growth: 15.7 },
-          { label: 'Platform Fees', value: `₱${(stats.totalPlatformFees || 0).toLocaleString()}`, icon: DollarSign, color: 'blue', growth: 15.7 },
-          { label: 'Pending Apps', value: stats.pendingApplications, icon: Settings, color: 'amber', growth: 0 }
+          { label: 'Ecosystem Users', value: stats.totalUsers, icon: Users, color: 'primary', growth: stats.userGrowth },
+          { label: 'Total Requests', value: stats.totalOrders, icon: ShoppingBag, color: 'secondary', growth: stats.orderGrowth },
+          { label: 'Platform Gross', value: `₱${stats.totalRevenue.toLocaleString()}`, icon: DollarSign, color: 'primary', growth: 15.7 },
+          { label: 'Network Royalty', value: `₱${(stats.totalPlatformFees || 0).toLocaleString()}`, icon: Wallet, color: 'neutral', growth: 15.7 },
+          { label: 'Venture Apps', value: stats.pendingApplications, icon: Settings, color: 'secondary', growth: 0 }
         ].map((stat, i) => (
-          <div key={i} className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-3.5 sm:p-4 rounded-xl sm:rounded-[1.5rem] shadow-sm hover:shadow-xl transition-all group overflow-hidden">
-            <div className="flex items-center justify-between gap-3 relative z-10 w-full">
-              <div className="flex items-center gap-3 min-w-0">
-                <div className={`p-2 sm:p-2.5 bg-${stat.color}-50 dark:bg-${stat.color}-900/20 text-${stat.color}-600 rounded-lg sm:rounded-xl shrink-0`}>
-                  <stat.icon className="h-4 w-4 sm:h-5 sm:w-5" />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-[8px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest truncate mb-0.5">{stat.label}</p>
-                  <p className="text-lg sm:text-xl font-black text-slate-900 dark:text-slate-100 tracking-tighter leading-none">{stat.value}</p>
-                </div>
-              </div>
-
-              {stat.growth > 0 && (
-                <div className="flex items-center gap-1 px-1.5 py-0.5 bg-emerald-50 dark:bg-emerald-900/20 rounded-md text-[8px] font-black text-emerald-500 shrink-0">
-                  <TrendingUp className="h-2 w-2" />
-                  <span>{stat.growth}%</span>
-                </div>
-              )}
+          <div key={i} className="card group p-10 relative overflow-hidden transition-all duration-500 hover:bg-neutral-50 shadow-soft">
+            <div className="w-14 h-14 bg-neutral-50 rounded-2xl flex items-center justify-center mb-10 group-hover:bg-primary group-hover:text-white transition-all shadow-inner">
+               <stat.icon className="h-6 w-6" />
             </div>
+            <div className="space-y-2">
+               <p className="text-[10px] font-black text-neutral-300 uppercase tracking-[0.4em] mb-2">{stat.label}</p>
+               <h3 className="text-3xl font-black text-neutral-950 tracking-tighter leading-none">{stat.value}</h3>
+            </div>
+            <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-bl-[5rem] -translate-y-16 translate-x-16 group-hover:translate-y-0 group-hover:translate-x-0 transition-all duration-700 pointer-events-none" />
           </div>
         ))}
       </div>
 
-      <div className="relative z-10 grid grid-cols-1 xl:grid-cols-12 gap-8">
-        {/* Recent Orders */}
-        <div className="xl:col-span-8 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-[3rem] p-8 shadow-sm">
-          <div className="flex justify-between items-center mb-10 pl-2">
-            <div>
-              <h2 className="text-xl font-black text-slate-900 dark:text-slate-100 uppercase tracking-tight">Recent Orders</h2>
-              <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Recent transaction history</p>
-            </div>
-            <Link to="/superadmin/transaction-history" className="flex items-center gap-2 px-6 py-3.5 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-900 dark:hover:bg-slate-700 hover:text-white transition-all">
-              View All <ChevronRight className="h-4 w-4" />
-            </Link>
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-10">
+        
+        {/* Core Transaction Ledger */}
+        <div className="xl:col-span-8 card !rounded-[4rem] p-12 lg:p-16">
+          <div className="flex items-end justify-between mb-16 px-4">
+             <div className="space-y-4">
+                <h2 className="text-4xl font-black text-neutral-900 uppercase tracking-tighter leading-none">
+                  Network <br />
+                  <span className="text-primary italic">Ledger .</span>
+                </h2>
+                <p className="text-[11px] font-black text-neutral-400 uppercase tracking-[0.3em]">Processing global platform activity</p>
+             </div>
+             <Link to="/superadmin/transaction-history" className="p-4 bg-neutral-900 text-white rounded-[2rem] hover:bg-primary transition-all shadow-premium">
+                <ChevronRight size={28} />
+             </Link>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {stats.recentOrders.map((order) => (
-              <div key={order._id} className="flex justify-between items-center p-5 bg-slate-50 dark:bg-slate-800/50 rounded-[1.8rem] border border-transparent hover:border-primary-100 dark:hover:border-primary-900/20 hover:bg-white dark:hover:bg-slate-800 hover:shadow-xl transition-all group">
-                <div className="flex items-center gap-5 min-w-0">
-                  <div className="w-12 h-12 rounded-2xl bg-white dark:bg-slate-900 flex items-center justify-center text-slate-300 group-hover:bg-primary-600 group-hover:text-white transition-all shadow-sm">
-                    <ShoppingBag className="h-5 w-5" />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            {stats.recentOrders.length > 0 ? stats.recentOrders.map((order) => (
+              <div key={order._id} className="flex justify-between items-center p-8 bg-neutral-50 rounded-[3rem] border border-transparent hover:border-primary/10 hover:bg-white hover:shadow-strong transition-all duration-500 group">
+                <div className="flex items-center gap-6 min-w-0">
+                  <div className="w-16 h-16 rounded-2xl bg-white flex items-center justify-center text-neutral-200 group-hover:bg-neutral-900 group-hover:text-white transition-all shadow-soft">
+                    <ShoppingBag className="h-6 w-6" />
                   </div>
                   <div className="min-w-0">
-                    <p className="text-[11px] font-black text-slate-900 dark:text-slate-100 uppercase truncate">#{order.orderNumber.slice(-8).toUpperCase()}</p>
-                    <p className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase truncate">
-                      {order.customer?.firstName} • {new Date(order.createdAt).toLocaleDateString()}
+                    <p className="text-[12px] font-black text-neutral-900 uppercase tracking-tight truncate">#{order.orderNumber.slice(-8).toUpperCase()}</p>
+                    <p className="text-[10px] font-black text-neutral-400 uppercase tracking-widest mt-1">
+                      {order.customer?.firstName} · {new Date(order.createdAt).toLocaleDateString()}
                     </p>
                   </div>
                 </div>
                 <div className="text-right">
-                  <p className="text-[13px] font-black text-slate-900 dark:text-slate-100 tracking-tighter">₱{order.totalAmount?.toLocaleString()}</p>
+                  <p className="text-lg font-black text-neutral-950 tracking-tighter">₱{order.totalAmount?.toLocaleString()}</p>
                 </div>
               </div>
-            ))}
+            )) : (
+              <div className="col-span-2 py-24 text-center border-2 border-dashed border-slate-100 rounded-[4rem]">
+                 <p className="text-[11px] font-black text-neutral-200 uppercase tracking-[0.5em]">Ledger state synchronized — No pending items</p>
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Quick Actions */}
-        <div className="xl:col-span-4 space-y-6">
-          <div className="bg-slate-900 dark:bg-slate-900 border border-white/5 rounded-[3rem] p-8 shadow-2xl relative overflow-hidden group">
-            <div className="absolute top-0 right-0 w-48 h-48 bg-primary-600/10 rounded-full blur-3xl -translate-y-12 translate-x-12" />
-
-            <h2 className="text-[11px] font-black text-primary-400 uppercase tracking-[0.4em] mb-10 pl-2">Quick Actions</h2>
-
-            <div className="grid grid-cols-1 gap-3">
-              {[
-                { to: "/superadmin/insights", label: "Platform Insights", icon: Brain, desc: "Global trends and metrics" },
-                { to: "/superadmin/account-management", label: "Manage Users", icon: Users, desc: "Manage store owners" },
-                { to: "/superadmin/store-applications", label: "Store Requests", icon: Settings, desc: "Review new stores" },
-                { to: "/superadmin/system-analytics", label: "Analytics", icon: Activity, desc: "System performance" }
-              ].map((action, i) => (
-                <Link key={i} to={action.to} className="flex items-center gap-3 sm:gap-4 p-3 sm:p-4 bg-white/5 hover:bg-white/10 rounded-xl sm:rounded-2xl transition-all group/item active:scale-[0.98]">
-                  <div className="w-10 h-10 sm:w-12 sm:h-12 bg-white/5 rounded-xl flex items-center justify-center text-white/40 group-hover/item:bg-primary-600 group-hover/item:text-white transition-all">
-                    <action.icon className="h-4 w-4 sm:h-5 sm:w-5" />
+        {/* Global Controls & Insights */}
+        <div className="xl:col-span-4 space-y-10">
+          
+          {/* Proactive Monitoring Panel */}
+          <div className="bg-neutral-900 rounded-[4rem] p-12 shadow-premium relative overflow-hidden group">
+            <div className="absolute top-0 right-0 w-80 h-80 bg-primary/20 rounded-full blur-[100px] -translate-y-1/2 translate-x-1/2" />
+            <div className="relative z-10 space-y-12">
+               <div className="flex items-center gap-5">
+                  <div className="w-14 h-14 bg-white/10 rounded-2xl flex items-center justify-center">
+                     <Brain size={24} className="text-primary" />
                   </div>
-                  <div className="min-w-0">
-                    <p className="text-[9px] sm:text-[10px] font-black text-white uppercase tracking-widest leading-none mb-1 truncate">{action.label}</p>
-                    <p className="text-[7.5px] sm:text-[8px] font-bold text-white/30 uppercase tracking-[0.2em] truncate">{action.desc}</p>
+                  <div>
+                     <p className="text-[11px] font-black text-white/40 uppercase tracking-[0.5em]">Executive View</p>
+                     <p className="text-[13px] font-black text-white uppercase tracking-tight">Main Console</p>
                   </div>
-                </Link>
-              ))}
+               </div>
+
+               <div className="space-y-4">
+                {[
+                  { to: "/superadmin/insights", label: "Business Insights", icon: Brain, desc: "Global ecosystem trends" },
+                  { to: "/superadmin/account-management", label: "Identity Control", icon: Users, desc: "Managing 1.8k+ users" },
+                  { to: "/superadmin/store-applications", label: "Venture Review", icon: Settings, desc: "New store vetting" },
+                  { to: "/superadmin/system-analytics", label: "Node Analytics", icon: Activity, desc: "Server-side metrics" }
+                ].map((action, i) => (
+                  <Link key={i} to={action.to} className="flex items-center gap-6 p-6 bg-white/5 rounded-[2rem] hover:bg-white/10 hover:translate-x-4 transition-all duration-500 group/item">
+                    <div className="w-14 h-14 bg-white/5 rounded-2xl flex items-center justify-center text-white/30 group-hover/item:bg-primary group-hover/item:text-white transition-all">
+                      <action.icon className="h-6 w-6" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-[12px] font-black text-white uppercase tracking-widest leading-none mb-2 truncate">{action.label}</p>
+                      <p className="text-[9px] font-bold text-white/20 uppercase tracking-[0.2em] truncate">{action.desc}</p>
+                    </div>
+                  </Link>
+                ))}
+               </div>
             </div>
           </div>
 
-          <div className="bg-emerald-500 rounded-[3rem] p-8 text-white shadow-xl shadow-emerald-100 dark:shadow-emerald-900/20 flex flex-col items-center justify-center text-center">
-            <Shield className="h-10 w-10 mb-4 opacity-50" />
-            <p className="text-[11px] font-black uppercase tracking-[0.3em] mb-1">System Status: Normal</p>
-            <p className="text-[9px] font-bold text-white/60 uppercase tracking-widest">All systems running normally</p>
+          <div className="bg-primary/5 rounded-[3rem] p-12 border border-primary/10 flex flex-col items-center text-center space-y-6">
+             <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center shadow-soft text-primary">
+                <Shield size={28} />
+             </div>
+             <div>
+                <p className="text-[12px] font-black text-neutral-900 uppercase tracking-[0.4em] mb-2">Security protocol: Active</p>
+                <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-widest">Master account access verified</p>
+             </div>
           </div>
         </div>
       </div>
 
-      {/* Recent Users */}
-      <div className="relative z-10 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-[3rem] p-8 shadow-sm overflow-hidden">
-        <div className="absolute top-0 right-0 w-64 h-64 bg-slate-50 dark:bg-slate-800/10 rounded-full blur-3xl -mr-16 -mt-16" />
-
-        <div className="flex justify-between items-center mb-10 pl-2">
-          <div>
-            <h2 className="text-xl font-black text-slate-900 dark:text-slate-100 uppercase tracking-tight">Recent Users</h2>
-            <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Latest registrations</p>
-          </div>
+      {/* Global Node Registry (Recent Users) */}
+      <section className="space-y-12">
+        <div className="flex items-end justify-between px-4">
+           <div className="space-y-4">
+              <h2 className="text-4xl font-black text-neutral-900 uppercase tracking-tighter leading-none">
+                Node <br />
+                <span className="text-primary italic">Registry .</span>
+              </h2>
+              <p className="text-[11px] font-black text-neutral-400 uppercase tracking-[0.3em]">Managing global platform identities</p>
+           </div>
+           <Link to="/superadmin/account-management" className="group text-[11px] font-black text-neutral-400 uppercase tracking-[0.3em] hover:text-primary transition-all flex items-center gap-5">
+             Full Registry <div className="w-14 h-14 rounded-full border border-slate-100 flex items-center justify-center group-hover:bg-neutral-900 group-hover:text-white transition-all">
+               <ChevronRight size={24} />
+             </div>
+           </Link>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10">
           {stats.recentUsers.map((user) => (
-            <div key={user._id} className="flex flex-col p-6 bg-slate-50/50 dark:bg-slate-800 rounded-[2rem] border border-transparent hover:border-slate-100 dark:hover:border-slate-700 hover:bg-white dark:hover:bg-slate-900 transition-all group relative overflow-hidden">
-              <div className="flex items-center gap-4 mb-6 relative z-10">
-                <div className="w-10 h-10 bg-white dark:bg-slate-900 rounded-2xl flex items-center justify-center text-slate-300 group-hover:text-primary-600 shadow-sm transition-colors">
-                  <Users className="h-4 w-4" />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-[11px] font-black text-slate-900 dark:text-slate-100 uppercase truncate">{user.firstName} {user.lastName}</p>
-                  <p className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">{user.role}</p>
-                </div>
+            <div key={user._id} className="card group p-10 flex flex-col hover:bg-neutral-50 transition-all duration-500">
+              <div className="flex items-start justify-between mb-8">
+                 <div className="w-14 h-14 bg-neutral-50 rounded-2xl flex items-center justify-center text-neutral-300 group-hover:bg-primary group-hover:text-white transition-all shadow-inner">
+                    <Users size={24} />
+                 </div>
+                 <div className={`px-4 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest ${user.isActive ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-rose-50 text-rose-600 border border-rose-100'}`}>
+                    {user.isActive ? 'Active' : 'Locked'}
+                 </div>
               </div>
-              <div className="flex items-center justify-between mt-auto relative z-10">
-                <span className={`px-3 py-1 rounded-lg text-[8px] font-black uppercase tracking-[0.2em] ${user.isActive ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800' : 'bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 border border-rose-100 dark:border-rose-800'}`}>
-                  {user.isActive ? 'Active' : 'Disabled'}
-                </span>
-                <span className="text-[9px] font-bold text-slate-300 dark:text-slate-600 uppercase tracking-widest">
-                  ID: {user._id.slice(-6).toUpperCase()}
-                </span>
+              <div className="space-y-2 mb-8">
+                 <h3 className="text-xl font-black text-neutral-900 uppercase tracking-tighter truncate">{user.firstName} {user.lastName}</h3>
+                 <p className="text-[10px] font-black text-neutral-300 uppercase tracking-[0.3em]">{user.role}</p>
+              </div>
+              <div className="pt-8 border-t border-slate-50 mt-auto flex justify-between items-center text-[10px] font-bold text-neutral-200 uppercase tracking-widest">
+                 <span>ID Registry</span>
+                 <span className="text-neutral-300">{user._id.slice(-8).toUpperCase()}</span>
               </div>
             </div>
           ))}
         </div>
-      </div>
+      </section>
     </div>
   );
 };
