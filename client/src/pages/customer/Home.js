@@ -24,7 +24,8 @@ import {
   Brain,
   Stethoscope,
   Scissors,
-  Dumbbell
+  Dumbbell,
+  Activity
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useCart } from '../../contexts/CartContext';
