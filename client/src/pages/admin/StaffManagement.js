@@ -5,7 +5,7 @@ import {
     Users, Plus, Edit2, Trash2, Power, Key, X, Check,
     ShoppingCart, Package, Calendar, ChevronDown, Search,
     Shield, Clock, AlertCircle, RefreshCw, Lock, Truck,
-    Home, Activity, Layers, Star, MessageSquare
+    Home, Activity, Layers, Star, MessageSquare, Heart
 } from 'lucide-react';
 import PermissionsManager from '../../components/admin/PermissionsManager';
 import { staffService } from '../../services/apiService';
