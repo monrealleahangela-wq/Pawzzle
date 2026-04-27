@@ -207,7 +207,8 @@ export const userService = {
   toggleUserStatus: (id, data) => api.patch(`/users/${id}/toggle-status`, data),
   getAdminSettings: () => api.get('/users/admin/settings'),
   updateAdminSettings: (settings) => api.put('/users/admin/settings', settings),
-  getActivityLogs: () => api.get('/users/activity-logs')
+  getActivityLogs: () => api.get('/users/activity-logs'),
+  deleteMyAccount: () => api.delete('/users/me')
 };
 
 // Service services

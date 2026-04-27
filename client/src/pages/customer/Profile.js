@@ -59,6 +59,7 @@ const Profile = () => {
   const [application, setApplication] = useState(null);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [upgradeLoading, setUpgradeLoading] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
   const [formData, setFormData] = useState({
     username: '',
     firstName: '',
@@ -897,6 +898,39 @@ const Profile = () => {
     );
   }
 
+  const handleDeleteAccount = async () => {
+    const confirmDelete = window.confirm(
+      "CRITICAL: Are you sure you want to delete your account? This action is irreversible, but your email and information will be cleared so they can be reused for a new account."
+    );
+
+    if (!confirmDelete) return;
+
+    // Second confirmation for such a destructive action
+    const secondConfirm = window.prompt(
+      "FINAL CONFIRMATION: Please type 'DELETE' to permanently close your account."
+    );
+    if (secondConfirm !== 'DELETE') {
+      if (secondConfirm !== null) toast.error('Confirmation failed. Please type DELETE exactly.');
+      return;
+    }
+
+    setDeleteLoading(true);
+    try {
+      const response = await userService.deleteMyAccount();
+      toast.success(response.data.message || 'Account deleted successfully');
+      
+      // Simple delay to show the success message before redirecting
+      setTimeout(() => {
+        logout();
+        window.location.href = '/';
+      }, 2000);
+    } catch (err) {
+      console.error('Account deletion failed:', err);
+      toast.error(err.response?.data?.message || 'Failed to delete account');
+      setDeleteLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-[#F8FAFC] pb-36 sm:pb-20 overflow-x-hidden">
       {/* Profile Terminal - Root Node */}
@@ -1600,8 +1634,12 @@ const Profile = () => {
                     <p className="text-rose-700 font-medium text-[9px] sm:text-sm mb-4 sm:mb-6 leading-relaxed max-w-xl opacity-80">
                       Deletion is irreversible. All account data and information will be permanently removed.
                     </p>
-                    <button className="px-4 py-2 sm:px-8 sm:py-3 bg-rose-600 text-white rounded-lg sm:rounded-2xl font-black text-[9px] sm:text-xs uppercase tracking-widest hover:bg-rose-700 transition-all shadow-xl shadow-rose-200">
-                      Delete Account
+                    <button 
+                      onClick={handleDeleteAccount}
+                      disabled={deleteLoading}
+                      className="px-4 py-2 sm:px-8 sm:py-3 bg-rose-600 text-white rounded-lg sm:rounded-2xl font-black text-[9px] sm:text-xs uppercase tracking-widest hover:bg-rose-700 transition-all shadow-xl shadow-rose-200 disabled:opacity-50"
+                    >
+                      {deleteLoading ? 'Processing...' : 'Delete Account'}
                     </button>
                   </div>
                 </div>
