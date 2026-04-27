@@ -22,7 +22,7 @@ import { useTheme } from '../contexts/ThemeContext';
 // ═══════════════════════════════════════════════════════════════
 
 const customerMenu = [
-  { path: '/home', label: 'Dashboard', icon: House },
+  { path: '/home', label: 'Home', icon: House },
   {
     label: 'Marketplace', icon: ShoppingBag, children: [
       { path: '/products', label: 'Products', icon: Package },
@@ -178,11 +178,10 @@ const NavLink = ({ item, isActive, collapsed, onClick }) => {
       to={item.path}
       onClick={onClick}
       title={collapsed ? item.label : undefined}
-      className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 relative group/link ${
-        isActive
+      className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 relative group/link ${isActive
           ? 'bg-primary-600 text-white shadow-lg shadow-primary-600/20'
           : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white'
-      } ${collapsed ? 'justify-center' : ''}`}
+        } ${collapsed ? 'justify-center' : ''}`}
     >
       <Icon className={`h-[18px] w-[18px] shrink-0 transition-transform duration-200 ${isActive ? 'scale-110' : 'group-hover/link:scale-105'}`} />
       {!collapsed && (
@@ -207,11 +206,10 @@ const NavGroup = ({ group, expanded, onToggle, isActive, collapsed, onNavigate }
       <div className="relative group/flyout">
         <button
           title={group.label}
-          className={`flex items-center justify-center w-full px-3 py-2.5 rounded-xl transition-all duration-200 ${
-            hasActiveChild
+          className={`flex items-center justify-center w-full px-3 py-2.5 rounded-xl transition-all duration-200 ${hasActiveChild
               ? 'bg-primary-50 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400'
               : 'text-slate-400 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-600 dark:hover:text-slate-300'
-          }`}
+            }`}
         >
           <Icon className="h-[18px] w-[18px] shrink-0" />
         </button>
@@ -230,11 +228,10 @@ const NavGroup = ({ group, expanded, onToggle, isActive, collapsed, onNavigate }
     <div>
       <button
         onClick={onToggle}
-        className={`flex items-center gap-3 w-full px-3 py-2.5 rounded-xl transition-all duration-200 group/btn ${
-          hasActiveChild
+        className={`flex items-center gap-3 w-full px-3 py-2.5 rounded-xl transition-all duration-200 group/btn ${hasActiveChild
             ? 'bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-400'
             : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white'
-        }`}
+          }`}
       >
         <Icon className="h-[18px] w-[18px] shrink-0" />
         <span className="text-[11px] font-bold tracking-wide flex-1 text-left truncate">{group.label}</span>
@@ -250,11 +247,10 @@ const NavGroup = ({ group, expanded, onToggle, isActive, collapsed, onNavigate }
                 key={child.path}
                 to={child.path}
                 onClick={onNavigate}
-                className={`flex items-center gap-2.5 px-3 py-2 rounded-lg transition-all duration-200 ${
-                  childActive
+                className={`flex items-center gap-2.5 px-3 py-2 rounded-lg transition-all duration-200 ${childActive
                     ? 'bg-primary-600 text-white shadow-sm'
                     : 'text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/50'
-                }`}
+                  }`}
               >
                 <ChildIcon className="h-[14px] w-[14px] shrink-0" />
                 <span className="text-[10px] font-semibold tracking-wide truncate">{child.label}</span>
@@ -282,10 +278,15 @@ const Layout = () => {
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [scrollProgress, setScrollProgress] = useState(0);
 
-  // Sidebar collapse state (persisted in localStorage)
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
-    try { return localStorage.getItem('pawzzle_sidebar') === 'collapsed'; } catch { return false; }
+  // Sidebar pin state (persisted in localStorage, default unpinned/collapsed)
+  const [isSidebarPinned, setIsSidebarPinned] = useState(() => {
+    try { return localStorage.getItem('pawzzle_sidebar_pinned') === 'true'; } catch { return false; }
   });
+  
+  const [isHovered, setIsHovered] = useState(false);
+
+  // Sidebar is collapsed if neither pinned nor hovered
+  const sidebarCollapsed = !isSidebarPinned && !isHovered;
 
   // Dropdown expanded state (persisted in sessionStorage)
   const [expandedGroups, setExpandedGroups] = useState(() => {
@@ -313,9 +314,9 @@ const Layout = () => {
   const confirmLogout = () => { logout(); setShowLogoutModal(false); };
 
   const toggleSidebar = useCallback(() => {
-    setSidebarCollapsed(prev => {
+    setIsSidebarPinned(prev => {
       const next = !prev;
-      try { localStorage.setItem('pawzzle_sidebar', next ? 'collapsed' : 'expanded'); } catch {}
+      try { localStorage.setItem('pawzzle_sidebar_pinned', next ? 'true' : 'false'); } catch { }
       return next;
     });
   }, []);
@@ -323,7 +324,7 @@ const Layout = () => {
   const toggleGroup = useCallback((label) => {
     setExpandedGroups(prev => {
       const next = { ...prev, [label]: !prev[label] };
-      try { sessionStorage.setItem('pawzzle_nav_groups', JSON.stringify(next)); } catch {}
+      try { sessionStorage.setItem('pawzzle_nav_groups', JSON.stringify(next)); } catch { }
       return next;
     });
   }, []);
@@ -350,7 +351,7 @@ const Layout = () => {
         if (hasActive && !expandedGroups[item.label]) {
           setExpandedGroups(prev => {
             const next = { ...prev, [item.label]: true };
-            try { sessionStorage.setItem('pawzzle_nav_groups', JSON.stringify(next)); } catch {}
+            try { sessionStorage.setItem('pawzzle_nav_groups', JSON.stringify(next)); } catch { }
             return next;
           });
         }
@@ -367,7 +368,7 @@ const Layout = () => {
 
   const isLandingPage = location.pathname === '/' && !isAuthenticated;
   const sidebarWidth = sidebarCollapsed ? 'w-[72px]' : 'w-64';
-  const contentPadding = sidebarCollapsed ? 'lg:pl-[72px]' : 'lg:pl-64';
+  const contentPadding = isSidebarPinned ? 'lg:pl-64' : 'lg:pl-[72px]';
 
   // ── Render Navigation Items ─────────────────────────────────
   const renderNavItems = (items, collapsed = false, onNav) => (
@@ -411,7 +412,11 @@ const Layout = () => {
           DESKTOP SIDEBAR
       ═══════════════════════════════════════════════════════ */}
       {!isLandingPage && (
-        <aside className={`hidden lg:flex fixed left-0 top-0 h-screen ${sidebarWidth} bg-white dark:bg-slate-900 border-r border-slate-200/80 dark:border-slate-800 z-[60] flex-col transition-all duration-300 ease-in-out`}>
+        <aside 
+          onMouseEnter={() => setIsHovered(true)}
+          onMouseLeave={() => setIsHovered(false)}
+          className={`hidden lg:flex fixed left-0 top-0 h-screen ${sidebarWidth} bg-white dark:bg-slate-900 border-r border-slate-200/80 dark:border-slate-800 z-[60] flex-col transition-all duration-300 ease-in-out`}
+        >
 
           {/* Logo */}
           <div className={`shrink-0 border-b border-slate-100 dark:border-slate-800 ${sidebarCollapsed ? 'px-3 py-5' : 'px-5 py-5'}`}>
@@ -453,14 +458,14 @@ const Layout = () => {
               </button>
             )}
 
-            {/* Collapse toggle */}
+            {/* Pin toggle */}
             <button
               onClick={toggleSidebar}
-              title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+              title={isSidebarPinned ? 'Unpin sidebar' : 'Pin sidebar open'}
               className={`flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-slate-300 dark:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-500 dark:hover:text-slate-400 transition-all ${sidebarCollapsed ? 'justify-center' : ''}`}
             >
-              {sidebarCollapsed ? <ChevronsRight className="h-[18px] w-[18px] shrink-0" /> : <ChevronsLeft className="h-[18px] w-[18px] shrink-0" />}
-              {!sidebarCollapsed && <span className="text-[11px] font-bold tracking-wide text-slate-300 dark:text-slate-600">Collapse</span>}
+              {isSidebarPinned ? <ChevronsLeft className="h-[18px] w-[18px] shrink-0" /> : <ChevronsRight className="h-[18px] w-[18px] shrink-0" />}
+              {!sidebarCollapsed && <span className="text-[11px] font-bold tracking-wide text-slate-300 dark:text-slate-600">{isSidebarPinned ? 'Unpin Sidebar' : 'Pin Sidebar'}</span>}
             </button>
           </div>
         </aside>

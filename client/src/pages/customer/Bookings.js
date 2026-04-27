@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { bookingService, serviceService, voucherService, getImageUrl, petProfileService, paymentService } from '../../services/apiService';
+import { calculateServicePrice } from '../../utils/pricingEngine';
 import { toast } from 'react-toastify';
-import { Clock, User, MapPin, Phone, Mail, DollarSign, CheckCircle, XCircle, AlertCircle, Filter, Search, Calendar, ArrowLeft, ChevronLeft, ChevronRight, Store, X, Activity, ShieldCheck, TrendingUp, Tag, Ticket, Bell, Building, Heart, PawPrint, Trash2, Star, Camera, Eye, CreditCard, Navigation, Receipt } from 'lucide-react';
+import { Clock, User, MapPin, Phone, Mail, DollarSign, CheckCircle, XCircle, AlertCircle, Filter, Search, Calendar, ArrowLeft, ChevronLeft, ChevronRight, Store, X, Activity, ShieldCheck, TrendingUp, Tag, Ticket, Bell, Building, Heart, PawPrint, Trash2, Star, Camera, Eye, CreditCard, Navigation, Receipt, Layers } from 'lucide-react';
 import ReviewModal from '../../components/ReviewModal';
 import { useAuth } from '../../contexts/AuthContext';
 import { formatTime12h } from '../../utils/timeFormatters';
@@ -20,20 +21,7 @@ const StoreHoursHint = ({ bookingDate, businessHours }) => {
   );
 };
 
-const getSizeSurcharge = (size, serviceName = '') => {
-  if (!size) return 0;
-  // Apply surcharge only if it's likely a grooming/handling/bath service
-  const isGrooming = serviceName.toLowerCase().includes('grooming') || serviceName.toLowerCase().includes('bath');
-  if (!isGrooming) return 0;
-
-  const surcharges = {
-    'Small': 0,
-    'Medium': 50,
-    'Large': 100,
-    'Extra Large': 150
-  };
-  return surcharges[size] || 0;
-};
+// Removed hardcoded getSizeSurcharge as we now use the dynamic pricingEngine.
 
 const Bookings = ({ isSubcomponent = false }) => {
   const { user } = useAuth();
@@ -79,7 +67,9 @@ const Bookings = ({ isSubcomponent = false }) => {
       province: ''
     },
     notes: '',
-    paymentMethod: 'gcash'
+    paymentMethod: 'gcash',
+    selectedAddOns: [],
+    selectedConditions: []
   });
   const [submitting, setSubmitting] = useState(false);
   const [existingBookings, setExistingBookings] = useState([]);
@@ -103,7 +93,8 @@ const Bookings = ({ isSubcomponent = false }) => {
     { num: 1, label: 'Service', icon: <Bell className="h-4 w-4" /> },
     { num: 2, label: 'Schedule', icon: <Calendar className="h-4 w-4" /> },
     { num: 3, label: 'Your Pet', icon: <Activity className="h-4 w-4" /> },
-    { num: 4, label: 'Confirm', icon: <ShieldCheck className="h-4 w-4" /> },
+    { num: 4, label: 'Options', icon: <Layers className="h-4 w-4" /> },
+    { num: 5, label: 'Confirm', icon: <ShieldCheck className="h-4 w-4" /> },
   ];
 
   const generateAvailableSlots = (dateString) => {
@@ -247,7 +238,11 @@ const Bookings = ({ isSubcomponent = false }) => {
       }
     }));
     toast.info(`Synced with ${pet.name}'s profile!`);
-    setFormStep(4); // Skip to confirm if selecting saved pet
+    
+    // Auto-progress depending on if options exist
+    const hasOptions = (selectedService?.addOns && selectedService.addOns.length > 0) || 
+                       (selectedService?.pricingRules?.condition && selectedService.pricingRules.condition.enabled);
+    setFormStep(hasOptions ? 4 : 5); 
   };
 
   useEffect(() => {
@@ -639,17 +634,28 @@ const Bookings = ({ isSubcomponent = false }) => {
     setSubmitting(true);
 
     try {
-      // Calculate endTime based on duration
-      const duration = selectedService.duration || 60;
+      // Re-calculate the dynamic price safely before submission
+      const { breakdown, resolvedAddOns } = calculateServicePrice(
+        selectedService,
+        bookingForm.pet,
+        { date: bookingForm.bookingDate, startTime: bookingForm.startTime, isHomeService: bookingForm.isHomeService },
+        bookingForm.selectedAddOns,
+        bookingForm.selectedConditions
+      );
+
+      // Apply frontend voucher logic
+      if (appliedVoucher) {
+        breakdown.discount = appliedVoucher.discountAmount || 0;
+        breakdown.finalPrice = Math.max(0, breakdown.subtotal - breakdown.discount);
+      }
+
+      // Calculate endTime based on duration + add-ons
+      const duration = (selectedService.duration || 60) + resolvedAddOns.reduce((acc, curr) => acc + (curr.duration || 0), 0);
       const [hours, minutes] = bookingForm.startTime.split(':').map(Number);
       const totalMinutes = hours * 60 + minutes + duration;
       const endHours = Math.floor(totalMinutes / 60) % 24;
       const endMinutes = totalMinutes % 60;
       const endTime = `${String(endHours).padStart(2, '0')}:${String(endMinutes).padStart(2, '0')}`;
-
-      const sizeSurcharge = getSizeSurcharge(bookingForm.pet.size, selectedService.name);
-      const subtotal = (selectedService.price || 0) + (bookingForm.isHomeService ? (selectedService.homeServicePrice || 0) : 0);
-      const totalAmount = Math.max(0, subtotal + sizeSurcharge - (appliedVoucher?.discountAmount || 0));
 
       const bookingData = {
         serviceId: selectedService._id,
@@ -677,7 +683,8 @@ const Bookings = ({ isSubcomponent = false }) => {
         notes: bookingForm.notes,
         paymentMethod: bookingForm.paymentMethod,
         voucherCode: appliedVoucher ? voucherCode : null,
-        totalPrice: totalAmount
+        selectedAddOns: bookingForm.selectedAddOns, // Add-on IDs
+        selectedConditions: bookingForm.selectedConditions // Condition IDs
       };
 
       const response = await bookingService.createBooking(bookingData);
@@ -1145,7 +1152,10 @@ const Bookings = ({ isSubcomponent = false }) => {
                   </button>
                   <button type="button" onClick={() => {
                         if (canAdvance(3)) {
-                          setFormStep(4);
+                          // Check if service has add-ons or options, if yes go to step 4, else go to step 5
+                          const hasOptions = (selectedService?.addOns && selectedService.addOns.length > 0) || 
+                                             (selectedService?.pricingRules?.condition && selectedService.pricingRules.condition.enabled);
+                          setFormStep(hasOptions ? 4 : 5);
                         } else {
                           const { name, type, breed, age, weight } = bookingForm.pet;
                           if (!name?.trim()) toast.info('Pet name is required');
@@ -1157,14 +1167,142 @@ const Bookings = ({ isSubcomponent = false }) => {
                         }
                       }}
                     className="flex-1 py-4 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.25em] shadow-xl shadow-slate-200 hover:bg-primary-600 transition-all active:scale-95">
+                    Continue to Options →
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* ── STEP 4: Options & Add-Ons ── */}
+            {formStep === 4 && (
+              <div className="space-y-4 animate-card-appear">
+                <div className="bg-white rounded-[2.5rem] border border-slate-100 p-5 sm:p-8 shadow-sm">
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className="w-10 h-10 bg-primary-50 rounded-2xl flex items-center justify-center text-primary-600">
+                      <Layers className="h-5 w-5" />
+                    </div>
+                    <div>
+                        <p className="text-[9px] font-black text-primary-600 uppercase tracking-[0.3em]">Personalize</p>
+                        <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight">Service Add-Ons & Conditions</h3>
+                    </div>
+                  </div>
+
+                  <div className="space-y-8">
+                    {selectedService.pricingRules?.condition?.enabled && selectedService.pricingRules.condition.conditions?.length > 0 && (
+                      <div>
+                         <p className="text-[10px] font-black justify-between text-slate-900 uppercase tracking-tight mb-3 px-1 flex items-center">
+                            Special Handing & Conditions 
+                            <span className="text-xs text-slate-400 font-bold tracking-normal italic (Optional)">Report pet conditions</span>
+                         </p>
+                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                           {selectedService.pricingRules.condition.conditions.map(cond => {
+                             const isSelected = bookingForm.selectedConditions.includes(cond.condition);
+                             return (
+                               <button 
+                                 type="button" 
+                                 key={cond.condition}
+                                 onClick={() => {
+                                   let next = [...bookingForm.selectedConditions];
+                                   if (isSelected) next = next.filter(c => c !== cond.condition);
+                                   else next.push(cond.condition);
+                                   setBookingForm(prev => ({ ...prev, selectedConditions: next }));
+                                 }}
+                                 className={`p-4 rounded-2xl border-2 text-left transition-all ${isSelected ? 'border-primary-500 bg-primary-50 shadow-sm' : 'border-slate-100 bg-white hover:border-primary-200'}`}
+                               >
+                                 <div className="flex items-start justify-between">
+                                    <div>
+                                      <p className="text-[11px] font-black text-slate-900 uppercase tracking-tight leading-none mb-1">{cond.label}</p>
+                                      <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{cond.condition.replace(/_/g, ' ')}</p>
+                                    </div>
+                                    <div className="flex flex-col items-center gap-1">
+                                      <div className={`w-5 h-5 rounded flex items-center justify-center border-2 ${isSelected ? 'bg-primary-500 border-primary-500 text-white' : 'border-slate-200 text-transparent'}`}>
+                                        <CheckCircle className="h-3 w-3" />
+                                      </div>
+                                      {cond.fee > 0 && <span className="text-[9px] font-black text-rose-500">+{cond.fee}</span>}
+                                    </div>
+                                 </div>
+                               </button>
+                             )
+                           })}
+                         </div>
+                      </div>
+                    )}
+
+                    {selectedService.addOns && selectedService.addOns.length > 0 ? (
+                      <div>
+                        <p className="text-[10px] font-black justify-between text-slate-900 uppercase tracking-tight mb-3 px-1 flex items-center">
+                          Service Add-Ons
+                          <span className="text-[10px] text-slate-400 font-bold tracking-normal italic">Optional Enhancements</span>
+                        </p>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          {selectedService.addOns.filter(a => a.isActive).map(addon => {
+                             const isSelected = bookingForm.selectedAddOns.includes(addon._id);
+                             return (
+                               <button 
+                                 type="button"
+                                 key={addon._id}
+                                 onClick={() => {
+                                   let next = [...bookingForm.selectedAddOns];
+                                   if (isSelected) next = next.filter(id => id !== addon._id);
+                                   else next.push(addon._id);
+                                   setBookingForm(prev => ({ ...prev, selectedAddOns: next }));
+                                 }}
+                                 className={`p-4 rounded-2xl border-2 text-left flex flex-col justify-between transition-all min-h-[100px] ${isSelected ? 'border-primary-500 bg-primary-50 shadow-sm' : 'border-slate-100 bg-white hover:border-primary-200'}`}
+                               >
+                                  <div className="flex justify-between items-start mb-2">
+                                    <div className="pr-2">
+                                      <p className="text-[11px] font-black text-slate-900 uppercase tracking-tight leading-snug">{addon.name}</p>
+                                      {addon.description && <p className="text-[9px] font-bold text-slate-500 mt-1 line-clamp-2">{addon.description}</p>}
+                                    </div>
+                                    <div className={`w-5 h-5 rounded shrink-0 flex items-center justify-center border-2 ${isSelected ? 'bg-primary-500 border-primary-500 text-white' : 'border-slate-200 text-transparent'}`}>
+                                      <CheckCircle className="h-3 w-3" />
+                                    </div>
+                                  </div>
+                                  <div className="flex gap-2 items-center mt-auto">
+                                    <span className="px-2 py-1 bg-emerald-100 text-emerald-700 rounded text-[9px] font-black">+₱{addon.price}</span>
+                                    {addon.duration > 0 && <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">+ {addon.duration} min</span>}
+                                  </div>
+                               </button>
+                             )
+                          })}
+                        </div>
+                      </div>
+                    ) : (
+                      !selectedService.pricingRules?.condition?.enabled && (
+                         <div className="p-8 text-center bg-slate-50 rounded-2xl">
+                           <Activity className="h-8 w-8 text-slate-300 mx-auto mb-2" />
+                           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">No add-ons available for this service.</p>
+                         </div>
+                      )
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex gap-3">
+                  <button type="button" onClick={() => setFormStep(3)}
+                    className="px-8 py-4 bg-white border border-slate-100 text-slate-600 rounded-2xl text-[9px] font-black uppercase tracking-widest hover:border-slate-300 transition-all shadow-sm">
+                    ← Back
+                  </button>
+                  <button type="button" onClick={() => setFormStep(5)}
+                    className="flex-1 py-4 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.25em] shadow-xl shadow-slate-200 hover:bg-primary-600 transition-all active:scale-95">
                     Review & Confirm →
                   </button>
                 </div>
               </div>
             )}
 
-            {/* ── STEP 4: Confirm ── */}
-            {formStep === 4 && (
+            {/* ── STEP 5: Confirm ── */}
+            {formStep === 5 && (() => {
+              // Automatically recompute breakdown for the view
+              const { breakdown, resolvedAddOns } = calculateServicePrice(
+                selectedService,
+                bookingForm.pet,
+                { date: bookingForm.bookingDate, startTime: bookingForm.startTime, isHomeService: bookingForm.isHomeService },
+                bookingForm.selectedAddOns,
+                bookingForm.selectedConditions
+              );
+
+              return (
               <div className="space-y-4 animate-card-appear">
                 {/* Summary card */}
                 <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden">
@@ -1363,39 +1501,99 @@ const Bookings = ({ isSubcomponent = false }) => {
                       </div>
                     </div>
 
-                    <div className="flex flex-col gap-2 pt-5 border-t border-slate-100">
-                      <div className="flex items-center justify-between text-slate-500">
-                        <span className="text-[9px] font-black uppercase tracking-widest">Service Fee</span>
-                        <span className="text-xs font-black">₱{(selectedService.price || 0).toLocaleString()}</span>
+                      <div className="flex flex-col gap-2 pt-5 border-t border-slate-100">
+                        <div className="flex items-center justify-between text-slate-500">
+                          <span className="text-[9px] font-black uppercase tracking-widest">Base Service Fee</span>
+                          <span className="text-xs font-black">₱{(breakdown.basePrice || 0).toLocaleString()}</span>
+                        </div>
+                        
+                        {breakdown.homeServiceFee > 0 && (
+                          <div className="flex items-center justify-between text-slate-500">
+                            <div className="flex items-center gap-1.5">
+                              <MapPin className="h-3 w-3 text-emerald-500" />
+                              <span className="text-[9px] font-black uppercase tracking-widest">Home Service Fee</span>
+                            </div>
+                            <span className="text-xs font-black">+ ₱{breakdown.homeServiceFee.toLocaleString()}</span>
+                          </div>
+                        )}
+
+                        {breakdown.sizeSurcharge > 0 && (
+                          <div className="flex items-center justify-between text-slate-500">
+                            <div className="flex items-center gap-1.5">
+                              <Activity className="h-3 w-3 text-indigo-500" />
+                              <span className="text-[9px] font-black uppercase tracking-widest">{bookingForm.pet.size} Size Surcharge</span>
+                            </div>
+                            <span className="text-xs font-black">+ ₱{breakdown.sizeSurcharge.toLocaleString()}</span>
+                          </div>
+                        )}
+
+                        {breakdown.weightSurcharge > 0 && (
+                          <div className="flex items-center justify-between text-slate-500">
+                            <div className="flex items-center gap-1.5">
+                              <TrendingUp className="h-3 w-3 text-indigo-500" />
+                              <span className="text-[9px] font-black uppercase tracking-widest">Weight Adjustment</span>
+                            </div>
+                            <span className="text-xs font-black">+ ₱{breakdown.weightSurcharge.toLocaleString()}</span>
+                          </div>
+                        )}
+
+                        {breakdown.breedSurcharge > 0 && (
+                          <div className="flex items-center justify-between text-slate-500">
+                            <div className="flex items-center gap-1.5">
+                              <PawPrint className="h-3 w-3 text-indigo-500" />
+                              <span className="text-[9px] font-black uppercase tracking-widest">{bookingForm.pet.breed} Fee</span>
+                            </div>
+                            <span className="text-xs font-black">+ ₱{breakdown.breedSurcharge.toLocaleString()}</span>
+                          </div>
+                        )}
+
+                        {breakdown.conditionFees > 0 && (
+                          <div className="flex items-center justify-between text-slate-500">
+                            <div className="flex items-center gap-1.5">
+                              <AlertCircle className="h-3 w-3 text-rose-500" />
+                              <span className="text-[9px] font-black uppercase tracking-widest">Special Handling</span>
+                            </div>
+                            <span className="text-xs font-black text-rose-500">+ ₱{breakdown.conditionFees.toLocaleString()}</span>
+                          </div>
+                        )}
+
+                        {breakdown.timePremium > 0 && (
+                          <div className="flex items-center justify-between text-slate-500">
+                           <div className="flex items-center gap-1.5">
+                              <Clock className="h-3 w-3 text-amber-500" />
+                              <span className="text-[9px] font-black uppercase tracking-widest">Premium Time Rate</span>
+                            </div>
+                            <span className="text-xs font-black">+ ₱{breakdown.timePremium.toLocaleString()}</span>
+                          </div>
+                        )}
+
+                        {breakdown.addOnsTotal > 0 && (
+                          <div className="pt-2">
+                             <div className="flex items-center justify-between text-slate-500 mb-2">
+                              <div className="flex items-center gap-1.5">
+                                <Layers className="h-3 w-3 text-primary-500" />
+                                <span className="text-[9px] font-black uppercase tracking-widest">Selected Add-Ons</span>
+                              </div>
+                              <span className="text-xs font-black">+ ₱{breakdown.addOnsTotal.toLocaleString()}</span>
+                             </div>
+                             <div className="pl-5 space-y-1">
+                               {resolvedAddOns.map(addon => (
+                                 <div key={addon.addOnId} className="flex justify-between items-center text-slate-400">
+                                   <span className="text-[9px] font-black uppercase tracking-[0.2em]">{addon.name}</span>
+                                   <span className="text-[9px] font-bold">₱{addon.price}</span>
+                                 </div>
+                               ))}
+                             </div>
+                          </div>
+                        )}
+
+                        {appliedVoucher && (
+                          <div className="flex items-center justify-between text-emerald-600 pt-2 border-t border-slate-50">
+                            <span className="text-[9px] font-black uppercase tracking-widest">Voucher Discount</span>
+                            <span className="text-xs font-black">- ₱{(appliedVoucher.discountAmount || 0).toLocaleString()}</span>
+                          </div>
+                        )}
                       </div>
-                      
-                      {bookingForm.isHomeService && (
-                        <div className="flex items-center justify-between text-slate-500">
-                          <div className="flex items-center gap-1.5">
-                            <MapPin className="h-3 w-3 text-emerald-500" />
-                            <span className="text-[9px] font-black uppercase tracking-widest">Home Service Fee</span>
-                          </div>
-                          <span className="text-xs font-black">+ ₱{(selectedService.homeServicePrice || 0).toLocaleString()}</span>
-                        </div>
-                      )}
-
-                      {getSizeSurcharge(bookingForm.pet.size, selectedService.name) > 0 && (
-                        <div className="flex items-center justify-between text-slate-500">
-                          <div className="flex items-center gap-1.5">
-                            <Activity className="h-3 w-3 text-indigo-500" />
-                            <span className="text-[9px] font-black uppercase tracking-widest">{bookingForm.pet.size} Pet Surcharge</span>
-                          </div>
-                          <span className="text-xs font-black">+ ₱{getSizeSurcharge(bookingForm.pet.size, selectedService.name).toLocaleString()}</span>
-                        </div>
-                      )}
-
-                      {appliedVoucher && (
-                        <div className="flex items-center justify-between text-emerald-600">
-                          <span className="text-[9px] font-black uppercase tracking-widest">Voucher Discount</span>
-                          <span className="text-xs font-black">- ₱{appliedVoucher.discountAmount.toLocaleString()}</span>
-                        </div>
-                      )}
-                    </div>
 
                     {/* Standardized Online Payment Selection */}
                     <div className="pt-6 mt-6 border-t border-slate-100">
@@ -1436,12 +1634,7 @@ const Bookings = ({ isSubcomponent = false }) => {
                       <div className="flex items-center justify-between pt-4 border-t border-slate-50">
                         <span className="text-[9px] font-black text-slate-900 uppercase tracking-widest">Total Amount</span>
                         <span className="text-3xl font-black text-primary-600 tracking-tighter">
-                          ₱{Math.max(0, (
-                            (selectedService.price || 0) + 
-                            (bookingForm.isHomeService ? (selectedService.homeServicePrice || 0) : 0) + 
-                            getSizeSurcharge(bookingForm.pet.size, selectedService.name) - 
-                            (appliedVoucher?.discountAmount || 0)
-                          )).toLocaleString()}
+                          ₱{Math.max(0, breakdown.subtotal - (appliedVoucher?.discountAmount || 0)).toLocaleString()}
                         </span>
                     </div>
 
