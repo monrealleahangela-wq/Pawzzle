@@ -1,545 +1,522 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { petService, productService, storeService, getImageUrl } from '../../services/apiService';
-import { Heart, Package, Star, ArrowRight, Sparkles, TrendingUp, Users, ShoppingBag, Shield, Zap, MapPin, Crown, ChevronRight, Clock, Navigation, Building, Store } from 'lucide-react';
-import { toast } from 'react-toastify';
+import { Link } from 'react-router-dom';
+import { publicService, getImageUrl } from '../../services/apiService';
+import { 
+  Heart, 
+  Package, 
+  Star, 
+  ArrowRight, 
+  Sparkles, 
+  TrendingUp, 
+  Users, 
+  ShoppingBag, 
+  Shield, 
+  Zap, 
+  MapPin, 
+  Crown, 
+  ChevronRight, 
+  Clock, 
+  Building,
+  ShieldCheck,
+  Search,
+  CheckCircle2,
+  ThumbsUp,
+  Brain,
+  Stethoscope,
+  Scissors,
+  Dumbbell
+} from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useCart } from '../../contexts/CartContext';
-import { CardLoader } from '../../components/ui/LoadingSpinner';
+import { toast } from 'react-toastify';
 
-/* ── Animated counter hook ── */
-const useCounter = (target, duration = 1600) => {
+// ═══════════════════════════════════════════════════════════════
+// ANIMATED COUNTER COMPONENT
+// ═══════════════════════════════════════════════════════════════
+
+const Counter = ({ target, label, icon: Icon, suffix = '+' }) => {
   const [count, setCount] = useState(0);
   const ref = useRef(null);
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const obs = new IntersectionObserver(([entry]) => {
-      if (!entry.isIntersecting) return;
-      obs.disconnect();
-      let start = 0;
-      const step = target / (duration / 16);
-      const timer = setInterval(() => {
-        start = Math.min(start + step, target);
-        setCount(Math.floor(start));
-        if (start >= target) clearInterval(timer);
-      }, 16);
-    }, { threshold: 0.4 });
-    obs.observe(el);
-    return () => obs.disconnect();
-  }, [target, duration]);
-  return [count, ref];
-};
 
-const StatCard = ({ icon: Icon, label, target, suffix = '', color }) => {
-  const [count, ref] = useCounter(target);
+  useEffect(() => {
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) {
+        let start = 0;
+        const duration = 2000;
+        const stepTime = 20;
+        const totalSteps = duration / stepTime;
+        const stepIncrement = target / totalSteps;
+
+        const timer = setInterval(() => {
+          start += stepIncrement;
+          if (start >= target) {
+            setCount(target);
+            clearInterval(timer);
+          } else {
+            setCount(Math.floor(start));
+          }
+        }, stepTime);
+        observer.disconnect();
+      }
+    }, { threshold: 0.5 });
+
+    if (ref.current) observer.observe(ref.current);
+    return () => observer.disconnect();
+  }, [target]);
+
   return (
-    <div ref={ref} className={`card-interactive bg-white rounded-[2rem] border border-slate-100 p-5 flex flex-col gap-3 relative overflow-hidden`}>
-      <div className={`w-10 h-10 rounded-2xl bg-${color}-50 flex items-center justify-center`}>
-        <Icon className={`h-5 w-5 text-${color}-600`} />
+    <div ref={ref} className="flex flex-col items-center p-8 bg-white/50 backdrop-blur-md rounded-[2.5rem] border border-white shadow-soft group hover:shadow-premium transition-all duration-500">
+      <div className="w-14 h-14 bg-primary/5 rounded-2xl flex items-center justify-center mb-6 group-hover:bg-primary group-hover:text-white transition-all text-primary">
+        <Icon className="h-6 w-6" />
       </div>
-      <div>
-        <p className="text-3xl font-black text-slate-900 tracking-tighter leading-none">
-          {count.toLocaleString()}{suffix}
-        </p>
-        <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.25em] mt-1">{label}</p>
-      </div>
-      <div className={`absolute bottom-0 right-0 w-20 h-20 bg-${color}-50 rounded-tl-[3rem] opacity-60`} />
+      <h4 className="text-4xl font-black text-neutral-900 tracking-tighter mb-2">
+        {count.toLocaleString()}{suffix}
+      </h4>
+      <p className="text-[10px] font-black text-neutral-400 uppercase tracking-[0.3em]">{label}</p>
     </div>
   );
 };
 
-const calculateDistance = (lat1, lon1, lat2, lon2) => {
-  if (!lat1 || !lon1 || !lat2 || !lon2) return Infinity;
-  const R = 6371; // Radius of the earth in km
-  const dLat = (lat2 - lat1) * Math.PI / 180;
-  const dLon = (lon2 - lon1) * Math.PI / 180;
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-    Math.sin(dLon / 2) * Math.sin(dLon / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  const d = R * c;
-  return d;
-};
+// ═══════════════════════════════════════════════════════════════
+// MAIN HOME COMPONENT
+// ═══════════════════════════════════════════════════════════════
 
 const Home = () => {
-  const location = useLocation();
-  const { user, isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const { addToCart } = useCart();
-  const [featuredPets, setFeaturedPets] = useState([]);
-  const [featuredProducts, setFeaturedProducts] = useState([]);
+  const [data, setData] = useState({
+    pets: [],
+    products: [],
+    services: [],
+    experts: [],
+    stats: {
+      stores: 0,
+      experts: 0,
+      products: 0,
+      services: 0
+    }
+  });
   const [loading, setLoading] = useState(true);
-  const [nearbyStores, setNearbyStores] = useState([]);
-  const [nearMeLoading, setNearMeLoading] = useState(false);
-  const [userLocation, setUserLocation] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
-    const fetchFeaturedItems = async () => {
+    const fetchData = async () => {
       try {
-        const [petsRes, productsRes] = await Promise.all([
-          petService.getAllPets({ limit: 6, page: 1 }),
-          productService.getAllProducts({ limit: 4, page: 1 })
-        ]);
-        setFeaturedPets(petsRes.data.pets || []);
-        setFeaturedProducts(productsRes.data.products || []);
-      } catch (e) {
-        console.error('Error fetching featured items:', e);
+        const res = await publicService.getLandingData();
+        setData(res.data);
+      } catch (err) {
+        console.error('Core sync failure:', err);
       } finally {
         setLoading(false);
       }
     };
-    fetchFeaturedItems();
+    fetchData();
   }, []);
 
-  const handleNearMe = async () => {
-    if (!navigator.geolocation) {
-      toast.error('Geolocation is not supported by your browser');
-      return;
-    }
-
-    setNearMeLoading(true);
-    toast.info('Finding nearby stores...');
-
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        const coords = {
-          lat: position.coords.latitude,
-          lng: position.coords.longitude
-        };
-        setUserLocation(coords);
-
-        try {
-          const response = await storeService.getAllStores();
-          const allStores = response.data.stores || response.data || [];
-
-          const filtered = allStores
-            .filter(s => s.name?.toLowerCase() !== 'admin pet store')
-            .map(store => {
-              const distance = calculateDistance(
-                coords.lat,
-                coords.lng,
-                store.contactInfo?.address?.coordinates?.lat,
-                store.contactInfo?.address?.coordinates?.lng
-              );
-              return { ...store, distance };
-            })
-            .filter(store => store.distance <= 5)
-            .sort((a, b) => a.distance - b.distance);
-
-          setNearbyStores(filtered);
-          if (filtered.length === 0) {
-            toast.info('No stores found within 5km radius.');
-          } else {
-            toast.success(`Found ${filtered.length} stores nearby!`);
-          }
-        } catch (error) {
-          console.error('Error fetching nearby stores:', error);
-          toast.error('Failed to find nearby stores');
-        } finally {
-          setNearMeLoading(false);
-        }
-      },
-      (error) => {
-        setNearMeLoading(false);
-        if (error.code === 1) {
-          toast.error('Location access is required to use the Near Me feature.');
-        } else {
-          toast.error('Could not get your location');
-        }
-      },
-      { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
-    );
+  const handleAddToCart = (product) => {
+    addToCart({
+      itemId: product._id,
+      itemType: 'product',
+      name: product.name,
+      price: product.price,
+      image: product.images?.[0],
+      store: product.store
+    });
+    toast.success(`Added ${product.name} to cart!`);
   };
 
   if (loading) {
     return (
-      <div className="space-y-6 pb-20">
-        <div className="h-64 bg-slate-100 rounded-[2.5rem] animate-pulse" />
-        <div className="grid grid-cols-3 gap-3">
-          {[1, 2, 3].map(i => <div key={i} className="h-24 bg-slate-100 rounded-[2rem] animate-pulse" />)}
-        </div>
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-          {[1, 2, 3, 4, 5, 6].map(i => <CardLoader key={i} />)}
-        </div>
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-8 animate-pulse">
+        <div className="w-24 h-24 border-4 border-primary/10 border-t-primary rounded-full animate-spin" />
+        <p className="text-[10px] font-black text-neutral-400 uppercase tracking-[0.4em]">Synchronizing Platform Data</p>
       </div>
     );
   }
 
-  const TICKER_ITEMS = [
-    '🐾 Premium pets · vetted breeders',
-    '🛒 Curated supplies · top brands',
-    '✂️ Expert grooming · elite salons',
-    '🏠 Home & walk-in services',
-    '❤️ Pet inquiries · find your match',
-    '🌟 1,200+ happy owners',
-  ];
-
   return (
-    <div className="space-y-10 sm:space-y-16 pb-32 animate-fade-in font-['Outfit'] relative z-10">
-
-      {/* ── Friction-Free Registration: Profile Maturity Prompt ── */}
-      {user && (!user.firstName || user.phone === '' || user.phone === 'N/A') && (
-        <div className="animate-pop p-6 bg-secondary-50 rounded-[2.5rem] border border-secondary/20 flex flex-col md:flex-row items-center justify-between gap-6 relative overflow-hidden group">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-secondary/5 rounded-bl-[5rem] pointer-events-none group-hover:scale-125 transition-transform duration-700" />
-          <div className="flex items-center gap-6 relative z-10">
-            <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center text-2xl shadow-fun animate-wag">
-              👋
+    <div className="space-y-24 sm:space-y-32 pb-48 animate-fade-in">
+      
+      {/* ── 1. LUXE HERO SECTION ── */}
+      <section className="relative px-2">
+        <div className="relative h-[600px] sm:h-[800px] rounded-[4rem] sm:rounded-[6rem] overflow-hidden group shadow-premium ring-1 ring-white/20">
+          {/* Background Image / Pattern */}
+          <div className="absolute inset-0 bg-neutral-900">
+            <img 
+              src="/images/hero-premium.png" // Placeholder for an actual dynamic banner if available
+              alt="Hero" 
+              className="w-full h-full object-cover opacity-60 scale-105 group-hover:scale-100 transition-transform duration-[20s] ease-linear"
+              onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1450778869180-41d0601e046e?q=80&w=2686'; }}
+            />
+          </div>
+          <div className="absolute inset-0 bg-gradient-to-t from-neutral-900 via-neutral-900/40 to-transparent" />
+          
+          <div className="relative z-10 h-full flex flex-col items-center justify-center text-center px-10 space-y-12 max-w-6xl mx-auto">
+            <div className="inline-flex items-center gap-4 px-6 py-2.5 bg-white/10 backdrop-blur-md rounded-full border border-white/20 animate-fade-down">
+              <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+              <span className="text-[10px] sm:text-[11px] font-black text-white/80 uppercase tracking-[0.5em]">Global Pet Ecosystem Active</span>
             </div>
-            <div>
-              <h3 className="text-[11px] font-black text-primary-900 uppercase tracking-[0.25em] mb-1">Welcome to the Pack, {user.username}!</h3>
-              <p className="text-xs text-primary-700 font-medium leading-relaxed">Your account is active, but your identity profile is incomplete. Finish it now to unlock full booking perks.</p>
+            
+            <h1 className="text-5xl sm:text-9xl font-black text-white uppercase tracking-tighter leading-[0.85] animate-scale-in">
+              The World's <br />
+              <span className="italic text-transparent bg-clip-text bg-gradient-to-r from-primary-400 to-primary-600">Premium .</span> <br />
+              <span className="text-white">Pet Network .</span>
+            </h1>
+            
+            <p className="text-sm sm:text-xl text-white/50 max-w-2xl font-medium leading-relaxed animate-fade-up">
+              Connect with verified experts, shop elite supplies, and find your perfect companion in our secure, enterprise-grade marketplace.
+            </p>
+
+            <div className="w-full max-w-3xl flex flex-col sm:flex-row gap-6 animate-fade-up" style={{ animationDelay: '0.4s' }}>
+              <div className="flex-1 relative group/search">
+                <Search className="absolute left-6 top-1/2 -translate-y-1/2 h-5 w-5 text-neutral-400 group-hover/search:text-primary transition-colors" />
+                <input 
+                  type="text"
+                  placeholder="Search pets, supplies, or services..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full h-16 sm:h-20 bg-white rounded-3xl pl-16 pr-8 text-neutral-900 font-bold placeholder:text-neutral-400 focus:ring-4 focus:ring-primary/20 transition-all shadow-2xl"
+                />
+              </div>
+              <Link to="/pets" className="h-16 sm:h-20 px-12 bg-primary text-white rounded-3xl flex items-center justify-center gap-4 text-xs font-black uppercase tracking-widest hover:brightness-110 active:scale-95 transition-all shadow-2xl shadow-primary/30">
+                Explore Now <ChevronRight className="h-5 w-5" />
+              </Link>
             </div>
           </div>
-          <Link to="/profile" className="btn-fun bg-primary text-white px-8 py-3 text-[10px] shadow-hover hover:bg-header relative z-10">
-            Complete Profile
+        </div>
+      </section>
+
+      {/* ── 2. REAL-TIME PLATFORM DATA ── */}
+      <section className="max-w-7xl mx-auto px-6 grid grid-cols-2 lg:grid-cols-4 gap-8">
+        <Counter target={data.stats.products || 0} label="Elite Products" icon={Package} />
+        <Counter target={data.stats.experts || 0} label="Verified Experts" icon={ShieldCheck} />
+        <Counter target={data.stats.services || 0} label="Active Services" icon={Sparkles} />
+        <Counter target={data.stats.stores || 0} label="Global Ventures" icon={Building} />
+      </section>
+
+      {/* ── 3. FEATURED ECOSYSTEM CATEGORIES ── */}
+      <section className="max-w-[1400px] mx-auto px-6 space-y-16">
+        <div className="flex flex-col md:flex-row items-end justify-between gap-8">
+          <div className="space-y-4">
+            <h2 className="text-4xl sm:text-7xl font-black text-neutral-900 uppercase tracking-tighter leading-none">
+              Explore Our <br />
+              <span className="text-primary italic">Ecosystem .</span>
+            </h2>
+            <p className="text-[11px] font-black text-neutral-400 uppercase tracking-[0.4em]">Integrated Marketplace and Service protocols</p>
+          </div>
+          <div className="flex gap-4">
+             <Link to="/pets" className="px-8 py-4 bg-neutral-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-primary transition-all">Pets</Link>
+             <Link to="/products" className="px-8 py-4 bg-white border border-slate-100 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-neutral-50 transition-all">Products</Link>
+             <Link to="/services" className="px-8 py-4 bg-white border border-slate-100 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-neutral-50 transition-all">Services</Link>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
+          {/* Pets Card */}
+          <Link to="/pets" className="group relative h-[600px] rounded-[4rem] overflow-hidden shadow-strong hover:shadow-premium transition-all duration-700">
+            <img src="https://images.unsplash.com/photo-1543466835-00a7907e9de1" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-[2s]" />
+            <div className="absolute inset-0 bg-gradient-to-t from-neutral-900 via-neutral-900/20 to-transparent" />
+            <div className="absolute bottom-10 left-10 p-2 space-y-4">
+               <h3 className="text-5xl font-black text-white uppercase tracking-tighter">Healthy <br /> Pets .</h3>
+               <p className="text-xs text-white/60 font-medium uppercase tracking-[0.2em]">Verified Breeders & Health Records</p>
+               <div className="inline-flex items-center gap-4 px-6 py-3 bg-white text-neutral-900 rounded-2xl text-[10px] font-black uppercase tracking-widest group-hover:bg-primary group-hover:text-white transition-all">
+                  Browse Available <ArrowRight size={16} />
+               </div>
+            </div>
+          </Link>
+          
+          {/* Products Card */}
+          <Link to="/products" className="group relative h-[600px] rounded-[4rem] overflow-hidden shadow-strong hover:shadow-premium transition-all duration-700">
+            <img src="https://images.unsplash.com/photo-1583511655857-d19b40a7a54e" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-[2s]" />
+            <div className="absolute inset-0 bg-gradient-to-t from-primary-950 via-primary-950/20 to-transparent" />
+            <div className="absolute bottom-10 left-10 p-2 space-y-4">
+               <h3 className="text-5xl font-black text-white uppercase tracking-tighter">Premium <br /> Supplies .</h3>
+               <p className="text-xs text-white/60 font-medium uppercase tracking-[0.2em]">Curated Foods & Elite Accessories</p>
+               <div className="inline-flex items-center gap-4 px-6 py-3 bg-white text-neutral-900 rounded-2xl text-[10px] font-black uppercase tracking-widest group-hover:bg-primary group-hover:text-white transition-all">
+                  Shop Marketplace <ArrowRight size={16} />
+               </div>
+            </div>
+          </Link>
+
+          {/* Services Card */}
+          <Link to="/services" className="group relative h-[600px] rounded-[4rem] overflow-hidden shadow-strong hover:shadow-premium transition-all duration-700">
+            <img src="https://images.unsplash.com/photo-1516733725897-1aa73b87c8e8" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-[2s]" />
+            <div className="absolute inset-0 bg-gradient-to-t from-neutral-950 via-neutral-950/20 to-transparent" />
+            <div className="absolute bottom-10 left-10 p-2 space-y-4">
+               <h3 className="text-5xl font-black text-white uppercase tracking-tighter">Expert <br /> Care .</h3>
+               <p className="text-xs text-white/60 font-medium uppercase tracking-[0.2em]">Vets, Groomers & Master Trainers</p>
+               <div className="inline-flex items-center gap-4 px-6 py-3 bg-white text-neutral-900 rounded-2xl text-[10px] font-black uppercase tracking-widest group-hover:bg-primary group-hover:text-white transition-all">
+                  Book Professional <ArrowRight size={16} />
+               </div>
+            </div>
           </Link>
         </div>
+      </section>
+
+      {/* ── 4. VERIFIED PROFESSIONALS (Experts) ── */}
+      {data.experts.length > 0 && (
+        <section className="bg-neutral-900 py-32 sm:py-48 relative overflow-hidden">
+           <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-primary/10 rounded-full blur-[120px] -translate-y-1/2 translate-x-1/2" />
+           <div className="max-w-7xl mx-auto px-6 relative z-10 space-y-20">
+              <div className="text-center space-y-6">
+                 <div className="inline-flex items-center gap-4 px-6 py-2 bg-white/5 border border-white/10 rounded-full text-primary">
+                    <ShieldCheck size={18} />
+                    <span className="text-[10px] font-black uppercase tracking-[0.5em]">Verified Professionals</span>
+                 </div>
+                 <h2 className="text-5xl sm:text-8xl font-black text-white uppercase tracking-tighter">Meet Our <br /> <span className="italic text-primary">Health Experts .</span></h2>
+                 <p className="text-white/40 text-sm sm:text-lg max-w-2xl mx-auto font-medium uppercase tracking-widest leading-relaxed">
+                   Consult with the world's most trusted veterinarians, groomers, and behavioral specialists.
+                 </p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+                 {data.experts.map((expert, idx) => (
+                    <div key={idx} className="bg-white/5 border border-white/10 rounded-[3rem] p-10 space-y-8 group hover:bg-white/10 transition-all duration-500 hover:-translate-y-4 shadow-2xl">
+                       <div className="relative w-24 h-24 mx-auto">
+                          <div className="w-full h-full rounded-[2rem] bg-white/10 overflow-hidden shadow-inner flex items-center justify-center">
+                             {expert.avatar ? (
+                               <img src={getImageUrl(expert.avatar)} alt="" className="w-full h-full object-cover" />
+                             ) : <Users className="h-10 w-10 text-white/20" />}
+                          </div>
+                          <div className="absolute -bottom-2 -right-2 w-10 h-10 bg-primary text-white rounded-xl flex items-center justify-center shadow-lg">
+                             <CheckCircle2 size={20} />
+                          </div>
+                       </div>
+                       <div className="text-center space-y-2">
+                          <h4 className="text-xl font-black text-white uppercase tracking-tight">{expert.firstName} {expert.lastName}</h4>
+                          <p className="text-[10px] font-black text-primary uppercase tracking-[0.3em]">
+                            {expert.staffType?.replace('_', ' ') || 'Licensed Specialist'}
+                          </p>
+                       </div>
+                       <div className="pt-8 border-t border-white/5 flex items-center justify-center gap-6">
+                          <div className="flex items-center gap-2">
+                             <Star className="h-4 w-4 fill-primary text-primary" />
+                             <span className="text-[11px] font-black text-white">{expert.professionalProfile?.reputation || '5.0'}</span>
+                          </div>
+                          <div className="w-1.5 h-1.5 rounded-full bg-white/20" />
+                          <span className="text-[10px] font-black text-white/40 uppercase tracking-widest">Active Now</span>
+                       </div>
+                    </div>
+                 ))}
+              </div>
+           </div>
+        </section>
       )}
 
-      {/* Premium Ambiance Layer - Immersive Glows */}
-      <div className="fixed inset-0 z-[-1] pointer-events-none overflow-hidden opacity-30">
-        <div className="absolute top-[-10%] right-[-5%] w-[500px] h-[500px] bg-primary-100 rounded-full blur-[120px] animate-spin-slow" />
-        <div className="absolute bottom-[-10%] left-[-5%] w-[400px] h-[400px] bg-secondary-900/10 rounded-full blur-[100px] animate-blob-move" />
-      </div>
-
-      {/* ── Modern Heritage Hero Section ── */}
-      <section className="relative group">
-        <div className="relative z-10 bg-white/60 backdrop-blur-3xl rounded-[3rem] sm:rounded-[4rem] p-8 sm:p-20 border border-white/80 shadow-[0_40px_100px_-20px_rgba(139,69,19,0.15)] overflow-hidden transition-all duration-700 hover:bg-white/80">
-          {/* Layered Decorative Elements */}
-          <div className="absolute top-0 right-0 w-80 h-80 bg-gradient-to-bl from-primary-100/40 to-transparent rounded-bl-[8rem] pointer-events-none group-hover:scale-110 transition-transform duration-1000" />
-          <div className="absolute bottom-0 left-0 w-64 h-64 bg-gradient-to-tr from-secondary-900/5 to-transparent rounded-tr-[8rem] pointer-events-none" />
-
-          <div className="relative z-10 text-center space-y-6 sm:space-y-10">
-            <div className="inline-flex items-center gap-3 px-5 py-2.5 bg-white border border-primary-50 rounded-full shadow-[0_10px_25px_rgba(0,0,0,0.03)] selection:bg-primary-100">
-              <div className="w-2 h-2 rounded-full bg-primary-500 animate-pulse" />
-              <span className="text-[10px] font-black text-secondary-900/40 uppercase tracking-[0.4em]">MODERN PET NETWORK</span>
-            </div>
-
-            <h1 className="text-4xl sm:text-8xl font-black tracking-[-0.05em] leading-[0.88] uppercase text-primary-950">
-              Find Your <br />
-              <span className="italic text-transparent bg-clip-text bg-gradient-to-r from-primary-500 to-secondary-500">Best Friend .</span>
-            </h1>
-
-            Find your perfect pet through the world's most <span className="text-primary-600">secure platform</span>.
-
-            <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 justify-center pt-4">
-              <Link to="/pets" className="group relative px-12 py-5 bg-gradient-to-br from-primary-800 to-primary-950 text-white rounded-2xl text-[11px] sm:text-xs font-black uppercase tracking-[0.3em] shadow-[0_25px_50px_rgba(0,0,0,0.2)] hover:shadow-primary-900/30 active:scale-95 transition-all flex items-center justify-center gap-3">
-                VIEW PETS <ChevronRight className="h-5 w-5 group-hover:translate-x-2 transition-transform" />
-              </Link>
-              <Link to="/products" className="px-12 py-5 bg-white border-2 border-primary-50 text-primary-800 rounded-2xl text-[11px] sm:text-xs font-black uppercase tracking-[0.3em] hover:bg-primary-50 hover:border-primary-200 transition-all active:scale-95">
-                SHOP SUPPLIES
-              </Link>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ── Precision Live Ticker ── */}
-      <div className="relative overflow-hidden bg-primary-950 rounded-[2rem] py-4 border border-primary-900 shadow-2xl">
-        <div className="absolute inset-y-0 left-0 w-32 bg-gradient-to-r from-primary-950 to-transparent z-10 pointer-events-none" />
-        <div className="absolute inset-y-0 right-0 w-32 bg-gradient-to-l from-primary-950 to-transparent z-10 pointer-events-none" />
-        <div className="flex gap-16 animate-ticker whitespace-nowrap select-none">
-          {[...TICKER_ITEMS, ...TICKER_ITEMS].map((item, i) => (
-            <span key={i} className="text-[10px] sm:text-[11px] font-black text-secondary-500/40 uppercase tracking-[0.3em] shrink-0 flex items-center gap-4">
-              {item} <div className="w-1.5 h-1.5 rounded-full bg-secondary-500/20" />
-            </span>
-          ))}
-        </div>
-      </div>
-
-      {/* ── High-Fidelity Stats Cluster ── */}
-      <section className="grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-8">
-        <StatCard icon={Heart} label="Available Pets" target={500} suffix="+" color="primary" />
-        <StatCard icon={Users} label="Happy Owners" target={1200} suffix="+" color="secondary" />
-        <StatCard icon={Shield} label="Safe & Secure" target={99} suffix="%" color="slate" />
-      </section>
-
-      {/* ── Modular Quick Nav ── */}
-      <section className="flex gap-4 overflow-x-auto pb-4 scrollbar-none px-1">
-        {[
-          { label: 'Pets', to: '/pets', icon: Heart },
-          { label: 'Products', to: '/products', icon: Package },
-          { label: 'Services', to: '/services', icon: Sparkles },
-          { label: 'Stores', to: '/stores', icon: MapPin },
-          { label: 'Bookings', to: '/bookings', icon: Clock },
-        ].map(({ label, to, icon: Icon }) => (
-          <Link key={label} to={to}
-            className="flex items-center gap-3 px-8 py-4 bg-white/80 backdrop-blur-xl border border-primary-50 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] text-primary-800/60 hover:border-primary-500/30 hover:text-primary-900 hover:shadow-2xl hover:bg-white transition-all whitespace-nowrap shrink-0 shadow-[0_10px_30px_rgba(0,0,0,0.03)]">
-            <Icon className="h-4 w-4 text-primary-600/30" /> {label}
-          </Link>
-        ))}
-      </section>
-
-      {/* ── Proximity Radar Section ── */}
-      <section className="space-y-8">
-        <div className="flex items-end justify-between px-2">
-          <div className="space-y-2">
-            <div className="inline-flex items-center gap-2 px-3 py-1 bg-secondary-50 border border-secondary-100 rounded-full">
-              <Navigation className="h-3 w-3 text-primary-600" />
-              <span className="text-[9px] font-black text-primary-700 uppercase tracking-widest">STORE MAP</span>
-            </div>
-            <h2 className="text-3xl sm:text-5xl font-black text-[#5D4037] uppercase tracking-[-0.03em] leading-none">
-              Nearby <span className="italic text-primary-600">Stores .</span>
-            </h2>
-          </div>
-          <button
-            onClick={handleNearMe}
-            disabled={nearMeLoading}
-            className="group relative px-6 py-3 bg-[#211510] text-white rounded-xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-primary-600 active:scale-95 transition-all shadow-[0_15px_30px_rgba(0,0,0,0.15)] flex items-center gap-3 overflow-hidden"
-          >
-            <div className={`absolute inset-0 bg-secondary-500/20 translate-y-full group-hover:translate-y-0 transition-transform duration-500`} />
-            <Navigation className={`h-4 w-4 relative z-10 ${nearMeLoading ? 'animate-spin' : ''}`} />
-            <span className="relative z-10">{nearMeLoading ? 'SEARCHING...' : 'FIND NEAR ME'}</span>
-          </button>
-        </div>
-
-        {nearbyStores.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-            {nearbyStores.map((store) => (
-              <Link key={store._id} to={`/stores/${store._id}`}
-                className="group bg-white rounded-[3rem] border border-primary-50 p-6 flex gap-6 hover:shadow-[0_40px_80px_rgba(139,69,19,0.12)] hover:-translate-y-2 transition-all duration-500 animate-card-appear">
-                <div className="w-20 h-20 sm:w-24 sm:h-24 bg-secondary-50 rounded-[1.8rem] overflow-hidden shrink-0 relative p-1 transition-all duration-500 group-hover:scale-105">
-                  {store.logo ? (
-                    <img
-                      src={getImageUrl(store.logo)}
-                      alt={store.name}
-                      className="w-full h-full object-cover rounded-[1.5rem]"
-                    />
-                  ) : (
-                    <Building className="h-10 w-10 text-primary-100 absolute inset-0 m-auto" />
-                  )}
+      {/* ── 5. FEATURED BIOLOGICAL LISTINGS (Pets) ── */}
+      {data.pets.length > 0 && (
+        <section className="max-w-7xl mx-auto px-6 space-y-20">
+          <div className="flex flex-col md:flex-row items-end justify-between gap-10">
+             <div className="space-y-4">
+                <h2 className="text-4xl sm:text-7xl font-black text-neutral-900 uppercase tracking-tighter leading-none">
+                  Available <br />
+                  <span className="text-primary italic">Companions .</span>
+                </h2>
+                <p className="text-[11px] font-black text-neutral-400 uppercase tracking-[0.4em]">Biological inventory from verified breeders</p>
+             </div>
+             <Link to="/pets" className="group text-[12px] font-black text-neutral-400 uppercase tracking-[0.3em] hover:text-primary transition-all flex items-center gap-6">
+                Full Catalog <div className="w-14 h-14 rounded-full border border-slate-100 flex items-center justify-center group-hover:bg-neutral-900 group-hover:text-white transition-all">
+                   <ChevronRight size={24} />
                 </div>
-                <div className="flex-1 min-w-0 flex flex-col justify-center space-y-3">
-                  <h3 className="text-sm sm:text-base font-black text-primary-900 uppercase tracking-tight truncate group-hover:text-primary-600 transition-colors">{store.name}</h3>
-                  <div className="flex items-center gap-2">
-                    <span className="px-3 py-1 bg-primary-50 text-primary-600 rounded-lg text-[8px] font-black uppercase tracking-widest border border-primary-100/50 flex items-center gap-1.5">
-                      <Navigation className="h-3 w-3" /> {store.distance.toFixed(1)} KM
-                    </span>
-                    <span className="px-3 py-1 bg-secondary-50 text-secondary-900/60 rounded-lg text-[8px] font-black uppercase tracking-widest border border-secondary-50 flex items-center gap-1.5">
-                      <Star className="h-3 w-3 fill-primary-500 text-primary-500" /> {store.ratings?.average || '5.0'}
-                    </span>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 pr-2">
-                  <div className="w-10 h-10 rounded-full border border-primary-100 flex items-center justify-center opacity-0 group-hover:opacity-100 group-hover:translate-x-2 transition-all duration-500">
-                    <ChevronRight className="h-5 w-5 text-primary-600" />
-                  </div>
-                </div>
-              </Link>
-            ))}
-          </div>
-        ) : !nearMeLoading && userLocation && (
-          <div className="py-20 text-center bg-white/40 backdrop-blur-md rounded-[3rem] border border-dashed border-primary-900/10">
-            <p className="text-[11px] font-black text-primary-900/30 uppercase tracking-[0.4em]">NO STORES FOUND NEARBY</p>
-          </div>
-        )}
-      </section>
-
-      {/* ── Featured Biological Fleet ── */}
-      <section className="space-y-10">
-        <div className="flex items-end justify-between px-2">
-          <div className="space-y-2">
-            <div className="inline-flex items-center gap-2 px-3 py-1 bg-rose-50 border border-rose-100 rounded-full">
-              <Heart className="h-3 w-3 text-rose-500" />
-              <span className="text-[9px] font-black text-rose-700 uppercase tracking-widest">NEW PETS AVAILABLE</span>
-            </div>
-            <h2 className="text-3xl sm:text-5xl font-black text-[#3D2B23] uppercase tracking-[-0.03em] leading-none">
-              Available <span className="italic text-primary-600">Pets .</span>
-            </h2>
-          </div>
-          <Link to="/pets" className="group text-[10px] font-black text-[#5D4037]/40 uppercase tracking-[0.3em] hover:text-primary-600 transition-all flex items-center gap-3">
-            VIEW ALL <div className="w-8 h-8 rounded-full border border-secondary-500/10 flex items-center justify-center group-hover:bg-secondary-50 transition-all">
-              <ChevronRight className="h-4 w-4" />
-            </div>
-          </Link>
-        </div>
-
-        <div className="grid grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-10">
-          {featuredPets.map((pet, idx) => (
-            <div key={pet._id}
-              className="group bg-white rounded-[3.5rem] border border-primary-50 p-3 flex flex-col relative overflow-hidden transition-all duration-700 hover:shadow-[0_50px_100px_-20px_rgba(139,69,19,0.15)] hover:-translate-y-3 animate-card-appear"
-              style={{ animationDelay: `${idx * 0.08}s` }}>
-              <div className="absolute top-0 right-0 w-32 h-32 bg-secondary-50 rounded-bl-[5rem] -translate-y-16 translate-x-16 group-hover:bg-primary-50 transition-colors duration-700" />
-
-              <Link to={`/pets/${pet._id}`} className="block relative z-10">
-                <div className="aspect-square bg-secondary-50 rounded-[3rem] overflow-hidden relative shadow-inner">
-                  {pet.images?.[0] ? (
-                    <img
-                      src={getImageUrl(pet.images[0])}
-                      alt={pet.name}
-                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000"
-                    />
-                  ) : (
-                    <Heart className="h-12 w-12 text-primary-500/10 absolute inset-0 m-auto" />
-                  )}
-                  <div className="absolute top-4 left-4 flex flex-col gap-2">
-                    <span className={`px-4 py-1.5 rounded-2xl text-[8px] font-black uppercase tracking-[0.2em] backdrop-blur-xl border border-white/20 shadow-2xl ${pet.status === 'available' ? 'bg-emerald-500/90 text-white' : 'bg-rose-500/90 text-white'}`}>
-                      {pet.status === 'available' ? 'AVAILABLE' : 'RESERVED'}
-                    </span>
-                  </div>
-                </div>
-              </Link>
-
-              <div className="p-6 sm:p-8 flex-1 flex flex-col relative z-10 space-y-6">
-                <div className="space-y-2">
-                  <p className="text-[10px] font-black text-secondary-600/60 uppercase tracking-[0.4em] truncate">{pet.breed || 'PET'}</p>
-                  <h3 className="text-xl sm:text-3xl font-black text-primary-950 uppercase tracking-tighter truncate group-hover:text-primary-600 transition-colors leading-none">{pet.name}</h3>
-                </div>
-
-                <div className="flex gap-2 flex-wrap pb-6 border-b border-primary-50">
-                  {[pet.age + ' ' + (pet.ageUnit?.[0] || 'Y'), pet.gender?.[0], pet.weight + 'KG'].map((label, i) => (
-                    label && (
-                      <span key={i} className="px-4 py-1.5 bg-secondary-50 border border-primary-50 rounded-xl text-[9px] font-black uppercase tracking-widest text-primary-900/40">
-                        {label}
-                      </span>
-                    )
-                  ))}
-                </div>
-
-                <div className="flex justify-between items-center mt-auto">
-                  <div className="space-y-1">
-                    <p className="text-[9px] font-black text-primary-900/30 uppercase tracking-[0.3em]">PRICE</p>
-                    <p className="text-2xl sm:text-3xl font-black text-primary-950 tracking-tighter leading-none">₱{pet.price?.toLocaleString()}</p>
-                  </div>
-                  <Link to={`/pets/${pet._id}`} className="w-14 h-14 bg-primary-950 text-white rounded-2xl flex items-center justify-center shadow-xl hover:bg-primary-600 active:scale-90 transition-all">
-                    <ArrowRight className="h-6 w-6" />
-                  </Link>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* ── Precision Hardware Grid ── */}
-      {featuredProducts.length > 0 && (
-        <section className="space-y-10">
-          <div className="flex items-end justify-between px-2">
-            <div className="space-y-2">
-              <div className="inline-flex items-center gap-2 px-3 py-1 bg-secondary-50 border border-secondary-100 rounded-full">
-                <Package className="h-3 w-3 text-primary-600" />
-                <span className="text-[9px] font-black text-primary-700 uppercase tracking-widest">PET SUPPLIES</span>
-              </div>
-              <h2 className="text-3xl sm:text-5xl font-black text-[#3D2B23] uppercase tracking-[-0.03em] leading-none">
-                Best <span className="italic text-primary-600">Supplies .</span>
-              </h2>
-            </div>
-            <Link to="/products" className="group text-[10px] font-black text-primary-900/40 uppercase tracking-[0.3em] hover:text-primary-600 transition-all flex items-center gap-3">
-              SHOP ALL <div className="w-8 h-8 rounded-full border border-primary-500/10 flex items-center justify-center group-hover:bg-primary-50 transition-all">
-                <ChevronRight className="h-4 w-4" />
-              </div>
-            </Link>
+             </Link>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-6">
-            {featuredProducts.map((product, idx) => (
-              <div key={product._id} className="group bg-white rounded-[2.5rem] border border-primary-50 p-3 flex flex-col hover:shadow-[0_30px_60px_-15px_rgba(0,0,0,0.1)] hover:-translate-y-2 transition-all duration-500 animate-card-appear" style={{ animationDelay: `${idx * 0.06}s` }}>
-                <Link to={`/products/${product._id}`} className="block h-40 sm:h-56 bg-secondary-50 rounded-[2rem] overflow-hidden mb-5 relative group/img">
-                  {product.images?.[0] ? (
-                    <img
-                      src={getImageUrl(product.images[0])}
-                      alt={product.name}
-                      className="w-full h-full object-cover group-hover/img:scale-110 transition-transform duration-1000"
-                    />
-                  ) : (
-                    <Package className="h-10 w-10 text-primary-100 absolute inset-0 m-auto" />
-                  )}
-                  {/* Stock Indicator HUD */}
-                  <div className="absolute top-3 right-3 px-3 py-1 bg-white/90 backdrop-blur-md rounded-xl text-[8px] font-black uppercase tracking-widest text-primary-900 border border-white/50 shadow-xl opacity-0 group-hover/img:opacity-100 transition-opacity">
-                    {product.stockQuantity > 5 ? 'IN STOCK' : 'LOW STOCK'}
-                  </div>
-
-                  <button
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      addToCart({
-                        itemId: product._id,
-                        itemType: 'product',
-                        name: product.name,
-                        price: product.price,
-                        image: product.images?.[0],
-                        quantity: 1,
-                        store: product.store
-                      });
-                      toast.success(`${product.name} added to cart!`);
-                    }}
-                    className="absolute bottom-3 right-3 w-12 h-12 bg-primary-950 text-white rounded-[1.2rem] flex items-center justify-center shadow-2xl opacity-0 group-hover:opacity-100 translate-y-4 group-hover:translate-y-0 transition-all duration-500 hover:bg-primary-600 active:scale-90"
-                  >
-                    <ShoppingBag className="h-5 w-5" />
-                  </button>
-                </Link>
-                <div className="px-3 pb-3 flex-1 flex flex-col space-y-3">
-                  <div className="space-y-1">
-                    <p className="text-[9px] font-black text-secondary-600/40 uppercase tracking-[0.3em] truncate">{product.category}</p>
-                    <Link to={`/products/${product._id}`} className="text-xs sm:text-sm font-black text-primary-900 uppercase tracking-tight truncate block group-hover:text-primary-600 transition-colors">{product.name}</Link>
-                  </div>
-
-                  <div className="mt-auto pt-4 border-t border-primary-50 flex justify-between items-end">
-                    <p className="text-lg sm:text-xl font-black text-primary-950 tracking-tighter leading-none">₱{product.price?.toLocaleString()}</p>
-                    <div className="w-8 h-8 rounded-full border border-secondary-500/10 flex items-center justify-center group-hover:bg-secondary-50 transition-all">
-                      <ChevronRight className="h-4 w-4 text-secondary-600" />
-                    </div>
-                  </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10">
+             {data.pets.map((pet, idx) => (
+                <div key={idx} className="bg-white rounded-[3rem] border border-slate-50 p-4 group hover:shadow-premium hover:-translate-y-4 transition-all duration-700 animate-fade-up" style={{ animationDelay: `${idx * 0.1}s` }}>
+                   <Link to={`/pets/${pet._id}`} className="block relative aspect-square rounded-[2.5rem] overflow-hidden mb-8 shadow-soft">
+                      {pet.images?.[0] ? (
+                        <img src={getImageUrl(pet.images[0])} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-[2s]" />
+                      ) : <div className="w-full h-full bg-neutral-50 flex items-center justify-center text-neutral-200"><Heart size={48} /></div>}
+                      <div className="absolute top-6 left-6 px-4 py-2 bg-white/90 backdrop-blur-md rounded-xl text-[9px] font-black uppercase tracking-widest text-primary shadow-2xl">
+                         Verified Healthy
+                      </div>
+                   </Link>
+                   <div className="px-4 pb-4 space-y-6">
+                      <div className="space-y-2">
+                         <p className="text-[9px] font-black text-neutral-400 uppercase tracking-[0.4em]">{pet.breed}</p>
+                         <h4 className="text-2xl font-black text-neutral-900 uppercase tracking-tighter truncate">{pet.name}</h4>
+                      </div>
+                      <div className="flex items-center justify-between border-t border-slate-50 pt-6">
+                         <div className="space-y-1">
+                            <p className="text-[9px] font-black text-neutral-300 uppercase tracking-[0.3em]">Price Point</p>
+                            <p className="text-2xl font-black text-neutral-950 tracking-tighter">₱{pet.price?.toLocaleString()}</p>
+                         </div>
+                         <Link to={`/pets/${pet._id}`} className="w-12 h-12 bg-neutral-950 text-white rounded-xl flex items-center justify-center shadow-lg hover:bg-primary transition-all">
+                            <ChevronRight size={20} />
+                         </Link>
+                      </div>
+                   </div>
                 </div>
-              </div>
-            ))}
+             ))}
           </div>
         </section>
       )}
 
-      {/* ── Operational Integrity Grid ── */}
-      <section className="grid grid-cols-1 sm:grid-cols-3 gap-8">
-        {[
-          { icon: Crown, title: 'Healthy Pets', desc: 'Every pet undergoes thorough health screening by our expert vets.', color: 'primary' },
-          { icon: Shield, title: 'Secure Payment', desc: 'All transactions are protected and kept safe on our platform.', color: 'secondary' },
-          { icon: Zap, title: 'Quick Services', desc: 'Book grooming, medical, and training services with one tap.', color: 'slate' },
-        ].map(({ icon: Icon, title, desc, color }, i) => (
-          <div key={i} className={`bg-white rounded-[3.5rem] border border-primary-50 p-10 relative overflow-hidden transition-all duration-500 hover:shadow-[0_40px_80px_rgba(139,69,19,0.1)] hover:-translate-y-2 animate-card-appear`}
-            style={{ animationDelay: `${i * 0.12}s` }}>
-            <div className={`w-14 h-14 bg-secondary-50 border border-primary-50 rounded-2xl flex items-center justify-center mb-6`}>
-              <Icon className={`h-7 w-7 text-primary-600`} />
+      {/* ── 6. MARKETPLACE HIGHLIGHTS (Products) ── */}
+      {data.products.length > 0 && (
+        <section className="bg-neutral-50 py-24 sm:py-32 rounded-[4rem] sm:rounded-[6rem] mx-2">
+           <div className="max-w-7xl mx-auto px-6 space-y-16">
+              <div className="flex items-end justify-between">
+                 <div className="space-y-4">
+                    <h2 className="text-4xl sm:text-6xl font-black text-neutral-900 uppercase tracking-tighter leading-none">
+                      Essential <br />
+                      <span className="text-primary italic">Hardware .</span>
+                    </h2>
+                    <p className="text-[11px] font-black text-neutral-400 uppercase tracking-[0.4em]">Curated elite pet accessories & food</p>
+                 </div>
+                 <Link to="/products" className="group p-4 bg-white rounded-2xl shadow-soft hover:bg-primary hover:text-white transition-all">
+                    <ArrowRight size={24} />
+                 </Link>
+              </div>
+
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+                 {data.products.map((product, idx) => (
+                    <div key={idx} className="bg-white rounded-[2.5rem] border border-transparent hover:border-slate-100 p-4 transition-all duration-500 group">
+                       <Link to={`/products/${product._id}`} className="block relative aspect-square rounded-[2rem] overflow-hidden mb-6 bg-neutral-100">
+                          {product.images?.[0] ? (
+                            <img src={getImageUrl(product.images[0])} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
+                          ) : <Package size={32} className="m-auto text-neutral-300" />}
+                          <button 
+                            onClick={(e) => { e.preventDefault(); handleAddToCart(product); }}
+                            className="absolute bottom-4 right-4 w-12 h-12 bg-neutral-950 text-white rounded-[1.2rem] flex items-center justify-center shadow-2xl opacity-0 group-hover:opacity-100 translate-y-4 group-hover:translate-y-0 transition-all duration-500 hover:bg-primary"
+                          >
+                             <ShoppingBag size={20} />
+                          </button>
+                       </Link>
+                       <div className="space-y-4 px-2">
+                          <div className="space-y-1">
+                             <p className="text-[9px] font-black text-neutral-300 uppercase tracking-widest">{product.category}</p>
+                             <h4 className="text-sm font-black text-neutral-900 uppercase tracking-tight truncate">{product.name}</h4>
+                          </div>
+                          <div className="flex items-center justify-between">
+                             <p className="text-lg font-black text-neutral-950 tracking-tighter">₱{product.price?.toLocaleString()}</p>
+                             <div className="text-[9px] font-black text-emerald-600 uppercase tracking-widest">{product.stockQuantity > 5 ? 'In Stock' : 'Low Stock'}</div>
+                          </div>
+                       </div>
+                    </div>
+                 ))}
+              </div>
+           </div>
+        </section>
+      )}
+
+      {/* ── 7. TRUST & TECHNOLOGY ── */}
+      <section className="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+         <div className="space-y-12">
+            <div className="space-y-6">
+               <h2 className="text-4xl sm:text-7xl font-black text-neutral-900 uppercase tracking-tighter leading-none">
+                 The Standard in <br />
+                 <span className="text-primary italic">Pet Security .</span>
+               </h2>
+               <p className="text-sm sm:text-lg text-neutral-400 font-medium uppercase tracking-widest leading-[1.8] max-w-xl">
+                 We've built an enterprise-grade platform combining advanced veterinary protocols with secure commerce infrastructure.
+               </p>
             </div>
-            <h3 className="text-xl font-black text-primary-950 uppercase tracking-tight mb-4">{title}</h3>
-            <p className="text-[11px] text-primary-900/40 font-bold leading-relaxed uppercase tracking-widest">{desc}</p>
-          </div>
-        ))}
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
+               {[
+                 { icon: ShieldCheck, title: 'Secure Checkouts', desc: 'Enterprise encryption with PayMongo integration.' },
+                 { icon: Brain, title: 'AI Matching', desc: 'Intelligent companion recommendations based on lifestyle.' },
+                 { icon: Activity, title: 'Health Logs', desc: 'Digital medical passports for every pet on the platform.' },
+                 { icon: ThumbsUp, title: 'Vetted Stores', desc: 'Rigorous 24-step verification for all vendors.' }
+               ].map((feature, i) => (
+                 <div key={i} className="flex gap-6">
+                    <div className="w-12 h-12 bg-primary/5 rounded-xl flex items-center justify-center text-primary shrink-0">
+                       <feature.icon size={20} />
+                    </div>
+                    <div className="space-y-2">
+                       <h4 className="text-xs font-black text-neutral-900 uppercase tracking-widest">{feature.title}</h4>
+                       <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-widest leading-relaxed">{feature.desc}</p>
+                    </div>
+                 </div>
+               ))}
+            </div>
+         </div>
+
+         <div className="relative h-[600px] rounded-[5rem] overflow-hidden shadow-premium">
+            <img src="https://images.unsplash.com/photo-1594498653385-d5172b53adc7" className="w-full h-full object-cover" />
+            <div className="absolute inset-0 bg-primary/20 backdrop-blur-[2px] mix-blend-overlay" />
+            <div className="absolute bottom-12 left-12 right-12 bg-white/10 backdrop-blur-3xl border border-white/20 rounded-[3rem] p-10 flex items-center gap-8 shadow-2xl">
+               <div className="w-20 h-20 bg-primary text-white rounded-[1.8rem] flex items-center justify-center shadow-lg">
+                  <Zap size={32} />
+               </div>
+               <div>
+                  <h4 className="text-2xl font-black text-white uppercase tracking-tighter leading-none mb-2">3k+ Success</h4>
+                  <p className="text-[10px] font-black text-white/60 uppercase tracking-[0.3em]">Monthly Successful Protocols</p>
+               </div>
+            </div>
+         </div>
       </section>
 
-      {/* ── Luxe Terminal CTA ── */}
-      <section className="px-2">
-        <div className="bg-gradient-to-br from-primary-950 via-primary-800 to-primary-950 rounded-[4rem] p-12 sm:p-24 relative overflow-hidden text-center text-white border border-white/5 shadow-[0_60px_100px_-20px_rgba(0,0,0,0.6)] group">
-          <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10" />
-          <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-secondary-500/10 rounded-full blur-[120px] pointer-events-none group-hover:scale-110 transition-transform duration-1000" />
-          <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-primary-600/5 rounded-full blur-[100px] pointer-events-none" />
+      {/* ── 8. PROFESSIONAL SERVICE PIXELS ── */}
+      <section className="max-w-7xl mx-auto px-6 space-y-20">
+         <div className="text-center space-y-6">
+            <h2 className="text-4xl sm:text-7xl font-black text-neutral-900 uppercase tracking-tighter">Professional <br /><span className="text-primary italic">Service Labs .</span></h2>
+            <p className="text-[11px] font-black text-neutral-400 uppercase tracking-[0.5em]">Clinical Grade Pet Wellness & Styling</p>
+         </div>
 
-          <div className="relative z-10 space-y-10">
-            <div className="inline-flex items-center gap-3 px-6 py-2 bg-white/5 border border-white/10 rounded-full">
-              <TrendingUp className="h-4 w-4 text-secondary-400" />
-              <span className="text-[10px] sm:text-[11px] font-black uppercase tracking-[0.4em] text-secondary-400">JOIN OUR COMMUNITY</span>
-            </div>
-            <h2 className="text-4xl sm:text-8xl font-black tracking-[-0.05em] uppercase leading-[0.85] text-white">
-              <br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-secondary-400 to-secondary-600 italic">
-                {isAuthenticated ? 'READY .' : 'JOIN US .'}
-              </span>
-            </h2>
-            <p className="text-[12px] sm:text-lg text-white/40 max-w-lg mx-auto font-black uppercase tracking-[0.2em] leading-relaxed">
-              {isAuthenticated
-                ? 'Welcome back to the family. Your pets are waiting.'
-                : 'Join us today to find your new best friend and get the best pet care.'}
-            </p>
-            <div className="flex flex-col sm:flex-row gap-6 justify-center pt-4">
-              <Link to={isAuthenticated ? '/pets' : '/register'}
-                className="group relative px-16 py-6 bg-secondary-500 text-white rounded-2xl text-sm font-black uppercase tracking-[0.3em] hover:bg-secondary-600 active:scale-95 transition-all shadow-[0_20px_50px_rgba(191,166,160,0.4)] flex items-center justify-center gap-4">
-                {isAuthenticated ? 'VIEW AVAILABLE PETS' : 'SIGN UP NOW'}
-                <ArrowRight className="h-5 w-5 group-hover:translate-x-3 transition-transform" />
-              </Link>
-            </div>
-          </div>
-        </div>
+         <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
+            {[
+              { icon: Stethoscope, label: 'Medical', title: 'Veterinary Diagnostics', img: 'https://images.unsplash.com/photo-1629909613654-28e377c37b09' },
+              { icon: Scissors, label: 'Style', title: 'Elite Grooming Studio', img: 'https://images.unsplash.com/photo-1516733725897-1aa73b87c8e8' },
+              { icon: Dumbbell, label: 'Mind', title: 'Behavioral Training', img: 'https://images.unsplash.com/photo-1587300003388-59208cc962cb' }
+            ].map((service, i) => (
+              <div key={i} className="group relative h-[500px] rounded-[4rem] overflow-hidden shadow-strong hover:shadow-premium transition-all duration-700">
+                 <img src={service.img} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-[2s]" />
+                 <div className="absolute inset-0 bg-neutral-950/60 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                 <div className="absolute inset-0 bg-gradient-to-t from-neutral-950 via-neutral-950/20 to-transparent" />
+                 <div className="absolute bottom-10 left-10 right-10 space-y-4">
+                    <div className="flex items-center gap-3">
+                       <service.icon size={20} className="text-primary" />
+                       <span className="text-[10px] font-black text-white/40 uppercase tracking-[0.3em]">{service.label} Protocol</span>
+                    </div>
+                    <h4 className="text-3xl font-black text-white uppercase tracking-tighter leading-tight">{service.title}</h4>
+                    <Link to="/services" className="h-12 w-12 bg-white text-neutral-900 rounded-xl flex items-center justify-center opacity-0 group-hover:opacity-100 translate-y-4 group-hover:translate-y-0 transition-all duration-500 hover:bg-primary hover:text-white">
+                       <ChevronRight size={24} />
+                    </Link>
+                 </div>
+              </div>
+            ))}
+         </div>
       </section>
+
+      {/* ── 9. LUXE CTA TERMINAL ── */}
+      <section className="max-w-[1500px] mx-auto px-4">
+         <div className="bg-neutral-900 rounded-[5rem] p-16 sm:p-32 relative overflow-hidden text-center group border border-white/5 shadow-2xl">
+            <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-primary/10 rounded-full blur-[120px] -translate-y-1/2 translate-x-1/2" />
+            <div className="relative z-10 space-y-12">
+               <div className="inline-flex items-center gap-4 px-8 py-3 bg-white/5 border border-white/10 rounded-full text-primary">
+                  <Zap size={20} className="animate-pulse" />
+                  <span className="text-[11px] font-black uppercase tracking-[0.6em]">Initialize Connection</span>
+               </div>
+               <h2 className="text-5xl sm:text-9xl font-black text-white uppercase tracking-tighter leading-[0.85]">
+                 Your Global <br />
+                 <span className="italic text-primary">Pet Protocol .</span>
+               </h2>
+               <p className="text-white/40 text-sm sm:text-xl font-medium uppercase tracking-[0.3em] max-w-2xl mx-auto leading-relaxed">
+                 Secure your place in the most advanced pet ecosystem today.
+               </p>
+               <div className="pt-8 flex flex-col sm:flex-row gap-8 justify-center">
+                  {!isAuthenticated ? (
+                    <>
+                      <Link to="/register" className="h-20 px-16 bg-white text-neutral-900 rounded-3xl flex items-center justify-center gap-4 text-xs font-black uppercase tracking-widest hover:bg-primary hover:text-white transition-all shadow-2xl shadow-white/5 active:scale-95">
+                         Sign Up <ArrowRight size={20} />
+                      </Link>
+                      <Link to="/login" className="h-20 px-16 bg-white/5 border border-white/10 text-white rounded-3xl flex items-center justify-center text-xs font-black uppercase tracking-widest hover:bg-white/10 transition-all active:scale-95">
+                         Login Access
+                      </Link>
+                    </>
+                  ) : (
+                    <Link to="/pets" className="h-20 px-20 bg-primary text-white rounded-3xl flex items-center justify-center gap-4 text-xs font-black uppercase tracking-widest hover:brightness-110 transition-all shadow-2xl shadow-primary/30 active:scale-95">
+                       Browse Catalog <ArrowRight size={20} />
+                    </Link>
+                  )}
+               </div>
+            </div>
+         </div>
+      </section>
+
     </div>
   );
 };
