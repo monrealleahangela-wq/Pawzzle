@@ -122,15 +122,6 @@ h1, h2, h3, h4, h5, h6 {
   animation: scale-in 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
-/* ── Shadow System ── */
-.shadow-strong {
-  box-shadow: 0 10px 30px -10px rgba(0,0,0,0.05), 0 20px 50px -20px rgba(0,0,0,0.1);
-}
-
-.shadow-hover {
-  box-shadow: 0 30px 70px -10px rgba(139, 69, 19, 0.15), 0 20px 40px -20px rgba(0,0,0,0.1);
-}
-
 /* ── Utilities ── */
 .text-gradient {
   @apply bg-gradient-to-r from-primary-600 to-primary-900 bg-clip-text text-transparent;

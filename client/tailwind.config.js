@@ -102,6 +102,8 @@ module.exports = {
         'soft': '0 2px 15px -3px rgba(139, 69, 19, 0.07), 0 10px 20px -2px rgba(139, 69, 19, 0.04)',
         'medium': '0 4px 25px -5px rgba(139, 69, 19, 0.1), 0 10px 10px -5px rgba(139, 69, 19, 0.04)',
         'strong': '0 10px 40px -10px rgba(139, 69, 19, 0.15), 0 2px 10px -2px rgba(139, 69, 19, 0.04)',
+        'premium': '0 25px 80px -15px rgba(139, 69, 19, 0.2), 0 10px 30px -10px rgba(0,0,0,0.05)',
+        'hover': '0 30px 70px -10px rgba(139, 69, 19, 0.15), 0 20px 40px -20px rgba(0,0,0,0.1)',
         'glow': '0 0 20px rgba(191, 166, 160, 0.2)',
         'glow-brown': '0 0 20px rgba(139, 69, 19, 0.2)',
         'glow-mocha': '0 0 20px rgba(191, 166, 160, 0.2)',
