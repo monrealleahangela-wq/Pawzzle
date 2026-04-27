@@ -25,6 +25,7 @@ const customerMenu = [
   { path: '/home', label: 'Home', icon: House },
   {
     label: 'Marketplace', icon: ShoppingBag, children: [
+      { path: '/pets', label: 'Pets', icon: Heart },
       { path: '/products', label: 'Products', icon: Package },
       { path: '/find-shops', label: 'Find Shops', icon: MapPin },
       { path: '/orders', label: 'My Orders', icon: ShoppingCart },
@@ -34,7 +35,6 @@ const customerMenu = [
   {
     label: 'Services', icon: Calendar, children: [
       { path: '/services', label: 'Browse Services', icon: Calendar },
-      { path: '/pets', label: 'My Pets', icon: Heart },
     ]
   },
   { path: '/insights', label: 'AI Advisor', icon: Brain },

@@ -1678,7 +1678,8 @@ const Bookings = ({ isSubcomponent = false }) => {
                   </button>
                 </div>
               </div>
-            )}
+              );
+            })()}
           </form>
         </div>
       )}
