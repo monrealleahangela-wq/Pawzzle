@@ -46,44 +46,57 @@ const customerMenu = [
   },
 ];
 
-const adminMenu = [
-  { path: '/admin/dashboard', label: 'Dashboard', icon: Activity },
-  { path: '/admin/insights', label: 'Intelligence', icon: Brain },
-  {
-    label: 'Catalog', icon: Package, children: [
-      { path: '/admin/pets', label: 'Pets', icon: Heart },
-      { path: '/admin/products', label: 'Products', icon: Package },
-      { path: '/admin/services', label: 'Services', icon: Calendar },
-    ]
-  },
-  {
-    label: 'Operations', icon: ShoppingBag, children: [
-      { path: '/admin/orders', label: 'Orders', icon: ShoppingCart },
-      { path: '/admin/bookings', label: 'Bookings', icon: Calendar },
-      { path: '/admin/customers', label: 'Customers', icon: Users },
-      { path: '/admin/chat', label: 'Chat', icon: MessageSquare },
-      { path: '/admin/reviews', label: 'Reviews', icon: Star },
-    ]
-  },
-  {
-    label: 'Supply Chain', icon: Truck, children: [
-      { path: '/admin/purchase-orders', label: 'Purchase Orders', icon: Truck },
-      { path: '/admin/supplies', label: 'Supplies', icon: Layers },
-    ]
-  },
-  {
+const getAdminMenu = (user) => {
+  // Always fallback to full features if not specified yet (for existing mock data)
+  const mods = user?.store?.operationalModules || ['pets', 'products', 'services'];
+  const hasPets = mods.includes('pets');
+  const hasProducts = mods.includes('products');
+  const hasServices = mods.includes('services');
+
+  const menu = [
+    { path: '/admin/dashboard', label: 'Dashboard', icon: Activity },
+    { path: '/admin/insights', label: 'Intelligence', icon: Brain },
+  ];
+
+  const catalogChildren = [];
+  if (hasPets) catalogChildren.push({ path: '/admin/pets', label: 'Pets', icon: Heart });
+  if (hasProducts) catalogChildren.push({ path: '/admin/products', label: 'Products', icon: Package });
+  if (hasServices) catalogChildren.push({ path: '/admin/services', label: 'Services', icon: Calendar });
+  if (catalogChildren.length > 0) menu.push({ label: 'Catalog', icon: Package, children: catalogChildren });
+
+  const opsChildren = [];
+  if (hasProducts || hasPets) opsChildren.push({ path: '/admin/orders', label: 'Orders', icon: ShoppingCart });
+  if (hasServices) opsChildren.push({ path: '/admin/bookings', label: 'Bookings', icon: Calendar });
+  opsChildren.push(
+    { path: '/admin/customers', label: 'Customers', icon: Users },
+    { path: '/admin/chat', label: 'Chat', icon: MessageSquare },
+    { path: '/admin/reviews', label: 'Reviews', icon: Star }
+  );
+  menu.push({ label: 'Operations', icon: ShoppingBag, children: opsChildren });
+
+  if (hasProducts) {
+    menu.push({
+      label: 'Supply Chain', icon: Truck, children: [
+        { path: '/admin/purchase-orders', label: 'Purchase Orders', icon: Truck },
+        { path: '/admin/supplies', label: 'Supplies', icon: Layers },
+      ]
+    });
+  }
+
+  menu.push({
     label: 'Finance', icon: Wallet, children: [
       { path: '/admin/vouchers', label: 'Vouchers', icon: Ticket },
       { path: '/admin/payouts', label: 'Payouts', icon: Wallet },
     ]
-  },
-  {
-    label: 'Settings', icon: Settings, children: [
-      { path: '/admin/store', label: 'Store', icon: Building },
-      { path: '/admin/staff', label: 'Staff', icon: Users },
-    ]
-  },
-];
+  });
+
+  const settingsChildren = [{ path: '/admin/store', label: 'Store', icon: Building }];
+  if (hasServices) settingsChildren.push({ path: '/admin/staff', label: 'Staff', icon: Users });
+  menu.push({ label: 'Settings', icon: Settings, children: settingsChildren });
+
+  return menu;
+};
+
 
 const superAdminMenu = [
   { path: '/superadmin/dashboard', label: 'Dashboard', icon: Activity },
@@ -334,7 +347,7 @@ const Layout = () => {
     if (!user) return publicMenu;
     switch (user.role) {
       case 'customer': return customerMenu;
-      case 'admin': return adminMenu;
+      case 'admin': return getAdminMenu(user);
       case 'super_admin': return superAdminMenu;
       case 'staff': return getStaffMenu(user);
       case 'supplier': return supplierMenu;

@@ -77,6 +77,7 @@ const submitApplication = async (req, res) => {
       certifications: safeParse(req.body.certifications),
       insurance: safeParse(req.body.insurance),
       emergencyContact: safeParse(req.body.emergencyContact),
+      operationalModules: safeParse(req.body.operationalModules) || ['pets', 'products', 'services'],
       yearsInBusiness: parseInt(req.body.yearsInBusiness) || 0,
       numberOfEmployees: parseInt(req.body.numberOfEmployees) || 1,
       hasPhysicalStore: req.body.hasPhysicalStore === 'true' || req.body.hasPhysicalStore === true
@@ -263,6 +264,7 @@ const reviewApplication = async (req, res) => {
         description: application.businessDescription || 'A new store on Pawzzle.',
         logo: application.storeLogoUrl,
         businessType: application.businessType,
+        operationalModules: application.operationalModules || ['pets', 'products', 'services'],
         legalStructure: application.legalStructure,
         yearsInBusiness: application.yearsInBusiness,
         numberOfEmployees: application.numberOfEmployees,

@@ -32,6 +32,11 @@ const storeSchema = new mongoose.Schema({
     enum: ['pet_store', 'breeder', 'shelter', 'veterinary', 'grooming', 'training', 'other'],
     required: true
   },
+  operationalModules: [{
+    type: String,
+    enum: ['pets', 'products', 'services'],
+    required: true
+  }],
   legalStructure: {
     type: String,
     enum: ['single_proprietorship', 'partnership', 'corporation', 'cooperative', 'other'],

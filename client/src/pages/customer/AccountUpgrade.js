@@ -12,6 +12,7 @@ const AccountUpgrade = () => {
   const [formData, setFormData] = useState({
     businessName: '',
     businessType: '',
+    operationalModules: [],
     businessLicense: {
       licenseNumber: '',
       issuedDate: '',
@@ -182,7 +183,7 @@ const AccountUpgrade = () => {
       
       // Add form data
       Object.keys(formData).forEach(key => {
-        if (key === 'references' || key === 'certifications') {
+        if (key === 'operationalModules' || key === 'references' || key === 'certifications') {
           formDataToSend.append(key, JSON.stringify(formData[key]));
         } else if (typeof formData[key] === 'object') {
           formDataToSend.append(key, JSON.stringify(formData[key]));
@@ -375,6 +376,40 @@ const AccountUpgrade = () => {
                   <option value="other">Other</option>
                 </select>
               </div>
+            </div>
+
+            <div className="mt-6">
+              <label className="block text-sm font-medium text-gray-700 mb-2">Operational Modules * (Select at least one)</label>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                {[
+                  { id: 'pets', label: 'Pets', desc: 'Sell live pets and manage listings' },
+                  { id: 'products', label: 'Products', desc: 'Sell pet supplies and items' },
+                  { id: 'services', label: 'Services', desc: 'Offer grooming, vet, or training' }
+                ].map(mod => (
+                  <label key={mod.id} className={`p-4 border rounded-xl cursor-pointer transition-all ${formData.operationalModules.includes(mod.id) ? 'border-primary-500 bg-primary-50 ring-1 ring-primary-500' : 'border-gray-200 hover:border-gray-300'}`}>
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="checkbox"
+                        checked={formData.operationalModules.includes(mod.id)}
+                        onChange={(e) => {
+                          const modules = e.target.checked 
+                            ? [...formData.operationalModules, mod.id]
+                            : formData.operationalModules.filter(m => m !== mod.id);
+                          handleChange('operationalModules', modules);
+                        }}
+                        className="w-4 h-4 text-primary-600 rounded border-gray-300 focus:ring-primary-500"
+                      />
+                      <div>
+                        <span className="block text-sm font-bold text-gray-900">{mod.label}</span>
+                        <span className="block text-xs text-gray-500 leading-tight mt-0.5">{mod.desc}</span>
+                      </div>
+                    </div>
+                  </label>
+                ))}
+              </div>
+              {formData.operationalModules.length === 0 && (
+                 <p className="text-xs text-rose-500 mt-2 font-bold">Please select at least one module to operate your business.</p>
+              )}
             </div>
           </div>
 

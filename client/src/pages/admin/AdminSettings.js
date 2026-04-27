@@ -20,14 +20,17 @@ import {
   Timer,
   Users,
   XCircle,
-  Info
+  Info,
+  Package,
+  Layers,
+  Heart
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { formatTime12h } from '../../utils/timeFormatters';
 import { useRealTimeUpdates } from '../../hooks/useRealTimeUpdates';
 
 const AdminSettings = () => {
-  const { user } = useAuth();
+  const { user, updateUser } = useAuth();
 
   // Real-time Updates
   useRealTimeUpdates({
@@ -46,6 +49,7 @@ const AdminSettings = () => {
   });
   
   const [storeSettings, setStoreSettings] = useState({
+    operationalModules: ['pets', 'products', 'services'],
     businessHours: {
       monday: { open: '09:00', close: '17:00', closed: false },
       tuesday: { open: '09:00', close: '17:00', closed: false },
@@ -100,8 +104,19 @@ const AdminSettings = () => {
   const handleSaveStore = async () => {
     setLoading(true);
     try {
-      await storeService.updateSettings(storeSettings);
+      const response = await storeService.updateSettings(storeSettings);
       toast.success('Store & booking settings updated');
+      
+      if (user && user.store && response.data?.store) {
+        updateUser({
+          ...user,
+          store: {
+            ...user.store,
+            ...response.data.store,
+            operationalModules: response.data.store.operationalModules || storeSettings.operationalModules
+          }
+        });
+      }
     } catch (error) {
       toast.error('Failed to save store settings');
     } finally {
@@ -150,7 +165,8 @@ const AdminSettings = () => {
         </div>
         <div className="flex gap-2 p-1 bg-slate-100 rounded-2xl w-full sm:w-auto">
           <button onClick={() => setActiveTab('global')} className={`flex-1 sm:flex-none px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'global' ? 'bg-white text-primary-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}>General</button>
-          <button onClick={() => setActiveTab('booking')} className={`flex-1 sm:flex-none px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'booking' ? 'bg-white text-primary-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}>Booking Schedule</button>
+          <button onClick={() => setActiveTab('booking')} className={`flex-1 sm:flex-none px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'booking' ? 'bg-white text-primary-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}>Availability</button>
+          <button onClick={() => setActiveTab('modules')} className={`flex-1 sm:flex-none px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'modules' ? 'bg-white text-primary-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}>Modules</button>
         </div>
       </div>
 
@@ -204,7 +220,7 @@ const AdminSettings = () => {
                 </button>
               </div>
             </div>
-          ) : (
+          ) : activeTab === 'booking' ? (
             <div className="bg-white border border-slate-100 rounded-[2.5rem] p-8 shadow-sm space-y-10 animate-in slide-in-from-right-4">
               <div className="flex items-center gap-4">
                 <div className="w-12 h-12 bg-primary-50 text-primary-600 rounded-2xl flex items-center justify-center"><Calendar className="h-6 w-6" /></div>
@@ -308,6 +324,69 @@ const AdminSettings = () => {
 
                 <button onClick={handleSaveStore} disabled={loading} className="w-full py-4 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.3em] hover:bg-primary-600 transition-all flex items-center justify-center gap-3 shadow-xl">
                    {loading ? <Zap className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Commit Availability
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="bg-white border border-slate-100 rounded-[2.5rem] p-8 shadow-sm space-y-10 animate-in slide-in-from-right-4">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-primary-50 text-primary-600 rounded-2xl flex items-center justify-center"><Zap className="h-6 w-6" /></div>
+                <div>
+                  <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest leading-none mb-1">Business Expansion</h3>
+                  <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Enable or disable operational modules dynamically</p>
+                </div>
+              </div>
+
+              <div className="space-y-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                   {[
+                     { id: 'pets', label: 'Pet Operations', icon: Heart, desc: 'Manage pet listings, adoptions, and inventory.' },
+                     { id: 'products', label: 'Retail & Commerce', icon: Package, desc: 'Manage stock, products, and fulfillment.' },
+                     { id: 'services', label: 'Service & Booking', icon: Calendar, desc: 'Accept bookings, manage staff and calendars.' }
+                   ].map(mod => {
+                      const isActive = storeSettings.operationalModules?.includes(mod.id);
+                      return (
+                         <div 
+                           key={mod.id} 
+                           onClick={() => {
+                              const currentMods = storeSettings.operationalModules || [];
+                              let nextMods = [];
+                              if (isActive) {
+                                  if (currentMods.length <= 1) return toast.error('You must have at least one operational module active.');
+                                  nextMods = currentMods.filter(m => m !== mod.id);
+                              } else {
+                                  nextMods = [...currentMods, mod.id];
+                              }
+                              setStoreSettings(prev => ({ ...prev, operationalModules: nextMods }));
+                           }}
+                           className={`p-6 border rounded-[2rem] cursor-pointer transition-all ${isActive ? 'bg-primary-50 border-primary-300 ring-1 ring-primary-200' : 'bg-white hover:bg-slate-50 border-slate-100'}`}
+                         >
+                            <div className="flex items-start justify-between">
+                               <div className="flex gap-4">
+                                  <div className={`p-3 rounded-2xl ${isActive ? 'bg-primary-600 text-white shadow-lg shadow-primary-200' : 'bg-slate-100 text-slate-400'}`}>
+                                     <Layers className="h-5 w-5" />
+                                  </div>
+                                  <div>
+                                     <h4 className={`text-sm font-black uppercase tracking-widest ${isActive ? 'text-primary-900' : 'text-slate-600'}`}>{mod.label}</h4>
+                                     <p className="text-[10px] font-bold text-slate-400 mt-1">{mod.desc}</p>
+                                  </div>
+                               </div>
+                               <button className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${isActive ? 'border-primary-600 bg-primary-600 text-white' : 'border-slate-200 text-transparent'}`}>
+                                  <CheckCircle className="w-3 h-3" />
+                               </button>
+                            </div>
+                         </div>
+                      );
+                   })}
+                </div>
+
+                <div className="p-5 bg-amber-50 rounded-2xl border border-amber-100 flex items-start gap-3">
+                   <AlertCircle className="h-5 w-5 text-amber-600 shrink-0" />
+                   <p className="text-[10px] font-bold text-amber-800 uppercase tracking-widest leading-relaxed">Changes to operational modules instantly update your sidebar navigation and unlock relevant tools. Ensure you meet any necessary compliance rules.</p>
+                </div>
+
+                <button onClick={handleSaveStore} disabled={loading} className="w-full py-4 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.3em] hover:bg-primary-600 transition-all flex items-center justify-center gap-3 shadow-xl">
+                   {loading ? <Zap className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Apply Business Types
                 </button>
               </div>
             </div>

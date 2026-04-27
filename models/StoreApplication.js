@@ -16,6 +16,11 @@ const storeApplicationSchema = new mongoose.Schema({
     enum: ['pet_store', 'breeder', 'shelter', 'veterinary', 'grooming', 'training', 'other'],
     required: true
   },
+  operationalModules: [{
+    type: String,
+    enum: ['pets', 'products', 'services'],
+    required: true
+  }],
   businessLicense: {
     number: {
       type: String,
