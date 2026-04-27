@@ -37,6 +37,19 @@ const storeSchema = new mongoose.Schema({
     enum: ['pets', 'products', 'services'],
     required: true
   }],
+  hiringStaff: {
+    type: Boolean,
+    default: false
+  },
+  staffTypes: [{
+    type: String,
+    enum: ['vets', 'groomers', 'trainers', 'boarding_specialists']
+  }],
+  expansionStatus: {
+    type: String,
+    enum: ['none', 'pending', 'under_review'],
+    default: 'none'
+  },
   legalStructure: {
     type: String,
     enum: ['single_proprietorship', 'partnership', 'corporation', 'cooperative', 'other'],

@@ -18,6 +18,7 @@ const {
   approveVerification,
   rejectVerification
 } = require('../controllers/storeController');
+const { submitExpansionRequest, upload } = require('../controllers/storeApplicationController');
 const { authenticate, superAdminOnly, authorize, adminOnly, adminOrStaff } = require('../middleware/auth');
 
 // Validation rules
@@ -64,8 +65,13 @@ router.get('/owner/:ownerId', getStoreByOwner);
 router.get('/:id', getStoreById);
 router.get('/:id/details', getStoreDetails);
 
-// Seller Verification & Payout Management
+// Seller Verification & Expansion Management
 router.post('/my-store/verify', authenticate, adminOnly, submitVerification);
+router.post('/expansion-request', authenticate, adminOnly, upload.fields([
+  { name: 'licenseDocument', maxCount: 1 },
+  { name: 'mayorsPermit', maxCount: 1 },
+  { name: 'businessRegistration', maxCount: 1 }
+]), submitExpansionRequest);
 router.post('/:id/approve-verification', authenticate, superAdminOnly, approveVerification);
 router.post('/:id/reject-verification', authenticate, superAdminOnly, rejectVerification);
 

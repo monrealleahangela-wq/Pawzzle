@@ -77,7 +77,12 @@ const submitApplication = async (req, res) => {
       certifications: safeParse(req.body.certifications),
       insurance: safeParse(req.body.insurance),
       emergencyContact: safeParse(req.body.emergencyContact),
-      operationalModules: safeParse(req.body.operationalModules) || ['pets', 'products', 'services'],
+      operationalModules: safeParse(req.body.operationalModules) || [],
+      hiringStaff: req.body.hiringStaff === 'true' || req.body.hiringStaff === true,
+      staffTypes: safeParse(req.body.staffTypes) || [],
+      supplierNeeds: req.body.supplierNeeds === 'true' || req.body.supplierNeeds === true,
+      inventoryPlans: req.body.inventoryPlans || '',
+      productCategories: safeParse(req.body.productCategories) || [],
       yearsInBusiness: parseInt(req.body.yearsInBusiness) || 0,
       numberOfEmployees: parseInt(req.body.numberOfEmployees) || 1,
       hasPhysicalStore: req.body.hasPhysicalStore === 'true' || req.body.hasPhysicalStore === true
@@ -161,6 +166,76 @@ const submitApplication = async (req, res) => {
     });
   } catch (error) {
     console.error('Submit application error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+// Request business expansion
+const submitExpansionRequest = async (req, res) => {
+  try {
+    const { operationalModules, hiringStaff, staffTypes, supplierNeeds, inventoryPlans, productCategories, businessDescription } = req.body;
+    
+    // Validate if store exists
+    const store = await Store.findOne({ owner: req.user.id });
+    if (!store) {
+      return res.status(404).json({ message: 'Store not found' });
+    }
+
+    // Check for existing pending expansion
+    const existing = await StoreApplication.findOne({
+      applicant: req.user.id,
+      applicationType: 'expansion',
+      status: { $in: ['pending_review', 'under_review', 'requires_more_info'] }
+    });
+
+    if (existing) {
+      return res.status(400).json({ message: 'A business expansion request is already in progress' });
+    }
+
+    const applicationData = {
+      applicant: req.user.id,
+      businessName: store.name,
+      businessType: store.businessType,
+      applicationType: 'expansion',
+      status: 'pending_review',
+      operationalModules: safeParse(operationalModules),
+      hiringStaff: hiringStaff === 'true' || hiringStaff === true,
+      staffTypes: safeParse(staffTypes),
+      supplierNeeds: supplierNeeds === 'true' || supplierNeeds === true,
+      inventoryPlans: inventoryPlans,
+      productCategories: safeParse(productCategories),
+      businessDescription: businessDescription || `Expansion request for ${store.name}`,
+      contactInfo: store.contactInfo,
+    };
+
+    // Handle uploaded permits/docs for expansion
+    if (req.files) {
+      if (req.files.licenseDocument) {
+        applicationData.businessLicense = { documentUrl: req.files.licenseDocument[0].path || req.files.licenseDocument[0].secure_url };
+      }
+      if (req.files.mayorsPermit) {
+        applicationData.mayorsPermitUrl = req.files.mayorsPermit[0].path || req.files.mayorsPermit[0].secure_url;
+      }
+      if (req.files.businessRegistration) {
+        applicationData.businessRegistrationUrl = req.files.businessRegistration[0].path || req.files.businessRegistration[0].secure_url;
+      }
+    }
+
+    const application = new StoreApplication(applicationData);
+    await application.save();
+
+    // Mark store as expansion pending
+    store.expansionStatus = 'pending';
+    await store.save();
+
+    res.status(201).json({
+      message: 'Expansion request submitted successfully',
+      application
+    });
+
+    // Notify Super Admin (optional, but good for UX)
+  } catch (error) {
+    console.error('Expansion request error:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
@@ -264,7 +339,9 @@ const reviewApplication = async (req, res) => {
         description: application.businessDescription || 'A new store on Pawzzle.',
         logo: application.storeLogoUrl,
         businessType: application.businessType,
-        operationalModules: application.operationalModules || ['pets', 'products', 'services'],
+        operationalModules: application.operationalModules || [],
+        hiringStaff: application.hiringStaff || false,
+        staffTypes: application.staffTypes || [],
         legalStructure: application.legalStructure,
         yearsInBusiness: application.yearsInBusiness,
         numberOfEmployees: application.numberOfEmployees,
@@ -307,6 +384,16 @@ const reviewApplication = async (req, res) => {
         role: 'admin',
         store: savedStore._id
       });
+    } else if (status === 'approved' && application.applicationType === 'expansion') {
+      // Handle Expansion Approval
+      const store = await Store.findOne({ owner: application.applicant });
+      if (store) {
+        store.operationalModules = application.operationalModules;
+        store.hiringStaff = application.hiringStaff;
+        store.staffTypes = application.staffTypes;
+        store.expansionStatus = 'none';
+        await store.save();
+      }
     }
 
     await application.save();
@@ -466,5 +553,6 @@ module.exports = {
   archiveApplication,
   restoreApplication,
   getAuditCount,
+  submitExpansionRequest,
   upload
 };

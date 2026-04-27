@@ -21,6 +21,25 @@ const storeApplicationSchema = new mongoose.Schema({
     enum: ['pets', 'products', 'services'],
     required: true
   }],
+  hiringStaff: {
+    type: Boolean,
+    default: false
+  },
+  staffTypes: [{
+    type: String,
+    enum: ['vets', 'groomers', 'trainers', 'boarding_specialists']
+  }],
+  supplierNeeds: {
+    type: Boolean,
+    default: false
+  },
+  inventoryPlans: {
+    type: String,
+    trim: true
+  },
+  productCategories: [{
+    type: String
+  }],
   businessLicense: {
     number: {
       type: String,
@@ -160,8 +179,8 @@ const storeApplicationSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['pending', 'under_review', 'approved', 'rejected', 'requires_more_info'],
-    default: 'under_review'
+    enum: ['draft', 'submitted', 'pending_review', 'approved', 'rejected', 'requires_more_info', 'expansion_pending'],
+    default: 'draft'
   },
   requiredCorrections: [{
     type: String,
@@ -214,6 +233,11 @@ const storeApplicationSchema = new mongoose.Schema({
   deletedAt: {
     type: Date,
     default: null
+  },
+  applicationType: {
+    type: String,
+    enum: ['new_store', 'expansion'],
+    default: 'new_store'
   }
 }, {
   toJSON: { virtuals: true },

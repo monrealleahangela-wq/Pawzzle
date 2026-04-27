@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
 import { useAuth } from '../../contexts/AuthContext';
 import storeApplicationService from '../../services/storeApplicationService';
-import { Upload, FileText, AlertCircle, Building, Phone, Mail, MapPin, Check, X, Shield, Users, ArrowRight, ChevronRight, Briefcase, Globe, Info, Wallet, Camera } from 'lucide-react';
+import { Upload, FileText, AlertCircle, Building, Phone, Mail, MapPin, Check, X, Shield, Users, ArrowRight, ChevronRight, Briefcase, Globe, Info, Wallet, Camera, Truck, Zap } from 'lucide-react';
 import { getCitiesByProvince, getBarangaysByCity } from '../../constants/locationConstants';
 import MapPicker from '../../components/MapPicker';
 
@@ -14,6 +14,12 @@ const StoreApplication = () => {
   const [cities, setCities] = useState([]);
   const [barangays, setBarangays] = useState([]);
   const [formData, setFormData] = useState({
+    operationalModules: [], // ['pets', 'products', 'services']
+    hiringStaff: false,
+    staffTypes: [], // ['vets', 'groomers', 'trainers', 'boarding_specialists']
+    supplierNeeds: false,
+    inventoryPlans: '',
+    productCategories: [],
     businessName: '',
     businessType: '',
     legalStructure: 'single_proprietorship',
@@ -238,6 +244,12 @@ const StoreApplication = () => {
 
     // Pre-fill form from existing application
     setFormData({
+      operationalModules: application.operationalModules || [],
+      hiringStaff: application.hiringStaff || false,
+      staffTypes: application.staffTypes || [],
+      supplierNeeds: application.supplierNeeds || false,
+      inventoryPlans: application.inventoryPlans || '',
+      productCategories: application.productCategories || [],
       businessName: application.businessName || '',
       businessType: application.businessType || '',
       legalStructure: application.legalStructure || 'single_proprietorship',
@@ -560,6 +572,141 @@ const StoreApplication = () => {
               </div>
             </div>
 
+            <div className="space-y-4">
+              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 flex items-center gap-2">
+                Business Model Selection (Mandatory) *
+              </label>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {[
+                  { id: 'pets', label: 'Pets', icon: Heart, description: 'Sell live pets and animals' },
+                  { id: 'products', label: 'Products', icon: Truck, description: 'Sell pet food and supplies' },
+                  { id: 'services', label: 'Services', icon: Calendar, description: 'Grooming, Vet, Boarding, etc.' }
+                ].map((mod) => (
+                  <button
+                    key={mod.id}
+                    type="button"
+                    onClick={() => {
+                      const current = formData.operationalModules || [];
+                      const next = current.includes(mod.id) 
+                        ? current.filter(id => id !== mod.id)
+                        : [...current, mod.id];
+                      handleChange('operationalModules', next);
+                    }}
+                    className={`p-4 rounded-2xl border-2 text-left transition-all relative overflow-hidden group ${
+                      formData.operationalModules.includes(mod.id)
+                        ? 'border-primary-600 bg-primary-50 ring-4 ring-primary-50'
+                        : 'border-slate-100 bg-white hover:border-primary-200'
+                    }`}
+                  >
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-3 transition-colors ${
+                      formData.operationalModules.includes(mod.id) ? 'bg-primary-600 text-white' : 'bg-slate-50 text-slate-400 group-hover:text-primary-500'
+                    }`}>
+                      <mod.icon className="h-5 w-5" />
+                    </div>
+                    <p className={`text-xs font-black uppercase tracking-tight mb-1 ${formData.operationalModules.includes(mod.id) ? 'text-primary-900' : 'text-slate-900'}`}>
+                      {mod.label}
+                    </p>
+                    <p className="text-[9px] font-bold text-slate-400 uppercase leading-none opacity-80">{mod.description}</p>
+                    {formData.operationalModules.includes(mod.id) && (
+                      <div className="absolute top-2 right-2">
+                        <div className="w-5 h-5 bg-primary-600 rounded-full flex items-center justify-center shadow-lg">
+                          <Check className="h-3 w-3 text-white" />
+                        </div>
+                      </div>
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {formData.operationalModules.includes('services') && (
+              <div className="p-6 bg-secondary-50 border border-secondary-100 rounded-[2rem] space-y-6 animate-fade-in">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-sm font-black text-secondary-900 uppercase tracking-tighter">Service Staff Management</h3>
+                    <p className="text-[9px] font-bold text-secondary-600 uppercase tracking-widest">Will you manage service-trained employees?</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleChange('hiringStaff', !formData.hiringStaff)}
+                    className={`w-12 h-6 rounded-full transition-all relative ${formData.hiringStaff ? 'bg-primary-600' : 'bg-slate-200'}`}
+                  >
+                    <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${formData.hiringStaff ? 'left-7' : 'left-1'}`} />
+                  </button>
+                </div>
+
+                {formData.hiringStaff && (
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
+                    {[
+                      { id: 'vets', label: 'Vets' },
+                      { id: 'groomers', label: 'Groomers' },
+                      { id: 'trainers', label: 'Trainers' },
+                      { id: 'boarding_specialists', label: 'Boarding' }
+                    ].map((st) => (
+                      <button
+                        key={st.id}
+                        type="button"
+                        onClick={() => {
+                          const current = formData.staffTypes || [];
+                          const next = current.includes(st.id) 
+                            ? current.filter(id => id !== st.id)
+                            : [...current, st.id];
+                          handleChange('staffTypes', next);
+                        }}
+                        className={`py-3 px-4 rounded-xl text-[9px] font-black uppercase tracking-widest border transition-all ${
+                          formData.staffTypes.includes(st.id)
+                            ? 'bg-primary-600 text-white border-primary-600 shadow-lg'
+                            : 'bg-white text-slate-500 border-slate-200 hover:border-primary-300'
+                        }`}
+                      >
+                        {st.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {formData.operationalModules.includes('products') && (
+              <div className="p-6 bg-primary-50 border border-primary-100 rounded-[2rem] space-y-6 animate-fade-in">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-sm font-black text-primary-900 uppercase tracking-tighter">Supplier Requirements</h3>
+                    <p className="text-[9px] font-bold text-primary-600 uppercase tracking-widest">Do you require platform-vetted suppliers?</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleChange('supplierNeeds', !formData.supplierNeeds)}
+                    className={`w-12 h-6 rounded-full transition-all relative ${formData.supplierNeeds ? 'bg-primary-600' : 'bg-slate-200'}`}
+                  >
+                    <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${formData.supplierNeeds ? 'left-7' : 'left-1'}`} />
+                  </button>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="space-y-1.5">
+                    <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest ml-1">Inventory Plans</label>
+                    <textarea 
+                      className="input-premium bg-white min-h-[80px]" 
+                      placeholder="Outline how you plan to manage stock..." 
+                      value={formData.inventoryPlans}
+                      onChange={(e) => handleChange('inventoryPlans', e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest ml-1">Product Categories</label>
+                    <input 
+                      type="text" 
+                      className="input-premium bg-white" 
+                      placeholder="e.g. Dog Food, Toys, Accessories (comma separated)" 
+                      value={formData.productCategories.join(', ')}
+                      onChange={(e) => handleChange('productCategories', e.target.value.split(',').map(s => s.trim()))}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
             <div className="space-y-1.5">
               <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 flex items-center gap-2">
                 Business Description * {isFieldBroken('businessDescription') && <span className="px-2 py-0.5 bg-rose-100 text-rose-600 rounded-md text-[7px] animate-pulse">NEEDS CLARIFICATION</span>}
@@ -569,20 +716,26 @@ const StoreApplication = () => {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-1.5">
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Primary Services/Products *</label>
-                <input type="text" className="input-premium" placeholder="e.g. Pet Care, Premium Feeds, Breeding" value={formData.productsOffered.join(', ')} onChange={(e) => handleChange('productsOffered', e.target.value.split(',').map(s => s.trim()))} required />
-              </div>
-              <div className="space-y-1.5">
                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 flex items-center gap-2">
-                  Business Type * {isFieldBroken('businessType') && <span className="px-2 py-0.5 bg-rose-100 text-rose-600 rounded-md text-[7px] animate-pulse">INVALID SELECTION</span>}
+                  Business Classification * {isFieldBroken('businessType') && <span className="px-2 py-0.5 bg-rose-100 text-rose-600 rounded-md text-[7px] animate-pulse">INVALID SELECTION</span>}
                 </label>
                 <select className={`input-premium ${isFieldBroken('businessType') ? 'border-rose-500 ring-2 ring-rose-100' : ''}`} value={formData.businessType} onChange={(e) => handleChange('businessType', e.target.value)} required>
-                  <option value="">Select type</option>
+                  <option value="">Select Primary Classification</option>
                   <option value="pet_store">Pet Store</option>
-                  <option value="breeder">Breeder</option>
+                  <option value="breeder">Independent Breeder</option>
                   <option value="veterinary">Veterinary Clinic</option>
-                  <option value="grooming">Pet Grooming</option>
-                  <option value="training">Pet Training</option>
+                  <option value="grooming">Grooming Salon</option>
+                  <option value="training">Training Academy</option>
+                  <option value="shelter">Animal Shelter / NGO</option>
+                  <option value="other">Other specialized</option>
+                </select>
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Planned Operational Scope *</label>
+                <select className="input-premium" value={formData.legalStructure} onChange={(e) => handleChange('legalStructure', e.target.value)} required>
+                  <option value="single_proprietorship">Local / Neighborhood</option>
+                  <option value="partnership">City-wide / Regional</option>
+                  <option value="corporation">National / Multi-branch</option>
                   <option value="other">Other</option>
                 </select>
               </div>

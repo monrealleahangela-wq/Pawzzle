@@ -23,7 +23,8 @@ import {
   Info,
   Package,
   Layers,
-  Heart
+  Heart,
+  PlusCircle
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { formatTime12h } from '../../utils/timeFormatters';
@@ -64,6 +65,22 @@ const AdminSettings = () => {
       bufferTime: 15,
       maxBookingsPerSlot: 1
     }
+  });
+  
+  const [showExpansionModal, setShowExpansionModal] = useState(false);
+  const [expansionData, setExpansionData] = useState({
+    operationalModules: [],
+    hiringStaff: false,
+    staffTypes: [],
+    supplierNeeds: false,
+    inventoryPlans: '',
+    productCategories: [],
+    businessDescription: ''
+  });
+  const [expansionFiles, setExpansionFiles] = useState({
+    licenseDocument: null,
+    mayorsPermit: null,
+    businessRegistration: null
   });
 
   const [loading, setLoading] = useState(false);
@@ -339,55 +356,55 @@ const AdminSettings = () => {
 
               <div className="space-y-6">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                   {[
-                     { id: 'pets', label: 'Pet Operations', icon: Heart, desc: 'Manage pet listings, adoptions, and inventory.' },
-                     { id: 'products', label: 'Retail & Commerce', icon: Package, desc: 'Manage stock, products, and fulfillment.' },
-                     { id: 'services', label: 'Service & Booking', icon: Calendar, desc: 'Accept bookings, manage staff and calendars.' }
-                   ].map(mod => {
-                      const isActive = storeSettings.operationalModules?.includes(mod.id);
-                      return (
-                         <div 
-                           key={mod.id} 
-                           onClick={() => {
-                              const currentMods = storeSettings.operationalModules || [];
-                              let nextMods = [];
-                              if (isActive) {
-                                  if (currentMods.length <= 1) return toast.error('You must have at least one operational module active.');
-                                  nextMods = currentMods.filter(m => m !== mod.id);
-                              } else {
-                                  nextMods = [...currentMods, mod.id];
-                              }
-                              setStoreSettings(prev => ({ ...prev, operationalModules: nextMods }));
-                           }}
-                           className={`p-6 border rounded-[2rem] cursor-pointer transition-all ${isActive ? 'bg-primary-50 border-primary-300 ring-1 ring-primary-200' : 'bg-white hover:bg-slate-50 border-slate-100'}`}
-                         >
-                            <div className="flex items-start justify-between">
-                               <div className="flex gap-4">
-                                  <div className={`p-3 rounded-2xl ${isActive ? 'bg-primary-600 text-white shadow-lg shadow-primary-200' : 'bg-slate-100 text-slate-400'}`}>
-                                     <Layers className="h-5 w-5" />
-                                  </div>
-                                  <div>
-                                     <h4 className={`text-sm font-black uppercase tracking-widest ${isActive ? 'text-primary-900' : 'text-slate-600'}`}>{mod.label}</h4>
-                                     <p className="text-[10px] font-bold text-slate-400 mt-1">{mod.desc}</p>
-                                  </div>
-                               </div>
-                               <button className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${isActive ? 'border-primary-600 bg-primary-600 text-white' : 'border-slate-200 text-transparent'}`}>
-                                  <CheckCircle className="w-3 h-3" />
-                               </button>
+                  {[
+                    { id: 'pets', label: 'Pet Operations', icon: Heart, desc: 'Manage pet listings, adoptions, and inventory.' },
+                    { id: 'products', label: 'Retail & Commerce', icon: Package, desc: 'Manage stock, products, and fulfillment.' },
+                    { id: 'services', label: 'Service & Booking', icon: Calendar, desc: 'Accept bookings, manage staff and calendars.' }
+                  ].map(mod => {
+                    const isActive = user?.store?.operationalModules?.includes(mod.id);
+                    const isPending = user?.store?.expansionStatus === 'pending';
+                    return (
+                      <div
+                        key={mod.id}
+                        className={`p-6 border rounded-[2rem] transition-all ${isActive ? 'bg-primary-50 border-primary-300 ring-1 ring-primary-200' : 'bg-white border-slate-100'}`}
+                      >
+                        <div className="flex items-start justify-between">
+                          <div className="flex gap-4">
+                            <div className={`p-3 rounded-2xl ${isActive ? 'bg-primary-600 text-white shadow-lg shadow-primary-200' : 'bg-slate-100 text-slate-400'}`}>
+                              <mod.icon className="h-5 w-5" />
                             </div>
-                         </div>
-                      );
-                   })}
+                            <div>
+                              <h4 className={`text-sm font-black uppercase tracking-widest ${isActive ? 'text-primary-900' : 'text-slate-600'}`}>{mod.label}</h4>
+                              <p className="text-[10px] font-bold text-slate-400 mt-1">{mod.desc}</p>
+                            </div>
+                          </div>
+                          <div className="flex flex-col items-end gap-2">
+                            {isActive ? (
+                              <span className="px-3 py-1 bg-emerald-100 text-emerald-600 rounded-lg text-[8px] font-black uppercase tracking-widest">Active</span>
+                            ) : isPending ? (
+                              <span className="px-3 py-1 bg-amber-100 text-amber-600 rounded-lg text-[8px] font-black uppercase tracking-widest">Pending</span>
+                            ) : (
+                              <button
+                                onClick={() => {
+                                  setExpansionData(prev => ({ ...prev, operationalModules: [...(user?.store?.operationalModules || []), mod.id] }));
+                                  setShowExpansionModal(true);
+                                }}
+                                className="px-4 py-2 bg-slate-900 text-white rounded-xl text-[8px] font-black uppercase tracking-widest hover:bg-primary-600 transition-all shadow-lg"
+                              >
+                                Request
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
 
                 <div className="p-5 bg-amber-50 rounded-2xl border border-amber-100 flex items-start gap-3">
                    <AlertCircle className="h-5 w-5 text-amber-600 shrink-0" />
-                   <p className="text-[10px] font-bold text-amber-800 uppercase tracking-widest leading-relaxed">Changes to operational modules instantly update your sidebar navigation and unlock relevant tools. Ensure you meet any necessary compliance rules.</p>
+                   <p className="text-[10px] font-bold text-amber-800 uppercase tracking-widest leading-relaxed">Authorized modules remain inaccessible. Business type changes require admin approval. Once approved, your sidebar will automatically update.</p>
                 </div>
-
-                <button onClick={handleSaveStore} disabled={loading} className="w-full py-4 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.3em] hover:bg-primary-600 transition-all flex items-center justify-center gap-3 shadow-xl">
-                   {loading ? <Zap className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Apply Business Types
-                </button>
               </div>
             </div>
           )}
@@ -423,11 +440,102 @@ const AdminSettings = () => {
                 <Info className="h-4 w-4" /> System Advice
              </h4>
              <p className="text-[10px] font-medium leading-relaxed text-primary-800/70 uppercase">
-                Updating your booking schedule will automatically adjust available slots for your customers. Confirmed bookings will remain locked in the timeline.
+                Expansion requests are reviewed by the platform administration. Please ensure you have the necessary permits for the additional business models.
              </p>
           </div>
         </div>
       </div>
+
+      {/* Expansion Request Modal */}
+      {showExpansionModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setShowExpansionModal(false)} />
+          <div className="relative bg-white rounded-[2.5rem] w-full max-w-2xl overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
+            <div className="p-8 space-y-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-xl font-black text-slate-900 uppercase tracking-tighter">Expansion Protocol</h2>
+                  <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Submit additional operational data</p>
+                </div>
+                <button onClick={() => setShowExpansionModal(false)} className="p-2 hover:bg-slate-100 rounded-xl transition-all">
+                  <XCircle className="h-5 w-5 text-slate-400" />
+                </button>
+              </div>
+
+              <div className="space-y-6 overflow-y-auto max-h-[60vh] pr-2 no-scrollbar">
+                {expansionData.operationalModules.includes('services') && (
+                  <div className="p-6 bg-secondary-50 rounded-2xl border border-secondary-100 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <p className="text-[10px] font-black text-slate-900 uppercase">Service Staffing</p>
+                      <button onClick={() => setExpansionData({...expansionData, hiringStaff: !expansionData.hiringStaff})} className={`w-10 h-5 rounded-full relative transition-all ${expansionData.hiringStaff ? 'bg-primary-600' : 'bg-slate-200'}`}>
+                        <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-all ${expansionData.hiringStaff ? 'left-6' : 'left-1'}`} />
+                      </button>
+                    </div>
+                  </div>
+                )}
+                
+                {expansionData.operationalModules.includes('products') && (
+                  <div className="p-6 bg-primary-50 rounded-2xl border border-primary-100 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <p className="text-[10px] font-black text-slate-900 uppercase tracking-widest">Supplier Support</p>
+                      <button onClick={() => setExpansionData({...expansionData, supplierNeeds: !expansionData.supplierNeeds})} className={`w-10 h-5 rounded-full relative transition-all ${expansionData.supplierNeeds ? 'bg-primary-600' : 'bg-slate-200'}`}>
+                        <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-all ${expansionData.supplierNeeds ? 'left-6' : 'left-1'}`} />
+                      </button>
+                    </div>
+                    <textarea 
+                      placeholder="List requested product categories..." 
+                      className="w-full bg-white border border-primary-100 rounded-xl p-3 text-[11px] font-bold outline-none"
+                      onChange={(e) => setExpansionData({...expansionData, productCategories: e.target.value.split(',')})}
+                    />
+                  </div>
+                )}
+
+                <div className="space-y-4">
+                  <p className="text-[10px] font-black text-slate-900 uppercase tracking-widest px-2">Verification Documents</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="p-4 bg-slate-50 border border-dashed border-slate-200 rounded-2xl text-center">
+                       <label className="cursor-pointer block space-y-1">
+                          <PlusCircle className="h-4 w-4 mx-auto text-slate-400" />
+                          <p className="text-[9px] font-black text-slate-400 uppercase">New Business Permit</p>
+                          <input type="file" className="hidden" onChange={(e) => setExpansionFiles({...expansionFiles, mayorsPermit: e.target.files[0]})} />
+                          {expansionFiles.mayorsPermit && <p className="text-[8px] text-primary-600 font-bold truncate">{expansionFiles.mayorsPermit.name}</p>}
+                       </label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <button 
+                onClick={async () => {
+                  setLoading(true);
+                  try {
+                    const fd = new FormData();
+                    fd.append('operationalModules', JSON.stringify(expansionData.operationalModules));
+                    fd.append('hiringStaff', expansionData.hiringStaff);
+                    fd.append('staffTypes', JSON.stringify(expansionData.staffTypes));
+                    fd.append('supplierNeeds', expansionData.supplierNeeds);
+                    fd.append('productCategories', JSON.stringify(expansionData.productCategories));
+                    fd.append('businessDescription', expansionData.businessDescription);
+                    if (expansionFiles.mayorsPermit) fd.append('mayorsPermit', expansionFiles.mayorsPermit);
+                    
+                    await storeService.requestExpansion(fd);
+                    toast.success('Expansion request submitted for review');
+                    setShowExpansionModal(false);
+                  } catch (e) {
+                    toast.error(e.response?.data?.message || 'Expansion request failed');
+                  } finally {
+                    setLoading(false);
+                  }
+                }}
+                disabled={loading}
+                className="w-full py-4 bg-primary-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.3em] shadow-xl hover:bg-slate-900 transition-all flex items-center justify-center gap-2"
+              >
+                {loading ? <Zap className="animate-spin h-4 w-4" /> : <Save className="h-4 w-4" />} Transmit Request
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

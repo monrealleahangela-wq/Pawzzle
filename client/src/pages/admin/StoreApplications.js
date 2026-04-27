@@ -136,7 +136,8 @@ const StoreApplications = () => {
       under_review: { color: 'primary', label: 'Under Review' },
       approved: { color: 'emerald', label: 'Approved' },
       rejected: { color: 'rose', label: 'Rejected' },
-      requires_more_info: { color: 'blue', label: 'Need Info' }
+      requires_more_info: { color: 'blue', label: 'Need Info' },
+      expansion_pending: { color: 'amber', label: 'Expansion' }
     };
     return props[status] || { color: 'slate', label: 'UNKNOWN' };
   };
@@ -230,6 +231,12 @@ const StoreApplications = () => {
                   <div className="flex items-center gap-2 mb-6">
                     <span className="text-[9px] font-black text-primary-500 uppercase tracking-widest italic">{(app.businessType || 'other').replace('_', ' ')}</span>
                     <div className="w-1 h-1 rounded-full bg-slate-200" />
+                    {app.applicationType === 'expansion' && (
+                      <>
+                        <span className="text-[9px] font-black text-amber-600 bg-amber-50 px-2 py-0.5 rounded uppercase tracking-tighter shrink-0">Expansion Request</span>
+                        <div className="w-1 h-1 rounded-full bg-slate-200" />
+                      </>
+                    )}
                     <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">REF: {app._id.slice(-8).toUpperCase()}</span>
                   </div>
 
@@ -308,6 +315,48 @@ const StoreApplications = () => {
                     </div>
                     <h4 className="text-[12px] font-black text-slate-900 uppercase tracking-widest">{selectedApplication.businessName}</h4>
                     <p className="text-[9px] font-bold text-slate-400 uppercase tracking-[0.2em] mt-1">Primary Store Identity</p>
+                  </div>
+
+                  <div className="bg-slate-50 rounded-2xl p-8 border border-slate-100">
+                    <h3 className="text-[11px] font-black text-slate-900 uppercase tracking-widest mb-6 flex items-center gap-2">
+                       Operational Business Model
+                    </h3>
+                    <div className="space-y-6">
+                      <div className="flex flex-wrap gap-2">
+                        {selectedApplication.operationalModules?.map(mod => (
+                          <span key={mod} className="px-3 py-1 bg-slate-900 text-white rounded-lg text-[9px] font-black uppercase tracking-widest flex items-center gap-2">
+                            {mod === 'pets' && <Heart className="h-3 w-3" />}
+                            {mod === 'products' && <Zap className="h-3 w-3 text-primary-400" />}
+                            {mod}
+                          </span>
+                        ))}
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="p-4 bg-white rounded-2xl border border-slate-100">
+                          <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1.5 text-center">Service Staff</p>
+                          <div className="flex flex-col items-center gap-2">
+                            <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase ${selectedApplication.hiringStaff ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-100 text-slate-400'}`}>
+                              {selectedApplication.hiringStaff ? 'HIRING ENABLED' : 'NO STAFF'}
+                            </span>
+                            {selectedApplication.staffTypes?.length > 0 && (
+                              <p className="text-[8px] font-bold text-slate-500 uppercase text-center">{selectedApplication.staffTypes.join(', ')}</p>
+                            )}
+                          </div>
+                        </div>
+                        <div className="p-4 bg-white rounded-2xl border border-slate-100">
+                          <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1.5 text-center">Suppliers</p>
+                          <div className="flex flex-col items-center gap-2">
+                            <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase ${selectedApplication.supplierNeeds ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-100 text-slate-400'}`}>
+                              {selectedApplication.supplierNeeds ? 'REQUIRED' : 'NOT NEEDED'}
+                            </span>
+                            {selectedApplication.inventoryPlans && (
+                              <p className="text-[8px] font-bold text-slate-500 uppercase text-center truncate w-full">Plans: {selectedApplication.inventoryPlans}</p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   </div>
 
                   <div className="bg-slate-50 rounded-2xl p-8 border border-slate-100">

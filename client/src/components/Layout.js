@@ -47,8 +47,7 @@ const customerMenu = [
 ];
 
 const getAdminMenu = (user) => {
-  // Always fallback to full features if not specified yet (for existing mock data)
-  const mods = user?.store?.operationalModules || ['pets', 'products', 'services'];
+  const mods = user?.store?.operationalModules || [];
   const hasPets = mods.includes('pets');
   const hasProducts = mods.includes('products');
   const hasServices = mods.includes('services');
@@ -58,40 +57,46 @@ const getAdminMenu = (user) => {
     { path: '/admin/insights', label: 'Intelligence', icon: Brain },
   ];
 
+  // 1. CATALOG MODULES
   const catalogChildren = [];
-  if (hasPets) catalogChildren.push({ path: '/admin/pets', label: 'Pets', icon: Heart });
-  if (hasProducts) catalogChildren.push({ path: '/admin/products', label: 'Products', icon: Package });
-  if (hasServices) catalogChildren.push({ path: '/admin/services', label: 'Services', icon: Calendar });
-  if (catalogChildren.length > 0) menu.push({ label: 'Catalog', icon: Package, children: catalogChildren });
+  if (hasPets) catalogChildren.push({ path: '/admin/pets', label: 'Pet Inventory', icon: Heart });
+  if (hasProducts) catalogChildren.push({ path: '/admin/products', label: 'Product Inventory', icon: Package });
+  if (hasServices) catalogChildren.push({ path: '/admin/services', label: 'Service Catalog', icon: Calendar });
+  if (catalogChildren.length > 0) menu.push({ label: 'Catalog', icon: Layers, children: catalogChildren });
 
+  // 2. OPERATIONS MODULES
   const opsChildren = [];
-  if (hasProducts || hasPets) opsChildren.push({ path: '/admin/orders', label: 'Orders', icon: ShoppingCart });
-  if (hasServices) opsChildren.push({ path: '/admin/bookings', label: 'Bookings', icon: Calendar });
-  opsChildren.push(
-    { path: '/admin/customers', label: 'Customers', icon: Users },
-    { path: '/admin/chat', label: 'Chat', icon: MessageSquare },
-    { path: '/admin/reviews', label: 'Reviews', icon: Star }
-  );
+  if (hasProducts || hasPets) opsChildren.push({ path: '/admin/orders', label: 'Order Mgmt', icon: ShoppingCart });
+  if (hasServices) opsChildren.push({ path: '/admin/bookings', label: 'Service Bookings', icon: Calendar });
+  
+  opsChildren.push({ path: '/admin/customers', label: 'Customers', icon: Users });
+  opsChildren.push({ path: '/admin/chat', label: 'Chat', icon: MessageSquare });
+  opsChildren.push({ path: '/admin/reviews', label: 'Reviews', icon: Star });
+  
   menu.push({ label: 'Operations', icon: ShoppingBag, children: opsChildren });
 
+  // 3. SUPPLY CHAIN (Products Only)
   if (hasProducts) {
     menu.push({
       label: 'Supply Chain', icon: Truck, children: [
         { path: '/admin/purchase-orders', label: 'Purchase Orders', icon: Truck },
-        { path: '/admin/supplies', label: 'Supplies', icon: Layers },
+        { path: '/admin/supplies', label: 'Manage Suppliers', icon: Layers },
       ]
     });
   }
 
-  menu.push({
-    label: 'Finance', icon: Wallet, children: [
-      { path: '/admin/vouchers', label: 'Vouchers', icon: Ticket },
-      { path: '/admin/payouts', label: 'Payouts', icon: Wallet },
-    ]
-  });
+  // 4. FINANCE MODULES
+  const financeChildren = [
+    { path: '/admin/vouchers', label: 'Vouchers', icon: Ticket },
+    { path: '/admin/payouts', label: 'Payouts', icon: Wallet },
+  ];
+  menu.push({ label: 'Finance', icon: DollarSign, children: financeChildren });
 
-  const settingsChildren = [{ path: '/admin/store', label: 'Store', icon: Building }];
-  if (hasServices) settingsChildren.push({ path: '/admin/staff', label: 'Staff', icon: Users });
+  // 5. SETTINGS & STAFF
+  const settingsChildren = [{ path: '/admin/store', label: 'Store Profile', icon: Building }];
+  if (hasServices || (user?.store?.hiringStaff)) {
+    settingsChildren.push({ path: '/admin/staff', label: 'Verified Staff', icon: Users });
+  }
   menu.push({ label: 'Settings', icon: Settings, children: settingsChildren });
 
   return menu;
