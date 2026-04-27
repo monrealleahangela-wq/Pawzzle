@@ -9,6 +9,7 @@ module.exports = {
       colors: {
         // UI Palette: Mocha and Brown
         primary: {
+          DEFAULT: '#8B4513',
           50: '#FDF5F0',
           100: '#FBEBDD',
           200: '#F7D0B2',
@@ -22,6 +23,7 @@ module.exports = {
           950: '#1A0B03',
         },
         secondary: {
+          DEFAULT: '#BFA6A0',
           50: '#F9F7F6',
           100: '#F2EFED',
           200: '#E6DFDB',
