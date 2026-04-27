@@ -324,7 +324,7 @@ const StoreApplication = () => {
         <div className="flex items-center justify-between bg-white p-5 rounded-[2rem] border border-slate-100 shadow-xl relative overflow-hidden">
           <div className="absolute top-0 right-0 w-32 h-32 bg-primary-50 rounded-full blur-3xl -translate-y-12 translate-x-12" />
           <div className="relative z-10">
-            <p className="text-[8px] font-black text-primary-600 uppercase tracking-[0.3em] mb-1">Protocol Execution</p>
+            <p className="text-[8px] font-black text-primary-600 uppercase tracking-[0.3em] mb-1">Status</p>
             <h1 className="text-xl font-black text-slate-900 uppercase tracking-tighter">Application Status</h1>
             <p className="text-slate-400 font-bold text-[8px] uppercase tracking-widest leading-none mt-1">Ref: {application._id}</p>
           </div>
@@ -346,7 +346,7 @@ const StoreApplication = () => {
                 </div>
               </div>
               <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-100">
-                <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1 italic">Intelligence Summary</p>
+                <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1 italic">About your store</p>
                 <p className="text-[11px] font-bold text-slate-600 leading-relaxed">"{application.businessDescription || 'No description provided.'}"</p>
               </div>
             </div>
@@ -438,7 +438,7 @@ const StoreApplication = () => {
 
           <div className="space-y-6 pt-10 border-t border-slate-50">
             <h3 className="text-[10px] font-black text-slate-900 uppercase tracking-[0.2em] flex items-center gap-2">
-              <Mail className="h-3 w-3 text-primary-500" /> Operational Hub
+              <Mail className="h-3 w-3 text-primary-500" /> Contact Details
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="md:col-span-1 p-5 rounded-2xl border border-slate-100 flex flex-col justify-center">
@@ -485,12 +485,12 @@ const StoreApplication = () => {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-black text-slate-900 uppercase tracking-tighter">
-            {user.role === 'admin' ? 'Business Expansion hub' : 'Become an Elite Partner'}
+            {user.role === 'admin' ? 'Add Store Features' : 'Apply as a Seller'}
           </h1>
           <p className="text-slate-500 font-bold text-[11px] uppercase tracking-widest mt-1">
             {user.role === 'admin' 
-              ? 'Request additional modules and scale your operation across professional tiers' 
-              : 'Initialize your business presence within our supreme fleet'}
+              ? 'Add more products or services to your shop' 
+              : 'Join our platform and start selling today'}
           </p>
         </div>
         <div className="flex gap-2">
@@ -503,10 +503,10 @@ const StoreApplication = () => {
       {/* Progress Steps Header */}
       <div className="grid grid-cols-4 gap-4 p-2 bg-slate-50 rounded-2xl border border-slate-100">
         {[
-          { icon: Building, label: 'Identity' },
-          { icon: FileText, label: 'Legal/Tax' },
-          { icon: Shield, label: 'Compliance' },
-          { icon: Users, label: 'Network' }
+          { icon: Building, label: 'Store Info' },
+          { icon: FileText, label: 'Legal Info' },
+          { icon: Shield, label: 'Verification' },
+          { icon: Users, label: 'Our Team' }
         ].map((step, idx) => (
           <div key={idx} className={`flex items-center justify-center gap-2 py-3 rounded-xl transition-all ${currentStep === idx + 1 ? 'bg-white shadow-sm border border-slate-100' : 'opacity-40'}`}>
             <step.icon className={`h-4 w-4 ${currentStep === idx + 1 ? 'text-primary-600' : 'text-slate-400'}`} />
@@ -521,9 +521,9 @@ const StoreApplication = () => {
             <Info className="h-4 w-4 text-primary-600" />
           </div>
           <div>
-            <p className="text-[10px] font-black text-primary-900 uppercase tracking-widest mb-0.5">Prerequisites</p>
+            <p className="text-[10px] font-black text-primary-900 uppercase tracking-widest mb-0.5">Requirements</p>
             <p className="text-[9px] text-primary-800 font-bold leading-none uppercase opacity-60">
-              Valid Business Permit · TIN · 2 Commercial References.
+              Business Permit · TIN · 2 References.
             </p>
           </div>
         </div>
@@ -538,14 +538,14 @@ const StoreApplication = () => {
                   <Shield className="h-6 w-6" />
                 </div>
                 <div>
-                  <h2 className="text-xl font-black text-slate-900 uppercase tracking-tighter leading-none mb-1">Application Steps</h2>
-                  <p className="text-slate-400 font-bold text-[9px] uppercase tracking-widest leading-none">Verification Protocol v2.1</p>
+                  <h2 className="text-xl font-black text-slate-900 uppercase tracking-tighter leading-none mb-1">Steps to Apply</h2>
+                  <p className="text-slate-400 font-bold text-[9px] uppercase tracking-widest leading-none">Simple Verification</p>
                 </div>
               </div>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
                 <div className="space-y-6">
-                  <h3 className="text-sm font-black text-primary-600 uppercase tracking-[0.2em] border-b border-primary-100 pb-2">Mandatory Documents</h3>
+                  <h3 className="text-sm font-black text-primary-600 uppercase tracking-[0.2em] border-b border-primary-100 pb-2">Documents Needed</h3>
                   <ul className="space-y-4">
                     {[
                       'Valid Government-Issued ID',
@@ -565,7 +565,7 @@ const StoreApplication = () => {
                 </div>
 
                 <div className="space-y-6">
-                  <h3 className="text-sm font-black text-primary-600 uppercase tracking-[0.2em] border-b border-primary-100 pb-2">Business Data Intel</h3>
+                  <h3 className="text-sm font-black text-primary-600 uppercase tracking-[0.2em] border-b border-primary-100 pb-2">Your Information</h3>
                   <div className="space-y-4">
                     <div className="flex gap-2 flex-wrap">
                       {['Store Name', 'Logo', 'Description', 'Base Address', 'Contact', 'Product Index'].map((tag, i) => (
@@ -574,10 +574,10 @@ const StoreApplication = () => {
                     </div>
                     <div className="p-5 bg-primary-50 rounded-2xl border border-primary-100">
                       <p className="text-[10px] font-black text-primary-700 uppercase tracking-widest mb-2 flex items-center gap-2">
-                        <Wallet className="h-3 w-3" /> Payout Channels
+                        <Wallet className="h-3 w-3" /> Get Paid
                       </p>
                       <p className="text-[9px] text-primary-600 font-medium leading-relaxed uppercase opacity-80">
-                        Active Bank Account or alternative payment method (GCash/PayMaya) is required for store settlements.
+                        You need a Bank account or GCash to receive payments.
                       </p>
                     </div>
                   </div>
@@ -598,7 +598,7 @@ const StoreApplication = () => {
                   onClick={() => setCurrentStep(1)}
                   className="px-10 py-4 bg-primary-600 hover:bg-white hover:text-slate-900 rounded-xl text-[10px] font-black uppercase tracking-[0.3em] transition-all shadow-xl shadow-primary-900/20 flex items-center gap-2 group shrink-0"
                 >
-                  Initiate Upload <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
+                  Start Now <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
                 </button>
               </div>
             </div>
@@ -637,7 +637,7 @@ const StoreApplication = () => {
 
             <div className="space-y-4">
               <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 flex items-center gap-2">
-                Business Model Selection (Mandatory) *
+                What do you sell? (Select all that apply) *
               </label>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {[
@@ -686,8 +686,8 @@ const StoreApplication = () => {
               <div className="p-6 bg-secondary-50 border border-secondary-100 rounded-[2rem] space-y-6 animate-fade-in">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h3 className="text-sm font-black text-secondary-900 uppercase tracking-tighter">Service Staff Management</h3>
-                    <p className="text-[9px] font-bold text-secondary-600 uppercase tracking-widest">Will you manage service-trained employees?</p>
+                    <h3 className="text-sm font-black text-secondary-900 uppercase tracking-tighter">Your Team</h3>
+                    <p className="text-[9px] font-bold text-secondary-600 uppercase tracking-widest">Will your business have staff members?</p>
                   </div>
                   <button
                     type="button"

@@ -183,16 +183,16 @@ const Home = () => {
         <div className="animate-pop p-6 bg-secondary-50 rounded-[2.5rem] border border-secondary/20 flex flex-col md:flex-row items-center justify-between gap-6 relative overflow-hidden group">
           <div className="absolute top-0 right-0 w-32 h-32 bg-secondary/5 rounded-bl-[5rem] pointer-events-none group-hover:scale-125 transition-transform duration-700" />
           <div className="flex items-center gap-6 relative z-10">
-             <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center text-2xl shadow-fun animate-wag">
-                👋
-             </div>
-             <div>
-                <h3 className="text-[11px] font-black text-primary-900 uppercase tracking-[0.25em] mb-1">Welcome to the Pack, {user.username}!</h3>
-                <p className="text-xs text-primary-700 font-medium leading-relaxed">Your account is active, but your identity profile is incomplete. Finish it now to unlock full booking perks.</p>
-             </div>
+            <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center text-2xl shadow-fun animate-wag">
+              👋
+            </div>
+            <div>
+              <h3 className="text-[11px] font-black text-primary-900 uppercase tracking-[0.25em] mb-1">Welcome to the Pack, {user.username}!</h3>
+              <p className="text-xs text-primary-700 font-medium leading-relaxed">Your account is active, but your identity profile is incomplete. Finish it now to unlock full booking perks.</p>
+            </div>
           </div>
           <Link to="/profile" className="btn-fun bg-primary text-white px-8 py-3 text-[10px] shadow-hover hover:bg-header relative z-10">
-             Complete Profile
+            Complete Profile
           </Link>
         </div>
       )}
@@ -221,7 +221,7 @@ const Home = () => {
               <span className="italic text-transparent bg-clip-text bg-gradient-to-r from-primary-500 to-secondary-500">Best Friend .</span>
             </h1>
 
-              Find your perfect pet through the world's most <span className="text-primary-600">secure platform</span>.
+            Find your perfect pet through the world's most <span className="text-primary-600">secure platform</span>.
 
             <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 justify-center pt-4">
               <Link to="/pets" className="group relative px-12 py-5 bg-gradient-to-br from-primary-800 to-primary-950 text-white rounded-2xl text-[11px] sm:text-xs font-black uppercase tracking-[0.3em] shadow-[0_25px_50px_rgba(0,0,0,0.2)] hover:shadow-primary-900/30 active:scale-95 transition-all flex items-center justify-center gap-3">
@@ -275,10 +275,10 @@ const Home = () => {
       <section className="space-y-8">
         <div className="flex items-end justify-between px-2">
           <div className="space-y-2">
-             <div className="inline-flex items-center gap-2 px-3 py-1 bg-secondary-50 border border-secondary-100 rounded-full">
-                <Navigation className="h-3 w-3 text-primary-600" />
-                <span className="text-[9px] font-black text-primary-700 uppercase tracking-widest">STORE MAP</span>
-             </div>
+            <div className="inline-flex items-center gap-2 px-3 py-1 bg-secondary-50 border border-secondary-100 rounded-full">
+              <Navigation className="h-3 w-3 text-primary-600" />
+              <span className="text-[9px] font-black text-primary-700 uppercase tracking-widest">STORE MAP</span>
+            </div>
             <h2 className="text-3xl sm:text-5xl font-black text-[#5D4037] uppercase tracking-[-0.03em] leading-none">
               Nearby <span className="italic text-primary-600">Stores .</span>
             </h2>
@@ -304,7 +304,7 @@ const Home = () => {
                     <img
                       src={getImageUrl(store.logo)}
                       alt={store.name}
-                      className="w-full h-full object-cover rounded-[1.5rem]" 
+                      className="w-full h-full object-cover rounded-[1.5rem]"
                     />
                   ) : (
                     <Building className="h-10 w-10 text-primary-100 absolute inset-0 m-auto" />
@@ -322,9 +322,9 @@ const Home = () => {
                   </div>
                 </div>
                 <div className="flex items-center gap-2 pr-2">
-                   <div className="w-10 h-10 rounded-full border border-primary-100 flex items-center justify-center opacity-0 group-hover:opacity-100 group-hover:translate-x-2 transition-all duration-500">
+                  <div className="w-10 h-10 rounded-full border border-primary-100 flex items-center justify-center opacity-0 group-hover:opacity-100 group-hover:translate-x-2 transition-all duration-500">
                     <ChevronRight className="h-5 w-5 text-primary-600" />
-                   </div>
+                  </div>
                 </div>
               </Link>
             ))}
@@ -340,10 +340,10 @@ const Home = () => {
       <section className="space-y-10">
         <div className="flex items-end justify-between px-2">
           <div className="space-y-2">
-             <div className="inline-flex items-center gap-2 px-3 py-1 bg-rose-50 border border-rose-100 rounded-full">
-                <Heart className="h-3 w-3 text-rose-500" />
-                <span className="text-[9px] font-black text-rose-700 uppercase tracking-widest">NEW PETS AVAILABLE</span>
-             </div>
+            <div className="inline-flex items-center gap-2 px-3 py-1 bg-rose-50 border border-rose-100 rounded-full">
+              <Heart className="h-3 w-3 text-rose-500" />
+              <span className="text-[9px] font-black text-rose-700 uppercase tracking-widest">NEW PETS AVAILABLE</span>
+            </div>
             <h2 className="text-3xl sm:text-5xl font-black text-[#3D2B23] uppercase tracking-[-0.03em] leading-none">
               Available <span className="italic text-primary-600">Pets .</span>
             </h2>
@@ -368,7 +368,7 @@ const Home = () => {
                     <img
                       src={getImageUrl(pet.images[0])}
                       alt={pet.name}
-                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000" 
+                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000"
                     />
                   ) : (
                     <Heart className="h-12 w-12 text-primary-500/10 absolute inset-0 m-auto" />
@@ -398,13 +398,13 @@ const Home = () => {
                 </div>
 
                 <div className="flex justify-between items-center mt-auto">
-                   <div className="space-y-1">
-                      <p className="text-[9px] font-black text-primary-900/30 uppercase tracking-[0.3em]">PRICE</p>
-                      <p className="text-2xl sm:text-3xl font-black text-primary-950 tracking-tighter leading-none">₱{pet.price?.toLocaleString()}</p>
-                   </div>
-                   <Link to={`/pets/${pet._id}`} className="w-14 h-14 bg-primary-950 text-white rounded-2xl flex items-center justify-center shadow-xl hover:bg-primary-600 active:scale-90 transition-all">
-                      <ArrowRight className="h-6 w-6" />
-                   </Link>
+                  <div className="space-y-1">
+                    <p className="text-[9px] font-black text-primary-900/30 uppercase tracking-[0.3em]">PRICE</p>
+                    <p className="text-2xl sm:text-3xl font-black text-primary-950 tracking-tighter leading-none">₱{pet.price?.toLocaleString()}</p>
+                  </div>
+                  <Link to={`/pets/${pet._id}`} className="w-14 h-14 bg-primary-950 text-white rounded-2xl flex items-center justify-center shadow-xl hover:bg-primary-600 active:scale-90 transition-all">
+                    <ArrowRight className="h-6 w-6" />
+                  </Link>
                 </div>
               </div>
             </div>
@@ -417,10 +417,10 @@ const Home = () => {
         <section className="space-y-10">
           <div className="flex items-end justify-between px-2">
             <div className="space-y-2">
-               <div className="inline-flex items-center gap-2 px-3 py-1 bg-secondary-50 border border-secondary-100 rounded-full">
-                  <Package className="h-3 w-3 text-primary-600" />
-                  <span className="text-[9px] font-black text-primary-700 uppercase tracking-widest">PET SUPPLIES</span>
-               </div>
+              <div className="inline-flex items-center gap-2 px-3 py-1 bg-secondary-50 border border-secondary-100 rounded-full">
+                <Package className="h-3 w-3 text-primary-600" />
+                <span className="text-[9px] font-black text-primary-700 uppercase tracking-widest">PET SUPPLIES</span>
+              </div>
               <h2 className="text-3xl sm:text-5xl font-black text-[#3D2B23] uppercase tracking-[-0.03em] leading-none">
                 Best <span className="italic text-primary-600">Supplies .</span>
               </h2>
@@ -440,15 +440,15 @@ const Home = () => {
                     <img
                       src={getImageUrl(product.images[0])}
                       alt={product.name}
-                      className="w-full h-full object-cover group-hover/img:scale-110 transition-transform duration-1000" 
+                      className="w-full h-full object-cover group-hover/img:scale-110 transition-transform duration-1000"
                     />
                   ) : (
                     <Package className="h-10 w-10 text-primary-100 absolute inset-0 m-auto" />
                   )}
-                   {/* Stock Indicator HUD */}
-                   <div className="absolute top-3 right-3 px-3 py-1 bg-white/90 backdrop-blur-md rounded-xl text-[8px] font-black uppercase tracking-widest text-primary-900 border border-white/50 shadow-xl opacity-0 group-hover/img:opacity-100 transition-opacity">
-                      {product.stockQuantity > 5 ? 'IN STOCK' : 'LOW STOCK'}
-                   </div>
+                  {/* Stock Indicator HUD */}
+                  <div className="absolute top-3 right-3 px-3 py-1 bg-white/90 backdrop-blur-md rounded-xl text-[8px] font-black uppercase tracking-widest text-primary-900 border border-white/50 shadow-xl opacity-0 group-hover/img:opacity-100 transition-opacity">
+                    {product.stockQuantity > 5 ? 'IN STOCK' : 'LOW STOCK'}
+                  </div>
 
                   <button
                     onClick={(e) => {
@@ -475,11 +475,11 @@ const Home = () => {
                     <p className="text-[9px] font-black text-secondary-600/40 uppercase tracking-[0.3em] truncate">{product.category}</p>
                     <Link to={`/products/${product._id}`} className="text-xs sm:text-sm font-black text-primary-900 uppercase tracking-tight truncate block group-hover:text-primary-600 transition-colors">{product.name}</Link>
                   </div>
-                  
+
                   <div className="mt-auto pt-4 border-t border-primary-50 flex justify-between items-end">
                     <p className="text-lg sm:text-xl font-black text-primary-950 tracking-tighter leading-none">₱{product.price?.toLocaleString()}</p>
                     <div className="w-8 h-8 rounded-full border border-secondary-500/10 flex items-center justify-center group-hover:bg-secondary-50 transition-all">
-                       <ChevronRight className="h-4 w-4 text-secondary-600" />
+                      <ChevronRight className="h-4 w-4 text-secondary-600" />
                     </div>
                   </div>
                 </div>
@@ -533,7 +533,7 @@ const Home = () => {
             <div className="flex flex-col sm:flex-row gap-6 justify-center pt-4">
               <Link to={isAuthenticated ? '/pets' : '/register'}
                 className="group relative px-16 py-6 bg-secondary-500 text-white rounded-2xl text-sm font-black uppercase tracking-[0.3em] hover:bg-secondary-600 active:scale-95 transition-all shadow-[0_20px_50px_rgba(191,166,160,0.4)] flex items-center justify-center gap-4">
-                {isAuthenticated ? 'VIEW MY PETS' : 'SIGN UP NOW'}
+                {isAuthenticated ? 'VIEW AVAILABLE PETS' : 'SIGN UP NOW'}
                 <ArrowRight className="h-5 w-5 group-hover:translate-x-3 transition-transform" />
               </Link>
             </div>

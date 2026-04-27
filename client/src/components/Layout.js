@@ -40,8 +40,8 @@ const customerMenu = [
   { path: '/insights', label: 'AI Advisor', icon: Brain },
   {
     label: 'Account', icon: User, children: [
-      { path: '/profile', label: 'Profile Settings', icon: Settings },
-      { path: '/account-upgrade', label: 'Be a Seller', icon: Store },
+      { path: '/profile', label: 'My Profile', icon: Settings },
+      { path: '/account-upgrade', label: 'Sell on Pawzzle', icon: Store },
     ]
   },
 ];
@@ -68,28 +68,28 @@ const getAdminMenu = (user) => {
     return false;
   };
 
-  // 1. INTELLIGENCE (Admin/SuperAdmin or Analyst)
+  // 1. INSIGHTS (Admin/SuperAdmin or Analyst)
   if (isGlobalAdmin || hasAccess(['service_management_staff'])) {
-    menu.push({ path: '/admin/insights', label: 'Intelligence', icon: Brain });
+    menu.push({ path: '/admin/insights', label: 'Insights', icon: Brain });
   }
 
   // 2. CATALOG MODULES
   const catalogChildren = [];
   if (hasPets && hasAccess(['inventory_staff'])) {
-    catalogChildren.push({ path: '/admin/pets', label: 'Pet Inventory', icon: Heart });
+    catalogChildren.push({ path: '/admin/pets', label: 'Manage Pets', icon: Heart });
   }
   if (hasProducts && hasAccess(['inventory_staff'])) {
-    catalogChildren.push({ path: '/admin/products', label: 'Product Inventory', icon: Package });
+    catalogChildren.push({ path: '/admin/products', label: 'Manage Products', icon: Package });
   }
   if (hasServices && hasAccess(['service_management_staff', 'veterinarian', 'groomer', 'trainer'])) {
-    catalogChildren.push({ path: '/admin/services', label: 'Service Catalog', icon: Calendar });
+    catalogChildren.push({ path: '/admin/services', label: 'Manage Services', icon: Calendar });
   }
   if (catalogChildren.length > 0) menu.push({ label: 'Catalog', icon: Layers, children: catalogChildren });
 
   // 3. OPERATIONS
   const opsChildren = [];
   if (hasAccess(['logistics_staff', 'sales_staff', 'order_staff'])) {
-    opsChildren.push({ path: '/admin/orders', label: 'Store Orders', icon: ShoppingCart });
+    opsChildren.push({ path: '/admin/orders', label: 'Product Orders', icon: ShoppingCart });
   }
   if (hasServices && hasAccess(['service_management_staff', 'veterinarian', 'groomer', 'trainer', 'boarding_specialist'])) {
     opsChildren.push({ path: '/admin/bookings', label: 'Service Bookings', icon: Calendar });
@@ -128,10 +128,10 @@ const getAdminMenu = (user) => {
 
   // 6. SETTINGS & STAFF (Admin Only)
   if (isGlobalAdmin) {
-    const settingsChildren = [{ path: '/admin/store', label: 'Store Profile', icon: Building }];
+    const settingsChildren = [{ path: '/admin/store', label: 'Store Details', icon: Building }];
     const hasStaffConfig = user?.store?.staffingConfiguration?.hasStaff !== 'no';
     if (hasStaffConfig) {
-      settingsChildren.push({ path: '/admin/staff', label: 'Workforce', icon: Users });
+      settingsChildren.push({ path: '/admin/staff', label: 'Manage Staff', icon: Users });
     }
     menu.push({ label: 'Settings', icon: Settings, children: settingsChildren });
   }
@@ -143,31 +143,31 @@ const getAdminMenu = (user) => {
 const superAdminMenu = [
   { path: '/superadmin/dashboard', label: 'Dashboard', icon: Activity },
   {
-    label: 'Intelligence', icon: Brain, children: [
-      { path: '/superadmin/insights', label: 'DSS', icon: Brain },
-      { path: '/superadmin/system-analytics', label: 'Analytics', icon: TrendingUp },
+    label: 'Insights', icon: Brain, children: [
+      { path: '/superadmin/insights', label: 'Decisions', icon: Brain },
+      { path: '/superadmin/system-analytics', label: 'Statistics', icon: TrendingUp },
     ]
   },
   {
-    label: 'Accounts', icon: Users, children: [
-      { path: '/superadmin/account-management', label: 'User Management', icon: Users },
+    label: 'Users', icon: Users, children: [
+      { path: '/superadmin/account-management', label: 'Manage Accounts', icon: Users },
       { path: '/superadmin/store-applications', label: 'Applications', icon: FileText },
     ]
   },
   {
     label: 'Operations', icon: ShoppingBag, children: [
-      { path: '/superadmin/transaction-history', label: 'Transactions', icon: DollarSign },
+      { path: '/superadmin/transaction-history', label: 'Payments', icon: DollarSign },
       { path: '/superadmin/booking-history', label: 'Bookings', icon: Calendar },
-      { path: '/superadmin/payouts', label: 'Payouts', icon: Wallet },
-      { path: '/superadmin/archive', label: 'Archive', icon: Archive },
+      { path: '/superadmin/payouts', label: 'Withdrawals', icon: Wallet },
+      { path: '/superadmin/archive', label: 'Deleted Items', icon: Archive },
     ]
   },
   {
-    label: 'Moderation', icon: ShieldCheck, children: [
+    label: 'Support', icon: ShieldCheck, children: [
       { path: '/superadmin/reports', label: 'Reports', icon: AlertCircle },
       { path: '/superadmin/feedback', label: 'Feedback', icon: Star },
-      { path: '/superadmin/support', label: 'Support', icon: HelpCircle },
-      { path: '/superadmin/activity-history', label: 'Activity', icon: History },
+      { path: '/superadmin/support', label: 'Chat Help', icon: HelpCircle },
+      { path: '/superadmin/activity-history', label: 'System Logs', icon: History },
     ]
   },
   {

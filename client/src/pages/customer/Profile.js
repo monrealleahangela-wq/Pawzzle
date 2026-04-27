@@ -1579,14 +1579,14 @@ const Profile = () => {
 
                         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-slate-100 mt-6">
                           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tight max-w-xs">
-                            ENFORCE: 8+ CHARS • MIXED CASE • NUMBERS • SYMBOLS
+                            REQUIREMENT: 8+ CHARS • MIXED CASE • NUMBERS • SYMBOLS
                           </p>
                           <button
                             type="submit"
                             disabled={passwordLoading}
                             className="w-full sm:w-auto px-8 py-3 bg-slate-900 text-white rounded-xl sm:rounded-2xl font-black text-[9px] sm:text-xs uppercase tracking-widest hover:bg-primary-600 transition-all shadow-xl shadow-slate-200"
                           >
-                            {passwordLoading ? 'Encrypting...' : 'Update Password'}
+                            {passwordLoading ? 'Saving...' : 'Update Password'}
                           </button>
                         </div>
                       </form>
@@ -1598,11 +1598,11 @@ const Profile = () => {
                           <Package className="h-5 w-5 sm:h-8 sm:w-8" />
                         </div>
                         <div>
-                          <h4 className="font-black text-slate-900 text-xs sm:text-lg uppercase tracking-tight mb-0.5">Activity Logs</h4>
-                          <p className="text-[8px] sm:text-sm text-slate-400 font-bold uppercase tracking-tight opacity-70 leading-none">Recent login activity</p>
+                          <h4 className="font-black text-slate-900 text-xs sm:text-lg uppercase tracking-tight mb-0.5">Login History</h4>
+                          <p className="text-[8px] sm:text-sm text-slate-400 font-bold uppercase tracking-tight opacity-70 leading-none">Your recent login activity</p>
                         </div>
                       </div>
-                      <button onClick={() => setShowActivityModal(true)} className="px-3 py-1.5 sm:px-6 sm:py-2.5 bg-slate-900 text-white rounded-lg sm:rounded-xl font-black text-[8px] sm:text-xs uppercase tracking-widest hover:bg-primary-600 transition-all">Review Logs</button>
+                      <button onClick={() => setShowActivityModal(true)} className="px-3 py-1.5 sm:px-6 sm:py-2.5 bg-slate-900 text-white rounded-lg sm:rounded-xl font-black text-[8px] sm:text-xs uppercase tracking-widest hover:bg-primary-600 transition-all">View History</button>
                     </div>
                   </div>
 
@@ -1612,8 +1612,8 @@ const Profile = () => {
                         <Eye className="h-5 w-5 sm:h-8 sm:w-8" />
                       </div>
                       <div>
-                        <h4 className="font-black text-slate-900 text-xs sm:text-lg uppercase tracking-tight mb-0.5">System Theme</h4>
-                        <p className="text-[8px] sm:text-sm text-slate-400 font-bold uppercase tracking-tight opacity-70 leading-none">Global Application Appearance</p>
+                        <h4 className="font-black text-slate-900 text-xs sm:text-lg uppercase tracking-tight mb-0.5">Appearance</h4>
+                        <p className="text-[8px] sm:text-sm text-slate-400 font-bold uppercase tracking-tight opacity-70 leading-none">Set your theme</p>
                       </div>
                     </div>
                     
@@ -1703,7 +1703,7 @@ const Profile = () => {
 
                         <div className="p-6 bg-slate-50 border border-slate-100 rounded-3xl">
                           <h4 className="text-[10px] font-black text-slate-300 uppercase tracking-widest mb-6 flex items-center gap-2">
-                            <Globe className="h-3 w-3" /> Digital Presence
+                            <Globe className="h-3 w-3" /> Online Presence
                           </h4>
                           <div className="space-y-4">
                             <div>
@@ -1727,7 +1727,7 @@ const Profile = () => {
                           href="/admin/store"
                           className="px-10 py-4 bg-slate-900 text-white rounded-[2rem] font-black uppercase tracking-[0.2em] text-[10px] hover:bg-primary-600 transition-all shadow-2xl active:scale-95 flex items-center gap-3"
                         >
-                          <Settings className="h-4 w-4" /> Manage Full Store Profile
+                          <Settings className="h-4 w-4" /> Manage Shop Profile
                         </a>
                       </div>
                     </div>
@@ -1738,13 +1738,13 @@ const Profile = () => {
                       </div>
                       <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight mb-2">No Store Linked</h3>
                       <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest max-w-xs mx-auto mb-8">
-                        Your account is not currently associated with a verified store entity.
+                        Your account is not currently linked to a store.
                       </p>
                       <Link 
                         to="/account-upgrade"
                         className="px-8 py-3 bg-primary-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-900 transition-all shadow-xl shadow-primary-100 active:scale-95 inline-flex items-center gap-2"
                       >
-                        <Store className="h-4 w-4" /> Initialize Seller Protocol
+                        <Store className="h-4 w-4" /> Start Selling
                       </Link>
                     </div>
                   )}
@@ -1754,10 +1754,10 @@ const Profile = () => {
                 <div className="space-y-10 animate-in fade-in slide-in-from-right-8 duration-700">
                   <header>
                     <h2 className="text-xl sm:text-3xl font-black text-slate-900 uppercase tracking-tighter leading-none">
-                      Tactical <br />
+                      My <br />
                       <span className="text-rose-600 italic">Favorites</span>
                     </h2>
-                    <p className="text-[9px] sm:text-sm text-slate-400 font-bold uppercase tracking-tight mt-1">Products you've bookmarked for later</p>
+                    <p className="text-[9px] sm:text-sm text-slate-400 font-bold uppercase tracking-tight mt-1">Items you've bookmarked for later</p>
                   </header>
 
                   {socialLoading ? (
@@ -1795,7 +1795,7 @@ const Profile = () => {
                             <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-2">{product.category}</p>
                             <div className="flex justify-between items-center">
                               <span className="text-xs sm:text-sm font-black text-slate-900">₱{product.price?.toLocaleString()}</span>
-                              <a href={`/products/${product._id}`} className="text-[8px] font-black text-primary-600 uppercase tracking-widest hover:underline">View Spec</a>
+                              <a href={`/products/${product._id}`} className="text-[8px] font-black text-primary-600 uppercase tracking-widest hover:underline">View Product</a>
                             </div>
                           </div>
                         </div>

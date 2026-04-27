@@ -247,14 +247,14 @@ const PetDetail = () => {
                 to={`/stores/${pet.store?._id}`}
                 className="px-4 py-2 bg-slate-900 text-white rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-primary-600 transition-all shadow-lg"
               >
-                Visit Seller Page
+                Visit Store
               </Link>
             </div>
             
             <div className="grid grid-cols-3 gap-2 border-t border-slate-50 pt-4">
               <div className="text-center">
                 <p className="text-[10px] font-black text-slate-900">{storeDetails?.pets?.length || pet.store?.stats?.activeListingsCount || '0'}</p>
-                <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Active Pets</p>
+                <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Pets for Sale</p>
               </div>
               <div className="text-center border-x border-slate-50">
                 <p className="text-[10px] font-black text-slate-900">{storeDetails?.store?.stats?.responseRate || pet.store?.stats?.responseRate || '100'}%</p>
@@ -297,7 +297,7 @@ const PetDetail = () => {
             <div className="absolute top-0 right-0 w-32 h-32 bg-primary-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 opacity-50" />
             <div className="absolute bottom-0 left-0 w-32 h-32 bg-secondary-500/10 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2 opacity-50" />
 
-            <h3 className="text-white text-[10px] sm:text-sm font-black uppercase tracking-widest mb-6 relative z-10 italic opacity-60">Professional Inquiry</h3>
+            <h3 className="text-white text-[10px] sm:text-sm font-black uppercase tracking-widest mb-6 relative z-10 italic opacity-60">Have a question?</h3>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 relative z-10">
               <button
@@ -323,7 +323,7 @@ const PetDetail = () => {
                   }`}
               >
                 <Package className="h-4 w-4" />
-                {pet.status === 'available' ? 'Start Purchase Inquiry' : pet.status?.toUpperCase()}
+                {pet.status === 'available' ? 'Inquire to Buy' : pet.status?.toUpperCase()}
               </button>
             </div>
             

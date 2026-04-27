@@ -274,20 +274,20 @@ const SellerJoin = () => {
         <div className="mb-12 text-center">
            <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary-50 rounded-full mb-6">
               <Store className="h-4 w-4 text-primary-600" />
-              <span className="text-[10px] font-black text-primary-700 uppercase tracking-[0.2em]">Seller Sign Up</span>
+              <span className="text-[10px] font-black text-primary-700 uppercase tracking-[0.2em]">Become a Seller</span>
            </div>
-           <h1 className="text-4xl md:text-5xl font-black text-slate-900 uppercase tracking-tighter mb-4">Join Our <span className="text-primary-600">Seller Community</span></h1>
-           <p className="text-slate-400 font-bold text-[11px] uppercase tracking-[0.3em]">Apply for your pet store or breeding business</p>
+           <h1 className="text-4xl md:text-5xl font-black text-slate-900 uppercase tracking-tighter mb-4">Join Our <span className="text-primary-600">Seller Network</span></h1>
+           <p className="text-slate-400 font-bold text-[11px] uppercase tracking-[0.3em]">Start your shop today</p>
         </div>
 
         {/* Progress Tracker */}
-        <div className="flex items-center justify-center gap-4 mb-16 px-4">
-           {[
-             { id: 1, label: 'Profile', icon: User },
-             { id: 2, label: 'Verify', icon: ShieldCheck },
-             { id: 3, label: 'Store', icon: Store },
-             { id: 4, label: 'Files', icon: FileCheck }
-           ].map((s) => (
+            <div className="flex items-center justify-center gap-4 mb-16 px-4">
+            {[
+              { id: 1, label: 'Profile', icon: User },
+              { id: 2, label: 'Verify', icon: ShieldCheck },
+              { id: 3, label: 'Your Shop', icon: Store },
+              { id: 4, label: 'Upload Files', icon: FileCheck }
+            ].map((s) => (
              <React.Fragment key={s.id}>
                <div className={`flex items-center gap-3 transition-opacity ${step === s.id ? 'opacity-100' : 'opacity-30'}`}>
                   <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${step === s.id ? 'bg-primary-600 text-white shadow-lg' : 'bg-white text-slate-400 border border-slate-100'}`}>
@@ -373,7 +373,7 @@ const SellerJoin = () => {
                 </div>
 
                 <button type="submit" disabled={loading} className="w-full py-5 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.4em] hover:bg-primary-600 transition-all flex items-center justify-center gap-3 group">
-                   {loading ? 'Setting up...' : 'Next: Verify Email'}
+                   {loading ? 'Creating Account...' : 'Continue to Next Step'}
                    <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
                 </button>
 

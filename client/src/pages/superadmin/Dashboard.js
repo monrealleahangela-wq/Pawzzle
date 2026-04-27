@@ -87,10 +87,10 @@ const SuperAdminDashboard = () => {
             <div className="p-2 bg-slate-900 dark:bg-slate-800 text-white rounded-2xl shadow-2xl">
               <Shield className="h-4 w-4" />
             </div>
-            <span className="text-[9px] sm:text-[10px] font-black text-primary-600 uppercase tracking-[0.4em]">SUPER ADMIN PANEL</span>
+            <span className="text-[9px] sm:text-[10px] font-black text-primary-600 uppercase tracking-[0.4em]">SUPER ADMIN DASHBOARD</span>
           </div>
           <h1 className="text-3xl sm:text-6xl font-black text-slate-900 dark:text-slate-100 uppercase tracking-tighter leading-[0.9] sm:leading-[0.8] mb-4">
-            System <br /> <span className="text-primary-600 italic">Overview</span>
+            System <br /> <span className="text-primary-600 italic">Status</span>
           </h1>
           <p className="text-[10px] sm:text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] sm:tracking-[0.3em] flex items-center gap-2 sm:gap-3">
             <Activity className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-emerald-500" />
@@ -111,7 +111,7 @@ const SuperAdminDashboard = () => {
         {[
           { label: 'Total Users', value: stats.totalUsers, icon: Users, color: 'indigo', growth: stats.userGrowth },
           { label: 'Total Orders', value: stats.totalOrders, icon: ShoppingBag, color: 'primary', growth: stats.orderGrowth },
-          { label: 'Gross Volume', value: `₱${stats.totalRevenue.toLocaleString()}`, icon: DollarSign, color: 'emerald', growth: 15.7 },
+          { label: 'Total Sales', value: `₱${stats.totalRevenue.toLocaleString()}`, icon: DollarSign, color: 'emerald', growth: 15.7 },
           { label: 'Platform Fees', value: `₱${(stats.totalPlatformFees || 0).toLocaleString()}`, icon: DollarSign, color: 'blue', growth: 15.7 },
           { label: 'Pending Apps', value: stats.pendingApplications, icon: Settings, color: 'amber', growth: 0 }
         ].map((stat, i) => (
@@ -144,7 +144,7 @@ const SuperAdminDashboard = () => {
           <div className="flex justify-between items-center mb-10 pl-2">
             <div>
               <h2 className="text-xl font-black text-slate-900 dark:text-slate-100 uppercase tracking-tight">Recent Orders</h2>
-              <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Live transaction history</p>
+              <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Recent transaction history</p>
             </div>
             <Link to="/superadmin/transaction-history" className="flex items-center gap-2 px-6 py-3.5 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-900 dark:hover:bg-slate-700 hover:text-white transition-all">
               View All <ChevronRight className="h-4 w-4" />
@@ -182,7 +182,7 @@ const SuperAdminDashboard = () => {
 
             <div className="grid grid-cols-1 gap-3">
               {[
-                { to: "/superadmin/insights", label: "Platform Intelligence", icon: Brain, desc: "AI-powered global insights" },
+                { to: "/superadmin/insights", label: "Platform Insights", icon: Brain, desc: "Global trends and metrics" },
                 { to: "/superadmin/account-management", label: "Manage Users", icon: Users, desc: "Manage store owners" },
                 { to: "/superadmin/store-applications", label: "Store Requests", icon: Settings, desc: "Review new stores" },
                 { to: "/superadmin/system-analytics", label: "Analytics", icon: Activity, desc: "System performance" }
@@ -214,8 +214,8 @@ const SuperAdminDashboard = () => {
 
         <div className="flex justify-between items-center mb-10 pl-2">
           <div>
-            <h2 className="text-xl font-black text-slate-900 dark:text-slate-100 uppercase tracking-tight">User List</h2>
-            <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Recent user registrations</p>
+            <h2 className="text-xl font-black text-slate-900 dark:text-slate-100 uppercase tracking-tight">Recent Users</h2>
+            <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Latest registrations</p>
           </div>
         </div>
 

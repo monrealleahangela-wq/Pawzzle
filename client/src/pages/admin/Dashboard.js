@@ -106,7 +106,7 @@ const Dashboard = () => {
           <Activity className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-8 w-8 text-[#5D4037] animate-pulse" />
         </div>
         <div className="text-center space-y-2">
-          <p className="text-[11px] font-black text-[#5D4037]/40 uppercase tracking-[0.6em] animate-pulse">INITIATING COMMAND HUD</p>
+          <p className="text-[11px] font-black text-[#5D4037]/40 uppercase tracking-[0.6em] animate-pulse">LOADING DASHBOARD</p>
           <div className="flex gap-2 justify-center">
             {[0, 1, 2].map(i => (
               <div key={i} className="w-1.5 h-1.5 rounded-full bg-secondary-500/40 animate-bounce" style={{ animationDelay: `${i * 0.15}s` }} />
@@ -136,18 +136,18 @@ const Dashboard = () => {
               <Activity className="h-5 w-5 sm:h-6 sm:w-6" />
             </div>
             <div className="space-y-0.5 sm:space-y-1">
-              <span className="text-[9px] sm:text-[10px] font-black text-primary-600 uppercase tracking-[0.4em] sm:tracking-[0.5em]">COMMAND TERMINAL</span>
+              <span className="text-[9px] sm:text-[10px] font-black text-primary-600 uppercase tracking-[0.4em] sm:tracking-[0.5em]">STORE DASHBOARD</span>
               <p className="text-[9px] sm:text-[11px] font-bold text-[#5D4037]/30 dark:text-slate-500 uppercase tracking-[0.2em] sm:tracking-[0.3em] flex items-center gap-2 sm:gap-3">
                 <span className="flex h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                Live Telemetry: Active
+                System Status: Online
               </p>
             </div>
           </div>
           
           <div className="space-y-1">
              <h1 className="text-3xl sm:text-5xl lg:text-7xl font-black text-[#3D2B23] dark:text-slate-100 uppercase tracking-[-0.04em] leading-[0.9] sm:leading-[0.85]">
-                {user?.store?.name || 'Vanguard'} <br /> 
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-secondary-500 to-primary-700 italic">Flagship Overview .</span>
+                {user?.store?.name || 'My Store'} <br /> 
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-secondary-500 to-primary-700 italic">Overview .</span>
              </h1>
           </div>
         </div>
@@ -159,7 +159,7 @@ const Dashboard = () => {
           <div className="absolute inset-0 bg-primary-600 translate-y-full group-hover:translate-y-0 transition-transform duration-500 opacity-20" />
           <RefreshCw className={`h-4 w-4 sm:h-5 sm:w-5 text-secondary-500 ${refreshingRole ? 'animate-spin' : 'group-hover:rotate-180 transition-transform duration-700'}`} />
           <span className="text-[9px] sm:text-[11px] font-black uppercase tracking-[0.2em] sm:tracking-[0.3em] relative z-10">
-            {refreshingRole ? 'REFRESHING...' : 'UPDATE DATA'}
+            {refreshingRole ? 'REFRESHING...' : 'REFRESH'}
           </span>
         </button>
       </header>
@@ -217,13 +217,13 @@ const Dashboard = () => {
       <div className="relative z-10 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
         {[
           { label: 'AVAILABLE PETS', value: stats.totalPets, icon: Heart, color: 'amber', link: '/admin/pets', sub: 'In Shop', growth: stats.growth.pets, show: isAdmin || hasPerm('inventory') },
-          { label: 'PET SALES', value: stats.totalSales, icon: ShoppingCart, color: 'rose', link: '/admin/pets', sub: 'Completed', growth: stats.growth.adoptions, show: isAdmin || hasPerm('orders') },
-          { label: 'STORE ORDERS', value: stats.totalOrders, icon: ShoppingBag, color: 'slate', link: '/admin/orders', sub: 'Processed', growth: stats.growth.orders, show: isAdmin || hasPerm('orders') },
+          { label: 'PET SALES', value: stats.totalSales, icon: ShoppingCart, color: 'rose', link: '/admin/pets', sub: 'Adopted', growth: stats.growth.adoptions, show: isAdmin || hasPerm('orders') },
+          { label: 'TOTAL ORDERS', value: stats.totalOrders, icon: ShoppingBag, color: 'slate', link: '/admin/orders', sub: 'Products', growth: stats.growth.orders, show: isAdmin || hasPerm('orders') },
           { label: 'SERVICE BOOKINGS', value: stats.totalBookings, icon: Calendar, color: 'emerald', link: '/admin/bookings', sub: 'Scheduled', growth: stats.growth.bookings, show: isAdmin || hasPerm('bookings') || hasPerm('services') },
           { label: 'RESPONSE RATE', value: `${stats.responseRate}%`, icon: Activity, color: 'primary', link: '/admin/chat', sub: 'Real-time', growth: 0, show: isAdmin },
           { label: 'TOTAL REVIEWS', value: stats.totalReviews, icon: Star, color: 'secondary', link: '/admin/reviews', sub: 'Customers', growth: 0, show: isAdmin },
-          { label: 'TOTAL REVENUE', value: `₱${stats.netEarnings.toLocaleString()}`, icon: TrendingUp, color: 'primary', link: '/admin/insights', sub: 'Gross Profit', growth: stats.growth.revenue, show: isAdmin },
-          { label: 'AVAILABLE BALANCE', value: `₱${stats.availableBalance.toLocaleString()}`, icon: Shield, color: 'amber', link: '/admin/payouts', sub: 'For Payout', growth: stats.growth.balance, show: isAdmin }
+          { label: 'TOTAL REVENUE', value: `₱${stats.netEarnings.toLocaleString()}`, icon: TrendingUp, color: 'primary', link: '/admin/insights', sub: 'Total Earned', growth: stats.growth.revenue, show: isAdmin },
+          { label: 'AVAILABLE BALANCE', value: `₱${stats.availableBalance.toLocaleString()}`, icon: Shield, color: 'amber', link: '/admin/payouts', sub: 'To Withdraw', growth: stats.growth.balance, show: isAdmin }
         ].filter(s => s.show).map((stat, i) => (
           <Link
             key={i}
@@ -266,7 +266,7 @@ const Dashboard = () => {
               <div className="space-y-2">
                 <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-[#FAF9F6] dark:bg-slate-800 border border-[#5D4037]/5 dark:border-slate-700 rounded-full">
                   <ShoppingCart className="h-3.5 w-3.5 text-primary-600" />
-                  <span className="text-[9px] font-black text-[#5D4037]/40 dark:text-slate-500 uppercase tracking-[0.3em]">TRANSACTION FEED</span>
+                  <span className="text-[9px] font-black text-[#5D4037]/40 dark:text-slate-500 uppercase tracking-[0.3em]">ORDER FEED</span>
                 </div>
                 <h2 className="text-2xl sm:text-3xl font-black text-[#3D2B23] dark:text-slate-100 uppercase tracking-tighter">Recent Transactions</h2>
               </div>
@@ -364,11 +364,11 @@ const Dashboard = () => {
 
             <div className="space-y-4 relative z-10">
               {[
-                { to: "/admin/insights", label: "Strategic Intelligence", icon: Brain, desc: "Neural optimization core", show: isAdmin || hasPerm('analytics') },
-                { to: "/admin/pets", label: "Deploy Companion", icon: Plus, desc: "Synchronize new biological unit", show: isAdmin || hasPerm('inventory') },
-                { to: "/admin/products", label: "Catalog Hardware", icon: Package, desc: "Index new structural equipment", show: isAdmin || hasPerm('inventory') },
-                { to: "/admin/bookings", label: "Operational Calendar", icon: Calendar, desc: "Synchronize service nodes", show: isAdmin || hasPerm('bookings') || hasPerm('services') },
-                { to: "/admin/orders", label: "Order Queue", icon: ShoppingCart, desc: "Process pending transactions", show: isAdmin || hasPerm('orders') },
+                { to: "/admin/insights", label: "Business Insights", icon: Brain, desc: "See your shop's performance", show: isAdmin || hasPerm('analytics') },
+                { to: "/admin/pets", label: "Add a Pet", icon: Plus, desc: "List a pet for adoption", show: isAdmin || hasPerm('inventory') },
+                { to: "/admin/products", label: "Add a Product", icon: Package, desc: "List new items for sale", show: isAdmin || hasPerm('inventory') },
+                { to: "/admin/bookings", label: "Manage Bookings", icon: Calendar, desc: "View appointment schedule", show: isAdmin || hasPerm('bookings') || hasPerm('services') },
+                { to: "/admin/orders", label: "Order Queue", icon: ShoppingCart, desc: "Process product orders", show: isAdmin || hasPerm('orders') },
               ].filter(action => action.show).map((action, i) => (
                 <Link key={i} to={action.to} className="group/btn relative flex items-center gap-4 sm:gap-6 p-3 sm:p-5 bg-white/5 hover:bg-white/10 rounded-xl sm:rounded-[1.8rem] transition-all active:scale-[0.97] border border-white/5">
                   <div className="w-10 h-10 sm:w-14 sm:h-14 bg-white/5 rounded-lg sm:rounded-2xl flex items-center justify-center shrink-0 group-hover/btn:bg-primary-600 transition-all duration-500">
@@ -420,10 +420,10 @@ const Dashboard = () => {
                 <Shield className="h-10 w-10 text-white" />
               </div>
               <div className="space-y-2">
-                 <p className="text-[12px] font-black uppercase tracking-[0.6em]">All Systems Clear</p>
+                 <p className="text-[12px] font-black uppercase tracking-[0.6em]">Looking Good!</p>
                  <div className="flex items-center gap-2 justify-center">
                     <div className="w-2 h-2 rounded-full bg-white animate-pulse" />
-                    <p className="text-[10px] font-bold text-white/50 uppercase tracking-[0.3em]">Shop status is stable</p>
+                    <p className="text-[10px] font-bold text-white/50 uppercase tracking-[0.3em]">Everything is running smoothly</p>
                  </div>
               </div>
             </div>

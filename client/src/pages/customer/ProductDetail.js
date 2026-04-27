@@ -218,7 +218,7 @@ const ProductDetail = () => {
             </p>
           </div>
 
-          {/* Technical Specs - Compacted */}
+          {/* Specifications */}
           {(product.dimensions || product.material) && (
             <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100 flex items-center justify-between">
               <div>
@@ -236,7 +236,7 @@ const ProductDetail = () => {
             </div>
           )}
 
-          {/* Store Intel - Streamlined */}
+          {/* Seller Information */}
           {product.store && (
             <div className="bg-white rounded-[2.5rem] p-4 sm:p-6 border border-slate-100 shadow-xl shadow-slate-200/50 flex items-center gap-4">
               <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-slate-50 border border-slate-100 flex-shrink-0 overflow-hidden">
@@ -267,7 +267,7 @@ const ProductDetail = () => {
             </div>
           )}
 
-          {/* Acquisition Module */}
+          {/* Buying Options */}
           <div className="bg-slate-900 p-4 sm:p-8 rounded-[2.5rem] shadow-2xl relative overflow-hidden hidden sm:block">
             <div className="absolute top-0 right-0 w-32 h-32 bg-secondary-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
             
@@ -283,7 +283,7 @@ const ProductDetail = () => {
             ) : (
               <>
                 <div className="flex items-center justify-between mb-6 relative z-10">
-                  <h3 className="text-white text-base font-black uppercase tracking-widest italic">Options</h3>
+                  <h3 className="text-white text-base font-black uppercase tracking-widest italic">Quantity</h3>
                   <div className="flex items-center gap-4 bg-white/10 rounded-xl p-1 px-4 border border-white/10">
                     <button onClick={() => setQuantity(Math.max(1, quantity - 1))} className="text-slate-400 hover:text-white"><Minus className="h-4 w-4" /></button>
                     <span className="w-8 text-center text-white font-black">{quantity}</span>
