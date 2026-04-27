@@ -44,6 +44,7 @@ const StoreDetail = () => {
   const [products, setProducts] = useState([]);
   const [services, setServices] = useState([]);
   const [pets, setPets] = useState([]);
+  const [staff, setStaff] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('products');
   const [isFollowing, setIsFollowing] = useState(false);
@@ -239,6 +240,7 @@ const StoreDetail = () => {
       setProducts(response.data.products || []);
       setServices(response.data.services || []);
       setPets(response.data.pets || []);
+      setStaff(response.data.staff || []);
     } catch (error) {
       console.error('Error fetching store details:', error);
       toast.error('Failed to load store details');
@@ -442,7 +444,8 @@ const StoreDetail = () => {
               {[
                 { id: 'products', label: 'Gear', icon: Package, count: products.length },
                 { id: 'services', label: 'Ops', icon: Scissors, count: services.length },
-                { id: 'pets', label: 'Fleet', icon: Heart, count: pets.length }
+                { id: 'pets', label: 'Fleet', icon: Heart, count: pets.length },
+                ...(staff.length > 0 ? [{ id: 'experts', label: 'Experts', icon: Users, count: staff.length }] : [])
               ].map((tab) => (
                 <button
                   key={tab.id}
@@ -563,6 +566,67 @@ const StoreDetail = () => {
                     <div className="col-span-full py-12 text-center text-slate-300">
                       <Heart className="h-10 w-10 mx-auto mb-2 opacity-10" />
                       <p className="font-black text-[10px] uppercase tracking-widest opacity-40">Fleet Offline</p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {activeTab === 'experts' && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-8 animate-fade-in px-1">
+                  {staff.length > 0 ? staff.map(member => (
+                    <div key={member._id} className="group bg-white rounded-xl sm:rounded-[2.5rem] p-4 sm:p-8 border border-slate-100 shadow-sm hover:shadow-xl transition-all">
+                      <div className="flex items-center gap-4 sm:gap-6 mb-6">
+                        <div className="relative">
+                          {member.avatar ? (
+                            <img src={getImageUrl(member.avatar)} alt={member.firstName} className="w-16 h-16 sm:w-24 sm:h-24 rounded-2xl sm:rounded-[2rem] object-cover ring-4 ring-slate-50" />
+                          ) : (
+                            <div className="w-16 h-16 sm:w-24 sm:h-24 rounded-2xl sm:rounded-[2rem] bg-slate-100 flex items-center justify-center text-slate-300 ring-4 ring-slate-50 font-black text-xl">
+                              {member.firstName?.[0]}{member.lastName?.[0]}
+                            </div>
+                          )}
+                          <div className={`absolute -bottom-1 -right-1 w-4 h-4 sm:w-6 sm:h-6 rounded-full border-2 border-white flex items-center justify-center shadow-lg ${ member.lastSeen && (new Date() - new Date(member.lastSeen)) < 5 * 60 * 1000 ? 'bg-emerald-500' : 'bg-slate-300' }`} title={ member.lastSeen && (new Date() - new Date(member.lastSeen)) < 5 * 60 * 1000 ? 'Active' : 'Offline' }>
+                             {member.lastSeen && (new Date() - new Date(member.lastSeen)) < 5 * 60 * 1000 && <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-white rounded-full animate-pulse" />}
+                          </div>
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <h3 className="text-sm sm:text-lg font-black text-slate-900 truncate uppercase tracking-tight">{member.firstName} {member.lastName}</h3>
+                            <Shield className="h-3 w-3 sm:h-4 sm:w-4 text-primary-600" />
+                          </div>
+                          <p className="text-[9px] sm:text-xs font-black text-primary-600 uppercase tracking-widest mb-2">{member.staffType?.replace(/_/g, ' ')}</p>
+                          <div className="flex items-center gap-1.5">
+                            <Star className="h-3 w-3 text-secondary-500 fill-secondary-500" />
+                            <span className="text-[10px] sm:text-sm font-black text-slate-900">{member.professionalProfile?.rating || '5.0'}</span>
+                            <span className="text-slate-300">/</span>
+                            <span className="text-[9px] sm:text-xs font-bold text-slate-400 uppercase tracking-widest">{member.professionalProfile?.experienceYears || 0}Y EXP</span>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="space-y-4">
+                        <div className="p-3 sm:p-5 bg-slate-50 rounded-2xl border border-slate-100">
+                          <p className="text-[10px] sm:text-sm text-slate-600 font-medium italic line-clamp-2 leading-relaxed">
+                            "{member.professionalProfile?.bio || 'Professional staff dedicated to providing the best care for your pets.'}"
+                          </p>
+                        </div>
+                        <div className="flex flex-wrap gap-1.5">
+                          {member.professionalProfile?.specializations?.slice(0, 3).map((spec, i) => (
+                            <span key={i} className="px-1.5 py-0.5 bg-white border border-slate-100 text-slate-500 rounded-lg text-[7px] sm:text-[9px] font-black uppercase tracking-widest shadow-sm">
+                              {spec}
+                            </span>
+                          ))}
+                          {(member.professionalProfile?.specializations?.length > 3) && (
+                            <span className="px-1.5 py-0.5 bg-slate-900 text-white rounded-lg text-[7px] sm:text-[9px] font-black uppercase tracking-widest">
+                              +{member.professionalProfile.specializations.length - 3} More
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )) : (
+                    <div className="col-span-full py-12 text-center text-slate-300">
+                      <Users className="h-10 w-10 mx-auto mb-2 opacity-10" />
+                      <p className="font-black text-[10px] uppercase tracking-widest opacity-40">No Expert Data Dispatched</p>
                     </div>
                   )}
                 </div>

@@ -109,8 +109,8 @@ const getStoreDetails = async (req, res) => {
       return res.status(404).json({ message: 'Store not found' });
     }
 
-    // Get store's products, services, pets, and follower count
-    const [products, services, pets, followerCount] = await Promise.all([
+    // Get store's products, services, pets, follower count, and staff
+    const [products, services, pets, followerCount, staff] = await Promise.all([
       Product.find({
         $or: [
           { store: store._id },
@@ -126,7 +126,7 @@ const getStoreDetails = async (req, res) => {
         ],
         isActive: true,
         isDeleted: { $ne: true }
-      }).select('name description price duration category'),
+      }).select('name description price duration category images'),
       Pet.find({
         $or: [
           { store: store._id },
@@ -135,15 +135,25 @@ const getStoreDetails = async (req, res) => {
         isAvailable: true,
         isDeleted: { $ne: true }
       }).select('name breed age gender price images species description'),
-      Follow.countDocuments({ following: store.owner._id || store.owner })
+      Follow.countDocuments({ following: store.owner._id || store.owner }),
+      User.find({
+        store: store._id,
+        role: 'staff',
+        isActive: true,
+        isDeleted: { $ne: true },
+        'professionalProfile.isPublic': { $ne: false }
+      }).select('firstName lastName username avatar staffType professionalProfile reputation lastSeen')
     ]);
+
+    const isStaffVisibile = store.staffingConfiguration?.isStaffVisibleToCustomers;
 
     res.json({
       store,
       products,
       services,
       pets,
-      followerCount
+      followerCount,
+      staff: isStaffVisibile ? staff : []
     });
   } catch (error) {
     console.error('Get store details error:', error);

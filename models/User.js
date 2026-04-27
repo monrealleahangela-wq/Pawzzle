@@ -40,7 +40,12 @@ const userSchema = new mongoose.Schema({
   staffType: {
     // Only relevant when role === 'staff'
     type: String,
-    enum: ['order_staff', 'inventory_staff', 'service_staff', null],
+    enum: [
+      'veterinarian', 'groomer', 'trainer', 'boarding_specialist', 
+      'medical_assistant', 'pet_handler', 'inventory_staff', 
+      'logistics_staff', 'sales_staff', 'service_management_staff', 
+      'administrative_support', 'order_staff', 'service_staff', null
+    ],
     default: null
   },
   createdBy: {
@@ -152,6 +157,21 @@ const userSchema = new mongoose.Schema({
   activityStats: {
     totalInquiriesSubmitted: { type: Number, default: 0 },
     activePetInquiries: { type: Number, default: 0 }
+  },
+  // Professional Profile Data (for Staff)
+  professionalProfile: {
+    certifications: [{
+      name: String,
+      issuingBody: String,
+      year: Number,
+      documentUrl: String,
+      isVerified: { type: Boolean, default: false }
+    }],
+    experienceYears: { type: Number, default: 0 },
+    bio: String,
+    specializations: [String],
+    rating: { type: Number, default: 5, min: 1, max: 5 },
+    isPublic: { type: Boolean, default: true }
   }
 });
 

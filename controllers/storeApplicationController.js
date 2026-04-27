@@ -353,7 +353,7 @@ const reviewApplication = async (req, res) => {
         const store = await Store.findOne({ owner: application.applicant });
         if (store) {
           store.operationalModules = application.operationalModules;
-          store.hiringStaff = application.hiringStaff;
+          store.staffingConfiguration = application.staffingConfiguration;
           store.staffTypes = application.staffTypes;
           store.supplierNeeds = application.supplierNeeds;
           store.expansionStatus = 'none';
@@ -368,7 +368,7 @@ const reviewApplication = async (req, res) => {
           logo: application.storeLogoUrl,
           businessType: application.businessType,
           operationalModules: application.operationalModules || [],
-          hiringStaff: application.hiringStaff || false,
+          staffingConfiguration: application.staffingConfiguration,
           staffTypes: application.staffTypes || [],
           legalStructure: application.legalStructure,
           yearsInBusiness: application.yearsInBusiness,

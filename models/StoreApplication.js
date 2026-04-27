@@ -27,8 +27,18 @@ const storeApplicationSchema = new mongoose.Schema({
   },
   staffTypes: [{
     type: String,
-    enum: ['vets', 'groomers', 'trainers', 'boarding_specialists']
+    enum: [
+      'vets', 'groomers', 'trainers', 'boarding_specialists', 
+      'medical_assistants', 'pet_handlers', 'inventory', 
+      'logistics', 'sales', 'service_mgmt', 'admin'
+    ]
   }],
+  staffingConfiguration: {
+    hasStaff: { type: String, enum: ['yes', 'no', 'planning'], default: 'no' },
+    staffQuantityRange: { type: String, enum: ['1-5', '6-15', '16+'] },
+    isStaffVisibleToCustomers: { type: Boolean, default: false },
+    requiresProfessionalVerification: { type: Boolean, default: false }
+  },
   supplierNeeds: {
     type: Boolean,
     default: false

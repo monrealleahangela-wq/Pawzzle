@@ -51,32 +51,64 @@ const getAdminMenu = (user) => {
   const hasPets = mods.includes('pets');
   const hasProducts = mods.includes('products');
   const hasServices = mods.includes('services');
+  const role = user?.role;
+  const staffType = user?.staffType;
+
+  // Store Owners (admin) and Super Admins get full access based on modules
+  const isGlobalAdmin = role === 'admin' || role === 'super_admin';
 
   const menu = [
     { path: '/admin/dashboard', label: 'Dashboard', icon: Activity },
-    { path: '/admin/insights', label: 'Intelligence', icon: Brain },
   ];
 
-  // 1. CATALOG MODULES
+  // Helper to check role permissions
+  const hasAccess = (requiredRoles) => {
+    if (isGlobalAdmin) return true;
+    if (role === 'staff' && requiredRoles.includes(staffType)) return true;
+    return false;
+  };
+
+  // 1. INTELLIGENCE (Admin/SuperAdmin or Analyst)
+  if (isGlobalAdmin || hasAccess(['service_management_staff'])) {
+    menu.push({ path: '/admin/insights', label: 'Intelligence', icon: Brain });
+  }
+
+  // 2. CATALOG MODULES
   const catalogChildren = [];
-  if (hasPets) catalogChildren.push({ path: '/admin/pets', label: 'Pet Inventory', icon: Heart });
-  if (hasProducts) catalogChildren.push({ path: '/admin/products', label: 'Product Inventory', icon: Package });
-  if (hasServices) catalogChildren.push({ path: '/admin/services', label: 'Service Catalog', icon: Calendar });
+  if (hasPets && hasAccess(['inventory_staff'])) {
+    catalogChildren.push({ path: '/admin/pets', label: 'Pet Inventory', icon: Heart });
+  }
+  if (hasProducts && hasAccess(['inventory_staff'])) {
+    catalogChildren.push({ path: '/admin/products', label: 'Product Inventory', icon: Package });
+  }
+  if (hasServices && hasAccess(['service_management_staff', 'veterinarian', 'groomer', 'trainer'])) {
+    catalogChildren.push({ path: '/admin/services', label: 'Service Catalog', icon: Calendar });
+  }
   if (catalogChildren.length > 0) menu.push({ label: 'Catalog', icon: Layers, children: catalogChildren });
 
-  // 2. OPERATIONS MODULES
+  // 3. OPERATIONS
   const opsChildren = [];
-  if (hasProducts || hasPets) opsChildren.push({ path: '/admin/orders', label: 'Order Mgmt', icon: ShoppingCart });
-  if (hasServices) opsChildren.push({ path: '/admin/bookings', label: 'Service Bookings', icon: Calendar });
+  if (hasAccess(['logistics_staff', 'sales_staff', 'order_staff'])) {
+    opsChildren.push({ path: '/admin/orders', label: 'Store Orders', icon: ShoppingCart });
+  }
+  if (hasServices && hasAccess(['service_management_staff', 'veterinarian', 'groomer', 'trainer', 'boarding_specialist'])) {
+    opsChildren.push({ path: '/admin/bookings', label: 'Service Bookings', icon: Calendar });
+  }
   
-  opsChildren.push({ path: '/admin/customers', label: 'Customers', icon: Users });
+  if (isGlobalAdmin || hasAccess(['sales_staff', 'administrative_support'])) {
+    opsChildren.push({ path: '/admin/customers', label: 'Customers', icon: Users });
+  }
+  
   opsChildren.push({ path: '/admin/chat', label: 'Chat', icon: MessageSquare });
-  opsChildren.push({ path: '/admin/reviews', label: 'Reviews', icon: Star });
   
-  menu.push({ label: 'Operations', icon: ShoppingBag, children: opsChildren });
+  if (isGlobalAdmin || hasAccess(['administrative_support'])) {
+    opsChildren.push({ path: '/admin/reviews', label: 'Reviews', icon: Star });
+  }
+  
+  if (opsChildren.length > 0) menu.push({ label: 'Operations', icon: ShoppingBag, children: opsChildren });
 
-  // 3. SUPPLY CHAIN (Products Only)
-  if (hasProducts) {
+  // 4. SUPPLY CHAIN (Products Only - Inventory Staff)
+  if (hasProducts && hasAccess(['inventory_staff'])) {
     menu.push({
       label: 'Supply Chain', icon: Truck, children: [
         { path: '/admin/purchase-orders', label: 'Purchase Orders', icon: Truck },
@@ -85,19 +117,24 @@ const getAdminMenu = (user) => {
     });
   }
 
-  // 4. FINANCE MODULES
-  const financeChildren = [
-    { path: '/admin/vouchers', label: 'Vouchers', icon: Ticket },
-    { path: '/admin/payouts', label: 'Payouts', icon: Wallet },
-  ];
-  menu.push({ label: 'Finance', icon: DollarSign, children: financeChildren });
-
-  // 5. SETTINGS & STAFF
-  const settingsChildren = [{ path: '/admin/store', label: 'Store Profile', icon: Building }];
-  if (hasServices || (user?.store?.hiringStaff)) {
-    settingsChildren.push({ path: '/admin/staff', label: 'Verified Staff', icon: Users });
+  // 5. FINANCE MODULES (Admin or Sales/Admin Support)
+  if (isGlobalAdmin || hasAccess(['sales_staff', 'administrative_support'])) {
+    const financeChildren = [
+      { path: '/admin/vouchers', label: 'Vouchers', icon: Ticket },
+      { path: '/admin/payouts', label: 'Payouts', icon: Wallet },
+    ];
+    menu.push({ label: 'Finance', icon: DollarSign, children: financeChildren });
   }
-  menu.push({ label: 'Settings', icon: Settings, children: settingsChildren });
+
+  // 6. SETTINGS & STAFF (Admin Only)
+  if (isGlobalAdmin) {
+    const settingsChildren = [{ path: '/admin/store', label: 'Store Profile', icon: Building }];
+    const hasStaffConfig = user?.store?.staffingConfiguration?.hasStaff !== 'no';
+    if (hasStaffConfig) {
+      settingsChildren.push({ path: '/admin/staff', label: 'Workforce', icon: Users });
+    }
+    menu.push({ label: 'Settings', icon: Settings, children: settingsChildren });
+  }
 
   return menu;
 };

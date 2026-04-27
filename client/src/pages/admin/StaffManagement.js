@@ -4,38 +4,43 @@ import { toast } from 'react-toastify';
 import { 
     Users, Plus, Edit2, Trash2, Power, Key, X, Check,
     ShoppingCart, Package, Calendar, ChevronDown, Search,
-    Shield, Clock, AlertCircle, RefreshCw, Lock, Truck
+    Shield, Clock, AlertCircle, RefreshCw, Lock, Truck,
+    Home, Activity, Layers, Star, MessageSquare
 } from 'lucide-react';
 import PermissionsManager from '../../components/admin/PermissionsManager';
 import { staffService } from '../../services/apiService';
 
 const STAFF_TYPES = [
-    {
-        id: 'order_staff',
-        label: 'Order Processing',
-        icon: ShoppingCart,
-        color: 'blue',
-        description: 'Manages customer orders, confirms pickups, updates order status'
-    },
-    {
-        id: 'inventory_staff',
-        label: 'Inventory',
-        icon: Package,
-        color: 'amber',
-        description: 'Manages products, pet listings, and stock levels'
-    },
-    {
-        id: 'service_staff',
-        label: 'Service',
-        icon: Calendar,
-        color: 'purple',
-        description: 'Manages grooming/vet bookings and appointment schedules'
-    }
+    // Service Professionals
+    { id: 'veterinarian', label: 'Veterinarian', icon: Shield, color: 'emerald', category: 'prof', description: 'Medical professional' },
+    { id: 'groomer', label: 'Groomer', icon: Heart, color: 'pink', category: 'prof', description: 'Styling professional' },
+    { id: 'trainer', label: 'Trainer', icon: Activity, color: 'blue', category: 'prof', description: 'Behavior specialist' },
+    { id: 'boarding_specialist', label: 'Boarding', icon: Home, color: 'purple', category: 'prof', description: 'Facility specialist' },
+    { id: 'medical_assistant', label: 'Med Asst.', icon: Shield, color: 'cyan', category: 'prof', description: 'Clinical support' },
+    { id: 'pet_handler', label: 'Handler', icon: Users, color: 'indigo', category: 'prof', description: 'Safety professional' },
+    
+    // Operational Staff
+    { id: 'inventory_staff', label: 'Inventory', icon: Package, color: 'amber', category: 'ops', description: 'Stock & Suppliers' },
+    { id: 'logistics_staff', label: 'Logistics', icon: Truck, color: 'rose', category: 'ops', description: 'Fulfillment & Delivery' },
+    { id: 'sales_staff', label: 'Sales', icon: ShoppingCart, color: 'teal', category: 'ops', description: 'Orders & Customers' },
+    { id: 'service_management_staff', label: 'Svc Mgmt', icon: Calendar, color: 'violet', category: 'ops', description: 'Services & Listings' },
+    { id: 'administrative_support', label: 'Admin', icon: Layers, color: 'slate', category: 'ops', description: 'Back-office support' }
 ];
 
 const TYPE_STYLES = {
+    veterinarian: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+    groomer: 'bg-pink-50 text-pink-700 border-pink-200',
+    trainer: 'bg-blue-50 text-blue-700 border-blue-200',
+    boarding_specialist: 'bg-purple-50 text-purple-700 border-purple-200',
+    medical_assistant: 'bg-cyan-50 text-cyan-700 border-cyan-200',
+    pet_handler: 'bg-indigo-50 text-indigo-700 border-indigo-200',
+    inventory_staff: 'bg-amber-50 text-amber-700 border-amber-200',
+    logistics_staff: 'bg-rose-50 text-rose-700 border-rose-200',
+    sales_staff: 'bg-teal-50 text-teal-700 border-teal-200',
+    service_management_staff: 'bg-violet-50 text-violet-700 border-violet-200',
+    administrative_support: 'bg-slate-50 text-slate-700 border-slate-200',
+    // Fallbacks
     order_staff: 'bg-blue-50 text-blue-700 border-blue-200',
-    inventory_staff: 'bg-secondary-50 text-primary-700 border-secondary-200',
     service_staff: 'bg-purple-50 text-purple-700 border-purple-200'
 };
 
@@ -187,9 +192,8 @@ const StaffManagement = () => {
     const counts = {
         total: staff.length,
         active: staff.filter(s => s.isActive).length,
-        order: staff.filter(s => s.staffType === 'order_staff').length,
-        inventory: staff.filter(s => s.staffType === 'inventory_staff').length,
-        service: staff.filter(s => s.staffType === 'service_staff').length
+        prof: staff.filter(s => STAFF_TYPES.find(t => t.id === s.staffType)?.category === 'prof').length,
+        ops: staff.filter(s => STAFF_TYPES.find(t => t.id === s.staffType)?.category === 'ops').length
     };
 
     return (
@@ -220,12 +224,11 @@ const StaffManagement = () => {
                     {[
                         { label: 'Total Staff', value: counts.total, color: 'slate' },
                         { label: 'Active', value: counts.active, color: 'emerald' },
-                        { label: 'Order Staff', value: counts.order, color: 'blue' },
-                        { label: 'Inventory', value: counts.inventory, color: 'amber' },
-                        { label: 'Service', value: counts.service, color: 'purple' }
+                        { label: 'Professional', value: counts.prof, color: 'primary' },
+                        { label: 'Operational', value: counts.ops, color: 'indigo' }
                     ].map(s => (
                         <div key={s.label} className="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm text-center">
-                            <p className={`text-[9px] font-black uppercase tracking-widest text-${s.color}-600 mb-1`}>{s.label}</p>
+                            <p className={`text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1`}>{s.label}</p>
                             <p className="text-2xl font-black text-slate-900">{s.value}</p>
                         </div>
                     ))}
@@ -279,9 +282,16 @@ const StaffManagement = () => {
                                 className="w-full pl-16 pr-10 py-4 bg-slate-800 text-white text-[10px] font-black uppercase tracking-widest rounded-2xl outline-none focus:ring-2 focus:ring-primary-500/20 appearance-none transition-all cursor-pointer font-sans"
                             >
                                 <option value="" className="bg-slate-900 text-white font-black">ALL ROLES: VIEW ALL</option>
-                                {STAFF_TYPES.map(t => (
-                                    <option key={t.id} value={t.id} className="bg-slate-900 text-white font-black">{t.label.toUpperCase()}</option>
-                                ))}
+                                <optgroup label="SERVICE PROFESSIONALS" className="bg-slate-900 text-primary-500 font-black">
+                                    {STAFF_TYPES.filter(t => t.category === 'prof').map(t => (
+                                        <option key={t.id} value={t.id} className="bg-slate-900 text-white font-black">{t.label.toUpperCase()}</option>
+                                    ))}
+                                </optgroup>
+                                <optgroup label="OPERATIONAL SUPPORT" className="bg-slate-900 text-secondary-500 font-black">
+                                    {STAFF_TYPES.filter(t => t.category === 'ops').map(t => (
+                                        <option key={t.id} value={t.id} className="bg-slate-900 text-white font-black">{t.label.toUpperCase()}</option>
+                                    ))}
+                                </optgroup>
                             </select>
                             <ChevronDown className="absolute right-6 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500 pointer-events-none" />
                         </div>
@@ -446,25 +456,52 @@ const StaffManagement = () => {
                                     {/* Staff Type Selector */}
                                     <div>
                                         <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">Professional Specialization *</label>
-                                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                                            {STAFF_TYPES.map(t => {
-                                                const Icon = t.icon;
-                                                return (
-                                                    <button
-                                                        key={t.id}
-                                                        type="button"
-                                                        onClick={() => setForm(f => ({ ...f, staffType: t.id }))}
-                                                        className={`flex flex-col items-center gap-2 p-4 rounded-2xl border-2 transition-all ${form.staffType === t.id ? 'bg-slate-900 border-slate-900 text-white shadow-lg' : 'bg-slate-50 border-slate-100 text-slate-500 hover:border-slate-200'}`}
-                                                    >
-                                                        <Icon className="h-5 w-5" />
-                                                        <span className="text-[9px] font-black uppercase tracking-[0.1em] text-center leading-tight">{t.label}</span>
-                                                    </button>
-                                                );
-                                            })}
+                                        
+                                        <div className="space-y-6">
+                                            <div>
+                                                <p className="text-[9px] font-black text-primary-600 uppercase mb-3 px-1">Service Professionals</p>
+                                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                                                    {STAFF_TYPES.filter(t => t.category === 'prof').map(t => {
+                                                        const Icon = t.icon;
+                                                        return (
+                                                            <button
+                                                                key={t.id}
+                                                                type="button"
+                                                                onClick={() => setForm(f => ({ ...f, staffType: t.id }))}
+                                                                className={`flex flex-col items-center gap-2 p-4 rounded-2xl border-2 transition-all ${form.staffType === t.id ? 'bg-primary-600 border-primary-600 text-white shadow-lg' : 'bg-slate-50 border-slate-100 text-slate-500 hover:border-slate-200'}`}
+                                                            >
+                                                                <Icon className="h-5 w-5" />
+                                                                <span className="text-[9px] font-black uppercase tracking-[0.1em] text-center leading-tight">{t.label}</span>
+                                                            </button>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
+
+                                            <div>
+                                                <p className="text-[9px] font-black text-slate-900 uppercase mb-3 px-1">Operational Support</p>
+                                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                                                    {STAFF_TYPES.filter(t => t.category === 'ops').map(t => {
+                                                        const Icon = t.icon;
+                                                        return (
+                                                            <button
+                                                                key={t.id}
+                                                                type="button"
+                                                                onClick={() => setForm(f => ({ ...f, staffType: t.id }))}
+                                                                className={`flex flex-col items-center gap-2 p-4 rounded-2xl border-2 transition-all ${form.staffType === t.id ? 'bg-slate-900 border-slate-900 text-white shadow-lg' : 'bg-slate-50 border-slate-100 text-slate-500 hover:border-slate-200'}`}
+                                                            >
+                                                                <Icon className="h-5 w-5" />
+                                                                <span className="text-[9px] font-black uppercase tracking-[0.1em] text-center leading-tight">{t.label}</span>
+                                                            </button>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
                                         </div>
-                                        <div className="mt-3 p-3 bg-slate-50 rounded-xl border border-slate-100">
-                                            <p className="text-slate-500 text-[10px] font-bold uppercase tracking-wide leading-relaxed">
-                                                <span className="text-primary-600">Scope:</span> {STAFF_TYPES.find(t => t.id === form.staffType)?.description}
+
+                                        <div className="mt-5 p-4 bg-primary-50 rounded-2xl border border-primary-100">
+                                            <p className="text-primary-700 text-[10px] font-bold uppercase tracking-wide leading-relaxed">
+                                                <span className="font-black">Mission Scope:</span> {STAFF_TYPES.find(t => t.id === form.staffType)?.description}
                                             </p>
                                         </div>
                                     </div>
