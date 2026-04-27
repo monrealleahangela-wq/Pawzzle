@@ -234,7 +234,8 @@ const StoreApplication = () => {
       under_review: 'bg-primary-100 text-primary-800',
       approved: 'bg-emerald-100 text-emerald-800',
       rejected: 'bg-rose-100 text-rose-800',
-      requires_more_info: 'bg-secondary-100 text-orange-800'
+      requires_more_info: 'bg-secondary-100 text-orange-800',
+      expansion_pending: 'bg-slate-900 text-white'
     };
     return colors[status] || 'bg-slate-100 text-slate-800';
   };
@@ -396,6 +397,37 @@ const StoreApplication = () => {
                    {application.status === 'rejected' ? 'Re-apply with Corrected Documents' : 'Submit Required Corrections'}
                  </button>
                )}
+
+               {application.status === 'approved' && (
+                 <div className="mt-8 p-8 bg-slate-900 rounded-[2rem] text-white shadow-2xl relative overflow-hidden group">
+                   <div className="absolute top-0 right-0 w-64 h-64 bg-primary-600/20 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 group-hover:scale-110 transition-transform duration-700" />
+                   <div className="relative z-10">
+                     <div className="flex items-center gap-3 mb-4">
+                       <TrendingUp className="h-6 w-6 text-primary-400" />
+                       <h3 className="text-xl font-black uppercase tracking-tighter">Ready to Scale?</h3>
+                     </div>
+                     <p className="text-slate-400 text-sm font-medium mb-6 leading-relaxed max-w-lg">
+                       Your business is active. You can now request to add new operational modules (Products or Services) to your existing store.
+                     </p>
+                     <button 
+                       onClick={() => {
+                         setApplication(null);
+                         setFormData(prev => ({ 
+                           ...prev, 
+                           applicationType: 'expansion',
+                           businessName: application.businessName,
+                           businessType: application.businessType,
+                           operationalModules: application.operationalModules || []
+                         }));
+                         setCurrentStep(0);
+                       }}
+                       className="px-8 py-4 bg-white text-slate-900 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-primary-500 hover:text-white transition-all shadow-xl active:scale-95"
+                     >
+                       Enter Expansion Module
+                     </button>
+                   </div>
+                 </div>
+               )}
             </div>
           )}
 
@@ -423,12 +455,38 @@ const StoreApplication = () => {
     );
   }
 
+  const handleExpansionRequest = async () => {
+    if (formData.operationalModules.length === 0) {
+      toast.error('Please select at least one module to expand your business.');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      // Use the expansion endpoint
+      const response = await storeApplicationService.submitExpansionRequest(formData);
+      toast.success('Expansion request submitted successfully! We will review it soon.');
+      setApplication(response.data.application);
+    } catch (error) {
+      console.error('Expansion error:', error);
+      toast.error(error.response?.data?.message || 'Failed to submit expansion request');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="max-w-4xl mx-auto space-y-6 pb-20">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-black text-slate-900 uppercase tracking-tighter">Become an Elite Partner</h1>
-          <p className="text-slate-500 font-bold text-[11px] uppercase tracking-widest mt-1">Initialize your business presence within our supreme fleet</p>
+          <h1 className="text-3xl font-black text-slate-900 uppercase tracking-tighter">
+            {user.role === 'admin' ? 'Business Expansion hub' : 'Become an Elite Partner'}
+          </h1>
+          <p className="text-slate-500 font-bold text-[11px] uppercase tracking-widest mt-1">
+            {user.role === 'admin' 
+              ? 'Request additional modules and scale your operation across professional tiers' 
+              : 'Initialize your business presence within our supreme fleet'}
+          </p>
         </div>
         <div className="flex gap-2">
           {[1, 2, 3, 4].map(s => (
@@ -934,8 +992,13 @@ const StoreApplication = () => {
               ))}
             </div>
 
-            <button type="submit" disabled={loading} className="w-full py-6 bg-primary-600 text-white rounded-[2rem] text-xs font-black uppercase tracking-[0.4em] hover:bg-slate-900 transition-all shadow-2xl shadow-primary-200 disabled:opacity-50 active:scale-95">
-              {loading ? 'Transmitting Intelligence...' : 'Finalize Application Protocol'}
+            <button 
+              type="button" 
+              onClick={user.role === 'admin' ? handleExpansionRequest : undefined}
+              disabled={loading} 
+              className="w-full py-6 bg-primary-600 text-white rounded-[2rem] text-xs font-black uppercase tracking-[0.4em] hover:bg-slate-900 transition-all shadow-2xl shadow-primary-200 disabled:opacity-50 active:scale-95"
+            >
+              {loading ? 'Transmitting Intelligence...' : user.role === 'admin' ? 'Submit Expansion Request' : 'Finalize Application Protocol'}
             </button>
           </div>
         )}

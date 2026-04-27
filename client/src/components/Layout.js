@@ -9,7 +9,7 @@ import {
   TrendingUp, FileText, Search, ChevronRight, ChevronDown,
   MessageSquare, ShoppingBag, Archive, Ticket, Star, Wallet,
   Brain, Moon, Sun, PawPrint, MapPin, AlertCircle, HelpCircle,
-  History, ShieldCheck, Truck, Layers, ChevronsLeft, ChevronsRight
+  History, ShieldCheck, Truck, Layers, ChevronsLeft, ChevronsRight, Store
 } from 'lucide-react';
 import FloatingChatManager from './FloatingChatManager';
 import NotificationBell from './NotificationBell';
@@ -41,7 +41,7 @@ const customerMenu = [
   {
     label: 'Account', icon: User, children: [
       { path: '/profile', label: 'Profile Settings', icon: Settings },
-      { path: '/supplier/dashboard', label: 'Become a Supplier', icon: Truck },
+      { path: '/account-upgrade', label: 'Be a Seller', icon: Store },
     ]
   },
 ];

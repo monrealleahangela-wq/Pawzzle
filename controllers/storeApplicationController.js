@@ -233,7 +233,23 @@ const submitExpansionRequest = async (req, res) => {
       application
     });
 
-    // Notify Super Admin (optional, but good for UX)
+    // Notify Super Admin
+    try {
+      const superAdmin = await User.findOne({ role: 'super_admin' });
+      if (superAdmin) {
+        await createNotification({
+          recipient: superAdmin._id,
+          sender: req.user.id,
+          type: 'store_application', // Or 'expansion_request'
+          title: 'Business Expansion Protocol Initiated',
+          message: `${store.name} has submitted a request to expand their modular operations to include ${safeParse(operationalModules).join(', ')}.`,
+          relatedId: application._id,
+          relatedModel: 'StoreApplication'
+        });
+      }
+    } catch (notifErr) {
+      console.error('Failed to notify admin of expansion:', notifErr);
+    }
   } catch (error) {
     console.error('Expansion request error:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
@@ -332,67 +348,70 @@ const reviewApplication = async (req, res) => {
     if (status === 'rejected') {
       application.rejectionReason = rejectionReason || '';
     } else if (status === 'approved') {
-      // Create store account
-      const store = new Store({
-        owner: application.applicant,
-        name: application.businessName,
-        description: application.businessDescription || 'A new store on Pawzzle.',
-        logo: application.storeLogoUrl,
-        businessType: application.businessType,
-        operationalModules: application.operationalModules || [],
-        hiringStaff: application.hiringStaff || false,
-        staffTypes: application.staffTypes || [],
-        legalStructure: application.legalStructure,
-        yearsInBusiness: application.yearsInBusiness,
-        numberOfEmployees: application.numberOfEmployees,
-        hasPhysicalStore: application.hasPhysicalStore,
-        slug: application.businessName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') + '-' + Date.now(),
-        contactInfo: {
-          phone: application.contactInfo.phone,
-          email: application.contactInfo.email,
-          address: {
-            street: application.contactInfo.address.street || 'N/A',
-            barangay: application.contactInfo.address.barangay || 'N/A',
-            city: application.contactInfo.address.city || 'N/A',
-            state: application.contactInfo.address.province || application.contactInfo.address.state || 'N/A',
-            zipCode: application.contactInfo.address.zipCode || '4102',
-            country: application.contactInfo.address.country || 'PH'
-          }
-        },
-        socialMedia: application.socialMedia,
-        payoutMethods: [
-          {
-            type: 'bank_transfer',
-            accountName: application.paymentInfo?.bankAccountName || '',
-            accountNumber: application.paymentInfo?.bankAccountNumber || '',
-            bankName: application.paymentInfo?.bankName || '',
-            isDefault: true
+      if (application.applicationType === 'expansion') {
+        // Handle Expansion Approval
+        const store = await Store.findOne({ owner: application.applicant });
+        if (store) {
+          store.operationalModules = application.operationalModules;
+          store.hiringStaff = application.hiringStaff;
+          store.staffTypes = application.staffTypes;
+          store.supplierNeeds = application.supplierNeeds;
+          store.expansionStatus = 'none';
+          await store.save();
+        }
+      } else {
+        // Create initial store account
+        const store = new Store({
+          owner: application.applicant,
+          name: application.businessName,
+          description: application.businessDescription || 'A new store on Pawzzle.',
+          logo: application.storeLogoUrl,
+          businessType: application.businessType,
+          operationalModules: application.operationalModules || [],
+          hiringStaff: application.hiringStaff || false,
+          staffTypes: application.staffTypes || [],
+          legalStructure: application.legalStructure,
+          yearsInBusiness: application.yearsInBusiness,
+          numberOfEmployees: application.numberOfEmployees,
+          hasPhysicalStore: application.hasPhysicalStore,
+          slug: application.businessName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') + '-' + Date.now(),
+          contactInfo: {
+            phone: application.contactInfo.phone,
+            email: application.contactInfo.email,
+            address: {
+              street: application.contactInfo.address.street || 'N/A',
+              barangay: application.contactInfo.address.barangay || 'N/A',
+              city: application.contactInfo.address.city || 'N/A',
+              state: application.contactInfo.address.province || application.contactInfo.address.state || 'N/A',
+              zipCode: application.contactInfo.address.zipCode || '4102',
+              country: application.contactInfo.address.country || 'PH'
+            }
           },
-          ...(application.paymentInfo?.alternativePaymentMethod?.accountNumber ? [{
-            type: application.paymentInfo.alternativePaymentMethod.provider?.toLowerCase() === 'gcash' ? 'gcash' : 'maya',
-            accountName: application.paymentInfo.bankAccountName || '',
-            accountNumber: application.paymentInfo.alternativePaymentMethod.accountNumber,
-            isDefault: false
-          }] : [])
-        ]
-      });
+          socialMedia: application.socialMedia,
+          payoutMethods: [
+            {
+              type: 'bank_transfer',
+              accountName: application.paymentInfo?.bankAccountName || '',
+              accountNumber: application.paymentInfo?.bankAccountNumber || '',
+              bankName: application.paymentInfo?.bankName || '',
+              isDefault: true
+            },
+            ...(application.paymentInfo?.alternativePaymentMethod?.accountNumber ? [{
+              type: application.paymentInfo.alternativePaymentMethod.provider?.toLowerCase() === 'gcash' ? 'gcash' : 'maya',
+              accountName: application.paymentInfo.bankAccountName || '',
+              accountNumber: application.paymentInfo.alternativePaymentMethod.accountNumber,
+              isDefault: false
+            }] : [])
+          ]
+        });
 
-      const savedStore = await store.save();
+        const savedStore = await store.save();
 
-      // Update user role and link store
-      await User.findByIdAndUpdate(application.applicant, {
-        role: 'admin',
-        store: savedStore._id
-      });
-    } else if (status === 'approved' && application.applicationType === 'expansion') {
-      // Handle Expansion Approval
-      const store = await Store.findOne({ owner: application.applicant });
-      if (store) {
-        store.operationalModules = application.operationalModules;
-        store.hiringStaff = application.hiringStaff;
-        store.staffTypes = application.staffTypes;
-        store.expansionStatus = 'none';
-        await store.save();
+        // Update user role and link store
+        await User.findByIdAndUpdate(application.applicant, {
+          role: 'admin',
+          store: savedStore._id
+        });
       }
     }
 

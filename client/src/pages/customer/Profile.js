@@ -37,7 +37,12 @@ import {
   PawPrint,
   FileBadge,
   Search,
-  ChevronRight
+  ChevronRight,
+  History, 
+  Truck, 
+  Layers, 
+  ChevronsLeft, 
+  ChevronsRight
 } from 'lucide-react';
 import { getCitiesByProvince, getBarangaysByCity } from '../../constants/locationConstants';
 import storeApplicationService from '../../services/storeApplicationService';
@@ -1732,9 +1737,15 @@ const Profile = () => {
                         <AlertCircle className="h-8 w-8 text-slate-300" />
                       </div>
                       <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight mb-2">No Store Linked</h3>
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest max-w-xs mx-auto">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest max-w-xs mx-auto mb-8">
                         Your account is not currently associated with a verified store entity.
                       </p>
+                      <Link 
+                        to="/account-upgrade"
+                        className="px-8 py-3 bg-primary-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-900 transition-all shadow-xl shadow-primary-100 active:scale-95 inline-flex items-center gap-2"
+                      >
+                        <Store className="h-4 w-4" /> Initialize Seller Protocol
+                      </Link>
                     </div>
                   )}
                 </div>
