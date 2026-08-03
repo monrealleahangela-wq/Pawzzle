@@ -17,6 +17,8 @@ const AdminDSS = () => {
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState('inventory');
+    const [decision, setDecision] = useState(null);
+    const [decisionLoading, setDecisionLoading] = useState(false);
 
     useEffect(() => { fetchInsights(); }, []);
 
@@ -31,6 +33,27 @@ const AdminDSS = () => {
             toast.error('Failed to load store intelligence');
         } finally {
             setLoading(false);
+        }
+    };
+
+    const analyzeReplenishment = async (recommendation) => {
+        if (!recommendation.productId) {
+            toast.error('This legacy alert has no product reference');
+            return;
+        }
+        try {
+            setDecisionLoading(true);
+            const response = await dssService.getReplenishment(
+                recommendation.productId,
+                { save: true },
+                { horizon: 30 }
+            );
+            setDecision(response.data);
+            toast.success('Forecast-based replenishment decision generated');
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Unable to generate replenishment decision');
+        } finally {
+            setDecisionLoading(false);
         }
     };
 
@@ -86,7 +109,7 @@ const AdminDSS = () => {
 
                     <div className="max-w-3xl">
                         <h1 className="text-3xl sm:text-5xl md:text-7xl font-black uppercase tracking-tighter leading-none mb-6 text-white">
-                            {isStaff ? `${staffType}` : 'Autonomous'} <br /> <span className="text-primary-500 italic">Intelligence</span>
+                            {isStaff ? `${staffType}` : 'Explainable'} <br /> <span className="text-primary-500 italic">Intelligence</span>
                         </h1>
                         <p className="text-xs sm:text-sm md:text-lg font-bold text-slate-400 max-w-xl leading-relaxed">
                             {isStaff 
@@ -165,8 +188,12 @@ const AdminDSS = () => {
                                                     </p>
                                                 </div>
                                                 <div className="flex flex-col justify-center gap-3 w-full md:w-48">
-                                                    <button className="w-full py-3.5 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-primary-600 transition-all shadow-xl shadow-slate-200">
-                                                        Restock Now
+                                                    <button
+                                                        onClick={() => analyzeReplenishment(rec)}
+                                                        disabled={decisionLoading}
+                                                        className="w-full py-3.5 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-primary-600 transition-all shadow-xl shadow-slate-200 disabled:opacity-50"
+                                                    >
+                                                        {decisionLoading ? 'Analyzing...' : 'Forecast & Reorder'}
                                                     </button>
                                                     <button className="w-full py-3.5 bg-slate-50 text-slate-400 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-100 transition-all">
                                                         Ignore Alert
@@ -187,6 +214,30 @@ const AdminDSS = () => {
                                     </div>
                                 )}
                             </div>
+
+                            {decision && (
+                                <div className={`${cardClass} border-l-8 border-l-indigo-500`}>
+                                    <span className={labelClass}>Validated replenishment proposal</span>
+                                    <h3 className="text-xl font-black text-slate-900 mb-3">
+                                        Order {decision.decision.recommendedQuantity} units
+                                    </h3>
+                                    <p className="text-xs font-bold text-slate-500 mb-4">
+                                        {decision.forecast.forecastUnits} units forecast for the next {decision.forecast.horizonDays} days.
+                                        Confidence: {Math.round(decision.forecast.confidence * 100)}%.
+                                    </p>
+                                    <div className="grid grid-cols-2 gap-3 text-xs font-bold text-slate-600">
+                                        <div>On hand: {decision.inventoryPosition.onHand}</div>
+                                        <div>Reorder point: {decision.policy.reorderPoint}</div>
+                                        <div>Safety stock: {decision.policy.safetyStock}</div>
+                                        <div>Model: {decision.forecast.modelVersion}</div>
+                                    </div>
+                                    {decision.forecast.warnings?.map((warning) => (
+                                        <p key={warning} className="mt-3 text-[10px] font-black uppercase text-secondary-600">
+                                            {warning}
+                                        </p>
+                                    ))}
+                                </div>
+                            )}
                         </div>
 
                         {/* Inventory Snapshot Sidebar */}

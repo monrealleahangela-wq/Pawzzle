@@ -12,7 +12,13 @@ const {
   getLowStockAlertsAdmin,
   addToAdminInventory
 } = require('../controllers/inventoryController');
-const { authenticate, adminOrStaff } = require('../middleware/auth');
+const {
+  listLots,
+  getExpiryAlerts,
+  receiveLot,
+  listTransactions
+} = require('../controllers/inventoryLotController');
+const { authenticate, adminOrStaff, requirePermission } = require('../middleware/auth');
 const { storeAdminOnly, canAccessStore } = require('../middleware/storeAuth');
 
 // Validation rules
@@ -40,9 +46,15 @@ const addToInventoryValidation = [
 ];
 
 // ─── Admin routes (no storeId needed — admin IS the store) ───────────────────
-router.get('/admin', authenticate, adminOrStaff, getAdminInventory);
-router.get('/admin/alerts', authenticate, adminOrStaff, getLowStockAlertsAdmin);
-router.post('/admin', authenticate, adminOrStaff, addToInventoryValidation, addToAdminInventory);
+router.get('/admin', authenticate, requirePermission('inventory.view'), getAdminInventory);
+router.get('/admin/alerts', authenticate, requirePermission('inventory.view'), getLowStockAlertsAdmin);
+router.post('/admin', authenticate, requirePermission('inventory.adjust'), addToInventoryValidation, addToAdminInventory);
+
+// Lot ledger and vaccine/medicine monitoring
+router.get('/lots', authenticate, requirePermission('inventory.view', 'inventory.vaccine'), listLots);
+router.post('/lots/receive', authenticate, requirePermission('inventory.receive'), receiveLot);
+router.get('/expiry-alerts', authenticate, requirePermission('inventory.view', 'inventory.vaccine'), getExpiryAlerts);
+router.get('/transactions', authenticate, requirePermission('inventory.view'), listTransactions);
 
 // ─── Store-specific routes ────────────────────────────────────────────────────
 router.get('/store/:storeId', authenticate, canAccessStore, getStoreInventory);

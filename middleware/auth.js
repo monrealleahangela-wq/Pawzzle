@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const { hasPermission, getEffectivePermissions, normalizeRole } = require('../config/permissions');
 
 // Authentication middleware
 const authenticate = async (req, res, next) => {
@@ -70,6 +71,31 @@ const authorize = (...roles) => {
   };
 };
 
+// Resource/action authorization. Always enforce this on the server; UI checks are cosmetic.
+const requirePermission = (...permissions) => (req, res, next) => {
+  if (!req.user) {
+    return res.status(401).json({ message: 'Access denied. User not authenticated.' });
+  }
+  const allowed = permissions.some((permission) => hasPermission(req.user, permission));
+  if (!allowed) {
+    return res.status(403).json({
+      message: 'Access denied. Missing required permission.',
+      requiredPermissions: permissions
+    });
+  }
+  next();
+};
+
+const attachAuthorizationContext = (req, _res, next) => {
+  if (req.user) {
+    req.authorization = {
+      role: normalizeRole(req.user),
+      permissions: getEffectivePermissions(req.user)
+    };
+  }
+  next();
+};
+
 // Super Admin only middleware
 const superAdminOnly = (req, res, next) => {
   console.log('=== SUPER ADMIN MIDDLEWARE CHECK ===');
@@ -94,7 +120,7 @@ const superAdminOnly = (req, res, next) => {
 };
 
 // Admin and Super Admin middleware
-const adminOnly = authorize('admin', 'super_admin');
+const adminOnly = authorize('admin', 'super_admin', 'platform_admin', 'store_owner');
 
 // Admin, Super Admin, and Staff middleware (for store-level operations)
 const adminOrStaff = (req, res, next) => {
@@ -148,6 +174,8 @@ const canAccessResource = (req, res, next) => {
 module.exports = {
   authenticate,
   authorize,
+  requirePermission,
+  attachAuthorizationContext,
   superAdminOnly,
   adminOnly,
   adminOrStaff,

@@ -7,6 +7,12 @@ const petProfileSchema = new mongoose.Schema({
     required: true,
     index: true
   },
+  homeStore: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Store',
+    default: null,
+    index: true
+  },
   name: { type: String, required: true, trim: true },
   type: { type: String, required: true, trim: true },   // Dog, Cat, etc.
   breed: { type: String, required: true, trim: true },

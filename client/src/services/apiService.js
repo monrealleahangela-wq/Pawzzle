@@ -282,7 +282,11 @@ export const inventoryService = {
   adminAddToInventory: (data) => api.post('/inventory/admin', data),
   // Item-level actions
   updateQuantity: (id, data) => api.put(`/inventory/${id}`, data),
-  deleteInventoryItem: (id) => api.delete(`/inventory/${id}`)
+  deleteInventoryItem: (id) => api.delete(`/inventory/${id}`),
+  getLots: (params) => api.get('/inventory/lots', { params }),
+  receiveLot: (data) => api.post('/inventory/lots/receive', data),
+  getExpiryAlerts: (params) => api.get('/inventory/expiry-alerts', { params }),
+  getTransactions: (params) => api.get('/inventory/transactions', { params })
 };
 
 // Store services
@@ -366,7 +370,12 @@ export const dssService = {
   getCustomerInsights: () => api.get('/dss/customer'),
   getStaffInsights: () => api.get('/dss/staff'),
   getAdminInsights: () => api.get('/dss/admin'),
-  getSuperAdminInsights: () => api.get('/dss/superadmin')
+  getSuperAdminInsights: () => api.get('/dss/superadmin'),
+  getProductForecast: (productId, params) => api.get(`/dss/forecast/products/${productId}`, { params }),
+  getReplenishment: (productId, data = {}, params = {}) =>
+    api.post(`/dss/replenishment/${productId}`, data, { params }),
+  getSupplierScorecard: (params) => api.get('/dss/suppliers/scorecard', { params }),
+  decideRecommendation: (id, data) => api.patch(`/dss/recommendations/${id}/decision`, data)
 };
 
 // Support services
@@ -397,6 +406,21 @@ export const petProfileService = {
   deletePet: (id) => api.delete(`/pet-profiles/${id}`)
 };
 
+export const petCareService = {
+  getMedicalHistory: (petId) => api.get(`/pet-care/pets/${petId}/history`),
+  createEncounter: (petId, data) => api.post(`/pet-care/pets/${petId}/encounters`, data),
+  administerVaccine: (petId, data) => api.post(`/pet-care/pets/${petId}/vaccinations`, data),
+  getServiceUpdates: (bookingId) => api.get(`/pet-care/bookings/${bookingId}/updates`),
+  addServiceUpdate: (bookingId, data) => api.post(`/pet-care/bookings/${bookingId}/updates`, data),
+  createCertification: (petId, data) => api.post(`/pet-care/pets/${petId}/certifications`, data)
+};
+
+export const financeService = {
+  getSummary: (params) => api.get('/finance/summary', { params }),
+  getExpenses: (params) => api.get('/finance/expenses', { params }),
+  createExpense: (data) => api.post('/finance/expenses', data)
+};
+
 // Delivery services
 export const deliveryService = {
   generateLinks: (params) => api.post('/deliveries/generate', typeof params === 'string' ? { orderId: params } : params),
@@ -408,7 +432,8 @@ export const deliveryService = {
   sendMessage: (token, messageData) => api.post(`/deliveries/chat/${token}`, messageData),
   verifyRider: (token, data) => api.patch(`/deliveries/verify/${token}`, data),
   submitComplaint: (token, data) => api.post(`/deliveries/complaint/${token}`, data),
-  resolveComplaint: (deliveryId, complaintId) => api.patch(`/deliveries/resolve-complaint/${deliveryId}/${complaintId}`)
+  resolveComplaint: (deliveryId, complaintId) => api.patch(`/deliveries/resolve-complaint/${deliveryId}/${complaintId}`),
+  calculateFee: (data) => api.post('/deliveries/calculate-fee', data)
 };
 
 // Supplier services

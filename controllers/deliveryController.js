@@ -3,6 +3,8 @@ const Order = require('../models/Order');
 const Booking = require('../models/Booking');
 const Notification = require('../models/Notification');
 const crypto = require('crypto');
+const DeliveryFeeService = require('../services/deliveryFeeService');
+const resolveStore = require('../utils/resolveStore');
 
 const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER;
 let CLIENT_URL = process.env.CLIENT_URL;
@@ -352,6 +354,23 @@ const resolveComplaint = async (req, res) => {
   }
 };
 
+const calculateDeliveryFee = async (req, res) => {
+  try {
+    const store = await resolveStore(req);
+    if (!store) return res.status(400).json({ message: 'Store is required.' });
+    const calculation = await DeliveryFeeService.calculate({
+      store,
+      origin: req.body.origin,
+      destination: req.body.destination,
+      surcharge: req.body.surcharge,
+      discount: req.body.discount
+    });
+    res.json(calculation);
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+};
+
 module.exports = {
   generateDeliveryLinks,
   getDeliveryByToken,
@@ -363,5 +382,6 @@ module.exports = {
   verifyRider,
   submitComplaint,
   resolveComplaint,
+  calculateDeliveryFee,
   internalCreateDelivery
 };

@@ -497,6 +497,7 @@ const getAdminInsights = async (req, res) => {
             recommendations.push({
                 type: 'restock',
                 title: 'Smart Inventory Alert',
+                productId: p._id,
                 productName: p.name,
                 message: personalizedAlert,
                 priority: daysRemaining <= 3 ? 'critical' : 'high',

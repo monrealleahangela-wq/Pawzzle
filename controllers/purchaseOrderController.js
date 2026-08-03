@@ -4,7 +4,9 @@ const SupplierProduct = require('../models/SupplierProduct');
 const Store = require('../models/Store');
 const Inventory = require('../models/Inventory');
 const Product = require('../models/Product');
+const InventoryLot = require('../models/InventoryLot');
 const SupplyChainLog = require('../models/SupplyChainLog');
+const InventoryLedgerService = require('../services/inventoryLedgerService');
 const { createNotification } = require('./notificationController');
 
 // ═══════════════════════════════════════════════════════════════
@@ -229,12 +231,23 @@ const cancelOrder = async (req, res) => {
 // Confirm delivery received & update inventory
 const confirmDelivery = async (req, res) => {
   try {
-    const order = await PurchaseOrder.findOne({ _id: req.params.id, seller: req.user._id })
+    const order = await PurchaseOrder.findById(req.params.id)
       .populate('items.supplierProduct');
     if (!order) return res.status(404).json({ message: 'Order not found.' });
-    if (order.status !== 'delivered') {
-      return res.status(400).json({ message: 'Order must be in "delivered" status.' });
+    const orderStore = await Store.findById(order.store).select('owner');
+    const isSeller = order.seller.toString() === req.user._id.toString();
+    const isStoreMember = req.user.store && order.store.toString() === req.user.store.toString();
+    const isStoreOwner = orderStore?.owner?.toString() === req.user._id.toString();
+    const isPlatformAdmin = ['super_admin', 'platform_admin'].includes(req.user.role);
+    if (!isSeller && !isStoreMember && !isStoreOwner && !isPlatformAdmin) {
+      return res.status(403).json({ message: 'Purchase order belongs to another store.' });
     }
+      if (order.status !== 'delivered') {
+        return res.status(400).json({ message: 'Order must be in "delivered" status.' });
+      }
+      if (order.statusHistory?.some(entry => entry.status === 'delivery_confirmed')) {
+        return res.status(409).json({ message: 'This delivery has already been confirmed.' });
+      }
 
     const supplier = await Supplier.findById(order.supplier);
     const updatedProducts = [];
@@ -318,7 +331,44 @@ const confirmDelivery = async (req, res) => {
           });
         }
 
-        updatedInventory.push(invRecord._id);
+          updatedInventory.push(invRecord._id);
+
+          // Record the physical batch and immutable receipt movement. Existing
+          // pre-lot stock is represented once as an opening lot so the ledger
+          // remains equal to the legacy Product/Inventory balance.
+          const existingLotCount = await InventoryLot.countDocuments({
+            store: order.store, product: storeProduct._id
+          });
+          if (existingLotCount === 0 && prevQty > 0) {
+            await InventoryLedgerService.receiveLot({
+              store: order.store,
+              product: storeProduct._id,
+              lotNumber: `LEGACY-OPENING-${storeProduct.sku || storeProduct._id}`,
+              quantity: prevQty,
+              unitCost: invRecord.costPrice || item.unitPrice,
+              performedBy: req.user._id,
+              idempotencyKey: `legacy-opening:${order.store}:${storeProduct._id}`
+            });
+          }
+
+          const lotDetails = req.body.lotDetails?.[item._id.toString()] || {};
+          await InventoryLedgerService.receiveLot({
+            store: order.store,
+            product: storeProduct._id,
+            lotNumber: lotDetails.lotNumber || `PO-${order.orderNumber}-${item._id}`,
+            quantity: received,
+            unitCost: item.unitPrice,
+            expiresAt: lotDetails.expiresAt || item.supplierProduct?.expirationDate,
+            manufacturer: lotDetails.manufacturer,
+            supplier: supplier?._id,
+            purchaseOrder: order._id,
+            purchaseOrderItem: item._id,
+            isVaccine: Boolean(lotDetails.isVaccine),
+            vaccineType: lotDetails.vaccineType,
+            storageNotes: lotDetails.storageNotes,
+            performedBy: req.user._id,
+            idempotencyKey: `po-receipt:${order._id}:${item._id}`
+          });
 
         // ─── 3. Log each stock update ─────────────────────
         await SupplyChainLog.create({

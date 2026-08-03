@@ -34,7 +34,13 @@ const userSchema = new mongoose.Schema({
   },
   role: {
     type: String,
-    enum: ['super_admin', 'admin', 'staff', 'supplier', 'customer'],
+    enum: [
+      'super_admin', 'platform_admin', 'admin', 'store_owner', 'manager',
+      'cashier', 'inventory_staff', 'procurement_officer', 'finance_staff',
+      'veterinarian', 'groomer', 'trainer', 'boarding_staff',
+      'delivery_dispatcher', 'delivery_rider', 'staff', 'supplier',
+      'customer', 'auditor'
+    ],
     default: 'customer'
   },
   staffType: {

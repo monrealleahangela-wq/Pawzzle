@@ -26,12 +26,36 @@ const deliverySchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['pending', 'picked_up', 'in_transit', 'delivered'],
+    enum: ['pending', 'unassigned', 'assigned', 'accepted', 'declined',
+      'picked_up', 'in_transit', 'arrived', 'delivered', 'failed_attempt',
+      'returned_to_store', 'cancelled'],
     default: 'pending'
   },
   riderName: {
     type: String,
     trim: true
+  },
+  assignedRider: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null
+  },
+  assignedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null
+  },
+  assignedAt: Date,
+  feeCalculation: {
+    distanceKm: Number,
+    distanceMethod: String,
+    ruleId: { type: mongoose.Schema.Types.ObjectId, ref: 'DeliveryFeeRule' },
+    ruleName: String,
+    ruleVersion: Number,
+    breakdown: mongoose.Schema.Types.Mixed,
+    totalFee: Number,
+    calculatedAt: Date,
+    overrideReason: String
   },
   riderPhone: {
     type: String,

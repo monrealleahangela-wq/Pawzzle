@@ -10,15 +10,17 @@ const {
   sendDeliveryMessage,
   verifyRider,
   submitComplaint,
-  resolveComplaint
+  resolveComplaint,
+  calculateDeliveryFee
 } = require('../controllers/deliveryController');
-const { authenticate } = require('../middleware/auth');
+const { authenticate, requirePermission } = require('../middleware/auth');
 
 // Private Routes: Admin/Staff
-router.post('/generate', authenticate, generateDeliveryLinks);
+router.post('/generate', authenticate, requirePermission('logistics.manage'), generateDeliveryLinks);
+router.post('/calculate-fee', authenticate, calculateDeliveryFee);
 router.get('/order/:orderId', authenticate, getDeliveryByOrder);
 router.get('/booking/:bookingId', authenticate, getDeliveryByBooking);
-router.patch('/resolve-complaint/:deliveryId/:complaintId', authenticate, resolveComplaint);
+router.patch('/resolve-complaint/:deliveryId/:complaintId', authenticate, requirePermission('logistics.manage'), resolveComplaint);
 
 // Public Routes: Rider / Customer (Secured by Token)
 router.get('/track/:token', getDeliveryByToken);

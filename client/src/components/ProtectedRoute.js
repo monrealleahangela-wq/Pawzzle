@@ -2,6 +2,18 @@ import React from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
+const ADMIN_PORTAL_ROLES = new Set([
+  'admin', 'store_owner', 'manager', 'cashier', 'inventory_staff',
+  'procurement_officer', 'finance_staff', 'veterinarian', 'groomer',
+  'trainer', 'boarding_staff', 'delivery_dispatcher', 'delivery_rider',
+  'auditor', 'staff'
+]);
+
+const roleMatches = (userRole, allowedRoles) =>
+  allowedRoles.includes(userRole) ||
+  (allowedRoles.includes('admin') && ADMIN_PORTAL_ROLES.has(userRole)) ||
+  (allowedRoles.includes('super_admin') && userRole === 'platform_admin');
+
 const ProtectedRoute = ({ children, roles = [], staffTypes = [], requiredPermission = null }) => {
   const { isAuthenticated, user, loading } = useAuth();
 
@@ -18,13 +30,26 @@ const ProtectedRoute = ({ children, roles = [], staffTypes = [], requiredPermiss
   }
 
   // Check basic role access
-  if (roles.length > 0 && !roles.includes(user?.role)) {
+  if (roles.length > 0 && !roleMatches(user?.role, roles)) {
     switch (user?.role) {
       case 'super_admin':
+      case 'platform_admin':
         return <Navigate to="/superadmin/dashboard" replace />;
       case 'admin':
-        return <Navigate to="/admin/dashboard" replace />;
       case 'staff':
+      case 'store_owner':
+      case 'manager':
+      case 'cashier':
+      case 'inventory_staff':
+      case 'procurement_officer':
+      case 'finance_staff':
+      case 'veterinarian':
+      case 'groomer':
+      case 'trainer':
+      case 'boarding_staff':
+      case 'delivery_dispatcher':
+      case 'delivery_rider':
+      case 'auditor':
         return <Navigate to="/admin/dashboard" replace />;
       case 'supplier':
         return <Navigate to="/supplier/dashboard" replace />;
