@@ -13,6 +13,7 @@ import {
 import { Heart, Package, ShoppingCart, Plus, Calendar, RefreshCw, Activity, ArrowUp, ChevronRight, AlertCircle, ShoppingBag, Shield, Brain, Sparkles, TrendingUp, User, Star, Wallet } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { formatTime12h } from '../../utils/timeFormatters';
+import RiderDashboard from '../../components/admin/RiderDashboard';
 
 const STAFF_TYPE_CONFIG = {
   inventory_staff:  { label: 'Inventory Analyst',  color: 'amber',   desc: 'Managing biological & hardware stock levels' },
@@ -52,6 +53,7 @@ const Dashboard = () => {
   }, []);
 
   const fetchDashboardData = async () => {
+    if (user?.role === 'staff' && user?.staffType === 'delivery_rider') { setLoading(false); return; }
     try {
       setLoading(true);
       const fetchResults = await Promise.allSettled([
@@ -99,6 +101,8 @@ const Dashboard = () => {
       setRefreshingRole(false);
     }
   };
+
+  if (user?.role === 'staff' && user?.staffType === 'delivery_rider') return <RiderDashboard />;
 
   if (loading) {
     return (

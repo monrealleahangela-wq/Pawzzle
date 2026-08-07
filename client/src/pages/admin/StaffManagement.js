@@ -5,7 +5,7 @@ import {
     Users, Plus, Edit2, Trash2, Power, Key, X, Check,
     ShoppingCart, Package, Calendar, ChevronDown, Search,
     Shield, Clock, AlertCircle, RefreshCw, Lock, Truck,
-    Home, Activity, Layers, Star, MessageSquare, Heart
+    Home, Activity, Layers, Star, MessageSquare, Heart, Eye, Wallet
 } from 'lucide-react';
 import PermissionsManager from '../../components/admin/PermissionsManager';
 import { staffService } from '../../services/apiService';
@@ -25,6 +25,7 @@ const STAFF_TYPES = [
     { id: 'sales_staff', label: 'Sales', icon: ShoppingCart, color: 'teal', category: 'ops', description: 'Orders & Customers' },
     { id: 'service_management_staff', label: 'Svc Mgmt', icon: Calendar, color: 'violet', category: 'ops', description: 'Services & Listings' },
     { id: 'administrative_support', label: 'Admin', icon: Layers, color: 'slate', category: 'ops', description: 'Back-office support' }
+    ,{ id: 'delivery_rider', label: 'Delivery Rider', icon: Truck, color: 'orange', category: 'ops', description: 'Assigned parcel delivery' }
 ];
 
 const TYPE_STYLES = {
@@ -39,6 +40,7 @@ const TYPE_STYLES = {
     sales_staff: 'bg-teal-50 text-teal-700 border-teal-200',
     service_management_staff: 'bg-violet-50 text-violet-700 border-violet-200',
     administrative_support: 'bg-slate-50 text-slate-700 border-slate-200',
+    delivery_rider: 'bg-orange-50 text-orange-700 border-orange-200',
     // Fallbacks
     order_staff: 'bg-blue-50 text-blue-700 border-blue-200',
     service_staff: 'bg-purple-50 text-purple-700 border-purple-200'
@@ -46,7 +48,12 @@ const TYPE_STYLES = {
 
 const defaultForm = {
     firstName: '', lastName: '', email: '', username: '',
-    staffType: 'order_staff', phone: '', permissions: {}
+    staffType: 'order_staff', phone: '', permissions: {},
+    riderProfile: {
+        staffId: '', accountStatus: 'active', vehicleType: '', plateNumber: '', licenseId: '', deliveryZone: '',
+        earningRules: { baseRate: 0, incentive: 0, bonus: 0, deduction: 0 },
+        payoutMethod: { type: '', accountName: '', accountNumber: '', bankName: '' }
+    }
 };
 
 const StaffManagement = () => {
@@ -55,6 +62,8 @@ const StaffManagement = () => {
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
     const [filterType, setFilterType] = useState('');
+    const [filterStatus, setFilterStatus] = useState('');
+    const [filterBranch, setFilterBranch] = useState('');
 
     // Modal states
     const [showModal, setShowModal] = useState(false);
@@ -65,6 +74,8 @@ const StaffManagement = () => {
     const [resetting, setResetting] = useState(false);
     const [resetTarget, setResetTarget] = useState(null);
     const [newPassword, setNewPassword] = useState('');
+    const [riderDetails, setRiderDetails] = useState(null);
+    const [loadingRider, setLoadingRider] = useState(false);
     
     // Modal tabs
     const [activeTab, setActiveTab] = useState('info'); // 'info' or 'permissions'
@@ -100,7 +111,8 @@ const StaffManagement = () => {
             password: '',
             staffType: member.staffType,
             phone: member.phone || '',
-            permissions: member.permissions || {}
+            permissions: member.permissions || {},
+            riderProfile: { ...defaultForm.riderProfile, ...(member.riderProfile || {}), earningRules: { ...defaultForm.riderProfile.earningRules, ...(member.riderProfile?.earningRules || {}) }, payoutMethod: { ...defaultForm.riderProfile.payoutMethod, ...(member.riderProfile?.payoutMethod || {}) } }
         });
         setActiveTab('info');
         setShowModal(true);
@@ -111,12 +123,17 @@ const StaffManagement = () => {
         setSubmitting(true);
         try {
             if (editingStaff) {
+                if (form.staffType === 'delivery_rider' && form.riderProfile.accountStatus !== editingStaff.riderProfile?.accountStatus && !window.confirm(`Change rider status to ${form.riderProfile.accountStatus}? New assignment eligibility will update, while delivery and payout history remains unchanged.`)) {
+                    setSubmitting(false);
+                    return;
+                }
                 await staffService.update(editingStaff._id, {
                     firstName: form.firstName,
                     lastName: form.lastName,
                     phone: form.phone,
                     staffType: form.staffType,
-                    permissions: form.permissions
+                    permissions: form.permissions,
+                    riderProfile: form.staffType === 'delivery_rider' ? form.riderProfile : undefined
                 });
                 toast.success('Staff updated successfully');
             } else {
@@ -128,6 +145,11 @@ const StaffManagement = () => {
                 
                 if (!payload.targetStoreId) {
                     toast.error('Store identity missing. Please re-login.');
+                    setSubmitting(false);
+                    return;
+                }
+
+                if (form.staffType === 'delivery_rider' && !window.confirm(`Create Delivery Rider?\n\nName: ${form.firstName} ${form.lastName}\nStaff ID: ${form.riderProfile.staffId}\nBranch: Assigned Store\nPayout Method: ${form.riderProfile.payoutMethod.type || 'Not configured'}\nStatus: ${form.riderProfile.accountStatus}`)) {
                     setSubmitting(false);
                     return;
                 }
@@ -145,6 +167,8 @@ const StaffManagement = () => {
     };
 
     const handleToggle = async (id) => {
+        const member = staff.find(item => item._id === id);
+        if (!window.confirm(`${member?.isActive ? 'Deactivate' : 'Activate'} ${member?.firstName || 'this staff member'}? Existing delivery, earning, and payout history will be preserved.`)) return;
         try {
             const res = await staffService.toggleStatus(id);
             toast.success(res.data.message);
@@ -152,6 +176,26 @@ const StaffManagement = () => {
         } catch {
             toast.error('Failed to toggle status');
         }
+    };
+
+    const openRiderDetails = async (member) => {
+        setLoadingRider(true);
+        try { const response = await staffService.getRiderDetails(member._id); setRiderDetails(response.data); }
+        catch (error) { toast.error(error.response?.data?.message || 'Unable to load rider details'); }
+        finally { setLoadingRider(false); }
+    };
+
+    const requestRiderPayout = async () => {
+        if (!window.confirm('Create a payout from all available rider earnings?')) return;
+        try { await staffService.createRiderPayout(riderDetails.rider._id); toast.success('Rider payout created'); await openRiderDetails(riderDetails.rider); }
+        catch (error) { toast.error(error.response?.data?.message || 'Unable to create payout'); }
+    };
+    const updateRiderPayout = async (payout, status) => {
+        const referenceNumber = status === 'paid' ? window.prompt('Enter the payout reference number:') : '';
+        if (status === 'paid' && !referenceNumber) return;
+        if (!window.confirm(`Mark payout ${payout.payoutId} as ${status}?`)) return;
+        try { await staffService.updateRiderPayout(payout._id, { status, referenceNumber }); toast.success(`Payout marked ${status}`); await openRiderDetails(riderDetails.rider); }
+        catch (error) { toast.error(error.response?.data?.message || 'Unable to update payout'); }
     };
 
     const handleDelete = async (id, name) => {
@@ -184,9 +228,12 @@ const StaffManagement = () => {
 
     const filtered = staff.filter(s => {
         const matchSearch = !searchQuery ||
-            `${s.firstName} ${s.lastName} ${s.email} ${s.username}`.toLowerCase().includes(searchQuery.toLowerCase());
+            `${s.firstName} ${s.lastName} ${s.email} ${s.username} ${s.riderProfile?.staffId || ''} ${s.store?.name || ''}`.toLowerCase().includes(searchQuery.toLowerCase());
         const matchType = !filterType || s.staffType === filterType;
-        return matchSearch && matchType;
+        const currentStatus = s.staffType === 'delivery_rider' ? s.riderProfile?.accountStatus : (s.isActive ? 'active' : 'inactive');
+        const matchStatus = !filterStatus || currentStatus === filterStatus;
+        const matchBranch = !filterBranch || (s.store?._id || s.store) === filterBranch;
+        return matchSearch && matchType && matchStatus && matchBranch;
     });
 
     const counts = {
@@ -260,7 +307,7 @@ const StaffManagement = () => {
 
                 <div className="bg-slate-900 p-2 rounded-[2rem] shadow-xl border border-slate-800 mb-8">
                     <div className="grid grid-cols-1 md:grid-cols-12 gap-2">
-                        <div className="md:col-span-6 relative group">
+                        <div className="md:col-span-4 relative group">
                             <div className="absolute left-6 top-1/2 -translate-y-1/2 flex items-center justify-center pointer-events-none">
                                 <Search className="h-4 w-4 text-slate-500 group-focus-within:text-primary-500 transition-colors" />
                             </div>
@@ -272,7 +319,7 @@ const StaffManagement = () => {
                                 className="w-full pl-16 pr-4 py-4 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl outline-none focus:ring-2 focus:ring-primary-500/20 transition-all placeholder:text-slate-600 font-sans"
                             />
                         </div>
-                        <div className="md:col-span-4 relative group">
+                        <div className="md:col-span-3 relative group">
                             <div className="absolute left-6 top-1/2 -translate-y-1/2">
                                 <Shield className="h-4 w-4 text-primary-500" />
                             </div>
@@ -295,6 +342,8 @@ const StaffManagement = () => {
                             </select>
                             <ChevronDown className="absolute right-6 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500 pointer-events-none" />
                         </div>
+                        <div className="md:col-span-2"><select value={filterStatus} onChange={e=>setFilterStatus(e.target.value)} className="w-full h-full min-h-12 px-3 bg-slate-800 text-white text-[10px] font-black uppercase rounded-2xl"><option value="">All Statuses</option><option value="active">Active</option><option value="inactive">Inactive</option><option value="suspended">Suspended</option></select></div>
+                        <div className="md:col-span-3"><select value={filterBranch} onChange={e=>setFilterBranch(e.target.value)} className="w-full h-full min-h-12 px-3 bg-slate-800 text-white text-[10px] font-black uppercase rounded-2xl"><option value="">All Branches</option>{Array.from(new Map(staff.filter(s=>s.store).map(s=>[s.store._id||s.store,s.store.name||'Assigned Store'])).entries()).map(([id,name])=><option key={id} value={id}>{name}</option>)}</select></div>
                     </div>
                 </div>
 
@@ -338,6 +387,7 @@ const StaffManagement = () => {
                                                         <div>
                                                             <p className="font-black text-slate-900 text-[13px] leading-tight">{member.firstName} {member.lastName}</p>
                                                             <p className="text-slate-400 text-[10px] font-bold uppercase tracking-tighter">@{member.username}</p>
+                                                            <p className="text-slate-400 text-[9px]">{member.riderProfile?.staffId || member.store?.name} · {new Date(member.createdAt).toLocaleDateString()}</p>
                                                         </div>
                                                     </div>
                                                 </td>
@@ -355,7 +405,7 @@ const StaffManagement = () => {
                                                     <div className="flex flex-col gap-1">
                                                         <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest ${member.isActive ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-600'}`}>
                                                             <span className={`w-1.5 h-1.5 rounded-full ${member.isActive ? 'bg-emerald-500' : 'bg-rose-400'}`} />
-                                                            {member.isActive ? 'Active' : 'Offline'}
+                                                            {member.staffType === 'delivery_rider' ? member.riderProfile?.accountStatus : (member.isActive ? 'Active' : 'Offline')}
                                                         </span>
                                                         {member.isActive && member.lastSeen && (new Date() - new Date(member.lastSeen)) < 5 * 60 * 1000 && (
                                                             <span className="text-[7px] font-black text-emerald-500 uppercase tracking-widest ml-1 animate-pulse">Live Now</span>
@@ -365,6 +415,7 @@ const StaffManagement = () => {
                                                 <td className="px-6 py-4 text-right">
                                                     <div className="flex items-center justify-end gap-1">
                                                         <button onClick={() => openEdit(member)} className="p-2 rounded-xl text-slate-400 hover:bg-slate-100 hover:text-slate-900 transition-all"><Edit2 className="h-4 w-4" /></button>
+                                                        {member.staffType === 'delivery_rider' && <button onClick={() => openRiderDetails(member)} disabled={loadingRider} title="View rider earnings and delivery history" className="p-2 rounded-xl text-slate-400 hover:bg-orange-50 hover:text-orange-600 transition-all"><Eye className="h-4 w-4" /></button>}
                                                         <button onClick={() => { setResetTarget(member); setNewPassword(''); }} className="p-2 rounded-xl text-slate-400 hover:bg-secondary-50 hover:text-primary-600 transition-all"><Key className="h-4 w-4" /></button>
                                                         <button onClick={() => handleToggle(member._id)} className={`p-2 rounded-xl transition-all ${member.isActive ? 'text-slate-400 hover:bg-rose-50 hover:text-rose-600' : 'text-slate-400 hover:bg-emerald-50 hover:text-emerald-600'}`}><Power className="h-4 w-4" /></button>
                                                         <button onClick={() => handleDelete(member._id, `${member.firstName} ${member.lastName}`)} className="p-2 rounded-xl text-slate-400 hover:bg-rose-50 hover:text-rose-600 transition-all"><Trash2 className="h-4 w-4" /></button>
@@ -403,6 +454,7 @@ const StaffManagement = () => {
                                         </div>
                                         <div className="flex items-center gap-1 shrink-0">
                                             <button onClick={() => openEdit(member)} className="p-2 bg-slate-50 text-slate-400 rounded-lg"><Edit2 className="h-3 w-3" /></button>
+                                            {member.staffType === 'delivery_rider' && <button onClick={() => openRiderDetails(member)} className="p-2 bg-orange-50 text-orange-500 rounded-lg"><Eye className="h-3 w-3" /></button>}
                                             <button onClick={() => handleToggle(member._id)} className={`p-2 rounded-lg ${member.isActive ? 'bg-rose-50 text-rose-400' : 'bg-emerald-50 text-emerald-400'}`}><Power className="h-3 w-3" /></button>
                                             <button onClick={() => handleDelete(member._id, `${member.firstName} ${member.lastName}`)} className="p-2 bg-rose-50 text-rose-400 rounded-lg"><Trash2 className="h-3 w-3" /></button>
                                         </div>
@@ -584,6 +636,22 @@ const StaffManagement = () => {
                                         </>
                                     )}
 
+                                    {form.staffType === 'delivery_rider' && (
+                                        <div className="rounded-2xl border border-orange-100 bg-orange-50/40 p-4 space-y-4">
+                                            <div><p className="text-[10px] font-black uppercase tracking-widest text-orange-700">Delivery Rider Details</p><p className="text-[10px] text-slate-500 mt-1">Only active riders are eligible for new assignments.</p></div>
+                                            <div className="grid grid-cols-2 gap-3">
+                                                <label className="text-[10px] font-bold text-slate-600">Staff ID *<input required value={form.riderProfile.staffId} onChange={e=>setForm(f=>({...f,riderProfile:{...f.riderProfile,staffId:e.target.value}}))} className="mt-1 w-full h-10 px-3 rounded-xl border bg-white text-xs" placeholder="RDR-001" /></label>
+                                                <label className="text-[10px] font-bold text-slate-600">Account Status<select value={form.riderProfile.accountStatus} onChange={e=>setForm(f=>({...f,riderProfile:{...f.riderProfile,accountStatus:e.target.value}}))} className="mt-1 w-full h-10 px-3 rounded-xl border bg-white text-xs"><option value="active">Active</option><option value="inactive">Inactive</option><option value="suspended">Suspended</option></select></label>
+                                                <label className="text-[10px] font-bold text-slate-600">Vehicle Type *<select required value={form.riderProfile.vehicleType} onChange={e=>setForm(f=>({...f,riderProfile:{...f.riderProfile,vehicleType:e.target.value}}))} className="mt-1 w-full h-10 px-3 rounded-xl border bg-white text-xs"><option value="">Select</option><option value="motorcycle">Motorcycle</option><option value="bicycle">Bicycle</option><option value="car">Car</option><option value="van">Van</option><option value="other">Other</option></select></label>
+                                                <label className="text-[10px] font-bold text-slate-600">Plate Number {form.riderProfile.vehicleType !== 'bicycle' && '*'}<input required={form.riderProfile.vehicleType !== 'bicycle'} value={form.riderProfile.plateNumber} onChange={e=>setForm(f=>({...f,riderProfile:{...f.riderProfile,plateNumber:e.target.value}}))} className="mt-1 w-full h-10 px-3 rounded-xl border bg-white text-xs" /></label>
+                                                <label className="text-[10px] font-bold text-slate-600">License / ID<input value={form.riderProfile.licenseId} onChange={e=>setForm(f=>({...f,riderProfile:{...f.riderProfile,licenseId:e.target.value}}))} className="mt-1 w-full h-10 px-3 rounded-xl border bg-white text-xs" /></label>
+                                                <label className="text-[10px] font-bold text-slate-600">Delivery Zone<input value={form.riderProfile.deliveryZone} onChange={e=>setForm(f=>({...f,riderProfile:{...f.riderProfile,deliveryZone:e.target.value}}))} className="mt-1 w-full h-10 px-3 rounded-xl border bg-white text-xs" /></label>
+                                            </div>
+                                            <div><p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">Earning Configuration</p><div className="grid grid-cols-2 sm:grid-cols-4 gap-2">{[['baseRate','Base Rate'],['incentive','Incentive'],['bonus','Bonus'],['deduction','Deduction']].map(([key,label])=><label key={key} className="text-[9px] font-bold text-slate-500">{label}<input type="number" min="0" step="0.01" value={form.riderProfile.earningRules[key]} onChange={e=>setForm(f=>({...f,riderProfile:{...f.riderProfile,earningRules:{...f.riderProfile.earningRules,[key]:e.target.value}}}))} className="mt-1 w-full h-10 px-2 rounded-xl border bg-white text-xs" /></label>)}</div><p className="text-[10px] font-bold text-orange-700 mt-2">Calculated earning: ₱{Math.max(0, Number(form.riderProfile.earningRules.baseRate||0)+Number(form.riderProfile.earningRules.incentive||0)+Number(form.riderProfile.earningRules.bonus||0)-Number(form.riderProfile.earningRules.deduction||0)).toFixed(2)}</p></div>
+                                            <div><p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">Payout Method</p><div className="grid grid-cols-2 gap-2"><select value={form.riderProfile.payoutMethod.type} onChange={e=>setForm(f=>({...f,riderProfile:{...f.riderProfile,payoutMethod:{...f.riderProfile.payoutMethod,type:e.target.value}}}))} className="h-10 px-3 rounded-xl border bg-white text-xs"><option value="">Not configured</option><option value="gcash">GCash</option><option value="maya">Maya</option><option value="bank_transfer">Bank Transfer</option></select><input placeholder="Account name" value={form.riderProfile.payoutMethod.accountName} onChange={e=>setForm(f=>({...f,riderProfile:{...f.riderProfile,payoutMethod:{...f.riderProfile.payoutMethod,accountName:e.target.value}}}))} className="h-10 px-3 rounded-xl border bg-white text-xs" /><input placeholder="Account number" value={form.riderProfile.payoutMethod.accountNumber} onChange={e=>setForm(f=>({...f,riderProfile:{...f.riderProfile,payoutMethod:{...f.riderProfile.payoutMethod,accountNumber:e.target.value}}}))} className="h-10 px-3 rounded-xl border bg-white text-xs" />{form.riderProfile.payoutMethod.type==='bank_transfer'&&<input placeholder="Bank name" value={form.riderProfile.payoutMethod.bankName} onChange={e=>setForm(f=>({...f,riderProfile:{...f.riderProfile,payoutMethod:{...f.riderProfile.payoutMethod,bankName:e.target.value}}}))} className="h-10 px-3 rounded-xl border bg-white text-xs" />}</div></div>
+                                        </div>
+                                    )}
+
                                     {/* Edit-only fields */}
                                     {editingStaff && (
                                         <div className="space-y-4">
@@ -635,6 +703,19 @@ const StaffManagement = () => {
                                 </button>
                             </div>
                         </form>
+                    </div>
+                </div>
+            )}
+
+            {riderDetails && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-2xl w-full max-w-3xl max-h-[88vh] overflow-y-auto shadow-2xl p-5 space-y-5">
+                        <div className="flex items-start justify-between"><div><p className="text-[10px] font-black uppercase tracking-widest text-orange-600">Delivery Rider</p><h2 className="text-xl font-black text-slate-900">{riderDetails.rider.firstName} {riderDetails.rider.lastName}</h2><p className="text-xs text-slate-500">{riderDetails.rider.riderProfile?.staffId} · {riderDetails.rider.store?.name} · {riderDetails.rider.riderProfile?.accountStatus}</p></div><button onClick={()=>setRiderDetails(null)} className="p-2 rounded-xl bg-slate-100"><X className="w-4 h-4"/></button></div>
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">{[['Assigned',riderDetails.stats.totalAssigned],['Completed',riderDetails.stats.completed],['Failed',riderDetails.stats.failed],['Success Rate',`${riderDetails.stats.successRate}%`]].map(([label,value])=><div key={label} className="p-3 bg-slate-50 rounded-xl"><p className="text-[9px] uppercase font-black text-slate-400">{label}</p><p className="text-lg font-black text-slate-900">{value}</p></div>)}</div>
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">{[["Today's earnings",riderDetails.earnings.today],['Available payout',riderDetails.earnings.available],['Pending payout',riderDetails.earnings.pending],['Total paid',riderDetails.earnings.totalPaid]].map(([label,value])=><div key={label} className="p-3 border rounded-xl"><p className="text-[9px] uppercase font-black text-slate-400">{label}</p><p className="text-base font-black text-slate-900">₱{Number(value||0).toLocaleString()}</p></div>)}</div>
+                        <div className="flex justify-between items-center"><h3 className="text-xs font-black uppercase tracking-widest text-slate-700">Recent deliveries</h3><button onClick={requestRiderPayout} disabled={!riderDetails.earnings.available} className="h-10 px-4 rounded-xl bg-slate-900 text-white text-[10px] font-black uppercase disabled:opacity-40 flex items-center gap-2"><Wallet className="w-3.5 h-3.5"/>Create payout</button></div>
+                        <div className="border rounded-xl divide-y">{riderDetails.deliveries.length ? riderDetails.deliveries.slice(0,20).map(delivery=><div key={delivery._id} className="p-3 flex justify-between gap-3 text-xs"><div><p className="font-bold text-slate-800">{delivery.order?.orderNumber || delivery.trackingToken}</p><p className="text-slate-500">{delivery.order?.customer?.firstName} {delivery.order?.customer?.lastName}</p></div><div className="text-right"><p className="font-black uppercase text-[10px]">{delivery.status?.replace(/_/g,' ')}</p><p className="text-slate-400">{delivery.deliveredAt ? new Date(delivery.deliveredAt).toLocaleString() : new Date(delivery.createdAt).toLocaleDateString()}</p></div></div>) : <p className="p-5 text-center text-xs text-slate-400">No delivery history yet.</p>}</div>
+                        {riderDetails.payouts.length > 0 && <div><h3 className="text-xs font-black uppercase tracking-widest text-slate-700 mb-2">Payout history</h3><div className="border rounded-xl divide-y">{riderDetails.payouts.map(payout=><div key={payout._id} className="p-3 flex flex-wrap justify-between items-center gap-2 text-xs"><span>{payout.payoutId} · {payout.status}{payout.referenceNumber ? ` · ${payout.referenceNumber}` : ''}</span><div className="flex items-center gap-2"><b>₱{payout.amount.toLocaleString()}</b>{payout.status==='pending'&&<button onClick={()=>updateRiderPayout(payout,'processing')} className="px-2 py-1 rounded bg-blue-50 text-blue-700 font-bold">Process</button>}{payout.status==='processing'&&<><button onClick={()=>updateRiderPayout(payout,'paid')} className="px-2 py-1 rounded bg-emerald-50 text-emerald-700 font-bold">Paid</button><button onClick={()=>updateRiderPayout(payout,'failed')} className="px-2 py-1 rounded bg-rose-50 text-rose-700 font-bold">Failed</button></>}</div></div>)}</div></div>}
                     </div>
                 </div>
             )}

@@ -14,6 +14,15 @@ const {
   calculateDeliveryFee
 } = require('../controllers/deliveryController');
 const { authenticate, requirePermission } = require('../middleware/auth');
+const Delivery = require('../models/Delivery');
+const { uploadSingle, handleUploadError } = require('../middleware/upload');
+const { uploadImage } = require('../controllers/uploadController');
+
+const validateActiveRiderToken = async (req, res, next) => {
+  const delivery = await Delivery.findOne({ riderToken: req.params.token }).select('isLive');
+  if (!delivery || !delivery.isLive) return res.status(403).json({ message: 'Rider delivery link is inactive.' });
+  next();
+};
 
 // Private Routes: Admin/Staff
 router.post('/generate', authenticate, requirePermission('logistics.manage'), generateDeliveryLinks);
@@ -29,5 +38,8 @@ router.patch('/location/:token', updateLocation);
 router.post('/chat/:token', sendDeliveryMessage);
 router.patch('/verify/:token', verifyRider);
 router.post('/complaint/:token', submitComplaint);
+router.post('/complete/:token', require('../controllers/deliveryController').completeDelivery);
+router.post('/failed/:token', require('../controllers/deliveryController').reportFailedDelivery);
+router.post('/proof-upload/:token', validateActiveRiderToken, uploadSingle, handleUploadError, uploadImage);
 
 module.exports = router;

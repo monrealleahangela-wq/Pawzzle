@@ -86,7 +86,8 @@ const LEGACY_STAFF_ROLE_MAP = {
   service_management_staff: 'manager',
   administrative_support: 'manager',
   medical_assistant: 'veterinarian',
-  pet_handler: 'boarding_staff'
+  pet_handler: 'boarding_staff',
+  delivery_rider: 'delivery_rider'
 };
 
 const normalizeRole = (user) => {

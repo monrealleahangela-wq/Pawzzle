@@ -40,6 +40,32 @@ const deliverySchema = new mongoose.Schema({
     ref: 'User',
     default: null
   },
+  assignmentType: {
+    type: String,
+    enum: ['internal', 'third_party', 'unassigned'],
+    default: 'unassigned',
+    index: true
+  },
+  thirdPartyRider: {
+    name: { type: String, trim: true },
+    mobile: { type: String, trim: true },
+    company: { type: String, trim: true },
+    vehicleType: { type: String, trim: true },
+    plateNumber: { type: String, trim: true, uppercase: true },
+    referenceNumber: { type: String, trim: true },
+    notes: { type: String, trim: true }
+  },
+  assignmentHistory: [{
+    assignmentType: { type: String, enum: ['internal', 'third_party', 'unassigned'] },
+    rider: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    thirdPartyRider: {
+      name: String, mobile: String, company: String, vehicleType: String,
+      plateNumber: String, referenceNumber: String, notes: String
+    },
+    assignedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    assignedAt: { type: Date, default: Date.now },
+    endedAt: Date
+  }],
   assignedBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
@@ -87,6 +113,12 @@ const deliverySchema = new mongoose.Schema({
   deliveredAt: {
     type: Date
   },
+  arrivedAt: Date,
+  statusHistory: [{
+    status: { type: String, required: true },
+    timestamp: { type: Date, default: Date.now },
+    notes: String
+  }],
   isLive: {
     type: Boolean,
     default: true
@@ -109,15 +141,30 @@ const deliverySchema = new mongoose.Schema({
   proofOfDelivery: {
     photo: { type: String },
     signature: { type: String },
-    method: { type: String, enum: ['photo', 'qr', 'signature'] },
-    timestamp: { type: Date }
-  }
+    method: { type: String, enum: ['photo', 'qr', 'otp', 'signature', 'notes'] },
+    otpVerified: { type: Boolean, default: false },
+    notes: String,
+    location: { lat: Number, lng: Number },
+    riderId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    riderName: String,
+    timestamp: { type: Date },
+    codPaymentStatus: { type: String, enum: ['cash_received', 'digital_received', 'not_received'] }
+  },
+  deliveryAttempts: [{
+    reason: { type: String, enum: ['customer_unavailable', 'cannot_contact', 'incorrect_address', 'customer_refused', 'establishment_closed', 'address_inaccessible', 'other'], required: true },
+    notes: String,
+    photo: String,
+    location: { lat: Number, lng: Number },
+    timestamp: { type: Date, default: Date.now }
+  }]
 }, {
   timestamps: true
 });
 
 // Middleware to disable link after delivery
 deliverySchema.pre('save', function(next) {
+  if (this.assignmentType === 'unassigned' && this.assignedRider) this.assignmentType = 'internal';
+  if (this.assignmentType === 'unassigned' && this.thirdPartyRider?.name) this.assignmentType = 'third_party';
   if (this.status === 'delivered') {
     this.isLive = false;
     if (!this.deliveredAt) this.deliveredAt = new Date();

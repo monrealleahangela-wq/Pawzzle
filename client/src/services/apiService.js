@@ -158,7 +158,12 @@ export const staffService = {
   update: (id, data) => api.put(`/staff/${id}`, data),
   toggleStatus: (id) => api.patch(`/staff/${id}/toggle-status`),
   resetPassword: (id, newPassword) => api.patch(`/staff/${id}/reset-password`, { newPassword }),
-  remove: (id) => api.delete(`/staff/${id}`)
+  remove: (id) => api.delete(`/staff/${id}`),
+  getEligibleRiders: (params) => api.get('/staff/riders/eligible', { params }),
+  getMyRiderDetails: () => api.get('/staff/me/rider-summary'),
+  getRiderDetails: (id) => api.get(`/staff/riders/${id}`),
+  createRiderPayout: (id) => api.post(`/staff/riders/${id}/payouts`),
+  updateRiderPayout: (payoutId, data) => api.patch(`/staff/rider-payouts/${payoutId}`, data)
 };
 
 // Customer services (Admin only)
@@ -438,6 +443,9 @@ export const deliveryService = {
   sendMessage: (token, messageData) => api.post(`/deliveries/chat/${token}`, messageData),
   verifyRider: (token, data) => api.patch(`/deliveries/verify/${token}`, data),
   submitComplaint: (token, data) => api.post(`/deliveries/complaint/${token}`, data),
+  completeDelivery: (token, data) => api.post(`/deliveries/complete/${token}`, data),
+  reportFailedDelivery: (token, data) => api.post(`/deliveries/failed/${token}`, data),
+  uploadDeliveryProof: (token, formData) => api.post(`/deliveries/proof-upload/${token}`, formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
   resolveComplaint: (deliveryId, complaintId) => api.patch(`/deliveries/resolve-complaint/${deliveryId}/${complaintId}`),
   calculateFee: (data) => api.post('/deliveries/calculate-fee', data)
 };

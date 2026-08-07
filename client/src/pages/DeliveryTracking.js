@@ -13,6 +13,7 @@ import { Popup } from 'react-leaflet';
 import socket from '../utils/socket';
 import { toast } from 'react-toastify';
 import { deliveryService, getImageUrl } from '../services/apiService';
+import RiderDeliveryWorkspace from '../components/delivery/RiderDeliveryWorkspace';
 
 // Define custom icons for the map
 const riderIcon = new L.Icon({
@@ -74,6 +75,7 @@ const DeliveryTracking = () => {
   const [directions, setDirections] = useState([]);
   const [showDirections, setShowDirections] = useState(false);
   const [eta, setEta] = useState(null);
+  const [distanceKm, setDistanceKm] = useState(null);
   const [isNearby, setIsNearby] = useState(false);
   const chatEndRef = useRef(null);
   
@@ -187,7 +189,7 @@ const DeliveryTracking = () => {
   // Compute Target Information
   const storeCoords = delivery?.order?.store?.contactInfo?.address?.coordinates;
   const customerCoords = delivery?.order?.shippingAddress?.coordinates;
-  const isToStore = delivery?.status === 'pending' || delivery?.status === 'picked_up';
+  const isToStore = ['pending', 'unassigned', 'assigned', 'accepted'].includes(delivery?.status);
   
   const targetCoords = isToStore ? storeCoords : customerCoords;
   const targetLabel = isToStore ? 'Pickup: Store' : 'Delivery: Customer';
@@ -243,6 +245,7 @@ const DeliveryTracking = () => {
         const route = res.data.routes[0];
         setRouteData(route.geometry.coordinates.map(c => [c[1], c[0]]));
         setEta(Math.ceil(route.duration / 60)); // Duration is in seconds
+        setDistanceKm(route.distance / 1000);
         setDirections(route.legs[0].steps.map(s => ({
           instruction: s.maneuver.instruction,
           distance: s.distance,
@@ -312,6 +315,13 @@ const DeliveryTracking = () => {
     }
   };
 
+  const sendMessageContent = async (content) => {
+    if (!content?.trim()) return;
+    const msgData = { sender: role, content: content.trim(), timestamp: new Date() };
+    socket.emit('sendMessage', { deliveryId: delivery._id, ...msgData });
+    await axios.post(`${process.env.REACT_APP_API_URL || '/api'}/deliveries/chat/${token}`, msgData);
+  };
+
   if (loading) return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-slate-50 gap-4">
       <div className="w-16 h-16 border-4 border-rose-500 border-t-transparent rounded-full animate-spin"></div>
@@ -336,6 +346,18 @@ const DeliveryTracking = () => {
     in_transit: 70,
     delivered: 100
   };
+
+  if (role === 'rider' && (delivery.isRiderVerified || !delivery.isLive)) {
+    return <RiderDeliveryWorkspace
+      delivery={delivery}
+      token={token}
+      eta={eta}
+      distanceKm={distanceKm}
+      onStatusUpdate={async status => { await handleStatusUpdate(status); await fetchDelivery(); }}
+      onSendMessage={sendMessageContent}
+      onRefresh={fetchDelivery}
+    />;
+  }
 
 
   return (

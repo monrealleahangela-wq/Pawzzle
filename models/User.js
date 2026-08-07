@@ -50,7 +50,7 @@ const userSchema = new mongoose.Schema({
       'veterinarian', 'groomer', 'trainer', 'boarding_specialist', 
       'medical_assistant', 'pet_handler', 'inventory_staff', 
       'logistics_staff', 'sales_staff', 'service_management_staff', 
-      'administrative_support', 'order_staff', 'service_staff', null
+      'administrative_support', 'order_staff', 'service_staff', 'delivery_rider', null
     ],
     default: null
   },
@@ -151,6 +151,26 @@ const userSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
+  riderProfile: {
+    staffId: { type: String, trim: true, uppercase: true },
+    accountStatus: { type: String, enum: ['active', 'inactive', 'suspended'], default: 'active' },
+    vehicleType: { type: String, enum: ['motorcycle', 'bicycle', 'car', 'van', 'other', ''], default: '' },
+    plateNumber: { type: String, trim: true, uppercase: true, default: '' },
+    licenseId: { type: String, trim: true, default: '' },
+    deliveryZone: { type: String, trim: true, default: '' },
+    earningRules: {
+      baseRate: { type: Number, min: 0, default: 0 },
+      incentive: { type: Number, min: 0, default: 0 },
+      bonus: { type: Number, min: 0, default: 0 },
+      deduction: { type: Number, min: 0, default: 0 }
+    },
+    payoutMethod: {
+      type: { type: String, enum: ['gcash', 'maya', 'bank_transfer', ''], default: '' },
+      accountName: { type: String, trim: true, default: '' },
+      accountNumber: { type: String, trim: true, default: '' },
+      bankName: { type: String, trim: true, default: '' }
+    }
+  },
   // Trust & Reputation Layer
   isVerified: { type: Boolean, default: false },
   verificationBadge: { type: String, enum: ['none', 'starter', 'trusted', 'premium'], default: 'none' },
@@ -191,6 +211,11 @@ userSchema.index({ email: 1 }, {
 userSchema.index({ username: 1 }, { 
   unique: true, 
   partialFilterExpression: { isDeleted: false } 
+});
+
+userSchema.index({ 'riderProfile.staffId': 1 }, {
+  unique: true,
+  partialFilterExpression: { staffType: 'delivery_rider', 'riderProfile.staffId': { $type: 'string' }, isDeleted: false }
 });
 
 // Hash password before saving (only for local auth)
