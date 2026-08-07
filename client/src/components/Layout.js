@@ -54,8 +54,10 @@ const getAdminMenu = (user) => {
   const role = user?.role;
   const staffType = user?.staffType;
 
-  const isStoreOwner = role === 'store_owner';
-  const isGlobalAdmin = role === 'admin' || role === 'super_admin' || isStoreOwner;
+  // Existing store-owner accounts use both the legacy `admin` role and the
+  // newer `store_owner` role. They must receive the same catalog navigation.
+  const isStoreOwner = role === 'store_owner' || role === 'admin';
+  const isGlobalAdmin = role === 'super_admin' || isStoreOwner;
 
   const menu = [
     { path: '/admin/dashboard', label: 'Dashboard', icon: Activity },
@@ -405,6 +407,7 @@ const Layout = () => {
   const isGroupActive = (group) => group.children?.some(c => isActivePath(c.path));
   const isLandingPage = location.pathname === '/' && !isAuthenticated;
   const isCustomerUI = user?.role === 'customer';
+  const isStoreOwnerUI = user?.role === 'store_owner' || user?.role === 'admin';
   const sidebarWidth = isCustomerUI
     ? (sidebarCollapsed ? 'w-[72px]' : 'w-[240px]')
     : (sidebarCollapsed ? 'w-[84px]' : 'w-[280px]');
@@ -442,7 +445,7 @@ const Layout = () => {
   );
 
   return (
-    <div className={`min-h-screen bg-neutral-50 dark:bg-slate-950 flex flex-col lg:flex-row overflow-x-hidden transition-colors duration-300 ${user?.role === 'customer' ? 'customer-ui-shell' : ''} ${user?.role === 'store_owner' ? 'store-owner-ui-shell' : ''} ${isLandingPage ? '!bg-transparent' : ''}`}>
+    <div className={`min-h-screen bg-neutral-50 dark:bg-slate-950 flex flex-col lg:flex-row overflow-x-hidden transition-colors duration-300 ${user?.role === 'customer' ? 'customer-ui-shell' : ''} ${isStoreOwnerUI ? 'store-owner-ui-shell' : ''} ${isLandingPage ? '!bg-transparent' : ''}`}>
       
       {!isLandingPage && (
         <div className="fixed top-0 left-0 h-1 bg-gradient-to-r from-primary via-secondary to-primary z-[100] transition-all duration-300" 
@@ -551,7 +554,7 @@ const Layout = () => {
         )}
 
         <main className={`flex-1 ${isCustomerUI ? 'p-3 sm:p-4 lg:p-5' : 'p-4 sm:p-5 lg:p-8'} animate-fade-up ${isLandingPage ? 'p-0' : ''}`}>
-          <div className={`relative z-10 ${user?.role === 'customer' ? 'customer-interface' : ''} ${user?.role === 'store_owner' ? 'store-owner-interface' : ''}`}>
+          <div className={`relative z-10 ${user?.role === 'customer' ? 'customer-interface' : ''} ${isStoreOwnerUI ? 'store-owner-interface' : ''}`}>
             <Outlet />
           </div>
         </main>
