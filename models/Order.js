@@ -123,12 +123,12 @@ const orderSchema = new mongoose.Schema({
   },
   paymentMethod: {
     type: String,
-    enum: ['gcash', 'maya', 'bank_transfer', 'pending'],
+    enum: ['paymongo', 'gcash', 'maya', 'bank_transfer', 'pending'],
     required: true
   },
   paymentStatus: {
     type: String,
-    enum: ['pending', 'paid', 'failed', 'refunded'],
+    enum: ['pending', 'paid', 'failed', 'cancelled', 'refunded'],
     default: 'pending'
   },
   trackingNumber: {
@@ -149,7 +149,13 @@ const orderSchema = new mongoose.Schema({
   paymentDetails: {
     sessionId: { type: String },
     checkoutUrl: { type: String },
-    paymentIntentId: { type: String }
+    paymentIntentId: { type: String },
+    paymentId: { type: String },
+    sourceType: { type: String },
+    amountPaid: { type: Number },
+    transactionDate: { type: Date },
+    fulfilledAt: { type: Date },
+    failureReason: { type: String }
   },
   platformCommission: {
     type: Number,

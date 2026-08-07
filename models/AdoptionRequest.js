@@ -32,7 +32,7 @@ const adoptionRequestSchema = new mongoose.Schema({
         },
         paymentStatus: {
             type: String,
-            enum: ['unpaid', 'payment_pending', 'partially_paid', 'deposit_paid', 'paid_in_full', 'payment_failed', 'refunded', 'awaiting_confirmation'],
+            enum: ['unpaid', 'payment_pending', 'payment_cancelled', 'partially_paid', 'deposit_paid', 'paid_in_full', 'payment_failed', 'refunded', 'awaiting_confirmation'],
             default: 'unpaid'
         },
         pricingBreakdown: {
@@ -42,10 +42,12 @@ const adoptionRequestSchema = new mongoose.Schema({
             balanceDue: { type: Number, default: 0 }
         },
         paymentProof: String, // URL to receipt photo
+        paidAmount: { type: Number, default: 0 },
         paidAt: Date,
         history: [{
             status: String,
             amount: Number,
+            paymentId: String,
             description: String,
             timestamp: { type: Date, default: Date.now }
         }]

@@ -240,6 +240,8 @@ p { line-height: 1.6; color: var(--neutral-800); }
    customer routes; operational dashboards keep their existing proportions. */
 .customer-interface {
   font-size: 0.9375rem;
+  zoom: 0.92;
+  width: 108.6957%;
 }
 
 .customer-interface h1 { font-size: clamp(1.75rem, 3.2vw, 3rem) !important; line-height: 1 !important; }
@@ -294,9 +296,15 @@ p { line-height: 1.6; color: var(--neutral-800); }
 /* Compact customer navigation without changing its structure or behavior. */
 .customer-ui-shell .sidebar-nav-item { padding-top: 0.625rem; padding-bottom: 0.625rem; border-radius: 0.75rem; gap: 0.75rem; }
 .customer-ui-shell .sidebar-nav-item svg { width: 1.1rem; height: 1.1rem; }
+.customer-ui-shell > aside:first-of-type [class~="w-12"][class~="h-12"] { width: 2.5rem !important; height: 2.5rem !important; }
+.customer-ui-shell > aside:first-of-type [class~="text-2xl"] { font-size: 1.2rem !important; }
+.customer-ui-shell > aside:first-of-type nav { padding-top: 0.5rem; padding-bottom: 0.5rem; }
+.customer-ui-shell > aside:first-of-type nav > div { gap: 0.125rem; }
+.customer-floating-ui { font-size: 0.875rem; }
+.customer-floating-ui button { min-width: 2.5rem; min-height: 2.5rem; }
 
 @media (max-width: 640px) {
-  .customer-interface { font-size: 0.875rem; }
+  .customer-interface { font-size: 0.875rem; zoom: 0.88; width: 113.6364%; }
   .customer-interface h1 { font-size: 1.75rem !important; }
   .customer-interface h2 { font-size: 1.4rem !important; }
   .customer-interface h3 { font-size: 1.05rem !important; }
@@ -314,6 +322,17 @@ p { line-height: 1.6; color: var(--neutral-800); }
   .customer-interface [class~="rounded-[3rem]"] { border-radius: 1.25rem !important; }
 }
 
+@supports not (zoom: 1) {
+  .customer-interface {
+    transform: scale(0.92);
+    transform-origin: top left;
+    width: 108.6957%;
+  }
+  @media (max-width: 640px) {
+    .customer-interface { transform: scale(0.88); width: 113.6364%; }
+  }
+}
+
 @media (min-width: 640px) {
   .customer-interface [class~="sm:h-56"] { height: 11rem !important; }
   .customer-interface [class~="sm:w-40"] { width: 7.5rem !important; }
@@ -324,4 +343,34 @@ p { line-height: 1.6; color: var(--neutral-800); }
   .customer-interface [class~="sm:p-16"] { padding: 2.5rem !important; }
   .customer-interface [class~="sm:py-48"] { padding-top: 6rem !important; padding-bottom: 6rem !important; }
   .customer-interface [class~="sm:py-32"] { padding-top: 4rem !important; padding-bottom: 4rem !important; }
+}
+
+/* Store Owner density is scoped to the existing management pages and shell. */
+.store-owner-interface { font-size: 0.9375rem; }
+.store-owner-interface h1 { font-size: clamp(1.75rem, 3vw, 2.75rem) !important; line-height: 1.05 !important; }
+.store-owner-interface h2 { font-size: clamp(1.35rem, 2.2vw, 2rem) !important; }
+.store-owner-interface h3 { font-size: clamp(1.05rem, 1.6vw, 1.4rem) !important; }
+.store-owner-interface p { line-height: 1.5; }
+.store-owner-interface button,
+.store-owner-interface input,
+.store-owner-interface select,
+.store-owner-interface textarea { font-size: max(0.75rem, 12px); }
+.store-owner-interface button,
+.store-owner-interface input,
+.store-owner-interface select { min-height: 2.25rem; }
+.store-owner-interface [class~="gap-10"] { gap: 1.5rem !important; }
+.store-owner-interface [class~="p-10"] { padding: 1.5rem !important; }
+.store-owner-interface [class~="p-8"] { padding: 1.25rem !important; }
+.store-owner-interface [class~="rounded-[3rem]"] { border-radius: 1.5rem !important; }
+.store-owner-interface [class~="rounded-[2.5rem]"] { border-radius: 1.25rem !important; }
+.store-owner-interface .card:hover { transform: translateY(-4px); }
+.store-owner-ui-shell .sidebar-nav-item { padding-top: 0.625rem; padding-bottom: 0.625rem; border-radius: 0.75rem; gap: 0.75rem; }
+.store-owner-ui-shell .sidebar-nav-item svg { width: 1.1rem; height: 1.1rem; }
+
+@media (max-width: 640px) {
+  .store-owner-interface { font-size: 0.875rem; }
+  .store-owner-interface h1 { font-size: 1.75rem !important; }
+  .store-owner-interface h2 { font-size: 1.35rem !important; }
+  .store-owner-interface [class~="p-10"],
+  .store-owner-interface [class~="p-8"] { padding: 1rem !important; }
 }

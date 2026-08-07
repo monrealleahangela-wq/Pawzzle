@@ -67,7 +67,7 @@ const Bookings = ({ isSubcomponent = false }) => {
       province: ''
     },
     notes: '',
-    paymentMethod: 'gcash',
+    paymentMethod: 'paymongo',
     selectedAddOns: [],
     selectedConditions: []
   });
@@ -283,6 +283,9 @@ const Bookings = ({ isSubcomponent = false }) => {
             fetchBookings(); // Fallback to normal refresh
           });
       }
+    } else if (paymentStatus === 'cancelled' && bookingId) {
+      paymentService.cancelPayment('booking', bookingId).catch(() => {});
+      toast.warning('PayMongo payment was cancelled. You can retry from the booking details.');
     } else if (bookingId) {
         // If no payment status but we have a bookingId (from notification), find and select it
         const target = bookings.find(b => b._id === bookingId);
@@ -689,8 +692,8 @@ const Bookings = ({ isSubcomponent = false }) => {
 
       const response = await bookingService.createBooking(bookingData);
       
-      // If it's a GCash or other online payment, redirect to PayMongo
-      if (['gcash', 'maya', 'bank_transfer'].includes(bookingForm.paymentMethod)) {
+      // All customer payments use the existing PayMongo checkout.
+      if (bookingForm.paymentMethod === 'paymongo') {
         toast.info('Redirecting to secure payment...');
         const paymentResponse = await paymentService.createBookingCheckoutSession(response.data._id);
         if (paymentResponse.data.checkoutUrl) {
@@ -1605,11 +1608,9 @@ const Bookings = ({ isSubcomponent = false }) => {
                           <span className="px-2 py-1 bg-primary-50 text-primary-600 rounded-md text-[8px] font-black uppercase tracking-widest">Secure</span>
                         </div>
                         
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div className="grid grid-cols-1 gap-3">
                           {[
-                            { id: 'gcash', label: 'GCash', icon: CreditCard },
-                            { id: 'maya', label: 'Maya', icon: CreditCard },
-                            { id: 'bank_transfer', label: 'Bank Transfer', icon: Building }
+                            { id: 'paymongo', label: 'PayMongo', icon: CreditCard }
                           ].map((method) => (
                             <button
                               key={method.id}

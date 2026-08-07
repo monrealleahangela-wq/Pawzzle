@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate, Link, useLocation } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { ArrowLeft, Heart, Calendar, Weight, MapPin, Package, MessageSquare, Star } from 'lucide-react';
 import { petService, getImageUrl, adoptionService, storeService, paymentService } from '../../services/apiService';
@@ -13,6 +13,7 @@ import InquiryModal from '../../components/InquiryModal';
 const PetDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const [pet, setPet] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showLoginModal, setShowLoginModal] = useState(false);
@@ -25,6 +26,23 @@ const PetDetail = () => {
   useEffect(() => {
     fetchPet();
   }, [id]);
+
+  useEffect(() => {
+    const query = new URLSearchParams(location.search);
+    const payment = query.get('payment');
+    const adoptionId = query.get('id');
+    if (!adoptionId) return;
+    if (payment === 'success') {
+      toast.info('PayMongo payment received. Verifying status...');
+      paymentService.verifyPayment(adoptionId).then(response => {
+        if (['paid_in_full', 'deposit_paid', 'partially_paid'].includes(response.data.status)) toast.success('PayMongo payment confirmed.');
+        else toast.info('Payment is still pending confirmation.');
+      }).catch(() => toast.info('Payment confirmation is still pending.'));
+    } else if (payment === 'cancelled') {
+      paymentService.cancelPayment('adoption', adoptionId).catch(() => {});
+      toast.warning('PayMongo payment was cancelled. You can retry from your inquiry.');
+    }
+  }, [location.search]);
 
   useEffect(() => {
     if (pet && pet.images && pet.images.length > 0) {

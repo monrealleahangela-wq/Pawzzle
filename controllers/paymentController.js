@@ -1,4 +1,5 @@
 const axios = require('axios');
+const crypto = require('crypto');
 const Order = require('../models/Order');
 const Store = require('../models/Store');
 const Product = require('../models/Product');
@@ -10,6 +11,7 @@ const { createNotification } = require('./notificationController');
 const { internalCreateDelivery } = require('./deliveryController');
 
 const PAYMONGO_SECRET_KEY = process.env.PAYMONGO_SECRET_KEY;
+const PAYMONGO_WEBHOOK_SECRET = process.env.PAYMONGO_WEBHOOK_SECRET;
 const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER;
 let FRONTEND_URL = process.env.FRONTEND_URL;
 if (!FRONTEND_URL || FRONTEND_URL.includes('localhost')) {
@@ -21,6 +23,7 @@ if (!FRONTEND_URL || FRONTEND_URL.includes('localhost')) {
  */
 const createCheckoutSession = async (req, res) => {
     try {
+        if (!PAYMONGO_SECRET_KEY) return res.status(503).json({ message: 'PayMongo is not configured.' });
         const { orderId } = req.params;
         const order = await Order.findById(orderId).populate('customer');
 
@@ -31,6 +34,7 @@ const createCheckoutSession = async (req, res) => {
         if (order.status === 'cancelled') {
             return res.status(400).json({ message: 'Cannot pay for a canceled order' });
         }
+        if (order.paymentStatus === 'paid') return res.status(409).json({ message: 'This order is already paid.' });
 
         if (order.customer._id.toString() !== req.user.id && req.user.role !== 'super_admin') {
             return res.status(403).json({ message: 'Access denied' });
@@ -46,29 +50,19 @@ const createCheckoutSession = async (req, res) => {
                     show_description: true,
                     show_line_items: true,
                     description: `Payment for Order #${order.orderNumber}`,
-                    line_items: order.items.map(item => ({
-                        amount: Math.round(item.price * 100),
+                    line_items: [{
+                        amount: amountInCentavos,
                         currency: 'PHP',
-                        name: item.name,
-                        quantity: item.quantity
-                    })),
+                        name: `Order ${order.orderNumber}`,
+                        quantity: 1
+                    }],
                     payment_method_types: ['card', 'gcash', 'paymaya', 'dob', 'dob_ubp'],
                     success_url: `${FRONTEND_URL}/orders/${order._id}?payment=success`,
-                    cancel_url: `${FRONTEND_URL}/checkout?payment=cancelled`,
+                    cancel_url: `${FRONTEND_URL}/checkout?payment=cancelled&type=order&id=${order._id}`,
                     reference_number: order.orderNumber
                 }
             }
         };
-
-        // Add shipping fee if applicable
-        if (order.shippingFee > 0) {
-            data.data.attributes.line_items.push({
-                amount: Math.round(order.shippingFee * 100),
-                currency: 'PHP',
-                name: 'Shipping Fee',
-                quantity: 1
-            });
-        }
 
         const response = await axios.post('https://api.paymongo.com/v1/checkout_sessions', data, {
             headers: {
@@ -84,6 +78,8 @@ const createCheckoutSession = async (req, res) => {
             sessionId: session.id,
             checkoutUrl: session.attributes.checkout_url
         };
+        order.paymentMethod = 'paymongo';
+        order.paymentStatus = 'pending';
         await order.save();
 
         res.json({
@@ -103,6 +99,7 @@ const createCheckoutSession = async (req, res) => {
  */
 const createBookingCheckoutSession = async (req, res) => {
     try {
+        if (!PAYMONGO_SECRET_KEY) return res.status(503).json({ message: 'PayMongo is not configured.' });
         const { bookingId } = req.params;
         const Booking = require('../models/Booking');
         const booking = await Booking.findById(bookingId).populate('customer').populate('service');
@@ -114,6 +111,8 @@ const createBookingCheckoutSession = async (req, res) => {
         if (booking.status === 'cancelled') {
             return res.status(400).json({ message: 'Cannot pay for a canceled booking' });
         }
+        if (booking.customer._id.toString() !== req.user.id && req.user.role !== 'super_admin') return res.status(403).json({ message: 'Access denied' });
+        if (booking.paymentStatus === 'paid') return res.status(409).json({ message: 'This booking is already paid.' });
 
         const amountInCentavos = Math.round(booking.totalPrice * 100);
         const data = {
@@ -131,7 +130,7 @@ const createBookingCheckoutSession = async (req, res) => {
                     }],
                     payment_method_types: ['card', 'gcash', 'paymaya', 'dob', 'dob_ubp'],
                     success_url: `${FRONTEND_URL}/bookings?payment=success&id=${booking._id}`,
-                    cancel_url: `${FRONTEND_URL}/bookings?payment=cancelled`,
+                    cancel_url: `${FRONTEND_URL}/bookings?payment=cancelled&type=booking&id=${booking._id}`,
                     reference_number: `BK-${booking._id.toString().slice(-8).toUpperCase()}`
                 }
             }
@@ -149,6 +148,8 @@ const createBookingCheckoutSession = async (req, res) => {
             sessionId: session.id,
             checkoutUrl: session.attributes.checkout_url
         };
+        booking.paymentMethod = 'paymongo';
+        booking.paymentStatus = 'pending';
         await booking.save();
 
         res.json({ checkoutUrl: session.attributes.checkout_url });
@@ -163,6 +164,7 @@ const createBookingCheckoutSession = async (req, res) => {
  */
 const createAdoptionCheckoutSession = async (req, res) => {
     try {
+        if (!PAYMONGO_SECRET_KEY) return res.status(503).json({ message: 'PayMongo is not configured.' });
         const { requestId } = req.params;
         const adoption = await AdoptionRequest.findById(requestId).populate('customer').populate('pet');
 
@@ -210,8 +212,8 @@ const createAdoptionCheckoutSession = async (req, res) => {
                         quantity: 1
                     }],
                     payment_method_types: ['card', 'gcash', 'paymaya', 'dob', 'dob_ubp'],
-                    success_url: `${FRONTEND_URL}/adoptions?payment=success&id=${adoption._id}`,
-                    cancel_url: `${FRONTEND_URL}/adoptions?payment=cancelled`,
+                    success_url: `${FRONTEND_URL}/pets/${adoption.pet._id}?payment=success&id=${adoption._id}`,
+                    cancel_url: `${FRONTEND_URL}/pets/${adoption.pet._id}?payment=cancelled&type=adoption&id=${adoption._id}`,
                     reference_number: `AD-${adoption._id.toString().slice(-8).toUpperCase()}`
                 }
             }
@@ -230,6 +232,8 @@ const createAdoptionCheckoutSession = async (req, res) => {
         if (!adoption.paymentDetails) adoption.paymentDetails = { pricingBreakdown: {} };
         adoption.paymentDetails.sessionId = session.id;
         adoption.paymentDetails.checkoutUrl = session.attributes.checkout_url;
+        adoption.paymentDetails.method = 'paymongo';
+        adoption.paymentDetails.paymentStatus = 'payment_pending';
         await adoption.save();
 
         res.json({ checkoutUrl: session.attributes.checkout_url });
@@ -242,9 +246,26 @@ const createAdoptionCheckoutSession = async (req, res) => {
 /**
  * Handle PayMongo Webhook
  */
+const isValidWebhookSignature = (req) => {
+    if (!PAYMONGO_WEBHOOK_SECRET) return !isProduction;
+    const signatureHeader = req.get('Paymongo-Signature');
+    if (!signatureHeader || !req.rawBody) return false;
+    const parts = Object.fromEntries(signatureHeader.split(',').map(part => part.trim().split('=')));
+    const timestamp = parts.t;
+    const signature = PAYMONGO_SECRET_KEY?.startsWith('sk_live_') ? parts.li : parts.te;
+    if (!timestamp || !signature || Math.abs(Date.now() / 1000 - Number(timestamp)) > 300) return false;
+    const expected = crypto.createHmac('sha256', PAYMONGO_WEBHOOK_SECRET)
+        .update(`${timestamp}.${req.rawBody.toString('utf8')}`).digest('hex');
+    const supplied = Buffer.from(signature, 'hex');
+    const calculated = Buffer.from(expected, 'hex');
+    return supplied.length === calculated.length && crypto.timingSafeEqual(supplied, calculated);
+};
+
 const handleWebhook = async (req, res) => {
     try {
+        if (!isValidWebhookSignature(req)) return res.status(401).json({ message: 'Invalid PayMongo webhook signature.' });
         const event = req.body.data;
+        if (!event?.attributes?.type || !event.attributes.data) return res.status(400).json({ message: 'Invalid webhook payload.' });
         const eventType = event.attributes.type;
 
         console.log('🔔 Received PayMongo Webhook Event:', eventType);
@@ -260,9 +281,11 @@ const handleWebhook = async (req, res) => {
                 // We stored the session ID in booking.paymentDetails.sessionId
                 const booking = await Booking.findOne({ 'paymentDetails.sessionId': checkoutSession.id });
                 if (booking) {
+                    if (booking.paymentStatus === 'paid') return res.sendStatus(200);
                     booking.paymentStatus = 'paid';
-                    booking.paymentMethod = paymentData.attributes.source.type;
+                    booking.paymentMethod = 'paymongo';
                     booking.paymentDetails.paymentId = paymentData.id;
+                    booking.paymentDetails.sourceType = paymentData.attributes.source?.type;
                     
                     // Ensure the booking isn't cancelled if it was auto-cancelled while paying
                     // Status remains 'pending' (awaiting seller approval)
@@ -303,6 +326,7 @@ const handleWebhook = async (req, res) => {
                 // It's an adoption
                 const adoption = await AdoptionRequest.findOne({ 'paymentDetails.sessionId': checkoutSession.id });
                 if (adoption) {
+                    if (['paid_in_full', 'deposit_paid'].includes(adoption.paymentDetails?.paymentStatus) && adoption.paymentDetails?.history?.some(row => row.paymentId === paymentData.id)) return res.sendStatus(200);
                     const pricing = adoption.paymentDetails.pricingBreakdown;
                     const paidAmountCentavos = paymentData.attributes.amount;
                     const paidAmount = paidAmountCentavos / 100;
@@ -320,13 +344,14 @@ const handleWebhook = async (req, res) => {
                         adoption.paymentDetails.paymentStatus = 'partially_paid';
                     }
 
-                    adoption.paymentDetails.method = paymentData.attributes.source.type;
+                    adoption.paymentDetails.method = 'paymongo';
                     adoption.paymentDetails.paidAt = new Date();
                     
                     // Add history
                     adoption.paymentDetails.history.push({
                         status: adoption.paymentDetails.paymentStatus,
                         amount: paidAmount,
+                        paymentId: paymentData.id,
                         description: `Paid via PayMongo (${adoption.paymentDetails.method})`
                     });
 
@@ -355,13 +380,15 @@ const handleWebhook = async (req, res) => {
             const order = await Order.findOne({ orderNumber });
 
             if (order) {
+                if (order.paymentStatus === 'paid' && order.paymentDetails?.fulfilledAt) return res.sendStatus(200);
                 if (order.status === 'cancelled') {
                     console.log(`⚠️ Received payment for cancelled order #${order.orderNumber}. Marking as paid but keeping cancelled status.`);
                     order.paymentStatus = 'paid';
-                    order.paymentMethod = paymentData.attributes.source.type;
+                    order.paymentMethod = 'paymongo';
                     order.paymentDetails = {
                         ...order.paymentDetails,
                         paymentId: paymentData.id,
+                        sourceType: paymentData.attributes.source?.type,
                         amountPaid: paymentData.attributes.amount / 100,
                         transactionDate: new Date(paymentData.attributes.paid_at * 1000)
                     };
@@ -371,13 +398,15 @@ const handleWebhook = async (req, res) => {
 
                 order.paymentStatus = 'paid';
                 order.status = 'confirmed'; // Automatically confirm order on payment
-                order.paymentMethod = paymentData.attributes.source.type; // e.g., 'gcash', 'card'
+                order.paymentMethod = 'paymongo';
                 order.paymentDetails = {
                     ...order.paymentDetails,
                     paymentId: paymentData.id,
+                    sourceType: paymentData.attributes.source?.type,
                     amountPaid: paymentData.attributes.amount / 100,
                     transactionDate: new Date(paymentData.attributes.paid_at * 1000)
                 };
+                await order.save();
 
                 // Deduct stock and update pet availability
                 for (const item of order.items) {
@@ -420,16 +449,42 @@ const handleWebhook = async (req, res) => {
                     await internalCreateDelivery({ orderId: order._id });
                 }
 
+                order.paymentDetails.fulfilledAt = new Date();
+                await order.save();
+
                 console.log(`✅ Order #${orderNumber} marked as PAID`);
             }
         } else if (eventType === 'checkout_session.payment.failed' || eventType === 'payment.failed') {
             const checkoutSession = event.attributes.data;
             // The data structure for payment.failed might be slightly different, but PayMongo usually includes the reference or we can find it in the resource
-            const orderNumber = checkoutSession.attributes.reference_number || (checkoutSession.attributes.external_id);
+            const orderNumber = checkoutSession.attributes.reference_number || checkoutSession.attributes.external_id;
+
+            if (orderNumber?.startsWith('BK-')) {
+                const Booking = require('../models/Booking');
+                const booking = await Booking.findOne({ 'paymentDetails.sessionId': checkoutSession.id });
+                if (booking && booking.paymentStatus !== 'paid') {
+                    booking.paymentStatus = 'failed';
+                    booking.paymentMethod = 'paymongo';
+                    booking.paymentDetails.failureReason = 'PayMongo reported a failed payment';
+                    await booking.save();
+                }
+                return res.sendStatus(200);
+            }
+            if (orderNumber?.startsWith('AD-')) {
+                const adoption = await AdoptionRequest.findOne({ 'paymentDetails.sessionId': checkoutSession.id });
+                if (adoption && adoption.paymentDetails.paymentStatus !== 'paid_in_full') {
+                    adoption.paymentDetails.method = 'paymongo';
+                    adoption.paymentDetails.paymentStatus = 'payment_failed';
+                    await adoption.save();
+                }
+                return res.sendStatus(200);
+            }
 
             const order = await Order.findOne({ orderNumber });
             if (order) {
                 order.paymentStatus = 'failed';
+                order.paymentMethod = 'paymongo';
+                order.paymentDetails.failureReason = 'PayMongo reported a failed payment';
                 await order.save();
                 console.log(`❌ Order #${orderNumber} marked as PAYMENT FAILED`);
             }
@@ -459,10 +514,21 @@ const verifyPayment = async (req, res) => {
         }
 
         if (!target) {
+            target = await AdoptionRequest.findById(orderId);
+            type = 'adoption';
+        }
+
+        if (!target) {
             return res.status(404).json({ message: 'Record not found' });
         }
 
-        if (target.paymentStatus === 'paid') {
+        const customerId = target.customer?._id || target.customer;
+        if (String(customerId) !== String(req.user._id) && req.user.role !== 'super_admin') return res.status(403).json({ message: 'Access denied.' });
+
+        if (type === 'adoption' && ['paid_in_full', 'deposit_paid'].includes(target.paymentDetails?.paymentStatus)) {
+            return res.json({ status: target.paymentDetails.paymentStatus, adoption: target });
+        }
+        if (target.paymentStatus === 'paid' && (type !== 'order' || target.paymentDetails?.fulfilledAt)) {
             return res.json({ status: 'paid', [type]: target });
         }
 
@@ -486,11 +552,30 @@ const verifyPayment = async (req, res) => {
             if (successfulPayment) {
                 console.log(`🔍 Manual verification confirmed payment for ${type} #${target._id}`);
                 
+                if (type === 'adoption') {
+                    const paidAmount = successfulPayment.attributes.amount / 100;
+                    const pricing = target.paymentDetails.pricingBreakdown;
+                    const alreadyRecorded = target.paymentDetails.history?.some(row => row.paymentId === successfulPayment.id);
+                    if (!alreadyRecorded) {
+                        target.paymentDetails.paidAmount = (target.paymentDetails.paidAmount || 0) + paidAmount;
+                        pricing.paidAmount = target.paymentDetails.paidAmount;
+                        pricing.balanceDue = Math.max(0, pricing.totalPrice - target.paymentDetails.paidAmount);
+                        target.paymentDetails.paymentStatus = pricing.balanceDue <= 0 ? 'paid_in_full' : (pricing.depositAmount > 0 && target.paymentDetails.paidAmount >= pricing.depositAmount ? 'deposit_paid' : 'partially_paid');
+                        target.paymentDetails.method = 'paymongo';
+                        target.paymentDetails.paidAt = new Date();
+                        target.paymentDetails.history.push({ status: target.paymentDetails.paymentStatus, amount: paidAmount, paymentId: successfulPayment.id, description: 'Paid via PayMongo' });
+                        if (['inquiry_submitted', 'under_review'].includes(target.status)) target.status = 'approved';
+                        await target.save();
+                    }
+                    return res.json({ status: target.paymentDetails.paymentStatus, adoption: target });
+                }
+
                 target.paymentStatus = 'paid';
-                target.paymentMethod = successfulPayment.attributes.source.type;
+                target.paymentMethod = 'paymongo';
                 target.paymentDetails = {
                     ...target.paymentDetails,
                     paymentId: successfulPayment.id,
+                    sourceType: successfulPayment.attributes.source?.type,
                 };
 
                 if (type === 'order') {
@@ -526,6 +611,7 @@ const verifyPayment = async (req, res) => {
                         if (target.deliveryMethod === 'delivery') {
                             await internalCreateDelivery({ orderId: target._id });
                         }
+                        target.paymentDetails.fulfilledAt = new Date();
                     }
                 } else {
                     // Booking specific updates
@@ -557,10 +643,34 @@ const verifyPayment = async (req, res) => {
     }
 };
 
+const cancelPayment = async (req, res) => {
+    try {
+        const { type, id } = req.params;
+        let target;
+        if (type === 'order') target = await Order.findById(id);
+        else if (type === 'booking') target = await require('../models/Booking').findById(id);
+        else if (type === 'adoption') target = await AdoptionRequest.findById(id);
+        else return res.status(400).json({ message: 'Invalid payment record type.' });
+        if (!target) return res.status(404).json({ message: 'Payment record not found.' });
+        const customerId = target.customer?._id || target.customer;
+        if (String(customerId) !== String(req.user._id) && req.user.role !== 'super_admin') return res.status(403).json({ message: 'Access denied.' });
+        if (type === 'adoption') {
+            if (!['paid_in_full', 'deposit_paid'].includes(target.paymentDetails?.paymentStatus)) target.paymentDetails.paymentStatus = 'payment_cancelled';
+            target.paymentDetails.method = 'paymongo';
+        } else if (target.paymentStatus !== 'paid') {
+            target.paymentStatus = 'cancelled';
+            target.paymentMethod = 'paymongo';
+        }
+        await target.save();
+        res.json({ status: type === 'adoption' ? target.paymentDetails.paymentStatus : target.paymentStatus });
+    } catch (error) { res.status(500).json({ message: 'Unable to update cancelled payment.' }); }
+};
+
 module.exports = {
     createCheckoutSession,
     createBookingCheckoutSession,
     createAdoptionCheckoutSession,
     handleWebhook,
-    verifyPayment
+    verifyPayment,
+    cancelPayment
 };

@@ -30,7 +30,12 @@ app.set('socketio', io);
 
 // Middleware
 app.use(cors());
-app.use(express.json({ limit: '50mb' }));
+app.use(express.json({
+  limit: '50mb',
+  verify: (req, _res, buffer) => {
+    if (req.originalUrl?.startsWith('/api/payment/webhook')) req.rawBody = Buffer.from(buffer);
+  }
+}));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // Trust proxy for Render/Heroku and Enforce HTTPS in production

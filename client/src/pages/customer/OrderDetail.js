@@ -561,7 +561,7 @@ const OrderDetail = () => {
 
               {user?.role === 'customer' && order.paymentStatus !== 'paid' &&
                 order.status !== 'cancelled' &&
-                ['gcash', 'maya', 'bank_transfer'].includes(order.paymentMethod) && (
+                order.paymentMethod === 'paymongo' && (
                   <button
                     onClick={async () => {
                       try {

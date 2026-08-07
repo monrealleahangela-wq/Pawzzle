@@ -332,7 +332,8 @@ export const paymentService = {
   createBookingCheckoutSession: (bookingId) => api.post(`/payment/create-booking-checkout-session/${bookingId}`),
   createAdoptionCheckoutSession: (requestId) => api.post(`/payment/create-adoption-checkout-session/${requestId}`),
   verifyPayment: (orderId) => api.get(`/payment/verify/${orderId}`),
-  verifyBookingPayment: (bookingId) => api.get(`/payment/verify/${bookingId}`)
+  verifyBookingPayment: (bookingId) => api.get(`/payment/verify/${bookingId}`),
+  cancelPayment: (type, id) => api.post(`/payment/cancel/${type}/${id}`)
 };
 
 // Voucher services (Customer)

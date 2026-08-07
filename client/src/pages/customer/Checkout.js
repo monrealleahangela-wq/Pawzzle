@@ -4,7 +4,7 @@ import { toast } from 'react-toastify';
 import { useCart } from '../../contexts/CartContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { orderService, userService, paymentService, storeService, voucherService, getImageUrl } from '../../services/apiService';
-import { Heart, Package, CreditCard, Truck, Edit2, ShoppingBag, Store, CheckCircle, AlertCircle, MapPin, Tag, Ticket, X, ChevronRight, Building } from 'lucide-react';
+import { Heart, Package, CreditCard, Truck, Edit2, ShoppingBag, Store, CheckCircle, AlertCircle, MapPin, Tag, Ticket, X, ChevronRight } from 'lucide-react';
 import { getCitiesByProvince, getBarangaysByCity } from '../../constants/locationConstants';
 import MapPicker from '../../components/MapPicker';
 import { Info } from 'lucide-react';
@@ -18,7 +18,9 @@ const Checkout = () => {
   useEffect(() => {
     const queryParams = new URLSearchParams(location.search);
     if (queryParams.get('payment') === 'cancelled') {
-      toast.warn('Payment was cancelled. You can try another payment method.');
+      const orderId = queryParams.get('id');
+      if (orderId) paymentService.cancelPayment('order', orderId).catch(() => {});
+      toast.warn('PayMongo payment was cancelled. You can retry from your order.');
     }
   }, [location.search]);
 
@@ -57,7 +59,7 @@ const Checkout = () => {
   const [hasPhoneBeenManuallyEdited, setHasPhoneBeenManuallyEdited] = useState(false);
   const [cities, setCities] = useState([]);
   const [barangays, setBarangays] = useState([]);
-  const [paymentMethod, setPaymentMethod] = useState('credit_card');
+  const [paymentMethod, setPaymentMethod] = useState('paymongo');
   const [voucherCode, setVoucherCode] = useState('');
   const [appliedVoucher, setAppliedVoucher] = useState(null);
   const [isVerifyingVoucher, setIsVerifyingVoucher] = useState(false);
@@ -68,9 +70,7 @@ const Checkout = () => {
   // Payment options - Online Only consistent with minimalist design
   const getPaymentOptions = () => {
     return [
-      { value: 'gcash', label: 'GCash', icon: <CreditCard className="h-4 w-4" /> },
-      { value: 'maya', label: 'Maya', icon: <CreditCard className="h-4 w-4" /> },
-      { value: 'bank_transfer', label: 'Bank Transfer', icon: <Building className="h-4 w-4" /> }
+      { value: 'paymongo', label: 'PayMongo', icon: <CreditCard className="h-4 w-4" /> }
     ];
   };
   const [deliveryMethod, setDeliveryMethod] = useState('delivery'); // 'delivery' or 'pickup'
@@ -94,7 +94,7 @@ const Checkout = () => {
 
   // Reset payment method when delivery method changes
   useEffect(() => {
-    setPaymentMethod('gcash'); // Default to GCash
+    setPaymentMethod('paymongo');
   }, [deliveryMethod]);
 
   const [storeAddresses, setStoreAddresses] = useState({});
@@ -233,15 +233,6 @@ const Checkout = () => {
     toast.success('Address applied successfully!');
   };
 
-  const getPaymentIcon = (value) => {
-    switch (value) {
-      case 'gcash':
-      case 'maya': return <CreditCard className="h-5 w-5" />;
-      case 'bank_transfer': return <Package className="h-5 w-5" />;
-      default: return <CreditCard className="h-5 w-5" />;
-    }
-  };
-
   const handleAddressChange = (field, value) => {
     setShippingAddress(prev => ({ ...prev, [field]: value }));
 
@@ -321,27 +312,23 @@ const Checkout = () => {
 
         // Handle PayMongo redirection for online payments
         // Handle Online Redirects
-        const onlinePaymentMethods = ['gcash', 'maya', 'bank_transfer'];
-        if (onlinePaymentMethods.includes(paymentMethod)) {
-          // If bank transfer, we might show details instead of automatic checkout, 
-          // but for now, we'll try the same gateway flow or redirect to order details
+        if (paymentMethod === 'paymongo') {
           try {
-            toast.info(`Redirecting to Secure ${paymentMethod.toUpperCase()} Portal...`);
+            toast.info('Redirecting to secure PayMongo checkout...');
             const paymentResponse = await paymentService.createCheckoutSession(orderId);
             if (paymentResponse.data && paymentResponse.data.checkoutUrl) {
               clearSelectedItems();
               window.location.href = paymentResponse.data.checkoutUrl;
               return;
             } else {
-              // Fallback for methods without automatic session (like manual bank transfer)
-              toast.success('Order secured! Please complete payout using provided details.');
+              toast.success('Order created. Continue payment from the order details.');
               clearSelectedItems();
               navigate(`/orders/${orderId}`);
               return;
             }
           } catch (paymentError) {
             console.error('Payment Error:', paymentError);
-            toast.error('Order secured, but portal initialization failed. Attempt via dashboard.');
+            toast.error('Order created, but PayMongo could not start. Retry from the order page.');
             navigate(`/orders/${orderId}`);
             return;
           }
@@ -865,7 +852,7 @@ const Checkout = () => {
               <span className="text-[10px] font-black text-primary-600 bg-primary-50 px-2 py-0.5 rounded-full uppercase tracking-widest">Online Only</span>
             </div>
             
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 gap-2">
               {getPaymentOptions().map((method) => (
                 <button
                   key={method.value}
@@ -890,7 +877,7 @@ const Checkout = () => {
               <div className="flex items-start gap-2">
                 <Info className="h-3 w-3 text-slate-400 mt-0.5 shrink-0" />
                 <p className="text-[9px] font-bold text-slate-500 uppercase tracking-tight leading-relaxed">
-                  Your payment is processed via a secure encrypted gateway. Manual bank transfers require verification within 24 hours.
+                  Payment is processed securely by PayMongo. The order updates after PayMongo confirms the transaction.
                 </p>
               </div>
             </div>

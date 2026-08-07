@@ -66,8 +66,8 @@ const createAdoptionRequest = async (req, res) => {
                 pickupConfirmation
             },
             paymentDetails: {
-                method: paymentMethod,
-                paymentStatus: paymentMethod === 'paymongo' ? 'payment_pending' : 'unpaid',
+                method: 'paymongo',
+                paymentStatus: 'payment_pending',
                 pricingBreakdown: {
                     totalPrice: pet.price,
                     depositAmount: pet.paymentConfig === 'deposit_first' ? pet.depositAmount : 0,
@@ -80,7 +80,7 @@ const createAdoptionRequest = async (req, res) => {
             history: [{
                 status: 'inquiry_submitted',
                 updatedBy: req.user._id,
-                description: `Initial purchase inquiry started for ${pet.name}. Preferred payment: ${paymentMethod.replace(/_/g, ' ').toUpperCase()}`,
+                description: `Initial purchase inquiry started for ${pet.name}. Payment provider: PAYMONGO`,
                 reason: 'Inquiry Submitted'
             }]
         });

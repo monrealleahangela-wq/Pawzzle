@@ -54,7 +54,8 @@ const getAdminMenu = (user) => {
   const role = user?.role;
   const staffType = user?.staffType;
 
-  const isGlobalAdmin = role === 'admin' || role === 'super_admin';
+  const isStoreOwner = role === 'store_owner';
+  const isGlobalAdmin = role === 'admin' || role === 'super_admin' || isStoreOwner;
 
   const menu = [
     { path: '/admin/dashboard', label: 'Dashboard', icon: Activity },
@@ -71,13 +72,13 @@ const getAdminMenu = (user) => {
   }
 
   const catalogChildren = [];
-  if (hasPets && hasAccess(['inventory_staff'])) {
+  if ((hasPets || isStoreOwner) && hasAccess(['inventory_staff'])) {
     catalogChildren.push({ path: '/admin/pets', label: 'Manage Pets', icon: Heart });
   }
-  if (hasProducts && hasAccess(['inventory_staff'])) {
+  if ((hasProducts || isStoreOwner) && hasAccess(['inventory_staff'])) {
     catalogChildren.push({ path: '/admin/products', label: 'Manage Products', icon: Package });
   }
-  if (hasServices && hasAccess(['service_management_staff', 'veterinarian', 'groomer', 'trainer'])) {
+  if ((hasServices || isStoreOwner) && hasAccess(['service_management_staff', 'veterinarian', 'groomer', 'trainer'])) {
     catalogChildren.push({ path: '/admin/services', label: 'Manage Services', icon: Calendar });
   }
   if (catalogChildren.length > 0) menu.push({ label: 'Catalog', icon: Layers, children: catalogChildren });
@@ -375,7 +376,8 @@ const Layout = () => {
     if (!user) return publicMenu;
     switch (user.role) {
       case 'customer': return customerMenu;
-      case 'admin': return getAdminMenu(user);
+      case 'admin':
+      case 'store_owner': return getAdminMenu(user);
       case 'super_admin': return superAdminMenu;
       case 'staff': return getStaffMenu(user);
       case 'supplier': return supplierMenu;
@@ -402,8 +404,16 @@ const Layout = () => {
   const isActivePath = (path) => location.pathname === path || location.pathname.startsWith(path + '/');
   const isGroupActive = (group) => group.children?.some(c => isActivePath(c.path));
   const isLandingPage = location.pathname === '/' && !isAuthenticated;
-  const sidebarWidth = sidebarCollapsed ? 'w-[84px]' : 'w-[280px]';
-  const contentPadding = isSidebarPinned ? 'lg:pl-[280px]' : 'lg:pl-[84px]';
+  const isCustomerUI = user?.role === 'customer';
+  const sidebarWidth = isCustomerUI
+    ? (sidebarCollapsed ? 'w-[72px]' : 'w-[240px]')
+    : (sidebarCollapsed ? 'w-[84px]' : 'w-[280px]');
+  const contentPadding = isCustomerUI
+    ? (isSidebarPinned ? 'lg:pl-[240px]' : 'lg:pl-[72px]')
+    : (isSidebarPinned ? 'lg:pl-[280px]' : 'lg:pl-[84px]');
+  const headerOffset = isCustomerUI
+    ? (sidebarCollapsed ? 'lg:left-[72px]' : 'lg:left-[240px]')
+    : (sidebarCollapsed ? 'lg:left-[84px]' : 'lg:left-[280px]');
 
   const renderNavItems = (items, collapsed = false, onNav) => (
     <div className="space-y-2">
@@ -432,7 +442,7 @@ const Layout = () => {
   );
 
   return (
-    <div className={`min-h-screen bg-neutral-50 dark:bg-slate-950 flex flex-col lg:flex-row overflow-x-hidden transition-colors duration-300 ${user?.role === 'customer' ? 'customer-ui-shell' : ''} ${isLandingPage ? '!bg-transparent' : ''}`}>
+    <div className={`min-h-screen bg-neutral-50 dark:bg-slate-950 flex flex-col lg:flex-row overflow-x-hidden transition-colors duration-300 ${user?.role === 'customer' ? 'customer-ui-shell' : ''} ${user?.role === 'store_owner' ? 'store-owner-ui-shell' : ''} ${isLandingPage ? '!bg-transparent' : ''}`}>
       
       {!isLandingPage && (
         <div className="fixed top-0 left-0 h-1 bg-gradient-to-r from-primary via-secondary to-primary z-[100] transition-all duration-300" 
@@ -484,9 +494,9 @@ const Layout = () => {
         </aside>
       )}
 
-      <div className={`flex-1 flex flex-col min-w-0 ${isLandingPage ? '' : `${contentPadding} pt-16 lg:pt-20`} transition-all duration-500`}>
+      <div className={`flex-1 flex flex-col min-w-0 ${isLandingPage ? '' : `${contentPadding} ${isCustomerUI ? 'pt-14 lg:pt-16' : 'pt-16 lg:pt-20'}`} transition-all duration-500`}>
         {!isLandingPage && (
-          <header className={`fixed top-0 left-0 ${sidebarCollapsed ? 'lg:left-[84px]' : 'lg:left-[280px]'} right-0 z-50 glass-effect dark:border-b dark:border-slate-800 h-16 lg:h-20 flex items-center px-4 sm:px-6 lg:px-8 justify-between transition-all duration-500 shadow-soft`}>
+          <header className={`fixed top-0 left-0 ${headerOffset} right-0 z-50 glass-effect dark:border-b dark:border-slate-800 ${isCustomerUI ? 'h-14 lg:h-16' : 'h-16 lg:h-20'} flex items-center px-4 sm:px-6 lg:px-8 justify-between transition-all duration-500 shadow-soft`}>
             <div className="flex items-center gap-6">
               <div className="lg:hidden">
                 <button onClick={() => setIsMobileMenuOpen(true)} className="p-2.5 bg-white shadow-soft rounded-xl text-neutral-800">
@@ -540,8 +550,8 @@ const Layout = () => {
           </header>
         )}
 
-        <main className={`flex-1 p-4 sm:p-5 lg:p-8 animate-fade-up ${isLandingPage ? 'p-0' : ''}`}>
-          <div className={`relative z-10 ${user?.role === 'customer' ? 'customer-interface' : ''}`}>
+        <main className={`flex-1 ${isCustomerUI ? 'p-3 sm:p-4 lg:p-5' : 'p-4 sm:p-5 lg:p-8'} animate-fade-up ${isLandingPage ? 'p-0' : ''}`}>
+          <div className={`relative z-10 ${user?.role === 'customer' ? 'customer-interface' : ''} ${user?.role === 'store_owner' ? 'store-owner-interface' : ''}`}>
             <Outlet />
           </div>
         </main>
@@ -550,7 +560,7 @@ const Layout = () => {
       <div className={`fixed inset-0 z-[150] lg:hidden transition-all duration-500 ${isMobileMenuOpen ? 'visible' : 'invisible'}`}>
         <div className={`absolute inset-0 bg-neutral-900/40 backdrop-blur-md transition-opacity duration-500 ${isMobileMenuOpen ? 'opacity-100' : 'opacity-0'}`}
              onClick={() => setIsMobileMenuOpen(false)} />
-        <aside className={`absolute top-0 left-0 h-full w-[280px] max-w-[88vw] bg-white dark:bg-slate-900 shadow-premium transition-transform duration-500 ease-[cubic-bezier(0.23,1,0.32,1)] flex flex-col ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+        <aside className={`absolute top-0 left-0 h-full ${isCustomerUI ? 'w-[260px]' : 'w-[280px]'} max-w-[88vw] bg-white dark:bg-slate-900 shadow-premium transition-transform duration-500 ease-[cubic-bezier(0.23,1,0.32,1)] flex flex-col ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
           <div className="shrink-0 p-5 flex items-center justify-between">
             <div className="flex items-center gap-4">
               <div className="w-10 h-10 bg-primary rounded-2xl flex items-center justify-center">
@@ -583,7 +593,7 @@ const Layout = () => {
       </div>
 
       <LogoutModal isOpen={showLogoutModal} onClose={() => setShowLogoutModal(false)} onConfirm={confirmLogout} />
-      {user?.role === 'customer' && <FloatingChatManager currentUser={user} />}
+      {user?.role === 'customer' && <div className="customer-floating-ui"><FloatingChatManager currentUser={user} /></div>}
       <PasswordChangeModal />
     </div>
   );

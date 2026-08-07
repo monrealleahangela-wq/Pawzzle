@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { createCheckoutSession, createBookingCheckoutSession, createAdoptionCheckoutSession, handleWebhook, verifyPayment } = require('../controllers/paymentController');
+const { createCheckoutSession, createBookingCheckoutSession, createAdoptionCheckoutSession, handleWebhook, verifyPayment, cancelPayment } = require('../controllers/paymentController');
 const { authenticate } = require('../middleware/auth');
 
 // Create PayMongo Checkout Session
@@ -13,5 +13,6 @@ router.post('/webhook', handleWebhook);
 
 // Verify Payment Manually
 router.get('/verify/:orderId', authenticate, verifyPayment);
+router.post('/cancel/:type/:id', authenticate, cancelPayment);
 
 module.exports = router;

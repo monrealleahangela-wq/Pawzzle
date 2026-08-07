@@ -246,7 +246,7 @@ const createBooking = async (req, res) => {
       isHomeService,
       serviceAddress: isHomeService ? serviceAddress : undefined,
       totalPrice: breakdown.finalPrice,
-      paymentMethod: req.body.paymentMethod || 'pending',
+      paymentMethod: 'paymongo',
       voucher: appliedVoucherId,
       discountAmount,
       notes

@@ -127,12 +127,12 @@ const bookingSchema = new mongoose.Schema({
   }],
   paymentMethod: {
     type: String,
-    enum: ['gcash', 'maya', 'bank_transfer', 'pending'],
+    enum: ['paymongo', 'gcash', 'maya', 'bank_transfer', 'pending'],
     required: true
   },
   paymentStatus: {
     type: String,
-    enum: ['pending', 'paid', 'refunded'],
+    enum: ['pending', 'paid', 'failed', 'cancelled', 'refunded'],
     default: 'pending'
   },
   totalPrice: {
@@ -175,7 +175,9 @@ const bookingSchema = new mongoose.Schema({
   paymentDetails: {
     sessionId: { type: String },
     checkoutUrl: { type: String },
-    paymentId: { type: String }
+    paymentId: { type: String },
+    sourceType: { type: String },
+    failureReason: { type: String }
   },
   createdAt: {
     type: Date,
