@@ -999,39 +999,20 @@ const Profile = () => {
                   </div>
                 )}
                 
-                <div className="flex flex-col items-center space-y-6 pt-4">
-                  <div className="relative group/avatar">
-                    <div className="w-36 h-36 rounded-[3rem] bg-neutral-100 overflow-hidden ring-8 ring-primary/5 transition-all duration-700 group-hover/avatar:ring-primary/10 shadow-inner">
-                      {previewImage ? (
-                        <img src={previewImage.startsWith('data:') ? previewImage : getImageUrl(previewImage)} alt="" className="w-full h-full object-cover" />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center bg-primary/5">
-                          <User className="h-16 w-16 text-primary/20" />
-                        </div>
-                      )}
-                    </div>
-                    <label className="absolute bottom-1 right-1 w-12 h-12 bg-neutral-900 border-4 border-white text-white rounded-2xl flex items-center justify-center cursor-pointer hover:bg-primary transition-all shadow-premium group-hover/avatar:scale-110">
-                      <Camera size={18} />
-                      <input type="file" className="hidden" onChange={handleImageChange} accept="image/*" />
-                    </label>
+                <div className="flex flex-col items-center gap-3 pt-2">
+                  <div className="flex items-center justify-center gap-3">
+                    <span className="px-4 py-1.5 bg-neutral-50 border border-slate-100 rounded-xl text-[10px] font-black text-neutral-400 uppercase tracking-widest">@{user.username}</span>
+                    <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
                   </div>
-                  
-                  <div className="text-center space-y-2">
-                    <h2 className="text-3xl font-black text-neutral-900 uppercase tracking-tighter leading-none">{user.firstName} {user.lastName}</h2>
-                    <div className="flex items-center justify-center gap-3">
-                       <span className="px-5 py-1.5 bg-neutral-50 border border-slate-100 rounded-xl text-[10px] font-black text-neutral-400 uppercase tracking-widest">@{user.username}</span>
-                       <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
-                    </div>
-                    <div className="flex items-center justify-center pt-4 gap-2">
-                      <span className="px-4 py-1.5 bg-neutral-900 text-white rounded-xl text-[9px] font-black uppercase tracking-widest shadow-strong">
-                        {user.role?.replace('_', ' ')}
+                  <div className="flex items-center justify-center gap-2">
+                    <span className="px-4 py-1.5 bg-neutral-900 text-white rounded-xl text-[9px] font-black uppercase tracking-widest shadow-strong">
+                      {user.role?.replace('_', ' ')}
+                    </span>
+                    {user.store && (
+                      <span className="px-4 py-1.5 bg-primary/5 text-primary border border-primary/10 rounded-xl text-[9px] font-black uppercase tracking-widest">
+                        {user.store.name}
                       </span>
-                      {user.store && (
-                        <span className="px-4 py-1.5 bg-primary/5 text-primary border border-primary/10 rounded-xl text-[9px] font-black uppercase tracking-widest">
-                           {user.store.name}
-                        </span>
-                      )}
-                    </div>
+                    )}
                   </div>
                 </div>
 

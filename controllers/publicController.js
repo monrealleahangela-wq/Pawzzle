@@ -45,10 +45,11 @@ const getLandingPageData = async (req, res) => {
       
       // 5. Accurate Platform Stats
       Promise.all([
-        Store.countDocuments({ isActive: true }),
-        User.countDocuments({ role: 'staff', isActive: true }),
-        Product.countDocuments({ isActive: true }),
-        Service.countDocuments({ isActive: true })
+        Store.countDocuments({ isActive: true, isDeleted: { $ne: true } }),
+        Pet.countDocuments({ isAvailable: true, isDeleted: { $ne: true } }),
+        User.countDocuments({ role: 'staff', isActive: true, isDeleted: { $ne: true } }),
+        Product.countDocuments({ isActive: true, isDeleted: { $ne: true } }),
+        Service.countDocuments({ isActive: true, isDeleted: { $ne: true } })
       ])
     ]);
 
@@ -59,9 +60,10 @@ const getLandingPageData = async (req, res) => {
       experts,
       stats: {
         stores: stats[0],
-        experts: stats[1],
-        products: stats[2],
-        services: stats[3]
+        pets: stats[1],
+        experts: stats[2],
+        products: stats[3],
+        services: stats[4]
       }
     });
   } catch (error) {
