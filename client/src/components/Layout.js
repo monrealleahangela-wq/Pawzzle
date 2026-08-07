@@ -124,11 +124,10 @@ const getAdminMenu = (user) => {
   }
 
   if (isGlobalAdmin) {
-    const settingsChildren = [{ path: '/admin/store', label: 'Store Details', icon: Building }];
-    const hasStaffConfig = user?.store?.staffingConfiguration?.hasStaff !== 'no';
-    if (hasStaffConfig) {
-      settingsChildren.push({ path: '/admin/staff', label: 'Manage Staff', icon: Users });
-    }
+    const settingsChildren = [
+      { path: '/admin/store', label: 'Store Details', icon: Building },
+      { path: '/admin/staff', label: 'Manage Staff', icon: Users }
+    ];
     menu.push({ label: 'Settings', icon: Settings, children: settingsChildren });
   }
 
