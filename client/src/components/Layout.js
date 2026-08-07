@@ -113,6 +113,7 @@ const getAdminMenu = (user) => {
 
   if (isGlobalAdmin || hasAccess(['sales_staff', 'administrative_support'])) {
     const financeChildren = [
+      { path: '/admin/finance', label: 'Finance Records', icon: DollarSign },
       { path: '/admin/vouchers', label: 'Vouchers', icon: Ticket },
       { path: '/admin/payouts', label: 'Payouts', icon: Wallet },
     ];
@@ -203,6 +204,10 @@ const getStaffMenu = (user) => {
   if (opsChildren.length > 0) menu.push({ label: 'Operations', icon: ShoppingBag, children: opsChildren });
 
   const mgmtChildren = [];
+  if (user?.staffType === 'inventory_staff' || user?.staffType === 'procurement_officer') {
+    mgmtChildren.push({ path: '/admin/purchase-orders', label: 'Purchase Orders', icon: Truck });
+  }
+  if (user?.staffType === 'finance_staff') mgmtChildren.push({ path: '/admin/finance', label: 'Finance Records', icon: DollarSign });
   if (p.vouchers?.view) mgmtChildren.push({ path: '/admin/vouchers', label: 'Vouchers', icon: Ticket });
   if (p.analytics?.view) mgmtChildren.push({ path: '/admin/stats', label: 'Stats', icon: TrendingUp });
   if (p.staff?.view) mgmtChildren.push({ path: '/admin/staff', label: 'Staff', icon: Users });
@@ -427,7 +432,7 @@ const Layout = () => {
   );
 
   return (
-    <div className={`min-h-screen bg-neutral-50 dark:bg-slate-950 flex flex-col lg:flex-row overflow-x-hidden transition-colors duration-300 ${isLandingPage ? '!bg-transparent' : ''}`}>
+    <div className={`min-h-screen bg-neutral-50 dark:bg-slate-950 flex flex-col lg:flex-row overflow-x-hidden transition-colors duration-300 ${user?.role === 'customer' ? 'customer-ui-shell' : ''} ${isLandingPage ? '!bg-transparent' : ''}`}>
       
       {!isLandingPage && (
         <div className="fixed top-0 left-0 h-1 bg-gradient-to-r from-primary via-secondary to-primary z-[100] transition-all duration-300" 
@@ -536,7 +541,7 @@ const Layout = () => {
         )}
 
         <main className={`flex-1 p-4 sm:p-5 lg:p-8 animate-fade-up ${isLandingPage ? 'p-0' : ''}`}>
-          <div className="relative z-10">
+          <div className={`relative z-10 ${user?.role === 'customer' ? 'customer-interface' : ''}`}>
             <Outlet />
           </div>
         </main>

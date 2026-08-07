@@ -4,6 +4,8 @@ const expenseSchema = new mongoose.Schema({
   store: { type: mongoose.Schema.Types.ObjectId, ref: 'Store', required: true, index: true },
   category: { type: String, required: true, trim: true },
   payee: { type: String, required: true, trim: true },
+  supplier: { type: mongoose.Schema.Types.ObjectId, ref: 'Supplier', index: true },
+  purchaseOrder: { type: mongoose.Schema.Types.ObjectId, ref: 'PurchaseOrder', index: true },
   description: { type: String, trim: true },
   expenseDate: { type: Date, required: true, default: Date.now, index: true },
   taxCode: {
@@ -29,5 +31,6 @@ const expenseSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 expenseSchema.index({ store: 1, expenseDate: -1, status: 1 });
+expenseSchema.index({ store: 1, purchaseOrder: 1 });
 
 module.exports = mongoose.model('Expense', expenseSchema);

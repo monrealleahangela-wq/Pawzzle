@@ -72,6 +72,7 @@ import StaffManagement from './pages/admin/StaffManagement';
 import Customers from './pages/admin/Customers';
 import PurchaseOrders from './pages/admin/PurchaseOrders';
 import SupplyManagement from './pages/admin/SupplyManagement';
+import FinanceManagement from './pages/admin/FinanceManagement';
 
 // Super Admin Pages
 import SuperAdminDashboard from './pages/superadmin/Dashboard';
@@ -199,6 +200,7 @@ function App() {
                   <Route path="admin/staff" element={<ProtectedRoute roles={['admin', 'super_admin']}><StaffManagement /></ProtectedRoute>} />
                   <Route path="admin/purchase-orders" element={<ProtectedRoute roles={['admin', 'super_admin', 'staff']}><PurchaseOrders /></ProtectedRoute>} />
                   <Route path="admin/supplies" element={<ProtectedRoute roles={['admin', 'super_admin', 'staff']}><SupplyManagement /></ProtectedRoute>} />
+                  <Route path="admin/finance" element={<ProtectedRoute roles={['admin', 'super_admin', 'staff']}><FinanceManagement /></ProtectedRoute>} />
                   <Route path="superadmin/payouts" element={<ProtectedRoute roles={['super_admin']}><AdminPayouts /></ProtectedRoute>} />
 
                   {/* Super Admin Routes */}

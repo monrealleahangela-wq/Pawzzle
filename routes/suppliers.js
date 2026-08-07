@@ -7,7 +7,8 @@ const {
   addProduct, getMyProducts, updateProduct, deleteProduct,
   getSupplierOrders, updateOrderStatus,
   browseSuppliers, getSupplierCatalog,
-  adminGetAllSuppliers, adminVerifySupplier, adminGetSupplierDetails
+  adminGetAllSuppliers, adminVerifySupplier, adminGetSupplierDetails,
+  adminUpdateSupplier, adminDeactivateSupplier
 } = require('../controllers/supplierController');
 
 // ── Supplier self-service routes ──────────────────────────
@@ -34,5 +35,7 @@ router.get('/catalog/:supplierId', authenticate, getSupplierCatalog);
 router.get('/admin/all', authenticate, superAdminOnly, adminGetAllSuppliers);
 router.get('/admin/:id', authenticate, superAdminOnly, adminGetSupplierDetails);
 router.patch('/admin/:id/verify', authenticate, superAdminOnly, adminVerifySupplier);
+router.put('/admin/:id', authenticate, superAdminOnly, adminUpdateSupplier);
+router.delete('/admin/:id', authenticate, superAdminOnly, adminDeactivateSupplier);
 
 module.exports = router;

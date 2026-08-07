@@ -509,17 +509,49 @@ const adminGetSupplierDetails = async (req, res) => {
       .populate('verifiedBy', 'firstName lastName');
     if (!supplier) return res.status(404).json({ message: 'Supplier not found.' });
 
-    const productCount = await SupplierProduct.countDocuments({ supplier: supplier._id, isDeleted: false });
-    const orderCount = await PurchaseOrder.countDocuments({ supplier: supplier._id, isDeleted: false });
-    const recentLogs = await SupplyChainLog.find({ supplier: supplier._id })
+    const [products, orders, productCount, orderCount, recentLogs] = await Promise.all([
+      SupplierProduct.find({ supplier: supplier._id, isDeleted: false }).select('name sku category wholesalePrice availableStock isActive').sort({ createdAt: -1 }).limit(20),
+      PurchaseOrder.find({ supplier: supplier._id, isDeleted: false }).select('orderNumber status paymentStatus totalCost createdAt').populate('store', 'name').sort({ createdAt: -1 }).limit(20),
+      SupplierProduct.countDocuments({ supplier: supplier._id, isDeleted: false }),
+      PurchaseOrder.countDocuments({ supplier: supplier._id, isDeleted: false }),
+      SupplyChainLog.find({ supplier: supplier._id })
       .populate('performedBy', 'firstName lastName')
-      .sort({ createdAt: -1 }).limit(20);
+      .sort({ createdAt: -1 }).limit(20)
+    ]);
 
-    res.json({ supplier, productCount, orderCount, recentLogs });
+    res.json({ supplier, products, orders, productCount, orderCount, recentLogs });
   } catch (error) {
     console.error('Admin supplier details error:', error);
     res.status(500).json({ message: 'Server error' });
   }
+};
+
+const adminUpdateSupplier = async (req, res) => {
+  try {
+    const supplier = await Supplier.findOne({ _id: req.params.id, isDeleted: false });
+    if (!supplier) return res.status(404).json({ message: 'Supplier not found.' });
+    const allowed = ['businessName', 'contactPerson', 'email', 'phone', 'address', 'description', 'productCategories', 'taxId', 'businessRegistrationNumber', 'logo', 'isActive'];
+    allowed.forEach(field => { if (req.body[field] !== undefined) supplier[field] = req.body[field]; });
+    await supplier.save();
+    await SupplyChainLog.create({ action: 'supplier_updated', performedBy: req.user._id, userRole: req.user.role, relatedEntity: { type: 'Supplier', id: supplier._id }, description: `Supplier "${supplier.businessName}" updated`, supplier: supplier._id });
+    res.json(supplier);
+  } catch (error) { res.status(400).json({ message: error.message }); }
+};
+
+const adminDeactivateSupplier = async (req, res) => {
+  try {
+    const supplier = await Supplier.findOne({ _id: req.params.id, isDeleted: false });
+    if (!supplier) return res.status(404).json({ message: 'Supplier not found.' });
+    const activeOrders = await PurchaseOrder.countDocuments({ supplier: supplier._id, isDeleted: false, status: { $in: ['submitted', 'confirmed', 'processing', 'shipped'] } });
+    if (activeOrders) return res.status(409).json({ message: `Supplier has ${activeOrders} active purchase order(s). Complete or cancel them first.` });
+    supplier.isActive = false;
+    supplier.status = 'suspended';
+    supplier.suspensionReason = req.body.reason || 'Deactivated by administrator';
+    await supplier.save();
+    await SupplierProduct.updateMany({ supplier: supplier._id }, { isActive: false });
+    await SupplyChainLog.create({ action: 'supplier_deactivated', performedBy: req.user._id, userRole: req.user.role, relatedEntity: { type: 'Supplier', id: supplier._id }, description: `Supplier "${supplier.businessName}" deactivated`, supplier: supplier._id });
+    res.json(supplier);
+  } catch (error) { res.status(400).json({ message: error.message }); }
 };
 
 module.exports = {
@@ -530,5 +562,6 @@ module.exports = {
   addProduct, getMyProducts, updateProduct, deleteProduct,
   getSupplierOrders, updateOrderStatus,
   browseSuppliers, getSupplierCatalog,
-  adminGetAllSuppliers, adminVerifySupplier, adminGetSupplierDetails
+  adminGetAllSuppliers, adminVerifySupplier, adminGetSupplierDetails,
+  adminUpdateSupplier, adminDeactivateSupplier
 };

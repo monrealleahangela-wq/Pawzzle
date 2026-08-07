@@ -418,7 +418,12 @@ export const petCareService = {
 export const financeService = {
   getSummary: (params) => api.get('/finance/summary', { params }),
   getExpenses: (params) => api.get('/finance/expenses', { params }),
-  createExpense: (data) => api.post('/finance/expenses', data)
+  createExpense: (data) => api.post('/finance/expenses', data),
+  updateExpense: (id, data) => api.put(`/finance/expenses/${id}`, data),
+  updateExpenseStatus: (id, data) => api.patch(`/finance/expenses/${id}/status`, data),
+  getProcurementPayments: (params) => api.get('/finance/procurement-payments', { params }),
+  createProcurementPayment: (data) => api.post('/finance/procurement-payments', data),
+  voidProcurementPayment: (id, data) => api.patch(`/finance/procurement-payments/${id}/void`, data)
 };
 
 // Delivery services
@@ -456,7 +461,9 @@ export const supplierService = {
   // Admin
   adminGetAll: (params) => api.get('/suppliers/admin/all', { params }),
   adminGetDetails: (id) => api.get(`/suppliers/admin/${id}`),
-  adminVerify: (id, data) => api.patch(`/suppliers/admin/${id}/verify`, data)
+  adminVerify: (id, data) => api.patch(`/suppliers/admin/${id}/verify`, data),
+  adminUpdate: (id, data) => api.put(`/suppliers/admin/${id}`, data),
+  adminDeactivate: (id, data) => api.delete(`/suppliers/admin/${id}`, { data })
 };
 
 // Purchase Order services

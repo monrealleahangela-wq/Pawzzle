@@ -83,6 +83,7 @@ const purchaseOrderSchema = new mongoose.Schema({
   },
   paymentReference: { type: String },
   paymentDate: { type: Date },
+  paidAmount: { type: Number, default: 0, min: 0 },
 
   // ── Notes & History ───────────────────────────────────
   sellerNotes: { type: String },

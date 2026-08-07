@@ -20,6 +20,9 @@ const createPurchaseOrder = async (req, res) => {
     if (!supplierId || !items || items.length === 0) {
       return res.status(400).json({ message: 'Supplier and at least one item are required.' });
     }
+    if (!Array.isArray(items) || items.length > 100) return res.status(400).json({ message: 'Items must be a list containing no more than 100 entries.' });
+    const productIds = items.map(item => String(item.supplierProductId || ''));
+    if (new Set(productIds).size !== productIds.length) return res.status(400).json({ message: 'Duplicate products are not allowed in one purchase order.' });
 
     // Verify supplier
     const supplier = await Supplier.findById(supplierId);
@@ -53,6 +56,7 @@ const createPurchaseOrder = async (req, res) => {
         return res.status(400).json({ message: `Product not found: ${item.supplierProductId}` });
       }
 
+      if (!Number.isInteger(Number(item.quantity)) || Number(item.quantity) <= 0) return res.status(400).json({ message: `Quantity for "${product.name}" must be a positive whole number.` });
       if (item.quantity < product.minimumOrderQuantity) {
         return res.status(400).json({
           message: `Minimum order for "${product.name}" is ${product.minimumOrderQuantity} ${product.unitOfMeasure}(s).`
@@ -68,6 +72,10 @@ const createPurchaseOrder = async (req, res) => {
       const totalPrice = product.wholesalePrice * item.quantity;
       subtotal += totalPrice;
 
+      if (item.storeProductId) {
+        const mappedProduct = await Product.exists({ _id: item.storeProductId, store, isDeleted: { $ne: true } });
+        if (!mappedProduct) return res.status(400).json({ message: `Selected inventory product for "${product.name}" does not belong to this store.` });
+      }
       resolvedItems.push({
         supplierProduct: product._id,
         storeProduct: item.storeProductId || null,
@@ -255,7 +263,11 @@ const confirmDelivery = async (req, res) => {
 
     // Process each delivered item
     for (const item of order.items) {
-      const received = req.body.receivedQuantities?.[item._id.toString()] || item.quantity;
+      const suppliedQuantity = req.body.receivedQuantities?.[item._id.toString()];
+      const received = suppliedQuantity === undefined ? item.quantity : Number(suppliedQuantity);
+      if (!Number.isInteger(received) || received < 0 || received > item.quantity) {
+        return res.status(400).json({ message: `Received quantity for "${item.productName}" must be a whole number from 0 to ${item.quantity}.` });
+      }
       item.receivedQuantity = received;
 
       if (received <= 0) continue;
@@ -417,7 +429,6 @@ const confirmDelivery = async (req, res) => {
       }
     }
 
-    order.paymentStatus = 'paid';
     order.statusHistory.push({
       status: 'delivery_confirmed',
       changedBy: req.user._id,

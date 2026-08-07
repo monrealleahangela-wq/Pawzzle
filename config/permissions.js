@@ -4,7 +4,7 @@ const ROLE_PERMISSIONS = {
   admin: [
     'dashboard.view', 'users.manage', 'staff.manage', 'customers.manage',
     'pets.manage', 'clinical.manage', 'services.manage', 'sales.manage',
-    'inventory.manage', 'procurement.manage', 'finance.view',
+    'inventory.manage', 'procurement.manage', 'finance.manage',
     'logistics.manage', 'reports.view', 'dss.manage'
   ],
   store_owner: [

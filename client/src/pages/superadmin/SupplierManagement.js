@@ -48,6 +48,29 @@ const SupplierManagement = () => {
     } catch (e) { toast.error(e.response?.data?.message || 'Action failed'); }
   };
 
+  const editSupplier = async () => {
+    const current = supplierDetails.supplier;
+    const businessName = window.prompt('Business name', current.businessName);
+    if (!businessName) return;
+    const contactPerson = window.prompt('Contact person', current.contactPerson);
+    const email = window.prompt('Email', current.email);
+    const phone = window.prompt('Phone', current.phone);
+    if (!contactPerson || !email || !phone) return toast.error('Name, contact, email, and phone are required');
+    try {
+      await supplierService.adminUpdate(current._id, { businessName, contactPerson, email, phone });
+      toast.success('Supplier updated'); await viewDetails(current._id); await fetchSuppliers();
+    } catch (e) { toast.error(e.response?.data?.message || 'Update failed'); }
+  };
+
+  const deactivateSupplier = async () => {
+    const reason = window.prompt('Reason for deactivation:');
+    if (!reason) return;
+    try {
+      await supplierService.adminDeactivate(supplierDetails.supplier._id, { reason });
+      toast.success('Supplier deactivated'); setShowDetailModal(false); await fetchSuppliers();
+    } catch (e) { toast.error(e.response?.data?.message || 'Deactivation failed'); }
+  };
+
   const statusConfig = {
     pending_verification: { color: 'amber', icon: Clock, label: 'Pending' },
     verified: { color: 'emerald', icon: CheckCircle, label: 'Verified' },
@@ -211,6 +234,11 @@ const SupplierManagement = () => {
                 </div>
               </div>
 
+              <div className="grid md:grid-cols-2 gap-4">
+                <div><h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Supplied Products</h4><div className="space-y-2">{supplierDetails.products?.map(product => <div key={product._id} className="p-3 bg-slate-50 rounded-lg text-xs flex justify-between"><div><b>{product.name}</b><p className="text-[9px] text-slate-400">{product.sku} · {product.availableStock} available</p></div><b>₱{product.wholesalePrice?.toLocaleString()}</b></div>)}{!supplierDetails.products?.length && <p className="text-xs text-slate-400">No products listed.</p>}</div></div>
+                <div><h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Purchase Orders</h4><div className="space-y-2">{supplierDetails.orders?.map(order => <div key={order._id} className="p-3 bg-slate-50 rounded-lg text-xs flex justify-between"><div><b>{order.orderNumber}</b><p className="text-[9px] text-slate-400">{order.store?.name} · {order.status} · {order.paymentStatus}</p></div><b>₱{order.totalCost?.toLocaleString()}</b></div>)}{!supplierDetails.orders?.length && <p className="text-xs text-slate-400">No purchase orders.</p>}</div></div>
+              </div>
+
               {/* Admin Actions */}
               <div className="bg-purple-50 rounded-xl p-5 border border-purple-100">
                 <h4 className="text-[10px] font-black text-purple-600 uppercase tracking-widest mb-3">Admin Actions</h4>
@@ -219,6 +247,7 @@ const SupplierManagement = () => {
                     onChange={e => setActionReason(e.target.value)}
                     className="w-full px-4 py-2.5 bg-white border border-purple-200 rounded-xl text-sm outline-none" />
                   <div className="flex gap-2 flex-wrap">
+                    <button onClick={editSupplier} className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-[9px] font-black uppercase">Edit details</button>
                     {supplierDetails.supplier?.status !== 'verified' && (
                       <button onClick={() => handleAction(supplierDetails.supplier._id, 'verify')}
                         className="px-4 py-2 bg-emerald-600 text-white rounded-xl text-[9px] font-black uppercase">Verify</button>
@@ -231,6 +260,7 @@ const SupplierManagement = () => {
                       <button onClick={() => handleAction(supplierDetails.supplier._id, 'suspend')}
                         className="px-4 py-2 bg-amber-600 text-white rounded-xl text-[9px] font-black uppercase">Suspend</button>
                     )}
+                    {supplierDetails.supplier?.isActive !== false && <button onClick={deactivateSupplier} className="px-4 py-2 bg-slate-900 text-white rounded-xl text-[9px] font-black uppercase">Deactivate</button>}
                   </div>
                 </div>
               </div>
