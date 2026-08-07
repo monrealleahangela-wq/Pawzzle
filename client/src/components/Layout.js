@@ -42,6 +42,7 @@ const customerMenu = [
     label: 'Account', icon: User, children: [
       { path: '/profile', label: 'My Profile', icon: Settings },
       { path: '/account-upgrade', label: 'Sell on Pawzzle', icon: Store },
+      { path: '/supplier/dashboard', label: 'Become a Supplier', icon: Truck },
     ]
   },
 ];
