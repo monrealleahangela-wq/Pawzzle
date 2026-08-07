@@ -30,8 +30,8 @@ const PetDetail = () => {
     if (pet && pet.images && pet.images.length > 0) {
       setMainImage(pet.images[0]);
     }
-    if (pet && pet.store && pet.store._id) {
-      fetchStoreDetails(pet.store._id);
+    if (pet?.store) {
+      fetchStoreDetails(pet.store?._id || pet.store);
     }
   }, [pet]);
 
@@ -244,7 +244,7 @@ const PetDetail = () => {
                 </div>
               </div>
               <Link 
-                to={`/stores/${pet.store?._id}`}
+                to={`/stores/${pet.store?._id || pet.store}`}
                 className="px-4 py-2 bg-slate-900 text-white rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-primary-600 transition-all shadow-lg"
               >
                 Visit Store

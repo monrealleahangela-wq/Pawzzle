@@ -6,6 +6,7 @@ const Order = require('../models/Order');
 const Booking = require('../models/Booking');
 const Service = require('../models/Service');
 const Follow = require('../models/Follow');
+const User = require('../models/User');
 
 // Get all stores (public)
 const getAllStores = async (req, res) => {

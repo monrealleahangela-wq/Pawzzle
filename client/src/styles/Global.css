@@ -21,6 +21,20 @@
   --glass-border: rgba(255, 255, 255, 0.4);
 }
 
+.dark {
+  --neutral-50: #0f0e0d;
+  --neutral-100: #171412;
+  --neutral-200: #2b2725;
+  --neutral-800: #e2dfdd;
+  --neutral-900: #f9f8f8;
+  --glass: rgba(23, 20, 18, 0.82);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --shadow-soft: 0 5px 15px rgba(0,0,0,0.2);
+  --shadow-medium: 0 10px 30px rgba(0,0,0,0.25);
+  --shadow-strong: 0 20px 50px rgba(0,0,0,0.35);
+  color-scheme: dark;
+}
+
 * {
   margin: 0;
   padding: 0;
@@ -38,7 +52,74 @@ body {
   min-height: 100vh;
   overflow-x: hidden;
   font-size: 0.933rem;
+  transition: background-color 220ms ease, color 220ms ease;
 }
+
+/* System-wide dark compatibility for legacy screens that predate Tailwind's
+   dark variants. Exact utility-token selectors preserve component structure. */
+.dark body,
+.dark #root,
+.dark .App { background-color: #0f0e0d; color: #e2dfdd; }
+
+.dark [class~="bg-white"],
+.dark [class~="bg-white/95"],
+.dark [class~="bg-white/90"],
+.dark [class~="bg-white/80"],
+.dark [class~="bg-white/70"],
+.dark [class~="bg-white/60"],
+.dark [class~="bg-white/50"] { background-color: #171412; }
+
+.dark [class~="bg-slate-50"],
+.dark [class~="bg-neutral-50"],
+.dark [class~="bg-[#F8FAFC]"],
+.dark [class~="bg-[#FDFCFB]"],
+.dark [class~="bg-[#fdfaf8]"] { background-color: #0f0e0d; }
+
+.dark [class~="bg-slate-100"],
+.dark [class~="bg-neutral-100"],
+.dark [class~="bg-slate-50/50"],
+.dark [class~="bg-neutral-50/50"] { background-color: #211e1c; }
+
+.dark [class~="text-slate-900"],
+.dark [class~="text-neutral-900"],
+.dark [class~="text-slate-800"],
+.dark [class~="text-neutral-800"],
+.dark [class~="text-black"] { color: #f9f8f8; }
+
+.dark [class~="text-slate-700"],
+.dark [class~="text-neutral-700"] { color: #d1ccca; }
+
+.dark [class~="text-slate-600"],
+.dark [class~="text-neutral-600"] { color: #b8b1ae; }
+
+.dark [class~="border-slate-50"],
+.dark [class~="border-slate-100"],
+.dark [class~="border-slate-200"],
+.dark [class~="border-neutral-100"],
+.dark [class~="border-neutral-200"],
+.dark [class~="border-neutral-300"] { border-color: #302b29; }
+
+.dark input,
+.dark textarea,
+.dark select {
+  background-color: #211e1c;
+  border-color: #3a3431;
+  color: #f9f8f8;
+}
+
+.dark input::placeholder,
+.dark textarea::placeholder { color: #827976; }
+.dark select option { background: #211e1c; color: #f9f8f8; }
+.dark h1, .dark h2, .dark h3, .dark h4, .dark h5, .dark h6 { color: #f9f8f8; }
+.dark .card { background-color: #171412; border-color: #302b29; }
+.dark .card:hover { box-shadow: var(--shadow-strong); }
+.dark .sidebar-nav-item { color: #d1ccca; }
+.dark .sidebar-nav-item:hover { background: rgba(191, 166, 160, 0.1); }
+.dark .sidebar-nav-item.active { color: white; }
+.dark .premium-table td { background-color: #171412; border-color: #302b29; }
+.dark .stat-card { background-color: #171412; border-color: #302b29; }
+.dark .Toastify__toast { background: #211e1c; color: #f9f8f8; }
+.dark .Toastify__close-button { color: #d1ccca; }
 
 /* Typography Hierarchy */
 h1, h2, h3, h4, h5, h6 {

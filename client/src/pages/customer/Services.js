@@ -361,7 +361,7 @@ const Services = () => {
                 {/* Store Identifier - Fixed at Bottom */}
                 {service.store && (
                   <Link
-                    to={`/stores/${service.store._id}`}
+                    to={`/stores/${service.store?._id || service.store}`}
                     className="flex items-center gap-3 p-2 bg-slate-50 rounded-xl border border-slate-100 group-hover:bg-primary-50 group-hover:border-primary-100 transition-all hover:scale-[1.02] active:scale-95"
                   >
                     <div className="w-8 h-8 rounded-lg bg-white overflow-hidden flex items-center justify-center shadow-sm shrink-0 border border-slate-100">

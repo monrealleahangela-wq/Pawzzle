@@ -286,7 +286,7 @@ const Search = () => {
           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">{pet.breed}</p>
 
           <div 
-            onClick={(e) => { e.stopPropagation(); navigate(`/stores/${pet.store?._id}`); }}
+            onClick={(e) => { e.stopPropagation(); navigate(`/stores/${pet.store?._id || pet.store}`); }}
             className="flex items-center gap-2 mb-4 bg-slate-50 p-2 rounded-xl border border-slate-100 hover:bg-primary-50 hover:border-primary-100 transition-colors cursor-pointer group/store"
           >
             <div className="w-8 h-8 rounded-lg bg-white overflow-hidden flex items-center justify-center shadow-sm shrink-0 group-hover/store:bg-primary-50 border border-slate-100">
@@ -349,7 +349,7 @@ const Search = () => {
           <h3 className="text-xs sm:text-base font-black text-slate-900 group-hover:text-primary-600 transition-colors uppercase tracking-tight truncate mb-1">{product.name}</h3>
 
           <div 
-            onClick={(e) => { e.stopPropagation(); navigate(`/stores/${product.store?._id}`); }}
+            onClick={(e) => { e.stopPropagation(); navigate(`/stores/${product.store?._id || product.store}`); }}
             className="hidden sm:flex items-center gap-2 mb-4 bg-slate-50 p-2 rounded-xl border border-slate-100 hover:bg-primary-50 hover:border-primary-100 transition-colors group/store"
           >
             <div className="w-8 h-8 rounded-lg bg-white overflow-hidden flex items-center justify-center shadow-sm shrink-0 group-hover/store:bg-primary-50 border border-slate-100">
@@ -406,7 +406,7 @@ const Search = () => {
           <h3 className="text-xs sm:text-base font-black text-slate-900 group-hover:text-primary-600 transition-colors uppercase tracking-tight truncate mb-1">{service.name}</h3>
 
           <div 
-            onClick={(e) => { e.stopPropagation(); navigate(`/stores/${service.store?._id}`); }}
+            onClick={(e) => { e.stopPropagation(); navigate(`/stores/${service.store?._id || service.store}`); }}
             className="hidden sm:flex items-center gap-2 mb-4 bg-slate-50 p-2 rounded-xl border border-slate-100 hover:bg-primary-50 hover:border-primary-100 transition-colors group/store"
           >
             <div className="w-8 h-8 rounded-lg bg-white overflow-hidden flex items-center justify-center shadow-sm shrink-0 group-hover/store:bg-primary-50 border border-slate-100">
@@ -687,7 +687,7 @@ const Search = () => {
                           <div className="flex items-center justify-between mt-auto pt-2 border-t border-slate-50">
                             <p className="text-[10px] sm:text-xl font-black text-primary-600 tracking-tighter">₱{pet.price?.toLocaleString()}</p>
                             <div 
-                              onClick={(e) => { e.preventDefault(); e.stopPropagation(); navigate(`/stores/${pet.store?._id}`); }}
+                              onClick={(e) => { e.preventDefault(); e.stopPropagation(); navigate(`/stores/${pet.store?._id || pet.store}`); }}
                               className="flex items-center gap-1 hover:text-primary-600 transition-colors cursor-pointer"
                             >
                               {pet.store?.logo && (
@@ -724,7 +724,7 @@ const Search = () => {
                           <div className="flex items-center justify-between mt-auto pt-2 border-t border-slate-50">
                             <p className="text-[10px] sm:text-xl font-black text-slate-900 tracking-tighter">₱{product.price?.toLocaleString()}</p>
                             <div 
-                              onClick={(e) => { e.preventDefault(); e.stopPropagation(); navigate(`/stores/${product.store?._id}`); }}
+                              onClick={(e) => { e.preventDefault(); e.stopPropagation(); navigate(`/stores/${product.store?._id || product.store}`); }}
                               className="flex items-center gap-1 hover:text-primary-600 transition-colors cursor-pointer"
                             >
                               {product.store?.logo && (
@@ -760,7 +760,7 @@ const Search = () => {
                           <div className="flex items-center gap-2 mt-1">
                             <p className="text-[8px] sm:text-sm text-slate-400 font-bold uppercase tracking-widest leading-none">{service.duration} MIN</p>
                             <div 
-                              onClick={(e) => { e.preventDefault(); e.stopPropagation(); navigate(`/stores/${service.store?._id}`); }}
+                              onClick={(e) => { e.preventDefault(); e.stopPropagation(); navigate(`/stores/${service.store?._id || service.store}`); }}
                               className="flex items-center gap-1 hover:text-primary-600 transition-colors cursor-pointer"
                             >
                               {service.store?.logo && (

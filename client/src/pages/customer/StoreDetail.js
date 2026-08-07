@@ -656,7 +656,7 @@ const StoreDetail = () => {
                   ))}
                   <div 
                     className="pt-4 sm:pt-6 cursor-pointer group"
-                    onClick={() => navigate(`/find-shops?shop=${store._id}`)}
+                    onClick={() => navigate(`/find-shops?store=${store._id}`)}
                   >
                     <div className="relative">
                       <GoogleMap 
@@ -664,8 +664,8 @@ const StoreDetail = () => {
                         storeName={store.name}
                         coordinates={store.contactInfo?.address?.coordinates}
                         className="w-full pointer-events-none sm:pointer-events-auto"
-                        onDirectionsClick={() => navigate(`/find-shops?shop=${store._id}`)}
-                        onViewOnMapClick={() => navigate(`/find-shops?shop=${store._id}`)}
+                        onDirectionsClick={() => navigate(`/find-shops?store=${store._id}`)}
+                        onViewOnMapClick={() => navigate(`/find-shops?store=${store._id}`)}
                       />
                       <div className="absolute inset-0 bg-transparent z-10 sm:hidden" />
                       <div className="absolute bottom-4 right-4 bg-slate-900/80 backdrop-blur-md text-white text-[8px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full opacity-0 group-hover:opacity-100 transition-all shadow-xl">

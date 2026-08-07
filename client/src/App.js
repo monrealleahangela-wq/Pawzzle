@@ -13,6 +13,7 @@ import Layout from './components/Layout';
 import RoleBasedRedirect from './components/RoleBasedRedirect';
 import DeliveryTracking from './pages/DeliveryTracking';
 import PawCursor from './components/PawCursor';
+import { useTheme } from './contexts/ThemeContext';
 import ChatManagement from './pages/shared/ChatManagement';
 import ChatWindow from './pages/shared/ChatWindow';
 
@@ -117,6 +118,8 @@ const BrandedToastIcon = () => (
 );
 
 function App() {
+  const { theme } = useTheme();
+
   return (
     <AuthProvider>
       <NotificationProvider>
@@ -222,6 +225,7 @@ function App() {
                 <Route path="*" element={<NotFound />} />
               </Routes>
               <ToastContainer 
+                theme={theme}
                 position="top-right" 
                 autoClose={3000} 
                 transition={Slide} 

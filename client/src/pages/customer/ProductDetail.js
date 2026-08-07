@@ -261,7 +261,7 @@ const ProductDetail = () => {
                   </span>
                 </div>
               </div>
-              <Link to={`/stores/${product.store._id}`} className="w-10 h-10 rounded-full bg-slate-900 flex items-center justify-center text-white shrink-0 hover:scale-110 transition-transform">
+              <Link to={`/stores/${product.store?._id || product.store}`} className="w-10 h-10 rounded-full bg-slate-900 flex items-center justify-center text-white shrink-0 hover:scale-110 transition-transform">
                 <ArrowLeft className="h-4 w-4 rotate-180" />
               </Link>
             </div>

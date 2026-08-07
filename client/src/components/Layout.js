@@ -427,7 +427,7 @@ const Layout = () => {
   );
 
   return (
-    <div className={`min-h-screen bg-neutral-50 flex flex-col lg:flex-row overflow-x-hidden ${isLandingPage ? '!bg-transparent' : ''}`}>
+    <div className={`min-h-screen bg-neutral-50 dark:bg-slate-950 flex flex-col lg:flex-row overflow-x-hidden transition-colors duration-300 ${isLandingPage ? '!bg-transparent' : ''}`}>
       
       {!isLandingPage && (
         <div className="fixed top-0 left-0 h-1 bg-gradient-to-r from-primary via-secondary to-primary z-[100] transition-all duration-300" 
@@ -438,7 +438,7 @@ const Layout = () => {
         <aside 
           onMouseEnter={() => setIsHovered(true)}
           onMouseLeave={() => setIsHovered(false)}
-          className={`hidden lg:flex fixed left-0 top-0 h-screen ${sidebarWidth} bg-white border-r border-slate-100 z-[60] flex-col transition-all duration-500 ease-[cubic-bezier(0.23,1,0.32,1)] shadow-2xl shadow-slate-900/5`}
+          className={`hidden lg:flex fixed left-0 top-0 h-screen ${sidebarWidth} bg-white dark:bg-slate-900 border-r border-slate-100 dark:border-slate-800 z-[60] flex-col transition-all duration-500 ease-[cubic-bezier(0.23,1,0.32,1)] shadow-2xl shadow-slate-900/5`}
         >
           <div className={`shrink-0 flex items-center ${sidebarCollapsed ? 'px-3 py-5 justify-center' : 'px-6 py-6'} transition-all duration-500`}>
             <Link to="/" className="flex items-center gap-5 group/logo">
@@ -481,7 +481,7 @@ const Layout = () => {
 
       <div className={`flex-1 flex flex-col min-w-0 ${isLandingPage ? '' : `${contentPadding} pt-16 lg:pt-20`} transition-all duration-500`}>
         {!isLandingPage && (
-          <header className={`fixed top-0 left-0 ${sidebarCollapsed ? 'lg:left-[84px]' : 'lg:left-[280px]'} right-0 z-50 glass-effect h-16 lg:h-20 flex items-center px-4 sm:px-6 lg:px-8 justify-between transition-all duration-500 shadow-soft`}>
+          <header className={`fixed top-0 left-0 ${sidebarCollapsed ? 'lg:left-[84px]' : 'lg:left-[280px]'} right-0 z-50 glass-effect dark:border-b dark:border-slate-800 h-16 lg:h-20 flex items-center px-4 sm:px-6 lg:px-8 justify-between transition-all duration-500 shadow-soft`}>
             <div className="flex items-center gap-6">
               <div className="lg:hidden">
                 <button onClick={() => setIsMobileMenuOpen(true)} className="p-2.5 bg-white shadow-soft rounded-xl text-neutral-800">
@@ -545,7 +545,7 @@ const Layout = () => {
       <div className={`fixed inset-0 z-[150] lg:hidden transition-all duration-500 ${isMobileMenuOpen ? 'visible' : 'invisible'}`}>
         <div className={`absolute inset-0 bg-neutral-900/40 backdrop-blur-md transition-opacity duration-500 ${isMobileMenuOpen ? 'opacity-100' : 'opacity-0'}`}
              onClick={() => setIsMobileMenuOpen(false)} />
-        <aside className={`absolute top-0 left-0 h-full w-[280px] max-w-[88vw] bg-white shadow-premium transition-transform duration-500 ease-[cubic-bezier(0.23,1,0.32,1)] flex flex-col ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+        <aside className={`absolute top-0 left-0 h-full w-[280px] max-w-[88vw] bg-white dark:bg-slate-900 shadow-premium transition-transform duration-500 ease-[cubic-bezier(0.23,1,0.32,1)] flex flex-col ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
           <div className="shrink-0 p-5 flex items-center justify-between">
             <div className="flex items-center gap-4">
               <div className="w-10 h-10 bg-primary rounded-2xl flex items-center justify-center">
@@ -560,15 +560,20 @@ const Layout = () => {
           <nav className="flex-1 overflow-y-auto no-scrollbar p-4">
             {renderNavItems(menuItems, false, () => setIsMobileMenuOpen(false))}
           </nav>
-          {user && (
-            <div className="p-4 border-t border-slate-50">
+          <div className="p-4 border-t border-slate-50 dark:border-slate-800 space-y-2">
+            <button onClick={toggleTheme}
+                    className="flex items-center gap-3 w-full p-3.5 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-xl font-black text-[10px] uppercase tracking-[0.2em] active:scale-95 transition-all">
+              {theme === 'dark' ? <Sun className="h-5 w-5 text-amber-400" /> : <Moon className="h-5 w-5" />}
+              <span>{theme === 'dark' ? 'Light mode' : 'Dark mode'}</span>
+            </button>
+            {user && (
               <button onClick={() => { setIsMobileMenuOpen(false); handleLogout(); }}
                       className="flex items-center gap-3 w-full p-3.5 bg-rose-50 text-rose-600 rounded-xl font-black text-[10px] uppercase tracking-[0.2em] active:scale-95 transition-all">
                 <LogOut className="h-6 w-6" />
                 <span>End Session</span>
               </button>
-            </div>
-          )}
+            )}
+          </div>
         </aside>
       </div>
 

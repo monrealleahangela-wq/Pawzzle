@@ -18,10 +18,21 @@ export const ThemeProvider = ({ children }) => {
     
     // Add new theme
     root.classList.add(theme);
+    root.style.colorScheme = theme;
     
     // Save to local storage
     localStorage.setItem('pawzzle-theme', theme);
   }, [theme]);
+
+  useEffect(() => {
+    const syncTheme = (event) => {
+      if (event.key === 'pawzzle-theme' && ['light', 'dark'].includes(event.newValue)) {
+        setTheme(event.newValue);
+      }
+    };
+    window.addEventListener('storage', syncTheme);
+    return () => window.removeEventListener('storage', syncTheme);
+  }, []);
 
   const toggleTheme = () => {
     setTheme(prev => prev === 'light' ? 'dark' : 'light');
