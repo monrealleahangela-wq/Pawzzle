@@ -37,7 +37,7 @@ body {
     radial-gradient(at 100% 100%, rgba(191, 166, 160, 0.03) 0px, transparent 50%);
   min-height: 100vh;
   overflow-x: hidden;
-  font-size: 14px;
+  font-size: 0.933rem;
 }
 
 /* Typography Hierarchy */
@@ -47,14 +47,14 @@ h1, h2, h3, h4, h5, h6 {
   color: var(--neutral-900);
 }
 
-h1 { font-size: 3.5rem; line-height: 1.1; letter-spacing: -0.04em; font-weight: 800; }
-h2 { font-size: 2.25rem; line-height: 1.2; letter-spacing: -0.03em; font-weight: 700; }
-h3 { font-size: 1.5rem; font-weight: 700; }
+h1 { font-size: 3rem; line-height: 1.1; letter-spacing: -0.04em; font-weight: 800; }
+h2 { font-size: 2rem; line-height: 1.2; letter-spacing: -0.03em; font-weight: 700; }
+h3 { font-size: 1.35rem; font-weight: 700; }
 p { line-height: 1.6; color: var(--neutral-800); }
 
 /* Premium Components */
 .card {
-  @apply bg-white rounded-[2rem] border border-slate-50 transition-all duration-500;
+  @apply bg-white rounded-2xl border border-slate-50 transition-all duration-500;
   box-shadow: var(--shadow-soft);
 }
 
@@ -73,7 +73,7 @@ p { line-height: 1.6; color: var(--neutral-800); }
 
 /* Interactive Sidebar Navigation */
 .sidebar-nav-item {
-  @apply flex items-center gap-4 px-6 py-4 rounded-3xl transition-all duration-300;
+  @apply flex items-center gap-3 px-4 py-3 rounded-2xl transition-all duration-300;
   font-weight: 600;
   color: var(--neutral-800);
 }
@@ -91,7 +91,7 @@ p { line-height: 1.6; color: var(--neutral-800); }
 
 /* Modern Forms */
 .form-input {
-  @apply w-full px-6 py-4 rounded-2xl bg-white border-2 border-slate-50 focus:outline-none focus:border-primary-500 transition-all duration-300;
+  @apply w-full px-4 py-3 rounded-xl bg-white border-2 border-slate-50 focus:outline-none focus:border-primary-500 transition-all duration-300;
   box-shadow: var(--shadow-inner);
 }
 
@@ -110,7 +110,7 @@ p { line-height: 1.6; color: var(--neutral-800); }
 
 /* Table Enhancements */
 .premium-table {
-  @apply w-full border-separate border-spacing-y-4;
+  @apply w-full border-separate border-spacing-y-2;
 }
 
 .premium-table tr {
@@ -118,12 +118,12 @@ p { line-height: 1.6; color: var(--neutral-800); }
 }
 
 .premium-table td {
-  @apply bg-white py-6 first:rounded-l-[2rem] last:rounded-r-[2rem] border-y border-slate-50 first:border-l last:border-r;
+  @apply bg-white py-4 first:rounded-l-xl last:rounded-r-xl border-y border-slate-50 first:border-l last:border-r;
 }
 
 /* Dashboard Widgets */
 .stat-card {
-  @apply p-8 rounded-[2.5rem] bg-white border border-slate-50 relative overflow-hidden;
+  @apply p-6 rounded-2xl bg-white border border-slate-50 relative overflow-hidden;
   box-shadow: var(--shadow-medium);
 }
 
@@ -148,7 +148,9 @@ p { line-height: 1.6; color: var(--neutral-800); }
 
 /* Mobile Quick Actions */
 @media (max-width: 640px) {
-  h1 { font-size: 2.25rem; }
-  h2 { font-size: 1.75rem; }
-  .card { @apply rounded-[1.5rem]; }
+  h1 { font-size: 1.9rem; }
+  h2 { font-size: 1.5rem; }
+  h3 { font-size: 1.2rem; }
+  .card { @apply rounded-xl; }
+  .stat-card { @apply p-4 rounded-xl; }
 }

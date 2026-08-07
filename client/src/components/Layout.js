@@ -222,7 +222,7 @@ const NavLink = ({ item, isActive, collapsed, onClick }) => {
       to={item.path}
       onClick={onClick}
       title={collapsed ? item.label : undefined}
-      className={`flex items-center gap-4 px-5 py-4 rounded-3xl transition-all duration-300 relative group/link ${isActive
+      className={`flex items-center gap-3 px-4 py-3 rounded-2xl transition-all duration-300 relative group/link ${isActive
           ? 'bg-primary text-white shadow-strong'
           : 'text-slate-500 hover:bg-primary/5 hover:text-primary'
         } ${collapsed ? 'justify-center px-3' : ''}`}
@@ -249,7 +249,7 @@ const NavGroup = ({ group, expanded, onToggle, isActive, collapsed, onNavigate }
       <div className="relative group/flyout">
         <button
           title={group.label}
-          className={`flex items-center justify-center w-full px-5 py-4 rounded-3xl transition-all duration-300 ${hasActiveChild
+          className={`flex items-center justify-center w-full px-4 py-3 rounded-2xl transition-all duration-300 ${hasActiveChild
               ? 'bg-primary/10 text-primary'
               : 'text-slate-400 hover:bg-neutral-50 hover:text-slate-600'
             }`}
@@ -272,7 +272,7 @@ const NavGroup = ({ group, expanded, onToggle, isActive, collapsed, onNavigate }
     <div className="space-y-1">
       <button
         onClick={onToggle}
-        className={`flex items-center gap-4 w-full px-5 py-4 rounded-3xl transition-all duration-300 group/btn ${hasActiveChild
+        className={`flex items-center gap-3 w-full px-4 py-3 rounded-2xl transition-all duration-300 group/btn ${hasActiveChild
             ? 'bg-primary/5 text-primary'
             : 'text-slate-500 hover:bg-neutral-50 hover:text-neutral-900'
           }`}
@@ -291,7 +291,7 @@ const NavGroup = ({ group, expanded, onToggle, isActive, collapsed, onNavigate }
                 key={child.path}
                 to={child.path}
                 onClick={onNavigate}
-                className={`flex items-center gap-3 px-5 py-3 rounded-2xl transition-all duration-300 ${childActive
+                className={`flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-300 ${childActive
                     ? 'bg-primary text-white shadow-medium scale-[1.02]'
                     : 'text-slate-400 hover:text-primary hover:bg-primary/5'
                   }`}
@@ -397,8 +397,8 @@ const Layout = () => {
   const isActivePath = (path) => location.pathname === path || location.pathname.startsWith(path + '/');
   const isGroupActive = (group) => group.children?.some(c => isActivePath(c.path));
   const isLandingPage = location.pathname === '/' && !isAuthenticated;
-  const sidebarWidth = sidebarCollapsed ? 'w-[100px]' : 'w-[320px]';
-  const contentPadding = isSidebarPinned ? 'lg:pl-[320px]' : 'lg:pl-[100px]';
+  const sidebarWidth = sidebarCollapsed ? 'w-[84px]' : 'w-[280px]';
+  const contentPadding = isSidebarPinned ? 'lg:pl-[280px]' : 'lg:pl-[84px]';
 
   const renderNavItems = (items, collapsed = false, onNav) => (
     <div className="space-y-2">
@@ -440,7 +440,7 @@ const Layout = () => {
           onMouseLeave={() => setIsHovered(false)}
           className={`hidden lg:flex fixed left-0 top-0 h-screen ${sidebarWidth} bg-white border-r border-slate-100 z-[60] flex-col transition-all duration-500 ease-[cubic-bezier(0.23,1,0.32,1)] shadow-2xl shadow-slate-900/5`}
         >
-          <div className={`shrink-0 flex items-center ${sidebarCollapsed ? 'px-4 py-8 justify-center' : 'px-10 py-10'} transition-all duration-500`}>
+          <div className={`shrink-0 flex items-center ${sidebarCollapsed ? 'px-3 py-5 justify-center' : 'px-6 py-6'} transition-all duration-500`}>
             <Link to="/" className="flex items-center gap-5 group/logo">
               <div className="w-12 h-12 bg-primary rounded-[1.25rem] flex items-center justify-center shadow-strong group-hover/logo:scale-110 transition-transform duration-500">
                 <img src="/images/logo.png" alt="Logo" className="w-7 h-7 object-contain brightness-0 invert" />
@@ -454,11 +454,11 @@ const Layout = () => {
             </Link>
           </div>
 
-          <nav className={`flex-1 overflow-y-auto no-scrollbar py-6 ${sidebarCollapsed ? 'px-4' : 'px-8'}`}>
+          <nav className={`flex-1 overflow-y-auto no-scrollbar py-4 ${sidebarCollapsed ? 'px-3' : 'px-5'}`}>
             {renderNavItems(menuItems, sidebarCollapsed)}
           </nav>
 
-          <div className={`shrink-0 border-t border-slate-50 py-8 space-y-2 ${sidebarCollapsed ? 'px-4' : 'px-8'}`}>
+          <div className={`shrink-0 border-t border-slate-50 py-4 space-y-1 ${sidebarCollapsed ? 'px-3' : 'px-5'}`}>
             <button onClick={toggleTheme} className={`sidebar-nav-item !py-4 ${sidebarCollapsed ? 'justify-center px-0' : 'px-6'}`}>
               {theme === 'dark' ? <Sun className="h-5 w-5 text-amber-500" /> : <Moon className="h-5 w-5 text-slate-400" />}
               {!sidebarCollapsed && <span className="text-xs">Appearance</span>}
@@ -479,13 +479,13 @@ const Layout = () => {
         </aside>
       )}
 
-      <div className={`flex-1 flex flex-col min-w-0 ${isLandingPage ? '' : `${contentPadding} pt-20`} transition-all duration-500`}>
+      <div className={`flex-1 flex flex-col min-w-0 ${isLandingPage ? '' : `${contentPadding} pt-16 lg:pt-20`} transition-all duration-500`}>
         {!isLandingPage && (
-          <header className={`fixed top-0 left-0 ${sidebarCollapsed ? 'lg:left-[100px]' : 'lg:left-[320px]'} right-0 z-50 glass-effect h-24 flex items-center px-10 justify-between transition-all duration-500 shadow-soft`}>
+          <header className={`fixed top-0 left-0 ${sidebarCollapsed ? 'lg:left-[84px]' : 'lg:left-[280px]'} right-0 z-50 glass-effect h-16 lg:h-20 flex items-center px-4 sm:px-6 lg:px-8 justify-between transition-all duration-500 shadow-soft`}>
             <div className="flex items-center gap-6">
               <div className="lg:hidden">
-                <button onClick={() => setIsMobileMenuOpen(true)} className="p-4 bg-white shadow-soft rounded-3xl text-neutral-800">
-                  <Menu className="h-7 w-7" />
+                <button onClick={() => setIsMobileMenuOpen(true)} className="p-2.5 bg-white shadow-soft rounded-xl text-neutral-800">
+                  <Menu className="h-5 w-5" />
                 </button>
               </div>
               <div className="hidden lg:flex items-center gap-4">
@@ -496,13 +496,13 @@ const Layout = () => {
               </div>
             </div>
 
-            <div className="flex items-center gap-6">
+            <div className="flex items-center gap-3 sm:gap-4">
               {user && (
                 <>
                   <div className="flex items-center gap-3">
                     {user.role === 'customer' && (
-                      <Link to="/cart" className="p-4 bg-white hover:bg-neutral-50 rounded-[1.5rem] text-neutral-600 transition-all shadow-soft relative group">
-                        <ShoppingCart size={22} className="group-hover:scale-110 transition-transform" />
+                      <Link to="/cart" className="p-2.5 bg-white hover:bg-neutral-50 rounded-xl text-neutral-600 transition-all shadow-soft relative group">
+                        <ShoppingCart size={19} className="group-hover:scale-110 transition-transform" />
                         {getTotalItems() > 0 && (
                           <span className="absolute -top-1 -right-1 w-6 h-6 bg-primary text-white text-[11px] font-black rounded-xl flex items-center justify-center shadow-lg animate-scale-in">
                             {getTotalItems()}
@@ -513,12 +513,12 @@ const Layout = () => {
                     <NotificationBell />
                   </div>
 
-                  <Link to="/profile" className="flex items-center gap-5 p-2 bg-white rounded-[2rem] border border-slate-50 hover:shadow-medium transition-all group">
+                  <Link to="/profile" className="flex items-center gap-3 p-1.5 bg-white rounded-xl border border-slate-50 hover:shadow-medium transition-all group">
                     <div className="flex flex-col text-right hidden sm:flex px-2">
                       <span className="text-sm font-black text-neutral-900 leading-none">{user.firstName}</span>
                       <span className="text-[10px] font-black text-primary uppercase tracking-[0.2em] mt-1.5">Verified</span>
                     </div>
-                    <div className="w-12 h-12 rounded-[1.25rem] bg-neutral-100 flex items-center justify-center text-primary font-bold overflow-hidden shadow-inner group-hover:scale-105 transition-transform shrink-0">
+                    <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-neutral-100 flex items-center justify-center text-primary font-bold overflow-hidden shadow-inner group-hover:scale-105 transition-transform shrink-0">
                       {user.avatar || user.profilePicture ? (
                         <img src={getImageUrl(user.avatar || user.profilePicture)} alt="" className="w-full h-full object-cover" />
                       ) : (
@@ -535,7 +535,7 @@ const Layout = () => {
           </header>
         )}
 
-        <main className={`flex-1 p-6 lg:p-12 animate-fade-up ${isLandingPage ? 'p-0' : ''}`}>
+        <main className={`flex-1 p-4 sm:p-5 lg:p-8 animate-fade-up ${isLandingPage ? 'p-0' : ''}`}>
           <div className="relative z-10">
             <Outlet />
           </div>
@@ -545,25 +545,25 @@ const Layout = () => {
       <div className={`fixed inset-0 z-[150] lg:hidden transition-all duration-500 ${isMobileMenuOpen ? 'visible' : 'invisible'}`}>
         <div className={`absolute inset-0 bg-neutral-900/40 backdrop-blur-md transition-opacity duration-500 ${isMobileMenuOpen ? 'opacity-100' : 'opacity-0'}`}
              onClick={() => setIsMobileMenuOpen(false)} />
-        <aside className={`absolute top-0 left-0 h-full w-[320px] bg-white shadow-premium transition-transform duration-500 ease-[cubic-bezier(0.23,1,0.32,1)] flex flex-col ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-          <div className="shrink-0 p-10 flex items-center justify-between">
+        <aside className={`absolute top-0 left-0 h-full w-[280px] max-w-[88vw] bg-white shadow-premium transition-transform duration-500 ease-[cubic-bezier(0.23,1,0.32,1)] flex flex-col ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+          <div className="shrink-0 p-5 flex items-center justify-between">
             <div className="flex items-center gap-4">
               <div className="w-10 h-10 bg-primary rounded-2xl flex items-center justify-center">
                 <img src="/images/logo.png" alt="Logo" className="w-6 h-6 brightness-0 invert" />
               </div>
               <span className="font-black text-neutral-900 tracking-tighter uppercase text-xl">PAWZZLE</span>
             </div>
-            <button onClick={() => setIsMobileMenuOpen(false)} className="p-4 bg-neutral-50 rounded-2xl text-neutral-400">
-              <X className="h-6 w-6" />
+            <button onClick={() => setIsMobileMenuOpen(false)} className="p-2.5 bg-neutral-50 rounded-xl text-neutral-400">
+              <X className="h-5 w-5" />
             </button>
           </div>
-          <nav className="flex-1 overflow-y-auto no-scrollbar p-8">
+          <nav className="flex-1 overflow-y-auto no-scrollbar p-4">
             {renderNavItems(menuItems, false, () => setIsMobileMenuOpen(false))}
           </nav>
           {user && (
-            <div className="p-10 border-t border-slate-50">
+            <div className="p-4 border-t border-slate-50">
               <button onClick={() => { setIsMobileMenuOpen(false); handleLogout(); }}
-                      className="flex items-center gap-5 w-full p-5 bg-rose-50 text-rose-600 rounded-[1.5rem] font-black text-[11px] uppercase tracking-[0.3em] active:scale-95 transition-all">
+                      className="flex items-center gap-3 w-full p-3.5 bg-rose-50 text-rose-600 rounded-xl font-black text-[10px] uppercase tracking-[0.2em] active:scale-95 transition-all">
                 <LogOut className="h-6 w-6" />
                 <span>End Session</span>
               </button>

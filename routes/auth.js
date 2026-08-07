@@ -47,7 +47,10 @@ const registerValidation = [
 ];
 
 const loginValidation = [
-  body('email').isEmail().normalizeEmail().withMessage('Please provide a valid email'),
+  body('email')
+    .trim()
+    .notEmpty().withMessage('Email or username is required')
+    .isLength({ max: 254 }).withMessage('Email or username is too long'),
   body('password').notEmpty().withMessage('Password is required')
 ];
 

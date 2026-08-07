@@ -184,17 +184,39 @@ const login = async (req, res) => {
     if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
 
     const { email, password, captchaToken } = req.body;
+    const identifier = email.trim();
 
     const isHuman = await verifyRecaptcha(captchaToken);
     if (!isHuman) return res.status(400).json({ message: 'Security check failed.' });
 
     const user = await User.findOne({ 
-      $or: [{ email: email.toLowerCase() }, { username: email }], 
+      $or: [
+        { email: identifier.toLowerCase() },
+        { username: identifier },
+        { username: identifier.toLowerCase() }
+      ],
       isDeleted: false 
     }).populate('store');
 
     if (!user) return res.status(401).json({ message: 'Invalid credentials' });
-    if (!user.isActive) return res.status(403).json({ message: 'Account disabled. Contact support.' });
+    if (!user.isActive) {
+      return res.status(403).json({
+        message: 'Account disabled. Contact support.',
+        isDisabled: true,
+        deactivationReason: user.deactivationReason || 'This account has been disabled.',
+        contactSupport: true
+      });
+    }
+
+    // OAuth-only accounts do not have a bcrypt hash. Treat a password login as
+    // invalid credentials instead of passing an undefined hash to bcrypt.
+    if (!user.password) {
+      return res.status(401).json({
+        message: user.authProvider === 'google'
+          ? 'This account uses Google sign-in. Please continue with Google.'
+          : 'Invalid credentials'
+      });
+    }
 
     const isMatch = await user.comparePassword(password);
     if (!isMatch) return res.status(401).json({ message: 'Invalid credentials' });
@@ -227,6 +249,18 @@ const login = async (req, res) => {
     });
   } catch (error) {
     console.error('Login error:', error);
+    const databaseUnavailable = [
+      'MongooseServerSelectionError',
+      'MongoNetworkError',
+      'MongoServerSelectionError'
+    ].includes(error.name) || ['ECONNREFUSED', 'ENOTFOUND', 'ETIMEOUT'].includes(error.code);
+
+    if (databaseUnavailable) {
+      return res.status(503).json({
+        message: 'The account database is temporarily unavailable. Please try again later.',
+        code: 'DATABASE_UNAVAILABLE'
+      });
+    }
     res.status(500).json({ message: 'Login failed due to server error' });
   }
 };

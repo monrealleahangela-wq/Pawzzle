@@ -100,8 +100,8 @@ const NotificationBell = () => {
             </button>
 
             {isOpen && (
-                <div className="fixed left-4 right-4 top-[80px] sm:absolute sm:inset-auto sm:right-0 sm:top-full sm:mt-3 sm:w-96 bg-white rounded-2xl shadow-2xl border border-slate-100 z-[100] overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
-                    <div className="p-4 border-b border-slate-50 flex items-center justify-between bg-slate-50/50">
+                <div className="fixed left-3 right-3 top-[64px] sm:absolute sm:inset-auto sm:right-0 sm:top-full sm:mt-2 sm:w-80 bg-white rounded-xl shadow-2xl border border-slate-100 z-[100] overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                    <div className="p-3 border-b border-slate-50 flex items-center justify-between bg-slate-50/50">
                         <h3 className="font-black text-xs uppercase tracking-widest text-slate-900">Notifications</h3>
                         {unreadCount > 0 && (
                             <button
@@ -115,7 +115,7 @@ const NotificationBell = () => {
 
                     <div className="max-h-[60vh] sm:max-h-[400px] overflow-y-auto custom-scrollbar">
                         {notifications.length === 0 ? (
-                            <div className="p-8 text-center">
+                            <div className="p-6 text-center">
                                 <Bell className="h-8 w-8 text-slate-200 mx-auto mb-3" />
                                 <p className="text-sm text-slate-400 font-medium">All caught up!</p>
                             </div>
@@ -124,10 +124,10 @@ const NotificationBell = () => {
                                 {notifications.map((n) => (
                                     <div
                                         key={n._id}
-                                        className={`p-4 hover:bg-slate-50 transition-colors cursor-pointer relative group ${!n.isRead ? 'bg-primary-50/30' : ''}`}
+                                        className={`p-3 hover:bg-slate-50 transition-colors cursor-pointer relative group ${!n.isRead ? 'bg-primary-50/30' : ''}`}
                                         onClick={() => handleNotificationClick(n)}
                                     >
-                                        <div className="flex gap-4">
+                                        <div className="flex gap-3">
                                             <div className={`mt-1 h-2 w-2 rounded-full flex-shrink-0 ${!n.isRead ? 'bg-primary-500' : 'bg-transparent'}`} />
                                             <div className="flex-1 min-w-0">
                                                 <div className="flex items-center justify-between gap-2 mb-1">

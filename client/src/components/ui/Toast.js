@@ -48,7 +48,7 @@ export const ToastProvider = ({ children }) => {
 
 const ToastContainer = ({ toasts, onDismiss }) => {
   return (
-    <div className="fixed top-4 right-4 z-50 space-y-2">
+    <div className="fixed top-3 left-3 right-3 sm:left-auto sm:right-4 z-50 space-y-2">
       {toasts.map((toast) => (
         <ToastItem key={toast.id} toast={toast} onDismiss={onDismiss} />
       ))}
@@ -94,17 +94,17 @@ const ToastItem = ({ toast, onDismiss }) => {
   return (
     <div
       className={`
-        ${variant.bg} border rounded-xl p-4 shadow-medium backdrop-blur-sm
+        ${variant.bg} border rounded-xl p-3 shadow-medium backdrop-blur-sm
         animate-slide-up max-w-sm w-full
         hover:shadow-strong transition-all duration-200
       `}
     >
-      <div className="flex items-start gap-4">
-        <div className="flex-shrink-0 w-10 h-10 rounded-full bg-white flex items-center justify-center shadow-sm border border-primary-50 overflow-hidden mt-0.5">
+      <div className="flex items-start gap-3">
+        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-white flex items-center justify-center shadow-sm border border-primary-50 overflow-hidden mt-0.5">
           <img 
             src="/images/logo.png" 
             alt="Logo" 
-            className="w-7 h-7 object-contain"
+            className="w-5 h-5 object-contain"
             onError={(e) => {
               e.target.onerror = null;
               e.target.src = 'https://raw.githubusercontent.com/lucide-react/lucide/main/icons/paw-print.svg';

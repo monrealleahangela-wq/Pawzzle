@@ -194,7 +194,7 @@ const BottomNavBar = () => {
 
   return (
     <nav
-      className="lg:hidden fixed bottom-6 left-1/2 -translate-x-1/2 w-[92%] max-w-sm z-[60] pointer-events-none"
+      className="lg:hidden fixed bottom-3 left-1/2 -translate-x-1/2 w-[94%] max-w-sm z-[60] pointer-events-none"
       aria-label="Mobile navigation"
     >
       {/* Glass pill container */}
@@ -203,8 +203,8 @@ const BottomNavBar = () => {
         bg-white/95 dark:bg-slate-900/95
         backdrop-blur-xl
         border border-slate-200/80 dark:border-slate-800
-        rounded-[2rem] shadow-[0_12px_40px_-12px_rgba(0,0,0,0.25)]
-        p-1.5 px-2
+        rounded-2xl shadow-[0_12px_40px_-12px_rgba(0,0,0,0.25)]
+        p-1 px-1.5
         overflow-x-auto no-scrollbar
         touch-pan-x
         transition-colors duration-300
@@ -221,9 +221,9 @@ const BottomNavBar = () => {
               aria-current={active ? 'page' : undefined}
               className={`
                 relative flex flex-col items-center justify-center
-                gap-1 px-4 py-3 rounded-2xl
+                gap-0.5 px-3 py-2 rounded-xl
                 transition-all duration-200 active:scale-90
-                min-w-[72px] shrink-0
+                min-w-[62px] shrink-0
                 ${active
                   ? 'bg-primary-600 text-white shadow-lg shadow-primary-200 dark:shadow-primary-900/40'
                   : 'text-slate-400 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800'
@@ -234,8 +234,8 @@ const BottomNavBar = () => {
               {active && (
                 <span className="absolute inset-0 rounded-2xl ring-2 ring-primary-400/30 animate-pulse pointer-events-none" />
               )}
-              <Icon className={`h-[20px] w-[20px] shrink-0 ${active ? 'drop-shadow-sm' : ''}`} />
-              <span className={`text-[9px] font-black uppercase tracking-[0.05em] leading-none text-center truncate max-w-[64px] ${active ? 'text-white' : ''}`}>
+              <Icon className={`h-[18px] w-[18px] shrink-0 ${active ? 'drop-shadow-sm' : ''}`} />
+              <span className={`text-[8px] font-black uppercase tracking-[0.04em] leading-none text-center truncate max-w-[56px] ${active ? 'text-white' : ''}`}>
                 {item.label}
               </span>
             </Link>

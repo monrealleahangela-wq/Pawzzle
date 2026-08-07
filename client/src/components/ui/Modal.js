@@ -37,7 +37,7 @@ const Modal = React.forwardRef(({
       <div
         ref={ref}
         className={cn(
-          "relative w-full bg-white/95 backdrop-blur-sm rounded-[1.5rem] shadow-strong border border-neutral-200/50 animate-scale-in z-10 flex flex-col max-h-[95vh] overflow-hidden sm:m-4 m-2",
+          "relative w-full bg-white/95 backdrop-blur-sm rounded-xl sm:rounded-2xl shadow-strong border border-neutral-200/50 animate-scale-in z-10 flex flex-col max-h-[94vh] overflow-hidden sm:m-4 m-2",
           sizes[size],
           className
         )}
@@ -45,7 +45,7 @@ const Modal = React.forwardRef(({
       >
         {/* Header */}
         {(title || showCloseButton) && (
-          <div className="flex items-center justify-between p-4 sm:px-5 sm:py-3.5 border-b border-neutral-200/50 shrink-0">
+          <div className="flex items-center justify-between p-3.5 sm:px-5 sm:py-3.5 border-b border-neutral-200/50 shrink-0">
             <div>
               {title && (
                 <h3 className="text-lg font-black text-neutral-900 uppercase tracking-tighter leading-none">
@@ -72,7 +72,7 @@ const Modal = React.forwardRef(({
         )}
 
         {/* Content */}
-        <div className="p-4 sm:p-5 overflow-y-auto flex-1 custom-scrollbar">
+        <div className="p-3.5 sm:p-5 overflow-y-auto flex-1 custom-scrollbar">
           {children}
         </div>
       </div>
