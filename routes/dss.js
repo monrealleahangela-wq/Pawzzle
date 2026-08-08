@@ -5,9 +5,13 @@ const {
   productForecast, replenishment, supplierScorecard, decideRecommendation
 } = require('../controllers/decisionSupportController');
 const { getCustomerInsights, getAdminInsights, getStaffInsights, getSuperAdminInsights } = require('../controllers/dssController');
+const { getServiceRecommendations, getDSSConfig, updateDSSConfig } = require('../controllers/serviceRecommendationController');
 
 // Customer DSS - any authenticated user
 router.get('/customer', authenticate, getCustomerInsights);
+router.get('/service-recommendations', authenticate, getServiceRecommendations);
+router.get('/service-config', authenticate, adminOnly, getDSSConfig);
+router.put('/service-config', authenticate, adminOnly, updateDSSConfig);
 
 // Staff-Specific Intelligence Dashboard (DSS) - staff or admin
 router.get('/staff', authenticate, getStaffInsights);

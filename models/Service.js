@@ -164,6 +164,17 @@ const serviceSchema = new mongoose.Schema({
   // ── Per-Service Schedule Override ─────────────
   schedule: { type: serviceScheduleSchema, default: () => ({}) },
 
+  recommendationCriteria: {
+    enabled: { type: Boolean, default: false },
+    applicablePetTypes: [{ type: String, enum: ['any', 'dog', 'cat', 'bird', 'rabbit', 'hamster', 'other'] }],
+    applicableSizes: [{ type: String, enum: ['any', 'small', 'medium', 'large', 'extra_large'] }],
+    coatLengths: [{ type: String, enum: ['any', 'short', 'medium', 'long'] }],
+    coatTypes: [{ type: String, enum: ['any', 'straight', 'wavy', 'curly', 'double_coat', 'other'] }],
+    relevantNeeds: [{ type: String, enum: ['general_grooming', 'bathing', 'haircut', 'nail_trimming', 'coat_brushing', 'dematting', 'basic_cleaning', 'not_sure'] }],
+    preferenceTags: [{ type: String, trim: true, lowercase: true }],
+    useCompletedHistory: { type: Boolean, default: false }
+  },
+
   // ── Legacy / Existing Fields ──────────────────
   homeServiceAvailable: {
     type: Boolean,

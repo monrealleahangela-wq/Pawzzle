@@ -173,10 +173,17 @@ const Profile = () => {
     name: '',
     type: 'Dog',
     breed: '',
-    size: 'Small',
+    isMixedBreed: false,
+    size: 'Unknown',
     birthday: '',
+    approximateAge: { value: '', unit: 'years' },
     gender: 'Male',
-    weight: 1,
+    weight: '',
+    weightUnit: 'kg',
+    coat: { length: 'unknown', type: 'unknown', condition: 'unknown', otherDescription: '' },
+    groomingHistory: { hasReceivedGrooming: 'not_sure', lastGroomingDate: '' },
+    serviceNeeds: [],
+    servicePreferences: { preferredServiceType: '', preferredDuration: '', preferredFrequency: '', specialHandling: '' },
     color: '',
     vaccinationStatus: 'Pending',
     specialNotes: '',
@@ -551,12 +558,17 @@ const Profile = () => {
 
   const handlePetSubmit = async (e) => {
     e.preventDefault();
-    if (petForm.weight < 1 || petForm.weight > 50) {
-      toast.error('Weight must be between 1 and 50 kg');
+    if (petForm.weight !== '' && (petForm.weight < 0 || petForm.weight > 200)) {
+      toast.error('Weight must be between 0 and 200');
       return;
     }
 
-    if (new Date(petForm.birthday) > new Date()) {
+    if (!petForm.birthday && !petForm.approximateAge?.value) {
+      toast.error('Enter either a birth date or an approximate age.');
+      return;
+    }
+
+    if (petForm.birthday && new Date(petForm.birthday) > new Date()) {
       toast.error('Birth date cannot be in the future.');
       return;
     }
@@ -612,10 +624,17 @@ const Profile = () => {
       name: '',
       type: 'Dog',
       breed: '',
-      size: 'Small',
+      isMixedBreed: false,
+      size: 'Unknown',
       birthday: '',
+      approximateAge: { value: '', unit: 'years' },
       gender: 'Male',
-      weight: 1,
+      weight: '',
+      weightUnit: 'kg',
+      coat: { length: 'unknown', type: 'unknown', condition: 'unknown', otherDescription: '' },
+      groomingHistory: { hasReceivedGrooming: 'not_sure', lastGroomingDate: '' },
+      serviceNeeds: [],
+      servicePreferences: { preferredServiceType: '', preferredDuration: '', preferredFrequency: '', specialHandling: '' },
       color: '',
       vaccinationStatus: 'Pending',
       specialNotes: '',
@@ -638,11 +657,18 @@ const Profile = () => {
     setPetForm({
       name: pet.name,
       type: pet.type,
-      breed: pet.breed,
-      size: pet.size,
+      breed: pet.breed || '',
+      isMixedBreed: pet.isMixedBreed || false,
+      size: pet.size || 'Unknown',
       birthday: pet.birthday ? new Date(pet.birthday).toISOString().split('T')[0] : '',
+      approximateAge: { value: pet.approximateAge?.value || '', unit: pet.approximateAge?.unit || 'years' },
       gender: pet.gender,
-      weight: pet.weight,
+      weight: pet.weight ?? '',
+      weightUnit: pet.weightUnit || 'kg',
+      coat: { length: 'unknown', type: 'unknown', condition: 'unknown', otherDescription: '', ...(pet.coat || {}) },
+      groomingHistory: { hasReceivedGrooming: 'not_sure', lastGroomingDate: '', ...(pet.groomingHistory || {}) },
+      serviceNeeds: pet.serviceNeeds || [],
+      servicePreferences: { preferredServiceType: '', preferredDuration: '', preferredFrequency: '', specialHandling: '', ...(pet.servicePreferences || {}) },
       color: pet.color || '',
       vaccinationStatus: pet.vaccinationStatus || 'Pending',
       specialNotes: pet.specialNotes || '',
@@ -2466,7 +2492,6 @@ const Profile = () => {
                                 <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Searchable Breed</label>
                                 <div className="relative">
                                     <input 
-                                        required
                                         type="text"
                                         value={petForm.breed}
                                         onChange={(e) => setPetForm({ ...petForm, breed: e.target.value })}
@@ -2483,6 +2508,7 @@ const Profile = () => {
                                         ))}
                                     </div>
                                 </div>
+                                <label className="mt-2 flex items-center gap-2 text-[10px] font-bold text-slate-500"><input type="checkbox" checked={petForm.isMixedBreed} onChange={e => setPetForm({ ...petForm, isMixedBreed: e.target.checked })} /> Mixed or unknown breed</label>
                             </div>
                             <div className="space-y-2">
                                 <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Gender</label>
@@ -2514,7 +2540,6 @@ const Profile = () => {
                         <div className="space-y-2">
                             <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Birthday</label>
                             <input 
-                                required
                                 type="date" 
                                 value={petForm.birthday}
                                 max={new Date().toISOString().split('T')[0]}
@@ -2523,23 +2548,20 @@ const Profile = () => {
                             />
                         </div>
                         <div className="space-y-2">
-                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Current Age</label>
-                            <div className="w-full px-5 py-4 bg-slate-100/50 border-2 border-slate-100/50 rounded-2xl font-black text-sm text-slate-500 flex items-center">
-                                {calculateAge(petForm.birthday)}
-                            </div>
+                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Approximate Age</label>
+                            <div className="flex gap-2"><input type="number" min="0" value={petForm.approximateAge.value} onChange={e => setPetForm({ ...petForm, approximateAge: { ...petForm.approximateAge, value: e.target.value } })} className="w-full px-4 py-3 bg-slate-50 border rounded-xl text-sm" placeholder={petForm.birthday ? calculateAge(petForm.birthday) : 'Age'} /><select value={petForm.approximateAge.unit} onChange={e => setPetForm({ ...petForm, approximateAge: { ...petForm.approximateAge, unit: e.target.value } })} className="px-3 bg-slate-50 border rounded-xl text-xs"><option value="months">months</option><option value="years">years</option></select></div>
                         </div>
                         <div className="space-y-2">
-                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Measured Weight (KG)</label>
+                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Weight (optional)</label>
                             <input 
-                                required
                                 type="number" 
-                                min="1"
-                                max="50"
+                                min="0"
+                                max="200"
                                 value={petForm.weight}
                                 onChange={(e) => setPetForm({ ...petForm, weight: Number(e.target.value) })}
-                                className={`w-full px-5 py-4 bg-slate-50 border-2 rounded-2xl focus:bg-white outline-none font-bold text-sm transition-all shadow-sm ${petForm.weight < 1 || petForm.weight > 50 ? 'border-red-300 focus:border-red-500' : 'border-slate-50 focus:border-primary-500'}`}
+                                className="w-full px-5 py-4 bg-slate-50 border-2 border-slate-50 rounded-2xl focus:bg-white outline-none font-bold text-sm"
                             />
-                            <p className="text-[8px] font-black text-slate-300 uppercase tracking-tighter ml-1">Operational Range: 1-50kg</p>
+                            <select value={petForm.weightUnit} onChange={e => setPetForm({ ...petForm, weightUnit: e.target.value })} className="text-xs bg-transparent text-slate-500"><option value="kg">kg</option><option value="lb">lb</option></select>
                         </div>
                         <div className="space-y-2">
                             <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Breed Size</label>
@@ -2553,6 +2575,7 @@ const Profile = () => {
                                 <option value="Medium">Medium</option>
                                 <option value="Large">Large</option>
                                 <option value="Extra Large">Extra Large (XL/XXL)</option>
+                                <option value="Unknown">Unknown / not sure</option>
                             </select>
                         </div>
                     </div>
@@ -2579,6 +2602,16 @@ const Profile = () => {
                             />
                         </div>
                     </div>
+                </div>
+
+                <div className="space-y-5">
+                  <div className="flex items-center gap-4 border-b border-slate-100 pb-3"><HeartIcon className="h-4 w-4 text-primary-500" /><h3 className="text-[10px] font-black text-slate-800 uppercase tracking-[0.2em]">Service recommendation profile</h3></div>
+                  <div className="grid sm:grid-cols-3 gap-3">
+                    {[['length','Coat length',['unknown','short','medium','long']],['type','Coat type',['unknown','straight','wavy','curly','double_coat','other']],['condition','Coat condition',['unknown','normal','tangled','matted','heavy_shedding','dry_looking','other']]].map(([field,label,options]) => <label key={field} className="text-[9px] font-black uppercase tracking-wide text-slate-400">{label}<select value={petForm.coat[field]} onChange={e => setPetForm({ ...petForm, coat: { ...petForm.coat, [field]: e.target.value } })} className="mt-1 w-full h-10 px-3 rounded-xl border border-slate-200 bg-slate-50 text-xs font-semibold text-slate-700 normal-case">{options.map(v => <option key={v} value={v}>{v.replace('_',' ')}</option>)}</select></label>)}
+                  </div>
+                  <div><p className="text-[9px] font-black uppercase tracking-wide text-slate-400 mb-2">Current service needs</p><div className="flex flex-wrap gap-2">{['general_grooming','bathing','haircut','nail_trimming','coat_brushing','dematting','basic_cleaning','not_sure'].map(need => <button key={need} type="button" onClick={() => setPetForm(p => ({ ...p, serviceNeeds: p.serviceNeeds.includes(need) ? p.serviceNeeds.filter(v => v !== need) : [...p.serviceNeeds, need] }))} className={`px-3 py-2 rounded-lg border text-[10px] font-bold capitalize ${petForm.serviceNeeds.includes(need) ? 'bg-primary-600 text-white border-primary-600' : 'bg-white border-slate-200 text-slate-600'}`}>{need.replace('_',' ')}</button>)}</div></div>
+                  <div className="grid sm:grid-cols-3 gap-3"><label className="text-[9px] font-black uppercase text-slate-400">Groomed before?<select value={petForm.groomingHistory.hasReceivedGrooming} onChange={e => setPetForm({ ...petForm, groomingHistory: { ...petForm.groomingHistory, hasReceivedGrooming: e.target.value } })} className="mt-1 w-full h-10 px-3 rounded-xl border text-xs"><option value="yes">Yes</option><option value="no">No</option><option value="not_sure">Not sure</option></select></label><label className="text-[9px] font-black uppercase text-slate-400">Last grooming<input type="date" value={petForm.groomingHistory.lastGroomingDate ? String(petForm.groomingHistory.lastGroomingDate).slice(0,10) : ''} onChange={e => setPetForm({ ...petForm, groomingHistory: { ...petForm.groomingHistory, lastGroomingDate: e.target.value } })} className="mt-1 w-full h-10 px-3 rounded-xl border text-xs" /></label><label className="text-[9px] font-black uppercase text-slate-400">Preferred duration<select value={petForm.servicePreferences.preferredDuration} onChange={e => setPetForm({ ...petForm, servicePreferences: { ...petForm.servicePreferences, preferredDuration: e.target.value } })} className="mt-1 w-full h-10 px-3 rounded-xl border text-xs"><option value="">No preference</option><option value="short">Short</option><option value="standard">Standard</option><option value="extended">Extended</option></select></label></div>
+                  <p className="text-[10px] text-amber-700 bg-amber-50 border border-amber-100 rounded-xl p-3">These fields support service matching only. They are not used to diagnose health conditions or replace veterinary advice.</p>
                 </div>
 
                 {/* 3. Medical Credentials */}

@@ -8,7 +8,7 @@ import {
   DollarSign, Tag, Layers, ChevronLeft, Ruler, Weight, Heart, AlertCircle, Timer
 } from 'lucide-react';
 
-import { serviceService, adminServiceService, uploadService, getImageUrl, staffService } from '../../services/apiService';
+import { serviceService, adminServiceService, uploadService, getImageUrl, staffService, dssService } from '../../services/apiService';
 import { useAuth } from '../../contexts/AuthContext';
 import { useRealTimeUpdates } from '../../hooks/useRealTimeUpdates';
 import { SERVICE_CATEGORIES } from '../../constants/serviceCategories';
@@ -71,6 +71,8 @@ const ServiceManagement = () => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [serviceToDelete, setServiceToDelete] = useState(null);
   const [storeStaff, setStoreStaff] = useState([]);
+  const [showDSSConfig, setShowDSSConfig] = useState(false);
+  const [dssConfig, setDssConfig] = useState({ enabled: true, weights: { petType: 25, customerNeed: 30, coat: 15, size: 10, history: 10, preference: 10 }, thresholds: { high: 75, good: 50 } });
 
   // Permission Checks
   const isAdmin = ['admin', 'super_admin'].includes(user?.role);
@@ -115,6 +117,11 @@ const ServiceManagement = () => {
     assignedStaff: [],
     // Schedule
     schedule: { enabled: false }
+    ,recommendationCriteria: {
+      enabled: false,
+      applicablePetTypes: ['any'], applicableSizes: ['any'], coatLengths: ['any'], coatTypes: ['any'],
+      relevantNeeds: [], preferenceTags: [], useCompletedHistory: true
+    }
   };
 
   const [formData, setFormData] = useState(initialFormState);
@@ -134,7 +141,24 @@ const ServiceManagement = () => {
     { id: 'media', label: 'Images & Review', icon: ImageIcon }
   ];
 
-  useEffect(() => { fetchServices(); fetchStaff(); }, []);
+  useEffect(() => { fetchServices(); fetchStaff(); fetchDSSConfig(); }, []);
+
+  const fetchDSSConfig = async () => {
+    try { const { data } = await dssService.getServiceConfig(); setDssConfig(data.configuration); }
+    catch (error) { if (['admin', 'super_admin'].includes(user?.role)) console.log('DSS configuration unavailable:', error.message); }
+  };
+
+  const saveDSSConfig = async () => {
+    const total = Object.values(dssConfig.weights || {}).reduce((sum, value) => sum + Number(value || 0), 0);
+    if (!total) return toast.error('At least one recommendation weight must be greater than zero.');
+    if (!window.confirm('Save these recommendation weights? Future customer scores will use this configuration.')) return;
+    try {
+      const { data } = await dssService.updateServiceConfig(dssConfig);
+      setDssConfig(data.configuration);
+      setShowDSSConfig(false);
+      toast.success('Recommendation configuration saved.');
+    } catch (error) { toast.error(error.response?.data?.message || 'Unable to save recommendation settings.'); }
+  };
 
   const fetchServices = async () => {
     try {
@@ -205,6 +229,7 @@ const ServiceManagement = () => {
       addOns: service.addOns || [],
       assignedStaff: service.assignedStaff?.map(s => s._id || s) || [],
       schedule: { ...initialFormState.schedule, ...(service.schedule || {}) }
+      ,recommendationCriteria: { ...initialFormState.recommendationCriteria, ...(service.recommendationCriteria || {}) }
     });
     setEditingService(service);
     setWizardStep(0);
@@ -317,6 +342,18 @@ const ServiceManagement = () => {
     });
   };
 
+  const toggleCriterion = (field, value) => setFormData(prev => {
+    const current = prev.recommendationCriteria[field] || [];
+    let next;
+    if (value === 'any') next = ['any'];
+    else {
+      const withoutAny = current.filter(item => item !== 'any');
+      next = withoutAny.includes(value) ? withoutAny.filter(item => item !== value) : [...withoutAny, value];
+      if (!next.length) next = ['any'];
+    }
+    return { ...prev, recommendationCriteria: { ...prev.recommendationCriteria, [field]: next } };
+  });
+
   const getCategoryIcon = (cat) => categories.find(c => c.id === cat)?.icon || '📦';
 
   const durationPresets = [15, 30, 45, 60, 90, 120, 180];
@@ -356,6 +393,7 @@ const ServiceManagement = () => {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-4">
+          {isAdmin && <button type="button" onClick={() => setShowDSSConfig(true)} className="px-5 py-3 bg-indigo-50 border border-indigo-100 text-indigo-700 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2"><Target className="h-4 w-4" /> DSS Weights</button>}
           <Link
             to="/admin/bookings"
             className="px-8 py-3.5 bg-white border border-slate-100 text-slate-900 rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] hover:bg-slate-50 transition-all shadow-sm flex items-center gap-3"
@@ -651,6 +689,24 @@ const ServiceManagement = () => {
                         )}
                       </div>
                     </div>
+                  </div>
+
+                  <div className="rounded-2xl border border-slate-200 bg-white p-5 space-y-4">
+                    <div className="flex items-center justify-between gap-4">
+                      <div><h4 className="text-xs font-black text-slate-900 uppercase tracking-wide">Customer recommendation criteria</h4><p className="text-[10px] text-slate-500 mt-1">Customers are matched only against the rules you explicitly enable here.</p></div>
+                      <ToggleSwitch size="sm" enabled={formData.recommendationCriteria.enabled} onToggle={() => setFormData(p => ({ ...p, recommendationCriteria: { ...p.recommendationCriteria, enabled: !p.recommendationCriteria.enabled } }))} />
+                    </div>
+                    {formData.recommendationCriteria.enabled && <div className="grid md:grid-cols-2 gap-4">
+                      {[
+                        ['applicablePetTypes', 'Pet types', ['any','dog','cat','bird','rabbit','hamster','other']],
+                        ['applicableSizes', 'Pet sizes', ['any','small','medium','large','extra_large']],
+                        ['coatLengths', 'Coat lengths', ['any','short','medium','long']],
+                        ['coatTypes', 'Coat types', ['any','straight','wavy','curly','double_coat','other']],
+                        ['relevantNeeds', 'Relevant needs', ['general_grooming','bathing','haircut','nail_trimming','coat_brushing','dematting','basic_cleaning','not_sure']]
+                      ].map(([field, label, options]) => <fieldset key={field} className="rounded-xl bg-slate-50 p-3"><legend className="px-1 text-[10px] font-bold uppercase tracking-wide text-slate-500">{label}</legend><div className="flex flex-wrap gap-1.5 mt-1">{options.map(option => <button key={option} type="button" onClick={() => toggleCriterion(field, option)} className={`px-2.5 py-1.5 rounded-lg border text-[10px] font-bold capitalize ${formData.recommendationCriteria[field]?.includes(option) ? 'bg-indigo-600 border-indigo-600 text-white' : 'bg-white border-slate-200 text-slate-600'}`}>{option.replace('_',' ')}</button>)}</div></fieldset>)}
+                      <label className="rounded-xl bg-slate-50 p-3 flex items-center justify-between text-xs font-bold text-slate-700">Use completed booking history <ToggleSwitch size="sm" enabled={formData.recommendationCriteria.useCompletedHistory} onToggle={() => setFormData(p => ({ ...p, recommendationCriteria: { ...p.recommendationCriteria, useCompletedHistory: !p.recommendationCriteria.useCompletedHistory } }))} /></label>
+                      <label className="rounded-xl bg-slate-50 p-3 text-[10px] font-bold uppercase tracking-wide text-slate-500">Preference tags<input value={(formData.recommendationCriteria.preferenceTags || []).join(', ')} onChange={e => setFormData(p => ({ ...p, recommendationCriteria: { ...p.recommendationCriteria, preferenceTags: e.target.value.split(',').map(v => v.trim()).filter(Boolean) } }))} className="mt-2 w-full h-9 rounded-lg border border-slate-200 bg-white px-3 text-xs normal-case tracking-normal" placeholder="e.g. short duration, special handling" /></label>
+                    </div>}
                   </div>
                 </div>
               )}
@@ -1106,6 +1162,15 @@ const ServiceManagement = () => {
           </div>
         </div>
       )}
+
+      {showDSSConfig && <div className="fixed inset-0 z-[120] bg-slate-900/60 p-4 grid place-items-center">
+        <div className="w-full max-w-lg rounded-2xl bg-white p-5 shadow-2xl">
+          <div className="flex justify-between items-start"><div><h2 className="text-base font-black text-slate-900">Recommendation weights</h2><p className="text-xs text-slate-500 mt-1">Weights are stored per store and logged when changed.</p></div><button onClick={() => setShowDSSConfig(false)}><X size={18} /></button></div>
+          <div className="grid grid-cols-2 gap-3 mt-5">{Object.entries(dssConfig.weights || {}).map(([key, value]) => <label key={key} className="text-[10px] font-bold uppercase tracking-wide text-slate-500 capitalize">{key.replace(/([A-Z])/g, ' $1')}<input type="number" min="0" max="100" value={value} onChange={e => setDssConfig(p => ({ ...p, weights: { ...p.weights, [key]: Number(e.target.value) } }))} className="mt-1 w-full h-9 rounded-lg border border-slate-300 px-3 text-sm text-slate-900" /></label>)}</div>
+          <div className="grid grid-cols-2 gap-3 mt-4"><label className="text-[10px] font-bold uppercase text-slate-500">Good match threshold<input type="number" min="0" max="99" value={dssConfig.thresholds?.good} onChange={e => setDssConfig(p => ({ ...p, thresholds: { ...p.thresholds, good: Number(e.target.value) } }))} className="mt-1 w-full h-9 rounded-lg border px-3 text-sm" /></label><label className="text-[10px] font-bold uppercase text-slate-500">High match threshold<input type="number" min="1" max="100" value={dssConfig.thresholds?.high} onChange={e => setDssConfig(p => ({ ...p, thresholds: { ...p.thresholds, high: Number(e.target.value) } }))} className="mt-1 w-full h-9 rounded-lg border px-3 text-sm" /></label></div>
+          <div className="flex justify-end gap-2 mt-5"><button onClick={() => setShowDSSConfig(false)} className="h-9 px-4 rounded-lg bg-slate-100 text-xs font-bold">Cancel</button><button onClick={saveDSSConfig} className="h-9 px-4 rounded-lg bg-indigo-600 text-white text-xs font-bold">Save configuration</button></div>
+        </div>
+      </div>}
     </div>
   );
 };

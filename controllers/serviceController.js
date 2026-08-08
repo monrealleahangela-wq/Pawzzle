@@ -59,7 +59,8 @@ const createService = async (req, res) => {
       addOns,
       bookingRules,
       assignedStaff,
-      schedule
+      schedule,
+      recommendationCriteria
     } = req.body;
 
     // Convert requirements array to string if needed and combine with defaults
@@ -107,7 +108,8 @@ const createService = async (req, res) => {
       addOns: addOns || [],
       bookingRules: bookingRules || {},
       assignedStaff: assignedStaff || [],
-      schedule: schedule || {}
+      schedule: schedule || {},
+      recommendationCriteria: recommendationCriteria || {}
     });
 
     await service.save();
@@ -153,7 +155,8 @@ const createAdminService = async (req, res) => {
       addOns,
       bookingRules,
       assignedStaff,
-      schedule
+      schedule,
+      recommendationCriteria
     } = req.body;
 
     console.log('🔐 Creating admin service for user:', req.user.email, 'Role:', req.user.role);
@@ -233,7 +236,8 @@ const createAdminService = async (req, res) => {
       addOns: addOns || [],
       bookingRules: bookingRules || {},
       assignedStaff: assignedStaff || [],
-      schedule: schedule || {}
+      schedule: schedule || {},
+      recommendationCriteria: recommendationCriteria || {}
     });
 
     await service.save();

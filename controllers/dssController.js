@@ -8,9 +8,10 @@ const User = require('../models/User');
 const Store = require('../models/Store');
 const Review = require('../models/Review');
 const Service = require('../models/Service');
+const PetProfile = require('../models/PetProfile');
 
 // ===== CUSTOMER DSS =====
-const getCustomerInsights = async (req, res) => {
+const getLegacyCustomerInsights = async (req, res) => {
     try {
         const userId = req.user._id;
         const userObjectId = new mongoose.Types.ObjectId(userId);
@@ -327,6 +328,33 @@ const getCustomerInsights = async (req, res) => {
 };
 
 // ===== ADMIN (STORE OWNER) DSS =====
+// Safe customer analytics endpoint. Service recommendations are calculated by
+// the separate deterministic /service-recommendations endpoint.
+const getCustomerInsights = async (req, res) => {
+    try {
+        const [orders, bookings, pets] = await Promise.all([
+            Order.find({ customer: req.user._id, isDeleted: { $ne: true } }).lean(),
+            Booking.find({ customer: req.user._id, isDeleted: { $ne: true } }).populate('service', 'name').populate('store', 'name').lean(),
+            PetProfile.find({ owner: req.user._id }).lean()
+        ]);
+        const completedBookings = bookings.filter(booking => booking.status === 'completed');
+        res.json({
+            overview: {
+                totalOrders: orders.length,
+                completedOrders: orders.filter(order => order.status === 'delivered').length,
+                totalSpent: orders.filter(order => order.status !== 'cancelled').reduce((sum, order) => sum + Number(order.totalAmount || 0), 0),
+                completedServices: completedBookings.length
+            },
+            myPets: pets,
+            serviceHistory: completedBookings.map(booking => ({ _id: booking._id, service: booking.service, store: booking.store, date: booking.bookingDate, status: booking.status, notes: booking.notes })),
+            methodology: 'Service recommendations use deterministic weighted scoring. No AI, machine learning, diagnosis, or medical inference is used.',
+            disclaimer: 'This system provides service recommendations only. For health concerns or medical advice, please consult a qualified veterinarian.'
+        });
+    } catch (error) {
+        res.status(500).json({ message: 'Unable to load customer insights.' });
+    }
+};
+
 const getAdminInsights = async (req, res) => {
     try {
         const { storeId: queryStoreId } = req.query;

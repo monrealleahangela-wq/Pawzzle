@@ -374,6 +374,9 @@ export const archiveService = {
 // DSS (Decision Support System) services
 export const dssService = {
   getCustomerInsights: () => api.get('/dss/customer'),
+  getServiceRecommendations: (params) => api.get('/dss/service-recommendations', { params }),
+  getServiceConfig: () => api.get('/dss/service-config'),
+  updateServiceConfig: (data) => api.put('/dss/service-config', data),
   getStaffInsights: () => api.get('/dss/staff'),
   getAdminInsights: () => api.get('/dss/admin'),
   getSuperAdminInsights: () => api.get('/dss/superadmin'),

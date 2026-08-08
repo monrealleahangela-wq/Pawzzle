@@ -37,7 +37,7 @@ const customerMenu = [
       { path: '/services', label: 'Browse Services', icon: Calendar },
     ]
   },
-  { path: '/insights', label: 'AI Advisor', icon: Brain },
+  { path: '/insights', label: 'Service Advisor', icon: Brain },
   {
     label: 'Account', icon: User, children: [
       { path: '/profile', label: 'My Profile', icon: Settings },

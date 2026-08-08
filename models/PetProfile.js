@@ -15,11 +15,14 @@ const petProfileSchema = new mongoose.Schema({
   },
   name: { type: String, required: true, trim: true },
   type: { type: String, required: true, trim: true },   // Dog, Cat, etc.
-  breed: { type: String, required: true, trim: true },
-  size: { type: String, enum: ['Small', 'Medium', 'Large', 'Extra Large'], default: 'Small' },
-  birthday: { type: Date, required: true },
+  breed: { type: String, trim: true, default: '' },
+  isMixedBreed: { type: Boolean, default: false },
+  size: { type: String, enum: ['Unknown', 'Small', 'Medium', 'Large', 'Extra Large'], default: 'Unknown' },
+  birthday: { type: Date, default: null },
+  approximateAge: { value: { type: Number, min: 0 }, unit: { type: String, enum: ['months', 'years'] } },
   gender: { type: String, enum: ['Male', 'Female'], required: true },
-  weight: { type: Number, required: true, min: 1, max: 200 },
+  weight: { type: Number, min: 0, max: 200, default: null },
+  weightUnit: { type: String, enum: ['kg', 'lb'], default: 'kg' },
   color: { type: String, trim: true },
   photo: { type: String },
   vaccinationCards: [{ type: String }],
@@ -30,6 +33,24 @@ const petProfileSchema = new mongoose.Schema({
   groomingPreferences: { type: String, default: 'None' },
   behaviorNotes: { type: String, default: 'Normal' },
   emergencyContact: { type: String, trim: true },
+  coat: {
+    length: { type: String, enum: ['unknown', 'short', 'medium', 'long'], default: 'unknown' },
+    type: { type: String, enum: ['unknown', 'straight', 'wavy', 'curly', 'double_coat', 'other'], default: 'unknown' },
+    condition: { type: String, enum: ['unknown', 'normal', 'tangled', 'matted', 'heavy_shedding', 'dry_looking', 'other'], default: 'unknown' },
+    otherDescription: { type: String, trim: true, default: '' }
+  },
+  groomingHistory: {
+    hasReceivedGrooming: { type: String, enum: ['yes', 'no', 'not_sure'], default: 'not_sure' },
+    lastGroomingDate: Date,
+    previousServices: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Service' }]
+  },
+  serviceNeeds: [{ type: String, enum: ['general_grooming', 'bathing', 'haircut', 'nail_trimming', 'coat_brushing', 'dematting', 'basic_cleaning', 'not_sure'] }],
+  servicePreferences: {
+    preferredServiceType: { type: String, trim: true, default: '' },
+    preferredDuration: { type: String, enum: ['', 'short', 'standard', 'extended'], default: '' },
+    preferredFrequency: { type: String, trim: true, default: '' },
+    specialHandling: { type: String, trim: true, default: '' }
+  },
   // Track last booking to sort by recency in the UI
   lastBookedAt: { type: Date, default: null },
   createdAt: { type: Date, default: Date.now },

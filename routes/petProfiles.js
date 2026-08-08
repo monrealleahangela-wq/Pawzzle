@@ -7,9 +7,9 @@ const { body, validationResult } = require('express-validator');
 const petValidation = [
   body('name').trim().notEmpty().withMessage('Pet name is required'),
   body('type').trim().notEmpty().withMessage('Pet type is required'),
-  body('breed').trim().notEmpty().withMessage('Pet breed is required'),
-  body('size').isIn(['Small', 'Medium', 'Large', 'Extra Large']).withMessage('Invalid size'),
-  body('birthday').isISO8601().toDate().withMessage('Valid birthday is required')
+  body('breed').optional({ checkFalsy: true }).trim(),
+  body('size').optional().isIn(['Unknown', 'Small', 'Medium', 'Large', 'Extra Large']).withMessage('Invalid size'),
+  body('birthday').optional({ checkFalsy: true }).isISO8601().toDate().withMessage('Enter a valid birth date')
     .custom((value) => {
       const today = new Date();
       if (value > today) {
@@ -18,8 +18,18 @@ const petValidation = [
       return true;
     }),
   body('gender').isIn(['Male', 'Female']).withMessage('Invalid gender'),
-  body('weight').isFloat({ min: 1, max: 50 }).withMessage('Weight must be between 1 and 50 kg'),
+  body('approximateAge.value').optional({ checkFalsy: true }).isFloat({ min: 0 }).withMessage('Approximate age cannot be negative'),
+  body('weight').optional({ checkFalsy: true }).isFloat({ min: 0, max: 200 }).withMessage('Weight must be between 0 and 200'),
+  body().custom(value => {
+    if (!value.birthday && (value.approximateAge?.value === '' || value.approximateAge?.value === undefined || value.approximateAge?.value === null)) {
+      throw new Error('Enter either a birth date or an approximate age.');
+    }
+    return true;
+  })
 ];
+
+const profileFields = ['name', 'type', 'breed', 'isMixedBreed', 'size', 'birthday', 'approximateAge', 'gender', 'weight', 'weightUnit', 'color', 'photo', 'vaccinationCards', 'vaccinationStatus', 'specialNotes', 'allergies', 'medicalConditions', 'groomingPreferences', 'behaviorNotes', 'emergencyContact', 'coat', 'groomingHistory', 'serviceNeeds', 'servicePreferences'];
+const profilePayload = body => Object.fromEntries(profileFields.filter(key => body[key] !== undefined).map(key => [key, body[key]]));
 
 // GET /api/pet-profiles — list all saved pets for the authenticated customer
 router.get('/', authenticate, async (req, res) => {
@@ -39,11 +49,9 @@ router.post('/', authenticate, petValidation, async (req, res) => {
     return res.status(400).json({ message: errors.array()[0].msg, errors: errors.array() });
   }
   try {
-    const { name, type, breed, size, birthday, gender, weight, color, photo, vaccinationCards, specialNotes } = req.body;
     const pet = await PetProfile.create({ 
       owner: req.user._id, 
-      name, type, breed, size, birthday, gender, weight, color, photo, vaccinationCards, 
-      specialNotes: specialNotes || '' 
+      ...profilePayload(req.body)
     });
     res.status(201).json({ pet });
   } catch (err) {
@@ -61,11 +69,7 @@ router.put('/:id', authenticate, petValidation, async (req, res) => {
     const pet = await PetProfile.findOne({ _id: req.params.id, owner: req.user._id });
     if (!pet) return res.status(404).json({ message: 'Pet profile not found' });
     
-    const { name, type, breed, size, birthday, gender, weight, color, photo, vaccinationCards, specialNotes } = req.body;
-    Object.assign(pet, { 
-      name, type, breed, size, birthday, gender, weight, color, photo, vaccinationCards, 
-      specialNotes: specialNotes || '' 
-    });
+    Object.assign(pet, profilePayload(req.body));
     await pet.save();
     res.json({ pet });
   } catch (err) {
