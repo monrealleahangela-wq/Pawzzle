@@ -15,6 +15,12 @@ import {
   Wallet
 } from 'lucide-react';
 
+const TrendChart = ({ title, data, valueKey, formatter = value => value }) => {
+  const points = (data || []).filter(item => Number(item[valueKey] || 0) >= 0);
+  const max = Math.max(...points.map(item => Number(item[valueKey] || 0)), 1);
+  return <div className="bg-white border border-slate-100 rounded-2xl p-4 shadow-sm min-w-0"><h3 className="text-xs font-black text-slate-800 uppercase tracking-wide">{title}</h3>{points.length ? <div className="mt-4 h-28 flex items-end gap-1.5">{points.map((item, index) => <div key={index} className="flex-1 h-full flex flex-col justify-end items-center gap-1"><div className="w-full max-w-7 bg-primary-500/80 rounded-t" style={{ height: `${Math.max(4, (Number(item[valueKey] || 0) / max) * 92)}px` }} title={formatter(item[valueKey])} /><span className="text-[9px] text-slate-400">{item._id?.month ? `M${item._id.month}` : index + 1}</span></div>)}</div> : <p className="text-xs text-slate-400 py-10 text-center">No data available yet.</p>}</div>;
+};
+
 const SuperAdminDashboard = () => {
   const [stats, setStats] = useState({
     totalUsers: 0,
@@ -22,9 +28,10 @@ const SuperAdminDashboard = () => {
     totalPlatformFees: 0,
     recentOrders: [],
     recentUsers: [],
-    userGrowth: 0,
-    orderGrowth: 0,
-    pendingApplications: 0
+    pendingApplications: 0,
+    monthlyRevenue: [],
+    customerGrowth: [],
+    storeGrowth: []
   });
   const [loading, setLoading] = useState(true);
 
@@ -50,9 +57,10 @@ const SuperAdminDashboard = () => {
         totalPlatformFees: dss.revenue?.totalPlatformFees || 0,
         recentOrders: dss.orders?.recent || [], 
         recentUsers,
-        userGrowth: 12.5,
-        orderGrowth: 8.3,
-        pendingApplications: dss.platform?.pendingApplications || 0
+        pendingApplications: dss.platform?.pendingApplications || 0,
+        monthlyRevenue: dss.monthlyRevenue || [],
+        customerGrowth: dss.customerGrowth || [],
+        storeGrowth: dss.storeGrowth || []
       });
     } catch (error) {
       console.error('System synchronization failure', error);
@@ -111,26 +119,32 @@ const SuperAdminDashboard = () => {
       </header>
 
       {/* ── Global KPI Matrix ── */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
         {[
-          { label: 'Ecosystem Users', value: stats.totalUsers, icon: Users, color: 'primary', growth: stats.userGrowth },
-          { label: 'Total Requests', value: stats.totalOrders, icon: ShoppingBag, color: 'secondary', growth: stats.orderGrowth },
-          { label: 'Platform Gross', value: `₱${stats.totalRevenue.toLocaleString()}`, icon: DollarSign, color: 'primary', growth: 15.7 },
-          { label: 'Network Royalty', value: `₱${(stats.totalPlatformFees || 0).toLocaleString()}`, icon: Wallet, color: 'neutral', growth: 15.7 },
-          { label: 'Venture Apps', value: stats.pendingApplications, icon: Settings, color: 'secondary', growth: 0 }
+          { label: 'Ecosystem Users', value: stats.totalUsers, icon: Users, color: 'primary' },
+          { label: 'Total Requests', value: stats.totalOrders, icon: ShoppingBag, color: 'secondary' },
+          { label: 'Platform Gross', value: `₱${stats.totalRevenue.toLocaleString()}`, icon: DollarSign, color: 'primary' },
+          { label: 'Network Royalty', value: `₱${(stats.totalPlatformFees || 0).toLocaleString()}`, icon: Wallet, color: 'neutral' },
+          { label: 'Venture Apps', value: stats.pendingApplications, icon: Settings, color: 'secondary' }
         ].map((stat, i) => (
-          <div key={i} className="card group p-10 relative overflow-hidden transition-all duration-500 hover:bg-neutral-50 shadow-soft">
-            <div className="w-14 h-14 bg-neutral-50 rounded-2xl flex items-center justify-center mb-10 group-hover:bg-primary group-hover:text-white transition-all shadow-inner">
-               <stat.icon className="h-6 w-6" />
+          <div key={i} className="card group p-4 relative overflow-hidden transition-all duration-300 hover:bg-neutral-50 shadow-soft">
+            <div className="w-9 h-9 bg-neutral-50 rounded-xl flex items-center justify-center mb-4 group-hover:bg-primary group-hover:text-white transition-all shadow-inner">
+               <stat.icon className="h-4 w-4" />
             </div>
             <div className="space-y-2">
                <p className="text-[10px] font-black text-neutral-300 uppercase tracking-[0.4em] mb-2">{stat.label}</p>
-               <h3 className="text-3xl font-black text-neutral-950 tracking-tighter leading-none">{stat.value}</h3>
+               <h3 className="text-2xl font-black text-neutral-950 tracking-tighter leading-none">{stat.value}</h3>
             </div>
             <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-bl-[5rem] -translate-y-16 translate-x-16 group-hover:translate-y-0 group-hover:translate-x-0 transition-all duration-700 pointer-events-none" />
           </div>
         ))}
       </div>
+
+      <section className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <TrendChart title="Revenue trend (paid orders)" data={stats.monthlyRevenue} valueKey="revenue" formatter={value => `₱${Number(value).toLocaleString()}`} />
+        <TrendChart title="New customers" data={stats.customerGrowth} valueKey="count" />
+        <TrendChart title="New stores" data={stats.storeGrowth} valueKey="count" />
+      </section>
 
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-10">
         
@@ -195,7 +209,7 @@ const SuperAdminDashboard = () => {
                <div className="space-y-4">
                 {[
                   { to: "/superadmin/insights", label: "Business Insights", icon: Brain, desc: "Global ecosystem trends" },
-                  { to: "/superadmin/account-management", label: "Identity Control", icon: Users, desc: "Managing 1.8k+ users" },
+                  { to: "/superadmin/account-management", label: "Identity Control", icon: Users, desc: "Manage platform users" },
                   { to: "/superadmin/store-applications", label: "Venture Review", icon: Settings, desc: "New store vetting" },
                   { to: "/superadmin/system-analytics", label: "Node Analytics", icon: Activity, desc: "Server-side metrics" }
                 ].map((action, i) => (

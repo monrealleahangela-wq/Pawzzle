@@ -15,6 +15,12 @@ import { useAuth } from '../../contexts/AuthContext';
 import { formatTime12h } from '../../utils/timeFormatters';
 import RiderDashboard from '../../components/admin/RiderDashboard';
 
+const DashboardChart = ({ title, data, valueKey, labelKey = '_id' }) => {
+  const points = (data || []).filter(item => Number(item[valueKey] || 0) >= 0);
+  const max = Math.max(...points.map(item => Number(item[valueKey] || 0)), 1);
+  return <div className="bg-white border border-slate-100 rounded-2xl p-4 shadow-sm min-w-0"><h3 className="text-xs font-black text-neutral-800 uppercase tracking-wide">{title}</h3>{points.length ? <div className="mt-4 h-28 flex items-end gap-1.5">{points.map((item, i) => <div key={i} className="flex-1 h-full flex flex-col justify-end items-center gap-1"><div className="w-full max-w-8 bg-primary-500/80 rounded-t" style={{ height: `${Math.max(4, (Number(item[valueKey] || 0) / max) * 92)}px` }} title={String(item[valueKey])} /><span className="text-[9px] text-neutral-400 truncate max-w-full">{item[labelKey]?._id?.month ? `M${item[labelKey]._id.month}` : item[labelKey]?.month ? `M${item[labelKey].month}` : i + 1}</span></div>)}</div> : <p className="text-xs text-neutral-400 py-10 text-center">No data available yet.</p>}</div>;
+};
+
 const STAFF_TYPE_CONFIG = {
   inventory_staff:  { label: 'Inventory Analyst',  color: 'amber',   desc: 'Managing biological & hardware stock levels' },
   order_staff:      { label: 'Logistics Manager',       color: 'blue',    desc: 'Processing regional order fulfillment' },
@@ -29,6 +35,8 @@ const Dashboard = () => {
     totalOrders: 0,
     totalSales: 0,
     totalBookings: 0,
+    monthlyRevenue: [],
+    categoryTrends: [],
     responseRate: 100,
     totalReviews: 0,
     netEarnings: 0,
@@ -74,6 +82,8 @@ const Dashboard = () => {
         totalOrders: ordersRes.status === 'fulfilled' ? (ordersRes.value.data.pagination?.totalOrders || 0) : 0,
         totalSales: adoptionsRes.status === 'fulfilled' ? (adoptionsRes.value.data.requests?.length || 0) : 0,
         totalBookings: bookingsRes.status === 'fulfilled' ? (bookingsRes.value.data.pagination?.total || bookingsRes.value.data.pagination?.totalBookings || 0) : 0,
+        monthlyRevenue: dssRes.status === 'fulfilled' ? (dssRes.value.data.monthlyRevenue || []) : [],
+        categoryTrends: dssRes.status === 'fulfilled' ? Object.entries(dssRes.value.data.salesHistory?.categoryTrends || {}).map(([name, values]) => ({ name, revenue: values.revenue || 0 })) : [],
         responseRate: dssRes.status === 'fulfilled' ? (dssRes.value.data.overview?.responseRate || 100) : 100,
         totalReviews: dssRes.status === 'fulfilled' ? (dssRes.value.data.overview?.totalReviews || 0) : 0,
         netEarnings: dssRes.status === 'fulfilled' ? (dssRes.value.data.overview?.totalRevenue || 0) : 0,
@@ -180,7 +190,7 @@ const Dashboard = () => {
       )}
 
       {/* ── Key Performance Indicators (KPIs) ── */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {[
           { label: 'Biological Inventory', value: stats.totalPets, icon: Heart, link: '/admin/pets', show: isAdmin || hasPerm('inventory') },
           { label: 'Regional Fulfilment', value: stats.totalOrders, icon: ShoppingBag, link: '/admin/orders', show: isAdmin || hasPerm('orders') },
@@ -189,18 +199,23 @@ const Dashboard = () => {
           { label: 'Settled Payouts', value: `₱${stats.availableBalance.toLocaleString()}`, icon: Wallet, link: '/admin/payouts', show: isAdmin },
           { label: 'Market Sentiment', value: `${stats.responseRate}%`, icon: User, link: '/admin/reviews', show: isAdmin }
         ].filter(s => s.show).map((kpi, i) => (
-          <Link key={i} to={kpi.link} className="card group p-10 relative overflow-hidden transition-all duration-500 hover:bg-neutral-50">
-            <div className="w-14 h-14 bg-neutral-50 rounded-2xl flex items-center justify-center mb-10 group-hover:bg-primary group-hover:text-white transition-all shadow-inner">
-              <kpi.icon className="h-6 w-6" />
+          <Link key={i} to={kpi.link} className="card group p-4 relative overflow-hidden transition-all duration-300 hover:bg-neutral-50">
+            <div className="w-9 h-9 bg-neutral-50 rounded-xl flex items-center justify-center mb-4 group-hover:bg-primary group-hover:text-white transition-all shadow-inner">
+              <kpi.icon className="h-4 w-4" />
             </div>
             <div className="space-y-2">
                <p className="text-[10px] font-black text-neutral-300 uppercase tracking-[0.4em] leading-none mb-2">{kpi.label}</p>
-               <h3 className="text-4xl font-black text-neutral-950 tracking-tighter leading-none">{kpi.value}</h3>
+               <h3 className="text-2xl font-black text-neutral-950 tracking-tighter leading-none">{kpi.value}</h3>
             </div>
             <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-bl-[5rem] -translate-y-16 translate-x-16 group-hover:translate-y-0 group-hover:translate-x-0 transition-all duration-700 pointer-events-none" />
           </Link>
         ))}
       </div>
+
+      <section className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <DashboardChart title="Store revenue trend (paid orders)" data={stats.monthlyRevenue} valueKey="revenue" />
+        <DashboardChart title="Product/category revenue" data={stats.categoryTrends} valueKey="revenue" labelKey="name" />
+      </section>
 
       {/* ── Operational Grid ── */}
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-10">

@@ -596,8 +596,8 @@ const getAdminInsights = async (req, res) => {
         const previousProducts = allProducts.filter(p => p.createdAt < thirtyDaysAgo && p.createdAt >= sixtyDaysAgo).length;
         const productsGrowth = calculateGrowth(currentProducts, previousProducts);
 
-        // Balance Growth (Based on recent deposits vs previous)
-        const balanceGrowth = calculateGrowth(store.balance, store.balance * 0.9); // Placeholderish but dynamic relative to current
+        // No historical payout/balance ledger is available here, so do not fabricate a balance trend.
+        const balanceGrowth = 0;
 
         // Monthly revenue for chart
         const sixMonthsAgo = new Date();
