@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: pawzzle
+    env: node
+    buildCommand: npm run install-all && npm run build
+    startCommand: npm start
+    healthCheckPath: /
+    envVars:
+      - key: NODE_ENV
+        value: production

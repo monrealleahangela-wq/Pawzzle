@@ -1,15 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
 import {
-  Package, Plus, Edit2, Trash2, X, Search, ChevronDown, Settings,
-  TrendingUp, DollarSign, Truck, Star, ShoppingCart, Clock, CheckCircle,
-  AlertTriangle, BarChart3, Eye, ArrowUpRight, Shield, Layers, Box
+  Package, Plus, Edit2, Trash2, X,
+  TrendingUp, Truck, Star, ShoppingCart, Clock, CheckCircle,
+  BarChart3, Box
 } from 'lucide-react';
 import { supplierService, uploadService, getImageUrl } from '../../services/apiService';
-import { useAuth } from '../../contexts/AuthContext';
 
 const SupplierDashboard = () => {
-  const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [dashboard, setDashboard] = useState(null);
   const [products, setProducts] = useState([]);
