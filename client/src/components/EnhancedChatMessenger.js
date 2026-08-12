@@ -351,25 +351,6 @@ const EnhancedChatMessenger = ({
     }
   };
 
-  const handleManualPaymentUpdate = async (status, amount) => {
-    try {
-       setIsLoading(true);
-       const response = await adoptionService.updatePaymentStatus(transactionRequest._id, { 
-         status, 
-         amount,
-         notes: `Seller manually updated payment to ${status}`
-       });
-       setTransactionRequest(response.data.request);
-       toast.success('Payment status updated');
-       loadMessages(conversationId);
-       if (onMessageUpdate) onMessageUpdate();
-    } catch (error) {
-       console.error('Error updating payment:', error);
-       toast.error('Update failed');
-    } finally {
-       setIsLoading(false);
-    }
-  };
   const handlePaymongoCheckout = async () => {
     if (!agreedToPolicy) {
       toast.error('Please agree to the No Refund Policy first');
@@ -475,14 +456,6 @@ const EnhancedChatMessenger = ({
                     <Zap className="h-3 w-3 text-primary-400" /> Send Payment Request
                   </button>
                 )}
-                {transactionRequest.status === 'approved' && payment.paymentStatus === 'payment_pending' && (
-                  <div className="flex gap-2">
-                    <button onClick={() => handleManualPaymentUpdate(pricing.depositAmount > 0 ? 'deposit_paid' : 'paid_in_full', pricing.depositAmount || pricing.totalPrice)} 
-                      className="text-[9px] font-black uppercase tracking-widest bg-emerald-600 text-white px-3 py-1.5 rounded-lg shadow-sm">
-                      Mark as Paid
-                    </button>
-                  </div>
-                )}
                 {(transactionRequest.status === 'approved' || transactionRequest.status === 'pickup_scheduling') && (payment.paymentStatus === 'paid_in_full' || payment.paymentStatus === 'deposit_paid') && (
                   <button onClick={() => handleStatusUpdate('pickup_scheduling')} className="text-[9px] font-black uppercase tracking-widest bg-slate-900 text-white px-3 py-1.5 rounded-lg shadow-sm">Schedule Pickup</button>
                 )}
@@ -497,7 +470,7 @@ const EnhancedChatMessenger = ({
 
             {!isSeller && !isAdmin && (
               <>
-                {payment.paymentStatus === 'payment_pending' && (
+                {['payment_pending', 'payment_cancelled', 'payment_failed'].includes(payment.paymentStatus) && (
                   <div className="flex flex-col items-end gap-2">
                     <label className="flex items-center gap-2 cursor-pointer group">
                       <input 

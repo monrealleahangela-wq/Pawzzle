@@ -111,12 +111,12 @@ const petSchema = new mongoose.Schema({
   paymentType: {
     type: String,
     enum: ['online_only', 'cod', 'any'],
-    default: 'any'
+    default: 'online_only'
   },
   allowedPaymentMethods: {
     type: [String],
-    enum: ['gcash', 'maya', 'bank_transfer', 'cash_on_pickup'],
-    default: ['gcash', 'maya', 'bank_transfer', 'cash_on_pickup']
+    enum: ['paymongo', 'gcash', 'maya', 'bank_transfer', 'cash_on_pickup'],
+    default: ['paymongo']
   },
   paymentConfig: {
     type: String,

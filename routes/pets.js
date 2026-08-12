@@ -27,7 +27,7 @@ const createPetValidation = [
   body('healthCondition').optional().isIn(['healthy', 'needs_monitoring', 'condition_present']).withMessage('Invalid health condition'),
   body('listingType').optional().isIn(['sale', 'adoption']).withMessage('Invalid listing type'),
   body('fulfillmentType').optional().isIn(['pickup_only', 'shipping', 'both']).withMessage('Invalid fulfillment type'),
-  body('paymentType').optional().isIn(['online_only', 'cod', 'any']).withMessage('Invalid payment type')
+  body('paymentType').optional().equals('online_only').withMessage('PayMongo online payment is required')
 ];
 
 const updatePetValidation = [

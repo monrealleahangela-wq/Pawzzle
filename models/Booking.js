@@ -21,6 +21,19 @@ const bookingSchema = new mongoose.Schema({
     ref: 'User',
     default: null
   },
+  serviceProvider: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null
+  },
+  staffRoleSnapshot: { type: String, default: '' },
+  staffSpecialtySnapshot: { type: String, default: '' },
+  staffAssignmentHistory: [{
+    staff: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    assignedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    source: { type: String, enum: ['admin', 'staff', 'customer', 'automatic'], default: 'admin' },
+    assignedAt: { type: Date, default: Date.now }
+  }],
   store: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Store',
@@ -42,6 +55,12 @@ const bookingSchema = new mongoose.Schema({
     medicalConditions: { type: String, default: 'None' },
     groomingPreferences: { type: String, default: 'None' },
     behaviorNotes: { type: String, default: 'Normal' }
+  },
+  petProfile: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'PetProfile',
+    default: null,
+    index: true
   },
 
   // ── Selected Add-Ons ──────────────────────────
@@ -112,9 +131,42 @@ const bookingSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    // pending -> approved -> (QR SCAN) -> processing -> finished (wait for review) -> completed
-    enum: ['pending', 'confirmed', 'approved', 'processing', 'finished', 'completed', 'cancelled', 'no_show'],
+    // Legacy `approved` records remain valid. New bookings use the explicit
+    // customer-approval/payment states before becoming confirmed.
+    enum: [
+      'pending', 'awaiting_customer_confirmation', 'awaiting_payment',
+      'confirmed', 'approved', 'processing', 'finished', 'completed',
+      'cancelled', 'confirmation_expired', 'rejected', 'no_show'
+    ],
     default: 'pending'
+  },
+  lifecycle: {
+    proposedAt: Date,
+    proposedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    customerConfirmedAt: Date,
+    confirmationExpiresAt: Date,
+    confirmedAt: Date,
+    completedAt: Date,
+    cancelledAt: Date,
+    cancellationSource: { type: String, enum: ['customer', 'admin', 'staff', 'system'] }
+  },
+  serviceProgress: {
+    status: {
+      type: String,
+      enum: ['scheduled', 'pet_arrived', 'service_started', 'in_progress', 'ready_for_pickup', 'completed', 'cancelled'],
+      default: 'scheduled'
+    },
+    scheduledAt: Date,
+    arrivedAt: Date,
+    startedAt: Date,
+    readyAt: Date,
+    completedAt: Date,
+    cancelledAt: Date
+  },
+  serviceConversation: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Conversation',
+    default: null
   },
   qrCode: {
     type: String, // Stringified unique ID or secure hash
@@ -186,7 +238,20 @@ const bookingSchema = new mongoose.Schema({
   paymentDetails: {
     sessionId: { type: String },
     checkoutUrl: { type: String },
+    sessionStatus: { type: String, enum: ['active', 'expired'] },
+    sessionVersion: { type: Number, default: 0 },
+    sessionCreatedAt: { type: Date },
+    sessionHistory: [{
+      sessionId: String,
+      checkoutUrl: String,
+      status: { type: String, enum: ['active', 'expired'] },
+      createdAt: Date
+    }],
     paymentId: { type: String },
+    paymentIntentId: { type: String },
+    amountPaid: { type: Number, min: 0 },
+    transactionDate: { type: Date },
+    duplicatePaymentIds: [{ type: String }],
     sourceType: { type: String },
     failureReason: { type: String }
   },

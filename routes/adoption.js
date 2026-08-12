@@ -7,8 +7,7 @@ const {
     getMyAdoptionRequests,
     getAdoptionByConversation,
     cancelAdoptionRequest,
-    sendPaymentRequest,
-    updatePaymentStatus
+    sendPaymentRequest
 } = require('../controllers/adoptionController');
 
 // All adoption routes require authentication
@@ -31,6 +30,5 @@ router.get('/conversation/:conversationId', getAdoptionByConversation);
 
 // Payment Requests
 router.post('/payment-request/:requestId', sendPaymentRequest);
-router.patch('/payment-status/:requestId', updatePaymentStatus);
 
 module.exports = router;

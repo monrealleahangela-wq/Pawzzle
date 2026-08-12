@@ -9,12 +9,16 @@ const {
   getAllBookings,
   getCalendarBookings,
   updateBookingStatus,
-  updatePaymentMethod,
   cancelBooking,
-  validateBookingQR
+  validateBookingQR,
+  getBookingById,
+  getEligibleBookingStaff,
+  selectBookingStaff,
+  confirmBookingForPayment,
+  getBookingStaffProfile
 } = require('../controllers/bookingController');
-const { authenticate, superAdminOnly, adminOrStaff } = require('../middleware/auth');
-const { storeAdminOnly, canAccessStore } = require('../middleware/storeAuth');
+const { authenticate, adminOrStaff } = require('../middleware/auth');
+const { storeAdminOnly } = require('../middleware/storeAuth');
 
 // Validation rules
 const createBookingValidation = [
@@ -34,19 +38,19 @@ const createBookingValidation = [
 ];
 
 const updateStatusValidation = [
-  body('status').isIn(['pending', 'confirmed', 'in_progress', 'completed', 'cancelled', 'no_show']).withMessage('Invalid status'),
+  body('status').isIn(['processing', 'finished', 'completed', 'cancelled', 'no_show']).withMessage('Invalid status'),
   body('adminNotes').optional().trim()
-];
-
-const updatePaymentValidation = [
-  body('paymentMethod').isIn(['online', 'in_person']).withMessage('Invalid payment method')
 ];
 
 // Customer routes
 router.post('/', authenticate, createBookingValidation, createBooking);
 router.get('/my-bookings', authenticate, getCustomerBookings);
 router.get('/calendar', authenticate, getCalendarBookings);
-router.put('/:bookingId/payment', authenticate, updatePaymentValidation, updatePaymentMethod);
+router.get('/:id/eligible-staff', authenticate, getEligibleBookingStaff);
+router.get('/:id/staff/:staffId', authenticate, getBookingStaffProfile);
+router.put('/:id/select-staff', authenticate, body('staffId').isMongoId().withMessage('Valid staff ID is required'), selectBookingStaff);
+router.post('/:id/confirm', authenticate, confirmBookingForPayment);
+router.put('/:id/cancel', authenticate, cancelBooking);
 router.delete('/:bookingId', authenticate, cancelBooking);
 
 // Admin routes (accessible by both admin and super_admin)
@@ -56,5 +60,6 @@ router.get('/all', authenticate, getAllBookings);
 router.get('/store/:storeId', authenticate, storeAdminOnly, getStoreBookings);
 router.put('/:bookingId/status', authenticate, storeAdminOnly, updateStatusValidation, updateBookingStatus);
 router.post('/validate-qr', authenticate, adminOrStaff, validateBookingQR);
+router.get('/:id', authenticate, getBookingById);
 
 module.exports = router;

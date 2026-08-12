@@ -5,7 +5,6 @@ const Pet = require('../models/Pet');
 const Product = require('../models/Product');
 const Store = require('../models/Store');
 const StockSyncService = require('../services/stockSyncService');
-const RevenueService = require('../services/revenueService');
 const { createNotification, notifyStoreStaff } = require('./notificationController');
 const User = require('../models/User');
 const Voucher = require('../models/Voucher');
@@ -409,6 +408,9 @@ const updateOrderStatus = async (req, res) => {
     const order = await Order.findById(req.params.id);
 
     if (!order) return res.status(404).json({ message: 'Order not found' });
+    if (status === 'cancelled' && order.paymentStatus === 'paid') {
+      return res.status(409).json({ message: 'A paid order cannot be cancelled until its PayMongo refund is processed.' });
+    }
 
     const VALID_NEXT_STATES = {
       'pending_payment': ['paid', 'cancelled', 'payment_failed'],
@@ -515,6 +517,9 @@ const cancelOrder = async (req, res) => {
     if (req.user.role === 'customer' && order.customer.toString() !== req.user._id.toString()) {
       return res.status(403).json({ message: 'Access denied' });
     }
+    if (order.paymentStatus === 'paid') {
+      return res.status(409).json({ message: 'A paid order must be refunded through PayMongo before cancellation.' });
+    }
 
     // Check if order can be cancelled - only pending orders can be cancelled by customers
     if (['confirmed', 'processing', 'shipped', 'delivered'].includes(order.status)) {
@@ -556,11 +561,6 @@ const cancelOrder = async (req, res) => {
       }
     }
 
-    // REVERSE revenue if cancelled after payment
-    if (order.isRevenueRecorded) {
-      await RevenueService.reversePayment('order', order._id);
-    }
-
     // Decrement voucher usage if order is cancelled
     if (order.voucher) {
       await Voucher.findByIdAndUpdate(order.voucher, { $inc: { usedCount: -1 } });
@@ -585,88 +585,6 @@ const cancelOrder = async (req, res) => {
     });
   } catch (error) {
     console.error('Cancel order error:', error);
-    res.status(500).json({ message: 'Server error' });
-  }
-};
-
-// Confirm order payment (Admin only)
-const confirmOrderPayment = async (req, res) => {
-  try {
-    const order = await Order.findById(req.params.id);
-
-    if (!order) {
-      return res.status(404).json({ message: 'Order not found' });
-    }
-
-    if (order.status === 'cancelled') {
-      return res.status(400).json({ message: 'Cannot confirm payment for a canceled order' });
-    }
-
-    // Only allow for certain payment statuses to be updated manually
-    if (order.paymentStatus === 'paid') {
-      return res.status(400).json({ message: 'Order is already marked as paid' });
-    }
-
-    const oldStatus = order.status;
-    order.paymentStatus = 'paid';
-
-    // If order was pending, automatically confirm it once paid
-    if (order.status === 'pending') {
-      order.status = 'confirmed';
-
-      // DEDUCT stock if moving from pending to confirmed
-      console.log(`🔄 Order ${order._id} paid and moving to confirmed. Deducting stock...`);
-      
-      // Auto-generate delivery links if it's a delivery order
-      if (order.deliveryMethod === 'delivery') {
-        await internalCreateDelivery({ orderId: order._id });
-      }
-
-      for (const item of order.items) {
-        if (item.itemType === 'product') {
-          try {
-            const product = await Product.findById(item.itemId);
-            if (product) {
-              const sellerStore = await Store.findOne({ owner: product.addedBy });
-              if (sellerStore) {
-                await StockSyncService.reduceStockOnOrder(item.itemId, item.quantity, sellerStore._id);
-              } else {
-                product.stockQuantity -= item.quantity;
-                await product.save();
-              }
-            }
-          } catch (stockError) {
-            console.error(`❌ Stock deduction failed for order ${order._id}:`, stockError.message);
-          }
-        } else if (item.itemType === 'pet') {
-          await Pet.findByIdAndUpdate(item.itemId, { 
-            isAvailable: false, 
-            status: 'reserved' 
-          });
-        }
-      }
-    }
-
-    // Record revenue and update store stats via central service
-    await RevenueService.recordPayment('order', order._id);
-
-    res.json({
-      message: 'Payment confirmed successfully',
-      order: await Order.findById(order._id).populate('customer', 'username firstName lastName email')
-    });
-
-    // Notify customer about payment confirmation
-    await createNotification({
-      recipient: order.customer,
-      sender: req.user._id,
-      type: 'order_status',
-      title: 'Payment Confirmed',
-      message: `Your payment for order #${order._id.toString().slice(-6)} has been confirmed.`,
-      relatedId: order._id,
-      relatedModel: 'Order'
-    });
-  } catch (error) {
-    console.error('Confirm order payment error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -801,7 +719,6 @@ module.exports = {
   createOrder,
   quoteOrder,
   updateOrderStatus,
-  confirmOrderPayment,
   confirmOrderPickup,
   cancelOrder,
   validateOrderQR

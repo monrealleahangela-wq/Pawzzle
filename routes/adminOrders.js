@@ -9,7 +9,6 @@ const {
 const {
   getOrderById,
   updateOrderStatus,
-  confirmOrderPayment,
   cancelOrder
 } = require('../controllers/orderController');
 const { authenticate, adminOrStaff } = require('../middleware/auth');
@@ -23,7 +22,6 @@ const updateOrderStatusValidation = [
 router.get('/', authenticate, adminOrStaff, getAllAdminOrders);
 router.get('/:id', authenticate, adminOrStaff, getOrderById);
 router.patch('/:id/status', authenticate, adminOrStaff, updateOrderStatusValidation, updateOrderStatus);
-router.patch('/:id/confirm-payment', authenticate, adminOrStaff, confirmOrderPayment);
 router.patch('/:id/cancel', authenticate, adminOrStaff, cancelOrder);
 
 module.exports = router;

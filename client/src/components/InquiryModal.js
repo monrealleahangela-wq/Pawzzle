@@ -177,8 +177,7 @@ const InquiryModal = ({ isOpen, onClose, pet, onSubmit }) => {
                      <h3 className="text-[10px] font-black uppercase tracking-[0.2em]">Settlement Settings</h3>
                   </div>
                   <span className="text-[9px] font-black text-primary-400 uppercase tracking-widest bg-white/5 px-3 py-1 rounded-full border border-white/5">
-                    {pet.paymentConfig === 'deposit_first' ? 'RESERVATION REQUIRED' : 
-                     pet.paymentConfig === 'cash_on_pickup_only' ? 'PAYMONGO PAYMENT REQUIRED' : 'FULL PAYMENT REQUIRED'}
+                    {pet.paymentConfig === 'deposit_first' ? 'RESERVATION REQUIRED' : 'FULL PAYMONGO PAYMENT'}
                   </span>
                </div>
 

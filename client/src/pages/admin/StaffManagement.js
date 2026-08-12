@@ -4,17 +4,23 @@ import { toast } from 'react-toastify';
 import { 
     Users, Plus, Edit2, Trash2, Power, Key, X, Check,
     ShoppingCart, Package, Calendar, ChevronDown, Search,
-    Shield, Clock, AlertCircle, RefreshCw, Lock, Truck,
-    Home, Activity, Layers, Star, MessageSquare, Heart, Eye, Wallet
+    Shield, AlertCircle, RefreshCw, Lock, Truck,
+    Home, Activity, Layers, Heart, Eye, Wallet
 } from 'lucide-react';
 import PermissionsManager from '../../components/admin/PermissionsManager';
+import SpecializedStaffFields, { defaultProfessionalProfile, SPECIALIZED_ROLES } from '../../components/admin/SpecializedStaffFields';
+import SpecializedStaffProfileModal from '../../components/admin/SpecializedStaffProfileModal';
 import { staffService } from '../../services/apiService';
 
 const STAFF_TYPES = [
     // Service Professionals
     { id: 'veterinarian', label: 'Veterinarian', icon: Shield, color: 'emerald', category: 'prof', description: 'Medical professional' },
+    { id: 'veterinary_technician', label: 'Veterinary Technician', icon: Heart, color: 'cyan', category: 'prof', description: 'Veterinary technical care' },
+    { id: 'veterinary_assistant', label: 'Veterinary Assistant', icon: Users, color: 'sky', category: 'prof', description: 'Veterinary care assistance' },
+    { id: 'veterinary_nurse', label: 'Veterinary Nurse', icon: Heart, color: 'teal', category: 'prof', description: 'Veterinary nursing care' },
+    { id: 'veterinary_laboratory_technician', label: 'Veterinary Laboratory Technician', icon: Activity, color: 'violet', category: 'prof', description: 'Veterinary laboratory services' },
     { id: 'groomer', label: 'Groomer', icon: Heart, color: 'pink', category: 'prof', description: 'Styling professional' },
-    { id: 'trainer', label: 'Trainer', icon: Activity, color: 'blue', category: 'prof', description: 'Behavior specialist' },
+    { id: 'trainer', label: 'Pet Trainer', icon: Activity, color: 'blue', category: 'prof', description: 'Pet training professional' },
     { id: 'boarding_specialist', label: 'Boarding', icon: Home, color: 'purple', category: 'prof', description: 'Facility specialist' },
     { id: 'medical_assistant', label: 'Med Asst.', icon: Shield, color: 'cyan', category: 'prof', description: 'Clinical support' },
     { id: 'pet_handler', label: 'Handler', icon: Users, color: 'indigo', category: 'prof', description: 'Safety professional' },
@@ -30,6 +36,10 @@ const STAFF_TYPES = [
 
 const TYPE_STYLES = {
     veterinarian: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+    veterinary_technician: 'bg-cyan-50 text-cyan-700 border-cyan-200',
+    veterinary_assistant: 'bg-sky-50 text-sky-700 border-sky-200',
+    veterinary_nurse: 'bg-teal-50 text-teal-700 border-teal-200',
+    veterinary_laboratory_technician: 'bg-violet-50 text-violet-700 border-violet-200',
     groomer: 'bg-pink-50 text-pink-700 border-pink-200',
     trainer: 'bg-blue-50 text-blue-700 border-blue-200',
     boarding_specialist: 'bg-purple-50 text-purple-700 border-purple-200',
@@ -48,7 +58,9 @@ const TYPE_STYLES = {
 
 const defaultForm = {
     firstName: '', lastName: '', email: '', username: '',
-    staffType: 'order_staff', phone: '', permissions: {},
+    staffType: 'order_staff', phone: '', permissions: {}, staffStatus: 'active', targetStoreId: '',
+    professionalProfile: defaultProfessionalProfile,
+    assignedServices: [],
     riderProfile: {
         staffId: '', accountStatus: 'active', vehicleType: '', plateNumber: '', licenseId: '', deliveryZone: '',
         earningRules: { baseRate: 0, incentive: 0, bonus: 0, deduction: 0 },
@@ -64,6 +76,10 @@ const StaffManagement = () => {
     const [filterType, setFilterType] = useState('');
     const [filterStatus, setFilterStatus] = useState('');
     const [filterBranch, setFilterBranch] = useState('');
+    const [filterSpecialty, setFilterSpecialty] = useState('');
+    const [filterService, setFilterService] = useState('');
+    const [filterAvailability, setFilterAvailability] = useState('');
+    const [configuration, setConfiguration] = useState({ services: [], enabledSpecializedRoles: [], store: null });
 
     // Modal states
     const [showModal, setShowModal] = useState(false);
@@ -76,6 +92,7 @@ const StaffManagement = () => {
     const [newPassword, setNewPassword] = useState('');
     const [riderDetails, setRiderDetails] = useState(null);
     const [loadingRider, setLoadingRider] = useState(false);
+    const [specialistProfile, setSpecialistProfile] = useState(null);
     
     // Modal tabs
     const [activeTab, setActiveTab] = useState('info'); // 'info' or 'permissions'
@@ -83,8 +100,10 @@ const StaffManagement = () => {
     const fetchStaff = async () => {
         setLoading(true);
         try {
-            const res = await staffService.getAll();
-            setStaff(res.data.staff);
+            const [staffResult, configResult] = await Promise.allSettled([staffService.getAll(), staffService.getConfiguration()]);
+            if (staffResult.status === 'rejected') throw staffResult.reason;
+            setStaff(staffResult.value.data.staff);
+            if (configResult.status === 'fulfilled') setConfiguration(configResult.value.data);
         } catch {
             toast.error('Failed to load staff');
         } finally {
@@ -96,12 +115,18 @@ const StaffManagement = () => {
 
     const openCreate = () => {
         setEditingStaff(null);
-        setForm(defaultForm);
+        setForm({ ...defaultForm, targetStoreId: configuration.store?._id || user.store?._id || user.store || '' });
         setActiveTab('info');
         setShowModal(true);
     };
 
-    const openEdit = (member) => {
+    const openEdit = async (member) => {
+        const branchId = member.store?._id || member.store;
+        try {
+            const configResponse = await staffService.getConfiguration({ storeId: branchId });
+            setConfiguration(configResponse.data);
+        } catch (error) { toast.error(error.response?.data?.message || 'Unable to load branch services'); return; }
+        const professional = member.professionalProfile || {};
         setEditingStaff(member);
         setForm({
             firstName: member.firstName,
@@ -110,8 +135,21 @@ const StaffManagement = () => {
             username: member.username,
             password: '',
             staffType: member.staffType,
+            targetStoreId: branchId,
             phone: member.phone || '',
+            staffStatus: member.staffType === 'delivery_rider' ? member.riderProfile?.accountStatus : (member.staffStatus || (member.isActive ? 'active' : 'inactive')),
             permissions: member.permissions || {},
+            assignedServices: (member.assignedServices || []).map(service => service._id),
+            professionalProfile: {
+                ...defaultProfessionalProfile,
+                ...professional,
+                qualifications: (professional.qualifications || []).join(', '),
+                certifications: (professional.certifications || []).map(item => item.name || item).join(', '),
+                training: (professional.training || []).join(', '),
+                areasOfExpertise: (professional.areasOfExpertise || []).join(', '),
+                registration: { ...defaultProfessionalProfile.registration, ...(professional.registration || {}) },
+                availability: { ...defaultProfessionalProfile.availability, ...(professional.availability || {}) }
+            },
             riderProfile: { ...defaultForm.riderProfile, ...(member.riderProfile || {}), earningRules: { ...defaultForm.riderProfile.earningRules, ...(member.riderProfile?.earningRules || {}) }, payoutMethod: { ...defaultForm.riderProfile.payoutMethod, ...(member.riderProfile?.payoutMethod || {}) } }
         });
         setActiveTab('info');
@@ -127,20 +165,51 @@ const StaffManagement = () => {
                     setSubmitting(false);
                     return;
                 }
+                const roleChanged = form.staffType !== editingStaff.staffType;
+                const branchChanged = String(form.targetStoreId) !== String(editingStaff.store?._id || editingStaff.store);
+                if (roleChanged && !window.confirm(`Change staff role from ${STAFF_TYPES.find(type=>type.id===editingStaff.staffType)?.label || editingStaff.staffType} to ${STAFF_TYPES.find(type=>type.id===form.staffType)?.label || form.staffType}?\n\nHistorical bookings and service records will remain associated with this staff member.`)) {
+                    setSubmitting(false);
+                    return;
+                }
+                if (branchChanged && !window.confirm(`Move this staff member to ${configuration.store?.name || 'the selected branch'}?\n\nHistorical bookings will remain linked to their original records. Assigned services must come from the new branch.`)) {
+                    setSubmitting(false);
+                    return;
+                }
+                let confirmUpcoming = false;
+                const previousStatus = editingStaff.staffType === 'delivery_rider' ? editingStaff.riderProfile?.accountStatus : (editingStaff.staffStatus || (editingStaff.isActive ? 'active' : 'inactive'));
+                const nextStatus = form.staffType === 'delivery_rider' ? form.riderProfile.accountStatus : form.staffStatus;
+                if ((previousStatus === 'active' && nextStatus !== 'active') || branchChanged) {
+                    const profileResponse = await staffService.getProfile(editingStaff._id);
+                    const upcomingCount = profileResponse.data.activity?.upcoming?.length || 0;
+                    if (upcomingCount && !window.confirm(`${upcomingCount} upcoming booking${upcomingCount === 1 ? '' : 's'} are assigned to this staff member.\n\nChanging the status prevents new assignments but preserves the existing bookings and history. Continue?`)) {
+                        setSubmitting(false);
+                        return;
+                    }
+                    confirmUpcoming = upcomingCount > 0;
+                }
                 await staffService.update(editingStaff._id, {
                     firstName: form.firstName,
                     lastName: form.lastName,
                     phone: form.phone,
                     staffType: form.staffType,
+                    targetStoreId: form.targetStoreId,
+                    staffStatus: form.staffStatus,
                     permissions: form.permissions,
-                    riderProfile: form.staffType === 'delivery_rider' ? form.riderProfile : undefined
+                    riderProfile: form.staffType === 'delivery_rider' ? form.riderProfile : undefined,
+                    professionalProfile: SPECIALIZED_ROLES.includes(form.staffType) ? form.professionalProfile : undefined,
+                    assignedServices: SPECIALIZED_ROLES.includes(form.staffType) ? form.assignedServices : [],
+                    confirmRoleChange: roleChanged,
+                    confirmBranchChange: branchChanged,
+                    confirmUpcoming
                 });
                 toast.success('Staff updated successfully');
             } else {
                 // Inject targetstoreId from current user
                 const payload = { 
                     ...form, 
-                    targetStoreId: user.store?._id || user.store 
+                    targetStoreId: form.targetStoreId || configuration.store?._id || user.store?._id || user.store,
+                    professionalProfile: SPECIALIZED_ROLES.includes(form.staffType) ? form.professionalProfile : undefined,
+                    assignedServices: SPECIALIZED_ROLES.includes(form.staffType) ? form.assignedServices : []
                 };
                 
                 if (!payload.targetStoreId) {
@@ -152,6 +221,13 @@ const StaffManagement = () => {
                 if (form.staffType === 'delivery_rider' && !window.confirm(`Create Delivery Rider?\n\nName: ${form.firstName} ${form.lastName}\nStaff ID: ${form.riderProfile.staffId}\nBranch: Assigned Store\nPayout Method: ${form.riderProfile.payoutMethod.type || 'Not configured'}\nStatus: ${form.riderProfile.accountStatus}`)) {
                     setSubmitting(false);
                     return;
+                }
+                if (SPECIALIZED_ROLES.includes(form.staffType)) {
+                    const serviceNames = configuration.services.filter(service=>form.assignedServices.includes(service._id)).map(service=>service.name).join(', ');
+                    if (!window.confirm(`Create Specialized Staff?\n\nName: ${form.firstName} ${form.lastName}\nRole: ${STAFF_TYPES.find(type=>type.id===form.staffType)?.label}\nSpecialty: ${form.professionalProfile.specialty}\nBranch: ${configuration.store?.name || 'Assigned Store'}\nAssigned Services: ${serviceNames || 'None'}\nStatus: ${form.staffStatus}`)) {
+                        setSubmitting(false);
+                        return;
+                    }
                 }
 
                 const res = await staffService.create(payload);
@@ -173,10 +249,32 @@ const StaffManagement = () => {
             const res = await staffService.toggleStatus(id);
             toast.success(res.data.message);
             fetchStaff();
-        } catch {
-            toast.error('Failed to toggle status');
+        } catch (error) {
+            if (error.response?.data?.requiresUpcomingConfirmation && window.confirm(`${error.response.data.message}\n\nContinue with deactivation?`)) {
+                try { const res = await staffService.toggleStatus(id, { confirmUpcoming: true }); toast.success(res.data.message); fetchStaff(); }
+                catch (retryError) { toast.error(retryError.response?.data?.message || 'Failed to toggle status'); }
+            } else if (!error.response?.data?.requiresUpcomingConfirmation) toast.error(error.response?.data?.message || 'Failed to toggle status');
         }
     };
+
+    const openSpecialistProfile = async member => {
+        try { const response = await staffService.getProfile(member._id); setSpecialistProfile(response.data); }
+        catch (error) { toast.error(error.response?.data?.message || 'Unable to load staff profile'); }
+    };
+
+    const changeFormBranch = async storeId => {
+        try {
+            const response = await staffService.getConfiguration({ storeId });
+            setConfiguration(response.data);
+            setForm(current => ({ ...current, targetStoreId: storeId, assignedServices: [] }));
+        } catch (error) { toast.error(error.response?.data?.message || 'Unable to load branch services'); }
+    };
+
+    const visibleStaffTypes = STAFF_TYPES.filter(type =>
+        !SPECIALIZED_ROLES.includes(type.id)
+        || configuration.enabledSpecializedRoles.includes(type.id)
+        || staff.some(member => member.staffType === type.id)
+    );
 
     const openRiderDetails = async (member) => {
         setLoadingRider(true);
@@ -228,12 +326,20 @@ const StaffManagement = () => {
 
     const filtered = staff.filter(s => {
         const matchSearch = !searchQuery ||
-            `${s.firstName} ${s.lastName} ${s.email} ${s.username} ${s.riderProfile?.staffId || ''} ${s.store?.name || ''}`.toLowerCase().includes(searchQuery.toLowerCase());
-        const matchType = !filterType || s.staffType === filterType;
-        const currentStatus = s.staffType === 'delivery_rider' ? s.riderProfile?.accountStatus : (s.isActive ? 'active' : 'inactive');
+            `${s.firstName} ${s.lastName} ${s.email} ${s.username} ${s.riderProfile?.staffId || s.professionalProfile?.staffId || ''} ${s.professionalProfile?.specialty || ''} ${(s.assignedServices || []).map(service=>service.name).join(' ')} ${s.store?.name || ''}`.toLowerCase().includes(searchQuery.toLowerCase());
+        const matchType = !filterType || (filterType === 'veterinary_staff'
+            ? ['veterinarian','veterinary_technician','veterinary_assistant','veterinary_nurse','veterinary_laboratory_technician'].includes(s.staffType)
+            : s.staffType === filterType);
+        const currentStatus = s.staffType === 'delivery_rider' ? s.riderProfile?.accountStatus : (s.staffStatus || (s.isActive ? 'active' : 'inactive'));
         const matchStatus = !filterStatus || currentStatus === filterStatus;
         const matchBranch = !filterBranch || (s.store?._id || s.store) === filterBranch;
-        return matchSearch && matchType && matchStatus && matchBranch;
+        const matchSpecialty = !filterSpecialty || s.professionalProfile?.specialty === filterSpecialty;
+        const matchService = !filterService || (s.assignedServices || []).some(service=>service._id===filterService);
+        const dayKey = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'][new Date().getDay()];
+        const matchAvailability = !filterAvailability || (filterAvailability === 'available_today'
+            ? currentStatus === 'active' && s.professionalProfile?.availability?.[dayKey]?.available
+            : !s.professionalProfile?.availability?.[dayKey]?.available);
+        return matchSearch && matchType && matchStatus && matchBranch && matchSpecialty && matchService && matchAvailability;
     });
 
     const counts = {
@@ -329,13 +435,14 @@ const StaffManagement = () => {
                                 className="w-full pl-16 pr-10 py-4 bg-slate-800 text-white text-[10px] font-black uppercase tracking-widest rounded-2xl outline-none focus:ring-2 focus:ring-primary-500/20 appearance-none transition-all cursor-pointer font-sans"
                             >
                                 <option value="" className="bg-slate-900 text-white font-black">ALL ROLES: VIEW ALL</option>
+                                {visibleStaffTypes.some(type=>['veterinarian','veterinary_technician','veterinary_assistant','veterinary_nurse','veterinary_laboratory_technician'].includes(type.id))&&<option value="veterinary_staff" className="bg-slate-900 text-white font-black">VETERINARY STAFF</option>}
                                 <optgroup label="SERVICE PROFESSIONALS" className="bg-slate-900 text-primary-500 font-black">
-                                    {STAFF_TYPES.filter(t => t.category === 'prof').map(t => (
+                                    {visibleStaffTypes.filter(t => t.category === 'prof').map(t => (
                                         <option key={t.id} value={t.id} className="bg-slate-900 text-white font-black">{t.label.toUpperCase()}</option>
                                     ))}
                                 </optgroup>
                                 <optgroup label="OPERATIONAL SUPPORT" className="bg-slate-900 text-secondary-500 font-black">
-                                    {STAFF_TYPES.filter(t => t.category === 'ops').map(t => (
+                                    {visibleStaffTypes.filter(t => t.category === 'ops').map(t => (
                                         <option key={t.id} value={t.id} className="bg-slate-900 text-white font-black">{t.label.toUpperCase()}</option>
                                     ))}
                                 </optgroup>
@@ -344,6 +451,11 @@ const StaffManagement = () => {
                         </div>
                         <div className="md:col-span-2"><select value={filterStatus} onChange={e=>setFilterStatus(e.target.value)} className="w-full h-full min-h-12 px-3 bg-slate-800 text-white text-[10px] font-black uppercase rounded-2xl"><option value="">All Statuses</option><option value="active">Active</option><option value="inactive">Inactive</option><option value="suspended">Suspended</option></select></div>
                         <div className="md:col-span-3"><select value={filterBranch} onChange={e=>setFilterBranch(e.target.value)} className="w-full h-full min-h-12 px-3 bg-slate-800 text-white text-[10px] font-black uppercase rounded-2xl"><option value="">All Branches</option>{Array.from(new Map(staff.filter(s=>s.store).map(s=>[s.store._id||s.store,s.store.name||'Assigned Store'])).entries()).map(([id,name])=><option key={id} value={id}>{name}</option>)}</select></div>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-2">
+                        <select value={filterSpecialty} onChange={event=>setFilterSpecialty(event.target.value)} className="min-h-10 px-3 bg-slate-800 text-white text-[10px] font-black uppercase rounded-xl"><option value="">All Specialties</option>{[...new Set(staff.map(member=>member.professionalProfile?.specialty).filter(Boolean))].sort().map(value=><option key={value} value={value}>{value}</option>)}</select>
+                        <select value={filterService} onChange={event=>setFilterService(event.target.value)} className="min-h-10 px-3 bg-slate-800 text-white text-[10px] font-black uppercase rounded-xl"><option value="">All Assigned Services</option>{configuration.services.map(service=><option key={service._id} value={service._id}>{service.name}</option>)}</select>
+                        <select value={filterAvailability} onChange={event=>setFilterAvailability(event.target.value)} className="min-h-10 px-3 bg-slate-800 text-white text-[10px] font-black uppercase rounded-xl"><option value="">Any Availability</option><option value="available_today">Available Today</option><option value="unavailable_today">Unavailable Today</option></select>
                     </div>
                 </div>
 
@@ -375,8 +487,9 @@ const StaffManagement = () => {
                                 </thead>
                                 <tbody className="divide-y divide-slate-50">
                                     {filtered.map(member => {
-                                        const typeInfo = STAFF_TYPES.find(t => t.id === member.staffType);
-                                        const Icon = typeInfo?.icon || Shield;
+                                 const typeInfo = STAFF_TYPES.find(t => t.id === member.staffType);
+                                 const Icon = typeInfo?.icon || Shield;
+                                        const memberStatus = member.staffType === 'delivery_rider' ? member.riderProfile?.accountStatus : (member.staffStatus || (member.isActive ? 'active' : 'inactive'));
                                         return (
                                             <tr key={member._id} className={`hover:bg-slate-50/50 transition-colors ${!member.isActive ? 'opacity-60' : ''}`}>
                                                 <td className="px-6 py-4">
@@ -387,7 +500,7 @@ const StaffManagement = () => {
                                                         <div>
                                                             <p className="font-black text-slate-900 text-[13px] leading-tight">{member.firstName} {member.lastName}</p>
                                                             <p className="text-slate-400 text-[10px] font-bold uppercase tracking-tighter">@{member.username}</p>
-                                                            <p className="text-slate-400 text-[9px]">{member.riderProfile?.staffId || member.store?.name} · {new Date(member.createdAt).toLocaleDateString()}</p>
+                                                            <p className="text-slate-400 text-[9px]">{member.riderProfile?.staffId || member.professionalProfile?.staffId || member.store?.name} · {new Date(member.createdAt).toLocaleDateString()}</p>
                                                         </div>
                                                     </div>
                                                 </td>
@@ -400,12 +513,14 @@ const StaffManagement = () => {
                                                         <Icon className="h-3.5 w-3.5" />
                                                         {typeInfo?.label}
                                                     </span>
+                                                    {member.professionalProfile?.specialty&&<p className="text-[9px] font-bold text-slate-500 mt-1">{member.professionalProfile.specialty}</p>}
+                                                    {member.assignedServices?.length>0&&<p className="text-[8px] text-slate-400 mt-0.5 max-w-44 truncate">{member.assignedServices.map(service=>service.name).join(', ')}</p>}
                                                 </td>
                                                 <td className="px-6 py-4 hidden md:table-cell">
                                                     <div className="flex flex-col gap-1">
-                                                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest ${member.isActive ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-600'}`}>
-                                                            <span className={`w-1.5 h-1.5 rounded-full ${member.isActive ? 'bg-emerald-500' : 'bg-rose-400'}`} />
-                                                            {member.staffType === 'delivery_rider' ? member.riderProfile?.accountStatus : (member.isActive ? 'Active' : 'Offline')}
+                                                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest ${memberStatus === 'active' ? 'bg-emerald-50 text-emerald-700' : memberStatus === 'suspended' ? 'bg-amber-50 text-amber-700' : 'bg-rose-50 text-rose-600'}`}>
+                                                            <span className={`w-1.5 h-1.5 rounded-full ${memberStatus === 'active' ? 'bg-emerald-500' : memberStatus === 'suspended' ? 'bg-amber-500' : 'bg-rose-400'}`} />
+                                                            {memberStatus}
                                                         </span>
                                                         {member.isActive && member.lastSeen && (new Date() - new Date(member.lastSeen)) < 5 * 60 * 1000 && (
                                                             <span className="text-[7px] font-black text-emerald-500 uppercase tracking-widest ml-1 animate-pulse">Live Now</span>
@@ -415,6 +530,7 @@ const StaffManagement = () => {
                                                 <td className="px-6 py-4 text-right">
                                                     <div className="flex items-center justify-end gap-1">
                                                         <button onClick={() => openEdit(member)} className="p-2 rounded-xl text-slate-400 hover:bg-slate-100 hover:text-slate-900 transition-all"><Edit2 className="h-4 w-4" /></button>
+                                                        {SPECIALIZED_ROLES.includes(member.staffType)&&<button onClick={()=>openSpecialistProfile(member)} title="View professional profile" className="p-2 rounded-xl text-slate-400 hover:bg-emerald-50 hover:text-emerald-600 transition-all"><Eye className="h-4 w-4" /></button>}
                                                         {member.staffType === 'delivery_rider' && <button onClick={() => openRiderDetails(member)} disabled={loadingRider} title="View rider earnings and delivery history" className="p-2 rounded-xl text-slate-400 hover:bg-orange-50 hover:text-orange-600 transition-all"><Eye className="h-4 w-4" /></button>}
                                                         <button onClick={() => { setResetTarget(member); setNewPassword(''); }} className="p-2 rounded-xl text-slate-400 hover:bg-secondary-50 hover:text-primary-600 transition-all"><Key className="h-4 w-4" /></button>
                                                         <button onClick={() => handleToggle(member._id)} className={`p-2 rounded-xl transition-all ${member.isActive ? 'text-slate-400 hover:bg-rose-50 hover:text-rose-600' : 'text-slate-400 hover:bg-emerald-50 hover:text-emerald-600'}`}><Power className="h-4 w-4" /></button>
@@ -430,9 +546,9 @@ const StaffManagement = () => {
 
                         {/* Mobile Card View (Compact List) */}
                         <div className="sm:hidden divide-y divide-slate-100">
-                            {filtered.map(member => {
-                                const typeInfo = STAFF_TYPES.find(t => t.id === member.staffType);
-                                const Icon = typeInfo?.icon || Shield;
+                             {filtered.map(member => {
+                                 const typeInfo = STAFF_TYPES.find(t => t.id === member.staffType);
+                                 const mobileStatus = member.staffType === 'delivery_rider' ? member.riderProfile?.accountStatus : (member.staffStatus || (member.isActive ? 'active' : 'inactive'));
                                 return (
                                     <div key={member._id} className={`p-3 flex items-center justify-between gap-3 ${!member.isActive ? 'opacity-60' : ''}`}>
                                         <div className="flex items-center gap-3 min-w-0">
@@ -440,10 +556,11 @@ const StaffManagement = () => {
                                                 {member.firstName[0]}{member.lastName[0]}
                                             </div>
                                             <div className="min-w-0">
-                                                <p className="font-black text-slate-900 text-[12px] truncate leading-tight">{member.firstName} {member.lastName}</p>
+                                                 <p className="font-black text-slate-900 text-[12px] truncate leading-tight">{member.firstName} {member.lastName}</p>
+                                                 {member.professionalProfile?.specialty&&<p className="text-[8px] text-slate-400 truncate">{member.professionalProfile.specialty}</p>}
                                                 <div className="flex items-center gap-2 mt-0.5">
-                                                    <span className={`text-[8px] font-black uppercase tracking-tighter ${member.isActive ? 'text-emerald-600' : 'text-rose-500'}`}>
-                                                        {member.isActive ? 'ACTIVE' : 'OFFLINE'}
+                                                     <span className={`text-[8px] font-black uppercase tracking-tighter ${mobileStatus === 'active' ? 'text-emerald-600' : mobileStatus === 'suspended' ? 'text-amber-600' : 'text-rose-500'}`}>
+                                                         {mobileStatus}
                                                     </span>
                                                     <span className="text-slate-300">/</span>
                                                     <span className={`text-[8px] font-black uppercase tracking-tighter ${TYPE_STYLES[member.staffType].split(' ')[1].replace('700', '600')}`}>
@@ -453,7 +570,8 @@ const StaffManagement = () => {
                                             </div>
                                         </div>
                                         <div className="flex items-center gap-1 shrink-0">
-                                            <button onClick={() => openEdit(member)} className="p-2 bg-slate-50 text-slate-400 rounded-lg"><Edit2 className="h-3 w-3" /></button>
+                                             <button onClick={() => openEdit(member)} className="p-2 bg-slate-50 text-slate-400 rounded-lg"><Edit2 className="h-3 w-3" /></button>
+                                             {SPECIALIZED_ROLES.includes(member.staffType)&&<button onClick={()=>openSpecialistProfile(member)} className="p-2 bg-emerald-50 text-emerald-500 rounded-lg"><Eye className="h-3 w-3" /></button>}
                                             {member.staffType === 'delivery_rider' && <button onClick={() => openRiderDetails(member)} className="p-2 bg-orange-50 text-orange-500 rounded-lg"><Eye className="h-3 w-3" /></button>}
                                             <button onClick={() => handleToggle(member._id)} className={`p-2 rounded-lg ${member.isActive ? 'bg-rose-50 text-rose-400' : 'bg-emerald-50 text-emerald-400'}`}><Power className="h-3 w-3" /></button>
                                             <button onClick={() => handleDelete(member._id, `${member.firstName} ${member.lastName}`)} className="p-2 bg-rose-50 text-rose-400 rounded-lg"><Trash2 className="h-3 w-3" /></button>
@@ -513,13 +631,13 @@ const StaffManagement = () => {
                                             <div>
                                                 <p className="text-[9px] font-black text-primary-600 uppercase mb-3 px-1">Service Professionals</p>
                                                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                                                    {STAFF_TYPES.filter(t => t.category === 'prof').map(t => {
+                                                    {visibleStaffTypes.filter(t => t.category === 'prof').map(t => {
                                                         const Icon = t.icon;
                                                         return (
                                                             <button
                                                                 key={t.id}
                                                                 type="button"
-                                                                onClick={() => setForm(f => ({ ...f, staffType: t.id }))}
+                                                                onClick={() => setForm(f => ({ ...f, staffType: t.id, assignedServices: f.staffType === t.id ? f.assignedServices : [] }))}
                                                                 className={`flex flex-col items-center gap-2 p-4 rounded-2xl border-2 transition-all ${form.staffType === t.id ? 'bg-primary-600 border-primary-600 text-white shadow-lg' : 'bg-slate-50 border-slate-100 text-slate-500 hover:border-slate-200'}`}
                                                             >
                                                                 <Icon className="h-5 w-5" />
@@ -533,13 +651,13 @@ const StaffManagement = () => {
                                             <div>
                                                 <p className="text-[9px] font-black text-slate-900 uppercase mb-3 px-1">Operational Support</p>
                                                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                                                    {STAFF_TYPES.filter(t => t.category === 'ops').map(t => {
+                                                    {visibleStaffTypes.filter(t => t.category === 'ops').map(t => {
                                                         const Icon = t.icon;
                                                         return (
                                                             <button
                                                                 key={t.id}
                                                                 type="button"
-                                                                onClick={() => setForm(f => ({ ...f, staffType: t.id }))}
+                                                                onClick={() => setForm(f => ({ ...f, staffType: t.id, assignedServices: f.staffType === t.id ? f.assignedServices : [] }))}
                                                                 className={`flex flex-col items-center gap-2 p-4 rounded-2xl border-2 transition-all ${form.staffType === t.id ? 'bg-slate-900 border-slate-900 text-white shadow-lg' : 'bg-slate-50 border-slate-100 text-slate-500 hover:border-slate-200'}`}
                                                             >
                                                                 <Icon className="h-5 w-5" />
@@ -557,6 +675,13 @@ const StaffManagement = () => {
                                             </p>
                                         </div>
                                     </div>
+
+                                    <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400">Assigned Branch *
+                                        <select required value={form.targetStoreId || ''} onChange={event=>changeFormBranch(event.target.value)} className="mt-2 w-full h-10 px-3 rounded-xl border border-slate-200 bg-white text-xs font-bold normal-case tracking-normal">
+                                            <option value="">Select branch</option>
+                                            {(configuration.branches || []).map(branch=><option key={branch._id} value={branch._id}>{branch.name}</option>)}
+                                        </select>
+                                    </label>
 
                                     {/* Name fields */}
                                     <div className="grid grid-cols-2 gap-4">
@@ -635,6 +760,8 @@ const StaffManagement = () => {
                                             </div>
                                         </>
                                     )}
+
+                                    <SpecializedStaffFields form={form} setForm={setForm} services={configuration.services}/>
 
                                     {form.staffType === 'delivery_rider' && (
                                         <div className="rounded-2xl border border-orange-100 bg-orange-50/40 p-4 space-y-4">
@@ -719,6 +846,8 @@ const StaffManagement = () => {
                     </div>
                 </div>
             )}
+
+            <SpecializedStaffProfileModal data={specialistProfile} onClose={()=>setSpecialistProfile(null)}/>
 
             {/* Reset Password Modal */}
             {resetTarget && (

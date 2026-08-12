@@ -1,749 +1,429 @@
-const axios = require('axios');
 const crypto = require('crypto');
 const Order = require('../models/Order');
-const Store = require('../models/Store');
+const Booking = require('../models/Booking');
 const Product = require('../models/Product');
 const Pet = require('../models/Pet');
 const AdoptionRequest = require('../models/AdoptionRequest');
-const StockSyncService = require('../services/stockSyncService');
-const RevenueService = require('../services/revenueService');
-const { createNotification } = require('./notificationController');
-const { internalCreateDelivery } = require('./deliveryController');
+const PaymentWebhookEvent = require('../models/PaymentWebhookEvent');
+const PayMongo = require('../services/paymongoService');
+const { prepareForPayment } = require('../services/bookingLifecycleService');
+const {
+  amountCentavos,
+  reconcilePaidSession,
+  markSessionFailed,
+  finalizeOrder,
+  finalizeBooking,
+  finalizeAdoption
+} = require('../services/paymentReconciliationService');
 
-const PAYMONGO_SECRET_KEY = process.env.PAYMONGO_SECRET_KEY;
 const PAYMONGO_WEBHOOK_SECRET = process.env.PAYMONGO_WEBHOOK_SECRET;
 const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER;
 let FRONTEND_URL = process.env.FRONTEND_URL;
 if (!FRONTEND_URL || FRONTEND_URL.includes('localhost')) {
-    FRONTEND_URL = isProduction ? 'https://pawzzle.io' : 'http://localhost:3000';
+  FRONTEND_URL = isProduction ? 'https://pawzzle.io' : 'http://localhost:3000';
 }
 
-const expectedAmountCentavos = (record, type) => {
-    const total = type === 'booking' ? record.totalPrice : record.totalAmount;
-    return Math.round(Number(total) * 100);
+const sessionHistory = record => record.paymentDetails?.sessionHistory || [];
+
+const saveCheckoutSession = async (record, type, session, version) => {
+  if (!record.paymentDetails) record.paymentDetails = {};
+  if (!Array.isArray(record.paymentDetails.sessionHistory)) record.paymentDetails.sessionHistory = [];
+  const createdAt = session.attributes?.created_at
+    ? new Date(session.attributes.created_at * 1000)
+    : new Date();
+  record.paymentDetails.sessionId = session.id;
+  record.paymentDetails.checkoutUrl = session.attributes.checkout_url;
+  record.paymentDetails.sessionStatus = session.attributes.status || 'active';
+  record.paymentDetails.sessionVersion = version;
+  record.paymentDetails.sessionCreatedAt = createdAt;
+  if (type !== 'adoption') record.paymentDetails.failureReason = undefined;
+  if (!sessionHistory(record).some(row => row.sessionId === session.id)) {
+    record.paymentDetails.sessionHistory.push({
+      sessionId: session.id,
+      checkoutUrl: session.attributes.checkout_url,
+      status: session.attributes.status || 'active',
+      createdAt
+    });
+  }
+  if (type === 'adoption') {
+    record.paymentDetails.method = 'paymongo';
+    record.paymentDetails.paymentStatus = 'payment_pending';
+  } else {
+    record.paymentMethod = 'paymongo';
+    record.paymentStatus = 'pending';
+  }
+  await record.save();
 };
 
-const paymentAmountMatches = (record, type, providerAmount) =>
-    Number(providerAmount) === expectedAmountCentavos(record, type);
+const updateSessionStatus = async (record, status) => {
+  record.paymentDetails.sessionStatus = status;
+  const row = sessionHistory(record).find(item => item.sessionId === record.paymentDetails.sessionId);
+  if (row) row.status = status;
+  await record.save();
+};
 
-/**
- * Create a PayMongo Checkout Session
- */
+const getReusableSession = async record => {
+  const sessionId = record.paymentDetails?.sessionId;
+  if (!sessionId || record.paymentDetails?.sessionStatus === 'expired') return null;
+  try {
+    const session = await PayMongo.getCheckoutSession(sessionId);
+    const paidPayment = PayMongo.getPaidPayment(session);
+    if (paidPayment) {
+      await reconcilePaidSession(session);
+      const error = new Error('This transaction is already paid.');
+      error.statusCode = 409;
+      throw error;
+    }
+    if (session.attributes?.status === 'active') return session;
+    await updateSessionStatus(record, 'expired');
+    return null;
+  } catch (error) {
+    if (error.statusCode) throw error;
+    if (error.response?.status === 404) return null;
+    throw error;
+  }
+};
+
+const ensureCheckoutSession = async ({ record, type, attributes }) => {
+  const existing = await getReusableSession(record);
+  if (existing) {
+    if (type === 'adoption') record.paymentDetails.paymentStatus = 'payment_pending';
+    else record.paymentStatus = 'pending';
+    await record.save();
+    return existing;
+  }
+
+  const version = Number(record.paymentDetails?.sessionVersion || 0) + 1;
+  const session = await PayMongo.createCheckoutSession({
+    ...attributes,
+    metadata: {
+      ...(attributes.metadata || {}),
+      record_type: type,
+      record_id: String(record._id)
+    }
+  }, PayMongo.buildCheckoutIdempotencyKey(type, record._id, version));
+  await saveCheckoutSession(record, type, session, version);
+  return session;
+};
+
 const createCheckoutSession = async (req, res) => {
-    try {
-        if (!PAYMONGO_SECRET_KEY) return res.status(503).json({ message: 'PayMongo is not configured.' });
-        const { orderId } = req.params;
-        const order = await Order.findById(orderId).populate('customer').populate('store');
-
-        if (!order) {
-            return res.status(404).json({ message: 'Order not found' });
-        }
-
-        if (order.status === 'cancelled') {
-            return res.status(400).json({ message: 'Cannot pay for a canceled order' });
-        }
-        if (order.paymentStatus === 'paid') return res.status(409).json({ message: 'This order is already paid.' });
-
-        if (order.customer._id.toString() !== req.user.id && req.user.role !== 'super_admin') {
-            return res.status(403).json({ message: 'Access denied' });
-        }
-
-        for (const item of order.items) {
-            const current = item.itemType === 'product'
-                ? await Product.findById(item.itemId).select('price stockQuantity isActive')
-                : await Pet.findById(item.itemId).select('price isAvailable');
-            const unavailable = !current
-                || Number(current.price) !== Number(item.price)
-                || (item.itemType === 'product' && (!current.isActive || current.stockQuantity < item.quantity))
-                || (item.itemType === 'pet' && !current.isAvailable);
-            if (unavailable) {
-                return res.status(409).json({ message: 'An item price or availability changed. Please recreate the checkout before paying.' });
-            }
-        }
-
-        // PayMongo must receive the exact final total stored by the authoritative
-        // server-side pricing calculation. Reject any inconsistent record.
-        const hasBreakdown = Number(order.pricingBreakdown?.subtotal) > 0 || Number(order.totalAmount) === 0;
-        const authoritativeTotal = hasBreakdown ? Number(order.pricingBreakdown.finalTotal) : Number(order.totalAmount);
-        if (!Number.isFinite(authoritativeTotal) || authoritativeTotal <= 0
-            || Math.abs(authoritativeTotal - Number(order.totalAmount)) > 0.009) {
-            return res.status(409).json({ message: 'Order amount changed or is inconsistent. Please recreate the checkout.' });
-        }
-        const amountInCentavos = Math.round(authoritativeTotal * 100);
-
-        const data = {
-            data: {
-                attributes: {
-                    send_email_receipt: true,
-                    show_description: true,
-                    show_line_items: true,
-                    description: `Payment for Order #${order.orderNumber}`,
-                    line_items: [{
-                        amount: amountInCentavos,
-                        currency: 'PHP',
-                        name: `Order ${order.orderNumber}`,
-                        quantity: 1
-                    }],
-                    payment_method_types: ['card', 'gcash', 'paymaya', 'dob', 'dob_ubp'],
-                    success_url: `${FRONTEND_URL}/orders/${order._id}?payment=success`,
-                    cancel_url: `${FRONTEND_URL}/checkout?payment=cancelled&type=order&id=${order._id}`,
-                    reference_number: order.orderNumber
-                }
-            }
-        };
-
-        const response = await axios.post('https://api.paymongo.com/v1/checkout_sessions', data, {
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Basic ${Buffer.from(PAYMONGO_SECRET_KEY + ':').toString('base64')}`
-            }
-        });
-
-        const session = response.data.data;
-
-        // Save session info to order
-        order.paymentDetails = {
-            sessionId: session.id,
-            checkoutUrl: session.attributes.checkout_url
-        };
-        order.paymentMethod = 'paymongo';
-        order.paymentStatus = 'pending';
-        if (!order.invoiceSnapshot?.issuedAt) {
-            const address = order.store?.contactInfo?.address;
-            order.invoiceSnapshot = {
-                issuedAt: new Date(),
-                sellerName: order.store?.name || '',
-                sellerAddress: address ? [address.street, address.barangay, address.city, address.state, address.zipCode].filter(Boolean).join(', ') : '',
-                sellerTaxStatus: order.pricingBreakdown?.taxStatus || 'non_vat',
-                pricingBreakdown: order.pricingBreakdown?.toObject?.() || order.pricingBreakdown || {}
-            };
-        }
-        await order.save();
-
-        res.json({
-            checkoutUrl: session.attributes.checkout_url
-        });
-    } catch (error) {
-        console.error('PayMongo Create Session Error:', error.response?.data || error.message);
-        res.status(500).json({
-            message: 'Failed to create payment session',
-            error: error.response?.data?.errors?.[0]?.detail || error.message
-        });
+  try {
+    const order = await Order.findById(req.params.orderId).populate('customer').populate('store');
+    if (!order) return res.status(404).json({ message: 'Order not found.' });
+    if (order.status === 'cancelled') return res.status(400).json({ message: 'Cannot pay for a cancelled order.' });
+    if (order.paymentStatus === 'paid') return res.status(409).json({ message: 'This order is already paid.' });
+    if (String(order.customer._id) !== String(req.user._id) && req.user.role !== 'super_admin') {
+      return res.status(403).json({ message: 'Access denied.' });
     }
+
+    for (const item of order.items) {
+      const current = item.itemType === 'product'
+        ? await Product.findById(item.itemId).select('price stockQuantity isActive')
+        : await Pet.findById(item.itemId).select('price isAvailable');
+      const unavailable = !current
+        || Number(current.price) !== Number(item.price)
+        || (item.itemType === 'product' && (!current.isActive || current.stockQuantity < item.quantity))
+        || (item.itemType === 'pet' && !current.isAvailable);
+      if (unavailable) return res.status(409).json({ message: 'An item price or availability changed. Please recreate checkout.' });
+    }
+
+    const total = Number(order.pricingBreakdown?.finalTotal ?? order.totalAmount);
+    if (!Number.isFinite(total) || total <= 0 || Math.abs(total - Number(order.totalAmount)) > 0.009) {
+      return res.status(409).json({ message: 'Order amount is inconsistent. Please recreate checkout.' });
+    }
+
+    if (!order.invoiceSnapshot?.issuedAt) {
+      const address = order.store?.contactInfo?.address;
+      order.invoiceSnapshot = {
+        issuedAt: new Date(),
+        sellerName: order.store?.name || '',
+        sellerAddress: address ? [address.street, address.barangay, address.city, address.state, address.zipCode].filter(Boolean).join(', ') : '',
+        sellerTaxStatus: order.pricingBreakdown?.taxStatus || 'non_vat',
+        pricingBreakdown: order.pricingBreakdown?.toObject?.() || order.pricingBreakdown || {}
+      };
+    }
+
+    const session = await ensureCheckoutSession({
+      record: order,
+      type: 'order',
+      attributes: {
+        send_email_receipt: true,
+        show_description: true,
+        show_line_items: true,
+        description: `Payment for Order #${order.orderNumber}`,
+        line_items: [{ amount: amountCentavos(order, 'order'), currency: 'PHP', name: `Order ${order.orderNumber}`, quantity: 1 }],
+        payment_method_types: ['card', 'gcash', 'paymaya', 'dob', 'dob_ubp'],
+        success_url: `${FRONTEND_URL}/orders/${order._id}?payment=success`,
+        cancel_url: `${FRONTEND_URL}/checkout?payment=cancelled&type=order&id=${order._id}`,
+        reference_number: order.orderNumber
+      }
+    });
+    res.json({ checkoutUrl: session.attributes.checkout_url });
+  } catch (error) {
+    console.error('PayMongo order checkout error:', error.response?.data || error.message);
+    res.status(error.statusCode || 500).json({ message: error.message || 'Failed to create payment session.' });
+  }
 };
 
-/**
- * Create a PayMongo Checkout Session for a Booking
- */
 const createBookingCheckoutSession = async (req, res) => {
-    try {
-        if (!PAYMONGO_SECRET_KEY) return res.status(503).json({ message: 'PayMongo is not configured.' });
-        const { bookingId } = req.params;
-        const Booking = require('../models/Booking');
-        const booking = await Booking.findById(bookingId).populate('customer').populate('service').populate('store');
-
-        if (!booking) {
-            return res.status(404).json({ message: 'Booking not found' });
-        }
-
-        if (booking.status === 'cancelled') {
-            return res.status(400).json({ message: 'Cannot pay for a canceled booking' });
-        }
-        if (booking.customer._id.toString() !== req.user.id && req.user.role !== 'super_admin') return res.status(403).json({ message: 'Access denied' });
-        if (booking.paymentStatus === 'paid') return res.status(409).json({ message: 'This booking is already paid.' });
-
-        const hasBreakdown = Number(booking.pricingBreakdown?.subtotal) > 0 || Number(booking.totalPrice) === 0;
-        const authoritativeTotal = hasBreakdown ? Number(booking.pricingBreakdown.finalPrice) : Number(booking.totalPrice);
-        if (!Number.isFinite(authoritativeTotal) || authoritativeTotal <= 0
-            || Math.abs(authoritativeTotal - Number(booking.totalPrice)) > 0.009) {
-            return res.status(409).json({ message: 'Booking amount changed or is inconsistent. Please recreate the booking.' });
-        }
-        const amountInCentavos = Math.round(authoritativeTotal * 100);
-        const data = {
-            data: {
-                attributes: {
-                    send_email_receipt: true,
-                    show_description: true,
-                    show_line_items: true,
-                    description: `Booking for ${booking.service.name}`,
-                    line_items: [{
-                        amount: amountInCentavos,
-                        currency: 'PHP',
-                        name: booking.service.name,
-                        quantity: 1
-                    }],
-                    payment_method_types: ['card', 'gcash', 'paymaya', 'dob', 'dob_ubp'],
-                    success_url: `${FRONTEND_URL}/bookings?payment=success&id=${booking._id}`,
-                    cancel_url: `${FRONTEND_URL}/bookings?payment=cancelled&type=booking&id=${booking._id}`,
-                    reference_number: `BK-${booking._id.toString().slice(-8).toUpperCase()}`
-                }
-            }
-        };
-
-        const response = await axios.post('https://api.paymongo.com/v1/checkout_sessions', data, {
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Basic ${Buffer.from(PAYMONGO_SECRET_KEY + ':').toString('base64')}`
-            }
-        });
-
-        const session = response.data.data;
-        booking.paymentDetails = {
-            sessionId: session.id,
-            checkoutUrl: session.attributes.checkout_url
-        };
-        booking.paymentMethod = 'paymongo';
-        booking.paymentStatus = 'pending';
-        if (!booking.invoiceSnapshot?.issuedAt) {
-            const address = booking.store?.contactInfo?.address;
-            booking.invoiceSnapshot = {
-                issuedAt: new Date(),
-                sellerName: booking.store?.name || '',
-                sellerAddress: address ? [address.street, address.barangay, address.city, address.state, address.zipCode].filter(Boolean).join(', ') : '',
-                sellerTaxStatus: booking.pricingBreakdown?.taxStatus || 'non_vat',
-                pricingBreakdown: booking.pricingBreakdown?.toObject?.() || booking.pricingBreakdown || {}
-            };
-        }
-        await booking.save();
-
-        res.json({ checkoutUrl: session.attributes.checkout_url });
-    } catch (error) {
-        console.error('PayMongo Create Booking Session Error:', error.response?.data || error.message);
-        res.status(500).json({ message: 'Failed to create payment session' });
+  try {
+    const booking = await Booking.findById(req.params.bookingId).populate('customer').populate('service').populate('store');
+    if (!booking) return res.status(404).json({ message: 'Booking not found.' });
+    if (booking.status !== 'awaiting_payment') {
+      return res.status(409).json({
+        message: booking.status === 'awaiting_customer_confirmation'
+          ? 'Review and accept the assigned staff and booking details before payment.'
+          : 'This booking is not currently eligible for payment.'
+      });
     }
+    if (booking.paymentStatus === 'paid') return res.status(409).json({ message: 'This booking is already paid.' });
+    if (String(booking.customer._id) !== String(req.user._id) && req.user.role !== 'super_admin') {
+      return res.status(403).json({ message: 'Access denied.' });
+    }
+
+    const priorTotal = Number(booking.totalPrice);
+    await prepareForPayment(booking);
+    if (booking.paymentDetails?.sessionId && Math.abs(priorTotal - Number(booking.totalPrice)) > 0.009) {
+      try { await PayMongo.expireCheckoutSession(booking.paymentDetails.sessionId); } catch (_) { /* create a fresh authoritative session */ }
+      await updateSessionStatus(booking, 'expired');
+    }
+    booking.paymentStatus = 'pending';
+    await booking.save();
+
+    const total = Number(booking.pricingBreakdown?.finalPrice ?? booking.totalPrice);
+    if (!Number.isFinite(total) || total <= 0 || Math.abs(total - Number(booking.totalPrice)) > 0.009) {
+      return res.status(409).json({ message: 'Booking amount is inconsistent. Please recreate the booking.' });
+    }
+
+    if (!booking.invoiceSnapshot?.issuedAt) {
+      const address = booking.store?.contactInfo?.address;
+      booking.invoiceSnapshot = {
+        issuedAt: new Date(),
+        sellerName: booking.store?.name || '',
+        sellerAddress: address ? [address.street, address.barangay, address.city, address.state, address.zipCode].filter(Boolean).join(', ') : '',
+        sellerTaxStatus: booking.pricingBreakdown?.taxStatus || 'non_vat',
+        pricingBreakdown: booking.pricingBreakdown?.toObject?.() || booking.pricingBreakdown || {}
+      };
+    }
+
+    const session = await ensureCheckoutSession({
+      record: booking,
+      type: 'booking',
+      attributes: {
+        send_email_receipt: true,
+        show_description: true,
+        show_line_items: true,
+        description: `Booking for ${booking.service.name}`,
+        line_items: [{ amount: amountCentavos(booking, 'booking'), currency: 'PHP', name: booking.service.name, quantity: 1 }],
+        payment_method_types: ['card', 'gcash', 'paymaya', 'dob', 'dob_ubp'],
+        success_url: `${FRONTEND_URL}/bookings?payment=success&id=${booking._id}`,
+        cancel_url: `${FRONTEND_URL}/bookings?payment=cancelled&type=booking&id=${booking._id}`,
+        reference_number: `BK-${booking._id.toString().slice(-8).toUpperCase()}`
+      }
+    });
+    res.json({ checkoutUrl: session.attributes.checkout_url });
+  } catch (error) {
+    console.error('PayMongo booking checkout error:', error.response?.data || error.message);
+    res.status(error.statusCode || 500).json({ message: error.message || 'Failed to create payment session.' });
+  }
 };
 
-/**
- * Create a PayMongo Checkout Session for an Adoption
- */
 const createAdoptionCheckoutSession = async (req, res) => {
-    try {
-        if (!PAYMONGO_SECRET_KEY) return res.status(503).json({ message: 'PayMongo is not configured.' });
-        const { requestId } = req.params;
-        const adoption = await AdoptionRequest.findById(requestId).populate('customer').populate('pet');
+  try {
+    const adoption = await AdoptionRequest.findById(req.params.requestId).populate('customer').populate('pet');
+    if (!adoption) return res.status(404).json({ message: 'Adoption request not found.' });
+    if (adoption.status === 'cancelled') return res.status(400).json({ message: 'Cannot pay for a cancelled inquiry.' });
+    const authorized = String(adoption.customer._id) === String(req.user._id)
+      || String(adoption.seller) === String(req.user._id)
+      || req.user.role === 'super_admin';
+    if (!authorized) return res.status(403).json({ message: 'Access denied.' });
 
-        if (!adoption) {
-            return res.status(404).json({ message: 'Adoption request not found' });
-        }
+    const dueCentavos = amountCentavos(adoption, 'adoption');
+    if (dueCentavos <= 0) return res.status(409).json({ message: 'This adoption payment is already complete.' });
 
-        // Check if user is the customer or the seller/admin
-        const isCustomer = adoption.customer._id.toString() === req.user.id;
-        const isSeller = adoption.seller.toString() === req.user.id;
-        const isAdmin = req.user.role === 'super_admin';
-
-        if (!isCustomer && !isSeller && !isAdmin) {
-            return res.status(403).json({ message: 'Access denied' });
-        }
-
-        if (adoption.status === 'cancelled') {
-            return res.status(400).json({ message: 'Cannot pay for a canceled inquiry' });
-        }
-
-        // Determine amount: if deposit exists and balance is full, pay deposit. Otherwise pay total.
-        const pricing = adoption.paymentDetails?.pricingBreakdown || {};
-        const isInitialPayment = !adoption.paymentDetails?.paidAmount || adoption.paymentDetails.paidAmount === 0;
-        
-        const amountToPay = (pricing.depositAmount > 0 && isInitialPayment) 
-            ? pricing.depositAmount 
-            : (pricing.balanceDue || pricing.totalPrice);
-
-        if (!amountToPay || amountToPay <= 0) {
-            return res.status(400).json({ message: 'Invalid payment amount detected' });
-        }
-
-        const amountInCentavos = Math.round(amountToPay * 100);
-        const data = {
-            data: {
-                attributes: {
-                    send_email_receipt: true,
-                    show_description: true,
-                    show_line_items: true,
-                    description: `Adoption Fee for ${adoption.pet.name}`,
-                    line_items: [{
-                        amount: amountInCentavos,
-                        currency: 'PHP',
-                        name: `Pet Purchase: ${adoption.pet.name}`,
-                        quantity: 1
-                    }],
-                    payment_method_types: ['card', 'gcash', 'paymaya', 'dob', 'dob_ubp'],
-                    success_url: `${FRONTEND_URL}/pets/${adoption.pet._id}?payment=success&id=${adoption._id}`,
-                    cancel_url: `${FRONTEND_URL}/pets/${adoption.pet._id}?payment=cancelled&type=adoption&id=${adoption._id}`,
-                    reference_number: `AD-${adoption._id.toString().slice(-8).toUpperCase()}`
-                }
-            }
-        };
-
-        const response = await axios.post('https://api.paymongo.com/v1/checkout_sessions', data, {
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Basic ${Buffer.from(PAYMONGO_SECRET_KEY + ':').toString('base64')}`
-            }
-        });
-
-        const session = response.data.data;
-        
-        // Save session info to adoption
-        if (!adoption.paymentDetails) adoption.paymentDetails = { pricingBreakdown: {} };
-        adoption.paymentDetails.sessionId = session.id;
-        adoption.paymentDetails.checkoutUrl = session.attributes.checkout_url;
-        adoption.paymentDetails.method = 'paymongo';
-        adoption.paymentDetails.paymentStatus = 'payment_pending';
-        await adoption.save();
-
-        res.json({ checkoutUrl: session.attributes.checkout_url });
-    } catch (error) {
-        console.error('PayMongo Create Adoption Session Error:', error.response?.data || error.message);
-        res.status(500).json({ message: 'Failed to create payment session' });
-    }
+    const session = await ensureCheckoutSession({
+      record: adoption,
+      type: 'adoption',
+      attributes: {
+        send_email_receipt: true,
+        show_description: true,
+        show_line_items: true,
+        description: `Adoption fee for ${adoption.pet.name}`,
+        line_items: [{ amount: dueCentavos, currency: 'PHP', name: `Pet purchase: ${adoption.pet.name}`, quantity: 1 }],
+        payment_method_types: ['card', 'gcash', 'paymaya', 'dob', 'dob_ubp'],
+        success_url: `${FRONTEND_URL}/pets/${adoption.pet._id}?payment=success&id=${adoption._id}`,
+        cancel_url: `${FRONTEND_URL}/pets/${adoption.pet._id}?payment=cancelled&type=adoption&id=${adoption._id}`,
+        reference_number: `AD-${adoption._id.toString().slice(-8).toUpperCase()}`
+      }
+    });
+    res.json({ checkoutUrl: session.attributes.checkout_url });
+  } catch (error) {
+    console.error('PayMongo adoption checkout error:', error.response?.data || error.message);
+    res.status(error.statusCode || 500).json({ message: error.message || 'Failed to create payment session.' });
+  }
 };
 
-/**
- * Handle PayMongo Webhook
- */
-const isValidWebhookSignature = (req) => {
-    if (!PAYMONGO_WEBHOOK_SECRET) return !isProduction;
-    const signatureHeader = req.get('Paymongo-Signature');
-    if (!signatureHeader || !req.rawBody) return false;
-    const parts = Object.fromEntries(signatureHeader.split(',').map(part => part.trim().split('=')));
-    const timestamp = parts.t;
-    const signature = PAYMONGO_SECRET_KEY?.startsWith('sk_live_') ? parts.li : parts.te;
-    if (!timestamp || !signature || Math.abs(Date.now() / 1000 - Number(timestamp)) > 300) return false;
-    const expected = crypto.createHmac('sha256', PAYMONGO_WEBHOOK_SECRET)
-        .update(`${timestamp}.${req.rawBody.toString('utf8')}`).digest('hex');
-    const supplied = Buffer.from(signature, 'hex');
-    const calculated = Buffer.from(expected, 'hex');
-    return supplied.length === calculated.length && crypto.timingSafeEqual(supplied, calculated);
+const isValidWebhookSignature = req => {
+  if (!PAYMONGO_WEBHOOK_SECRET) return !isProduction;
+  const signatureHeader = req.get('Paymongo-Signature');
+  if (!signatureHeader || !req.rawBody) return false;
+  const parts = Object.fromEntries(signatureHeader.split(',').map(part => part.trim().split('=')));
+  const timestamp = parts.t;
+  const signature = process.env.PAYMONGO_SECRET_KEY?.startsWith('sk_live_') ? parts.li : parts.te;
+  if (!timestamp || !signature || Math.abs(Date.now() / 1000 - Number(timestamp)) > 300) return false;
+  const expected = crypto.createHmac('sha256', PAYMONGO_WEBHOOK_SECRET)
+    .update(`${timestamp}.${req.rawBody.toString('utf8')}`).digest('hex');
+  const supplied = Buffer.from(signature, 'hex');
+  const calculated = Buffer.from(expected, 'hex');
+  return supplied.length === calculated.length && crypto.timingSafeEqual(supplied, calculated);
+};
+
+const claimWebhookEvent = async event => {
+  const existing = await PaymentWebhookEvent.findOne({ eventId: event.id });
+  if (existing?.status === 'completed') return null;
+  const processingIsFresh = existing?.status === 'processing'
+    && existing.updatedAt
+    && Date.now() - new Date(existing.updatedAt).getTime() < 5 * 60 * 1000;
+  if (processingIsFresh) return null;
+  if (existing) {
+    existing.status = 'processing';
+    existing.attempts += 1;
+    existing.lastError = undefined;
+    await existing.save();
+    return existing;
+  }
+  try {
+    return await PaymentWebhookEvent.create({ eventId: event.id, eventType: event.attributes.type });
+  } catch (error) {
+    if (error.code === 11000) return null;
+    throw error;
+  }
 };
 
 const handleWebhook = async (req, res) => {
-    try {
-        if (!isValidWebhookSignature(req)) return res.status(401).json({ message: 'Invalid PayMongo webhook signature.' });
-        const event = req.body.data;
-        if (!event?.attributes?.type || !event.attributes.data) return res.status(400).json({ message: 'Invalid webhook payload.' });
-        const eventType = event.attributes.type;
+  if (!isValidWebhookSignature(req)) return res.status(401).json({ message: 'Invalid PayMongo webhook signature.' });
+  const event = req.body?.data;
+  if (!event?.id || !event?.attributes?.type || !event.attributes.data) {
+    return res.status(400).json({ message: 'Invalid webhook payload.' });
+  }
 
-        console.log('🔔 Received PayMongo Webhook Event:', eventType);
-
-        if (eventType === 'checkout_session.payment.paid') {
-            const checkoutSession = event.attributes.data;
-            const ref = checkoutSession.attributes.reference_number;
-            const paymentData = checkoutSession.attributes.payments[0];
-
-            if (ref && ref.startsWith('BK-')) {
-                // It's a booking
-                const Booking = require('../models/Booking');
-                // We stored the session ID in booking.paymentDetails.sessionId
-                const booking = await Booking.findOne({ 'paymentDetails.sessionId': checkoutSession.id });
-                if (booking) {
-                    if (booking.paymentStatus === 'paid') return res.sendStatus(200);
-                    if (!paymentAmountMatches(booking, 'booking', paymentData.attributes.amount)) {
-                        booking.paymentStatus = 'failed';
-                        booking.paymentDetails.failureReason = 'PayMongo amount did not match the authoritative booking total.';
-                        await booking.save();
-                        return res.sendStatus(200);
-                    }
-                    booking.paymentStatus = 'paid';
-                    booking.paymentMethod = 'paymongo';
-                    booking.paymentDetails.paymentId = paymentData.id;
-                    booking.paymentDetails.sourceType = paymentData.attributes.source?.type;
-                    
-                    // Ensure the booking isn't cancelled if it was auto-cancelled while paying
-                    // Status remains 'pending' (awaiting seller approval)
-                    if (booking.status === 'cancelled') {
-                        booking.status = 'pending';
-                    }
-                    
-                    await booking.save();
-                    
-                    // Notify seller: payment received, approval needed
-                    await createNotification({
-                        recipient: booking.addedBy,
-                        sender: booking.customer,
-                        type: 'booking_status',
-                        title: '💳 Payment Received – Approval Needed',
-                        message: `A customer has paid for booking #${booking._id.toString().slice(-8).toUpperCase()}. Please review and approve it.`,
-                        relatedId: booking._id,
-                        relatedModel: 'Booking'
-                    });
-
-                    // Notify customer: payment received, waiting for approval
-                    await createNotification({
-                        recipient: booking.customer,
-                        sender: booking.addedBy,
-                        type: 'booking_status',
-                        title: '✅ Payment Received – Awaiting Approval',
-                        message: `Your payment for booking #${booking._id.toString().slice(-8).toUpperCase()} has been received! The seller will review and approve it shortly.`,
-                        relatedId: booking._id,
-                        relatedModel: 'Booking'
-                    });
-                    
-                    console.log(`✅ Booking ${booking._id} marked as PAID via webhook. Awaiting Seller Approval.`);
-                }
-                return res.sendStatus(200);
-            }
-
-            if (ref && ref.startsWith('AD-')) {
-                // It's an adoption
-                const adoption = await AdoptionRequest.findOne({ 'paymentDetails.sessionId': checkoutSession.id });
-                if (adoption) {
-                    if (['paid_in_full', 'deposit_paid'].includes(adoption.paymentDetails?.paymentStatus) && adoption.paymentDetails?.history?.some(row => row.paymentId === paymentData.id)) return res.sendStatus(200);
-                    const pricing = adoption.paymentDetails.pricingBreakdown;
-                    const paidAmountCentavos = paymentData.attributes.amount;
-                    const paidAmount = paidAmountCentavos / 100;
-
-                    adoption.paymentDetails.paidAmount = (adoption.paymentDetails.paidAmount || 0) + paidAmount;
-                    adoption.paymentDetails.pricingBreakdown.paidAmount = adoption.paymentDetails.paidAmount;
-                    adoption.paymentDetails.pricingBreakdown.balanceDue = Math.max(0, pricing.totalPrice - adoption.paymentDetails.paidAmount);
-                    
-                    // Determine status based on balance
-                    if (adoption.paymentDetails.pricingBreakdown.balanceDue <= 0) {
-                        adoption.paymentDetails.paymentStatus = 'paid_in_full';
-                    } else if (pricing.depositAmount > 0 && adoption.paymentDetails.paidAmount >= pricing.depositAmount) {
-                        adoption.paymentDetails.paymentStatus = 'deposit_paid';
-                    } else {
-                        adoption.paymentDetails.paymentStatus = 'partially_paid';
-                    }
-
-                    adoption.paymentDetails.method = 'paymongo';
-                    adoption.paymentDetails.paidAt = new Date();
-                    
-                    // Add history
-                    adoption.paymentDetails.history.push({
-                        status: adoption.paymentDetails.paymentStatus,
-                        amount: paidAmount,
-                        paymentId: paymentData.id,
-                        description: `Paid via PayMongo (${adoption.paymentDetails.method})`
-                    });
-
-                    // Auto-approve if paid
-                    if (adoption.status === 'inquiry_submitted' || adoption.status === 'under_review') {
-                        adoption.status = 'approved';
-                    }
-
-                    await adoption.save();
-
-                    // Notify seller
-                    await createNotification({
-                        recipient: adoption.seller,
-                        sender: adoption.customer,
-                        type: 'adoption_status',
-                        title: '💳 Adoption Payment Received',
-                        message: `Customer paid ₱${paidAmount.toLocaleString()} for ${ref}. Status: ${adoption.paymentDetails.paymentStatus.replace('_', ' ')}.`,
-                        relatedId: adoption._id,
-                        relatedModel: 'AdoptionRequest'
-                    });
-                }
-                return res.sendStatus(200);
-            }
-
-            const orderNumber = checkoutSession.attributes.reference_number;
-            const order = await Order.findOne({ orderNumber });
-
-            if (order) {
-                if (order.paymentStatus === 'paid' && order.paymentDetails?.fulfilledAt) return res.sendStatus(200);
-                if (!paymentAmountMatches(order, 'order', paymentData.attributes.amount)) {
-                    order.paymentStatus = 'failed';
-                    order.status = 'payment_failed';
-                    order.paymentDetails.failureReason = 'PayMongo amount did not match the authoritative order total.';
-                    await order.save();
-                    return res.sendStatus(200);
-                }
-                if (order.status === 'cancelled') {
-                    console.log(`⚠️ Received payment for cancelled order #${order.orderNumber}. Marking as paid but keeping cancelled status.`);
-                    order.paymentStatus = 'paid';
-                    order.paymentMethod = 'paymongo';
-                    order.paymentDetails = {
-                        ...order.paymentDetails,
-                        paymentId: paymentData.id,
-                        sourceType: paymentData.attributes.source?.type,
-                        amountPaid: paymentData.attributes.amount / 100,
-                        transactionDate: new Date(paymentData.attributes.paid_at * 1000)
-                    };
-                    await order.save();
-                    return res.sendStatus(200);
-                }
-
-                order.paymentStatus = 'paid';
-                order.status = 'confirmed'; // Automatically confirm order on payment
-                order.paymentMethod = 'paymongo';
-                order.paymentDetails = {
-                    ...order.paymentDetails,
-                    paymentId: paymentData.id,
-                    sourceType: paymentData.attributes.source?.type,
-                    amountPaid: paymentData.attributes.amount / 100,
-                    transactionDate: new Date(paymentData.attributes.paid_at * 1000)
-                };
-                await order.save();
-
-                // Deduct stock and update pet availability
-                for (const item of order.items) {
-                    if (item.itemType === 'product') {
-                        try {
-                            const product = await Product.findById(item.itemId);
-                            if (product) {
-                                const sellerStore = await Store.findOne({ owner: product.addedBy });
-                                if (sellerStore) {
-                                    await StockSyncService.reduceStockOnOrder(item.itemId, item.quantity, sellerStore._id);
-                                } else {
-                                    product.stockQuantity -= item.quantity;
-                                    await product.save();
-                                }
-                            }
-                        } catch (stockError) {
-                            console.error(`❌ Stock deduction failed for order ${order._id}:`, stockError.message);
-                        }
-                    } else if (item.itemType === 'pet') {
-                        await Pet.findByIdAndUpdate(item.itemId, { isAvailable: false });
-                    }
-                }
-
-                // Record revenue and update store stats via central service
-                await RevenueService.recordPayment('order', order._id);
-
-                // Notify store owner
-                await createNotification({
-                    recipient: order.addedBy,
-                    sender: order.customer,
-                    type: 'order_status',
-                    title: 'Order Paid',
-                    message: `Order #${order.orderNumber} has been paid via ${order.paymentMethod}.`,
-                    relatedId: order._id,
-                    relatedModel: 'Order'
-                });
-
-                // Auto-generate delivery links if it's a delivery order
-                if (order.deliveryMethod === 'delivery') {
-                    await internalCreateDelivery({ orderId: order._id });
-                }
-
-                order.paymentDetails.fulfilledAt = new Date();
-                await Order.findByIdAndUpdate(order._id, { 'paymentDetails.fulfilledAt': order.paymentDetails.fulfilledAt });
-
-                console.log(`✅ Order #${orderNumber} marked as PAID`);
-            }
-        } else if (eventType === 'checkout_session.payment.failed' || eventType === 'payment.failed') {
-            const checkoutSession = event.attributes.data;
-            // The data structure for payment.failed might be slightly different, but PayMongo usually includes the reference or we can find it in the resource
-            const orderNumber = checkoutSession.attributes.reference_number || checkoutSession.attributes.external_id;
-
-            if (orderNumber?.startsWith('BK-')) {
-                const Booking = require('../models/Booking');
-                const booking = await Booking.findOne({ 'paymentDetails.sessionId': checkoutSession.id });
-                if (booking && booking.paymentStatus !== 'paid') {
-                    booking.paymentStatus = 'failed';
-                    booking.paymentMethod = 'paymongo';
-                    booking.paymentDetails.failureReason = 'PayMongo reported a failed payment';
-                    await booking.save();
-                    await RevenueService.recordPayment('booking', booking._id);
-                }
-                return res.sendStatus(200);
-            }
-            if (orderNumber?.startsWith('AD-')) {
-                const adoption = await AdoptionRequest.findOne({ 'paymentDetails.sessionId': checkoutSession.id });
-                if (adoption && adoption.paymentDetails.paymentStatus !== 'paid_in_full') {
-                    adoption.paymentDetails.method = 'paymongo';
-                    adoption.paymentDetails.paymentStatus = 'payment_failed';
-                    await adoption.save();
-                }
-                return res.sendStatus(200);
-            }
-
-            const order = await Order.findOne({ orderNumber });
-            if (order) {
-                order.paymentStatus = 'failed';
-                order.paymentMethod = 'paymongo';
-                order.paymentDetails.failureReason = 'PayMongo reported a failed payment';
-                await order.save();
-                console.log(`❌ Order #${orderNumber} marked as PAYMENT FAILED`);
-            }
-        }
-
-        res.sendStatus(200);
-    } catch (error) {
-        console.error('PayMongo Webhook Error:', error.message);
-        res.status(500).json({ message: 'Webhook processing failed' });
+  let receipt;
+  try {
+    receipt = await claimWebhookEvent(event);
+    if (!receipt) return res.sendStatus(200);
+    const eventType = event.attributes.type;
+    const resource = event.attributes.data;
+    if (eventType === 'checkout_session.payment.paid') {
+      await reconcilePaidSession(resource);
+    } else if (eventType === 'checkout_session.payment.failed' || eventType === 'payment.failed') {
+      await markSessionFailed(resource);
     }
+    receipt.status = 'completed';
+    receipt.processedAt = new Date();
+    await receipt.save();
+    return res.sendStatus(200);
+  } catch (error) {
+    console.error('PayMongo webhook error:', error.message);
+    if (receipt) {
+      receipt.status = error.statusCode >= 400 && error.statusCode < 500 ? 'completed' : 'failed';
+      receipt.lastError = error.message;
+      if (receipt.status === 'completed') receipt.processedAt = new Date();
+      await receipt.save().catch(() => {});
+    }
+    if (error.statusCode >= 400 && error.statusCode < 500) return res.sendStatus(200);
+    return res.status(500).json({ message: 'Webhook processing failed.' });
+  }
 };
 
-/**
- * Verify payment directly with PayMongo API
- */
+const findTargetById = async id => {
+  const order = await Order.findById(id);
+  if (order) return { type: 'order', record: order };
+  const booking = await Booking.findById(id);
+  if (booking) return { type: 'booking', record: booking };
+  const adoption = await AdoptionRequest.findById(id);
+  return adoption ? { type: 'adoption', record: adoption } : null;
+};
+
 const verifyPayment = async (req, res) => {
-    try {
-        const { orderId } = req.params; // Generic ID for both Order and Booking
-        
-        let target = await Order.findById(orderId);
-        let type = 'order';
-
-        if (!target) {
-            const Booking = require('../models/Booking');
-            target = await Booking.findById(orderId);
-            type = 'booking';
-        }
-
-        if (!target) {
-            target = await AdoptionRequest.findById(orderId);
-            type = 'adoption';
-        }
-
-        if (!target) {
-            return res.status(404).json({ message: 'Record not found' });
-        }
-
-        const customerId = target.customer?._id || target.customer;
-        if (String(customerId) !== String(req.user._id) && req.user.role !== 'super_admin') return res.status(403).json({ message: 'Access denied.' });
-
-        if (type === 'adoption' && ['paid_in_full', 'deposit_paid'].includes(target.paymentDetails?.paymentStatus)) {
-            return res.json({ status: target.paymentDetails.paymentStatus, adoption: target });
-        }
-        if (target.paymentStatus === 'paid' && (type !== 'order' || target.paymentDetails?.fulfilledAt)) {
-            return res.json({ status: 'paid', [type]: target });
-        }
-
-        if (!target.paymentDetails || !target.paymentDetails.sessionId) {
-            return res.status(400).json({ message: 'No payment session found for this record' });
-        }
-
-        const response = await axios.get(`https://api.paymongo.com/v1/checkout_sessions/${target.paymentDetails.sessionId}`, {
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Basic ${Buffer.from(PAYMONGO_SECRET_KEY + ':').toString('base64')}`
-            }
-        });
-
-        const session = response.data.data;
-        const payments = session.attributes.payments;
-
-        if (payments && payments.length > 0) {
-            const successfulPayment = payments.find(p => p.attributes.status === 'paid');
-            
-            if (successfulPayment) {
-                console.log(`🔍 Manual verification confirmed payment for ${type} #${target._id}`);
-                
-                if (type === 'adoption') {
-                    const paidAmount = successfulPayment.attributes.amount / 100;
-                    const pricing = target.paymentDetails.pricingBreakdown;
-                    const alreadyRecorded = target.paymentDetails.history?.some(row => row.paymentId === successfulPayment.id);
-                    if (!alreadyRecorded) {
-                        target.paymentDetails.paidAmount = (target.paymentDetails.paidAmount || 0) + paidAmount;
-                        pricing.paidAmount = target.paymentDetails.paidAmount;
-                        pricing.balanceDue = Math.max(0, pricing.totalPrice - target.paymentDetails.paidAmount);
-                        target.paymentDetails.paymentStatus = pricing.balanceDue <= 0 ? 'paid_in_full' : (pricing.depositAmount > 0 && target.paymentDetails.paidAmount >= pricing.depositAmount ? 'deposit_paid' : 'partially_paid');
-                        target.paymentDetails.method = 'paymongo';
-                        target.paymentDetails.paidAt = new Date();
-                        target.paymentDetails.history.push({ status: target.paymentDetails.paymentStatus, amount: paidAmount, paymentId: successfulPayment.id, description: 'Paid via PayMongo' });
-                        if (['inquiry_submitted', 'under_review'].includes(target.status)) target.status = 'approved';
-                        await target.save();
-                    }
-                    return res.json({ status: target.paymentDetails.paymentStatus, adoption: target });
-                }
-
-                if (!paymentAmountMatches(target, type, successfulPayment.attributes.amount)) {
-                    target.paymentStatus = 'failed';
-                    target.paymentDetails.failureReason = 'PayMongo amount did not match the authoritative transaction total.';
-                    await target.save();
-                    return res.status(409).json({ message: 'Payment amount does not match the transaction total.' });
-                }
-
-                target.paymentStatus = 'paid';
-                target.paymentMethod = 'paymongo';
-                target.paymentDetails = {
-                    ...target.paymentDetails,
-                    paymentId: successfulPayment.id,
-                    sourceType: successfulPayment.attributes.source?.type,
-                };
-
-                if (type === 'order') {
-                    if (target.status !== 'cancelled') {
-                        target.status = 'confirmed';
-                        
-                        // Deduct stock and update pet availability
-                        for (const item of target.items) {
-                            if (item.itemType === 'product') {
-                                try {
-                                    const product = await Product.findById(item.itemId);
-                                    if (product) {
-                                        const sellerStore = await Store.findOne({ owner: product.addedBy });
-                                        if (sellerStore) {
-                                            await StockSyncService.reduceStockOnOrder(item.itemId, item.quantity, sellerStore._id);
-                                        } else {
-                                            product.stockQuantity -= item.quantity;
-                                            await product.save();
-                                        }
-                                    }
-                                } catch (stockError) {
-                                    console.error(`❌ Stock deduction failed for order ${target._id}:`, stockError.message);
-                                }
-                            } else if (item.itemType === 'pet') {
-                                await Pet.findByIdAndUpdate(item.itemId, { isAvailable: false });
-                            }
-                        }
-
-                        // Auto-generate delivery links
-                        if (target.deliveryMethod === 'delivery') {
-                            await internalCreateDelivery({ orderId: target._id });
-                        }
-                        target.paymentDetails.fulfilledAt = new Date();
-                    }
-                } else {
-                    // Booking specific updates
-                    if (target.status === 'cancelled') {
-                        target.status = 'pending';
-                    }
-                    // Notify seller and customer
-                    await createNotification({
-                        recipient: target.addedBy,
-                        sender: target.customer,
-                        type: 'booking_status',
-                        title: '💳 Payment Received – Approval Needed',
-                        message: `A customer has paid for booking #${target._id.toString().slice(-8).toUpperCase()}. Please review and approve it.`,
-                        relatedId: target._id,
-                        relatedModel: 'Booking'
-                    });
-                }
-
-                await target.save();
-                if (type === 'order' || type === 'booking') await RevenueService.recordPayment(type, target._id);
-                return res.json({ status: 'paid', [type]: target });
-            }
-        }
-
-        return res.json({ status: target.paymentStatus, message: 'Payment still pending on PayMongo' });
-
-    } catch (error) {
-        console.error('Verify Payment Error:', error.response?.data || error.message);
-        res.status(500).json({ message: 'Failed to verify payment with provider', error: error.message });
+  try {
+    const target = await findTargetById(req.params.orderId);
+    if (!target) return res.status(404).json({ message: 'Transaction not found.' });
+    const isCustomer = String(target.record.customer) === String(req.user._id);
+    const isSeller = target.type === 'adoption' && String(target.record.seller) === String(req.user._id);
+    const isStoreOperator = ['admin', 'store_owner', 'staff'].includes(req.user.role)
+      && (String(target.record.addedBy) === String(req.user._id)
+        || (req.user.store && String(target.record.store) === String(req.user.store)));
+    if (!isCustomer && !isSeller && !isStoreOperator && req.user.role !== 'super_admin') {
+      return res.status(403).json({ message: 'Access denied.' });
     }
+    if (!target.record.paymentDetails?.sessionId) return res.status(400).json({ message: 'No PayMongo session exists for this transaction.' });
+
+    const session = await PayMongo.getCheckoutSession(target.record.paymentDetails.sessionId);
+    const payment = PayMongo.getPaidPayment(session);
+    if (payment) {
+      let record;
+      if (target.type === 'order') record = await finalizeOrder(target.record, payment);
+      else if (target.type === 'booking') record = await finalizeBooking(target.record, payment);
+      else record = await finalizeAdoption(target.record, payment);
+      const status = target.type === 'adoption' ? record.paymentDetails.paymentStatus : record.paymentStatus;
+      return res.json({ status, [target.type]: record });
+    }
+
+    if (session.attributes?.status === 'expired') await updateSessionStatus(target.record, 'expired');
+    const status = target.type === 'adoption'
+      ? target.record.paymentDetails.paymentStatus
+      : target.record.paymentStatus;
+    return res.json({ status, sessionStatus: session.attributes?.status, message: 'Payment is not confirmed by PayMongo.' });
+  } catch (error) {
+    console.error('PayMongo verification error:', error.response?.data || error.message);
+    res.status(error.statusCode || 500).json({ message: error.message || 'Payment verification failed.' });
+  }
 };
 
 const cancelPayment = async (req, res) => {
-    try {
-        const { type, id } = req.params;
-        let target;
-        if (type === 'order') target = await Order.findById(id);
-        else if (type === 'booking') target = await require('../models/Booking').findById(id);
-        else if (type === 'adoption') target = await AdoptionRequest.findById(id);
-        else return res.status(400).json({ message: 'Invalid payment record type.' });
-        if (!target) return res.status(404).json({ message: 'Payment record not found.' });
-        const customerId = target.customer?._id || target.customer;
-        if (String(customerId) !== String(req.user._id) && req.user.role !== 'super_admin') return res.status(403).json({ message: 'Access denied.' });
-        if (type === 'adoption') {
-            if (!['paid_in_full', 'deposit_paid'].includes(target.paymentDetails?.paymentStatus)) target.paymentDetails.paymentStatus = 'payment_cancelled';
-            target.paymentDetails.method = 'paymongo';
-        } else if (target.paymentStatus !== 'paid') {
-            target.paymentStatus = 'cancelled';
-            target.paymentMethod = 'paymongo';
-        }
-        await target.save();
-        res.json({ status: type === 'adoption' ? target.paymentDetails.paymentStatus : target.paymentStatus });
-    } catch (error) { res.status(500).json({ message: 'Unable to update cancelled payment.' }); }
+  try {
+    const target = await findTargetById(req.params.id);
+    if (!target || target.type !== req.params.type) return res.status(404).json({ message: 'Transaction not found.' });
+    if (String(target.record.customer) !== String(req.user._id) && req.user.role !== 'super_admin') {
+      return res.status(403).json({ message: 'Access denied.' });
+    }
+    const sessionId = target.record.paymentDetails?.sessionId;
+    if (!sessionId) return res.status(400).json({ message: 'No active PayMongo session exists.' });
+
+    const session = await PayMongo.getCheckoutSession(sessionId);
+    const paidPayment = PayMongo.getPaidPayment(session);
+    if (paidPayment) {
+      if (target.type === 'order') await finalizeOrder(target.record, paidPayment);
+      else if (target.type === 'booking') await finalizeBooking(target.record, paidPayment);
+      else await finalizeAdoption(target.record, paidPayment);
+      return res.status(409).json({ message: 'PayMongo already confirmed this payment; it cannot be cancelled.' });
+    }
+    if (session.attributes?.status === 'active') await PayMongo.expireCheckoutSession(sessionId);
+
+    target.record.paymentDetails.sessionStatus = 'expired';
+    const historyRow = sessionHistory(target.record).find(row => row.sessionId === sessionId);
+    if (historyRow) historyRow.status = 'expired';
+    if (target.type === 'adoption') {
+      target.record.paymentDetails.method = 'paymongo';
+      target.record.paymentDetails.paymentStatus = 'payment_cancelled';
+    } else if (target.record.paymentStatus !== 'paid') {
+      target.record.paymentMethod = 'paymongo';
+      target.record.paymentStatus = 'cancelled';
+    }
+    await target.record.save();
+    const status = target.type === 'adoption' ? target.record.paymentDetails.paymentStatus : target.record.paymentStatus;
+    res.json({ status, sessionStatus: 'expired' });
+  } catch (error) {
+    console.error('PayMongo cancellation error:', error.response?.data || error.message);
+    res.status(error.statusCode || 502).json({ message: error.message || 'Could not cancel the PayMongo session.' });
+  }
 };
 
 module.exports = {
-    createCheckoutSession,
-    createBookingCheckoutSession,
-    createAdoptionCheckoutSession,
-    handleWebhook,
-    verifyPayment,
-    cancelPayment
+  createCheckoutSession,
+  createBookingCheckoutSession,
+  createAdoptionCheckoutSession,
+  handleWebhook,
+  verifyPayment,
+  cancelPayment
 };

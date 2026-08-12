@@ -9,26 +9,23 @@ const {
 const {
   getBookingById,
   updateBookingStatus,
-  updatePaymentMethod,
   cancelBooking,
-  confirmBookingPayment
+  getEligibleBookingStaff,
+  assignBookingStaff
 } = require('../controllers/bookingController');
 const { authenticate, adminOrStaff } = require('../middleware/auth');
 
 // Validation rules
 const updateBookingStatusValidation = [
-  body('status').isIn(['pending', 'confirmed', 'cancelled', 'completed']).withMessage('Invalid booking status')
-];
-
-const updatePaymentMethodValidation = [
-  body('paymentMethod').isIn(['cash', 'gcash', 'maya', 'bank_transfer', 'credit_card']).withMessage('Invalid payment method')
+  body('status').isIn(['confirmed', 'approved', 'processing', 'finished', 'completed', 'cancelled', 'no_show']).withMessage('Invalid booking status')
 ];
 
 // Admin routes (filtered by user's store)
 router.get('/', authenticate, adminOrStaff, getAllAdminBookings);
+router.get('/:id', authenticate, adminOrStaff, getBookingById);
+router.get('/:id/eligible-staff', authenticate, adminOrStaff, getEligibleBookingStaff);
+router.put('/:id/assign-staff', authenticate, adminOrStaff, body('staffId').isMongoId().withMessage('Valid staff ID is required'), assignBookingStaff);
 router.put('/:id/status', authenticate, adminOrStaff, updateBookingStatusValidation, updateBookingStatus);
-router.put('/:id/payment-method', authenticate, adminOrStaff, updatePaymentMethodValidation, updatePaymentMethod);
-router.put('/:id/confirm-payment', authenticate, adminOrStaff, confirmBookingPayment);
 router.put('/:id/cancel', authenticate, adminOrStaff, cancelBooking);
 
 module.exports = router;

@@ -1,6 +1,8 @@
 const { validationResult } = require('express-validator');
 const Service = require('../models/Service');
 const Store = require('../models/Store');
+const User = require('../models/User');
+const { isRoleEligibleForService } = require('../utils/staffSpecialization');
 const { calculateServicePrice } = require('../utils/pricingEngine');
 const { calculateTransactionTax, normalizeTaxConfiguration } = require('../utils/taxCalculator');
 
@@ -11,6 +13,19 @@ const DEFAULT_REQUIREMENTS = [
   "Signed service consent or waiver",
   "Appointment confirmation (if required)"
 ];
+
+const validateAssignedStaff = async (assignedStaff = [], storeId, serviceData) => {
+  const ids = [...new Set((assignedStaff || []).map(String).filter(Boolean))];
+  if (!ids.length) return [];
+  const staff = await User.find({
+    _id: { $in: ids }, role: 'staff', store: storeId, isActive: true,
+    staffStatus: { $ne: 'suspended' }, isDeleted: false
+  });
+  if (staff.length !== ids.length) throw Object.assign(new Error('Assigned staff must be active and belong to this store branch.'), { statusCode: 400 });
+  const incompatible = staff.find(member => !isRoleEligibleForService(member.staffType, serviceData));
+  if (incompatible) throw Object.assign(new Error(`${incompatible.firstName} ${incompatible.lastName} is not eligible for this service based on their role.`), { statusCode: 400 });
+  return ids;
+};
 
 // Get all services for a store
 const getStoreServices = async (req, res) => {
@@ -25,7 +40,11 @@ const getStoreServices = async (req, res) => {
 
     const services = await Service.find(filter)
       .populate('store', 'name taxConfiguration')
-      .populate('assignedStaff', 'firstName lastName staffType')
+      .populate({
+        path: 'assignedStaff',
+        match: { isActive: true, staffStatus: { $in: ['active', null] }, 'professionalProfile.isPublic': { $ne: false } },
+        select: 'firstName lastName staffType professionalProfile.professionalTitle professionalProfile.specialty'
+      })
       .sort({ createdAt: -1 });
 
     res.json(services);
@@ -90,6 +109,7 @@ const createService = async (req, res) => {
       return res.status(403).json({ message: 'You can only create services for your own or assigned store' });
     }
 
+    const validatedAssignedStaff = await validateAssignedStaff(assignedStaff, req.params.storeId, { name, description, category, subCategory });
     const service = new Service({
       name,
       description,
@@ -108,7 +128,7 @@ const createService = async (req, res) => {
       pricingRules: pricingRules || {},
       addOns: addOns || [],
       bookingRules: bookingRules || {},
-      assignedStaff: assignedStaff || [],
+      assignedStaff: validatedAssignedStaff,
       schedule: schedule || {},
       recommendationCriteria: recommendationCriteria || {}
     });
@@ -127,7 +147,7 @@ const createService = async (req, res) => {
     res.status(201).json(service);
   } catch (error) {
     console.error('Create service error:', error);
-    res.status(500).json({ message: 'Server error' });
+    res.status(error.statusCode || 500).json({ message: error.statusCode ? error.message : 'Server error' });
   }
 };
 
@@ -217,6 +237,7 @@ const createAdminService = async (req, res) => {
       console.log('🏪 Using default store:', serviceStore);
     }
 
+    const validatedAssignedStaff = await validateAssignedStaff(assignedStaff, serviceStore, { name, description, category, subCategory });
     const service = new Service({
       name,
       description,
@@ -236,7 +257,7 @@ const createAdminService = async (req, res) => {
       pricingRules: pricingRules || {},
       addOns: addOns || [],
       bookingRules: bookingRules || {},
-      assignedStaff: assignedStaff || [],
+      assignedStaff: validatedAssignedStaff,
       schedule: schedule || {},
       recommendationCriteria: recommendationCriteria || {}
     });
@@ -256,7 +277,7 @@ const createAdminService = async (req, res) => {
     res.status(201).json(service);
   } catch (error) {
     console.error('Create admin service error:', error);
-    res.status(500).json({ message: 'Server error' });
+    res.status(error.statusCode || 500).json({ message: error.statusCode ? error.message : 'Server error' });
   }
 };
 
@@ -282,6 +303,14 @@ const updateService = async (req, res) => {
     }
 
     const updates = req.body; if (req.body.requirements && Array.isArray(req.body.requirements)) { updates.requirements = req.body.requirements.join(', '); }
+    if (req.body.assignedStaff !== undefined) {
+      updates.assignedStaff = await validateAssignedStaff(req.body.assignedStaff, service.store._id, {
+        name: req.body.name ?? service.name,
+        description: req.body.description ?? service.description,
+        category: req.body.category ?? service.category,
+        subCategory: req.body.subCategory ?? service.subCategory
+      });
+    }
     Object.assign(service, updates);
     await service.save();
 
@@ -295,7 +324,7 @@ const updateService = async (req, res) => {
     res.json(service);
   } catch (error) {
     console.error('Update service error:', error);
-    res.status(500).json({ message: 'Server error' });
+    res.status(error.statusCode || 500).json({ message: error.statusCode ? error.message : 'Server error' });
   }
 };
 
@@ -374,7 +403,7 @@ const getAllServices = async (req, res) => {
     const skip = (page - 1) * limit;
     const services = await Service.find(filter)
       .populate('store', 'name contactInfo.address taxConfiguration')
-      .populate('assignedStaff', 'firstName lastName')
+      .populate({ path: 'assignedStaff', match: { isActive: true, staffStatus: { $in: ['active', null] }, 'professionalProfile.isPublic': { $ne: false } }, select: 'firstName lastName staffType professionalProfile.professionalTitle professionalProfile.specialty' })
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(parseInt(limit));
@@ -403,7 +432,7 @@ const getServiceById = async (req, res) => {
     console.log('🔍 Fetching service by ID:', req.params.id);
     const service = await Service.findById(req.params.id)
       .populate('store', 'name contactInfo.address businessHours bookingSettings taxConfiguration')
-      .populate('assignedStaff', 'firstName lastName staffType');
+      .populate({ path: 'assignedStaff', match: { isActive: true, staffStatus: { $in: ['active', null] }, 'professionalProfile.isPublic': { $ne: false } }, select: 'firstName lastName staffType professionalProfile.professionalTitle professionalProfile.specialty' });
     if (!service || service.isDeleted) {
       console.log('⚠️ Service not found (or deleted):', req.params.id);
       return res.status(404).json({ message: 'Service not found' });

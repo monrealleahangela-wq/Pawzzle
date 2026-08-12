@@ -25,6 +25,13 @@ const STAFF_TYPE_CONFIG = {
   inventory_staff:  { label: 'Inventory Staff', color: 'amber', desc: 'Managing pets, products, and stock levels' },
   order_staff:      { label: 'Order Staff', color: 'blue', desc: 'Processing customer orders' },
   service_staff:    { label: 'Service Staff', color: 'purple', desc: 'Managing service appointments' },
+  veterinarian: { label: 'Veterinarian', color: 'emerald', desc: 'Providing assigned veterinary services' },
+  veterinary_technician: { label: 'Veterinary Technician', color: 'cyan', desc: 'Supporting assigned veterinary care' },
+  veterinary_assistant: { label: 'Veterinary Assistant', color: 'sky', desc: 'Assisting with assigned veterinary services' },
+  veterinary_nurse: { label: 'Veterinary Nurse', color: 'teal', desc: 'Providing assigned veterinary nursing care' },
+  veterinary_laboratory_technician: { label: 'Veterinary Laboratory Technician', color: 'violet', desc: 'Handling assigned laboratory services' },
+  groomer: { label: 'Groomer', color: 'pink', desc: 'Providing assigned grooming services' },
+  trainer: { label: 'Pet Trainer', color: 'blue', desc: 'Providing assigned pet training services' },
 };
 
 const Dashboard = () => {

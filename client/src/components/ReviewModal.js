@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import Modal from './ui/Modal';
-import { Star, MessageSquare, Send, X, Image as ImageIcon } from 'lucide-react';
+import { Star, Send } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { reviewService } from '../services/apiService';
 import ImageUpload from './ImageUpload';
@@ -8,7 +8,7 @@ import ImageUpload from './ImageUpload';
 const ReviewModal = ({ 
     isOpen, 
     onClose, 
-    targetType, // 'Product', 'Pet', 'Service', 'Store'
+    targetType, // 'Product', 'Pet', 'Service', 'Store', 'Booking'
     targetId, 
     targetName,
     orderId, 
@@ -25,11 +25,6 @@ const ReviewModal = ({
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        if (!comment.trim()) {
-            toast.error('Please add a comment');
-            return;
-        }
-
         setSubmitting(true);
         try {
             await reviewService.createReview({
@@ -42,7 +37,7 @@ const ReviewModal = ({
                 images,
                 isAnonymous
             });
-            toast.success('Review submitted successfully!');
+            toast.success(targetType === 'Booking' ? 'Staff review submitted successfully!' : 'Review submitted successfully!');
             if (onReviewSubmitted) onReviewSubmitted();
             onClose();
             // Reset form
@@ -58,7 +53,7 @@ const ReviewModal = ({
     };
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title={`Rate ${targetName}`} size="sm">
+        <Modal isOpen={isOpen} onClose={onClose} title={targetType === 'Booking' ? `How was your experience with ${targetName}?` : `Rate ${targetName}`} size="sm">
             <form onSubmit={handleSubmit} className="p-1 space-y-4">
                 <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 flex flex-col items-center">
                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 block">Overall Rating</label>
@@ -86,12 +81,11 @@ const ReviewModal = ({
                     <div className="space-y-2">
                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block ml-1">Your detailed experience</label>
                         <textarea
-                            required
                             rows={3}
                             value={comment}
                             onChange={(e) => setComment(e.target.value)}
                             className="w-full px-5 py-4 bg-slate-50 border-2 border-slate-50 rounded-2xl focus:border-primary-500 focus:bg-white outline-none text-xs font-medium text-slate-700 transition-all resize-none shadow-inner"
-                            placeholder="Tell us what you liked or what could be better..."
+                            placeholder="Tell us about your experience (optional)..."
                         />
                     </div>
 
@@ -123,9 +117,9 @@ const ReviewModal = ({
                         disabled={submitting}
                         className="flex-1 py-4 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-[0.2em] text-[10px] hover:bg-primary-600 transition-all shadow-xl shadow-slate-200 flex items-center justify-center gap-3 disabled:opacity-50 active:scale-95"
                     >
-                        {submitting ? 'Transmitting...' : (
+                        {submitting ? 'Submitting...' : (
                             <>
-                                <Send className="h-4 w-4" /> Submit Report
+                                <Send className="h-4 w-4" /> Submit Review
                             </>
                         )}
                     </button>

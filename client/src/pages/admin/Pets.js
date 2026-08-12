@@ -61,10 +61,10 @@ const AdminPets = () => {
     pickupAvailability: 'scheduled',
     pickupInstructions: '',
     fulfillmentType: 'pickup_only',
-    allowedPaymentMethods: ['gcash', 'maya', 'bank_transfer', 'cash_on_pickup'],
+    allowedPaymentMethods: ['paymongo'],
     paymentConfig: 'full_payment',
     depositAmount: 0,
-    paymentType: 'any',
+    paymentType: 'online_only',
     approvalStatus: 'pending',
     adoptionDetails: {
       requirements: '', trialPeriod: '', homeCheck: false,
@@ -274,7 +274,7 @@ const AdminPets = () => {
         allowedPaymentMethods: petForm.allowedPaymentMethods,
         paymentConfig: petForm.paymentConfig,
         depositAmount: parseFloat(petForm.depositAmount) || 0,
-        paymentType: 'any'
+        paymentType: 'online_only'
       };
       if (editingPet) {
         await adminPetService.updatePet(editingPet._id, payload);
@@ -1064,28 +1064,16 @@ const AdminPets = () => {
                     </div>
 
                     <div className="space-y-10 relative z-10">
-                      <div className="space-y-4">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Allowed Payment methods</label>
-                        <div className="grid grid-cols-2 gap-3">
-                          {[
-                            { id: 'gcash', label: 'GCash' },
-                            { id: 'maya', label: 'Maya' },
-                            { id: 'bank_transfer', label: 'Bank Transfer' },
-                            { id: 'cash_on_pickup', label: 'Cash on Pickup' }
-                          ].map(method => (
-                            <button key={method.id} type="button"
-                              onClick={() => {
-                                const current = petForm.allowedPaymentMethods || [];
-                                if (current.includes(method.id)) setPetForm(p => ({ ...p, allowedPaymentMethods: current.filter(m => m !== method.id) }));
-                                else setPetForm(p => ({ ...p, allowedPaymentMethods: [...current, method.id] }));
-                              }}
-                              className={`flex items-center gap-3 p-4 rounded-2xl border-2 transition-all ${(petForm.allowedPaymentMethods || []).includes(method.id) ? 'bg-white/10 border-rose-500 text-white shadow-lg' : 'bg-white/5 border-white/5 text-white/40 hover:bg-white/10'}`}>
-                              <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${(petForm.allowedPaymentMethods || []).includes(method.id) ? 'border-rose-500' : 'border-white/20'}`}>
-                                {(petForm.allowedPaymentMethods || []).includes(method.id) && <div className="w-2 h-2 bg-rose-500 rounded-full" />}
-                              </div>
-                              <span className="text-[11px] font-black uppercase tracking-widest">{method.label}</span>
-                            </button>
-                          ))}
+                      <div className="space-y-3">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Payment provider</label>
+                        <div className="flex items-center gap-3 p-4 rounded-2xl border-2 border-rose-500 bg-white/10 text-white">
+                          <div className="w-4 h-4 rounded-full border-2 border-rose-500 flex items-center justify-center">
+                            <div className="w-2 h-2 bg-rose-500 rounded-full" />
+                          </div>
+                          <div>
+                            <span className="block text-[11px] font-black uppercase tracking-widest">PayMongo</span>
+                            <span className="block text-[8px] font-bold text-white/40 uppercase tracking-widest">All payment confirmation is automatic</span>
+                          </div>
                         </div>
                       </div>
 
@@ -1093,9 +1081,8 @@ const AdminPets = () => {
                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Payment Strategy</label>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                           {[
-                            { id: 'full_payment', label: 'Full Payment', desc: 'Pre-pickup' },
-                            { id: 'deposit_first', label: 'Reservation', desc: 'Deposit + Balance' },
-                            { id: 'cash_on_pickup_only', label: 'Cash Only', desc: 'Pay at Pickup' }
+                            { id: 'full_payment', label: 'Full Payment', desc: 'PayMongo checkout' },
+                            { id: 'deposit_first', label: 'Reservation', desc: 'Deposit + Balance' }
                           ].map(config => (
                             <button key={config.id} type="button" onClick={() => setPetForm(p => ({ ...p, paymentConfig: config.id }))}
                               className={`p-5 rounded-2xl border-2 transition-all flex flex-col gap-2 ${petForm.paymentConfig === config.id ? 'bg-white/10 border-rose-500 text-white shadow-lg' : 'bg-white/5 border-white/5 text-white/40 hover:bg-white/10'}`}>

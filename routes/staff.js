@@ -3,6 +3,8 @@ const router = express.Router();
 const { authenticate, adminOnly, requirePermission } = require('../middleware/auth');
 const {
     getMyStaff,
+    getStaffConfiguration,
+    getStaffProfile,
     createStaff,
     updateStaff,
     toggleStaffStatus,
@@ -22,6 +24,8 @@ router.get('/riders/:id', authenticate, requirePermission('logistics.manage'), g
 // Remaining routes require authentication and admin/super_admin role
 router.use(authenticate, adminOnly);
 
+router.get('/configuration', getStaffConfiguration);
+router.get('/:id/profile', getStaffProfile);
 router.get('/', getMyStaff);
 router.post('/riders/:id/payouts', createRiderPayout);
 router.patch('/rider-payouts/:payoutId', updateRiderPayout);

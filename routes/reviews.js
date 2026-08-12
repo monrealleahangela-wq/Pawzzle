@@ -10,7 +10,8 @@ const {
     replyToReview,
     getShopReviews,
     checkReviewEligibility,
-    toggleReviewStatus
+    toggleReviewStatus,
+    getStaffReviews
 } = require('../controllers/reviewController');
 const { authenticate, adminOnly, superAdminOnly, adminOrStaff } = require('../middleware/auth');
 
@@ -23,6 +24,7 @@ router.post('/platform', authenticate, createPlatformFeedback);
 
 // Public/Authenticated Item Review Routes
 router.get('/eligibility/:targetType/:targetId', authenticate, checkReviewEligibility);
+router.get('/staff/:staffId', getStaffReviews);
 router.get('/:targetType/:targetId', getTargetReviews);
 router.post('/', authenticate, createReview);
 router.post('/:reviewId/reply', authenticate, adminOrStaff, replyToReview);

@@ -2,104 +2,88 @@ const Store = require('../models/Store');
 const Order = require('../models/Order');
 const Booking = require('../models/Booking');
 
-/**
- * Service to handle revenue recognition and store balance updates.
- * Only PAID transactions are recorded as revenue.
- */
 class RevenueService {
-  /**
-   * Records revenue for a paid order or booking.
-   * Only increments stats if isRevenueRecorded is false.
-   * @param {string} type - 'order' or 'booking'
-   * @param {string} id - The ID of the document
-   * @returns {Promise<Object>} The updated document
-   */
+  static modelFor(type) {
+    if (!['order', 'booking'].includes(type)) throw new Error(`Unsupported revenue type: ${type}`);
+    return type === 'order' ? Order : Booking;
+  }
+
+  static totalsFor(doc, type) {
+    const totalAmount = Number(type === 'order' ? doc.totalAmount : doc.totalPrice);
+    const vatAmount = Number(doc.pricingBreakdown?.vatAmount || 0);
+    const recognizedRevenue = Number(Math.max(0, totalAmount - vatAmount).toFixed(2));
+    const platformFee = Number((recognizedRevenue * 0.10).toFixed(2));
+    const netAmount = Number((totalAmount - platformFee).toFixed(2));
+    return { recognizedRevenue, platformFee, netAmount };
+  }
+
   static async recordPayment(type, id) {
-    let Model = type === 'order' ? Order : Booking;
+    const Model = this.modelFor(type);
     const doc = await Model.findById(id);
-
     if (!doc) throw new Error(`${type} not found`);
+    if (doc.isRevenueRecorded) return doc;
 
-    // Only proceed if not already recorded
-    if (!doc.isRevenueRecorded) {
-      const totalAmount = type === 'order' ? doc.totalAmount : doc.totalPrice;
-      const vatAmount = Number(doc.pricingBreakdown?.vatAmount || 0);
-      const recognizedRevenue = Number(Math.max(0, totalAmount - vatAmount).toFixed(2));
-      
-      // VAT collected is an output-tax liability, not seller sales revenue.
-      const platformFee = Number((recognizedRevenue * 0.10).toFixed(2));
-      const netAmount = Number((totalAmount - platformFee).toFixed(2));
+    const { recognizedRevenue, platformFee, netAmount } = this.totalsFor(doc, type);
+    let storeId = doc.store;
+    if (!storeId && doc.addedBy) storeId = (await Store.findOne({ owner: doc.addedBy }).select('_id'))?._id;
 
-      doc.platformFee = platformFee;
-      doc.netAmount = netAmount;
-      doc.paymentStatus = 'paid';
-      doc.isRevenueRecorded = true;
-
-      // Determine the store ID if missing from the document
-      let storeId = doc.store;
-      if (!storeId && doc.addedBy) {
-        const store = await Store.findOne({ owner: doc.addedBy });
-        if (store) {
-          storeId = store._id;
-          // Periodically fix the document too
-          doc.store = storeId;
-        }
+    // The claim is atomic, so webhook delivery and redirect verification cannot
+    // both increment the store aggregates for the same transaction.
+    const claimed = await Model.findOneAndUpdate({ _id: id, isRevenueRecorded: { $ne: true } }, {
+      $set: {
+        platformFee,
+        netAmount,
+        paymentStatus: 'paid',
+        isRevenueRecorded: true,
+        ...(storeId ? { store: storeId } : {})
       }
+    }, { new: true });
+    if (!claimed) return Model.findById(id);
 
+    try {
       if (storeId) {
         await Store.findByIdAndUpdate(storeId, {
           $inc: {
-            'balance': netAmount,
+            balance: netAmount,
             'stats.totalRevenue': recognizedRevenue,
             'stats.totalPlatformFees': platformFee
           }
         });
-        console.log(`💰 Revenue recorded for ${type} #${doc._id || id}. Seller: +${netAmount}, Platform: +${platformFee}`);
       }
-      
-      return await doc.save();
+      return claimed;
+    } catch (error) {
+      await Model.findOneAndUpdate({ _id: id, isRevenueRecorded: true }, { $set: { isRevenueRecorded: false } });
+      throw error;
     }
-
-    return doc;
   }
 
-  /**
-   * Reverses revenue when a transaction is cancelled or refunded.
-   * Only reverses if isRevenueRecorded is true.
-   * @param {string} type - 'order' or 'booking'
-   * @param {string} id - The ID of the document
-   * @returns {Promise<Object>} The updated document
-   */
   static async reversePayment(type, id) {
-    let Model = type === 'order' ? Order : Booking;
+    const Model = this.modelFor(type);
     const doc = await Model.findById(id);
-
     if (!doc) throw new Error(`${type} not found`);
+    if (!doc.isRevenueRecorded || !doc.store) return doc;
 
-    if (doc.isRevenueRecorded && doc.store) {
-      const totalAmount = type === 'order' ? doc.totalAmount : doc.totalPrice;
-      const vatAmount = Number(doc.pricingBreakdown?.vatAmount || 0);
-      const recognizedRevenue = Number(Math.max(0, totalAmount - vatAmount).toFixed(2));
-      const platformFee = doc.platformFee || Number((recognizedRevenue * 0.10).toFixed(2));
-      const netAmount = doc.netAmount || (totalAmount - platformFee);
+    const totals = this.totalsFor(doc, type);
+    const platformFee = Number(doc.platformFee || totals.platformFee);
+    const netAmount = Number(doc.netAmount || totals.netAmount);
+    const claimed = await Model.findOneAndUpdate({ _id: id, isRevenueRecorded: true }, {
+      $set: { isRevenueRecorded: false }
+    }, { new: true });
+    if (!claimed) return Model.findById(id);
 
+    try {
       await Store.findByIdAndUpdate(doc.store, {
         $inc: {
-          'balance': -netAmount,
-          'stats.totalRevenue': -recognizedRevenue,
+          balance: -netAmount,
+          'stats.totalRevenue': -totals.recognizedRevenue,
           'stats.totalPlatformFees': -platformFee
         }
       });
-      
-      console.log(`💰 Revenue reversed for ${type} #${doc._id || id}. Seller: -${netAmount}, Platform: -${platformFee}`);
-      
-      doc.isRevenueRecorded = false;
-      // We don't reset netAmount/platformFee here to keep historical info of what WAS paid
-      // but the flag ensures it won't be reversed twice.
-      return await doc.save();
+      return claimed;
+    } catch (error) {
+      await Model.findOneAndUpdate({ _id: id, isRevenueRecorded: false }, { $set: { isRevenueRecorded: true } });
+      throw error;
     }
-
-    return doc;
   }
 }
 

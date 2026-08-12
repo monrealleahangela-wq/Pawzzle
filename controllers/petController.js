@@ -170,6 +170,9 @@ const createPet = async (req, res) => {
 
     const petData = {
       ...req.body,
+      paymentType: 'online_only',
+      allowedPaymentMethods: ['paymongo'],
+      paymentConfig: req.body.paymentConfig === 'deposit_first' ? 'deposit_first' : 'full_payment',
       addedBy: req.user._id,
       store: store._id
     };
@@ -241,6 +244,9 @@ const updatePet = async (req, res) => {
 
     // List of fields that shouldn't be updated directly via this endpoint
     const { _id, id, addedBy, store, createdAt, updatedAt, ratings, ...updateData } = req.body;
+    updateData.paymentType = 'online_only';
+    updateData.allowedPaymentMethods = ['paymongo'];
+    updateData.paymentConfig = updateData.paymentConfig === 'deposit_first' ? 'deposit_first' : 'full_payment';
     
     // Validate Birthday (Cannot be in the future)
     if (updateData.birthday) {

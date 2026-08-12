@@ -4,8 +4,10 @@ import { bookingService, serviceService, voucherService, getImageUrl, petProfile
 import { calculateServicePrice } from '../../utils/pricingEngine';
 import { calculateTransactionTax, getTaxStatusLabel } from '../../utils/transactionTax';
 import { toast } from 'react-toastify';
-import { Clock, User, MapPin, Phone, Mail, DollarSign, CheckCircle, XCircle, AlertCircle, Filter, Search, Calendar, ArrowLeft, ChevronLeft, ChevronRight, Store, X, Activity, ShieldCheck, TrendingUp, Tag, Ticket, Bell, Building, Heart, PawPrint, Trash2, Star, Camera, Eye, CreditCard, Navigation, Receipt, Layers } from 'lucide-react';
+import { Clock, User, MapPin, Phone, Mail, DollarSign, CheckCircle, XCircle, AlertCircle, Filter, Search, Calendar, ArrowLeft, ChevronLeft, ChevronRight, Store, X, Activity, ShieldCheck, TrendingUp, Tag, Ticket, Bell, Building, Heart, PawPrint, Trash2, Star, CreditCard, Navigation, Receipt, Layers } from 'lucide-react';
 import ReviewModal from '../../components/ReviewModal';
+import ServiceCommunicationPanel from '../../components/booking/ServiceCommunicationPanel';
+import StaffProfileModal from '../../components/booking/StaffProfileModal';
 import { useAuth } from '../../contexts/AuthContext';
 import { formatTime12h } from '../../utils/timeFormatters';
 
@@ -83,6 +85,9 @@ const Bookings = ({ isSubcomponent = false }) => {
   const [savedPets, setSavedPets] = useState([]);
   const [selectedPetProfile, setSelectedPetProfile] = useState(null);
   const [agreedToPolicy, setAgreedToPolicy] = useState(false);
+  const [eligibleStaff, setEligibleStaff] = useState([]);
+  const [staffProfileId, setStaffProfileId] = useState(null);
+  const [bookingActionLoading, setBookingActionLoading] = useState(false);
 
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -302,6 +307,22 @@ const Bookings = ({ isSubcomponent = false }) => {
   }, [filterStatus, searchTerm, searchParams, bookings.length]);
 
   useEffect(() => {
+    if (!selectedBooking?._id || selectedBooking.status !== 'awaiting_customer_confirmation') {
+      setEligibleStaff([]);
+      return;
+    }
+    bookingService.getEligibleStaff(selectedBooking._id)
+      .then(response => setEligibleStaff(response.data.staff || []))
+      .catch(() => setEligibleStaff([]));
+  }, [selectedBooking?._id, selectedBooking?.status, selectedBooking?.staff]);
+
+  useEffect(() => {
+    if (searchParams.get('review') === '1' && selectedBooking?.status === 'completed' && !selectedBooking.reviewStatus?.isRated && (selectedBooking.serviceProvider || selectedBooking.staff)) {
+      setRatingBooking(selectedBooking);
+    }
+  }, [searchParams, selectedBooking]);
+
+  useEffect(() => {
     const serviceId = searchParams.get('service');
     if (serviceId) {
       fetchServiceDetails(serviceId);
@@ -384,10 +405,10 @@ const Bookings = ({ isSubcomponent = false }) => {
   };
 
   const handleCancelBooking = async (bookingId) => {
-    if (!window.confirm('Are you sure you want to cancel this appointment?')) return;
+    if (!window.confirm('Cancel this booking request?')) return;
     try {
-      await bookingService.updateBookingStatus(bookingId, 'cancelled');
-      toast.success('Appointment cancelled successfully');
+      await bookingService.cancelBooking(bookingId);
+      toast.success('Booking request cancelled');
       fetchBookings();
       if (selectedBooking && selectedBooking._id === bookingId) {
         setSelectedBooking(null);
@@ -395,6 +416,40 @@ const Bookings = ({ isSubcomponent = false }) => {
     } catch (error) {
       console.error('Error cancelling booking:', error);
       toast.error('Failed to cancel appointment');
+    }
+  };
+
+  const handleSelectStaff = async staffId => {
+    setBookingActionLoading(true);
+    try {
+      const response = await bookingService.selectStaff(selectedBooking._id, staffId);
+      setSelectedBooking(response.data.booking);
+      setStaffProfileId(null);
+      toast.success('Assigned staff updated. Review the final booking details before paying.');
+      fetchBookings();
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'That staff member is no longer available.');
+    } finally {
+      setBookingActionLoading(false);
+    }
+  };
+
+  const handleConfirmAndPay = async bookingId => {
+    const vat = Number(selectedBooking?.pricingBreakdown?.vatAmount || 0).toLocaleString(undefined, { minimumFractionDigits: 2 });
+    const total = Number(selectedBooking?.totalPrice || 0).toLocaleString(undefined, { minimumFractionDigits: 2 });
+    if (!window.confirm(`Confirm this booking and continue to PayMongo?\n\nFinal total: ₱${total}\nVAT: ₱${vat}`)) return;
+    setBookingActionLoading(true);
+    try {
+      const confirmation = await bookingService.confirmForPayment(bookingId);
+      setSelectedBooking(confirmation.data.booking);
+      const response = await paymentService.createBookingCheckoutSession(bookingId);
+      if (response.data.checkoutUrl) window.location.href = response.data.checkoutUrl;
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'The booking could not be revalidated for payment.');
+      const refreshed = await bookingService.getBookingById(bookingId).catch(() => null);
+      if (refreshed?.data?.booking) setSelectedBooking(refreshed.data.booking);
+    } finally {
+      setBookingActionLoading(false);
     }
   };
 
@@ -411,10 +466,12 @@ const Bookings = ({ isSubcomponent = false }) => {
   };
 
   const getPhaseIndex = (status) => {
-    const phases = ['pending', 'approved', 'processing', 'finished', 'completed'];
-    // Map 'confirmed' to 'approved' for progress consistency
-    const effectiveStatus = status === 'confirmed' ? 'approved' : status;
-    return phases.indexOf(effectiveStatus);
+    if (status === 'pending') return 0;
+    if (status === 'awaiting_customer_confirmation') return 1;
+    if (status === 'awaiting_payment') return 2;
+    if (['confirmed', 'approved', 'processing', 'finished'].includes(status)) return 3;
+    if (status === 'completed') return 4;
+    return -1;
   };
 
   // Fetch existing bookings for the selected service to show availability
@@ -556,11 +613,15 @@ const Bookings = ({ isSubcomponent = false }) => {
   const getStatusColor = (status) => {
     const colors = {
       pending: 'bg-secondary-50 text-primary-600 border-secondary-100',
+      awaiting_customer_confirmation: 'bg-amber-50 text-amber-700 border-amber-200',
+      awaiting_payment: 'bg-sky-50 text-sky-700 border-sky-200',
+      confirmed: 'bg-primary-50 text-primary-700 border-primary-200',
       approved: 'bg-primary-50 text-primary-600 border-secondary-100',
       processing: 'bg-secondary-50 text-primary-600 border-secondary-100',
       finished: 'bg-emerald-50 text-emerald-600 border-emerald-100',
       completed: 'bg-[#8B4513] text-white border-primary-900',
-      cancelled: 'bg-rose-50 text-rose-600 border-rose-100'
+      cancelled: 'bg-rose-50 text-rose-600 border-rose-100',
+      confirmation_expired: 'bg-slate-100 text-slate-600 border-slate-200'
     };
     return colors[status] || 'bg-gray-50 text-gray-600';
   };
@@ -575,6 +636,20 @@ const Bookings = ({ isSubcomponent = false }) => {
     };
     return icons[status] || <AlertCircle className="h-4 w-4" />;
   };
+
+  const getStatusLabel = status => ({
+    pending: 'Pending Store Review',
+    awaiting_customer_confirmation: 'Awaiting Your Confirmation',
+    awaiting_payment: 'Payment Required',
+    confirmed: 'Booking Confirmed',
+    approved: 'Booking Confirmed',
+    processing: 'Service In Progress',
+    finished: 'Service Finished',
+    completed: 'Service Completed',
+    cancelled: 'Cancelled',
+    confirmation_expired: 'Confirmation Expired',
+    no_show: 'No Show'
+  }[status] || String(status || '').replaceAll('_', ' '));
 
   const handleStatusFilter = (status) => {
     setFilterStatus(status);
@@ -668,6 +743,7 @@ const Bookings = ({ isSubcomponent = false }) => {
 
       const bookingData = {
         serviceId: selectedService._id,
+        petProfileId: selectedPetProfile?._id || undefined,
         pet: {
           name: bookingForm.pet.name,
           type: bookingForm.pet.type,
@@ -705,17 +781,7 @@ const Bookings = ({ isSubcomponent = false }) => {
         return;
       }
       
-      // All customer payments use the existing PayMongo checkout.
-      if (bookingForm.paymentMethod === 'paymongo') {
-        toast.info('Redirecting to secure payment...');
-        const paymentResponse = await paymentService.createBookingCheckoutSession(response.data._id);
-        if (paymentResponse.data.checkoutUrl) {
-          window.location.href = paymentResponse.data.checkoutUrl;
-          return;
-        }
-      }
-
-      toast.success('Appointment booked successfully!');
+      toast.success('Booking request submitted. The store will review it and assign a qualified staff member before payment.');
 
       // Reset form and refresh bookings
       setBookingForm({
@@ -1704,7 +1770,7 @@ const Bookings = ({ isSubcomponent = false }) => {
                     {submitting ? (
                       <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Processing...</>
                     ) : (
-                      <><CheckCircle className="h-4 w-4" /> Confirm Booking</>
+                      <><CheckCircle className="h-4 w-4" /> Submit Booking Request</>
                     )}
                   </button>
                 </div>
@@ -1799,10 +1865,13 @@ const Bookings = ({ isSubcomponent = false }) => {
                     >
                       <option value="all">All Statuses</option>
                       <option value="pending">Pending Review</option>
+                      <option value="awaiting_customer_confirmation">Awaiting Your Confirmation</option>
+                      <option value="awaiting_payment">Payment Required</option>
                       <option value="confirmed">Confirmed</option>
                       <option value="processing">Currently Processing</option>
                       <option value="completed">Completed</option>
                       <option value="cancelled">Cancelled</option>
+                      <option value="confirmation_expired">Confirmation Expired</option>
                     </select>
                   </div>
                 </div>
@@ -1833,7 +1902,7 @@ const Bookings = ({ isSubcomponent = false }) => {
                       </h3>
                       <div className="w-1.5 h-1.5 rounded-full bg-slate-200" />
                       <span className={`px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-[0.2em] shadow-sm border ${getStatusColor(booking.status)}`}>
-                        {booking.status.replace('_', ' ')}
+                        {getStatusLabel(booking.status)}
                       </span>
                     </div>
                     <div className="flex items-center gap-4">
@@ -1915,7 +1984,7 @@ const Bookings = ({ isSubcomponent = false }) => {
                     >
                       View Details <ChevronRight className="h-4 w-4" />
                     </button>
-                    {booking.status === 'completed' && !booking.reviewStatus?.isRated && (
+                    {booking.status === 'completed' && !booking.reviewStatus?.isRated && (booking.serviceProvider || booking.staff) && (
                       <button
                         onClick={() => setRatingBooking(booking)}
                         className="flex-1 sm:flex-none flex items-center justify-center gap-3 px-6 py-4 bg-emerald-50 text-emerald-600 border border-emerald-100 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] shadow-sm hover:bg-emerald-600 hover:text-white transition-all active:scale-95"
@@ -1923,7 +1992,7 @@ const Bookings = ({ isSubcomponent = false }) => {
                         <Star className="h-4 w-4" /> Rate Service
                       </button>
                     )}
-                    {booking.status === 'pending' && (
+                    {['pending', 'awaiting_customer_confirmation', 'awaiting_payment'].includes(booking.status) && booking.paymentStatus !== 'paid' && (
                       <button
                         onClick={() => handleCancelBooking(booking._id)}
                         className="p-4 bg-rose-50 text-rose-600 rounded-2xl hover:bg-rose-600 hover:text-white transition-all active:scale-95"
@@ -1940,34 +2009,34 @@ const Bookings = ({ isSubcomponent = false }) => {
       }
       {/* Booking Details Modal */}
       {selectedBooking && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xl z-[100] flex items-center justify-center p-4 animate-fade-in">
-          <div className="bg-white w-full max-w-3xl rounded-[3.5rem] overflow-hidden shadow-[0_50px_100px_-20px_rgba(0,0,0,0.5)] animate-slide-up border border-white/20 flex flex-col max-h-[90vh]">
-            <header className="shrink-0 bg-slate-900 p-10 sm:p-12 text-white flex justify-between items-start relative overflow-hidden">
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[100] flex items-center justify-center p-2 sm:p-4 animate-fade-in">
+          <div className="bg-white w-full max-w-3xl rounded-2xl overflow-hidden shadow-2xl animate-slide-up border border-white/20 flex flex-col max-h-[94vh]">
+            <header className="shrink-0 bg-slate-900 p-4 sm:p-5 text-white flex justify-between items-start relative overflow-hidden">
               <div className="absolute top-0 right-0 p-12 opacity-10 blur-3xl pointer-events-none">
                 <ShieldCheck className="w-64 h-64 text-primary-500" />
               </div>
               <div className="relative z-10">
-                <div className="flex items-center gap-4 mb-6">
-                  <div className="px-5 py-2 bg-primary-600 rounded-2xl flex items-center gap-3 shadow-xl shadow-primary-900/40">
-                    <div className="w-2 h-2 rounded-full bg-white animate-ping" />
-                    <span className="text-[10px] font-black uppercase tracking-[0.4em]">Booking Information</span>
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="px-2.5 py-1 bg-primary-600 rounded-lg flex items-center gap-2 shadow-lg shadow-primary-900/30">
+                    <div className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
+                    <span className="text-[9px] font-black uppercase tracking-wider">Booking Information</span>
                   </div>
                 </div>
-                <h3 className="text-4xl sm:text-6xl font-black uppercase tracking-tighter leading-none mb-4">#{selectedBooking._id.slice(-12).toUpperCase()}</h3>
-                <div className="flex items-center gap-4 text-slate-400">
-                  <Activity className="h-4 w-4 text-emerald-500" />
-                  <p className="text-[11px] font-black uppercase tracking-[0.3em]">Booking in progress</p>
+                <h3 className="text-lg sm:text-xl font-black uppercase tracking-tight leading-none mb-2">#{selectedBooking._id.slice(-12).toUpperCase()}</h3>
+                <div className="flex items-center gap-2 text-slate-400">
+                  <Activity className="h-3.5 w-3.5 text-emerald-500" />
+                  <p className="text-[10px] font-bold">{getStatusLabel(selectedBooking.status)}</p>
                 </div>
               </div>
               <button
                 onClick={() => setSelectedBooking(null)}
-                className="relative z-10 w-16 h-16 bg-white/5 hover:bg-white/10 border border-white/10 rounded-[2rem] flex items-center justify-center transition-all active:scale-90 hover:rotate-90 duration-500 group"
+                className="relative z-10 w-8 h-8 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg flex items-center justify-center transition-all active:scale-90 group"
               >
-                <X className="h-8 w-8 text-white group-hover:scale-75 transition-transform" />
+                <X className="h-4 w-4 text-white" />
               </button>
             </header>
 
-            <div className="flex-1 p-10 sm:p-14 space-y-12 overflow-y-auto no-scrollbar scroll-smooth">
+            <div className="flex-1 p-4 sm:p-6 space-y-6 overflow-y-auto no-scrollbar scroll-smooth">
               {/* Status Tracker */}
               <div className="relative pt-4 pb-12">
                 <div className="absolute left-[5%] right-[5%] top-1/2 -translate-y-1/2 h-1 bg-slate-100 rounded-full" />
@@ -1977,20 +2046,20 @@ const Bookings = ({ isSubcomponent = false }) => {
                 />
 
                 <div className="relative z-10 flex justify-between">
-                  {['pending', 'approved', 'processing', 'finished', 'completed'].map((phase, idx) => {
+                  {['Request', 'Staff Review', 'Payment', 'Service', 'Complete'].map((phase, idx) => {
                     const currentIdx = getPhaseIndex(selectedBooking.status);
                     const isPassed = idx < currentIdx;
                     const isCurrent = idx === currentIdx;
                     return (
-                      <div key={phase} className="flex flex-col items-center gap-4">
-                        <div className={`w-10 h-10 rounded-2xl border-4 transition-all duration-700 flex items-center justify-center ${isPassed ? 'bg-primary-600 border-white ring-8 ring-secondary-50 shadow-xl' :
-                          isCurrent ? 'bg-primary-600 border-white ring-8 ring-secondary-50 animate-pulse shadow-xl shadow-secondary-200' :
+                      <div key={phase} className="flex flex-col items-center gap-2">
+                        <div className={`w-7 h-7 rounded-lg border-2 transition-all duration-500 flex items-center justify-center ${isPassed ? 'bg-primary-600 border-white ring-4 ring-secondary-50 shadow' :
+                          isCurrent ? 'bg-primary-600 border-white ring-4 ring-secondary-50 shadow' :
                             'bg-white border-slate-100'
                           }`}>
-                          {(isPassed || isCurrent) && <CheckCircle className="h-4 w-4 text-white" />}
+                          {(isPassed || isCurrent) && <CheckCircle className="h-3 w-3 text-white" />}
                         </div>
-                        <span className={`text-[10px] font-black uppercase tracking-[0.2em] px-3 py-1 rounded-lg ${isCurrent ? 'bg-primary-900 text-white' : isPassed ? 'text-primary-700 bg-secondary-50' : 'text-slate-300'}`}>
-                          {phase.replace('_', ' ')}
+                        <span className={`text-[8px] font-black uppercase tracking-tight px-1.5 py-0.5 rounded ${isCurrent ? 'bg-primary-900 text-white' : isPassed ? 'text-primary-700 bg-secondary-50' : 'text-slate-300'}`}>
+                          {phase}
                         </span>
                       </div>
                     );
@@ -1999,13 +2068,13 @@ const Bookings = ({ isSubcomponent = false }) => {
               </div>
 
               {/* Service Details */}
-              <div className="grid grid-cols-2 gap-6">
-                <div className="p-6 bg-slate-50/50 rounded-[2rem] border border-slate-100 hover:border-primary-200 transition-all group">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="p-4 bg-slate-50/50 rounded-xl border border-slate-100 hover:border-primary-200 transition-all group">
                   <label className="text-[9px] font-black text-slate-400 uppercase tracking-[0.4em] block mb-3 group-hover:text-primary-600 transition-colors">Service</label>
                   <p className="text-[13px] font-black text-slate-900 uppercase leading-none mb-1.5">{selectedBooking.service?.name}</p>
                   <span className="text-[10px] font-black text-primary-600 bg-primary-50 px-2 py-0.5 rounded-md border border-primary-100">{selectedBooking.service?.duration} min</span>
                 </div>
-                <div className="p-6 bg-slate-50/50 rounded-[2rem] border border-slate-100 hover:border-emerald-200 transition-all group">
+                <div className="p-4 bg-slate-50/50 rounded-xl border border-slate-100 hover:border-emerald-200 transition-all group">
                   <label className="text-[9px] font-black text-slate-400 uppercase tracking-[0.4em] block mb-3 group-hover:text-emerald-600 transition-colors">Service Location</label>
                   <p className="text-[13px] font-black text-slate-900 uppercase leading-none mb-1.5">
                     {selectedBooking.isHomeService ? 'Home Service' : 'Store Service'}
@@ -2042,23 +2111,58 @@ const Bookings = ({ isSubcomponent = false }) => {
               </div>
 
               {/* Deployment Slot */}
-              <div className="bg-slate-900 p-8 rounded-[3rem] text-white flex flex-col sm:flex-row items-center justify-between gap-8 relative overflow-hidden group">
+              <div className="bg-slate-900 p-4 rounded-2xl text-white flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative overflow-hidden group">
                 <div className="absolute top-0 right-0 w-64 h-64 bg-primary-600/5 rounded-full -translate-y-32 translate-x-32 blur-3xl" />
 
-                <div className="flex items-center gap-6 relative z-10">
-                  <div className="w-16 h-16 bg-white/10 rounded-[2rem] flex items-center justify-center border border-white/10 shadow-xl group-hover:bg-primary-600 transition-all duration-700">
-                    <Calendar className="h-8 w-8 text-primary-500 group-hover:text-white" />
+                <div className="flex items-center gap-3 relative z-10">
+                  <div className="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center border border-white/10 group-hover:bg-primary-600 transition-all">
+                    <Calendar className="h-5 w-5 text-primary-500 group-hover:text-white" />
                   </div>
                   <div>
                     <label className="text-[9px] font-black text-primary-500 uppercase tracking-[0.4em] block mb-2">Booking Date</label>
-                    <p className="text-2xl font-black uppercase tracking-tight">{new Date(selectedBooking.bookingDate).toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}</p>
+                    <p className="text-sm font-black uppercase tracking-tight">{new Date(selectedBooking.bookingDate).toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}</p>
                   </div>
                 </div>
                 <div className="text-right relative z-10">
                   <label className="text-[9px] font-black text-slate-500 uppercase tracking-[0.4em] block mb-2">Time</label>
-                  <p className="text-5xl font-black tracking-tighter text-primary-500">{formatTime12h(selectedBooking.startTime)}</p>
+                  <p className="text-xl font-black tracking-tight text-primary-500">{formatTime12h(selectedBooking.startTime)}</p>
                 </div>
               </div>
+
+              {/* Customer-facing booking proposal and assigned specialist */}
+              {selectedBooking.staff && (
+                <section className="rounded-2xl border border-slate-200 bg-white p-4 space-y-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-[9px] font-black text-primary-600 uppercase tracking-widest">Assigned Staff</p>
+                      <p className="text-xs text-slate-500">Review who will provide the service before confirming and paying.</p>
+                    </div>
+                    {selectedBooking.staff.professionalProfile?.reviewCount ? <span className="text-[10px] font-black text-amber-600 flex items-center gap-1"><Star className="h-3.5 w-3.5 fill-amber-400" />{selectedBooking.staff.professionalProfile.rating}/5 · {selectedBooking.staff.professionalProfile.reviewCount}</span> : <span className="text-[10px] text-slate-400">No reviews yet</span>}
+                  </div>
+                  <div className="flex gap-3 items-center rounded-xl bg-slate-50 border p-3">
+                    <div className="h-12 w-12 rounded-xl overflow-hidden bg-white border flex items-center justify-center shrink-0">
+                      {selectedBooking.staff.avatar ? <img src={getImageUrl(selectedBooking.staff.avatar)} alt="" className="h-full w-full object-cover" /> : <User className="h-5 w-5 text-slate-400" />}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-black text-slate-900">{selectedBooking.staff.firstName} {selectedBooking.staff.lastName}</p>
+                      <p className="text-[11px] text-slate-500 capitalize">{selectedBooking.staff.professionalProfile?.professionalTitle || selectedBooking.staff.staffType?.replaceAll('_', ' ')}{selectedBooking.staff.professionalProfile?.specialty ? ` · ${selectedBooking.staff.professionalProfile.specialty}` : ''}</p>
+                    </div>
+                    <button type="button" onClick={() => setStaffProfileId(selectedBooking.staff._id)} className="h-8 px-3 rounded-lg border bg-white text-[10px] font-black uppercase text-primary-700">View Profile</button>
+                  </div>
+                  {selectedBooking.status === 'awaiting_customer_confirmation' && eligibleStaff.filter(member => !member.isCurrent).length > 0 && (
+                    <div>
+                      <p className="text-[9px] font-black uppercase text-slate-400 mb-2">Other qualified staff available</p>
+                      <div className="grid sm:grid-cols-2 gap-2">{eligibleStaff.filter(member => !member.isCurrent).map(member => (
+                        <button key={member._id} type="button" disabled={bookingActionLoading} onClick={() => setStaffProfileId(member._id)} className="text-left rounded-xl border p-3 hover:border-primary-300 transition-colors">
+                          <p className="text-xs font-black text-slate-800">{member.firstName} {member.lastName}</p>
+                          <p className="text-[10px] text-slate-500 capitalize">{member.professionalTitle || member.staffType?.replaceAll('_', ' ')} · {member.reviewCount ? `${member.averageRating}/5 (${member.reviewCount})` : 'No reviews yet'}</p>
+                        </button>
+                      ))}</div>
+                    </div>
+                  )}
+                  {selectedBooking.status === 'awaiting_customer_confirmation' && eligibleStaff.length === 1 && <p className="rounded-lg bg-slate-50 p-2 text-[11px] text-slate-500">No other qualified staff member is available for this schedule.</p>}
+                </section>
+              )}
 
               {/* Operations Notes & Payload */}
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch pt-4">
@@ -2201,59 +2305,50 @@ const Bookings = ({ isSubcomponent = false }) => {
                 </div>
               )}
 
-              {/* Service Photos Feed */}
-              {selectedBooking.servicePhotos?.length > 0 && (
-                <div className="space-y-6 pt-12 border-t border-slate-50">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h4 className="text-xl font-black text-slate-900 uppercase tracking-tighter mb-0.5">Service Documentation</h4>
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Real-time visual monitoring from the store</p>
-                    </div>
-                    <Camera className="h-6 w-6 text-slate-300" />
-                  </div>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    {selectedBooking.servicePhotos.map((photo, idx) => (
-                      <div key={idx} className="aspect-square rounded-[2rem] overflow-hidden border-4 border-slate-50 shadow-sm relative group">
-                        <img src={getImageUrl(photo)} alt={`Service Snapshot ${idx + 1}`} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
-                        <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                           <Eye className="h-6 w-6 text-white" />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+              <ServiceCommunicationPanel booking={selectedBooking} />
             </div>
 
               {/* Actions */}
-              <footer className="shrink-0 p-10 sm:p-14 bg-slate-50 border-t border-slate-100 flex flex-wrap gap-6 relative z-10">
-                {selectedBooking.status === 'pending' && selectedBooking.paymentStatus !== 'paid' && (
+              <footer className="shrink-0 p-4 sm:p-6 bg-slate-50 border-t border-slate-100 flex flex-wrap gap-3 relative z-10">
+                {selectedBooking.status === 'awaiting_customer_confirmation' && selectedBooking.staff && (
                   <button
-                    onClick={() => handlePayment(selectedBooking._id)}
-                    className="flex-1 min-w-[200px] px-10 py-6 bg-emerald-600 text-white rounded-[2rem] text-[11px] font-black uppercase tracking-[0.3em] hover:bg-emerald-700 transition-all active:scale-[0.98] shadow-xl shadow-emerald-200 flex items-center justify-center gap-3"
+                    disabled={bookingActionLoading}
+                    onClick={() => handleConfirmAndPay(selectedBooking._id)}
+                    className="flex-1 min-w-[220px] h-11 px-4 bg-emerald-600 text-white rounded-xl text-[10px] font-black uppercase tracking-wider hover:bg-emerald-700 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
                   >
-                    <CreditCard className="h-5 w-5" />
-                    Pay Now (PayMongo)
+                    <CreditCard className="h-4 w-4" />
+                    {bookingActionLoading ? 'Revalidating…' : 'Confirm & Proceed to Payment'}
                   </button>
                 )}
-                {selectedBooking.status === 'pending' && (
+                {selectedBooking.status === 'awaiting_payment' && selectedBooking.paymentStatus !== 'paid' && (
+                  <button onClick={() => handlePayment(selectedBooking._id)} className="flex-1 min-w-[200px] h-11 px-4 bg-sky-600 text-white rounded-xl text-[10px] font-black uppercase tracking-wider flex items-center justify-center gap-2"><CreditCard className="h-4 w-4" />Retry PayMongo Payment</button>
+                )}
+                {['pending', 'awaiting_customer_confirmation', 'awaiting_payment'].includes(selectedBooking.status) && selectedBooking.paymentStatus !== 'paid' && (
                   <button
                     onClick={() => handleCancelBooking(selectedBooking._id)}
-                    className="flex-1 min-w-[280px] px-10 py-6 bg-rose-50 border-2 border-rose-200 text-rose-600 rounded-[2rem] text-[11px] font-black uppercase tracking-[0.4em] shadow-xl shadow-rose-100 hover:bg-rose-600 hover:text-white hover:border-rose-600 transition-all active:scale-[0.98] group flex items-center justify-center gap-4"
+                    className="h-11 px-4 bg-white border border-rose-200 text-rose-600 rounded-xl text-[10px] font-black uppercase tracking-wider hover:bg-rose-600 hover:text-white transition-all flex items-center justify-center gap-2"
                   >
-                    <X className="h-5 w-5" />
-                    Cancel Booking
+                    <X className="h-4 w-4" /> Cancel Request
                   </button>
                 )}
                 <button
                   onClick={() => setSelectedBooking(null)}
-                  className="flex-1 px-10 py-6 bg-slate-900 text-white rounded-[2rem] text-[11px] font-black uppercase tracking-[0.3em] hover:bg-primary-600 transition-all active:scale-[0.98]"
+                  className="h-11 px-4 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-wider hover:bg-primary-600 transition-all"
                 >
                   Close
                 </button>
               </footer>
           </div>
         </div>
+      )}
+      {staffProfileId && selectedBooking && (
+        <StaffProfileModal
+          bookingId={selectedBooking._id}
+          staffId={staffProfileId}
+          isCurrent={String(selectedBooking.staff?._id || selectedBooking.staff) === String(staffProfileId)}
+          onClose={() => setStaffProfileId(null)}
+          onSelect={selectedBooking.status === 'awaiting_customer_confirmation' ? handleSelectStaff : null}
+        />
       )}
       {/* Voucher Selection Modal */}
       {showVoucherModal && (
@@ -2320,9 +2415,9 @@ const Bookings = ({ isSubcomponent = false }) => {
         <ReviewModal
             isOpen={!!ratingBooking}
             onClose={() => setRatingBooking(null)}
-            targetType="Service"
-            targetId={ratingBooking.service?._id}
-            targetName={ratingBooking.service?.name}
+            targetType="Booking"
+            targetId={ratingBooking._id}
+            targetName={`${ratingBooking.serviceProvider?.firstName || ratingBooking.staff?.firstName || 'Assigned'} ${ratingBooking.serviceProvider?.lastName || ratingBooking.staff?.lastName || 'Staff'}`}
             bookingId={ratingBooking._id}
             onReviewSubmitted={() => {
                 fetchBookings();

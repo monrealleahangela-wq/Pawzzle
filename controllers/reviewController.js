@@ -7,16 +7,36 @@ const Store = require('../models/Store');
 const Service = require('../models/Service');
 const Booking = require('../models/Booking');
 const AdoptionRequest = require('../models/AdoptionRequest');
+const User = require('../models/User');
+
+const refreshStaffRating = async staffId => {
+    if (!staffId) return;
+    const [summary] = await Review.aggregate([
+        { $match: { targetType: 'Booking', staffId, isApproved: true, isDeleted: { $ne: true } } },
+        { $group: { _id: '$staffId', average: { $avg: '$rating' }, count: { $sum: 1 } } }
+    ]);
+    await User.findByIdAndUpdate(staffId, {
+        'professionalProfile.rating': summary ? Number(summary.average.toFixed(2)) : 0,
+        'professionalProfile.reviewCount': summary?.count || 0
+    });
+};
 
 // Create a review for product/pet/store/service
 const createReview = async (req, res) => {
     try {
         const { targetType, targetId, rating, comment, images, orderId, bookingId, isAnonymous } = req.body;
         const userId = req.user._id;
+        const numericRating = Number(rating);
+        if (!Number.isInteger(numericRating) || numericRating < 1 || numericRating > 5) {
+            return res.status(400).json({ message: 'Rating must be a whole number from 1 to 5.' });
+        }
+        if (String(comment || '').length > 1000) return res.status(400).json({ message: 'Review text must be 1000 characters or fewer.' });
 
         // TRUSTED REVIEW LOGIC: Verify if user has completed the relevant interaction
         let isTrusted = false;
         let storeId;
+        let staffId;
+        let serviceId;
 
         if (targetType === 'Product') {
             const product = await Product.findById(targetId).populate('store');
@@ -53,6 +73,26 @@ const createReview = async (req, res) => {
                 status: 'delivered'
             });
             if (successfulAdoption) isTrusted = true;
+        }
+        else if (targetType === 'Booking') {
+            if (!bookingId || String(bookingId) !== String(targetId)) {
+                return res.status(400).json({ message: 'A valid completed booking is required for a staff review.' });
+            }
+            const completedBooking = await Booking.findOne({
+                _id: bookingId,
+                customer: userId,
+                status: 'completed',
+                paymentStatus: 'paid',
+                'reviewStatus.isRated': { $ne: true }
+            });
+            if (!completedBooking) {
+                return res.status(403).json({ message: 'You can only review a paid, completed booking that has not already been reviewed.' });
+            }
+            staffId = completedBooking.serviceProvider || completedBooking.staff;
+            if (!staffId) return res.status(409).json({ message: 'The staff member who provided this service was not recorded.' });
+            serviceId = completedBooking.service;
+            storeId = completedBooking.store;
+            isTrusted = true;
         }
         else if (targetType === 'Service') {
             const service = await Service.findById(targetId).populate('store');
@@ -106,11 +146,13 @@ const createReview = async (req, res) => {
             targetType,
             targetId,
             storeId,
-            rating,
-            comment,
+            rating: numericRating,
+            comment: String(comment || '').trim(),
             images,
             orderId,
             bookingId,
+            serviceId,
+            staffId,
             isAnonymous: !!isAnonymous
         });
 
@@ -152,6 +194,7 @@ const createReview = async (req, res) => {
                 });
             }
         }
+        if (targetType === 'Booking') await refreshStaffRating(staffId);
 
         const reviewResponse = review.toObject();
         if (reviewResponse.isAnonymous) {
@@ -261,6 +304,31 @@ const getTargetReviews = async (req, res) => {
     }
 };
 
+const getStaffReviews = async (req, res) => {
+    try {
+        const { page = 1, limit = 10 } = req.query;
+        const staff = await User.findOne({ _id: req.params.staffId, role: 'staff', isDeleted: false, 'professionalProfile.isPublic': { $ne: false } })
+            .select('firstName lastName avatar staffType professionalProfile.professionalTitle professionalProfile.specialty');
+        if (!staff) return res.status(404).json({ message: 'Staff profile not found.' });
+        const filter = { targetType: 'Booking', staffId: staff._id, isApproved: true, isDeleted: { $ne: true } };
+        const [reviews, total, summary] = await Promise.all([
+            Review.find(filter).populate('user', 'firstName lastName avatar').select('user rating comment isAnonymous createdAt').sort({ createdAt: -1 })
+                .skip((Number(page) - 1) * Number(limit)).limit(Math.min(Number(limit), 50)).lean(),
+            Review.countDocuments(filter),
+            Review.aggregate([{ $match: filter }, { $group: { _id: '$staffId', average: { $avg: '$rating' }, count: { $sum: 1 } } }])
+        ]);
+        res.json({
+            staff,
+            averageRating: summary[0] ? Number(summary[0].average.toFixed(1)) : 0,
+            reviewCount: summary[0]?.count || 0,
+            reviews: reviews.map(item => ({ ...item, user: item.isAnonymous ? null : item.user })),
+            pagination: { currentPage: Number(page), totalPages: Math.ceil(total / Number(limit)), totalReviews: total }
+        });
+    } catch (error) {
+        res.status(error.name === 'CastError' ? 404 : 500).json({ message: error.name === 'CastError' ? 'Staff profile not found.' : 'Unable to load staff reviews.' });
+    }
+};
+
 // Create platform feedback
 const createPlatformFeedback = async (req, res) => {
     try {
@@ -322,7 +390,17 @@ const checkReviewEligibility = async (req, res) => {
 
         let isEligible = false;
 
-        if (targetType === 'Product') {
+        if (targetType === 'Booking') {
+            const booking = await Booking.findOne({
+                _id: targetId,
+                customer: userId,
+                status: 'completed',
+                paymentStatus: 'paid',
+                $or: [{ 'reviewStatus.isRated': { $ne: true } }, { reviewStatus: { $exists: false } }]
+            });
+            if (booking && (booking.serviceProvider || booking.staff)) isEligible = true;
+        }
+        else if (targetType === 'Product') {
             const product = await Product.findById(targetId).populate('store');
             // If user is owner, they are NOT eligible regardless of orders
             if (product?.store?.owner?.toString() === userId.toString()) {
@@ -392,6 +470,13 @@ const replyToReview = async (req, res) => {
             return res.status(404).json({ message: 'Review not found' });
         }
 
+        const store = req.user.role === 'super_admin'
+            ? true
+            : req.user.role === 'admin'
+                ? await Store.findOne({ _id: review.storeId, owner: req.user._id })
+                : req.user.role === 'staff' && String(req.user.store) === String(review.storeId);
+        if (!store) return res.status(403).json({ message: 'You cannot manage reviews for another store.' });
+
         // Only the store owner or super admin can reply
         // We'd need to verify the storeId of the review matching the user's store
         // For now, basic implementation:
@@ -412,8 +497,16 @@ const toggleReviewStatus = async (req, res) => {
         const review = await Review.findById(req.params.reviewId);
         if (!review) return res.status(404).json({ message: 'Review not found' });
 
+        const store = req.user.role === 'super_admin'
+            ? true
+            : req.user.role === 'admin'
+                ? await Store.findOne({ _id: review.storeId, owner: req.user._id })
+                : req.user.role === 'staff' && String(req.user.store) === String(review.storeId);
+        if (!store) return res.status(403).json({ message: 'You cannot moderate reviews for another store.' });
+
         review.isApproved = !review.isApproved;
         await review.save();
+        if (review.targetType === 'Booking') await refreshStaffRating(review.staffId);
 
         res.json({ message: `Review ${review.isApproved ? 'approved' : 'rejected'} successfully`, review });
     } catch (error) {
@@ -465,5 +558,6 @@ module.exports = {
     deletePlatformFeedback,
     replyToReview,
     checkReviewEligibility,
-    toggleReviewStatus
+    toggleReviewStatus,
+    getStaffReviews
 };

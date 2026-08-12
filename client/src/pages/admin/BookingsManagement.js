@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import { adminBookingService, uploadService, deliveryService, staffService, getImageUrl } from '../../services/apiService';
+import { adminBookingService, deliveryService, staffService, getImageUrl } from '../../services/apiService';
 import {
   Calendar,
   Clock,
@@ -17,11 +17,7 @@ import {
   TrendingUp,
   CheckCircle,
   Briefcase,
-  Filter,
   ExternalLink,
-  Camera,
-  Eye,
-  Plus,
   Link2,
   Truck,
   Navigation
@@ -29,11 +25,12 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { formatTime12h, formatDateTime12h } from '../../utils/timeFormatters';
 import DeliveryAssignmentFields, { emptyExternal } from '../../components/delivery/DeliveryAssignmentFields';
+import ServiceCommunicationPanel from '../../components/booking/ServiceCommunicationPanel';
 
 
 // Simple linear state transition mapping for manual progressing
 const statusNextMap = {
-  'pending': 'approved',
+  'confirmed': 'processing',
   'approved': 'processing',
   'processing': 'finished',
   'finished': 'completed'
@@ -53,6 +50,24 @@ const BookingsManagement = () => {
   const [thirdPartyRider, setThirdPartyRider] = useState(emptyExternal);
   const [lastRiderLink, setLastRiderLink] = useState('');
   const [deliveryAssignment, setDeliveryAssignment] = useState(null);
+  const [eligibleServiceStaff, setEligibleServiceStaff] = useState([]);
+  const [selectedServiceStaffId, setSelectedServiceStaffId] = useState('');
+  const [assigningStaff, setAssigningStaff] = useState(false);
+
+  useEffect(() => {
+    if (!selectedBooking?._id || !['pending', 'awaiting_customer_confirmation'].includes(selectedBooking.status)) {
+      setEligibleServiceStaff([]);
+      return;
+    }
+    adminBookingService.getEligibleStaff(selectedBooking._id).then(response => {
+      const options = response.data.staff || [];
+      setEligibleServiceStaff(options);
+      setSelectedServiceStaffId(selectedBooking.staff?._id || selectedBooking.staff || options[0]?._id || '');
+    }).catch(error => {
+      setEligibleServiceStaff([]);
+      toast.error(error.response?.data?.message || 'Unable to load qualified staff for this schedule.');
+    });
+  }, [selectedBooking?._id, selectedBooking?.status, selectedBooking?.staff]);
 
   useEffect(() => {
     if (!selectedBooking?._id || !selectedBooking.delivery) { setDeliveryAssignment(null); return; }
@@ -61,7 +76,8 @@ const BookingsManagement = () => {
 
   // Permission Checks
   const isAdmin = ['admin', 'super_admin'].includes(user?.role);
-  const canUpdate = isAdmin || user?.permissions?.bookings?.update || user?.permissions?.bookings?.fullAccess;
+  const serviceUpdateRoles = new Set(['service_management_staff', 'veterinarian', 'veterinary_technician', 'veterinary_nurse', 'groomer', 'trainer', 'service_staff']);
+  const canUpdate = isAdmin || serviceUpdateRoles.has(user?.staffType) || user?.permissions?.bookings?.update || user?.permissions?.bookings?.fullAccess;
   const canDelete = isAdmin || user?.permissions?.bookings?.delete || user?.permissions?.bookings?.fullAccess;
 
   useEffect(() => {
@@ -121,7 +137,8 @@ const BookingsManagement = () => {
         return;
     }
     try {
-      await adminBookingService.updateBookingStatus(bookingId, status);
+      if (status === 'cancelled') await adminBookingService.cancelBooking(bookingId);
+      else await adminBookingService.updateBookingStatus(bookingId, status);
       toast.success(`Booking ${status}`);
       fetchBookings();
       if (selectedBooking && selectedBooking._id === bookingId) {
@@ -132,31 +149,18 @@ const BookingsManagement = () => {
     }
   };
 
-  const confirmBookingPayment = async (bookingId) => {
-    if (user?.role === 'super_admin') {
-      toast.error('Super admins can only view bookings');
-      return;
-    }
-    if (!canUpdate) {
-        toast.error('OPERATOR_RESTRICTED: Insufficient permissions to manage payments');
-        return;
-    }
+  const handleAssignServiceStaff = async () => {
+    if (!selectedServiceStaffId) return toast.error('Select a qualified and available staff member.');
+    setAssigningStaff(true);
     try {
-      const res = await adminBookingService.confirmPayment(bookingId);
-      const updated = res.data.booking;
-      toast.success('✅ Payment approved!');
+      const response = await adminBookingService.assignStaff(selectedBooking._id, selectedServiceStaffId);
+      setSelectedBooking(response.data.booking);
+      toast.success('Staff assigned. The customer can now review and confirm the booking.');
       fetchBookings();
-      if (selectedBooking && selectedBooking._id === bookingId) {
-        setSelectedBooking(prev => ({
-          ...prev,
-          paymentStatus: 'paid',
-          status: updated?.status || 'approved',
-          qrCode: updated?.qrCode || prev.qrCode,
-          isRevenueRecorded: true
-        }));
-      }
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Failed to confirm payment');
+      toast.error(error.response?.data?.message || 'Unable to assign staff.');
+    } finally {
+      setAssigningStaff(false);
     }
   };
 
@@ -217,6 +221,9 @@ const BookingsManagement = () => {
     }
     switch (status) {
       case 'pending': return 'bg-secondary-500 text-white border-secondary-400 shadow-secondary-200';
+      case 'awaiting_customer_confirmation': return 'bg-amber-500 text-white border-amber-400 shadow-amber-200';
+      case 'awaiting_payment': return 'bg-sky-600 text-white border-sky-500 shadow-sky-200';
+      case 'confirmed': return 'bg-primary-600 text-white border-primary-500 shadow-primary-200';
       case 'approved': return 'bg-primary-600 text-white border-primary-500 shadow-primary-200';
       case 'processing': return 'bg-indigo-500 text-white border-indigo-400 shadow-indigo-200';
       case 'finished': return 'bg-emerald-600 text-white border-emerald-500 shadow-emerald-200';
@@ -228,8 +235,12 @@ const BookingsManagement = () => {
   };
 
   const getPhaseIndex = (status) => {
-    const phases = ['pending', 'confirmed', 'in_progress', 'completed'];
-    return phases.indexOf(status);
+    if (status === 'pending') return 0;
+    if (status === 'awaiting_customer_confirmation') return 1;
+    if (status === 'awaiting_payment') return 2;
+    if (['confirmed', 'approved', 'processing', 'finished'].includes(status)) return 3;
+    if (status === 'completed') return 4;
+    return -1;
   };
 
   if (loading) {
@@ -320,10 +331,14 @@ const BookingsManagement = () => {
              >
                 <option value="all" className="bg-slate-900 text-white font-black">ALL STATUSES</option>
                 <option value="pending" className="bg-slate-900 text-white font-black">PENDING</option>
+                <option value="awaiting_customer_confirmation" className="bg-slate-900 text-white font-black">AWAITING CUSTOMER</option>
+                <option value="awaiting_payment" className="bg-slate-900 text-white font-black">AWAITING PAYMENT</option>
                 <option value="confirmed" className="bg-slate-900 text-white font-black">CONFIRMED</option>
-                <option value="in_progress" className="bg-slate-900 text-white font-black">IN PROGRESS</option>
+                <option value="processing" className="bg-slate-900 text-white font-black">IN PROGRESS</option>
+                <option value="finished" className="bg-slate-900 text-white font-black">SERVICE FINISHED</option>
                 <option value="completed" className="bg-slate-900 text-white font-black">COMPLETED</option>
                 <option value="cancelled" className="bg-slate-900 text-white font-black text-rose-400">CANCELLED</option>
+                <option value="confirmation_expired" className="bg-slate-900 text-white font-black">CONFIRMATION EXPIRED</option>
              </select>
              <ChevronDown className="absolute right-6 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500 pointer-events-none" />
           </div>
@@ -388,7 +403,7 @@ const BookingsManagement = () => {
                     <td className="px-6 py-3.5">
                       <div className="flex flex-col gap-1">
                         <span className={`px-4 py-1 rounded-full text-[8px] font-black uppercase tracking-[0.2em] border-2 w-fit ${getStatusStyle(booking.status, booking.paymentStatus)}`}>
-                          {booking.status === 'pending' && booking.paymentStatus === 'paid' ? 'PAID - AWAITING APPROVAL' : (booking.status === 'no_show' ? 'EXPIRED' : booking.status.replace('_', ' '))}
+                          {booking.status === 'no_show' ? 'NO SHOW' : booking.status.replaceAll('_', ' ')}
                         </span>
                         {booking.isScanned && (
                           <span className="text-[7px] font-black text-emerald-600 uppercase tracking-widest flex items-center gap-1">
@@ -452,11 +467,11 @@ const BookingsManagement = () => {
                 <div className="absolute left-[5%] right-[5%] top-1/2 -translate-y-1/2 h-1 bg-slate-100 rounded-full" />
                 <div
                   className="absolute left-[5%] top-1/2 -translate-y-1/2 h-1 bg-primary-600 rounded-full transition-all duration-1000 ease-in-out shadow-[0_0_20px_rgba(37,99,235,0.5)]"
-                  style={{ width: `${Math.max(0, (getPhaseIndex(selectedBooking.status) / 3) * 90)}%` }}
+                  style={{ width: `${Math.max(0, (getPhaseIndex(selectedBooking.status) / 4) * 90)}%` }}
                 />
 
                 <div className="relative z-10 flex justify-between">
-                  {['pending', 'confirmed', 'in_progress', 'completed'].map((phase, idx) => {
+                  {['Request', 'Staff Review', 'Payment', 'Service', 'Complete'].map((phase, idx) => {
                     const currentIdx = getPhaseIndex(selectedBooking.status);
                     const isPassed = idx < currentIdx;
                     const isCurrent = idx === currentIdx;
@@ -590,6 +605,27 @@ const BookingsManagement = () => {
                 )}
               </div>
 
+              {/* Existing specialized staff assignment lifecycle */}
+              <section className="p-4 bg-white rounded-2xl border border-slate-200 space-y-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-[9px] font-black text-primary-600 uppercase tracking-widest">Assigned Specialized Staff</p>
+                    <p className="text-xs text-slate-500 mt-1">Only active, service-qualified staff without a schedule conflict are available.</p>
+                  </div>
+                  <Briefcase className="h-4 w-4 text-slate-400" />
+                </div>
+                {selectedBooking.staff ? (
+                  <div className="flex items-center gap-3 rounded-xl bg-slate-50 border border-slate-100 p-3">
+                    <div className="h-10 w-10 rounded-xl overflow-hidden bg-white border flex items-center justify-center">
+                      {selectedBooking.staff.avatar ? <img src={getImageUrl(selectedBooking.staff.avatar)} alt="" className="h-full w-full object-cover" /> : <User className="h-4 w-4 text-slate-400" />}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-black text-slate-900">{selectedBooking.staff.firstName} {selectedBooking.staff.lastName}</p>
+                      <p className="text-[10px] text-slate-500 capitalize">{selectedBooking.staff.professionalProfile?.professionalTitle || selectedBooking.staff.staffType?.replaceAll('_', ' ')}{selectedBooking.staff.professionalProfile?.specialty ? ` · ${selectedBooking.staff.professionalProfile.specialty}` : ''}</p>
+                    </div>
+                  </div>
+                ) : <p className="rounded-xl bg-amber-50 border border-amber-100 p-3 text-xs text-amber-800">Review this request and assign a qualified staff member before asking the customer to confirm.</p>}
+              </section>
 
               {/* Scan Verification - NEW SECTION */}
               {selectedBooking.isScanned && (
@@ -668,95 +704,34 @@ const BookingsManagement = () => {
                 </div>
               )}
 
-              {/* ── Payment Approval Panel (seller side) ── */}
-              {/* When customer has paid but seller hasn't approved yet */}
-              {selectedBooking.status === 'pending' && selectedBooking.paymentStatus === 'paid' && !selectedBooking.isRevenueRecorded && canUpdate && (user?.role === 'admin' || user?.role === 'staff') && (
-                <div className="p-8 bg-primary-600 rounded-[2.5rem] text-white flex flex-col gap-6 relative overflow-hidden group shadow-2xl shadow-secondary-200">
-                  <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent pointer-events-none" />
-                  <div className="relative z-10 space-y-2">
-                    <div className="flex items-center gap-3">
-                      <div className="w-3 h-3 bg-white rounded-full animate-ping" />
-                      <span className="text-[9px] font-black uppercase tracking-[0.4em] text-white/80">Action Required</span>
-                    </div>
-                    <h4 className="text-2xl font-black uppercase tracking-tighter">Payment Received</h4>
-                    <p className="text-[10px] font-bold text-white/70 uppercase tracking-widest leading-relaxed">
-                      The customer has successfully paid for this booking.
-                      Click <strong>Approve Payment</strong> to confirm their booking.
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => confirmBookingPayment(selectedBooking._id)}
-                    className="relative z-10 w-full py-4 bg-white text-primary-700 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-secondary-50 transition-all active:scale-[0.98] shadow-xl flex items-center justify-center gap-2"
-                  >
-                    <ShieldCheck className="h-4 w-4" />
-                    Approve Payment
-                  </button>
-                </div>
-              )}
-
-              {/* Multi-Angle Photo Reconnaissance */}
-              {(selectedBooking.status === 'processing' || selectedBooking.status === 'finished' || selectedBooking.status === 'completed') && (
-                <div className="p-8 bg-white rounded-[2.5rem] border border-slate-100 shadow-sm space-y-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h4 className="text-xl font-black text-slate-900 uppercase tracking-tighter leading-none mb-1">Service Documentation</h4>
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Multi-angle visual forensics</p>
-                    </div>
-                    <div className="w-10 h-10 bg-[#8B4513] rounded-xl flex items-center justify-center text-white">
-                      <Camera className="h-5 w-5" />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                    {selectedBooking.servicePhotos?.map((photo, idx) => (
-                      <div key={idx} className="aspect-square bg-slate-50 rounded-2xl border-2 border-slate-100 overflow-hidden relative group">
-                        <img src={getImageUrl(photo)} alt="" className="w-full h-full object-cover" />
-                        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                          <Eye className="h-5 w-5 text-white" />
-                        </div>
-                      </div>
-                    ))}
-                    {(selectedBooking.status === 'processing' || selectedBooking.status === 'finished') && (selectedBooking.servicePhotos?.length || 0) < 4 && canUpdate && (
-                      <label className="aspect-square bg-primary-50 rounded-2xl border-2 border-dashed border-primary-200 flex flex-col items-center justify-center gap-2 cursor-pointer hover:bg-primary-100 transition-all text-primary-600 active:scale-95">
-                        <Plus className="h-6 w-6" />
-                        <span className="text-[8px] font-black uppercase tracking-widest">Add Snap</span>
-                        <input 
-                          type="file" 
-                          className="hidden" 
-                          onChange={async (e) => {
-                            const file = e.target.files[0];
-                            if(!file) return;
-                            try {
-                              toast.info('Uploading snap...');
-                              const formData = new FormData();
-                              formData.append('image', file);
-                              const res = await uploadService.uploadImage(formData);
-                              const updatedPhotos = [...(selectedBooking.servicePhotos || []), res.data.url];
-                              await adminBookingService.updateBookingStatus(selectedBooking._id, selectedBooking.status, { servicePhotos: updatedPhotos });
-                              setSelectedBooking(prev => ({ ...prev, servicePhotos: updatedPhotos }));
-                              toast.success('Snap uploaded to protocol log');
-                            } catch (err) {
-                              toast.error('Snap failure');
-                            }
-                          }} 
-                        />
-                      </label>
-                    )}
-                  </div>
-                </div>
-              )}
+              <ServiceCommunicationPanel booking={selectedBooking} staffMode />
             </div>
 
             {/* Actions */}
             <footer className="shrink-0 p-6 sm:p-8 bg-slate-50 border-t border-slate-100 flex flex-wrap gap-4 relative z-10">
-              {(user?.role === 'admin' || user?.role === 'staff') && !selectedBooking.isRevenueRecorded && selectedBooking.status !== 'cancelled' && selectedBooking.paymentStatus !== 'paid' && canUpdate && (
-                <button
-                  onClick={() => confirmBookingPayment(selectedBooking._id)}
-                  className="px-6 py-3.5 bg-emerald-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:opacity-90 transition-all active:scale-[0.98] shadow-lg shadow-emerald-900/10 flex items-center gap-2"
-                >
-                  <ShieldCheck className="h-4 w-4" />
-                  Mark as Paid (Cash/Manual)
-                </button>
+              {(user?.role === 'admin' || user?.role === 'staff') && ['pending', 'awaiting_customer_confirmation'].includes(selectedBooking.status) && canUpdate && (
+                <div className="w-full grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-2">
+                  <select
+                    value={selectedServiceStaffId}
+                    onChange={event => setSelectedServiceStaffId(event.target.value)}
+                    className="h-10 px-3 rounded-xl border border-slate-200 bg-white text-xs font-bold text-slate-700 outline-none focus:border-primary-500"
+                  >
+                    <option value="">{eligibleServiceStaff.length ? 'Select qualified staff' : 'No qualified staff available'}</option>
+                    {eligibleServiceStaff.map(member => (
+                      <option key={member._id} value={member._id}>
+                        {member.firstName} {member.lastName} — {member.professionalTitle || member.staffType?.replaceAll('_', ' ')} ({member.reviewCount ? `${member.averageRating}/5, ${member.reviewCount} reviews` : 'No reviews yet'})
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    disabled={!selectedServiceStaffId || assigningStaff}
+                    onClick={handleAssignServiceStaff}
+                    className="h-10 px-4 rounded-xl bg-primary-600 text-white text-[10px] font-black uppercase tracking-widest disabled:opacity-50"
+                  >
+                    {assigningStaff ? 'Assigning…' : selectedBooking.status === 'pending' ? 'Assign & Send Preview' : 'Update Assignment'}
+                  </button>
+                </div>
               )}
               {(user?.role === 'admin' || user?.role === 'staff') &&
                selectedBooking.status !== 'completed' &&
@@ -772,7 +747,7 @@ const BookingsManagement = () => {
                   Update Status to {(statusNextMap[selectedBooking.status] || '').replace('_', ' ')}
                 </button>
               )}
-              {(user?.role === 'admin' || user?.role === 'staff') && (selectedBooking.status === 'pending' || selectedBooking.status === 'confirmed') && canDelete && (
+              {(user?.role === 'admin' || user?.role === 'staff') && ['pending', 'awaiting_customer_confirmation', 'awaiting_payment', 'confirmed'].includes(selectedBooking.status) && canDelete && (
                 <button
                   onClick={() => {
                     if (window.confirm('Are you sure you want to cancel this booking?')) {

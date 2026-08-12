@@ -9,7 +9,6 @@ const {
   quoteOrder,
   updateOrderStatus,
   confirmOrderPickup,
-  confirmOrderPayment,
   cancelOrder,
   validateOrderQR
 } = require('../controllers/orderController');
@@ -44,7 +43,6 @@ router.post('/:id/confirm-pickup', authenticate, customerOnly, confirmOrderPicku
 
 // Admin/Staff routes
 router.patch('/:id/status', authenticate, adminOrStaff, updateOrderStatusValidation, updateOrderStatus);
-router.post('/:id/confirm-payment', authenticate, adminOrStaff, confirmOrderPayment);
 router.post('/validate-qr', authenticate, adminOrStaff, validateOrderQR);
 
 module.exports = router;

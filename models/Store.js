@@ -113,7 +113,8 @@ const storeSchema = new mongoose.Schema({
     slotDuration: { type: Number, default: 60 }, // minutes
     allowInstantBooking: { type: Boolean, default: true },
     bufferTime: { type: Number, default: 0 }, // minutes between slots
-    maxBookingsPerSlot: { type: Number, default: 1 }
+    maxBookingsPerSlot: { type: Number, default: 1 },
+    confirmationWindowMinutes: { type: Number, default: 1440, min: 15, max: 10080 }
   },
   taxConfiguration: {
     isConfigured: { type: Boolean, default: false },

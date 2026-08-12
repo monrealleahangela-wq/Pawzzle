@@ -48,6 +48,8 @@ const userSchema = new mongoose.Schema({
     type: String,
     enum: [
       'veterinarian', 'groomer', 'trainer', 'boarding_specialist', 
+      'veterinary_technician', 'veterinary_assistant', 'veterinary_nurse',
+      'veterinary_laboratory_technician',
       'medical_assistant', 'pet_handler', 'inventory_staff', 
       'logistics_staff', 'sales_staff', 'service_management_staff', 
       'administrative_support', 'order_staff', 'service_staff', 'delivery_rider', null
@@ -147,6 +149,11 @@ const userSchema = new mongoose.Schema({
     type: Object,
     default: {}
   },
+  staffStatus: {
+    type: String,
+    enum: ['active', 'inactive', 'suspended'],
+    default: 'active'
+  },
   requiresPasswordChange: {
     type: Boolean,
     default: false
@@ -186,6 +193,10 @@ const userSchema = new mongoose.Schema({
   },
   // Professional Profile Data (for Staff)
   professionalProfile: {
+    staffId: { type: String, trim: true, uppercase: true },
+    professionalTitle: { type: String, trim: true },
+    specialty: { type: String, trim: true },
+    qualifications: [{ type: String, trim: true }],
     certifications: [{
       name: String,
       issuingBody: String,
@@ -194,11 +205,35 @@ const userSchema = new mongoose.Schema({
       isVerified: { type: Boolean, default: false }
     }],
     experienceYears: { type: Number, default: 0 },
+    training: [{ type: String, trim: true }],
+    areasOfExpertise: [{ type: String, trim: true }],
+    registration: {
+      type: { type: String, trim: true },
+      number: { type: String, trim: true },
+      issuingBody: { type: String, trim: true },
+      expiresAt: Date
+    },
+    availability: {
+      monday: { available: Boolean, start: String, end: String, breaks: [{ start: String, end: String }] },
+      tuesday: { available: Boolean, start: String, end: String, breaks: [{ start: String, end: String }] },
+      wednesday: { available: Boolean, start: String, end: String, breaks: [{ start: String, end: String }] },
+      thursday: { available: Boolean, start: String, end: String, breaks: [{ start: String, end: String }] },
+      friday: { available: Boolean, start: String, end: String, breaks: [{ start: String, end: String }] },
+      saturday: { available: Boolean, start: String, end: String, breaks: [{ start: String, end: String }] },
+      sunday: { available: Boolean, start: String, end: String, breaks: [{ start: String, end: String }] }
+    },
     bio: String,
     specializations: [String],
-    rating: { type: Number, default: 5, min: 1, max: 5 },
+    rating: { type: Number, default: 0, min: 0, max: 5 },
+    reviewCount: { type: Number, default: 0, min: 0 },
     isPublic: { type: Boolean, default: true }
-  }
+  },
+  roleChangeHistory: [{
+    from: String,
+    to: String,
+    changedAt: { type: Date, default: Date.now },
+    changedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
+  }]
 });
 
 // Enforce unique email/username ONLY for non-deleted accounts
@@ -216,6 +251,11 @@ userSchema.index({ username: 1 }, {
 userSchema.index({ 'riderProfile.staffId': 1 }, {
   unique: true,
   partialFilterExpression: { staffType: 'delivery_rider', 'riderProfile.staffId': { $type: 'string' }, isDeleted: false }
+});
+
+userSchema.index({ 'professionalProfile.staffId': 1 }, {
+  unique: true,
+  partialFilterExpression: { role: 'staff', 'professionalProfile.staffId': { $type: 'string' }, isDeleted: false }
 });
 
 // Hash password before saving (only for local auth)

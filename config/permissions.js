@@ -17,7 +17,7 @@ const ROLE_PERMISSIONS = {
     'dashboard.view', 'staff.view', 'customers.manage', 'pets.manage',
     'clinical.view', 'services.manage', 'sales.manage', 'inventory.manage',
     'procurement.manage', 'finance.view', 'logistics.manage',
-    'reports.view', 'dss.view'
+    'reports.view', 'dss.view', 'bookings.manage'
   ],
   cashier: [
     'dashboard.view', 'customers.view', 'pets.view', 'products.view',
@@ -39,7 +39,25 @@ const ROLE_PERMISSIONS = {
   veterinarian: [
     'dashboard.view', 'customers.view', 'pets.view', 'clinical.manage',
     'services.view', 'bookings.assigned', 'inventory.vaccine',
-    'pet_updates.create'
+    'pet_updates.create', 'bookings.update'
+  ],
+  veterinary_technician: [
+    'dashboard.view', 'customers.assigned', 'pets.safety_summary',
+    'services.view', 'bookings.assigned', 'bookings.update',
+    'clinical.assist', 'pet_updates.create'
+  ],
+  veterinary_assistant: [
+    'dashboard.view', 'customers.assigned', 'pets.safety_summary',
+    'services.view', 'bookings.assigned', 'clinical.assist'
+  ],
+  veterinary_nurse: [
+    'dashboard.view', 'customers.assigned', 'pets.safety_summary',
+    'services.view', 'bookings.assigned', 'bookings.update',
+    'clinical.nursing', 'pet_updates.create'
+  ],
+  veterinary_laboratory_technician: [
+    'dashboard.view', 'customers.assigned', 'pets.safety_summary',
+    'services.view', 'bookings.assigned', 'clinical.lab'
   ],
   groomer: [
     'dashboard.view', 'customers.assigned', 'pets.safety_summary',
@@ -75,6 +93,10 @@ const ROLE_PERMISSIONS = {
 
 const LEGACY_STAFF_ROLE_MAP = {
   veterinarian: 'veterinarian',
+  veterinary_technician: 'veterinary_technician',
+  veterinary_assistant: 'veterinary_assistant',
+  veterinary_nurse: 'veterinary_nurse',
+  veterinary_laboratory_technician: 'veterinary_laboratory_technician',
   groomer: 'groomer',
   trainer: 'trainer',
   boarding_specialist: 'boarding_staff',
@@ -85,7 +107,7 @@ const LEGACY_STAFF_ROLE_MAP = {
   service_staff: 'groomer',
   service_management_staff: 'manager',
   administrative_support: 'manager',
-  medical_assistant: 'veterinarian',
+  medical_assistant: 'veterinary_assistant',
   pet_handler: 'boarding_staff',
   delivery_rider: 'delivery_rider'
 };
@@ -113,14 +135,19 @@ const getEffectivePermissions = (user) => {
     ? Object.fromEntries(user.permissions)
     : (user?.permissions || {});
 
-  const explicit = Object.entries(overrides)
-    .filter(([, allowed]) => allowed === true)
-    .map(([permission]) => permission);
-  const denied = new Set(
-    Object.entries(overrides)
-      .filter(([, allowed]) => allowed === false)
-      .map(([permission]) => permission)
-  );
+  const explicit = [];
+  const denied = new Set();
+  for (const [permission, allowed] of Object.entries(overrides)) {
+    if (allowed === true) explicit.push(permission);
+    else if (allowed === false) denied.add(permission);
+    else if (allowed && typeof allowed === 'object') {
+      for (const [action, enabled] of Object.entries(allowed)) {
+        if (action === 'fullAccess' && enabled) explicit.push(`${permission}.manage`);
+        else if (action !== 'fullAccess' && enabled === true) explicit.push(`${permission}.${action}`);
+        else if (action !== 'fullAccess' && enabled === false) denied.add(`${permission}.${action}`);
+      }
+    }
+  }
 
   return [...new Set([...defaults, ...explicit])].filter((p) => !denied.has(p));
 };

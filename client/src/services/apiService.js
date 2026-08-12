@@ -137,7 +137,6 @@ export const adminOrderService = {
   getAllOrders: (params) => api.get('/admin/orders', { params }),
   getOrderById: (id) => api.get(`/admin/orders/${id}`),
   updateOrderStatus: (id, statusData) => api.patch(`/admin/orders/${id}/status`, statusData),
-  confirmPayment: (id) => api.post(`/admin/orders/${id}/confirm-payment`),
   cancelOrder: (id) => api.patch(`/admin/orders/${id}/cancel`)
 };
 
@@ -155,9 +154,11 @@ export const payoutService = {
 // Staff management services (Admin only)
 export const staffService = {
   getAll: () => api.get('/staff'),
+  getConfiguration: (params) => api.get('/staff/configuration', { params }),
+  getProfile: (id) => api.get(`/staff/${id}/profile`),
   create: (data) => api.post('/staff', data),
   update: (id, data) => api.put(`/staff/${id}`, data),
-  toggleStatus: (id) => api.patch(`/staff/${id}/toggle-status`),
+  toggleStatus: (id, data) => api.patch(`/staff/${id}/toggle-status`, data),
   resetPassword: (id, newPassword) => api.patch(`/staff/${id}/reset-password`, { newPassword }),
   remove: (id) => api.delete(`/staff/${id}`),
   getEligibleRiders: (params) => api.get('/staff/riders/eligible', { params }),
@@ -177,9 +178,9 @@ export const customerService = {
 export const adminBookingService = {
   getAllBookings: (params) => api.get('/admin/bookings', { params }),
   getBookingById: (id) => api.get(`/admin/bookings/${id}`),
+  getEligibleStaff: (id) => api.get(`/admin/bookings/${id}/eligible-staff`),
+  assignStaff: (id, staffId) => api.put(`/admin/bookings/${id}/assign-staff`, { staffId }),
   updateBookingStatus: (bookingId, status) => api.put(`/admin/bookings/${bookingId}/status`, { status }),
-  updatePaymentMethod: (bookingId, paymentMethod) => api.put(`/admin/bookings/${bookingId}/payment-method`, { paymentMethod }),
-  confirmPayment: (bookingId) => api.put(`/admin/bookings/${bookingId}/confirm-payment`),
   cancelBooking: (bookingId) => api.put(`/admin/bookings/${bookingId}/cancel`)
 };
 
@@ -242,12 +243,18 @@ export const adminServiceService = {
 export const bookingService = {
   createBooking: (bookingData) => api.post('/bookings', bookingData),
   getCustomerBookings: (params) => api.get('/bookings/my-bookings', { params }),
+  getBookingById: (id) => api.get(`/bookings/${id}`),
+  getEligibleStaff: (id) => api.get(`/bookings/${id}/eligible-staff`),
+  getStaffProfile: (bookingId, staffId) => api.get(`/bookings/${bookingId}/staff/${staffId}`),
+  selectStaff: (id, staffId) => api.put(`/bookings/${id}/select-staff`, { staffId }),
+  confirmForPayment: (id) => api.post(`/bookings/${id}/confirm`),
+  cancelBooking: (id) => api.put(`/bookings/${id}/cancel`),
   getStoreBookings: (storeId, params) => api.get(`/bookings/store/${storeId}`, { params }),
   getAllBookings: (params) => api.get('/bookings/all', { params }),
   getCalendarBookings: (params) => api.get('/bookings/calendar', { params }),
   updateBookingStatus: (bookingId, status) => api.put(`/bookings/${bookingId}/status`, { status }),
-  updatePaymentMethod: (bookingId, paymentMethod) => api.put(`/bookings/${bookingId}/payment-method`, { paymentMethod }),
-  cancelBooking: (bookingId) => api.put(`/bookings/${bookingId}/cancel`)
+  // updateBookingStatus remains for store-side legacy callers; customer
+  // cancellation uses the explicit lifecycle endpoint above.
 };
 
 // Cart services
@@ -331,7 +338,6 @@ export const adoptionService = {
   requestAdoption: (data) => api.post('/adoption/request', data),
   updateAdoptionStatus: (requestId, data) => api.patch(`/adoption/status/${requestId}`, data),
   sendPaymentRequest: (requestId, data) => api.post(`/adoption/payment-request/${requestId}`, data),
-  updatePaymentStatus: (requestId, data) => api.patch(`/adoption/payment-status/${requestId}`, data),
   cancelAdoptionRequest: (requestId) => api.patch(`/adoption/cancel/${requestId}`),
   getMyRequests: () => api.get('/adoption/my-requests'),
   getAdoptionByConversation: (conversationId) => api.get(`/adoption/conversation/${conversationId}`)
@@ -359,6 +365,7 @@ export const voucherService = {
 export const reviewService = {
   createReview: (reviewData) => api.post('/reviews', reviewData),
   getTargetReviews: (targetType, targetId, params) => api.get(`/reviews/${targetType}/${targetId}`, { params }),
+  getStaffReviews: (staffId, params) => api.get(`/reviews/staff/${staffId}`, { params }),
   createPlatformFeedback: (data) => api.post('/reviews/platform', data),
   getAllPlatformFeedback: (params) => api.get('/reviews/platform/all', { params }),
   updatePlatformFeedbackStatus: (id, data) => api.patch(`/reviews/platform/${id}`, data),
@@ -427,6 +434,12 @@ export const petCareService = {
   administerVaccine: (petId, data) => api.post(`/pet-care/pets/${petId}/vaccinations`, data),
   getServiceUpdates: (bookingId) => api.get(`/pet-care/bookings/${bookingId}/updates`),
   addServiceUpdate: (bookingId, data) => api.post(`/pet-care/bookings/${bookingId}/updates`, data),
+  getServiceTimeline: (bookingId) => api.get(`/pet-care/bookings/${bookingId}/timeline`),
+  sendServiceMessage: (bookingId, message) => api.post(`/pet-care/bookings/${bookingId}/messages`, { message }),
+  uploadServicePhoto: (bookingId, formData, onUploadProgress) => api.post(`/pet-care/bookings/${bookingId}/photos`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+    onUploadProgress
+  }),
   createCertification: (petId, data) => api.post(`/pet-care/pets/${petId}/certifications`, data)
 };
 

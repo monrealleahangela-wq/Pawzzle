@@ -1,6 +1,7 @@
 const Booking = require('../models/Booking');
 const Store = require('../models/Store');
 const Voucher = require('../models/Voucher');
+const { hasPermission } = require('../config/permissions');
 
 // Auto-cancels bookings that are still pending and whose date has passed
 const autoCancelExpiredBookings = async (filterBase = {}) => {
@@ -55,6 +56,9 @@ const getAllAdminBookings = async (req, res) => {
     if (req.user.role === 'super_admin') {
       console.log('🔓 Super-admin detected - showing all bookings');
     } else if (req.user.role === 'staff') {
+      if (!hasPermission(req.user, 'bookings.assigned') && !hasPermission(req.user, 'bookings.manage')) {
+        return res.status(403).json({ message: 'Access denied. This staff role cannot access service bookings.' });
+      }
       if (req.user.store) {
         const store = await Store.findById(req.user.store);
         if (store) {
@@ -67,6 +71,10 @@ const getAllAdminBookings = async (req, res) => {
         }
       } else {
         filter.addedBy = req.user.createdBy;
+      }
+      if (!hasPermission(req.user, 'bookings.manage')) {
+        const scope = filter.$or ? { $or: filter.$or } : { ...filter };
+        filter = { $and: [scope, { staff: req.user._id }], isDeleted: { $ne: true } };
       }
     } else {
       // Admin - find by store ownership or addedBy
@@ -96,7 +104,10 @@ const getAllAdminBookings = async (req, res) => {
 
     const bookings = await Booking.find(filter)
       .populate('customer', 'username firstName lastName email')
-      .populate('service', 'name price duration requirements')
+      .populate('service', 'name description price duration requirements category')
+      .populate('store', 'name owner')
+      .populate('staff', 'firstName lastName avatar staffType professionalProfile')
+      .populate('serviceProvider', 'firstName lastName avatar staffType professionalProfile')
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(parseInt(limit));

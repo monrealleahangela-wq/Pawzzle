@@ -359,7 +359,7 @@ const sendPaymentRequest = async (req, res) => {
         const systemMsg = new Message({
             conversation: request.conversation,
             sender: req.user._id,
-            content: `💳 **PAYMENT REQUESTED**\n\nThe seller has requested payment of **₱${amount.toLocaleString()}** via **${request.paymentDetails.method.replace(/_/g, ' ').toUpperCase()}**.\n\nPlease upload your proof of payment once settled.`,
+            content: `💳 **PAYMONGO PAYMENT REQUESTED**\n\nThe seller has requested payment of **₱${amount.toLocaleString()}**. Use the secure PayMongo payment button in this conversation. Payment status updates automatically after PayMongo confirmation.`,
             type: 'system'
         });
         await systemMsg.save();
@@ -371,65 +371,6 @@ const sendPaymentRequest = async (req, res) => {
     }
 };
 
-// Update Payment Status
-const updatePaymentStatus = async (req, res) => {
-    try {
-        const { requestId } = req.params;
-        const { status, amount, proofUrl, notes } = req.body;
-
-        const request = await AdoptionRequest.findById(requestId);
-        if (!request) return res.status(404).json({ message: 'Request not found' });
-
-        const isSeller = request.seller.toString() === req.user._id.toString();
-        const isCustomer = request.customer.toString() === req.user._id.toString();
-        const isAdmin = ['admin', 'super_admin'].includes(req.user.role);
-
-        if (!isSeller && !isCustomer && !isAdmin) return res.status(403).json({ message: 'Unauthorized' });
-
-        // Update logic
-        if (proofUrl) request.paymentDetails.paymentProof = proofUrl;
-        if (status) request.paymentDetails.paymentStatus = status;
-        
-        if (amount) {
-            request.paymentDetails.paidAmount = (request.paymentDetails.paidAmount || 0) + parseFloat(amount);
-            request.paymentDetails.pricingBreakdown.paidAmount = request.paymentDetails.paidAmount;
-            request.paymentDetails.pricingBreakdown.balanceDue = request.paymentDetails.pricingBreakdown.totalPrice - request.paymentDetails.paidAmount;
-            
-            // Auto status update based on amount
-            if (request.paymentDetails.pricingBreakdown.balanceDue <= 0) {
-                request.paymentDetails.paymentStatus = 'paid_in_full';
-            } else if (request.paymentDetails.pricingBreakdown.depositAmount > 0 && request.paymentDetails.paidAmount >= request.paymentDetails.pricingBreakdown.depositAmount) {
-                request.paymentDetails.paymentStatus = 'deposit_paid';
-            }
-        }
-
-        request.paymentDetails.history.push({
-            status: request.paymentDetails.paymentStatus,
-            amount: amount || 0,
-            description: notes || `Payment status updated to ${request.paymentDetails.paymentStatus}`
-        });
-
-        if (request.paymentDetails.paymentStatus === 'paid_in_full' || request.paymentDetails.paymentStatus === 'deposit_paid') {
-            request.paymentDetails.paidAt = Date.now();
-        }
-
-        await request.save();
-
-        const systemMsg = new Message({
-            conversation: request.conversation,
-            sender: req.user._id,
-            content: `💰 **PAYMENT STATUS UPDATED**\n\nNew Status: **${request.paymentDetails.paymentStatus.replace(/_/g, ' ').toUpperCase()}**\nAmount: ₱${(amount || 0).toLocaleString()}\nBalance: ₱${request.paymentDetails.pricingBreakdown.balanceDue.toLocaleString()}`,
-            type: 'system'
-        });
-        await systemMsg.save();
-
-        res.json({ message: 'Payment status updated', request });
-    } catch (error) {
-        console.error('Update payment status error:', error);
-        res.status(500).json({ message: 'Server error' });
-    }
-};
-
 module.exports = {
     createAdoptionRequest,
     updateAdoptionStatus,
@@ -437,5 +378,4 @@ module.exports = {
     getAdoptionByConversation,
     cancelAdoptionRequest,
     sendPaymentRequest,
-    updatePaymentStatus
 };

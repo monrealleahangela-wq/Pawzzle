@@ -63,7 +63,8 @@ const AdminSettings = () => {
     bookingSettings: {
       slotDuration: 60,
       bufferTime: 15,
-      maxBookingsPerSlot: 1
+      maxBookingsPerSlot: 1,
+      confirmationWindowMinutes: 1440
     }
   });
   const [taxConfiguration, setTaxConfiguration] = useState({
@@ -273,7 +274,7 @@ const AdminSettings = () => {
               </div>
 
               <div className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
                   <div className="p-5 bg-slate-50 rounded-2xl border border-slate-100">
                     <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-2"><Timer className="h-3 w-3" /> Slot Duration</p>
                     <select 
@@ -285,6 +286,20 @@ const AdminSettings = () => {
                       <option value="60">60 MINS</option>
                       <option value="90">90 MINS</option>
                       <option value="120">120 MINS</option>
+                    </select>
+                  </div>
+                  <div className="p-5 bg-slate-50 rounded-2xl border border-slate-100">
+                    <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-2"><Clock className="h-3 w-3" /> Customer Confirmation</p>
+                    <select
+                      value={storeSettings.bookingSettings.confirmationWindowMinutes || 1440}
+                      onChange={(e) => handleBookingChange('confirmationWindowMinutes', e.target.value)}
+                      className="w-full bg-transparent font-black text-sm outline-none"
+                    >
+                      <option value="60">1 HOUR</option>
+                      <option value="360">6 HOURS</option>
+                      <option value="720">12 HOURS</option>
+                      <option value="1440">24 HOURS</option>
+                      <option value="2880">48 HOURS</option>
                     </select>
                   </div>
                   <div className="p-5 bg-slate-50 rounded-2xl border border-slate-100">

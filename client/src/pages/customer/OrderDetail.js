@@ -177,16 +177,6 @@ const OrderDetail = () => {
     }
   };
 
-  const handleConfirmPayment = async () => {
-    try {
-      await adminOrderService.confirmPayment(id);
-      toast.success('Payment confirmed successfully');
-      fetchOrder();
-    } catch (error) {
-      toast.error(error.response?.data?.message || 'Failed to confirm payment');
-    }
-  };
-  
   const handleGenerateRiderLink = async () => {
     try {
       if (!order?.delivery && assignmentType === 'internal' && !selectedRiderId) return toast.error('Select an active Delivery Rider first.');
@@ -618,16 +608,6 @@ const OrderDetail = () => {
                     Proceed to Payment
                   </button>
                 )}
-
-              {user?.role !== 'customer' && order.paymentStatus !== 'paid' && order.status !== 'cancelled' && (
-                <button
-                  onClick={handleConfirmPayment}
-                  className="w-full mt-2 py-3 bg-emerald-600 text-white rounded-xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-emerald-700 transition-all shadow-lg flex items-center justify-center gap-2 group"
-                >
-                  <CheckCircle className="h-4 w-4 group-hover:scale-110 transition-transform" />
-                  Confirm Payment (Admin)
-                </button>
-              )}
 
               {order.paymentDetails?.sessionId && order.paymentStatus !== 'paid' && order.status !== 'cancelled' && (
                 <button

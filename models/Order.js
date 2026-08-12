@@ -176,12 +176,23 @@ const orderSchema = new mongoose.Schema({
   paymentDetails: {
     sessionId: { type: String },
     checkoutUrl: { type: String },
+    sessionStatus: { type: String, enum: ['active', 'expired'] },
+    sessionVersion: { type: Number, default: 0 },
+    sessionCreatedAt: { type: Date },
+    sessionHistory: [{
+      sessionId: String,
+      checkoutUrl: String,
+      status: { type: String, enum: ['active', 'expired'] },
+      createdAt: Date
+    }],
     paymentIntentId: { type: String },
     paymentId: { type: String },
+    duplicatePaymentIds: [{ type: String }],
     sourceType: { type: String },
     amountPaid: { type: Number },
     transactionDate: { type: Date },
     fulfilledAt: { type: Date },
+    fulfillmentStatus: { type: String, enum: ['pending', 'processing', 'completed', 'failed'] },
     failureReason: { type: String }
   },
   invoiceSnapshot: {

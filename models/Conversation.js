@@ -9,7 +9,7 @@ const conversationSchema = new mongoose.Schema({
     },
     role: {
       type: String,
-      enum: ['customer', 'admin', 'super_admin'],
+      enum: ['customer', 'admin', 'staff', 'store_owner', 'super_admin', 'platform_admin'],
       required: true
     }
   }],
@@ -21,9 +21,13 @@ const conversationSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'AdoptionRequest'
   },
+  booking: { type: mongoose.Schema.Types.ObjectId, ref: 'Booking', default: null, index: true },
+  service: { type: mongoose.Schema.Types.ObjectId, ref: 'Service', default: null },
+  petProfile: { type: mongoose.Schema.Types.ObjectId, ref: 'PetProfile', default: null },
+  store: { type: mongoose.Schema.Types.ObjectId, ref: 'Store', default: null, index: true },
   type: {
     type: String,
-    enum: ['adoption', 'inquiry', 'support', 'general'],
+    enum: ['adoption', 'inquiry', 'support', 'general', 'service'],
     default: 'general'
   },
   status: {
@@ -58,5 +62,6 @@ const conversationSchema = new mongoose.Schema({
 // Index for fast lookup by participant
 conversationSchema.index({ 'participants.user': 1 });
 conversationSchema.index({ pet: 1, 'participants.user': 1 });
+conversationSchema.index({ booking: 1, type: 1 }, { unique: true, partialFilterExpression: { type: 'service' } });
 
 module.exports = mongoose.model('Conversation', conversationSchema);

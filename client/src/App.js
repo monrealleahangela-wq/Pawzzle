@@ -182,10 +182,10 @@ function App() {
                   <Route path="admin/orders/:id" element={<ProtectedRoute roles={['admin', 'super_admin', 'staff']} staffTypes={['order_staff']} requiredPermission="orders"><OrderDetail /></ProtectedRoute>} />
 
                   {/* Bookings - bookings access */}
-                  <Route path="admin/bookings" element={<ProtectedRoute roles={['admin', 'super_admin', 'staff']} staffTypes={['service_staff']} requiredPermission="bookings"><BookingsManagement /></ProtectedRoute>} />
+                  <Route path="admin/bookings" element={<ProtectedRoute roles={['admin', 'super_admin', 'staff']} staffTypes={['service_staff', 'service_management_staff', 'veterinarian', 'veterinary_technician', 'veterinary_assistant', 'veterinary_nurse', 'veterinary_laboratory_technician', 'groomer', 'trainer', 'boarding_specialist']} requiredPermission="bookings"><BookingsManagement /></ProtectedRoute>} />
 
                   {/* Services - services access */}
-                  <Route path="admin/services" element={<ProtectedRoute roles={['admin', 'super_admin', 'staff']} staffTypes={['service_staff']} requiredPermission="services"><ServiceManagement /></ProtectedRoute>} />
+                  <Route path="admin/services" element={<ProtectedRoute roles={['admin', 'super_admin', 'staff']} staffTypes={['service_staff', 'service_management_staff']} requiredPermission="services"><ServiceManagement /></ProtectedRoute>} />
 
                   {/* Customers - customers access */}
                   <Route path="admin/customers" element={<ProtectedRoute roles={['admin', 'super_admin', 'staff']} staffTypes={['order_staff']} requiredPermission="customers"><Customers /></ProtectedRoute>} />

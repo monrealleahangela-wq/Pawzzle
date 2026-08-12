@@ -8,7 +8,7 @@ const reviewSchema = new mongoose.Schema({
     },
     targetType: {
         type: String,
-        enum: ['Product', 'Pet', 'Store', 'Service', 'PetProfile'],
+        enum: ['Product', 'Pet', 'Store', 'Service', 'PetProfile', 'Booking'],
         required: true
     },
     targetId: {
@@ -24,6 +24,14 @@ const reviewSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Booking'
     },
+    serviceId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Service'
+    },
+    staffId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User'
+    },
     storeId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Store',
@@ -37,7 +45,7 @@ const reviewSchema = new mongoose.Schema({
     },
     comment: {
         type: String,
-        required: true,
+        default: '',
         trim: true,
         maxlength: 1000
     },
@@ -77,5 +85,9 @@ reviewSchema.pre('save', function (next) {
 
 // Compound index to prevent multiple reviews from same user on same target
 reviewSchema.index({ user: 1, targetId: 1, targetType: 1 }, { unique: true });
+reviewSchema.index(
+    { bookingId: 1, staffId: 1 },
+    { unique: true, partialFilterExpression: { targetType: 'Booking' } }
+);
 
 module.exports = mongoose.model('Review', reviewSchema);

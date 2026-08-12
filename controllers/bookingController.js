@@ -6,10 +6,26 @@ const User = require('../models/User');
 const Store = require('../models/Store');
 const Voucher = require('../models/Voucher');
 const PetProfile = require('../models/PetProfile');
+const Review = require('../models/Review');
 const RevenueService = require('../services/revenueService');
 const { createNotification, notifyStoreStaff } = require('./notificationController');
-const { calculateServicePrice, autoAssignStaff, validateBookingRules } = require('../utils/pricingEngine');
+const { calculateServicePrice, validateBookingRules } = require('../utils/pricingEngine');
 const { calculateTransactionTax, normalizeTaxConfiguration } = require('../utils/taxCalculator');
+const { hasPermission } = require('../config/permissions');
+const {
+  loadContext,
+  getConfirmationExpiry,
+  getEligibleForBooking,
+  prepareForPayment
+} = require('../services/bookingLifecycleService');
+
+const canStaffManageBooking = (user, booking) => {
+  if (user.role !== 'staff') return false;
+  const sameStore = user.store && booking.store && String(booking.store?._id || booking.store) === String(user.store?._id || user.store);
+  if (!sameStore) return false;
+  if (hasPermission(user, 'bookings.manage')) return true;
+  return hasPermission(user, 'bookings.update') && booking.staff && String(booking.staff?._id || booking.staff) === String(user._id);
+};
 
 // Auto-cancels bookings that are still pending and whose date has passed or unapproved for too long
 const autoCancelExpiredBookings = async (filterBase = {}) => {
@@ -18,13 +34,40 @@ const autoCancelExpiredBookings = async (filterBase = {}) => {
     today.setHours(0, 0, 0, 0);
     const now = new Date();
 
+    const expiredProposals = await Booking.find({
+      ...filterBase,
+      status: 'awaiting_customer_confirmation',
+      'lifecycle.confirmationExpiresAt': { $lte: now }
+    });
+    if (expiredProposals.length > 0) {
+      await Booking.updateMany(
+        { _id: { $in: expiredProposals.map(item => item._id) }, status: 'awaiting_customer_confirmation' },
+        { $set: { status: 'confirmation_expired', adminNotes: 'Customer confirmation window expired.' } }
+      );
+      for (const booking of expiredProposals) {
+        if (booking.voucher) await Voucher.findByIdAndUpdate(booking.voucher, { $inc: { usedCount: -1 } });
+        await createNotification({
+          recipient: booking.customer,
+          sender: booking.addedBy,
+          type: 'booking_status',
+          title: 'Booking Request Expired',
+          message: 'The confirmation window for your booking request expired. Contact the store if you still need this service.',
+          relatedId: booking._id,
+          relatedModel: 'Booking',
+          targetUrl: `/bookings?id=${booking._id}`
+        });
+      }
+    }
+
     // 1. Cancel unapproved bookings after 30 minutes
     const unapprovedLimit = new Date();
     unapprovedLimit.setMinutes(unapprovedLimit.getMinutes() - 30);
 
     const unapprovedQuery = {
       ...filterBase,
-      status: 'pending',
+      // Pending requests wait for store review. Only a customer proposal with
+      // its stored expiry may expire; the old hard-coded 30-minute rule is disabled.
+      status: '__legacy_auto_expiry_disabled__',
       paymentStatus: { $ne: 'paid' }, // Skip if already paid
       createdAt: { $lt: unapprovedLimit }
     };
@@ -65,7 +108,7 @@ const autoCancelExpiredBookings = async (filterBase = {}) => {
     // 2. Cancel expired/late bookings (Original logic)
     const expiredQuery = {
       ...filterBase,
-      status: { $in: ['pending', 'approved', 'confirmed'] },
+      status: { $in: ['pending', 'awaiting_customer_confirmation', 'awaiting_payment', 'approved', 'confirmed'] },
       $or: [
         { bookingDate: { $lt: today } },
         {
@@ -134,7 +177,8 @@ const createBooking = async (req, res) => {
       notes,
       voucherCode,
       selectedAddOns,
-      selectedConditions
+      selectedConditions,
+      petProfileId
     } = req.body;
 
     // Check if booking date/time is in the past
@@ -251,9 +295,10 @@ const createBooking = async (req, res) => {
     breakdown.finalPrice = taxBreakdown.finalTotal;
 
     // ── Auto-Assign Staff ───────────────────────────────────────────
-    let assignedStaffId = null;
-    if (service.assignedStaff && service.assignedStaff.length > 0) {
-      assignedStaffId = await autoAssignStaff(service, bookingDate, startTime, endTime);
+    let linkedPetProfile = null;
+    if (petProfileId) {
+      linkedPetProfile = await PetProfile.findOne({ _id: petProfileId, owner: req.user._id });
+      if (!linkedPetProfile) return res.status(400).json({ message: 'The selected pet profile was not found in your account.' });
     }
 
     const booking = new Booking({
@@ -261,8 +306,9 @@ const createBooking = async (req, res) => {
       addedBy: service.addedBy || (service.store ? service.store.owner : req.user._id),
       service: serviceId,
       store: storeId,
-      staff: assignedStaffId,
+      staff: null,
       pet,
+      petProfile: linkedPetProfile?._id || null,
       selectedAddOns: resolvedAddOns,
       selectedConditions: resolvedConditions,
       pricingBreakdown: breakdown,
@@ -318,10 +364,14 @@ const createBooking = async (req, res) => {
           if (pet.specialNotes) existingPetProfile.specialNotes = pet.specialNotes;
           existingPetProfile.lastBookedAt = new Date();
           await existingPetProfile.save();
+          if (!booking.petProfile) {
+            booking.petProfile = existingPetProfile._id;
+            await booking.save();
+          }
           console.log(`✅ Pet profile updated: ${petName}`);
         } else {
           // Create new profile
-          await PetProfile.create({
+          const createdPetProfile = await PetProfile.create({
             owner: req.user._id,
             name: petName,
             type: petType,
@@ -336,6 +386,8 @@ const createBooking = async (req, res) => {
             specialNotes: pet.specialNotes || '',
             lastBookedAt: new Date()
           });
+          booking.petProfile = createdPetProfile._id;
+          await booking.save();
           console.log(`✅ New pet profile auto-saved: ${petName}`);
         }
       }
@@ -347,20 +399,33 @@ const createBooking = async (req, res) => {
     await booking.populate([
       { path: 'service', select: 'name duration price' },
       { path: 'store', select: 'name' },
-      { path: 'staff', select: 'firstName lastName' }
+      { path: 'staff', select: 'firstName lastName avatar staffType professionalProfile' }
     ]);
 
     res.status(201).json(booking);
 
     // Notify store staff (Service Staff) about new booking
-    await notifyStoreStaff(storeId, 'service_staff', {
+    await notifyStoreStaff(storeId, ['service_staff', 'service_management_staff'], {
       sender: req.user._id,
       type: 'new_booking',
       title: 'New Booking Request',
       message: `You have a new booking request for ${booking.service.name}.`,
       relatedId: booking._id,
-      relatedModel: 'Booking'
+      relatedModel: 'Booking',
+      targetUrl: `/admin/bookings?id=${booking._id}`
     });
+    if (booking.addedBy) {
+      await createNotification({
+        recipient: booking.addedBy,
+        sender: req.user._id,
+        type: 'new_booking',
+        title: 'New Booking Request',
+        message: `A customer submitted a booking request for ${booking.service.name}.`,
+        relatedId: booking._id,
+        relatedModel: 'Booking',
+        targetUrl: `/admin/bookings?id=${booking._id}`
+      });
+    }
   } catch (error) {
     console.error('❌ Create booking error:', error);
     res.status(500).json({ message: error.message || 'Server error' });
@@ -384,6 +449,8 @@ const getCustomerBookings = async (req, res) => {
     const bookings = await Booking.find(filter)
       .populate('service', 'name category duration price homeServicePrice')
       .populate('store', 'name contactInfo.address')
+      .populate('staff', 'firstName lastName avatar staffType professionalProfile.professionalTitle professionalProfile.specialty professionalProfile.experienceYears professionalProfile.rating professionalProfile.reviewCount')
+      .populate('serviceProvider', 'firstName lastName avatar staffType professionalProfile.professionalTitle professionalProfile.specialty professionalProfile.rating professionalProfile.reviewCount')
       .sort({ bookingDate: -1, startTime: -1 })
       .skip(skip)
       .limit(parseInt(limit));
@@ -461,36 +528,288 @@ const getStoreBookings = async (req, res) => {
   }
 };
 
+const isBookingManager = (user, booking) => {
+  if (user.role === 'super_admin') return true;
+  const storeOwnerId = booking.store?.owner?._id || booking.store?.owner;
+  if (user.role === 'admin' && storeOwnerId && String(storeOwnerId) === String(user._id)) return true;
+  return canStaffManageBooking(user, booking);
+};
+
+const populateBooking = query => query
+  .populate('customer', 'firstName lastName email phone')
+  .populate('service', 'name description category duration price homeServicePrice')
+  .populate('store', 'name owner contactInfo.address bookingSettings taxConfiguration')
+  .populate('staff', 'firstName lastName avatar staffType professionalProfile')
+  .populate('serviceProvider', 'firstName lastName avatar staffType professionalProfile');
+
+const getBookingById = async (req, res) => {
+  try {
+    await autoCancelExpiredBookings({ _id: req.params.id });
+    const booking = await populateBooking(Booking.findOne({ _id: req.params.id, isDeleted: { $ne: true } }));
+    if (!booking) return res.status(404).json({ message: 'Booking not found.' });
+    const ownsBooking = String(booking.customer?._id || booking.customer) === String(req.user._id);
+    if (!ownsBooking && !isBookingManager(req.user, booking)) return res.status(403).json({ message: 'Access denied.' });
+    res.json({ booking });
+  } catch (error) {
+    res.status(error.name === 'CastError' ? 404 : 500).json({ message: error.name === 'CastError' ? 'Booking not found.' : 'Unable to load booking.' });
+  }
+};
+
+const ratingMapForStaff = async staffIds => {
+  if (!staffIds.length) return new Map();
+  const rows = await Review.aggregate([
+    { $match: { targetType: 'Booking', staffId: { $in: staffIds }, isApproved: true, isDeleted: { $ne: true } } },
+    { $group: { _id: '$staffId', averageRating: { $avg: '$rating' }, reviewCount: { $sum: 1 } } }
+  ]);
+  return new Map(rows.map(row => [String(row._id), {
+    averageRating: Number(row.averageRating.toFixed(1)), reviewCount: row.reviewCount
+  }]));
+};
+
+const toPublicStaff = (staff, ratings = {}) => ({
+  _id: staff._id,
+  firstName: staff.firstName,
+  lastName: staff.lastName,
+  avatar: staff.avatar,
+  staffType: staff.staffType,
+  professionalTitle: staff.professionalProfile?.professionalTitle || '',
+  specialty: staff.professionalProfile?.specialty || '',
+  experienceYears: staff.professionalProfile?.experienceYears || 0,
+  averageRating: ratings.averageRating || 0,
+  reviewCount: ratings.reviewCount || 0
+});
+
+const getEligibleBookingStaff = async (req, res) => {
+  try {
+    const { booking, service, store } = await loadContext(req.params.id);
+    await booking.populate('store', 'owner');
+    const ownsBooking = String(booking.customer) === String(req.user._id);
+    if (!ownsBooking && !isBookingManager(req.user, booking)) return res.status(403).json({ message: 'Access denied.' });
+    if (ownsBooking && booking.status !== 'awaiting_customer_confirmation') {
+      return res.status(409).json({ message: 'Staff can only be changed while the booking awaits your confirmation.' });
+    }
+    const candidates = await getEligibleForBooking(booking, service);
+    const staffIds = candidates.map(item => item.staff._id);
+    const ratings = await ratingMapForStaff(staffIds);
+    res.json({
+      store: { _id: store._id, name: store.name },
+      staff: candidates.map(item => ({
+        ...toPublicStaff(item.staff, ratings.get(String(item.staff._id))),
+        isCurrent: String(item.staff._id) === String(booking.staff)
+      }))
+    });
+  } catch (error) {
+    res.status(error.statusCode || 500).json({ message: error.message || 'Unable to load eligible staff.' });
+  }
+};
+
+const assignBookingStaff = async (req, res) => {
+  try {
+    if (!mongoose.Types.ObjectId.isValid(req.body.staffId)) return res.status(400).json({ message: 'Valid staff ID is required.' });
+    const { booking, service, store } = await loadContext(req.params.id);
+    await booking.populate('store', 'owner');
+    if (!isBookingManager(req.user, booking) || req.user.role === 'super_admin') {
+      return res.status(403).json({ message: 'Only the store owner or authorized booking staff can assign service staff.' });
+    }
+    if (!['pending', 'awaiting_customer_confirmation'].includes(booking.status)) {
+      return res.status(409).json({ message: 'Staff assignment is closed for this booking.' });
+    }
+    const candidates = await getEligibleForBooking(booking, service);
+    const selected = candidates.find(item => String(item.staff._id) === String(req.body.staffId));
+    if (!selected) return res.status(409).json({ message: 'The selected staff member is not qualified or available for this booking.' });
+
+    booking.staff = selected.staff._id;
+    booking.staffRoleSnapshot = selected.staff.staffType || '';
+    booking.staffSpecialtySnapshot = selected.staff.professionalProfile?.specialty || '';
+    booking.status = 'awaiting_customer_confirmation';
+    booking.lifecycle.proposedAt = new Date();
+    booking.lifecycle.proposedBy = req.user._id;
+    booking.lifecycle.confirmationExpiresAt = getConfirmationExpiry(store);
+    booking.staffAssignmentHistory.push({
+      staff: selected.staff._id,
+      assignedBy: req.user._id,
+      source: req.user.role === 'staff' ? 'staff' : 'admin'
+    });
+    await booking.save();
+
+    await createNotification({
+      recipient: booking.customer,
+      sender: req.user._id,
+      type: 'booking_status',
+      title: 'Booking Ready for Confirmation',
+      message: `Your booking request is ready. Review the assigned ${selected.staff.professionalProfile?.professionalTitle || 'specialist'} before confirming and paying.`,
+      relatedId: booking._id,
+      relatedModel: 'Booking',
+      targetUrl: `/bookings?id=${booking._id}`
+    });
+    const result = await populateBooking(Booking.findById(booking._id));
+    res.json({ message: 'Staff assigned and booking preview sent to the customer.', booking: result });
+  } catch (error) {
+    res.status(error.statusCode || 500).json({ message: error.message || 'Unable to assign staff.' });
+  }
+};
+
+const selectBookingStaff = async (req, res) => {
+  try {
+    if (!mongoose.Types.ObjectId.isValid(req.body.staffId)) return res.status(400).json({ message: 'Valid staff ID is required.' });
+    const { booking, service } = await loadContext(req.params.id);
+    if (String(booking.customer) !== String(req.user._id)) return res.status(403).json({ message: 'Access denied.' });
+    if (booking.status !== 'awaiting_customer_confirmation') return res.status(409).json({ message: 'Staff can no longer be changed for this booking.' });
+    const candidates = await getEligibleForBooking(booking, service);
+    const selected = candidates.find(item => String(item.staff._id) === String(req.body.staffId));
+    if (!selected) return res.status(409).json({ message: 'The selected staff member is no longer available or qualified.' });
+    booking.staff = selected.staff._id;
+    booking.staffRoleSnapshot = selected.staff.staffType || '';
+    booking.staffSpecialtySnapshot = selected.staff.professionalProfile?.specialty || '';
+    booking.staffAssignmentHistory.push({ staff: selected.staff._id, assignedBy: req.user._id, source: 'customer' });
+    await booking.save();
+    const result = await populateBooking(Booking.findById(booking._id));
+    res.json({ message: 'Assigned staff updated.', booking: result });
+  } catch (error) {
+    res.status(error.statusCode || 500).json({ message: error.message || 'Unable to change staff.' });
+  }
+};
+
+const confirmBookingForPayment = async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.id);
+    if (!booking) return res.status(404).json({ message: 'Booking not found.' });
+    if (String(booking.customer) !== String(req.user._id)) return res.status(403).json({ message: 'Access denied.' });
+    if (booking.status !== 'awaiting_customer_confirmation') {
+      return res.status(409).json({ message: booking.status === 'awaiting_payment' ? 'This booking is already ready for payment.' : 'This booking is not awaiting customer confirmation.' });
+    }
+    let prepared;
+    try {
+      prepared = await prepareForPayment(booking);
+    } catch (error) {
+      if (error.expired) {
+        booking.status = 'confirmation_expired';
+        await booking.save();
+      }
+      throw error;
+    }
+    prepared.booking.status = 'awaiting_payment';
+    prepared.booking.paymentStatus = 'pending';
+    prepared.booking.lifecycle.customerConfirmedAt = new Date();
+    await prepared.booking.save();
+    const result = await populateBooking(Booking.findById(prepared.booking._id));
+    res.json({ message: 'Booking accepted. Continue to PayMongo to confirm it.', booking: result });
+  } catch (error) {
+    res.status(error.statusCode || 500).json({ message: error.message || 'Unable to confirm booking.' });
+  }
+};
+
+const getBookingStaffProfile = async (req, res) => {
+  try {
+    const { booking, service } = await loadContext(req.params.id);
+    await booking.populate('store', 'owner');
+    const ownsBooking = String(booking.customer) === String(req.user._id);
+    if (!ownsBooking && !isBookingManager(req.user, booking)) return res.status(403).json({ message: 'Access denied.' });
+    const candidates = await getEligibleForBooking(booking, service);
+    const allowed = String(booking.staff) === String(req.params.staffId)
+      || candidates.some(item => String(item.staff._id) === String(req.params.staffId));
+    if (!allowed) return res.status(404).json({ message: 'Staff profile is not available for this booking.' });
+    const staff = await User.findOne({ _id: req.params.staffId, role: 'staff', isDeleted: false, 'professionalProfile.isPublic': { $ne: false } })
+      .select('firstName lastName avatar staffType professionalProfile');
+    if (!staff) return res.status(404).json({ message: 'Staff profile is not available.' });
+    const [ratings, services, reviews] = await Promise.all([
+      ratingMapForStaff([staff._id]),
+      Service.find({ assignedStaff: staff._id, store: booking.store?._id || booking.store, isActive: true, isDeleted: { $ne: true } }).select('name category duration').lean(),
+      Review.find({ targetType: 'Booking', staffId: staff._id, isApproved: true, isDeleted: { $ne: true } })
+        .populate('user', 'firstName lastName avatar').select('user rating comment isAnonymous createdAt').sort({ createdAt: -1 }).limit(20).lean()
+    ]);
+    const profile = staff.professionalProfile || {};
+    res.json({
+      staff: {
+        ...toPublicStaff(staff, ratings.get(String(staff._id))),
+        bio: profile.bio || '',
+        qualifications: profile.qualifications || [],
+        areasOfExpertise: profile.areasOfExpertise || [],
+        certifications: (profile.certifications || []).map(item => ({
+          name: item.name,
+          issuingBody: item.issuingBody,
+          year: item.year,
+          verificationStatus: item.isVerified ? 'verified' : 'customer_visible_information_provided'
+        })),
+        services
+      },
+      reviews: reviews.map(review => ({
+        ...review,
+        user: review.isAnonymous ? null : review.user
+      }))
+    });
+  } catch (error) {
+    res.status(error.statusCode || (error.name === 'CastError' ? 404 : 500)).json({ message: error.message || 'Unable to load staff profile.' });
+  }
+};
+
 // Update booking status (admin only)
 const updateBookingStatus = async (req, res) => {
   try {
     const { status, adminNotes } = req.body;
 
-    const booking = await Booking.findById(req.params.id).populate('store');
+    const booking = await Booking.findById(req.params.id || req.params.bookingId).populate('store');
     if (!booking) {
       return res.status(404).json({ message: 'Booking not found' });
     }
 
     // Check permissions: Owner, store staff, or super admin
     const isStoreOwner = req.user.role === 'admin' && booking.store && booking.store.owner && booking.store.owner.toString() === req.user._id.toString();
-    const isStoreStaff = req.user.role === 'staff' && req.user.store && booking.store && booking.store._id.toString() === req.user.store.toString();
+    const isStoreStaff = canStaffManageBooking(req.user, booking);
 
     if (req.user.role !== 'super_admin' && !isStoreOwner && !isStoreStaff) {
       return res.status(403).json({ message: 'You can only update bookings for your own store' });
     }
+    if (status === booking.status) return res.json(booking);
+
+    const transitions = {
+      confirmed: ['processing', 'cancelled'],
+      approved: ['processing', 'cancelled'], // historical paid bookings
+      processing: ['finished'],
+      finished: ['completed']
+    };
+    if (status !== booking.status && !(transitions[booking.status] || []).includes(status)) {
+      return res.status(409).json({
+        message: booking.status === 'pending'
+          ? 'Assign a qualified staff member and send the booking preview instead of manually confirming it.'
+          : `Invalid booking transition from ${booking.status} to ${status}.`
+      });
+    }
+
+    if (['confirmed', 'processing', 'finished', 'completed'].includes(status) && booking.paymentStatus !== 'paid') {
+      return res.status(409).json({ message: 'A booking cannot progress until PayMongo confirms payment.' });
+    }
+    if (status === 'cancelled' && booking.paymentStatus === 'paid') {
+      return res.status(409).json({ message: 'A paid booking cannot be marked cancelled until its PayMongo refund is processed.' });
+    }
 
     const oldStatus = booking.status;
     booking.status = status;
+    if (!booking.serviceProgress) booking.serviceProgress = {};
     if (adminNotes) booking.adminNotes = adminNotes;
+    if (['processing', 'finished', 'completed'].includes(status) && !booking.serviceProvider) {
+      if (!booking.staff) return res.status(409).json({ message: 'Assign the staff member who will provide this service first.' });
+      booking.serviceProvider = booking.staff;
+    }
+    const progressTime = new Date();
+    if (status === 'processing') {
+      booking.serviceProgress.status = 'service_started';
+      booking.serviceProgress.startedAt = booking.serviceProgress.startedAt || progressTime;
+    } else if (status === 'finished') {
+      booking.serviceProgress.status = 'ready_for_pickup';
+      booking.serviceProgress.readyAt = booking.serviceProgress.readyAt || progressTime;
+    } else if (status === 'completed') {
+      booking.lifecycle.completedAt = progressTime;
+      booking.serviceProgress.status = 'completed';
+      booking.serviceProgress.completedAt = booking.serviceProgress.completedAt || progressTime;
+    } else if (status === 'cancelled') {
+      booking.serviceProgress.status = 'cancelled';
+      booking.serviceProgress.cancelledAt = booking.serviceProgress.cancelledAt || progressTime;
+    }
 
-    // Financial Impact Handling
+    // Recovery for historical paid bookings that predate centralized reconciliation.
     if (status === 'completed' && oldStatus !== 'completed' && !booking.isRevenueRecorded) {
-      // Automatically record revenue if marked as completed (assuming it's paid in person if not already paid)
       await RevenueService.recordPayment('booking', booking._id);
-    } else if (status === 'cancelled' && oldStatus !== 'cancelled' && booking.isRevenueRecorded) {
-      // Reverse revenue if a recorded booking is cancelled
-      await RevenueService.reversePayment('booking', booking._id);
-      booking.paymentStatus = 'refunded';
     }
 
     // Decrement voucher usage if booking is cancelled
@@ -513,23 +832,24 @@ const updateBookingStatus = async (req, res) => {
 
     if (status === 'processing') {
       notificationTitle = 'Service Started';
-      notificationMessage = 'Staff has started your pet service.';
+      notificationMessage = `${booking.pet.name}'s service has started.`;
     } else if (status === 'finished') {
-      notificationTitle = 'Service Finished';
-      notificationMessage = 'Staff has finished the service.';
+      notificationTitle = 'Ready for Pickup';
+      notificationMessage = `${booking.pet.name} is ready for pickup.`;
     } else if (status === 'completed') {
       notificationTitle = 'Service Complete';
-      notificationMessage = 'Service complete! Thank you for visiting us.';
+      notificationMessage = 'Your service is complete. You can now rate the staff member who provided it.';
     }
 
     await createNotification({
       recipient: booking.customer._id,
       sender: req.user._id,
-      type: 'booking_status',
+      type: status === 'processing' ? 'service_start' : status === 'completed' ? 'service_complete' : 'service_update',
       title: notificationTitle,
       message: notificationMessage,
       relatedId: booking._id,
-      relatedModel: 'Booking'
+      relatedModel: 'Booking',
+      targetUrl: status === 'completed' ? `/bookings?id=${booking._id}&review=1` : `/bookings?id=${booking._id}`
     });
   } catch (error) {
     console.error('Update booking status error:', error);
@@ -537,43 +857,21 @@ const updateBookingStatus = async (req, res) => {
   }
 };
 
-// Update payment method
-const updatePaymentMethod = async (req, res) => {
-  try {
-    const { paymentMethod } = req.body;
-
-    const booking = await Booking.findById(req.params.id);
-    if (!booking) {
-      return res.status(404).json({ message: 'Booking not found' });
-    }
-
-    // Customer can only update their own bookings
-    if (booking.customer.toString() !== req.user._id.toString()) {
-      return res.status(403).json({ message: 'You can only update your own bookings' });
-    }
-
-    booking.paymentMethod = paymentMethod;
-    await booking.save();
-
-    res.json(booking);
-  } catch (error) {
-    console.error('Update payment method error:', error);
-    res.status(500).json({ message: 'Server error' });
-  }
-};
-
 // Cancel booking
 const cancelBooking = async (req, res) => {
   try {
-    const booking = await Booking.findById(req.params.id);
+    const booking = await Booking.findById(req.params.id || req.params.bookingId).populate('service', 'name');
     if (!booking) {
       return res.status(404).json({ message: 'Booking not found' });
+    }
+    if (booking.paymentStatus === 'paid') {
+      return res.status(409).json({ message: 'A paid booking must be refunded through PayMongo before cancellation.' });
     }
 
     // Customer can cancel their own bookings
     if (booking.customer.toString() === req.user._id.toString()) {
-      if (booking.status === 'confirmed' || booking.status === 'in_progress') {
-        return res.status(400).json({ message: 'Cannot cancel confirmed or in-progress booking' });
+      if (!['pending', 'awaiting_customer_confirmation', 'awaiting_payment'].includes(booking.status)) {
+        return res.status(409).json({ message: 'This request can no longer be cancelled from the customer booking preview.' });
       }
     }
     // Admin/Staff can cancel bookings for their store
@@ -581,7 +879,7 @@ const cancelBooking = async (req, res) => {
       const store = await Store.findById(booking.store);
       
       const isStoreOwner = req.user.role === 'admin' && store.owner.toString() === req.user._id.toString();
-      const isStoreStaff = req.user.role === 'staff' && req.user.store && booking.store && booking.store.toString() === req.user.store.toString();
+      const isStoreStaff = canStaffManageBooking(req.user, booking);
 
       if (!isStoreOwner && !isStoreStaff && req.user.role !== 'super_admin') {
         return res.status(403).json({ message: 'You can only cancel bookings for your own store' });
@@ -590,13 +888,20 @@ const cancelBooking = async (req, res) => {
       return res.status(403).json({ message: 'Access denied' });
     }
 
+    if (booking.status === 'cancelled') return res.json({ message: 'Booking is already cancelled.' });
+    const isCustomer = req.user._id.toString() === booking.customer.toString();
     booking.status = 'cancelled';
+    if (!booking.serviceProgress) booking.serviceProgress = {};
+    booking.lifecycle.cancelledAt = new Date();
+    booking.lifecycle.cancellationSource = isCustomer ? 'customer' : (req.user.role === 'staff' ? 'staff' : 'admin');
+    booking.serviceProgress.status = 'cancelled';
+    booking.serviceProgress.cancelledAt = booking.lifecycle.cancelledAt;
+    if (booking.voucher) await Voucher.findByIdAndUpdate(booking.voucher, { $inc: { usedCount: -1 } });
     await booking.save();
 
     res.json({ message: 'Booking cancelled successfully' });
 
     // Notify the other party about cancellation
-    const isCustomer = req.user._id.toString() === booking.customer.toString();
     await createNotification({
       recipient: isCustomer ? booking.addedBy : booking.customer,
       sender: req.user._id,
@@ -604,8 +909,21 @@ const cancelBooking = async (req, res) => {
       title: 'Booking Cancelled',
       message: `Booking for ${booking.service?.name || 'service'} has been cancelled by the ${isCustomer ? 'customer' : 'store'}.`,
       relatedId: booking._id,
-      relatedModel: 'Booking'
+      relatedModel: 'Booking',
+      targetUrl: isCustomer ? `/admin/bookings?id=${booking._id}` : `/bookings?id=${booking._id}`
     });
+    if (isCustomer && booking.staff && String(booking.staff) !== String(booking.addedBy)) {
+      await createNotification({
+        recipient: booking.staff,
+        sender: req.user._id,
+        type: 'booking_status',
+        title: 'Booking Request Cancelled',
+        message: `The customer cancelled the booking request for ${booking.service?.name || 'this service'}.`,
+        relatedId: booking._id,
+        relatedModel: 'Booking',
+        targetUrl: `/admin/bookings?id=${booking._id}`
+      });
+    }
   } catch (error) {
     console.error('Cancel booking error:', error);
     res.status(500).json({ message: 'Server error' });
@@ -729,66 +1047,6 @@ const getCalendarBookings = async (req, res) => {
   }
 };
 
-// Confirm booking payment (Admin only)
-const confirmBookingPayment = async (req, res) => {
-  try {
-    const booking = await Booking.findById(req.params.id).populate('store');
-    if (!booking) {
-      return res.status(404).json({ message: 'Booking not found' });
-    }
-
-    if (booking.status === 'cancelled') {
-        return res.status(400).json({ message: 'Cannot confirm payment for a cancelled booking' });
-    }
-
-    if (booking.isRevenueRecorded) {
-      return res.status(400).json({ message: 'Booking is already marked as paid' });
-    }
-
-      // Record revenue and update store stats via central service
-    await RevenueService.recordPayment('booking', booking._id);
-
-    booking.paymentStatus = 'paid';
-    booking.status = 'approved';
-    
-    await booking.save();
-
-    const populatedBooking = await Booking.findById(booking._id)
-      .populate('customer', 'firstName lastName email phone')
-      .populate('service', 'name category');
-
-    res.json({
-      message: 'Payment approved successfully.',
-      booking: populatedBooking
-    });
-
-    // Notify customer: payment approved
-    await createNotification({
-      recipient: booking.customer,
-      sender: req.user._id,
-      type: 'booking_status',
-      title: '✅ Booking Approved',
-      message: `Your payment for ${populatedBooking.service?.name || 'your service'} has been approved! Your booking is now confirmed.`,
-      relatedId: booking._id,
-      relatedModel: 'Booking'
-    });
-
-    // Notify store owner: revenue recorded
-    await createNotification({
-      recipient: booking.addedBy,
-      sender: booking.customer,
-      type: 'booking_status',
-      title: 'Revenue Recorded',
-      message: `Payment for booking #${String(booking._id).slice(-6).toUpperCase()} has been confirmed and revenue has been recorded.`,
-      relatedId: booking._id,
-      relatedModel: 'Booking'
-    });
-  } catch (error) {
-    console.error('Confirm booking payment error:', error);
-    res.status(500).json({ message: 'Server error' });
-  }
-};
-
 // Validate booking via QR scan (Staff/Admin)
 const validateBookingQR = async (req, res) => {
   try {
@@ -809,7 +1067,7 @@ const validateBookingQR = async (req, res) => {
     // NEW: Multi-vendor safety check (Ensure staff scans only their store's bookings)
     const scanner = req.user;
     const isStoreOwner = scanner.role === 'admin' && booking.store && booking.store.owner && booking.store.owner.toString() === scanner._id.toString();
-    const isStoreStaff = scanner.role === 'staff' && scanner.store && booking.store && booking.store._id.toString() === scanner.store.toString();
+    const isStoreStaff = canStaffManageBooking(scanner, booking);
     const isSuperAdmin = scanner.role === 'super_admin';
 
     if (!isSuperAdmin && !isStoreOwner && !isStoreStaff) {
@@ -876,21 +1134,23 @@ const validateBookingQR = async (req, res) => {
     booking.isScanned = true;
     booking.scannedAt = new Date();
     booking.scannedBy = req.user._id;
-    
-    // Transition to processing state
-    booking.status = 'processing';
+    booking.serviceProvider = booking.staff || req.user._id;
+    if (!booking.serviceProgress) booking.serviceProgress = {};
+    booking.serviceProgress.status = 'pet_arrived';
+    booking.serviceProgress.arrivedAt = booking.scannedAt;
     
     await booking.save();
 
-    // Notify customer about successful scan (Started)
+    // Notify the owner that check-in is complete; service starts as a separate staff action.
     await createNotification({
       recipient: booking.customer._id,
       sender: req.user._id,
-      type: 'booking_status',
-      title: 'Service Started',
-      message: 'Staff has started your pet service.',
+      type: 'service_update',
+      title: 'Pet Arrived',
+      message: `${booking.pet.name} has arrived and was checked in for the service.`,
       relatedId: booking._id,
-      relatedModel: 'Booking'
+      relatedModel: 'Booking',
+      targetUrl: `/bookings?id=${booking._id}`
     });
 
     res.json({
@@ -902,7 +1162,8 @@ const validateBookingQR = async (req, res) => {
         petName: booking.pet.name,
         time: `${booking.startTime} - ${booking.endTime}`,
         scannedAt: booking.scannedAt,
-        status: booking.status
+        status: booking.status,
+        serviceProgressStatus: booking.serviceProgress.status
       }
     });
 
@@ -914,13 +1175,17 @@ const validateBookingQR = async (req, res) => {
 
 module.exports = {
   createBooking,
+  getBookingById,
   getCustomerBookings,
   getStoreBookings,
   getAllBookings,
   getCalendarBookings,
   updateBookingStatus,
-  updatePaymentMethod,
   cancelBooking,
-  confirmBookingPayment,
-  validateBookingQR
+  validateBookingQR,
+  getEligibleBookingStaff,
+  assignBookingStaff,
+  selectBookingStaff,
+  confirmBookingForPayment,
+  getBookingStaffProfile
 };

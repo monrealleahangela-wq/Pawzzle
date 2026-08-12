@@ -2,14 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { adminOrderService, deliveryService, getImageUrl } from '../../services/apiService';
-import { useAuth } from '../../contexts/AuthContext';
 import { ShoppingBag, Eye, Package, ArrowRight, Filter, ChevronLeft, ChevronRight, Activity, ChevronDown, Search, Link2, Copy, Check } from 'lucide-react';
 import { formatTime12h } from '../../utils/timeFormatters';
 import { useRealTimeUpdates } from '../../hooks/useRealTimeUpdates';
 
 const AdminOrders = () => {
-  const { user } = useAuth();
-
   // Real-time Updates
   useRealTimeUpdates({
     onOrderUpdate: (data) => {
@@ -27,10 +24,6 @@ const AdminOrders = () => {
 
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
-
-  // Permission Checks
-  const isAdmin = ['admin', 'super_admin'].includes(user?.role);
-  const canUpdate = isAdmin || user?.permissions?.orders?.update || user?.permissions?.orders?.fullAccess;
 
   const [filters, setFilters] = useState({
     status: '',
@@ -79,16 +72,6 @@ const AdminOrders = () => {
       fetchOrders();
     } catch (error) {
       toast.error('Unable to update this order. Please try again.');
-    }
-  };
-
-  const handleConfirmPayment = async (orderId) => {
-    try {
-      await adminOrderService.confirmPayment(orderId);
-      toast.success('Payment confirmed successfully');
-      fetchOrders();
-    } catch (error) {
-      toast.error(error.response?.data?.message || 'Failed to confirm payment');
     }
   };
 
@@ -150,7 +133,7 @@ const AdminOrders = () => {
     <div className="container mx-auto p-4 lg:p-10 pb-20 bg-slate-50 min-h-screen">
       <div className="flex flex-col mb-8 text-left">
         <h1 className="text-4xl font-black text-slate-900 tracking-tighter uppercase mb-2">Orders</h1>
-        <p className="text-sm text-slate-500">Review customer orders, confirm payments, and update fulfillment status.</p>
+        <p className="text-sm text-slate-500">Review PayMongo-confirmed orders and update fulfillment status.</p>
       </div>
 
       <div className="bg-white p-2 rounded-[2rem] shadow-2xl shadow-slate-200/50 border border-slate-100 mb-10">

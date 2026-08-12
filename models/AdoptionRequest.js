@@ -42,6 +42,17 @@ const adoptionRequestSchema = new mongoose.Schema({
             balanceDue: { type: Number, default: 0 }
         },
         paymentProof: String, // URL to receipt photo
+        sessionId: String,
+        checkoutUrl: String,
+        sessionStatus: { type: String, enum: ['active', 'expired'] },
+        sessionVersion: { type: Number, default: 0 },
+        sessionCreatedAt: Date,
+        sessionHistory: [{
+            sessionId: String,
+            checkoutUrl: String,
+            status: { type: String, enum: ['active', 'expired'] },
+            createdAt: Date
+        }],
         paidAmount: { type: Number, default: 0 },
         paidAt: Date,
         history: [{

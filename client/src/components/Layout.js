@@ -83,7 +83,7 @@ const getAdminMenu = (user) => {
   if ((hasProducts || isStoreOwner) && hasAccess(['inventory_staff'])) {
     catalogChildren.push({ path: '/admin/products', label: 'Manage Products', icon: Package });
   }
-  if ((hasServices || isStoreOwner) && hasAccess(['service_management_staff', 'veterinarian', 'groomer', 'trainer'])) {
+  if ((hasServices || isStoreOwner) && hasAccess(['service_management_staff'])) {
     catalogChildren.push({ path: '/admin/services', label: 'Manage Services', icon: Calendar });
   }
   if (catalogChildren.length > 0) menu.push({ label: 'Catalog', icon: Layers, children: catalogChildren });
@@ -95,7 +95,7 @@ const getAdminMenu = (user) => {
   if (hasAccess(['logistics_staff'])) {
     opsChildren.push({ path: '/admin/logistics', label: 'Logistics', icon: Truck });
   }
-  if (hasServices && hasAccess(['service_management_staff', 'veterinarian', 'groomer', 'trainer', 'boarding_specialist'])) {
+  if (hasServices && hasAccess(['service_management_staff', 'veterinarian', 'veterinary_technician', 'veterinary_assistant', 'veterinary_nurse', 'veterinary_laboratory_technician', 'groomer', 'trainer', 'boarding_specialist'])) {
     opsChildren.push({ path: '/admin/bookings', label: 'Service Bookings', icon: Calendar });
   }
   

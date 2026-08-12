@@ -166,8 +166,14 @@ const calculateServicePrice = (service, petData = {}, bookingData = {}, selected
  * @param {Number} bufferTime  - Buffer minutes between bookings
  * @returns {Boolean} true if available
  */
-const checkStaffAvailability = async (staffId, bookingDate, startTime, endTime, bufferTime = 0) => {
+const checkStaffAvailability = async (staffId, bookingDate, startTime, endTime, bufferTime = 0, excludeBookingId = null) => {
   const Booking = require('../models/Booking');
+  const User = require('../models/User');
+  const { isWithinStaffSchedule } = require('./staffSpecialization');
+
+  const staff = await User.findById(staffId).select('isActive isDeleted staffStatus professionalProfile.availability');
+  if (!staff || !staff.isActive || staff.isDeleted || ['inactive', 'suspended'].includes(staff.staffStatus)) return false;
+  if (!isWithinStaffSchedule(staff, bookingDate, startTime, endTime)) return false;
 
   const toMinutes = (timeStr) => {
     const [h, m] = timeStr.split(':').map(Number);
@@ -183,11 +189,13 @@ const checkStaffAvailability = async (staffId, bookingDate, startTime, endTime, 
   const dateEnd = new Date(bookingDate);
   dateEnd.setHours(23, 59, 59, 999);
 
-  const existingBookings = await Booking.find({
+  const bookingQuery = {
     staff: staffId,
     bookingDate: { $gte: dateStart, $lte: dateEnd },
-    status: { $nin: ['cancelled', 'no_show'] }
-  });
+    status: { $nin: ['cancelled', 'confirmation_expired', 'rejected', 'no_show'] }
+  };
+  if (excludeBookingId) bookingQuery._id = { $ne: excludeBookingId };
+  const existingBookings = await Booking.find(bookingQuery);
 
   for (const booking of existingBookings) {
     const existingStart = toMinutes(booking.startTime);
@@ -203,6 +211,44 @@ const checkStaffAvailability = async (staffId, bookingDate, startTime, endTime, 
 };
 
 /**
+ * Return every active, service-assigned, role-qualified and schedule-available
+ * staff member for a booking slot. This is the single eligibility source used
+ * by automatic assignment, administrator assignment, and customer reassignment.
+ */
+const getEligibleStaff = async (service, bookingDate, startTime, endTime, excludeBookingId = null) => {
+  const Booking = require('../models/Booking');
+  const User = require('../models/User');
+  const { hasPermission } = require('../config/permissions');
+  const { isRoleEligibleForService, isWithinStaffSchedule } = require('./staffSpecialization');
+  const candidates = [];
+  const bufferTime = service.bufferTime || 0;
+
+  for (const staffId of service.assignedStaff || []) {
+    const staff = await User.findById(staffId)
+      .select('firstName lastName avatar store staffType staffStatus isActive isDeleted professionalProfile');
+    if (!staff || !staff.isActive || staff.isDeleted || ['inactive', 'suspended'].includes(staff.staffStatus)) continue;
+    if (String(staff.store) !== String(service.store?._id || service.store)) continue;
+    if (!isRoleEligibleForService(staff.staffType, service)) continue;
+    if (!hasPermission(staff, 'bookings.assigned')) continue;
+    if (!isWithinStaffSchedule(staff, bookingDate, startTime, endTime)) continue;
+    if (!(await checkStaffAvailability(staff._id, bookingDate, startTime, endTime, bufferTime, excludeBookingId))) continue;
+
+    const dateStart = new Date(bookingDate); dateStart.setHours(0, 0, 0, 0);
+    const dateEnd = new Date(bookingDate); dateEnd.setHours(23, 59, 59, 999);
+    const countQuery = {
+      staff: staff._id,
+      bookingDate: { $gte: dateStart, $lte: dateEnd },
+      status: { $nin: ['cancelled', 'confirmation_expired', 'rejected', 'no_show'] }
+    };
+    if (excludeBookingId) countQuery._id = { $ne: excludeBookingId };
+    const bookingCount = await Booking.countDocuments(countQuery);
+    candidates.push({ staff, bookingCount });
+  }
+
+  return candidates.sort((a, b) => a.bookingCount - b.bookingCount);
+};
+
+/**
  * Auto-assign the best available staff member for a booking.
  * Selects based on: availability → specialization match → fewest bookings (load balancing).
  * 
@@ -213,46 +259,17 @@ const checkStaffAvailability = async (staffId, bookingDate, startTime, endTime, 
  * @returns {String|null} Staff user ID or null
  */
 const autoAssignStaff = async (service, bookingDate, startTime, endTime) => {
-  const Booking = require('../models/Booking');
-  const User = require('../models/User');
-
   if (!service.assignedStaff || service.assignedStaff.length === 0) {
     return null;
   }
-
-  const bufferTime = service.bufferTime || 0;
-
-  // Get all potential staff and check availability
-  const candidates = [];
-
-  for (const staffId of service.assignedStaff) {
-    const staff = await User.findById(staffId);
-    if (!staff || !staff.isActive || staff.isDeleted) continue;
-
-    const isAvailable = await checkStaffAvailability(staffId, bookingDate, startTime, endTime, bufferTime);
-    if (!isAvailable) continue;
-
-    // Count today's bookings for load balancing
-    const dateStart = new Date(bookingDate);
-    dateStart.setHours(0, 0, 0, 0);
-    const dateEnd = new Date(bookingDate);
-    dateEnd.setHours(23, 59, 59, 999);
-
-    const bookingCount = await Booking.countDocuments({
-      staff: staffId,
-      bookingDate: { $gte: dateStart, $lte: dateEnd },
-      status: { $nin: ['cancelled', 'no_show'] }
-    });
-
-    candidates.push({ staffId, bookingCount });
-  }
+  const candidates = await getEligibleStaff(service, bookingDate, startTime, endTime);
 
   if (candidates.length === 0) return null;
 
   // Sort by fewest bookings (load balancing)
   candidates.sort((a, b) => a.bookingCount - b.bookingCount);
 
-  return candidates[0].staffId;
+  return candidates[0].staff._id;
 };
 
 /**
@@ -264,7 +281,7 @@ const autoAssignStaff = async (service, bookingDate, startTime, endTime) => {
  * @param {String} startTime   - HH:MM
  * @returns {Object} { valid: Boolean, reason: String }
  */
-const validateBookingRules = async (service, bookingDate, startTime) => {
+const validateBookingRules = async (service, bookingDate, startTime, excludeBookingId = null) => {
   const Booking = require('../models/Booking');
   const rules = service.bookingRules || {};
 
@@ -294,11 +311,13 @@ const validateBookingRules = async (service, bookingDate, startTime) => {
     const dateEnd = new Date(bookingDate);
     dateEnd.setHours(23, 59, 59, 999);
 
-    const dailyCount = await Booking.countDocuments({
+    const dailyQuery = {
       service: service._id,
       bookingDate: { $gte: dateStart, $lte: dateEnd },
-      status: { $nin: ['cancelled', 'no_show'] }
-    });
+      status: { $nin: ['cancelled', 'confirmation_expired', 'rejected', 'no_show'] }
+    };
+    if (excludeBookingId) dailyQuery._id = { $ne: excludeBookingId };
+    const dailyCount = await Booking.countDocuments(dailyQuery);
 
     if (dailyCount >= rules.maxDailyBookings) {
       return {
@@ -315,12 +334,14 @@ const validateBookingRules = async (service, bookingDate, startTime) => {
     const dateEnd = new Date(bookingDate);
     dateEnd.setHours(23, 59, 59, 999);
 
-    const slotCount = await Booking.countDocuments({
+    const slotQuery = {
       service: service._id,
       bookingDate: { $gte: dateStart, $lte: dateEnd },
       startTime: startTime,
-      status: { $nin: ['cancelled', 'no_show'] }
-    });
+      status: { $nin: ['cancelled', 'confirmation_expired', 'rejected', 'no_show'] }
+    };
+    if (excludeBookingId) slotQuery._id = { $ne: excludeBookingId };
+    const slotCount = await Booking.countDocuments(slotQuery);
 
     if (slotCount >= rules.capacityPerSlot) {
       return {
@@ -336,6 +357,7 @@ const validateBookingRules = async (service, bookingDate, startTime) => {
 module.exports = {
   calculateServicePrice,
   checkStaffAvailability,
+  getEligibleStaff,
   autoAssignStaff,
   validateBookingRules
 };

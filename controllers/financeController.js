@@ -145,8 +145,8 @@ const getFinancialSummary = async (req, res) => {
     const to = req.query.to ? new Date(req.query.to) : new Date();
     if (Number.isNaN(from.valueOf()) || Number.isNaN(to.valueOf()) || from > to) return res.status(400).json({ message: 'Invalid date range.' });
     const [orders, bookings, expenses, purchaseOrders, payments, riderEarnings, riderPayouts] = await Promise.all([
-      Order.find({ store, paymentStatus: 'paid', createdAt: { $gte: from, $lte: to }, isDeleted: { $ne: true } }),
-      Booking.find({ store, paymentStatus: 'paid', createdAt: { $gte: from, $lte: to }, isDeleted: { $ne: true } }),
+      Order.find({ store, paymentStatus: 'paid', status: { $nin: ['cancelled', 'returned'] }, createdAt: { $gte: from, $lte: to }, isDeleted: { $ne: true } }),
+      Booking.find({ store, paymentStatus: 'paid', status: { $ne: 'cancelled' }, createdAt: { $gte: from, $lte: to }, isDeleted: { $ne: true } }),
       Expense.find({ store, status: { $in: ['approved', 'paid'] }, expenseDate: { $gte: from, $lte: to } }),
       PurchaseOrder.find({ store, createdAt: { $gte: from, $lte: to }, isDeleted: false, status: { $nin: ['cancelled', 'returned'] } }),
       ProcurementPayment.find({ store, status: 'recorded', paymentDate: { $gte: from, $lte: to } }),

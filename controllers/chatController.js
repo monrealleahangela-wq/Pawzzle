@@ -2,6 +2,27 @@ const Conversation = require('../models/Conversation');
 const Message = require('../models/Message');
 const Notification = require('../models/Notification');
 const User = require('../models/User');
+const Booking = require('../models/Booking');
+const { hasPermission } = require('../config/permissions');
+
+const canAccessServiceConversation = async (user, conversation) => {
+  if (conversation.type !== 'service' || !conversation.booking) return true;
+  const booking = await Booking.findById(conversation.booking).populate('store', 'owner');
+  if (!booking || booking.isDeleted) return false;
+  const userId = String(user._id);
+  if (String(booking.customer) === userId) return true;
+  if (['super_admin', 'platform_admin'].includes(user.role)) return true;
+  if (['admin', 'store_owner'].includes(user.role) && String(booking.store?.owner || '') === userId) return true;
+  const sameStore = user.store && String(booking.store?._id || booking.store) === String(user.store);
+  if (user.role !== 'staff' || !sameStore) return false;
+  return [booking.staff, booking.serviceProvider].some(value => value && String(value) === userId)
+    || hasPermission(user, 'bookings.manage');
+};
+
+const filterAccessibleServiceConversations = async (user, conversations) => {
+  const allowed = await Promise.all(conversations.map(conversation => canAccessServiceConversation(user, conversation)));
+  return conversations.filter((_conversation, index) => allowed[index]);
+};
 
 // Get all conversations for the current user
 const getConversations = async (req, res) => {
@@ -43,8 +64,9 @@ const getConversations = async (req, res) => {
       console.log('📊 Found conversations:', conversations.length, 'Admin conversations:', adminConversations.length);
 
       // Add unread count for each conversation
+      const accessibleConversations = await filterAccessibleServiceConversations(req.user, adminConversations);
       const conversationsWithUnread = await Promise.all(
-        adminConversations.map(async (conv) => {
+        accessibleConversations.map(async (conv) => {
           const unreadCount = await Message.countDocuments({
             conversation: conv._id,
             sender: { $ne: req.user._id },
@@ -64,8 +86,9 @@ const getConversations = async (req, res) => {
       .sort({ updatedAt: -1 });
 
     // Add unread count for each conversation
+    const accessibleConversations = await filterAccessibleServiceConversations(req.user, conversations);
     const conversationsWithUnread = await Promise.all(
-      conversations.map(async (conv) => {
+      accessibleConversations.map(async (conv) => {
         const unreadCount = await Message.countDocuments({
           conversation: conv._id,
           sender: { $ne: req.user._id },
@@ -120,8 +143,9 @@ const getAdminChats = async (req, res) => {
 
       console.log('📊 Admin chats found:', adminConversations.length);
 
+      const accessibleConversations = await filterAccessibleServiceConversations(req.user, adminConversations);
       const conversationsWithUnread = await Promise.all(
-        adminConversations.map(async (conv) => {
+        accessibleConversations.map(async (conv) => {
           const unreadCount = await Message.countDocuments({
             conversation: conv._id,
             sender: { $ne: req.user._id },
@@ -140,8 +164,9 @@ const getAdminChats = async (req, res) => {
       .populate('pet', 'name breed species images price addedBy')
       .sort({ updatedAt: -1 });
 
+    const accessibleConversations = await filterAccessibleServiceConversations(req.user, conversations);
     const conversationsWithUnread = await Promise.all(
-      conversations.map(async (conv) => {
+      accessibleConversations.map(async (conv) => {
         const unreadCount = await Message.countDocuments({
           conversation: conv._id,
           sender: { $ne: req.user._id },
@@ -167,6 +192,10 @@ const getMessages = async (req, res) => {
     const conversation = await Conversation.findById(conversationId);
     if (!conversation) {
       return res.status(404).json({ message: 'Conversation not found' });
+    }
+
+    if (!(await canAccessServiceConversation(req.user, conversation))) {
+      return res.status(403).json({ message: 'You are no longer authorized to access this service conversation.' });
     }
 
     const isParticipant = conversation.participants.some(
@@ -198,6 +227,10 @@ const sendMessage = async (req, res) => {
     const conversation = await Conversation.findById(conversationId);
     if (!conversation) {
       return res.status(404).json({ message: 'Conversation not found' });
+    }
+
+    if (!(await canAccessServiceConversation(req.user, conversation))) {
+      return res.status(403).json({ message: 'You are no longer authorized to message about this service.' });
     }
 
     // Verify user is participant or admin/staff
@@ -279,6 +312,7 @@ const sendMessage = async (req, res) => {
 const createConversation = async (req, res) => {
   try {
     const { participantIds, petId, type } = req.body;
+    if (type === 'service') return res.status(400).json({ message: 'Service conversations must be opened from an authorized booking.' });
 
     // participantIds should be an array of user IDs to chat with
     // The current user is always added as a participant
@@ -409,6 +443,7 @@ const updateAdoptionStatus = async (req, res) => {
     if (!conversation) {
       return res.status(404).json({ message: 'Conversation not found' });
     }
+    if (conversation.type === 'service') return res.status(409).json({ message: 'Service conversations cannot be changed through adoption actions.' });
 
     conversation.status = status === 'confirmed' ? 'closed' : conversation.status;
     await conversation.save();
@@ -433,6 +468,9 @@ const updateAdoptionStatus = async (req, res) => {
 const archiveConversation = async (req, res) => {
   try {
     const { conversationId } = req.params;
+    const conversation = await Conversation.findById(conversationId);
+    if (!conversation) return res.status(404).json({ message: 'Conversation not found' });
+    if (conversation.type === 'service') return res.status(409).json({ message: 'Booking service conversations are retained with the service record.' });
     await Conversation.findByIdAndUpdate(conversationId, { status: 'archived' });
     res.json({ success: true, message: 'Conversation archived' });
   } catch (error) {
@@ -445,6 +483,9 @@ const archiveConversation = async (req, res) => {
 const deleteConversation = async (req, res) => {
   try {
     const { conversationId } = req.params;
+    const conversation = await Conversation.findById(conversationId);
+    if (!conversation) return res.status(404).json({ message: 'Conversation not found' });
+    if (conversation.type === 'service') return res.status(409).json({ message: 'Booking service conversations are retained with the service record.' });
     await Conversation.findByIdAndUpdate(conversationId, { isDeleted: true });
     res.json({ success: true, message: 'Conversation deleted' });
   } catch (error) {
@@ -457,6 +498,9 @@ const deleteConversation = async (req, res) => {
 const restoreConversation = async (req, res) => {
   try {
     const { conversationId } = req.params;
+    const conversation = await Conversation.findById(conversationId);
+    if (!conversation) return res.status(404).json({ message: 'Conversation not found' });
+    if (conversation.type === 'service') return res.status(409).json({ message: 'Booking service conversations are managed from the booking.' });
     await Conversation.findByIdAndUpdate(conversationId, { status: 'active' });
     res.json({ success: true, message: 'Conversation restored' });
   } catch (error) {

@@ -12,7 +12,7 @@ const {
   createAdminService,
   calculatePrice
 } = require('../controllers/serviceController');
-const { authenticate } = require('../middleware/auth');
+const { authenticate, requirePermission } = require('../middleware/auth');
 const { storeAdminOnly, canAccessStore } = require('../middleware/storeAuth');
 
 // Validation rules
@@ -45,13 +45,13 @@ router.get('/all', getAllServices);
 router.post('/calculate-price', calculatePrice);
 
 // Admin-specific routes (no store required)
-router.post('/admin', authenticate, createServiceValidation, createAdminService);
+router.post('/admin', authenticate, requirePermission('services.create', 'services.manage'), createServiceValidation, createAdminService);
 
 // Store-specific routes
 router.get('/store/:storeId', canAccessStore, getStoreServices);
-router.post('/store/:storeId', authenticate, storeAdminOnly, createServiceValidation, createService);
+router.post('/store/:storeId', authenticate, requirePermission('services.create', 'services.manage'), storeAdminOnly, createServiceValidation, createService);
 router.get('/:id', getServiceById);
-router.put('/:id', authenticate, storeAdminOnly, updateServiceValidation, updateService);
-router.delete('/:id', authenticate, storeAdminOnly, deleteService);
+router.put('/:id', authenticate, requirePermission('services.update', 'services.manage'), storeAdminOnly, updateServiceValidation, updateService);
+router.delete('/:id', authenticate, requirePermission('services.delete', 'services.manage'), storeAdminOnly, deleteService);
 
 module.exports = router;
