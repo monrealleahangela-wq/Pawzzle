@@ -115,6 +115,33 @@ const storeSchema = new mongoose.Schema({
     bufferTime: { type: Number, default: 0 }, // minutes between slots
     maxBookingsPerSlot: { type: Number, default: 1 }
   },
+  taxConfiguration: {
+    isConfigured: { type: Boolean, default: false },
+    taxStatus: {
+      type: String,
+      enum: ['non_vat', 'vat_registered', 'vat_exempt', 'zero_rated'],
+      default: 'non_vat'
+    },
+    pricingMode: {
+      type: String,
+      enum: ['inclusive', 'exclusive'],
+      default: 'inclusive'
+    },
+    vatRatePercent: { type: Number, default: 12, min: 0, max: 100 },
+    deliveryFeeTaxable: { type: Boolean, default: false },
+    configuredAt: { type: Date, default: Date.now },
+    configuredBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', select: false },
+    auditLog: {
+      type: [{
+        changedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+        changedAt: { type: Date, default: Date.now },
+        previous: { type: mongoose.Schema.Types.Mixed },
+        next: { type: mongoose.Schema.Types.Mixed }
+      }],
+      select: false,
+      default: []
+    }
+  },
   specialties: [{
     type: String,
     enum: ['dogs', 'cats', 'birds', 'fish', 'reptiles', 'small_animals', 'exotic_pets']

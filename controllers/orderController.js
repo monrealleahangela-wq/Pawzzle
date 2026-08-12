@@ -10,6 +10,7 @@ const { createNotification, notifyStoreStaff } = require('./notificationControll
 const User = require('../models/User');
 const Voucher = require('../models/Voucher');
 const { internalCreateDelivery } = require('./deliveryController');
+const { calculateOrderPricing } = require('../services/orderPricingService');
 
 // Get all orders (Admin only) or user's own orders (Customer)
 const getAllOrders = async (req, res) => {
@@ -144,7 +145,7 @@ const getOrderById = async (req, res) => {
 };
 
 // Create new order (Customer only)
-const createOrder = async (req, res) => {
+const createOrderLegacy = async (req, res) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -313,6 +314,91 @@ const createOrder = async (req, res) => {
       return res.status(400).json({ message: 'Validation error', errors: messages });
     }
     res.status(500).json({ message: `Server error: ${error.message}` });
+  }
+};
+
+// Creates an order only from current database prices and server-side delivery/tax rules.
+const createOrder = async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+
+    const pricing = await calculateOrderPricing({
+      items: req.body.items,
+      requestedDeliveryMethod: req.body.deliveryMethod,
+      shippingAddress: req.body.shippingAddress,
+      voucherCode: req.body.voucherCode
+    });
+    const breakdown = pricing.pricingBreakdown;
+    const order = await Order.create({
+      customer: req.user._id,
+      addedBy: pricing.ownerId,
+      store: pricing.storeId,
+      items: pricing.processedItems,
+      totalAmount: breakdown.finalTotal,
+      voucher: pricing.voucher?._id || null,
+      discountAmount: breakdown.discountAmount,
+      shippingFee: breakdown.deliveryFee,
+      pricingBreakdown: breakdown,
+      deliveryFeeCalculation: pricing.deliveryFeeCalculation,
+      deliveryMethod: pricing.deliveryMethod,
+      shippingAddress: pricing.deliveryMethod === 'delivery' ? req.body.shippingAddress : {},
+      phoneNumber: req.body.phoneNumber,
+      paymentMethod: 'paymongo',
+      notes: req.body.notes,
+      status: 'pending_payment'
+    });
+    if (pricing.voucher) await Voucher.findByIdAndUpdate(pricing.voucher._id, { $inc: { usedCount: 1 } });
+
+    const populatedOrder = await Order.findById(order._id)
+      .populate('customer', 'username firstName lastName email')
+      .populate('store');
+    res.status(201).json({ message: 'Order created successfully', order: populatedOrder });
+
+    const io = req.app.get('socketio');
+    if (io) {
+      io.to(`store_${pricing.storeId}`).emit('newOrder', populatedOrder);
+      io.to('admin_global').emit('newOrder', populatedOrder);
+    }
+    await notifyStoreStaff(pricing.storeId, 'order_staff', {
+      sender: req.user._id,
+      type: 'new_order',
+      title: 'New Order Received',
+      message: `You have received a new order for ${pricing.processedItems.length} item(s).`,
+      relatedId: order._id,
+      relatedModel: 'Order'
+    });
+  } catch (error) {
+    console.error('Create order pricing error:', error);
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({ message: 'Validation error', errors: Object.values(error.errors).map(err => err.message) });
+    }
+    const expected = [
+      'Order must', 'Item quantity', 'Pet "', 'Product "', 'Invalid item', 'The store',
+      'Items from different', 'Store is unavailable', 'Store tax configuration', 'Invalid delivery', 'Voucher',
+      'A minimum purchase', 'Store and delivery', 'Destination is outside'
+    ];
+    const status = expected.some(prefix => error.message.startsWith(prefix)) ? 400 : 500;
+    res.status(status).json({ message: status === 400 ? error.message : 'Server error while calculating the order.' });
+  }
+};
+
+const quoteOrder = async (req, res) => {
+  try {
+    const pricing = await calculateOrderPricing({
+      items: req.body.items,
+      requestedDeliveryMethod: req.body.deliveryMethod,
+      shippingAddress: req.body.shippingAddress,
+      voucherCode: req.body.voucherCode
+    });
+    res.json({
+      deliveryMethod: pricing.deliveryMethod,
+      pricingBreakdown: pricing.pricingBreakdown,
+      deliveryFeeCalculation: pricing.deliveryFeeCalculation,
+      store: { _id: pricing.store._id, name: pricing.store.name }
+    });
+  } catch (error) {
+    res.status(400).json({ message: error.message });
   }
 };
 
@@ -713,6 +799,7 @@ module.exports = {
   getAllOrders,
   getOrderById,
   createOrder,
+  quoteOrder,
   updateOrderStatus,
   confirmOrderPayment,
   confirmOrderPickup,

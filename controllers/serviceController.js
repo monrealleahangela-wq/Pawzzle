@@ -2,6 +2,7 @@ const { validationResult } = require('express-validator');
 const Service = require('../models/Service');
 const Store = require('../models/Store');
 const { calculateServicePrice } = require('../utils/pricingEngine');
+const { calculateTransactionTax, normalizeTaxConfiguration } = require('../utils/taxCalculator');
 
 const DEFAULT_REQUIREMENTS = [
   "Valid ID and contact details",
@@ -23,7 +24,7 @@ const getStoreServices = async (req, res) => {
     if (active !== undefined) filter.isActive = active === 'true';
 
     const services = await Service.find(filter)
-      .populate('store', 'name')
+      .populate('store', 'name taxConfiguration')
       .populate('assignedStaff', 'firstName lastName staffType')
       .sort({ createdAt: -1 });
 
@@ -372,7 +373,7 @@ const getAllServices = async (req, res) => {
 
     const skip = (page - 1) * limit;
     const services = await Service.find(filter)
-      .populate('store', 'name contactInfo.address')
+      .populate('store', 'name contactInfo.address taxConfiguration')
       .populate('assignedStaff', 'firstName lastName')
       .sort({ createdAt: -1 })
       .skip(skip)
@@ -401,7 +402,7 @@ const getServiceById = async (req, res) => {
   try {
     console.log('🔍 Fetching service by ID:', req.params.id);
     const service = await Service.findById(req.params.id)
-      .populate('store', 'name contactInfo.address businessHours bookingSettings')
+      .populate('store', 'name contactInfo.address businessHours bookingSettings taxConfiguration')
       .populate('assignedStaff', 'firstName lastName staffType');
     if (!service || service.isDeleted) {
       console.log('⚠️ Service not found (or deleted):', req.params.id);
@@ -424,9 +425,12 @@ const calculatePrice = async (req, res) => {
       return res.status(400).json({ message: 'Service ID is required' });
     }
 
-    const service = await Service.findById(serviceId);
+    const service = await Service.findById(serviceId).populate('store', 'taxConfiguration');
     if (!service || service.isDeleted || !service.isActive) {
       return res.status(404).json({ message: 'Service not found or unavailable' });
+    }
+    if (!normalizeTaxConfiguration(service.store?.taxConfiguration).isConfigured) {
+      return res.status(409).json({ message: 'Store tax configuration is missing. Unable to calculate tax.' });
     }
 
     const { breakdown, resolvedAddOns } = calculateServicePrice(
@@ -436,9 +440,13 @@ const calculatePrice = async (req, res) => {
       selectedAddOns || [],
       selectedConditions || []
     );
+    const taxBreakdown = calculateTransactionTax({
+      subtotal: breakdown.subtotal,
+      taxConfiguration: service.store?.taxConfiguration
+    });
 
     res.json({
-      breakdown,
+      breakdown: { ...breakdown, ...taxBreakdown, finalPrice: taxBreakdown.finalTotal },
       resolvedAddOns,
       availableAddOns: (service.addOns || []).filter(a => a.isActive),
       availableConditions: service.pricingRules?.condition?.enabled

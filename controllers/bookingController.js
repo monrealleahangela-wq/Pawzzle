@@ -9,6 +9,7 @@ const PetProfile = require('../models/PetProfile');
 const RevenueService = require('../services/revenueService');
 const { createNotification, notifyStoreStaff } = require('./notificationController');
 const { calculateServicePrice, autoAssignStaff, validateBookingRules } = require('../utils/pricingEngine');
+const { calculateTransactionTax, normalizeTaxConfiguration } = require('../utils/taxCalculator');
 
 // Auto-cancels bookings that are still pending and whose date has passed or unapproved for too long
 const autoCancelExpiredBookings = async (filterBase = {}) => {
@@ -149,6 +150,9 @@ const createBooking = async (req, res) => {
     if (!service || !service.isActive) {
       return res.status(404).json({ message: 'Service not found or unavailable' });
     }
+    if (!normalizeTaxConfiguration(service.store?.taxConfiguration).isConfigured) {
+      return res.status(409).json({ message: 'Store tax configuration is missing. Booking payment is temporarily unavailable.' });
+    }
 
     // Check if home service is available
     if (isHomeService && !service.homeServiceAvailable) {
@@ -197,12 +201,16 @@ const createBooking = async (req, res) => {
         store: storeId
       });
 
+      if (!voucher) return res.status(400).json({ message: 'Voucher is invalid for this store.' });
       if (voucher) {
         const now = new Date();
         const isValidDate = now >= voucher.startDate && now <= voucher.endDate;
         const isWithinLimit = voucher.usageLimit === null || voucher.usedCount < voucher.usageLimit;
         const meetsMinPurchase = breakdown.subtotal >= voucher.minPurchase;
 
+        if (!isValidDate) return res.status(400).json({ message: 'Voucher is not currently valid.' });
+        if (!isWithinLimit) return res.status(400).json({ message: 'Voucher usage limit has been reached.' });
+        if (!meetsMinPurchase) return res.status(400).json({ message: `A minimum purchase of ₱${voucher.minPurchase.toFixed(2)} is required for this voucher.` });
         if (isValidDate && isWithinLimit && meetsMinPurchase) {
           if (voucher.discountType === 'percentage') {
             discountAmount = (breakdown.subtotal * (voucher.discountValue / 100));
@@ -220,9 +228,27 @@ const createBooking = async (req, res) => {
       }
     }
 
-    // Apply discount to breakdown
-    breakdown.discount = discountAmount;
-    breakdown.finalPrice = Math.max(0, breakdown.subtotal - discountAmount);
+    // Apply the store's tax rules after discounts. Home-service fees are part of
+    // the service subtotal and therefore follow the same service tax treatment.
+    const taxBreakdown = calculateTransactionTax({
+      subtotal: breakdown.subtotal,
+      discountAmount,
+      deliveryFee: 0,
+      taxConfiguration: service.store?.taxConfiguration
+    });
+    breakdown.discount = taxBreakdown.discountAmount;
+    breakdown.calculationVersion = taxBreakdown.calculationVersion;
+    breakdown.discountedSubtotal = taxBreakdown.discountedSubtotal;
+    breakdown.deliveryFee = taxBreakdown.deliveryFee;
+    breakdown.deliveryFeeTaxable = taxBreakdown.deliveryFeeTaxable;
+    breakdown.taxStatus = taxBreakdown.taxStatus;
+    breakdown.pricingMode = taxBreakdown.pricingMode;
+    breakdown.vatRatePercent = taxBreakdown.vatRatePercent;
+    breakdown.vatExclusiveAmount = taxBreakdown.vatExclusiveAmount;
+    breakdown.vatAmount = taxBreakdown.vatAmount;
+    breakdown.nonTaxableAmount = taxBreakdown.nonTaxableAmount;
+    breakdown.configuredAt = taxBreakdown.configuredAt;
+    breakdown.finalPrice = taxBreakdown.finalTotal;
 
     // ── Auto-Assign Staff ───────────────────────────────────────────
     let assignedStaffId = null;

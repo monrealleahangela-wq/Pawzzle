@@ -18,6 +18,14 @@ if (!FRONTEND_URL || FRONTEND_URL.includes('localhost')) {
     FRONTEND_URL = isProduction ? 'https://pawzzle.io' : 'http://localhost:3000';
 }
 
+const expectedAmountCentavos = (record, type) => {
+    const total = type === 'booking' ? record.totalPrice : record.totalAmount;
+    return Math.round(Number(total) * 100);
+};
+
+const paymentAmountMatches = (record, type, providerAmount) =>
+    Number(providerAmount) === expectedAmountCentavos(record, type);
+
 /**
  * Create a PayMongo Checkout Session
  */
@@ -25,7 +33,7 @@ const createCheckoutSession = async (req, res) => {
     try {
         if (!PAYMONGO_SECRET_KEY) return res.status(503).json({ message: 'PayMongo is not configured.' });
         const { orderId } = req.params;
-        const order = await Order.findById(orderId).populate('customer');
+        const order = await Order.findById(orderId).populate('customer').populate('store');
 
         if (!order) {
             return res.status(404).json({ message: 'Order not found' });
@@ -40,8 +48,28 @@ const createCheckoutSession = async (req, res) => {
             return res.status(403).json({ message: 'Access denied' });
         }
 
-        // PayMongo expects amount in centavos
-        const amountInCentavos = Math.round(order.totalAmount * 100);
+        for (const item of order.items) {
+            const current = item.itemType === 'product'
+                ? await Product.findById(item.itemId).select('price stockQuantity isActive')
+                : await Pet.findById(item.itemId).select('price isAvailable');
+            const unavailable = !current
+                || Number(current.price) !== Number(item.price)
+                || (item.itemType === 'product' && (!current.isActive || current.stockQuantity < item.quantity))
+                || (item.itemType === 'pet' && !current.isAvailable);
+            if (unavailable) {
+                return res.status(409).json({ message: 'An item price or availability changed. Please recreate the checkout before paying.' });
+            }
+        }
+
+        // PayMongo must receive the exact final total stored by the authoritative
+        // server-side pricing calculation. Reject any inconsistent record.
+        const hasBreakdown = Number(order.pricingBreakdown?.subtotal) > 0 || Number(order.totalAmount) === 0;
+        const authoritativeTotal = hasBreakdown ? Number(order.pricingBreakdown.finalTotal) : Number(order.totalAmount);
+        if (!Number.isFinite(authoritativeTotal) || authoritativeTotal <= 0
+            || Math.abs(authoritativeTotal - Number(order.totalAmount)) > 0.009) {
+            return res.status(409).json({ message: 'Order amount changed or is inconsistent. Please recreate the checkout.' });
+        }
+        const amountInCentavos = Math.round(authoritativeTotal * 100);
 
         const data = {
             data: {
@@ -80,6 +108,16 @@ const createCheckoutSession = async (req, res) => {
         };
         order.paymentMethod = 'paymongo';
         order.paymentStatus = 'pending';
+        if (!order.invoiceSnapshot?.issuedAt) {
+            const address = order.store?.contactInfo?.address;
+            order.invoiceSnapshot = {
+                issuedAt: new Date(),
+                sellerName: order.store?.name || '',
+                sellerAddress: address ? [address.street, address.barangay, address.city, address.state, address.zipCode].filter(Boolean).join(', ') : '',
+                sellerTaxStatus: order.pricingBreakdown?.taxStatus || 'non_vat',
+                pricingBreakdown: order.pricingBreakdown?.toObject?.() || order.pricingBreakdown || {}
+            };
+        }
         await order.save();
 
         res.json({
@@ -102,7 +140,7 @@ const createBookingCheckoutSession = async (req, res) => {
         if (!PAYMONGO_SECRET_KEY) return res.status(503).json({ message: 'PayMongo is not configured.' });
         const { bookingId } = req.params;
         const Booking = require('../models/Booking');
-        const booking = await Booking.findById(bookingId).populate('customer').populate('service');
+        const booking = await Booking.findById(bookingId).populate('customer').populate('service').populate('store');
 
         if (!booking) {
             return res.status(404).json({ message: 'Booking not found' });
@@ -114,7 +152,13 @@ const createBookingCheckoutSession = async (req, res) => {
         if (booking.customer._id.toString() !== req.user.id && req.user.role !== 'super_admin') return res.status(403).json({ message: 'Access denied' });
         if (booking.paymentStatus === 'paid') return res.status(409).json({ message: 'This booking is already paid.' });
 
-        const amountInCentavos = Math.round(booking.totalPrice * 100);
+        const hasBreakdown = Number(booking.pricingBreakdown?.subtotal) > 0 || Number(booking.totalPrice) === 0;
+        const authoritativeTotal = hasBreakdown ? Number(booking.pricingBreakdown.finalPrice) : Number(booking.totalPrice);
+        if (!Number.isFinite(authoritativeTotal) || authoritativeTotal <= 0
+            || Math.abs(authoritativeTotal - Number(booking.totalPrice)) > 0.009) {
+            return res.status(409).json({ message: 'Booking amount changed or is inconsistent. Please recreate the booking.' });
+        }
+        const amountInCentavos = Math.round(authoritativeTotal * 100);
         const data = {
             data: {
                 attributes: {
@@ -150,6 +194,16 @@ const createBookingCheckoutSession = async (req, res) => {
         };
         booking.paymentMethod = 'paymongo';
         booking.paymentStatus = 'pending';
+        if (!booking.invoiceSnapshot?.issuedAt) {
+            const address = booking.store?.contactInfo?.address;
+            booking.invoiceSnapshot = {
+                issuedAt: new Date(),
+                sellerName: booking.store?.name || '',
+                sellerAddress: address ? [address.street, address.barangay, address.city, address.state, address.zipCode].filter(Boolean).join(', ') : '',
+                sellerTaxStatus: booking.pricingBreakdown?.taxStatus || 'non_vat',
+                pricingBreakdown: booking.pricingBreakdown?.toObject?.() || booking.pricingBreakdown || {}
+            };
+        }
         await booking.save();
 
         res.json({ checkoutUrl: session.attributes.checkout_url });
@@ -282,6 +336,12 @@ const handleWebhook = async (req, res) => {
                 const booking = await Booking.findOne({ 'paymentDetails.sessionId': checkoutSession.id });
                 if (booking) {
                     if (booking.paymentStatus === 'paid') return res.sendStatus(200);
+                    if (!paymentAmountMatches(booking, 'booking', paymentData.attributes.amount)) {
+                        booking.paymentStatus = 'failed';
+                        booking.paymentDetails.failureReason = 'PayMongo amount did not match the authoritative booking total.';
+                        await booking.save();
+                        return res.sendStatus(200);
+                    }
                     booking.paymentStatus = 'paid';
                     booking.paymentMethod = 'paymongo';
                     booking.paymentDetails.paymentId = paymentData.id;
@@ -381,6 +441,13 @@ const handleWebhook = async (req, res) => {
 
             if (order) {
                 if (order.paymentStatus === 'paid' && order.paymentDetails?.fulfilledAt) return res.sendStatus(200);
+                if (!paymentAmountMatches(order, 'order', paymentData.attributes.amount)) {
+                    order.paymentStatus = 'failed';
+                    order.status = 'payment_failed';
+                    order.paymentDetails.failureReason = 'PayMongo amount did not match the authoritative order total.';
+                    await order.save();
+                    return res.sendStatus(200);
+                }
                 if (order.status === 'cancelled') {
                     console.log(`⚠️ Received payment for cancelled order #${order.orderNumber}. Marking as paid but keeping cancelled status.`);
                     order.paymentStatus = 'paid';
@@ -450,7 +517,7 @@ const handleWebhook = async (req, res) => {
                 }
 
                 order.paymentDetails.fulfilledAt = new Date();
-                await order.save();
+                await Order.findByIdAndUpdate(order._id, { 'paymentDetails.fulfilledAt': order.paymentDetails.fulfilledAt });
 
                 console.log(`✅ Order #${orderNumber} marked as PAID`);
             }
@@ -467,6 +534,7 @@ const handleWebhook = async (req, res) => {
                     booking.paymentMethod = 'paymongo';
                     booking.paymentDetails.failureReason = 'PayMongo reported a failed payment';
                     await booking.save();
+                    await RevenueService.recordPayment('booking', booking._id);
                 }
                 return res.sendStatus(200);
             }
@@ -570,6 +638,13 @@ const verifyPayment = async (req, res) => {
                     return res.json({ status: target.paymentDetails.paymentStatus, adoption: target });
                 }
 
+                if (!paymentAmountMatches(target, type, successfulPayment.attributes.amount)) {
+                    target.paymentStatus = 'failed';
+                    target.paymentDetails.failureReason = 'PayMongo amount did not match the authoritative transaction total.';
+                    await target.save();
+                    return res.status(409).json({ message: 'Payment amount does not match the transaction total.' });
+                }
+
                 target.paymentStatus = 'paid';
                 target.paymentMethod = 'paymongo';
                 target.paymentDetails = {
@@ -604,9 +679,6 @@ const verifyPayment = async (req, res) => {
                             }
                         }
 
-                        // Record revenue
-                        await RevenueService.recordPayment('order', target._id);
-
                         // Auto-generate delivery links
                         if (target.deliveryMethod === 'delivery') {
                             await internalCreateDelivery({ orderId: target._id });
@@ -631,6 +703,7 @@ const verifyPayment = async (req, res) => {
                 }
 
                 await target.save();
+                if (type === 'order' || type === 'booking') await RevenueService.recordPayment(type, target._id);
                 return res.json({ status: 'paid', [type]: target });
             }
         }

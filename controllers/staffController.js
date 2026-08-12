@@ -29,12 +29,13 @@ const DEFAULT_PERMISSIONS = {
 const RIDER_STATUSES = ['active', 'inactive', 'suspended'];
 const PHONE_PATTERN = /^(?:\+?63|0)9\d{9}$/;
 const getOwnedStoreIds = async (user) => {
-    if (user.role === 'super_admin') return null;
+    if (['super_admin', 'platform_admin'].includes(user.role)) return null;
+    if (user.store) return [user.store._id || user.store];
     const stores = await Store.find({ owner: user._id }).select('_id');
     return stores.map(store => store._id);
 };
 const canAccessStore = async (user, storeId) => {
-    if (user.role === 'super_admin') return true;
+    if (['super_admin', 'platform_admin'].includes(user.role)) return true;
     const ids = await getOwnedStoreIds(user);
     return ids.some(id => id.toString() === storeId.toString());
 };
@@ -353,7 +354,7 @@ const resetStaffPassword = async (req, res) => {
 
 const getEligibleRiders = async (req, res) => {
     try {
-        const storeIds = req.user.role === 'super_admin'
+        const storeIds = ['super_admin', 'platform_admin'].includes(req.user.role)
             ? (req.query.storeId ? [req.query.storeId] : [])
             : await getOwnedStoreIds(req.user);
         const query = {
@@ -367,7 +368,10 @@ const getEligibleRiders = async (req, res) => {
             { $group: { _id: '$assignedRider', count: { $sum: 1 } } }
         ]);
         const byRider = Object.fromEntries(counts.map(row => [row._id.toString(), row.count]));
-        res.json({ riders: riders.map(rider => ({ ...rider, activeDeliveryCount: byRider[rider._id.toString()] || 0, availability: 'available' })) });
+        res.json({ riders: riders.map(rider => {
+            const activeDeliveryCount = byRider[rider._id.toString()] || 0;
+            return { ...rider, activeDeliveryCount, availability: activeDeliveryCount ? 'on_delivery' : 'available' };
+        }) });
     } catch (error) {
         console.error('getEligibleRiders error:', error);
         res.status(500).json({ message: 'Unable to load eligible riders.' });

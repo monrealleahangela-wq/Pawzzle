@@ -6,6 +6,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { Heart, Package, ArrowLeft, Truck, CreditCard, MapPin, Store, Star, CheckCircle, AlertCircle, Link2, Navigation, Phone, Activity, ChevronDown, ChevronUp, MessageSquare, FileText, Share2, ClipboardCheck } from 'lucide-react';
 import OrderReviewModal from '../../components/OrderReviewModal';
 import DeliveryAssignmentFields, { emptyExternal } from '../../components/delivery/DeliveryAssignmentFields';
+import { getTaxStatusLabel } from '../../utils/transactionTax';
 
 const OrderDetail = () => {
   const { id } = useParams();
@@ -127,17 +128,25 @@ const OrderDetail = () => {
 
   const handleGenerateInvoice = async () => {
     setIsGeneratingInvoice(true);
-    toast.info('Generating invoice...', { autoClose: 2000 });
-    
-    // Simulate invoice generation
-    setTimeout(() => {
+    try {
+      const pricing = order.invoiceSnapshot?.pricingBreakdown || order.pricingBreakdown || {};
+      const sellerName = order.invoiceSnapshot?.sellerName || order.store?.name || 'Store';
+      const sellerAddress = order.invoiceSnapshot?.sellerAddress || '';
       setIsGeneratingInvoice(false);
       const invoiceData = `
         PAWZZLE INVOICE
+        Seller: ${sellerName}
+        Seller Address: ${sellerAddress}
         Order ID: ${order.orderNumber}
         Date: ${new Date(order.orderDate).toLocaleDateString()}
         Customer: ${order.customer?.firstName} ${order.customer?.lastName}
-        Total Amount: ₱${order.totalAmount.toLocaleString()}
+        Subtotal: ₱${Number(pricing.subtotal ?? order.totalAmount).toFixed(2)}
+        Discount: -₱${Number(pricing.discountAmount ?? order.discountAmount ?? 0).toFixed(2)}
+        Delivery Fee: ₱${Number(pricing.deliveryFee ?? order.shippingFee ?? 0).toFixed(2)}
+        Tax Treatment: ${getTaxStatusLabel(pricing)}
+        VAT (${Number(pricing.vatRatePercent || 0)}%): ₱${Number(pricing.vatAmount || 0).toFixed(2)}
+        Final Total: ₱${Number(order.totalAmount).toFixed(2)}
+        Payment Status: ${(order.paymentStatus || 'pending').toUpperCase()}
         Status: ${order.status.toUpperCase()}
       `;
       const blob = new Blob([invoiceData], { type: 'text/plain' });
@@ -148,8 +157,12 @@ const OrderDetail = () => {
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
+      URL.revokeObjectURL(url);
       toast.success('Invoice generated and downloaded!');
-    }, 2000);
+    } catch (error) {
+      setIsGeneratingInvoice(false);
+      toast.error('Unable to generate this invoice.');
+    }
   };
 
   const handleCancelOrder = async () => {
@@ -397,8 +410,8 @@ const OrderDetail = () => {
             ))}
           </div>
 
-          {/* Transaction Summary for Sellers */}
-          {user?.role !== 'customer' && (
+          {/* Authoritative transaction summary */}
+          {(
             <div className="mt-8 pt-6 border-t border-slate-100 space-y-4">
               <div className="flex items-center gap-2 mb-2">
                 <FileText className="h-4 w-4 text-primary-600" />
@@ -407,7 +420,7 @@ const OrderDetail = () => {
               <div className="bg-slate-50 rounded-2xl p-4 space-y-3 border border-slate-100">
                 <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-widest text-slate-500">
                   <span>Subtotal</span>
-                  <span className="text-slate-900">₱{(order.totalAmount - order.shippingFee + order.discountAmount).toLocaleString()}</span>
+                  <span className="text-slate-900">₱{(order.pricingBreakdown?.subtotal ?? (order.totalAmount - order.shippingFee + order.discountAmount)).toLocaleString()}</span>
                 </div>
                 {order.discountAmount > 0 && (
                   <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-widest text-rose-500">
@@ -419,9 +432,13 @@ const OrderDetail = () => {
                   <span>Shipping Fee</span>
                   <span className="text-slate-900">₱{order.shippingFee.toLocaleString()}</span>
                 </div>
+                <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-widest text-slate-500">
+                  <span>{getTaxStatusLabel(order.pricingBreakdown)}{order.pricingBreakdown?.taxStatus === 'vat_registered' ? ` (${order.pricingBreakdown.vatRatePercent}%)` : ''}</span>
+                  <span className="text-slate-900">₱{Number(order.pricingBreakdown?.vatAmount || 0).toFixed(2)}</span>
+                </div>
                 <div className="pt-3 border-t border-slate-200 flex justify-between items-end">
                   <div>
-                    <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Earnings</p>
+                    <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Final Total</p>
                     <p className="text-xl font-black text-primary-600 tracking-tighter leading-none">
                       ₱{order.totalAmount.toLocaleString()}
                     </p>

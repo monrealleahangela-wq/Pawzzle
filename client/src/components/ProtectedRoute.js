@@ -14,7 +14,7 @@ const roleMatches = (userRole, allowedRoles) =>
   (allowedRoles.includes('admin') && ADMIN_PORTAL_ROLES.has(userRole)) ||
   (allowedRoles.includes('super_admin') && userRole === 'platform_admin');
 
-const ProtectedRoute = ({ children, roles = [], staffTypes = [], requiredPermission = null }) => {
+const ProtectedRoute = ({ children, roles = [], staffTypes = [], requiredPermission = null, excludedRoles = [] }) => {
   const { isAuthenticated, user, loading } = useAuth();
 
   if (loading) {
@@ -27,6 +27,10 @@ const ProtectedRoute = ({ children, roles = [], staffTypes = [], requiredPermiss
 
   if (!isAuthenticated) {
     return <Navigate to="/" replace />;
+  }
+
+  if (excludedRoles.includes(user?.role) || (user?.role === 'staff' && excludedRoles.includes(user?.staffType))) {
+    return <Navigate to="/admin/dashboard" replace />;
   }
 
   // Check basic role access

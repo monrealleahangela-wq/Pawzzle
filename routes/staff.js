@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { authenticate, adminOnly } = require('../middleware/auth');
+const { authenticate, adminOnly, requirePermission } = require('../middleware/auth');
 const {
     getMyStaff,
     createStaff,
@@ -16,13 +16,13 @@ const {
 } = require('../controllers/staffController');
 
 router.get('/me/rider-summary', authenticate, getMyRiderDetails);
+router.get('/riders/eligible', authenticate, requirePermission('logistics.manage'), getEligibleRiders);
+router.get('/riders/:id', authenticate, requirePermission('logistics.manage'), getRiderDetails);
 
 // Remaining routes require authentication and admin/super_admin role
 router.use(authenticate, adminOnly);
 
 router.get('/', getMyStaff);
-router.get('/riders/eligible', getEligibleRiders);
-router.get('/riders/:id', getRiderDetails);
 router.post('/riders/:id/payouts', createRiderPayout);
 router.patch('/rider-payouts/:payoutId', updateRiderPayout);
 router.post('/', createStaff);

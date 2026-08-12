@@ -16,7 +16,9 @@ const {
   getStoreLocations,
   submitVerification,
   approveVerification,
-  rejectVerification
+  rejectVerification,
+  getTaxConfiguration,
+  updateTaxConfiguration
 } = require('../controllers/storeController');
 const { submitExpansionRequest, upload } = require('../controllers/storeApplicationController');
 const { authenticate, superAdminOnly, authorize, adminOnly, adminOrStaff } = require('../middleware/auth');
@@ -55,6 +57,7 @@ router.get('/my-store', authenticate, adminOrStaff, getMyStore);
 router.put('/my-store', authenticate, adminOnly, updateStoreValidation, updateStore);
 router.get('/settings', authenticate, adminOrStaff, getMyStore);
 router.put('/settings', authenticate, adminOnly, updateStoreValidation, updateStore);
+router.put('/my-store/tax-configuration', authenticate, adminOnly, updateTaxConfiguration);
 router.get('/dashboard/stats', authenticate, adminOrStaff, getStoreDashboard);
 router.post('/', authenticate, adminOnly, createStoreValidation, createStore);
 
@@ -62,6 +65,7 @@ router.post('/', authenticate, adminOnly, createStoreValidation, createStore);
 router.get('/', getAllStores);
 router.get('/locations', getStoreLocations);
 router.get('/owner/:ownerId', getStoreByOwner);
+router.get('/:id/tax-configuration', authenticate, getTaxConfiguration);
 router.get('/:id', getStoreById);
 router.get('/:id/details', getStoreDetails);
 
@@ -78,5 +82,6 @@ router.post('/:id/reject-verification', authenticate, superAdminOnly, rejectVeri
 // Super Admin only routes
 router.patch('/:id/toggle-status', authenticate, superAdminOnly, toggleStoreStatus);
 router.patch('/:id/feature', authenticate, superAdminOnly, featureStore);
+router.put('/:id/tax-configuration', authenticate, superAdminOnly, updateTaxConfiguration);
 
 module.exports = router;

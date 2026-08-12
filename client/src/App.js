@@ -73,6 +73,8 @@ import Customers from './pages/admin/Customers';
 import PurchaseOrders from './pages/admin/PurchaseOrders';
 import SupplyManagement from './pages/admin/SupplyManagement';
 import FinanceManagement from './pages/admin/FinanceManagement';
+import Logistics from './pages/admin/Logistics';
+import LogisticsDetail from './pages/admin/LogisticsDetail';
 
 // Super Admin Pages
 import SuperAdminDashboard from './pages/superadmin/Dashboard';
@@ -201,6 +203,8 @@ function App() {
                   <Route path="admin/purchase-orders" element={<ProtectedRoute roles={['admin', 'super_admin', 'staff']}><PurchaseOrders /></ProtectedRoute>} />
                   <Route path="admin/supplies" element={<ProtectedRoute roles={['admin', 'super_admin', 'staff']}><SupplyManagement /></ProtectedRoute>} />
                   <Route path="admin/finance" element={<ProtectedRoute roles={['admin', 'super_admin', 'staff']}><FinanceManagement /></ProtectedRoute>} />
+                  <Route path="admin/logistics" element={<ProtectedRoute roles={['admin', 'super_admin', 'staff']} staffTypes={['logistics_staff']} requiredPermission="logistics" excludedRoles={['delivery_rider']}><Logistics /></ProtectedRoute>} />
+                  <Route path="admin/logistics/:id" element={<ProtectedRoute roles={['admin', 'super_admin', 'staff']} staffTypes={['logistics_staff']} requiredPermission="logistics" excludedRoles={['delivery_rider']}><LogisticsDetail /></ProtectedRoute>} />
                   <Route path="superadmin/payouts" element={<ProtectedRoute roles={['super_admin']}><AdminPayouts /></ProtectedRoute>} />
 
                   {/* Super Admin Routes */}

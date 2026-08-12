@@ -3,6 +3,8 @@ const Order = require('../models/Order');
 const Booking = require('../models/Booking');
 const PurchaseOrder = require('../models/PurchaseOrder');
 const ProcurementPayment = require('../models/ProcurementPayment');
+const RiderEarning = require('../models/RiderEarning');
+const RiderPayout = require('../models/RiderPayout');
 const { calculateTax, roundMoney } = require('../utils/taxCalculator');
 const resolveStore = require('../utils/resolveStore');
 
@@ -142,19 +144,26 @@ const getFinancialSummary = async (req, res) => {
     const from = req.query.from ? new Date(req.query.from) : new Date(Date.now() - 30 * 86400000);
     const to = req.query.to ? new Date(req.query.to) : new Date();
     if (Number.isNaN(from.valueOf()) || Number.isNaN(to.valueOf()) || from > to) return res.status(400).json({ message: 'Invalid date range.' });
-    const [orders, bookings, expenses, purchaseOrders, payments] = await Promise.all([
+    const [orders, bookings, expenses, purchaseOrders, payments, riderEarnings, riderPayouts] = await Promise.all([
       Order.find({ store, paymentStatus: 'paid', createdAt: { $gte: from, $lte: to }, isDeleted: { $ne: true } }),
       Booking.find({ store, paymentStatus: 'paid', createdAt: { $gte: from, $lte: to }, isDeleted: { $ne: true } }),
       Expense.find({ store, status: { $in: ['approved', 'paid'] }, expenseDate: { $gte: from, $lte: to } }),
       PurchaseOrder.find({ store, createdAt: { $gte: from, $lte: to }, isDeleted: false, status: { $nin: ['cancelled', 'returned'] } }),
-      ProcurementPayment.find({ store, status: 'recorded', paymentDate: { $gte: from, $lte: to } })
+      ProcurementPayment.find({ store, status: 'recorded', paymentDate: { $gte: from, $lte: to } }),
+      RiderEarning.find({ store, earnedAt: { $gte: from, $lte: to } }),
+      RiderPayout.find({ store, createdAt: { $gte: from, $lte: to } })
     ]);
-    const salesRevenue = orders.reduce((sum, row) => sum + row.totalAmount, 0);
-    const serviceRevenue = bookings.reduce((sum, row) => sum + row.totalPrice, 0);
+    const salesVat = orders.reduce((sum, row) => sum + Number(row.pricingBreakdown?.vatAmount || 0), 0);
+    const serviceVat = bookings.reduce((sum, row) => sum + Number(row.pricingBreakdown?.vatAmount || 0), 0);
+    const salesRevenue = orders.reduce((sum, row) => sum + row.totalAmount, 0) - salesVat;
+    const serviceRevenue = bookings.reduce((sum, row) => sum + row.totalPrice, 0) - serviceVat;
     const operatingExpenses = expenses.reduce((sum, row) => sum + row.grossAmount, 0);
     const procurementCommitted = purchaseOrders.reduce((sum, row) => sum + row.totalCost, 0);
     const procurementPaid = payments.reduce((sum, row) => sum + row.amount, 0);
-    res.json({ period: { from, to }, revenue: { productSales: roundMoney(salesRevenue), services: roundMoney(serviceRevenue), total: roundMoney(salesRevenue + serviceRevenue) }, expenses: { operating: roundMoney(operatingExpenses), procurementCommitted: roundMoney(procurementCommitted), procurementPaid: roundMoney(procurementPaid), procurementOutstanding: roundMoney(purchaseOrders.reduce((s, p) => s + Math.max(0, p.totalCost - (p.paidAmount || 0)), 0)) }, operatingResultBeforeCogs: roundMoney(salesRevenue + serviceRevenue - operatingExpenses - procurementPaid) });
+    const deliveryEarnings = riderEarnings.reduce((sum, row) => sum + row.amount, 0);
+    const deliveryPaid = riderPayouts.filter(row => row.status === 'paid').reduce((sum, row) => sum + row.amount, 0);
+    const deliveryPayable = riderEarnings.filter(row => ['available', 'processing'].includes(row.status)).reduce((sum, row) => sum + row.amount, 0);
+    res.json({ period: { from, to }, revenue: { productSales: roundMoney(salesRevenue), services: roundMoney(serviceRevenue), total: roundMoney(salesRevenue + serviceRevenue) }, tax: { outputVat: roundMoney(salesVat + serviceVat), productSalesVat: roundMoney(salesVat), serviceVat: roundMoney(serviceVat) }, logistics: { riderEarnings: roundMoney(deliveryEarnings), riderPayoutsPaid: roundMoney(deliveryPaid), riderPayable: roundMoney(deliveryPayable) }, expenses: { operating: roundMoney(operatingExpenses), procurementCommitted: roundMoney(procurementCommitted), procurementPaid: roundMoney(procurementPaid), procurementOutstanding: roundMoney(purchaseOrders.reduce((s, p) => s + Math.max(0, p.totalCost - (p.paidAmount || 0)), 0)) }, operatingResultBeforeCogs: roundMoney(salesRevenue + serviceRevenue - operatingExpenses - procurementPaid - deliveryPaid) });
   } catch (error) { res.status(500).json({ message: error.message }); }
 };
 

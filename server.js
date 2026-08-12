@@ -75,6 +75,7 @@ app.use('/api/public', require('./routes/public'));
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/users', require('./routes/users'));
 app.use('/api/deliveries', require('./routes/delivery'));
+app.use('/api/logistics', require('./routes/logistics'));
 app.use('/api/admin/chats', require('./middleware/auth').authenticate, require('./routes/adminChats'));
 app.use('/api/admin/pets', require('./routes/adminPets'));
 app.use('/api/admin/products', require('./routes/adminProducts'));

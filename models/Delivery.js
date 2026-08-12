@@ -2,6 +2,12 @@ const mongoose = require('mongoose');
 const crypto = require('crypto');
 
 const deliverySchema = new mongoose.Schema({
+  store: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Store',
+    index: true,
+    default: null
+  },
   order: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Order',
@@ -107,6 +113,8 @@ const deliverySchema = new mongoose.Schema({
   estimatedDelivery: {
     type: Date
   },
+  riderLinkOpenedAt: Date,
+  trackingLinkOpenedAt: Date,
   pickedUpAt: {
     type: Date
   },
@@ -131,13 +139,15 @@ const deliverySchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
-  complaints: [{
-    content: { type: String, required: true },
-    type: { type: String, enum: ['suspicious_location', 'damaged_items', 'other'] },
-    status: { type: String, enum: ['pending', 'resolved'], default: 'pending' },
-    createdAt: { type: Date, default: Date.now },
-    resolvedAt: { type: Date }
-  }],
+    complaints: [{
+      content: { type: String, required: true },
+      type: { type: String, enum: ['suspicious_location', 'damaged_items', 'other'] },
+      status: { type: String, enum: ['pending', 'resolved'], default: 'pending' },
+      createdAt: { type: Date, default: Date.now },
+      resolvedAt: { type: Date },
+      resolutionNotes: String,
+      resolvedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
+    }],
   proofOfDelivery: {
     photo: { type: String },
     signature: { type: String },
@@ -155,7 +165,11 @@ const deliverySchema = new mongoose.Schema({
     notes: String,
     photo: String,
     location: { lat: Number, lng: Number },
-    timestamp: { type: Date, default: Date.now }
+    timestamp: { type: Date, default: Date.now },
+    resolutionStatus: { type: String, enum: ['open', 'resolved'], default: 'open' },
+    resolutionNotes: String,
+    resolvedAt: Date,
+    resolvedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
   }]
 }, {
   timestamps: true

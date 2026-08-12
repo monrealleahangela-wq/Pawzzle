@@ -125,6 +125,7 @@ export const adminProductService = {
 export const orderService = {
   getAllOrders: (params) => api.get('/orders', { params }),
   getOrderById: (id) => api.get(`/orders/${id}`),
+  quoteOrder: (orderData) => api.post('/orders/quote', orderData),
   createOrder: (orderData) => api.post('/orders', orderData),
   updateOrderStatus: (id, statusData) => api.patch(`/orders/${id}/status`, statusData),
   confirmPickup: (id) => api.post(`/orders/${id}/confirm-pickup`),
@@ -310,6 +311,8 @@ export const storeService = {
   updateSettings: (settings) => api.put('/stores/settings', settings),
   getStoreByOwner: (ownerId) => api.get(`/stores/owner/${ownerId}`),
   getStoreLocations: () => api.get('/stores/locations'),
+  getTaxConfiguration: (id) => api.get(`/stores/${id}/tax-configuration`),
+  updateTaxConfiguration: (data) => api.put('/stores/my-store/tax-configuration', data),
   submitVerification: (data) => api.post('/stores/my-store/verify', data),
   requestExpansion: (formData) => api.post('/stores/expansion-request', formData, {
     headers: { 'Content-Type': 'multipart/form-data' }
@@ -454,6 +457,14 @@ export const deliveryService = {
   uploadDeliveryProof: (token, formData) => api.post(`/deliveries/proof-upload/${token}`, formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
   resolveComplaint: (deliveryId, complaintId) => api.patch(`/deliveries/resolve-complaint/${deliveryId}/${complaintId}`),
   calculateFee: (data) => api.post('/deliveries/calculate-fee', data)
+};
+
+export const logisticsService = {
+  getDashboard: (params) => api.get('/logistics/dashboard', { params }),
+  getDeliveries: (params) => api.get('/logistics/deliveries', { params }),
+  getDelivery: (id) => api.get(`/logistics/deliveries/${id}`),
+  getIssues: (params) => api.get('/logistics/issues', { params }),
+  resolveIssue: (deliveryId, issueType, issueId, data) => api.patch(`/logistics/issues/${deliveryId}/${issueType}/${issueId}/resolve`, data)
 };
 
 // Supplier services

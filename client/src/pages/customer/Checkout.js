@@ -25,8 +25,7 @@ const Checkout = () => {
   }, [location.search]);
 
   // Use only selected items for checkout
-  const selectedCartItems = getSelectedItems();
-  const checkoutItems = selectedCartItems.length > 0 ? selectedCartItems : [];
+  const checkoutItems = items.filter(item => item.selected);
 
   // Calculate total price for selected items only
   const checkoutTotalPrice = checkoutItems.reduce((total, item) => total + (item.price * item.quantity), 0);
@@ -66,6 +65,8 @@ const Checkout = () => {
   const [myVouchers, setMyVouchers] = useState([]);
   const [showVoucherModal, setShowVoucherModal] = useState(false);
   const [agreedToPolicy, setAgreedToPolicy] = useState(false);
+  const [pricingQuote, setPricingQuote] = useState(null);
+  const [pricingQuoteError, setPricingQuoteError] = useState('');
 
   // Payment options - Online Only consistent with minimalist design
   const getPaymentOptions = () => {
@@ -98,6 +99,33 @@ const Checkout = () => {
   }, [deliveryMethod]);
 
   const [storeAddresses, setStoreAddresses] = useState({});
+
+  const quoteItemsSignature = checkoutItems
+    .map(item => `${item.itemType}:${item.itemId}:${item.quantity}`)
+    .sort()
+    .join('|');
+
+  useEffect(() => {
+    if (!quoteItemsSignature || !phoneNumber) return undefined;
+    const timer = setTimeout(async () => {
+      try {
+        const response = await orderService.quoteOrder({
+          items: items.filter(item => item.selected).map(item => ({ itemType: item.itemType, itemId: item.itemId, quantity: item.quantity })),
+          deliveryMethod,
+          shippingAddress: deliveryMethod === 'delivery' ? shippingAddress : {},
+          phoneNumber,
+          paymentMethod: 'paymongo',
+          voucherCode: appliedVoucher ? voucherCode : null
+        });
+        setPricingQuote(response.data);
+        setPricingQuoteError('');
+      } catch (error) {
+        setPricingQuote(null);
+        setPricingQuoteError(error.response?.data?.message || 'Unable to calculate the current total.');
+      }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [quoteItemsSignature, items, deliveryMethod, shippingAddress, phoneNumber, appliedVoucher, voucherCode]);
 
   // Use default settings instead of API call since endpoint doesn't exist yet
   useEffect(() => {
@@ -293,22 +321,18 @@ const Checkout = () => {
         voucherCode: appliedVoucher ? voucherCode : null
       };
 
-      // Calculate shipping fee based on admin settings and delivery method
-      let shippingFee = 0;
-      if (deliveryMethod === 'delivery' && !adminSettings.freeShipping && adminSettings.shippingFee > 0) {
-        const orderTotal = selectedItems.reduce((total, item) => total + (item.price * item.quantity), 0);
-        if (orderTotal < adminSettings.freeShippingThreshold) {
-          shippingFee = adminSettings.shippingFee;
-        }
-      }
-
-      const response = await orderService.createOrder({
-        ...orderData,
-        shippingFee
-      });
+      const response = await orderService.createOrder(orderData);
 
       if (response.data && response.data.order) {
         const orderId = response.data.order._id;
+        const quotedTotal = Number(pricingQuote?.pricingBreakdown?.finalTotal);
+        const savedTotal = Number(response.data.order.totalAmount);
+        if (Number.isFinite(quotedTotal) && Math.abs(quotedTotal - savedTotal) > 0.009) {
+          toast.warning('The price changed during checkout. Review the updated order total before paying.');
+          clearSelectedItems();
+          navigate(`/orders/${orderId}`);
+          return;
+        }
 
         // Handle PayMongo redirection for online payments
         // Handle Online Redirects
@@ -431,6 +455,7 @@ const Checkout = () => {
   };
 
   const calculateFinalTotal = () => {
+    if (pricingQuote?.pricingBreakdown) return pricingQuote.pricingBreakdown.finalTotal;
     let total = checkoutTotalPrice;
 
     // Add shipping
@@ -447,6 +472,14 @@ const Checkout = () => {
 
     return Math.max(0, total);
   };
+
+  const quoteBreakdown = pricingQuote?.pricingBreakdown;
+  const taxStatusLabel = {
+    non_vat: 'Store is not VAT-registered',
+    vat_registered: quoteBreakdown?.pricingMode === 'inclusive' ? 'VAT included' : 'VAT',
+    vat_exempt: 'VAT-exempt sale',
+    zero_rated: 'Zero-rated sale'
+  }[quoteBreakdown?.taxStatus] || 'Tax pending calculation';
 
   if (checkoutItems.length === 0) {
     const hasItemsInCart = items && items.length > 0;
@@ -1025,7 +1058,7 @@ const Checkout = () => {
             <div className="space-y-3 mb-6">
               <div className="flex justify-between text-gray-600">
                 <span>Subtotal ({checkoutItems.length} items)</span>
-                <span>₱{checkoutTotalPrice.toFixed(2)}</span>
+                <span>{quoteBreakdown ? `₱${quoteBreakdown.subtotal.toFixed(2)}` : 'Calculating…'}</span>
               </div>
               <div className="flex justify-between text-gray-600">
                 <span>Delivery Method</span>
@@ -1033,16 +1066,16 @@ const Checkout = () => {
               </div>
               <div className="flex justify-between text-gray-600">
                 <span>Shipping</span>
-                <span>{deliveryMethod === 'pickup' ? 'Free' : adminSettings.freeShipping ? 'Free' : `₱${adminSettings.shippingFee}`}</span>
+                <span>{deliveryMethod === 'pickup' || quoteBreakdown?.deliveryFee === 0 ? 'Free' : quoteBreakdown ? `₱${quoteBreakdown.deliveryFee.toFixed(2)}` : 'Calculating…'}</span>
               </div>
               <div className="flex justify-between text-gray-600">
-                <span>Tax</span>
-                <span>₱0.00</span>
+                <span>{taxStatusLabel}{quoteBreakdown?.taxStatus === 'vat_registered' ? ` (${quoteBreakdown.vatRatePercent}%)` : ''}</span>
+                <span>{quoteBreakdown ? `₱${quoteBreakdown.vatAmount.toFixed(2)}` : 'Calculating…'}</span>
               </div>
               {appliedVoucher && (
                 <div className="flex justify-between text-emerald-600 font-bold">
                   <span>Discount ({appliedVoucher.code})</span>
-                  <span>-₱{appliedVoucher.discountAmount.toFixed(2)}</span>
+                  <span>-₱{Number(quoteBreakdown?.discountAmount ?? appliedVoucher.discountAmount).toFixed(2)}</span>
                 </div>
               )}
               <div className="border-t pt-3">
@@ -1051,6 +1084,9 @@ const Checkout = () => {
                   <span>₱{calculateFinalTotal().toFixed(2)}</span>
                 </div>
               </div>
+              {pricingQuoteError && (
+                <p className="text-xs text-rose-600 bg-rose-50 border border-rose-100 rounded-lg p-3">{pricingQuoteError}</p>
+              )}
             </div>
 
             {/* No Refund Policy Agreement */}
@@ -1077,9 +1113,9 @@ const Checkout = () => {
             <form onSubmit={handleSubmit}>
               <button
                 type="submit"
-                disabled={isLoading}
+                disabled={isLoading || !pricingQuote || Boolean(pricingQuoteError)}
                 className={`btn btn-primary w-full flex items-center justify-center gap-3 py-5 text-[10px] font-black uppercase tracking-[0.3em] shadow-2xl transition-all active:scale-95 ${
-                  !agreedToPolicy ? 'opacity-50 cursor-not-allowed grayscale' : 'shadow-primary-200 hover:-translate-y-0.5'
+                  (!agreedToPolicy || !pricingQuote || pricingQuoteError) ? 'opacity-50 cursor-not-allowed grayscale' : 'shadow-primary-200 hover:-translate-y-0.5'
                 }`}
               >
                 {isLoading ? (

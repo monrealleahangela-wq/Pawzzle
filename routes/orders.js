@@ -6,6 +6,7 @@ const {
   getAllOrders,
   getOrderById,
   createOrder,
+  quoteOrder,
   updateOrderStatus,
   confirmOrderPickup,
   confirmOrderPayment,
@@ -36,6 +37,7 @@ router.get('/', authenticate, getAllOrders);
 router.get('/:id', authenticate, getOrderById);
 
 // Customer only routes
+router.post('/quote', authenticate, customerOnly, createOrderValidation, quoteOrder);
 router.post('/', authenticate, customerOnly, createOrderValidation, createOrder);
 router.patch('/:id/cancel', authenticate, cancelOrder);
 router.post('/:id/confirm-pickup', authenticate, customerOnly, confirmOrderPickup);

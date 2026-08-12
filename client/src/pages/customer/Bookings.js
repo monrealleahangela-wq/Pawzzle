@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { bookingService, serviceService, voucherService, getImageUrl, petProfileService, paymentService } from '../../services/apiService';
 import { calculateServicePrice } from '../../utils/pricingEngine';
+import { calculateTransactionTax, getTaxStatusLabel } from '../../utils/transactionTax';
 import { toast } from 'react-toastify';
 import { Clock, User, MapPin, Phone, Mail, DollarSign, CheckCircle, XCircle, AlertCircle, Filter, Search, Calendar, ArrowLeft, ChevronLeft, ChevronRight, Store, X, Activity, ShieldCheck, TrendingUp, Tag, Ticket, Bell, Building, Heart, PawPrint, Trash2, Star, Camera, Eye, CreditCard, Navigation, Receipt, Layers } from 'lucide-react';
 import ReviewModal from '../../components/ReviewModal';
@@ -651,6 +652,11 @@ const Bookings = ({ isSubcomponent = false }) => {
         breakdown.discount = appliedVoucher.discountAmount || 0;
         breakdown.finalPrice = Math.max(0, breakdown.subtotal - breakdown.discount);
       }
+      const taxBreakdown = calculateTransactionTax({
+        subtotal: breakdown.subtotal,
+        discountAmount: appliedVoucher?.discountAmount || 0,
+        taxConfiguration: selectedService?.store?.taxConfiguration
+      });
 
       // Calculate endTime based on duration + add-ons
       const duration = (selectedService.duration || 60) + resolvedAddOns.reduce((acc, curr) => acc + (curr.duration || 0), 0);
@@ -691,6 +697,13 @@ const Bookings = ({ isSubcomponent = false }) => {
       };
 
       const response = await bookingService.createBooking(bookingData);
+      if (Math.abs(Number(response.data.totalPrice) - Number(taxBreakdown.finalTotal)) > 0.009) {
+        toast.warning('The service price changed. Review the updated booking total before paying.');
+        setShowBookingForm(false);
+        setSelectedService(null);
+        await fetchBookings();
+        return;
+      }
       
       // All customer payments use the existing PayMongo checkout.
       if (bookingForm.paymentMethod === 'paymongo') {
@@ -1304,6 +1317,12 @@ const Bookings = ({ isSubcomponent = false }) => {
                 bookingForm.selectedAddOns,
                 bookingForm.selectedConditions
               );
+              const taxBreakdown = calculateTransactionTax({
+                subtotal: breakdown.subtotal,
+                discountAmount: appliedVoucher?.discountAmount || 0,
+                taxConfiguration: selectedService?.store?.taxConfiguration
+              });
+              const taxConfigReady = selectedService?.store?.taxConfiguration?.isConfigured === true;
 
               return (
               <div className="space-y-4 animate-card-appear">
@@ -1596,6 +1615,12 @@ const Bookings = ({ isSubcomponent = false }) => {
                             <span className="text-xs font-black">- ₱{(appliedVoucher.discountAmount || 0).toLocaleString()}</span>
                           </div>
                         )}
+                        <div className="flex items-center justify-between text-slate-500 pt-2 border-t border-slate-50">
+                          <span className="text-[9px] font-black uppercase tracking-widest">
+                            {getTaxStatusLabel(taxBreakdown)}{taxBreakdown.taxStatus === 'vat_registered' ? ` (${taxBreakdown.vatRatePercent}%)` : ''}
+                          </span>
+                          <span className="text-xs font-black">₱{taxBreakdown.vatAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                        </div>
                       </div>
 
                     {/* Standardized Online Payment Selection */}
@@ -1635,11 +1660,16 @@ const Bookings = ({ isSubcomponent = false }) => {
                       <div className="flex items-center justify-between pt-4 border-t border-slate-50">
                         <span className="text-[9px] font-black text-slate-900 uppercase tracking-widest">Total Amount</span>
                         <span className="text-3xl font-black text-primary-600 tracking-tighter">
-                          ₱{Math.max(0, breakdown.subtotal - (appliedVoucher?.discountAmount || 0)).toLocaleString()}
+                          ₱{taxBreakdown.finalTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                         </span>
                     </div>
 
                     {/* No Refund Policy Agreement */}
+                    {!taxConfigReady && (
+                      <p className="mt-4 p-3 rounded-xl bg-rose-50 border border-rose-100 text-xs text-rose-700">
+                        This store must complete its tax configuration before booking payment is available.
+                      </p>
+                    )}
                     <div className="mt-4">
                       <label className="flex items-start gap-3 p-4 bg-rose-50 rounded-2xl border border-rose-100 cursor-pointer group hover:bg-rose-100/50 transition-all shadow-sm">
                         <div className="relative flex items-center mt-0.5">
@@ -1667,9 +1697,9 @@ const Bookings = ({ isSubcomponent = false }) => {
                     className="px-8 py-4 bg-white border border-slate-100 text-slate-600 rounded-2xl text-[9px] font-black uppercase tracking-widest hover:border-slate-300 transition-all shadow-sm">
                     ← Edit
                   </button>
-                  <button type="submit" disabled={submitting}
+                  <button type="submit" disabled={submitting || !taxConfigReady}
                     className={`flex-1 py-5 text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.25em] shadow-2xl transition-all flex items-center justify-center gap-3 ${
-                      !agreedToPolicy ? 'bg-slate-300 cursor-not-allowed grayscale shadow-none' : 'bg-primary-600 shadow-primary-200 hover:bg-primary-700 active:scale-95'
+                      (!agreedToPolicy || !taxConfigReady) ? 'bg-slate-300 cursor-not-allowed grayscale shadow-none' : 'bg-primary-600 shadow-primary-200 hover:bg-primary-700 active:scale-95'
                     }`}>
                     {submitting ? (
                       <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Processing...</>
@@ -2124,7 +2154,23 @@ const Bookings = ({ isSubcomponent = false }) => {
                     </div>
 
                     <div className="flex items-center justify-between pb-4 border-b border-dashed border-slate-100">
-                      <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Total</span>
+                      <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Subtotal</span>
+                      <span className="text-sm font-black text-slate-900 tracking-tighter">₱{(selectedBooking.pricingBreakdown?.subtotal || selectedBooking.totalPrice || 0).toLocaleString()}</span>
+                    </div>
+                    {selectedBooking.discountAmount > 0 && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-[9px] font-black text-emerald-600 uppercase tracking-widest">Discount</span>
+                        <span className="text-sm font-black text-emerald-600">-₱{selectedBooking.discountAmount.toLocaleString()}</span>
+                      </div>
+                    )}
+                    <div className="flex items-center justify-between">
+                      <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
+                        {getTaxStatusLabel(selectedBooking.pricingBreakdown)}
+                      </span>
+                      <span className="text-sm font-black text-slate-900">₱{(selectedBooking.pricingBreakdown?.vatAmount || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                    </div>
+                    <div className="flex items-center justify-between pb-4 border-b border-dashed border-slate-100">
+                      <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Final Total</span>
                       <span className="text-xl font-black text-slate-900 tracking-tighter">₱{(selectedBooking.totalPrice || 0).toLocaleString()}</span>
                     </div>
 

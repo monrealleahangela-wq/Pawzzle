@@ -61,6 +61,7 @@ const bookingSchema = new mongoose.Schema({
 
   // ── Pricing Breakdown (snapshot at booking time) ──
   pricingBreakdown: {
+    calculationVersion: { type: Number },
     basePrice:        { type: Number, default: 0 },
     sizeSurcharge:    { type: Number, default: 0 },
     weightSurcharge:  { type: Number, default: 0 },
@@ -71,7 +72,17 @@ const bookingSchema = new mongoose.Schema({
     homeServiceFee:   { type: Number, default: 0 },
     subtotal:         { type: Number, default: 0 },
     discount:         { type: Number, default: 0 },
-    finalPrice:       { type: Number, default: 0 }
+    discountedSubtotal: { type: Number, default: 0 },
+    deliveryFee:      { type: Number, default: 0 },
+    deliveryFeeTaxable: { type: Boolean, default: false },
+    taxStatus:        { type: String, enum: ['non_vat', 'vat_registered', 'vat_exempt', 'zero_rated'], default: 'non_vat' },
+    pricingMode:      { type: String, enum: ['inclusive', 'exclusive'], default: 'inclusive' },
+    vatRatePercent:   { type: Number, default: 0 },
+    vatExclusiveAmount: { type: Number, default: 0 },
+    vatAmount:        { type: Number, default: 0 },
+    nonTaxableAmount: { type: Number, default: 0 },
+    finalPrice:       { type: Number, default: 0 },
+    configuredAt:     { type: Date }
   },
 
   bookingDate: {
@@ -178,6 +189,13 @@ const bookingSchema = new mongoose.Schema({
     paymentId: { type: String },
     sourceType: { type: String },
     failureReason: { type: String }
+  },
+  invoiceSnapshot: {
+    issuedAt: Date,
+    sellerName: String,
+    sellerAddress: String,
+    sellerTaxStatus: String,
+    pricingBreakdown: { type: mongoose.Schema.Types.Mixed }
   },
   createdAt: {
     type: Date,

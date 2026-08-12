@@ -23,9 +23,11 @@ class RevenueService {
     // Only proceed if not already recorded
     if (!doc.isRevenueRecorded) {
       const totalAmount = type === 'order' ? doc.totalAmount : doc.totalPrice;
+      const vatAmount = Number(doc.pricingBreakdown?.vatAmount || 0);
+      const recognizedRevenue = Number(Math.max(0, totalAmount - vatAmount).toFixed(2));
       
-      // Calculate 10% Platform Fee
-      const platformFee = Number((totalAmount * 0.10).toFixed(2));
+      // VAT collected is an output-tax liability, not seller sales revenue.
+      const platformFee = Number((recognizedRevenue * 0.10).toFixed(2));
       const netAmount = Number((totalAmount - platformFee).toFixed(2));
 
       doc.platformFee = platformFee;
@@ -48,7 +50,7 @@ class RevenueService {
         await Store.findByIdAndUpdate(storeId, {
           $inc: {
             'balance': netAmount,
-            'stats.totalRevenue': totalAmount,
+            'stats.totalRevenue': recognizedRevenue,
             'stats.totalPlatformFees': platformFee
           }
         });
@@ -76,13 +78,15 @@ class RevenueService {
 
     if (doc.isRevenueRecorded && doc.store) {
       const totalAmount = type === 'order' ? doc.totalAmount : doc.totalPrice;
-      const platformFee = doc.platformFee || Number((totalAmount * 0.10).toFixed(2));
+      const vatAmount = Number(doc.pricingBreakdown?.vatAmount || 0);
+      const recognizedRevenue = Number(Math.max(0, totalAmount - vatAmount).toFixed(2));
+      const platformFee = doc.platformFee || Number((recognizedRevenue * 0.10).toFixed(2));
       const netAmount = doc.netAmount || (totalAmount - platformFee);
 
       await Store.findByIdAndUpdate(doc.store, {
         $inc: {
           'balance': -netAmount,
-          'stats.totalRevenue': -totalAmount,
+          'stats.totalRevenue': -recognizedRevenue,
           'stats.totalPlatformFees': -platformFee
         }
       });

@@ -74,6 +74,33 @@ const orderSchema = new mongoose.Schema({
     type: Number,
     default: 0
   },
+  pricingBreakdown: {
+    calculationVersion: { type: Number },
+    subtotal: { type: Number, default: 0 },
+    discountAmount: { type: Number, default: 0 },
+    discountedSubtotal: { type: Number, default: 0 },
+    deliveryFee: { type: Number, default: 0 },
+    deliveryFeeTaxable: { type: Boolean, default: false },
+    taxStatus: { type: String, enum: ['non_vat', 'vat_registered', 'vat_exempt', 'zero_rated'], default: 'non_vat' },
+    pricingMode: { type: String, enum: ['inclusive', 'exclusive'], default: 'inclusive' },
+    vatRatePercent: { type: Number, default: 0 },
+    vatExclusiveAmount: { type: Number, default: 0 },
+    vatAmount: { type: Number, default: 0 },
+    nonTaxableAmount: { type: Number, default: 0 },
+    finalTotal: { type: Number, default: 0 },
+    configuredAt: { type: Date }
+  },
+  deliveryFeeCalculation: {
+    distanceKm: Number,
+    distanceMethod: String,
+    rule: {
+      id: { type: mongoose.Schema.Types.ObjectId, ref: 'DeliveryFeeRule' },
+      name: String,
+      version: Number
+    },
+    breakdown: { type: mongoose.Schema.Types.Mixed },
+    calculatedAt: Date
+  },
   status: {
     type: String,
     enum: [
@@ -156,6 +183,13 @@ const orderSchema = new mongoose.Schema({
     transactionDate: { type: Date },
     fulfilledAt: { type: Date },
     failureReason: { type: String }
+  },
+  invoiceSnapshot: {
+    issuedAt: Date,
+    sellerName: String,
+    sellerAddress: String,
+    sellerTaxStatus: String,
+    pricingBreakdown: { type: mongoose.Schema.Types.Mixed }
   },
   platformCommission: {
     type: Number,

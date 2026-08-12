@@ -66,6 +66,8 @@ const getAdminMenu = (user) => {
 
   const hasAccess = (requiredRoles) => {
     if (isGlobalAdmin) return true;
+    if (role === 'delivery_dispatcher' && requiredRoles.includes('logistics_staff')) return true;
+    if (role === 'manager' && requiredRoles.includes('logistics_staff')) return true;
     if (role === 'staff' && requiredRoles.includes(staffType)) return true;
     return false;
   };
@@ -89,6 +91,9 @@ const getAdminMenu = (user) => {
   const opsChildren = [];
   if (hasAccess(['logistics_staff', 'sales_staff', 'order_staff'])) {
     opsChildren.push({ path: '/admin/orders', label: 'Product Orders', icon: ShoppingCart });
+  }
+  if (hasAccess(['logistics_staff'])) {
+    opsChildren.push({ path: '/admin/logistics', label: 'Logistics', icon: Truck });
   }
   if (hasServices && hasAccess(['service_management_staff', 'veterinarian', 'groomer', 'trainer', 'boarding_specialist'])) {
     opsChildren.push({ path: '/admin/bookings', label: 'Service Bookings', icon: Calendar });

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { DollarSign, Plus, Receipt, Wallet, X } from 'lucide-react';
+import { DollarSign, Plus, Receipt, Truck, Wallet, X } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { financeService, purchaseOrderService } from '../../services/apiService';
 
@@ -40,8 +40,8 @@ export default function FinanceManagement() {
       <div><p className="text-[9px] font-black tracking-[.25em] text-emerald-600 uppercase">Operations</p><h1 className="text-2xl font-black text-slate-900">Finance</h1><p className="text-xs text-slate-500">Actual store expenses and procurement payments.</p></div>
       <div className="flex gap-2"><button onClick={() => setModal('expense')} className="h-9 px-3 rounded-lg bg-white border text-xs font-bold flex items-center gap-2"><Plus size={14}/> Expense</button><button onClick={() => setModal('payment')} className="h-9 px-3 rounded-lg bg-emerald-600 text-white text-xs font-bold flex items-center gap-2"><Plus size={14}/> Payment</button></div>
     </header>
-    <section className="grid grid-cols-2 lg:grid-cols-4 gap-3">{[
-      ['Revenue', summary?.revenue?.total, DollarSign], ['Procurement paid', summary?.expenses?.procurementPaid, Wallet], ['Outstanding', summary?.expenses?.procurementOutstanding, Receipt], ['Operating result', summary?.operatingResultBeforeCogs, DollarSign]
+    <section className="grid grid-cols-2 lg:grid-cols-6 gap-3">{[
+      ['Net sales revenue', summary?.revenue?.total, DollarSign], ['Output VAT', summary?.tax?.outputVat, Receipt], ['Rider payable', summary?.logistics?.riderPayable, Truck], ['Procurement paid', summary?.expenses?.procurementPaid, Wallet], ['Outstanding', summary?.expenses?.procurementOutstanding, Receipt], ['Operating result', summary?.operatingResultBeforeCogs, DollarSign]
     ].map(([label,value,Icon]) => <div key={label} className="bg-white border rounded-xl p-4"><Icon size={16} className="text-emerald-600 mb-2"/><p className="text-[9px] uppercase font-bold text-slate-400">{label}</p><p className="text-lg font-black text-slate-900">{money(value)}</p></div>)}</section>
     <div className="flex gap-1 bg-slate-900 p-1 rounded-xl w-fit">{['payments','expenses'].map(t => <button key={t} onClick={() => setTab(t)} className={`h-8 px-4 rounded-lg text-[10px] font-black uppercase ${tab===t?'bg-white text-slate-900':'text-white/60'}`}>{t}</button>)}</div>
     <section className="bg-white border rounded-2xl overflow-x-auto"><table className="w-full text-left text-xs"><thead className="bg-slate-50 text-[9px] uppercase text-slate-400"><tr>{(tab==='payments'?['Order','Supplier','Date','Amount','Method','Status','']:['Payee','Category','Date','Amount','Status','']).map((x,i)=><th key={i} className="p-3">{x}</th>)}</tr></thead><tbody>

@@ -381,6 +381,9 @@ const BookingsManagement = () => {
                       <p className="text-[8px] font-bold text-slate-400 uppercase italic">
                         {booking.paymentMethod ? booking.paymentMethod.replace('_', ' ') : 'NET'}
                       </p>
+                      <p className="text-[8px] font-bold text-slate-400 mt-1">
+                        Subtotal ₱{Number(booking.pricingBreakdown?.subtotal || booking.totalPrice || 0).toFixed(2)} · VAT ₱{Number(booking.pricingBreakdown?.vatAmount || 0).toFixed(2)}
+                      </p>
                     </td>
                     <td className="px-6 py-3.5">
                       <div className="flex flex-col gap-1">

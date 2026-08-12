@@ -66,6 +66,13 @@ const AdminSettings = () => {
       maxBookingsPerSlot: 1
     }
   });
+  const [taxConfiguration, setTaxConfiguration] = useState({
+    isConfigured: false,
+    taxStatus: 'non_vat',
+    pricingMode: 'inclusive',
+    vatRatePercent: 12,
+    deliveryFeeTaxable: false
+  });
   
   const [showExpansionModal, setShowExpansionModal] = useState(false);
   const [expansionData, setExpansionData] = useState({
@@ -97,8 +104,11 @@ const AdminSettings = () => {
       ]);
       
       if (globalRes.data) setGlobalSettings(globalRes.data);
-      if (storeRes.data?.settings) setStoreSettings(prev => ({ ...prev, ...storeRes.data.settings }));
-      else if (storeRes.data) setStoreSettings(prev => ({ ...prev, ...storeRes.data }));
+      const storeData = storeRes.data?.store || storeRes.data?.settings || storeRes.data;
+      if (storeData) {
+        setStoreSettings(prev => ({ ...prev, ...storeData }));
+        if (storeData.taxConfiguration) setTaxConfiguration(prev => ({ ...prev, ...storeData.taxConfiguration }));
+      }
       
     } catch (error) {
       console.error('Error fetching settings:', error);
@@ -136,6 +146,20 @@ const AdminSettings = () => {
       }
     } catch (error) {
       toast.error('Failed to save store settings');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSaveTax = async () => {
+    if (!window.confirm('Apply this tax configuration to new orders and bookings? Existing transaction records will not change.')) return;
+    setLoading(true);
+    try {
+      const response = await storeService.updateTaxConfiguration(taxConfiguration);
+      setTaxConfiguration(prev => ({ ...prev, ...response.data.taxConfiguration }));
+      toast.success('Tax configuration updated for new transactions');
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to update tax configuration');
     } finally {
       setLoading(false);
     }
@@ -183,6 +207,7 @@ const AdminSettings = () => {
         <div className="flex gap-2 p-1 bg-slate-100 rounded-2xl w-full sm:w-auto">
           <button onClick={() => setActiveTab('global')} className={`flex-1 sm:flex-none px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'global' ? 'bg-white text-primary-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}>General</button>
           <button onClick={() => setActiveTab('booking')} className={`flex-1 sm:flex-none px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'booking' ? 'bg-white text-primary-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}>Availability</button>
+          <button onClick={() => setActiveTab('tax')} className={`flex-1 sm:flex-none px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'tax' ? 'bg-white text-primary-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}>Tax</button>
           <button onClick={() => setActiveTab('modules')} className={`flex-1 sm:flex-none px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'modules' ? 'bg-white text-primary-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}>Modules</button>
         </div>
       </div>
@@ -343,6 +368,53 @@ const AdminSettings = () => {
                    {loading ? <Zap className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Commit Availability
                 </button>
               </div>
+            </div>
+          ) : activeTab === 'tax' ? (
+            <div className="bg-white border border-slate-100 rounded-[2.5rem] p-8 shadow-sm space-y-8 animate-in slide-in-from-right-4">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-primary-50 text-primary-600 rounded-2xl flex items-center justify-center"><DollarSign className="h-6 w-6" /></div>
+                <div>
+                  <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest leading-none mb-1">Tax Configuration</h3>
+                  <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Used by checkout, PayMongo, receipts, and finance reports</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <label className="space-y-2">
+                  <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Store tax status</span>
+                  <select value={taxConfiguration.taxStatus} onChange={(e) => setTaxConfiguration(prev => ({ ...prev, taxStatus: e.target.value }))} className="input w-full">
+                    <option value="non_vat">Not VAT-registered</option>
+                    <option value="vat_registered">VAT-registered</option>
+                    <option value="vat_exempt">VAT-exempt</option>
+                    <option value="zero_rated">Zero-rated</option>
+                  </select>
+                </label>
+                <label className="space-y-2">
+                  <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Displayed prices</span>
+                  <select value={taxConfiguration.pricingMode} onChange={(e) => setTaxConfiguration(prev => ({ ...prev, pricingMode: e.target.value }))} className="input w-full" disabled={taxConfiguration.taxStatus !== 'vat_registered'}>
+                    <option value="inclusive">VAT-inclusive</option>
+                    <option value="exclusive">VAT-exclusive</option>
+                  </select>
+                </label>
+                <label className="space-y-2">
+                  <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">VAT rate (%)</span>
+                  <input type="number" min="0" max="100" step="0.01" value={taxConfiguration.vatRatePercent} onChange={(e) => setTaxConfiguration(prev => ({ ...prev, vatRatePercent: Number(e.target.value) }))} className="input w-full" disabled={taxConfiguration.taxStatus !== 'vat_registered'} />
+                </label>
+                <label className="flex items-center justify-between gap-4 p-4 bg-slate-50 border border-slate-100 rounded-2xl">
+                  <span>
+                    <span className="block text-[9px] font-black text-slate-700 uppercase tracking-widest">Delivery fee is taxable</span>
+                    <span className="block text-[9px] text-slate-400 mt-1">Applies only to VAT-registered transactions.</span>
+                  </span>
+                  <input type="checkbox" checked={taxConfiguration.deliveryFeeTaxable} onChange={(e) => setTaxConfiguration(prev => ({ ...prev, deliveryFeeTaxable: e.target.checked }))} className="h-5 w-5" />
+                </label>
+              </div>
+              <div className="p-4 bg-amber-50 border border-amber-100 rounded-2xl text-[10px] text-amber-800">
+                {!taxConfiguration.isConfigured && <strong className="block mb-1">Tax setup is required before customers can pay.</strong>}
+                Tax changes apply only to new transactions. Saved orders and bookings keep the tax snapshot used when they were created.
+              </div>
+              <button onClick={handleSaveTax} disabled={loading} className="w-full py-4 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.3em] hover:bg-primary-600 transition-all flex items-center justify-center gap-3 shadow-xl">
+                {loading ? <Zap className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Save Tax Configuration
+              </button>
             </div>
           ) : (
             <div className="bg-white border border-slate-100 rounded-[2.5rem] p-8 shadow-sm space-y-10 animate-in slide-in-from-right-4">

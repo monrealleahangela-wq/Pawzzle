@@ -7,6 +7,7 @@ const Booking = require('../models/Booking');
 const Service = require('../models/Service');
 const Follow = require('../models/Follow');
 const User = require('../models/User');
+const { TAX_STATUSES, PRICING_MODES, normalizeTaxConfiguration } = require('../utils/taxCalculator');
 
 // Get all stores (public)
 const getAllStores = async (req, res) => {
@@ -261,7 +262,7 @@ const updateStore = async (req, res) => {
     }
 
     // List of fields that SHOULD NOT be updated via this route
-    const protectedFields = ['_id', '__v', 'owner', 'slug', 'ratings', 'stats', 'verificationStatus', 'isActive', 'featured', 'subscriptionTier', 'subscriptionExpires', 'createdAt', 'updatedAt'];
+    const protectedFields = ['_id', '__v', 'owner', 'slug', 'ratings', 'stats', 'taxConfiguration', 'verificationStatus', 'isActive', 'featured', 'subscriptionTier', 'subscriptionExpires', 'createdAt', 'updatedAt'];
 
     // Create a body clone without protected fields
     const updateData = { ...req.body };
@@ -528,6 +529,57 @@ const rejectVerification = async (req, res) => {
   }
 };
 
+const getTaxConfiguration = async (req, res) => {
+  try {
+    const store = await Store.findById(req.params.id).select('name taxConfiguration isActive isDeleted');
+    if (!store || !store.isActive || store.isDeleted) return res.status(404).json({ message: 'Store not found' });
+    res.json({ storeId: store._id, storeName: store.name, taxConfiguration: normalizeTaxConfiguration(store.taxConfiguration) });
+  } catch (error) {
+    res.status(500).json({ message: 'Unable to load tax configuration.' });
+  }
+};
+
+const updateTaxConfiguration = async (req, res) => {
+  try {
+    const store = req.user.role === 'super_admin' && req.params.id
+      ? await Store.findById(req.params.id).select('+taxConfiguration.auditLog')
+      : await Store.findOne({ owner: req.user._id, isDeleted: { $ne: true } }).select('+taxConfiguration.auditLog');
+    if (!store) return res.status(404).json({ message: 'Store not found' });
+
+    const taxStatus = String(req.body.taxStatus || '');
+    const pricingMode = String(req.body.pricingMode || '');
+    const vatRatePercent = Number(req.body.vatRatePercent);
+    if (!TAX_STATUSES.includes(taxStatus)) return res.status(400).json({ message: 'Invalid tax status.' });
+    if (!PRICING_MODES.includes(pricingMode)) return res.status(400).json({ message: 'Invalid pricing mode.' });
+    if (!Number.isFinite(vatRatePercent) || vatRatePercent < 0 || vatRatePercent > 100) {
+      return res.status(400).json({ message: 'VAT rate must be between 0 and 100.' });
+    }
+
+    const previous = normalizeTaxConfiguration(store.taxConfiguration);
+    const next = {
+      isConfigured: true,
+      taxStatus,
+      pricingMode,
+      vatRatePercent,
+      deliveryFeeTaxable: Boolean(req.body.deliveryFeeTaxable),
+      configuredAt: new Date()
+    };
+    const auditLog = store.taxConfiguration?.auditLog || [];
+    auditLog.push({ changedBy: req.user._id, changedAt: new Date(), previous, next });
+    if (auditLog.length > 50) auditLog.splice(0, auditLog.length - 50);
+    store.taxConfiguration = { ...next, configuredBy: req.user._id, auditLog };
+    await store.save();
+
+    res.json({
+      message: 'Tax configuration updated. New transactions will use this configuration.',
+      taxConfiguration: normalizeTaxConfiguration(store.taxConfiguration)
+    });
+  } catch (error) {
+    console.error('Update tax configuration error:', error);
+    res.status(500).json({ message: 'Unable to update tax configuration.' });
+  }
+};
+
 // Get all store locations for map (Filtered for Cavite only)
 const getStoreLocations = async (req, res) => {
   try {
@@ -558,5 +610,7 @@ module.exports = {
   getStoreLocations,
   submitVerification,
   approveVerification,
-  rejectVerification
+  rejectVerification,
+  getTaxConfiguration,
+  updateTaxConfiguration
 };
