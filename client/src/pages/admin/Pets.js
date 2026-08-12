@@ -158,13 +158,13 @@ const AdminPets = () => {
   };
 
   const handleDeletePet = async (petId) => {
-    if (window.confirm('Are you sure you want to delete this pet?')) {
+    if (window.confirm('Delete this pet?\n\nThis pet will be removed from the store’s active pet list.')) {
       try {
         await adminPetService.deletePet(petId);
-        toast.success('Pet deleted');
+        toast.success('Pet deleted successfully.');
         fetchPets();
       } catch (error) {
-        toast.error('Delete failed');
+        toast.error('Unable to delete this pet. Please try again.');
       }
     }
   };
@@ -598,7 +598,7 @@ const AdminPets = () => {
             <table className="w-full">
               <thead>
                 <tr className="bg-slate-50/50">
-                  <th className="px-8 py-3.5 text-left text-[9px] font-black text-slate-400 uppercase tracking-widest">Biological Subject</th>
+                  <th className="px-8 py-3.5 text-left text-[9px] font-black text-slate-400 uppercase tracking-widest">Pet</th>
                   <th className="px-8 py-3.5 text-left text-[9px] font-black text-slate-400 uppercase tracking-widest">Customer Profile</th>
                   <th className="px-8 py-3.5 text-left text-[9px] font-black text-slate-400 uppercase tracking-widest">Status / Lifecycle</th>
                   <th className="px-8 py-3.5 text-left text-[9px] font-black text-slate-400 uppercase tracking-widest">Timestamp</th>
@@ -901,7 +901,7 @@ const AdminPets = () => {
                       <h4 className="text-[10px] font-black text-rose-500 uppercase tracking-[0.4em] mb-6">Vaccination Status</h4>
                       <div className="space-y-3">
                         {[
-                          { v: 'complete', l: 'Protocol Complete ✓' },
+                          { v: 'complete', l: 'Information Complete ✓' },
                           { v: 'partial', l: 'Partially Vaccinated ~' },
                           { v: 'none', l: 'No Immunization Records ✗' }
                         ].map(opt => (
@@ -1199,7 +1199,7 @@ const AdminPets = () => {
                 }}
                 className="flex-1 py-3.5 bg-rose-500 text-white rounded-2xl text-[11px] font-black uppercase tracking-widest hover:bg-slate-900 hover:scale-[1.02] transition-all shadow-2xl shadow-rose-200 flex items-center justify-center gap-4 active:scale-95 disabled:opacity-50">
                 {submitting ? 'Saving...' : (
-                  modalTab === 'identity' ? 'Next: Health Protocols' :
+                  modalTab === 'identity' ? 'Next: Health Information' :
                     modalTab === 'health' ? 'Next: Pricing & Docs' :
                       modalTab === 'commerce' ? 'Next: Payment Config' :
                         modalTab === 'payments' ? 'Next: Pickup Details' :

@@ -278,17 +278,17 @@ const ProductInventory = () => {
       if (editingProduct) {
         if (isAdminOrStaff) await adminProductService.updateProduct(editingProduct._id, payload);
         else await productService.updateProduct(editingProduct._id, payload);
-        toast.success('Asset synchronized successfully.');
+        toast.success('Product updated successfully.');
       } else {
         if (isAdminOrStaff) await adminProductService.createProduct(payload);
         else await productService.createProduct(payload);
-        toast.success(`Asset "${productForm.name}" acquired and logged.`);
+        toast.success(`Product “${productForm.name}” added successfully.`);
       }
 
       setShowProductModal(false);
       fetchProducts();
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Synchronization failure. Ensure SKU is unique.');
+      toast.error(error.response?.data?.message || 'Unable to save this product. Check that the SKU is unique and try again.');
     } finally {
       setSubmitting(false);
     }
@@ -312,9 +312,9 @@ const ProductInventory = () => {
       const response = await uploadService.uploadMultipleImages(formData);
       const newUrls = response.data.urls || response.data.imageUrls || [];
       setProductForm(prev => ({ ...prev, images: [...prev.images, ...newUrls] }));
-      toast.success('Visual streams connected.');
+      toast.success('Product images uploaded successfully.');
     } catch (error) {
-      toast.error('Upload protocol failure.');
+      toast.error('Unable to upload the images. Please use valid image files and try again.');
     } finally {
       setSubmitting(false);
     }
@@ -369,7 +369,7 @@ const ProductInventory = () => {
       fetchInventory();
       if (activeTab === 'products') fetchProducts();
     } catch (error) {
-      toast.error('Operation failed');
+      toast.error('Unable to update inventory. Please check the quantity and try again.');
     } finally {
       setSubmitting(false);
     }
@@ -512,13 +512,13 @@ const ProductInventory = () => {
                       </span>
                       <div className="flex gap-2">
                         {canUpdate && (
-                          <button onClick={() => handleOpenProductModal(product)}
+                          <button aria-label={`Edit ${product.name}`} title="Edit Product" onClick={() => handleOpenProductModal(product)}
                             className="p-2.5 bg-slate-50 text-slate-400 rounded-2xl hover:bg-primary-600 hover:text-white transition-all shadow-sm">
                             <Edit className="h-4 w-4" />
                           </button>
                         )}
                         {canDelete && (
-                          <button onClick={() => { if (window.confirm('PURGE_ASSET?')) adminProductService.deleteProduct(product._id).then(fetchProducts) }}
+                          <button aria-label={`Delete ${product.name}`} title="Delete Product" onClick={() => { if (window.confirm(`Delete “${product.name}”?\n\nThis product will be removed from the store's active product list.`)) adminProductService.deleteProduct(product._id).then(() => { toast.success('Product deleted successfully.'); fetchProducts(); }).catch(() => toast.error('Unable to delete this product. Please try again.')); }}
                             className="p-2.5 bg-slate-50 text-slate-400 rounded-2xl hover:bg-rose-500 hover:text-white transition-all shadow-sm">
                             <Trash2 className="h-4 w-4" />
                           </button>

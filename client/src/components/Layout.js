@@ -189,14 +189,14 @@ const getStaffMenu = (user) => {
   const p = user?.permissions || {};
   const menu = [
     { path: '/admin/dashboard', label: 'Dashboard', icon: Activity },
-    { path: '/admin/insights', label: 'Intelligence', icon: Brain },
+    { path: '/admin/insights', label: 'Business Insights', icon: Brain },
   ];
 
   const catalogChildren = [];
   if (p.inventory?.view) catalogChildren.push({ path: '/admin/pets', label: 'Pets', icon: Heart });
   if (p.inventory?.view) catalogChildren.push({ path: '/admin/products', label: 'Products', icon: Package });
   if (p.services?.view) catalogChildren.push({ path: '/admin/services', label: 'Services', icon: Calendar });
-  if (catalogChildren.length > 0) menu.push({ label: 'Catalog', icon: Package, children: catalogChildren });
+  if (catalogChildren.length > 0) menu.push({ label: 'Products & Services', icon: Package, children: catalogChildren });
 
   const opsChildren = [];
   if (p.orders?.view) opsChildren.push({ path: '/admin/orders', label: 'Orders', icon: ShoppingCart });
@@ -206,12 +206,18 @@ const getStaffMenu = (user) => {
   if (p.reviews?.view) opsChildren.push({ path: '/admin/reviews', label: 'Reviews', icon: Star });
   if (opsChildren.length > 0) menu.push({ label: 'Operations', icon: ShoppingBag, children: opsChildren });
 
-  const mgmtChildren = [];
+  const supplyChildren = [];
   if (user?.staffType === 'inventory_staff' || user?.staffType === 'procurement_officer') {
-    mgmtChildren.push({ path: '/admin/purchase-orders', label: 'Purchase Orders', icon: Truck });
+    supplyChildren.push({ path: '/admin/purchase-orders', label: 'Purchase Orders', icon: Truck });
   }
-  if (user?.staffType === 'finance_staff') mgmtChildren.push({ path: '/admin/finance', label: 'Finance Records', icon: DollarSign });
-  if (p.vouchers?.view) mgmtChildren.push({ path: '/admin/vouchers', label: 'Vouchers', icon: Ticket });
+  if (supplyChildren.length > 0) menu.push({ label: 'Supply Chain', icon: Truck, children: supplyChildren });
+
+  const financeChildren = [];
+  if (user?.staffType === 'finance_staff') financeChildren.push({ path: '/admin/finance', label: 'Finance Records', icon: DollarSign });
+  if (p.vouchers?.view) financeChildren.push({ path: '/admin/vouchers', label: 'Vouchers', icon: Ticket });
+  if (financeChildren.length > 0) menu.push({ label: 'Finance', icon: DollarSign, children: financeChildren });
+
+  const mgmtChildren = [];
   if (p.analytics?.view) mgmtChildren.push({ path: '/admin/stats', label: 'Stats', icon: TrendingUp });
   if (p.staff?.view) mgmtChildren.push({ path: '/admin/staff', label: 'Staff', icon: Users });
   if (mgmtChildren.length > 0) menu.push({ label: 'Management', icon: Settings, children: mgmtChildren });
@@ -445,7 +451,7 @@ const Layout = () => {
   );
 
   return (
-    <div className={`min-h-screen bg-neutral-50 dark:bg-slate-950 flex flex-col lg:flex-row overflow-x-hidden transition-colors duration-300 ${user?.role === 'customer' ? 'customer-ui-shell' : ''} ${isStoreOwnerUI ? 'store-owner-ui-shell' : ''} ${isLandingPage ? '!bg-transparent' : ''}`}>
+    <div className={`min-h-screen bg-neutral-50 dark:bg-slate-950 flex flex-col lg:flex-row overflow-x-hidden transition-colors duration-300 ${user?.role === 'customer' ? 'customer-ui-shell' : ''} ${user?.role === 'staff' ? 'staff-ui-shell' : ''} ${isStoreOwnerUI ? 'store-owner-ui-shell' : ''} ${isLandingPage ? '!bg-transparent' : ''}`}>
       
       {!isLandingPage && (
         <div className="fixed top-0 left-0 h-1 bg-gradient-to-r from-primary via-secondary to-primary z-[100] transition-all duration-300" 
@@ -554,7 +560,7 @@ const Layout = () => {
         )}
 
         <main className={`flex-1 ${isCustomerUI ? 'p-3 sm:p-4 lg:p-5' : 'p-4 sm:p-5 lg:p-8'} animate-fade-up ${isLandingPage ? 'p-0' : ''}`}>
-          <div className={`relative z-10 ${user?.role === 'customer' ? 'customer-interface' : ''} ${isStoreOwnerUI ? 'store-owner-interface' : ''}`}>
+          <div className={`relative z-10 ${user?.role === 'customer' ? 'customer-interface' : ''} ${user?.role === 'staff' ? 'staff-interface' : ''} ${isStoreOwnerUI ? 'store-owner-interface' : ''}`}>
             <Outlet />
           </div>
         </main>

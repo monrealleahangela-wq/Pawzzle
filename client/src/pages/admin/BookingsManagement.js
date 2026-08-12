@@ -259,7 +259,7 @@ const BookingsManagement = () => {
             <span className="text-[9px] font-black text-slate-400 uppercase tracking-[0.4em]">ADMIN : BOOKINGS</span>
           </div>
           <h1 className="text-3xl sm:text-4xl font-black text-slate-900 uppercase tracking-tighter leading-none mb-2">
-            Service <span className="text-primary-600">Protocols</span>
+            Service <span className="text-primary-600">Bookings</span>
           </h1>
           <div className="flex items-center gap-3">
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
@@ -294,7 +294,7 @@ const BookingsManagement = () => {
         ))}
       </div>
 
-      {/* Protocol HUD Filter - High Contrast & Always Visible */}
+      {/* Search and status filters */}
       <div className="relative z-10 bg-slate-900 p-2 rounded-[1.5rem] shadow-xl border border-slate-800">
         <div className="grid grid-cols-1 md:grid-cols-12 gap-2">
           <div className="md:col-span-6 relative group">
@@ -327,6 +327,7 @@ const BookingsManagement = () => {
              </select>
              <ChevronDown className="absolute right-6 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500 pointer-events-none" />
           </div>
+          {(searchTerm || filterStatus !== 'all') && <button type="button" onClick={() => { setSearchTerm(''); setFilterStatus('all'); }} className="md:col-span-2 rounded-xl bg-white text-slate-700 text-xs font-bold px-3">Clear Filters</button>}
         </div>
       </div>
 
@@ -337,11 +338,11 @@ const BookingsManagement = () => {
             <table className="w-full">
               <thead>
                 <tr className="bg-slate-50/50">
-                  <th className="px-6 py-3.5 text-left text-[9px] font-black text-slate-400 uppercase tracking-widest">Client Profile</th>
-                  <th className="px-6 py-3.5 text-left text-[9px] font-black text-slate-400 uppercase tracking-widest">Service Item</th>
+                  <th className="px-6 py-3.5 text-left text-[9px] font-black text-slate-400 uppercase tracking-widest">Customer</th>
+                  <th className="px-6 py-3.5 text-left text-[9px] font-black text-slate-400 uppercase tracking-widest">Service</th>
                   <th className="px-6 py-3.5 text-left text-[9px] font-black text-slate-400 uppercase tracking-widest">Schedule</th>
-                  <th className="px-6 py-3.5 text-left text-[9px] font-black text-slate-400 uppercase tracking-widest">Value</th>
-                  <th className="px-6 py-3.5 text-left text-[9px] font-black text-slate-400 uppercase tracking-widest">Lifecycle</th>
+                  <th className="px-6 py-3.5 text-left text-[9px] font-black text-slate-400 uppercase tracking-widest">Price</th>
+                  <th className="px-6 py-3.5 text-left text-[9px] font-black text-slate-400 uppercase tracking-widest">Status</th>
                   <th className="px-6 py-3.5 text-right text-[9px] font-black text-slate-400 uppercase tracking-widest">Actions</th>
                 </tr>
               </thead>
@@ -394,7 +395,7 @@ const BookingsManagement = () => {
                       </div>
                     </td>
                     <td className="px-6 py-3.5 text-right">
-                      <div className="p-2.5 bg-slate-50 text-slate-400 rounded-lg group-hover:bg-slate-900 group-hover:text-white transition-all inline-block">
+                      <div title="View Booking Details" aria-label="View Booking Details" className="p-2.5 bg-slate-50 text-slate-400 rounded-lg group-hover:bg-slate-900 group-hover:text-white transition-all inline-block">
                         <ChevronRight className="h-4 w-4" />
                       </div>
                     </td>
@@ -405,7 +406,9 @@ const BookingsManagement = () => {
           ) : (
             <div className="py-20 text-center">
               <AlertCircle className="h-10 w-10 text-slate-200 mx-auto mb-4" />
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">No active protocols detected</p>
+              <p className="text-sm font-bold text-slate-700">No bookings found</p>
+              <p className="text-xs text-slate-400 mt-1">{searchTerm || filterStatus !== 'all' ? 'No bookings match your current filters.' : 'New service bookings will appear here.'}</p>
+              {(searchTerm || filterStatus !== 'all') && <button type="button" onClick={() => { setSearchTerm(''); setFilterStatus('all'); }} className="mt-4 px-4 py-2 rounded-lg bg-slate-900 text-white text-xs font-bold">Clear Filters</button>}
             </div>
           )}
         </div>

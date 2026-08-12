@@ -71,12 +71,14 @@ const AdminOrders = () => {
   };
 
   const handleStatusUpdate = async (orderId, newStatus) => {
+    const readableStatus = newStatus.replace(/_/g, ' ').replace(/\b\w/g, char => char.toUpperCase());
+    if (!window.confirm(`Update this order to “${readableStatus}”?\n\nThe customer will see the new order status.`)) return;
     try {
       await adminOrderService.updateOrderStatus(orderId, { status: newStatus });
-      toast.success(`Order status updated to: ${newStatus.toUpperCase()}`);
+      toast.success(`Order updated to ${readableStatus}.`);
       fetchOrders();
     } catch (error) {
-      toast.error('Failed to update order status');
+      toast.error('Unable to update this order. Please try again.');
     }
   };
 
@@ -121,6 +123,9 @@ const AdminOrders = () => {
     }
   };
 
+  const formatStatus = status => String(status || 'unknown').replace(/_/g, ' ').replace(/\b\w/g, char => char.toUpperCase());
+  const hasFilters = Boolean(filters.status || filters.search);
+
   const getActionButton = (order) => {
     switch (order.status) {
       case 'paid': return { label: 'CONFIRM ORDER', next: 'awaiting_confirmation', color: 'bg-emerald-500 hover:bg-emerald-600' };
@@ -144,8 +149,8 @@ const AdminOrders = () => {
   return (
     <div className="container mx-auto p-4 lg:p-10 pb-20 bg-slate-50 min-h-screen">
       <div className="flex flex-col mb-8 text-left">
-        <h1 className="text-4xl font-black text-slate-900 tracking-tighter uppercase mb-2">Order Command</h1>
-        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none">Global Fulfillment Hub</p>
+        <h1 className="text-4xl font-black text-slate-900 tracking-tighter uppercase mb-2">Orders</h1>
+        <p className="text-sm text-slate-500">Review customer orders, confirm payments, and update fulfillment status.</p>
       </div>
 
       <div className="bg-white p-2 rounded-[2rem] shadow-2xl shadow-slate-200/50 border border-slate-100 mb-10">
@@ -156,7 +161,7 @@ const AdminOrders = () => {
             </div>
             <input
               type="text"
-              placeholder="SEARCH BY ORDER ID OR CUSTOMER..."
+              placeholder="Search by order number or customer"
               value={filters.search}
               onChange={(e) => handleFilterChange('search', e.target.value)}
               className="w-full pl-16 pr-4 py-5 bg-slate-50 text-slate-900 text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl outline-none focus:ring-4 focus:ring-rose-500/5 transition-all placeholder:text-slate-300"
@@ -171,20 +176,23 @@ const AdminOrders = () => {
               value={filters.status}
               onChange={(e) => handleFilterChange('status', e.target.value)}
             >
-              <option value="">ALL PHASES</option>
+              <option value="">All statuses</option>
               {['pending_payment', 'paid', 'confirmed', 'preparing', 'ready_for_pickup', 'rider_assigned', 'in_transit', 'delivered', 'cancelled'].map(s => (
-                <option key={s} value={s}>{s.replace('_', ' ').toUpperCase()}</option>
+                <option key={s} value={s}>{formatStatus(s)}</option>
               ))}
             </select>
             <ChevronDown className="absolute right-6 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300 pointer-events-none" />
           </div>
+          {hasFilters && <button type="button" onClick={() => { setFilters({ status: '', search: '' }); setPagination(prev => ({ ...prev, currentPage: 1 })); }} className="px-4 py-3 rounded-xl border border-slate-200 bg-white text-xs font-bold text-slate-600">Clear Filters</button>}
         </div>
       </div>
 
       {orders.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 bg-white rounded-xl border border-dashed border-slate-200">
           <ShoppingBag className="h-10 w-10 text-slate-200 mb-4" />
-          <p className="text-sm font-medium text-slate-400">No orders found</p>
+          <p className="text-sm font-bold text-slate-700">No orders found</p>
+          <p className="text-xs text-slate-400 mt-1">{hasFilters ? 'No orders match your current filters.' : 'New customer orders will appear here.'}</p>
+          {hasFilters && <button type="button" onClick={() => setFilters({ status: '', search: '' })} className="mt-4 px-4 py-2 rounded-lg bg-slate-900 text-white text-xs font-bold">Clear Filters</button>}
         </div>
       ) : (
         <div className="space-y-4">
@@ -234,7 +242,7 @@ const AdminOrders = () => {
                       </td>
                       <td className="px-6 py-4">
                         <span className={`px-2 py-1 rounded-md text-xs font-medium border ${getStatusStyle(order.status)}`}>
-                          {order.status.charAt(0).toUpperCase() + order.status.slice(1).replace('_', ' ')}
+                          {formatStatus(order.status)}
                         </span>
                       </td>
                       <td className="px-6 py-4 text-right">
@@ -279,7 +287,7 @@ const AdminOrders = () => {
                     <h3 className="font-bold text-slate-900">{order.customer?.firstName || 'Unknown'}</h3>
                   </div>
                   <span className={`px-2 py-1 rounded-md text-[10px] font-medium border ${getStatusStyle(order.status)}`}>
-                    {order.status.replace('_', ' ')}
+                    {formatStatus(order.status)}
                   </span>
                 </div>
                 <div className="flex justify-between items-center py-2 border-t border-slate-100">

@@ -22,9 +22,9 @@ const DashboardChart = ({ title, data, valueKey, labelKey = '_id' }) => {
 };
 
 const STAFF_TYPE_CONFIG = {
-  inventory_staff:  { label: 'Inventory Analyst',  color: 'amber',   desc: 'Managing biological & hardware stock levels' },
-  order_staff:      { label: 'Logistics Manager',       color: 'blue',    desc: 'Processing regional order fulfillment' },
-  service_staff:    { label: 'Service Coordinator',     color: 'purple',  desc: 'Orchestrating professional appointments' },
+  inventory_staff:  { label: 'Inventory Staff', color: 'amber', desc: 'Managing pets, products, and stock levels' },
+  order_staff:      { label: 'Order Staff', color: 'blue', desc: 'Processing customer orders' },
+  service_staff:    { label: 'Service Staff', color: 'purple', desc: 'Managing service appointments' },
 };
 
 const Dashboard = () => {
@@ -133,6 +133,11 @@ const Dashboard = () => {
 
   const hasPerm = (res) => user?.permissions?.[res]?.view || user?.permissions?.[res]?.fullAccess;
   const isAdmin = ['admin', 'super_admin'].includes(user?.role);
+  const primaryAction = (isAdmin || hasPerm('inventory'))
+    ? { to: '/admin/products', label: 'Manage Products' }
+    : hasPerm('services')
+      ? { to: '/admin/services', label: 'Manage Services' }
+      : { to: '/admin/orders', label: 'View Orders' };
 
   return (
     <div className="space-y-12 sm:space-y-20 pb-40 relative animate-fade-up">
@@ -147,11 +152,11 @@ const Dashboard = () => {
             <div className="space-y-2">
               <h1 className="text-4xl sm:text-7xl font-black text-neutral-900 uppercase tracking-tighter leading-none">
                 {user?.store?.name || 'Venture'} <br />
-                <span className="text-primary italic">Controller .</span>
+                <span className="text-primary italic">Dashboard</span>
               </h1>
               <div className="flex items-center gap-4 text-[10px] font-black text-neutral-400 uppercase tracking-[0.4em]">
                 <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                Live Hub Status: Optimized
+                Store operations are active
               </div>
             </div>
           </div>
@@ -162,10 +167,10 @@ const Dashboard = () => {
              <RefreshCw className={`h-4 w-4 ${refreshingRole ? 'animate-spin' : ''}`} />
              <span>Refetch Session</span>
            </button>
-           <button className="btn-primary !rounded-2xl !px-10 flex items-center gap-4 text-[10px] font-black uppercase tracking-widest">
+           <Link to={primaryAction.to} className="btn-primary !rounded-2xl !px-6 flex items-center gap-3 text-[10px] font-black uppercase tracking-widest">
              <Plus className="h-4 w-4" />
-             <span>Create Asset</span>
-           </button>
+             <span>{primaryAction.label}</span>
+           </Link>
         </div>
       </header>
 
@@ -192,9 +197,9 @@ const Dashboard = () => {
       {/* ── Key Performance Indicators (KPIs) ── */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: 'Biological Inventory', value: stats.totalPets, icon: Heart, link: '/admin/pets', show: isAdmin || hasPerm('inventory') },
-          { label: 'Regional Fulfilment', value: stats.totalOrders, icon: ShoppingBag, link: '/admin/orders', show: isAdmin || hasPerm('orders') },
-          { label: 'Service Pipeline', value: stats.totalBookings, icon: Calendar, link: '/admin/bookings', show: isAdmin || hasPerm('bookings') || hasPerm('services') },
+          { label: 'Available Pets', value: stats.totalPets, icon: Heart, link: '/admin/pets', show: isAdmin || hasPerm('inventory') },
+          { label: 'Orders', value: stats.totalOrders, icon: ShoppingBag, link: '/admin/orders', show: isAdmin || hasPerm('orders') },
+          { label: 'Bookings', value: stats.totalBookings, icon: Calendar, link: '/admin/bookings', show: isAdmin || hasPerm('bookings') || hasPerm('services') },
           { label: 'Gross Revenue', value: `₱${stats.netEarnings.toLocaleString()}`, icon: TrendingUp, link: '/admin/insights', show: isAdmin },
           { label: 'Settled Payouts', value: `₱${stats.availableBalance.toLocaleString()}`, icon: Wallet, link: '/admin/payouts', show: isAdmin },
           { label: 'Market Sentiment', value: `${stats.responseRate}%`, icon: User, link: '/admin/reviews', show: isAdmin }
@@ -226,10 +231,10 @@ const Dashboard = () => {
             <div className="flex items-end justify-between mb-16 px-2">
                <div className="space-y-4">
                   <h2 className="text-4xl font-black text-neutral-900 uppercase tracking-tighter leading-none">
-                    Logistics <br />
-                    <span className="text-primary italic">Queue .</span>
+                    Recent <br />
+                    <span className="text-primary italic">Orders</span>
                   </h2>
-                  <p className="text-[10px] font-black text-neutral-400 uppercase tracking-[0.3em]">Processing live regional requests</p>
+                  <p className="text-[10px] font-black text-neutral-400 uppercase tracking-[0.3em]">Review and process customer orders</p>
                </div>
                <Link to="/admin/orders" className="p-4 bg-neutral-900 text-white rounded-2xl hover:bg-primary transition-all">
                   <ChevronRight size={24} />
@@ -260,7 +265,7 @@ const Dashboard = () => {
                 </Link>
               )) : (
                 <div className="py-24 text-center border-2 border-dashed border-slate-100 rounded-[3rem]">
-                   <p className="text-[11px] font-black text-neutral-200 uppercase tracking-[0.5em]">No logistics pending</p>
+                   <p className="text-sm font-bold text-neutral-500">No orders found</p><p className="text-xs text-neutral-400 mt-2">New customer orders will appear here.</p>
                 </div>
               )}
             </div>
@@ -302,14 +307,14 @@ const Dashboard = () => {
              <div className="relative z-10 space-y-10">
                 <div className="flex items-center gap-4">
                    <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-                   <span className="text-[11px] font-black text-white/40 uppercase tracking-[0.5em]">Quick Protocols</span>
+                   <span className="text-[11px] font-black text-white/40 uppercase tracking-[0.3em]">Quick Actions</span>
                 </div>
                 <div className="space-y-4">
                   {[
                     { to: "/admin/insights", label: "Business Analytics", icon: Brain, show: isAdmin },
-                    { to: "/admin/pets", label: "Asset Deployment", icon: Heart, show: isAdmin || hasPerm('inventory') },
-                    { to: "/admin/products", label: "Inventory Intake", icon: Package, show: isAdmin || hasPerm('inventory') },
-                    { to: "/admin/orders", label: "Logistics Hub", icon: ShoppingBag, show: isAdmin || hasPerm('orders') },
+                    { to: "/admin/pets", label: "Manage Pets", icon: Heart, show: isAdmin || hasPerm('inventory') },
+                    { to: "/admin/products", label: "Manage Products", icon: Package, show: isAdmin || hasPerm('inventory') },
+                    { to: "/admin/orders", label: "View Orders", icon: ShoppingBag, show: isAdmin || hasPerm('orders') },
                   ].filter(a => a.show).map((a, i) => (
                     <Link key={i} to={a.to} className="flex items-center justify-between p-6 bg-white/5 rounded-[1.8rem] hover:bg-white/10 hover:translate-x-3 transition-all duration-500 group/item">
                        <div className="flex items-center gap-6">

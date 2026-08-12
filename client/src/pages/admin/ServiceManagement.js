@@ -200,7 +200,7 @@ const ServiceManagement = () => {
       resetForm();
       fetchServices();
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Command failed');
+      toast.error(error.response?.data?.message || 'Unable to save this service. Check the required information and try again.');
     } finally {
       setSubmitting(false);
     }
