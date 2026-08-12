@@ -8,6 +8,12 @@ const petValidation = [
   body('name').trim().notEmpty().withMessage('Pet name is required'),
   body('type').trim().notEmpty().withMessage('Pet type is required'),
   body('breed').optional({ checkFalsy: true }).trim(),
+  body('breedStatus').optional().isIn(['purebred', 'mixed_breed', 'unknown']).withMessage('Invalid breed status'),
+  body('pcciRegistration.status').optional().isIn(['yes', 'no', 'not_sure']).withMessage('Invalid PCCI registration status'),
+  body('pcciRegistration.registrationNumber').optional({ checkFalsy: true }).isLength({ max: 100 }).withMessage('PCCI registration number is too long'),
+  body('pcciRegistration.registeredName').optional({ checkFalsy: true }).isLength({ max: 200 }).withMessage('Registered name is too long'),
+  body('pcciRegistration.microchipNumber').optional({ checkFalsy: true }).isLength({ max: 100 }).withMessage('Microchip number is too long'),
+  body('pcciRegistration.certificateUrl').optional({ checkFalsy: true }).isURL({ protocols: ['http', 'https'], require_protocol: true }).withMessage('Invalid certificate URL'),
   body('size').optional().isIn(['Unknown', 'Small', 'Medium', 'Large', 'Extra Large']).withMessage('Invalid size'),
   body('birthday').optional({ checkFalsy: true }).isISO8601().toDate().withMessage('Enter a valid birth date')
     .custom((value) => {
@@ -28,8 +34,30 @@ const petValidation = [
   })
 ];
 
-const profileFields = ['name', 'type', 'breed', 'isMixedBreed', 'size', 'birthday', 'approximateAge', 'gender', 'weight', 'weightUnit', 'color', 'photo', 'vaccinationCards', 'vaccinationStatus', 'specialNotes', 'allergies', 'medicalConditions', 'groomingPreferences', 'behaviorNotes', 'emergencyContact', 'coat', 'groomingHistory', 'serviceNeeds', 'servicePreferences'];
-const profilePayload = body => Object.fromEntries(profileFields.filter(key => body[key] !== undefined).map(key => [key, body[key]]));
+const profileFields = ['name', 'type', 'breed', 'isMixedBreed', 'breedStatus', 'pcciRegistration', 'size', 'birthday', 'approximateAge', 'gender', 'weight', 'weightUnit', 'color', 'photo', 'vaccinationCards', 'vaccinationStatus', 'specialNotes', 'allergies', 'medicalConditions', 'groomingPreferences', 'behaviorNotes', 'emergencyContact', 'coat', 'groomingHistory', 'serviceNeeds', 'servicePreferences'];
+const profilePayload = body => {
+  const payload = Object.fromEntries(profileFields.filter(key => body[key] !== undefined).map(key => [key, body[key]]));
+  payload.breedStatus = body.breedStatus || (body.isMixedBreed ? 'mixed_breed' : 'unknown');
+  payload.isMixedBreed = payload.breedStatus === 'mixed_breed';
+  const pcciApplicable = String(body.type).toLowerCase() === 'dog' && payload.breedStatus === 'purebred';
+  const requestedPcci = body.pcciRegistration || {};
+  if (!pcciApplicable || requestedPcci.status !== 'yes') {
+    payload.pcciRegistration = {
+      status: pcciApplicable ? (requestedPcci.status || 'not_sure') : 'not_sure',
+      registrationNumber: '', registeredName: '', certificateUrl: '', microchipNumber: '', informationStatus: 'not_provided'
+    };
+  } else {
+    payload.pcciRegistration = {
+      status: 'yes',
+      registrationNumber: requestedPcci.registrationNumber || '',
+      registeredName: requestedPcci.registeredName || '',
+      certificateUrl: requestedPcci.certificateUrl || '',
+      microchipNumber: requestedPcci.microchipNumber || '',
+      informationStatus: 'customer_provided'
+    };
+  }
+  return payload;
+};
 
 // GET /api/pet-profiles — list all saved pets for the authenticated customer
 router.get('/', authenticate, async (req, res) => {

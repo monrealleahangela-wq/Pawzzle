@@ -90,7 +90,7 @@ const uploadMultiple = uploadMulti.array('images', 10);
 const handleUploadError = (err, req, res, next) => {
   if (err instanceof multer.MulterError) {
     if (err.code === 'LIMIT_FILE_SIZE') {
-      return res.status(400).json({ message: 'File too large. Maximum size is 5MB.' });
+      return res.status(400).json({ message: 'File too large. Please upload a smaller file.' });
     }
     return res.status(400).json({ message: err.message });
   } else if (err) {

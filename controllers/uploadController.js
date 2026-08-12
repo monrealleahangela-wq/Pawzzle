@@ -51,6 +51,22 @@ const uploadMultipleImages = async (req, res) => {
   }
 };
 
+const uploadDocument = async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ message: 'No document provided' });
+    res.json({
+      message: 'Document uploaded successfully',
+      url: req.file.path,
+      publicId: req.file.filename,
+      originalName: req.file.originalname,
+      size: req.file.size
+    });
+  } catch (error) {
+    console.error('Document upload error:', error);
+    res.status(500).json({ message: 'Unable to upload the document' });
+  }
+};
+
 // Delete image from Cloudinary by public_id
 const deleteImage = async (req, res) => {
   try {
@@ -73,5 +89,6 @@ const deleteImage = async (req, res) => {
 module.exports = {
   uploadImage,
   uploadMultipleImages,
+  uploadDocument,
   deleteImage
 };

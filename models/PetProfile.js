@@ -17,6 +17,15 @@ const petProfileSchema = new mongoose.Schema({
   type: { type: String, required: true, trim: true },   // Dog, Cat, etc.
   breed: { type: String, trim: true, default: '' },
   isMixedBreed: { type: Boolean, default: false },
+  breedStatus: { type: String, enum: ['purebred', 'mixed_breed', 'unknown'], default: 'unknown' },
+  pcciRegistration: {
+    status: { type: String, enum: ['yes', 'no', 'not_sure'], default: 'not_sure' },
+    registrationNumber: { type: String, maxlength: 100, default: '' },
+    registeredName: { type: String, maxlength: 200, default: '' },
+    certificateUrl: { type: String, default: '' },
+    microchipNumber: { type: String, maxlength: 100, default: '' },
+    informationStatus: { type: String, enum: ['not_provided', 'customer_provided', 'system_verified'], default: 'not_provided' }
+  },
   size: { type: String, enum: ['Unknown', 'Small', 'Medium', 'Large', 'Extra Large'], default: 'Unknown' },
   birthday: { type: Date, default: null },
   approximateAge: { value: { type: Number, min: 0 }, unit: { type: String, enum: ['months', 'years'] } },

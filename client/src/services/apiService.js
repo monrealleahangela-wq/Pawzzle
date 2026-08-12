@@ -272,6 +272,9 @@ export const uploadService = {
       'Content-Type': 'multipart/form-data'
     }
   }),
+  uploadDocument: (formData) => api.post('/uploads/document', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  }),
   deleteImage: (filename) => api.delete(`/uploads/${filename}`)
 };
 

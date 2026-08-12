@@ -174,6 +174,8 @@ const Profile = () => {
     type: 'Dog',
     breed: '',
     isMixedBreed: false,
+    breedStatus: 'unknown',
+    pcciRegistration: { status: 'not_sure', registrationNumber: '', registeredName: '', certificateUrl: '', microchipNumber: '', informationStatus: 'not_provided' },
     size: 'Unknown',
     birthday: '',
     approximateAge: { value: '', unit: 'years' },
@@ -593,10 +595,19 @@ const Profile = () => {
         }
       }
 
+      let pcciCertificateUrl = petForm.pcciRegistration?.certificateUrl || '';
+      if (pcciCertificateUrl && typeof pcciCertificateUrl !== 'string') {
+        const documentData = new FormData();
+        documentData.append('document', pcciCertificateUrl);
+        const uploadRes = await uploadService.uploadDocument(documentData);
+        pcciCertificateUrl = uploadRes.data.url;
+      }
+
       const dataToSubmit = {
         ...petForm,
         photo: photoUrl,
-        vaccinationCards: vaccinationUrls.filter(u => u !== null)
+        vaccinationCards: vaccinationUrls.filter(u => u !== null),
+        pcciRegistration: { ...petForm.pcciRegistration, certificateUrl: pcciCertificateUrl }
       };
 
       if (editingPet) {
@@ -625,6 +636,8 @@ const Profile = () => {
       type: 'Dog',
       breed: '',
       isMixedBreed: false,
+      breedStatus: 'unknown',
+      pcciRegistration: { status: 'not_sure', registrationNumber: '', registeredName: '', certificateUrl: '', microchipNumber: '', informationStatus: 'not_provided' },
       size: 'Unknown',
       birthday: '',
       approximateAge: { value: '', unit: 'years' },
@@ -659,6 +672,8 @@ const Profile = () => {
       type: pet.type,
       breed: pet.breed || '',
       isMixedBreed: pet.isMixedBreed || false,
+      breedStatus: pet.breedStatus || (pet.isMixedBreed ? 'mixed_breed' : 'unknown'),
+      pcciRegistration: { status: 'not_sure', registrationNumber: '', registeredName: '', certificateUrl: '', microchipNumber: '', informationStatus: 'not_provided', ...(pet.pcciRegistration || {}) },
       size: pet.size || 'Unknown',
       birthday: pet.birthday ? new Date(pet.birthday).toISOString().split('T')[0] : '',
       approximateAge: { value: pet.approximateAge?.value || '', unit: pet.approximateAge?.unit || 'years' },
@@ -1489,6 +1504,7 @@ const Profile = () => {
                                 <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest bg-slate-50 px-3 py-1 rounded-full border border-slate-100">{pet.breed}</span>
                                 <span className="text-[9px] font-black text-primary-500 uppercase tracking-widest bg-primary-50 px-3 py-1 rounded-full border border-primary-50">{calculateAge(pet.birthday)}</span>
                             </div>
+                            {pet.type === 'Dog' && pet.breedStatus === 'purebred' && pet.pcciRegistration?.informationStatus === 'customer_provided' && <p className="text-[9px] font-bold text-amber-700">PCCI registration information provided</p>}
                           </div>
 
                           <button onClick={() => handleEditPet(pet)} className="mt-8 w-full py-4 bg-slate-900 text-white rounded-2xl text-[9px] font-black uppercase tracking-widest hover:bg-primary-600 transition-all opacity-0 group-hover:opacity-100 translate-y-4 group-hover:translate-y-0 duration-300">
@@ -2477,7 +2493,14 @@ const Profile = () => {
                                 <select 
                                     required
                                     value={petForm.type}
-                                    onChange={(e) => setPetForm({ ...petForm, type: e.target.value, breed: '' })}
+                                    onChange={(e) => setPetForm({
+                                      ...petForm,
+                                      type: e.target.value,
+                                      breed: '',
+                                      breedStatus: 'unknown',
+                                      isMixedBreed: false,
+                                      pcciRegistration: { status: 'not_sure', registrationNumber: '', registeredName: '', certificateUrl: '', microchipNumber: '', informationStatus: 'not_provided' }
+                                    })}
                                     className="w-full px-5 py-4 bg-slate-50 border-2 border-slate-50 rounded-2xl focus:bg-white focus:border-primary-500 outline-none font-bold text-sm transition-all shadow-sm appearance-none cursor-pointer"
                                 >
                                     <option value="Dog">Dog</option>
@@ -2508,8 +2531,18 @@ const Profile = () => {
                                         ))}
                                     </div>
                                 </div>
-                                <label className="mt-2 flex items-center gap-2 text-[10px] font-bold text-slate-500"><input type="checkbox" checked={petForm.isMixedBreed} onChange={e => setPetForm({ ...petForm, isMixedBreed: e.target.checked })} /> Mixed or unknown breed</label>
                             </div>
+                            {petForm.type === 'Dog' && <div className="space-y-2">
+                              <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Breed Status</label>
+                              <select value={petForm.breedStatus} onChange={(e) => {
+                                const breedStatus = e.target.value;
+                                setPetForm({ ...petForm, breedStatus, isMixedBreed: breedStatus === 'mixed_breed', pcciRegistration: breedStatus === 'purebred' ? petForm.pcciRegistration : { status: 'not_sure', registrationNumber: '', registeredName: '', certificateUrl: '', microchipNumber: '', informationStatus: 'not_provided' } });
+                              }} className="w-full px-5 py-4 bg-slate-50 border-2 border-slate-50 rounded-2xl focus:bg-white focus:border-primary-500 outline-none font-bold text-sm appearance-none">
+                                <option value="purebred">Purebred</option>
+                                <option value="mixed_breed">Mixed Breed</option>
+                                <option value="unknown">Unknown / Not Sure</option>
+                              </select>
+                            </div>}
                             <div className="space-y-2">
                                 <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Gender</label>
                                 <div className="flex bg-slate-50 p-1.5 rounded-2xl">
@@ -2528,6 +2561,34 @@ const Profile = () => {
                         </div>
                     </div>
                 </div>
+
+                {petForm.type === 'Dog' && petForm.breedStatus === 'purebred' && <div className="space-y-5 rounded-2xl border border-amber-200 bg-amber-50/60 p-5">
+                  <div className="flex items-start gap-3">
+                    <FileBadge className="h-5 w-5 text-amber-700 shrink-0 mt-0.5" />
+                    <div><h3 className="text-sm font-black text-slate-900">PCCI Registration / Pedigree</h3><p className="text-xs text-slate-600 mt-1">Optional identification information for purebred dogs.</p></div>
+                  </div>
+                  <label className="block text-xs font-bold text-slate-700">Does this dog have PCCI registration or pedigree documentation?
+                    <select value={petForm.pcciRegistration.status} onChange={(e) => {
+                      const status = e.target.value;
+                      setPetForm({ ...petForm, pcciRegistration: status === 'yes' ? { ...petForm.pcciRegistration, status } : { status, registrationNumber: '', registeredName: '', certificateUrl: '', microchipNumber: '', informationStatus: 'not_provided' } });
+                    }} className="mt-2 w-full sm:max-w-xs h-10 px-3 rounded-xl border border-amber-200 bg-white text-sm font-semibold">
+                      <option value="yes">Yes</option><option value="no">No</option><option value="not_sure">Not Sure</option>
+                    </select>
+                  </label>
+                  {petForm.pcciRegistration.status === 'yes' && <div className="space-y-4">
+                    <p className="text-xs text-amber-800">Enter the registration information exactly as shown on the dog’s official PCCI documentation. Information submitted here is customer-provided and is not independently verified by Pawzzle.</p>
+                    <div className="grid sm:grid-cols-2 gap-3">
+                      <label className="text-[10px] font-bold uppercase tracking-wide text-slate-500">PCCI Registration Number<input type="text" maxLength="100" value={petForm.pcciRegistration.registrationNumber} onChange={(e) => setPetForm({ ...petForm, pcciRegistration: { ...petForm.pcciRegistration, registrationNumber: e.target.value } })} className="mt-1 w-full h-10 px-3 rounded-xl border border-slate-200 bg-white text-sm normal-case tracking-normal" placeholder="As shown on the certificate" /></label>
+                      <label className="text-[10px] font-bold uppercase tracking-wide text-slate-500">Registered Name<input type="text" maxLength="200" value={petForm.pcciRegistration.registeredName} onChange={(e) => setPetForm({ ...petForm, pcciRegistration: { ...petForm.pcciRegistration, registeredName: e.target.value } })} className="mt-1 w-full h-10 px-3 rounded-xl border border-slate-200 bg-white text-sm normal-case tracking-normal" placeholder="Official registered name" /></label>
+                      <label className="text-[10px] font-bold uppercase tracking-wide text-slate-500">Microchip Number (optional)<input type="text" maxLength="100" value={petForm.pcciRegistration.microchipNumber} onChange={(e) => setPetForm({ ...petForm, pcciRegistration: { ...petForm.pcciRegistration, microchipNumber: e.target.value } })} className="mt-1 w-full h-10 px-3 rounded-xl border border-slate-200 bg-white text-sm normal-case tracking-normal" placeholder="If available" /></label>
+                      <label className="text-[10px] font-bold uppercase tracking-wide text-slate-500">Pedigree / Registration Certificate
+                        <span className="mt-1 flex items-center gap-2 w-full min-h-10 px-3 rounded-xl border border-dashed border-amber-300 bg-white text-xs normal-case tracking-normal cursor-pointer"><Upload className="h-4 w-4 text-amber-700" />{typeof petForm.pcciRegistration.certificateUrl === 'string' && petForm.pcciRegistration.certificateUrl ? 'Replace certificate' : petForm.pcciRegistration.certificateUrl?.name || 'Upload image, PDF, or Word file'}<input type="file" accept="image/*,.pdf,.doc,.docx" className="sr-only" onChange={(e) => { const file = e.target.files?.[0]; if (file) setPetForm({ ...petForm, pcciRegistration: { ...petForm.pcciRegistration, certificateUrl: file } }); }} /></span>
+                      </label>
+                    </div>
+                    {typeof petForm.pcciRegistration.certificateUrl === 'string' && petForm.pcciRegistration.certificateUrl && <a href={petForm.pcciRegistration.certificateUrl} target="_blank" rel="noreferrer" className="inline-flex text-xs font-bold text-primary-700 hover:underline">View uploaded certificate</a>}
+                    <p className="inline-flex px-3 py-1.5 rounded-lg bg-white border border-amber-200 text-[10px] font-bold text-amber-800">PCCI Registration Information Provided — not system verified</p>
+                  </div>}
+                </div>}
 
                 {/* 2. Lifecycle & Growth */}
                 <div className="space-y-10">
