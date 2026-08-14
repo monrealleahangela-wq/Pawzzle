@@ -1,4 +1,5 @@
 const Voucher = require('../models/Voucher');
+const { isPlatformAdmin } = require('../config/permissions');
 
 // Get all vouchers for the store
 const getAllVouchers = async (req, res) => {
@@ -6,13 +7,13 @@ const getAllVouchers = async (req, res) => {
         const { search, isActive, page = 1, limit = 10 } = req.query;
 
         // Multi-tenant isolation: filter by store ID (from req.user.store)
-        if (!req.user.store && req.user.role !== 'super_admin') {
+        if (!req.user.store && !isPlatformAdmin(req.user)) {
             return res.status(403).json({ message: 'User does not have an assigned store' });
         }
 
         let filter = { isDeleted: { $ne: true } };
 
-        if (req.user.role !== 'super_admin') {
+        if (!isPlatformAdmin(req.user)) {
             filter.store = req.user.store;
         }
 
@@ -86,7 +87,13 @@ const createVoucher = async (req, res) => {
 const updateVoucher = async (req, res) => {
     try {
         const { id } = req.params;
-        const updateData = req.body;
+        const editableFields = [
+            'code', 'discountType', 'discountValue', 'minPurchase',
+            'startDate', 'endDate', 'usageLimit', 'isActive'
+        ];
+        const updateData = Object.fromEntries(
+            Object.entries(req.body).filter(([field]) => editableFields.includes(field))
+        );
 
         const voucher = await Voucher.findOne({ _id: id, store: req.user.store });
         if (!voucher) {

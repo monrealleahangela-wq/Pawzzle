@@ -8,11 +8,19 @@ const Message = require('../models/Message');
 const DogCertification = require('../models/DogCertification');
 const InventoryLot = require('../models/InventoryLot');
 const InventoryLedgerService = require('../services/inventoryLedgerService');
-const { hasPermission } = require('../config/permissions');
+const { hasPermission, isOperationalStaff } = require('../config/permissions');
 const { createNotification } = require('./notificationController');
 
 const ACTIVE_SERVICE_STATES = ['confirmed', 'approved', 'processing', 'finished', 'completed'];
 const STAFF_UPDATE_STATES = ['confirmed', 'approved', 'processing', 'finished'];
+
+const emitServiceUpdate = (req, booking, eventType) => {
+  const io = req.app.get('socketio');
+  if (!io) return;
+  const payload = { bookingId: String(booking._id), eventType, timestamp: new Date() };
+  io.to(`user_${String(booking.customer?._id || booking.customer)}`).emit('serviceUpdate', payload);
+  io.to(`store_${bookingStoreId(booking)}`).emit('serviceUpdate', payload);
+};
 
 const bookingStoreId = booking => String(booking.store?._id || booking.store || '');
 
@@ -21,7 +29,7 @@ const loadServiceBooking = async bookingId => Booking.findOne({
   isDeleted: { $ne: true }
 })
   .populate('store', 'name owner')
-  .populate('service', 'name category')
+  .populate('service', 'name category duration')
   .populate('customer', 'firstName lastName')
   .populate('staff', 'firstName lastName staffType')
   .populate('serviceProvider', 'firstName lastName staffType');
@@ -33,9 +41,9 @@ const getBookingAccess = (user, booking) => {
   const storeOwner = ['admin', 'store_owner'].includes(user.role)
     && String(booking.store?.owner?._id || booking.store?.owner || '') === userId;
   const sameStore = user.store && bookingStoreId(booking) === String(user.store?._id || user.store);
-  const assignedStaff = user.role === 'staff' && sameStore && [booking.staff, booking.serviceProvider]
+  const assignedStaff = isOperationalStaff(user) && hasPermission(user, 'bookings.assigned') && sameStore && [booking.staff, booking.serviceProvider]
     .some(value => value && String(value?._id || value) === userId);
-  const storeManager = user.role === 'staff' && sameStore && hasPermission(user, 'bookings.manage');
+  const storeManager = isOperationalStaff(user) && sameStore && hasPermission(user, 'bookings.manage');
   return {
     canView: ownsBooking || platformAdmin || storeOwner || assignedStaff || storeManager,
     canPostStaffUpdate: !platformAdmin && (storeOwner || assignedStaff || storeManager),
@@ -107,16 +115,23 @@ const normalizeLegacyStage = stage => ({
 const progressTimeline = booking => {
   const progress = booking.serviceProgress || {};
   const events = [];
-  const push = (stage, timestamp, message) => timestamp && events.push({
+  const push = (stage, timestamp, message, sender = null) => timestamp && events.push({
     id: `progress-${stage}`,
     entryType: 'status', visibility: 'customer', stage, message,
-    createdAt: timestamp, sender: null
+    createdAt: timestamp, sender
   });
-  if (booking.paymentStatus === 'paid') push('scheduled', progress.scheduledAt || booking.lifecycle?.confirmedAt || booking.paymentDetails?.transactionDate, 'Booking confirmed and scheduled.');
-  push('pet_arrived', progress.arrivedAt || booking.scannedAt, 'Your pet has arrived and was checked in.');
-  push('service_started', progress.startedAt, 'Your pet\'s service has started.');
-  push('ready_for_pickup', progress.readyAt, 'Your pet is ready for pickup.');
-  push('completed', progress.completedAt || booking.lifecycle?.completedAt, 'Your pet\'s service has been completed.');
+  push('proposal_received', booking.lifecycle?.proposedAt, 'The store prepared a booking proposal and assigned a specialist.');
+  push('staff_assigned', booking.lifecycle?.proposedAt, 'Your specialist was assigned for this service.', booking.staff);
+  push('proposal_confirmed', booking.lifecycle?.customerConfirmedAt, 'You confirmed the booking proposal.');
+  if (booking.paymentStatus === 'paid') {
+    const confirmedAt = booking.lifecycle?.confirmedAt || booking.paymentDetails?.transactionDate;
+    push('payment_completed', booking.paymentDetails?.transactionDate || confirmedAt, 'PayMongo payment was confirmed.');
+    push('booking_confirmed', confirmedAt, `Booking confirmed for ${booking.startTime} at ${booking.store?.name || 'the selected branch'}.`, booking.staff);
+  }
+  push('pet_arrived', progress.arrivedAt || booking.scannedAt, `${booking.pet?.name || 'Your pet'} checked in at ${booking.store?.name || 'the selected branch'}.`, booking.serviceProvider || booking.staff);
+  push('service_started', progress.startedAt, 'Your pet\'s service has started.', booking.serviceProvider || booking.staff);
+  push('ready_for_pickup', progress.readyAt, 'Your pet is ready for pickup.', booking.serviceProvider || booking.staff);
+  push('completed', progress.completedAt || booking.lifecycle?.completedAt, 'Your pet\'s service has been completed.', booking.serviceProvider || booking.staff);
   push('cancelled', progress.cancelledAt || booking.lifecycle?.cancelledAt, 'This service was cancelled.');
   return events;
 };
@@ -237,10 +252,11 @@ const addServiceUpdate = async (req, res) => {
         relatedId: booking._id,
         relatedModel: 'Booking',
         targetUrl: `/bookings?id=${booking._id}`
-      });
+      }, req.app.get('socketio'));
       notificationDelivered = Boolean(notification);
     }
     await update.populate('createdBy', 'firstName lastName role staffType avatar');
+    emitServiceUpdate(req, booking, entryType);
     res.status(201).json({ ...update.toObject(), update, notificationDelivered });
   } catch (error) {
     res.status(error.name === 'ValidationError' ? 400 : 500).json({ message: error.message || 'Unable to send the service update.' });
@@ -280,7 +296,12 @@ const authorizeServicePhotoUpload = async (req, res, next) => {
 
 const uploadServicePhoto = async (req, res) => {
   try {
-    if (!req.file) return res.status(400).json({ message: 'Choose a supported image to upload.' });
+    const files = [
+      ...(req.files?.images || []),
+      ...(req.files?.image || []),
+      ...(req.file ? [req.file] : [])
+    ];
+    if (!files.length) return res.status(400).json({ message: 'Choose at least one supported image to upload.' });
     const booking = req.serviceBooking;
     const category = ['before', 'during', 'after', 'result', 'documentation', 'other'].includes(req.body.category)
       ? req.body.category : 'other';
@@ -295,32 +316,85 @@ const uploadServicePhoto = async (req, res) => {
       category: 'general',
       stage: booking.serviceProgress?.status || (booking.status === 'finished' ? 'ready_for_pickup' : 'in_progress'),
       message: String(req.body.message || '').trim(),
-      mediaUrls: [req.file.path],
-      media: [{
-        url: req.file.path,
-        publicId: req.file.filename,
-        originalName: req.file.originalname,
-        mimeType: req.file.mimetype,
-        size: req.file.size,
+      mediaUrls: files.map(file => file.path),
+      media: files.map(file => ({
+        url: file.path,
+        publicId: file.filename,
+        originalName: file.originalname,
+        mimeType: file.mimetype,
+        size: file.size,
         category
-      }],
+      })),
       createdBy: req.user._id
     });
-    await Booking.findByIdAndUpdate(booking._id, { $addToSet: { servicePhotos: req.file.path } });
+    await Booking.findByIdAndUpdate(booking._id, { $addToSet: { servicePhotos: { $each: files.map(file => file.path) } } });
     const notification = await createNotification({
       recipient: booking.customer._id,
       sender: req.user._id,
       type: 'service_update',
       title: 'New Service Photo',
-      message: `${booking.pet.name} has a new ${category.replace('_', ' ')} service photo.`,
+      message: `${booking.pet.name} has ${files.length === 1 ? 'a new' : `${files.length} new`} ${category.replace('_', ' ')} service photo${files.length === 1 ? '' : 's'}.`,
       relatedId: booking._id,
       relatedModel: 'Booking',
       targetUrl: `/bookings?id=${booking._id}`
-    });
+    }, req.app.get('socketio'));
     await update.populate('createdBy', 'firstName lastName role staffType avatar');
-    res.status(201).json({ message: 'Photo shared with the pet owner.', update, notificationDelivered: Boolean(notification) });
+    emitServiceUpdate(req, booking, 'photo');
+    res.status(201).json({ message: `${files.length} photo${files.length === 1 ? '' : 's'} shared with the pet owner.`, update, notificationDelivered: Boolean(notification) });
   } catch (error) {
     res.status(error.name === 'ValidationError' ? 400 : 500).json({ message: error.message || 'Photo upload failed. Please retry.' });
+  }
+};
+
+const saveAftercare = async (req, res) => {
+  try {
+    const booking = await loadServiceBooking(req.params.bookingId);
+    if (!booking) return res.status(404).json({ message: 'Booking not found.' });
+    const access = getBookingAccess(req.user, booking);
+    if (!access.canPostStaffUpdate) return res.status(403).json({ message: 'Only the assigned service team or store owner can provide aftercare.' });
+    if (!['finished', 'completed'].includes(booking.status)) return res.status(409).json({ message: 'Aftercare is available when the service is ready for pickup or completed.' });
+    const aftercareInstructions = String(req.body.aftercareInstructions || '').trim();
+    const serviceNotes = String(req.body.serviceNotes || '').trim();
+    if (!aftercareInstructions) return res.status(400).json({ message: 'Enter aftercare instructions for the pet owner.' });
+    if (aftercareInstructions.length > 4000 || serviceNotes.length > 4000) return res.status(400).json({ message: 'Aftercare and service notes must each be 4,000 characters or fewer.' });
+    const providedAt = new Date();
+    booking.careSummary.aftercareInstructions = aftercareInstructions;
+    booking.careSummary.serviceNotes = serviceNotes;
+    booking.careSummary.aftercareProvidedAt = providedAt;
+    booking.careSummary.aftercareProvidedBy = req.user._id;
+    await booking.save();
+    const update = await PetServiceUpdate.findOneAndUpdate(
+      { booking: booking._id, entryType: 'aftercare', visibility: 'customer' },
+      {
+        $set: {
+          pet: booking.petProfile || null,
+          petSnapshot: { name: booking.pet.name, type: booking.pet.type },
+          customer: booking.customer._id,
+          store: booking.store._id,
+          category: 'follow_up',
+          stage: 'aftercare',
+          message: aftercareInstructions,
+          createdBy: req.user._id,
+          updatedAt: providedAt
+        },
+        $setOnInsert: { entryType: 'aftercare', visibility: 'customer', createdAt: providedAt }
+      },
+      { upsert: true, new: true, runValidators: true }
+    ).populate('createdBy', 'firstName lastName role staffType avatar');
+    const notification = await createNotification({
+      recipient: booking.customer._id,
+      sender: req.user._id,
+      type: 'service_update',
+      title: 'Aftercare Instructions Available',
+      message: `Aftercare instructions for ${booking.pet.name} are available in the booking timeline.`,
+      relatedId: booking._id,
+      relatedModel: 'Booking',
+      targetUrl: `/bookings?id=${booking._id}`
+    }, req.app.get('socketio'));
+    emitServiceUpdate(req, booking, 'aftercare');
+    res.json({ message: 'Aftercare instructions shared.', update, careSummary: booking.careSummary, notificationDelivered: Boolean(notification) });
+  } catch (error) {
+    res.status(error.name === 'ValidationError' ? 400 : 500).json({ message: error.message || 'Unable to save aftercare instructions.' });
   }
 };
 
@@ -376,6 +450,19 @@ const getServiceTimeline = async (req, res) => {
         sender: message.sender
       }))
     ].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+    const publicUpdates = updates.filter(update => update.visibility === 'customer');
+    const photoCount = new Set([
+      ...(booking.servicePhotos || []),
+      ...publicUpdates.flatMap(update => [
+        ...(update.mediaUrls || []),
+        ...(update.media || []).map(media => media.url)
+      ])
+    ]).size;
+    const serviceStartedAt = booking.serviceProgress?.startedAt;
+    const serviceEndedAt = booking.serviceProgress?.completedAt || booking.serviceProgress?.readyAt;
+    const actualDurationMinutes = serviceStartedAt && serviceEndedAt
+      ? Math.max(0, Math.round((new Date(serviceEndedAt) - new Date(serviceStartedAt)) / 60000))
+      : null;
     if (access.isCustomer) {
       await Promise.all([
         PetServiceUpdate.updateMany({ booking: booking._id, visibility: 'customer', readAt: null }, { readAt: new Date() }),
@@ -391,7 +478,22 @@ const getServiceTimeline = async (req, res) => {
         staff: booking.serviceProvider || booking.staff,
         store: booking.store,
         status: booking.serviceProgress?.status || 'scheduled',
-        completedAt: booking.serviceProgress?.completedAt || booking.lifecycle?.completedAt || null
+        completedAt: booking.serviceProgress?.completedAt || booking.lifecycle?.completedAt || null,
+        serviceSummary: {
+          bookingDate: booking.bookingDate,
+          startTime: booking.startTime,
+          endTime: booking.endTime,
+          estimatedDurationMinutes: booking.proposal?.estimatedDurationMinutes || booking.service?.duration || null,
+          actualDurationMinutes,
+          photoCount,
+          notes: booking.careSummary?.serviceNotes || '',
+          aftercareInstructions: booking.careSummary?.aftercareInstructions || '',
+          aftercareProvidedAt: booking.careSummary?.aftercareProvidedAt || null,
+          paymentStatus: booking.paymentStatus,
+          paymentMethod: booking.paymentMethod,
+          totalPrice: booking.totalPrice,
+          pricingBreakdown: booking.pricingBreakdown
+        }
       }
     });
   } catch (error) {
@@ -427,11 +529,12 @@ const sendServiceMessage = async (req, res) => {
         relatedId: booking._id,
         relatedModel: 'Booking',
         targetUrl: access.isCustomer ? `/admin/bookings?id=${booking._id}` : `/bookings?id=${booking._id}`
-      });
+      }, req.app.get('socketio'));
       if (!notification) notificationFailureCount += 1;
     }
     const io = req.app.get('socketio');
     if (io) io.to(`conversation_${conversation._id}`).emit('newMessage', message);
+    emitServiceUpdate(req, booking, 'message');
     res.status(201).json({ message, notificationDelivered: notificationFailureCount === 0 });
   } catch (error) {
     res.status(error.name === 'ValidationError' ? 400 : 500).json({ message: error.message || 'Message failed to send. Please retry.' });
@@ -454,6 +557,6 @@ const createCertification = async (req, res) => {
 module.exports = {
   createEncounter, getMedicalHistory, administerVaccine,
   addServiceUpdate, getServiceUpdates, getServiceTimeline, sendServiceMessage,
-  authorizeServicePhotoUpload, uploadServicePhoto, createCertification,
+  authorizeServicePhotoUpload, uploadServicePhoto, saveAftercare, createCertification,
   __test: { getBookingAccess, progressTimeline, normalizeLegacyStage }
 };

@@ -1,10 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
 import { payoutService } from '../../services/apiService';
-import {
-    Wallet, Clock, CheckCircle, XCircle, ChevronDown, AlertTriangle,
-    RefreshCw, ExternalLink, Filter, Building, Printer
-} from 'lucide-react';
+import { Wallet, Clock, CheckCircle, XCircle, ChevronDown, RefreshCw, Filter, Building, Printer } from 'lucide-react';
 import { generatePayoutReceipt } from '../../utils/payoutReceiptGenerator';
 
 const STATUS_COLORS = {

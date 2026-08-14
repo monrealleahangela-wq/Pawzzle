@@ -12,6 +12,9 @@ const { createNotification } = require('./notificationController');
 // Register as supplier
 const registerSupplier = async (req, res) => {
   try {
+    if (req.user.role !== 'customer') {
+      return res.status(403).json({ message: 'Only a customer account can submit a supplier application.' });
+    }
     const existing = await Supplier.findOne({ user: req.user._id });
     if (existing) return res.status(400).json({ message: 'You already have a supplier account.' });
 
@@ -47,7 +50,7 @@ const registerSupplier = async (req, res) => {
     });
 
     // Notify admins
-    const admins = await User.find({ role: { $in: ['super_admin'] } }).select('_id');
+    const admins = await User.find({ role: { $in: ['super_admin', 'platform_admin'] } }).select('_id');
     for (const admin of admins) {
       await createNotification({
         recipient: admin._id,
@@ -213,7 +216,16 @@ const updateProduct = async (req, res) => {
     const product = await SupplierProduct.findOne({ _id: req.params.id, supplier: supplier._id });
     if (!product) return res.status(404).json({ message: 'Product not found.' });
 
-    const updates = req.body;
+    const mutableFields = [
+      'name', 'sku', 'description', 'category', 'images', 'wholesalePrice',
+      'retailPrice', 'availableStock', 'minimumOrderQuantity', 'unitOfMeasure',
+      'deliveryLeadTimeDays', 'brand', 'specifications', 'weight', 'dimensions',
+      'expirationDate', 'isActive'
+    ];
+    const updates = {};
+    mutableFields.forEach(field => {
+      if (req.body[field] !== undefined) updates[field] = req.body[field];
+    });
     const prev = { ...product.toObject() };
     Object.assign(product, updates);
     await product.save();

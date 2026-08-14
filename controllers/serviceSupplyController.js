@@ -4,6 +4,14 @@ const Store = require('../models/Store');
 const SupplyChainLog = require('../models/SupplyChainLog');
 const { createNotification } = require('./notificationController');
 const User = require('../models/User');
+const { isPlatformAdmin } = require('../config/permissions');
+const { canOperateStore } = require('../utils/authorizationPolicy');
+
+const authorizeSupply = async (req, supply) => canOperateStore(
+  req.user,
+  supply.store,
+  ['inventory.adjust', 'inventory.manage']
+);
 
 // ═══════════════════════════════════════════════════════════════
 // SERVICE SUPPLY CRUD
@@ -85,6 +93,7 @@ const updateSupply = async (req, res) => {
   try {
     const supply = await ServiceSupply.findById(req.params.id);
     if (!supply) return res.status(404).json({ message: 'Supply not found.' });
+    if (!(await authorizeSupply(req, supply))) return res.status(403).json({ message: 'Access denied for this store.' });
 
     const prev = { currentStock: supply.currentStock, costPerUnit: supply.costPerUnit };
     const allowed = ['name', 'sku', 'category', 'description', 'images', 'currentStock',
@@ -116,6 +125,7 @@ const deleteSupply = async (req, res) => {
   try {
     const supply = await ServiceSupply.findById(req.params.id);
     if (!supply) return res.status(404).json({ message: 'Supply not found.' });
+    if (!(await authorizeSupply(req, supply))) return res.status(403).json({ message: 'Access denied for this store.' });
 
     supply.isDeleted = true;
     supply.isActive = false;
@@ -133,6 +143,7 @@ const restockSupply = async (req, res) => {
   try {
     const supply = await ServiceSupply.findById(req.params.id);
     if (!supply) return res.status(404).json({ message: 'Supply not found.' });
+    if (!(await authorizeSupply(req, supply))) return res.status(403).json({ message: 'Access denied for this store.' });
 
     const { quantity, costPerUnit, notes } = req.body;
     if (!quantity || quantity <= 0) return res.status(400).json({ message: 'Quantity must be positive.' });
@@ -167,6 +178,7 @@ const deductSupply = async (req, res) => {
   try {
     const supply = await ServiceSupply.findById(req.params.id);
     if (!supply) return res.status(404).json({ message: 'Supply not found.' });
+    if (!(await authorizeSupply(req, supply))) return res.status(403).json({ message: 'Access denied for this store.' });
 
     const quantity = req.body.quantity || 1;
     await supply.deduct(quantity);
@@ -270,7 +282,7 @@ const getLogs = async (req, res) => {
     let filter = {};
 
     // Admin sees all, others see their store/supplier
-    if (req.user.role === 'super_admin') {
+    if (isPlatformAdmin(req.user)) {
       // no filter
     } else if (store) {
       filter.store = store;

@@ -1,5 +1,4 @@
 const mongoose = require('mongoose');
-const bcrypt = require('bcryptjs');
 require('dotenv').config();
 
 // Import models
@@ -15,6 +14,11 @@ mongoose.connect(process.env.MONGODB_URI, {
 
 const seedData = async () => {
   try {
+    if (process.env.NODE_ENV === 'production') throw new Error('The demo seed script is disabled in production');
+    const seedPassword = process.env.SEED_TEST_PASSWORD;
+    if (!seedPassword || seedPassword.length < 12) {
+      throw new Error('SEED_TEST_PASSWORD must be configured with at least 12 characters');
+    }
     // Clear existing data
     await User.deleteMany({});
     await Pet.deleteMany({});
@@ -27,7 +31,7 @@ const seedData = async () => {
       {
         username: 'superadmin',
         email: 'super@test.com',
-        password: 'password123',
+        password: seedPassword,
         firstName: 'Super',
         lastName: 'Admin',
         role: 'super_admin'
@@ -35,7 +39,7 @@ const seedData = async () => {
       {
         username: 'admin',
         email: 'admin@test.com',
-        password: 'password123',
+        password: seedPassword,
         firstName: 'Store',
         lastName: 'Admin',
         role: 'admin'
@@ -43,7 +47,7 @@ const seedData = async () => {
       {
         username: 'customer',
         email: 'customer@test.com',
-        password: 'password123',
+        password: seedPassword,
         firstName: 'John',
         lastName: 'Doe',
         role: 'customer',
@@ -215,10 +219,7 @@ const seedData = async () => {
     console.log('Created products:', createdProducts.length);
 
     console.log('\n=== Database Seeded Successfully ===');
-    console.log('\nDemo Accounts:');
-    console.log('Super Admin: super@test.com / password123');
-    console.log('Admin (Store Owner): admin@test.com / password123');
-    console.log('Customer: customer@test.com / password123');
+    console.log('\nDemo accounts created. Passwords were not logged.');
     
   } catch (error) {
     console.error('Error seeding database:', error);

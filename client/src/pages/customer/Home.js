@@ -1,32 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { publicService, getImageUrl } from '../../services/apiService';
-import { 
-  Heart, 
-  Package, 
-  Star, 
-  ArrowRight, 
-  Sparkles, 
-  TrendingUp, 
-  Users, 
-  ShoppingBag, 
-  Shield, 
-  Zap, 
-  MapPin, 
-  Crown, 
-  ChevronRight, 
-  Clock, 
-  Building,
-  ShieldCheck,
-  Search,
-  CheckCircle2,
-  ThumbsUp,
-  Brain,
-  Stethoscope,
-  Scissors,
-  Dumbbell,
-  Activity
-} from 'lucide-react';
+import { Heart, Package, Star, ArrowRight, Sparkles, Users, ShoppingBag, Zap, ChevronRight, Building, ShieldCheck, Search, CheckCircle2, ThumbsUp, Brain, Stethoscope, Scissors, Dumbbell, Activity } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useCart } from '../../contexts/CartContext';
 import { toast } from 'react-toastify';
@@ -83,7 +58,7 @@ const Counter = ({ target, label, icon: Icon, suffix = '+' }) => {
 // ═══════════════════════════════════════════════════════════════
 
 const Home = () => {
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated } = useAuth();
   const { addToCart } = useCart();
   const [data, setData] = useState({
     pets: [],
@@ -215,7 +190,7 @@ const Home = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
           {/* Pets Card */}
           <Link to="/pets" className="group relative h-[600px] rounded-[4rem] overflow-hidden shadow-strong hover:shadow-premium transition-all duration-700">
-            <img src="https://images.unsplash.com/photo-1543466835-00a7907e9de1" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-[2s]" />
+            <img src="https://images.unsplash.com/photo-1543466835-00a7907e9de1" alt="" loading="lazy" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-[2s]" />
             <div className="absolute inset-0 bg-gradient-to-t from-neutral-900 via-neutral-900/20 to-transparent" />
             <div className="absolute bottom-10 left-10 p-2 space-y-4">
                <h3 className="text-5xl font-black text-white uppercase tracking-tighter">Healthy <br /> Pets .</h3>
@@ -228,7 +203,7 @@ const Home = () => {
           
           {/* Products Card */}
           <Link to="/products" className="group relative h-[600px] rounded-[4rem] overflow-hidden shadow-strong hover:shadow-premium transition-all duration-700">
-            <img src="https://images.unsplash.com/photo-1583511655857-d19b40a7a54e" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-[2s]" />
+            <img src="https://images.unsplash.com/photo-1583511655857-d19b40a7a54e" alt="" loading="lazy" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-[2s]" />
             <div className="absolute inset-0 bg-gradient-to-t from-primary-950 via-primary-950/20 to-transparent" />
             <div className="absolute bottom-10 left-10 p-2 space-y-4">
                <h3 className="text-5xl font-black text-white uppercase tracking-tighter">Premium <br /> Supplies .</h3>
@@ -241,7 +216,7 @@ const Home = () => {
 
           {/* Services Card */}
           <Link to="/services" className="group relative h-[600px] rounded-[4rem] overflow-hidden shadow-strong hover:shadow-premium transition-all duration-700">
-            <img src="https://images.unsplash.com/photo-1516733725897-1aa73b87c8e8" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-[2s]" />
+            <img src="https://images.unsplash.com/photo-1516733725897-1aa73b87c8e8" alt="" loading="lazy" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-[2s]" />
             <div className="absolute inset-0 bg-gradient-to-t from-neutral-950 via-neutral-950/20 to-transparent" />
             <div className="absolute bottom-10 left-10 p-2 space-y-4">
                <h3 className="text-5xl font-black text-white uppercase tracking-tighter">Expert <br /> Care .</h3>
@@ -327,7 +302,7 @@ const Home = () => {
                 <div key={idx} className="bg-white rounded-[3rem] border border-slate-50 p-4 group hover:shadow-premium hover:-translate-y-4 transition-all duration-700 animate-fade-up" style={{ animationDelay: `${idx * 0.1}s` }}>
                    <Link to={`/pets/${pet._id}`} className="block relative aspect-square rounded-[2.5rem] overflow-hidden mb-8 shadow-soft">
                       {pet.images?.[0] ? (
-                        <img src={getImageUrl(pet.images[0])} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-[2s]" />
+                        <img src={getImageUrl(pet.images[0])} alt={pet.name || ''} loading="lazy" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-[2s]" />
                       ) : <div className="w-full h-full bg-neutral-50 flex items-center justify-center text-neutral-200"><Heart size={48} /></div>}
                       <div className="absolute top-6 left-6 px-4 py-2 bg-white/90 backdrop-blur-md rounded-xl text-[9px] font-black uppercase tracking-widest text-primary shadow-2xl">
                          Verified Healthy
@@ -376,7 +351,7 @@ const Home = () => {
                     <div key={idx} className="bg-white rounded-[2.5rem] border border-transparent hover:border-slate-100 p-4 transition-all duration-500 group">
                        <Link to={`/products/${product._id}`} className="block relative aspect-square rounded-[2rem] overflow-hidden mb-6 bg-neutral-100">
                           {product.images?.[0] ? (
-                            <img src={getImageUrl(product.images[0])} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
+                            <img src={getImageUrl(product.images[0])} alt={product.name || ''} loading="lazy" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
                           ) : <Package size={32} className="m-auto text-neutral-300" />}
                           <button 
                             onClick={(e) => { e.preventDefault(); handleAddToCart(product); }}
@@ -436,7 +411,7 @@ const Home = () => {
          </div>
 
          <div className="relative h-[600px] rounded-[5rem] overflow-hidden shadow-premium">
-            <img src="https://images.unsplash.com/photo-1594498653385-d5172b53adc7" className="w-full h-full object-cover" />
+            <img src="https://images.unsplash.com/photo-1594498653385-d5172b53adc7" alt="" loading="lazy" className="w-full h-full object-cover" />
             <div className="absolute inset-0 bg-primary/20 backdrop-blur-[2px] mix-blend-overlay" />
             <div className="absolute bottom-12 left-12 right-12 bg-white/10 backdrop-blur-3xl border border-white/20 rounded-[3rem] p-10 flex items-center gap-8 shadow-2xl">
                <div className="w-20 h-20 bg-primary text-white rounded-[1.8rem] flex items-center justify-center shadow-lg">
@@ -464,7 +439,7 @@ const Home = () => {
               { icon: Dumbbell, label: 'Mind', title: 'Behavioral Training', img: 'https://images.unsplash.com/photo-1587300003388-59208cc962cb' }
             ].map((service, i) => (
               <div key={i} className="group relative h-[500px] rounded-[4rem] overflow-hidden shadow-strong hover:shadow-premium transition-all duration-700">
-                 <img src={service.img} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-[2s]" />
+                 <img src={service.img} alt="" loading="lazy" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-[2s]" />
                  <div className="absolute inset-0 bg-neutral-950/60 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
                  <div className="absolute inset-0 bg-gradient-to-t from-neutral-950 via-neutral-950/20 to-transparent" />
                  <div className="absolute bottom-10 left-10 right-10 space-y-4">

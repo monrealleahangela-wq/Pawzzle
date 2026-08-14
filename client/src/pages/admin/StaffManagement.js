@@ -1,902 +1,230 @@
-import React, { useState, useEffect } from 'react';
-import { useAuth } from '../../contexts/AuthContext';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import { 
-    Users, Plus, Edit2, Trash2, Power, Key, X, Check,
-    ShoppingCart, Package, Calendar, ChevronDown, Search,
-    Shield, AlertCircle, RefreshCw, Lock, Truck,
-    Home, Activity, Layers, Heart, Eye, Wallet
+import {
+  Archive, CalendarDays, CheckCircle2, ChevronLeft, ChevronRight,
+  Filter, KeyRound, Plus, RefreshCw, Search,
+  ShieldCheck, Trash2, Upload, UserRound, Users, X
 } from 'lucide-react';
-import PermissionsManager from '../../components/admin/PermissionsManager';
-import SpecializedStaffFields, { defaultProfessionalProfile, SPECIALIZED_ROLES } from '../../components/admin/SpecializedStaffFields';
 import SpecializedStaffProfileModal from '../../components/admin/SpecializedStaffProfileModal';
-import { staffService } from '../../services/apiService';
+import { getImageUrl, staffService, uploadService } from '../../services/apiService';
+import { getUserFacingError } from '../../utils/userFacingError';
 
-const STAFF_TYPES = [
-    // Service Professionals
-    { id: 'veterinarian', label: 'Veterinarian', icon: Shield, color: 'emerald', category: 'prof', description: 'Medical professional' },
-    { id: 'veterinary_technician', label: 'Veterinary Technician', icon: Heart, color: 'cyan', category: 'prof', description: 'Veterinary technical care' },
-    { id: 'veterinary_assistant', label: 'Veterinary Assistant', icon: Users, color: 'sky', category: 'prof', description: 'Veterinary care assistance' },
-    { id: 'veterinary_nurse', label: 'Veterinary Nurse', icon: Heart, color: 'teal', category: 'prof', description: 'Veterinary nursing care' },
-    { id: 'veterinary_laboratory_technician', label: 'Veterinary Laboratory Technician', icon: Activity, color: 'violet', category: 'prof', description: 'Veterinary laboratory services' },
-    { id: 'groomer', label: 'Groomer', icon: Heart, color: 'pink', category: 'prof', description: 'Styling professional' },
-    { id: 'trainer', label: 'Pet Trainer', icon: Activity, color: 'blue', category: 'prof', description: 'Pet training professional' },
-    { id: 'boarding_specialist', label: 'Boarding', icon: Home, color: 'purple', category: 'prof', description: 'Facility specialist' },
-    { id: 'medical_assistant', label: 'Med Asst.', icon: Shield, color: 'cyan', category: 'prof', description: 'Clinical support' },
-    { id: 'pet_handler', label: 'Handler', icon: Users, color: 'indigo', category: 'prof', description: 'Safety professional' },
-    
-    // Operational Staff
-    { id: 'inventory_staff', label: 'Inventory', icon: Package, color: 'amber', category: 'ops', description: 'Stock & Suppliers' },
-    { id: 'logistics_staff', label: 'Logistics', icon: Truck, color: 'rose', category: 'ops', description: 'Fulfillment & Delivery' },
-    { id: 'sales_staff', label: 'Sales', icon: ShoppingCart, color: 'teal', category: 'ops', description: 'Orders & Customers' },
-    { id: 'service_management_staff', label: 'Svc Mgmt', icon: Calendar, color: 'violet', category: 'ops', description: 'Services & Listings' },
-    { id: 'administrative_support', label: 'Admin', icon: Layers, color: 'slate', category: 'ops', description: 'Back-office support' }
-    ,{ id: 'delivery_rider', label: 'Delivery Rider', icon: Truck, color: 'orange', category: 'ops', description: 'Assigned parcel delivery' }
+const ROLE_GROUPS = [
+  ['Store Administration', [['manager', 'Manager']]],
+  ['Service Operations', [['service_staff', 'Service Staff']]],
+  ['Sales', [['cashier', 'Cashier']]],
+  ['Inventory', [['inventory_staff', 'Inventory Staff']]],
+  ['Procurement', [['procurement_officer', 'Procurement Officer']]],
+  ['Finance', [['finance_staff', 'Finance Staff']]],
+  ['Pet Care', [['veterinarian', 'Veterinarian'], ['groomer', 'Groomer'], ['trainer', 'Trainer'], ['boarding_staff', 'Boarding Staff']]],
+  ['Delivery', [['delivery_dispatcher', 'Delivery Dispatcher'], ['delivery_rider', 'Delivery Rider']]]
 ];
-
-const TYPE_STYLES = {
-    veterinarian: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-    veterinary_technician: 'bg-cyan-50 text-cyan-700 border-cyan-200',
-    veterinary_assistant: 'bg-sky-50 text-sky-700 border-sky-200',
-    veterinary_nurse: 'bg-teal-50 text-teal-700 border-teal-200',
-    veterinary_laboratory_technician: 'bg-violet-50 text-violet-700 border-violet-200',
-    groomer: 'bg-pink-50 text-pink-700 border-pink-200',
-    trainer: 'bg-blue-50 text-blue-700 border-blue-200',
-    boarding_specialist: 'bg-purple-50 text-purple-700 border-purple-200',
-    medical_assistant: 'bg-cyan-50 text-cyan-700 border-cyan-200',
-    pet_handler: 'bg-indigo-50 text-indigo-700 border-indigo-200',
-    inventory_staff: 'bg-amber-50 text-amber-700 border-amber-200',
-    logistics_staff: 'bg-rose-50 text-rose-700 border-rose-200',
-    sales_staff: 'bg-teal-50 text-teal-700 border-teal-200',
-    service_management_staff: 'bg-violet-50 text-violet-700 border-violet-200',
-    administrative_support: 'bg-slate-50 text-slate-700 border-slate-200',
-    delivery_rider: 'bg-orange-50 text-orange-700 border-orange-200',
-    // Fallbacks
-    order_staff: 'bg-blue-50 text-blue-700 border-blue-200',
-    service_staff: 'bg-purple-50 text-purple-700 border-purple-200'
+const ROLES = ROLE_GROUPS.flatMap(([, roles]) => roles);
+const SPECIALISTS = ['veterinarian', 'groomer', 'trainer', 'boarding_staff'];
+const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+const roleLabel = value => ROLES.find(([id]) => id === value)?.[1] || String(value || '').replaceAll('_', ' ').replace(/\b\w/g, letter => letter.toUpperCase());
+const scheduleSummary = member => {
+  const days = Object.entries(member.professionalProfile?.availability || {}).filter(([, value]) => value?.available);
+  if (!days.length) return 'Not configured';
+  return `${days.length} days · ${days[0][1].start || '09:00'}–${days[0][1].end || '17:00'}`;
 };
+const schedule = () => Object.fromEntries(DAYS.map(day => [day, { available: !['saturday', 'sunday'].includes(day), start: '09:00', end: '17:00', breaks: [{ start: '12:00', end: '13:00' }] }]));
+const emptyForm = () => ({
+  firstName: '', lastName: '', email: '', username: '', phone: '', avatar: '', avatarFile: null,
+  address: { street: '', barangay: '', city: '', province: '', zipCode: '' },
+  staffType: 'service_staff', targetStoreId: '', temporaryPassword: '', assignedServices: [],
+  professionalProfile: { staffId: '', experienceYears: 0, bio: '', specialty: '', areasOfExpertise: [], certifications: [], availability: schedule(), leaveSchedule: [], registration: { type: '', number: '', expiresAt: '' } },
+  riderProfile: { vehicleType: '', plateNumber: '', licenseId: '', deliveryZone: '', accountStatus: 'active' }
+});
+const statusTone = value => ({ available: 'bg-emerald-50 text-emerald-700', busy: 'bg-blue-50 text-blue-700', break: 'bg-violet-50 text-violet-700', on_leave: 'bg-amber-50 text-amber-700', emergency_unavailable: 'bg-rose-50 text-rose-700', temporary_unavailable: 'bg-orange-50 text-orange-700', verified: 'bg-emerald-50 text-emerald-700', active: 'bg-emerald-50 text-emerald-700', archived: 'bg-slate-100 text-slate-600', suspended: 'bg-rose-50 text-rose-700' }[value] || 'bg-slate-100 text-slate-600');
+const Chip = ({ value, children }) => <span className={`inline-flex rounded-full px-2 py-1 text-[9px] font-bold uppercase tracking-wide ${statusTone(value)}`}>{children || String(value || 'pending').replaceAll('_', ' ')}</span>;
+const Field = ({ label, children, hint }) => <label className="block"><span className="mb-1 block text-[10px] font-bold uppercase tracking-wide text-slate-500">{label}</span>{children}{hint && <span className="mt-1 block text-[10px] text-slate-400">{hint}</span>}</label>;
+const input = 'h-9 w-full rounded-lg border border-slate-200 bg-white px-2.5 text-xs outline-none transition focus:border-primary';
 
-const defaultForm = {
-    firstName: '', lastName: '', email: '', username: '',
-    staffType: 'order_staff', phone: '', permissions: {}, staffStatus: 'active', targetStoreId: '',
-    professionalProfile: defaultProfessionalProfile,
-    assignedServices: [],
-    riderProfile: {
-        staffId: '', accountStatus: 'active', vehicleType: '', plateNumber: '', licenseId: '', deliveryZone: '',
-        earningRules: { baseRate: 0, incentive: 0, bonus: 0, deduction: 0 },
-        payoutMethod: { type: '', accountName: '', accountNumber: '', bankName: '' }
-    }
-};
+export default function StaffManagement() {
+  const [staff, setStaff] = useState([]);
+  const [archived, setArchived] = useState([]);
+  const [configuration, setConfiguration] = useState({ services: [], branches: [], availableRoles: [], nextStaffId: '' });
+  const [loading, setLoading] = useState(true);
+  const [tab, setTab] = useState('active');
+  const [query, setQuery] = useState('');
+  const [roleFilter, setRoleFilter] = useState('');
+  const [availabilityFilter, setAvailabilityFilter] = useState('');
+  const [verificationFilter, setVerificationFilter] = useState('');
+  const [sort, setSort] = useState('recent');
+  const [page, setPage] = useState(1);
+  const [wizard, setWizard] = useState(null);
+  const [profile, setProfile] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [confirm, setConfirm] = useState(null);
+  const pageSize = 10;
 
-const StaffManagement = () => {
-    const { user } = useAuth();
-    const [staff, setStaff] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [searchQuery, setSearchQuery] = useState('');
-    const [filterType, setFilterType] = useState('');
-    const [filterStatus, setFilterStatus] = useState('');
-    const [filterBranch, setFilterBranch] = useState('');
-    const [filterSpecialty, setFilterSpecialty] = useState('');
-    const [filterService, setFilterService] = useState('');
-    const [filterAvailability, setFilterAvailability] = useState('');
-    const [configuration, setConfiguration] = useState({ services: [], enabledSpecializedRoles: [], store: null });
-
-    // Modal states
-    const [showModal, setShowModal] = useState(false);
-    const [editingStaff, setEditingStaff] = useState(null);
-    const [form, setForm] = useState(defaultForm);
-    const [submitting, setSubmitting] = useState(false);
-
-    const [resetting, setResetting] = useState(false);
-    const [resetTarget, setResetTarget] = useState(null);
-    const [newPassword, setNewPassword] = useState('');
-    const [riderDetails, setRiderDetails] = useState(null);
-    const [loadingRider, setLoadingRider] = useState(false);
-    const [specialistProfile, setSpecialistProfile] = useState(null);
-    
-    // Modal tabs
-    const [activeTab, setActiveTab] = useState('info'); // 'info' or 'permissions'
-
-    const fetchStaff = async () => {
-        setLoading(true);
-        try {
-            const [staffResult, configResult] = await Promise.allSettled([staffService.getAll(), staffService.getConfiguration()]);
-            if (staffResult.status === 'rejected') throw staffResult.reason;
-            setStaff(staffResult.value.data.staff);
-            if (configResult.status === 'fulfilled') setConfiguration(configResult.value.data);
-        } catch {
-            toast.error('Failed to load staff');
-        } finally {
-            setLoading(false);
-        }
+  useEffect(() => {
+    if (!wizard && !profile && !confirm) return undefined;
+    const closeTopLayer = event => {
+      if (event.key !== 'Escape' || submitting) return;
+      if (confirm) setConfirm(null);
+      else if (profile) setProfile(null);
+      else setWizard(null);
     };
+    window.addEventListener('keydown', closeTopLayer);
+    return () => window.removeEventListener('keydown', closeTopLayer);
+  }, [wizard, profile, confirm, submitting]);
 
-    useEffect(() => { fetchStaff(); }, []);
+  const load = async () => {
+    setLoading(true);
+    try {
+      const [activeResponse, archivedResponse, configResponse] = await Promise.all([
+        staffService.getAll(), staffService.getAll({ archived: true }), staffService.getConfiguration()
+      ]);
+      setStaff(activeResponse.data.staff || []);
+      setArchived(archivedResponse.data.staff || []);
+      setConfiguration(configResponse.data || {});
+    } catch (error) { toast.error(getUserFacingError(error, 'Unable to load staff management.')); }
+    finally { setLoading(false); }
+  };
+  useEffect(() => { load(); }, []);
 
-    const openCreate = () => {
-        setEditingStaff(null);
-        setForm({ ...defaultForm, targetStoreId: configuration.store?._id || user.store?._id || user.store || '' });
-        setActiveTab('info');
-        setShowModal(true);
-    };
+  const rows = useMemo(() => {
+    const source = tab === 'archived' ? archived : staff;
+    const normalized = query.trim().toLowerCase();
+    return source.filter(member => {
+      const name = `${member.firstName || ''} ${member.lastName || ''} ${member.email || ''} ${member.professionalProfile?.staffId || ''} ${member.riderProfile?.staffId || ''}`.toLowerCase();
+      const verification = member.professionalProfile?.verification?.status || 'pending_verification';
+      return (!normalized || name.includes(normalized)) && (!roleFilter || member.staffType === roleFilter)
+        && (!availabilityFilter || member.availabilityStatus === availabilityFilter)
+        && (!verificationFilter || verification === verificationFilter);
+    }).sort((a, b) => sort === 'name' ? `${a.firstName} ${a.lastName}`.localeCompare(`${b.firstName} ${b.lastName}`)
+      : sort === 'role' ? roleLabel(a.staffType).localeCompare(roleLabel(b.staffType))
+        : new Date(b.createdAt) - new Date(a.createdAt));
+  }, [staff, archived, tab, query, roleFilter, availabilityFilter, verificationFilter, sort]);
+  useEffect(() => setPage(1), [tab, query, roleFilter, availabilityFilter, verificationFilter, sort]);
+  const paged = rows.slice((page - 1) * pageSize, page * pageSize);
+  const totals = useMemo(() => ({
+    total: staff.length,
+    active: staff.filter(row => row.isActive !== false && (!row.staffStatus || row.staffStatus === 'active')).length,
+    busy: staff.filter(row => row.availabilityStatus === 'busy').length,
+    leave: staff.filter(row => row.availabilityStatus === 'on_leave').length,
+    pending: staff.filter(row => !['verified', 'expired', 'suspended'].includes(row.professionalProfile?.verification?.status)).length
+  }), [staff]);
 
-    const openEdit = async (member) => {
-        const branchId = member.store?._id || member.store;
-        try {
-            const configResponse = await staffService.getConfiguration({ storeId: branchId });
-            setConfiguration(configResponse.data);
-        } catch (error) { toast.error(error.response?.data?.message || 'Unable to load branch services'); return; }
-        const professional = member.professionalProfile || {};
-        setEditingStaff(member);
-        setForm({
-            firstName: member.firstName,
-            lastName: member.lastName,
-            email: member.email,
-            username: member.username,
-            password: '',
-            staffType: member.staffType,
-            targetStoreId: branchId,
-            phone: member.phone || '',
-            staffStatus: member.staffType === 'delivery_rider' ? member.riderProfile?.accountStatus : (member.staffStatus || (member.isActive ? 'active' : 'inactive')),
-            permissions: member.permissions || {},
-            assignedServices: (member.assignedServices || []).map(service => service._id),
-            professionalProfile: {
-                ...defaultProfessionalProfile,
-                ...professional,
-                qualifications: (professional.qualifications || []).join(', '),
-                certifications: (professional.certifications || []).map(item => item.name || item).join(', '),
-                training: (professional.training || []).join(', '),
-                areasOfExpertise: (professional.areasOfExpertise || []).join(', '),
-                registration: { ...defaultProfessionalProfile.registration, ...(professional.registration || {}) },
-                availability: { ...defaultProfessionalProfile.availability, ...(professional.availability || {}) }
-            },
-            riderProfile: { ...defaultForm.riderProfile, ...(member.riderProfile || {}), earningRules: { ...defaultForm.riderProfile.earningRules, ...(member.riderProfile?.earningRules || {}) }, payoutMethod: { ...defaultForm.riderProfile.payoutMethod, ...(member.riderProfile?.payoutMethod || {}) } }
-        });
-        setActiveTab('info');
-        setShowModal(true);
-    };
+  const openCreate = () => {
+    const form = emptyForm();
+    form.targetStoreId = configuration.store?._id || configuration.branches?.[0]?._id || '';
+    form.professionalProfile.staffId = configuration.nextStaffId || 'Generated when saved';
+    setWizard({ step: 1, editing: null, error: '', form });
+  };
+  const openEdit = member => {
+    const form = emptyForm();
+    setWizard({ step: 1, editing: member, error: '', form: {
+      ...form, ...member, avatarFile: null, targetStoreId: member.store?._id || member.store,
+      address: { ...form.address, ...(member.address || {}) }, temporaryPassword: '',
+      assignedServices: (member.assignedServices || []).map(service => service._id),
+      professionalProfile: { ...form.professionalProfile, ...(member.professionalProfile || {}), availability: { ...form.professionalProfile.availability, ...(member.professionalProfile?.availability || {}) } },
+      riderProfile: { ...form.riderProfile, ...(member.riderProfile || {}) }
+    }});
+  };
+  const setForm = patch => setWizard(current => ({ ...current, error: '', form: { ...current.form, ...patch } }));
+  const setProfessional = patch => setForm({ professionalProfile: { ...wizard.form.professionalProfile, ...patch } });
+  const validateStep = () => {
+    const form = wizard.form;
+    if (wizard.step === 1 && (!form.firstName.trim() || !form.lastName.trim() || !form.phone.trim() || (!wizard.editing && !form.email.trim()))) return 'Complete the required basic information.';
+    if (wizard.step === 2 && (!form.staffType || !form.targetStoreId)) return 'Select a role and assigned store.';
+    if (wizard.step === 2 && SPECIALISTS.includes(form.staffType) && !form.assignedServices.length) return 'Assign at least one compatible service.';
+    if (wizard.step === 2 && form.staffType === 'delivery_rider' && (!form.riderProfile.vehicleType || !form.riderProfile.licenseId)) return 'Complete the rider license and vehicle details.';
+    if (wizard.step === 3 && !wizard.editing && (!form.username.trim() || !form.temporaryPassword)) return 'Enter a username and temporary password.';
+    return '';
+  };
+  const next = () => { const error = validateStep(); if (error) return setWizard(current => ({ ...current, error })); setWizard(current => ({ ...current, error: '', step: Math.min(3, current.step + 1) })); };
+  const submit = async () => {
+    const error = validateStep(); if (error) return setWizard(current => ({ ...current, error }));
+    setSubmitting(true);
+    try {
+      let avatar = wizard.form.avatar || '';
+      if (wizard.form.avatarFile) {
+        const data = new FormData(); data.append('image', wizard.form.avatarFile);
+        avatar = (await uploadService.uploadImage(data)).data.url;
+      }
+      const payload = { ...wizard.form, avatar };
+      delete payload.avatarFile;
+      if (wizard.editing) {
+        delete payload.email; delete payload.username; delete payload.temporaryPassword;
+        await staffService.update(wizard.editing._id, { ...payload, confirmRoleChange: true, confirmUpcoming: true, confirmBranchChange: true });
+        toast.success('Staff profile updated.');
+      } else {
+        const response = await staffService.create(payload);
+        toast.success(response.data.emailSent === false ? 'Staff created; invitation email could not be sent.' : 'Staff account created.');
+      }
+      setWizard(null); await load();
+    } catch (requestError) { toast.error(getUserFacingError(requestError, 'Unable to save staff member.')); }
+    finally { setSubmitting(false); }
+  };
+  const viewProfile = async member => {
+    try { setProfile((await staffService.getProfile(member._id)).data); }
+    catch (error) { toast.error(getUserFacingError(error, 'Unable to load staff profile.')); }
+  };
+  const runAction = async action => {
+    setSubmitting(true);
+    try {
+      if (action.kind === 'status') await staffService.toggleStatus(action.member._id, { isActive: !action.member.isActive, confirmUpcoming: true });
+      if (action.kind === 'archive') await staffService.archive(action.member._id, { confirmUpcoming: true });
+      if (action.kind === 'restore') await staffService.restore(action.member._id);
+      if (action.kind === 'reset') await staffService.resetPassword(action.member._id, action.value);
+      if (action.kind === 'permanent') await staffService.permanentDelete(action.member._id, action.value);
+      toast.success(action.success || 'Staff account updated.'); setConfirm(null); await load();
+    } catch (error) { toast.error(getUserFacingError(error, 'Unable to complete this action.')); }
+    finally { setSubmitting(false); }
+  };
+  const chooseAction = (member, value) => {
+    if (!value) return;
+    if (value === 'view') return viewProfile(member);
+    if (value === 'activity') return viewProfile(member);
+    if (value === 'edit') return openEdit(member);
+    if (value === 'reset') return setConfirm({ kind: 'reset', member, title: 'Reset password', prompt: 'New temporary password', value: '', success: 'Temporary password updated.' });
+    if (value === 'archive') return setConfirm({ kind: 'archive', member, title: 'Archive staff member?', message: 'The account will leave Active Staff while bookings and audit history remain intact.', success: 'Staff account archived.' });
+    if (value === 'restore') return setConfirm({ kind: 'restore', member, title: 'Restore staff member?', message: 'The account will return to active staff management.', success: 'Staff account restored.' });
+    if (value === 'permanent') return setConfirm({ kind: 'permanent', member, title: 'Permanently disable account?', message: 'Login identity is removed while historical relationships remain preserved. Type PERMANENTLY DELETE to confirm.', value: '', prompt: 'Confirmation phrase', success: 'Staff account permanently disabled.' });
+    if (value === 'status') return setConfirm({ kind: 'status', member, title: member.isActive ? 'Deactivate staff member?' : 'Activate staff member?', message: 'Existing historical records will not be changed.', success: member.isActive ? 'Staff account deactivated.' : 'Staff account activated.' });
+  };
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        setSubmitting(true);
-        try {
-            if (editingStaff) {
-                if (form.staffType === 'delivery_rider' && form.riderProfile.accountStatus !== editingStaff.riderProfile?.accountStatus && !window.confirm(`Change rider status to ${form.riderProfile.accountStatus}? New assignment eligibility will update, while delivery and payout history remains unchanged.`)) {
-                    setSubmitting(false);
-                    return;
-                }
-                const roleChanged = form.staffType !== editingStaff.staffType;
-                const branchChanged = String(form.targetStoreId) !== String(editingStaff.store?._id || editingStaff.store);
-                if (roleChanged && !window.confirm(`Change staff role from ${STAFF_TYPES.find(type=>type.id===editingStaff.staffType)?.label || editingStaff.staffType} to ${STAFF_TYPES.find(type=>type.id===form.staffType)?.label || form.staffType}?\n\nHistorical bookings and service records will remain associated with this staff member.`)) {
-                    setSubmitting(false);
-                    return;
-                }
-                if (branchChanged && !window.confirm(`Move this staff member to ${configuration.store?.name || 'the selected branch'}?\n\nHistorical bookings will remain linked to their original records. Assigned services must come from the new branch.`)) {
-                    setSubmitting(false);
-                    return;
-                }
-                let confirmUpcoming = false;
-                const previousStatus = editingStaff.staffType === 'delivery_rider' ? editingStaff.riderProfile?.accountStatus : (editingStaff.staffStatus || (editingStaff.isActive ? 'active' : 'inactive'));
-                const nextStatus = form.staffType === 'delivery_rider' ? form.riderProfile.accountStatus : form.staffStatus;
-                if ((previousStatus === 'active' && nextStatus !== 'active') || branchChanged) {
-                    const profileResponse = await staffService.getProfile(editingStaff._id);
-                    const upcomingCount = profileResponse.data.activity?.upcoming?.length || 0;
-                    if (upcomingCount && !window.confirm(`${upcomingCount} upcoming booking${upcomingCount === 1 ? '' : 's'} are assigned to this staff member.\n\nChanging the status prevents new assignments but preserves the existing bookings and history. Continue?`)) {
-                        setSubmitting(false);
-                        return;
-                    }
-                    confirmUpcoming = upcomingCount > 0;
-                }
-                await staffService.update(editingStaff._id, {
-                    firstName: form.firstName,
-                    lastName: form.lastName,
-                    phone: form.phone,
-                    staffType: form.staffType,
-                    targetStoreId: form.targetStoreId,
-                    staffStatus: form.staffStatus,
-                    permissions: form.permissions,
-                    riderProfile: form.staffType === 'delivery_rider' ? form.riderProfile : undefined,
-                    professionalProfile: SPECIALIZED_ROLES.includes(form.staffType) ? form.professionalProfile : undefined,
-                    assignedServices: SPECIALIZED_ROLES.includes(form.staffType) ? form.assignedServices : [],
-                    confirmRoleChange: roleChanged,
-                    confirmBranchChange: branchChanged,
-                    confirmUpcoming
-                });
-                toast.success('Staff updated successfully');
-            } else {
-                // Inject targetstoreId from current user
-                const payload = { 
-                    ...form, 
-                    targetStoreId: form.targetStoreId || configuration.store?._id || user.store?._id || user.store,
-                    professionalProfile: SPECIALIZED_ROLES.includes(form.staffType) ? form.professionalProfile : undefined,
-                    assignedServices: SPECIALIZED_ROLES.includes(form.staffType) ? form.assignedServices : []
-                };
-                
-                if (!payload.targetStoreId) {
-                    toast.error('Store identity missing. Please re-login.');
-                    setSubmitting(false);
-                    return;
-                }
+  return <div className="mx-auto max-w-[1500px] space-y-4 p-3 sm:p-5">
+    <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div><p className="text-[10px] font-bold uppercase tracking-[.18em] text-primary">Workforce operations</p><h1 className="text-xl font-black text-slate-900">Staff Management</h1><p className="mt-1 text-xs text-slate-500">Accounts, schedules, qualifications, assignments, and role-inherited access.</p></div><div className="flex gap-2"><Link to="/admin/roles" className="inline-flex h-9 items-center gap-2 rounded-lg border px-3 text-xs font-bold text-slate-700"><ShieldCheck size={14}/>Role Management</Link><button onClick={openCreate} className="inline-flex h-9 items-center gap-2 rounded-lg bg-primary px-3 text-xs font-bold text-white"><Plus size={14}/>Add Staff</button></div></header>
+    <section className="grid grid-cols-2 gap-2 md:grid-cols-5">{[[Users,'Total Staff',totals.total],[CheckCircle2,'Active',totals.active],[RefreshCw,'Busy',totals.busy],[CalendarDays,'On Leave',totals.leave],[ShieldCheck,'Pending Verification',totals.pending]].map(([Icon,label,value])=><article key={label} className="rounded-xl border bg-white p-3"><div className="flex items-center justify-between"><span className="text-[10px] font-bold uppercase text-slate-500">{label}</span><Icon size={14} className="text-primary"/></div><strong className="mt-2 block text-xl text-slate-900">{value}</strong></article>)}</section>
+    <section className="overflow-hidden rounded-xl border bg-white">
+      <div className="flex flex-col gap-2 border-b p-3 lg:flex-row lg:items-center"><div className="flex rounded-lg bg-slate-100 p-0.5">{[['active','Active Staff'],['matrix','Assignment Matrix'],['archived','Archived Staff']].map(([id,label])=><button key={id} onClick={()=>setTab(id)} className={`rounded-md px-3 py-1.5 text-[11px] font-bold ${tab===id?'bg-white text-slate-900 shadow-sm':'text-slate-500'}`}>{label}</button>)}</div><div className="relative min-w-0 flex-1"><Search size={13} className="absolute left-3 top-2.5 text-slate-400"/><input value={query} onChange={event=>setQuery(event.target.value)} placeholder="Search name, email, or staff ID" className={`${input} pl-8`}/></div><Filter size={13} className="hidden text-slate-400 lg:block"/><select value={roleFilter} onChange={event=>setRoleFilter(event.target.value)} className={input}><option value="">All roles</option>{ROLE_GROUPS.map(([group,roles])=><optgroup key={group} label={group}>{roles.map(([id,label])=><option key={id} value={id}>{label}</option>)}</optgroup>)}</select><select value={availabilityFilter} onChange={event=>setAvailabilityFilter(event.target.value)} className={input}><option value="">All availability</option>{['available','busy','break','on_leave','temporary_unavailable','emergency_unavailable'].map(value=><option key={value} value={value}>{roleLabel(value)}</option>)}</select><select value={verificationFilter} onChange={event=>setVerificationFilter(event.target.value)} className={input}><option value="">All verification</option>{['pending_verification','verified','expired','suspended'].map(value=><option key={value} value={value}>{roleLabel(value)}</option>)}</select><select value={sort} onChange={event=>setSort(event.target.value)} className={input}><option value="recent">Recently Added</option><option value="name">Name</option><option value="role">Role</option></select><button onClick={load} aria-label="Refresh staff" className="h-9 w-9 shrink-0 rounded-lg border text-slate-500"><RefreshCw size={13} className="mx-auto"/></button></div>
+      {tab === 'matrix' ? <AssignmentMatrix rows={staff}/>:<StaffTable loading={loading} rows={paged} archived={tab==='archived'} onAction={chooseAction}/>}
+      {tab !== 'matrix' && <footer className="flex items-center justify-between border-t px-3 py-2 text-[11px] text-slate-500"><span>{rows.length ? `${(page-1)*pageSize+1}–${Math.min(page*pageSize,rows.length)} of ${rows.length}` : '0 staff'}</span><div className="flex gap-1"><button disabled={page===1} onClick={()=>setPage(value=>value-1)} className="h-8 w-8 rounded-lg border disabled:opacity-30"><ChevronLeft size={13} className="mx-auto"/></button><button disabled={page*pageSize>=rows.length} onClick={()=>setPage(value=>value+1)} className="h-8 w-8 rounded-lg border disabled:opacity-30"><ChevronRight size={13} className="mx-auto"/></button></div></footer>}
+    </section>
+    {wizard && <StaffWizard state={wizard} setState={setWizard} setForm={setForm} setProfessional={setProfessional} config={configuration} next={next} submit={submit} submitting={submitting}/>}
+    {profile && <SpecializedStaffProfileModal data={profile} onClose={()=>setProfile(null)}/>}
+    {confirm && <ConfirmDialog action={confirm} setAction={setConfirm} submit={runAction} submitting={submitting}/>}
+  </div>;
+}
 
-                if (form.staffType === 'delivery_rider' && !window.confirm(`Create Delivery Rider?\n\nName: ${form.firstName} ${form.lastName}\nStaff ID: ${form.riderProfile.staffId}\nBranch: Assigned Store\nPayout Method: ${form.riderProfile.payoutMethod.type || 'Not configured'}\nStatus: ${form.riderProfile.accountStatus}`)) {
-                    setSubmitting(false);
-                    return;
-                }
-                if (SPECIALIZED_ROLES.includes(form.staffType)) {
-                    const serviceNames = configuration.services.filter(service=>form.assignedServices.includes(service._id)).map(service=>service.name).join(', ');
-                    if (!window.confirm(`Create Specialized Staff?\n\nName: ${form.firstName} ${form.lastName}\nRole: ${STAFF_TYPES.find(type=>type.id===form.staffType)?.label}\nSpecialty: ${form.professionalProfile.specialty}\nBranch: ${configuration.store?.name || 'Assigned Store'}\nAssigned Services: ${serviceNames || 'None'}\nStatus: ${form.staffStatus}`)) {
-                        setSubmitting(false);
-                        return;
-                    }
-                }
+function StaffTable({ loading, rows, archived, onAction }) {
+  if (loading) return <div className="space-y-2 p-3">{[1,2,3,4].map(value=><div key={value} className="h-14 animate-pulse rounded-lg bg-slate-100"/>)}</div>;
+  if (!rows.length) return <div className="p-12 text-center"><Users size={24} className="mx-auto text-slate-300"/><p className="mt-2 text-xs font-bold text-slate-600">No staff match these filters.</p></div>;
+  return <div className="max-h-[62vh] overflow-auto"><table className="w-full min-w-[1180px] text-left"><thead className="sticky top-0 z-10 bg-slate-50 text-[9px] uppercase tracking-wide text-slate-500"><tr><th className="px-3 py-2">Profile</th><th>Staff ID</th><th>Name</th><th>Role</th><th>Status</th><th>Availability</th><th>Schedule</th><th>Verification</th><th>Assigned Services</th><th className="px-3 text-right">Actions</th></tr></thead><tbody className="divide-y">{rows.map(member=>{const staffId=member.professionalProfile?.staffId||member.riderProfile?.staffId||'—';const services=member.assignedServices||[];return <tr key={member._id} className="text-xs hover:bg-slate-50/70"><td className="px-3 py-2">{member.avatar?<img src={getImageUrl(member.avatar)} alt="" className="h-9 w-9 rounded-lg object-cover"/>:<div className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-100"><UserRound size={14}/></div>}</td><td><span className="font-mono text-[10px] font-bold text-slate-600">{staffId}</span></td><td><b className="block text-[11px] text-slate-900">{member.firstName} {member.lastName}</b><small className="text-[9px] text-slate-400">{member.email}</small></td><td><b className="text-[10px] text-slate-700">{roleLabel(member.staffType)}</b></td><td><Chip value={member.staffStatus||'active'}>{member.staffStatus||'active'}</Chip></td><td><Chip value={member.availabilityStatus}>{member.availabilityStatus?.replaceAll('_',' ')||'available'}</Chip>{member.activeWorkload>=3&&<span className="mt-1 block text-[8px] font-bold text-rose-600">High workload</span>}</td><td><span className="text-[10px] text-slate-600">{scheduleSummary(member)}</span></td><td><Chip value={member.professionalProfile?.verification?.status}>{member.professionalProfile?.verification?.status?.replaceAll('_',' ')||'not required'}</Chip></td><td><span title={services.map(service=>service.name).join(', ')} className="block max-w-36 truncate text-[10px] text-slate-600">{services.length?`${services.length} · ${services.map(service=>service.name).slice(0,2).join(', ')}`:'None'}</span></td><td className="px-3 text-right"><select aria-label={`Actions for ${member.firstName}`} defaultValue="" onChange={event=>{onAction(member,event.target.value);event.target.value='';}} className="h-8 rounded-lg border bg-white px-2 text-[10px] font-bold"><option value="" disabled>Actions</option><option value="view">View profile</option><option value="activity">View activity</option>{!archived&&<option value="edit">Edit</option>}{!archived&&<option value="reset">Reset password</option>}{!archived&&<option value="status">{member.isActive?'Deactivate':'Activate'}</option>}{!archived&&<option value="archive">Archive</option>}{archived&&<option value="restore">Restore</option>}{archived&&<option value="permanent">Permanently disable</option>}</select></td></tr>})}</tbody></table></div>;
+}
 
-                const res = await staffService.create(payload);
-                toast.success(res.data.message || 'Staff account created successfully');
-            }
-            setShowModal(false);
-            fetchStaff();
-        } catch (err) {
-            toast.error(err.response?.data?.message || 'Failed to save staff');
-        } finally {
-            setSubmitting(false);
-        }
-    };
+function AssignmentMatrix({ rows }) {
+  const groups = ['available','busy','break','on_leave','emergency_unavailable','temporary_unavailable'];
+  return <div className="grid gap-3 p-3 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">{groups.map(group=><section key={group} className="min-h-40 rounded-xl bg-slate-50 p-2.5"><div className="mb-2 flex items-center justify-between"><b className="text-[10px] uppercase text-slate-600">{group.replaceAll('_',' ')}</b><Chip value={group}>{rows.filter(row=>(row.availabilityStatus||'available')===group).length}</Chip></div><div className="space-y-2">{rows.filter(row=>(row.availabilityStatus||'available')===group).map(member=><article key={member._id} className={`rounded-lg border bg-white p-2 ${member.activeWorkload>=3?'border-rose-200':''}`}><p className="truncate text-[11px] font-bold text-slate-800">{member.firstName} {member.lastName}</p><p className="truncate text-[9px] text-slate-500">{roleLabel(member.staffType)} · {member.activeWorkload||0} active</p><p className="mt-1 text-[8px] text-slate-400">{scheduleSummary(member)}</p>{member.activeWorkload>=3&&<p className="mt-1 text-[8px] font-bold text-rose-600">Overloaded · review before assignment</p>}</article>)}{!rows.some(row=>(row.availabilityStatus||'available')===group)&&<p className="py-6 text-center text-[10px] text-slate-400">No staff</p>}</div></section>)}</div>;
+}
 
-    const handleToggle = async (id) => {
-        const member = staff.find(item => item._id === id);
-        if (!window.confirm(`${member?.isActive ? 'Deactivate' : 'Activate'} ${member?.firstName || 'this staff member'}? Existing delivery, earning, and payout history will be preserved.`)) return;
-        try {
-            const res = await staffService.toggleStatus(id);
-            toast.success(res.data.message);
-            fetchStaff();
-        } catch (error) {
-            if (error.response?.data?.requiresUpcomingConfirmation && window.confirm(`${error.response.data.message}\n\nContinue with deactivation?`)) {
-                try { const res = await staffService.toggleStatus(id, { confirmUpcoming: true }); toast.success(res.data.message); fetchStaff(); }
-                catch (retryError) { toast.error(retryError.response?.data?.message || 'Failed to toggle status'); }
-            } else if (!error.response?.data?.requiresUpcomingConfirmation) toast.error(error.response?.data?.message || 'Failed to toggle status');
-        }
-    };
+function StaffWizard({ state, setState, setForm, setProfessional, config, next, submit, submitting }) {
+  const { form, step, editing } = state;
+  const isSpecialist = SPECIALISTS.includes(form.staffType);
+  const specialtyLabel = ({ veterinarian: 'Clinical specialization', groomer: 'Grooming specialties', trainer: 'Training specialties', boarding_staff: 'Boarding specialization' })[form.staffType] || 'Specialization';
+  return <div className="fixed inset-0 z-[70] flex justify-end bg-black/45"><div className="flex h-full w-full max-w-2xl flex-col bg-white shadow-2xl"><header className="flex items-center justify-between border-b p-4"><div><p className="text-[9px] font-bold uppercase tracking-widest text-primary">Step {step} of 3</p><h2 className="text-lg font-black">{editing?'Edit Staff':'Add Staff'} · {['Basic Information','Job Information','Account & Review'][step-1]}</h2></div><button onClick={()=>setState(null)} className="h-8 w-8 rounded-lg bg-slate-100"><X size={14} className="mx-auto"/></button></header><div className="grid grid-cols-3 border-b">{['Basic','Job','Account'].map((label,index)=><div key={label} className={`h-1 ${step>=index+1?'bg-primary':'bg-slate-100'}`}/>)}</div>
+    <div className="flex-1 overflow-y-auto p-4">{state.error&&<div role="alert" className="mb-3 rounded-lg border border-rose-200 bg-rose-50 p-2.5 text-xs font-semibold text-rose-700">{state.error}</div>}{step===1&&<div className="grid gap-3 sm:grid-cols-2"><Field label="Profile Photo"><div className="flex items-center gap-3"><div className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-xl bg-slate-100">{form.avatarFile?<img src={URL.createObjectURL(form.avatarFile)} alt="Preview" className="h-full w-full object-cover"/>:form.avatar?<img src={getImageUrl(form.avatar)} alt="" className="h-full w-full object-cover"/>:<UserRound size={18}/>}</div><label className="inline-flex h-9 cursor-pointer items-center gap-2 rounded-lg border px-3 text-xs font-bold"><Upload size={13}/>Choose<input type="file" accept="image/*" className="hidden" onChange={event=>setForm({avatarFile:event.target.files?.[0]||null})}/></label></div></Field><span/><Field label="First Name"><input className={input} value={form.firstName} onChange={event=>setForm({firstName:event.target.value})}/></Field><Field label="Last Name"><input className={input} value={form.lastName} onChange={event=>setForm({lastName:event.target.value})}/></Field><Field label="Mobile Number"><input className={input} value={form.phone} onChange={event=>setForm({phone:event.target.value})} placeholder="09XXXXXXXXX"/></Field><Field label="Email"><input disabled={editing} className={`${input} disabled:bg-slate-50`} type="email" value={form.email} onChange={event=>setForm({email:event.target.value})}/></Field><Field label="Street"><input className={input} value={form.address.street} onChange={event=>setForm({address:{...form.address,street:event.target.value}})}/></Field><Field label="Barangay"><input className={input} value={form.address.barangay} onChange={event=>setForm({address:{...form.address,barangay:event.target.value}})}/></Field><Field label="City"><input className={input} value={form.address.city} onChange={event=>setForm({address:{...form.address,city:event.target.value}})}/></Field><Field label="Province"><input className={input} value={form.address.province} onChange={event=>setForm({address:{...form.address,province:event.target.value}})}/></Field></div>}
+      {step===2&&<div className="space-y-4"><div className="grid gap-3 sm:grid-cols-2"><Field label="Staff ID" hint="Reserved atomically when the account is created."><input readOnly className={`${input} bg-slate-50 font-mono`} value={form.professionalProfile.staffId || config.nextStaffId || 'Auto-generated'}/></Field><Field label="Role"><select className={input} value={form.staffType} onChange={event=>setForm({staffType:event.target.value,assignedServices:[]})}>{ROLE_GROUPS.map(([group,roles])=><optgroup key={group} label={group}>{roles.filter(([id])=>!config.availableRoles?.length||config.availableRoles.includes(id)).map(([id,label])=><option key={id} value={id}>{label}</option>)}</optgroup>)}</select></Field><Field label="Assigned Store"><select className={input} value={form.targetStoreId} onChange={event=>setForm({targetStoreId:event.target.value})}>{(config.branches||[]).map(branch=><option key={branch._id} value={branch._id}>{branch.name}</option>)}</select></Field><Field label="Experience (years)"><input className={input} type="number" min="0" value={form.professionalProfile.experienceYears||0} onChange={event=>setProfessional({experienceYears:Number(event.target.value)})}/></Field>{isSpecialist&&<><Field label={specialtyLabel}><input className={input} value={form.professionalProfile.specialty||''} onChange={event=>setProfessional({specialty:event.target.value})}/></Field><Field label="Certifications"><input className={input} value={(form.professionalProfile.certifications||[]).map(item=>item?.name||item).join(', ')} onChange={event=>setProfessional({certifications:event.target.value.split(',').map(value=>value.trim()).filter(Boolean)})} placeholder="Comma separated"/></Field></>}{form.staffType==='veterinarian'&&<><Field label="PRC License Number"><input className={input} value={form.professionalProfile.registration?.number||''} onChange={event=>setProfessional({registration:{...form.professionalProfile.registration,type:'professional_license',number:event.target.value}})}/></Field><Field label="PRC License Expiry"><input className={input} type="date" value={form.professionalProfile.registration?.expiresAt?.slice?.(0,10)||''} onChange={event=>setProfessional({registration:{...form.professionalProfile.registration,expiresAt:event.target.value}})}/></Field></>}{['delivery_dispatcher','delivery_rider'].includes(form.staffType)&&<Field label="Assigned Logistics Area"><input className={input} value={form.riderProfile.deliveryZone||''} onChange={event=>setForm({riderProfile:{...form.riderProfile,deliveryZone:event.target.value}})} placeholder="Branch service area"/></Field>}{form.staffType==='delivery_rider'&&<><Field label="Driver's License"><input className={input} value={form.riderProfile.licenseId} onChange={event=>setForm({riderProfile:{...form.riderProfile,licenseId:event.target.value}})}/></Field><Field label="Vehicle Type"><select className={input} value={form.riderProfile.vehicleType} onChange={event=>setForm({riderProfile:{...form.riderProfile,vehicleType:event.target.value}})}><option value="">Select</option><option value="motorcycle">Motorcycle</option><option value="bicycle">Bicycle</option><option value="car">Car</option><option value="van">Van</option></select></Field><Field label="Plate Number"><input className={input} value={form.riderProfile.plateNumber} onChange={event=>setForm({riderProfile:{...form.riderProfile,plateNumber:event.target.value}})}/></Field></>}</div>{isSpecialist&&<Field label={form.staffType==='boarding_staff'?'Boarding Services':'Services Handled'}><div className="grid gap-2 sm:grid-cols-2">{(config.services||[]).map(service=><label key={service._id} className="flex items-center gap-2 rounded-lg border p-2 text-xs"><input type="checkbox" checked={form.assignedServices.includes(service._id)} onChange={event=>setForm({assignedServices:event.target.checked?[...form.assignedServices,service._id]:form.assignedServices.filter(id=>id!==service._id)})}/><span><b className="block">{service.name}</b><small className="text-slate-400">{roleLabel(service.category)}</small></span></label>)}</div></Field>}<div><p className="mb-2 text-[10px] font-bold uppercase text-slate-500">Working Schedule, Breaks & Availability</p><div className="grid gap-2 sm:grid-cols-2">{DAYS.map(day=>{const value=form.professionalProfile.availability?.[day]||{};return <div key={day} className="rounded-lg border p-2"><label className="flex items-center justify-between text-[11px] font-bold capitalize"><span>{day}</span><input type="checkbox" checked={Boolean(value.available)} onChange={event=>setProfessional({availability:{...form.professionalProfile.availability,[day]:{...value,available:event.target.checked}}})}/></label>{value.available&&<div className="mt-2 grid grid-cols-2 gap-1"><input type="time" className={input} value={value.start||'09:00'} onChange={event=>setProfessional({availability:{...form.professionalProfile.availability,[day]:{...value,start:event.target.value}}})}/><input type="time" className={input} value={value.end||'17:00'} onChange={event=>setProfessional({availability:{...form.professionalProfile.availability,[day]:{...value,end:event.target.value}}})}/><input type="time" aria-label={`${day} break start`} className={input} value={value.breaks?.[0]?.start||'12:00'} onChange={event=>setProfessional({availability:{...form.professionalProfile.availability,[day]:{...value,breaks:[{start:event.target.value,end:value.breaks?.[0]?.end||'13:00'}]}}})}/><input type="time" aria-label={`${day} break end`} className={input} value={value.breaks?.[0]?.end||'13:00'} onChange={event=>setProfessional({availability:{...form.professionalProfile.availability,[day]:{...value,breaks:[{start:value.breaks?.[0]?.start||'12:00',end:event.target.value}]}}})}/></div>}</div>})}</div></div></div>}
+      {step===3&&<div className="space-y-4"><div className="grid gap-3 sm:grid-cols-2"><Field label="Username"><input disabled={editing} className={`${input} disabled:bg-slate-50`} value={form.username} onChange={event=>setForm({username:event.target.value})}/></Field>{!editing&&<Field label="Temporary Password" hint="At least 8 characters with upper, lower, number, and symbol."><input className={input} type="password" value={form.temporaryPassword} onChange={event=>setForm({temporaryPassword:event.target.value})}/></Field>}</div><section className="rounded-xl border bg-slate-50 p-3"><h3 className="text-xs font-black">Review Summary</h3><dl className="mt-3 grid gap-2 text-xs sm:grid-cols-2"><div><dt className="text-slate-400">Staff</dt><dd className="font-bold">{form.firstName} {form.lastName}</dd></div><div><dt className="text-slate-400">Role</dt><dd className="font-bold">{roleLabel(form.staffType)}</dd></div><div><dt className="text-slate-400">Staff ID</dt><dd className="font-mono font-bold">{form.professionalProfile.staffId||config.nextStaffId}</dd></div><div><dt className="text-slate-400">Schedule</dt><dd className="font-bold">{Object.values(form.professionalProfile.availability||{}).filter(value=>value.available).length} working days</dd></div></dl><p className="mt-3 rounded-lg bg-blue-50 p-2 text-[10px] text-blue-700">Permissions are inherited from the {roleLabel(form.staffType)} role. Individual overrides are not available.</p></section></div>}</div>
+    <footer className="flex items-center justify-between border-t p-4"><button disabled={step===1} onClick={()=>setState(current=>({...current,step:current.step-1}))} className="h-9 rounded-lg border px-3 text-xs font-bold disabled:opacity-30">Back</button>{step<3?<button onClick={next} className="h-9 rounded-lg bg-primary px-4 text-xs font-bold text-white">Continue</button>:<button disabled={submitting} onClick={submit} className="h-9 rounded-lg bg-primary px-4 text-xs font-bold text-white disabled:opacity-50">{submitting?'Saving…':editing?'Save Changes':'Create Staff'}</button>}</footer></div></div>;
+}
 
-    const openSpecialistProfile = async member => {
-        try { const response = await staffService.getProfile(member._id); setSpecialistProfile(response.data); }
-        catch (error) { toast.error(error.response?.data?.message || 'Unable to load staff profile'); }
-    };
-
-    const changeFormBranch = async storeId => {
-        try {
-            const response = await staffService.getConfiguration({ storeId });
-            setConfiguration(response.data);
-            setForm(current => ({ ...current, targetStoreId: storeId, assignedServices: [] }));
-        } catch (error) { toast.error(error.response?.data?.message || 'Unable to load branch services'); }
-    };
-
-    const visibleStaffTypes = STAFF_TYPES.filter(type =>
-        !SPECIALIZED_ROLES.includes(type.id)
-        || configuration.enabledSpecializedRoles.includes(type.id)
-        || staff.some(member => member.staffType === type.id)
-    );
-
-    const openRiderDetails = async (member) => {
-        setLoadingRider(true);
-        try { const response = await staffService.getRiderDetails(member._id); setRiderDetails(response.data); }
-        catch (error) { toast.error(error.response?.data?.message || 'Unable to load rider details'); }
-        finally { setLoadingRider(false); }
-    };
-
-    const requestRiderPayout = async () => {
-        if (!window.confirm('Create a payout from all available rider earnings?')) return;
-        try { await staffService.createRiderPayout(riderDetails.rider._id); toast.success('Rider payout created'); await openRiderDetails(riderDetails.rider); }
-        catch (error) { toast.error(error.response?.data?.message || 'Unable to create payout'); }
-    };
-    const updateRiderPayout = async (payout, status) => {
-        const referenceNumber = status === 'paid' ? window.prompt('Enter the payout reference number:') : '';
-        if (status === 'paid' && !referenceNumber) return;
-        if (!window.confirm(`Mark payout ${payout.payoutId} as ${status}?`)) return;
-        try { await staffService.updateRiderPayout(payout._id, { status, referenceNumber }); toast.success(`Payout marked ${status}`); await openRiderDetails(riderDetails.rider); }
-        catch (error) { toast.error(error.response?.data?.message || 'Unable to update payout'); }
-    };
-
-    const handleDelete = async (id, name) => {
-        if (!window.confirm(`Remove ${name} from your team? This cannot be undone.`)) return;
-        try {
-            await staffService.remove(id);
-            toast.success('Staff removed');
-            fetchStaff();
-        } catch {
-            toast.error('Failed to remove staff');
-        }
-    };
-
-    const handleResetPassword = async () => {
-        if (!newPassword || newPassword.length < 6) {
-            return toast.error('Password must be at least 6 characters');
-        }
-        setResetting(true);
-        try {
-            await staffService.resetPassword(resetTarget._id, newPassword);
-            toast.success('Password reset successfully');
-            setResetTarget(null);
-            setNewPassword('');
-        } catch {
-            toast.error('Failed to reset password');
-        } finally {
-            setResetting(false);
-        }
-    };
-
-    const filtered = staff.filter(s => {
-        const matchSearch = !searchQuery ||
-            `${s.firstName} ${s.lastName} ${s.email} ${s.username} ${s.riderProfile?.staffId || s.professionalProfile?.staffId || ''} ${s.professionalProfile?.specialty || ''} ${(s.assignedServices || []).map(service=>service.name).join(' ')} ${s.store?.name || ''}`.toLowerCase().includes(searchQuery.toLowerCase());
-        const matchType = !filterType || (filterType === 'veterinary_staff'
-            ? ['veterinarian','veterinary_technician','veterinary_assistant','veterinary_nurse','veterinary_laboratory_technician'].includes(s.staffType)
-            : s.staffType === filterType);
-        const currentStatus = s.staffType === 'delivery_rider' ? s.riderProfile?.accountStatus : (s.staffStatus || (s.isActive ? 'active' : 'inactive'));
-        const matchStatus = !filterStatus || currentStatus === filterStatus;
-        const matchBranch = !filterBranch || (s.store?._id || s.store) === filterBranch;
-        const matchSpecialty = !filterSpecialty || s.professionalProfile?.specialty === filterSpecialty;
-        const matchService = !filterService || (s.assignedServices || []).some(service=>service._id===filterService);
-        const dayKey = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'][new Date().getDay()];
-        const matchAvailability = !filterAvailability || (filterAvailability === 'available_today'
-            ? currentStatus === 'active' && s.professionalProfile?.availability?.[dayKey]?.available
-            : !s.professionalProfile?.availability?.[dayKey]?.available);
-        return matchSearch && matchType && matchStatus && matchBranch && matchSpecialty && matchService && matchAvailability;
-    });
-
-    const counts = {
-        total: staff.length,
-        active: staff.filter(s => s.isActive).length,
-        prof: staff.filter(s => STAFF_TYPES.find(t => t.id === s.staffType)?.category === 'prof').length,
-        ops: staff.filter(s => STAFF_TYPES.find(t => t.id === s.staffType)?.category === 'ops').length
-    };
-
-    return (
-        <div className="min-h-screen bg-[#F8FAFC] p-4 sm:p-8">
-            <div className="max-w-6xl mx-auto space-y-6">
-
-                {/* Header */}
-                <div className="flex items-center justify-between">
-                    <div>
-                        <h1 className="text-2xl font-black text-slate-900 uppercase tracking-tighter">
-                            Staff <span className="text-primary-600 italic">Management</span>
-                        </h1>
-                        <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mt-0.5">
-                            Manage your store team and access permissions
-                        </p>
-                    </div>
-                    <button
-                        onClick={openCreate}
-                        className="flex items-center gap-2 px-5 py-3.5 bg-slate-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-primary-600 transition-all shadow-lg"
-                    >
-                        <Plus className="h-4 w-4" />
-                        Add Staff
-                    </button>
-                </div>
-
-                {/* Stats */}
-                <div className="grid grid-cols-2 sm:grid-cols-6 gap-3">
-                    {[
-                        { label: 'Total Staff', value: counts.total, color: 'slate' },
-                        { label: 'Active', value: counts.active, color: 'emerald' },
-                        { label: 'Professional', value: counts.prof, color: 'primary' },
-                        { label: 'Operational', value: counts.ops, color: 'indigo' }
-                    ].map(s => (
-                        <div key={s.label} className="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm text-center">
-                            <p className={`text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1`}>{s.label}</p>
-                            <p className="text-2xl font-black text-slate-900">{s.value}</p>
-                        </div>
-                    ))}
-                </div>
-
-                {/* Staff Type Cards - Compact Horizontal Layout */}
-                <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-                    {STAFF_TYPES.map(t => {
-                        const Icon = t.icon;
-                        const isActive = filterType === t.id;
-                        return (
-                            <div
-                                key={t.id}
-                                onClick={() => setFilterType(isActive ? '' : t.id)}
-                                className={`flex items-center gap-3 bg-white rounded-2xl border p-3 cursor-pointer transition-all shadow-sm hover:shadow-md ${isActive ? 'border-primary-600 ring-4 ring-primary-50' : 'border-slate-100 hover:border-slate-200'}`}
-                            >
-                                <div className={`shrink-0 p-2 rounded-xl bg-${t.color}-50`}>
-                                    <Icon className={`h-4 w-4 text-${t.color}-600`} />
-                                </div>
-                                <div className="min-w-0 flex-1">
-                                    <h3 className="font-black text-slate-900 text-[11px] leading-none mb-1">{t.label}</h3>
-                                    <p className="text-slate-400 text-[9px] font-bold uppercase tracking-tight truncate leading-none">{t.description}</p>
-                                </div>
-                                {isActive && <Check className="h-3.5 w-3.5 text-primary-600 shrink-0" />}
-                            </div>
-                        );
-                    })}
-                </div>
-
-                <div className="bg-slate-900 p-2 rounded-[2rem] shadow-xl border border-slate-800 mb-8">
-                    <div className="grid grid-cols-1 md:grid-cols-12 gap-2">
-                        <div className="md:col-span-4 relative group">
-                            <div className="absolute left-6 top-1/2 -translate-y-1/2 flex items-center justify-center pointer-events-none">
-                                <Search className="h-4 w-4 text-slate-500 group-focus-within:text-primary-500 transition-colors" />
-                            </div>
-                            <input
-                                type="text" 
-                                value={searchQuery} 
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                placeholder="SEARCH STAFF MEMBERS..."
-                                className="w-full pl-16 pr-4 py-4 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl outline-none focus:ring-2 focus:ring-primary-500/20 transition-all placeholder:text-slate-600 font-sans"
-                            />
-                        </div>
-                        <div className="md:col-span-3 relative group">
-                            <div className="absolute left-6 top-1/2 -translate-y-1/2">
-                                <Shield className="h-4 w-4 text-primary-500" />
-                            </div>
-                            <select
-                                value={filterType} 
-                                onChange={(e) => setFilterType(e.target.value)}
-                                className="w-full pl-16 pr-10 py-4 bg-slate-800 text-white text-[10px] font-black uppercase tracking-widest rounded-2xl outline-none focus:ring-2 focus:ring-primary-500/20 appearance-none transition-all cursor-pointer font-sans"
-                            >
-                                <option value="" className="bg-slate-900 text-white font-black">ALL ROLES: VIEW ALL</option>
-                                {visibleStaffTypes.some(type=>['veterinarian','veterinary_technician','veterinary_assistant','veterinary_nurse','veterinary_laboratory_technician'].includes(type.id))&&<option value="veterinary_staff" className="bg-slate-900 text-white font-black">VETERINARY STAFF</option>}
-                                <optgroup label="SERVICE PROFESSIONALS" className="bg-slate-900 text-primary-500 font-black">
-                                    {visibleStaffTypes.filter(t => t.category === 'prof').map(t => (
-                                        <option key={t.id} value={t.id} className="bg-slate-900 text-white font-black">{t.label.toUpperCase()}</option>
-                                    ))}
-                                </optgroup>
-                                <optgroup label="OPERATIONAL SUPPORT" className="bg-slate-900 text-secondary-500 font-black">
-                                    {visibleStaffTypes.filter(t => t.category === 'ops').map(t => (
-                                        <option key={t.id} value={t.id} className="bg-slate-900 text-white font-black">{t.label.toUpperCase()}</option>
-                                    ))}
-                                </optgroup>
-                            </select>
-                            <ChevronDown className="absolute right-6 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500 pointer-events-none" />
-                        </div>
-                        <div className="md:col-span-2"><select value={filterStatus} onChange={e=>setFilterStatus(e.target.value)} className="w-full h-full min-h-12 px-3 bg-slate-800 text-white text-[10px] font-black uppercase rounded-2xl"><option value="">All Statuses</option><option value="active">Active</option><option value="inactive">Inactive</option><option value="suspended">Suspended</option></select></div>
-                        <div className="md:col-span-3"><select value={filterBranch} onChange={e=>setFilterBranch(e.target.value)} className="w-full h-full min-h-12 px-3 bg-slate-800 text-white text-[10px] font-black uppercase rounded-2xl"><option value="">All Branches</option>{Array.from(new Map(staff.filter(s=>s.store).map(s=>[s.store._id||s.store,s.store.name||'Assigned Store'])).entries()).map(([id,name])=><option key={id} value={id}>{name}</option>)}</select></div>
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-2">
-                        <select value={filterSpecialty} onChange={event=>setFilterSpecialty(event.target.value)} className="min-h-10 px-3 bg-slate-800 text-white text-[10px] font-black uppercase rounded-xl"><option value="">All Specialties</option>{[...new Set(staff.map(member=>member.professionalProfile?.specialty).filter(Boolean))].sort().map(value=><option key={value} value={value}>{value}</option>)}</select>
-                        <select value={filterService} onChange={event=>setFilterService(event.target.value)} className="min-h-10 px-3 bg-slate-800 text-white text-[10px] font-black uppercase rounded-xl"><option value="">All Assigned Services</option>{configuration.services.map(service=><option key={service._id} value={service._id}>{service.name}</option>)}</select>
-                        <select value={filterAvailability} onChange={event=>setFilterAvailability(event.target.value)} className="min-h-10 px-3 bg-slate-800 text-white text-[10px] font-black uppercase rounded-xl"><option value="">Any Availability</option><option value="available_today">Available Today</option><option value="unavailable_today">Unavailable Today</option></select>
-                    </div>
-                </div>
-
-                {/* Staff Table */}
-                {loading ? (
-                    <div className="flex justify-center py-20">
-                        <div className="w-8 h-8 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin" />
-                    </div>
-                ) : filtered.length === 0 ? (
-                    <div className="bg-white rounded-2xl border border-slate-100 p-12 text-center">
-                        <Users className="h-10 w-10 text-slate-200 mx-auto mb-3" />
-                        <p className="text-slate-400 font-bold text-sm">
-                            {staff.length === 0 ? 'No staff added yet. Click "Add Staff" to get started.' : 'No staff match your search.'}
-                        </p>
-                    </div>
-                ) : (
-                    <div className="bg-white rounded-3xl border border-slate-100 overflow-hidden shadow-sm">
-                        {/* Desktop Table View (Hidden on Mobile) */}
-                        <div className="hidden sm:block overflow-x-auto">
-                            <table className="w-full">
-                                <thead>
-                                    <tr className="border-b border-slate-50 bg-slate-50/30">
-                                        <th className="text-left px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Staff Member</th>
-                                        <th className="text-left px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest hidden lg:table-cell">Contact Info</th>
-                                        <th className="text-left px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Role</th>
-                                        <th className="text-left px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest hidden md:table-cell">Status</th>
-                                        <th className="text-right px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-50">
-                                    {filtered.map(member => {
-                                 const typeInfo = STAFF_TYPES.find(t => t.id === member.staffType);
-                                 const Icon = typeInfo?.icon || Shield;
-                                        const memberStatus = member.staffType === 'delivery_rider' ? member.riderProfile?.accountStatus : (member.staffStatus || (member.isActive ? 'active' : 'inactive'));
-                                        return (
-                                            <tr key={member._id} className={`hover:bg-slate-50/50 transition-colors ${!member.isActive ? 'opacity-60' : ''}`}>
-                                                <td className="px-6 py-4">
-                                                    <div className="flex items-center gap-3">
-                                                        <div className="w-10 h-10 rounded-2xl bg-slate-100 flex items-center justify-center font-black text-slate-500 text-xs shrink-0 border border-slate-200">
-                                                            {member.firstName[0]}{member.lastName[0]}
-                                                        </div>
-                                                        <div>
-                                                            <p className="font-black text-slate-900 text-[13px] leading-tight">{member.firstName} {member.lastName}</p>
-                                                            <p className="text-slate-400 text-[10px] font-bold uppercase tracking-tighter">@{member.username}</p>
-                                                            <p className="text-slate-400 text-[9px]">{member.riderProfile?.staffId || member.professionalProfile?.staffId || member.store?.name} · {new Date(member.createdAt).toLocaleDateString()}</p>
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                                <td className="px-6 py-4 hidden lg:table-cell">
-                                                    <p className="text-slate-600 text-xs font-medium">{member.email}</p>
-                                                    {member.phone && <p className="text-slate-400 text-[10px]">{member.phone}</p>}
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                    <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-xl border text-[9px] font-black uppercase tracking-widest ${TYPE_STYLES[member.staffType]}`}>
-                                                        <Icon className="h-3.5 w-3.5" />
-                                                        {typeInfo?.label}
-                                                    </span>
-                                                    {member.professionalProfile?.specialty&&<p className="text-[9px] font-bold text-slate-500 mt-1">{member.professionalProfile.specialty}</p>}
-                                                    {member.assignedServices?.length>0&&<p className="text-[8px] text-slate-400 mt-0.5 max-w-44 truncate">{member.assignedServices.map(service=>service.name).join(', ')}</p>}
-                                                </td>
-                                                <td className="px-6 py-4 hidden md:table-cell">
-                                                    <div className="flex flex-col gap-1">
-                                                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest ${memberStatus === 'active' ? 'bg-emerald-50 text-emerald-700' : memberStatus === 'suspended' ? 'bg-amber-50 text-amber-700' : 'bg-rose-50 text-rose-600'}`}>
-                                                            <span className={`w-1.5 h-1.5 rounded-full ${memberStatus === 'active' ? 'bg-emerald-500' : memberStatus === 'suspended' ? 'bg-amber-500' : 'bg-rose-400'}`} />
-                                                            {memberStatus}
-                                                        </span>
-                                                        {member.isActive && member.lastSeen && (new Date() - new Date(member.lastSeen)) < 5 * 60 * 1000 && (
-                                                            <span className="text-[7px] font-black text-emerald-500 uppercase tracking-widest ml-1 animate-pulse">Live Now</span>
-                                                        )}
-                                                    </div>
-                                                </td>
-                                                <td className="px-6 py-4 text-right">
-                                                    <div className="flex items-center justify-end gap-1">
-                                                        <button onClick={() => openEdit(member)} className="p-2 rounded-xl text-slate-400 hover:bg-slate-100 hover:text-slate-900 transition-all"><Edit2 className="h-4 w-4" /></button>
-                                                        {SPECIALIZED_ROLES.includes(member.staffType)&&<button onClick={()=>openSpecialistProfile(member)} title="View professional profile" className="p-2 rounded-xl text-slate-400 hover:bg-emerald-50 hover:text-emerald-600 transition-all"><Eye className="h-4 w-4" /></button>}
-                                                        {member.staffType === 'delivery_rider' && <button onClick={() => openRiderDetails(member)} disabled={loadingRider} title="View rider earnings and delivery history" className="p-2 rounded-xl text-slate-400 hover:bg-orange-50 hover:text-orange-600 transition-all"><Eye className="h-4 w-4" /></button>}
-                                                        <button onClick={() => { setResetTarget(member); setNewPassword(''); }} className="p-2 rounded-xl text-slate-400 hover:bg-secondary-50 hover:text-primary-600 transition-all"><Key className="h-4 w-4" /></button>
-                                                        <button onClick={() => handleToggle(member._id)} className={`p-2 rounded-xl transition-all ${member.isActive ? 'text-slate-400 hover:bg-rose-50 hover:text-rose-600' : 'text-slate-400 hover:bg-emerald-50 hover:text-emerald-600'}`}><Power className="h-4 w-4" /></button>
-                                                        <button onClick={() => handleDelete(member._id, `${member.firstName} ${member.lastName}`)} className="p-2 rounded-xl text-slate-400 hover:bg-rose-50 hover:text-rose-600 transition-all"><Trash2 className="h-4 w-4" /></button>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        );
-                                    })}
-                                </tbody>
-                            </table>
-                        </div>
-
-                        {/* Mobile Card View (Compact List) */}
-                        <div className="sm:hidden divide-y divide-slate-100">
-                             {filtered.map(member => {
-                                 const typeInfo = STAFF_TYPES.find(t => t.id === member.staffType);
-                                 const mobileStatus = member.staffType === 'delivery_rider' ? member.riderProfile?.accountStatus : (member.staffStatus || (member.isActive ? 'active' : 'inactive'));
-                                return (
-                                    <div key={member._id} className={`p-3 flex items-center justify-between gap-3 ${!member.isActive ? 'opacity-60' : ''}`}>
-                                        <div className="flex items-center gap-3 min-w-0">
-                                            <div className="w-8 h-8 rounded-xl bg-slate-100 flex items-center justify-center font-black text-slate-500 text-[10px] shrink-0 border border-slate-200">
-                                                {member.firstName[0]}{member.lastName[0]}
-                                            </div>
-                                            <div className="min-w-0">
-                                                 <p className="font-black text-slate-900 text-[12px] truncate leading-tight">{member.firstName} {member.lastName}</p>
-                                                 {member.professionalProfile?.specialty&&<p className="text-[8px] text-slate-400 truncate">{member.professionalProfile.specialty}</p>}
-                                                <div className="flex items-center gap-2 mt-0.5">
-                                                     <span className={`text-[8px] font-black uppercase tracking-tighter ${mobileStatus === 'active' ? 'text-emerald-600' : mobileStatus === 'suspended' ? 'text-amber-600' : 'text-rose-500'}`}>
-                                                         {mobileStatus}
-                                                    </span>
-                                                    <span className="text-slate-300">/</span>
-                                                    <span className={`text-[8px] font-black uppercase tracking-tighter ${TYPE_STYLES[member.staffType].split(' ')[1].replace('700', '600')}`}>
-                                                        {typeInfo?.label.split(' ')[0]}
-                                                    </span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div className="flex items-center gap-1 shrink-0">
-                                             <button onClick={() => openEdit(member)} className="p-2 bg-slate-50 text-slate-400 rounded-lg"><Edit2 className="h-3 w-3" /></button>
-                                             {SPECIALIZED_ROLES.includes(member.staffType)&&<button onClick={()=>openSpecialistProfile(member)} className="p-2 bg-emerald-50 text-emerald-500 rounded-lg"><Eye className="h-3 w-3" /></button>}
-                                            {member.staffType === 'delivery_rider' && <button onClick={() => openRiderDetails(member)} className="p-2 bg-orange-50 text-orange-500 rounded-lg"><Eye className="h-3 w-3" /></button>}
-                                            <button onClick={() => handleToggle(member._id)} className={`p-2 rounded-lg ${member.isActive ? 'bg-rose-50 text-rose-400' : 'bg-emerald-50 text-emerald-400'}`}><Power className="h-3 w-3" /></button>
-                                            <button onClick={() => handleDelete(member._id, `${member.firstName} ${member.lastName}`)} className="p-2 bg-rose-50 text-rose-400 rounded-lg"><Trash2 className="h-3 w-3" /></button>
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    </div>
-                )}
-            </div>
-
-            {/* Create / Edit Modal */}
-            {showModal && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-[2rem] w-full max-w-2xl shadow-2xl animate-in fade-in zoom-in-95 duration-200 overflow-hidden">
-                        <div className="flex items-center justify-between p-7 border-b border-slate-50 bg-slate-50/30">
-                            <div>
-                                <h2 className="font-black text-slate-900 uppercase tracking-tighter text-xl">
-                                    {editingStaff ? 'Edit' : 'New'} <span className="text-primary-600 italic">Staff Member</span>
-                                </h2>
-                                <p className="text-slate-400 text-[10px] font-black uppercase tracking-[0.15em] mt-0.5">
-                                    {editingStaff ? 'Update profile and access matrix' : 'Hiring and Onboarding System'}
-                                </p>
-                            </div>
-                            <button onClick={() => setShowModal(false)} className="p-2.5 rounded-2xl hover:bg-slate-100 transition-all text-slate-400">
-                                <X className="h-5 w-5" />
-                            </button>
-                        </div>
-
-                        {/* Modal Tabs */}
-                        <div className="flex px-7 pt-4 gap-6 border-b border-slate-50">
-                            {[
-                                { id: 'info', label: 'General Information', icon: Users },
-                                { id: 'permissions', label: 'Access Matrix', icon: Lock }
-                            ].map(tab => (
-                                <button
-                                    key={tab.id}
-                                    onClick={() => setActiveTab(tab.id)}
-                                    className={`flex items-center gap-2 pb-4 text-[10px] font-black uppercase tracking-widest transition-all relative ${activeTab === tab.id ? 'text-primary-600' : 'text-slate-400 hover:text-slate-600'}`}
-                                >
-                                    <tab.icon className="h-3.5 w-3.5" />
-                                    {tab.label}
-                                    {activeTab === tab.id && <div className="absolute bottom-0 left-0 right-0 h-1 bg-primary-600 rounded-t-full" />}
-                                </button>
-                            ))}
-                        </div>
-
-                        <form onSubmit={handleSubmit} className="p-7">
-                            {activeTab === 'info' ? (
-                                <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2 scrollbar-hide">
-                                    {/* Staff Type Selector */}
-                                    <div>
-                                        <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">Professional Specialization *</label>
-                                        
-                                        <div className="space-y-6">
-                                            <div>
-                                                <p className="text-[9px] font-black text-primary-600 uppercase mb-3 px-1">Service Professionals</p>
-                                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                                                    {visibleStaffTypes.filter(t => t.category === 'prof').map(t => {
-                                                        const Icon = t.icon;
-                                                        return (
-                                                            <button
-                                                                key={t.id}
-                                                                type="button"
-                                                                onClick={() => setForm(f => ({ ...f, staffType: t.id, assignedServices: f.staffType === t.id ? f.assignedServices : [] }))}
-                                                                className={`flex flex-col items-center gap-2 p-4 rounded-2xl border-2 transition-all ${form.staffType === t.id ? 'bg-primary-600 border-primary-600 text-white shadow-lg' : 'bg-slate-50 border-slate-100 text-slate-500 hover:border-slate-200'}`}
-                                                            >
-                                                                <Icon className="h-5 w-5" />
-                                                                <span className="text-[9px] font-black uppercase tracking-[0.1em] text-center leading-tight">{t.label}</span>
-                                                            </button>
-                                                        );
-                                                    })}
-                                                </div>
-                                            </div>
-
-                                            <div>
-                                                <p className="text-[9px] font-black text-slate-900 uppercase mb-3 px-1">Operational Support</p>
-                                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                                                    {visibleStaffTypes.filter(t => t.category === 'ops').map(t => {
-                                                        const Icon = t.icon;
-                                                        return (
-                                                            <button
-                                                                key={t.id}
-                                                                type="button"
-                                                                onClick={() => setForm(f => ({ ...f, staffType: t.id, assignedServices: f.staffType === t.id ? f.assignedServices : [] }))}
-                                                                className={`flex flex-col items-center gap-2 p-4 rounded-2xl border-2 transition-all ${form.staffType === t.id ? 'bg-slate-900 border-slate-900 text-white shadow-lg' : 'bg-slate-50 border-slate-100 text-slate-500 hover:border-slate-200'}`}
-                                                            >
-                                                                <Icon className="h-5 w-5" />
-                                                                <span className="text-[9px] font-black uppercase tracking-[0.1em] text-center leading-tight">{t.label}</span>
-                                                            </button>
-                                                        );
-                                                    })}
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <div className="mt-5 p-4 bg-primary-50 rounded-2xl border border-primary-100">
-                                            <p className="text-primary-700 text-[10px] font-bold uppercase tracking-wide leading-relaxed">
-                                                <span className="font-black">Mission Scope:</span> {STAFF_TYPES.find(t => t.id === form.staffType)?.description}
-                                            </p>
-                                        </div>
-                                    </div>
-
-                                    <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400">Assigned Branch *
-                                        <select required value={form.targetStoreId || ''} onChange={event=>changeFormBranch(event.target.value)} className="mt-2 w-full h-10 px-3 rounded-xl border border-slate-200 bg-white text-xs font-bold normal-case tracking-normal">
-                                            <option value="">Select branch</option>
-                                            {(configuration.branches || []).map(branch=><option key={branch._id} value={branch._id}>{branch.name}</option>)}
-                                        </select>
-                                    </label>
-
-                                    {/* Name fields */}
-                                    <div className="grid grid-cols-2 gap-4">
-                                        {[
-                                            { field: 'firstName', label: 'First Name', required: true, placeholder: 'e.g. Juan' },
-                                            { field: 'lastName', label: 'Last Name', required: true, placeholder: 'e.g. Dela Cruz' }
-                                        ].map(f => (
-                                            <div key={f.field}>
-                                                <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">{f.label} *</label>
-                                                <input
-                                                    type="text"
-                                                    value={form[f.field]}
-                                                    onChange={e => setForm(prev => ({ ...prev, [f.field]: e.target.value }))}
-                                                    placeholder={f.placeholder}
-                                                    className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-4 py-3 text-sm font-bold text-slate-900 focus:outline-none focus:border-primary-500 transition-all placeholder:text-slate-300"
-                                                    required={f.required}
-                                                />
-                                            </div>
-                                        ))}
-                                    </div>
-
-                                    {/* Contact fields */}
-                                    {!editingStaff && (
-                                        <>
-                                            <div className="bg-primary-50 rounded-2xl p-4 border border-primary-100 flex items-start gap-4">
-                                                <div className="p-2 bg-white rounded-xl shadow-sm">
-                                                    <Key className="h-4 w-4 text-primary-600" />
-                                                </div>
-                                                <p className="text-[10px] font-black text-primary-700 leading-relaxed uppercase tracking-widest">
-                                                    Automated Credentials: <span className="text-slate-900">A secure token will be dispatched to the professional email provided below.</span>
-                                                </p>
-                                            </div>
-                                            
-                                            <div className="space-y-4">
-                                                <div>
-                                                    <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Professional Email *</label>
-                                                    <input
-                                                        type="email"
-                                                        value={form.email}
-                                                        onChange={e => {
-                                                            const email = e.target.value;
-                                                            setForm(f => ({ 
-                                                                ...f, 
-                                                                email, 
-                                                                username: f.username || email.split('@')[0] 
-                                                            }));
-                                                        }}
-                                                        className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-4 py-3 text-sm font-bold text-slate-900 focus:outline-none focus:border-primary-500 transition-all placeholder:text-slate-300"
-                                                        required
-                                                        placeholder="staff@pawzzle.io"
-                                                    />
-                                                </div>
-
-                                                <div className="grid grid-cols-2 gap-4">
-                                                    <div>
-                                                        <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">System Username</label>
-                                                        <input
-                                                            type="text"
-                                                            value={form.username}
-                                                            onChange={e => setForm(f => ({ ...f, username: e.target.value }))}
-                                                            className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-4 py-3 text-sm font-bold text-slate-900 focus:outline-none focus:border-primary-500 transition-all"
-                                                            required
-                                                        />
-                                                    </div>
-                                                    <div>
-                                                        <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Mobile Number</label>
-                                                        <input
-                                                            type="text"
-                                                            value={form.phone}
-                                                            onChange={e => setForm(f => ({ ...f, phone: e.target.value }))}
-                                                            placeholder="+63"
-                                                            className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-4 py-3 text-sm font-bold text-slate-900 focus:outline-none focus:border-primary-500 transition-all placeholder:text-slate-300"
-                                                        />
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </>
-                                    )}
-
-                                    <SpecializedStaffFields form={form} setForm={setForm} services={configuration.services}/>
-
-                                    {form.staffType === 'delivery_rider' && (
-                                        <div className="rounded-2xl border border-orange-100 bg-orange-50/40 p-4 space-y-4">
-                                            <div><p className="text-[10px] font-black uppercase tracking-widest text-orange-700">Delivery Rider Details</p><p className="text-[10px] text-slate-500 mt-1">Only active riders are eligible for new assignments.</p></div>
-                                            <div className="grid grid-cols-2 gap-3">
-                                                <label className="text-[10px] font-bold text-slate-600">Staff ID *<input required value={form.riderProfile.staffId} onChange={e=>setForm(f=>({...f,riderProfile:{...f.riderProfile,staffId:e.target.value}}))} className="mt-1 w-full h-10 px-3 rounded-xl border bg-white text-xs" placeholder="RDR-001" /></label>
-                                                <label className="text-[10px] font-bold text-slate-600">Account Status<select value={form.riderProfile.accountStatus} onChange={e=>setForm(f=>({...f,riderProfile:{...f.riderProfile,accountStatus:e.target.value}}))} className="mt-1 w-full h-10 px-3 rounded-xl border bg-white text-xs"><option value="active">Active</option><option value="inactive">Inactive</option><option value="suspended">Suspended</option></select></label>
-                                                <label className="text-[10px] font-bold text-slate-600">Vehicle Type *<select required value={form.riderProfile.vehicleType} onChange={e=>setForm(f=>({...f,riderProfile:{...f.riderProfile,vehicleType:e.target.value}}))} className="mt-1 w-full h-10 px-3 rounded-xl border bg-white text-xs"><option value="">Select</option><option value="motorcycle">Motorcycle</option><option value="bicycle">Bicycle</option><option value="car">Car</option><option value="van">Van</option><option value="other">Other</option></select></label>
-                                                <label className="text-[10px] font-bold text-slate-600">Plate Number {form.riderProfile.vehicleType !== 'bicycle' && '*'}<input required={form.riderProfile.vehicleType !== 'bicycle'} value={form.riderProfile.plateNumber} onChange={e=>setForm(f=>({...f,riderProfile:{...f.riderProfile,plateNumber:e.target.value}}))} className="mt-1 w-full h-10 px-3 rounded-xl border bg-white text-xs" /></label>
-                                                <label className="text-[10px] font-bold text-slate-600">License / ID<input value={form.riderProfile.licenseId} onChange={e=>setForm(f=>({...f,riderProfile:{...f.riderProfile,licenseId:e.target.value}}))} className="mt-1 w-full h-10 px-3 rounded-xl border bg-white text-xs" /></label>
-                                                <label className="text-[10px] font-bold text-slate-600">Delivery Zone<input value={form.riderProfile.deliveryZone} onChange={e=>setForm(f=>({...f,riderProfile:{...f.riderProfile,deliveryZone:e.target.value}}))} className="mt-1 w-full h-10 px-3 rounded-xl border bg-white text-xs" /></label>
-                                            </div>
-                                            <div><p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">Earning Configuration</p><div className="grid grid-cols-2 sm:grid-cols-4 gap-2">{[['baseRate','Base Rate'],['incentive','Incentive'],['bonus','Bonus'],['deduction','Deduction']].map(([key,label])=><label key={key} className="text-[9px] font-bold text-slate-500">{label}<input type="number" min="0" step="0.01" value={form.riderProfile.earningRules[key]} onChange={e=>setForm(f=>({...f,riderProfile:{...f.riderProfile,earningRules:{...f.riderProfile.earningRules,[key]:e.target.value}}}))} className="mt-1 w-full h-10 px-2 rounded-xl border bg-white text-xs" /></label>)}</div><p className="text-[10px] font-bold text-orange-700 mt-2">Calculated earning: ₱{Math.max(0, Number(form.riderProfile.earningRules.baseRate||0)+Number(form.riderProfile.earningRules.incentive||0)+Number(form.riderProfile.earningRules.bonus||0)-Number(form.riderProfile.earningRules.deduction||0)).toFixed(2)}</p></div>
-                                            <div><p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">Payout Method</p><div className="grid grid-cols-2 gap-2"><select value={form.riderProfile.payoutMethod.type} onChange={e=>setForm(f=>({...f,riderProfile:{...f.riderProfile,payoutMethod:{...f.riderProfile.payoutMethod,type:e.target.value}}}))} className="h-10 px-3 rounded-xl border bg-white text-xs"><option value="">Not configured</option><option value="gcash">GCash</option><option value="maya">Maya</option><option value="bank_transfer">Bank Transfer</option></select><input placeholder="Account name" value={form.riderProfile.payoutMethod.accountName} onChange={e=>setForm(f=>({...f,riderProfile:{...f.riderProfile,payoutMethod:{...f.riderProfile.payoutMethod,accountName:e.target.value}}}))} className="h-10 px-3 rounded-xl border bg-white text-xs" /><input placeholder="Account number" value={form.riderProfile.payoutMethod.accountNumber} onChange={e=>setForm(f=>({...f,riderProfile:{...f.riderProfile,payoutMethod:{...f.riderProfile.payoutMethod,accountNumber:e.target.value}}}))} className="h-10 px-3 rounded-xl border bg-white text-xs" />{form.riderProfile.payoutMethod.type==='bank_transfer'&&<input placeholder="Bank name" value={form.riderProfile.payoutMethod.bankName} onChange={e=>setForm(f=>({...f,riderProfile:{...f.riderProfile,payoutMethod:{...f.riderProfile.payoutMethod,bankName:e.target.value}}}))} className="h-10 px-3 rounded-xl border bg-white text-xs" />}</div></div>
-                                        </div>
-                                    )}
-
-                                    {/* Edit-only fields */}
-                                    {editingStaff && (
-                                        <div className="space-y-4">
-                                            <div>
-                                                <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Primary Phone</label>
-                                                <input
-                                                    type="text"
-                                                    value={form.phone}
-                                                    onChange={e => setForm(f => ({ ...f, phone: e.target.value }))}
-                                                    className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-4 py-3 text-sm font-bold text-slate-900 focus:outline-none focus:border-primary-500 transition-all"
-                                                />
-                                            </div>
-                                            <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 flex items-center gap-3">
-                                                <AlertCircle className="h-4 w-4 text-slate-400" />
-                                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none">Identity Immutable: Email & Username cannot be modified.</p>
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-                            ) : (
-                                <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
-                                    <PermissionsManager 
-                                        permissions={form.permissions} 
-                                        onChange={(p) => setForm(f => ({ ...f, permissions: p }))}
-                                        roleName={`${form.firstName || 'Staff'}'s Account`}
-                                    />
-                                </div>
-                            )}
-
-                            <div className="flex gap-4 pt-6 border-t border-slate-50 mt-6">
-                                <button
-                                    type="submit"
-                                    disabled={submitting}
-                                    className="flex-1 py-4 bg-slate-900 text-white rounded-[1.5rem] font-black text-[11px] uppercase tracking-widest hover:bg-primary-600 transition-all disabled:opacity-50 shadow-xl flex items-center justify-center gap-3 group"
-                                >
-                                    {submitting ? (
-                                        <RefreshCw className="h-4 w-4 animate-spin" />
-                                    ) : (
-                                        <Check className="h-4 w-4 group-hover:scale-125 transition-transform" />
-                                    )}
-                                    {submitting ? 'Processing Session...' : editingStaff ? 'Update Operational Status' : 'Initiate Staff Onboarding'}
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => setShowModal(false)}
-                                    className="px-8 py-4 bg-white text-slate-400 rounded-[1.5rem] font-black text-[11px] uppercase tracking-widest hover:bg-slate-50 transition-all border-2 border-slate-100"
-                                >
-                                    Dismiss
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            )}
-
-            {riderDetails && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-2xl w-full max-w-3xl max-h-[88vh] overflow-y-auto shadow-2xl p-5 space-y-5">
-                        <div className="flex items-start justify-between"><div><p className="text-[10px] font-black uppercase tracking-widest text-orange-600">Delivery Rider</p><h2 className="text-xl font-black text-slate-900">{riderDetails.rider.firstName} {riderDetails.rider.lastName}</h2><p className="text-xs text-slate-500">{riderDetails.rider.riderProfile?.staffId} · {riderDetails.rider.store?.name} · {riderDetails.rider.riderProfile?.accountStatus}</p></div><button onClick={()=>setRiderDetails(null)} className="p-2 rounded-xl bg-slate-100"><X className="w-4 h-4"/></button></div>
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">{[['Assigned',riderDetails.stats.totalAssigned],['Completed',riderDetails.stats.completed],['Failed',riderDetails.stats.failed],['Success Rate',`${riderDetails.stats.successRate}%`]].map(([label,value])=><div key={label} className="p-3 bg-slate-50 rounded-xl"><p className="text-[9px] uppercase font-black text-slate-400">{label}</p><p className="text-lg font-black text-slate-900">{value}</p></div>)}</div>
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">{[["Today's earnings",riderDetails.earnings.today],['Available payout',riderDetails.earnings.available],['Pending payout',riderDetails.earnings.pending],['Total paid',riderDetails.earnings.totalPaid]].map(([label,value])=><div key={label} className="p-3 border rounded-xl"><p className="text-[9px] uppercase font-black text-slate-400">{label}</p><p className="text-base font-black text-slate-900">₱{Number(value||0).toLocaleString()}</p></div>)}</div>
-                        <div className="flex justify-between items-center"><h3 className="text-xs font-black uppercase tracking-widest text-slate-700">Recent deliveries</h3><button onClick={requestRiderPayout} disabled={!riderDetails.earnings.available} className="h-10 px-4 rounded-xl bg-slate-900 text-white text-[10px] font-black uppercase disabled:opacity-40 flex items-center gap-2"><Wallet className="w-3.5 h-3.5"/>Create payout</button></div>
-                        <div className="border rounded-xl divide-y">{riderDetails.deliveries.length ? riderDetails.deliveries.slice(0,20).map(delivery=><div key={delivery._id} className="p-3 flex justify-between gap-3 text-xs"><div><p className="font-bold text-slate-800">{delivery.order?.orderNumber || delivery.trackingToken}</p><p className="text-slate-500">{delivery.order?.customer?.firstName} {delivery.order?.customer?.lastName}</p></div><div className="text-right"><p className="font-black uppercase text-[10px]">{delivery.status?.replace(/_/g,' ')}</p><p className="text-slate-400">{delivery.deliveredAt ? new Date(delivery.deliveredAt).toLocaleString() : new Date(delivery.createdAt).toLocaleDateString()}</p></div></div>) : <p className="p-5 text-center text-xs text-slate-400">No delivery history yet.</p>}</div>
-                        {riderDetails.payouts.length > 0 && <div><h3 className="text-xs font-black uppercase tracking-widest text-slate-700 mb-2">Payout history</h3><div className="border rounded-xl divide-y">{riderDetails.payouts.map(payout=><div key={payout._id} className="p-3 flex flex-wrap justify-between items-center gap-2 text-xs"><span>{payout.payoutId} · {payout.status}{payout.referenceNumber ? ` · ${payout.referenceNumber}` : ''}</span><div className="flex items-center gap-2"><b>₱{payout.amount.toLocaleString()}</b>{payout.status==='pending'&&<button onClick={()=>updateRiderPayout(payout,'processing')} className="px-2 py-1 rounded bg-blue-50 text-blue-700 font-bold">Process</button>}{payout.status==='processing'&&<><button onClick={()=>updateRiderPayout(payout,'paid')} className="px-2 py-1 rounded bg-emerald-50 text-emerald-700 font-bold">Paid</button><button onClick={()=>updateRiderPayout(payout,'failed')} className="px-2 py-1 rounded bg-rose-50 text-rose-700 font-bold">Failed</button></>}</div></div>)}</div></div>}
-                    </div>
-                </div>
-            )}
-
-            <SpecializedStaffProfileModal data={specialistProfile} onClose={()=>setSpecialistProfile(null)}/>
-
-            {/* Reset Password Modal */}
-            {resetTarget && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl animate-in fade-in zoom-in-95 duration-200 p-6 space-y-4">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <h2 className="font-black text-slate-900 uppercase tracking-tighter">Reset Password</h2>
-                                <p className="text-slate-400 text-xs mt-0.5">for {resetTarget.firstName} {resetTarget.lastName}</p>
-                            </div>
-                            <button onClick={() => setResetTarget(null)} className="p-2 rounded-2xl hover:bg-slate-50 text-slate-400"><X className="h-5 w-5" /></button>
-                        </div>
-
-                        <div className="bg-secondary-50 border border-secondary-200 rounded-2xl p-3 flex items-start gap-2">
-                            <AlertCircle className="h-4 w-4 text-secondary-500 shrink-0 mt-0.5" />
-                            <p className="text-primary-700 text-xs">Share the new password with the staff member securely. They can change it after logging in.</p>
-                        </div>
-
-                        <div>
-                            <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">New Password</label>
-                            <input
-                                type="text"
-                                value={newPassword}
-                                onChange={e => setNewPassword(e.target.value)}
-                                placeholder="Enter new password (min. 6 chars)"
-                                className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-3 py-2.5 text-sm text-slate-900 focus:outline-none focus:border-primary-400"
-                            />
-                        </div>
-
-                        <div className="flex gap-3">
-                            <button
-                                onClick={handleResetPassword}
-                                disabled={resetting}
-                                className="flex-1 py-3.5 bg-secondary-500 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-primary-600 transition-all disabled:opacity-50"
-                            >
-                                {resetting ? 'Resetting...' : 'Reset Password'}
-                            </button>
-                            <button
-                                onClick={() => setResetTarget(null)}
-                                className="px-5 py-3.5 bg-slate-50 text-slate-500 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-slate-100 transition-all border border-slate-100"
-                            >
-                                Cancel
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-        </div>
-    );
-};
-
-export default StaffManagement;
+function ConfirmDialog({ action, setAction, submit, submitting }) {
+  const valid = action.kind !== 'permanent' || action.value === 'PERMANENTLY DELETE';
+  return <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/50 p-3"><div className="w-full max-w-sm rounded-xl bg-white p-4 shadow-2xl"><div className="flex items-start justify-between"><div className="flex h-9 w-9 items-center justify-center rounded-lg bg-amber-50 text-amber-700">{action.kind==='permanent'?<Trash2 size={15}/>:action.kind==='reset'?<KeyRound size={15}/>:<Archive size={15}/>}</div><button onClick={()=>setAction(null)}><X size={15}/></button></div><h3 className="mt-3 text-base font-black text-slate-900">{action.title}</h3>{action.message&&<p className="mt-1 text-xs leading-relaxed text-slate-500">{action.message}</p>}{action.prompt&&<Field label={action.prompt}><input autoFocus type={action.kind==='reset'?'password':'text'} className={`${input} mt-3`} value={action.value||''} onChange={event=>setAction(current=>({...current,value:event.target.value}))}/></Field>}<div className="mt-4 flex justify-end gap-2"><button onClick={()=>setAction(null)} className="h-9 rounded-lg border px-3 text-xs font-bold">Cancel</button><button disabled={submitting||!valid||Boolean(action.prompt&&!action.value)} onClick={()=>submit(action)} className="h-9 rounded-lg bg-slate-900 px-3 text-xs font-bold text-white disabled:opacity-40">Confirm</button></div></div></div>;
+}

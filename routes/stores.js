@@ -18,10 +18,12 @@ const {
   approveVerification,
   rejectVerification,
   getTaxConfiguration,
-  updateTaxConfiguration
+  updateTaxConfiguration,
+  getRefundPolicy,
+  updateRefundPolicy
 } = require('../controllers/storeController');
 const { submitExpansionRequest, upload } = require('../controllers/storeApplicationController');
-const { authenticate, superAdminOnly, authorize, adminOnly, adminOrStaff } = require('../middleware/auth');
+const { authenticate, superAdminOnly, adminOnly, adminOrStaff } = require('../middleware/auth');
 
 // Validation rules
 const createStoreValidation = [
@@ -58,6 +60,8 @@ router.put('/my-store', authenticate, adminOnly, updateStoreValidation, updateSt
 router.get('/settings', authenticate, adminOrStaff, getMyStore);
 router.put('/settings', authenticate, adminOnly, updateStoreValidation, updateStore);
 router.put('/my-store/tax-configuration', authenticate, adminOnly, updateTaxConfiguration);
+router.get('/my-store/refund-policy', authenticate, adminOnly, getRefundPolicy);
+router.put('/my-store/refund-policy', authenticate, adminOnly, updateRefundPolicy);
 router.get('/dashboard/stats', authenticate, adminOrStaff, getStoreDashboard);
 router.post('/', authenticate, adminOnly, createStoreValidation, createStore);
 
@@ -66,6 +70,7 @@ router.get('/', getAllStores);
 router.get('/locations', getStoreLocations);
 router.get('/owner/:ownerId', getStoreByOwner);
 router.get('/:id/tax-configuration', authenticate, getTaxConfiguration);
+router.get('/:id/refund-policy', authenticate, getRefundPolicy);
 router.get('/:id', getStoreById);
 router.get('/:id/details', getStoreDetails);
 
@@ -83,5 +88,6 @@ router.post('/:id/reject-verification', authenticate, superAdminOnly, rejectVeri
 router.patch('/:id/toggle-status', authenticate, superAdminOnly, toggleStoreStatus);
 router.patch('/:id/feature', authenticate, superAdminOnly, featureStore);
 router.put('/:id/tax-configuration', authenticate, superAdminOnly, updateTaxConfiguration);
+router.put('/:id/refund-policy', authenticate, superAdminOnly, updateRefundPolicy);
 
 module.exports = router;

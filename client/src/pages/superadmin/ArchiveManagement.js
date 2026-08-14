@@ -1,11 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
 import { archiveService } from '../../services/apiService';
-import {
-    Archive, RotateCcw, Trash2, Search, Shield, Heart, Package,
-    Scissors, Building, Users, Calendar, ShoppingBag, ChevronRight,
-    AlertTriangle, X, Filter, ChevronDown
-} from 'lucide-react';
+import { Archive, RotateCcw, Trash2, Search, Heart, Package, Scissors, Building, Users, Calendar, ShoppingBag, ChevronRight, AlertTriangle, Filter } from 'lucide-react';
 
 const typeConfig = {
     pets: { icon: Heart, label: 'Pets', color: 'rose' },

@@ -25,21 +25,23 @@ const fileFilter = (req, file, cb) => {
 // Cloudinary storage for single images
 const singleStorage = new CloudinaryStorage({
   cloudinary,
-  params: {
+  params: (req) => ({
     folder: 'pawzzle',
     allowed_formats: ['jpeg', 'jpg', 'png', 'gif', 'webp'],
-    transformation: [{ quality: 'auto', fetch_format: 'auto' }]
-  }
+    transformation: [{ quality: 'auto', fetch_format: 'auto' }],
+    context: { owner: String(req.user?._id || '') }
+  })
 });
 
 // Cloudinary storage for multiple images
 const multipleStorage = new CloudinaryStorage({
   cloudinary,
-  params: {
+  params: (req) => ({
     folder: 'pawzzle',
     allowed_formats: ['jpeg', 'jpg', 'png', 'gif', 'webp'],
-    transformation: [{ quality: 'auto', fetch_format: 'auto' }]
-  }
+    transformation: [{ quality: 'auto', fetch_format: 'auto' }],
+    context: { owner: String(req.user?._id || '') }
+  })
 });
 
 // Configure multer upload (single)
@@ -59,11 +61,12 @@ const uploadMulti = multer({
 // Cloudinary storage for documents (PDF, Doc)
 const documentStorage = new CloudinaryStorage({
   cloudinary,
-  params: {
+  params: (req) => ({
     folder: 'pawzzle/documents',
     resource_type: 'auto', // Support PDF, DOCX, etc.
-    allowed_formats: ['jpeg', 'jpg', 'png', 'pdf', 'doc', 'docx']
-  }
+    allowed_formats: ['jpeg', 'jpg', 'png', 'pdf', 'doc', 'docx'],
+    context: { owner: String(req.user?._id || '') }
+  })
 });
 
 // Configure multer for documents
@@ -85,6 +88,10 @@ const uploadDoc = multer({
 // Middleware exports
 const uploadSingle = upload.single('image');
 const uploadMultiple = uploadMulti.array('images', 10);
+const uploadServicePhotos = uploadMulti.fields([
+  { name: 'images', maxCount: 5 },
+  { name: 'image', maxCount: 1 }
+]);
 
 // Handle upload errors
 const handleUploadError = (err, req, res, next) => {
@@ -103,6 +110,7 @@ module.exports = {
   cloudinary,
   uploadSingle,
   uploadMultiple,
+  uploadServicePhotos,
   uploadDoc,
   handleUploadError
 };

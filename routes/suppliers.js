@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { authenticate, adminOrStaff, superAdminOnly } = require('../middleware/auth');
+const { authenticate, superAdminOnly } = require('../middleware/auth');
 
 const {
   registerSupplier, getMySupplierProfile, updateSupplierProfile, getSupplierDashboard,

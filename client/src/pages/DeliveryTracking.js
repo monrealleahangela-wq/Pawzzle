@@ -4,15 +4,11 @@ import { MapContainer, TileLayer, Marker, Polyline, useMap } from 'react-leaflet
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import axios from 'axios';
-import { 
-  MapPin, MessageSquare, Navigation, CheckCircle, Package, Truck, 
-  Clock, ArrowLeft, Send, User, Store as StoreIcon, ShieldCheck, AlertCircle,
-  Map as MapIcon, Info, Navigation2, X
-} from 'lucide-react';
+import { MapPin, MessageSquare, Navigation, CheckCircle, Package, Send, User, ShieldCheck, AlertCircle, Navigation2, X } from 'lucide-react';
 import { Popup } from 'react-leaflet';
-import socket from '../utils/socket';
+import socket, { setDeliveryCapability, clearDeliveryCapability } from '../utils/socket';
 import { toast } from 'react-toastify';
-import { deliveryService, getImageUrl } from '../services/apiService';
+import { deliveryService } from '../services/apiService';
 import RiderDeliveryWorkspace from '../components/delivery/RiderDeliveryWorkspace';
 
 // Define custom icons for the map
@@ -96,9 +92,11 @@ const DeliveryTracking = () => {
 
   useEffect(() => {
     fetchDelivery();
+    setDeliveryCapability(token);
     if (!socket.connected) socket.connect();
     return () => {
       socket.disconnect();
+      clearDeliveryCapability();
     };
   }, [token]);
 

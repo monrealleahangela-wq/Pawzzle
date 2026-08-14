@@ -5,6 +5,7 @@ const User = require('../models/User');
 const { isRoleEligibleForService } = require('../utils/staffSpecialization');
 const { calculateServicePrice } = require('../utils/pricingEngine');
 const { calculateTransactionTax, normalizeTaxConfiguration } = require('../utils/taxCalculator');
+const { canOperateStore } = require('../utils/authorizationPolicy');
 
 const DEFAULT_REQUIREMENTS = [
   "Valid ID and contact details",
@@ -105,7 +106,7 @@ const createService = async (req, res) => {
     const isOwner = store.owner.toString() === req.user._id.toString();
     const isStaff = req.user.role === 'staff' && req.user.store && req.user.store.toString() === req.params.storeId.toString();
 
-    if (req.user.role !== 'super_admin' && !isOwner && !isStaff) {
+    if (!(await canOperateStore(req.user, store._id, ['services.create', 'services.manage']))) {
       return res.status(403).json({ message: 'You can only create services for your own or assigned store' });
     }
 
@@ -298,7 +299,7 @@ const updateService = async (req, res) => {
     const isOwner = service.store && service.store.owner && service.store.owner.toString() === req.user._id.toString();
     const isStaff = req.user.role === 'staff' && req.user.store && service.store && service.store._id.toString() === req.user.store.toString();
 
-    if (req.user.role !== 'super_admin' && !isOwner && !isStaff) {
+    if (!(await canOperateStore(req.user, service.store._id, ['services.update', 'services.manage']))) {
       return res.status(403).json({ message: 'You can only update services for your own or assigned store' });
     }
 
@@ -340,7 +341,7 @@ const deleteService = async (req, res) => {
     const isOwner = service.store && service.store.owner && service.store.owner.toString() === req.user._id.toString();
     const isStaff = req.user.role === 'staff' && req.user.store && service.store && service.store._id.toString() === req.user.store.toString();
 
-    if (req.user.role !== 'super_admin' && !isOwner && !isStaff) {
+    if (!(await canOperateStore(req.user, service.store._id, ['services.delete', 'services.manage']))) {
       return res.status(403).json({ message: 'You can only delete services for your own or assigned store' });
     }
 
@@ -436,6 +437,10 @@ const getServiceById = async (req, res) => {
     if (!service || service.isDeleted) {
       console.log('⚠️ Service not found (or deleted):', req.params.id);
       return res.status(404).json({ message: 'Service not found' });
+    }
+    if (req.baseUrl?.includes('/admin')
+        && !(await canOperateStore(req.user, service.store?._id || service.store, ['services.view', 'services.manage']))) {
+      return res.status(403).json({ message: 'Access denied for this service.' });
     }
     res.json(service);
   } catch (error) {

@@ -17,7 +17,7 @@ const {
   confirmBookingForPayment,
   getBookingStaffProfile
 } = require('../controllers/bookingController');
-const { authenticate, adminOrStaff } = require('../middleware/auth');
+const { authenticate, adminOrStaff, requirePermission } = require('../middleware/auth');
 const { storeAdminOnly } = require('../middleware/storeAuth');
 
 // Validation rules
@@ -57,9 +57,9 @@ router.delete('/:bookingId', authenticate, cancelBooking);
 router.get('/all', authenticate, getAllBookings);
 
 // Store admin routes
-router.get('/store/:storeId', authenticate, storeAdminOnly, getStoreBookings);
-router.put('/:bookingId/status', authenticate, storeAdminOnly, updateStatusValidation, updateBookingStatus);
-router.post('/validate-qr', authenticate, adminOrStaff, validateBookingQR);
+router.get('/store/:storeId', authenticate, requirePermission('bookings.assigned', 'bookings.view', 'bookings.manage'), storeAdminOnly, getStoreBookings);
+router.put('/:bookingId/status', authenticate, requirePermission('bookings.update', 'bookings.manage'), storeAdminOnly, updateStatusValidation, updateBookingStatus);
+router.post('/validate-qr', authenticate, adminOrStaff, requirePermission('bookings.update', 'bookings.manage'), validateBookingQR);
 router.get('/:id', authenticate, getBookingById);
 
 module.exports = router;

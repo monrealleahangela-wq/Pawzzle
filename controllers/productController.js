@@ -1,7 +1,8 @@
 const { validationResult } = require('express-validator');
 const Product = require('../models/Product');
 const StockSyncService = require('../services/stockSyncService');
-const mongoose = require('mongoose');
+const { isStoreAdmin, isOperationalStaff } = require('../config/permissions');
+const { canOperateStore } = require('../utils/authorizationPolicy');
 
 // Helper: auto-find or auto-create a default store for an admin
 const resolveAdminStore = async (user) => {
@@ -68,9 +69,9 @@ const getAllProducts = async (req, res) => {
     const isAdminRoute = req.originalUrl && req.originalUrl.includes('/admin');
 
     if (isAdminRoute) {
-      if (req.user.role === 'staff' && req.user.store) {
+      if (isOperationalStaff(req.user) && req.user.store) {
         filter.store = req.user.store;
-      } else if (req.user.role === 'admin') {
+      } else if (isStoreAdmin(req.user)) {
         // Multi-tenant isolation: check if they have a store or fallback to addedBy
         if (req.user.store) {
           filter.store = req.user.store;
@@ -139,6 +140,10 @@ const getProductById = async (req, res) => {
     if (!product || product.isDeleted) {
       return res.status(404).json({ message: 'Product not found' });
     }
+    if (req.baseUrl?.includes('/admin')
+        && !(await canOperateStore(req.user, product.store?._id || product.store, ['products.view', 'inventory.view']))) {
+      return res.status(403).json({ message: 'Access denied for this product.' });
+    }
 
     res.json({ product });
   } catch (error) {
@@ -203,19 +208,7 @@ const updateProduct = async (req, res) => {
       return res.status(404).json({ message: 'Product not found' });
     }
 
-    // Check permissions safely
-    const userId = (req.user._id || req.user.id).toString();
-    const isOwner = product.addedBy && product.addedBy.toString() === userId;
-    const isStoreStaff = req.user.role === 'staff' && req.user.store && product.store && product.store.toString() === req.user.store.toString();
-    
-    let isStoreOwner = false;
-    if (req.user.role === 'admin' && product.store) {
-      const Store = require('../models/Store');
-      const store = await Store.findById(product.store);
-      isStoreOwner = store && store.owner && store.owner.toString() === userId;
-    }
-
-    if (req.user.role !== 'super_admin' && !isOwner && !isStoreStaff && !isStoreOwner) {
+    if (!(await canOperateStore(req.user, product.store, ['products.manage', 'inventory.adjust']))) {
       return res.status(403).json({ message: 'Access denied. You do not have permission to update this asset.' });
     }
 
@@ -261,13 +254,7 @@ const deleteProduct = async (req, res) => {
       return res.status(404).json({ message: 'Product not found' });
     }
 
-    // Check permissions: Owner, store staff, or super admin
-    const isOwner = product.addedBy.toString() === (req.user.id || req.user._id).toString();
-    const isStoreStaff = req.user.role === 'staff' && req.user.store && product.store && product.store.toString() === req.user.store.toString();
-    const Store = require('../models/Store');
-    const isStoreOwner = req.user.role === 'admin' && product.store && (await Store.findById(product.store))?.owner.toString() === req.user._id.toString();
-
-    if (req.user.role !== 'super_admin' && !isOwner && !isStoreStaff && !isStoreOwner) {
+    if (!(await canOperateStore(req.user, product.store, ['products.manage', 'inventory.adjust']))) {
       return res.status(403).json({ message: 'Access denied' });
     }
 
@@ -296,13 +283,7 @@ const updateStock = async (req, res) => {
       return res.status(404).json({ message: 'Product not found' });
     }
 
-    // Check permissions: Owner, store staff, or super admin
-    const isOwner = product.addedBy.toString() === (req.user.id || req.user._id).toString();
-    const isStoreStaff = req.user.role === 'staff' && req.user.store && product.store && product.store.toString() === req.user.store.toString();
-    const Store = require('../models/Store');
-    const isStoreOwner = req.user.role === 'admin' && product.store && (await Store.findById(product.store))?.owner.toString() === req.user._id.toString();
-
-    if (req.user.role !== 'super_admin' && !isOwner && !isStoreStaff && !isStoreOwner) {
+    if (!(await canOperateStore(req.user, product.store, ['inventory.adjust']))) {
       return res.status(403).json({ message: 'Access denied' });
     }
 

@@ -9,6 +9,12 @@ const Store = require('../models/Store');
 const Review = require('../models/Review');
 const Service = require('../models/Service');
 const PetProfile = require('../models/PetProfile');
+const Delivery = require('../models/Delivery');
+const Supplier = require('../models/Supplier');
+const StoreApplication = require('../models/StoreApplication');
+const PurchaseOrder = require('../models/PurchaseOrder');
+const DecisionSupportService = require('../services/decisionSupportService');
+const { isPlatformAdmin, isStoreAdmin, isOperationalStaff } = require('../config/permissions');
 
 // ===== CUSTOMER DSS =====
 const getLegacyCustomerInsights = async (req, res) => {
@@ -372,7 +378,7 @@ const getAdminInsights = async (req, res) => {
         if (queryStoreId) {
             store = await Store.findOne({ _id: queryStoreId });
             // Verify ownership if not super admin
-            if (req.user.role !== 'super_admin' && store && store.owner.toString() !== req.user._id.toString()) {
+            if (!isPlatformAdmin(req.user) && store && store.owner.toString() !== req.user._id.toString()) {
                 return res.status(403).json({ message: 'Access denied to this store' });
             }
         } else {
@@ -506,32 +512,32 @@ const getAdminInsights = async (req, res) => {
         // Restock Recommendations with Sales Velocity Analysis
         needsRestock.forEach(p => {
             const perf = enrichedPerformance.find(s => s._id.toString() === p._id.toString());
-
-            // Calculate Velocity (Sales per day over 30 days)
             const salesIn30Days = perf ? perf.totalSold : 0;
-            const velocityPerDay = salesIn30Days / 30;
-
-            // Calculate "Days of Stock Remaining"
-            let daysRemaining = 99; // Default if no sales
-            if (velocityPerDay > 0) {
-                daysRemaining = Math.max(1, Math.round(p.stockQuantity / velocityPerDay));
-            } else if (p.stockQuantity === 0) {
-                daysRemaining = 0;
-            }
-
-            // Personalized Advisory String (Requirement)
-            const personalizedAlert = `${p.name} stock is low. Based on recent sales trends, it is recommended to restock within ${daysRemaining === 0 ? 'immediately' : daysRemaining + ' days'}.`;
+            const explained = DecisionSupportService.explainInventoryPosition({
+                product: p,
+                inventory: { quantity: p.stockQuantity, reorderLevel: p.minStockThreshold || 10 },
+                unitsLast30: salesIn30Days,
+                unitsPrevious30: 0,
+                observations: perf ? 1 : 0
+            });
 
             recommendations.push({
                 type: 'restock',
                 title: 'Smart Inventory Alert',
                 productId: p._id,
                 productName: p.name,
-                message: personalizedAlert,
-                priority: daysRemaining <= 3 ? 'critical' : 'high',
-                velocity: velocityPerDay.toFixed(2),
-                daysUntilOut: daysRemaining,
-                action: 'Refill Stock'
+                message: explained.why,
+                priority: explained.inventoryPosition.daysRemaining !== null && explained.inventoryPosition.daysRemaining <= 3 ? 'critical' : 'high',
+                velocity: explained.usageTrend.dailyUsage.toFixed(2),
+                daysUntilOut: explained.inventoryPosition.daysRemaining,
+                suggestedReorderQuantity: explained.decision.suggestedReorderQuantity,
+                confidence: explained.confidence,
+                confidenceLabel: explained.confidenceLabel,
+                forecastReason: explained.forecastReason,
+                why: explained.why,
+                basedOn: explained.basedOn,
+                recommendedAction: explained.recommendedAction,
+                action: 'Review Reorder'
             });
         });
 
@@ -544,20 +550,26 @@ const getAdminInsights = async (req, res) => {
                     productName: item.name,
                     message: `${item.name} is seeing high acquisition rates. Consider increasing the next purchase order by 20%.`,
                     priority: 'medium',
-                    action: 'Adjust Strategy'
+                    action: 'Adjust Strategy',
+                    why: `${item.totalSold} paid units were recorded for ${item.name}.`,
+                    basedOn: [`${item.totalSold} units sold`, `₱${Number(item.revenue || 0).toLocaleString()} recorded revenue`],
+                    recommendedAction: 'Validate the recent trend and supplier lead time before increasing the next purchase quantity.'
                 });
             }
         });
 
         // Promotion/Discount Recommendations
         slowMoving.forEach(p => {
-            recommendations.push({
+                recommendations.push({
                 type: 'promotion',
                 title: 'Stagnant Inventory alert',
                 productName: p.name,
                 message: `${p.name} has been slow-moving for 30+ days. Recommend a 15% discount or bundle with top-sellers.`,
                 priority: 'medium',
-                action: 'Create Promo'
+                action: 'Create Promo',
+                why: `${p.name} remains above 10 units with fewer than five recorded paid sales.`,
+                basedOn: [`${p.stockQuantity} units on hand`, 'Fewer than five recorded sales in the observed period'],
+                recommendedAction: 'Review a bundle or targeted promotion after checking margin and expiration risk.'
             });
         });
 
@@ -609,7 +621,7 @@ const getAdminInsights = async (req, res) => {
         ]);
 
         // Calculate Average Rating
-        const storeReviews = await Review.find({ store: storeId, isDeleted: { $ne: true } });
+        const storeReviews = await Review.find({ storeId, isDeleted: { $ne: true } });
         const avgRating = storeReviews.length > 0
             ? (storeReviews.reduce((sum, r) => sum + r.rating, 0) / storeReviews.length).toFixed(1)
             : 5.0;
@@ -670,7 +682,7 @@ const getAdminInsights = async (req, res) => {
 // ===== STAFF DECISION SUPPORT SYSTEM (DSS) =====
 const getStaffInsights = async (req, res) => {
     try {
-        if (req.user.role !== 'staff' && req.user.role !== 'admin' && req.user.role !== 'super_admin') {
+        if (!isOperationalStaff(req.user) && !isStoreAdmin(req.user) && !isPlatformAdmin(req.user)) {
             return res.status(403).json({ message: 'Access restricted to Staff.' });
         }
 
@@ -792,17 +804,28 @@ const getStaffInsights = async (req, res) => {
 // ===== SUPER ADMIN DSS =====
 const getSuperAdminInsights = async (req, res) => {
     try {
-        const superAdminUsers = await User.find({ role: 'super_admin' }).select('_id');
+        const superAdminUsers = await User.find({ role: { $in: ['super_admin', 'platform_admin'] } }).select('_id');
         const superAdminIds = superAdminUsers.map(u => u._id);
 
         const totalUsers = await User.countDocuments({ isDeleted: { $ne: true } });
-        const totalCustomers = await User.countDocuments({ role: 'customer', isDeleted: { $ne: true } });
-        const totalAdmins = await User.countDocuments({ role: 'admin', isDeleted: { $ne: true } });
+        const totalCustomers = await User.countDocuments({ role: 'customer', isActive: { $ne: false }, isDeleted: { $ne: true } });
+        const totalAdmins = await User.countDocuments({ role: { $in: ['admin', 'store_owner'] }, isDeleted: { $ne: true } });
+        const recentUsers = await User.find({ isDeleted: { $ne: true } })
+            .select('firstName lastName role isActive createdAt')
+            .sort({ createdAt: -1 })
+            .limit(8)
+            .lean();
 
         const storeFilter = { isDeleted: { $ne: true }, owner: { $nin: superAdminIds } };
         const totalStores = await Store.countDocuments(storeFilter);
         const activeStores = await Store.countDocuments({ ...storeFilter, isActive: true });
-        const pendingApplications = await Store.countDocuments({ ...storeFilter, isActive: false });
+        const [verifiedStores, actualPendingApplications, activeSuppliers, totalOrderCount, totalBookingCount] = await Promise.all([
+            Store.countDocuments({ ...storeFilter, verificationStatus: 'verified' }),
+            StoreApplication.countDocuments({ status: { $in: ['submitted', 'pending_review', 'requires_more_info'] } }),
+            Supplier.countDocuments({ status: 'verified', isActive: { $ne: false }, isDeleted: { $ne: true } }),
+            Order.countDocuments({ isDeleted: { $ne: true } }),
+            Booking.countDocuments({ isDeleted: { $ne: true } })
+        ]);
 
         // Revenue from PAID transactions
         const allOrders = await Order.find({ paymentStatus: 'paid', isDeleted: { $ne: true } })
@@ -811,6 +834,11 @@ const getSuperAdminInsights = async (req, res) => {
         const recentOrders = allOrders.slice(0, 8);
         
         const allBookings = await Booking.find({ paymentStatus: 'paid', isDeleted: { $ne: true } });
+        const [platformBookings, platformPurchaseOrders, platformStores] = await Promise.all([
+            Booking.find({ isDeleted: { $ne: true } }).select('store status bookingDate startTime createdAt').lean(),
+            PurchaseOrder.find({ isDeleted: { $ne: true } }).populate('supplier', 'businessName').lean(),
+            Store.find(storeFilter).select('name isActive verificationStatus').lean()
+        ]);
         
         const platformRevenue = allOrders.reduce((s, o) => s + (o.totalAmount || 0), 0);
         const bookingRevenue = allBookings.reduce((s, b) => s + (b.totalPrice || 0), 0);
@@ -828,6 +856,21 @@ const getSuperAdminInsights = async (req, res) => {
             { $group: { _id: { month: { $month: '$createdAt' }, year: { $year: '$createdAt' } }, revenue: { $sum: '$totalAmount' }, fees: { $sum: '$platformFee' }, orders: { $sum: 1 } } },
             { $sort: { '_id.year': 1, '_id.month': 1 } }
         ]);
+        const monthlyBookingRevenue = await Booking.aggregate([
+            { $match: { createdAt: { $gte: sixMonthsAgo }, paymentStatus: 'paid', isDeleted: { $ne: true } } },
+            { $group: { _id: { month: { $month: '$createdAt' }, year: { $year: '$createdAt' } }, revenue: { $sum: '$totalPrice' }, fees: { $sum: '$platformFee' }, bookings: { $sum: 1 } } },
+            { $sort: { '_id.year': 1, '_id.month': 1 } }
+        ]);
+        const monthlyRevenueMap = new Map(monthlyRevenue.map(row => [`${row._id.year}-${row._id.month}`, row]));
+        monthlyBookingRevenue.forEach(row => {
+            const key = `${row._id.year}-${row._id.month}`;
+            const existing = monthlyRevenueMap.get(key) || { _id: row._id, revenue: 0, fees: 0, orders: 0 };
+            existing.revenue += row.revenue || 0;
+            existing.fees += row.fees || 0;
+            existing.bookings = row.bookings || 0;
+            monthlyRevenueMap.set(key, existing);
+        });
+        const combinedMonthlyRevenue = [...monthlyRevenueMap.values()].sort((a, b) => a._id.year - b._id.year || a._id.month - b._id.month);
 
         // User growth trend
         const userGrowth = await User.aggregate([
@@ -858,6 +901,34 @@ const getSuperAdminInsights = async (req, res) => {
             { $match: { isDeleted: { $ne: true } } },
             { $group: { _id: null, avg: { $avg: '$rating' } } }
         ]);
+        const deliveryRows = await Delivery.find({}).select('status assignmentType pickedUpAt assignedAt deliveredAt createdAt').lean();
+        const completedDeliveries = deliveryRows.filter(row => row.status === 'delivered');
+        const deliveryDurations = completedDeliveries.map(row => {
+            const start = row.pickedUpAt || row.assignedAt || row.createdAt;
+            return start && row.deliveredAt ? (new Date(row.deliveredAt) - new Date(start)) / 60000 : null;
+        }).filter(value => value !== null && value >= 0);
+        const applicationStatus = await StoreApplication.aggregate([
+            { $group: { _id: '$status', count: { $sum: 1 } } },
+            { $sort: { count: -1 } }
+        ]);
+        const platformBookingDemand = DecisionSupportService.bookingDemandForecast(platformBookings);
+        const platformSupplierReliability = DecisionSupportService.supplierInsights(platformPurchaseOrders);
+        const storesNeedingIntervention = platformStores.map(storeRow => {
+            const ownBookings = platformBookings.filter(booking => String(booking.store) === String(storeRow._id));
+            const cancelled = ownBookings.filter(booking => ['cancelled', 'rejected', 'no_show'].includes(booking.status)).length;
+            const cancellationRate = ownBookings.length ? cancelled / ownBookings.length * 100 : 0;
+            const reasons = [];
+            if (!storeRow.isActive) reasons.push('Store is inactive.');
+            if (cancellationRate >= 25) reasons.push(`${cancellationRate.toFixed(1)}% booking cancellation rate.`);
+            if (!ownBookings.length) reasons.push('No recorded booking activity.');
+            return reasons.length ? {
+                store: { id: storeRow._id, name: storeRow.name },
+                severity: !storeRow.isActive || cancellationRate >= 35 ? 'high' : 'medium',
+                why: reasons.join(' '),
+                basedOn: [`${ownBookings.length} recorded bookings`, `${cancelled} cancelled or rejected bookings`, `Active status: ${storeRow.isActive !== false}`],
+                recommendedAction: !storeRow.isActive ? 'Review store activation and application status.' : cancellationRate >= 25 ? 'Review booking cancellation reasons and staffing coverage.' : 'Verify onboarding and service availability.'
+            } : null;
+        }).filter(Boolean).slice(0, 8);
 
         // Monthly platform growth (Customers vs Stores)
         const customerGrowth = await User.aggregate([
@@ -930,11 +1001,11 @@ const getSuperAdminInsights = async (req, res) => {
 
         // Smart recommendations
         const recommendations = [];
-        if (allOrders.length > 0 && cancelledOrders > allOrders.length * 0.25) recommendations.push({ type: 'critical', title: 'High Platform Cancellation Rate', message: `${((cancelledOrders / allOrders.length) * 100).toFixed(0)}% orders cancelled. Investigate root causes.`, priority: 'critical' });
-        if (totalStores > 0 && activeStores < totalStores * 0.7) recommendations.push({ type: 'warning', title: 'Inactive Stores', message: `${totalStores - activeStores} stores are inactive. Consider outreach programs.`, priority: 'high' });
-        if (totalCustomers > 0 && allOrders.length > 0 && (allOrders.length / totalCustomers) < 1) recommendations.push({ type: 'info', title: 'Low Purchase Rate', message: 'Average orders per customer is below 1. Consider marketing campaigns.', priority: 'medium' });
-        if (totalAdoptions > 0 && (successfulAdoptions / totalAdoptions) < 0.5) recommendations.push({ type: 'warning', title: 'Low Adoption Success Rate', message: `Only ${((successfulAdoptions / totalAdoptions) * 100).toFixed(0)}% adoptions succeed. Review the adoption process.`, priority: 'high' });
-        if (totalStores === 0) recommendations.push({ type: 'info', title: 'No Stores Yet', message: 'Approve store applications to populate the platform with businesses.', priority: 'medium' });
+        if (allOrders.length > 0 && cancelledOrders > allOrders.length * 0.25) recommendations.push({ type: 'critical', title: 'High Platform Cancellation Rate', message: `${((cancelledOrders / allOrders.length) * 100).toFixed(0)}% orders cancelled. Investigate root causes.`, priority: 'critical', why: 'The paid-order cancellation share is above the 25% intervention threshold.', basedOn: [`${cancelledOrders} cancelled of ${allOrders.length} paid orders`], recommendedAction: 'Review cancellation reasons and affected stores before changing policy.' });
+        if (totalStores > 0 && activeStores < totalStores * 0.7) recommendations.push({ type: 'warning', title: 'Inactive Stores', message: `${totalStores - activeStores} stores are inactive. Consider outreach programs.`, priority: 'high', why: 'Fewer than 70% of registered stores are currently active.', basedOn: [`${activeStores} active of ${totalStores} stores`], recommendedAction: 'Review inactive store verification and operational status.' });
+        if (totalCustomers > 0 && allOrders.length > 0 && (allOrders.length / totalCustomers) < 1) recommendations.push({ type: 'info', title: 'Low Purchase Rate', message: 'Average orders per customer is below 1. Consider marketing campaigns.', priority: 'medium', why: 'Recorded paid orders are fewer than active customer accounts.', basedOn: [`${allOrders.length} paid orders`, `${totalCustomers} active customers`], recommendedAction: 'Inspect conversion by store and category before planning engagement activity.' });
+        if (totalAdoptions > 0 && (successfulAdoptions / totalAdoptions) < 0.5) recommendations.push({ type: 'warning', title: 'Low Adoption Success Rate', message: `Only ${((successfulAdoptions / totalAdoptions) * 100).toFixed(0)}% adoptions succeed. Review the adoption process.`, priority: 'high', why: 'Fewer than half of recorded adoption requests reached an approved or delivered state.', basedOn: [`${successfulAdoptions} successful of ${totalAdoptions} requests`], recommendedAction: 'Review application rejection, handover, and cancellation reasons.' });
+        if (totalStores === 0) recommendations.push({ type: 'info', title: 'No Stores Yet', message: 'Approve store applications to populate the platform with businesses.', priority: 'medium', why: 'There are no non-platform stores in the registry.', basedOn: ['Current store records'], recommendedAction: 'Review pending store applications.' });
 
         res.json({
             platform: {
@@ -943,12 +1014,15 @@ const getSuperAdminInsights = async (req, res) => {
                 totalAdmins,
                 totalStores,
                 activeStores,
-                pendingApplications,
+                verifiedStores,
+                pendingApplications: actualPendingApplications,
+                activeSuppliers,
                 totalPets,
                 totalProducts,
                 totalReviews,
                 avgRating: avgPlatformRating[0]?.avg?.toFixed(1) || 0
             },
+            recentUsers,
             revenue: {
                 totalGross: totalGrossRevenue,
                 totalPlatformFees: totalPlatformIncome,
@@ -957,18 +1031,35 @@ const getSuperAdminInsights = async (req, res) => {
                 combined: totalGrossRevenue
             },
             orders: {
-                total: allOrders.length,
+                total: totalOrderCount,
+                paid: allOrders.length,
                 delivered: deliveredOrders,
                 cancelled: cancelledOrders,
                 fulfillmentRate: parseFloat(fulfillmentRate),
                 recent: recentOrders
             },
+            bookings: {
+                total: totalBookingCount,
+                paid: allBookings.length,
+                completed: allBookings.filter(row => ['completed', 'finished'].includes(row.status)).length,
+                pending: allBookings.filter(row => ['pending', 'awaiting_customer_confirmation', 'awaiting_payment'].includes(row.status)).length
+            },
+            deliveries: {
+                total: deliveryRows.length,
+                active: deliveryRows.filter(row => !['delivered', 'cancelled', 'returned_to_store'].includes(row.status)).length,
+                completed: completedDeliveries.length,
+                failed: deliveryRows.filter(row => ['failed_attempt', 'returned_to_store', 'declined'].includes(row.status)).length,
+                internal: deliveryRows.filter(row => row.assignmentType === 'internal').length,
+                thirdParty: deliveryRows.filter(row => row.assignmentType === 'third_party').length,
+                averageMinutes: deliveryDurations.length ? Math.round(deliveryDurations.reduce((total, value) => total + value, 0) / deliveryDurations.length) : 0
+            },
+            applicationStatus,
             adoptions: {
                 total: totalAdoptions,
                 successful: successfulAdoptions,
                 successRate: totalAdoptions ? parseFloat(((successfulAdoptions / totalAdoptions) * 100).toFixed(1)) : 0
             },
-            monthlyRevenue,
+            monthlyRevenue: combinedMonthlyRevenue,
             userGrowth,
             customerGrowth,
             storeGrowth,
@@ -987,7 +1078,13 @@ const getSuperAdminInsights = async (req, res) => {
                 previous: previousVelocity,
                 trend: velocityTrend.toFixed(1)
             },
-            recommendations
+            recommendations,
+            platformDecisionSupport: {
+                highestPerformingStores: storePerformance.map(row => ({ ...row, why: `${row.storeName} leads recorded delivered-order revenue.`, basedOn: [`${row.orderCount} delivered orders`, `₱${Number(row.revenue || 0).toLocaleString()} revenue`], recommendedAction: 'Monitor this store as a positive operating benchmark.' })),
+                storesNeedingIntervention,
+                supplierReliability: platformSupplierReliability.slice(0, 8),
+                bookingDemand: platformBookingDemand
+            }
         });
     } catch (error) {
         console.error('Super Admin DSS error:', error);

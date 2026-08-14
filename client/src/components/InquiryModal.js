@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, ClipboardCheck, Info, Calendar, MapPin, User, Phone, Heart, Wallet, CheckCircle2, Zap } from 'lucide-react';
+import { X, ClipboardCheck, Calendar, MapPin, User, Phone, Heart, Wallet, CheckCircle2 } from 'lucide-react';
 import { toast } from 'react-toastify';
 
 const InquiryModal = ({ isOpen, onClose, pet, onSubmit }) => {

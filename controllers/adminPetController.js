@@ -1,5 +1,7 @@
 const Pet = require('../models/Pet');
 const Store = require('../models/Store');
+const { isPlatformAdmin, isStoreAdmin, isOperationalStaff } = require('../config/permissions');
+const { canOperateStore } = require('../utils/authorizationPolicy');
 
 // Admin-only function for getting pets with multi-tenant isolation
 const getAllAdminPets = async (req, res) => {
@@ -10,11 +12,11 @@ const getAllAdminPets = async (req, res) => {
 
     let filter = { isDeleted: { $ne: true } };
 
-    if (req.user.role === 'super_admin') {
+    if (isPlatformAdmin(req.user)) {
       // Super-admins see everything
       if (storeId) filter.store = storeId;
       console.log('🔓 Super-admin detected');
-    } else if (req.user.role === 'staff') {
+    } else if (isOperationalStaff(req.user)) {
       // Staff sees pets from their assigned store
       if (req.user.store) {
         const store = await Store.findById(req.user.store);
@@ -29,7 +31,7 @@ const getAllAdminPets = async (req, res) => {
       } else {
         filter.addedBy = req.user.createdBy;
       }
-    } else {
+    } else if (isStoreAdmin(req.user)) {
       // Admin - find stores they own
       const adminStores = await Store.find({ owner: req.user._id }).select('_id');
       const storeIds = adminStores.map(s => s._id);
@@ -77,11 +79,13 @@ const getAllAdminPets = async (req, res) => {
     }
 
     if (search) {
-      filter.$or = [
+      const searchFilter = { $or: [
         { name: new RegExp(search, 'i') },
         { breed: new RegExp(search, 'i') },
         { description: new RegExp(search, 'i') }
-      ];
+      ] };
+      const tenantFilter = { ...filter };
+      filter = { $and: [tenantFilter, searchFilter] };
     }
 
     const skip = (parseInt(page) - 1) * parseInt(limit);
@@ -131,15 +135,8 @@ const approvePet = async (req, res) => {
     if (!pet) return res.status(404).json({ message: 'Pet listing not found' });
 
     // Multi-tenant check
-    if (req.user.role !== 'super_admin') {
-      const storeRes = await Store.findOne({ owner: req.user._id });
-      if (!storeRes || (pet.store && pet.store.toString() !== storeRes._id.toString())) {
-        if (req.user.role !== 'staff' || req.user.store.toString() !== pet.store.toString()) {
-           // We are an admin/staff, let's verify if we have access
-           // For simplicity in this demo, super admins and the pet's store admin can approve
-           // In a real scenario, typically only Super Admin moderates marketplace sellers
-        }
-      }
+    if (!(await canOperateStore(req.user, pet.store, ['pets.manage', 'inventory.adjust']))) {
+      return res.status(403).json({ message: 'Access denied for this pet listing.' });
     }
 
     pet.approvalStatus = 'approved';
@@ -166,6 +163,9 @@ const rejectPet = async (req, res) => {
 
     const pet = await Pet.findById(id);
     if (!pet) return res.status(404).json({ message: 'Pet listing not found' });
+    if (!(await canOperateStore(req.user, pet.store, ['pets.manage', 'inventory.adjust']))) {
+      return res.status(403).json({ message: 'Access denied for this pet listing.' });
+    }
 
     pet.approvalStatus = 'rejected';
     pet.isAvailable = false;

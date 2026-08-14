@@ -7,7 +7,11 @@ const Booking = require('../models/Booking');
 const Service = require('../models/Service');
 const Follow = require('../models/Follow');
 const User = require('../models/User');
+const ActivityLog = require('../models/ActivityLog');
 const { TAX_STATUSES, PRICING_MODES, normalizeTaxConfiguration } = require('../utils/taxCalculator');
+const { POLICY_TYPES, normalizeRefundPolicy } = require('../utils/refundPolicy');
+const { isPlatformAdmin, isStoreAdmin, isOperationalStaff } = require('../config/permissions');
+const { buildStoreOperationsSnapshot } = require('../services/operationsDashboardService');
 
 // Get all stores (public)
 const getAllStores = async (req, res) => {
@@ -170,7 +174,7 @@ const getMyStore = async (req, res) => {
     console.log('🏪 getMyStore requested for user:', userId);
 
     let storeDoc;
-    if (req.user.role === 'staff' && req.user.store) {
+    if (isOperationalStaff(req.user) && req.user.store) {
       storeDoc = await Store.findById(req.user.store)
         .populate('owner', 'username firstName lastName email');
     } else {
@@ -223,7 +227,7 @@ const createStore = async (req, res) => {
     }
 
     // Check if user is admin (store owner)
-    if (req.user.role !== 'admin') {
+    if (!isStoreAdmin(req.user)) {
       return res.status(403).json({ message: 'Only admins can create stores' });
     }
 
@@ -262,7 +266,7 @@ const updateStore = async (req, res) => {
     }
 
     // List of fields that SHOULD NOT be updated via this route
-    const protectedFields = ['_id', '__v', 'owner', 'slug', 'ratings', 'stats', 'taxConfiguration', 'verificationStatus', 'isActive', 'featured', 'subscriptionTier', 'subscriptionExpires', 'createdAt', 'updatedAt'];
+    const protectedFields = ['_id', '__v', 'owner', 'slug', 'ratings', 'stats', 'taxConfiguration', 'refundPolicy', 'rolePermissions', 'staffSequence', 'verificationStatus', 'isActive', 'featured', 'subscriptionTier', 'subscriptionExpires', 'createdAt', 'updatedAt'];
 
     // Create a body clone without protected fields
     const updateData = { ...req.body };
@@ -343,7 +347,7 @@ const updateStore = async (req, res) => {
 const getStoreDashboard = async (req, res) => {
   try {
     let store;
-    if (req.user.role === 'staff' && req.user.store) {
+    if (isOperationalStaff(req.user) && req.user.store) {
       store = await Store.findById(req.user.store);
     } else {
       store = await Store.findOne({ owner: req.user.id });
@@ -353,46 +357,8 @@ const getStoreDashboard = async (req, res) => {
       return res.status(404).json({ message: 'Store not found' });
     }
 
-    // Get IDs upfront
-    const [petIds, productIds] = await Promise.all([
-      Pet.find({ store: store._id }).distinct('_id'),
-      Product.find({ store: store._id }).distinct('_id')
-    ]);
-
-    const allItemIds = [...petIds, ...productIds];
-
-    // Get store statistics from PAID transactions
-    const [petCount, productCount, recentOrders, orderRevenue, bookingRevenue] = await Promise.all([
-      Pet.countDocuments({ store: store._id, isDeleted: { $ne: true } }),
-      Product.countDocuments({ store: store._id, isDeleted: { $ne: true } }),
-      Order.find({ store: store._id, isDeleted: { $ne: true } })
-        .sort({ createdAt: -1 })
-        .limit(5)
-        .populate('customer', 'firstName lastName'),
-      Order.aggregate([
-        { $match: { store: store._id, paymentStatus: 'paid', isDeleted: { $ne: true } } },
-        { $group: { _id: null, total: { $sum: '$netAmount' } } }
-      ]),
-      Booking.aggregate([
-        { $match: { store: store._id, paymentStatus: 'paid', isDeleted: { $ne: true } } },
-        { $group: { _id: null, total: { $sum: '$netAmount' } } }
-      ])
-    ]);
-
-    const totalNetEarnings = (orderRevenue[0]?.total || 0) + (bookingRevenue[0]?.total || 0);
-
-    const dashboardData = {
-      stats: {
-        totalPets: petCount,
-        totalProducts: productCount,
-        totalOrders: await Order.countDocuments({ store: store._id, isDeleted: { $ne: true } }),
-        totalRevenue: totalNetEarnings, // Net earnings for the store
-        availableBalance: store.balance // Current balance for payout
-      },
-      recentOrders,
-      store
-    };
-
+    const includeFinancials = isStoreAdmin(req.user) || isPlatformAdmin(req.user);
+    const dashboardData = await buildStoreOperationsSnapshot(store, { includeFinancials });
     res.json(dashboardData);
   } catch (error) {
     console.error('Get store dashboard error:', error);
@@ -541,7 +507,7 @@ const getTaxConfiguration = async (req, res) => {
 
 const updateTaxConfiguration = async (req, res) => {
   try {
-    const store = req.user.role === 'super_admin' && req.params.id
+    const store = isPlatformAdmin(req.user) && req.params.id
       ? await Store.findById(req.params.id).select('+taxConfiguration.auditLog')
       : await Store.findOne({ owner: req.user._id, isDeleted: { $ne: true } }).select('+taxConfiguration.auditLog');
     if (!store) return res.status(404).json({ message: 'Store not found' });
@@ -580,6 +546,45 @@ const updateTaxConfiguration = async (req, res) => {
   }
 };
 
+const getRefundPolicy = async (req, res) => {
+  try {
+    const store = req.params.id
+      ? await Store.findOne({ _id: req.params.id, isActive: { $ne: false }, isDeleted: { $ne: true } }).select('name refundPolicy')
+      : await Store.findOne({ owner: req.user._id, isDeleted: { $ne: true } }).select('name refundPolicy');
+    if (!store) return res.status(404).json({ message: 'Store not found.' });
+    res.json({ storeId: store._id, storeName: store.name, refundPolicy: normalizeRefundPolicy(store.refundPolicy) });
+  } catch (error) {
+    res.status(500).json({ message: 'Unable to load refund policy.' });
+  }
+};
+
+const updateRefundPolicy = async (req, res) => {
+  try {
+    const store = isPlatformAdmin(req.user) && req.params.id
+      ? await Store.findById(req.params.id).select('+refundPolicy.auditLog')
+      : await Store.findOne({ owner: req.user._id, isDeleted: { $ne: true } }).select('+refundPolicy.auditLog');
+    if (!store) return res.status(404).json({ message: 'Store not found.' });
+    if (!POLICY_TYPES.includes(req.body.type)) return res.status(400).json({ message: 'Select a valid refund policy.' });
+    const next = normalizeRefundPolicy(req.body);
+    if (next.type === 'conditional_refund' && !next.conditions) {
+      return res.status(400).json({ message: 'Describe the conditions used to review refund requests.' });
+    }
+    const previous = normalizeRefundPolicy(store.refundPolicy);
+    const auditLog = store.refundPolicy?.auditLog || [];
+    auditLog.push({ changedBy: req.user._id, changedAt: new Date(), previous, next });
+    if (auditLog.length > 50) auditLog.splice(0, auditLog.length - 50);
+    store.refundPolicy = { ...next, updatedAt: new Date(), updatedBy: req.user._id, auditLog };
+    await store.save();
+    await ActivityLog.create({ user: req.user._id, action: 'Refund Policy Updated', details: `${store.name} changed from ${previous.type} to ${next.type}.`, ipAddress: req.ip });
+    const io = req.app.get('socketio');
+    if (io) io.to(`store_${store._id}`).emit('settingsUpdate', { type: 'refund_policy', refundPolicy: next });
+    res.json({ message: 'Refund policy updated. Existing transactions retain their original policy snapshot.', refundPolicy: next });
+  } catch (error) {
+    console.error('Update refund policy error:', error);
+    res.status(500).json({ message: 'Unable to update refund policy.' });
+  }
+};
+
 // Get all store locations for map (Filtered for Cavite only)
 const getStoreLocations = async (req, res) => {
   try {
@@ -612,5 +617,7 @@ module.exports = {
   approveVerification,
   rejectVerification,
   getTaxConfiguration,
-  updateTaxConfiguration
+  updateTaxConfiguration,
+  getRefundPolicy,
+  updateRefundPolicy
 };

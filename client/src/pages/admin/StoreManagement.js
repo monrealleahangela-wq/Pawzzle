@@ -1,26 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
-import { storeService, adminStoreService, uploadService, getImageUrl } from '../../services/apiService';
-import {
-  Building,
-  MapPin,
-  Phone,
-  Mail,
-  Clock,
-  Save,
-  Upload,
-  X,
-  Package,
-  Scissors,
-  Heart,
-  Plus,
-  Eye,
-  Camera,
-  Globe,
-  Navigation,
-  Shield,
-  Map as MapIcon
-} from 'lucide-react';
+import { storeService, uploadService, getImageUrl } from '../../services/apiService';
+import { Building, MapPin, Clock, Save, Upload, Plus, Eye, Camera, Globe, Navigation, Shield, Map as MapIcon } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import GoogleMap from '../../components/GoogleMap';
 import MapPicker from '../../components/MapPicker';
@@ -253,7 +234,7 @@ const StoreManagement = () => {
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] pb-20">
-      <div className="relative h-72 w-full overflow-hidden">
+      <div className="relative h-48 w-full overflow-hidden">
         {coverPreview ? (
           <img src={getImageUrl(coverPreview)} alt="Cover" className="absolute inset-0 w-full h-full object-cover" />
         ) : (
@@ -261,26 +242,26 @@ const StoreManagement = () => {
         )}
         <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px]"></div>
         <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-4">
-          <h1 className="text-4xl md:text-5xl font-black text-white mb-4">{store.name || 'Store Management'}</h1>
-          <p className="text-white/80 font-medium text-lg">{store.description || 'Manage your store details.'}</p>
+          <h1 className="text-2xl md:text-3xl font-black text-white mb-2">{store.name || 'Store Management'}</h1>
+          <p className="text-white/80 font-medium text-sm">{store.description || 'Manage your store details.'}</p>
         </div>
-        <label className="absolute top-8 right-8 p-3 bg-white/10 backdrop-blur-md text-white rounded-2xl border border-white/20 cursor-pointer hover:bg-white/20 transition-all">
+        <label className="absolute top-4 right-4 p-2.5 bg-white/10 backdrop-blur-md text-white rounded-xl border border-white/20 cursor-pointer hover:bg-white/20 transition-all">
           <Upload className="h-5 w-5 mb-1 mx-auto" />
           <span className="text-[10px] font-black uppercase tracking-widest">{coverLoading ? 'Uploading...' : 'Change Cover'}</span>
           <input type="file" accept="image/*" onChange={handleCoverUpload} className="hidden" disabled={coverLoading} />
         </label>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-24 relative z-10">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-12 relative z-10">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           <div className="lg:col-span-4 space-y-6">
-            <div className="bg-white/80 backdrop-blur-xl rounded-2xl shadow-2xl border border-white p-8 relative overflow-hidden">
+            <div className="bg-white/80 backdrop-blur-xl rounded-2xl shadow-lg border border-white p-5 relative overflow-hidden">
               <div className="relative flex flex-col items-center">
                 <div className="relative mb-6">
                   {logoPreview ? (
-                    <img src={getImageUrl(logoPreview)} alt="Logo" className="w-32 h-32 rounded-[2.2rem] object-cover ring-4 ring-white shadow-xl" />
+                    <img src={getImageUrl(logoPreview)} alt="Logo" className="w-24 h-24 rounded-2xl object-cover ring-4 ring-white shadow-lg" />
                   ) : (
-                    <div className="w-32 h-32 rounded-[2.2rem] bg-slate-100 flex items-center justify-center"><Building className="h-16 w-16 text-slate-300" /></div>
+                    <div className="w-24 h-24 rounded-2xl bg-slate-100 flex items-center justify-center"><Building className="h-10 w-10 text-slate-300" /></div>
                   )}
                   <label className="absolute -right-2 -bottom-2 p-3 bg-slate-900 text-white rounded-2xl shadow-lg cursor-pointer">
                     <Camera className="h-5 w-5" />

@@ -1,4 +1,6 @@
 const Store = require('../models/Store');
+const { isPlatformAdmin, isStoreAdmin, isOperationalStaff } = require('../config/permissions');
+const { canAccessStore: userCanAccessStore } = require('../utils/authorizationPolicy');
 
 // Middleware to check if user is admin of their own store
 const storeAdminOnly = async (req, res, next) => {
@@ -8,15 +10,15 @@ const storeAdminOnly = async (req, res, next) => {
     }
 
     // Super admin can access everything
-    if (req.user.role === 'super_admin') {
+    if (isPlatformAdmin(req.user)) {
       return next();
     }
 
     // Admin and Staff users can manage store resources
-    if (req.user.role === 'admin' || req.user.role === 'staff') {
+    if (isStoreAdmin(req.user) || isOperationalStaff(req.user)) {
       if (!req.user.store) {
         // Try to find a store owned by this user (for admins)
-        if (req.user.role === 'admin') {
+        if (isStoreAdmin(req.user)) {
           const ownedStore = await Store.findOne({ owner: req.user._id });
           if (ownedStore) {
             req.user.store = ownedStore._id;
@@ -28,6 +30,13 @@ const storeAdminOnly = async (req, res, next) => {
       // For store-specific routes, check if user belongs to this store
       if (req.params.storeId || req.body.storeId) {
         const storeId = req.params.storeId || req.body.storeId;
+        if (isStoreAdmin(req.user)) {
+          if (!(await userCanAccessStore(req.user, storeId))) {
+            return res.status(403).json({ message: 'Access denied. You can only manage your own store.' });
+          }
+          req.user.store = storeId;
+          return next();
+        }
         // Allow if this is their store, or if they have no store yet (admin auto-resolve fallback)
         if (req.user.store && req.user.store.toString() !== storeId.toString()) {
           console.log(`🚫 Store Auth blocked for ${req.user.role}: User store ${req.user.store} != target store ${storeId}`);
@@ -35,7 +44,7 @@ const storeAdminOnly = async (req, res, next) => {
         }
         
         // If staff has no store at all, they shouldn't be here
-        if (req.user.role === 'staff' && !req.user.store) {
+        if (isOperationalStaff(req.user) && !isStoreAdmin(req.user) && !req.user.store) {
           return res.status(403).json({ message: 'Access denied. Staff account not assigned to a store.' });
         }
       }
@@ -60,16 +69,16 @@ const canAccessStore = async (req, res, next) => {
     }
 
     // Super admin can access everything
-    if (req.user.role === 'super_admin') {
+    if (isPlatformAdmin(req.user)) {
       return next();
     }
 
     // Admin and Staff can access their own store
-    if (req.user.role === 'admin' || req.user.role === 'staff') {
+    if (isStoreAdmin(req.user) || isOperationalStaff(req.user)) {
       const storeId = req.params.storeId || req.params.id;
 
       // If user has no store assigned, try to find one (for admins)
-      if (!req.user.store && req.user.role === 'admin') {
+      if (!req.user.store && isStoreAdmin(req.user)) {
         const ownedStore = await Store.findOne({ owner: req.user._id });
         if (ownedStore) {
           req.user.store = ownedStore._id;
@@ -77,12 +86,19 @@ const canAccessStore = async (req, res, next) => {
       }
 
       // Check if they are accessing a different store than their own
+      if (isStoreAdmin(req.user) && storeId) {
+        if (!(await userCanAccessStore(req.user, storeId))) {
+          return res.status(403).json({ message: 'Access denied. You can only access your own store.' });
+        }
+        req.user.store = storeId;
+        return next();
+      }
       if (req.user.store && storeId && req.user.store.toString() !== storeId.toString()) {
         return res.status(403).json({ message: 'Access denied. You can only access your own store.' });
       }
 
       // If staff has no store at all, they shouldn't be here
-      if (req.user.role === 'staff' && !req.user.store) {
+      if (isOperationalStaff(req.user) && !isStoreAdmin(req.user) && !req.user.store) {
         return res.status(403).json({ message: 'Access denied. Staff account not assigned to a store.' });
       }
 

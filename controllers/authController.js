@@ -1,73 +1,78 @@
+const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
+const bcrypt = require('bcryptjs');
 const { validationResult } = require('express-validator');
 const User = require('../models/User');
-const bcrypt = require('bcryptjs');
+const ActivityLog = require('../models/ActivityLog');
 const otpService = require('../services/otpService');
 const { validateEmail } = require('../utils/emailValidator');
-const Store = require('../models/Store');
-const ActivityLog = require('../models/ActivityLog');
 const { verifyRecaptcha } = require('../utils/captchaVerifier');
-const Otp = require('../models/Otp');
+const {
+  pickProfileUpdates,
+  applyProfileUpdates,
+  sanitizeUser,
+  buildPublicRegistrationData
+} = require('../utils/authSecurity');
+const { attachStoreRolePolicy, serializeEffectivePermissionMap } = require('../services/rolePermissionService');
 
-/**
- * authController.js
- * Handles User Authentication, Registration with mandatory Email Verification,
- * Password Resets, and 2FA.
- */
+const generateToken = id => jwt.sign(
+  { id },
+  process.env.JWT_SECRET,
+  { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
+);
 
-// Generate JWT token
-const generateToken = (id) => {
-  return jwt.sign({ id }, process.env.JWT_SECRET, {
-    expiresIn: '30d'
-  });
-};
+const userSummary = user => ({
+  id: user._id,
+  username: user.username,
+  email: user.email,
+  role: user.role,
+  firstName: user.firstName,
+  lastName: user.lastName,
+  store: user.store
+});
 
-// Helper: DNS Resolver logic (simplified for stability as per earlier fixes)
-const isEmailDomainValid = async () => true;
+const otpFailureMessage = (result, lockedMessage) => result.reason === 'locked'
+  ? lockedMessage
+  : 'Invalid or expired code.';
 
-// ─── STEP 1: Send Registration OTP (Persistent State) ────────────────────────
 const sendRegisterOTP = async (req, res) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
 
-    let { username, email, password, firstName, lastName, phone, address, role, captchaToken } = req.body;
-    
-    // Auto-generate username logic
-    if (!username && email) {
+    let { username, email, password, firstName, lastName, phone, address, captchaToken } = req.body;
+    email = String(email).trim().toLowerCase();
+
+    if (!username) {
       username = email.split('@')[0];
-      const existing = await User.findOne({ username, isDeleted: false });
-      if (existing) username = `${username}${Math.floor(100 + Math.random() * 900)}`;
+      if (await User.exists({ username, isDeleted: false })) username = `${username}${crypto.randomInt(100, 1000)}`;
     }
 
-    // Security Check (Requirement 1 & 2)
-    const isHuman = await verifyRecaptcha(captchaToken);
-    if (!isHuman) return res.status(400).json({ message: 'Security check failed. Please verify you are not a robot.' });
+    if (!(await verifyRecaptcha(captchaToken, req.ip))) {
+      return res.status(400).json({ message: 'Security check failed. Please verify you are not a robot.' });
+    }
 
     const emailValidation = await validateEmail(email);
     if (!emailValidation.valid) return res.status(400).json({ message: emailValidation.reason });
-
-    const existingEmail = await User.findOne({ email, isDeleted: false });
-    if (existingEmail) return res.status(400).json({ message: 'Email address is already in use' });
-
-    // Role safety
-    if (role === 'admin' || role === 'super_admin') {
-      const superAdminExists = await User.findOne({ role: 'super_admin' });
-      if (superAdminExists) {
-        const currentUser = await User.findById(req.user?.id);
-        if (!currentUser || currentUser.role !== 'super_admin') {
-          return res.status(403).json({ message: 'Only super admins can create administrative accounts' });
-        }
-      }
+    if (await User.exists({ email, isDeleted: false })) {
+      return res.status(400).json({ message: 'Email address is already in use' });
     }
 
-    const otp = otpService.generateOTP();
-    const userData = { username, email, password, firstName, lastName, phone, address, role: role || 'customer' };
+    // The password is hashed before temporary registration state is persisted.
+    const passwordHash = await bcrypt.hash(password, 10);
+    const userData = buildPublicRegistrationData({
+      username,
+      email,
+      password: passwordHash,
+      firstName,
+      lastName,
+      phone,
+      address
+    });
 
+    const otp = otpService.generateOTP();
     try {
-      // Req 2 & 3: Save to DB and Send REAL Email (No Bypass)
       await otpService.sendRegistrationOTP(email, otp, firstName, userData);
-      
       return res.json({
         success: true,
         message: 'Verification code sent to your email',
@@ -75,52 +80,42 @@ const sendRegisterOTP = async (req, res) => {
         email
       });
     } catch (deliveryError) {
-      console.error('📧 Delivery error:', deliveryError.message);
-      if (deliveryError.message.includes('wait')) return res.status(429).json({ message: deliveryError.message });
-      
-      // Req 5: Error handling - including real error in message for easier debugging
-      return res.status(500).json({ 
-        message: `Verification Failure: ${deliveryError.message}. Please check your spelling or contact support if the issue persists.`,
-        error: deliveryError.message 
-      });
+      if (deliveryError.message.includes('Wait')) return res.status(429).json({ message: deliveryError.message });
+      return res.status(503).json({ message: 'Verification email is temporarily unavailable. Please try again later.' });
     }
   } catch (error) {
-    console.error('Send registration OTP error:', error);
-    res.status(500).json({ message: 'Server error during registration process' });
+    console.error('Registration verification request failed');
+    return res.status(500).json({ message: 'Server error during registration process' });
   }
 };
 
-// ─── STEP 2: Verify Registration OTP & Complete Account Creation ──────────────
 const verifyRegisterOTP = async (req, res) => {
   try {
-    const { email, otp } = req.body;
-
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+    const email = String(req.body.email || '').trim().toLowerCase();
+    const { otp } = req.body;
     if (!email || !otp) return res.status(400).json({ message: 'Email and verification code are required' });
 
-    // Req 7: Verification Process via Database
-    const storedData = await Otp.findOne({ email: email.toLowerCase(), type: 'registration' }).sort({ createdAt: -1 });
-    
-    if (!storedData) return res.status(400).json({ message: 'Verification session expired. Please register again.' });
-
-    // Standardization: Compare OTPs as trimmed strings to prevent type mismatch (Numeric vs String)
-    const submittedOtp = otp.toString().trim();
-    const serverOtp = storedData.otp.toString().trim();
-
-    if (submittedOtp !== serverOtp) {
-      return res.status(400).json({ message: 'Invalid verification code. Please check your email inbox.' });
+    const verification = await otpService.verifyOTP(email, 'registration', otp);
+    if (!verification.valid) {
+      return res.status(400).json({
+        message: otpFailureMessage(verification, 'Too many invalid codes. Please request a new verification code.')
+      });
     }
 
-    const { userData } = storedData;
-    if (!userData) return res.status(400).json({ message: 'Registration data corrupted. Please start over.' });
+    const userData = verification.userData;
+    if (!userData) return res.status(400).json({ message: 'Registration data is unavailable. Please start over.' });
+    userData.role = 'customer';
 
-    // Last-second check for duplicates
-    const conflict = await User.findOne({ $or: [{ email: userData.email }, { username: userData.username }], isDeleted: false });
+    const conflict = await User.findOne({
+      $or: [{ email: userData.email }, { username: userData.username }],
+      isDeleted: false
+    });
     if (conflict) return res.status(400).json({ message: 'Email or username was taken during verification. Please start over.' });
 
     const user = new User(userData);
     await user.save();
-
-    await Otp.deleteMany({ email: email.toLowerCase() });
 
     try {
       await ActivityLog.create({
@@ -129,55 +124,47 @@ const verifyRegisterOTP = async (req, res) => {
         details: 'User successfully completed email verification and account activation',
         ipAddress: req.ip
       });
-    } catch (logErr) {}
+    } catch (activityError) {
+      console.warn('Account verification activity log could not be recorded');
+    }
 
-    const token = generateToken(user._id);
-
-    res.status(201).json({
+    return res.status(201).json({
       success: true,
       message: 'Email verified! Welcome to Pawzzle.',
-      token,
-      user: {
-        id: user._id, username: user.username, email: user.email,
-        firstName: user.firstName, lastName: user.lastName,
-        role: user.role, store: user.store
-      }
+      token: generateToken(user._id),
+      user: userSummary(user)
     });
   } catch (error) {
-    console.error('Verification error:', error);
-    res.status(500).json({ message: 'Server error during verification' });
+    console.error('Registration verification failed');
+    return res.status(500).json({ message: 'Server error during verification' });
   }
 };
 
-// ─── Resend Registration OTP ─────────────────────────────────────────────────
 const resendRegisterOTP = async (req, res) => {
   try {
-    const { email } = req.body;
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+    const email = String(req.body.email || '').trim().toLowerCase();
     if (!email) return res.status(400).json({ message: 'Email is required' });
 
-    const storedData = await Otp.findOne({ email: email.toLowerCase(), type: 'registration' }).sort({ createdAt: -1 });
-    if (!storedData || !storedData.userData) return res.status(400).json({ message: 'No active registration session. Please start over.' });
-
-    const newOtp = otpService.generateOTP();
-
-    try {
-      await otpService.sendRegistrationOTP(email, newOtp, storedData.userData.firstName, storedData.userData);
-      return res.json({ success: true, message: 'A new verification code has been sent.' });
-    } catch (err) {
-      if (err.message.includes('wait')) return res.status(429).json({ message: err.message });
-      return res.status(500).json({ 
-        message: `Failed to resend code: ${err.message}`, 
-        error: err.message 
-      });
+    const storedData = await otpService.getActiveOtpSession(email, 'registration');
+    if (!storedData?.userData) {
+      return res.status(400).json({ message: 'No active registration session. Please start over.' });
     }
+
+    const userData = { ...storedData.userData, role: 'customer' };
+    if (userData.password && !/^\$2[aby]\$/.test(userData.password)) {
+      userData.password = await bcrypt.hash(userData.password, 10);
+    }
+
+    await otpService.sendRegistrationOTP(email, otpService.generateOTP(), userData.firstName, userData);
+    return res.json({ success: true, message: 'A new verification code has been sent.' });
   } catch (error) {
-    res.status(500).json({ message: 'Server error' });
+    if (error.message.includes('Wait')) return res.status(429).json({ message: error.message });
+    return res.status(503).json({ message: 'Unable to resend the verification code right now.' });
   }
 };
 
-/**
- * Login logic with Database-backed 2FA
- */
 const login = async (req, res) => {
   try {
     const errors = validationResult(req);
@@ -185,18 +172,18 @@ const login = async (req, res) => {
 
     const { email, password, captchaToken } = req.body;
     const identifier = email.trim();
+    if (!(await verifyRecaptcha(captchaToken, req.ip))) {
+      return res.status(400).json({ message: 'Security check failed.' });
+    }
 
-    const isHuman = await verifyRecaptcha(captchaToken);
-    if (!isHuman) return res.status(400).json({ message: 'Security check failed.' });
-
-    const user = await User.findOne({ 
+    const user = await User.findOne({
       $or: [
         { email: identifier.toLowerCase() },
         { username: identifier },
         { username: identifier.toLowerCase() }
       ],
-      isDeleted: false 
-    }).populate('store');
+      isDeleted: false
+    }).select('+password').populate('store');
 
     if (!user) return res.status(401).json({ message: 'Invalid credentials' });
     if (!user.isActive) {
@@ -207,9 +194,6 @@ const login = async (req, res) => {
         contactSupport: true
       });
     }
-
-    // OAuth-only accounts do not have a bcrypt hash. Treat a password login as
-    // invalid credentials instead of passing an undefined hash to bcrypt.
     if (!user.password) {
       return res.status(401).json({
         message: user.authProvider === 'google'
@@ -217,14 +201,10 @@ const login = async (req, res) => {
           : 'Invalid credentials'
       });
     }
-
-    const isMatch = await user.comparePassword(password);
-    if (!isMatch) return res.status(401).json({ message: 'Invalid credentials' });
+    if (!(await user.comparePassword(password))) return res.status(401).json({ message: 'Invalid credentials' });
 
     if (user.twoFactorEnabled) {
-      const otp = otpService.generateOTP();
-      await otpService.sendLoginOTP(user.email, otp, user.firstName);
-
+      await otpService.sendLoginOTP(user.email, otpService.generateOTP(), user.firstName);
       return res.json({
         success: true,
         twoFactorRequired: true,
@@ -233,22 +213,8 @@ const login = async (req, res) => {
       });
     }
 
-    const token = generateToken(user._id);
-    return res.json({
-      success: true,
-      token,
-      user: { 
-        id: user._id, 
-        username: user.username, 
-        email: user.email, 
-        role: user.role,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        store: user.store
-      }
-    });
+    return res.json({ success: true, token: generateToken(user._id), user: userSummary(user) });
   } catch (error) {
-    console.error('Login error:', error);
     const databaseUnavailable = [
       'MongooseServerSelectionError',
       'MongoNetworkError',
@@ -261,53 +227,51 @@ const login = async (req, res) => {
         code: 'DATABASE_UNAVAILABLE'
       });
     }
-    res.status(500).json({ message: 'Login failed due to server error' });
+    console.error('Login failed due to an internal error');
+    return res.status(500).json({ message: 'Login failed due to server error' });
   }
 };
 
 const verify2FA = async (req, res) => {
   try {
-    const { email, otp } = req.body;
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+    const email = String(req.body.email || '').trim().toLowerCase();
+    const { otp } = req.body;
     if (!email || !otp) return res.status(400).json({ message: 'Email and code are required' });
 
-    const stored = await Otp.findOne({ email: email.toLowerCase(), type: 'login' }).sort({ createdAt: -1 });
-    
-    if (!stored || otp.toString().trim() !== stored.otp.toString().trim()) {
-      return res.status(400).json({ message: 'Invalid or expired code.' });
+    const verification = await otpService.verifyOTP(email, 'login', otp);
+    if (!verification.valid) {
+      return res.status(400).json({
+        message: otpFailureMessage(verification, 'Too many invalid codes. Please sign in again.')
+      });
     }
 
-    const user = await User.findOne({ email: email.toLowerCase(), isDeleted: false }).populate('store');
+    const user = await User.findOne({ email, isDeleted: false }).populate('store');
     if (!user) return res.status(404).json({ message: 'User not found' });
+    if (!user.isActive) return res.status(403).json({ message: 'Account disabled. Contact support.' });
 
-    await Otp.deleteMany({ email: email.toLowerCase(), type: 'login' });
-
-    const token = generateToken(user._id);
-    res.json({ 
-      success: true, 
-      token, 
-      user: { 
-        id: user._id, username: user.username, email: user.email, role: user.role,
-        firstName: user.firstName, lastName: user.lastName, store: user.store
-      } 
-    });
+    return res.json({ success: true, token: generateToken(user._id), user: userSummary(user) });
   } catch (error) {
-    console.error('2FA verification error:', error);
-    res.status(500).json({ message: 'Security verification failed' });
+    console.error('2FA verification failed');
+    return res.status(500).json({ message: 'Security verification failed' });
   }
 };
 
 const requestPasswordResetOTP = async (req, res) => {
+  const genericMessage = 'If that account exists, a reset code has been sent.';
   try {
-    const { email } = req.body;
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+    const email = String(req.body.email || '').trim().toLowerCase();
+    if (!email) return res.status(400).json({ message: 'Email is required' });
+
     const user = await User.findOne({ email, isDeleted: false });
-    if (!user) return res.status(404).json({ message: 'Email not found.' });
-
-    const otp = otpService.generateOTP();
-    await otpService.sendPasswordResetOTP(email, otp);
-
-    res.json({ success: true, message: 'Reset code sent.' });
-  } catch (err) {
-    res.status(500).json({ message: 'Error sending reset code.' });
+    if (user) await otpService.sendPasswordResetOTP(email, otpService.generateOTP());
+    return res.json({ success: true, message: genericMessage });
+  } catch (error) {
+    console.warn('A password reset email could not be delivered');
+    return res.json({ success: true, message: genericMessage });
   }
 };
 
@@ -316,38 +280,57 @@ const verifyOTPAndResetPassword = async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
 
-    const { email, otp, newPassword } = req.body;
-    if (!email || !otp) return res.status(400).json({ message: 'Email and code are required' });
-
-    const stored = await Otp.findOne({ email: email.toLowerCase(), type: 'password_reset' }).sort({ createdAt: -1 });
-
-    if (!stored || otp.toString().trim() !== stored.otp.toString().trim()) {
-      return res.status(400).json({ message: 'Invalid or expired code.' });
+    const email = String(req.body.email || '').trim().toLowerCase();
+    const { otp, newPassword } = req.body;
+    const verification = await otpService.verifyOTP(email, 'password_reset', otp);
+    if (!verification.valid) {
+      return res.status(400).json({
+        message: otpFailureMessage(verification, 'Too many invalid codes. Please request a new reset code.')
+      });
     }
 
-    const user = await User.findOne({ email: email.toLowerCase(), isDeleted: false });
-    if (!user) return res.status(404).json({ message: 'Associated user account not found.' });
+    const user = await User.findOne({ email, isDeleted: false }).select('+password');
+    if (!user) return res.status(400).json({ message: 'Invalid or expired code.' });
 
-    // Hashing is handled by the model's pre-save hook, so we assign directly
+    // Assignment plus save intentionally invokes the User password hashing hook.
     user.password = newPassword;
     await user.save();
-
-    await Otp.deleteMany({ email: email.toLowerCase(), type: 'password_reset' });
-    res.json({ success: true, message: 'Password reset successful. You can now login with your new password.' });
-  } catch (err) {
-    console.error('Reset password error:', err);
-    res.status(500).json({ message: 'Reset failed' });
+    return res.json({ success: true, message: 'Password reset successful. You can now login with your new password.' });
+  } catch (error) {
+    console.error('Password reset failed');
+    return res.status(500).json({ message: 'Reset failed' });
   }
 };
 
-// Generic Profile & Utility Methods (Simplified for brevity as they were stable)
+const resendPasswordResetOTP = async (req, res) => {
+  const genericMessage = 'If that account exists, a reset code has been sent.';
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+    const email = String(req.body.email || '').trim().toLowerCase();
+    if (!email) return res.status(400).json({ message: 'Email is required' });
+    const user = await User.findOne({ email, isDeleted: false });
+    if (user) await otpService.sendPasswordResetOTP(email, otpService.generateOTP());
+    return res.json({ success: true, message: genericMessage });
+  } catch (error) {
+    console.warn('A password reset resend email could not be delivered');
+    return res.json({ success: true, message: genericMessage });
+  }
+};
+
 const getCurrentUser = async (req, res) => {
   try {
-    const user = await User.findById(req.user._id).select('-password').populate('store');
+    const user = await User.findById(req.user._id).populate('store');
     if (!user) return res.status(404).json({ message: 'User not found' });
-    res.json({ user });
+    await attachStoreRolePolicy(user);
+    const safe = sanitizeUser(user);
+    if (user.$locals?.rolePolicyPermissions !== undefined) {
+      safe.permissions = serializeEffectivePermissionMap(user);
+      safe.permissionSource = 'store_role';
+    }
+    return res.json({ user: safe });
   } catch (error) {
-    res.status(500).json({ message: 'Failed to fetch user data' });
+    return res.status(500).json({ message: 'Failed to fetch user data' });
   }
 };
 
@@ -356,10 +339,14 @@ const updateProfile = async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
 
-    const user = await User.findByIdAndUpdate(req.user._id, req.body, { new: true }).populate('store');
-    res.json({ success: true, user });
+    const user = await User.findById(req.user._id);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    applyProfileUpdates(user, pickProfileUpdates(req.body));
+    await user.save();
+    await user.populate('store');
+    return res.json({ success: true, user: sanitizeUser(user) });
   } catch (error) {
-    res.status(500).json({ message: 'Profile update failed' });
+    return res.status(500).json({ message: 'Profile update failed' });
   }
 };
 
@@ -369,51 +356,38 @@ const changePassword = async (req, res) => {
     if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
 
     const { currentPassword, newPassword } = req.body;
-    const user = await User.findById(req.user._id);
-    if (!user || !(await user.comparePassword(currentPassword))) return res.status(400).json({ message: 'Current password incorrect' });
-    
+    const user = await User.findById(req.user._id).select('+password');
+    if (!user || !(await user.comparePassword(currentPassword))) {
+      return res.status(400).json({ message: 'Current password incorrect' });
+    }
+
     user.password = newPassword;
     await user.save();
-    res.json({ success: true, message: 'Password changed successfully' });
+    return res.json({ success: true, message: 'Password changed successfully' });
   } catch (error) {
-    res.status(500).json({ message: 'Failed to change password' });
+    return res.status(500).json({ message: 'Failed to change password' });
   }
 };
 
 const toggle2FA = async (req, res) => {
   try {
+    if (typeof req.body.enabled !== 'boolean') {
+      return res.status(400).json({ message: 'enabled must be a boolean' });
+    }
     const user = await User.findById(req.user._id);
     if (!user) return res.status(404).json({ message: 'User not found' });
-    
     user.twoFactorEnabled = req.body.enabled;
     await user.save();
-    res.json({ success: true, enabled: user.twoFactorEnabled });
+    return res.json({ success: true, enabled: user.twoFactorEnabled });
   } catch (error) {
-    res.status(500).json({ message: 'Failed to toggle 2FA' });
+    return res.status(500).json({ message: 'Failed to toggle 2FA' });
   }
 };
 
-const resendPasswordResetOTP = async (req, res) => {
-  try {
-    const { email } = req.body;
-    if (!email) return res.status(400).json({ message: 'Email is required' });
+const logout = async (_req, res) => res.status(204).send();
 
-    const otp = otpService.generateOTP();
-    await otpService.sendPasswordResetOTP(email, otp);
-    res.json({ success: true, message: 'OTP resent successfully' });
-  } catch (err) {
-    console.error('Resend password OTP error:', err);
-    res.status(500).json({ 
-      message: `Failed to resend OTP: ${err.message}`, 
-      error: err.message || 'Internal Server Error' 
-    });
-  }
-};
-
-// Legacy Placeholder
-const register = async (req, res) => {
-    return sendRegisterOTP(req, res);
-};
+// Compatibility endpoint: public registration follows the same secure OTP flow.
+const register = sendRegisterOTP;
 
 module.exports = {
   register,
@@ -428,5 +402,7 @@ module.exports = {
   verifyOTPAndResetPassword,
   resendPasswordResetOTP,
   toggle2FA,
-  verify2FA
+  verify2FA,
+  logout,
+  __test: { generateToken, userSummary }
 };

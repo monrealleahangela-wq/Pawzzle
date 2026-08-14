@@ -45,7 +45,7 @@ test('timeline exposes lifecycle milestones without duplicating booking records'
     lifecycle: { confirmedAt: new Date('2026-08-13T01:00:00.000Z') },
     serviceProgress: { startedAt, readyAt }
   });
-  assert.deepEqual(events.map(event => event.stage), ['scheduled', 'service_started', 'ready_for_pickup']);
+  assert.deepEqual(events.map(event => event.stage), ['payment_completed', 'booking_confirmed', 'service_started', 'ready_for_pickup']);
 });
 
 test('service update validation keeps internal and customer-facing entry types explicit', () => {

@@ -1,11 +1,5 @@
 import React from 'react';
-import { 
-    Eye, Plus, Edit2, Trash2, Shield, 
-    Database, MapPin, Store, Users, 
-    Calendar, Package, ShoppingCart, 
-    Tag, MessageSquare, PieChart, 
-    Check, X, RefreshCw, Save
-} from 'lucide-react';
+import { Eye, Plus, Edit2, Trash2, Shield, Store, Users, Calendar, Package, ShoppingCart, RefreshCw } from 'lucide-react';
 
 const ACTION_MAP = [
     { key: 'view', label: 'View', icon: Eye },

@@ -1,19 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, Link, useNavigate } from 'react-router-dom';
 import { petService, productService, serviceService, storeService, getImageUrl } from '../../services/apiService';
-import {
-  Search as SearchIcon,
-  Package,
-  Heart,
-  Scissors,
-  Clock,
-  Filter,
-  X,
-  MapPin,
-  Navigation,
-  Store as StoreIcon,
-  ChevronRight
-} from 'lucide-react';
+import { Search as SearchIcon, Package, Heart, Scissors, Clock, Filter, MapPin, Navigation, Store as StoreIcon, ChevronRight } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { getCitiesByProvince } from '../../constants/locationConstants';
 

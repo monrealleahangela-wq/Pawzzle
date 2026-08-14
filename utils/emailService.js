@@ -15,13 +15,11 @@ try {
  */
 const getTransporter = async (useAlternativePort = false) => {
     // Aggressively check for valid credentials
-    const user = (process.env.EMAIL_USER && process.env.EMAIL_USER.includes('@')) 
-        ? process.env.EMAIL_USER 
-        : 'pawzzle.spark@gmail.com';
-        
-    const pass = (process.env.EMAIL_PASS && process.env.EMAIL_PASS.length > 5) 
-        ? process.env.EMAIL_PASS 
-        : 'aknzqkqqdumntchq';
+    const user = process.env.EMAIL_USER;
+    const pass = process.env.EMAIL_PASS;
+    if (!user || !user.includes('@') || !pass) {
+        throw new Error('SMTP credentials are not configured');
+    }
 
     // Manual IPv4 resolution
     let smtpHost = 'smtp.gmail.com';
@@ -44,7 +42,7 @@ const getTransporter = async (useAlternativePort = false) => {
         greetingTimeout: 8000,
         socketTimeout: 10000,
         tls: {
-            rejectUnauthorized: false,
+            rejectUnauthorized: true,
             servername: 'smtp.gmail.com',
             minVersion: 'TLSv1.2'
         }
@@ -87,9 +85,7 @@ const sendStaffInvitation = async (email, password, firstName) => {
         </div>
     `);
 
-    const fromUser = (process.env.EMAIL_USER && process.env.EMAIL_USER.includes('@')) 
-        ? process.env.EMAIL_USER 
-        : 'pawzzle.spark@gmail.com';
+    const fromUser = process.env.EMAIL_USER;
 
     const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 

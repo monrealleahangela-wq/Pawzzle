@@ -3,7 +3,6 @@ const router = express.Router();
 
 const {
   getConversations,
-  getAdminChats,
   getMessages,
   sendMessage,
   createConversation,

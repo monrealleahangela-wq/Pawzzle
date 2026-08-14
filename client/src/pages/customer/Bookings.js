@@ -4,12 +4,13 @@ import { bookingService, serviceService, voucherService, getImageUrl, petProfile
 import { calculateServicePrice } from '../../utils/pricingEngine';
 import { calculateTransactionTax, getTaxStatusLabel } from '../../utils/transactionTax';
 import { toast } from 'react-toastify';
-import { Clock, User, MapPin, Phone, Mail, DollarSign, CheckCircle, XCircle, AlertCircle, Filter, Search, Calendar, ArrowLeft, ChevronLeft, ChevronRight, Store, X, Activity, ShieldCheck, TrendingUp, Tag, Ticket, Bell, Building, Heart, PawPrint, Trash2, Star, CreditCard, Navigation, Receipt, Layers } from 'lucide-react';
+import { Clock, User, MapPin, Phone, DollarSign, CheckCircle, XCircle, AlertCircle, Filter, Search, Calendar, ArrowLeft, ChevronLeft, ChevronRight, Store, X, Activity, ShieldCheck, TrendingUp, Tag, Ticket, Bell, Heart, PawPrint, Star, CreditCard, Navigation, Receipt, Layers } from 'lucide-react';
 import ReviewModal from '../../components/ReviewModal';
 import ServiceCommunicationPanel from '../../components/booking/ServiceCommunicationPanel';
 import StaffProfileModal from '../../components/booking/StaffProfileModal';
 import { useAuth } from '../../contexts/AuthContext';
 import { formatTime12h } from '../../utils/timeFormatters';
+import { normalizeRefundPolicy, refundPolicyLabel, requiresRefundAcknowledgment } from '../../utils/refundPolicy';
 
 const StoreHoursHint = ({ bookingDate, businessHours }) => {
   const dayNames = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
@@ -22,6 +23,21 @@ const StoreHoursHint = ({ bookingDate, businessHours }) => {
   ) : (
     <p className="text-[8px] font-black text-emerald-600 uppercase tracking-widest mt-1.5 px-1">✓ Store hours: {formatTime12h(hrs.open)} – {formatTime12h(hrs.close)}</p>
   );
+};
+
+const ProposalCountdown = ({ expiresAt }) => {
+  const [remaining, setRemaining] = useState(() => Math.max(0, new Date(expiresAt).getTime() - Date.now()));
+  useEffect(() => {
+    const tick = () => setRemaining(Math.max(0, new Date(expiresAt).getTime() - Date.now()));
+    tick();
+    const interval = setInterval(tick, 1000);
+    return () => clearInterval(interval);
+  }, [expiresAt]);
+  if (!remaining) return <span className="text-rose-600">Expired — refresh for store review status</span>;
+  const hours = Math.floor(remaining / 3600000);
+  const minutes = Math.floor((remaining % 3600000) / 60000);
+  const seconds = Math.floor((remaining % 60000) / 1000);
+  return <span>{hours}h {minutes}m {seconds}s remaining</span>;
 };
 
 // Removed hardcoded getSizeSurcharge as we now use the dynamic pricingEngine.
@@ -85,12 +101,18 @@ const Bookings = ({ isSubcomponent = false }) => {
   const [savedPets, setSavedPets] = useState([]);
   const [selectedPetProfile, setSelectedPetProfile] = useState(null);
   const [agreedToPolicy, setAgreedToPolicy] = useState(false);
+  const serviceRefundPolicy = normalizeRefundPolicy(selectedService?.store?.refundPolicy);
+  const serviceAcknowledgmentRequired = requiresRefundAcknowledgment(serviceRefundPolicy);
+  const selectedRefundPolicy = normalizeRefundPolicy(selectedBooking?.refundPolicySnapshot || selectedBooking?.store?.refundPolicy);
+  const selectedAcknowledgmentRequired = requiresRefundAcknowledgment(selectedRefundPolicy);
   const [eligibleStaff, setEligibleStaff] = useState([]);
   const [staffProfileId, setStaffProfileId] = useState(null);
   const [bookingActionLoading, setBookingActionLoading] = useState(false);
 
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+
+  useEffect(() => { setAgreedToPolicy(false); }, [selectedService?._id, selectedBooking?._id]);
 
   /* ── multi-step booking form ── */
   const [formStep, setFormStep] = useState(1);
@@ -437,10 +459,14 @@ const Bookings = ({ isSubcomponent = false }) => {
   const handleConfirmAndPay = async bookingId => {
     const vat = Number(selectedBooking?.pricingBreakdown?.vatAmount || 0).toLocaleString(undefined, { minimumFractionDigits: 2 });
     const total = Number(selectedBooking?.totalPrice || 0).toLocaleString(undefined, { minimumFractionDigits: 2 });
+    if (selectedAcknowledgmentRequired && !agreedToPolicy) {
+      toast.error('Acknowledge this store\'s No Refund policy before continuing to PayMongo.');
+      return;
+    }
     if (!window.confirm(`Confirm this booking and continue to PayMongo?\n\nFinal total: ₱${total}\nVAT: ₱${vat}`)) return;
     setBookingActionLoading(true);
     try {
-      const confirmation = await bookingService.confirmForPayment(bookingId);
+      const confirmation = await bookingService.confirmForPayment(bookingId, { refundPolicyAcknowledged: selectedAcknowledgmentRequired ? agreedToPolicy : false });
       setSelectedBooking(confirmation.data.booking);
       const response = await paymentService.createBookingCheckoutSession(bookingId);
       if (response.data.checkoutUrl) window.location.href = response.data.checkoutUrl;
@@ -599,10 +625,10 @@ const Bookings = ({ isSubcomponent = false }) => {
       // Immediate fetch
       fetchServiceBookings(selectedService._id, calendarMonth.getMonth(), calendarMonth.getFullYear());
       
-      // Poll every 5 seconds for near real-time sync with other customers
+      // Low-frequency fallback; authenticated Socket.IO events provide immediate updates.
       intervalId = setInterval(() => {
-        fetchServiceBookings(selectedService._id, calendarMonth.getMonth(), calendarMonth.getFullYear());
-      }, 5000);
+        if (!document.hidden) fetchServiceBookings(selectedService._id, calendarMonth.getMonth(), calendarMonth.getFullYear());
+      }, 30000);
     }
     
     return () => {
@@ -639,7 +665,7 @@ const Bookings = ({ isSubcomponent = false }) => {
 
   const getStatusLabel = status => ({
     pending: 'Pending Store Review',
-    awaiting_customer_confirmation: 'Awaiting Your Confirmation',
+    awaiting_customer_confirmation: 'Proposal Ready — Awaiting Your Confirmation',
     awaiting_payment: 'Payment Required',
     confirmed: 'Booking Confirmed',
     approved: 'Booking Confirmed',
@@ -706,8 +732,8 @@ const Bookings = ({ isSubcomponent = false }) => {
       return;
     }
 
-    if (!agreedToPolicy) {
-      toast.error('You must agree to the No Refund Policy to proceed.');
+    if (serviceAcknowledgmentRequired && !agreedToPolicy) {
+      toast.error('You must acknowledge this store\'s No Refund policy to proceed.');
       return;
     }
     setSubmitting(true);
@@ -1730,15 +1756,15 @@ const Bookings = ({ isSubcomponent = false }) => {
                         </span>
                     </div>
 
-                    {/* No Refund Policy Agreement */}
+                    {/* Store refund policy */}
                     {!taxConfigReady && (
                       <p className="mt-4 p-3 rounded-xl bg-rose-50 border border-rose-100 text-xs text-rose-700">
                         This store must complete its tax configuration before booking payment is available.
                       </p>
                     )}
                     <div className="mt-4">
-                      <label className="flex items-start gap-3 p-4 bg-rose-50 rounded-2xl border border-rose-100 cursor-pointer group hover:bg-rose-100/50 transition-all shadow-sm">
-                        <div className="relative flex items-center mt-0.5">
+                      <div className={`flex items-start gap-3 p-4 rounded-2xl border shadow-sm ${serviceAcknowledgmentRequired ? 'bg-rose-50 border-rose-100' : 'bg-slate-50 border-slate-200'}`}>
+                        {serviceAcknowledgmentRequired && <div className="relative flex items-center mt-0.5">
                           <input
                             type="checkbox"
                             checked={agreedToPolicy}
@@ -1746,14 +1772,14 @@ const Bookings = ({ isSubcomponent = false }) => {
                             className="w-5 h-5 rounded-md border-rose-300 text-rose-600 focus:ring-rose-500 cursor-pointer"
                             required
                           />
-                        </div>
+                        </div>}
                         <div className="space-y-0.5">
-                          <p className="text-[10px] font-black text-rose-900 uppercase tracking-wider">I agree to the No Refund Policy</p>
-                          <p className="text-[8px] font-bold text-rose-600 tracking-tight leading-relaxed">
-                            I understand that booking payments are final and non-refundable. I agree to coordinate directly with the store for any rescheduling or fulfillment concerns.
-                          </p>
+                          <p className={`text-[10px] font-black uppercase tracking-wider ${serviceAcknowledgmentRequired ? 'text-rose-900' : 'text-slate-900'}`}>{refundPolicyLabel(serviceRefundPolicy.type)} Policy</p>
+                          <p className="text-[9px] font-medium text-slate-600 leading-relaxed">{serviceRefundPolicy.summary}</p>
+                          {serviceRefundPolicy.conditions && <p className="text-[9px] text-slate-500">Conditions: {serviceRefundPolicy.conditions}</p>}
+                          {serviceAcknowledgmentRequired && <p className="text-[9px] font-bold text-rose-700">Acknowledge before PayMongo payment.</p>}
                         </div>
-                      </label>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -1763,9 +1789,9 @@ const Bookings = ({ isSubcomponent = false }) => {
                     className="px-8 py-4 bg-white border border-slate-100 text-slate-600 rounded-2xl text-[9px] font-black uppercase tracking-widest hover:border-slate-300 transition-all shadow-sm">
                     ← Edit
                   </button>
-                  <button type="submit" disabled={submitting || !taxConfigReady}
+                  <button type="submit" disabled={submitting || !taxConfigReady || (serviceAcknowledgmentRequired && !agreedToPolicy)}
                     className={`flex-1 py-5 text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.25em] shadow-2xl transition-all flex items-center justify-center gap-3 ${
-                      (!agreedToPolicy || !taxConfigReady) ? 'bg-slate-300 cursor-not-allowed grayscale shadow-none' : 'bg-primary-600 shadow-primary-200 hover:bg-primary-700 active:scale-95'
+                      ((serviceAcknowledgmentRequired && !agreedToPolicy) || !taxConfigReady) ? 'bg-slate-300 cursor-not-allowed grayscale shadow-none' : 'bg-primary-600 shadow-primary-200 hover:bg-primary-700 active:scale-95'
                     }`}>
                     {submitting ? (
                       <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Processing...</>
@@ -1890,14 +1916,14 @@ const Bookings = ({ isSubcomponent = false }) => {
             {bookings.map((booking) => (
               <div
                 key={booking._id}
-                className="group bg-white rounded-[2.5rem] border border-slate-100 p-8 shadow-sm hover:shadow-2xl hover:-translate-y-1 transition-all flex flex-col relative overflow-hidden animate-slide-up"
+                className="group bg-white rounded-2xl border border-slate-100 p-4 sm:p-5 shadow-sm hover:shadow-lg transition-all flex flex-col relative overflow-hidden animate-slide-up"
               >
                 <div className="absolute top-0 right-0 w-32 h-32 bg-slate-50 rounded-bl-[4rem] -translate-y-16 translate-x-16 group-hover:bg-primary-50 transition-colors duration-500" />
 
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-8 relative z-10">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4 relative z-10">
                   <div className="min-w-0">
                     <div className="flex items-center gap-3 mb-2">
-                      <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight leading-none group-hover:text-primary-600 transition-colors">
+                      <h3 className="text-base font-black text-slate-900 tracking-tight leading-none group-hover:text-primary-600 transition-colors">
                         {booking.service?.name || 'Service'}
                       </h3>
                       <div className="w-1.5 h-1.5 rounded-full bg-slate-200" />
@@ -1918,16 +1944,16 @@ const Bookings = ({ isSubcomponent = false }) => {
                   </div>
                   <div className="text-right">
                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Amount</p>
-                    <p className="text-2xl font-black text-slate-900 leading-none tracking-tighter">
+                    <p className="text-lg font-black text-slate-900 leading-none tracking-tighter">
                       ₱{(booking.totalPrice || 0).toLocaleString()}
                     </p>
                   </div>
                 </div>
 
                 {/* Subject Asset Manifest */}
-                <div className="bg-slate-50/50 rounded-[2rem] p-6 mb-8 border border-slate-100 flex-1">
-                  <label className="text-[9px] font-black text-slate-400 uppercase tracking-[0.3em] mb-4 block">Pet Details</label>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-6">
+                <div className="bg-slate-50/50 rounded-xl p-4 mb-4 border border-slate-100 flex-1">
+                  <label className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3 block">Booking Summary</label>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
                     <div>
                       <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Pet Name</p>
                       <p className="text-[11px] font-black text-slate-800 uppercase">{booking.pet?.name || 'UNKNOWN'}</p>
@@ -1940,14 +1966,13 @@ const Bookings = ({ isSubcomponent = false }) => {
                       <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Breed</p>
                       <p className="text-[11px] font-black text-slate-800 uppercase truncate">{booking.pet?.breed || 'N/A'}</p>
                     </div>
-                    <div>
-                      <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Status</p>
-                      <p className="text-[11px] font-black text-emerald-600 uppercase tracking-tighter">Active</p>
-                    </div>
+                    <div><p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Specialist</p><p className="truncate text-[11px] font-black text-slate-800">{booking.staff ? `${booking.staff.firstName || ''} ${booking.staff.lastName || ''}`.trim() : 'Pending assignment'}</p>{booking.staff?.professionalProfile?.verification?.status === 'verified' && <span className="text-[8px] font-bold text-emerald-600">Verified</span>}</div>
+                    <div><p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Branch</p><p className="truncate text-[11px] font-black text-slate-800">{booking.store?.name || 'Store'}</p></div>
+                    <div><p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Payment</p><p className={`text-[11px] font-black capitalize ${booking.paymentStatus === 'paid' ? 'text-emerald-600' : 'text-amber-600'}`}>{booking.paymentStatus || 'pending'}</p></div>
                   </div>
                 </div>
 
-                <div className="flex flex-col sm:flex-row items-center justify-between gap-6 pt-6 border-t border-slate-50 relative z-10">
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 border-t border-slate-50 relative z-10">
                   <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
                     <div className="flex flex-wrap items-center gap-3">
                       <a
@@ -1980,7 +2005,7 @@ const Bookings = ({ isSubcomponent = false }) => {
                   <div className="flex gap-3 w-full sm:w-auto">
                     <button
                       onClick={() => setSelectedBooking(booking)}
-                      className="flex-1 sm:flex-none flex items-center justify-center gap-3 px-8 py-4 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] shadow-xl shadow-slate-200 hover:bg-primary-600 transition-all active:scale-95"
+                      className="flex-1 sm:flex-none flex h-10 items-center justify-center gap-2 px-4 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-wider shadow-sm hover:bg-primary-600 transition-all active:scale-95"
                     >
                       View Details <ChevronRight className="h-4 w-4" />
                     </button>
@@ -2129,6 +2154,22 @@ const Bookings = ({ isSubcomponent = false }) => {
                 </div>
               </div>
 
+              {selectedBooking.status === 'awaiting_customer_confirmation' && (
+                <section className="rounded-2xl border border-primary-200 bg-primary-50/40 p-4 space-y-3">
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div><p className="text-[9px] font-black uppercase tracking-widest text-primary-700">Booking Proposal</p><h3 className="text-sm font-black text-slate-900">Review before confirming payment</h3></div>
+                    {selectedBooking.lifecycle?.confirmationExpiresAt && <p className="rounded-lg bg-white px-2 py-1 text-[10px] font-bold text-slate-600"><ProposalCountdown expiresAt={selectedBooking.lifecycle.confirmationExpiresAt} /></p>}
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                    <div className="rounded-lg bg-white p-2"><p className="text-[8px] font-black uppercase text-slate-400">Service</p><p className="text-[11px] font-bold text-slate-800">{selectedBooking.service?.name}</p></div>
+                    <div className="rounded-lg bg-white p-2"><p className="text-[8px] font-black uppercase text-slate-400">Pet</p><p className="text-[11px] font-bold text-slate-800">{selectedBooking.pet?.name}</p></div>
+                    <div className="rounded-lg bg-white p-2"><p className="text-[8px] font-black uppercase text-slate-400">Branch</p><p className="text-[11px] font-bold text-slate-800">{selectedBooking.store?.name}</p></div>
+                    <div className="rounded-lg bg-white p-2"><p className="text-[8px] font-black uppercase text-slate-400">Estimated duration</p><p className="text-[11px] font-bold text-slate-800">{selectedBooking.proposal?.estimatedDurationMinutes || selectedBooking.service?.duration || '—'} min</p></div>
+                  </div>
+                  {selectedBooking.proposal?.specialInstructions && <div className="rounded-lg border border-primary-100 bg-white p-3"><p className="text-[8px] font-black uppercase text-slate-400">Special instructions</p><p className="mt-1 whitespace-pre-wrap text-xs text-slate-700">{selectedBooking.proposal.specialInstructions}</p></div>}
+                </section>
+              )}
+
               {/* Customer-facing booking proposal and assigned specialist */}
               {selectedBooking.staff && (
                 <section className="rounded-2xl border border-slate-200 bg-white p-4 space-y-3">
@@ -2144,18 +2185,28 @@ const Bookings = ({ isSubcomponent = false }) => {
                       {selectedBooking.staff.avatar ? <img src={getImageUrl(selectedBooking.staff.avatar)} alt="" className="h-full w-full object-cover" /> : <User className="h-5 w-5 text-slate-400" />}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm font-black text-slate-900">{selectedBooking.staff.firstName} {selectedBooking.staff.lastName}</p>
+                      <div className="flex flex-wrap items-center gap-2"><p className="text-sm font-black text-slate-900">{selectedBooking.staff.firstName} {selectedBooking.staff.lastName}</p>{selectedBooking.staff.professionalProfile?.verification?.status==='verified'&&<span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[8px] font-black uppercase text-emerald-700"><ShieldCheck className="h-3 w-3"/>Verified</span>}</div>
                       <p className="text-[11px] text-slate-500 capitalize">{selectedBooking.staff.professionalProfile?.professionalTitle || selectedBooking.staff.staffType?.replaceAll('_', ' ')}{selectedBooking.staff.professionalProfile?.specialty ? ` · ${selectedBooking.staff.professionalProfile.specialty}` : ''}</p>
                     </div>
                     <button type="button" onClick={() => setStaffProfileId(selectedBooking.staff._id)} className="h-8 px-3 rounded-lg border bg-white text-[10px] font-black uppercase text-primary-700">View Profile</button>
                   </div>
+                  {eligibleStaff.find(member => member.isCurrent)?.matchExplanation && (
+                    <div className="rounded-xl border border-primary-100 bg-primary-50/40 p-3 text-[11px] text-slate-600">
+                      <p className="font-bold text-slate-800">Why this specialist</p>
+                      <p className="mt-1">{eligibleStaff.find(member => member.isCurrent).matchExplanation.why}</p>
+                      <p className="mt-1 text-primary-700">Match score: {eligibleStaff.find(member => member.isCurrent).matchScore}/100</p>
+                    </div>
+                  )}
                   {selectedBooking.status === 'awaiting_customer_confirmation' && eligibleStaff.filter(member => !member.isCurrent).length > 0 && (
                     <div>
                       <p className="text-[9px] font-black uppercase text-slate-400 mb-2">Other qualified staff available</p>
                       <div className="grid sm:grid-cols-2 gap-2">{eligibleStaff.filter(member => !member.isCurrent).map(member => (
-                        <button key={member._id} type="button" disabled={bookingActionLoading} onClick={() => setStaffProfileId(member._id)} className="text-left rounded-xl border p-3 hover:border-primary-300 transition-colors">
-                          <p className="text-xs font-black text-slate-800">{member.firstName} {member.lastName}</p>
+                        <button key={member._id} type="button" disabled={bookingActionLoading} onClick={() => setStaffProfileId(member._id)} className="text-left rounded-xl border p-3 hover:border-primary-300 transition-colors flex gap-2">
+                          <div className="h-10 w-10 shrink-0 overflow-hidden rounded-lg border bg-slate-50">{member.avatar ? <img src={getImageUrl(member.avatar)} alt="" className="h-full w-full object-cover" /> : <User className="m-2.5 h-4 w-4 text-slate-400" />}</div>
+                          <div className="min-w-0"><div className="flex flex-wrap items-center gap-1"><p className="text-xs font-black text-slate-800">{member.firstName} {member.lastName}</p>{member.verified&&<ShieldCheck className="h-3 w-3 text-emerald-600" aria-label="Verified professional"/>}</div>
                           <p className="text-[10px] text-slate-500 capitalize">{member.professionalTitle || member.staffType?.replaceAll('_', ' ')} · {member.reviewCount ? `${member.averageRating}/5 (${member.reviewCount})` : 'No reviews yet'}</p>
+                          <p className="mt-1 text-[9px] text-emerald-700">Available · {member.experienceYears || 0} years experience{member.languages?.length ? ` · ${member.languages.join(', ')}` : ''}</p>
+                          {member.matchExplanation && <p className="mt-1 text-[9px] leading-relaxed text-slate-500">{member.matchExplanation.why} · Score {member.matchScore}/100</p>}</div>
                         </button>
                       ))}</div>
                     </div>
@@ -2163,6 +2214,13 @@ const Bookings = ({ isSubcomponent = false }) => {
                   {selectedBooking.status === 'awaiting_customer_confirmation' && eligibleStaff.length === 1 && <p className="rounded-lg bg-slate-50 p-2 text-[11px] text-slate-500">No other qualified staff member is available for this schedule.</p>}
                 </section>
               )}
+
+              {selectedBooking && <section className={`rounded-2xl border p-4 ${selectedAcknowledgmentRequired ? 'border-rose-200 bg-rose-50' : 'border-slate-200 bg-slate-50'}`}>
+                <div className="flex items-start gap-3">
+                  {selectedBooking.status === 'awaiting_customer_confirmation' && selectedAcknowledgmentRequired && <input type="checkbox" checked={agreedToPolicy} onChange={event => setAgreedToPolicy(event.target.checked)} className="mt-0.5 h-4 w-4 rounded border-rose-300 text-rose-600" aria-label="Acknowledge store refund policy" />}
+                  <div><p className="text-[10px] font-black uppercase tracking-wider text-slate-900">{refundPolicyLabel(selectedRefundPolicy.type)} Policy</p><p className="mt-1 text-[11px] leading-relaxed text-slate-600">{selectedRefundPolicy.summary}</p>{selectedRefundPolicy.conditions && <p className="mt-1 text-[10px] text-slate-500">Conditions: {selectedRefundPolicy.conditions}</p>}{selectedAcknowledgmentRequired && selectedBooking.status === 'awaiting_customer_confirmation' && <p className="mt-1 text-[10px] font-bold text-rose-700">Acknowledgment is required before PayMongo payment.</p>}</div>
+                </div>
+              </section>}
 
               {/* Operations Notes & Payload */}
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch pt-4">
@@ -2287,6 +2345,11 @@ const Bookings = ({ isSubcomponent = false }) => {
                       }`}>
                         {selectedBooking.paymentStatus === 'paid' ? `✅ ${selectedBooking.paymentMethod || 'Online Payment'}` : '⏳ Pending'}
                       </span>
+                    </div>
+                    <div className="rounded-xl border border-slate-100 bg-slate-50 p-3">
+                      <p className="text-[9px] font-black uppercase tracking-widest text-slate-700">{refundPolicyLabel(selectedRefundPolicy.type)} Policy</p>
+                      <p className="mt-1 text-[9px] leading-relaxed text-slate-500">{selectedRefundPolicy.summary}</p>
+                      {selectedRefundPolicy.conditions && <p className="mt-1 text-[9px] text-slate-500">{selectedRefundPolicy.conditions}</p>}
                     </div>
 
                     {/* Navigate to Store */}

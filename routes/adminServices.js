@@ -12,7 +12,7 @@ const {
   updateService,
   deleteService
 } = require('../controllers/serviceController');
-const { authenticate, adminOrStaff } = require('../middleware/auth');
+const { authenticate, adminOrStaff, requirePermission } = require('../middleware/auth');
 
 // Validation rules (same as regular services)
 const createServiceValidation = [
@@ -34,10 +34,10 @@ const updateServiceValidation = [
 ];
 
 // Admin routes (filtered by user's store)
-router.get('/', authenticate, adminOrStaff, getAllAdminServices);
-router.get('/:id', authenticate, adminOrStaff, getServiceById);
-router.post('/', authenticate, adminOrStaff, createServiceValidation, createAdminService);
-router.put('/:id', authenticate, adminOrStaff, updateServiceValidation, updateService);
-router.delete('/:id', authenticate, adminOrStaff, deleteService);
+router.get('/', authenticate, adminOrStaff, requirePermission('services.view', 'services.manage'), getAllAdminServices);
+router.get('/:id', authenticate, adminOrStaff, requirePermission('services.view', 'services.manage'), getServiceById);
+router.post('/', authenticate, adminOrStaff, requirePermission('services.manage'), createServiceValidation, createAdminService);
+router.put('/:id', authenticate, adminOrStaff, requirePermission('services.manage'), updateServiceValidation, updateService);
+router.delete('/:id', authenticate, adminOrStaff, requirePermission('services.manage'), deleteService);
 
 module.exports = router;

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { RefreshCcw, Save, Shield, Database, Users, Store, Activity, Settings, RefreshCw, AlertCircle } from 'lucide-react';
+import { RefreshCcw, Save, Shield, Database, Users, Store, Activity } from 'lucide-react';
 
 const permissionsData = [
   {

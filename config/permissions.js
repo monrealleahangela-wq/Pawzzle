@@ -3,13 +3,13 @@ const ROLE_PERMISSIONS = {
   platform_admin: ['*'],
   admin: [
     'dashboard.view', 'users.manage', 'staff.manage', 'customers.manage',
-    'pets.manage', 'clinical.manage', 'services.manage', 'sales.manage',
+    'pets.manage', 'clinical.manage', 'services.manage', 'bookings.manage', 'sales.manage',
     'inventory.manage', 'procurement.manage', 'finance.manage',
     'logistics.manage', 'reports.view', 'dss.manage'
   ],
   store_owner: [
     'dashboard.view', 'users.manage', 'staff.manage', 'customers.manage',
-    'pets.manage', 'clinical.manage', 'services.manage', 'sales.manage',
+    'pets.manage', 'clinical.manage', 'services.manage', 'bookings.manage', 'sales.manage',
     'inventory.manage', 'procurement.manage', 'finance.manage',
     'logistics.manage', 'reports.view', 'dss.manage'
   ],
@@ -18,6 +18,11 @@ const ROLE_PERMISSIONS = {
     'clinical.view', 'services.manage', 'sales.manage', 'inventory.manage',
     'procurement.manage', 'finance.view', 'logistics.manage',
     'reports.view', 'dss.view', 'bookings.manage'
+  ],
+  service_staff: [
+    'dashboard.view', 'customers.view', 'pets.view', 'services.view',
+    'bookings.view', 'bookings.confirm', 'bookings.update',
+    'pet_updates.create'
   ],
   cashier: [
     'dashboard.view', 'customers.view', 'pets.view', 'products.view',
@@ -100,11 +105,17 @@ const LEGACY_STAFF_ROLE_MAP = {
   groomer: 'groomer',
   trainer: 'trainer',
   boarding_specialist: 'boarding_staff',
+  boarding_staff: 'boarding_staff',
   inventory_staff: 'inventory_staff',
+  manager: 'manager',
+  cashier: 'cashier',
+  procurement_officer: 'procurement_officer',
+  finance_staff: 'finance_staff',
+  delivery_dispatcher: 'delivery_dispatcher',
   logistics_staff: 'delivery_dispatcher',
   sales_staff: 'cashier',
   order_staff: 'cashier',
-  service_staff: 'groomer',
+  service_staff: 'service_staff',
   service_management_staff: 'manager',
   administrative_support: 'manager',
   medical_assistant: 'veterinary_assistant',
@@ -112,10 +123,36 @@ const LEGACY_STAFF_ROLE_MAP = {
   delivery_rider: 'delivery_rider'
 };
 
+const PLATFORM_ADMIN_ROLES = new Set(['super_admin', 'platform_admin']);
+const STORE_ADMIN_ROLES = new Set(['admin', 'store_owner']);
+const SPECIALIZED_OPERATIONAL_ROLES = new Set([
+  'manager', 'cashier', 'inventory_staff', 'procurement_officer',
+  'finance_staff', 'service_staff', 'veterinarian', 'groomer', 'trainer', 'boarding_staff',
+  'veterinary_technician', 'veterinary_assistant', 'veterinary_nurse',
+  'veterinary_laboratory_technician', 'delivery_dispatcher', 'delivery_rider',
+  'auditor'
+]);
+
+const isPlatformAdmin = userOrRole => PLATFORM_ADMIN_ROLES.has(
+  typeof userOrRole === 'string' ? userOrRole : userOrRole?.role
+);
+
+const isStoreAdmin = userOrRole => STORE_ADMIN_ROLES.has(
+  typeof userOrRole === 'string' ? userOrRole : userOrRole?.role
+);
+
+const isOperationalStaff = userOrRole => {
+  const role = typeof userOrRole === 'string' ? userOrRole : userOrRole?.role;
+  return role === 'staff' || SPECIALIZED_OPERATIONAL_ROLES.has(role);
+};
+
 const normalizeRole = (user) => {
   if (!user) return null;
+  if (PLATFORM_ADMIN_ROLES.has(user.role)) return 'super_admin';
+  if (STORE_ADMIN_ROLES.has(user.role)) return 'admin';
   if (user.role === 'staff') {
-    return LEGACY_STAFF_ROLE_MAP[user.staffType] || 'manager';
+    // An incomplete legacy staff record must never inherit manager access.
+    return LEGACY_STAFF_ROLE_MAP[user.staffType] || 'unassigned_staff';
   }
   return user.role;
 };
@@ -131,9 +168,11 @@ const permissionMatches = (granted, required) => {
 const getEffectivePermissions = (user) => {
   const role = normalizeRole(user);
   const defaults = ROLE_PERMISSIONS[role] || [];
-  const overrides = user?.permissions instanceof Map
-    ? Object.fromEntries(user.permissions)
-    : (user?.permissions || {});
+  const scopedPolicy = user?.$locals && Object.prototype.hasOwnProperty.call(user.$locals, 'rolePolicyPermissions')
+    ? user.$locals.rolePolicyPermissions
+    : user?.rolePolicyPermissions;
+  const source = scopedPolicy !== undefined ? scopedPolicy : user?.permissions;
+  const overrides = source instanceof Map ? Object.fromEntries(source) : (source || {});
 
   const explicit = [];
   const denied = new Set();
@@ -152,13 +191,44 @@ const getEffectivePermissions = (user) => {
   return [...new Set([...defaults, ...explicit])].filter((p) => !denied.has(p));
 };
 
-const hasPermission = (user, required) =>
-  getEffectivePermissions(user).some((granted) => permissionMatches(granted, required));
+// Explicit action settings have precedence over inherited role permissions.
+// Exact action -> resource fullAccess/manage -> role defaults is the stable order.
+const getExplicitPermissionState = (user, required) => {
+  const scopedPolicy = user?.$locals && Object.prototype.hasOwnProperty.call(user.$locals, 'rolePolicyPermissions')
+    ? user.$locals.rolePolicyPermissions
+    : user?.rolePolicyPermissions;
+  const source = scopedPolicy !== undefined ? scopedPolicy : user?.permissions;
+  const overrides = source instanceof Map ? Object.fromEntries(source) : (source || {});
+  if (Object.prototype.hasOwnProperty.call(overrides, required)
+      && typeof overrides[required] === 'boolean') return overrides[required];
+
+  const [resource, action] = required.split('.');
+  const resourceOverride = overrides[resource];
+  if (!resourceOverride || typeof resourceOverride !== 'object') return undefined;
+  if (Object.prototype.hasOwnProperty.call(resourceOverride, action)
+      && typeof resourceOverride[action] === 'boolean') return resourceOverride[action];
+  if (Object.prototype.hasOwnProperty.call(resourceOverride, 'fullAccess')
+      && typeof resourceOverride.fullAccess === 'boolean') return resourceOverride.fullAccess;
+  return undefined;
+};
+
+const hasPermission = (user, required) => {
+  const explicitState = getExplicitPermissionState(user, required);
+  if (explicitState !== undefined) return explicitState;
+  return getEffectivePermissions(user).some((granted) => permissionMatches(granted, required));
+};
 
 module.exports = {
   ROLE_PERMISSIONS,
   LEGACY_STAFF_ROLE_MAP,
+  PLATFORM_ADMIN_ROLES,
+  STORE_ADMIN_ROLES,
+  SPECIALIZED_OPERATIONAL_ROLES,
+  isPlatformAdmin,
+  isStoreAdmin,
+  isOperationalStaff,
   normalizeRole,
   getEffectivePermissions,
+  getExplicitPermissionState,
   hasPermission
 };

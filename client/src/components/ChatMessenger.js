@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { toast } from 'react-toastify';
-import { Send, X, User, Clock, Check } from 'lucide-react';
+import { Send, X, Clock, Check } from 'lucide-react';
 
 const ChatMessenger = ({ isOpen, onClose, pet, seller, currentUser }) => {
   const [messages, setMessages] = useState([]);

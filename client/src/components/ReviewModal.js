@@ -5,6 +5,14 @@ import { toast } from 'react-toastify';
 import { reviewService } from '../services/apiService';
 import ImageUpload from './ImageUpload';
 
+const staffCompliments = [
+    ['friendly', 'Friendly'],
+    ['professional', 'Professional'],
+    ['gentle_with_pets', 'Gentle with pets'],
+    ['fast_service', 'Fast service'],
+    ['clean_facility', 'Clean facility']
+];
+
 const ReviewModal = ({ 
     isOpen, 
     onClose, 
@@ -19,6 +27,7 @@ const ReviewModal = ({
     const [comment, setComment] = useState('');
     const [images, setImages] = useState([]);
     const [isAnonymous, setIsAnonymous] = useState(false);
+    const [complimentTags, setComplimentTags] = useState([]);
     const [submitting, setSubmitting] = useState(false);
 
     if (!targetId) return null;
@@ -35,7 +44,8 @@ const ReviewModal = ({
                 rating,
                 comment,
                 images,
-                isAnonymous
+                isAnonymous,
+                complimentTags: targetType === 'Booking' ? complimentTags : []
             });
             toast.success(targetType === 'Booking' ? 'Staff review submitted successfully!' : 'Review submitted successfully!');
             if (onReviewSubmitted) onReviewSubmitted();
@@ -45,6 +55,7 @@ const ReviewModal = ({
             setComment('');
             setImages([]);
             setIsAnonymous(false);
+            setComplimentTags([]);
         } catch (error) {
             toast.error(error.response?.data?.message || 'Failed to submit review');
         } finally {
@@ -78,6 +89,17 @@ const ReviewModal = ({
                 </div>
 
                 <div className="space-y-4">
+                    {targetType === 'Booking' && (
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block ml-1">Optional compliments</label>
+                            <div className="flex flex-wrap gap-2">
+                                {staffCompliments.map(([value, label]) => {
+                                    const selected = complimentTags.includes(value);
+                                    return <button key={value} type="button" onClick={() => setComplimentTags(current => selected ? current.filter(item => item !== value) : [...current, value])} className={`h-8 rounded-lg border px-3 text-[10px] font-bold transition-colors ${selected ? 'border-primary-500 bg-primary-50 text-primary-700' : 'border-slate-200 bg-white text-slate-600'}`}>{label}</button>;
+                                })}
+                            </div>
+                        </div>
+                    )}
                     <div className="space-y-2">
                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block ml-1">Your detailed experience</label>
                         <textarea

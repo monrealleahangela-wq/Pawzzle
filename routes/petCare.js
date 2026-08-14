@@ -3,9 +3,9 @@ const { authenticate, requirePermission } = require('../middleware/auth');
 const {
   createEncounter, getMedicalHistory, administerVaccine,
   addServiceUpdate, getServiceUpdates, getServiceTimeline, sendServiceMessage,
-  authorizeServicePhotoUpload, uploadServicePhoto, createCertification
+  authorizeServicePhotoUpload, uploadServicePhoto, saveAftercare, createCertification
 } = require('../controllers/petCareController');
-const { uploadSingle, handleUploadError } = require('../middleware/upload');
+const { uploadServicePhotos, handleUploadError } = require('../middleware/upload');
 
 const router = express.Router();
 router.get('/pets/:petId/history', authenticate, requirePermission('clinical.view', 'clinical.manage', 'pets.own'), getMedicalHistory);
@@ -15,7 +15,8 @@ router.post('/bookings/:bookingId/updates', authenticate, addServiceUpdate);
 router.get('/bookings/:bookingId/updates', authenticate, getServiceUpdates);
 router.get('/bookings/:bookingId/timeline', authenticate, getServiceTimeline);
 router.post('/bookings/:bookingId/messages', authenticate, sendServiceMessage);
-router.post('/bookings/:bookingId/photos', authenticate, authorizeServicePhotoUpload, uploadSingle, handleUploadError, uploadServicePhoto);
+router.put('/bookings/:bookingId/aftercare', authenticate, saveAftercare);
+router.post('/bookings/:bookingId/photos', authenticate, authorizeServicePhotoUpload, uploadServicePhotos, handleUploadError, uploadServicePhoto);
 router.post('/pets/:petId/certifications', authenticate, requirePermission('pets.own', 'pets.manage'), createCertification);
 
 module.exports = router;

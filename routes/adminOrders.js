@@ -11,7 +11,9 @@ const {
   updateOrderStatus,
   cancelOrder
 } = require('../controllers/orderController');
-const { authenticate, adminOrStaff } = require('../middleware/auth');
+const { authenticate, adminOrStaff, requirePermission } = require('../middleware/auth');
+const canViewOrders = requirePermission('sales.view', 'sales.manage', 'orders.view');
+const canUpdateOrders = requirePermission('sales.manage', 'orders.update');
 
 // Validation rules
 const updateOrderStatusValidation = [
@@ -19,9 +21,9 @@ const updateOrderStatusValidation = [
 ];
 
 // Admin routes (filtered by user's store)
-router.get('/', authenticate, adminOrStaff, getAllAdminOrders);
-router.get('/:id', authenticate, adminOrStaff, getOrderById);
-router.patch('/:id/status', authenticate, adminOrStaff, updateOrderStatusValidation, updateOrderStatus);
-router.patch('/:id/cancel', authenticate, adminOrStaff, cancelOrder);
+router.get('/', authenticate, adminOrStaff, canViewOrders, getAllAdminOrders);
+router.get('/:id', authenticate, adminOrStaff, canViewOrders, getOrderById);
+router.patch('/:id/status', authenticate, adminOrStaff, canUpdateOrders, updateOrderStatusValidation, updateOrderStatus);
+router.patch('/:id/cancel', authenticate, adminOrStaff, canUpdateOrders, cancelOrder);
 
 module.exports = router;

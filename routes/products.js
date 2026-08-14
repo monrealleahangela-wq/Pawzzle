@@ -10,7 +10,7 @@ const {
   deleteProduct,
   updateStock
 } = require('../controllers/productController');
-const { authenticate, adminOrStaff } = require('../middleware/auth');
+const { authenticate, adminOrStaff, requirePermission } = require('../middleware/auth');
 
 // Validation rules
 // Validation rules
@@ -48,9 +48,9 @@ router.get('/', getAllProducts);
 router.get('/:id', getProductById);
 
 // Protected routes (Admin/Staff)
-router.post('/', authenticate, adminOrStaff, createProductValidation, createProduct);
-router.put('/:id', authenticate, adminOrStaff, updateProductValidation, updateProduct);
-router.delete('/:id', authenticate, adminOrStaff, deleteProduct);
-router.patch('/:id/stock', authenticate, adminOrStaff, updateStockValidation, updateStock);
+router.post('/', authenticate, adminOrStaff, requirePermission('products.manage', 'inventory.adjust'), createProductValidation, createProduct);
+router.put('/:id', authenticate, adminOrStaff, requirePermission('products.manage', 'inventory.adjust'), updateProductValidation, updateProduct);
+router.delete('/:id', authenticate, adminOrStaff, requirePermission('products.manage', 'inventory.adjust'), deleteProduct);
+router.patch('/:id/stock', authenticate, adminOrStaff, requirePermission('inventory.adjust'), updateStockValidation, updateStock);
 
 module.exports = router;

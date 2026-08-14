@@ -2,29 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
 import storeApplicationService from '../../services/storeApplicationService';
 import { getImageUrl } from '../../services/apiService';
-import {
-  Building,
-  FileText,
-  Check,
-  X,
-  Eye,
-  AlertTriangle,
-  TrendingUp,
-  Target,
-  Shield,
-  Zap,
-  Briefcase,
-  ChevronRight,
-  ShieldAlert,
-  Search,
-  Activity,
-  ExternalLink,
-  Wallet,
-  Camera,
-  MapPin,
-  Phone,
-  Heart
-} from 'lucide-react';
+import { Building, Check, X, Eye, AlertTriangle, TrendingUp, Shield, Zap, Briefcase, ChevronRight, ShieldAlert, Search, Activity, ExternalLink, Wallet, Camera, MapPin, Phone, Heart } from 'lucide-react';
 
 const StoreApplications = () => {
   const [applications, setApplications] = useState([]);

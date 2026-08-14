@@ -49,6 +49,10 @@ const reviewSchema = new mongoose.Schema({
         trim: true,
         maxlength: 1000
     },
+    complimentTags: [{
+        type: String,
+        enum: ['friendly', 'professional', 'gentle_with_pets', 'fast_service', 'clean_facility']
+    }],
     images: [{
         type: String
     }],

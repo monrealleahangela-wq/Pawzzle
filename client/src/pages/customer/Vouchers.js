@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Ticket, Tag, Store, Calendar, CheckCircle2, Copy, AlertCircle, Sparkles, ChevronRight, Gift, ShoppingBag, ArrowRight } from 'lucide-react';
+import { Ticket, Store, Calendar, Copy, Sparkles, Gift, ShoppingBag, ArrowRight } from 'lucide-react';
 import { voucherService } from '../../services/apiService';
 import { toast } from 'react-toastify';
 import { Link } from 'react-router-dom';

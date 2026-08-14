@@ -1,20 +1,21 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Home, ArrowLeft } from 'lucide-react';
+import { Home, ArrowLeft, MapPinOff } from 'lucide-react';
 
 const NotFound = () => {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="max-w-md w-full text-center">
-        <div className="mb-8">
-          <h1 className="text-9xl font-bold text-gray-300">404</h1>
-          <h2 className="text-3xl font-bold text-gray-900 mb-4">Page Not Found</h2>
-          <p className="text-gray-600 mb-8">
-            Sorry, we couldn't find the page you're looking for.
+    <main className="min-h-[70vh] flex items-center justify-center bg-slate-50 p-4">
+      <div className="max-w-md w-full rounded-2xl border border-slate-200 bg-white p-6 text-center shadow-sm">
+        <div className="mb-5">
+          <span className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-primary-50 text-primary-600"><MapPinOff size={22} /></span>
+          <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Page unavailable</p>
+          <h1 className="mt-1 text-xl font-bold text-slate-900">We couldn't find this page</h1>
+          <p className="mt-2 text-sm leading-relaxed text-slate-600">
+            The link may be outdated, or the page may not be available for your account.
           </p>
         </div>
         
-        <div className="space-y-4">
+        <div className="grid gap-2 sm:grid-cols-2">
           <Link
             to="/"
             className="btn btn-primary w-full flex items-center justify-center"
@@ -32,7 +33,7 @@ const NotFound = () => {
           </button>
         </div>
       </div>
-    </div>
+    </main>
   );
 };
 

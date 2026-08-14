@@ -1,13 +1,5 @@
 import React, { useState } from 'react';
-import {
-    AlertTriangle,
-    X,
-    Upload,
-    ShieldAlert,
-    Info,
-    CheckCircle,
-    FileText
-} from 'lucide-react';
+import { AlertTriangle, X, ShieldAlert, Info, CheckCircle } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { adminReportService as reportService } from '../services/apiService';
 import ImageUpload from './ImageUpload';
@@ -71,7 +63,7 @@ const UserReportModal = ({ isOpen, onClose, reportedUser }) => {
 
                     <div className="p-4 bg-white/5 border border-white/10 rounded-2xl flex items-center gap-3">
                         <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center overflow-hidden">
-                            {reportedUser?.avatar ? <img src={reportedUser.avatar} className="w-full h-full object-cover" /> : <Info className="h-5 w-5 text-white/40" />}
+                            {reportedUser?.avatar ? <img src={reportedUser.avatar} alt="" loading="lazy" className="w-full h-full object-cover" /> : <Info className="h-5 w-5 text-white/40" />}
                         </div>
                         <div>
                             <p className="text-[10px] font-black text-white uppercase tracking-widest">{reportedUser?.firstName || reportedUser?.username}</p>

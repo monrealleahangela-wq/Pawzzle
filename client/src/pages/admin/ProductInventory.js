@@ -2,42 +2,9 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { toast } from 'react-toastify';
 import { productService, adminProductService, inventoryService, uploadService, getImageUrl } from '../../services/apiService';
 import { useAuth } from '../../contexts/AuthContext';
+import { PLATFORM_ADMIN_ROLES, STORE_ADMIN_ROLES, OPERATIONAL_ROLES, hasUiActionPermission } from '../../utils/authorization';
 import { useRealTimeUpdates } from '../../hooks/useRealTimeUpdates';
-import {
-  Package,
-  AlertTriangle,
-  TrendingDown,
-  Plus,
-  Edit,
-  Trash2,
-  Search,
-  Box,
-  X,
-  Activity,
-  Image as ImageIcon,
-  ChevronRight,
-  Shield,
-  Zap,
-  Target,
-  Briefcase,
-  Layers,
-  ArrowUpRight,
-  Filter,
-  Scale,
-  Maximize,
-  Tag,
-  Star,
-  Info,
-  ChevronDown,
-  ChevronUp,
-  LayoutGrid,
-  Menu,
-  Video,
-  FileText,
-  Table,
-  MapPin,
-  Clock
-} from 'lucide-react';
+import { Package, AlertTriangle, TrendingDown, Plus, Edit, Trash2, Search, Box, X, Activity, Image as ImageIcon, ChevronRight, Shield, Zap, Target, Layers, Tag, Star, Info, ChevronDown, ChevronUp, Video, FileText, MapPin, Clock } from 'lucide-react';
 
 const PhilippinePeso = ({ className }) => (
   <svg 
@@ -61,7 +28,7 @@ const ProductInventory = () => {
   const [activeTab, setActiveTab] = useState('products');
   const [products, setProducts] = useState([]);
   const [inventory, setInventory] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [, setLoading] = useState(true);
 
   // Modal States
   const [showProductModal, setShowProductModal] = useState(false);
@@ -131,7 +98,7 @@ const ProductInventory = () => {
   });
 
   // Permission Checks
-  const isAdmin = ['admin', 'super_admin'].includes(user?.role);
+  const isAdmin = PLATFORM_ADMIN_ROLES.has(user?.role) || STORE_ADMIN_ROLES.has(user?.role);
 
   const fetchProducts = useCallback(async () => {
     try {
@@ -139,7 +106,7 @@ const ProductInventory = () => {
       const params = { ...productFilters, page: pagination.currentPage, limit: 20 };
       const userData = JSON.parse(localStorage.getItem('user') || '{}');
 
-      const response = (userData.role === 'admin' || userData.role === 'super_admin' || userData.role === 'staff')
+      const response = (PLATFORM_ADMIN_ROLES.has(userData.role) || STORE_ADMIN_ROLES.has(userData.role) || OPERATIONAL_ROLES.has(userData.role))
         ? await adminProductService.getAllProducts(params)
         : await productService.getAllProducts(params);
 
@@ -191,9 +158,9 @@ const ProductInventory = () => {
     }
   });
 
-  const canCreate = isAdmin || user?.permissions?.inventory?.create || user?.permissions?.inventory?.fullAccess;
-  const canUpdate = isAdmin || user?.permissions?.inventory?.update || user?.permissions?.inventory?.fullAccess;
-  const canDelete = isAdmin || user?.permissions?.inventory?.delete || user?.permissions?.inventory?.fullAccess;
+  const canCreate = hasUiActionPermission(user, 'inventory', 'create', isAdmin);
+  const canUpdate = hasUiActionPermission(user, 'inventory', 'update', isAdmin);
+  const canDelete = hasUiActionPermission(user, 'inventory', 'delete', isAdmin);
   const canAdjustStock = canUpdate;
 
   const categoryHierarchy = {
@@ -267,7 +234,7 @@ const ProductInventory = () => {
     setSubmitting(true);
     try {
       const userData = JSON.parse(localStorage.getItem('user') || '{}');
-      const isAdminOrStaff = userData.role === 'admin' || userData.role === 'super_admin' || userData.role === 'staff';
+      const isAdminOrStaff = PLATFORM_ADMIN_ROLES.has(userData.role) || STORE_ADMIN_ROLES.has(userData.role) || OPERATIONAL_ROLES.has(userData.role);
 
       const payload = {
         ...productForm,
@@ -378,7 +345,7 @@ const ProductInventory = () => {
   return (
     <div className="min-h-screen bg-slate-50/50 p-4 sm:p-8 space-y-8">
       {/* Header */}
-      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-6 bg-white p-6 sm:p-10 rounded-[3rem] border border-slate-100 shadow-sm relative overflow-hidden">
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-4 bg-white p-4 sm:p-6 rounded-2xl border border-slate-100 shadow-sm relative overflow-hidden">
         <div className="absolute top-0 right-0 w-64 h-64 bg-primary-600/5 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl pointer-events-none" />
         <div className="relative z-10 w-full lg:w-auto">
           <div className="flex items-center gap-3 mb-4">
@@ -387,7 +354,7 @@ const ProductInventory = () => {
             </div>
             <span className="text-[10px] font-black text-primary-600 uppercase tracking-[0.4em]">ADMIN PANEL : PRODUCTS</span>
           </div>
-          <h1 className="text-3xl sm:text-5xl font-black text-slate-900 uppercase tracking-tighter leading-[0.9] mb-3">
+          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 uppercase tracking-tight leading-none mb-2">
             Product <span className="text-primary-600">Inventory</span>
           </h1>
           <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">

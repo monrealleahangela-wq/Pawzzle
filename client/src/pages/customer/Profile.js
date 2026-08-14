@@ -2,53 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { useLocation, Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { useAuth } from '../../contexts/AuthContext';
-import { userService, orderService, bookingService, uploadService, adminOrderService, adminBookingService, dssService, adoptionService, getImageUrl, socialService, petProfileService } from '../../services/apiService';
-import ImageUpload from '../../components/ImageUpload';
-import {
-  User,
-  Camera,
-  Edit2,
-  Save,
-  X,
-  Upload,
-  Building,
-  Store,
-  ShoppingCart,
-  TrendingUp,
-  FileText,
-  Check,
-  AlertCircle,
-  Clock,
-  Mail,
-  Phone,
-  MapPin,
-  Calendar,
-  Package,
-  Shield,
-  CreditCard,
-  Settings,
-  Lock,
-  Eye,
-  EyeOff,
-  LogOut,
-  Zap,
-  Plus,
-  Trash2,
-  PawPrint,
-  FileBadge,
-  Search,
-  ChevronRight,
-  History, 
-  Truck, 
-  Layers, 
-  ChevronsLeft, 
-  ChevronsRight
-} from 'lucide-react';
+import { userService, orderService, bookingService, uploadService, adminOrderService, adminBookingService, dssService, adoptionService, getImageUrl, socialService, petProfileService, staffService } from '../../services/apiService';
+import { User, Camera, Edit2, Save, X, Upload, Building, Store, TrendingUp, FileText, Check, AlertCircle, Clock, Mail, Phone, MapPin, Calendar, Package, Shield, CreditCard, Settings, Lock, Eye, EyeOff, LogOut, Zap, Plus, Trash2, PawPrint, FileBadge, Search } from 'lucide-react';
 import { getCitiesByProvince, getBarangaysByCity } from '../../constants/locationConstants';
 import storeApplicationService from '../../services/storeApplicationService';
 import authService from '../../services/authService';
 import PlatformFeedbackModal from '../../components/PlatformFeedbackModal';
-import { Heart as HeartIcon, MessageSquare, Briefcase, Globe, ShieldCheck, Users, Info } from 'lucide-react';
+import { Heart as HeartIcon, Globe, ShieldCheck, Users } from 'lucide-react';
 import MapPicker from '../../components/MapPicker';
 import LogoutModal from '../../components/auth/LogoutModal';
 
@@ -150,6 +110,11 @@ const Profile = () => {
     certifications: []
   });
   const [activeTab, setActiveTab] = useState('overview');
+  const specializedRole = user?.role === 'staff' ? user?.staffType : user?.role;
+  const isSpecializedStaff = ['veterinarian','veterinary_technician','veterinary_assistant','veterinary_nurse','veterinary_laboratory_technician','groomer','trainer','boarding_staff','boarding_specialist'].includes(specializedRole);
+  const [professionalDetails, setProfessionalDetails] = useState(null);
+  const [professionalForm, setProfessionalForm] = useState({ bio: '', areasOfExpertise: '', languages: '' });
+  const [professionalSaving, setProfessionalSaving] = useState(false);
   const [orders, setOrders] = useState([]);
   const [bookings, setBookings] = useState([]);
   const [adoptions, setAdoptions] = useState([]);
@@ -260,6 +225,22 @@ const Profile = () => {
     }
   }, [location.search]);
 
+  useEffect(() => {
+    if (!isSpecializedStaff) return;
+    let active = true;
+    staffService.getMyProfessionalProfile().then(response => {
+      if (!active) return;
+      const profile = response.data.staff?.professionalProfile || {};
+      setProfessionalDetails(response.data);
+      setProfessionalForm({
+        bio: profile.bio || '',
+        areasOfExpertise: (profile.areasOfExpertise || []).join(', '),
+        languages: (profile.languages || []).join(', ')
+      });
+    }).catch(() => active && setProfessionalDetails(null));
+    return () => { active = false; };
+  }, [isSpecializedStaff]);
+
   const fetchSocialData = async () => {
     if (!user) return;
     setSocialLoading(true);
@@ -305,7 +286,7 @@ const Profile = () => {
           totalRevenue: 0,
           totalPets: 0
         });
-      } else if (user.role === 'admin') {
+      } else if (user.role === 'admin' || user.role === 'store_owner') {
         const [ordersRes, bookingsRes, adoptionsRes, dssRes, logsRes] = await Promise.all([
           adminOrderService.getAllOrders({ limit: 5 }),
           adminBookingService.getAllBookings({ limit: 5 }),
@@ -328,7 +309,7 @@ const Profile = () => {
             totalAdoptions: dssRes.data.overview.totalAdoptions || adoptionsRes.data?.requests?.length || 0
           });
         }
-      } else if (user.role === 'super_admin') {
+      } else if (user.role === 'super_admin' || user.role === 'platform_admin') {
         const [ordersRes, bookingsRes, adoptionsRes, logsRes] = await Promise.all([
           orderService.getAllOrders({ limit: 5 }),
           bookingService.getAllBookings({ limit: 5 }),
@@ -977,6 +958,21 @@ const Profile = () => {
     }
   };
 
+  const saveProfessionalProfile = async () => {
+    setProfessionalSaving(true);
+    try {
+      const response = await staffService.updateMyProfessionalProfile(professionalForm);
+      setProfessionalDetails(current => current ? { ...current, staff: { ...current.staff, professionalProfile: response.data.professionalProfile } } : current);
+      toast.success('Professional profile updated.');
+    } catch (error) { toast.error(error.response?.data?.message || 'Unable to update professional profile.'); }
+    finally { setProfessionalSaving(false); }
+  };
+
+  const upcomingBooking = bookings
+    .filter(booking => !['completed', 'cancelled'].includes(booking.status) && new Date(booking.bookingDate) >= new Date(new Date().setHours(0, 0, 0, 0)))
+    .sort((a, b) => new Date(a.bookingDate) - new Date(b.bookingDate))[0];
+  const actionReminders = bookings.filter(booking => ['awaiting_customer_confirmation', 'awaiting_payment'].includes(booking.status)).length;
+
   return (
     <div className="min-h-screen bg-[#F8FAFC] pb-36 sm:pb-20 overflow-x-hidden">
       {/* Profile Terminal - Root Node */}
@@ -1057,7 +1053,7 @@ const Profile = () => {
                   </div>
                 </div>
 
-                {user.role !== 'super_admin' && (
+                {!['super_admin', 'platform_admin'].includes(user.role) && (
                   <div className="grid grid-cols-3 gap-6 pt-10 border-t border-slate-50">
                     <div className="text-center group/stat cursor-pointer">
                       <p className="text-[9px] font-black text-neutral-300 uppercase tracking-widest mb-2 group-hover/stat:text-primary transition-colors">Followers</p>
@@ -1082,6 +1078,7 @@ const Profile = () => {
                 {[
                   { id: 'overview', icon: TrendingUp, label: 'Ecosystem activity' },
                   { id: 'details', icon: User, label: 'Personal records' },
+                  ...(isSpecializedStaff ? [{ id: 'professional', icon: FileBadge, label: 'Professional profile' }] : []),
                   { id: 'pets', icon: PawPrint, label: 'Biological assets', role: 'customer' },
                   { id: 'favorites', icon: HeartIcon, label: 'Curated list', role: ['customer', 'admin'] },
                   { id: 'followers', icon: Users, label: 'Platform network', role: ['customer', 'admin'] },
@@ -1162,6 +1159,14 @@ const Profile = () => {
                       </div>
                     </div>
                   </div>
+
+                  {user.role === 'customer' && (
+                    <div className="grid gap-2 sm:grid-cols-3">
+                      <div className="rounded-xl border border-slate-100 bg-white p-3"><p className="text-[8px] font-black uppercase tracking-wider text-slate-400">Pet profiles</p><p className="mt-1 text-base font-black text-slate-900">{myPets.length}</p><button type="button" onClick={() => setActiveTab('pets')} className="mt-1 text-[9px] font-bold text-primary-600">View pet summary</button></div>
+                      <div className="rounded-xl border border-slate-100 bg-white p-3"><p className="text-[8px] font-black uppercase tracking-wider text-slate-400">Upcoming booking</p><p className="mt-1 truncate text-xs font-black text-slate-900">{upcomingBooking?.service?.name || 'No upcoming service'}</p><p className="mt-1 text-[9px] text-slate-500">{upcomingBooking ? new Date(upcomingBooking.bookingDate).toLocaleDateString() : 'Book when your pet needs care.'}</p></div>
+                      <div className={`rounded-xl border p-3 ${actionReminders ? 'border-amber-200 bg-amber-50' : 'border-slate-100 bg-white'}`}><p className="text-[8px] font-black uppercase tracking-wider text-slate-400">Reminders</p><p className="mt-1 text-base font-black text-slate-900">{actionReminders}</p><p className="mt-1 text-[9px] text-slate-500">{actionReminders ? 'Booking action requires your attention.' : 'No booking actions pending.'}</p></div>
+                    </div>
+                  )}
 
                   <div className="space-y-4">
                     <h4 className="text-[8px] sm:text-xs font-black text-slate-300 uppercase tracking-[0.3em] flex items-center gap-2">
@@ -1264,6 +1269,17 @@ const Profile = () => {
                     </div>
                   </div>
 
+                </div>
+              )}
+
+              {activeTab === 'professional' && isSpecializedStaff && (
+                <div className="space-y-5 animate-in fade-in duration-500">
+                  <header className="border-b pb-4"><p className="text-[9px] font-black uppercase tracking-widest text-primary-600">Professional account</p><h2 className="text-xl font-black text-slate-900">My Professional Profile</h2><p className="text-xs text-slate-500">Public care qualifications and private verification status.</p></header>
+                  {professionalDetails ? <>
+                    <section className="grid grid-cols-2 sm:grid-cols-4 gap-2">{[['Completed',professionalDetails.performance?.completedServices],['Rating',professionalDetails.performance?.reviewCount?`${professionalDetails.performance.averageRating}/5`:'—'],['Upcoming',professionalDetails.performance?.upcomingBookings],['Success',`${professionalDetails.performance?.successRate||0}%`]].map(([label,value])=><div key={label} className="rounded-xl border bg-slate-50 p-3"><p className="text-[8px] font-black uppercase text-slate-400">{label}</p><p className="mt-1 text-base font-black text-slate-800">{value ?? 0}</p></div>)}</section>
+                    <section className="rounded-xl border p-3"><div className="flex flex-wrap items-center justify-between gap-2"><div><p className="text-[9px] font-black uppercase text-slate-400">Verification status</p><p className="text-sm font-black capitalize text-slate-800">{(professionalDetails.staff?.professionalVerificationStatus||'pending_verification').replaceAll('_',' ')}</p></div>{professionalDetails.staff?.professionalVerificationStatus==='verified'&&<span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-3 py-1 text-[9px] font-black uppercase text-emerald-700"><ShieldCheck className="h-3.5 w-3.5"/>Verified</span>}</div><p className="mt-2 text-[10px] text-slate-500">Only Store Owners/Admins can verify credentials. Uploaded files are private and never shown to customers.</p><div className="mt-3 space-y-2">{professionalDetails.staff?.professionalProfile?.credentialDocuments?.length ? professionalDetails.staff.professionalProfile.credentialDocuments.map(document=><div key={document._id} className="flex items-center justify-between gap-2 rounded-lg bg-slate-50 p-2"><div><p className="text-[10px] font-bold text-slate-800">{document.name}</p><p className="text-[8px] uppercase text-slate-400">{document.status?.replaceAll('_',' ')}{document.expiresAt?` · Expires ${new Date(document.expiresAt).toLocaleDateString()}`:''}</p></div><a href={document.documentUrl} target="_blank" rel="noreferrer" className="text-[9px] font-black uppercase text-primary-700">View</a></div>) : <p className="text-xs text-slate-500">No credential documents uploaded. Contact your Store Owner/Admin.</p>}</div></section>
+                    <section className="rounded-xl border p-4 space-y-3"><div><p className="text-[9px] font-black uppercase text-slate-400">Public information you may update</p><p className="text-[10px] text-slate-500">Role, branch, experience, schedules, licenses, and verification remain administrator-managed.</p></div><label className="block text-[10px] font-bold text-slate-600">Professional biography<textarea value={professionalForm.bio} maxLength="3000" onChange={event=>setProfessionalForm(current=>({...current,bio:event.target.value}))} className="mt-1 min-h-24 w-full rounded-xl border p-3 text-xs"/></label><div className="grid sm:grid-cols-2 gap-3"><label className="text-[10px] font-bold text-slate-600">Areas of expertise<input value={professionalForm.areasOfExpertise} onChange={event=>setProfessionalForm(current=>({...current,areasOfExpertise:event.target.value}))} className="mt-1 h-9 w-full rounded-xl border px-3 text-xs" placeholder="Comma-separated"/></label><label className="text-[10px] font-bold text-slate-600">Languages spoken<input value={professionalForm.languages} onChange={event=>setProfessionalForm(current=>({...current,languages:event.target.value}))} className="mt-1 h-9 w-full rounded-xl border px-3 text-xs" placeholder="Comma-separated"/></label></div><div className="flex justify-end"><button onClick={saveProfessionalProfile} disabled={professionalSaving} className="h-9 rounded-xl bg-primary-600 px-4 text-[10px] font-black uppercase text-white disabled:opacity-50">{professionalSaving?'Saving…':'Save public profile'}</button></div></section>
+                  </> : <div className="rounded-xl border bg-slate-50 p-6 text-center text-xs text-slate-500">Professional profile is unavailable.</div>}
                 </div>
               )}
 
@@ -1469,10 +1485,10 @@ const Profile = () => {
                       </button>
                     </div>
                   ) : (
-                    <div className="flex overflow-x-auto pb-10 pt-2 gap-6 no-scrollbar snap-x snap-mandatory scroll-smooth -mx-2 px-2">
+                    <div className="flex overflow-x-auto pb-6 pt-2 gap-4 no-scrollbar snap-x snap-mandatory scroll-smooth -mx-2 px-2">
                       {myPets.map(pet => (
-                        <div key={pet._id} className="shrink-0 w-[240px] sm:w-[280px] snap-start group bg-white rounded-[2.5rem] p-5 shadow-sm hover:shadow-2xl transition-all duration-500 border border-slate-50 relative overflow-hidden flex flex-col items-center text-center">
-                          <div className="absolute top-0 right-0 p-4 opacity-0 group-hover:opacity-100 transition-opacity z-20">
+                        <div key={pet._id} className="shrink-0 w-[220px] sm:w-[240px] snap-start group bg-white rounded-2xl p-4 shadow-sm hover:shadow-lg transition-all duration-300 border border-slate-100 relative overflow-hidden flex flex-col items-center text-center">
+                          <div className="absolute top-0 right-0 p-3 opacity-100 transition-opacity z-20">
                             <div className="flex gap-2">
                                 <button onClick={(e) => { e.stopPropagation(); handleEditPet(pet); }} className="w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center hover:bg-blue-100 transition-colors shadow-sm">
                                     <Edit2 className="h-3.5 w-3.5" />
@@ -1484,7 +1500,7 @@ const Profile = () => {
                           </div>
 
                           <div className="relative mb-5">
-                            <div className="w-28 h-28 sm:w-32 sm:h-32 rounded-[2.5rem] overflow-hidden bg-slate-100 shadow-inner group-hover:scale-105 transition-transform duration-700 ring-4 ring-slate-50">
+                            <div className="w-24 h-24 rounded-2xl overflow-hidden bg-slate-100 shadow-inner group-hover:scale-105 transition-transform duration-500 ring-4 ring-slate-50">
                               {pet.photo ? (
                                   <img src={getImageUrl(pet.photo)} alt={pet.name} className="w-full h-full object-cover" />
                               ) : (
@@ -1499,7 +1515,7 @@ const Profile = () => {
                           </div>
 
                           <div className="space-y-2 w-full">
-                            <h3 className="text-2xl font-black text-slate-900 leading-none group-hover:text-primary-600 transition-colors capitalize truncate px-2">{pet.name}</h3>
+                            <h3 className="text-lg font-black text-slate-900 leading-none group-hover:text-primary-600 transition-colors capitalize truncate px-2">{pet.name}</h3>
                             <div className="flex items-center justify-center gap-2">
                                 <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest bg-slate-50 px-3 py-1 rounded-full border border-slate-100">{pet.breed}</span>
                                 <span className="text-[9px] font-black text-primary-500 uppercase tracking-widest bg-primary-50 px-3 py-1 rounded-full border border-primary-50">{calculateAge(pet.birthday)}</span>
@@ -1507,7 +1523,7 @@ const Profile = () => {
                             {pet.type === 'Dog' && pet.breedStatus === 'purebred' && pet.pcciRegistration?.informationStatus === 'customer_provided' && <p className="text-[9px] font-bold text-amber-700">PCCI registration information provided</p>}
                           </div>
 
-                          <button onClick={() => handleEditPet(pet)} className="mt-8 w-full py-4 bg-slate-900 text-white rounded-2xl text-[9px] font-black uppercase tracking-widest hover:bg-primary-600 transition-all opacity-0 group-hover:opacity-100 translate-y-4 group-hover:translate-y-0 duration-300">
+                          <button onClick={() => handleEditPet(pet)} className="mt-5 h-9 w-full bg-slate-900 text-white rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-primary-600 transition-all">
                              View Profile
                           </button>
                         </div>
@@ -1516,7 +1532,7 @@ const Profile = () => {
                       {/* Empty state add card */}
                       <button 
                         onClick={() => { resetPetForm(); setShowPetModal(true); }}
-                        className="shrink-0 w-[240px] sm:w-[280px] snap-start bg-slate-50 rounded-[2.5rem] border-2 border-dashed border-slate-200 flex flex-col items-center justify-center gap-4 hover:bg-white hover:border-primary-200 transition-all group p-5"
+                        className="shrink-0 w-[220px] sm:w-[240px] snap-start bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center gap-3 hover:bg-white hover:border-primary-200 transition-all group p-4"
                       >
                          <div className="w-16 h-16 bg-white rounded-2xl shadow-lg flex items-center justify-center text-slate-300 group-hover:text-primary-500 transition-colors">
                             <Plus className="h-8 w-8" />

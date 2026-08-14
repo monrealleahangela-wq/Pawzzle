@@ -1,4 +1,6 @@
 const PurchaseOrder = require('../models/PurchaseOrder');
+const { isPlatformAdmin } = require('../config/permissions');
+const { canOperateStore } = require('../utils/authorizationPolicy');
 const Supplier = require('../models/Supplier');
 const SupplierProduct = require('../models/SupplierProduct');
 const Store = require('../models/Store');
@@ -185,7 +187,8 @@ const getOrderById = async (req, res) => {
     const supplier = await Supplier.findById(order.supplier);
     const isParty = order.seller.toString() === req.user._id.toString() ||
       (supplier && supplier.user.toString() === req.user._id.toString()) ||
-      ['admin', 'super_admin'].includes(req.user.role);
+      isPlatformAdmin(req.user) ||
+      await canOperateStore(req.user, order.store?._id || order.store, ['procurement.view', 'procurement.manage', 'purchase_orders.own']);
 
     if (!isParty) return res.status(403).json({ message: 'Access denied.' });
 

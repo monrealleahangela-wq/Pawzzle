@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { MessageSquare, X, Minimize2, Maximize2, Send, Search, User, Clock, Check, Camera, Image as ImageIcon, ChevronLeft } from 'lucide-react';
+import { MessageSquare, X, Send, Search, Camera, ChevronLeft } from 'lucide-react';
 import { chatService } from '../services/chatService';
 import { toast } from 'react-toastify';
 import { uploadService, storeService } from '../services/apiService';

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import Modal from './ui/Modal';
-import { Star, MessageSquare, Send, X, Image as ImageIcon } from 'lucide-react';
+import { Star, Send } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { reviewService } from '../services/apiService';
 import ImageUpload from './ImageUpload';

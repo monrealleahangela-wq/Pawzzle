@@ -1,17 +1,12 @@
 import React from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-
-const ADMIN_PORTAL_ROLES = new Set([
-  'admin', 'store_owner', 'manager', 'cashier', 'inventory_staff',
-  'procurement_officer', 'finance_staff', 'veterinarian', 'groomer',
-  'trainer', 'boarding_staff', 'delivery_dispatcher', 'delivery_rider',
-  'auditor', 'staff'
-]);
+import { OPERATIONAL_ROLES, effectiveStaffType, hasUiPermission, portalHomeForRole } from '../utils/authorization';
 
 const roleMatches = (userRole, allowedRoles) =>
   allowedRoles.includes(userRole) ||
-  (allowedRoles.includes('admin') && ADMIN_PORTAL_ROLES.has(userRole)) ||
+  (allowedRoles.includes('admin') && userRole === 'store_owner') ||
+  (allowedRoles.includes('staff') && OPERATIONAL_ROLES.has(userRole)) ||
   (allowedRoles.includes('super_admin') && userRole === 'platform_admin');
 
 const ProtectedRoute = ({ children, roles = [], staffTypes = [], requiredPermission = null, excludedRoles = [] }) => {
@@ -29,53 +24,35 @@ const ProtectedRoute = ({ children, roles = [], staffTypes = [], requiredPermiss
     return <Navigate to="/" replace />;
   }
 
-  if (excludedRoles.includes(user?.role) || (user?.role === 'staff' && excludedRoles.includes(user?.staffType))) {
+  if (excludedRoles.includes(user?.role) || excludedRoles.includes(effectiveStaffType(user))) {
     return <Navigate to="/admin/dashboard" replace />;
   }
 
   // Check basic role access
   if (roles.length > 0 && !roleMatches(user?.role, roles)) {
-    switch (user?.role) {
-      case 'super_admin':
-      case 'platform_admin':
-        return <Navigate to="/superadmin/dashboard" replace />;
-      case 'admin':
-      case 'staff':
-      case 'store_owner':
-      case 'manager':
-      case 'cashier':
-      case 'inventory_staff':
-      case 'procurement_officer':
-      case 'finance_staff':
-      case 'veterinarian':
-      case 'groomer':
-      case 'trainer':
-      case 'boarding_staff':
-      case 'delivery_dispatcher':
-      case 'delivery_rider':
-      case 'auditor':
-        return <Navigate to="/admin/dashboard" replace />;
-      case 'supplier':
-        return <Navigate to="/supplier/dashboard" replace />;
-      case 'customer':
-        return <Navigate to="/home" replace />;
-      default:
-        return <Navigate to="/login" replace />;
-    }
+    if (user?.role) return <Navigate to={portalHomeForRole(user.role)} replace />;
+    return <Navigate to="/login" replace />;
   }
 
   // Enhanced Staff Access Logic
-  if (user?.role === 'staff') {
+  if (OPERATIONAL_ROLES.has(user?.role)) {
     // 1. If a specific permission is required, check the matrix first
     if (requiredPermission) {
-      const perms = user.permissions?.[requiredPermission];
-      const hasPerm = perms?.view || perms?.fullAccess || perms?.create || perms?.update || perms?.delete;
-      
-      if (hasPerm) return children;
+      if (!hasUiPermission(user, requiredPermission)) {
+        return <Navigate to="/admin/dashboard" replace />;
+      }
     }
 
     // 2. Fallback to traditional staffType check if specified
-    if (staffTypes.length > 0 && !staffTypes.includes(user?.staffType)) {
+    const type = effectiveStaffType(user);
+    const aliases = {
+      cashier: ['sales_staff', 'order_staff'],
+      manager: ['service_management_staff', 'administrative_support', 'logistics_staff'],
+      delivery_dispatcher: ['logistics_staff'],
+      boarding_staff: ['boarding_specialist']
+    };
+    const allowedType = staffTypes.includes(type) || (aliases[type] || []).some(alias => staffTypes.includes(alias));
+    if (staffTypes.length > 0 && !allowedType) {
       return <Navigate to="/admin/dashboard" replace />;
     }
   }

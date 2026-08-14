@@ -4,7 +4,7 @@ import { toast } from 'react-toastify';
 import { useCart } from '../../contexts/CartContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { petService, getImageUrl } from '../../services/apiService';
-import { Heart, Package, Plus, Minus, Trash2, ShoppingBag, CheckSquare, AlertCircle, MapPin, Store } from 'lucide-react';
+import { Heart, Package, Plus, Minus, Trash2, ShoppingBag, AlertCircle } from 'lucide-react';
 
 const Cart = () => {
   const { items, removeFromCart, updateQuantity, getTotalPrice, clearCart, toggleItemSelection, selectAllItems, deselectAllItems, getSelectedItems } = useCart();

@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Star, MessageSquare, Image as ImageIcon, Send, User, AlertCircle } from 'lucide-react';
+import { Star, MessageSquare, Send, User, AlertCircle } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { reviewService, getImageUrl } from '../services/apiService';
 import { useAuth } from '../contexts/AuthContext';
 import ImageUpload from './ImageUpload';
 
 const ReviewSection = ({ targetType, targetId }) => {
-    const { user, isAuthenticated } = useAuth();
+    const { isAuthenticated } = useAuth();
     const [reviews, setReviews] = useState([]);
     const [loading, setLoading] = useState(true);
     const [showForm, setShowForm] = useState(false);

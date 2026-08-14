@@ -1,9 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import { useAuth } from '../../contexts/AuthContext';
 import authService from '../../services/authService';
-import { Heart, Mail, Lock, User, Eye, EyeOff, ArrowLeft, ShieldCheck, RefreshCw, Sparkles } from 'lucide-react';
+import { Mail, Lock, User, Eye, EyeOff, ArrowLeft, ShieldCheck, RefreshCw, Sparkles } from 'lucide-react';
 import PremiumCaptcha from '../../components/PremiumCaptcha';
 
 const Register = () => {
@@ -28,6 +27,7 @@ const Register = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [captchaToken, setCaptchaToken] = useState(null);
+  const [captchaResetKey, setCaptchaResetKey] = useState(0);
 
   // OTP state
   const [step, setStep] = useState(1); // 1: form, 2: OTP verification
@@ -92,6 +92,8 @@ const Register = () => {
       toast.error(msg);
     } finally {
       setLoading(false);
+      setCaptchaToken(null);
+      setCaptchaResetKey(value => value + 1);
     }
   };
 
@@ -301,7 +303,7 @@ const Register = () => {
 
             {/* Premium Human Verification - No glitches, perfect alignment */}
             <div className="flex justify-center pt-2">
-               <PremiumCaptcha onVerify={(token) => setCaptchaToken(token)} />
+               <PremiumCaptcha onVerify={setCaptchaToken} resetKey={captchaResetKey} />
             </div>
 
             <button type="submit" disabled={loading} className="btn btn-primary w-full py-5 text-xs font-black uppercase tracking-[0.2em] shadow-xl shadow-primary-100">

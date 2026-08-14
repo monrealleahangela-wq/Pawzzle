@@ -11,20 +11,83 @@ const RevenueService = require('../services/revenueService');
 const { createNotification, notifyStoreStaff } = require('./notificationController');
 const { calculateServicePrice, validateBookingRules } = require('../utils/pricingEngine');
 const { calculateTransactionTax, normalizeTaxConfiguration } = require('../utils/taxCalculator');
-const { hasPermission } = require('../config/permissions');
+const { hasPermission, isPlatformAdmin, isStoreAdmin, isOperationalStaff } = require('../config/permissions');
+const { getAuthorizedStoreIds, canAccessStore } = require('../utils/authorizationPolicy');
 const {
   loadContext,
   getConfirmationExpiry,
   getEligibleForBooking,
-  prepareForPayment
+  prepareForPayment,
+  recalculateBooking
 } = require('../services/bookingLifecycleService');
+const { getStaffSpecializationRole, getProfessionalVerificationStatus } = require('../utils/staffSpecialization');
+const { normalizeRefundPolicy, snapshotRefundPolicy, requiresAcknowledgment } = require('../utils/refundPolicy');
 
 const canStaffManageBooking = (user, booking) => {
-  if (user.role !== 'staff') return false;
+  if (!isOperationalStaff(user) || isStoreAdmin(user) || isPlatformAdmin(user)) return false;
   const sameStore = user.store && booking.store && String(booking.store?._id || booking.store) === String(user.store?._id || user.store);
   if (!sameStore) return false;
   if (hasPermission(user, 'bookings.manage')) return true;
   return hasPermission(user, 'bookings.update') && booking.staff && String(booking.staff?._id || booking.staff) === String(user._id);
+};
+
+const getBookingScope = async user => {
+  if (user.role === 'customer') return { customer: user._id };
+  if (isPlatformAdmin(user)) return {};
+  if (user.role === 'supplier') return null;
+  const storeIds = await getAuthorizedStoreIds(user);
+  if (!storeIds?.length) return null;
+  const storeScope = { store: { $in: storeIds } };
+  if (hasPermission(user, 'bookings.manage')) return storeScope;
+  if (isOperationalStaff(user)
+      && (hasPermission(user, 'bookings.assigned') || hasPermission(user, 'bookings.update') || hasPermission(user, 'bookings.view'))) {
+    return { $and: [storeScope, { $or: [{ staff: user._id }, { serviceProvider: user._id }] }] };
+  }
+  return null;
+};
+
+const expireBookingProposals = async (filterBase = {}) => {
+  const now = new Date();
+  const candidates = await Booking.find({
+    ...filterBase,
+    status: 'awaiting_customer_confirmation',
+    'lifecycle.confirmationExpiresAt': { $lte: now }
+  }).select('_id customer addedBy');
+  let expiredCount = 0;
+  for (const candidate of candidates) {
+    const booking = await Booking.findOneAndUpdate({
+      _id: candidate._id,
+      status: 'awaiting_customer_confirmation',
+      'lifecycle.confirmationExpiresAt': { $lte: now }
+    }, {
+      $set: { status: 'pending', 'lifecycle.confirmationExpiresAt': null, updatedAt: now }
+    }, { new: false });
+    if (!booking) continue;
+    expiredCount += 1;
+    await Promise.all([
+      createNotification({
+        recipient: booking.customer,
+        sender: booking.addedBy,
+        type: 'booking_status',
+        title: 'Booking Proposal Expired',
+        message: 'The proposal expired and has returned to the store for review. No payment was created.',
+        relatedId: booking._id,
+        relatedModel: 'Booking',
+        targetUrl: `/bookings?id=${booking._id}`
+      }),
+      createNotification({
+        recipient: booking.addedBy,
+        sender: booking.customer,
+        type: 'booking_status',
+        title: 'Proposal Needs Review Again',
+        message: 'A booking proposal expired and is back in Pending Review.',
+        relatedId: booking._id,
+        relatedModel: 'Booking',
+        targetUrl: `/admin/bookings?id=${booking._id}`
+      })
+    ]);
+  }
+  return expiredCount;
 };
 
 // Auto-cancels bookings that are still pending and whose date has passed or unapproved for too long
@@ -34,30 +97,7 @@ const autoCancelExpiredBookings = async (filterBase = {}) => {
     today.setHours(0, 0, 0, 0);
     const now = new Date();
 
-    const expiredProposals = await Booking.find({
-      ...filterBase,
-      status: 'awaiting_customer_confirmation',
-      'lifecycle.confirmationExpiresAt': { $lte: now }
-    });
-    if (expiredProposals.length > 0) {
-      await Booking.updateMany(
-        { _id: { $in: expiredProposals.map(item => item._id) }, status: 'awaiting_customer_confirmation' },
-        { $set: { status: 'confirmation_expired', adminNotes: 'Customer confirmation window expired.' } }
-      );
-      for (const booking of expiredProposals) {
-        if (booking.voucher) await Voucher.findByIdAndUpdate(booking.voucher, { $inc: { usedCount: -1 } });
-        await createNotification({
-          recipient: booking.customer,
-          sender: booking.addedBy,
-          type: 'booking_status',
-          title: 'Booking Request Expired',
-          message: 'The confirmation window for your booking request expired. Contact the store if you still need this service.',
-          relatedId: booking._id,
-          relatedModel: 'Booking',
-          targetUrl: `/bookings?id=${booking._id}`
-        });
-      }
-    }
+    await expireBookingProposals(filterBase);
 
     // 1. Cancel unapproved bookings after 30 minutes
     const unapprovedLimit = new Date();
@@ -399,7 +439,7 @@ const createBooking = async (req, res) => {
     await booking.populate([
       { path: 'service', select: 'name duration price' },
       { path: 'store', select: 'name' },
-      { path: 'staff', select: 'firstName lastName avatar staffType professionalProfile' }
+      { path: 'staff', select: 'firstName lastName avatar staffType professionalProfile.professionalTitle professionalProfile.specialty professionalProfile.experienceYears professionalProfile.rating professionalProfile.reviewCount professionalProfile.verification.status' }
     ]);
 
     res.status(201).json(booking);
@@ -529,9 +569,10 @@ const getStoreBookings = async (req, res) => {
 };
 
 const isBookingManager = (user, booking) => {
-  if (user.role === 'super_admin') return true;
+  if (isPlatformAdmin(user)) return true;
   const storeOwnerId = booking.store?.owner?._id || booking.store?.owner;
-  if (user.role === 'admin' && storeOwnerId && String(storeOwnerId) === String(user._id)) return true;
+  if (isStoreAdmin(user) && hasPermission(user, 'bookings.manage')
+      && storeOwnerId && String(storeOwnerId) === String(user._id)) return true;
   return canStaffManageBooking(user, booking);
 };
 
@@ -539,8 +580,8 @@ const populateBooking = query => query
   .populate('customer', 'firstName lastName email phone')
   .populate('service', 'name description category duration price homeServicePrice')
   .populate('store', 'name owner contactInfo.address bookingSettings taxConfiguration')
-  .populate('staff', 'firstName lastName avatar staffType professionalProfile')
-  .populate('serviceProvider', 'firstName lastName avatar staffType professionalProfile');
+  .populate('staff', 'firstName lastName avatar role staffType professionalProfile.professionalTitle professionalProfile.specialty professionalProfile.experienceYears professionalProfile.rating professionalProfile.reviewCount professionalProfile.verification.status')
+  .populate('serviceProvider', 'firstName lastName avatar role staffType professionalProfile.professionalTitle professionalProfile.specialty professionalProfile.experienceYears professionalProfile.rating professionalProfile.reviewCount professionalProfile.verification.status');
 
 const getBookingById = async (req, res) => {
   try {
@@ -566,18 +607,43 @@ const ratingMapForStaff = async staffIds => {
   }]));
 };
 
-const toPublicStaff = (staff, ratings = {}) => ({
+const toPublicStaff = (staff, ratings = {}) => {
+  const verificationStatus = getProfessionalVerificationStatus(staff);
+  const verified = verificationStatus === 'verified';
+  const publicCredentials = (staff.professionalProfile?.credentialDocuments || [])
+    .filter(document => document.status === 'verified' && (!document.expiresAt || new Date(document.expiresAt) > new Date()))
+    .map(document => ({
+      documentType: document.documentType,
+      name: document.name,
+      issuingBody: document.issuingBody,
+      credentialNumber: document.credentialNumber,
+      expiresAt: document.expiresAt
+    }));
+  return ({
   _id: staff._id,
   firstName: staff.firstName,
   lastName: staff.lastName,
   avatar: staff.avatar,
-  staffType: staff.staffType,
+  staffType: getStaffSpecializationRole(staff),
   professionalTitle: staff.professionalProfile?.professionalTitle || '',
   specialty: staff.professionalProfile?.specialty || '',
   experienceYears: staff.professionalProfile?.experienceYears || 0,
+  certifications: (staff.professionalProfile?.certifications || []).map(item => ({
+    name: item.name,
+    issuingBody: item.issuingBody,
+    year: item.year,
+    verificationStatus: item.isVerified ? 'verified' : 'information_provided'
+  })),
+  areasOfExpertise: staff.professionalProfile?.areasOfExpertise || [],
+  languages: staff.professionalProfile?.languages || [],
+  availability: staff.professionalProfile?.availability || {},
+  verified,
+  verificationStatus: verified ? 'verified' : 'not_verified',
+  credentials: publicCredentials,
   averageRating: ratings.averageRating || 0,
   reviewCount: ratings.reviewCount || 0
-});
+  });
+};
 
 const getEligibleBookingStaff = async (req, res) => {
   try {
@@ -595,7 +661,10 @@ const getEligibleBookingStaff = async (req, res) => {
       store: { _id: store._id, name: store.name },
       staff: candidates.map(item => ({
         ...toPublicStaff(item.staff, ratings.get(String(item.staff._id))),
-        isCurrent: String(item.staff._id) === String(booking.staff)
+        isCurrent: String(item.staff._id) === String(booking.staff),
+        matchScore: item.matchScore,
+        matchExplanation: item.matchExplanation,
+        performance: item.performance
       }))
     });
   } catch (error) {
@@ -608,7 +677,7 @@ const assignBookingStaff = async (req, res) => {
     if (!mongoose.Types.ObjectId.isValid(req.body.staffId)) return res.status(400).json({ message: 'Valid staff ID is required.' });
     const { booking, service, store } = await loadContext(req.params.id);
     await booking.populate('store', 'owner');
-    if (!isBookingManager(req.user, booking) || req.user.role === 'super_admin') {
+    if (!isBookingManager(req.user, booking) || isPlatformAdmin(req.user)) {
       return res.status(403).json({ message: 'Only the store owner or authorized booking staff can assign service staff.' });
     }
     if (!['pending', 'awaiting_customer_confirmation'].includes(booking.status)) {
@@ -618,13 +687,27 @@ const assignBookingStaff = async (req, res) => {
     const selected = candidates.find(item => String(item.staff._id) === String(req.body.staffId));
     if (!selected) return res.status(409).json({ message: 'The selected staff member is not qualified or available for this booking.' });
 
+    const proposalInstructions = String(req.body.specialInstructions || '').trim();
+    if (proposalInstructions.length > 2000) return res.status(400).json({ message: 'Special instructions must be 2,000 characters or fewer.' });
+    const requestedDuration = Number(req.body.estimatedDurationMinutes || service.duration);
+    if (!Number.isInteger(requestedDuration) || requestedDuration < 1 || requestedDuration > 1440) {
+      return res.status(400).json({ message: 'Estimated duration must be between 1 and 1,440 minutes.' });
+    }
+    const pricing = await recalculateBooking(booking, service, store);
     booking.staff = selected.staff._id;
-    booking.staffRoleSnapshot = selected.staff.staffType || '';
+    booking.staffRoleSnapshot = getStaffSpecializationRole(selected.staff) || '';
     booking.staffSpecialtySnapshot = selected.staff.professionalProfile?.specialty || '';
     booking.status = 'awaiting_customer_confirmation';
     booking.lifecycle.proposedAt = new Date();
     booking.lifecycle.proposedBy = req.user._id;
     booking.lifecycle.confirmationExpiresAt = getConfirmationExpiry(store);
+    booking.proposal.estimatedDurationMinutes = requestedDuration;
+    booking.proposal.specialInstructions = proposalInstructions;
+    booking.proposal.revision = Number(booking.proposal.revision || 0) + 1;
+    booking.selectedAddOns = pricing.resolvedAddOns;
+    booking.pricingBreakdown = pricing.breakdown;
+    booking.discountAmount = pricing.discountAmount;
+    booking.totalPrice = pricing.breakdown.finalPrice;
     booking.staffAssignmentHistory.push({
       staff: selected.staff._id,
       assignedBy: req.user._id,
@@ -641,9 +724,17 @@ const assignBookingStaff = async (req, res) => {
       relatedId: booking._id,
       relatedModel: 'Booking',
       targetUrl: `/bookings?id=${booking._id}`
-    });
+    }, req.app.get('socketio'));
     const result = await populateBooking(Booking.findById(booking._id));
-    res.json({ message: 'Staff assigned and booking preview sent to the customer.', booking: result });
+    res.json({
+      message: 'Staff assigned and booking preview sent to the customer.',
+      booking: result,
+      specialistRecommendation: {
+        staffId: selected.staff._id,
+        score: selected.matchScore,
+        ...selected.matchExplanation
+      }
+    });
   } catch (error) {
     res.status(error.statusCode || 500).json({ message: error.message || 'Unable to assign staff.' });
   }
@@ -659,10 +750,34 @@ const selectBookingStaff = async (req, res) => {
     const selected = candidates.find(item => String(item.staff._id) === String(req.body.staffId));
     if (!selected) return res.status(409).json({ message: 'The selected staff member is no longer available or qualified.' });
     booking.staff = selected.staff._id;
-    booking.staffRoleSnapshot = selected.staff.staffType || '';
+    booking.staffRoleSnapshot = getStaffSpecializationRole(selected.staff) || '';
     booking.staffSpecialtySnapshot = selected.staff.professionalProfile?.specialty || '';
+    booking.proposal.specialistChangedAt = new Date();
+    booking.proposal.revision = Number(booking.proposal.revision || 0) + 1;
     booking.staffAssignmentHistory.push({ staff: selected.staff._id, assignedBy: req.user._id, source: 'customer' });
     await booking.save();
+    await Promise.all([
+      createNotification({
+        recipient: booking.addedBy,
+        sender: req.user._id,
+        type: 'booking_status',
+        title: 'Customer Selected a Specialist',
+        message: `The customer selected ${selected.staff.firstName} ${selected.staff.lastName} for their booking proposal.`,
+        relatedId: booking._id,
+        relatedModel: 'Booking',
+        targetUrl: `/admin/bookings?id=${booking._id}`
+      }, req.app.get('socketio')),
+      createNotification({
+        recipient: booking.customer,
+        sender: booking.addedBy,
+        type: 'booking_status',
+        title: 'Specialist Updated',
+        message: `${selected.staff.firstName} ${selected.staff.lastName} is now assigned to your proposal.`,
+        relatedId: booking._id,
+        relatedModel: 'Booking',
+        targetUrl: `/bookings?id=${booking._id}`
+      }, req.app.get('socketio'))
+    ]);
     const result = await populateBooking(Booking.findById(booking._id));
     res.json({ message: 'Assigned staff updated.', booking: result });
   } catch (error) {
@@ -672,18 +787,24 @@ const selectBookingStaff = async (req, res) => {
 
 const confirmBookingForPayment = async (req, res) => {
   try {
-    const booking = await Booking.findById(req.params.id);
+    const booking = await Booking.findById(req.params.id).populate('store', 'name refundPolicy');
     if (!booking) return res.status(404).json({ message: 'Booking not found.' });
     if (String(booking.customer) !== String(req.user._id)) return res.status(403).json({ message: 'Access denied.' });
     if (booking.status !== 'awaiting_customer_confirmation') {
       return res.status(409).json({ message: booking.status === 'awaiting_payment' ? 'This booking is already ready for payment.' : 'This booking is not awaiting customer confirmation.' });
+    }
+    const refundPolicy = normalizeRefundPolicy(booking.store?.refundPolicy);
+    const acknowledgmentRequired = requiresAcknowledgment(refundPolicy);
+    if (acknowledgmentRequired && req.body.refundPolicyAcknowledged !== true) {
+      return res.status(400).json({ message: 'Acknowledge this store\'s No Refund policy before confirming the proposal.' });
     }
     let prepared;
     try {
       prepared = await prepareForPayment(booking);
     } catch (error) {
       if (error.expired) {
-        booking.status = 'confirmation_expired';
+        booking.status = 'pending';
+        booking.lifecycle.confirmationExpiresAt = null;
         await booking.save();
       }
       throw error;
@@ -691,7 +812,25 @@ const confirmBookingForPayment = async (req, res) => {
     prepared.booking.status = 'awaiting_payment';
     prepared.booking.paymentStatus = 'pending';
     prepared.booking.lifecycle.customerConfirmedAt = new Date();
+    prepared.booking.lifecycle.confirmationExpiresAt = null;
+    prepared.booking.refundPolicySnapshot = snapshotRefundPolicy(refundPolicy);
+    prepared.booking.refundPolicyAcknowledgment = {
+      required: acknowledgmentRequired,
+      acknowledged: acknowledgmentRequired ? true : Boolean(req.body.refundPolicyAcknowledged),
+      acknowledgedAt: req.body.refundPolicyAcknowledged ? new Date() : undefined,
+      acknowledgedBy: req.body.refundPolicyAcknowledged ? req.user._id : undefined
+    };
     await prepared.booking.save();
+    await createNotification({
+      recipient: prepared.booking.customer,
+      sender: prepared.booking.addedBy,
+      type: 'booking_status',
+      title: 'Payment Required',
+      message: 'Your proposal is confirmed. Continue securely with PayMongo to finalize the booking.',
+      relatedId: prepared.booking._id,
+      relatedModel: 'Booking',
+      targetUrl: `/bookings?id=${prepared.booking._id}`
+    }, req.app.get('socketio'));
     const result = await populateBooking(Booking.findById(prepared.booking._id));
     res.json({ message: 'Booking accepted. Continue to PayMongo to confirm it.', booking: result });
   } catch (error) {
@@ -709,14 +848,18 @@ const getBookingStaffProfile = async (req, res) => {
     const allowed = String(booking.staff) === String(req.params.staffId)
       || candidates.some(item => String(item.staff._id) === String(req.params.staffId));
     if (!allowed) return res.status(404).json({ message: 'Staff profile is not available for this booking.' });
-    const staff = await User.findOne({ _id: req.params.staffId, role: 'staff', isDeleted: false, 'professionalProfile.isPublic': { $ne: false } })
-      .select('firstName lastName avatar staffType professionalProfile');
-    if (!staff) return res.status(404).json({ message: 'Staff profile is not available.' });
-    const [ratings, services, reviews] = await Promise.all([
+    const staff = await User.findOne({ _id: req.params.staffId, isDeleted: false, 'professionalProfile.isPublic': { $ne: false } })
+      .select('firstName lastName avatar role staffType store professionalProfile');
+    if (!staff || !isOperationalStaff(staff) || String(staff.store) !== String(booking.store?._id || booking.store)) {
+      return res.status(404).json({ message: 'Staff profile is not available.' });
+    }
+    const [ratings, services, reviews, completedServices, startedServices] = await Promise.all([
       ratingMapForStaff([staff._id]),
       Service.find({ assignedStaff: staff._id, store: booking.store?._id || booking.store, isActive: true, isDeleted: { $ne: true } }).select('name category duration').lean(),
       Review.find({ targetType: 'Booking', staffId: staff._id, isApproved: true, isDeleted: { $ne: true } })
-        .populate('user', 'firstName lastName avatar').select('user rating comment isAnonymous createdAt').sort({ createdAt: -1 }).limit(20).lean()
+        .populate('user', 'firstName lastName avatar').select('user rating comment complimentTags isAnonymous createdAt').sort({ createdAt: -1 }).limit(20).lean(),
+      Booking.countDocuments({ store: booking.store?._id || booking.store, status: 'completed', $or: [{ staff: staff._id }, { serviceProvider: staff._id }] }),
+      Booking.countDocuments({ store: booking.store?._id || booking.store, status: { $in: ['processing', 'finished', 'completed'] }, $or: [{ staff: staff._id }, { serviceProvider: staff._id }] })
     ]);
     const profile = staff.professionalProfile || {};
     res.json({
@@ -731,6 +874,16 @@ const getBookingStaffProfile = async (req, res) => {
           year: item.year,
           verificationStatus: item.isVerified ? 'verified' : 'customer_visible_information_provided'
         })),
+        languages: profile.languages || [],
+        licenseInformation: getProfessionalVerificationStatus(staff) === 'verified' && profile.registration?.number ? {
+          type: profile.registration.type,
+          number: profile.registration.number,
+          issuingBody: profile.registration.issuingBody,
+          expiresAt: profile.registration.expiresAt
+        } : null,
+        branch: { _id: booking.store?._id || booking.store, name: booking.store?.name || '' },
+        completedServices,
+        successRate: startedServices ? Math.round((completedServices / startedServices) * 100) : null,
         services
       },
       reviews: reviews.map(review => ({
@@ -754,10 +907,10 @@ const updateBookingStatus = async (req, res) => {
     }
 
     // Check permissions: Owner, store staff, or super admin
-    const isStoreOwner = req.user.role === 'admin' && booking.store && booking.store.owner && booking.store.owner.toString() === req.user._id.toString();
+    const isStoreOwner = isStoreAdmin(req.user) && booking.store && booking.store.owner && booking.store.owner.toString() === req.user._id.toString();
     const isStoreStaff = canStaffManageBooking(req.user, booking);
 
-    if (req.user.role !== 'super_admin' && !isStoreOwner && !isStoreStaff) {
+    if (!isPlatformAdmin(req.user) && !isStoreOwner && !isStoreStaff) {
       return res.status(403).json({ message: 'You can only update bookings for your own store' });
     }
     if (status === booking.status) return res.json(booking);
@@ -850,7 +1003,19 @@ const updateBookingStatus = async (req, res) => {
       relatedId: booking._id,
       relatedModel: 'Booking',
       targetUrl: status === 'completed' ? `/bookings?id=${booking._id}&review=1` : `/bookings?id=${booking._id}`
-    });
+    }, req.app.get('socketio'));
+    const io = req.app.get('socketio');
+    if (io) {
+      io.to(`user_${String(booking.customer._id)}`).emit('serviceUpdate', {
+        bookingId: String(booking._id), eventType: status, timestamp: progressTime
+      });
+      io.to(`store_${String(booking.store?._id || booking.store)}`).emit('dashboardUpdate', {
+        type: 'booking', id: String(booking._id), status, timestamp: progressTime
+      });
+      io.to('admin_global').emit('dashboardUpdate', {
+        type: 'booking', id: String(booking._id), status, timestamp: progressTime
+      });
+    }
   } catch (error) {
     console.error('Update booking status error:', error);
     res.status(500).json({ message: 'Server error' });
@@ -875,13 +1040,13 @@ const cancelBooking = async (req, res) => {
       }
     }
     // Admin/Staff can cancel bookings for their store
-    else if (req.user.role === 'admin' || req.user.role === 'staff') {
+    else if (isStoreAdmin(req.user) || isOperationalStaff(req.user)) {
       const store = await Store.findById(booking.store);
       
-      const isStoreOwner = req.user.role === 'admin' && store.owner.toString() === req.user._id.toString();
+      const isStoreOwner = isStoreAdmin(req.user) && store.owner.toString() === req.user._id.toString();
       const isStoreStaff = canStaffManageBooking(req.user, booking);
 
-      if (!isStoreOwner && !isStoreStaff && req.user.role !== 'super_admin') {
+      if (!isStoreOwner && !isStoreStaff && !isPlatformAdmin(req.user)) {
         return res.status(403).json({ message: 'You can only cancel bookings for your own store' });
       }
     } else {
@@ -934,13 +1099,13 @@ const cancelBooking = async (req, res) => {
 const getAllBookings = async (req, res) => {
   try {
     console.log('📅 getAllBookings called with path:', req.path);
-    console.log('👤 User:', req.user);
 
     const { page = 1, limit = 10, status, search } = req.query;
     const skip = (page - 1) * limit;
 
-    // Build filter
-    const filter = {};
+    const authorizedScope = await getBookingScope(req.user);
+    if (!authorizedScope) return res.status(403).json({ message: 'Access denied.' });
+    const filter = { $and: [authorizedScope] };
 
     // Check if this is an admin route (check full original URL)
     const isAdminRoute = req.originalUrl && req.originalUrl.includes('/admin');
@@ -948,7 +1113,7 @@ const getAllBookings = async (req, res) => {
     console.log('📅 Booking request - Is admin route:', isAdminRoute);
 
     // If admin route, filter by admin user ID for complete data isolation
-    if (isAdminRoute && req.user.role === 'admin') {
+    if (false && isAdminRoute && req.user.role === 'admin') {
       // Multi-tenant isolation: filter bookings by admin user ID
       filter.addedBy = req.user._id;
       console.log('🔒 Multi-tenant isolation - showing bookings for admin:', req.user._id);
@@ -977,15 +1142,16 @@ const getAllBookings = async (req, res) => {
       const userIds = matchedUsers.map(u => u._id);
       const serviceIds = matchedServices.map(s => s._id);
 
-      filter.$or = [
+      const searchScope = { $or: [
         { customer: { $in: userIds } },
         { service: { $in: serviceIds } }
-      ];
+      ] };
 
       // Also check specific booking fields
       if (mongoose.Types.ObjectId.isValid(search)) {
-        filter.$or.push({ _id: search });
+        searchScope.$or.push({ _id: search });
       }
+      filter.$and.push(searchScope);
     }
 
     console.log('🔍 Filter being used:', JSON.stringify(filter));
@@ -1025,12 +1191,15 @@ const getAllBookings = async (req, res) => {
 const getCalendarBookings = async (req, res) => {
   try {
     const { month, year } = req.query;
+    const authorizedScope = await getBookingScope(req.user);
+    if (!authorizedScope) return res.status(403).json({ message: 'Access denied.' });
 
     // Build date range for the month
     const startDate = new Date(year, month - 1, 1);
     const endDate = new Date(year, month, 0); // Last day of previous month
 
     const bookings = await Booking.find({
+      ...authorizedScope,
       bookingDate: {
         $gte: startDate,
         $lt: endDate
@@ -1048,6 +1217,65 @@ const getCalendarBookings = async (req, res) => {
 };
 
 // Validate booking via QR scan (Staff/Admin)
+const markBookingCheckedIn = async (booking, req) => {
+  if (booking.isScanned || booking.serviceProgress?.status === 'pet_arrived') return false;
+  booking.isScanned = true;
+  booking.scannedAt = new Date();
+  booking.scannedBy = req.user._id;
+  booking.serviceProvider = booking.staff || req.user._id;
+  if (!booking.serviceProgress) booking.serviceProgress = {};
+  booking.serviceProgress.status = 'pet_arrived';
+  booking.serviceProgress.arrivedAt = booking.scannedAt;
+  await booking.save();
+  const specialist = booking.staff
+    ? `${booking.staff.firstName || ''} ${booking.staff.lastName || ''}`.trim()
+    : 'the assigned specialist';
+  const branch = booking.store?.name || 'the selected branch';
+  await createNotification({
+    recipient: booking.customer?._id || booking.customer,
+    sender: req.user._id,
+    type: 'service_update',
+    title: 'Pet Checked In',
+    message: `${booking.pet.name} checked in with ${specialist} at ${branch}.`,
+    relatedId: booking._id,
+    relatedModel: 'Booking',
+    targetUrl: `/bookings?id=${booking._id}`
+  }, req.app.get('socketio'));
+  const io = req.app.get('socketio');
+  if (io) {
+    io.to(`user_${String(booking.customer?._id || booking.customer)}`).emit('serviceUpdate', {
+      bookingId: String(booking._id), eventType: 'pet_arrived', timestamp: booking.scannedAt
+    });
+    io.to(`store_${String(booking.store?._id || booking.store)}`).emit('dashboardUpdate', {
+      type: 'booking', id: String(booking._id), status: 'pet_arrived', timestamp: booking.scannedAt
+    });
+    io.to('admin_global').emit('dashboardUpdate', {
+      type: 'booking', id: String(booking._id), status: 'pet_arrived', timestamp: booking.scannedAt
+    });
+  }
+  return true;
+};
+
+const checkInBooking = async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.id)
+      .populate('customer', 'firstName lastName')
+      .populate('staff', 'firstName lastName')
+      .populate('store', 'name owner')
+      .populate('service', 'name');
+    if (!booking) return res.status(404).json({ message: 'Booking not found.' });
+    if (!['confirmed', 'approved'].includes(booking.status) || booking.paymentStatus !== 'paid') {
+      return res.status(409).json({ message: 'Only a paid, confirmed booking can be checked in.' });
+    }
+    const owner = isStoreAdmin(req.user) && String(booking.store?.owner) === String(req.user._id);
+    if (!owner && !canStaffManageBooking(req.user, booking)) return res.status(403).json({ message: 'Only the assigned service team or store owner can check in this pet.' });
+    const changed = await markBookingCheckedIn(booking, req);
+    res.json({ message: changed ? 'Pet checked in successfully.' : 'This pet is already checked in.', booking });
+  } catch (error) {
+    res.status(error.name === 'CastError' ? 404 : 500).json({ message: error.name === 'CastError' ? 'Booking not found.' : 'Unable to check in this pet.' });
+  }
+};
+
 const validateBookingQR = async (req, res) => {
   try {
     const { qrCode } = req.body;
@@ -1058,7 +1286,9 @@ const validateBookingQR = async (req, res) => {
 
     const booking = await Booking.findOne({ qrCode })
       .populate('customer', 'firstName lastName email')
-      .populate('service', 'name');
+      .populate('service', 'name')
+      .populate('staff', 'firstName lastName')
+      .populate('store', 'name owner');
 
     if (!booking) {
       return res.status(404).json({ message: 'Invalid QR Code: Booking not found' });
@@ -1066,9 +1296,9 @@ const validateBookingQR = async (req, res) => {
 
     // NEW: Multi-vendor safety check (Ensure staff scans only their store's bookings)
     const scanner = req.user;
-    const isStoreOwner = scanner.role === 'admin' && booking.store && booking.store.owner && booking.store.owner.toString() === scanner._id.toString();
+    const isStoreOwner = isStoreAdmin(scanner) && await canAccessStore(scanner, booking.store?._id || booking.store);
     const isStoreStaff = canStaffManageBooking(scanner, booking);
-    const isSuperAdmin = scanner.role === 'super_admin';
+    const isSuperAdmin = isPlatformAdmin(scanner);
 
     if (!isSuperAdmin && !isStoreOwner && !isStoreStaff) {
       return res.status(403).json({ message: 'Access Denied: You can only scan bookings for your own store.' });
@@ -1131,27 +1361,7 @@ const validateBookingQR = async (req, res) => {
     }
 
     // 6. Valid Scan - Success!
-    booking.isScanned = true;
-    booking.scannedAt = new Date();
-    booking.scannedBy = req.user._id;
-    booking.serviceProvider = booking.staff || req.user._id;
-    if (!booking.serviceProgress) booking.serviceProgress = {};
-    booking.serviceProgress.status = 'pet_arrived';
-    booking.serviceProgress.arrivedAt = booking.scannedAt;
-    
-    await booking.save();
-
-    // Notify the owner that check-in is complete; service starts as a separate staff action.
-    await createNotification({
-      recipient: booking.customer._id,
-      sender: req.user._id,
-      type: 'service_update',
-      title: 'Pet Arrived',
-      message: `${booking.pet.name} has arrived and was checked in for the service.`,
-      relatedId: booking._id,
-      relatedModel: 'Booking',
-      targetUrl: `/bookings?id=${booking._id}`
-    });
+    await markBookingCheckedIn(booking, req);
 
     res.json({
       message: 'Booking Validated Successfully!',
@@ -1187,5 +1397,8 @@ module.exports = {
   assignBookingStaff,
   selectBookingStaff,
   confirmBookingForPayment,
-  getBookingStaffProfile
+  getBookingStaffProfile,
+  expireBookingProposals,
+  checkInBooking,
+  __test: { toPublicStaff }
 };

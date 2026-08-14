@@ -65,7 +65,8 @@ const getLogisticsDashboard = async (req, res) => {
     };
 
     const riderQuery = {
-      role: 'staff', staffType: 'delivery_rider', isActive: true, isDeleted: false,
+      $or: [{ role: 'delivery_rider' }, { role: 'staff', staffType: 'delivery_rider' }],
+      isActive: true, isDeleted: false,
       'riderProfile.accountStatus': 'active'
     };
     if (scope.store) riderQuery.store = scope.store;
@@ -142,7 +143,10 @@ const getDeliveries = async (req, res) => {
       const [orderIds, bookingIds, riderIds] = await Promise.all([
         Order.find(orderQuery).distinct('_id'),
         Booking.find(bookingQuery).distinct('_id'),
-        User.find({ role: 'staff', staffType: 'delivery_rider', $or: [{ firstName: pattern }, { lastName: pattern }, { 'riderProfile.staffId': pattern }] }).distinct('_id')
+        User.find({ $and: [
+          { $or: [{ role: 'delivery_rider' }, { role: 'staff', staffType: 'delivery_rider' }] },
+          { $or: [{ firstName: pattern }, { lastName: pattern }, { 'riderProfile.staffId': pattern }] }
+        ] }).distinct('_id')
       ]);
       filters.push({
         $or: [

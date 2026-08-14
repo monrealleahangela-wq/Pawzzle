@@ -1,9 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
-import {
-  Package, Plus, Edit2, Trash2, X, Search, ChevronDown, AlertTriangle,
-  RefreshCw, TrendingDown, Layers, Clock, Droplets, CheckCircle, Activity
-} from 'lucide-react';
+import { Package, Plus, Edit2, Trash2, X, AlertTriangle, RefreshCw, TrendingDown, Clock, Droplets, CheckCircle, Activity } from 'lucide-react';
 import { serviceSupplyService } from '../../services/apiService';
 
 const SupplyManagement = () => {
@@ -104,14 +101,14 @@ const SupplyManagement = () => {
   return (
     <div className="min-h-screen bg-slate-50/50 p-4 sm:p-8 space-y-8">
       {/* Header */}
-      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-6 bg-white p-6 sm:p-10 rounded-[3rem] border border-slate-100 shadow-sm relative overflow-hidden">
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-4 bg-white p-4 sm:p-6 rounded-2xl border border-slate-100 shadow-sm relative overflow-hidden">
         <div className="absolute top-0 right-0 w-64 h-64 bg-teal-500/5 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl pointer-events-none" />
         <div className="relative z-10">
           <div className="flex items-center gap-3 mb-4">
             <div className="p-2 bg-teal-600 text-white rounded-2xl shadow-lg shadow-teal-200"><Droplets className="h-4 w-4" /></div>
             <span className="text-[10px] font-black text-teal-600 uppercase tracking-[0.4em]">SERVICE SUPPLIES</span>
           </div>
-          <h1 className="text-3xl sm:text-5xl font-black text-slate-900 uppercase tracking-tighter leading-[0.9] mb-3">
+          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 uppercase tracking-tight leading-none mb-2">
             Supply <span className="text-teal-600">Management</span>
           </h1>
         </div>

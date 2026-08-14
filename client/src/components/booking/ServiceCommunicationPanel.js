@@ -1,9 +1,15 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { AlertCircle, Camera, CheckCircle2, Clock3, Image, Loader2, MessageCircle, RefreshCw, Send, Shield, Trash2 } from 'lucide-react';
+import { AlertCircle, Camera, CheckCircle2, Clock3, FileText, Image, Loader2, MessageCircle, RefreshCw, Send, Shield, Sparkles, Trash2 } from 'lucide-react';
 import { toast } from 'react-toastify';
-import { getImageUrl, petCareService } from '../../services/apiService';
+import { adminBookingService, getImageUrl, petCareService } from '../../services/apiService';
+import socket from '../../utils/socket';
 
 const stageLabels = {
+  proposal_received: 'Proposal received',
+  staff_assigned: 'Specialist assigned',
+  proposal_confirmed: 'Proposal confirmed',
+  payment_completed: 'Payment completed',
+  booking_confirmed: 'Booking confirmed',
   scheduled: 'Scheduled',
   pet_arrived: 'Pet arrived',
   assessed: 'Assessed',
@@ -11,6 +17,7 @@ const stageLabels = {
   in_progress: 'In progress',
   ready_for_pickup: 'Ready for pickup',
   completed: 'Completed',
+  aftercare: 'Aftercare instructions',
   cancelled: 'Cancelled',
   incident: 'Important update',
   general: 'Service update'
@@ -24,7 +31,18 @@ const senderName = sender => sender
   ? `${sender.firstName || ''} ${sender.lastName || ''}`.trim() || 'Service team'
   : 'Pawzzle';
 
-const ServiceCommunicationPanel = ({ booking, staffMode = false }) => {
+const quickCareUpdates = [
+  ['Examination Started', 'assessed'],
+  ['Grooming Started', 'in_progress'],
+  ['Bath Finished', 'in_progress'],
+  ['Nail Trimming Completed', 'in_progress'],
+  ['Vaccination Completed', 'in_progress'],
+  ['Treatment Ongoing', 'in_progress'],
+  ['Resting', 'in_progress'],
+  ['Preparing for Pickup', 'in_progress']
+];
+
+const ServiceCommunicationPanel = ({ booking, staffMode = false, onBookingUpdated }) => {
   const [timeline, setTimeline] = useState([]);
   const [summary, setSummary] = useState(null);
   const [permissions, setPermissions] = useState({});
@@ -36,9 +54,11 @@ const ServiceCommunicationPanel = ({ booking, staffMode = false }) => {
   const [category, setCategory] = useState('general');
   const [photoCategory, setPhotoCategory] = useState('during');
   const [photoMessage, setPhotoMessage] = useState('');
-  const [photoFile, setPhotoFile] = useState(null);
-  const [photoPreview, setPhotoPreview] = useState('');
+  const [photoFiles, setPhotoFiles] = useState([]);
+  const [photoPreviews, setPhotoPreviews] = useState([]);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [aftercareInstructions, setAftercareInstructions] = useState('');
+  const [serviceNotes, setServiceNotes] = useState('');
   const fileRef = useRef(null);
 
   const loadTimeline = useCallback(async (quiet = false) => {
@@ -58,13 +78,26 @@ const ServiceCommunicationPanel = ({ booking, staffMode = false }) => {
 
   useEffect(() => {
     loadTimeline();
-    const timer = setInterval(() => loadTimeline(true), 20000);
-    return () => clearInterval(timer);
+    const timer = setInterval(() => {
+      if (!document.hidden) loadTimeline(true);
+    }, 30000);
+    const handleServiceUpdate = event => {
+      if (String(event?.bookingId) === String(booking?._id)) loadTimeline(true);
+    };
+    socket.on('serviceUpdate', handleServiceUpdate);
+    if (!socket.connected) socket.connect();
+    return () => {
+      clearInterval(timer);
+      socket.off('serviceUpdate', handleServiceUpdate);
+    };
   }, [loadTimeline]);
 
-  useEffect(() => () => {
-    if (photoPreview) URL.revokeObjectURL(photoPreview);
-  }, [photoPreview]);
+  useEffect(() => () => photoPreviews.forEach(preview => URL.revokeObjectURL(preview)), [photoPreviews]);
+
+  useEffect(() => {
+    setAftercareInstructions(summary?.serviceSummary?.aftercareInstructions || '');
+    setServiceNotes(summary?.serviceSummary?.notes || '');
+  }, [summary?.serviceSummary?.aftercareInstructions, summary?.serviceSummary?.notes]);
 
   const publicPhotos = useMemo(() => timeline.flatMap(item => {
     const urls = item.media?.map(media => media.url) || item.mediaUrls || [];
@@ -72,27 +105,27 @@ const ServiceCommunicationPanel = ({ booking, staffMode = false }) => {
   }), [timeline]);
 
   const choosePhoto = event => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    if (!['image/jpeg', 'image/png', 'image/webp', 'image/gif'].includes(file.type)) {
+    const files = [...(event.target.files || [])].slice(0, 5);
+    if (!files.length) return;
+    if (files.some(file => !['image/jpeg', 'image/png', 'image/webp', 'image/gif'].includes(file.type))) {
       toast.error('Use a JPEG, PNG, WebP, or GIF image.');
       event.target.value = '';
       return;
     }
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('The photo must be 5 MB or smaller.');
+    if (files.some(file => file.size > 5 * 1024 * 1024)) {
+      toast.error('Each photo must be 5 MB or smaller.');
       event.target.value = '';
       return;
     }
-    if (photoPreview) URL.revokeObjectURL(photoPreview);
-    setPhotoFile(file);
-    setPhotoPreview(URL.createObjectURL(file));
+    photoPreviews.forEach(preview => URL.revokeObjectURL(preview));
+    setPhotoFiles(files);
+    setPhotoPreviews(files.map(file => URL.createObjectURL(file)));
   };
 
   const clearPhoto = () => {
-    if (photoPreview) URL.revokeObjectURL(photoPreview);
-    setPhotoFile(null);
-    setPhotoPreview('');
+    photoPreviews.forEach(preview => URL.revokeObjectURL(preview));
+    setPhotoFiles([]);
+    setPhotoPreviews([]);
     setUploadProgress(0);
     if (fileRef.current) fileRef.current.value = '';
   };
@@ -121,18 +154,18 @@ const ServiceCommunicationPanel = ({ booking, staffMode = false }) => {
 
   const submitPhoto = async event => {
     event.preventDefault();
-    if (!photoFile) return toast.info('Choose a service photo first.');
+    if (!photoFiles.length) return toast.info('Choose at least one service photo first.');
     setSending(true);
     setUploadProgress(1);
     try {
       const formData = new FormData();
-      formData.append('image', photoFile);
+      photoFiles.forEach(file => formData.append('images', file));
       formData.append('category', photoCategory);
       formData.append('message', photoMessage.trim());
       const response = await petCareService.uploadServicePhoto(booking._id, formData, progressEvent => {
         if (progressEvent.total) setUploadProgress(Math.round((progressEvent.loaded / progressEvent.total) * 100));
       });
-      toast.success('Photo shared with the pet owner.');
+      toast.success(`${photoFiles.length} photo${photoFiles.length === 1 ? '' : 's'} shared with the pet owner.`);
       if (response.data.notificationDelivered === false) toast.warning('The photo was saved, but the notification could not be delivered.');
       clearPhoto();
       setPhotoMessage('');
@@ -156,6 +189,50 @@ const ServiceCommunicationPanel = ({ booking, staffMode = false }) => {
       await loadTimeline(true);
     } catch (error) {
       toast.error(error.response?.data?.message || 'Message failed to send. Your text has been kept so you can retry.');
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const postQuickCareUpdate = async ([label, stage]) => {
+    setSending(true);
+    try {
+      await petCareService.addServiceUpdate(booking._id, { entryType: 'update', category: 'general', stage, message: label });
+      toast.success(`${label} shared with the pet owner.`);
+      await loadTimeline(true);
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Unable to send this care update.');
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const runLifecycleAction = async action => {
+    setSending(true);
+    try {
+      if (action === 'check_in') await adminBookingService.checkIn(booking._id);
+      else await adminBookingService.updateBookingStatus(booking._id, action);
+      const refreshed = await adminBookingService.getBookingById(booking._id);
+      onBookingUpdated?.(refreshed.data.booking);
+      toast.success(action === 'processing' ? 'Service started.' : action === 'finished' ? 'Pet marked ready for pickup.' : action === 'completed' ? 'Service completed.' : 'Pet checked in.');
+      await loadTimeline(true);
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Unable to update the booking lifecycle.');
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const submitAftercare = async event => {
+    event.preventDefault();
+    if (!aftercareInstructions.trim()) return toast.info('Enter aftercare instructions for the pet owner.');
+    setSending(true);
+    try {
+      await petCareService.saveAftercare(booking._id, { aftercareInstructions: aftercareInstructions.trim(), serviceNotes: serviceNotes.trim() });
+      toast.success('Aftercare instructions shared.');
+      await loadTimeline(true);
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Unable to save aftercare instructions.');
     } finally {
       setSending(false);
     }
@@ -208,6 +285,7 @@ const ServiceCommunicationPanel = ({ booking, staffMode = false }) => {
                   {isInternal && <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[8px] font-black uppercase text-amber-700">Staff only</span>}
                   <span className="text-[10px] text-slate-400">{formatDateTime(item.createdAt)}</span>
                 </div>
+                {item.sender && !isMessage && <p className="text-[9px] text-slate-400">By {senderName(item.sender)}</p>}
                 {item.message && <p className="mt-1 whitespace-pre-wrap break-words text-xs leading-relaxed text-slate-600 dark:text-slate-300">{item.message}</p>}
                 {(item.media?.length > 0 || item.mediaUrls?.length > 0) && (
                   <div className="mt-2 flex flex-wrap gap-2">
@@ -222,6 +300,21 @@ const ServiceCommunicationPanel = ({ booking, staffMode = false }) => {
 
       {publicPhotos.length > 0 && <p className="mb-3 text-[10px] text-slate-400">{publicPhotos.length} service photo{publicPhotos.length === 1 ? '' : 's'} shared</p>}
 
+      {staffMode && permissions.canPostStaffUpdate && (
+        <div className="mb-4 rounded-xl border border-primary-100 bg-primary-50/40 p-3">
+          <div className="mb-2 flex items-center gap-2"><Sparkles size={14} className="text-primary-600" /><p className="text-[10px] font-black uppercase tracking-widest text-primary-700">Quick Update</p></div>
+          <div className="flex flex-wrap gap-2">
+            {['confirmed', 'approved'].includes(booking.status) && booking.serviceProgress?.status !== 'pet_arrived' && <button type="button" disabled={sending} onClick={() => runLifecycleAction('check_in')} className="h-8 rounded-lg bg-white px-3 text-[10px] font-bold text-slate-700 border">Check In</button>}
+            {['confirmed', 'approved'].includes(booking.status) && booking.serviceProgress?.status === 'pet_arrived' && <button type="button" disabled={sending} onClick={() => runLifecycleAction('processing')} className="h-8 rounded-lg bg-emerald-600 px-3 text-[10px] font-bold text-white">Start Service</button>}
+            {activeForUpdates && <button type="button" onClick={() => setEntryType('photo')} className="h-8 rounded-lg bg-white px-3 text-[10px] font-bold text-slate-700 border">Upload Photo</button>}
+            {activeForUpdates && <button type="button" onClick={() => setEntryType('update')} className="h-8 rounded-lg bg-white px-3 text-[10px] font-bold text-slate-700 border">Send Update</button>}
+            {booking.status === 'processing' && <button type="button" disabled={sending} onClick={() => runLifecycleAction('finished')} className="h-8 rounded-lg bg-sky-600 px-3 text-[10px] font-bold text-white">Ready for Pickup</button>}
+            {booking.status === 'finished' && <button type="button" disabled={sending} onClick={() => runLifecycleAction('completed')} className="h-8 rounded-lg bg-slate-900 px-3 text-[10px] font-bold text-white">Complete Service</button>}
+          </div>
+          {['processing', 'finished'].includes(booking.status) && <div className="mt-3 flex gap-1.5 overflow-x-auto pb-1">{quickCareUpdates.map(action => <button key={action[0]} type="button" disabled={sending} onClick={() => postQuickCareUpdate(action)} className="h-8 shrink-0 rounded-lg border border-primary-100 bg-white px-2.5 text-[9px] font-bold text-primary-700">{action[0]}</button>)}</div>}
+        </div>
+      )}
+
       {staffMode && permissions.canPostStaffUpdate && activeForUpdates && (
         <div className="border-t border-slate-100 pt-4 dark:border-slate-700">
           <div className="mb-3 flex gap-2" role="tablist">
@@ -235,8 +328,8 @@ const ServiceCommunicationPanel = ({ booking, staffMode = false }) => {
                 </select>
                 <input value={photoMessage} onChange={event => setPhotoMessage(event.target.value)} maxLength={2000} placeholder="Optional caption for the owner" className="h-10 rounded-lg border border-slate-200 px-3 text-xs outline-none focus:border-primary-400" />
               </div>
-              {photoPreview ? <div className="flex items-center gap-3 rounded-xl bg-slate-50 p-2"><img src={photoPreview} alt="Upload preview" className="h-16 w-16 rounded-lg object-cover" /><div className="min-w-0 flex-1"><p className="truncate text-xs font-bold">{photoFile?.name}</p><p className="text-[10px] text-slate-400">{Math.round((photoFile?.size || 0) / 1024)} KB{uploadProgress ? ` · ${uploadProgress}% uploaded` : ''}</p></div><button type="button" onClick={clearPhoto} disabled={sending} className="h-8 w-8 grid place-items-center rounded-lg text-rose-600 hover:bg-rose-50" aria-label="Remove selected photo"><Trash2 size={15} /></button></div> : <label className="flex min-h-20 cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 bg-slate-50 text-xs font-bold text-slate-600 hover:border-primary-400"><Camera size={17} /> Choose or take a photo<input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" capture="environment" onChange={choosePhoto} className="hidden" /></label>}
-              <button type="submit" disabled={sending || !photoFile} className="h-10 rounded-lg bg-primary-600 px-4 text-xs font-black text-white disabled:opacity-50">{sending ? `Uploading ${uploadProgress || 0}%` : 'Share photo'}</button>
+              {photoPreviews.length ? <div className="flex items-center gap-3 rounded-xl bg-slate-50 p-2"><div className="flex max-w-[180px] gap-1 overflow-x-auto">{photoPreviews.map((preview, index) => <img key={preview} src={preview} alt={`Upload preview ${index + 1}`} className="h-14 w-14 shrink-0 rounded-lg object-cover" />)}</div><div className="min-w-0 flex-1"><p className="truncate text-xs font-bold">{photoFiles.length} photo{photoFiles.length === 1 ? '' : 's'} selected</p><p className="text-[10px] text-slate-400">{Math.round(photoFiles.reduce((sum, file) => sum + file.size, 0) / 1024)} KB total{uploadProgress ? ` · ${uploadProgress}% uploaded` : ''}</p></div><button type="button" onClick={clearPhoto} disabled={sending} className="h-8 w-8 grid place-items-center rounded-lg text-rose-600 hover:bg-rose-50" aria-label="Remove selected photos"><Trash2 size={15} /></button></div> : <label className="flex min-h-20 cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 bg-slate-50 text-xs font-bold text-slate-600 hover:border-primary-400"><Camera size={17} /> Choose up to 5 photos<input ref={fileRef} type="file" multiple accept="image/jpeg,image/png,image/webp,image/gif" onChange={choosePhoto} className="hidden" /></label>}
+              <button type="submit" disabled={sending || !photoFiles.length} className="h-10 rounded-lg bg-primary-600 px-4 text-xs font-black text-white disabled:opacity-50">{sending ? `Uploading ${uploadProgress || 0}%` : `Share ${photoFiles.length || ''} photo${photoFiles.length === 1 ? '' : 's'}`}</button>
             </form>
           ) : (
             <form onSubmit={submitStaffUpdate} className="space-y-2">
@@ -246,6 +339,30 @@ const ServiceCommunicationPanel = ({ booking, staffMode = false }) => {
             </form>
           )}
         </div>
+      )}
+
+      {staffMode && permissions.canPostStaffUpdate && ['finished', 'completed'].includes(booking.status) && (
+        <form onSubmit={submitAftercare} className="mt-4 space-y-2 rounded-xl border border-emerald-100 bg-emerald-50/50 p-3">
+          <div className="flex items-center gap-2"><FileText size={14} className="text-emerald-700" /><p className="text-[10px] font-black uppercase tracking-widest text-emerald-800">Aftercare</p></div>
+          <textarea rows={2} maxLength={4000} value={aftercareInstructions} onChange={event => setAftercareInstructions(event.target.value)} placeholder="Custom aftercare instructions for the owner" className="w-full resize-none rounded-lg border border-emerald-100 bg-white p-3 text-xs outline-none focus:border-emerald-400" />
+          <textarea rows={2} maxLength={4000} value={serviceNotes} onChange={event => setServiceNotes(event.target.value)} placeholder="Customer-friendly service notes (optional)" className="w-full resize-none rounded-lg border border-emerald-100 bg-white p-3 text-xs outline-none focus:border-emerald-400" />
+          <button type="submit" disabled={sending || !aftercareInstructions.trim()} className="h-9 rounded-lg bg-emerald-700 px-4 text-[10px] font-black text-white disabled:opacity-50">Share Aftercare</button>
+        </form>
+      )}
+
+      {summary?.serviceSummary && ['finished', 'completed'].includes(booking.status) && (
+        <section className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3">
+          <div className="mb-3 flex items-center gap-2"><FileText size={14} className="text-primary-600" /><div><p className="text-[9px] font-black uppercase tracking-widest text-primary-700">Digital Service Summary</p><p className="text-xs font-black text-slate-900">{summary.service?.name} · {summary.pet?.name}</p></div></div>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            <div className="rounded-lg bg-white p-2"><p className="text-[8px] font-bold uppercase text-slate-400">Specialist</p><p className="text-[10px] font-bold text-slate-700">{senderName(summary.staff)}</p></div>
+            <div className="rounded-lg bg-white p-2"><p className="text-[8px] font-bold uppercase text-slate-400">Branch</p><p className="text-[10px] font-bold text-slate-700">{summary.store?.name || 'Branch'}</p></div>
+            <div className="rounded-lg bg-white p-2"><p className="text-[8px] font-bold uppercase text-slate-400">Duration</p><p className="text-[10px] font-bold text-slate-700">{summary.serviceSummary.actualDurationMinutes ?? summary.serviceSummary.estimatedDurationMinutes ?? '—'} min</p></div>
+            <div className="rounded-lg bg-white p-2"><p className="text-[8px] font-bold uppercase text-slate-400">Photos</p><p className="text-[10px] font-bold text-slate-700">{summary.serviceSummary.photoCount || 0}</p></div>
+          </div>
+          {summary.serviceSummary.notes && <div className="mt-2 rounded-lg bg-white p-2"><p className="text-[8px] font-bold uppercase text-slate-400">Service notes</p><p className="mt-1 whitespace-pre-wrap text-[11px] text-slate-700">{summary.serviceSummary.notes}</p></div>}
+          {summary.serviceSummary.aftercareInstructions && <div className="mt-2 rounded-lg border border-emerald-100 bg-emerald-50 p-2"><p className="text-[8px] font-bold uppercase text-emerald-700">Aftercare instructions</p><p className="mt-1 whitespace-pre-wrap text-[11px] text-emerald-900">{summary.serviceSummary.aftercareInstructions}</p></div>}
+          <div className="mt-2 flex flex-wrap justify-between gap-2 border-t border-slate-200 pt-2 text-[10px] text-slate-600"><span>{new Date(summary.serviceSummary.bookingDate).toLocaleDateString()} · {summary.serviceSummary.startTime}</span><span className="font-bold">PayMongo {summary.serviceSummary.paymentStatus} · ₱{Number(summary.serviceSummary.totalPrice || 0).toFixed(2)} · VAT ₱{Number(summary.serviceSummary.pricingBreakdown?.vatAmount || 0).toFixed(2)}</span></div>
+        </section>
       )}
 
       {permissions.canMessage && messageAvailable && (

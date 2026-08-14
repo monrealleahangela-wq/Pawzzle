@@ -2,10 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
 import { customerService } from '../../services/apiService';
 import { Link } from 'react-router-dom';
-import {
-    Users, Search, Clock, ShoppingCart, Calendar as CalendarIcon,
-    ChevronDown, X, Star, Package, CheckCircle, ExternalLink, Activity
-} from 'lucide-react';
+import { Users, Search, ShoppingCart, Calendar as CalendarIcon, ChevronDown, X, Star, Activity } from 'lucide-react';
 
 const Customers = () => {
     const [customers, setCustomers] = useState([]);

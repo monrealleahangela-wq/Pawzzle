@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { orderService, getImageUrl } from '../../services/apiService';
-import { ShoppingBag, Eye, Clock, Package, Truck, CheckCircle, XCircle, AlertCircle, ChevronLeft, ChevronRight, ArrowRight, Star, Heart, Calendar, Receipt, MapPin } from 'lucide-react';
+import { ShoppingBag, Clock, Package, Truck, CheckCircle, XCircle, ChevronLeft, ChevronRight, Star, Heart, Calendar, Receipt, MapPin } from 'lucide-react';
 import ReviewModal from '../../components/ReviewModal';
 import Adoptions from './Adoptions';
 import Bookings from './Bookings';
+import { normalizeRefundPolicy, refundPolicyLabel } from '../../utils/refundPolicy';
 
 const STATUS_META = {
   pending_payment: { label: 'Awaiting Payment', color: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-100', icon: Clock },
@@ -48,11 +49,11 @@ const Orders = () => {
   );
 
   return (
-    <div className="max-w-6xl mx-auto p-4 lg:p-6 space-y-8">
+    <div className="max-w-6xl mx-auto p-4 lg:p-6 space-y-5">
       <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900">My Orders</h1>
-          <p className="text-slate-500">Track and manage your purchases</p>
+          <h1 className="text-2xl font-bold text-slate-900">My Orders</h1>
+          <p className="text-sm text-slate-500">Track purchases, delivery progress, policies, and receipts.</p>
         </div>
         <div className="flex gap-2 bg-slate-100 p-1 rounded-lg">
           {[
@@ -94,10 +95,11 @@ const Orders = () => {
                 const effectiveStatus = legacyToNew[order.status] || order.status;
                 const meta = STATUS_META[effectiveStatus] || STATUS_META.pending_payment;
                 const StatusIcon = meta.icon;
+                const orderPolicy = normalizeRefundPolicy(order.refundPolicySnapshot || order.store?.refundPolicy);
                 
                 return (
                   <div key={order._id} className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm hover:shadow-md transition-shadow">
-                    <div className="p-4 sm:p-6 border-b border-slate-100 flex flex-wrap justify-between items-center gap-4">
+                    <div className="p-4 border-b border-slate-100 flex flex-wrap justify-between items-center gap-3">
                       <div className="flex items-center gap-4">
                         <div>
                           <p className="text-xs font-bold text-slate-400 uppercase">Order ID</p>
@@ -114,7 +116,7 @@ const Orders = () => {
                       </div>
                     </div>
 
-                    <div className="p-4 sm:p-6 space-y-4">
+                    <div className="p-4 space-y-3">
                       {order.items.map((item, i) => (
                         <div key={i} className="flex gap-4 items-center">
                           <img 
@@ -131,7 +133,13 @@ const Orders = () => {
                       ))}
                     </div>
 
-                    <div className="p-4 sm:p-6 bg-slate-50 flex flex-col sm:flex-row justify-between items-center gap-4">
+                    <div className="border-t border-slate-100 bg-slate-50 p-4">
+                      <div className="mb-3 flex flex-wrap items-center gap-2 text-[10px] text-slate-600">
+                        <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1">{refundPolicyLabel(orderPolicy.type)} policy</span>
+                        <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1">Payment: {order.paymentStatus || (effectiveStatus === 'pending_payment' ? 'pending' : 'recorded')}</span>
+                        <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1">Delivery: {meta.label}</span>
+                      </div>
+                      <div className="flex flex-col sm:flex-row justify-between items-center gap-3">
                       <p className="text-xs text-slate-500">Ordered on {new Date(order.orderDate).toLocaleDateString()}</p>
                       <div className="flex gap-2 w-full sm:w-auto">
                         {order.delivery && ['rider_assigned', 'picked_up', 'in_transit'].includes(order.status) && (
@@ -139,8 +147,8 @@ const Orders = () => {
                             <MapPin className="h-4 w-4" /> Live Track
                           </Link>
                         )}
-                        <Link to={`/orders/${order._id}`} className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-lg text-sm font-bold shadow-sm hover:bg-slate-800 transition-colors">
-                          <Eye className="h-4 w-4" /> Details
+                        <Link to={`/orders/${order._id}`} className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-lg text-xs font-bold shadow-sm hover:bg-slate-800 transition-colors">
+                          <Receipt className="h-4 w-4" /> Receipt & Details
                         </Link>
                         {order.status === 'delivered' && !order.reviewStatus?.isRated && (
                           <button 
@@ -150,6 +158,7 @@ const Orders = () => {
                             <Star className="h-4 w-4 text-secondary-500" /> Review
                           </button>
                         )}
+                      </div>
                       </div>
                     </div>
                   </div>

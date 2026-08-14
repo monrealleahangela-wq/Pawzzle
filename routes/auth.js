@@ -17,9 +17,11 @@ const {
   verifyOTPAndResetPassword,
   resendPasswordResetOTP,
   toggle2FA,
-  verify2FA
+  verify2FA,
+  logout
 } = require('../controllers/authController');
 const { authenticate } = require('../middleware/auth');
+const { authRateLimits } = require('../middleware/authRateLimit');
 
 // Validation rules
 const registerValidation = [
@@ -43,7 +45,7 @@ const registerValidation = [
   body('lastName').trim().optional({ checkFalsy: true }).notEmpty().withMessage('Last name is required'),
   body('phone').trim().optional({ checkFalsy: true }).isMobilePhone().withMessage('Please provide a valid phone number'),
   body('address.barangay').trim().optional({ checkFalsy: true }).notEmpty().withMessage('Barangay is required'),
-  body('role').optional().isIn(['super_admin', 'admin', 'customer']).withMessage('Invalid role')
+  body('role').optional().equals('customer').withMessage('Public registration only creates customer accounts')
 ];
 
 const loginValidation = [
@@ -100,29 +102,39 @@ const otpResetValidation = [
     })
 ];
 
+const emailValidation = [
+  body('email').isEmail().normalizeEmail().withMessage('Please provide a valid email')
+];
+
+const otpVerificationValidation = [
+  body('email').isEmail().normalizeEmail().withMessage('Please provide a valid email'),
+  body('otp').matches(/^\d{6}$/).withMessage('OTP must be 6 digits')
+];
+
 // ─── Registration with OTP ────────────────────────────────────────────────────
-router.post('/register/send-otp', registerValidation, sendRegisterOTP);
-router.post('/register/verify-otp', verifyRegisterOTP);
-router.post('/register/resend-otp', resendRegisterOTP);
+router.post('/register/send-otp', authRateLimits.authIp, authRateLimits.otpSend, registerValidation, sendRegisterOTP);
+router.post('/register/verify-otp', authRateLimits.authIp, authRateLimits.otpVerify, otpVerificationValidation, verifyRegisterOTP);
+router.post('/register/resend-otp', authRateLimits.authIp, authRateLimits.otpSend, emailValidation, resendRegisterOTP);
 
 // ─── Legacy register (for admin/super_admin creation) ─────────────────────────
-router.post('/register', registerValidation, register);
+router.post('/register', authRateLimits.authIp, authRateLimits.otpSend, registerValidation, register);
 
 // ─── Login ────────────────────────────────────────────────────────────────────
-router.post('/login', loginValidation, login);
+router.post('/login', authRateLimits.authIp, authRateLimits.login, loginValidation, login);
 
 // ─── Password Reset with OTP ──────────────────────────────────────────────────
-router.post('/request-password-reset', requestPasswordResetOTP);
-router.post('/verify-otp-reset-password', otpResetValidation, verifyOTPAndResetPassword);
-router.post('/resend-password-reset', resendPasswordResetOTP);
+router.post('/request-password-reset', authRateLimits.authIp, authRateLimits.otpSend, emailValidation, requestPasswordResetOTP);
+router.post('/verify-otp-reset-password', authRateLimits.authIp, authRateLimits.otpVerify, otpResetValidation, verifyOTPAndResetPassword);
+router.post('/resend-password-reset', authRateLimits.authIp, authRateLimits.otpSend, emailValidation, resendPasswordResetOTP);
 
 // ─── Authenticated routes ─────────────────────────────────────────────────────
 router.get('/me', authenticate, getCurrentUser);
 router.put('/profile', authenticate, updateProfileValidation, updateProfile);
 router.put('/change-password', authenticate, changePasswordValidation, changePassword);
+router.post('/logout', authenticate, logout);
 
 // ─── Two-Factor Authentication ───────────────────────────────────────────────
-router.post('/verify-2fa', verify2FA);
+router.post('/verify-2fa', authRateLimits.authIp, authRateLimits.otpVerify, otpVerificationValidation, verify2FA);
 router.post('/toggle-2fa', authenticate, toggle2FA);
 
 // ─── Helper: issue JWT after OAuth and redirect to frontend ───────────────────

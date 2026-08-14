@@ -1,4 +1,5 @@
 const { cloudinary } = require('../middleware/upload');
+const { isPlatformAdmin } = require('../config/permissions');
 
 // Upload single image to Cloudinary
 const uploadImage = async (req, res) => {
@@ -71,6 +72,19 @@ const uploadDocument = async (req, res) => {
 const deleteImage = async (req, res) => {
   try {
     const { filename } = req.params;
+
+    if (!isPlatformAdmin(req.user)) {
+      let resource;
+      try {
+        resource = await cloudinary.api.resource(filename, { context: true });
+      } catch (_error) {
+        return res.status(404).json({ message: 'Image not found' });
+      }
+      const owner = resource?.context?.custom?.owner || resource?.context?.owner;
+      if (!owner || String(owner) !== String(req.user._id)) {
+        return res.status(403).json({ message: 'You can only delete assets uploaded by your account.' });
+      }
+    }
 
     // filename here is the Cloudinary public_id (e.g. "pawzzle/abc123")
     const result = await cloudinary.uploader.destroy(filename);

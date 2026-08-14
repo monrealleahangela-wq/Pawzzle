@@ -1,21 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import {
-    Star,
-    MessageSquare,
-    Reply,
-    User,
-    Calendar,
-    Filter,
-    ChevronLeft,
-    ChevronRight,
-    TrendingUp,
-    Package,
-    Heart,
-    Store,
-    ExternalLink,
-    Eye,
-    EyeOff
-} from 'lucide-react';
+import { Star, MessageSquare, Reply, User, ChevronLeft, ChevronRight, TrendingUp, Package, Heart, Store, Eye, EyeOff } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { reviewService } from '../../services/apiService';
 
@@ -89,8 +73,8 @@ const ReviewManagement = () => {
     };
 
     return (
-        <div className="space-y-8 animate-fade-in pb-20">
-            <header className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 bg-white p-8 sm:p-12 rounded-[3.5rem] border border-slate-100 shadow-xl shadow-slate-200/50 relative overflow-hidden">
+        <div className="space-y-5 animate-fade-in pb-20">
+            <header className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 bg-white p-4 sm:p-6 rounded-2xl border border-slate-100 shadow-sm relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-64 h-64 bg-primary-50 rounded-full blur-3xl -mr-32 -mt-32 opacity-40"></div>
                 <div className="relative z-10">
                     <div className="flex items-center gap-3 mb-4">
@@ -99,7 +83,7 @@ const ReviewManagement = () => {
                         </div>
                         <span className="text-[10px] font-black text-primary-600 uppercase tracking-[0.4em]">CUSTOMER FEEDBACK</span>
                     </div>
-                    <h1 className="text-4xl sm:text-6xl font-black text-slate-900 uppercase tracking-tighter leading-none">
+                    <h1 className="text-2xl sm:text-3xl font-black text-slate-900 uppercase tracking-tight leading-none">
                         Reviews <br /> <span className="text-primary-600">Management</span>
                     </h1>
                     <p className="text-[11px] font-bold text-slate-400 uppercase tracking-[0.2em] mt-4 flex items-center gap-2">
@@ -112,10 +96,10 @@ const ReviewManagement = () => {
             <div className="grid grid-cols-1 gap-6">
                 {loading ? (
                     [...Array(3)].map((_, i) => (
-                        <div key={i} className="bg-white p-8 rounded-[3rem] animate-pulse border border-slate-100 h-64"></div>
+                        <div key={i} className="bg-white p-5 rounded-2xl animate-pulse border border-slate-100 h-40"></div>
                     ))
                 ) : reviews.length === 0 ? (
-                    <div className="bg-white p-24 rounded-[3rem] text-center border border-dashed border-slate-200">
+                    <div className="bg-white p-10 rounded-2xl text-center border border-dashed border-slate-200">
                         <MessageSquare className="h-12 w-12 text-slate-200 mx-auto mb-4" />
                         <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-widest">No Incoming transmissions</h3>
                     </div>
@@ -123,13 +107,13 @@ const ReviewManagement = () => {
                     reviews.map((review) => {
                         const TargetIcon = getTargetTypeIcon(review.targetType);
                         return (
-                            <div key={review._id} className="bg-white p-6 sm:p-10 rounded-[3rem] border border-slate-100 shadow-sm hover:shadow-2xl transition-all duration-500 group">
+                            <div key={review._id} className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-all duration-300 group">
                                 <div className="flex flex-col lg:flex-row gap-8">
                                     <div className="flex-1 space-y-6">
                                         <div className="flex items-center justify-between flex-wrap gap-4">
                                             <div className="flex items-center gap-3">
                                                 <div className="w-12 h-12 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-center overflow-hidden">
-                                                    {review.user?.avatar ? <img src={review.user.avatar} className="w-full h-full object-cover" /> : <User className="h-6 w-6 text-slate-300" />}
+                                                    {review.user?.avatar ? <img src={review.user.avatar} alt="" loading="lazy" className="w-full h-full object-cover" /> : <User className="h-6 w-6 text-slate-300" />}
                                                 </div>
                                                 <div>
                                                     <p className="text-xs sm:text-lg font-black text-slate-900 uppercase tracking-tight">{review.user?.firstName || review.user?.username}</p>
@@ -158,7 +142,7 @@ const ReviewManagement = () => {
                                             <div className="flex gap-2 pb-2">
                                                 {review.images.map((img, i) => (
                                                     <div key={i} className="w-16 h-16 sm:w-24 sm:h-24 rounded-2xl bg-slate-50 border border-slate-100 overflow-hidden shrink-0 group-hover:scale-105 transition-transform duration-500">
-                                                        <img src={img} className="w-full h-full object-cover" />
+                                                        <img src={img} alt="" loading="lazy" className="w-full h-full object-cover" />
                                                     </div>
                                                 ))}
                                             </div>

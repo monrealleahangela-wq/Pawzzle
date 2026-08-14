@@ -1,9 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
-import {
-  Truck, CheckCircle, XCircle, Clock, Search, ChevronDown, Shield, Eye,
-  Package, Star, TrendingUp, AlertTriangle, Settings, Users, Ban, X
-} from 'lucide-react';
+import { Truck, CheckCircle, XCircle, Clock, Search, ChevronDown, Shield, Eye, Package, Star, TrendingUp, Users, Ban, X } from 'lucide-react';
 import { supplierService, getImageUrl } from '../../services/apiService';
 
 const SupplierManagement = () => {
@@ -86,16 +83,16 @@ const SupplierManagement = () => {
   );
 
   return (
-    <div className="min-h-screen bg-slate-50/50 p-4 sm:p-8 space-y-8">
+    <div className="min-h-screen bg-slate-50/50 p-4 sm:p-6 space-y-5">
       {/* Header */}
-      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-6 bg-white p-6 sm:p-10 rounded-[3rem] border border-slate-100 shadow-sm relative overflow-hidden">
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-4 bg-white p-4 sm:p-6 rounded-2xl border border-slate-100 shadow-sm relative overflow-hidden">
         <div className="absolute top-0 right-0 w-64 h-64 bg-purple-500/5 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl pointer-events-none" />
         <div className="relative z-10">
           <div className="flex items-center gap-3 mb-4">
             <div className="p-2 bg-purple-600 text-white rounded-2xl shadow-lg shadow-purple-200"><Truck className="h-4 w-4" /></div>
             <span className="text-[10px] font-black text-purple-600 uppercase tracking-[0.4em]">SUPER ADMIN : SUPPLIERS</span>
           </div>
-          <h1 className="text-3xl sm:text-5xl font-black text-slate-900 uppercase tracking-tighter leading-[0.9] mb-3">
+          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 uppercase tracking-tight leading-none mb-2">
             Supplier <span className="text-purple-600">Management</span>
           </h1>
           <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">

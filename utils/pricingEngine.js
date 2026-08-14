@@ -169,10 +169,11 @@ const calculateServicePrice = (service, petData = {}, bookingData = {}, selected
 const checkStaffAvailability = async (staffId, bookingDate, startTime, endTime, bufferTime = 0, excludeBookingId = null) => {
   const Booking = require('../models/Booking');
   const User = require('../models/User');
-  const { isWithinStaffSchedule } = require('./staffSpecialization');
+  const { isWithinStaffSchedule, isProfessionallyAssignable } = require('./staffSpecialization');
 
-  const staff = await User.findById(staffId).select('isActive isDeleted staffStatus professionalProfile.availability');
+  const staff = await User.findById(staffId).select('isActive isDeleted staffStatus professionalProfile');
   if (!staff || !staff.isActive || staff.isDeleted || ['inactive', 'suspended'].includes(staff.staffStatus)) return false;
+  if (!isProfessionallyAssignable(staff, new Date(bookingDate))) return false;
   if (!isWithinStaffSchedule(staff, bookingDate, startTime, endTime)) return false;
 
   const toMinutes = (timeStr) => {
@@ -219,17 +220,18 @@ const getEligibleStaff = async (service, bookingDate, startTime, endTime, exclud
   const Booking = require('../models/Booking');
   const User = require('../models/User');
   const { hasPermission } = require('../config/permissions');
-  const { isRoleEligibleForService, isWithinStaffSchedule } = require('./staffSpecialization');
+  const { getStaffSpecializationRole, isRoleEligibleForService, isWithinStaffSchedule, isProfessionallyAssignable } = require('./staffSpecialization');
   const candidates = [];
   const bufferTime = service.bufferTime || 0;
 
   for (const staffId of service.assignedStaff || []) {
     const staff = await User.findById(staffId)
-      .select('firstName lastName avatar store staffType staffStatus isActive isDeleted professionalProfile');
+      .select('firstName lastName avatar role store staffType staffStatus isActive isDeleted professionalProfile');
     if (!staff || !staff.isActive || staff.isDeleted || ['inactive', 'suspended'].includes(staff.staffStatus)) continue;
     if (String(staff.store) !== String(service.store?._id || service.store)) continue;
-    if (!isRoleEligibleForService(staff.staffType, service)) continue;
+    if (!isRoleEligibleForService(getStaffSpecializationRole(staff), service)) continue;
     if (!hasPermission(staff, 'bookings.assigned')) continue;
+    if (!isProfessionallyAssignable(staff, new Date(bookingDate))) continue;
     if (!isWithinStaffSchedule(staff, bookingDate, startTime, endTime)) continue;
     if (!(await checkStaffAvailability(staff._id, bookingDate, startTime, endTime, bufferTime, excludeBookingId))) continue;
 
@@ -245,7 +247,51 @@ const getEligibleStaff = async (service, bookingDate, startTime, endTime, exclud
     candidates.push({ staff, bookingCount });
   }
 
-  return candidates.sort((a, b) => a.bookingCount - b.bookingCount);
+  if (!candidates.length) return candidates;
+  const staffIds = candidates.map(candidate => candidate.staff._id);
+  const performanceRows = await Booking.aggregate([
+    { $match: { staff: { $in: staffIds }, isDeleted: { $ne: true } } },
+    { $group: {
+      _id: '$staff',
+      total: { $sum: 1 },
+      completed: { $sum: { $cond: [{ $in: ['$status', ['completed', 'finished']] }, 1, 0] } },
+      cancelled: { $sum: { $cond: [{ $in: ['$status', ['cancelled', 'rejected', 'no_show']] }, 1, 0] } }
+    } }
+  ]);
+  const performance = new Map(performanceRows.map(row => [String(row._id), row]));
+  const maxCompleted = Math.max(...performanceRows.map(row => Number(row.completed || 0)), 1);
+  const maxWorkload = Math.max(...candidates.map(candidate => candidate.bookingCount), 1);
+
+  return candidates.map(candidate => {
+    const metrics = performance.get(String(candidate.staff._id)) || { total: 0, completed: 0, cancelled: 0 };
+    const verificationStatus = getProfessionalVerificationStatus(candidate.staff, new Date(bookingDate));
+    const verifiedPoints = verificationStatus === 'verified' ? 15 : verificationStatus === 'legacy_unverified' ? 5 : 0;
+    const workloadPoints = 15 * (1 - candidate.bookingCount / (maxWorkload + 1));
+    const completedPoints = 10 * Number(metrics.completed || 0) / maxCompleted;
+    const rating = Number(candidate.staff.professionalProfile?.rating || 0);
+    const ratingPoints = 10 * rating / 5;
+    const cancellationRate = metrics.total ? Number(metrics.cancelled || 0) / metrics.total : 0;
+    const reliabilityPoints = 5 * (1 - cancellationRate);
+    const matchScore = Number((25 + 20 + verifiedPoints + workloadPoints + completedPoints + ratingPoints + reliabilityPoints).toFixed(1));
+    const reasons = [
+      'Qualified for the selected service and assigned to this branch.',
+      'Available during the requested time with no schedule conflict.',
+      verificationStatus === 'verified' ? 'Professional credentials are verified.' : verificationStatus === 'legacy_unverified' ? 'Legacy staff profile remains assignable; no verified badge is claimed.' : `Verification status is ${String(verificationStatus).replace(/_/g, ' ')}.`,
+      `${candidate.bookingCount} other booking${candidate.bookingCount === 1 ? '' : 's'} scheduled that day.`,
+      `${metrics.completed || 0} completed service${metrics.completed === 1 ? '' : 's'}, ${rating.toFixed(1)}/5 rating, and ${Math.round(cancellationRate * 100)}% cancellation history.`
+    ];
+    return {
+      ...candidate,
+      matchScore,
+      matchExplanation: {
+        why: reasons.slice(0, 3).join(' '),
+        basedOn: reasons,
+        recommendedAction: 'Keep this specialist when their qualifications, schedule, and experience fit the customer preference.',
+        factors: { qualification: 25, availability: 20, verification: verifiedPoints, workload: Number(workloadPoints.toFixed(1)), completedServices: Number(completedPoints.toFixed(1)), rating: Number(ratingPoints.toFixed(1)), cancellationHistory: Number(reliabilityPoints.toFixed(1)) }
+      },
+      performance: { completedServices: metrics.completed || 0, totalBookings: metrics.total || 0, cancellationRate: Number((cancellationRate * 100).toFixed(1)), rating }
+    };
+  }).sort((a, b) => b.matchScore - a.matchScore || a.bookingCount - b.bookingCount || Number(b.staff.professionalProfile?.rating || 0) - Number(a.staff.professionalProfile?.rating || 0));
 };
 
 /**
@@ -265,9 +311,6 @@ const autoAssignStaff = async (service, bookingDate, startTime, endTime) => {
   const candidates = await getEligibleStaff(service, bookingDate, startTime, endTime);
 
   if (candidates.length === 0) return null;
-
-  // Sort by fewest bookings (load balancing)
-  candidates.sort((a, b) => a.bookingCount - b.bookingCount);
 
   return candidates[0].staff._id;
 };

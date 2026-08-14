@@ -44,14 +44,8 @@ const authService = {
       return Promise.reject(new Error('Email and password are required'));
     }
 
-    console.log(' === AUTH SERVICE LOGIN ===');
-    console.log(' Attempting real API call to:', '/auth/login');
-    console.log(' Email:', credentials.email);
-
     return api.post('/auth/login', credentials)
       .then(response => {
-        console.log(' === REAL API SUCCESS ===');
-        console.log(' Response data:', response.data);
         const { token, user, twoFactorRequired } = response.data;
         
         if (twoFactorRequired) {
@@ -66,9 +60,6 @@ const authService = {
         return response.data;
       })
       .catch(error => {
-        console.log(' === REAL API ERROR ===');
-        console.log(' Error details:', error.message);
-        console.log(' Error response:', error.response?.data);
         SessionService.clearAllSessions();
         throw error;
       });
@@ -132,7 +123,7 @@ const authService = {
     return api.put('/auth/profile', userData)
       .then(response => {
         // Update user data in current session
-        localStorage.setItem('user', JSON.stringify(response.data));
+        if (response.data?.user) localStorage.setItem('user', JSON.stringify(response.data.user));
         localStorage.setItem('lastActivity', new Date().toISOString());
         return response.data;
       })

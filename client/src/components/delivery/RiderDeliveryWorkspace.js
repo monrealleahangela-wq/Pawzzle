@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { MapContainer, Marker, TileLayer } from 'react-leaflet';
-import { AlertTriangle, ArrowLeft, Camera, CheckCircle2, Clock, HelpCircle, MapPin, MessageSquare, Navigation, Package, Phone, Send, Truck, X } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, Camera, CheckCircle2, Clock, HelpCircle, MessageSquare, Navigation, Package, Phone, Send, Truck, X } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { deliveryService } from '../../services/apiService';
 

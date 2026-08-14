@@ -153,12 +153,22 @@ export const payoutService = {
 };
 // Staff management services (Admin only)
 export const staffService = {
-  getAll: () => api.get('/staff'),
+  getAll: (params) => api.get('/staff', { params }),
   getConfiguration: (params) => api.get('/staff/configuration', { params }),
+  getRolePermissions: (params) => api.get('/staff/roles', { params }),
+  updateRolePermissions: (role, permissions, storeId) => api.put(`/staff/roles/${role}`, { permissions, storeId }),
   getProfile: (id) => api.get(`/staff/${id}/profile`),
+  getMyProfessionalProfile: () => api.get('/staff/me/professional-profile'),
+  updateMyProfessionalProfile: (data) => api.patch('/staff/me/professional-profile', data),
   create: (data) => api.post('/staff', data),
   update: (id, data) => api.put(`/staff/${id}`, data),
+  uploadCredential: (id, data) => api.post(`/staff/${id}/credentials`, data, { headers: { 'Content-Type': 'multipart/form-data' } }),
+  updateCredentialVerification: (id, documentId, data) => api.patch(`/staff/${id}/credentials/${documentId}/verification`, data),
+  updateAvailability: (id, data) => api.put(`/staff/${id}/availability`, data),
   toggleStatus: (id, data) => api.patch(`/staff/${id}/toggle-status`, data),
+  archive: (id, data) => api.patch(`/staff/${id}/archive`, data),
+  restore: (id) => api.patch(`/staff/${id}/restore`),
+  permanentDelete: (id, confirmation) => api.delete(`/staff/${id}/permanent`, { data: { confirmation } }),
   resetPassword: (id, newPassword) => api.patch(`/staff/${id}/reset-password`, { newPassword }),
   remove: (id) => api.delete(`/staff/${id}`),
   getEligibleRiders: (params) => api.get('/staff/riders/eligible', { params }),
@@ -179,7 +189,9 @@ export const adminBookingService = {
   getAllBookings: (params) => api.get('/admin/bookings', { params }),
   getBookingById: (id) => api.get(`/admin/bookings/${id}`),
   getEligibleStaff: (id) => api.get(`/admin/bookings/${id}/eligible-staff`),
+  prepareProposal: (id, proposal) => api.put(`/admin/bookings/${id}/proposal`, proposal),
   assignStaff: (id, staffId) => api.put(`/admin/bookings/${id}/assign-staff`, { staffId }),
+  checkIn: (id) => api.post(`/admin/bookings/${id}/check-in`),
   updateBookingStatus: (bookingId, status) => api.put(`/admin/bookings/${bookingId}/status`, { status }),
   cancelBooking: (bookingId) => api.put(`/admin/bookings/${bookingId}/cancel`)
 };
@@ -247,7 +259,7 @@ export const bookingService = {
   getEligibleStaff: (id) => api.get(`/bookings/${id}/eligible-staff`),
   getStaffProfile: (bookingId, staffId) => api.get(`/bookings/${bookingId}/staff/${staffId}`),
   selectStaff: (id, staffId) => api.put(`/bookings/${id}/select-staff`, { staffId }),
-  confirmForPayment: (id) => api.post(`/bookings/${id}/confirm`),
+  confirmForPayment: (id, data = {}) => api.post(`/bookings/${id}/confirm`, data),
   cancelBooking: (id) => api.put(`/bookings/${id}/cancel`),
   getStoreBookings: (storeId, params) => api.get(`/bookings/store/${storeId}`, { params }),
   getAllBookings: (params) => api.get('/bookings/all', { params }),
@@ -307,6 +319,7 @@ export const inventoryService = {
 
 // Store services
 export const storeService = {
+  getDashboardStats: () => api.get('/stores/dashboard/stats'),
   getAllStores: (params) => api.get('/stores', { params }),
   getStoreById: (id) => api.get(`/stores/${id}`),
   getStoreDetails: (id) => api.get(`/stores/${id}/details`),
@@ -320,6 +333,8 @@ export const storeService = {
   getStoreLocations: () => api.get('/stores/locations'),
   getTaxConfiguration: (id) => api.get(`/stores/${id}/tax-configuration`),
   updateTaxConfiguration: (data) => api.put('/stores/my-store/tax-configuration', data),
+  getRefundPolicy: (id) => api.get(id ? `/stores/${id}/refund-policy` : '/stores/my-store/refund-policy'),
+  updateRefundPolicy: (data, id) => api.put(id ? `/stores/${id}/refund-policy` : '/stores/my-store/refund-policy', data),
   submitVerification: (data) => api.post('/stores/my-store/verify', data),
   requestExpansion: (formData) => api.post('/stores/expansion-request', formData, {
     headers: { 'Content-Type': 'multipart/form-data' }
@@ -436,6 +451,7 @@ export const petCareService = {
   addServiceUpdate: (bookingId, data) => api.post(`/pet-care/bookings/${bookingId}/updates`, data),
   getServiceTimeline: (bookingId) => api.get(`/pet-care/bookings/${bookingId}/timeline`),
   sendServiceMessage: (bookingId, message) => api.post(`/pet-care/bookings/${bookingId}/messages`, { message }),
+  saveAftercare: (bookingId, data) => api.put(`/pet-care/bookings/${bookingId}/aftercare`, data),
   uploadServicePhoto: (bookingId, formData, onUploadProgress) => api.post(`/pet-care/bookings/${bookingId}/photos`, formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
     onUploadProgress

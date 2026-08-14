@@ -15,6 +15,9 @@ const {
   finalizeBooking,
   finalizeAdoption
 } = require('../services/paymentReconciliationService');
+const { isPlatformAdmin, isStoreAdmin, isOperationalStaff, hasPermission } = require('../config/permissions');
+const { canAccessStore } = require('../utils/authorizationPolicy');
+const { requiresAcknowledgment } = require('../utils/refundPolicy');
 
 const PAYMONGO_WEBHOOK_SECRET = process.env.PAYMONGO_WEBHOOK_SECRET;
 const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER;
@@ -24,6 +27,14 @@ if (!FRONTEND_URL || FRONTEND_URL.includes('localhost')) {
 }
 
 const sessionHistory = record => record.paymentDetails?.sessionHistory || [];
+
+const emitPaymentDashboardUpdate = (req, type, record, status) => {
+  const io = req.app.get('socketio');
+  if (!io || !record || type === 'adoption') return;
+  const payload = { type: 'payment', resourceType: type, id: String(record._id), status, timestamp: new Date() };
+  if (record.store) io.to(`store_${String(record.store?._id || record.store)}`).emit('dashboardUpdate', payload);
+  io.to('admin_global').emit('dashboardUpdate', payload);
+};
 
 const saveCheckoutSession = async (record, type, session, version) => {
   if (!record.paymentDetails) record.paymentDetails = {};
@@ -112,8 +123,12 @@ const createCheckoutSession = async (req, res) => {
     if (!order) return res.status(404).json({ message: 'Order not found.' });
     if (order.status === 'cancelled') return res.status(400).json({ message: 'Cannot pay for a cancelled order.' });
     if (order.paymentStatus === 'paid') return res.status(409).json({ message: 'This order is already paid.' });
-    if (String(order.customer._id) !== String(req.user._id) && req.user.role !== 'super_admin') {
+    if (String(order.customer._id) !== String(req.user._id) && !isPlatformAdmin(req.user)) {
       return res.status(403).json({ message: 'Access denied.' });
+    }
+    if (requiresAcknowledgment(order.refundPolicySnapshot || order.store?.refundPolicy)
+        && !order.refundPolicyAcknowledgment?.acknowledged) {
+      return res.status(409).json({ message: 'Acknowledge the store No Refund policy before starting PayMongo.' });
     }
 
     for (const item of order.items) {
@@ -177,8 +192,12 @@ const createBookingCheckoutSession = async (req, res) => {
       });
     }
     if (booking.paymentStatus === 'paid') return res.status(409).json({ message: 'This booking is already paid.' });
-    if (String(booking.customer._id) !== String(req.user._id) && req.user.role !== 'super_admin') {
+    if (String(booking.customer._id) !== String(req.user._id) && !isPlatformAdmin(req.user)) {
       return res.status(403).json({ message: 'Access denied.' });
+    }
+    if (requiresAcknowledgment(booking.refundPolicySnapshot || booking.store?.refundPolicy)
+        && !booking.refundPolicyAcknowledgment?.acknowledged) {
+      return res.status(409).json({ message: 'Acknowledge the store No Refund policy before starting PayMongo.' });
     }
 
     const priorTotal = Number(booking.totalPrice);
@@ -235,7 +254,7 @@ const createAdoptionCheckoutSession = async (req, res) => {
     if (adoption.status === 'cancelled') return res.status(400).json({ message: 'Cannot pay for a cancelled inquiry.' });
     const authorized = String(adoption.customer._id) === String(req.user._id)
       || String(adoption.seller) === String(req.user._id)
-      || req.user.role === 'super_admin';
+      || isPlatformAdmin(req.user);
     if (!authorized) return res.status(403).json({ message: 'Access denied.' });
 
     const dueCentavos = amountCentavos(adoption, 'adoption');
@@ -314,9 +333,11 @@ const handleWebhook = async (req, res) => {
     const eventType = event.attributes.type;
     const resource = event.attributes.data;
     if (eventType === 'checkout_session.payment.paid') {
-      await reconcilePaidSession(resource);
+      const reconciled = await reconcilePaidSession(resource);
+      if (reconciled) emitPaymentDashboardUpdate(req, reconciled.type, reconciled.record, 'paid');
     } else if (eventType === 'checkout_session.payment.failed' || eventType === 'payment.failed') {
-      await markSessionFailed(resource);
+      const failed = await markSessionFailed(resource);
+      if (failed) emitPaymentDashboardUpdate(req, failed.type, failed.record, 'failed');
     }
     receipt.status = 'completed';
     receipt.processedAt = new Date();
@@ -350,10 +371,12 @@ const verifyPayment = async (req, res) => {
     if (!target) return res.status(404).json({ message: 'Transaction not found.' });
     const isCustomer = String(target.record.customer) === String(req.user._id);
     const isSeller = target.type === 'adoption' && String(target.record.seller) === String(req.user._id);
-    const isStoreOperator = ['admin', 'store_owner', 'staff'].includes(req.user.role)
-      && (String(target.record.addedBy) === String(req.user._id)
-        || (req.user.store && String(target.record.store) === String(req.user.store)));
-    if (!isCustomer && !isSeller && !isStoreOperator && req.user.role !== 'super_admin') {
+    const isStoreOperator = (isStoreAdmin(req.user) || isOperationalStaff(req.user))
+      && target.record.store
+      && await canAccessStore(req.user, target.record.store)
+      && ['payments.manage', 'sales.manage', 'bookings.manage', 'finance.manage']
+        .some(permission => hasPermission(req.user, permission));
+    if (!isCustomer && !isSeller && !isStoreOperator && !isPlatformAdmin(req.user)) {
       return res.status(403).json({ message: 'Access denied.' });
     }
     if (!target.record.paymentDetails?.sessionId) return res.status(400).json({ message: 'No PayMongo session exists for this transaction.' });
@@ -366,6 +389,7 @@ const verifyPayment = async (req, res) => {
       else if (target.type === 'booking') record = await finalizeBooking(target.record, payment);
       else record = await finalizeAdoption(target.record, payment);
       const status = target.type === 'adoption' ? record.paymentDetails.paymentStatus : record.paymentStatus;
+      emitPaymentDashboardUpdate(req, target.type, record, status);
       return res.json({ status, [target.type]: record });
     }
 
@@ -384,7 +408,7 @@ const cancelPayment = async (req, res) => {
   try {
     const target = await findTargetById(req.params.id);
     if (!target || target.type !== req.params.type) return res.status(404).json({ message: 'Transaction not found.' });
-    if (String(target.record.customer) !== String(req.user._id) && req.user.role !== 'super_admin') {
+    if (String(target.record.customer) !== String(req.user._id) && !isPlatformAdmin(req.user)) {
       return res.status(403).json({ message: 'Access denied.' });
     }
     const sessionId = target.record.paymentDetails?.sessionId;
@@ -412,6 +436,7 @@ const cancelPayment = async (req, res) => {
     }
     await target.record.save();
     const status = target.type === 'adoption' ? target.record.paymentDetails.paymentStatus : target.record.paymentStatus;
+    emitPaymentDashboardUpdate(req, target.type, target.record, status);
     res.json({ status, sessionStatus: 'expired' });
   } catch (error) {
     console.error('PayMongo cancellation error:', error.response?.data || error.message);

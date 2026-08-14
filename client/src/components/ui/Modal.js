@@ -86,12 +86,14 @@ const ModalHeader = ({ className, ...props }) => (
   <div className={cn("flex items-center justify-between p-4 sm:px-5 sm:py-3.5 border-b border-neutral-200/50", className)} {...props} />
 );
 
-const ModalTitle = React.forwardRef(({ className, ...props }, ref) => (
+const ModalTitle = React.forwardRef(({ className, children, ...props }, ref) => (
   <h3
     ref={ref}
     className={cn("text-lg font-black text-neutral-900 uppercase tracking-tighter leading-none", className)}
     {...props}
-  />
+  >
+    {children}
+  </h3>
 ));
 ModalTitle.displayName = "ModalTitle";
 

@@ -1,5 +1,6 @@
 const Product = require('../models/Product');
 const Store = require('../models/Store');
+const { isPlatformAdmin, isStoreAdmin, isOperationalStaff } = require('../config/permissions');
 
 // Admin-only function for getting products with multi-tenant isolation
 const getAllAdminProducts = async (req, res) => {
@@ -10,9 +11,9 @@ const getAllAdminProducts = async (req, res) => {
 
     let filter = { isDeleted: { $ne: true } };
     
-    if (req.user.role === 'super_admin') {
+    if (isPlatformAdmin(req.user)) {
       console.log('🔓 Super-admin detected - showing all products');
-    } else if (req.user.role === 'staff') {
+    } else if (isOperationalStaff(req.user)) {
       // Staff sees products from their assigned store
       if (req.user.store) {
         const store = await Store.findById(req.user.store);
@@ -27,7 +28,7 @@ const getAllAdminProducts = async (req, res) => {
       } else {
         filter.addedBy = req.user.createdBy;
       }
-    } else {
+    } else if (isStoreAdmin(req.user)) {
       // Admin - find all stores owned by this admin
       const adminStores = await Store.find({ owner: req.user._id }).select('_id');
       const storeIds = adminStores.map(s => s._id);
@@ -56,12 +57,13 @@ const getAllAdminProducts = async (req, res) => {
     }
 
     if (search) {
-      filter.$or = [
+      const searchFilter = { $or: [
         { name: new RegExp(search, 'i') },
         { brand: new RegExp(search, 'i') },
         { description: new RegExp(search, 'i') },
         { category: new RegExp(search, 'i') }
-      ];
+      ] };
+      filter = { $and: [{ ...filter }, searchFilter] };
     }
 
     const skip = (parseInt(page) - 1) * parseInt(limit);

@@ -1,64 +1,75 @@
+const crypto = require('crypto');
 const mongoose = require('mongoose');
-const User = require('../models/User'); // Path to your User model
-require('dotenv').config(); // Load the Cloud DB URI from your .env
-const dns = require('dns');
+const User = require('../models/User');
+require('dotenv').config();
 
-// Fix for MongoDB Atlas connection issues on some networks
-dns.setServers(['8.8.8.8', '8.8.4.4']);
+const required = name => {
+  const value = process.env[name]?.trim();
+  if (!value) throw new Error(`${name} must be configured for superadmin bootstrap`);
+  return value;
+};
 
-async function seedSuperAdmin() {
+const validatePassword = password => {
+  if (password.length < 12 || !/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9])/.test(password)) {
+    throw new Error('SUPERADMIN_PASSWORD must be at least 12 characters and include upper, lower, numeric, and symbol characters');
+  }
+};
+
+async function bootstrapSuperAdmin() {
+  const mongoUri = required('MONGODB_URI');
+  const email = required('SUPERADMIN_EMAIL').toLowerCase();
+  const username = required('SUPERADMIN_USERNAME');
+  const password = required('SUPERADMIN_PASSWORD');
+  validatePassword(password);
+
+  await mongoose.connect(mongoUri);
+  const existing = await User.findOne({ role: 'super_admin', isDeleted: false }).select('_id');
+  if (existing) {
+    console.log('Superadmin bootstrap skipped: an active superadmin already exists.');
+    return;
+  }
+
+  const lockToken = crypto.randomUUID();
+  const locks = mongoose.connection.collection('system_bootstrap_locks');
+  let acquired = false;
+
   try {
-    console.log('🔗 Connecting to cloud database...');
-    // Ensure your .env has MONGODB_URI=mongodb+srv://...
-    await mongoose.connect(process.env.MONGODB_URI);
-    console.log('✅ Connected successfully!');
+    await locks.insertOne({ _id: 'super_admin', token: lockToken, status: 'in_progress', createdAt: new Date() });
+    acquired = true;
 
-    // Check if an admin already exists to avoid duplicates
-    const existingAdmin = await User.findOne({ 
-      $or: [
-        { role: 'super_admin' },
-        { email: 'admin@pawzzle.io' },
-        { username: 'superadmin' }
-      ] 
-    });
+    const concurrentAdmin = await User.findOne({ role: 'super_admin', isDeleted: false }).select('_id');
+    if (concurrentAdmin) throw new Error('A superadmin was created by another bootstrap process');
 
-    if (existingAdmin) {
-      console.log('⚠️ A Super Admin with those details already exists in the database.');
-      process.exit(0);
-    }
-
-    // CREATE THE SUPER ADMIN
     const superAdmin = new User({
-      username: 'superadmin',
-      email: 'admin@pawzzle.io',
-      password: 'ChangeMe123!', // <--- CHANGE THIS BEFORE RUNNING
+      username,
+      email,
+      password,
       role: 'super_admin',
-      firstName: 'Pawzzle',
-      lastName: 'Admin',
-      phone: '09123456789',
-      address: {
-        street: 'Main Street',
-        city: 'Metropolis',
-        province: 'Metro Manila',
-        barangay: 'Barangay 1'
-      },
-      isActive: true
+      firstName: process.env.SUPERADMIN_FIRST_NAME?.trim() || 'Pawzzle',
+      lastName: process.env.SUPERADMIN_LAST_NAME?.trim() || 'Administrator',
+      isActive: true,
+      requiresPasswordChange: process.env.SUPERADMIN_REQUIRE_PASSWORD_CHANGE !== 'false'
     });
-
     await superAdmin.save();
-    console.log('\n🏆 SUCCESS: Super Admin created successfully!');
-    console.log('-------------------------------------------');
-    console.log('📧 Email:    admin@pawzzle.io');
-    console.log('👤 Username: superadmin');
-    console.log('🔑 Password: ChangeMe123!');
-    console.log('-------------------------------------------');
-    console.log('\n🐾 Go to https://pawzzle.io/login to test it!');
-    
-    process.exit(0);
+    await locks.updateOne(
+      { _id: 'super_admin', token: lockToken },
+      { $set: { status: 'completed', completedAt: new Date(), userId: superAdmin._id } }
+    );
+    console.log('Superadmin bootstrap completed successfully. Credentials were not logged.');
   } catch (error) {
-    console.error('❌ Error seeding Super Admin:', error);
-    process.exit(1);
+    if (acquired) await locks.deleteOne({ _id: 'super_admin', token: lockToken, status: 'in_progress' });
+    if (error?.code === 11000) {
+      throw new Error('Superadmin bootstrap is already running or has already completed');
+    }
+    throw error;
   }
 }
 
-seedSuperAdmin();
+bootstrapSuperAdmin()
+  .catch(error => {
+    console.error(`Superadmin bootstrap failed: ${error.message}`);
+    process.exitCode = 1;
+  })
+  .finally(async () => {
+    await mongoose.disconnect();
+  });

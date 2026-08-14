@@ -9,7 +9,7 @@ const {
   updatePet,
   deletePet
 } = require('../controllers/petController');
-const { authenticate, adminOrStaff } = require('../middleware/auth');
+const { authenticate, adminOrStaff, requirePermission } = require('../middleware/auth');
 
 // Validation rules
 const createPetValidation = [
@@ -57,8 +57,8 @@ router.get('/', (req, res, next) => {
 router.get('/:id', getPetById);
 
 // Protected routes (Admin/Staff)
-router.post('/', authenticate, adminOrStaff, createPetValidation, createPet);
-router.put('/:id', authenticate, adminOrStaff, updatePetValidation, updatePet);
-router.delete('/:id', authenticate, adminOrStaff, deletePet);
+router.post('/', authenticate, adminOrStaff, requirePermission('pets.manage', 'inventory.adjust'), createPetValidation, createPet);
+router.put('/:id', authenticate, adminOrStaff, requirePermission('pets.manage', 'inventory.adjust'), updatePetValidation, updatePet);
+router.delete('/:id', authenticate, adminOrStaff, requirePermission('pets.manage', 'inventory.adjust'), deletePet);
 
 module.exports = router;

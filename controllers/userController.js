@@ -1,6 +1,8 @@
 const { validationResult } = require('express-validator');
 const User = require('../models/User');
 const ActivityLog = require('../models/ActivityLog');
+const { pickProfileUpdates, applyProfileUpdates, sanitizeUser } = require('../utils/authSecurity');
+const { isPlatformAdmin } = require('../config/permissions');
 
 // Get all users (Admin only)
 const getAllUsers = async (req, res) => {
@@ -8,7 +10,6 @@ const getAllUsers = async (req, res) => {
     const { role, isActive, search, page = 1, limit = 10, dateRange } = req.query;
 
     console.log('🔍 getAllUsers called with:', { role, isActive, search, page, limit, dateRange });
-    console.log('👤 Request user:', req.user);
 
     let filter = { isDeleted: { $ne: true } };
 
@@ -35,7 +36,7 @@ const getAllUsers = async (req, res) => {
     }
 
     // Super admin can see all users
-    if (req.user.role === 'super_admin') {
+    if (isPlatformAdmin(req.user)) {
       if (role && role !== '') filter.role = role;
       // Only add isActive filter if it's specifically set to 'true' or 'false'
       if (isActive !== undefined && isActive !== null && isActive !== '') {
@@ -160,61 +161,32 @@ const updateUser = async (req, res) => {
     // Super admins can update anyone
     // Admins can only update themselves
     // Customers can only update themselves
-    if (req.user.role !== 'super_admin' && user._id.toString() !== req.user._id.toString()) {
+    if (!isPlatformAdmin(req.user) && user._id.toString() !== req.user._id.toString()) {
       return res.status(403).json({ message: 'Access denied. You can only update your own profile.' });
     }
 
-    const { firstName, lastName, phone, address, role, isActive, avatar, permissions } = req.body;
-    console.log('Update user request body:', req.body);
-    console.log('User ID:', req.params.id);
-    console.log('Requesting user:', req.user);
+    const { role, isActive, permissions } = req.body;
 
     // Only super admin can change user roles or status
-    if (req.body.role && req.user.role !== 'super_admin') {
+    if (req.body.role && !isPlatformAdmin(req.user)) {
       return res.status(403).json({ message: 'Only super admin can change user roles' });
     }
 
-    if (req.body.isActive !== undefined && req.user.role !== 'super_admin') {
+    if (req.body.isActive !== undefined && !isPlatformAdmin(req.user)) {
       return res.status(403).json({ message: 'Only super admin can change active status' });
     }
 
-    // Update fields
-    user.firstName = firstName || user.firstName;
-    user.lastName = lastName || user.lastName;
-    user.phone = phone || user.phone;
-    user.avatar = avatar || user.avatar;
+    applyProfileUpdates(user, pickProfileUpdates(req.body));
 
-    // Safely handle address update
-    if (address && typeof address === 'object') {
-      user.address = {
-        street: address.street || user.address?.street || 'N/A',
-        city: address.city || user.address?.city || 'N/A',
-        province: address.province || user.address?.province || 'Cavite',
-        barangay: address.barangay || user.address?.barangay || 'N/A',
-        zipCode: address.zipCode || user.address?.zipCode || '',
-        country: address.country || user.address?.country || 'PH'
-      };
-    } else if (!user.address || !user.address.street) {
-      // Initialize with defaults if missing to prevent validation errors
-      user.address = {
-        street: user.address?.street || 'N/A',
-        city: user.address?.city || 'N/A',
-        province: user.address?.province || 'Cavite',
-        barangay: user.address?.barangay || 'N/A',
-        zipCode: user.address?.zipCode || '',
-        country: user.address?.country || 'PH'
-      };
-    }
-
-    if (role !== undefined && req.user.role === 'super_admin') {
+    if (role !== undefined && isPlatformAdmin(req.user)) {
       user.role = role;
     }
 
-    if (permissions !== undefined && req.user.role === 'super_admin') {
+    if (permissions !== undefined && isPlatformAdmin(req.user)) {
       user.permissions = permissions;
     }
 
-    if (isActive !== undefined && req.user.role === 'super_admin') {
+    if (isActive !== undefined && isPlatformAdmin(req.user)) {
       if (user.isActive && !isActive) {
         // Being deactivated
         user.deactivationReason = req.body.deactivationReason || 'Account disabled by administrator.';
@@ -290,7 +262,7 @@ const deleteMyAccount = async (req, res) => {
     if (!user) return res.status(404).json({ message: 'User not found' });
 
     // Super admins should use the regular deleteUser or avoid self-deletion via UI
-    if (user.role === 'super_admin') {
+    if (isPlatformAdmin(user)) {
       return res.status(400).json({ message: 'Super administrators cannot delete their own account through this endpoint.' });
     }
 
@@ -360,33 +332,17 @@ const toggleUserStatus = async (req, res) => {
 const getUserCredentials = async (req, res) => {
   try {
     // Only super admin can view credentials
-    if (req.user.role !== 'super_admin') {
+    if (!isPlatformAdmin(req.user)) {
       return res.status(403).json({ message: 'Access denied. Super admin only.' });
     }
 
-    const user = await User.findById(req.params.id).select('+password'); // Include hashed password
+    const user = await User.findById(req.params.id);
 
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    // Return user with hashed password for admin viewing
-    res.json({
-      user: {
-        id: user._id,
-        username: user.username,
-        email: user.email,
-        password: user.password, // Return the hashed password
-        firstName: user.firstName,
-        lastName: user.lastName,
-        phone: user.phone,
-        role: user.role,
-        isActive: user.isActive,
-        address: user.address,
-        createdAt: user.createdAt,
-        updatedAt: user.updatedAt
-      }
-    });
+    res.json({ user: sanitizeUser(user) });
   } catch (error) {
     console.error('Get user credentials error:', error);
     res.status(500).json({ message: 'Server error' });

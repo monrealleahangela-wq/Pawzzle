@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import { Heart, Clock, CheckCircle, XCircle, Package, Truck, MessageSquare, ArrowLeft } from 'lucide-react';
+import { Heart, Clock, CheckCircle, XCircle, MessageSquare, ArrowLeft } from 'lucide-react';
 import { adoptionService } from '../../services/apiService';
 import { formatTime12h } from '../../utils/timeFormatters';
 import { useAuth } from '../../contexts/AuthContext';

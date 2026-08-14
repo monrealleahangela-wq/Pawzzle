@@ -10,6 +10,15 @@ const User = require('../models/User');
 const Voucher = require('../models/Voucher');
 const { internalCreateDelivery } = require('./deliveryController');
 const { calculateOrderPricing } = require('../services/orderPricingService');
+const { isPlatformAdmin, isStoreAdmin, isOperationalStaff, hasPermission } = require('../config/permissions');
+const { getAuthorizedStoreIds, canOperateStore, idsEqual } = require('../utils/authorizationPolicy');
+const { normalizeRefundPolicy, snapshotRefundPolicy, requiresAcknowledgment } = require('../utils/refundPolicy');
+
+const canViewRetailOrders = user => isPlatformAdmin(user)
+  || hasPermission(user, 'sales.view') || hasPermission(user, 'sales.manage')
+  || hasPermission(user, 'orders.view');
+const canManageRetailOrders = user => isPlatformAdmin(user)
+  || hasPermission(user, 'sales.manage') || hasPermission(user, 'orders.update');
 
 // Get all orders (Admin only) or user's own orders (Customer)
 const getAllOrders = async (req, res) => {
@@ -26,11 +35,16 @@ const getAllOrders = async (req, res) => {
     // Customers can only see their own orders
     if (req.user.role === 'customer') {
       filter.customer = req.user._id;
-    } else if (isAdminRoute && req.user.role === 'admin') {
+    } else if (!isPlatformAdmin(req.user)) {
       // Multi-tenant isolation: filter orders by admin user ID
-      filter.addedBy = req.user._id;
+      if ((!isStoreAdmin(req.user) && !isOperationalStaff(req.user)) || !canViewRetailOrders(req.user)) {
+        return res.status(403).json({ message: 'Access denied.' });
+      }
+      const storeIds = await getAuthorizedStoreIds(req.user);
+      if (!storeIds?.length) return res.status(403).json({ message: 'No authorized store is assigned to this account.' });
+      filter.store = { $in: storeIds };
       console.log('🔒 Multi-tenant isolation - showing orders for admin:', req.user._id);
-    } else if (req.user.role === 'super_admin') {
+    } else if (isPlatformAdmin(req.user)) {
       // Super admin sees all, no additional base filter unless searching
     }
 
@@ -119,10 +133,9 @@ const getOrderById = async (req, res) => {
       return res.status(404).json({ message: 'Order not found' });
     }
 
-    // Check permissions: customers can only see their own orders
-    if (req.user.role === 'customer' && order.customer._id.toString() !== req.user._id.toString()) {
-      return res.status(403).json({ message: 'Access denied' });
-    }
+    const ownsOrder = idsEqual(order.customer, req.user._id);
+    const storeOperator = await canOperateStore(req.user, order.store?._id || order.store, ['sales.view', 'sales.manage', 'orders.view']);
+    if (!ownsOrder && !isPlatformAdmin(req.user) && !storeOperator) return res.status(403).json({ message: 'Access denied' });
 
     if (!order.store) {
       const fallbackStore = await Store.findOne({ owner: order.addedBy });
@@ -329,6 +342,11 @@ const createOrder = async (req, res) => {
       voucherCode: req.body.voucherCode
     });
     const breakdown = pricing.pricingBreakdown;
+    const refundPolicy = normalizeRefundPolicy(pricing.store.refundPolicy);
+    const acknowledgmentRequired = requiresAcknowledgment(refundPolicy);
+    if (acknowledgmentRequired && req.body.refundPolicyAcknowledged !== true) {
+      return res.status(400).json({ message: 'Acknowledge this store\'s No Refund policy before creating the order.' });
+    }
     const order = await Order.create({
       customer: req.user._id,
       addedBy: pricing.ownerId,
@@ -345,7 +363,14 @@ const createOrder = async (req, res) => {
       phoneNumber: req.body.phoneNumber,
       paymentMethod: 'paymongo',
       notes: req.body.notes,
-      status: 'pending_payment'
+      status: 'pending_payment',
+      refundPolicySnapshot: snapshotRefundPolicy(refundPolicy),
+      refundPolicyAcknowledgment: {
+        required: acknowledgmentRequired,
+        acknowledged: acknowledgmentRequired ? true : Boolean(req.body.refundPolicyAcknowledged),
+        acknowledgedAt: req.body.refundPolicyAcknowledged ? new Date() : undefined,
+        acknowledgedBy: req.body.refundPolicyAcknowledged ? req.user._id : undefined
+      }
     });
     if (pricing.voucher) await Voucher.findByIdAndUpdate(pricing.voucher._id, { $inc: { usedCount: 1 } });
 
@@ -394,7 +419,8 @@ const quoteOrder = async (req, res) => {
       deliveryMethod: pricing.deliveryMethod,
       pricingBreakdown: pricing.pricingBreakdown,
       deliveryFeeCalculation: pricing.deliveryFeeCalculation,
-      store: { _id: pricing.store._id, name: pricing.store.name }
+      store: { _id: pricing.store._id, name: pricing.store.name },
+      refundPolicy: normalizeRefundPolicy(pricing.store.refundPolicy)
     });
   } catch (error) {
     res.status(400).json({ message: error.message });
@@ -408,6 +434,10 @@ const updateOrderStatus = async (req, res) => {
     const order = await Order.findById(req.params.id);
 
     if (!order) return res.status(404).json({ message: 'Order not found' });
+    if (!canManageRetailOrders(req.user)
+        || !(await canOperateStore(req.user, order.store, ['sales.manage', 'orders.update']))) {
+      return res.status(403).json({ message: 'You cannot update orders for this store.' });
+    }
     if (status === 'cancelled' && order.paymentStatus === 'paid') {
       return res.status(409).json({ message: 'A paid order cannot be cancelled until its PayMongo refund is processed.' });
     }
@@ -436,7 +466,7 @@ const updateOrderStatus = async (req, res) => {
     }
 
     // Validate Transition (Bypass for super_admin for recovery)
-    if (req.user.role !== 'super_admin') {
+    if (!isPlatformAdmin(req.user)) {
       const allowedNext = VALID_NEXT_STATES[order.status] || [];
       if (!allowedNext.includes(status)) {
         return res.status(400).json({ 
@@ -513,8 +543,10 @@ const cancelOrder = async (req, res) => {
       return res.status(404).json({ message: 'Order not found' });
     }
 
-    // Check permissions
-    if (req.user.role === 'customer' && order.customer.toString() !== req.user._id.toString()) {
+    const customerOwnsOrder = req.user.role === 'customer' && idsEqual(order.customer, req.user._id);
+    const storeCanCancel = canManageRetailOrders(req.user)
+      && await canOperateStore(req.user, order.store, ['sales.manage', 'orders.update']);
+    if (!customerOwnsOrder && !isPlatformAdmin(req.user) && !storeCanCancel) {
       return res.status(403).json({ message: 'Access denied' });
     }
     if (order.paymentStatus === 'paid') {
@@ -573,7 +605,7 @@ const cancelOrder = async (req, res) => {
     res.json({ message: 'Order cancelled successfully' });
 
     // Notify the other party about cancellation
-    const isCustomer = req.user.role === 'customer';
+    const isCustomer = customerOwnsOrder;
     await createNotification({
       recipient: isCustomer ? order.addedBy : order.customer,
       sender: req.user._id,
@@ -677,8 +709,9 @@ const validateOrderQR = async (req, res) => {
     if (!order) return res.status(404).json({ message: 'Order protocol not found in mainframe' });
 
     // Verify scan ownership (Seller must own the store associated with this order or be super_admin)
-    const isSuperAdmin = req.user.role === 'super_admin';
-    const isStoreOwner = req.user.store && order.store && req.user.store.toString() === order.store.toString();
+    const isSuperAdmin = isPlatformAdmin(req.user);
+    const isStoreOwner = canManageRetailOrders(req.user)
+      && await canOperateStore(req.user, order.store, ['sales.manage', 'orders.update']);
 
     if (!isSuperAdmin && !isStoreOwner) {
       return res.status(403).json({ 

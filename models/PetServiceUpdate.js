@@ -11,7 +11,7 @@ const petServiceUpdateSchema = new mongoose.Schema({
   store: { type: mongoose.Schema.Types.ObjectId, ref: 'Store', required: true, index: true },
   entryType: {
     type: String,
-    enum: ['update', 'photo', 'internal_note'],
+    enum: ['update', 'photo', 'internal_note', 'aftercare', 'reminder'],
     default: 'update',
     required: true
   },
@@ -29,7 +29,7 @@ const petServiceUpdateSchema = new mongoose.Schema({
   },
   stage: {
     type: String,
-    enum: ['scheduled', 'pet_arrived', 'assessed', 'service_started', 'in_progress', 'ready_for_pickup', 'completed', 'cancelled', 'incident', 'general'],
+    enum: ['scheduled', 'pet_arrived', 'assessed', 'service_started', 'in_progress', 'ready_for_pickup', 'completed', 'aftercare', 'cancelled', 'incident', 'general'],
     required: true
   },
   message: { type: String, default: '', trim: true, maxlength: 2000 },

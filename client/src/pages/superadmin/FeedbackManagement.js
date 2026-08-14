@@ -1,26 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import {
-    MessageSquare,
-    Trash2,
-    CheckCircle,
-    Clock,
-    Filter,
-    Search,
-    Star,
-    Smartphone,
-    Monitor,
-    Layout,
-    User,
-    ExternalLink,
-    ChevronLeft,
-    ChevronRight,
-    Smile,
-    Bug,
-    Zap,
-    Sparkles,
-    Shield,
-    ChevronDown
-} from 'lucide-react';
+import { MessageSquare, Trash2, CheckCircle, Search, Star, Smartphone, Monitor, Layout, User, ChevronLeft, ChevronRight, Smile, Bug, Zap, Sparkles, ChevronDown } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { reviewService } from '../../services/apiService';
 
@@ -121,15 +100,15 @@ const FeedbackManagement = () => {
     };
 
     return (
-        <div className="space-y-8 animate-fade-in pb-20">
-            <header className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 bg-white p-8 sm:p-12 rounded-[3rem] shadow-xl shadow-slate-200/50 border border-slate-50 relative overflow-hidden">
+        <div className="space-y-5 animate-fade-in pb-20">
+            <header className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-slate-100 relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-64 h-64 bg-primary-50 rounded-full blur-3xl -mr-32 -mt-32 opacity-50"></div>
                 <div className="relative z-10">
                     <div className="flex items-center gap-3 mb-2">
                         <MessageSquare className="h-5 w-5 text-primary-600" />
                         <span className="text-[10px] font-black text-primary-600 uppercase tracking-[0.4em]">SYSTEM INTEL</span>
                     </div>
-                    <h1 className="text-3xl sm:text-5xl font-black text-slate-900 uppercase tracking-tighter leading-none">
+                    <h1 className="text-2xl sm:text-3xl font-black text-slate-900 uppercase tracking-tight leading-none">
                         Platform <span className="text-primary-600 italic">Feedback</span>
                     </h1>
                     <p className="text-[10px] sm:text-xs text-slate-400 font-bold uppercase tracking-widest mt-2">Voice of the customers & developers</p>

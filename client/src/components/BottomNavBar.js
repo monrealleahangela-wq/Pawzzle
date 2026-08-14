@@ -13,27 +13,12 @@
 
 import React, { useMemo } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import {
-  Activity,
-  Heart,
-  Package,
-  ShoppingCart,
-  Calendar,
-  Users,
-  MessageSquare,
-  Home as House,
-  MapPin,
-  ShoppingBag,
-  Ticket,
-  User,
-  Brain,
-  Truck,
-  Star,
-  Tag,
-  PieChart,
-  Loader2,
-} from 'lucide-react';
+import { Activity, Heart, Package, ShoppingCart, Calendar, Users, MessageSquare, Home as House, MapPin, ShoppingBag, User, Tag, PieChart, Loader2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import {
+  PLATFORM_ADMIN_ROLES, STORE_ADMIN_ROLES, OPERATIONAL_ROLES,
+  effectiveStaffType, hasUiPermission
+} from '../utils/authorization';
 
 /* ─────────────────────────────────────────────
    Permission resource → nav item definition
@@ -45,7 +30,7 @@ const PERMISSION_NAV_MAP = {
   services:  { path: '/admin/services', label: 'Services',  icon: Calendar },
   customers: { path: '/admin/customers',label: 'Customers', icon: Users },
   vouchers:  { path: '/admin/vouchers', label: 'Vouchers',  icon: Tag },
-  analytics: { path: '/admin/insights', label: 'Insights',  icon: PieChart },
+  dss:       { path: '/admin/insights', label: 'Insights',  icon: PieChart },
 };
 
 /* The pets route is tied to inventory access */
@@ -81,6 +66,10 @@ const BASE_CONFIGS = {
     { path: '/superadmin/booking-history',     label: 'Bookings',  icon: Calendar },
     PROF_NAV,
   ],
+
+  supplier: [
+    { path: '/supplier/dashboard', label: 'Dashboard', icon: Activity },
+  ],
 };
 
 /* ─────────────────────────────────────────────
@@ -98,17 +87,17 @@ const STAFF_TYPE_CONFIGS = {
    Falls back to staffType defaults, then minimal.
    Max 5 items (incl. Dashboard + Profile).
    ───────────────────────────────────────────── */
-function buildStaffMenu(staffType, permissions = {}) {
+function buildStaffMenu(user) {
+  const staffType = effectiveStaffType(user);
   // 1. If granular permissions exist, derive items from them
-  const grantedResources = Object.entries(permissions)
-    .filter(([, perms]) => perms?.view || perms?.fullAccess)
-    .map(([resource]) => resource);
+  const grantedResources = Object.keys(PERMISSION_NAV_MAP)
+    .filter(resource => hasUiPermission(user, resource));
 
   if (grantedResources.length > 0) {
     const items = [DASH_NAV];
 
     // inventory permission also unlocks the Pets nav item
-    if (grantedResources.includes('inventory')) {
+    if (grantedResources.includes('inventory') || hasUiPermission(user, 'pets')) {
       items.push(PET_NAV);
       items.push(PERMISSION_NAV_MAP.inventory);
     }
@@ -160,12 +149,10 @@ const BottomNavBar = () => {
     const role = user.role;
 
     if (role === 'customer')    return BASE_CONFIGS.customer;
-    if (role === 'admin')       return BASE_CONFIGS.admin;
-    if (role === 'super_admin') return BASE_CONFIGS.super_admin;
-
-    if (role === 'staff') {
-      return buildStaffMenu(user.staffType, user.permissions);
-    }
+    if (STORE_ADMIN_ROLES.has(role)) return BASE_CONFIGS.admin;
+    if (PLATFORM_ADMIN_ROLES.has(role)) return BASE_CONFIGS.super_admin;
+    if (role === 'supplier') return BASE_CONFIGS.supplier;
+    if (OPERATIONAL_ROLES.has(role)) return buildStaffMenu(user);
 
     // Public / unauthenticated – handled by the parent
     return null;

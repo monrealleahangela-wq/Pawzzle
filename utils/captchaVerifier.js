@@ -1,30 +1,44 @@
 const axios = require('axios');
 
-/**
- * Verifies a Google reCAPTCHA v2 token with Google's API
- * @param {string} token - The g-recaptcha-response token from frontend
- * @returns {Promise<boolean>} - True if valid, false otherwise
- */
-const verifyRecaptcha = async (token) => {
-  if (!token) return false;
-  
-  // Custom Pawzzle Manual Verification bypass for PremiumCaptcha component
-  if (token === 'manual_verification_success') {
-    return true;
+const GOOGLE_TEST_SECRET = '6LeIxAcTAAAAAGG-vFI1TnRWxMZNFuojJ4WifJWe';
+
+const getSecretKey = () => {
+  const configured = process.env.RECAPTCHA_SECRET_KEY;
+  if (process.env.NODE_ENV === 'production') {
+    if (!configured || configured === GOOGLE_TEST_SECRET) return null;
+    return configured;
   }
-  
-  const secretKey = process.env.RECAPTCHA_SECRET_KEY || '6LeIxAcTAAAAAGG-vFI1TnRWxMZNFuojJ4WifJWe';
+  return configured || GOOGLE_TEST_SECRET;
+};
+
+const verifyRecaptcha = async (token, remoteIp) => {
+  if (!token || token === 'manual_verification_success') return false;
+
+  const secretKey = getSecretKey();
+  if (!secretKey) {
+    console.error('reCAPTCHA is not securely configured');
+    return false;
+  }
 
   try {
-    const response = await axios.get(
-      `https://www.google.com/recaptcha/api/siteverify?secret=${secretKey}&response=${token}`
+    const form = new URLSearchParams({ secret: secretKey, response: token });
+    if (remoteIp) form.set('remoteip', remoteIp);
+    const response = await axios.post(
+      'https://www.google.com/recaptcha/api/siteverify',
+      form.toString(),
+      { headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, timeout: 5000 }
     );
-    
-    return response.data.success;
+
+    if (!response.data?.success) return false;
+    const allowedHosts = String(process.env.RECAPTCHA_ALLOWED_HOSTNAMES || '')
+      .split(',')
+      .map(host => host.trim().toLowerCase())
+      .filter(Boolean);
+    return !allowedHosts.length || allowedHosts.includes(String(response.data.hostname || '').toLowerCase());
   } catch (error) {
-    console.error('reCAPTCHA Verification Error:', error.message);
+    console.error('reCAPTCHA verification request failed');
     return false;
   }
 };
 
-module.exports = { verifyRecaptcha };
+module.exports = { verifyRecaptcha, __test: { getSecretKey, GOOGLE_TEST_SECRET } };

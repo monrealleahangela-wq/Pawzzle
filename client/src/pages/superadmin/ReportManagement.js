@@ -1,21 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import {
-    ShieldAlert,
-    Search,
-    CheckCircle2,
-    X,
-    User,
-    Store,
-    Calendar,
-    Filter,
-    AlertTriangle,
-    ExternalLink,
-    MoreVertical,
-    ChevronLeft,
-    ChevronRight,
-    Shield,
-    ChevronDown
-} from 'lucide-react';
+import { ShieldAlert, Search, X, User, Store, Calendar, Filter, AlertTriangle, ExternalLink, ChevronLeft, ChevronRight } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { adminReportService } from '../../services/apiService';
 

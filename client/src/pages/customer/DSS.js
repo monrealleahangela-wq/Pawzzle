@@ -89,6 +89,11 @@ const CustomerDSS = () => {
                       <ul className="mt-3 grid sm:grid-cols-2 gap-1.5">
                         {item.explanations.map((text) => <li key={text} className="flex gap-1.5 text-xs text-slate-600"><CheckCircle2 size={13} className="text-emerald-600 mt-0.5 shrink-0" />{text}</li>)}
                       </ul>
+                      <div className="mt-3 rounded-xl bg-slate-50 p-3 text-xs text-slate-600">
+                        <p><strong>Why:</strong> {item.why}</p>
+                        <p className="mt-1"><strong>Based on:</strong> {(item.basedOn || []).join(' · ')}</p>
+                        <p className="mt-1 text-primary-700"><strong>Recommended action:</strong> {item.recommendedAction}</p>
+                      </div>
                       <details className="mt-3 text-xs">
                         <summary className="cursor-pointer font-bold text-slate-600">View score calculation</summary>
                         <div className="mt-2 overflow-x-auto"><table className="w-full text-left"><thead><tr className="text-slate-400"><th className="py-1">Criterion</th><th>Weight</th><th>Result</th><th>Points</th></tr></thead><tbody>{item.calculation.map((row) => <tr key={row.criterion} className="border-t border-slate-100"><td className="py-1.5 capitalize">{row.criterion.replace(/([A-Z])/g, ' $1')}</td><td>{row.weight}</td><td>{row.matched ? 'Matched' : 'Not matched'}</td><td>{row.points}</td></tr>)}</tbody></table></div>

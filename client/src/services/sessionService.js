@@ -3,8 +3,6 @@
 
 // Clear all user session data
 const clearAllSessions = () => {
-  console.log('Clearing all user sessions');
-  
   // Clear authentication data
   localStorage.removeItem('token');
   localStorage.removeItem('user');
@@ -52,17 +50,6 @@ const startSession = (userData, token) => {
   localStorage.setItem('lastActivity', new Date().toISOString());
   localStorage.setItem('sessionId', sessionId);
   
-  console.log('🟢 SESSION CREATED ===');
-  if (userData) {
-    console.log('📧 User email:', userData.email);
-    console.log('📧 User role:', userData.role);
-  } else {
-    console.log('⚠️ Session created without user data');
-  }
-  console.log('📧 Session ID:', sessionId);
-  console.log('📧 Token stored:', token ? 'yes' : 'no');
-  console.log('📧 Session start time:', new Date().toISOString());
-  
   return {
     sessionId,
     user: userData,
@@ -73,10 +60,6 @@ const startSession = (userData, token) => {
 // End current session
 const endSession = () => {
   const sessionId = localStorage.getItem('sessionId');
-  const userEmail = localStorage.getItem('user') ? JSON.parse(localStorage.getItem('user')).email : 'unknown';
-  
-  console.log('Ending session for user:', userEmail, 'Session:', sessionId);
-  
   // Clear all data
   clearAllSessions();
   

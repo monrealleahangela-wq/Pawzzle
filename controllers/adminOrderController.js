@@ -1,11 +1,12 @@
 const Order = require('../models/Order');
 const Store = require('../models/Store');
+const { isPlatformAdmin, isStoreAdmin } = require('../config/permissions');
+const { getAuthorizedStoreIds } = require('../utils/authorizationPolicy');
 
 // Admin-only function for getting orders with multi-tenant isolation
 const getAllAdminOrders = async (req, res) => {
   try {
     console.log('📦 getAllAdminOrders called - ADMIN ROUTE');
-    console.log('👤 Admin user:', req.user);
     console.log('🔍 Request path:', req.path);
     console.log('🔍 Original URL:', req.originalUrl);
 
@@ -17,17 +18,14 @@ const getAllAdminOrders = async (req, res) => {
     const p = Math.max(1, parseInt(page) || 1);
     const l = Math.max(1, parseInt(limit) || 10);
 
-    if (req.user.role === 'super_admin') {
+    if (isPlatformAdmin(req.user)) {
       // Super-admins see everything
       if (storeId) filter.store = new mongoose.Types.ObjectId(storeId);
       console.log('🔓 Super-admin detected');
-    } else if (req.user.role === 'staff') {
-      // Staff sees orders from their assigned store
-      if (req.user.store) {
-        filter.store = new mongoose.Types.ObjectId(req.user.store);
-      } else {
-        return res.status(403).json({ message: 'Staff not assigned to a store' });
-      }
+    } else if (!isStoreAdmin(req.user)) {
+      const authorizedStoreIds = await getAuthorizedStoreIds(req.user);
+      if (!authorizedStoreIds?.length) return res.status(403).json({ message: 'Staff not assigned to a store' });
+      filter.store = { $in: authorizedStoreIds.map(id => new mongoose.Types.ObjectId(id)) };
     } else {
       // Admin - find by store ownership
       const adminStores = await Store.find({ owner: req.user._id }).select('_id');
@@ -49,8 +47,6 @@ const getAllAdminOrders = async (req, res) => {
     }
 
     console.log('🔒 Multi-tenant isolation - showing data for admin:', req.user._id);
-    console.log('👤 Admin email:', req.user.email);
-    console.log('👤 Admin username:', req.user.username);
     console.log('🔍 Filter applied:', JSON.stringify(filter, null, 2));
 
     if (status) filter.status = status;

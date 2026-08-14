@@ -3,6 +3,7 @@ const User = require('../models/User');
 const Notification = require('../models/Notification');
 const Store = require('../models/Store');
 const mongoose = require('mongoose');
+const { isPlatformAdmin } = require('../config/permissions');
 
 // Create a report (Any authenticated user)
 const createReport = async (req, res) => {
@@ -226,7 +227,7 @@ const getReportById = async (req, res) => {
         // Only reporter, reportedUser, or superAdmin can view
         if (report.reporter?._id.toString() !== req.user._id.toString() && 
             report.reportedUser?._id.toString() !== req.user._id.toString() &&
-            req.user.role !== 'super_admin') {
+            !isPlatformAdmin(req.user)) {
             return res.status(403).json({ message: 'Unauthorized' });
         }
         

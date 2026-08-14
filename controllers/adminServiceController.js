@@ -1,5 +1,6 @@
 const Service = require('../models/Service');
 const Store = require('../models/Store');
+const { isPlatformAdmin, isStoreAdmin, isOperationalStaff } = require('../config/permissions');
 
 // Admin-only function for getting services with multi-tenant isolation
 const getAllAdminServices = async (req, res) => {
@@ -10,10 +11,10 @@ const getAllAdminServices = async (req, res) => {
 
     let filter = { isDeleted: { $ne: true } };
 
-    if (req.user.role === 'super_admin') {
+    if (isPlatformAdmin(req.user)) {
       // Super-admins see everything
       console.log('🔓 Super-admin detected - showing all data');
-    } else if (req.user.role === 'staff') {
+    } else if (isOperationalStaff(req.user)) {
       // Staff sees services from their assigned store
       if (req.user.store) {
         const store = await Store.findById(req.user.store);
@@ -29,7 +30,7 @@ const getAllAdminServices = async (req, res) => {
         // Fallback: If staff has no store but has a creator, show creator's services
         filter.addedBy = req.user.createdBy;
       }
-    } else {
+    } else if (isStoreAdmin(req.user)) {
       // Admin - find stores they own
       const adminStores = await Store.find({ owner: req.user._id }).select('_id');
       const storeIds = adminStores.map(s => s._id);
@@ -60,11 +61,12 @@ const getAllAdminServices = async (req, res) => {
     }
 
     if (search) {
-      filter.$or = [
+      const searchFilter = { $or: [
         { name: new RegExp(search, 'i') },
         { description: new RegExp(search, 'i') },
         { category: new RegExp(search, 'i') }
-      ];
+      ] };
+      filter = { $and: [{ ...filter }, searchFilter] };
     }
 
     // Robust Pagination Parsing

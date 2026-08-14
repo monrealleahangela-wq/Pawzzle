@@ -1,31 +1,8 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { userService, storeService } from '../../services/apiService';
-import {
-  DollarSign,
-  Truck,
-  Save,
-  Settings,
-  Shield,
-  Zap,
-  Globe,
-  Settings2,
-  Building,
-  CheckCircle,
-  AlertCircle,
-  Clock,
-  Calendar,
-  ChevronRight,
-  Clock3,
-  Timer,
-  Users,
-  XCircle,
-  Info,
-  Package,
-  Layers,
-  Heart,
-  PlusCircle
-} from 'lucide-react';
+import { DollarSign, Truck, Save, Settings, Shield, Zap, Globe, Settings2, Building, CheckCircle, AlertCircle, Clock, Calendar, ChevronRight, Clock3, Timer, Users, XCircle, Info, Package, Heart, PlusCircle, UserCog, Bell, Palette } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { formatTime12h } from '../../utils/timeFormatters';
 import { useRealTimeUpdates } from '../../hooks/useRealTimeUpdates';
@@ -74,6 +51,11 @@ const AdminSettings = () => {
     vatRatePercent: 12,
     deliveryFeeTaxable: false
   });
+  const [refundPolicy, setRefundPolicy] = useState({
+    type: 'conditional_refund',
+    summary: 'Refund requests are reviewed by the store according to the order or service circumstances.',
+    conditions: ''
+  });
   
   const [showExpansionModal, setShowExpansionModal] = useState(false);
   const [expansionData, setExpansionData] = useState({
@@ -109,6 +91,7 @@ const AdminSettings = () => {
       if (storeData) {
         setStoreSettings(prev => ({ ...prev, ...storeData }));
         if (storeData.taxConfiguration) setTaxConfiguration(prev => ({ ...prev, ...storeData.taxConfiguration }));
+        if (storeData.refundPolicy) setRefundPolicy(prev => ({ ...prev, ...storeData.refundPolicy }));
       }
       
     } catch (error) {
@@ -166,6 +149,19 @@ const AdminSettings = () => {
     }
   };
 
+  const handleSaveRefundPolicy = async () => {
+    if (refundPolicy.type === 'conditional_refund' && !refundPolicy.conditions.trim()) return toast.error('Describe the conditions used for refund review.');
+    if (!window.confirm('Apply this refund policy to new orders and booking confirmations? Existing records will retain their saved policy.')) return;
+    setLoading(true);
+    try {
+      const response = await storeService.updateRefundPolicy(refundPolicy);
+      setRefundPolicy(prev => ({ ...prev, ...response.data.refundPolicy }));
+      toast.success('Store refund policy updated');
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to update refund policy');
+    } finally { setLoading(false); }
+  };
+
   const handleGlobalChange = (field, value) => {
     setGlobalSettings(prev => ({
       ...prev,
@@ -191,29 +187,36 @@ const AdminSettings = () => {
   };
 
   const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+  const settingsGroups = [
+    { label: 'Business', tabs: [['global', 'Store Info'], ['booking', 'Hours'], ['modules', 'Modules']] },
+    { label: 'Financial', tabs: [['tax', 'VAT'], ['refund', 'Refunds']] },
+    { label: 'Staff', tabs: [['staff', 'Workforce']] },
+    { label: 'Notifications', tabs: [['notifications', 'Reminders']] },
+    { label: 'Appearance', tabs: [['appearance', 'Branding']] }
+  ];
 
   return (
-    <div className="space-y-6 pb-20 animate-in fade-in duration-500">
+    <div className="space-y-4 pb-12 animate-in fade-in duration-500">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-6 border-b border-slate-100 pb-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 border-b border-slate-100 pb-4">
         <div>
           <div className="flex items-center gap-2 mb-2">
             <Settings2 className="h-3.5 w-3.5 text-primary-600" />
             <span className="text-[10px] font-black text-primary-600 uppercase tracking-[0.4em]">ADMINISTRATION PROTOCOL</span>
           </div>
-          <h1 className="text-3xl font-black text-slate-900 uppercase tracking-tighter leading-none">
-            Control <span className="text-primary-600">Center</span>
+          <h1 className="text-2xl font-black text-slate-900 tracking-tight leading-none">
+            Store <span className="text-primary-600">Settings</span>
           </h1>
-        </div>
-        <div className="flex gap-2 p-1 bg-slate-100 rounded-2xl w-full sm:w-auto">
-          <button onClick={() => setActiveTab('global')} className={`flex-1 sm:flex-none px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'global' ? 'bg-white text-primary-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}>General</button>
-          <button onClick={() => setActiveTab('booking')} className={`flex-1 sm:flex-none px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'booking' ? 'bg-white text-primary-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}>Availability</button>
-          <button onClick={() => setActiveTab('tax')} className={`flex-1 sm:flex-none px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'tax' ? 'bg-white text-primary-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}>Tax</button>
-          <button onClick={() => setActiveTab('modules')} className={`flex-1 sm:flex-none px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'modules' ? 'bg-white text-primary-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}>Modules</button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+      <div className="overflow-x-auto rounded-2xl border border-slate-100 bg-white p-2 shadow-sm">
+        <div className="flex min-w-max gap-2">
+          {settingsGroups.map(group => <div key={group.label} className="flex items-center gap-1 rounded-xl bg-slate-50 p-1"><span className="px-2 text-[8px] font-black uppercase tracking-widest text-slate-400">{group.label}</span>{group.tabs.map(([value, label]) => <button key={value} type="button" onClick={() => setActiveTab(value)} className={`h-8 rounded-lg px-3 text-[10px] font-bold transition ${activeTab === value ? 'bg-white text-primary-600 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}>{label}</button>)}</div>)}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
         <div className="lg:col-span-8 space-y-6">
           {activeTab === 'global' ? (
             <div className="bg-white border border-slate-100 rounded-[2.5rem] p-8 shadow-sm space-y-10 animate-in slide-in-from-left-4">
@@ -430,6 +433,38 @@ const AdminSettings = () => {
               <button onClick={handleSaveTax} disabled={loading} className="w-full py-4 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.3em] hover:bg-primary-600 transition-all flex items-center justify-center gap-3 shadow-xl">
                 {loading ? <Zap className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Save Tax Configuration
               </button>
+            </div>
+          ) : activeTab === 'refund' ? (
+            <div className="bg-white border border-slate-100 rounded-[2.5rem] p-6 sm:p-8 shadow-sm space-y-6 animate-in slide-in-from-right-4">
+              <div className="flex items-center gap-4"><div className="w-11 h-11 bg-rose-50 text-rose-600 rounded-2xl flex items-center justify-center"><Shield className="h-5 w-5" /></div><div><h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Store Refund Policy</h3><p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Shown in checkout, summaries, confirmations, and receipts</p></div></div>
+              <div className="grid gap-3 sm:grid-cols-3">{[
+                ['full_refund','Full Refund','Customers may request a full refund under the store policy.'],
+                ['conditional_refund','Conditional Refund','Requests are reviewed using the conditions below.'],
+                ['no_refund','No Refund','Customer acknowledgment is required before PayMongo.']
+              ].map(([value,label,description]) => <button key={value} type="button" onClick={() => setRefundPolicy(current => ({ ...current, type: value }))} className={`rounded-2xl border p-4 text-left transition ${refundPolicy.type === value ? 'border-primary-500 bg-primary-50' : 'border-slate-200 hover:border-slate-300'}`}><strong className="block text-xs text-slate-900">{label}</strong><span className="mt-1 block text-[10px] leading-relaxed text-slate-500">{description}</span></button>)}</div>
+              <label className="block"><span className="text-[9px] font-black uppercase tracking-widest text-slate-500">Customer-facing summary</span><textarea value={refundPolicy.summary} maxLength="1000" onChange={event => setRefundPolicy(current => ({ ...current, summary: event.target.value }))} className="mt-2 min-h-20 w-full rounded-xl border border-slate-200 p-3 text-xs" required /></label>
+              <label className="block"><span className="text-[9px] font-black uppercase tracking-widest text-slate-500">Conditions {refundPolicy.type === 'conditional_refund' ? '*' : '(optional)'}</span><textarea value={refundPolicy.conditions} maxLength="3000" onChange={event => setRefundPolicy(current => ({ ...current, conditions: event.target.value }))} className="mt-2 min-h-24 w-full rounded-xl border border-slate-200 p-3 text-xs" placeholder="Examples: cancellation window, unfulfilled service, damaged item review" /></label>
+              <div className="rounded-xl border border-amber-100 bg-amber-50 p-3 text-[10px] leading-relaxed text-amber-800">Policy changes apply to new transactions. Existing order and booking snapshots remain unchanged, and manual refund-review workflows remain available.</div>
+              <button onClick={handleSaveRefundPolicy} disabled={loading} className="flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 text-[10px] font-black uppercase tracking-widest text-white hover:bg-primary-600 disabled:opacity-50"><Save size={14} />Save Refund Policy</button>
+            </div>
+          ) : activeTab === 'staff' ? (
+            <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
+              <div className="mb-4 flex items-center gap-3"><div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary-50 text-primary-600"><UserCog size={18} /></div><div><h3 className="text-sm font-black text-slate-900">Staff & Workforce</h3><p className="text-[10px] text-slate-500">Manage people, inherited role permissions, schedules, and daily availability.</p></div></div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Link to="/admin/staff" className="rounded-xl border border-slate-200 p-4 transition hover:border-primary-300 hover:bg-primary-50"><strong className="block text-xs text-slate-900">Staff Management</strong><span className="mt-1 block text-[10px] text-slate-500">Staff records, schedules, verification, archive, and assignment matrix.</span></Link>
+                <Link to="/admin/roles" className="rounded-xl border border-slate-200 p-4 transition hover:border-primary-300 hover:bg-primary-50"><strong className="block text-xs text-slate-900">Role Management</strong><span className="mt-1 block text-[10px] text-slate-500">Edit store-wide permissions inherited by everyone in a role.</span></Link>
+              </div>
+            </div>
+          ) : activeTab === 'notifications' ? (
+            <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
+              <div className="mb-4 flex items-center gap-3"><div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-50 text-amber-600"><Bell size={18} /></div><div><h3 className="text-sm font-black text-slate-900">Notification Operations</h3><p className="text-[10px] text-slate-500">Existing operational reminders remain active and follow account notification preferences.</p></div></div>
+              <div className="grid gap-3 sm:grid-cols-3">{[['Email delivery','Account and transactional email uses the existing notification service.'],['Booking reminders','Scheduled booking reminders follow the configured booking time window.'],['Credential reminders','Staff and owners receive expiring-credential alerts.']].map(([title, detail]) => <div key={title} className="rounded-xl bg-slate-50 p-4"><CheckCircle size={15} className="mb-2 text-emerald-500" /><strong className="block text-[11px] text-slate-800">{title}</strong><span className="mt-1 block text-[9px] leading-relaxed text-slate-500">{detail}</span></div>)}</div>
+              <p className="mt-4 rounded-xl border border-blue-100 bg-blue-50 p-3 text-[10px] text-blue-800">No duplicate notification switches are stored here. Delivery channels continue to use the existing notification and account-preference flows.</p>
+            </div>
+          ) : activeTab === 'appearance' ? (
+            <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
+              <div className="mb-4 flex items-center gap-3"><div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-50 text-violet-600"><Palette size={18} /></div><div><h3 className="text-sm font-black text-slate-900">Store Appearance</h3><p className="text-[10px] text-slate-500">Logo, cover image, and public store identity use the existing store profile.</p></div></div>
+              <Link to="/admin/store" className="inline-flex h-9 items-center gap-2 rounded-lg bg-slate-900 px-4 text-[10px] font-black uppercase tracking-wider text-white hover:bg-primary-600">Manage Store Branding <ChevronRight size={14} /></Link>
             </div>
           ) : (
             <div className="bg-white border border-slate-100 rounded-[2.5rem] p-8 shadow-sm space-y-10 animate-in slide-in-from-right-4">

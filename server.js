@@ -15,6 +15,9 @@ const cors = require('cors');
 const path = require('path');
 const http = require('http');
 const socketIo = require('socket.io');
+const { authenticateSocket, canAccessDeliveryRoom, canAccessConversationRoom, deriveDeliverySender } = require('./services/socketAuthorization');
+const { canAccessStore } = require('./utils/authorizationPolicy');
+const { isPlatformAdmin, isStoreAdmin, isOperationalStaff } = require('./config/permissions');
 
 const app = express();
 const server = http.createServer(app);
@@ -27,6 +30,7 @@ const io = socketIo(server, {
 
 // Make io accessible to our routers/controllers
 app.set('socketio', io);
+require('./controllers/notificationController').setNotificationSocket(io);
 
 // Middleware
 app.use(cors());
@@ -53,19 +57,33 @@ app.use(passport.initialize());
 
 // Database Connection
 mongoose.connect(process.env.MONGODB_URI)
-  .then(() => console.log('✅ MongoDB connected successfully'))
+  .then(() => {
+    console.log('✅ MongoDB connected successfully');
+    const { expireBookingProposals } = require('./controllers/bookingController');
+    const proposalExpiryTimer = setInterval(() => {
+      expireBookingProposals().catch(error => console.error('Proposal expiry sweep failed:', error.message));
+    }, 60000);
+    proposalExpiryTimer.unref();
+    const { processBookingReminders } = require('./services/bookingReminderService');
+    processBookingReminders().catch(error => console.error('Booking reminder sweep failed:', error.message));
+    const bookingReminderTimer = setInterval(() => {
+      processBookingReminders().catch(error => console.error('Booking reminder sweep failed:', error.message));
+    }, 5 * 60000);
+    bookingReminderTimer.unref();
+    const { processStaffCredentialExpirations } = require('./services/staffCredentialMonitoringService');
+    processStaffCredentialExpirations(io).catch(error => console.error('Staff credential expiry sweep failed:', error.message));
+    const credentialExpiryTimer = setInterval(() => {
+      processStaffCredentialExpirations(io).catch(error => console.error('Staff credential expiry sweep failed:', error.message));
+    }, 24 * 60 * 60000);
+    credentialExpiryTimer.unref();
+    const { processDssAlerts } = require('./services/dssAlertService');
+    processDssAlerts(io).catch(error => console.error('DSS alert sweep failed:', error.message));
+    const dssAlertTimer = setInterval(() => {
+      processDssAlerts(io).catch(error => console.error('DSS alert sweep failed:', error.message));
+    }, 6 * 60 * 60000);
+    dssAlertTimer.unref();
+  })
   .catch((error) => console.error('❌ MongoDB connection error:', error));
-
-// Debug Env (Temporal for checking Resend Key)
-app.get('/api/auth/debug-env', (req, res) => {
-  res.json({
-    status: 'online',
-    resend_key_present: !!process.env.RESEND_API_KEY,
-    resend_key_length: process.env.RESEND_API_KEY ? process.env.RESEND_API_KEY.length : 0,
-    node_env: process.env.NODE_ENV,
-    time: new Date().toISOString()
-  });
-});
 
 // Final health check
 app.get('/api/health', (req, res) => res.status(200).json({ status: 'OK', version: 'v3-stable' }));
@@ -116,50 +134,81 @@ app.use('/api/finance', require('./routes/finance'));
 app.use('/api/pet-care', require('./routes/petCare'));
 
 // Socket.io Real-Time Handler
+io.use(authenticateSocket);
 io.on('connection', (socket) => {
+  // The user room is derived only from the authenticated token, so a client
+  // cannot subscribe as another user. Persisted notifications remain the
+  // fallback whenever a real-time connection is unavailable.
+  if (socket.user?._id) socket.join(`user_${String(socket.user._id)}`);
   console.log('⚡ Client connected:', socket.id);
 
-  socket.on('joinDelivery', (deliveryId) => {
+  socket.on('joinDelivery', async (deliveryId) => {
+    if (!(await canAccessDeliveryRoom(socket, deliveryId))) return;
     socket.join(`delivery_${deliveryId}`);
     console.log(`📡 Client joined delivery room: delivery_${deliveryId}`);
   });
 
-  socket.on('joinConversation', (conversationId) => {
+  socket.on('joinConversation', async (conversationId) => {
+    if (!(await canAccessConversationRoom(socket, conversationId))) return;
     socket.join(`conversation_${conversationId}`);
     console.log(`📡 Client joined conversation room: conversation_${conversationId}`);
   });
 
-  socket.on('joinStore', (storeId) => {
+  socket.on('joinStore', async (storeId) => {
+    const authorized = socket.user
+      && (isPlatformAdmin(socket.user) || isStoreAdmin(socket.user) || isOperationalStaff(socket.user))
+      && await canAccessStore(socket.user, storeId);
+    if (!authorized) return;
     socket.join(`store_${storeId}`);
     console.log(`🏠 Client joined store room: store_${storeId}`);
   });
 
   socket.on('joinAdmin', () => {
+    if (!socket.user || !isPlatformAdmin(socket.user)) return;
     socket.join('admin_global');
     console.log(`🛡️ Client joined global admin room`);
   });
 
-  socket.on('typing', (data) => {
+  socket.on('typing', async (data) => {
+    if (!(await canAccessConversationRoom(socket, data?.conversationId))) return;
+    data = {
+      conversationId: data.conversationId,
+      userId: socket.user._id,
+      userName: `${socket.user.firstName || ''} ${socket.user.lastName || ''}`.trim()
+    };
     // data: { conversationId, userId, userName }
     socket.to(`conversation_${data.conversationId}`).emit('userTyping', data);
   });
 
-  socket.on('stopTyping', (data) => {
+  socket.on('stopTyping', async (data) => {
+    if (!(await canAccessConversationRoom(socket, data?.conversationId))) return;
+    data = { conversationId: data.conversationId, userId: socket.user._id };
     // data: { conversationId, userId }
     socket.to(`conversation_${data.conversationId}`).emit('userStopTyping', data);
   });
 
-  socket.on('updateLocation', (data) => {
+  socket.on('updateLocation', async (data) => {
+    if (!(await canAccessDeliveryRoom(socket, data?.deliveryId, { mutate: true }))) return;
+    data = { deliveryId: data.deliveryId, lat: data.lat, lng: data.lng, heading: data.heading, speed: data.speed };
     // data: { deliveryId, lat, lng, heading, speed }
     io.to(`delivery_${data.deliveryId}`).emit('locationUpdate', data);
   });
 
-  socket.on('statusUpdate', (data) => {
+  socket.on('statusUpdate', async (data) => {
+    if (!(await canAccessDeliveryRoom(socket, data?.deliveryId, { mutate: true }))) return;
+    data = { deliveryId: data.deliveryId, status: data.status };
     // data: { deliveryId, status }
     io.to(`delivery_${data.deliveryId}`).emit('statusChanged', data);
   });
 
-  socket.on('sendMessage', (data) => {
+  socket.on('sendMessage', async (data) => {
+    if (!(await canAccessDeliveryRoom(socket, data?.deliveryId))) return;
+    data = {
+      deliveryId: data.deliveryId,
+      sender: deriveDeliverySender(socket),
+      content: data.content,
+      timestamp: data.timestamp || new Date()
+    };
     // data: { deliveryId, sender, content, timestamp }
     io.to(`delivery_${data.deliveryId}`).emit('newMessage', data);
   });
@@ -184,6 +233,5 @@ if (isProduction && buildPath) {
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {
     console.log(`\n🚀 [MASTER V3] SERVER STARTUP`);
-    console.log(`✅ RESEND_API_KEY: ${process.env.RESEND_API_KEY ? 'IS CONFIGURED (Length: ' + process.env.RESEND_API_KEY.length + ')' : 'MISSING'}`);
     console.log(`✅ PORT: ${PORT}\n`);
 });

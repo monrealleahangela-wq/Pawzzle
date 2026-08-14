@@ -1,10 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { 
-  MessageSquare, Search, Trash2, Archive, ArrowLeft, 
-  CheckCircle, Plus, MoreVertical, X, RotateCcw, 
-  ShieldCheck, Loader2, ChevronRight, Filter
-} from 'lucide-react';
-import { useNavigate, Link } from 'react-router-dom';
+import { MessageSquare, Search, Trash2, Archive, ArrowLeft, CheckCircle, Plus, X, RotateCcw, Loader2, ChevronRight } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { chatService } from '../../services/chatService';
 import { useAuth } from '../../contexts/AuthContext';
 import { toast } from 'react-toastify';

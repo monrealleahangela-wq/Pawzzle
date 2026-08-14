@@ -99,6 +99,7 @@ export const AuthProvider = ({ children }) => {
     if (!state.isAuthenticated || !state.user) return;
 
     const checkRoleChange = async () => {
+      if (document.hidden) return;
       try {
         const result = await refreshUserRole();
         if (result.roleChanged) {
@@ -172,29 +173,16 @@ export const AuthProvider = ({ children }) => {
       dispatch({ type: 'SET_LOADING', payload: true });
       const response = await authService.login(credentials);
 
-      console.log('🔐 Login Response:', response);
-      console.log('🔐 Response structure:', Object.keys(response));
-
       // Handle both direct response and wrapped response
       const { token, user, success } = response.data || response;
 
-      console.log('🔐 Extracted data:', {
-        token: token ? 'exists' : 'missing',
-        user: user ? `${user.firstName} (${user.role})` : 'missing',
-        success: success || 'not specified',
-        tokenValue: token,
-        userValue: user
-      });
-
       if (!success && success !== undefined) {
-        console.log('🔐 Login failed - success is false');
         dispatch({ type: 'LOGIN_FAILURE', payload: 'Login failed' });
         return { success: false, error: 'Login failed' };
       }
 
       // Check if 2FA is required
       if (response.twoFactorRequired) {
-        console.log('🔐 2FA Required');
         return { 
           success: true, 
           twoFactorRequired: true, 
@@ -353,14 +341,6 @@ export const AuthProvider = ({ children }) => {
     completeOAuthLogin,
     verify2FA
   };
-
-  // Debug: Log state changes
-  console.log('🔐 AuthContext State:', {
-    isAuthenticated: state.isAuthenticated,
-    user: state.user ? `${state.user.firstName} (${state.user.role})` : 'No user',
-    token: state.token ? 'exists' : 'missing',
-    loading: state.loading
-  });
 
   return (
     <AuthContext.Provider value={value}>

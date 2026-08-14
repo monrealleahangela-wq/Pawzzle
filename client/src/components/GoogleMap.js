@@ -12,7 +12,7 @@ const GoogleMap = ({
 }) => {
   const [coordinates, setCoordinates] = useState(propCoordinates || null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [, setError] = useState(null);
   const mapRef = useRef(null);
 
   // Sync with prop coordinates

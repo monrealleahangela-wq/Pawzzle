@@ -19,8 +19,8 @@ const { uploadSingle, handleUploadError } = require('../middleware/upload');
 const { uploadImage } = require('../controllers/uploadController');
 
 const validateActiveRiderToken = async (req, res, next) => {
-  const delivery = await Delivery.findOne({ riderToken: req.params.token }).select('isLive');
-  if (!delivery || !delivery.isLive) return res.status(403).json({ message: 'Rider delivery link is inactive.' });
+  const delivery = await Delivery.findOne({ riderToken: req.params.token }).select('isLive isRiderVerified');
+  if (!delivery || !delivery.isLive || !delivery.isRiderVerified) return res.status(403).json({ message: 'Rider delivery link is inactive or unverified.' });
   next();
 };
 

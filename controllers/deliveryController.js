@@ -8,6 +8,8 @@ const resolveStore = require('../utils/resolveStore');
 const User = require('../models/User');
 const RiderEarning = require('../models/RiderEarning');
 const Store = require('../models/Store');
+const { isPlatformAdmin } = require('../config/permissions');
+const { canOperateStore } = require('../utils/authorizationPolicy');
 
 const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER;
 let CLIENT_URL = process.env.CLIENT_URL;
@@ -40,6 +42,14 @@ const notifyDeliveryParties = async (req, delivery, title, message) => {
   } catch (error) {
     console.error('Delivery notification error:', error.message);
   }
+};
+
+const emitDeliveryDashboardUpdate = (req, delivery) => {
+  const io = req.app.get('socketio');
+  if (!io) return;
+  const payload = { type: 'delivery', id: String(delivery._id), status: delivery.status, timestamp: new Date() };
+  if (delivery.store) io.to(`store_${String(delivery.store)}`).emit('dashboardUpdate', payload);
+  io.to('admin_global').emit('dashboardUpdate', payload);
 };
 
 // Internal: Create delivery record and link to order/booking
@@ -150,7 +160,8 @@ const generateDeliveryLinks = async (req, res) => {
     if (assignmentType === 'internal') {
       if (!riderId) return res.status(400).json({ message: 'Select an active Internal Delivery Rider.' });
       rider = await User.findOne({
-        _id: riderId, role: 'staff', staffType: 'delivery_rider', store: source.store,
+        _id: riderId, store: source.store,
+        $or: [{ role: 'delivery_rider' }, { role: 'staff', staffType: 'delivery_rider' }],
         isActive: true, isDeleted: false, 'riderProfile.accountStatus': 'active'
       }).select('_id firstName lastName riderProfile');
       if (!rider) return res.status(400).json({ message: 'Select an active Delivery Rider assigned to this store.' });
@@ -308,7 +319,9 @@ const getDeliveryByOrder = async (req, res) => {
     const { orderId } = req.params;
     const order = await Order.findById(orderId).select('customer store');
     if (!order) return res.status(404).json({ message: 'Order not found' });
-    const allowed = req.user.role === 'super_admin' || order.customer?.toString() === req.user._id.toString() || req.user.store?.toString() === order.store?.toString() || await Store.exists({ _id: order.store, owner: req.user._id });
+    const allowed = isPlatformAdmin(req.user)
+      || order.customer?.toString() === req.user._id.toString()
+      || await canOperateStore(req.user, order.store, ['logistics.manage', 'deliveries.own']);
     if (!allowed) return res.status(403).json({ message: 'Access denied to this delivery.' });
     const delivery = await Delivery.findOne({ order: orderId }).select('trackingToken riderToken status isLive assignmentType assignedRider thirdPartyRider assignedAt assignmentHistory').populate('assignedRider', 'firstName lastName riderProfile.staffId riderProfile.deliveryZone');
     if (!delivery) return res.status(404).json({ message: 'No delivery active' });
@@ -326,7 +339,9 @@ const getDeliveryByBooking = async (req, res) => {
     const { bookingId } = req.params;
     const booking = await Booking.findById(bookingId).select('customer store');
     if (!booking) return res.status(404).json({ message: 'Booking not found' });
-    const allowed = req.user.role === 'super_admin' || booking.customer?.toString() === req.user._id.toString() || req.user.store?.toString() === booking.store?.toString() || await Store.exists({ _id: booking.store, owner: req.user._id });
+    const allowed = isPlatformAdmin(req.user)
+      || booking.customer?.toString() === req.user._id.toString()
+      || await canOperateStore(req.user, booking.store, ['logistics.manage', 'deliveries.own']);
     if (!allowed) return res.status(403).json({ message: 'Access denied to this delivery.' });
     const delivery = await Delivery.findOne({ booking: bookingId }).select('trackingToken riderToken status isLive assignmentType assignedRider thirdPartyRider assignedAt assignmentHistory').populate('assignedRider', 'firstName lastName riderProfile.staffId riderProfile.deliveryZone');
     if (!delivery) return res.status(404).json({ message: 'No delivery active' });
@@ -346,6 +361,7 @@ const updateDeliveryStatus = async (req, res) => {
 
     const delivery = await Delivery.findOne({ riderToken: token });
     if (!delivery) return res.status(404).json({ message: 'Unauthorized link' });
+    if (!delivery.isRiderVerified) return res.status(403).json({ message: 'Verify the assigned rider before updating delivery status.' });
 
     if (!delivery.isLive && status !== 'delivered') {
       return res.status(403).json({ message: 'Delivery completed. Control link disabled.' });
@@ -387,7 +403,7 @@ const updateDeliveryStatus = async (req, res) => {
 
     await delivery.save();
     if (delivery.assignedRider) {
-      const rider = await User.findOne({ _id: delivery.assignedRider, role: 'staff', staffType: 'delivery_rider' }).select('store riderProfile.earningRules');
+      const rider = await User.findOne({ _id: delivery.assignedRider, $or: [{ role: 'delivery_rider' }, { role: 'staff', staffType: 'delivery_rider' }] }).select('store riderProfile.earningRules');
       if (rider) {
         const rules = rider.riderProfile?.earningRules || {};
         const baseRate = Number(rules.baseRate || 0);
@@ -407,6 +423,7 @@ const updateDeliveryStatus = async (req, res) => {
     if (io) {
       io.to(`delivery_${delivery._id}`).emit('statusChanged', { deliveryId: delivery._id, status: delivery.status });
     }
+    emitDeliveryDashboardUpdate(req, delivery);
     
     res.json({ success: true, status: delivery.status });
   } catch (error) {
@@ -419,6 +436,7 @@ const completeDelivery = async (req, res) => {
   try {
     const delivery = await Delivery.findOne({ riderToken: req.params.token });
     if (!delivery) return res.status(404).json({ message: 'Delivery link is invalid.' });
+    if (!delivery.isRiderVerified) return res.status(403).json({ message: 'Verify the assigned rider before completing delivery.' });
     if (!delivery.isLive || delivery.status === 'delivered') return res.status(409).json({ message: 'Delivery has already been completed.' });
     if (delivery.status !== 'arrived') return res.status(400).json({ message: 'Mark the delivery as arrived before confirming completion.' });
     const { photo, signature, method, otp, notes, location, codPaymentStatus } = req.body;
@@ -441,7 +459,7 @@ const completeDelivery = async (req, res) => {
     delivery.statusHistory.push({ status: 'delivered', timestamp: delivery.deliveredAt, notes: notes?.trim() });
     await delivery.save();
     if (delivery.assignedRider) {
-      const rider = await User.findOne({ _id: delivery.assignedRider, role: 'staff', staffType: 'delivery_rider' }).select('store riderProfile.earningRules');
+      const rider = await User.findOne({ _id: delivery.assignedRider, $or: [{ role: 'delivery_rider' }, { role: 'staff', staffType: 'delivery_rider' }] }).select('store riderProfile.earningRules');
       if (rider) {
         const rules = rider.riderProfile?.earningRules || {};
         const baseRate = Number(rules.baseRate || 0), incentive = Number(rules.incentive || 0);
@@ -459,6 +477,7 @@ const completeDelivery = async (req, res) => {
     });
     const io = req.app.get('socketio');
     if (io) io.to(`delivery_${delivery._id}`).emit('statusChanged', { deliveryId: delivery._id, status: 'delivered' });
+    emitDeliveryDashboardUpdate(req, delivery);
     await notifyDeliveryParties(req, delivery, 'Delivery Completed', 'The delivery was completed and proof of delivery is available.');
     res.json({ success: true, delivery });
   } catch (error) {
@@ -471,6 +490,7 @@ const reportFailedDelivery = async (req, res) => {
   try {
     const delivery = await Delivery.findOne({ riderToken: req.params.token });
     if (!delivery) return res.status(404).json({ message: 'Delivery link is invalid.' });
+    if (!delivery.isRiderVerified) return res.status(403).json({ message: 'Verify the assigned rider before reporting a delivery issue.' });
     if (!delivery.isLive) return res.status(409).json({ message: 'Delivery link is no longer active.' });
     if (!['in_transit', 'arrived'].includes(delivery.status)) return res.status(400).json({ message: 'A delivery issue can only be reported while travelling or after arrival.' });
     const { reason, notes, photo, location } = req.body;
@@ -487,6 +507,7 @@ const reportFailedDelivery = async (req, res) => {
     });
     const io = req.app.get('socketio');
     if (io) io.to(`delivery_${delivery._id}`).emit('statusChanged', { deliveryId: delivery._id, status: 'failed_attempt' });
+    emitDeliveryDashboardUpdate(req, delivery);
     await notifyDeliveryParties(req, delivery, 'Delivery Attempt Failed', `The delivery attempt failed: ${reason.replace(/_/g, ' ')}.`);
     res.json({ success: true, delivery });
   } catch (error) {
@@ -503,6 +524,7 @@ const updateLocation = async (req, res) => {
 
     const delivery = await Delivery.findOne({ riderToken: token });
     if (!delivery || !delivery.isLive) return res.status(403).json({ message: 'Inactive' });
+    if (!delivery.isRiderVerified) return res.status(403).json({ message: 'Verify the assigned rider before sharing location.' });
 
     delivery.riderLocation = { lat, lng, heading, speed, lastUpdated: new Date() };
     delivery.locationHistory.push({ lat, lng });
@@ -526,7 +548,7 @@ const updateLocation = async (req, res) => {
 const sendDeliveryMessage = async (req, res) => {
   try {
     const { token } = req.params;
-    const { content, sender } = req.body;
+    const { content } = req.body;
 
     const delivery = await Delivery.findOne({
       $or: [{ riderToken: token }, { trackingToken: token }]
@@ -539,6 +561,11 @@ const sendDeliveryMessage = async (req, res) => {
     });
 
     if (!delivery || !delivery.isLive) return res.status(403).json({ message: 'Chat disabled' });
+
+    const sender = delivery.riderToken === token ? 'rider' : 'customer';
+    if (sender === 'rider' && !delivery.isRiderVerified) {
+      return res.status(403).json({ message: 'Verify the assigned rider before sending messages.' });
+    }
 
     const message = { sender, content, timestamp: new Date() };
     delivery.chat.push(message);
@@ -600,8 +627,9 @@ const verifyRider = async (req, res) => {
     if (!delivery || !delivery.isLive) return res.status(403).json({ message: 'Unauthorized link' });
 
     if (delivery.assignedRider) {
-      const assigned = await User.findById(delivery.assignedRider).select('firstName lastName phone staffType isActive riderProfile');
-      if (!assigned || assigned.staffType !== 'delivery_rider' || !assigned.isActive || assigned.riderProfile?.accountStatus !== 'active') {
+      const assigned = await User.findById(delivery.assignedRider).select('firstName lastName phone role staffType isActive riderProfile');
+      const isDeliveryRider = assigned?.role === 'delivery_rider' || (assigned?.role === 'staff' && assigned?.staffType === 'delivery_rider');
+      if (!assigned || !isDeliveryRider || !assigned.isActive || assigned.riderProfile?.accountStatus !== 'active') {
         return res.status(403).json({ message: 'The assigned Delivery Rider account is not active.' });
       }
       const suppliedName = String(riderName || '').trim().toLowerCase();

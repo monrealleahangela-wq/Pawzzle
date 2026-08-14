@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Shield, AlertTriangle, Send, Image as ImageIcon, CheckCircle, Info, ArrowLeft, Loader2 } from 'lucide-react';
-import { adminReportService, getImageUrl } from '../../services/apiService';
+import { Shield, AlertTriangle, Send, CheckCircle, Info, ArrowLeft, Loader2 } from 'lucide-react';
+import { adminReportService } from '../../services/apiService';
 import { toast } from 'react-toastify';
 import ImageUpload from '../../components/ImageUpload';
 

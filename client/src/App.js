@@ -24,7 +24,6 @@ import ForgotPassword from './pages/auth/ForgotPassword';
 import OAuthCallback from './pages/auth/OAuthCallback';
 
 // Public Pages
-import Landing from './pages/public/Landing';
 import SellerJoin from './pages/public/SellerJoin';
 
 // Customer Pages
@@ -38,7 +37,6 @@ import Cart from './pages/customer/Cart';
 import Checkout from './pages/customer/Checkout';
 import Orders from './pages/customer/Orders';
 import Profile from './pages/customer/Profile';
-import AccountUpgrade from './pages/customer/AccountUpgrade';
 import StoreApplication from './pages/storeOwner/StoreApplication';
 import OrderDetail from './pages/customer/OrderDetail';
 import Bookings from './pages/customer/Bookings';
@@ -46,7 +44,6 @@ import BookingCalendar from './pages/customer/BookingCalendar';
 import StoreDetail from './pages/customer/StoreDetail';
 import Stores from './pages/customer/Stores';
 import Search from './pages/customer/Search';
-import Adoptions from './pages/customer/Adoptions';
 import CustomerDSS from './pages/customer/DSS';
 import CustomerVouchers from './pages/customer/Vouchers';
 import AppealForm from './pages/customer/AppealForm';
@@ -69,6 +66,7 @@ import AdminDSS from './pages/admin/DSS';
 import AdminPayouts from './pages/admin/Payouts';
 import StorePayout from './pages/admin/StorePayout';
 import StaffManagement from './pages/admin/StaffManagement';
+import RoleManagement from './pages/admin/RoleManagement';
 import Customers from './pages/admin/Customers';
 import PurchaseOrders from './pages/admin/PurchaseOrders';
 import SupplyManagement from './pages/admin/SupplyManagement';
@@ -153,7 +151,7 @@ function App() {
                   <Route path="stores/:storeId" element={<StoreDetail />} />
                   <Route path="find-shops" element={<FindShops />} />
                   <Route path="search" element={<Search />} />
-                  <Route path="profile" element={<ProtectedRoute roles={['customer', 'admin', 'super_admin']}><Profile /></ProtectedRoute>} />
+                  <Route path="profile" element={<ProtectedRoute roles={['customer', 'admin', 'super_admin', 'staff', 'supplier']}><Profile /></ProtectedRoute>} />
                   <Route path="cart" element={<ProtectedRoute roles={['customer', 'admin', 'super_admin']}><Cart /></ProtectedRoute>} />
                   <Route path="checkout" element={<ProtectedRoute roles={['customer', 'admin', 'super_admin']}><Checkout /></ProtectedRoute>} />
                   <Route path="orders" element={<ProtectedRoute roles={['customer', 'admin', 'super_admin']}><Orders /></ProtectedRoute>} />
@@ -191,18 +189,19 @@ function App() {
                   <Route path="admin/customers" element={<ProtectedRoute roles={['admin', 'super_admin', 'staff']} staffTypes={['order_staff']} requiredPermission="customers"><Customers /></ProtectedRoute>} />
 
                   {/* Admin-only routes (no staff access) */}
-                  <Route path="admin/chat" element={<ProtectedRoute roles={['admin', 'super_admin']}><AdminChat /></ProtectedRoute>} />
+                  <Route path="admin/chat" element={<ProtectedRoute roles={['admin', 'super_admin', 'staff']} requiredPermission="admin_chat"><AdminChat /></ProtectedRoute>} />
                   <Route path="admin/store" element={<ProtectedRoute roles={['admin', 'super_admin']}><StoreManagement /></ProtectedRoute>} />
                   <Route path="admin/vouchers" element={<ProtectedRoute roles={['admin', 'super_admin']}><VoucherManagement /></ProtectedRoute>} />
                   <Route path="admin/users" element={<ProtectedRoute roles={['super_admin']}><AdminUsers /></ProtectedRoute>} />
-                  <Route path="admin/reviews" element={<ProtectedRoute roles={['admin', 'super_admin']}><ReviewManagement /></ProtectedRoute>} />
+                  <Route path="admin/reviews" element={<ProtectedRoute roles={['admin', 'super_admin', 'staff']} requiredPermission="reviews"><ReviewManagement /></ProtectedRoute>} />
                   <Route path="admin/settings" element={<ProtectedRoute roles={['admin', 'super_admin']}><AdminSettings /></ProtectedRoute>} />
-                  <Route path="admin/insights" element={<ProtectedRoute roles={['admin', 'super_admin', 'staff']} requiredPermission="analytics"><AdminDSS /></ProtectedRoute>} />
+                  <Route path="admin/insights" element={<ProtectedRoute roles={['admin', 'super_admin', 'staff']} requiredPermission="dss"><AdminDSS /></ProtectedRoute>} />
                   <Route path="admin/payouts" element={<ProtectedRoute roles={['admin', 'super_admin']}><StorePayout /></ProtectedRoute>} />
                   <Route path="admin/staff" element={<ProtectedRoute roles={['admin', 'super_admin']}><StaffManagement /></ProtectedRoute>} />
-                  <Route path="admin/purchase-orders" element={<ProtectedRoute roles={['admin', 'super_admin', 'staff']}><PurchaseOrders /></ProtectedRoute>} />
-                  <Route path="admin/supplies" element={<ProtectedRoute roles={['admin', 'super_admin', 'staff']}><SupplyManagement /></ProtectedRoute>} />
-                  <Route path="admin/finance" element={<ProtectedRoute roles={['admin', 'super_admin', 'staff']}><FinanceManagement /></ProtectedRoute>} />
+                  <Route path="admin/roles" element={<ProtectedRoute roles={['admin', 'super_admin']}><RoleManagement /></ProtectedRoute>} />
+                  <Route path="admin/purchase-orders" element={<ProtectedRoute roles={['admin', 'super_admin', 'staff']} requiredPermission="procurement"><PurchaseOrders /></ProtectedRoute>} />
+                  <Route path="admin/supplies" element={<ProtectedRoute roles={['admin', 'super_admin', 'staff']} requiredPermission="inventory"><SupplyManagement /></ProtectedRoute>} />
+                  <Route path="admin/finance" element={<ProtectedRoute roles={['admin', 'super_admin', 'staff']} requiredPermission="finance"><FinanceManagement /></ProtectedRoute>} />
                   <Route path="admin/logistics" element={<ProtectedRoute roles={['admin', 'super_admin', 'staff']} staffTypes={['logistics_staff']} requiredPermission="logistics" excludedRoles={['delivery_rider']}><Logistics /></ProtectedRoute>} />
                   <Route path="admin/logistics/:id" element={<ProtectedRoute roles={['admin', 'super_admin', 'staff']} staffTypes={['logistics_staff']} requiredPermission="logistics" excludedRoles={['delivery_rider']}><LogisticsDetail /></ProtectedRoute>} />
                   <Route path="superadmin/payouts" element={<ProtectedRoute roles={['super_admin']}><AdminPayouts /></ProtectedRoute>} />

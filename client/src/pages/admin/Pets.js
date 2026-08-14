@@ -3,13 +3,9 @@ import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { adminPetService, uploadService, adoptionService, getImageUrl } from '../../services/apiService';
 import { useAuth } from '../../contexts/AuthContext';
-import {
-  Heart, Plus, Edit, Trash2, Filter, X, Save, Search, ChevronLeft, ChevronRight,
-  Activity, Shield, Image as ImageIcon, Zap, Target, ArrowUpRight, Star, Info,
-  AlertTriangle, CheckCircle, PawPrint, Home, Truck, Users2, History, ClipboardList,
-  Clock, CheckCircle2, XCircle, MessageSquare, ArrowRight, UserCheck, Minus
-} from 'lucide-react';
+import { Heart, Plus, Edit, Trash2, Filter, X, Search, ChevronLeft, ChevronRight, Activity, Shield, Image as ImageIcon, Zap, ArrowUpRight, Info, CheckCircle, PawPrint, Home, History, ClipboardList, Clock, CheckCircle2, XCircle, MessageSquare, UserCheck, Minus } from 'lucide-react';
 import { formatTime12h } from '../../utils/timeFormatters';
+import { PLATFORM_ADMIN_ROLES, STORE_ADMIN_ROLES, hasUiActionPermission } from '../../utils/authorization';
 
 const AdminPets = () => {
   const { user } = useAuth();
@@ -17,13 +13,13 @@ const AdminPets = () => {
   const [loading, setLoading] = useState(true);
 
   // Permission Checks
-  const isAdmin = ['admin', 'super_admin'].includes(user?.role);
-  const canCreate = isAdmin || user?.permissions?.inventory?.create || user?.permissions?.inventory?.fullAccess;
-  const canUpdate = isAdmin || user?.permissions?.inventory?.update || user?.permissions?.inventory?.fullAccess;
-  const canDelete = isAdmin || user?.permissions?.inventory?.delete || user?.permissions?.inventory?.fullAccess;
+  const isAdmin = PLATFORM_ADMIN_ROLES.has(user?.role) || STORE_ADMIN_ROLES.has(user?.role);
+  const canCreate = hasUiActionPermission(user, 'inventory', 'create', isAdmin);
+  const canUpdate = hasUiActionPermission(user, 'inventory', 'update', isAdmin);
+  const canDelete = hasUiActionPermission(user, 'inventory', 'delete', isAdmin);
   
   // For Adoption (Sold Pets)
-  const canManageAdoptions = isAdmin || user?.permissions?.orders?.update || user?.permissions?.orders?.fullAccess;
+  const canManageAdoptions = hasUiActionPermission(user, 'orders', 'update', isAdmin);
 
   const [showAddForm, setShowAddForm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -388,7 +384,7 @@ const AdminPets = () => {
   return (
     <div className="min-h-screen bg-slate-50/50 p-4 sm:p-8 space-y-8">
       {/* Header */}
-      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-6 bg-white p-6 sm:p-10 rounded-[3rem] border border-slate-100 shadow-sm relative overflow-hidden">
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-4 bg-white p-4 sm:p-6 rounded-2xl border border-slate-100 shadow-sm relative overflow-hidden">
         <div className="absolute top-0 right-0 w-64 h-64 bg-rose-500/5 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl pointer-events-none" />
         <div className="relative z-10">
           <div className="flex items-center gap-3 mb-4">
@@ -397,7 +393,7 @@ const AdminPets = () => {
             </div>
             <span className="text-[10px] font-black text-rose-500 uppercase tracking-[0.4em]">ADMIN PANEL : PETS</span>
           </div>
-          <h1 className="text-3xl sm:text-5xl font-black text-slate-900 uppercase tracking-tighter leading-[0.9] mb-3">
+          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 uppercase tracking-tight leading-none mb-2">
             Manage <span className="text-rose-500">Pets</span>
           </h1>
           <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">

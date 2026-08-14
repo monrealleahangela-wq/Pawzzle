@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { petService, getImageUrl } from '../../services/apiService';
-import { Heart, Filter, Search, Store, ArrowLeft, ArrowRight, ShoppingCart, Eye, MapPin, Navigation, Star } from 'lucide-react';
+import { Heart, Filter, Search, Store, ArrowLeft, ArrowRight, Navigation, Star } from 'lucide-react';
 import { toast } from 'react-toastify';
-import { useAuth } from '../../contexts/AuthContext';
 import { getCitiesByProvince } from '../../constants/locationConstants';
 
 const CAVITE_CITIES = getCitiesByProvince('cavite');
@@ -25,7 +24,6 @@ const normalizeString = (str) => {
 
 
 const Pets = () => {
-  const { user } = useAuth();
   const [pets, setPets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({

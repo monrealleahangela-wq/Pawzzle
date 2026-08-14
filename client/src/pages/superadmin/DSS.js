@@ -1,12 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { dssService } from '../../services/apiService';
 import { toast } from 'react-toastify';
-import {
-    Brain, TrendingUp, DollarSign, Activity, Sparkles,
-    Flame, Zap, Heart, Users, Building, Shield, ChevronRight,
-    PieChart, BarChart3, Globe2, Layers, Info, CheckCircle2,
-    Briefcase, Star, Settings
-} from 'lucide-react';
+import { Brain, TrendingUp, Activity, Sparkles, Flame, Zap, Users, Building, Shield, BarChart3, Globe2, Layers, Info, Star, Settings } from 'lucide-react';
 
 const SuperAdminDSS = () => {
     const [data, setData] = useState(null);
@@ -67,31 +62,31 @@ const SuperAdminDSS = () => {
     const titleClass = "text-xl font-black text-slate-900 tracking-tight mb-6 flex items-center gap-3 uppercase";
 
     return (
-        <div className="max-w-7xl mx-auto space-y-12 pb-32 animate-in fade-in duration-700">
+        <div className="max-w-7xl mx-auto space-y-6 pb-24 animate-in fade-in duration-700">
             {/* Super Admin Hero Section */}
-            <div className="relative bg-slate-900 rounded-[3.5rem] p-12 md:p-20 overflow-hidden shadow-2xl">
+            <div className="relative bg-slate-900 rounded-2xl p-5 sm:p-7 overflow-hidden shadow-lg">
                 <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-primary-600/10 rounded-full blur-[150px] -mr-32 -mt-32 animate-pulse" />
                 <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-indigo-500/10 rounded-full blur-[120px] -ml-16 -mb-16" />
 
                 <div className="relative z-10">
-                    <div className="flex items-center gap-3 mb-8">
-                        <div className="p-3 bg-primary-600/20 rounded-2xl backdrop-blur-md border border-primary-500/30">
-                            <Brain size={24} className="text-primary-400" />
+                    <div className="flex items-center gap-3 mb-4">
+                        <div className="p-2 bg-primary-600/20 rounded-xl backdrop-blur-md border border-primary-500/30">
+                            <Brain size={20} className="text-primary-400" />
                         </div>
                         <span className="text-[12px] font-black uppercase tracking-[0.6em] text-primary-400">Global DSS Core</span>
                     </div>
 
                     <div className="max-w-4xl">
-                        <h1 className="text-5xl md:text-8xl font-black uppercase tracking-tighter leading-none mb-8 text-white">
+                        <h1 className="text-2xl sm:text-3xl font-black uppercase tracking-tight leading-none mb-3 text-white">
                             Universal <br /> <span className="text-primary-500 italic">Meta-Intelligence</span>
                         </h1>
-                        <p className="text-lg md:text-xl font-bold text-slate-400 max-w-2xl leading-relaxed">
+                        <p className="text-xs sm:text-sm font-medium text-slate-300 max-w-2xl leading-relaxed">
                             A high-fidelity monitoring engine analyzing cross-store dynamics and global user behavior to drive platform expansion.
                         </p>
                     </div>
 
-                    <div className="flex flex-wrap gap-8 mt-12">
-                        <div className="px-8 py-3.5 bg-white/5 border border-white/10 rounded-2xl backdrop-blur-md">
+                    <div className="flex flex-wrap gap-3 mt-5">
+                        <div className="px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl backdrop-blur-md">
                             <p className="text-[10px] font-black text-white/40 uppercase tracking-widest mb-1">Global Revenue</p>
                             <p className="text-3xl font-black text-white tracking-tighter">₱{revenue.combined.toLocaleString()}</p>
                         </div>

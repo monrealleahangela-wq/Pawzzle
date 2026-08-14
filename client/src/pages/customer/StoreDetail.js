@@ -6,31 +6,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useCart } from '../../contexts/CartContext';
 import { chatService } from '../../services/chatService';
 import { formatTime12h } from '../../utils/timeFormatters';
-import {
-  MapPin,
-  Phone,
-  Mail,
-  Clock,
-  Package,
-  Scissors,
-  ChevronLeft,
-  ShoppingBag,
-  Heart,
-  Plus,
-  Star,
-  ExternalLink,
-  MessageCircle,
-  Calendar,
-  Building,
-  Globe,
-  Download,
-  ShoppingCart,
-  Zap,
-  Shield,
-  Check,
-  Users,
-  AlertTriangle
-} from 'lucide-react';
+import { Phone, Mail, Clock, Package, Scissors, ChevronLeft, ShoppingBag, Heart, Plus, Star, MessageCircle, Building, ShoppingCart, Zap, Shield, Check, Users, AlertTriangle } from 'lucide-react';
 import GoogleMap from '../../components/GoogleMap';
 import ReviewSection from '../../components/ReviewSection';
 import UserReportModal from '../../components/UserReportModal';

@@ -3,14 +3,15 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { useCart } from '../../contexts/CartContext';
 import { useAuth } from '../../contexts/AuthContext';
-import { orderService, userService, paymentService, storeService, voucherService, getImageUrl } from '../../services/apiService';
-import { Heart, Package, CreditCard, Truck, Edit2, ShoppingBag, Store, CheckCircle, AlertCircle, MapPin, Tag, Ticket, X, ChevronRight } from 'lucide-react';
+import { orderService, paymentService, storeService, voucherService, getImageUrl } from '../../services/apiService';
+import { Heart, Package, CreditCard, Truck, Edit2, ShoppingBag, Store, CheckCircle, MapPin, Tag, Ticket, X, ChevronRight } from 'lucide-react';
 import { getCitiesByProvince, getBarangaysByCity } from '../../constants/locationConstants';
 import MapPicker from '../../components/MapPicker';
 import { Info } from 'lucide-react';
+import { normalizeRefundPolicy, refundPolicyLabel, requiresRefundAcknowledgment } from '../../utils/refundPolicy';
 
 const Checkout = () => {
-  const { items, removeFromCart, updateQuantity, getTotalPrice, clearCart, clearSelectedItems, toggleItemSelection, selectAllItems, deselectAllItems, getSelectedItems } = useCart();
+  const { items, clearSelectedItems, getSelectedItems } = useCart();
   const { isAuthenticated, user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -67,6 +68,8 @@ const Checkout = () => {
   const [agreedToPolicy, setAgreedToPolicy] = useState(false);
   const [pricingQuote, setPricingQuote] = useState(null);
   const [pricingQuoteError, setPricingQuoteError] = useState('');
+  const refundPolicy = normalizeRefundPolicy(pricingQuote?.refundPolicy);
+  const refundAcknowledgmentRequired = requiresRefundAcknowledgment(refundPolicy);
 
   // Payment options - Online Only consistent with minimalist design
   const getPaymentOptions = () => {
@@ -286,8 +289,8 @@ const Checkout = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!agreedToPolicy) {
-      toast.error('You must agree to the No Refund Policy to proceed.');
+    if (refundAcknowledgmentRequired && !agreedToPolicy) {
+      toast.error('You must acknowledge this store\'s No Refund policy to proceed.');
       return;
     }
     setIsLoading(true);
@@ -318,7 +321,8 @@ const Checkout = () => {
         phoneNumber,
         paymentMethod,
         notes: notes.trim(),
-        voucherCode: appliedVoucher ? voucherCode : null
+        voucherCode: appliedVoucher ? voucherCode : null,
+        refundPolicyAcknowledged: refundAcknowledgmentRequired ? agreedToPolicy : false
       };
 
       const response = await orderService.createOrder(orderData);
@@ -1089,10 +1093,10 @@ const Checkout = () => {
               )}
             </div>
 
-            {/* No Refund Policy Agreement */}
+            {/* Store refund policy */}
             <div className="mt-6 mb-4">
-              <label className="flex items-start gap-3 p-4 bg-rose-50 rounded-2xl border border-rose-100 cursor-pointer group hover:bg-rose-100/50 transition-all">
-                <div className="relative flex items-center mt-0.5">
+              <div className={`flex items-start gap-3 p-4 rounded-2xl border ${refundAcknowledgmentRequired ? 'bg-rose-50 border-rose-100' : 'bg-slate-50 border-slate-200'}`}>
+                {refundAcknowledgmentRequired && <div className="relative flex items-center mt-0.5">
                   <input
                     type="checkbox"
                     checked={agreedToPolicy}
@@ -1100,22 +1104,22 @@ const Checkout = () => {
                     className="w-5 h-5 rounded-md border-rose-300 text-rose-600 focus:ring-rose-500 cursor-pointer"
                     required
                   />
-                </div>
+                </div>}
                 <div className="space-y-0.5">
-                  <p className="text-[10px] font-black text-rose-900 uppercase tracking-wider">I agree to the No Refund Policy</p>
-                  <p className="text-[8px] font-bold text-rose-600 tracking-tight leading-relaxed">
-                    I understand that all payments made through Pawzzle are final and non-refundable. I agree to coordinate directly with the store for any fulfillment concerns.
-                  </p>
+                  <p className={`text-[10px] font-black uppercase tracking-wider ${refundAcknowledgmentRequired ? 'text-rose-900' : 'text-slate-900'}`}>{refundPolicyLabel(refundPolicy.type)} Policy</p>
+                  <p className={`text-[9px] font-medium leading-relaxed ${refundAcknowledgmentRequired ? 'text-rose-700' : 'text-slate-600'}`}>{refundPolicy.summary}</p>
+                  {refundPolicy.conditions && <p className="text-[9px] text-slate-500">Conditions: {refundPolicy.conditions}</p>}
+                  {refundAcknowledgmentRequired && <p className="text-[9px] font-bold text-rose-700">Check the box to acknowledge this policy before PayMongo payment.</p>}
                 </div>
-              </label>
+              </div>
             </div>
 
             <form onSubmit={handleSubmit}>
               <button
                 type="submit"
-                disabled={isLoading || !pricingQuote || Boolean(pricingQuoteError)}
+                disabled={isLoading || !pricingQuote || Boolean(pricingQuoteError) || (refundAcknowledgmentRequired && !agreedToPolicy)}
                 className={`btn btn-primary w-full flex items-center justify-center gap-3 py-5 text-[10px] font-black uppercase tracking-[0.3em] shadow-2xl transition-all active:scale-95 ${
-                  (!agreedToPolicy || !pricingQuote || pricingQuoteError) ? 'opacity-50 cursor-not-allowed grayscale' : 'shadow-primary-200 hover:-translate-y-0.5'
+                  ((refundAcknowledgmentRequired && !agreedToPolicy) || !pricingQuote || pricingQuoteError) ? 'opacity-50 cursor-not-allowed grayscale' : 'shadow-primary-200 hover:-translate-y-0.5'
                 }`}
               >
                 {isLoading ? (

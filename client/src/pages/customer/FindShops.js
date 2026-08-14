@@ -1,22 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import {
-  MapPin,
-  Search,
-  Navigation,
-  Phone,
-  Mail,
-  ChevronRight,
-  Clock,
-  Store as StoreIcon,
-  Info,
-  Filter,
-  X,
-  Target,
-  Navigation2,
-  Flag,
-  ArrowRight
-} from 'lucide-react';
+import { MapPin, Search, Navigation, Phone, Mail, ChevronRight, Clock, Store as StoreIcon, Filter, X, Target, Navigation2, Flag, ArrowRight } from 'lucide-react';
 import { MapContainer, TileLayer, Marker, Popup, useMap, Polyline } from 'react-leaflet';
 import L from 'leaflet';
 import axios from 'axios';

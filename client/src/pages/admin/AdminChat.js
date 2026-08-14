@@ -1,20 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
-import {
-  MessageSquare,
-  Users,
-  Search,
-  Clock,
-  CheckCircle,
-  Shield,
-  Zap,
-  Filter,
-  RefreshCw,
-  MoreVertical,
-  Activity,
-  ArrowLeft,
-  AlertTriangle
-} from 'lucide-react';
+import { MessageSquare, Search, RefreshCw, MoreVertical, ArrowLeft, AlertTriangle } from 'lucide-react';
 import { chatService } from '../../services/chatService';
 import EnhancedChatMessenger from '../../components/EnhancedChatMessenger';
 import UserReportModal from '../../components/UserReportModal';

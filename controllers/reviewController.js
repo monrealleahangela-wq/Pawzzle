@@ -8,6 +8,11 @@ const Service = require('../models/Service');
 const Booking = require('../models/Booking');
 const AdoptionRequest = require('../models/AdoptionRequest');
 const User = require('../models/User');
+const { canOperateStore } = require('../utils/authorizationPolicy');
+const resolveStore = require('../utils/resolveStore');
+const { isOperationalStaff } = require('../config/permissions');
+
+const STAFF_COMPLIMENT_TAGS = new Set(['friendly', 'professional', 'gentle_with_pets', 'fast_service', 'clean_facility']);
 
 const refreshStaffRating = async staffId => {
     if (!staffId) return;
@@ -24,13 +29,20 @@ const refreshStaffRating = async staffId => {
 // Create a review for product/pet/store/service
 const createReview = async (req, res) => {
     try {
-        const { targetType, targetId, rating, comment, images, orderId, bookingId, isAnonymous } = req.body;
+        const { targetType, targetId, rating, comment, images, orderId, bookingId, isAnonymous, complimentTags } = req.body;
         const userId = req.user._id;
         const numericRating = Number(rating);
         if (!Number.isInteger(numericRating) || numericRating < 1 || numericRating > 5) {
             return res.status(400).json({ message: 'Rating must be a whole number from 1 to 5.' });
         }
         if (String(comment || '').length > 1000) return res.status(400).json({ message: 'Review text must be 1000 characters or fewer.' });
+        const normalizedCompliments = [...new Set(Array.isArray(complimentTags) ? complimentTags : [])];
+        if (normalizedCompliments.some(tag => !STAFF_COMPLIMENT_TAGS.has(tag))) {
+            return res.status(400).json({ message: 'One or more compliment tags are invalid.' });
+        }
+        if (targetType !== 'Booking' && normalizedCompliments.length) {
+            return res.status(400).json({ message: 'Compliment tags are only available for completed staff services.' });
+        }
 
         // TRUSTED REVIEW LOGIC: Verify if user has completed the relevant interaction
         let isTrusted = false;
@@ -141,6 +153,25 @@ const createReview = async (req, res) => {
             return res.status(400).json({ message: 'Target store not found' });
         }
 
+        // Optional source IDs must point to the same completed transaction used to
+        // qualify this review; never let a review mark an unrelated record as rated.
+        if (orderId) {
+            const sourceOrder = await Order.findOne({ _id: orderId, customer: userId, status: 'delivered' });
+            const matchesTarget = sourceOrder
+                && String(sourceOrder.store) === String(storeId)
+                && (targetType === 'Store'
+                    || (targetType === 'Product' && sourceOrder.items?.some(item => String(item.itemId) === String(targetId))));
+            if (!matchesTarget) return res.status(403).json({ message: 'The supplied order does not qualify this review.' });
+        }
+        if (bookingId && targetType !== 'Booking') {
+            const sourceBooking = await Booking.findOne({ _id: bookingId, customer: userId, status: 'completed' });
+            const matchesTarget = sourceBooking
+                && String(sourceBooking.store) === String(storeId)
+                && (targetType === 'Store'
+                    || (targetType === 'Service' && String(sourceBooking.service) === String(targetId)));
+            if (!matchesTarget) return res.status(403).json({ message: 'The supplied booking does not qualify this review.' });
+        }
+
         const review = new Review({
             user: userId,
             targetType,
@@ -153,7 +184,8 @@ const createReview = async (req, res) => {
             bookingId,
             serviceId,
             staffId,
-            isAnonymous: !!isAnonymous
+            isAnonymous: !!isAnonymous,
+            complimentTags: targetType === 'Booking' ? normalizedCompliments : []
         });
 
         await review.save();
@@ -217,17 +249,8 @@ const getShopReviews = async (req, res) => {
         const { page = 1, limit = 10 } = req.query;
 
         // Find store for this user (admin owns it, staff is assigned to it)
-        let store;
-        if (req.user.role === 'admin') {
-            store = await Store.findOne({ owner: req.user._id });
-        } else if (req.user.role === 'staff' && req.user.store) {
-            store = await Store.findById(req.user.store);
-        } else if (req.user.role === 'super_admin') {
-            // Super admins don't have a single store to filter by in this context
-            // or they might need a specific storeId param. 
-            // For now, let's keep existing logic or handle as needed.
-            store = await Store.findOne({ owner: req.user._id }); 
-        }
+        const storeId = await resolveStore(req);
+        const store = storeId ? await Store.findById(storeId) : null;
 
         if (!store) {
             return res.status(404).json({ message: 'Store not found' });
@@ -307,12 +330,12 @@ const getTargetReviews = async (req, res) => {
 const getStaffReviews = async (req, res) => {
     try {
         const { page = 1, limit = 10 } = req.query;
-        const staff = await User.findOne({ _id: req.params.staffId, role: 'staff', isDeleted: false, 'professionalProfile.isPublic': { $ne: false } })
-            .select('firstName lastName avatar staffType professionalProfile.professionalTitle professionalProfile.specialty');
-        if (!staff) return res.status(404).json({ message: 'Staff profile not found.' });
+        const staff = await User.findOne({ _id: req.params.staffId, isDeleted: false, 'professionalProfile.isPublic': { $ne: false } })
+            .select('firstName lastName avatar role staffType professionalProfile.professionalTitle professionalProfile.specialty');
+        if (!staff || !isOperationalStaff(staff)) return res.status(404).json({ message: 'Staff profile not found.' });
         const filter = { targetType: 'Booking', staffId: staff._id, isApproved: true, isDeleted: { $ne: true } };
         const [reviews, total, summary] = await Promise.all([
-            Review.find(filter).populate('user', 'firstName lastName avatar').select('user rating comment isAnonymous createdAt').sort({ createdAt: -1 })
+            Review.find(filter).populate('user', 'firstName lastName avatar').select('user rating comment complimentTags isAnonymous createdAt').sort({ createdAt: -1 })
                 .skip((Number(page) - 1) * Number(limit)).limit(Math.min(Number(limit), 50)).lean(),
             Review.countDocuments(filter),
             Review.aggregate([{ $match: filter }, { $group: { _id: '$staffId', average: { $avg: '$rating' }, count: { $sum: 1 } } }])
@@ -470,12 +493,9 @@ const replyToReview = async (req, res) => {
             return res.status(404).json({ message: 'Review not found' });
         }
 
-        const store = req.user.role === 'super_admin'
-            ? true
-            : req.user.role === 'admin'
-                ? await Store.findOne({ _id: review.storeId, owner: req.user._id })
-                : req.user.role === 'staff' && String(req.user.store) === String(review.storeId);
-        if (!store) return res.status(403).json({ message: 'You cannot manage reviews for another store.' });
+        if (!(await canOperateStore(req.user, review.storeId, ['customers.manage', 'pets.manage']))) {
+            return res.status(403).json({ message: 'You cannot manage reviews for another store.' });
+        }
 
         // Only the store owner or super admin can reply
         // We'd need to verify the storeId of the review matching the user's store
@@ -497,12 +517,9 @@ const toggleReviewStatus = async (req, res) => {
         const review = await Review.findById(req.params.reviewId);
         if (!review) return res.status(404).json({ message: 'Review not found' });
 
-        const store = req.user.role === 'super_admin'
-            ? true
-            : req.user.role === 'admin'
-                ? await Store.findOne({ _id: review.storeId, owner: req.user._id })
-                : req.user.role === 'staff' && String(req.user.store) === String(review.storeId);
-        if (!store) return res.status(403).json({ message: 'You cannot moderate reviews for another store.' });
+        if (!(await canOperateStore(req.user, review.storeId, ['customers.manage', 'pets.manage']))) {
+            return res.status(403).json({ message: 'You cannot moderate reviews for another store.' });
+        }
 
         review.isApproved = !review.isApproved;
         await review.save();

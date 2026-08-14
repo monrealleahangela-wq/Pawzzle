@@ -1,22 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { useAuth } from '../../contexts/AuthContext';
 import storeApplicationService from '../../services/storeApplicationService';
 import authService from '../../services/authService';
-import { 
-  Store, User, Mail, Phone, MapPin, 
-  ShieldCheck, Upload, ArrowRight, CheckCircle2,
-  AlertCircle, Building2, FileCheck, Info,
-  ChevronRight, Lock, Eye, EyeOff, Map as MapIcon,
-  Search, RefreshCw, Heart, Package, Calendar
-} from 'lucide-react';
+import { Store, User, MapPin, ShieldCheck, ArrowRight, CheckCircle2, Building2, FileCheck, Info, Lock, Eye, EyeOff, Map as MapIcon, RefreshCw, Heart, Package, Calendar } from 'lucide-react';
 import { getCitiesByProvince, getBarangaysByCity } from '../../constants/locationConstants';
 import MapPicker from '../../components/MapPicker';
+import PremiumCaptcha from '../../components/PremiumCaptcha';
 
 const SellerJoin = () => {
-  const { register, isAuthenticated, user, completeOAuthLogin } = useAuth();
-  const navigate = useNavigate();
+  const { isAuthenticated, completeOAuthLogin } = useAuth();
   const [loading, setLoading] = useState(false);
   
   // Steps: 1: Owner Profile, 2: Verification, 3: Store Details, 4: Documents
@@ -30,6 +24,8 @@ const SellerJoin = () => {
   const [otpDigits, setOtpDigits] = useState(['', '', '', '', '', '']);
   const [otpLoading, setOtpLoading] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
+  const [captchaToken, setCaptchaToken] = useState(null);
+  const [captchaResetKey, setCaptchaResetKey] = useState(0);
   const otpRefs = React.useRef([]);
 
   const [regData, setRegData] = useState({
@@ -132,11 +128,11 @@ const SellerJoin = () => {
     if (regData.password !== regData.confirmPassword) {
       return toast.error('Passwords do not match');
     }
+    if (!captchaToken) return toast.error('Please complete the security verification.');
     setLoading(true);
     try {
       const { confirmPassword, ...data } = regData;
-      // Start OTP flow — include captcha bypass since seller flow has its own email verification
-      await authService.sendRegisterOTP({ ...data, captchaToken: 'manual_verification_success' });
+      await authService.sendRegisterOTP({ ...data, captchaToken });
       setStep(2);
       setResendCooldown(60);
       toast.success('Verification code sent! Please check your email.');
@@ -147,6 +143,8 @@ const SellerJoin = () => {
       toast.error(errorMsg);
     } finally {
       setLoading(false);
+      setCaptchaToken(null);
+      setCaptchaResetKey(value => value + 1);
     }
   };
 
@@ -372,7 +370,11 @@ const SellerJoin = () => {
                    </div>
                 </div>
 
-                <button type="submit" disabled={loading} className="w-full py-5 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.4em] hover:bg-primary-600 transition-all flex items-center justify-center gap-3 group">
+                <div className="flex justify-center">
+                  <PremiumCaptcha onVerify={setCaptchaToken} resetKey={captchaResetKey} />
+                </div>
+
+                <button type="submit" disabled={loading || !captchaToken} className="w-full py-5 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.4em] hover:bg-primary-600 transition-all flex items-center justify-center gap-3 group disabled:opacity-50">
                    {loading ? 'Creating Account...' : 'Continue to Next Step'}
                    <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
                 </button>

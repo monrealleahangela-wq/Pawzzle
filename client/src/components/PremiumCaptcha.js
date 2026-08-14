@@ -1,59 +1,42 @@
-import React, { useState } from 'react';
-import { Check, ShieldCheck } from 'lucide-react';
+import React, { useEffect, useRef } from 'react';
+import ReCAPTCHA from 'react-google-recaptcha';
+import { AlertCircle } from 'lucide-react';
 
-const PremiumCaptcha = ({ onVerify, theme = 'light' }) => {
-  const [verified, setVerified] = useState(false);
-  const [loading, setLoading] = useState(false);
+const GOOGLE_TEST_SITE_KEY = '6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI';
 
-  const handleVerify = () => {
-    if (verified || loading) return;
-    setLoading(true);
-    // Simulate a brief "security check" animation for premium feel
-    setTimeout(() => {
-      setVerified(true);
-      setLoading(false);
-      if (onVerify) onVerify('manual_verification_success');
-    }, 800);
-  };
+const PremiumCaptcha = ({ onVerify, theme = 'light', resetKey = 0 }) => {
+  const captchaRef = useRef(null);
+  const configuredKey = process.env.REACT_APP_RECAPTCHA_SITE_KEY;
+  const siteKey = process.env.NODE_ENV === 'production'
+    ? configuredKey
+    : (configuredKey || GOOGLE_TEST_SITE_KEY);
+  const securelyConfigured = Boolean(siteKey) && (
+    process.env.NODE_ENV !== 'production' || siteKey !== GOOGLE_TEST_SITE_KEY
+  );
+
+  useEffect(() => {
+    captchaRef.current?.reset();
+  }, [resetKey]);
+
+  if (!securelyConfigured) {
+    return (
+      <div className="w-full max-w-[304px] min-h-[64px] rounded-xl border border-rose-200 bg-rose-50 px-3 py-2.5 flex items-center gap-2 text-rose-700">
+        <AlertCircle className="h-4 w-4 shrink-0" />
+        <p className="text-[10px] font-bold leading-snug">Security verification is not configured. Please contact support.</p>
+      </div>
+    );
+  }
 
   return (
-    <div 
-      onClick={handleVerify}
-      className={`w-full max-w-[280px] h-[64px] rounded-xl border transition-all duration-300 flex items-center px-3.5 cursor-pointer select-none group
-        ${verified 
-          ? 'bg-emerald-50/50 border-emerald-200' 
-          : 'bg-white border-slate-100 hover:border-primary-200 hover:shadow-lg hover:shadow-primary-500/5'
-        }`}
-    >
-      <div className="relative">
-        <div className={`w-7 h-7 rounded-lg border-2 transition-all duration-500 flex items-center justify-center
-          ${verified 
-            ? 'bg-emerald-500 border-emerald-500 scale-110' 
-            : 'bg-slate-50 border-slate-200 group-hover:border-primary-400 group-hover:bg-white'
-          }`}
-        >
-          {loading ? (
-            <div className="w-4 h-4 border-2 border-primary-500 border-t-transparent rounded-full animate-spin" />
-          ) : verified ? (
-            <Check className="text-white h-5 w-5 animate-pop" strokeWidth={4} />
-          ) : null}
-        </div>
-      </div>
-
-      <div className="ml-3 flex-1">
-        <p className={`text-sm font-black tracking-tight transition-colors duration-300
-          ${verified ? 'text-emerald-700' : 'text-slate-600 group-hover:text-primary-600'}`}>
-          {verified ? 'Identity Verified' : 'I am not a robot'}
-        </p>
-        <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">
-          Secure Human Check
-        </p>
-      </div>
-
-      <div className="flex flex-col items-center opacity-40 group-hover:opacity-100 transition-opacity">
-        <ShieldCheck className={`h-5 w-5 ${verified ? 'text-emerald-500' : 'text-primary-500'}`} />
-        <span className="text-[7px] font-black text-slate-400 uppercase tracking-tighter mt-1">PAWZZLE SECURE</span>
-      </div>
+    <div className="w-full max-w-[304px] overflow-hidden rounded-lg">
+      <ReCAPTCHA
+        ref={captchaRef}
+        sitekey={siteKey}
+        theme={theme === 'dark' ? 'dark' : 'light'}
+        onChange={token => onVerify?.(token || null)}
+        onExpired={() => onVerify?.(null)}
+        onErrored={() => onVerify?.(null)}
+      />
     </div>
   );
 };

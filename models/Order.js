@@ -202,6 +202,18 @@ const orderSchema = new mongoose.Schema({
     sellerTaxStatus: String,
     pricingBreakdown: { type: mongoose.Schema.Types.Mixed }
   },
+  refundPolicySnapshot: {
+    type: { type: String, enum: ['full_refund', 'conditional_refund', 'no_refund'] },
+    summary: String,
+    conditions: String,
+    capturedAt: Date
+  },
+  refundPolicyAcknowledgment: {
+    required: { type: Boolean, default: false },
+    acknowledged: { type: Boolean, default: false },
+    acknowledgedAt: Date,
+    acknowledgedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
+  },
   platformCommission: {
     type: Number,
     default: 0

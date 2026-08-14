@@ -1,29 +1,8 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { toast } from 'react-toastify';
 import { bookingService } from '../../services/apiService';
 import { formatTime12h } from '../../utils/timeFormatters';
-import {
-    Calendar,
-    Clock,
-    Search,
-    Download,
-    Eye,
-    X,
-    DollarSign,
-    CheckCircle,
-    XCircle,
-    AlertCircle,
-    Building,
-    PawPrint,
-    Target,
-    Activity,
-    Shield,
-    ShieldCheck,
-    Globe,
-    ArrowRight,
-    Briefcase,
-    ChevronDown
-} from 'lucide-react';
+import { Calendar, Search, Download, Eye, X, DollarSign, CheckCircle, XCircle, AlertCircle, Building, PawPrint, Target, Activity, Shield, Globe, Briefcase } from 'lucide-react';
 
 const BookingHistory = () => {
     const [bookings, setBookings] = useState([]);

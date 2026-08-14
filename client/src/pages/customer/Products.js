@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { productService, getImageUrl } from '../../services/apiService';
-import { Package, Filter, Search, Store, ArrowLeft, ArrowRight, ShoppingCart, Eye, MapPin, Navigation, Zap, Star } from 'lucide-react';
+import { Package, Filter, Search, ArrowLeft, ArrowRight, ShoppingCart, Eye, MapPin, Navigation, Zap, Star } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { useAuth } from '../../contexts/AuthContext';
 import { getCitiesByProvince } from '../../constants/locationConstants';

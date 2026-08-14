@@ -3,10 +3,11 @@ import { useNavigate, useParams, Link, useLocation } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { orderService, adminOrderService, paymentService, deliveryService, reviewService, staffService, getImageUrl } from '../../services/apiService';
 import { useAuth } from '../../contexts/AuthContext';
-import { Heart, Package, ArrowLeft, Truck, CreditCard, MapPin, Store, Star, CheckCircle, AlertCircle, Link2, Navigation, Phone, Activity, ChevronDown, ChevronUp, MessageSquare, FileText, Share2, ClipboardCheck } from 'lucide-react';
+import { Heart, Package, ArrowLeft, Truck, CreditCard, MapPin, Store, Star, CheckCircle, AlertCircle, Link2, Navigation, Phone, Activity, ChevronDown, ChevronUp, MessageSquare, FileText, ClipboardCheck } from 'lucide-react';
 import OrderReviewModal from '../../components/OrderReviewModal';
 import DeliveryAssignmentFields, { emptyExternal } from '../../components/delivery/DeliveryAssignmentFields';
 import { getTaxStatusLabel } from '../../utils/transactionTax';
+import { normalizeRefundPolicy, refundPolicyLabel } from '../../utils/refundPolicy';
 
 const OrderDetail = () => {
   const { id } = useParams();
@@ -29,6 +30,7 @@ const OrderDetail = () => {
   const [thirdPartyRider, setThirdPartyRider] = useState(emptyExternal);
   const [lastRiderLink, setLastRiderLink] = useState('');
   const [deliveryAssignment, setDeliveryAssignment] = useState(null);
+  const orderRefundPolicy = normalizeRefundPolicy(order?.refundPolicySnapshot || order?.store?.refundPolicy);
 
   useEffect(() => {
     if (!order?._id || !order.delivery || user?.role === 'customer') return;
@@ -114,8 +116,6 @@ const OrderDetail = () => {
     }
   };
 
-  const status = order?.status;
-
   const handleFinalizeOrder = async () => {
     try {
       await adminOrderService.updateOrderStatus(id, { status: 'finalized' });
@@ -147,6 +147,9 @@ const OrderDetail = () => {
         VAT (${Number(pricing.vatRatePercent || 0)}%): ₱${Number(pricing.vatAmount || 0).toFixed(2)}
         Final Total: ₱${Number(order.totalAmount).toFixed(2)}
         Payment Status: ${(order.paymentStatus || 'pending').toUpperCase()}
+        Refund Policy: ${refundPolicyLabel(orderRefundPolicy.type)}
+        Policy Summary: ${orderRefundPolicy.summary}
+        Policy Conditions: ${orderRefundPolicy.conditions || 'None specified'}
         Status: ${order.status.toUpperCase()}
       `;
       const blob = new Blob([invoiceData], { type: 'text/plain' });
@@ -441,6 +444,12 @@ const OrderDetail = () => {
                   </div>
                 </div>
               </div>
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                <p className="text-[9px] font-black uppercase tracking-widest text-slate-800">{refundPolicyLabel(orderRefundPolicy.type)} Policy</p>
+                <p className="mt-1 text-[10px] leading-relaxed text-slate-600">{orderRefundPolicy.summary}</p>
+                {orderRefundPolicy.conditions && <p className="mt-1 text-[9px] text-slate-500">Conditions: {orderRefundPolicy.conditions}</p>}
+                {order.refundPolicyAcknowledgment?.required && <p className="mt-2 text-[9px] font-bold text-emerald-700">Acknowledged {order.refundPolicyAcknowledgment.acknowledgedAt ? new Date(order.refundPolicyAcknowledgment.acknowledgedAt).toLocaleString() : 'before payment'}</p>}
+              </div>
               
               {order.paymentDetails?.referenceNumber && (
                 <div className="flex items-center justify-between px-4 py-2 bg-emerald-50 rounded-xl border border-emerald-100">
@@ -580,6 +589,10 @@ const OrderDetail = () => {
               <div className="flex justify-between items-center pb-2 border-b border-slate-50">
                 <span className="text-slate-500 font-bold uppercase tracking-widest text-[10px]">Method</span>
                 <span className="font-black text-slate-900 uppercase">{order.paymentMethod?.replace(/_/g, ' ')}</span>
+              </div>
+              <div className="rounded-xl border border-slate-100 bg-slate-50 p-3">
+                <p className="text-[9px] font-black uppercase tracking-widest text-slate-800">{refundPolicyLabel(orderRefundPolicy.type)} Policy</p>
+                <p className="mt-1 text-[10px] leading-relaxed text-slate-500">{orderRefundPolicy.summary}</p>
               </div>
               <div className="flex justify-between items-center pb-2 border-b border-slate-50">
                 <span className="text-slate-500 font-bold uppercase tracking-widest text-[10px]">Status</span>

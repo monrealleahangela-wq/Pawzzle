@@ -1,17 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import {
-  Plus, Edit2, Trash2, Clock, Home, MapPin, Package, Users, Shield,
-  Zap, Activity, ChevronRight, X, Target, ArrowUpRight, Info, Image as ImageIcon,
-  CheckCircle, AlertTriangle, Star, Briefcase, Settings, Calendar, Search, ChevronDown,
-  DollarSign, Tag, Layers, ChevronLeft, Ruler, Weight, Heart, AlertCircle, Timer
-} from 'lucide-react';
+import { Plus, Edit2, Trash2, Clock, Home, Package, Users, Shield, Activity, ChevronRight, X, Target, ArrowUpRight, Info, Image as ImageIcon, CheckCircle, Briefcase, Settings, Calendar, Search, ChevronDown, DollarSign, Layers, ChevronLeft, Ruler, Weight, Heart, AlertCircle, Timer } from 'lucide-react';
 
-import { serviceService, adminServiceService, uploadService, getImageUrl, staffService, dssService } from '../../services/apiService';
+import { adminServiceService, uploadService, getImageUrl, staffService, dssService } from '../../services/apiService';
 import { useAuth } from '../../contexts/AuthContext';
 import { useRealTimeUpdates } from '../../hooks/useRealTimeUpdates';
 import { SERVICE_CATEGORIES } from '../../constants/serviceCategories';
+import { PLATFORM_ADMIN_ROLES, STORE_ADMIN_ROLES, OPERATIONAL_ROLES, effectiveStaffType, hasUiActionPermission } from '../../utils/authorization';
 
 const PhilippinePeso = ({ className }) => (
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
@@ -75,10 +71,11 @@ const ServiceManagement = () => {
   const [dssConfig, setDssConfig] = useState({ enabled: true, weights: { petType: 25, customerNeed: 30, coat: 15, size: 10, history: 10, preference: 10 }, thresholds: { high: 75, good: 50 } });
 
   // Permission Checks
-  const isAdmin = ['admin', 'super_admin'].includes(user?.role);
-  const canCreate = isAdmin || user?.permissions?.services?.create || user?.permissions?.services?.fullAccess;
-  const canUpdate = isAdmin || user?.permissions?.services?.update || user?.permissions?.services?.fullAccess;
-  const canDelete = isAdmin || user?.permissions?.services?.delete || user?.permissions?.services?.fullAccess;
+  const isAdmin = PLATFORM_ADMIN_ROLES.has(user?.role) || STORE_ADMIN_ROLES.has(user?.role);
+  const isServiceManager = effectiveStaffType(user) === 'manager';
+  const canCreate = hasUiActionPermission(user, 'services', 'create', isAdmin || isServiceManager);
+  const canUpdate = hasUiActionPermission(user, 'services', 'update', isAdmin || isServiceManager);
+  const canDelete = hasUiActionPermission(user, 'services', 'delete', isAdmin || isServiceManager);
   const [submitting, setSubmitting] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCategory, setFilterCategory] = useState('');
@@ -163,7 +160,7 @@ const ServiceManagement = () => {
   const fetchServices = async () => {
     try {
       const user = JSON.parse(localStorage.getItem('user') || '{}');
-      if (user.role === 'super_admin' || user.role === 'admin' || user.role === 'staff') {
+      if (PLATFORM_ADMIN_ROLES.has(user.role) || STORE_ADMIN_ROLES.has(user.role) || OPERATIONAL_ROLES.has(user.role)) {
         const response = await adminServiceService.getAllServices();
         setServices(response.data.services || []);
       }
@@ -376,7 +373,7 @@ const ServiceManagement = () => {
   return (
     <div className="min-h-screen bg-slate-50/50 p-4 sm:p-8 space-y-8">
       {/* Header */}
-      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-6 bg-white p-6 sm:p-10 rounded-[3rem] border border-slate-100 shadow-sm relative overflow-hidden">
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-4 bg-white p-4 sm:p-6 rounded-2xl border border-slate-100 shadow-sm relative overflow-hidden">
         <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/5 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl pointer-events-none" />
         <div className="relative z-10">
           <div className="flex items-center gap-3 mb-4">
@@ -385,7 +382,7 @@ const ServiceManagement = () => {
             </div>
             <span className="text-[10px] font-black text-indigo-600 uppercase tracking-[0.4em]">ADMIN PANEL : SERVICES</span>
           </div>
-          <h1 className="text-3xl sm:text-5xl font-black text-slate-900 uppercase tracking-tighter leading-[0.9] mb-3">
+          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 uppercase tracking-tight leading-none mb-2">
             Service <span className="text-indigo-600">Manager</span>
           </h1>
           <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">

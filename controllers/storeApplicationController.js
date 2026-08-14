@@ -235,7 +235,7 @@ const submitExpansionRequest = async (req, res) => {
 
     // Notify Super Admin
     try {
-      const superAdmin = await User.findOne({ role: 'super_admin' });
+      const superAdmin = await User.findOne({ role: { $in: ['super_admin', 'platform_admin'] } });
       if (superAdmin) {
         await createNotification({
           recipient: superAdmin._id,

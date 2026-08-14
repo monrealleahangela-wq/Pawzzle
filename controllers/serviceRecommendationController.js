@@ -3,6 +3,9 @@ const Service = require('../models/Service');
 const Booking = require('../models/Booking');
 const Store = require('../models/Store');
 const ServiceDSSConfig = require('../models/ServiceDSSConfig');
+const VaccinationRecord = require('../models/VaccinationRecord');
+const { isPlatformAdmin } = require('../config/permissions');
+const { canAccessStore } = require('../utils/authorizationPolicy');
 
 const DEFAULTS = { enabled: true, weights: { petType: 25, customerNeed: 30, coat: 15, size: 10, history: 10, preference: 10 }, thresholds: { high: 75, good: 50 } };
 const normalized = value => String(value || '').trim().toLowerCase().replace(/\s+/g, '_');
@@ -32,7 +35,10 @@ const getServiceRecommendations = async (req, res) => {
     const storeIds = [...new Set(activeServices.map(service => service.store?._id?.toString()).filter(Boolean))];
     const configs = await ServiceDSSConfig.find({ store: { $in: storeIds } }).lean();
     const configByStore = Object.fromEntries(configs.map(config => [config.store.toString(), config]));
-    const completed = await Booking.find({ customer: req.user._id, status: 'completed', isDeleted: { $ne: true }, 'pet.name': new RegExp(`^${String(pet.name).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i'), 'pet.type': new RegExp(`^${String(pet.type).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') }).select('service bookingDate store notes').lean();
+    const [completed, vaccinationRecords] = await Promise.all([
+      Booking.find({ customer: req.user._id, status: 'completed', isDeleted: { $ne: true }, 'pet.name': new RegExp(`^${String(pet.name).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i'), 'pet.type': new RegExp(`^${String(pet.type).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') }).select('service bookingDate store notes').sort({ bookingDate: -1 }).lean(),
+      VaccinationRecord.find({ pet: pet._id }).select('vaccineName administeredAt nextDueAt store').sort({ nextDueAt: 1 }).lean()
+    ]);
     const completedServiceIds = new Set(completed.map(booking => booking.service?.toString()));
     const profileHistoryIds = new Set((pet.groomingHistory?.previousServices || []).map(id => id.toString()));
     const results = [];
@@ -68,10 +74,55 @@ const getServiceRecommendations = async (req, res) => {
       if (!scoreResult) continue;
       const { evaluatedWeight, earnedWeight, score } = scoreResult;
       const thresholds = { ...DEFAULTS.thresholds, ...(config.thresholds || {}) };
-      results.push({ service: { _id: service._id, name: service.name, description: service.description, price: service.price, duration: service.duration, category: service.category, images: service.images || [], store: service.store }, score, matchLevel: score >= thresholds.high ? 'High' : score >= thresholds.good ? 'Good' : 'Possible', explanations: parts.filter(part => part.matched).map(part => part.explanation), calculation: parts.map(part => ({ ...part, points: part.contribution })), scoreSummary: { evaluatedWeight, earnedWeight }, thresholds });
+      const contextualReasons = [];
+      const evidence = parts.filter(part => part.matched).map(part => part.explanation);
+      const now = new Date();
+      const ageInYears = pet.birthday
+        ? Math.max(0, (now - new Date(pet.birthday)) / (365.25 * 86400000))
+        : pet.approximateAge?.unit === 'years' ? Number(pet.approximateAge.value) : pet.approximateAge?.unit === 'months' ? Number(pet.approximateAge.value) / 12 : null;
+      if (ageInYears !== null && Number.isFinite(ageInYears)) evidence.push(`Customer pet profile records an age of approximately ${ageInYears < 1 ? `${Math.round(ageInYears * 12)} months` : `${Number(ageInYears.toFixed(1))} years`}`);
+      const serviceHistory = completed.filter(booking => String(booking.service) === String(service._id));
+      if (serviceHistory.length) {
+        const lastDate = new Date(serviceHistory[0].bookingDate);
+        contextualReasons.push(`${service.name} appears ${serviceHistory.length} time${serviceHistory.length === 1 ? '' : 's'} in ${pet.name}'s completed service history; the latest was ${lastDate.toLocaleDateString('en-PH')}.`);
+        evidence.push(`${serviceHistory.length} completed matching booking${serviceHistory.length === 1 ? '' : 's'}`);
+      }
+      const serviceText = `${service.name || ''} ${service.category || ''} ${service.subCategory || ''}`.toLowerCase();
+      if (/groom/.test(serviceText) && pet.groomingHistory?.lastGroomingDate) {
+        const daysSince = Math.max(0, Math.floor((now - new Date(pet.groomingHistory.lastGroomingDate)) / 86400000));
+        contextualReasons.push(`The customer-recorded last grooming date was ${daysSince} day${daysSince === 1 ? '' : 's'} ago.`);
+        evidence.push(`Last grooming date: ${new Date(pet.groomingHistory.lastGroomingDate).toLocaleDateString('en-PH')}`);
+      }
+      if (/board|hotel/.test(serviceText)) {
+        const boardingCount = completed.filter(booking => String(booking.service) === String(service._id)).length;
+        if (boardingCount) contextualReasons.push(`${pet.name} has ${boardingCount} completed booking${boardingCount === 1 ? '' : 's'} for this boarding service.`);
+      }
+      if (/vaccin|immun/.test(serviceText)) {
+        const next = vaccinationRecords.find(record => record.nextDueAt);
+        if (next) {
+          const days = Math.ceil((new Date(next.nextDueAt) - now) / 86400000);
+          contextualReasons.push(days >= 0
+            ? `${next.vaccineName}'s recorded next-due date is in ${days} day${days === 1 ? '' : 's'}.`
+            : `${next.vaccineName}'s recorded next-due date passed ${Math.abs(days)} day${Math.abs(days) === 1 ? '' : 's'} ago.`);
+          evidence.push(`Vaccination record nextDueAt: ${new Date(next.nextDueAt).toISOString()}`);
+        }
+      }
+      const matchedReasons = [...parts.filter(part => part.matched).map(part => part.explanation), ...contextualReasons];
+      results.push({
+        service: { _id: service._id, name: service.name, description: service.description, price: service.price, duration: service.duration, category: service.category, images: service.images || [], store: service.store },
+        score,
+        matchLevel: score >= thresholds.high ? 'High' : score >= thresholds.good ? 'Good' : 'Possible',
+        explanations: matchedReasons,
+        why: matchedReasons.length ? matchedReasons.join(' ') : 'This service matches the configured eligibility criteria for the selected pet.',
+        basedOn: evidence,
+        recommendedAction: `Review ${service.name}'s details, availability, and store-provided requirements before booking.`,
+        calculation: parts.map(part => ({ ...part, points: part.contribution })),
+        scoreSummary: { evaluatedWeight, earnedWeight },
+        thresholds
+      });
     }
     results.sort((a, b) => b.score - a.score || a.service.name.localeCompare(b.service.name));
-    res.json({ pet, recommendations: results, completedServiceHistory: completed, methodology: 'Deterministic weighted scoring using customer-provided pet data and store-configured service criteria.', disclaimer: 'This system provides service recommendations only. For health concerns or medical advice, please consult a qualified veterinarian.' });
+    res.json({ pet, recommendations: results, completedServiceHistory: completed, vaccinationEvidenceCount: vaccinationRecords.length, methodology: 'Deterministic weighted scoring using customer-provided pet data, recorded care history, and store-configured service criteria.', disclaimer: 'This system provides service recommendations only and does not diagnose conditions or verify that a medical service is required. For health concerns or medical advice, please consult a qualified veterinarian.' });
   } catch (error) {
     console.error('Service recommendation error:', error);
     res.status(500).json({ message: 'Unable to calculate service recommendations.' });
@@ -81,7 +132,7 @@ const getServiceRecommendations = async (req, res) => {
 const resolveAdminStore = async req => {
   if (req.query.storeId) {
     const store = await Store.findById(req.query.storeId);
-    if (store && (req.user.role === 'super_admin' || store.owner.toString() === req.user._id.toString() || req.user.store?.toString() === store._id.toString())) return store;
+    if (store && (isPlatformAdmin(req.user) || await canAccessStore(req.user, store._id))) return store;
     return null;
   }
   if (req.user.store) return Store.findById(req.user.store);

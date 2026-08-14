@@ -18,7 +18,7 @@ const {
   receiveLot,
   listTransactions
 } = require('../controllers/inventoryLotController');
-const { authenticate, adminOrStaff, requirePermission } = require('../middleware/auth');
+const { authenticate, requirePermission } = require('../middleware/auth');
 const { storeAdminOnly, canAccessStore } = require('../middleware/storeAuth');
 
 // Validation rules
@@ -62,7 +62,7 @@ router.get('/store/:storeId/alerts', authenticate, canAccessStore, getLowStockAl
 router.post('/store/:storeId', authenticate, storeAdminOnly, addToInventoryValidation, addToInventory);
 
 // Inventory item routes
-router.put('/:id', authenticate, storeAdminOnly, updateQuantityValidation, updateInventoryQuantity);
-router.delete('/:id', authenticate, storeAdminOnly, deleteInventoryItem);
+router.put('/:id', authenticate, storeAdminOnly, requirePermission('inventory.adjust'), updateQuantityValidation, updateInventoryQuantity);
+router.delete('/:id', authenticate, storeAdminOnly, requirePermission('inventory.adjust'), deleteInventoryItem);
 
 module.exports = router;

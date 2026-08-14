@@ -1,19 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import {
-    Ticket,
-    Plus,
-    Search,
-    Edit2,
-    Trash2,
-    ToggleLeft,
-    ToggleRight,
-    Calendar,
-    Tag,
-    Clock,
-    AlertCircle,
-    CheckCircle2,
-    X
-} from 'lucide-react';
+import { Ticket, Plus, Search, Edit2, Trash2, ToggleLeft, ToggleRight, Calendar, Tag, Clock, X } from 'lucide-react';
 
 import { toast } from 'react-toastify';
 import { adminVoucherService } from '../../services/apiService';

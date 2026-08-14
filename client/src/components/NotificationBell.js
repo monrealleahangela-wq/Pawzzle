@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Bell, X, Check, Trash2, ExternalLink } from 'lucide-react';
+import { Bell, Trash2 } from 'lucide-react';
 import { useNotifications } from '../contexts/NotificationContext';
 import formatDistanceToNow from 'date-fns/formatDistanceToNow';
 import { useNavigate } from 'react-router-dom';

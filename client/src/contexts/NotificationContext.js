@@ -1,13 +1,14 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import notificationService from '../services/notificationService';
 import { useAuth } from './AuthContext';
+import socket from '../utils/socket';
 
 const NotificationContext = createContext();
 
 export const NotificationProvider = ({ children }) => {
     const [notifications, setNotifications] = useState([]);
     const [unreadCount, setUnreadCount] = useState(0);
-    const [loading, setLoading] = useState(false);
+    const [loading] = useState(false);
     const { user } = useAuth();
 
     const fetchNotifications = useCallback(async () => {
@@ -26,9 +27,22 @@ export const NotificationProvider = ({ children }) => {
     useEffect(() => {
         if (user) {
             fetchNotifications();
+            const receiveNotification = notification => {
+                setNotifications(previous => previous.some(item => item._id === notification._id)
+                    ? previous
+                    : [notification, ...previous]);
+                if (!notification.isRead) setUnreadCount(previous => previous + 1);
+            };
+            socket.on('newNotification', receiveNotification);
+            if (!socket.connected) socket.connect();
             // Poll for new notifications every 30 seconds
-            const interval = setInterval(fetchNotifications, 30000);
-            return () => clearInterval(interval);
+            const interval = setInterval(() => {
+                if (!document.hidden) fetchNotifications();
+            }, 30000);
+            return () => {
+                clearInterval(interval);
+                socket.off('newNotification', receiveNotification);
+            };
         } else {
             setNotifications([]);
             setUnreadCount(0);

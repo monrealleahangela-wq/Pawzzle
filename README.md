@@ -1,18 +1,22 @@
-# PetStore Platform
+# Pawzzle
 
-A comprehensive petstore platform with role-based access control (Super Admin, Admin, Customer) built with Node.js, Express, MongoDB, and React.
+A multi-store pet commerce, veterinary-service, workforce, procurement, finance, and logistics platform built with Node.js, Express, MongoDB, and React.
 
 ## Features
 
 ### Role-Based Access Control
-- **Super Admin**: Full system access, user management, system configuration
-- **Admin**: Pet and product management, order processing
-- **Customer**: Browse pets/products, place orders, manage profile
+- **Platform Admin** (`super_admin`, `platform_admin`): Platform-wide stores, users, reports, payouts, and oversight
+- **Store Owner** (`admin`, `store_owner`): Full management of the owner's store
+- **Operational Staff**: Per-role, same-store access for managers, cashiers, inventory, procurement, finance, pet-care, and delivery staff
+- **Customer**: Own pets, shopping, bookings, payments, messages, reviews, and deliveries
+- **Supplier**: Own supplier profile, catalog, purchase orders, and invoices
 
 ### Core Functionality
 - **Pet Management**: Add, edit, delete pets with detailed information
 - **Product Management**: Inventory management with stock tracking
 - **Order Processing**: Complete order lifecycle from cart to delivery
+- **Service Booking**: Proposal, specialist selection, PayMongo payment, care timeline, and reviews
+- **Store Operations**: Staff, role policies, inventory, procurement, finance, logistics, reports, and DSS
 - **User Authentication**: Secure login/registration with JWT
 - **Responsive Design**: Mobile-friendly SPA with modern UI
 
@@ -20,7 +24,9 @@ A comprehensive petstore platform with role-based access control (Super Admin, A
 - MVC Architecture
 - RESTful API
 - JWT Authentication
-- Role-based Authorization
+- Per-role RBAC and store tenant isolation
+- PayMongo-only payment processing
+- Authenticated Socket.IO updates and Cloudinary ownership controls
 - Real-time Cart Management
 - Search & Filtering
 - Pagination
@@ -49,7 +55,7 @@ A comprehensive petstore platform with role-based access control (Super Admin, A
 ## Installation
 
 ### Prerequisites
-- Node.js (v14 or higher)
+- Node.js (v20 or higher)
 - MongoDB (running locally or connection string)
 - npm or yarn
 
@@ -65,7 +71,7 @@ npm install
 4. Create `.env` file in root:
 ```env
 PORT=5000
-MONGODB_URI=mongodb://localhost:27017/petstore
+MONGODB_URI=mongodb://localhost:27017/pawzzle
 JWT_SECRET=your_jwt_secret_key_here_change_in_production
 NODE_ENV=development
 ```
@@ -173,17 +179,17 @@ After setting up the database, you can create these demo accounts:
 
 ### Customer Account
 - Email: customer@test.com
-- Password: password123
+- Password: value supplied through `SEED_TEST_PASSWORD`
 - Role: customer
 
 ### Admin Account
 - Email: admin@test.com
-- Password: password123
+- Password: value supplied through `SEED_TEST_PASSWORD`
 - Role: admin
 
 ### Super Admin Account
 - Email: super@test.com
-- Password: password123
+- Password: value supplied through `SEED_TEST_PASSWORD`
 - Role: super_admin
 
 ## Project Structure
@@ -224,7 +230,7 @@ petshop_platform/
 ### Order Management
 - Complete order lifecycle
 - Order status tracking
-- Payment method support
+- PayMongo-only payment processing with transaction reconciliation
 - Shipping address management
 
 ### Admin Features
@@ -258,6 +264,10 @@ Make sure to set these environment variables:
 - `MONGODB_URI` - MongoDB connection string
 - `JWT_SECRET` - JWT secret key
 - `NODE_ENV` - Environment (development/production)
+
+## Release and Defense Documentation
+
+See [`docs/PHASE7_DEFENSE_READINESS.md`](docs/PHASE7_DEFENSE_READINESS.md) for the completed module checklist, user-role matrix, defense summary, and remaining live-service verification items.
 
 ## Contributing
 

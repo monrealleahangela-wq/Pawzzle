@@ -1,19 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { storeService, getImageUrl } from '../../services/apiService';
-import {
-    Building,
-    MapPin,
-    Search,
-    ChevronRight,
-    TrendingUp,
-    Package,
-    Scissors,
-    Heart,
-    Store as StoreIcon,
-    Navigation,
-    Star
-} from 'lucide-react';
+import { Building, MapPin, Search, TrendingUp, Package, Scissors, Heart, Store as StoreIcon, Navigation, Star } from 'lucide-react';
 import { toast } from 'react-toastify';
 
 const calculateDistance = (lat1, lon1, lat2, lon2) => {

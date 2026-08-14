@@ -5,9 +5,13 @@ const Store = require(path.join(__dirname, '..', 'models', 'Store'));
 
 // MongoDB connection string
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/petshop_platform';
+const ADMIN_PASSWORD = process.env.ASSIGN_ADMIN_PASSWORD;
 
 async function assignAdminToStore() {
   try {
+    if (!ADMIN_PASSWORD || ADMIN_PASSWORD.length < 12) {
+      throw new Error('ASSIGN_ADMIN_PASSWORD must be configured with at least 12 characters');
+    }
     console.log('🔌 Connecting to MongoDB...');
     await mongoose.connect(MONGODB_URI);
     console.log('✅ Connected to MongoDB');
@@ -27,8 +31,7 @@ async function assignAdminToStore() {
       adminUser = new User({
         username: 'admintest',
         email: 'admin@test.com',
-        password: 'admin123',
-        plainPassword: 'admin123',
+        password: ADMIN_PASSWORD,
         role: 'admin',
         firstName: 'Admin',
         lastName: 'Test',
@@ -92,7 +95,6 @@ async function assignAdminToStore() {
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     console.log('Admin Username:', adminUser.username);
     console.log('Admin Email:', adminUser.email);
-    console.log('Admin Password: admin123');
     console.log('Admin Role:', adminUser.role);
     console.log('Store ID:', adminUser.store);
     console.log('Store Name:', store.name);
@@ -101,7 +103,6 @@ async function assignAdminToStore() {
     console.log('\n✅ Admin test account is now ready!');
     console.log('You can now login with:');
     console.log('  Username: admintest');
-    console.log('  Password: admin123');
     console.log('');
     console.log('Features now available:');
     console.log('  ✅ Manage services (/admin/services)');

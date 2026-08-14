@@ -12,6 +12,7 @@
     "install-client": "cd client && npm install",
     "install-all": "npm install && npm run install-client",
     "seed": "node scripts/seed.js",
+    "bootstrap-superadmin": "node scripts/seed-super-admin.js",
     "test": "node --test tests/*.test.js"
   },
   "dependencies": {

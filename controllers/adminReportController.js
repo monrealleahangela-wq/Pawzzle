@@ -2,11 +2,19 @@ const Report = require('../models/Report');
 const User = require('../models/User');
 const Notification = require('../models/Notification');
 const Store = require('../models/Store');
+const { isPlatformAdmin, isOperationalStaff } = require('../config/permissions');
+const { canAccessStore } = require('../utils/authorizationPolicy');
 
 // Create a report against a user
 const createReport = async (req, res) => {
     try {
         const { reportedUserId, reason, details, evidence, reportType, storeId } = req.body;
+
+        const reportStoreId = storeId || req.user.store || null;
+        if (!isPlatformAdmin(req.user)
+            && (!reportStoreId || !(await canAccessStore(req.user, reportStoreId)))) {
+            return res.status(403).json({ message: 'Access denied to this store' });
+        }
 
         const reportedUser = await User.findById(reportedUserId);
         if (!reportedUser) {
@@ -20,7 +28,7 @@ const createReport = async (req, res) => {
             details,
             evidence: evidence || [],
             reportType: reportType || 'other',
-            store: storeId || req.user.store || null
+            store: reportStoreId
         });
 
         await report.save();
@@ -49,9 +57,9 @@ const getAllReports = async (req, res) => {
         const { status, storeId, page = 1, limit = 10 } = req.query;
         let filter = {};
 
-        if (req.user.role === 'super_admin') {
+        if (isPlatformAdmin(req.user)) {
             if (storeId) filter.store = storeId;
-        } else if (req.user.role === 'staff') {
+        } else if (isOperationalStaff(req.user)) {
             if (req.user.store) {
                 filter.store = req.user.store;
             } else {
@@ -113,7 +121,7 @@ const updateReportStatus = async (req, res) => {
         const { id } = req.params;
         const { status, adminNotes, actionTaken } = req.body;
 
-        if (req.user.role !== 'super_admin') {
+        if (!isPlatformAdmin(req.user)) {
             return res.status(403).json({ message: 'Only super admins can update report status' });
         }
 

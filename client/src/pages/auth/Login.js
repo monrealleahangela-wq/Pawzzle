@@ -2,9 +2,10 @@ import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { useAuth } from '../../contexts/AuthContext';
-import { Heart, Mail, Lock, Eye, EyeOff, AlertCircle, Send, MessageSquare, X } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, AlertCircle, Send, MessageSquare, X } from 'lucide-react';
 import { supportService } from '../../services/apiService';
 import PremiumCaptcha from '../../components/PremiumCaptcha';
+import { portalHomeForRole } from '../../utils/authorization';
 
 const BACKEND = process.env.REACT_APP_API_URL?.replace('/api', '') || 'http://localhost:5000';
 
@@ -25,6 +26,7 @@ const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [captchaToken, setCaptchaToken] = useState(null);
+  const [captchaResetKey, setCaptchaResetKey] = useState(0);
 
   const { login, verify2FA } = useAuth();
   const navigate = useNavigate();
@@ -45,9 +47,7 @@ const Login = () => {
     const savedRedirect = localStorage.getItem('redirectPath');
     if (savedRedirect) { localStorage.removeItem('redirectPath'); return savedRedirect; }
     const user = JSON.parse(localStorage.getItem('user') || '{}');
-    if (user.role === 'super_admin') return '/superadmin/dashboard';
-    if (user.role === 'admin' || user.role === 'staff') return '/admin/dashboard';
-    return '/home';
+    return portalHomeForRole(user.role);
   };
 
   const handleChange = (e) => {
@@ -101,6 +101,8 @@ const Login = () => {
       toast.error('Login failed. Please try again.');
     } finally {
       setLoading(false);
+      setCaptchaToken(null);
+      setCaptchaResetKey(value => value + 1);
     }
   };
 
@@ -249,7 +251,7 @@ const Login = () => {
 
               {/* Premium Human Verification - No glitches, perfect alignment */}
               <div className="flex justify-center pt-2">
-                <PremiumCaptcha onVerify={(token) => setCaptchaToken(token)} />
+                <PremiumCaptcha onVerify={setCaptchaToken} resetKey={captchaResetKey} />
               </div>
 
               <button

@@ -1,12 +1,13 @@
 const { validationResult } = require('express-validator');
 const Pet = require('../models/Pet');
 const Store = require('../models/Store');
+const { isPlatformAdmin, isStoreAdmin, isOperationalStaff } = require('../config/permissions');
+const { canOperateStore } = require('../utils/authorizationPolicy');
 
 // Get all pets with filtering
 const getAllPets = async (req, res) => {
   try {
     console.log('🐕 getAllPets called with path:', req.path);
-    console.log('👤 User:', req.user);
 
     const { species, breed, size, gender, minAge, maxAge, minPrice, maxPrice, search, isAvailable, city, page = 1, limit = 10 } = req.query;
 
@@ -126,6 +127,10 @@ const getPetById = async (req, res) => {
     if (!pet || pet.isDeleted) {
       return res.status(404).json({ message: 'Pet not found' });
     }
+    if (req.baseUrl?.includes('/admin')
+        && !(await canOperateStore(req.user, pet.store?._id || pet.store, ['pets.view', 'pets.manage', 'inventory.view']))) {
+      return res.status(403).json({ message: 'Access denied for this pet listing.' });
+    }
 
     res.json({ pet });
   } catch (error) {
@@ -145,7 +150,7 @@ const createPet = async (req, res) => {
     // Find the store for this user (admin or staff)
     let store;
     
-    if (req.user.role === 'staff') {
+    if (isOperationalStaff(req.user)) {
         if (req.user.store) {
             store = await Store.findById(req.user.store);
         }
@@ -235,7 +240,7 @@ const updatePet = async (req, res) => {
       }
     }
 
-    if (req.user.role !== 'super_admin' && !isOwner && !isStoreStaff && !isStoreOwner) {
+    if (!(await canOperateStore(req.user, pet.store, ['pets.manage', 'inventory.adjust']))) {
       console.log('📝 updatePet ACCESS DENIED');
       return res.status(403).json({ message: 'Access denied' });
     }
@@ -262,7 +267,7 @@ const updatePet = async (req, res) => {
     if (!pet.store) {
       console.log('📝 updatePet ATTEMPTING TO FIX MISSING STORE');
       let storeId = req.user.store;
-      if (!storeId && (req.user.role === 'admin' || req.user.role === 'super_admin')) {
+      if (!storeId && (isStoreAdmin(req.user) || isPlatformAdmin(req.user))) {
         const storeRes = await Store.findOne({ owner: req.user._id });
         if (storeRes) storeId = storeRes._id;
       }
@@ -321,7 +326,7 @@ const deletePet = async (req, res) => {
       }
     }
 
-    if (req.user.role !== 'super_admin' && !isOwner && !isStoreStaff && !isStoreOwner) {
+    if (!(await canOperateStore(req.user, pet.store, ['pets.manage', 'inventory.adjust']))) {
       return res.status(403).json({ message: 'Access denied' });
     }
 

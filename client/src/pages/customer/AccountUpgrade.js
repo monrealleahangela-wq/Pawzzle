@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
 import { useAuth } from '../../contexts/AuthContext';
 import storeApplicationService from '../../services/storeApplicationService';
-import { Building, FileText, Upload, Check, AlertCircle, User, Store, ArrowRight } from 'lucide-react';
+import { Check, AlertCircle, User, Store, ArrowRight } from 'lucide-react';
 
 const AccountUpgrade = () => {
   const { user, updateUser } = useAuth();

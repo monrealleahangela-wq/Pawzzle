@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Search, Filter, X, ChevronRight, Navigation, MapPin, Heart, Package, Scissors, Store as StoreIcon } from 'lucide-react';
+import { Search, Filter, X, ChevronRight, Heart, Package, Scissors, Store as StoreIcon } from 'lucide-react';
 import { petService, productService, serviceService, storeService, getImageUrl } from '../services/apiService';
 
 const GlobalSearch = ({ isScrolled }) => {
@@ -185,7 +185,7 @@ const GlobalSearch = ({ isScrolled }) => {
                                     {results.pets.map(pet => (
                                         <button key={pet._id} onClick={() => { navigate(`/pets/${pet._id}`); setIsOpen(false); }} className="w-full flex items-center gap-3 p-2 hover:bg-slate-50 rounded-2xl transition-all group text-left">
                                             <div className="w-10 h-10 bg-slate-100 rounded-xl overflow-hidden group-hover:scale-110 transition-transform">
-                                                {pet.images?.[0] ? <img src={getImageUrl(pet.images[0])} className="w-full h-full object-cover" /> : <Heart className="h-full w-full p-2 text-primary-200" />}
+                                                {pet.images?.[0] ? <img src={getImageUrl(pet.images[0])} alt="" loading="lazy" className="w-full h-full object-cover" /> : <Heart className="h-full w-full p-2 text-primary-200" />}
                                             </div>
                                             <div className="flex-1 min-w-0">
                                                 <p className="text-[10px] font-black text-slate-900 uppercase truncate">{pet.name}</p>
@@ -203,7 +203,7 @@ const GlobalSearch = ({ isScrolled }) => {
                                     {results.products.map(prod => (
                                         <button key={prod._id} onClick={() => { navigate(`/products/${prod._id}`); setIsOpen(false); }} className="w-full flex items-center gap-3 p-2 hover:bg-slate-50 rounded-2xl transition-all group text-left">
                                             <div className="w-10 h-10 bg-slate-100 rounded-xl overflow-hidden group-hover:scale-110 transition-transform">
-                                                {prod.images?.[0] ? <img src={getImageUrl(prod.images[0])} className="w-full h-full object-cover" /> : <Package className="h-full w-full p-2 text-secondary-200" />}
+                                                {prod.images?.[0] ? <img src={getImageUrl(prod.images[0])} alt="" loading="lazy" className="w-full h-full object-cover" /> : <Package className="h-full w-full p-2 text-secondary-200" />}
                                             </div>
                                             <div className="flex-1 min-w-0">
                                                 <p className="text-[10px] font-black text-slate-900 uppercase truncate">{prod.name}</p>
@@ -221,7 +221,7 @@ const GlobalSearch = ({ isScrolled }) => {
                                     {results.services.map(service => (
                                         <button key={service._id} onClick={() => { navigate(`/services/${service._id}`); setIsOpen(false); }} className="w-full flex items-center gap-3 p-2 hover:bg-slate-50 rounded-2xl transition-all group text-left">
                                             <div className="w-10 h-10 bg-primary-50 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform overflow-hidden">
-                                                {service.images?.[0] ? <img src={getImageUrl(service.images[0])} className="w-full h-full object-cover" /> : <Scissors size={18} className="text-primary-600" />}
+                                                {service.images?.[0] ? <img src={getImageUrl(service.images[0])} alt="" loading="lazy" className="w-full h-full object-cover" /> : <Scissors size={18} className="text-primary-600" />}
                                             </div>
                                             <div className="flex-1 min-w-0">
                                                 <p className="text-[10px] font-black text-slate-900 uppercase truncate">{service.name}</p>
@@ -239,7 +239,7 @@ const GlobalSearch = ({ isScrolled }) => {
                                     {results.stores.map(store => (
                                         <button key={store._id} onClick={() => { navigate(`/stores/${store._id}`); setIsOpen(false); }} className="w-full flex items-center gap-3 p-2 hover:bg-slate-50 rounded-2xl transition-all group text-left">
                                             <div className="w-10 h-10 bg-slate-100 rounded-xl overflow-hidden group-hover:scale-110 transition-transform">
-                                                {store.logo ? <img src={store.logo} className="w-full h-full object-cover" /> : <StoreIcon className="h-full w-full p-2 text-slate-400" />}
+                                                {store.logo ? <img src={store.logo} alt="" loading="lazy" className="w-full h-full object-cover" /> : <StoreIcon className="h-full w-full p-2 text-slate-400" />}
                                             </div>
                                             <div className="flex-1 min-w-0">
                                                 <p className="text-[10px] font-black text-slate-900 uppercase truncate">{store.name}</p>

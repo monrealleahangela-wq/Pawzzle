@@ -3,6 +3,8 @@ const Inventory = require('../models/Inventory');
 const Product = require('../models/Product');
 const Store = require('../models/Store');
 const StockSyncService = require('../services/stockSyncService');
+const { isPlatformAdmin, isStoreAdmin, isOperationalStaff } = require('../config/permissions');
+const { canOperateStore } = require('../utils/authorizationPolicy');
 
 const User = require('../models/User');
 
@@ -12,7 +14,7 @@ const resolveAdminStore = async (user) => {
   if (user.store) return user.store;
 
   // 2. Try to find an existing store owned by this user (for admins)
-  if (user.role === 'admin') {
+  if (isStoreAdmin(user)) {
     let store = await Store.findOne({ owner: user._id });
 
     try {
@@ -176,9 +178,8 @@ const updateInventoryQuantity = async (req, res) => {
     }
 
     // Verify store access (Super admin bypasses this)
-    if (req.user.role !== 'super_admin') {
-      const userStoreId = await resolveAdminStore(req.user);
-      if (!userStoreId || inventory.store.toString() !== userStoreId.toString()) {
+    if (!isPlatformAdmin(req.user)) {
+      if (!(await canOperateStore(req.user, inventory.store, ['inventory.adjust']))) {
         console.log(`🚫 Inventory Update blocked: User store ${userStoreId} != inventory store ${inventory.store}`);
         return res.status(403).json({ message: 'Access denied. You can only update inventory for your own store.' });
       }
@@ -334,11 +335,8 @@ const deleteInventoryItem = async (req, res) => {
     }
 
     // Verify store access
-    if (req.user.role === 'admin') {
-      const adminStore = await resolveAdminStore(req.user);
-      if (inventory.store.toString() !== adminStore.toString()) {
-        return res.status(403).json({ message: 'Access denied' });
-      }
+    if (!(await canOperateStore(req.user, inventory.store, ['inventory.adjust']))) {
+      return res.status(403).json({ message: 'Access denied' });
     }
 
     // Soft delete
@@ -363,9 +361,9 @@ const getAdminInventory = async (req, res) => {
     // 1. Build Product filter (Multi-tenant isolation)
     let productFilter = {};
     
-    if (req.user.role === 'super_admin') {
+    if (isPlatformAdmin(req.user)) {
       if (storeId) productFilter.store = storeId;
-    } else if (req.user.role === 'staff') {
+    } else if (isOperationalStaff(req.user)) {
       if (req.user.store) {
         productFilter.store = req.user.store;
       } else {
@@ -377,7 +375,7 @@ const getAdminInventory = async (req, res) => {
       const storeIds = adminStores.map(s => s._id);
       
       if (storeId) {
-          if (!storeIds.map(id => id.toString()).includes(storeId.toString()) && req.user.role !== 'super_admin') {
+          if (!storeIds.map(id => id.toString()).includes(storeId.toString()) && !isPlatformAdmin(req.user)) {
                // Allow if the resolveAdminStore returned it, but double check ownership
                const isOwner = await Store.findOne({ _id: storeId, owner: req.user._id });
                if (!isOwner) return res.status(403).json({ message: 'Access denied to this store' });
@@ -538,7 +536,7 @@ const addToAdminInventory = async (req, res) => {
 
     // Security: Only allow users to add products belonging to their store
     // Super-admins can add any product to any store inventory
-    if (req.user.role !== 'super_admin') {
+    if (!isPlatformAdmin(req.user)) {
       const userStoreId = await resolveAdminStore(req.user);
       
       // Check if product belongs to user's store OR if user added the product

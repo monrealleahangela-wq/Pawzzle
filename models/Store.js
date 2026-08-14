@@ -116,6 +116,41 @@ const storeSchema = new mongoose.Schema({
     maxBookingsPerSlot: { type: Number, default: 1 },
     confirmationWindowMinutes: { type: Number, default: 1440, min: 15, max: 10080 }
   },
+  refundPolicy: {
+    type: {
+      type: String,
+      enum: ['full_refund', 'conditional_refund', 'no_refund'],
+      default: 'conditional_refund'
+    },
+    summary: {
+      type: String,
+      trim: true,
+      maxlength: 1000,
+      default: 'Refund requests are reviewed by the store according to the order or service circumstances.'
+    },
+    conditions: {
+      type: String,
+      trim: true,
+      maxlength: 3000,
+      default: ''
+    },
+    updatedAt: Date,
+    updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', select: false },
+    auditLog: {
+      type: [{
+        changedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+        changedAt: { type: Date, default: Date.now },
+        previous: { type: mongoose.Schema.Types.Mixed },
+        next: { type: mongoose.Schema.Types.Mixed }
+      }],
+      select: false,
+      default: []
+    }
+  },
+  // Store-scoped role policy. Staff accounts inherit this at request time;
+  // individual account permission payloads are not authoritative.
+  rolePermissions: { type: mongoose.Schema.Types.Mixed, default: {} },
+  staffSequence: { type: Number, default: 0, min: 0, select: false },
   taxConfiguration: {
     isConfigured: { type: Boolean, default: false },
     taxStatus: {

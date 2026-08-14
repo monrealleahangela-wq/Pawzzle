@@ -11,9 +11,12 @@ const {
   updateBookingStatus,
   cancelBooking,
   getEligibleBookingStaff,
-  assignBookingStaff
+  assignBookingStaff,
+  checkInBooking
 } = require('../controllers/bookingController');
-const { authenticate, adminOrStaff } = require('../middleware/auth');
+const { authenticate, adminOrStaff, requirePermission } = require('../middleware/auth');
+const canViewBookings = requirePermission('bookings.assigned', 'bookings.view', 'bookings.manage');
+const canUpdateBookings = requirePermission('bookings.update', 'bookings.manage');
 
 // Validation rules
 const updateBookingStatusValidation = [
@@ -21,11 +24,18 @@ const updateBookingStatusValidation = [
 ];
 
 // Admin routes (filtered by user's store)
-router.get('/', authenticate, adminOrStaff, getAllAdminBookings);
-router.get('/:id', authenticate, adminOrStaff, getBookingById);
-router.get('/:id/eligible-staff', authenticate, adminOrStaff, getEligibleBookingStaff);
-router.put('/:id/assign-staff', authenticate, adminOrStaff, body('staffId').isMongoId().withMessage('Valid staff ID is required'), assignBookingStaff);
-router.put('/:id/status', authenticate, adminOrStaff, updateBookingStatusValidation, updateBookingStatus);
-router.put('/:id/cancel', authenticate, adminOrStaff, cancelBooking);
+router.get('/', authenticate, adminOrStaff, canViewBookings, getAllAdminBookings);
+router.get('/:id', authenticate, adminOrStaff, canViewBookings, getBookingById);
+router.get('/:id/eligible-staff', authenticate, adminOrStaff, canViewBookings, getEligibleBookingStaff);
+const proposalValidation = [
+  body('staffId').isMongoId().withMessage('Valid staff ID is required'),
+  body('estimatedDurationMinutes').optional().isInt({ min: 1, max: 1440 }).withMessage('Estimated duration must be between 1 and 1,440 minutes'),
+  body('specialInstructions').optional().isString().trim().isLength({ max: 2000 }).withMessage('Special instructions must be 2,000 characters or fewer')
+];
+router.put('/:id/proposal', authenticate, adminOrStaff, canUpdateBookings, proposalValidation, assignBookingStaff);
+router.put('/:id/assign-staff', authenticate, adminOrStaff, canUpdateBookings, proposalValidation, assignBookingStaff);
+router.post('/:id/check-in', authenticate, adminOrStaff, canUpdateBookings, checkInBooking);
+router.put('/:id/status', authenticate, adminOrStaff, canUpdateBookings, updateBookingStatusValidation, updateBookingStatus);
+router.put('/:id/cancel', authenticate, adminOrStaff, canUpdateBookings, cancelBooking);
 
 module.exports = router;

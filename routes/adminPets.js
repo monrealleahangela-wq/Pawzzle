@@ -14,7 +14,7 @@ const {
   updatePet,
   deletePet
 } = require('../controllers/petController');
-const { authenticate, adminOrStaff } = require('../middleware/auth');
+const { authenticate, adminOrStaff, platformAdminOnly, requirePermission } = require('../middleware/auth');
 
 // Validation rules (same as regular pets)
 const createPetValidation = [
@@ -59,7 +59,7 @@ const updatePetValidation = [
 ];
 
 // Debug endpoint to check all pets and their owners
-router.get('/debug/all', authenticate, adminOrStaff, async (req, res) => {
+router.get('/debug/all', authenticate, platformAdminOnly, async (req, res) => {
   try {
     const Pet = require('../models/Pet');
     const allPets = await Pet.find({})
@@ -83,14 +83,14 @@ router.get('/debug/all', authenticate, adminOrStaff, async (req, res) => {
 });
 
 // Admin routes (filtered by user's store)
-router.get('/', authenticate, adminOrStaff, getAllAdminPets);
-router.get('/:id', authenticate, adminOrStaff, getPetById);
-router.post('/', authenticate, adminOrStaff, createPetValidation, createPet);
-router.put('/:id', authenticate, adminOrStaff, updatePetValidation, updatePet);
-router.delete('/:id', authenticate, adminOrStaff, deletePet);
+router.get('/', authenticate, adminOrStaff, requirePermission('pets.view', 'pets.manage', 'inventory.view'), getAllAdminPets);
+router.get('/:id', authenticate, adminOrStaff, requirePermission('pets.view', 'pets.manage', 'inventory.view'), getPetById);
+router.post('/', authenticate, adminOrStaff, requirePermission('pets.manage', 'inventory.adjust'), createPetValidation, createPet);
+router.put('/:id', authenticate, adminOrStaff, requirePermission('pets.manage', 'inventory.adjust'), updatePetValidation, updatePet);
+router.delete('/:id', authenticate, adminOrStaff, requirePermission('pets.manage', 'inventory.adjust'), deletePet);
 
 // Listing Moderation
-router.post('/:id/approve', authenticate, adminOrStaff, approvePet);
-router.post('/:id/reject', authenticate, adminOrStaff, rejectPet);
+router.post('/:id/approve', authenticate, adminOrStaff, requirePermission('pets.manage', 'inventory.adjust'), approvePet);
+router.post('/:id/reject', authenticate, adminOrStaff, requirePermission('pets.manage', 'inventory.adjust'), rejectPet);
 
 module.exports = router;

@@ -2,20 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { userService, petService, productService, orderService } from '../../services/apiService';
-import {
-  Users,
-  Heart,
-  Package,
-  ShoppingCart,
-  TrendingUp,
-  DollarSign,
-  Download,
-  Activity,
-  Shield,
-  Zap,
-  Globe,
-  PieChart
-} from 'lucide-react';
+import { Users, Heart, Package, ShoppingCart, TrendingUp, Download, Activity, Shield, Zap, Globe, PieChart } from 'lucide-react';
 
 const SystemAnalytics = () => {
   const [data, setData] = useState({
@@ -138,14 +125,14 @@ const SystemAnalytics = () => {
         ))}
       </div>
 
-      <div className="bg-slate-900 rounded-[3rem] p-8 sm:p-12 text-white relative overflow-hidden shadow-2xl">
+      <div className="bg-slate-900 rounded-2xl p-5 sm:p-7 text-white relative overflow-hidden shadow-lg">
         <div className="absolute top-0 right-0 p-12 opacity-10">
           <Globe className="w-64 h-64 animate-pulse" />
         </div>
         <div className="relative z-10 flex flex-col md:flex-row justify-between items-center gap-8">
           <div className="space-y-4 text-center md:text-left">
             <label className="text-[10px] font-black text-primary-500 uppercase tracking-[0.5em] block">Total Revenue</label>
-            <p className="text-5xl sm:text-7xl font-black tracking-tighter">₱{metrics.totalRevenue.toLocaleString()}</p>
+            <p className="text-3xl sm:text-4xl font-black tracking-tight">₱{metrics.totalRevenue.toLocaleString()}</p>
             <div className="flex flex-wrap justify-center md:justify-start gap-4 pt-4">
               <div className="px-4 py-2 bg-white/5 border border-white/10 rounded-2xl">
                 <p className="text-[8px] font-black text-white/40 uppercase tracking-widest mb-1">Revenue Growth</p>

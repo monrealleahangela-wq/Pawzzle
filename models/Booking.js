@@ -150,6 +150,12 @@ const bookingSchema = new mongoose.Schema({
     cancelledAt: Date,
     cancellationSource: { type: String, enum: ['customer', 'admin', 'staff', 'system'] }
   },
+  proposal: {
+    estimatedDurationMinutes: { type: Number, min: 1, max: 1440 },
+    specialInstructions: { type: String, trim: true, maxlength: 2000, default: '' },
+    revision: { type: Number, min: 0, default: 0 },
+    specialistChangedAt: Date
+  },
   serviceProgress: {
     status: {
       type: String,
@@ -162,6 +168,16 @@ const bookingSchema = new mongoose.Schema({
     readyAt: Date,
     completedAt: Date,
     cancelledAt: Date
+  },
+  careSummary: {
+    aftercareInstructions: { type: String, trim: true, maxlength: 4000, default: '' },
+    serviceNotes: { type: String, trim: true, maxlength: 4000, default: '' },
+    aftercareProvidedAt: Date,
+    aftercareProvidedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
+  },
+  reminders: {
+    twentyFourHourSentAt: Date,
+    twoHourSentAt: Date
   },
   serviceConversation: {
     type: mongoose.Schema.Types.ObjectId,
@@ -261,6 +277,18 @@ const bookingSchema = new mongoose.Schema({
     sellerAddress: String,
     sellerTaxStatus: String,
     pricingBreakdown: { type: mongoose.Schema.Types.Mixed }
+  },
+  refundPolicySnapshot: {
+    type: { type: String, enum: ['full_refund', 'conditional_refund', 'no_refund'] },
+    summary: String,
+    conditions: String,
+    capturedAt: Date
+  },
+  refundPolicyAcknowledgment: {
+    required: { type: Boolean, default: false },
+    acknowledged: { type: Boolean, default: false },
+    acknowledgedAt: Date,
+    acknowledgedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
   },
   createdAt: {
     type: Date,

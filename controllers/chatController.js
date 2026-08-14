@@ -4,6 +4,14 @@ const Notification = require('../models/Notification');
 const User = require('../models/User');
 const Booking = require('../models/Booking');
 const { hasPermission } = require('../config/permissions');
+const Pet = require('../models/Pet');
+const Store = require('../models/Store');
+const { isPlatformAdmin } = require('../config/permissions');
+const {
+  canAccessConversation,
+  canManageAdoptionConversation,
+  normalizeConversationParticipantRole
+} = require('../utils/conversationAuthorization');
 
 const canAccessServiceConversation = async (user, conversation) => {
   if (conversation.type !== 'service' || !conversation.booking) return true;
@@ -20,7 +28,7 @@ const canAccessServiceConversation = async (user, conversation) => {
 };
 
 const filterAccessibleServiceConversations = async (user, conversations) => {
-  const allowed = await Promise.all(conversations.map(conversation => canAccessServiceConversation(user, conversation)));
+  const allowed = await Promise.all(conversations.map(conversation => canAccessConversation(user, conversation)));
   return conversations.filter((_conversation, index) => allowed[index]);
 };
 
@@ -198,12 +206,7 @@ const getMessages = async (req, res) => {
       return res.status(403).json({ message: 'You are no longer authorized to access this service conversation.' });
     }
 
-    const isParticipant = conversation.participants.some(
-      p => p.user.toString() === req.user._id.toString()
-    );
-    const isAdmin = ['admin', 'super_admin', 'staff'].includes(req.user.role);
-
-    if (!isParticipant && !isAdmin) {
+    if (!(await canAccessConversation(req.user, conversation))) {
       return res.status(403).json({ message: 'Access denied' });
     }
 
@@ -237,17 +240,15 @@ const sendMessage = async (req, res) => {
     const isParticipant = conversation.participants.some(
       p => p.user.toString() === req.user._id.toString()
     );
-    const isAdmin = ['admin', 'super_admin', 'staff'].includes(req.user.role);
-
-    if (!isParticipant && !isAdmin) {
+    if (!(await canAccessConversation(req.user, conversation))) {
       return res.status(403).json({ message: 'Access denied' });
     }
 
     // If admin is sending and not already a participant, add them
-    if (isAdmin && !isParticipant) {
+    if (!isParticipant) {
       conversation.participants.push({
         user: req.user._id,
-        role: req.user.role
+        role: normalizeConversationParticipantRole(req.user)
       });
     }
 
@@ -321,15 +322,33 @@ const createConversation = async (req, res) => {
     // Build participants array
     const participants = [{
       user: req.user._id,
-      role: req.user.role
+      role: normalizeConversationParticipantRole(req.user)
     }];
 
-    if (participantIds && participantIds.length > 0) {
-      for (const id of participantIds) {
+    if (petId) {
+      const pet = await Pet.findById(petId).select('addedBy store isDeleted');
+      if (!pet || pet.isDeleted) return res.status(404).json({ message: 'Pet not found' });
+      if (String(pet.addedBy) === String(req.user._id)) {
+        return res.status(400).json({ message: 'Pet owners must reply through an existing customer conversation.' });
+      }
+      const seller = await User.findById(pet.addedBy).select('role lastSeen');
+      if (!seller) return res.status(404).json({ message: 'Pet owner account not found' });
+      participants.push({ user: seller._id, role: normalizeConversationParticipantRole(seller) });
+    } else if (participantIds && participantIds.length > 0) {
+      const uniqueTargets = [...new Set(participantIds.map(String))].filter(id => id !== String(req.user._id));
+      if (req.user.role !== 'customer' || uniqueTargets.length !== 1) {
+        return res.status(403).json({ message: 'A new conversation must be opened through a legitimate store or pet relationship.' });
+      }
+      for (const id of uniqueTargets) {
         if (id === req.user._id.toString()) continue; // skip self
         const user = await User.findById(id).select('role lastSeen');
         if (user) {
-          participants.push({ user: id, role: user.role });
+          const ownsActiveStore = await Store.exists({ owner: user._id, isActive: true, isDeleted: { $ne: true } });
+          const isSupportTarget = type === 'support' && isPlatformAdmin(user);
+          if (!ownsActiveStore && !isSupportTarget) {
+            return res.status(403).json({ message: 'The selected account is not an authorized store or support contact.' });
+          }
+          participants.push({ user: id, role: normalizeConversationParticipantRole(user) });
         }
       }
     }
@@ -392,6 +411,11 @@ const getConversationByPet = async (req, res) => {
 const markAsRead = async (req, res) => {
   try {
     const { conversationId } = req.params;
+    const conversation = await Conversation.findById(conversationId);
+    if (!conversation) return res.status(404).json({ message: 'Conversation not found' });
+    if (!(await canAccessConversation(req.user, conversation))) {
+      return res.status(403).json({ message: 'Access denied' });
+    }
 
     await Message.updateMany(
       {
@@ -444,6 +468,9 @@ const updateAdoptionStatus = async (req, res) => {
       return res.status(404).json({ message: 'Conversation not found' });
     }
     if (conversation.type === 'service') return res.status(409).json({ message: 'Service conversations cannot be changed through adoption actions.' });
+    if (!(await canManageAdoptionConversation(req.user, conversation))) {
+      return res.status(403).json({ message: 'Only the pet owner or authorized store owner can update adoption status.' });
+    }
 
     conversation.status = status === 'confirmed' ? 'closed' : conversation.status;
     await conversation.save();
@@ -470,6 +497,7 @@ const archiveConversation = async (req, res) => {
     const { conversationId } = req.params;
     const conversation = await Conversation.findById(conversationId);
     if (!conversation) return res.status(404).json({ message: 'Conversation not found' });
+    if (!(await canAccessConversation(req.user, conversation))) return res.status(403).json({ message: 'Access denied' });
     if (conversation.type === 'service') return res.status(409).json({ message: 'Booking service conversations are retained with the service record.' });
     await Conversation.findByIdAndUpdate(conversationId, { status: 'archived' });
     res.json({ success: true, message: 'Conversation archived' });
@@ -485,6 +513,7 @@ const deleteConversation = async (req, res) => {
     const { conversationId } = req.params;
     const conversation = await Conversation.findById(conversationId);
     if (!conversation) return res.status(404).json({ message: 'Conversation not found' });
+    if (!(await canAccessConversation(req.user, conversation))) return res.status(403).json({ message: 'Access denied' });
     if (conversation.type === 'service') return res.status(409).json({ message: 'Booking service conversations are retained with the service record.' });
     await Conversation.findByIdAndUpdate(conversationId, { isDeleted: true });
     res.json({ success: true, message: 'Conversation deleted' });
@@ -500,6 +529,7 @@ const restoreConversation = async (req, res) => {
     const { conversationId } = req.params;
     const conversation = await Conversation.findById(conversationId);
     if (!conversation) return res.status(404).json({ message: 'Conversation not found' });
+    if (!(await canAccessConversation(req.user, conversation))) return res.status(403).json({ message: 'Access denied' });
     if (conversation.type === 'service') return res.status(409).json({ message: 'Booking service conversations are managed from the booking.' });
     await Conversation.findByIdAndUpdate(conversationId, { status: 'active' });
     res.json({ success: true, message: 'Conversation restored' });

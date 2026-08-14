@@ -1,28 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
 import { userService } from '../../services/apiService';
-import {
-  Users,
-  Eye,
-  EyeOff,
-  Search,
-  Filter,
-  Download,
-  Key,
-  Mail,
-  Phone,
-  Calendar,
-  DollarSign,
-  X,
-  Shield,
-  Zap,
-  Target,
-  Globe,
-  MoreVertical,
-  UserPlus,
-  ChevronDown,
-  Lock
-} from 'lucide-react';
+import { Users, Search, Download, Key, Mail, Calendar, X, Shield, Zap, Target, Globe, ChevronDown, Lock } from 'lucide-react';
 import PermissionsManager from '../../components/admin/PermissionsManager';
 
 const AccountManagement = () => {

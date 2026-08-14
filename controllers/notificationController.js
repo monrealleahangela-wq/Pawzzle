@@ -69,11 +69,17 @@ const deleteNotification = async (req, res) => {
     }
 };
 
+let notificationSocket = null;
+const setNotificationSocket = io => { notificationSocket = io || null; };
+
 // Helper function to create notification (for internal use)
-const createNotification = async (data) => {
+const createNotification = async (data, io = notificationSocket) => {
     try {
         const notification = new Notification(data);
         await notification.save();
+        if (io && data.recipient) {
+            io.to(`user_${String(data.recipient)}`).emit('newNotification', notification);
+        }
         return notification;
     } catch (error) {
         console.error('Error creating notification:', error);
@@ -135,5 +141,6 @@ module.exports = {
     markAllAsRead,
     deleteNotification,
     createNotification,
+    setNotificationSocket,
     notifyStoreStaff
 };

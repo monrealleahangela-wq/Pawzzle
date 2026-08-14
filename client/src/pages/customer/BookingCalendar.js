@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { bookingService } from '../../services/apiService';
-import { Calendar, Clock, CheckCircle, XCircle, AlertCircle, Users } from 'lucide-react';
+import { CheckCircle, XCircle } from 'lucide-react';
 import { formatTime12h } from '../../utils/timeFormatters';
 
 const BookingCalendar = () => {
@@ -10,14 +10,7 @@ const BookingCalendar = () => {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [bookingModal, setBookingModal] = useState(null);
 
-  useEffect(() => {
-    fetchBookings();
-    // Set up real-time updates (poll every 5 seconds for near real-time sync)
-    const interval = setInterval(fetchBookings, 5000); 
-    return () => clearInterval(interval);
-  }, []);
-
-  const fetchBookings = async () => {
+  const fetchBookings = useCallback(async () => {
     try {
       const response = await bookingService.getCustomerBookings({
         month: currentMonth.getMonth() + 1,
@@ -29,7 +22,16 @@ const BookingCalendar = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentMonth]);
+
+  useEffect(() => {
+    fetchBookings();
+    // Socket notifications provide the immediate path elsewhere; this is a low-frequency fallback.
+    const interval = setInterval(() => {
+      if (!document.hidden) fetchBookings();
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [fetchBookings]);
 
   const getDaysInMonth = (date) => {
     const year = date.getFullYear();

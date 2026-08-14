@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { adminOrderService, deliveryService, getImageUrl } from '../../services/apiService';
-import { ShoppingBag, Eye, Package, ArrowRight, Filter, ChevronLeft, ChevronRight, Activity, ChevronDown, Search, Link2, Copy, Check } from 'lucide-react';
+import { ShoppingBag, Eye, Package, Filter, ChevronDown, Search, Link2, Copy } from 'lucide-react';
 import { formatTime12h } from '../../utils/timeFormatters';
 import { useRealTimeUpdates } from '../../hooks/useRealTimeUpdates';
 
@@ -130,9 +130,9 @@ const AdminOrders = () => {
   }
 
   return (
-    <div className="container mx-auto p-4 lg:p-10 pb-20 bg-slate-50 min-h-screen">
+    <div className="container mx-auto p-4 lg:p-6 pb-20 bg-slate-50 min-h-screen">
       <div className="flex flex-col mb-8 text-left">
-        <h1 className="text-4xl font-black text-slate-900 tracking-tighter uppercase mb-2">Orders</h1>
+        <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight uppercase mb-2">Orders</h1>
         <p className="text-sm text-slate-500">Review PayMongo-confirmed orders and update fulfillment status.</p>
       </div>
 

@@ -1,23 +1,8 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { toast } from 'react-toastify';
-import { Link } from 'react-router-dom';
 import { userService, petService, productService, orderService } from '../../services/apiService';
 import { formatTime12h } from '../../utils/timeFormatters';
-import {
-    Users,
-    Heart,
-    Package,
-    ShoppingCart,
-    Zap,
-    Shield,
-    Search,
-    ArrowLeft,
-    Calendar,
-    Filter,
-    RefreshCw,
-    ChevronDown,
-    Target
-} from 'lucide-react';
+import { Users, Heart, Package, ShoppingCart, Shield, Search, Calendar, Filter, RefreshCw, ChevronDown, Target } from 'lucide-react';
 
 const ActivityHistory = () => {
     const [data, setData] = useState({

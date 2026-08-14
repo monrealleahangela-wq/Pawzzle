@@ -1,7 +1,7 @@
 const Order = require('../models/Order');
 const Booking = require('../models/Booking');
 const User = require('../models/User');
-const Store = require('../models/Store');
+const { getAuthorizedStoreIds } = require('../utils/authorizationPolicy');
 
 /**
  * Get all unique customers who have ordered or booked from this store
@@ -11,20 +11,17 @@ const getStoreCustomers = async (req, res) => {
         const adminUser = req.user;
 
         // Determine the store ID
-        let storeId = adminUser.store;
-        if (!storeId) {
-            const store = await Store.findOne({ owner: adminUser._id });
-            if (!store) return res.status(404).json({ message: 'Store not found' });
-            storeId = store._id;
-        }
+        const storeIds = await getAuthorizedStoreIds(adminUser);
+        if (storeIds !== null && !storeIds.length) return res.status(403).json({ message: 'No authorized store found' });
+        const storeScope = storeIds === null ? {} : { store: { $in: storeIds } };
 
         // Fetch all orders for this store
-        const orders = await Order.find({ store: storeId, isDeleted: false })
+        const orders = await Order.find({ ...storeScope, isDeleted: false })
             .populate('customer', 'firstName lastName email phone avatar createdAt')
             .sort({ createdAt: -1 });
 
         // Fetch all bookings for this store
-        const bookings = await Booking.find({ store: storeId, isDeleted: false })
+        const bookings = await Booking.find({ ...storeScope, isDeleted: false })
             .populate('customer', 'firstName lastName email phone avatar createdAt')
             .populate('service', 'name price')
             .sort({ createdAt: -1 });
@@ -136,24 +133,24 @@ const getStoreCustomerDetails = async (req, res) => {
         const customerId = req.params.customerId;
 
         // Determine the store ID
-        let storeId = adminUser.store;
-        if (!storeId) {
-            const store = await Store.findOne({ owner: adminUser._id });
-            if (!store) return res.status(404).json({ message: 'Store not found' });
-            storeId = store._id;
-        }
-
-        const customer = await User.findById(customerId).select('firstName lastName email phone avatar createdAt shippingAddress');
-        if (!customer) return res.status(404).json({ message: 'Customer not found' });
+        const storeIds = await getAuthorizedStoreIds(adminUser);
+        if (storeIds !== null && !storeIds.length) return res.status(403).json({ message: 'No authorized store found' });
+        const storeScope = storeIds === null ? {} : { store: { $in: storeIds } };
 
         // Fetch all orders for this store by this customer
-        const orders = await Order.find({ store: storeId, customer: customerId, isDeleted: false })
+        const orders = await Order.find({ ...storeScope, customer: customerId, isDeleted: false })
             .sort({ createdAt: -1 });
 
         // Fetch all bookings for this store by this customer
-        const bookings = await Booking.find({ store: storeId, customer: customerId, isDeleted: false })
+        const bookings = await Booking.find({ ...storeScope, customer: customerId, isDeleted: false })
             .populate('service', 'name price')
             .sort({ createdAt: -1 });
+
+        if (!orders.length && !bookings.length) {
+            return res.status(404).json({ message: 'Customer is not related to an authorized store.' });
+        }
+        const customer = await User.findById(customerId).select('firstName lastName email phone avatar createdAt shippingAddress');
+        if (!customer) return res.status(404).json({ message: 'Customer not found' });
 
         const totalSpentOrders = orders.filter(o => o.paymentStatus === 'paid').reduce((acc, o) => acc + (o.totalAmount || 0), 0);
         const totalSpentBookings = bookings.filter(b => b.paymentStatus === 'paid').reduce((acc, b) => acc + (b.totalPrice || 0), 0);

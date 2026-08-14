@@ -1,38 +1,27 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
-const { hasPermission, getEffectivePermissions, normalizeRole } = require('../config/permissions');
+const {
+  hasPermission, getEffectivePermissions, normalizeRole,
+  isPlatformAdmin, isStoreAdmin, isOperationalStaff
+} = require('../config/permissions');
+const { attachStoreRolePolicy } = require('../services/rolePermissionService');
 
 // Authentication middleware
 const authenticate = async (req, res, next) => {
   try {
-    console.log('=== AUTHENTICATE MIDDLEWARE ===');
-    console.log('Request path:', req.path);
-    console.log('Request method:', req.method);
-    console.log('Authorization header:', req.header('Authorization'));
-
     const token = req.header('Authorization')?.replace('Bearer ', '');
 
     if (!token) {
-      console.log('No token provided');
       return res.status(401).json({ message: 'Access denied. No token provided.' });
     }
 
-    console.log('Token found:', token.substring(0, 20) + '...');
-
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    console.log('Token decoded:', decoded);
-
     const user = await User.findById(decoded.id).select('-password');
-    console.log('User found:', user ? user._id : 'null');
-    console.log('User role:', user?.role);
-
     if (!user) {
-      console.log('User not found in database');
       return res.status(401).json({ message: 'Invalid token.' });
     }
 
     if (!user.isActive || user.isDeleted) {
-      console.log('User account is deactivated or deleted');
       return res.status(403).json({ 
         message: 'Account Disabled',
         deactivationReason: user.deactivationReason || 'Your account has been disabled. Please contact support.',
@@ -41,6 +30,7 @@ const authenticate = async (req, res, next) => {
       });
     }
 
+    await attachStoreRolePolicy(user);
     req.user = user;
     
     // Update lastSeen asynchronously (don't wait for it)
@@ -48,10 +38,8 @@ const authenticate = async (req, res, next) => {
       console.error('Error updating lastSeen:', err)
     );
 
-    console.log('Authentication successful');
     next();
   } catch (error) {
-    console.log('Authentication error:', error.message);
     res.status(401).json({ message: 'Invalid token.' });
   }
 };
@@ -98,38 +86,42 @@ const attachAuthorizationContext = (req, _res, next) => {
 
 // Super Admin only middleware
 const superAdminOnly = (req, res, next) => {
-  console.log('=== SUPER ADMIN MIDDLEWARE CHECK ===');
-  console.log('User:', req.user);
-  console.log('User role:', req.user?.role);
-  console.log('User ID:', req.user?._id);
-  console.log('Request path:', req.path);
-  console.log('Request method:', req.method);
-
   if (!req.user) {
-    console.log('No user found in request');
     return res.status(401).json({ message: 'Access denied. User not authenticated.' });
   }
 
-  if (req.user.role !== 'super_admin') {
-    console.log('User role is not super_admin:', req.user.role);
+  if (!isPlatformAdmin(req.user)) {
     return res.status(403).json({ message: 'Access denied. Insufficient permissions.' });
   }
 
-  console.log('Super admin access granted');
   next();
 };
 
 // Admin and Super Admin middleware
-const adminOnly = authorize('admin', 'super_admin', 'platform_admin', 'store_owner');
+const adminOnly = (req, res, next) => {
+  if (!req.user) return res.status(401).json({ message: 'Access denied. User not authenticated.' });
+  if (!isPlatformAdmin(req.user) && !isStoreAdmin(req.user)) {
+    return res.status(403).json({ message: 'Access denied. Insufficient permissions.' });
+  }
+  next();
+};
+
+const platformAdminOnly = (req, res, next) => {
+  if (!req.user) return res.status(401).json({ message: 'Access denied. User not authenticated.' });
+  if (!isPlatformAdmin(req.user)) {
+    return res.status(403).json({ message: 'Access denied. Platform administrator only.' });
+  }
+  next();
+};
 
 // Admin, Super Admin, and Staff middleware (for store-level operations)
 const adminOrStaff = (req, res, next) => {
   if (!req.user) return res.status(401).json({ message: 'Not authenticated.' });
-  if (!['admin', 'super_admin', 'staff', 'supplier'].includes(req.user.role)) {
+  if (!isPlatformAdmin(req.user) && !isStoreAdmin(req.user) && !isOperationalStaff(req.user)) {
     return res.status(403).json({ message: 'Access denied. Insufficient permissions.' });
   }
   // Staff must belong to a store
-  if (req.user.role === 'staff' && !req.user.store) {
+  if (isOperationalStaff(req.user) && !isPlatformAdmin(req.user) && !isStoreAdmin(req.user) && !req.user.store) {
     return res.status(403).json({ message: 'Staff account not assigned to a store.' });
   }
   next();
@@ -138,9 +130,9 @@ const adminOrStaff = (req, res, next) => {
 // Staff type-specific middleware factories
 const requireStaffType = (...types) => (req, res, next) => {
   if (!req.user) return res.status(401).json({ message: 'Not authenticated.' });
-  if (req.user.role === 'admin' || req.user.role === 'super_admin') return next(); // Admins bypass
-  if (req.user.role !== 'staff') return res.status(403).json({ message: 'Staff only.' });
-  if (!types.includes(req.user.staffType)) {
+  if (isPlatformAdmin(req.user) || isStoreAdmin(req.user)) return next();
+  const effectiveType = req.user.role === 'staff' ? req.user.staffType : req.user.role;
+  if (!isOperationalStaff(req.user) || !types.includes(effectiveType)) {
     return res.status(403).json({ message: `This action requires one of: ${types.join(', ')}` });
   }
   next();
@@ -154,12 +146,12 @@ const canAccessResource = (req, res, next) => {
   const { userId } = req.params;
 
   // Super admin can access everything
-  if (req.user.role === 'super_admin') {
+  if (isPlatformAdmin(req.user)) {
     return next();
   }
 
   // Admin can access their own resources
-  if (req.user.role === 'admin' && req.user._id.toString() === userId) {
+  if (isStoreAdmin(req.user) && req.user._id.toString() === userId) {
     return next();
   }
 
@@ -177,6 +169,7 @@ module.exports = {
   requirePermission,
   attachAuthorizationContext,
   superAdminOnly,
+  platformAdminOnly,
   adminOnly,
   adminOrStaff,
   requireStaffType,

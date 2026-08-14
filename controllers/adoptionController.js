@@ -2,6 +2,9 @@ const AdoptionRequest = require('../models/AdoptionRequest');
 const Conversation = require('../models/Conversation');
 const Message = require('../models/Message');
 const Pet = require('../models/Pet');
+const { isPlatformAdmin, isOperationalStaff } = require('../config/permissions');
+const { canOperateStore, idsEqual } = require('../utils/authorizationPolicy');
+const { canAccessConversation } = require('../utils/conversationAuthorization');
 
 // Create a structured pet purchase inquiry
 const createAdoptionRequest = async (req, res) => {
@@ -42,6 +45,9 @@ const createAdoptionRequest = async (req, res) => {
         const conversation = await Conversation.findById(conversationId).populate('participants');
         if (!conversation) {
             return res.status(404).json({ message: 'Conversation not found' });
+        }
+        if (!idsEqual(conversation.pet, petId) || !(await canAccessConversation(req.user, conversation))) {
+            return res.status(403).json({ message: 'This conversation is not authorized for the selected pet.' });
         }
 
         // Check if an inquiry already exists
@@ -147,8 +153,8 @@ const updateAdoptionStatus = async (req, res) => {
 
         // Only seller, store staff, or admin can update status
         const isSeller = request.seller.toString() === req.user._id.toString();
-        const isAdmin = req.user.role === 'admin' || req.user.role === 'super_admin';
-        const isStoreStaff = req.user.role === 'staff' && req.user.store && request.store && req.user.store.toString() === request.store.toString();
+        const isAdmin = isPlatformAdmin(req.user);
+        const isStoreStaff = await canOperateStore(req.user, request.store, ['pets.manage']);
 
         if (!isSeller && !isAdmin && !isStoreStaff) {
             return res.status(403).json({ message: 'Not authorized to update this request' });
@@ -229,10 +235,10 @@ const getMyAdoptionRequests = async (req, res) => {
 
         if (req.user.role === 'customer') {
             filter = { customer: req.user._id };
-        } else if (req.user.role === 'super_admin') {
+        } else if (isPlatformAdmin(req.user)) {
             filter = {}; // Super-admin sees everything
             console.log('🔓 Super-admin viewing all adoptions');
-        } else if (req.user.role === 'staff') {
+        } else if (isOperationalStaff(req.user)) {
             // Staff sees requests for their store
             if (req.user.store) {
                 filter = { store: req.user.store };
@@ -324,6 +330,13 @@ const getAdoptionByConversation = async (req, res) => {
             .populate('pet', 'name species breed images price')
             .populate('history.updatedBy', 'firstName lastName role');
 
+        if (request) {
+            const conversation = await Conversation.findById(conversationId);
+            if (!conversation || !(await canAccessConversation(req.user, conversation))) {
+                return res.status(403).json({ message: 'Access denied to this adoption request.' });
+            }
+        }
+
         res.json({ request });
     } catch (error) {
         console.error('Get adoption by conversation error:', error);
@@ -341,8 +354,9 @@ const sendPaymentRequest = async (req, res) => {
 
         // Authorization (Seller/Staff/Admin)
         const isSeller = request.seller.toString() === req.user._id.toString();
-        const isAdmin = ['admin', 'super_admin'].includes(req.user.role);
-        if (!isSeller && !isAdmin) return res.status(403).json({ message: 'Unauthorized' });
+        const isAdmin = isPlatformAdmin(req.user);
+        const isAuthorizedStore = await canOperateStore(req.user, request.store, ['pets.manage']);
+        if (!isSeller && !isAdmin && !isAuthorizedStore) return res.status(403).json({ message: 'Unauthorized' });
 
         request.paymentDetails.paymentStatus = 'payment_pending';
         request.paymentDetails.history.push({

@@ -12,7 +12,7 @@ const {
   cancelOrder,
   validateOrderQR
 } = require('../controllers/orderController');
-const { authenticate, adminOrStaff, customerOnly } = require('../middleware/auth');
+const { authenticate, adminOrStaff, customerOnly, requirePermission } = require('../middleware/auth');
 
 // Validation rules
 const createOrderValidation = [
@@ -23,6 +23,7 @@ const createOrderValidation = [
   body('deliveryMethod').isIn(['delivery', 'pickup']).withMessage('Invalid delivery method'),
   body('phoneNumber').notEmpty().withMessage('Phone number is required'),
   body('paymentMethod').equals('paymongo').withMessage('PayMongo is the only supported payment method'),
+  body('refundPolicyAcknowledged').optional().isBoolean().withMessage('Refund-policy acknowledgment must be true or false'),
   body('notes').optional().trim()
 ];
 
@@ -42,7 +43,7 @@ router.patch('/:id/cancel', authenticate, cancelOrder);
 router.post('/:id/confirm-pickup', authenticate, customerOnly, confirmOrderPickup);
 
 // Admin/Staff routes
-router.patch('/:id/status', authenticate, adminOrStaff, updateOrderStatusValidation, updateOrderStatus);
-router.post('/validate-qr', authenticate, adminOrStaff, validateOrderQR);
+router.patch('/:id/status', authenticate, adminOrStaff, requirePermission('sales.manage', 'orders.update'), updateOrderStatusValidation, updateOrderStatus);
+router.post('/validate-qr', authenticate, adminOrStaff, requirePermission('sales.manage', 'orders.update'), validateOrderQR);
 
 module.exports = router;

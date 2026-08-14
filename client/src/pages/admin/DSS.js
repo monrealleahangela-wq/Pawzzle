@@ -1,16 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { dssService } from '../../services/apiService';
 import { toast } from 'react-toastify';
-import {
-    Brain, TrendingUp, DollarSign, AlertTriangle, Zap,
-    Package, Heart, Calendar, Star, ShoppingBag, Lightbulb,
-    ArrowRight, Users, Activity, BarChart3, Flame,
-    CheckCircle, Clock, AlertCircle, Sparkles,
-    PieChart, Briefcase, Tag, TrendingDown, Info, ShoppingCart,
-    RefreshCw, Filter, Layers, ZapOff, ClipboardCheck
-} from 'lucide-react';
+import { Brain, Zap, Package, ShoppingBag, Activity, BarChart3, Flame, CheckCircle, AlertCircle, Sparkles, PieChart, Info, RefreshCw, Layers, ClipboardCheck } from 'lucide-react';
 
 import { useAuth } from '../../contexts/AuthContext';
+import { OPERATIONAL_ROLES } from '../../utils/authorization';
 
 const AdminDSS = () => {
     const { user } = useAuth();
@@ -25,7 +19,7 @@ const AdminDSS = () => {
     const fetchInsights = async () => {
         try {
             setLoading(true);
-            const res = user?.role === 'staff' 
+            const res = OPERATIONAL_ROLES.has(user?.role)
                 ? await dssService.getStaffInsights() 
                 : await dssService.getAdminInsights();
             setData(res.data);
@@ -78,9 +72,7 @@ const AdminDSS = () => {
         overview,
         salesHistory,
         inventory,
-        customers,
         recommendations,
-        monthlyRevenue,
         conversionRate,
         roleProfile
     } = data;
@@ -88,19 +80,19 @@ const AdminDSS = () => {
     const isStaff = roleProfile?.isStaff;
     const staffType = roleProfile?.staffType?.replace('_', ' ');
 
-    const cardClass = "bg-white border border-slate-100 rounded-2xl p-5 sm:p-8 shadow-sm hover:shadow-xl transition-all duration-500 overflow-hidden relative group";
+    const cardClass = "bg-white border border-slate-100 rounded-2xl p-4 sm:p-5 shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden relative group";
     const labelClass = "text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4 block";
-    const titleClass = "text-xl font-black text-slate-900 tracking-tight mb-6 flex items-center gap-3 uppercase";
+    const titleClass = "text-lg font-black text-slate-900 tracking-tight mb-4 flex items-center gap-3 uppercase";
 
     return (
-        <div className="max-w-7xl mx-auto space-y-10 pb-32 animate-in fade-in duration-700">
+        <div className="max-w-7xl mx-auto space-y-5 pb-24 animate-in fade-in duration-500">
             {/* Header Hero Section */}
-            <div className="relative bg-slate-900 rounded-[2rem] sm:rounded-[3.5rem] p-6 sm:p-12 md:p-16 overflow-hidden shadow-2xl">
+            <div className="relative bg-slate-900 rounded-2xl p-5 sm:p-7 overflow-hidden shadow-lg">
                 <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-primary-600/10 rounded-full blur-[120px] -mr-32 -mt-32 animate-pulse" />
                 <div className="absolute bottom-0 left-0 w-[300px] h-[300px] bg-indigo-500/10 rounded-full blur-[100px] -ml-16 -mb-16" />
 
                 <div className="relative z-10">
-                    <div className="flex items-center gap-3 mb-6">
+                    <div className="flex items-center gap-3 mb-4">
                         <div className="p-2 bg-primary-600/20 rounded-2xl backdrop-blur-md border border-primary-500/30">
                             <Brain size={20} className="text-primary-400" />
                         </div>
@@ -108,10 +100,10 @@ const AdminDSS = () => {
                     </div>
 
                     <div className="max-w-3xl">
-                        <h1 className="text-3xl sm:text-5xl md:text-7xl font-black uppercase tracking-tighter leading-none mb-6 text-white">
+                        <h1 className="text-2xl sm:text-3xl font-black uppercase tracking-tight leading-none mb-3 text-white">
                             {isStaff ? `${staffType}` : 'Explainable'} <br /> <span className="text-primary-500 italic">Intelligence</span>
                         </h1>
-                        <p className="text-xs sm:text-sm md:text-lg font-bold text-slate-400 max-w-xl leading-relaxed">
+                        <p className="text-xs sm:text-sm font-medium text-slate-300 max-w-xl leading-relaxed">
                             {isStaff 
                                 ? `Specialized decision support for ${staffType} protocols. Analyze store-specific data to optimize your assigned operations.`
                                 : 'Analyze current stock levels and sales velocity to automate procurement and maximize marketplace efficiency.'
@@ -119,12 +111,12 @@ const AdminDSS = () => {
                         </p>
                     </div>
 
-                    <div className="flex flex-wrap gap-4 mt-10">
-                        <div className="px-6 py-3.5 bg-white/5 border border-white/10 rounded-2xl backdrop-blur-md">
+                    <div className="flex flex-wrap gap-3 mt-5">
+                        <div className="px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl backdrop-blur-md">
                             <p className="text-[8px] font-black text-white/40 uppercase tracking-widest mb-1">Portfolio Revenue</p>
                             <p className="text-2xl font-black text-white tracking-tighter">₱{overview.totalRevenue.toLocaleString()}</p>
                         </div>
-                        <div className="px-6 py-3.5 bg-white/5 border border-white/10 rounded-2xl backdrop-blur-md">
+                        <div className="px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl backdrop-blur-md">
                             <p className="text-[8px] font-black text-white/40 uppercase tracking-widest mb-1">Conversion Rate</p>
                             <p className="text-2xl font-black text-emerald-400 tracking-tighter">{conversionRate}%</p>
                         </div>
@@ -182,10 +174,11 @@ const AdminDSS = () => {
                                                         </div>
                                                         <span className="text-[9px] font-bold text-slate-300 uppercase tracking-widest">Velocity: {rec.velocity} units/day</span>
                                                     </div>
-                                                    <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight mb-3">"{rec.message}"</h3>
-                                                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest leading-relaxed">
-                                                        The system detected {rec.productName} is approaching critical levels. Our sales algorithm predicts depletion within {rec.daysUntilOut} days.
-                                                    </p>
+                                                    <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight mb-3">{rec.message}</h3>
+                                                    <p className="text-xs font-bold text-slate-500 leading-relaxed"><strong>Why:</strong> {rec.why}</p>
+                                                    <p className="mt-2 text-[10px] font-semibold text-slate-400 leading-relaxed"><strong>Based on:</strong> {(rec.basedOn || []).join(' · ')}</p>
+                                                    <p className="mt-2 text-[10px] font-semibold text-primary-600"><strong>Action:</strong> {rec.recommendedAction}</p>
+                                                    <p className="mt-1 text-[10px] text-slate-400">{rec.confidenceLabel || 'Limited'} confidence · Suggested quantity {rec.suggestedReorderQuantity ?? 'requires review'}</p>
                                                 </div>
                                                 <div className="flex flex-col justify-center gap-3 w-full md:w-48">
                                                     <button
@@ -225,6 +218,11 @@ const AdminDSS = () => {
                                         {decision.forecast.forecastUnits} units forecast for the next {decision.forecast.horizonDays} days.
                                         Confidence: {Math.round(decision.forecast.confidence * 100)}%.
                                     </p>
+                                    <div className="mb-4 rounded-xl bg-slate-50 p-3 text-xs text-slate-600">
+                                        <p><strong>Why:</strong> {decision.why}</p>
+                                        <p className="mt-1"><strong>Action:</strong> {decision.recommendedAction}</p>
+                                        <p className="mt-1"><strong>Forecast basis:</strong> {decision.forecastReason}</p>
+                                    </div>
                                     <div className="grid grid-cols-2 gap-3 text-xs font-bold text-slate-600">
                                         <div>On hand: {decision.inventoryPosition.onHand}</div>
                                         <div>Reorder point: {decision.policy.reorderPoint}</div>

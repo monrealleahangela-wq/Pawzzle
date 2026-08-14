@@ -26,6 +26,8 @@ import { useNavigate } from 'react-router-dom';
 import { formatTime12h, formatDateTime12h } from '../../utils/timeFormatters';
 import DeliveryAssignmentFields, { emptyExternal } from '../../components/delivery/DeliveryAssignmentFields';
 import ServiceCommunicationPanel from '../../components/booking/ServiceCommunicationPanel';
+import { PLATFORM_ADMIN_ROLES, STORE_ADMIN_ROLES, OPERATIONAL_ROLES, effectiveStaffType, hasUiActionPermission } from '../../utils/authorization';
+import { getUserFacingError } from '../../utils/userFacingError';
 
 
 // Simple linear state transition mapping for manual progressing
@@ -53,19 +55,25 @@ const BookingsManagement = () => {
   const [eligibleServiceStaff, setEligibleServiceStaff] = useState([]);
   const [selectedServiceStaffId, setSelectedServiceStaffId] = useState('');
   const [assigningStaff, setAssigningStaff] = useState(false);
+  const [proposalDuration, setProposalDuration] = useState('');
+  const [proposalInstructions, setProposalInstructions] = useState('');
 
   useEffect(() => {
     if (!selectedBooking?._id || !['pending', 'awaiting_customer_confirmation'].includes(selectedBooking.status)) {
       setEligibleServiceStaff([]);
+      setProposalDuration('');
+      setProposalInstructions('');
       return;
     }
     adminBookingService.getEligibleStaff(selectedBooking._id).then(response => {
       const options = response.data.staff || [];
       setEligibleServiceStaff(options);
       setSelectedServiceStaffId(selectedBooking.staff?._id || selectedBooking.staff || options[0]?._id || '');
+      setProposalDuration(String(selectedBooking.proposal?.estimatedDurationMinutes || selectedBooking.service?.duration || ''));
+      setProposalInstructions(selectedBooking.proposal?.specialInstructions || '');
     }).catch(error => {
       setEligibleServiceStaff([]);
-      toast.error(error.response?.data?.message || 'Unable to load qualified staff for this schedule.');
+      toast.error(getUserFacingError(error, 'Unable to load qualified staff for this schedule.'));
     });
   }, [selectedBooking?._id, selectedBooking?.status, selectedBooking?.staff]);
 
@@ -75,16 +83,19 @@ const BookingsManagement = () => {
   }, [selectedBooking?._id, selectedBooking?.delivery]);
 
   // Permission Checks
-  const isAdmin = ['admin', 'super_admin'].includes(user?.role);
-  const serviceUpdateRoles = new Set(['service_management_staff', 'veterinarian', 'veterinary_technician', 'veterinary_nurse', 'groomer', 'trainer', 'service_staff']);
-  const canUpdate = isAdmin || serviceUpdateRoles.has(user?.staffType) || user?.permissions?.bookings?.update || user?.permissions?.bookings?.fullAccess;
-  const canDelete = isAdmin || user?.permissions?.bookings?.delete || user?.permissions?.bookings?.fullAccess;
+  const isPlatformAdmin = PLATFORM_ADMIN_ROLES.has(user?.role);
+  const isStoreAdmin = STORE_ADMIN_ROLES.has(user?.role);
+  const staffType = effectiveStaffType(user);
+  const serviceUpdateRoles = new Set(['manager', 'veterinarian', 'veterinary_technician', 'veterinary_nurse', 'groomer', 'trainer', 'boarding_staff']);
+  const canUpdate = hasUiActionPermission(user, 'bookings', 'update', isStoreAdmin || serviceUpdateRoles.has(staffType));
+  const canDelete = hasUiActionPermission(user, 'bookings', 'update', isStoreAdmin);
+  const canAssign = hasUiActionPermission(user, 'bookings', 'update', isStoreAdmin || staffType === 'manager');
 
   useEffect(() => {
     const userData = JSON.parse(localStorage.getItem('user') || '{}');
     setUser(userData);
     fetchBookings();
-    if (['admin', 'super_admin', 'store_owner'].includes(userData.role)) {
+    if (STORE_ADMIN_ROLES.has(userData.role)) {
       staffService.getEligibleRiders().then(response => { const riders=response.data.riders||[]; setEligibleRiders(riders); if (!riders.length) setAssignmentType('third_party'); }).catch(() => { setEligibleRiders([]); setAssignmentType('third_party'); });
     }
 
@@ -110,30 +121,30 @@ const BookingsManagement = () => {
   const fetchBookings = async () => {
     try {
       const userData = JSON.parse(localStorage.getItem('user') || '{}');
-      if (userData.role === 'super_admin' || userData.role === 'admin' || userData.role === 'staff') {
+      if (PLATFORM_ADMIN_ROLES.has(userData.role) || STORE_ADMIN_ROLES.has(userData.role) || OPERATIONAL_ROLES.has(userData.role)) {
         const response = await adminBookingService.getAllBookings();
         setBookings(response.data.bookings || []);
       } else {
-        toast.error('Access denied');
+        toast.error("You don't have permission to view store bookings.");
       }
     } catch (error) {
-      toast.error('Failed to load bookings');
+      toast.error(getUserFacingError(error, 'Unable to load bookings.'));
     } finally {
       setLoading(false);
     }
   };
 
   const updateBookingStatus = async (bookingId, status) => {
-    if (user?.role === 'super_admin') {
+    if (isPlatformAdmin) {
       toast.error('Super admins can only view bookings');
       return;
     }
     if (!canUpdate && status !== 'cancelled') {
-        toast.error('OPERATOR_RESTRICTED: Insufficient permissions to update booking status');
+        toast.error("You don't have permission to update this booking status.");
         return;
     }
     if (status === 'cancelled' && !canDelete) {
-        toast.error('OPERATOR_RESTRICTED: Insufficient permissions to cancel bookings');
+        toast.error("You don't have permission to cancel this booking.");
         return;
     }
     try {
@@ -145,7 +156,7 @@ const BookingsManagement = () => {
         setSelectedBooking(prev => ({ ...prev, status }));
       }
     } catch (error) {
-      toast.error('Failed to update booking status');
+      toast.error(getUserFacingError(error, 'Unable to update the booking status.'));
     }
   };
 
@@ -153,12 +164,16 @@ const BookingsManagement = () => {
     if (!selectedServiceStaffId) return toast.error('Select a qualified and available staff member.');
     setAssigningStaff(true);
     try {
-      const response = await adminBookingService.assignStaff(selectedBooking._id, selectedServiceStaffId);
+      const response = await adminBookingService.prepareProposal(selectedBooking._id, {
+        staffId: selectedServiceStaffId,
+        estimatedDurationMinutes: Number(proposalDuration),
+        specialInstructions: proposalInstructions.trim()
+      });
       setSelectedBooking(response.data.booking);
-      toast.success('Staff assigned. The customer can now review and confirm the booking.');
+      toast.success('Booking proposal sent. The customer can review, confirm, or choose another qualified specialist.');
       fetchBookings();
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Unable to assign staff.');
+      toast.error(getUserFacingError(error, 'Unable to assign staff.'));
     } finally {
       setAssigningStaff(false);
     }
@@ -253,7 +268,7 @@ const BookingsManagement = () => {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50/30 p-4 lg:p-8 space-y-10 pb-32">
+    <div className="min-h-screen bg-slate-50/30 p-3 sm:p-5 space-y-5 pb-24">
       {/* Decoration */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden opacity-30">
         <div className="absolute top-[-10%] right-[10%] w-[45%] h-[45%] bg-primary-600/5 rounded-full blur-[140px]" />
@@ -261,7 +276,7 @@ const BookingsManagement = () => {
       </div>
 
       {/* Header */}
-      <header className="relative z-10 flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-slate-100 pb-8">
+      <header className="relative z-10 flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-slate-100 pb-4">
         <div>
           <div className="flex items-center gap-3 mb-3">
             <div className="p-1.5 bg-slate-900 text-white rounded-lg shadow-sm">
@@ -269,7 +284,7 @@ const BookingsManagement = () => {
             </div>
             <span className="text-[9px] font-black text-slate-400 uppercase tracking-[0.4em]">ADMIN : BOOKINGS</span>
           </div>
-          <h1 className="text-3xl sm:text-4xl font-black text-slate-900 uppercase tracking-tighter leading-none mb-2">
+          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 uppercase tracking-tight leading-none mb-2">
             Service <span className="text-primary-600">Bookings</span>
           </h1>
           <div className="flex items-center gap-3">
@@ -282,7 +297,7 @@ const BookingsManagement = () => {
         <div className="flex flex-wrap gap-3">
           <Link
             to="/admin/services"
-            className="group px-6 py-3.5 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-primary-600 transition-all flex items-center gap-3"
+            className="group h-10 px-4 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-wider hover:bg-primary-600 transition-all flex items-center gap-2"
           >
             <Briefcase className="h-4 w-4" /> Manage Services
           </Link>
@@ -704,13 +719,14 @@ const BookingsManagement = () => {
                 </div>
               )}
 
-              <ServiceCommunicationPanel booking={selectedBooking} staffMode />
+              <ServiceCommunicationPanel booking={selectedBooking} staffMode onBookingUpdated={updated => { setSelectedBooking(updated); fetchBookings(); }} />
             </div>
 
             {/* Actions */}
             <footer className="shrink-0 p-6 sm:p-8 bg-slate-50 border-t border-slate-100 flex flex-wrap gap-4 relative z-10">
-              {(user?.role === 'admin' || user?.role === 'staff') && ['pending', 'awaiting_customer_confirmation'].includes(selectedBooking.status) && canUpdate && (
-                <div className="w-full grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-2">
+              {canAssign && ['pending', 'awaiting_customer_confirmation'].includes(selectedBooking.status) && (
+                <div className="w-full space-y-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-[1fr_150px] gap-2">
                   <select
                     value={selectedServiceStaffId}
                     onChange={event => setSelectedServiceStaffId(event.target.value)}
@@ -723,20 +739,38 @@ const BookingsManagement = () => {
                       </option>
                     ))}
                   </select>
+                  <input
+                    type="number"
+                    min="1"
+                    max="1440"
+                    value={proposalDuration}
+                    onChange={event => setProposalDuration(event.target.value)}
+                    placeholder="Duration (minutes)"
+                    className="h-10 px-3 rounded-xl border border-slate-200 bg-white text-xs font-bold text-slate-700 outline-none focus:border-primary-500"
+                  />
+                  </div>
+                  <textarea
+                    rows={2}
+                    maxLength={2000}
+                    value={proposalInstructions}
+                    onChange={event => setProposalInstructions(event.target.value)}
+                    placeholder="Customer-visible preparation or service instructions (optional)"
+                    className="w-full p-3 rounded-xl border border-slate-200 bg-white text-xs text-slate-700 resize-none outline-none focus:border-primary-500"
+                  />
                   <button
                     type="button"
-                    disabled={!selectedServiceStaffId || assigningStaff}
+                    disabled={!selectedServiceStaffId || !proposalDuration || assigningStaff}
                     onClick={handleAssignServiceStaff}
                     className="h-10 px-4 rounded-xl bg-primary-600 text-white text-[10px] font-black uppercase tracking-widest disabled:opacity-50"
                   >
-                    {assigningStaff ? 'Assigning…' : selectedBooking.status === 'pending' ? 'Assign & Send Preview' : 'Update Assignment'}
+                    {assigningStaff ? 'Sending proposal...' : selectedBooking.status === 'pending' ? 'Prepare & Send Proposal' : 'Update Proposal'}
                   </button>
                 </div>
               )}
-              {(user?.role === 'admin' || user?.role === 'staff') &&
+              {canUpdate &&
                selectedBooking.status !== 'completed' &&
                selectedBooking.status !== 'cancelled' &&
-               statusNextMap[selectedBooking.status] && canUpdate && (
+               statusNextMap[selectedBooking.status] && (
                 <button
                   onClick={() => {
                     updateBookingStatus(selectedBooking._id, statusNextMap[selectedBooking.status]);
@@ -747,7 +781,7 @@ const BookingsManagement = () => {
                   Update Status to {(statusNextMap[selectedBooking.status] || '').replace('_', ' ')}
                 </button>
               )}
-              {(user?.role === 'admin' || user?.role === 'staff') && ['pending', 'awaiting_customer_confirmation', 'awaiting_payment', 'confirmed'].includes(selectedBooking.status) && canDelete && (
+              {canDelete && ['pending', 'awaiting_customer_confirmation', 'awaiting_payment', 'confirmed'].includes(selectedBooking.status) && (
                 <button
                   onClick={() => {
                     if (window.confirm('Are you sure you want to cancel this booking?')) {

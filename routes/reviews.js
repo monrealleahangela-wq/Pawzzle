@@ -13,7 +13,7 @@ const {
     toggleReviewStatus,
     getStaffReviews
 } = require('../controllers/reviewController');
-const { authenticate, adminOnly, superAdminOnly, adminOrStaff } = require('../middleware/auth');
+const { authenticate, superAdminOnly, adminOrStaff } = require('../middleware/auth');
 
 // Administrative & Specialized Review Routes
 router.get('/platform/all', authenticate, superAdminOnly, getAllPlatformFeedback);

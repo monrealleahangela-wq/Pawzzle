@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import { Mail, ArrowLeft, Eye, EyeOff, Lock, ShieldCheck, RefreshCw, KeyRound, CheckCircle } from 'lucide-react';
+import { Mail, ArrowLeft, Eye, EyeOff, Lock, RefreshCw, KeyRound, CheckCircle } from 'lucide-react';
 import authService from '../../services/authService';
 
 const ForgotPassword = () => {

@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { Html5Qrcode } from 'html5-qrcode';
-import { api, getImageUrl } from '../services/apiService';
-import { X, QrCode, User, Calendar, Clock, AlertCircle, CheckCircle, RefreshCcw, Camera, Lock, ShieldAlert } from 'lucide-react';
+import { api } from '../services/apiService';
+import { X, QrCode, User, CheckCircle, RefreshCcw, Lock, ShieldAlert } from 'lucide-react';
 import { toast } from 'react-toastify';
 
 const QRScannerModal = ({ isOpen, onClose, onScanSuccess }) => {

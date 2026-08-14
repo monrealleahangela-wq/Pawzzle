@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { authenticate, adminOnly } = require('../middleware/auth');
+const { authenticate, adminOnly, platformAdminOnly } = require('../middleware/auth');
 const {
     getPayoutStats,
     requestPayout,
@@ -11,13 +11,13 @@ const {
 } = require('../controllers/payoutController');
 
 // Admin: view & process all payout requests
-router.get('/admin/all', authenticate, adminOnly, getAllPayoutRequests);
-router.patch('/admin/:id/process', authenticate, adminOnly, processPayout);
+router.get('/admin/all', authenticate, platformAdminOnly, getAllPayoutRequests);
+router.patch('/admin/:id/process', authenticate, platformAdminOnly, processPayout);
 
 // Store owner routes
-router.get('/stats', authenticate, getPayoutStats);
-router.get('/history', authenticate, getPayoutHistory);
-router.post('/request', authenticate, requestPayout);
-router.put('/methods', authenticate, updatePayoutMethods);
+router.get('/stats', authenticate, adminOnly, getPayoutStats);
+router.get('/history', authenticate, adminOnly, getPayoutHistory);
+router.post('/request', authenticate, adminOnly, requestPayout);
+router.put('/methods', authenticate, adminOnly, updatePayoutMethods);
 
 module.exports = router;

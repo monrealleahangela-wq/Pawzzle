@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import Modal from './ui/Modal';
 import { customerService } from '../services/apiService';
-import { User, Phone, Mail, MapPin, ShoppingCart, Calendar, Star, Package, Clock, ExternalLink } from 'lucide-react';
+import { Phone, Mail, MapPin, ExternalLink } from 'lucide-react';
 import { toast } from 'react-toastify';
-import { Link } from 'react-router-dom';
 
 const CustomerQuickViewModal = ({ isOpen, onClose, customerId }) => {
     const [customer, setCustomer] = useState(null);

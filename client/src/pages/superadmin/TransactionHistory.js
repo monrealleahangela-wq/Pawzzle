@@ -331,10 +331,10 @@ const TransactionHistory = () => {
             </div>
 
             <div className="flex-1 overflow-y-auto p-6 sm:p-8 space-y-8 no-scrollbar">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Transaction Summary */}
                 <div className="space-y-8">
-                  <div className="bg-slate-900 rounded-2xl p-10 text-white relative overflow-hidden shadow-2xl">
+                  <div className="bg-slate-900 rounded-2xl p-5 sm:p-6 text-white relative overflow-hidden shadow-lg">
                     <PieChart className="absolute -bottom-10 -right-10 w-48 h-48 opacity-10" />
                     <div className="relative z-10 space-y-6">
                       <div className="flex justify-between items-start">
@@ -343,7 +343,7 @@ const TransactionHistory = () => {
                           {getStatusProps(selectedTransaction.status).label}
                         </span>
                       </div>
-                      <p className="text-6xl font-black tracking-tighter">₱{selectedTransaction.totalAmount?.toLocaleString()}</p>
+                      <p className="text-3xl sm:text-4xl font-black tracking-tight">₱{selectedTransaction.totalAmount?.toLocaleString()}</p>
                       <div className="flex gap-4">
                         <div className="px-4 py-2 bg-white/5 border border-white/10 rounded-2xl">
                           <p className="text-[8px] font-black text-white/40 uppercase tracking-widest mb-1">Method</p>

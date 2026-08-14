@@ -1,7 +1,7 @@
 const Booking = require('../models/Booking');
-const Store = require('../models/Store');
 const Voucher = require('../models/Voucher');
-const { hasPermission } = require('../config/permissions');
+const { hasPermission, isPlatformAdmin, isStoreAdmin, isOperationalStaff } = require('../config/permissions');
+const { getAuthorizedStoreIds } = require('../utils/authorizationPolicy');
 
 // Auto-cancels bookings that are still pending and whose date has passed
 const autoCancelExpiredBookings = async (filterBase = {}) => {
@@ -53,48 +53,37 @@ const getAllAdminBookings = async (req, res) => {
     // Multi-tenant isolation: determine store for admin or staff
     let filter = { isDeleted: { $ne: true } };
 
-    if (req.user.role === 'super_admin') {
+    if (isPlatformAdmin(req.user)) {
       console.log('🔓 Super-admin detected - showing all bookings');
-    } else if (req.user.role === 'staff') {
+    } else if (isOperationalStaff(req.user)) {
       if (!hasPermission(req.user, 'bookings.assigned') && !hasPermission(req.user, 'bookings.manage')) {
         return res.status(403).json({ message: 'Access denied. This staff role cannot access service bookings.' });
       }
-      if (req.user.store) {
-        const store = await Store.findById(req.user.store);
-        if (store) {
-          filter.$or = [
-            { store: req.user.store },
-            { addedBy: store.owner }
-          ];
-        } else {
-          filter.store = req.user.store;
-        }
-      } else {
-        filter.addedBy = req.user.createdBy;
-      }
+      const storeIds = await getAuthorizedStoreIds(req.user);
+      if (!storeIds?.length) return res.status(403).json({ message: 'No store is assigned to this account.' });
+      filter.store = { $in: storeIds };
       if (!hasPermission(req.user, 'bookings.manage')) {
-        const scope = filter.$or ? { $or: filter.$or } : { ...filter };
-        filter = { $and: [scope, { staff: req.user._id }], isDeleted: { $ne: true } };
+        filter.$and = [{ $or: [{ staff: req.user._id }, { serviceProvider: req.user._id }] }];
       }
-    } else {
+    } else if (isStoreAdmin(req.user)) {
       // Admin - find by store ownership or addedBy
-      const adminStore = await Store.findOne({ owner: req.user._id });
-      if (adminStore) {
-        filter.store = adminStore._id;
-      } else {
-        filter.addedBy = req.user._id;
-      }
+      const storeIds = await getAuthorizedStoreIds(req.user);
+      if (!storeIds?.length) return res.status(403).json({ message: 'No store is assigned to this account.' });
+      filter.store = { $in: storeIds };
+    } else {
+      return res.status(403).json({ message: 'Access denied.' });
     }
 
     if (status) filter.status = status;
     if (paymentMethod) filter.paymentMethod = paymentMethod;
 
     if (search) {
-      filter.$or = [
+      const searchScope = { $or: [
         { customerName: new RegExp(search, 'i') },
         { customerEmail: new RegExp(search, 'i') },
         { customerPhone: new RegExp(search, 'i') }
-      ];
+      ] };
+      filter.$and = [...(filter.$and || []), searchScope];
     }
 
     // Run auto-cleanup within this admin's scope
@@ -106,8 +95,8 @@ const getAllAdminBookings = async (req, res) => {
       .populate('customer', 'username firstName lastName email')
       .populate('service', 'name description price duration requirements category')
       .populate('store', 'name owner')
-      .populate('staff', 'firstName lastName avatar staffType professionalProfile')
-      .populate('serviceProvider', 'firstName lastName avatar staffType professionalProfile')
+      .populate('staff', 'firstName lastName avatar staffType professionalProfile.professionalTitle professionalProfile.specialty professionalProfile.experienceYears professionalProfile.rating professionalProfile.reviewCount professionalProfile.verification.status')
+      .populate('serviceProvider', 'firstName lastName avatar staffType professionalProfile.professionalTitle professionalProfile.specialty professionalProfile.experienceYears professionalProfile.rating professionalProfile.reviewCount professionalProfile.verification.status')
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(parseInt(limit));

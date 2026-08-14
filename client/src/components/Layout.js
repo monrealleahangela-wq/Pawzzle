@@ -1,21 +1,15 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Link, useLocation, useNavigate, Outlet } from 'react-router-dom';
+import { Link, useLocation, Outlet } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useCart } from '../contexts/CartContext';
 import { getImageUrl } from '../services/apiService';
-import {
-  Heart, Package, Calendar, ShoppingCart, User, LogOut, Menu, X,
-  Settings, Home as House, Activity, Users, Building, DollarSign,
-  TrendingUp, FileText, Search, ChevronRight, ChevronDown,
-  MessageSquare, ShoppingBag, Archive, Ticket, Star, Wallet,
-  Brain, Moon, Sun, PawPrint, MapPin, AlertCircle, HelpCircle,
-  History, ShieldCheck, Truck, Layers, ChevronsLeft, ChevronsRight, Store
-} from 'lucide-react';
+import { Heart, Package, Calendar, ShoppingCart, User, LogOut, Menu, X, Settings, Home as House, Activity, Users, Building, DollarSign, TrendingUp, FileText, ChevronDown, MessageSquare, ShoppingBag, Archive, Ticket, Star, Wallet, Brain, Moon, Sun, MapPin, AlertCircle, HelpCircle, History, ShieldCheck, Truck, Layers, ChevronsLeft, ChevronsRight, Store } from 'lucide-react';
 import FloatingChatManager from './FloatingChatManager';
 import NotificationBell from './NotificationBell';
 import PasswordChangeModal from './auth/PasswordChangeModal';
 import LogoutModal from './auth/LogoutModal';
 import { useTheme } from '../contexts/ThemeContext';
+import { hasUiPermission, OPERATIONAL_ROLES, effectiveStaffType } from '../utils/authorization';
 
 // ═══════════════════════════════════════════════════════════════
 // NAVIGATION DATA — Role-based dropdown menu structures
@@ -58,7 +52,7 @@ const getAdminMenu = (user) => {
   // Existing store-owner accounts use both the legacy `admin` role and the
   // newer `store_owner` role. They must receive the same catalog navigation.
   const isStoreOwner = role === 'store_owner' || role === 'admin';
-  const isGlobalAdmin = role === 'super_admin' || isStoreOwner;
+  const isGlobalAdmin = role === 'super_admin' || role === 'platform_admin' || isStoreOwner;
 
   const menu = [
     { path: '/admin/dashboard', label: 'Dashboard', icon: Activity },
@@ -132,7 +126,8 @@ const getAdminMenu = (user) => {
   if (isGlobalAdmin) {
     const settingsChildren = [
       { path: '/admin/store', label: 'Store Details', icon: Building },
-      { path: '/admin/staff', label: 'Manage Staff', icon: Users }
+      { path: '/admin/staff', label: 'Manage Staff', icon: Users },
+      { path: '/admin/roles', label: 'Role Management', icon: ShieldCheck }
     ];
     menu.push({ label: 'Settings', icon: Settings, children: settingsChildren });
   }
@@ -191,40 +186,42 @@ const publicMenu = [
 ];
 
 const getStaffMenu = (user) => {
-  const p = user?.permissions || {};
   const menu = [
     { path: '/admin/dashboard', label: 'Dashboard', icon: Activity },
-    { path: '/admin/insights', label: 'Business Insights', icon: Brain },
   ];
+  if (hasUiPermission(user, 'dss')) menu.push({ path: '/admin/insights', label: 'Business Insights', icon: Brain });
 
   const catalogChildren = [];
-  if (p.inventory?.view) catalogChildren.push({ path: '/admin/pets', label: 'Pets', icon: Heart });
-  if (p.inventory?.view) catalogChildren.push({ path: '/admin/products', label: 'Products', icon: Package });
-  if (p.services?.view) catalogChildren.push({ path: '/admin/services', label: 'Services', icon: Calendar });
+  if (hasUiPermission(user, 'inventory') || hasUiPermission(user, 'pets')) catalogChildren.push({ path: '/admin/pets', label: 'Pets', icon: Heart });
+  if (hasUiPermission(user, 'inventory') || hasUiPermission(user, 'products')) catalogChildren.push({ path: '/admin/products', label: 'Products', icon: Package });
+  if (hasUiPermission(user, 'services')) catalogChildren.push({ path: '/admin/services', label: 'Services', icon: Calendar });
   if (catalogChildren.length > 0) menu.push({ label: 'Products & Services', icon: Package, children: catalogChildren });
 
   const opsChildren = [];
-  if (p.orders?.view) opsChildren.push({ path: '/admin/orders', label: 'Orders', icon: ShoppingCart });
-  if (p.bookings?.view) opsChildren.push({ path: '/admin/bookings', label: 'Bookings', icon: Calendar });
-  if (p.customers?.view) opsChildren.push({ path: '/admin/customers', label: 'Customers', icon: Users });
-  if (p.admin_chat?.view) opsChildren.push({ path: '/admin/chat', label: 'Chat', icon: MessageSquare });
-  if (p.reviews?.view) opsChildren.push({ path: '/admin/reviews', label: 'Reviews', icon: Star });
+  if (hasUiPermission(user, 'orders')) opsChildren.push({ path: '/admin/orders', label: 'Orders', icon: ShoppingCart });
+  if (hasUiPermission(user, 'bookings')) opsChildren.push({ path: '/admin/bookings', label: 'Bookings', icon: Calendar });
+  if (hasUiPermission(user, 'customers')) opsChildren.push({ path: '/admin/customers', label: 'Customers', icon: Users });
+  if (hasUiPermission(user, 'admin_chat')) opsChildren.push({ path: '/admin/chat', label: 'Chat', icon: MessageSquare });
+  if (hasUiPermission(user, 'reviews')) opsChildren.push({ path: '/admin/reviews', label: 'Reviews', icon: Star });
   if (opsChildren.length > 0) menu.push({ label: 'Operations', icon: ShoppingBag, children: opsChildren });
 
   const supplyChildren = [];
-  if (user?.staffType === 'inventory_staff' || user?.staffType === 'procurement_officer') {
+  if (['inventory_staff', 'procurement_officer'].includes(effectiveStaffType(user))) {
     supplyChildren.push({ path: '/admin/purchase-orders', label: 'Purchase Orders', icon: Truck });
   }
   if (supplyChildren.length > 0) menu.push({ label: 'Supply Chain', icon: Truck, children: supplyChildren });
 
   const financeChildren = [];
-  if (user?.staffType === 'finance_staff') financeChildren.push({ path: '/admin/finance', label: 'Finance Records', icon: DollarSign });
-  if (p.vouchers?.view) financeChildren.push({ path: '/admin/vouchers', label: 'Vouchers', icon: Ticket });
+  if (effectiveStaffType(user) === 'finance_staff') financeChildren.push({ path: '/admin/finance', label: 'Finance Records', icon: DollarSign });
+  if (hasUiPermission(user, 'vouchers')) financeChildren.push({ path: '/admin/vouchers', label: 'Vouchers', icon: Ticket });
   if (financeChildren.length > 0) menu.push({ label: 'Finance', icon: DollarSign, children: financeChildren });
 
   const mgmtChildren = [];
-  if (p.analytics?.view) mgmtChildren.push({ path: '/admin/stats', label: 'Stats', icon: TrendingUp });
-  if (p.staff?.view) mgmtChildren.push({ path: '/admin/staff', label: 'Staff', icon: Users });
+  if (hasUiPermission(user, 'analytics')) mgmtChildren.push({ path: '/admin/stats', label: 'Stats', icon: TrendingUp });
+  if (hasUiPermission(user, 'staff')) mgmtChildren.push({ path: '/admin/staff', label: 'Staff', icon: Users });
+  if (['admin', 'store_owner', 'super_admin', 'platform_admin'].includes(user?.role)) {
+    mgmtChildren.push({ path: '/admin/roles', label: 'Role Management', icon: ShieldCheck });
+  }
   if (mgmtChildren.length > 0) menu.push({ label: 'Management', icon: Settings, children: mgmtChildren });
 
   return menu;
@@ -331,11 +328,10 @@ const NavGroup = ({ group, expanded, onToggle, isActive, collapsed, onNavigate }
 // ═══════════════════════════════════════════════════════════════
 
 const Layout = () => {
-  const { user, logout, loading, isAuthenticated } = useAuth();
+  const { user, logout, isAuthenticated } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const { getTotalItems } = useCart();
   const location = useLocation();
-  const navigate = useNavigate();
 
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
@@ -392,9 +388,10 @@ const Layout = () => {
       case 'admin':
       case 'store_owner': return getAdminMenu(user);
       case 'super_admin': return superAdminMenu;
+      case 'platform_admin': return superAdminMenu;
       case 'staff': return getStaffMenu(user);
       case 'supplier': return supplierMenu;
-      default: return publicMenu;
+      default: return OPERATIONAL_ROLES.has(user.role) ? getStaffMenu(user) : publicMenu;
     }
   }, [user]);
 
