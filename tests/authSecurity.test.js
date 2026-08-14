@@ -126,7 +126,7 @@ test('the previous frontend-controlled CAPTCHA bypass is rejected', async () => 
   assert.equal(await verifyRecaptcha(''), false);
 });
 
-test('Google test CAPTCHA credentials cannot be enabled in production', () => {
+test('production rejects the Google test secret and falls back to the registered Pawzzle site key', () => {
   const previousEnvironment = process.env.NODE_ENV;
   const previousSecret = process.env.RECAPTCHA_SECRET_KEY;
   const previousSiteKey = process.env.RECAPTCHA_SITE_KEY;
@@ -136,7 +136,7 @@ test('Google test CAPTCHA credentials cannot be enabled in production', () => {
   process.env.RECAPTCHA_SITE_KEY = captchaTest.GOOGLE_TEST_SITE_KEY;
   delete process.env.REACT_APP_RECAPTCHA_SITE_KEY;
   assert.equal(captchaTest.getSecretKey(), null);
-  assert.equal(captchaTest.getSiteKey(), null);
+  assert.equal(captchaTest.getSiteKey(), captchaTest.PAWZZLE_PRODUCTION_SITE_KEY);
   if (previousEnvironment === undefined) delete process.env.NODE_ENV;
   else process.env.NODE_ENV = previousEnvironment;
   if (previousSecret === undefined) delete process.env.RECAPTCHA_SECRET_KEY;

@@ -1,13 +1,18 @@
 const axios = require('axios');
 
 const GOOGLE_TEST_SITE_KEY = '6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI';
+// reCAPTCHA site keys are public browser configuration. Keeping Pawzzle's
+// registered key here prevents a missing build-time Render variable from
+// disabling authentication; the matching secret remains server-only.
+const PAWZZLE_PRODUCTION_SITE_KEY = '6LckpYUtAAAAALNjXnyczMrAwdl_bLUO8xzEoW5-';
 const GOOGLE_TEST_SECRET = '6LeIxAcTAAAAAGG-vFI1TnRWxMZNFuojJ4WifJWe';
 
 const getSiteKey = () => {
   const configured = process.env.RECAPTCHA_SITE_KEY || process.env.REACT_APP_RECAPTCHA_SITE_KEY;
   if (process.env.NODE_ENV === 'production') {
-    if (!configured || configured === GOOGLE_TEST_SITE_KEY) return null;
-    return configured;
+    return configured && configured !== GOOGLE_TEST_SITE_KEY
+      ? configured
+      : PAWZZLE_PRODUCTION_SITE_KEY;
   }
   return configured || GOOGLE_TEST_SITE_KEY;
 };
@@ -63,5 +68,11 @@ const getPublicRecaptchaConfig = () => {
 module.exports = {
   verifyRecaptcha,
   getPublicRecaptchaConfig,
-  __test: { getSecretKey, getSiteKey, GOOGLE_TEST_SITE_KEY, GOOGLE_TEST_SECRET }
+  __test: {
+    getSecretKey,
+    getSiteKey,
+    GOOGLE_TEST_SITE_KEY,
+    PAWZZLE_PRODUCTION_SITE_KEY,
+    GOOGLE_TEST_SECRET
+  }
 };
