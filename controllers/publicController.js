@@ -4,6 +4,14 @@ const Pet = require('../models/Pet');
 const Product = require('../models/Product');
 const Service = require('../models/Service');
 const Review = require('../models/Review');
+const { getPublicRecaptchaConfig } = require('../utils/captchaVerifier');
+
+// Public site keys are designed to be sent to browsers. The matching secret
+// remains server-only and is never included in this response.
+const getCaptchaConfig = (_req, res) => {
+  res.set('Cache-Control', 'no-store');
+  res.json(getPublicRecaptchaConfig());
+};
 
 // Get all data needed for the landing page in one call
 const getLandingPageData = async (req, res) => {
@@ -73,5 +81,6 @@ const getLandingPageData = async (req, res) => {
 };
 
 module.exports = {
-  getLandingPageData
+  getLandingPageData,
+  getCaptchaConfig
 };

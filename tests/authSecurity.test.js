@@ -129,11 +129,45 @@ test('the previous frontend-controlled CAPTCHA bypass is rejected', async () => 
 test('Google test CAPTCHA credentials cannot be enabled in production', () => {
   const previousEnvironment = process.env.NODE_ENV;
   const previousSecret = process.env.RECAPTCHA_SECRET_KEY;
+  const previousSiteKey = process.env.RECAPTCHA_SITE_KEY;
+  const previousReactSiteKey = process.env.REACT_APP_RECAPTCHA_SITE_KEY;
   process.env.NODE_ENV = 'production';
   process.env.RECAPTCHA_SECRET_KEY = captchaTest.GOOGLE_TEST_SECRET;
+  process.env.RECAPTCHA_SITE_KEY = captchaTest.GOOGLE_TEST_SITE_KEY;
+  delete process.env.REACT_APP_RECAPTCHA_SITE_KEY;
   assert.equal(captchaTest.getSecretKey(), null);
+  assert.equal(captchaTest.getSiteKey(), null);
   if (previousEnvironment === undefined) delete process.env.NODE_ENV;
   else process.env.NODE_ENV = previousEnvironment;
+  if (previousSecret === undefined) delete process.env.RECAPTCHA_SECRET_KEY;
+  else process.env.RECAPTCHA_SECRET_KEY = previousSecret;
+  if (previousSiteKey === undefined) delete process.env.RECAPTCHA_SITE_KEY;
+  else process.env.RECAPTCHA_SITE_KEY = previousSiteKey;
+  if (previousReactSiteKey === undefined) delete process.env.REACT_APP_RECAPTCHA_SITE_KEY;
+  else process.env.REACT_APP_RECAPTCHA_SITE_KEY = previousReactSiteKey;
+});
+
+test('public CAPTCHA configuration exposes only the site key', () => {
+  const previousEnvironment = process.env.NODE_ENV;
+  const previousSiteKey = process.env.RECAPTCHA_SITE_KEY;
+  const previousSecret = process.env.RECAPTCHA_SECRET_KEY;
+  process.env.NODE_ENV = 'production';
+  process.env.RECAPTCHA_SITE_KEY = 'production-public-site-key';
+  process.env.RECAPTCHA_SECRET_KEY = 'production-private-secret';
+
+  const { getPublicRecaptchaConfig } = require('../utils/captchaVerifier');
+  const config = getPublicRecaptchaConfig();
+  assert.deepEqual(config, {
+    provider: 'google-recaptcha-v2',
+    configured: true,
+    siteKey: 'production-public-site-key'
+  });
+  assert.equal(JSON.stringify(config).includes('production-private-secret'), false);
+
+  if (previousEnvironment === undefined) delete process.env.NODE_ENV;
+  else process.env.NODE_ENV = previousEnvironment;
+  if (previousSiteKey === undefined) delete process.env.RECAPTCHA_SITE_KEY;
+  else process.env.RECAPTCHA_SITE_KEY = previousSiteKey;
   if (previousSecret === undefined) delete process.env.RECAPTCHA_SECRET_KEY;
   else process.env.RECAPTCHA_SECRET_KEY = previousSecret;
 });

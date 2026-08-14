@@ -10,5 +10,7 @@ services:
         value: production
       - key: RECAPTCHA_SECRET_KEY
         sync: false
+      - key: RECAPTCHA_SITE_KEY
+        sync: false
       - key: REACT_APP_RECAPTCHA_SITE_KEY
         sync: false
