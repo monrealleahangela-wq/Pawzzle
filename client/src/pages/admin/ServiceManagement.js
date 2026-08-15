@@ -8,6 +8,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useRealTimeUpdates } from '../../hooks/useRealTimeUpdates';
 import { SERVICE_CATEGORIES } from '../../constants/serviceCategories';
 import { PLATFORM_ADMIN_ROLES, STORE_ADMIN_ROLES, OPERATIONAL_ROLES, effectiveStaffType, hasUiActionPermission } from '../../utils/authorization';
+import ServiceFormModal from '../../components/forms/ServiceFormModal';
 
 const PhilippinePeso = ({ className }) => (
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
@@ -62,6 +63,7 @@ const ServiceManagement = () => {
   const [services, setServices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [showAdvancedServiceEditor, setShowAdvancedServiceEditor] = useState(false);
   const [wizardStep, setWizardStep] = useState(0);
   const [editingService, setEditingService] = useState(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -182,6 +184,12 @@ const ServiceManagement = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!formData.name?.trim() || !formData.category || !formData.subCategory || !formData.description?.trim()) {
+      return toast.warn('Complete the required service information.');
+    }
+    if (Number(formData.duration) < 15) return toast.warn('Service duration must be at least 15 minutes.');
+    if (formData.price === '' || Number(formData.price) < 0) return toast.warn('Enter a valid service price.');
+    if (!formData.images?.length) return toast.warn('A service image is required.');
     setSubmitting(true);
     try {
       const user = JSON.parse(localStorage.getItem('user') || '{}');
@@ -207,9 +215,11 @@ const ServiceManagement = () => {
     setFormData(initialFormState);
     setEditingService(null);
     setWizardStep(0);
+    setShowAdvancedServiceEditor(false);
   };
 
   const handleEdit = (service) => {
+    setShowAdvancedServiceEditor(false);
     setFormData({
       ...initialFormState,
       ...service,
@@ -250,8 +260,8 @@ const ServiceManagement = () => {
     }
   };
 
-  const handleImageUpload = async (e) => {
-    const files = e.target.files;
+  const handleImageUpload = async (input, replacePrimary = false) => {
+    const files = Array.isArray(input) ? input : input.target.files;
     if (!files || files.length === 0) return;
     setSubmitting(true);
     const fd = new FormData();
@@ -259,7 +269,12 @@ const ServiceManagement = () => {
     try {
       const response = await uploadService.uploadMultipleImages(fd);
       const newUrls = response.data.urls || response.data.imageUrls || [];
-      setFormData(prev => ({ ...prev, images: [...prev.images, ...newUrls] }));
+      setFormData(prev => ({
+        ...prev,
+        images: replacePrimary && newUrls.length
+          ? [newUrls[0], ...prev.images.slice(1), ...newUrls.slice(1)]
+          : [...prev.images, ...newUrls]
+      }));
       toast.success('Images uploaded');
     } catch (error) {
       toast.error('Upload failed');
@@ -538,9 +553,23 @@ const ServiceManagement = () => {
       </div>
 
       {/* ═══════════════════════════════════════════════════════════════════ */}
+      {/* Compact service workflow; the existing full editor remains available for advanced fields. */}
+      {showModal && !showAdvancedServiceEditor && <ServiceFormModal
+        editingService={editingService}
+        form={formData}
+        setForm={setFormData}
+        categories={categories}
+        staff={storeStaff}
+        onClose={() => setShowModal(false)}
+        onSubmit={handleSubmit}
+        onImageUpload={handleImageUpload}
+        loading={submitting}
+        onAdvanced={() => { setWizardStep(0); setShowAdvancedServiceEditor(true); }}
+      />}
+
       {/* WIZARD MODAL */}
       {/* ═══════════════════════════════════════════════════════════════════ */}
-      {showModal && (
+      {showModal && showAdvancedServiceEditor && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-2 overflow-hidden">
           <div className="bg-white w-full max-w-4xl rounded-[2rem] overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300 flex flex-col max-h-[95vh] border border-slate-200">
             {/* Wizard Header */}

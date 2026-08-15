@@ -48,6 +48,16 @@ const productSchema = new mongoose.Schema({
     unique: true,
     required: true
   },
+  barcode: {
+    type: String,
+    trim: true,
+    default: ''
+  },
+  unit: {
+    type: String,
+    enum: ['piece', 'pack', 'box', 'bottle', 'bag', 'kg'],
+    default: 'piece'
+  },
   images: [{
     type: String,
     required: true

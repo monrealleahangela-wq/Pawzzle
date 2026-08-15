@@ -162,11 +162,13 @@ const createProduct = async (req, res) => {
 
     const storeId = await resolveAdminStore(req.user);
 
+    const initialStock = Number(req.body.stockQuantity || 0);
     const productData = {
       ...req.body,
       addedBy: req.user.id || req.user._id,
       store: storeId,
-      stockQuantity: 0
+      stockQuantity: initialStock,
+      stockStatus: initialStock > 0 ? 'in_stock' : 'out_of_stock'
     };
 
     const product = new Product(productData);
@@ -176,7 +178,7 @@ const createProduct = async (req, res) => {
       await StockSyncService.initializeInventoryForProduct(
         product._id,
         storeId,
-        0
+        initialStock
       );
     } catch (inventoryError) {
       console.warn('Failed to initialize inventory for product:', inventoryError.message);

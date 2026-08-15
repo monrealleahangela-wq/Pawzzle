@@ -35,6 +35,10 @@ const petProfileSchema = new mongoose.Schema({
   color: { type: String, trim: true },
   photo: { type: String },
   vaccinationCards: [{ type: String }],
+  supportingDocuments: [{
+    url: { type: String, required: true },
+    name: { type: String, trim: true, maxlength: 255, default: 'Supporting document' }
+  }],
   vaccinationStatus: { type: String, default: 'Pending' }, 
   specialNotes: { type: String, default: '' },
   allergies: { type: String, default: 'None' },

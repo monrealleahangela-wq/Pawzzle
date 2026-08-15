@@ -4,6 +4,7 @@ import { productService, adminProductService, inventoryService, uploadService, g
 import { useAuth } from '../../contexts/AuthContext';
 import { PLATFORM_ADMIN_ROLES, STORE_ADMIN_ROLES, OPERATIONAL_ROLES, hasUiActionPermission } from '../../utils/authorization';
 import { useRealTimeUpdates } from '../../hooks/useRealTimeUpdates';
+import ProductFormModal from '../../components/forms/ProductFormModal';
 import { Package, AlertTriangle, TrendingDown, Plus, Edit, Trash2, Search, Box, X, Activity, Image as ImageIcon, ChevronRight, Shield, Zap, Target, Layers, Tag, Star, Info, ChevronDown, ChevronUp, Video, FileText, MapPin, Clock } from 'lucide-react';
 
 const PhilippinePeso = ({ className }) => (
@@ -32,6 +33,7 @@ const ProductInventory = () => {
 
   // Modal States
   const [showProductModal, setShowProductModal] = useState(false);
+  const [showAdvancedProductEditor, setShowAdvancedProductEditor] = useState(false);
   const [showInventoryModal, setShowInventoryModal] = useState(false);
   const [modalTab, setModalTab] = useState('edit'); // edit or preview
   const [editingProduct, setEditingProduct] = useState(null);
@@ -62,6 +64,8 @@ const ProductInventory = () => {
     category: 'Pet Food',
     brand: '',
     sku: '',
+    barcode: '',
+    unit: 'piece',
     description: '',
     shortDescription: '',
     price: '',
@@ -166,7 +170,7 @@ const ProductInventory = () => {
   const categoryHierarchy = {
     'Pet Food': ['Dog Food', 'Cat Food', 'Small Pet Food', 'Others'],
     'Pet Accessories': ['Bowls/Feeders', 'Toys', 'Furniture', 'Grooming', 'Others'],
-    'Pet Clothing': ['Clothing', 'Accessories', 'Others'],
+    'Pet Clothing and Accessories': ['Clothing', 'Accessories', 'Others'],
     'Pet Health Care': ['Vitamins', 'Medication', 'Others'],
     'Others': ['Miscellaneous']
   };
@@ -187,6 +191,7 @@ const ProductInventory = () => {
   }, [productSearchInput, inventorySearchInput, activeTab]);
 
   const handleOpenProductModal = (product = null) => {
+    setShowAdvancedProductEditor(false);
     setActiveSections({
       basic: true,
       pricing: true,
@@ -203,6 +208,7 @@ const ProductInventory = () => {
       setProductForm({
         ...initialProductState,
         ...product,
+        category: product.category === 'Pet Clothing' ? 'Pet Clothing and Accessories' : product.category,
         price: product.price || '',
         stockQuantity: product.stockQuantity || '',
         sku: product.sku || ''
@@ -218,11 +224,14 @@ const ProductInventory = () => {
     if (e) e.preventDefault();
     
     // Validations
-    if (!productForm.name || !productForm.category || !productForm.sku) {
-      return toast.warn('Aquisition Error: Name, Category, and SKU are required.');
+    if (!productForm.name?.trim() || !productForm.category || !productForm.description?.trim()) {
+      return toast.warn('Complete the required product information.');
     }
     if (Number(productForm.price) <= 0) {
       return toast.warn('Price must be greater than 0.');
+    }
+    if (productForm.stockQuantity === '' || Number(productForm.stockQuantity) < 0) {
+      return toast.warn('Stock quantity must be zero or greater.');
     }
     if (productForm.images.length < 1) {
       return toast.warn('Media Error: Minimum 1 image required.');
@@ -238,6 +247,8 @@ const ProductInventory = () => {
 
       const payload = {
         ...productForm,
+        sku: productForm.sku?.trim() || `PZ-${productForm.name.trim().replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '').toUpperCase()}-${Date.now().toString(36).toUpperCase()}`,
+        shortDescription: productForm.shortDescription?.trim() || productForm.description.trim().slice(0, 160),
         price: Number(productForm.price),
         stockQuantity: Number(productForm.stockQuantity || 0)
       };
@@ -261,12 +272,13 @@ const ProductInventory = () => {
     }
   };
 
-  const handleImageUpload = async (e) => {
-    const files = e.target.files;
+  const handleImageUpload = async (input, replacePrimary = false) => {
+    const files = Array.isArray(input) ? input : input.target.files;
     if (!files || files.length === 0) return;
 
-    if (productForm.images.length + files.length > 9) {
-      return toast.warn('Media Error: Capacity reached (Max 9 images).');
+    const retainedImages = replacePrimary && productForm.images.length ? productForm.images.length - 1 : productForm.images.length;
+    if (retainedImages + files.length > 10) {
+      return toast.warn('Media Error: Capacity reached (Max 10 images).');
     }
 
     setSubmitting(true);
@@ -278,7 +290,12 @@ const ProductInventory = () => {
     try {
       const response = await uploadService.uploadMultipleImages(formData);
       const newUrls = response.data.urls || response.data.imageUrls || [];
-      setProductForm(prev => ({ ...prev, images: [...prev.images, ...newUrls] }));
+      setProductForm(prev => ({
+        ...prev,
+        images: replacePrimary && newUrls.length
+          ? [newUrls[0], ...prev.images.slice(1), ...newUrls.slice(1)]
+          : [...prev.images, ...newUrls]
+      }));
       toast.success('Product images uploaded successfully.');
     } catch (error) {
       toast.error('Unable to upload the images. Please use valid image files and try again.');
@@ -608,8 +625,20 @@ const ProductInventory = () => {
         )}
       </div>
 
+      {/* Compact product workflow; the existing full editor remains available for advanced fields. */}
+      {showProductModal && !showAdvancedProductEditor && <ProductFormModal
+        editingProduct={editingProduct}
+        form={productForm}
+        setForm={setProductForm}
+        onClose={() => setShowProductModal(false)}
+        onSubmit={handleProductSubmit}
+        onImageUpload={handleImageUpload}
+        loading={submitting}
+        onAdvanced={() => { setModalTab('edit'); setShowAdvancedProductEditor(true); }}
+      />}
+
       {/* Product Form Modal */}
-      {showProductModal && (
+      {showProductModal && showAdvancedProductEditor && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-2 overflow-hidden">
           <div className="bg-white w-full max-w-4xl rounded-[2rem] overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300 flex flex-col max-h-[95vh] border border-slate-200">
             {/* Modal Header */}
@@ -681,9 +710,9 @@ const ProductInventory = () => {
                             />
                           </div>
                           <div className="space-y-2">
-                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">SKU (Unique Identifier) *</label>
+                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">SKU (Optional — Auto-Generated if Blank)</label>
                             <input 
-                              type="text" required value={productForm.sku}
+                              type="text" value={productForm.sku}
                               onChange={e => setProductForm(p => ({ ...p, sku: e.target.value }))}
                               className="w-full px-5 py-3.5 bg-slate-50 border-2 border-slate-50 rounded-xl text-[12px] font-black uppercase outline-none focus:border-primary-500 transition-all"
                               placeholder="SKU-123..."
@@ -698,7 +727,7 @@ const ProductInventory = () => {
                             >
                               <option value="Pet Food">Pet Food</option>
                               <option value="Pet Accessories">Pet Accessories</option>
-                              <option value="Pet Clothing">Pet Clothing</option>
+                              <option value="Pet Clothing and Accessories">Pet Clothing and Accessories</option>
                               <option value="Pet Health Care">Pet Health Care</option>
                               <option value="Others">Others</option>
                             </select>
@@ -713,9 +742,9 @@ const ProductInventory = () => {
                             />
                           </div>
                           <div className="col-span-full space-y-2">
-                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Short Description (Preview Text) *</label>
+                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Short Description (Optional Preview Text)</label>
                             <input 
-                              type="text" required value={productForm.shortDescription}
+                              type="text" value={productForm.shortDescription}
                               onChange={e => setProductForm(p => ({ ...p, shortDescription: e.target.value }))}
                               className="w-full px-5 py-3.5 bg-slate-50 border-2 border-slate-50 rounded-xl text-[12px] font-bold outline-none focus:border-primary-500 transition-all"
                               placeholder="A brief summary for listings..."

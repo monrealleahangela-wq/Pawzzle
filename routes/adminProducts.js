@@ -20,6 +20,8 @@ const createProductValidation = [
 
   // Optional detailed fields
   body('brand').optional().trim(),
+  body('barcode').optional().trim().isLength({ max: 100 }).withMessage('Barcode is too long'),
+  body('unit').optional().isIn(['piece', 'pack', 'box', 'bottle', 'bag', 'kg']).withMessage('Invalid product unit'),
   body('weight').optional().isFloat({ min: 0 }),
   body('weightUnit').optional().isIn(['kg', 'g', 'lbs', 'oz']),
   body('suitableFor').optional().isArray(),
@@ -46,6 +48,8 @@ const updateProductValidation = [
   body('category').optional().isIn(['food', 'toys', 'toy', 'accessories', 'accessory', 'grooming', 'training', 'health', 'housing', 'other', 'Pet Food', 'Pet Accessories', 'Pet Clothing and Accessories', 'Pet Health Care', 'Others']).withMessage('Invalid category'),
 
   body('brand').optional().trim(),
+  body('barcode').optional().trim().isLength({ max: 100 }).withMessage('Barcode is too long'),
+  body('unit').optional().isIn(['piece', 'pack', 'box', 'bottle', 'bag', 'kg']).withMessage('Invalid product unit'),
   body('weight').optional().isFloat({ min: 0 }),
   body('weightUnit').optional().isIn(['kg', 'g', 'lbs', 'oz']),
   body('suitableFor').optional().isArray(),

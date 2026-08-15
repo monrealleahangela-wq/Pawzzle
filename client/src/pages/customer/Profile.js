@@ -11,6 +11,7 @@ import PlatformFeedbackModal from '../../components/PlatformFeedbackModal';
 import { Heart as HeartIcon, Globe, ShieldCheck, Users } from 'lucide-react';
 import MapPicker from '../../components/MapPicker';
 import LogoutModal from '../../components/auth/LogoutModal';
+import PetProfileFormModal from '../../components/pets/PetProfileFormModal';
 
 import { useTheme } from '../../contexts/ThemeContext';
 
@@ -152,7 +153,7 @@ const Profile = () => {
     serviceNeeds: [],
     servicePreferences: { preferredServiceType: '', preferredDuration: '', preferredFrequency: '', specialHandling: '' },
     color: '',
-    vaccinationStatus: 'Pending',
+    vaccinationStatus: '',
     specialNotes: '',
     allergies: 'None',
     medicalConditions: 'None',
@@ -160,7 +161,8 @@ const Profile = () => {
     behaviorNotes: 'Normal',
     emergencyContact: '',
     photo: null,
-    vaccinationCards: [null, null]
+    vaccinationCards: [null, null],
+    supportingDocuments: []
   });
   const [petSubmitLoading, setPetSubmitLoading] = useState(false);
   const [petPhotoPreview, setPetPhotoPreview] = useState(null);
@@ -541,6 +543,10 @@ const Profile = () => {
 
   const handlePetSubmit = async (e) => {
     e.preventDefault();
+    if (!petForm.photo || !petForm.name?.trim() || !petForm.type || !petForm.breed?.trim() || !petForm.gender) {
+      toast.error('Complete the required pet information.');
+      return;
+    }
     if (petForm.weight !== '' && (petForm.weight < 0 || petForm.weight > 200)) {
       toast.error('Weight must be between 0 and 200');
       return;
@@ -553,6 +559,16 @@ const Profile = () => {
 
     if (petForm.birthday && new Date(petForm.birthday) > new Date()) {
       toast.error('Birth date cannot be in the future.');
+      return;
+    }
+
+    if (!petForm.vaccinationStatus) {
+      toast.error('Select a vaccination status.');
+      return;
+    }
+
+    if (petForm.vaccinationStatus === 'Vaccinated' && !(petForm.vaccinationCards || []).some(Boolean)) {
+      toast.error('Upload a vaccination record for a vaccinated pet.');
       return;
     }
 
@@ -584,11 +600,27 @@ const Profile = () => {
         pcciCertificateUrl = uploadRes.data.url;
       }
 
+      const supportingDocuments = [];
+      for (const document of (petForm.supportingDocuments || [])) {
+        if (document.file) {
+          const documentData = new FormData();
+          documentData.append('document', document.file);
+          const uploadRes = await uploadService.uploadDocument(documentData);
+          supportingDocuments.push({
+            url: uploadRes.data.url,
+            name: uploadRes.data.originalName || document.name || document.file.name
+          });
+        } else if (document.url) {
+          supportingDocuments.push({ url: document.url, name: document.name || 'Supporting document' });
+        }
+      }
+
       const dataToSubmit = {
         ...petForm,
         photo: photoUrl,
         vaccinationCards: vaccinationUrls.filter(u => u !== null),
-        pcciRegistration: { ...petForm.pcciRegistration, certificateUrl: pcciCertificateUrl }
+        pcciRegistration: { ...petForm.pcciRegistration, certificateUrl: pcciCertificateUrl },
+        supportingDocuments
       };
 
       if (editingPet) {
@@ -630,7 +662,7 @@ const Profile = () => {
       serviceNeeds: [],
       servicePreferences: { preferredServiceType: '', preferredDuration: '', preferredFrequency: '', specialHandling: '' },
       color: '',
-      vaccinationStatus: 'Pending',
+      vaccinationStatus: '',
       specialNotes: '',
       allergies: 'None',
       medicalConditions: 'None',
@@ -638,7 +670,8 @@ const Profile = () => {
       behaviorNotes: 'Normal',
       emergencyContact: '',
       photo: null,
-      vaccinationCards: [null, null]
+      vaccinationCards: [null, null],
+      supportingDocuments: []
     });
     setEditingPet(null);
     setPetPhotoPreview(null);
@@ -647,6 +680,10 @@ const Profile = () => {
   };
 
   const handleEditPet = (pet) => {
+    const storedVaccinationStatus = String(pet.vaccinationStatus || '').toLowerCase();
+    const vaccinationStatus = storedVaccinationStatus.includes('vaccinat') && !storedVaccinationStatus.includes('not')
+      ? 'Vaccinated'
+      : 'Not Yet Vaccinated';
     setEditingPet(pet);
     setPetForm({
       name: pet.name,
@@ -666,7 +703,7 @@ const Profile = () => {
       serviceNeeds: pet.serviceNeeds || [],
       servicePreferences: { preferredServiceType: '', preferredDuration: '', preferredFrequency: '', specialHandling: '', ...(pet.servicePreferences || {}) },
       color: pet.color || '',
-      vaccinationStatus: pet.vaccinationStatus || 'Pending',
+      vaccinationStatus,
       specialNotes: pet.specialNotes || '',
       allergies: pet.allergies || 'None',
       medicalConditions: pet.medicalConditions || 'None',
@@ -674,7 +711,8 @@ const Profile = () => {
       behaviorNotes: pet.behaviorNotes || 'Normal',
       emergencyContact: pet.emergencyContact || '',
       photo: pet.photo,
-      vaccinationCards: pet.vaccinationCards || [null, null]
+      vaccinationCards: pet.vaccinationCards?.length ? pet.vaccinationCards : [null, null],
+      supportingDocuments: pet.supportingDocuments || []
     });
     setPetPhotoPreview(getImageUrl(pet.photo));
     setVaccinationPreviews((pet.vaccinationCards || []).map(url => getImageUrl(url)));
@@ -2432,7 +2470,22 @@ const Profile = () => {
       )}
 
       {/* Pet Registration Modal */}
-      {showPetModal && (
+      {showPetModal && <PetProfileFormModal
+        editingPet={editingPet}
+        petForm={petForm}
+        setPetForm={setPetForm}
+        petPhotoPreview={petPhotoPreview}
+        setPetPhotoPreview={setPetPhotoPreview}
+        vaccinationPreviews={vaccinationPreviews}
+        setVaccinationPreviews={setVaccinationPreviews}
+        breeds={getBreedsByType(petForm.type)}
+        onClose={() => setShowPetModal(false)}
+        onSubmit={handlePetSubmit}
+        loading={petSubmitLoading}
+      />}
+
+      {/* Legacy form retained during the UAT hotfix for immediate rollback. */}
+      {false && showPetModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-md animate-fade-in" onClick={() => setShowPetModal(false)} />
           <div className="bg-white w-full max-w-4xl max-h-[90vh] overflow-hidden rounded-[3rem] shadow-2xl relative z-10 flex flex-col animate-scale-in">

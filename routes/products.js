@@ -24,7 +24,9 @@ const createProductValidation = [
   body('stockQuantity').isInt({ min: 0 }).withMessage('Stock quantity must be a positive integer'),
   body('images').isArray({ min: 1 }).withMessage('At least one product image is required'),
   body('fulfillmentType').equals('pickup_only').withMessage('Fulfillment must be pickup_only'),
-  body('visibility').optional().isIn(['published', 'draft', 'hidden']).withMessage('Invalid visibility status')
+  body('visibility').optional().isIn(['published', 'draft', 'hidden']).withMessage('Invalid visibility status'),
+  body('barcode').optional().trim().isLength({ max: 100 }).withMessage('Barcode is too long'),
+  body('unit').optional().isIn(['piece', 'pack', 'box', 'bottle', 'bag', 'kg']).withMessage('Invalid product unit')
 ];
 
 const updateProductValidation = [
@@ -36,7 +38,9 @@ const updateProductValidation = [
   body('sku').optional().trim().notEmpty().withMessage('SKU cannot be empty'),
   body('stockQuantity').optional().isInt({ min: 0 }).withMessage('Stock quantity must be a positive integer'),
   body('images').optional().isArray({ min: 1 }).withMessage('At least one product image is required'),
-  body('visibility').optional().isIn(['published', 'draft', 'hidden']).withMessage('Invalid visibility status')
+  body('visibility').optional().isIn(['published', 'draft', 'hidden']).withMessage('Invalid visibility status'),
+  body('barcode').optional().trim().isLength({ max: 100 }).withMessage('Barcode is too long'),
+  body('unit').optional().isIn(['piece', 'pack', 'box', 'bottle', 'bag', 'kg']).withMessage('Invalid product unit')
 ];
 
 const updateStockValidation = [
