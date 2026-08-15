@@ -3,7 +3,6 @@ import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import authService from '../../services/authService';
 import { Mail, Lock, User, Eye, EyeOff, ArrowLeft, ShieldCheck, RefreshCw, Sparkles } from 'lucide-react';
-import PremiumCaptcha from '../../components/PremiumCaptcha';
 
 const Register = () => {
   const [formData, setFormData] = useState({
@@ -26,8 +25,6 @@ const Register = () => {
   });
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [captchaToken, setCaptchaToken] = useState(null);
-  const [captchaResetKey, setCaptchaResetKey] = useState(0);
 
   // OTP state
   const [step, setStep] = useState(1); // 1: form, 2: OTP verification
@@ -67,17 +64,12 @@ const Register = () => {
       return;
     }
 
-    if (!captchaToken) {
-      toast.error('Security check failed. Please verify you are not a robot.');
-      return;
-    }
-
     setLoading(true);
 
     try {
       const { confirmPassword, ...registerData } = formData;
       // We send the simplified data. Backend fields like firstName/lastName are now optional.
-      const result = await authService.sendRegisterOTP({ ...registerData, captchaToken });
+      const result = await authService.sendRegisterOTP(registerData);
 
       if (result.success) {
         toast.success(result.message || 'Verification code sent!');
@@ -92,8 +84,6 @@ const Register = () => {
       toast.error(msg);
     } finally {
       setLoading(false);
-      setCaptchaToken(null);
-      setCaptchaResetKey(value => value + 1);
     }
   };
 
@@ -299,11 +289,6 @@ const Register = () => {
             <div className="flex items-center gap-2 px-1">
                <Sparkles className="h-3 w-3 text-primary-500" />
                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Upper, Lower, Number & Symbol</p>
-            </div>
-
-            {/* Premium Human Verification - No glitches, perfect alignment */}
-            <div className="flex justify-center pt-2">
-               <PremiumCaptcha onVerify={setCaptchaToken} resetKey={captchaResetKey} />
             </div>
 
             <button type="submit" disabled={loading} className="btn btn-primary w-full py-5 text-xs font-black uppercase tracking-[0.2em] shadow-xl shadow-primary-100">

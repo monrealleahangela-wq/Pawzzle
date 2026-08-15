@@ -40,16 +40,12 @@ const sendRegisterOTP = async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
 
-    let { username, email, password, firstName, lastName, phone, address, captchaToken } = req.body;
+    let { username, email, password, firstName, lastName, phone, address } = req.body;
     email = String(email).trim().toLowerCase();
 
     if (!username) {
       username = email.split('@')[0];
       if (await User.exists({ username, isDeleted: false })) username = `${username}${crypto.randomInt(100, 1000)}`;
-    }
-
-    if (!(await verifyRecaptcha(captchaToken, req.ip))) {
-      return res.status(400).json({ message: 'Security check failed. Please verify you are not a robot.' });
     }
 
     const emailValidation = await validateEmail(email);
@@ -170,11 +166,8 @@ const login = async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
 
-    const { email, password, captchaToken } = req.body;
+    const { email, password } = req.body;
     const identifier = email.trim();
-    if (!(await verifyRecaptcha(captchaToken, req.ip))) {
-      return res.status(400).json({ message: 'Security check failed.' });
-    }
 
     const user = await User.findOne({
       $or: [
@@ -264,7 +257,11 @@ const requestPasswordResetOTP = async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
     const email = String(req.body.email || '').trim().toLowerCase();
+    const { captchaToken } = req.body;
     if (!email) return res.status(400).json({ message: 'Email is required' });
+    if (!(await verifyRecaptcha(captchaToken, req.ip))) {
+      return res.status(400).json({ message: 'Security check failed. Please verify you are not a robot.' });
+    }
 
     const user = await User.findOne({ email, isDeleted: false });
     if (user) await otpService.sendPasswordResetOTP(email, otpService.generateOTP());

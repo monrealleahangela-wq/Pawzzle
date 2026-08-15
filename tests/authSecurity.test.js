@@ -126,6 +126,38 @@ test('the previous frontend-controlled CAPTCHA bypass is rejected', async () => 
   assert.equal(await verifyRecaptcha(''), false);
 });
 
+test('temporary UAT bypass removes CAPTCHA from login and registration but keeps password recovery protected', () => {
+  const controllerSource = fs.readFileSync(path.join(__dirname, '../controllers/authController.js'), 'utf8');
+  const registerStart = controllerSource.indexOf('const sendRegisterOTP = async');
+  const registerEnd = controllerSource.indexOf('const verifyRegisterOTP = async', registerStart);
+  const loginStart = controllerSource.indexOf('const login = async');
+  const loginEnd = controllerSource.indexOf('const verify2FA = async', loginStart);
+  const passwordResetStart = controllerSource.indexOf('const requestPasswordResetOTP = async');
+  const passwordResetEnd = controllerSource.indexOf('const verifyOTPAndResetPassword = async', passwordResetStart);
+  const registerSource = controllerSource.slice(registerStart, registerEnd);
+  const loginSource = controllerSource.slice(loginStart, loginEnd);
+  const passwordResetSource = controllerSource.slice(passwordResetStart, passwordResetEnd);
+  const routeSource = fs.readFileSync(path.join(__dirname, '../routes/auth.js'), 'utf8');
+  const loginPageSource = fs.readFileSync(path.join(__dirname, '../client/src/pages/auth/Login.js'), 'utf8');
+  const registerPageSource = fs.readFileSync(path.join(__dirname, '../client/src/pages/auth/Register.js'), 'utf8');
+  const forgotPasswordSource = fs.readFileSync(path.join(__dirname, '../client/src/pages/auth/ForgotPassword.js'), 'utf8');
+
+  assert.equal(loginSource.includes('verifyRecaptcha'), false);
+  assert.equal(loginSource.includes('captchaToken'), false);
+  assert.equal(registerSource.includes('verifyRecaptcha'), false);
+  assert.equal(registerSource.includes('captchaToken'), false);
+  assert.match(passwordResetSource, /verifyRecaptcha\(captchaToken, req\.ip\)/);
+  assert.match(routeSource, /router\.post\('\/login', authRateLimits\.authIp, authRateLimits\.login, loginValidation, login\)/);
+  assert.match(routeSource, /router\.post\('\/register\/send-otp', authRateLimits\.authIp, authRateLimits\.otpSend, registerValidation, sendRegisterOTP\)/);
+  assert.match(routeSource, /router\.post\('\/request-password-reset', authRateLimits\.authIp, authRateLimits\.otpSend, emailValidation, requestPasswordResetOTP\)/);
+  assert.equal(loginPageSource.includes('PremiumCaptcha'), false);
+  assert.equal(loginPageSource.includes('captchaToken'), false);
+  assert.equal(registerPageSource.includes('PremiumCaptcha'), false);
+  assert.equal(registerPageSource.includes('captchaToken'), false);
+  assert.match(forgotPasswordSource, /PremiumCaptcha/);
+  assert.match(forgotPasswordSource, /requestPasswordResetOTP\(\{ email, captchaToken \}\)/);
+});
+
 test('production rejects the Google test secret and falls back to the registered Pawzzle site key', () => {
   const previousEnvironment = process.env.NODE_ENV;
   const previousSecret = process.env.RECAPTCHA_SECRET_KEY;

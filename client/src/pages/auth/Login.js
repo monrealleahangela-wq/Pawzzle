@@ -4,7 +4,6 @@ import { toast } from 'react-toastify';
 import { useAuth } from '../../contexts/AuthContext';
 import { Mail, Lock, Eye, EyeOff, AlertCircle, Send, MessageSquare, X } from 'lucide-react';
 import { supportService } from '../../services/apiService';
-import PremiumCaptcha from '../../components/PremiumCaptcha';
 import { portalHomeForRole } from '../../utils/authorization';
 
 const BACKEND = process.env.REACT_APP_API_URL?.replace('/api', '') || 'http://localhost:5000';
@@ -25,8 +24,6 @@ const Login = () => {
   const [formData, setFormData] = useState({ email: '', password: '' });
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [captchaToken, setCaptchaToken] = useState(null);
-  const [captchaResetKey, setCaptchaResetKey] = useState(0);
 
   const { login, verify2FA } = useAuth();
   const navigate = useNavigate();
@@ -66,18 +63,13 @@ const Login = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!captchaToken) {
-      toast.error('Security check failed. Please verify you are not a robot.');
-      return;
-    }
-
     setLoading(true);
     setDeactivationInfo(null);
     localStorage.removeItem('token');
     localStorage.removeItem('user');
 
     try {
-      const result = await login({ ...formData, captchaToken });
+      const result = await login(formData);
       if (result.twoFactorRequired) {
         setTwoFactorRequired(true);
         setLoginEmail(result.email);
@@ -101,8 +93,6 @@ const Login = () => {
       toast.error('Login failed. Please try again.');
     } finally {
       setLoading(false);
-      setCaptchaToken(null);
-      setCaptchaResetKey(value => value + 1);
     }
   };
 
@@ -247,11 +237,6 @@ const Login = () => {
                 <Link to="/forgot-password" size="sm" className="text-xs font-bold text-primary-600 hover:text-primary-700">
                   Forgot password?
                 </Link>
-              </div>
-
-              {/* Premium Human Verification - No glitches, perfect alignment */}
-              <div className="flex justify-center pt-2">
-                <PremiumCaptcha onVerify={setCaptchaToken} resetKey={captchaResetKey} />
               </div>
 
               <button

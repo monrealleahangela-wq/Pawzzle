@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { Mail, ArrowLeft, Eye, EyeOff, Lock, RefreshCw, KeyRound, CheckCircle } from 'lucide-react';
 import authService from '../../services/authService';
+import PremiumCaptcha from '../../components/PremiumCaptcha';
 
 const ForgotPassword = () => {
   const [email, setEmail] = useState('');
@@ -12,6 +13,8 @@ const ForgotPassword = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [step, setStep] = useState(1); // 1: email, 2: otp + new password, 3: success
   const [loading, setLoading] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState(null);
+  const [captchaResetKey, setCaptchaResetKey] = useState(0);
   const [resendCooldown, setResendCooldown] = useState(0);
   const [deliveryMethod, setDeliveryMethod] = useState('email');
   const [phone, setPhone] = useState(''); // To store phone if fallback happened
@@ -28,10 +31,14 @@ const ForgotPassword = () => {
   // ─── Step 1: Request OTP ──────────────────────────────────────────────────
   const handleRequestOTP = async (e) => {
     e.preventDefault();
+    if (!captchaToken) {
+      toast.error('Please complete the security verification.');
+      return;
+    }
     setLoading(true);
 
     try {
-      const response = await authService.requestPasswordResetOTP({ email });
+      const response = await authService.requestPasswordResetOTP({ email, captchaToken });
       const data = response.data || response;
       toast.success(data.message || 'Reset code sent!');
       setDeliveryMethod(data.deliveryMethod || 'email');
@@ -43,6 +50,8 @@ const ForgotPassword = () => {
       toast.error(error.response?.data?.message || 'Failed to send reset code');
     } finally {
       setLoading(false);
+      setCaptchaToken(null);
+      setCaptchaResetKey(value => value + 1);
     }
   };
 
@@ -166,6 +175,10 @@ const ForgotPassword = () => {
                       required
                     />
                   </div>
+                </div>
+
+                <div className="flex justify-center pt-1">
+                  <PremiumCaptcha onVerify={setCaptchaToken} resetKey={captchaResetKey} />
                 </div>
 
                 <button
