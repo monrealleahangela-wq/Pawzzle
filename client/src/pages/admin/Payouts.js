@@ -3,6 +3,7 @@ import { toast } from 'react-toastify';
 import { payoutService } from '../../services/apiService';
 import { Wallet, Clock, CheckCircle, XCircle, ChevronDown, RefreshCw, Filter, Building, Printer } from 'lucide-react';
 import { generatePayoutReceipt } from '../../utils/payoutReceiptGenerator';
+import { formatPeso } from '../../utils/paymentSummary';
 
 const STATUS_COLORS = {
     pending: 'bg-secondary-50 text-primary-700 border-secondary-200',
@@ -81,7 +82,7 @@ const AdminPayouts = () => {
                     ].map(s => (
                         <div key={s.label} className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm">
                             <p className={`text-[10px] font-black uppercase tracking-widest text-${s.color}-600`}>{s.label}</p>
-                            <p className="text-2xl font-black text-slate-900 mt-1">₱{s.amount.toLocaleString()}</p>
+                            <p className="text-2xl font-black text-slate-900 mt-1">{formatPeso(s.amount)}</p>
                             <p className="text-slate-400 text-xs font-bold">{s.count} request{s.count !== 1 ? 's' : ''}</p>
                         </div>
                     ))}
@@ -130,7 +131,7 @@ const AdminPayouts = () => {
                                             <p className="text-slate-400 text-xs font-bold">{payout.owner?.firstName} {payout.owner?.lastName} · {payout.owner?.email}</p>
                                         </div>
                                         <div className="text-right shrink-0">
-                                            <p className="font-black text-slate-900 text-lg">₱{payout.amount.toLocaleString()}</p>
+                                            <p className="font-black text-slate-900 text-lg">{formatPeso(payout.amount)}</p>
                                             <p className="text-slate-400 text-xs">{payout.referenceNumber}</p>
                                         </div>
                                         <span className={`px-2.5 py-1 rounded-lg border text-[10px] font-black uppercase tracking-widest flex items-center gap-1 shrink-0 ${STATUS_COLORS[payout.status]}`}>

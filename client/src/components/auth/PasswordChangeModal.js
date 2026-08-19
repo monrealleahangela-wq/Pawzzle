@@ -173,7 +173,7 @@ const PasswordChangeModal = () => {
                                 onClick={logout}
                                 className="w-full py-3 text-slate-400 hover:text-rose-600 font-black text-[10px] uppercase tracking-widest transition-colors flex items-center justify-center gap-2"
                             >
-                                Not you? Sign out
+                                Not you? Logout
                             </button>
                         </div>
                     </form>

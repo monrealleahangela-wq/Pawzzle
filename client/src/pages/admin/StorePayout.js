@@ -6,6 +6,7 @@ import {
     RefreshCw, CreditCard, Landmark, Smartphone, BadgeCheck, Printer
 } from 'lucide-react';
 import { generatePayoutReceipt } from '../../utils/payoutReceiptGenerator';
+import { formatPeso } from '../../utils/paymentSummary';
 
 const METHOD_ICONS = { gcash: Smartphone, maya: Smartphone, bank_transfer: Landmark };
 const METHOD_COLORS = { gcash: 'text-blue-500', maya: 'text-green-500', bank_transfer: 'text-slate-600' };
@@ -117,11 +118,11 @@ const StorePayout = () => {
                 {/* Balance Cards */}
                 <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
                     {[
-                        { label: 'Available Balance', value: `₱${(stats?.balance || 0).toLocaleString()}`, highlight: true },
-                        { label: 'Net Earnings', value: `₱${((stats?.totalRevenue || 0) - (stats?.totalPlatformFees || 0)).toLocaleString()}` },
-                        { label: 'Platform Fees (10%)', value: `₱${(stats?.totalPlatformFees || 0).toLocaleString()}` },
-                        { label: 'Pending Payouts', value: `₱${(stats?.pendingPayouts || 0).toLocaleString()}` },
-                        { label: 'Total Withdrawn', value: `₱${(stats?.totalWithdrawn || 0).toLocaleString()}` }
+                        { label: 'Available Balance', value: formatPeso(stats?.balance || 0), highlight: true },
+                        { label: 'Net Earnings', value: formatPeso((stats?.totalRevenue || 0) - (stats?.totalPlatformFees || 0)) },
+                        { label: 'Platform Fees (10%)', value: formatPeso(stats?.totalPlatformFees || 0) },
+                        { label: 'Pending Payouts', value: formatPeso(stats?.pendingPayouts || 0) },
+                        { label: 'Total Withdrawn', value: formatPeso(stats?.totalWithdrawn || 0) }
                     ].map(c => (
                         <div key={c.label} className={`rounded-2xl border p-4 ${c.highlight ? 'bg-slate-900 border-slate-800 text-white shadow-md' : 'bg-white border-slate-100 text-slate-900 shadow-sm'}`}>
                             <p className={`text-[9px] font-black uppercase tracking-widest mb-2 leading-tight ${c.highlight ? 'text-primary-400' : 'text-slate-400'}`}>{c.label}</p>
@@ -178,7 +179,7 @@ const StorePayout = () => {
                                         className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3.5 text-slate-900 font-bold text-lg focus:outline-none focus:border-primary-400"
                                         required
                                     />
-                                    <p className="text-slate-400 text-[10px] font-bold mt-1">Min: ₱100 · Available: ₱{(stats?.balance || 0).toLocaleString()}</p>
+                                    <p className="text-slate-400 text-[10px] font-bold mt-1">Min: {formatPeso(100)} · Available: {formatPeso(stats?.balance || 0)}</p>
                                 </div>
 
                                 <div>
@@ -327,7 +328,7 @@ const StorePayout = () => {
                                             {p.adminNotes && <p className="text-slate-500 text-xs italic mt-0.5">"{p.adminNotes}"</p>}
                                         </div>
                                         <div className="flex flex-col items-end gap-2 shrink-0">
-                                            <p className="font-black text-slate-900 text-base leading-none">₱{p.amount.toLocaleString()}</p>
+                                            <p className="font-black text-slate-900 text-base leading-none">{formatPeso(p.amount)}</p>
                                             <div className="flex flex-col items-center gap-1.5 mt-1">
                                                 <span className={`px-4 py-1 rounded-full border-2 text-[8px] font-black uppercase tracking-[0.2em] flex items-center gap-1.5 ${STATUS_STYLES[p.status]}`}>
                                                     <Icon className="h-3 w-3" />{p.status}

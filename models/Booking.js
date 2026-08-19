@@ -63,6 +63,20 @@ const bookingSchema = new mongoose.Schema({
     index: true
   },
 
+  // Customer-provided, service-specific intake captured before store review.
+  // Keys are whitelisted by service category in utils/bookingIntake.js.
+  serviceIntake: {
+    kind: {
+      type: String,
+      enum: ['veterinary', 'grooming', 'training', 'boarding', 'adoption_consultation', 'general']
+    },
+    details: {
+      type: Map,
+      of: String,
+      default: undefined
+    }
+  },
+
   // ── Selected Add-Ons ──────────────────────────
   selectedAddOns: [{
     addOnId:  { type: mongoose.Schema.Types.ObjectId },

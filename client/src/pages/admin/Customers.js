@@ -3,6 +3,7 @@ import { toast } from 'react-toastify';
 import { customerService } from '../../services/apiService';
 import { Link } from 'react-router-dom';
 import { Users, Search, ShoppingCart, Calendar as CalendarIcon, ChevronDown, X, Star, Activity } from 'lucide-react';
+import { formatPeso } from '../../utils/paymentSummary';
 
 const Customers = () => {
     const [customers, setCustomers] = useState([]);
@@ -199,7 +200,7 @@ const Customers = () => {
                                                                             {order.items && <p className="text-xs font-medium text-slate-700 mt-0.5 truncate max-w-[150px]">{order.items[0]?.name} {order.items.length > 1 && `+${order.items.length - 1} more`}</p>}
                                                                         </div>
                                                                         <div className="text-right">
-                                                                            <p className="text-sm font-black text-slate-900">₱{order.totalAmount.toLocaleString()}</p>
+                                                                            <p className="text-sm font-black text-slate-900">{formatPeso(order.totalAmount)}</p>
                                                                             <p className={`text-[9px] font-bold uppercase ${order.paymentStatus === 'paid' ? 'text-emerald-500' : 'text-secondary-500'}`}>{order.paymentStatus}</p>
                                                                         </div>
                                                                     </div>
@@ -230,7 +231,7 @@ const Customers = () => {
                                                                             <p className="text-xs text-slate-500">{new Date(booking.bookingDate).toLocaleDateString()} at {booking.startTime}</p>
                                                                             <p className="text-xs font-medium text-slate-700 mt-0.5">Pet: {booking.pet?.name} ({booking.pet?.breed})</p>
                                                                         </div>
-                                                                        <p className="text-sm font-black text-slate-900">₱{booking.totalPrice?.toLocaleString()}</p>
+                                                                        <p className="text-sm font-black text-slate-900">{formatPeso(booking.totalPrice)}</p>
                                                                     </div>
                                                                 </div>
                                                             ))}

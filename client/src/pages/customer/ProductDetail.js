@@ -49,7 +49,7 @@ const ProductDetail = () => {
         setIsFavorite(res.data.isFavorite);
         toast.success(res.data.message, { icon: res.data.isFavorite ? '❤️' : '💔' });
     } catch (error) {
-        toast.error('Failed to update favorite status');
+        toast.error('We could not update your favorites. Please try again.');
     } finally {
         setIsTogglingFavorite(false);
     }
@@ -60,7 +60,7 @@ const ProductDetail = () => {
       const response = await productService.getProductById(id);
       setProduct(response.data.product);
     } catch (error) {
-      toast.error('Failed to load product details');
+      toast.error('We could not load this product. Please try again.');
     } finally {
       setLoading(false);
     }

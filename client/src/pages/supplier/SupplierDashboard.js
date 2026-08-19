@@ -6,6 +6,8 @@ import {
   BarChart3, Box
 } from 'lucide-react';
 import { supplierService, uploadService, getImageUrl } from '../../services/apiService';
+import PaymentBreakdown from '../../components/payments/PaymentBreakdown';
+import { formatPeso, purchaseOrderPaymentSummary } from '../../utils/paymentSummary';
 
 const SupplierDashboard = () => {
   const [loading, setLoading] = useState(true);
@@ -269,7 +271,7 @@ const SupplierDashboard = () => {
                     </div>
                     <div className="text-right">
                       <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase bg-${statusColor(order.status)}-100 text-${statusColor(order.status)}-700`}>{order.status}</span>
-                      <p className="text-[11px] font-black text-slate-900 mt-1">₱{order.totalCost?.toLocaleString()}</p>
+                      <p className="text-[11px] font-black text-slate-900 mt-1">{formatPeso(order.totalCost)}</p>
                     </div>
                   </div>
                 ))}
@@ -342,10 +344,13 @@ const SupplierDashboard = () => {
                 </div>
                 <div className="flex items-center gap-3">
                   <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase bg-${statusColor(order.status)}-100 text-${statusColor(order.status)}-700`}>{order.status}</span>
-                  <p className="text-sm font-black text-slate-900">₱{order.totalCost?.toLocaleString()}</p>
+                  <p className="text-sm font-black text-slate-900">{formatPeso(order.totalCost)}</p>
                 </div>
               </div>
-              <div className="text-[10px] text-slate-500 mb-4">{order.items?.length} item(s)</div>
+              <div className="text-[10px] text-slate-500 mb-3">{order.items?.length} item(s)</div>
+              <div className="mb-4 rounded-xl border border-slate-200 bg-slate-50 p-3">
+                <PaymentBreakdown summary={purchaseOrderPaymentSummary(order)} compact />
+              </div>
               {/* Action Buttons */}
               <div className="flex flex-wrap gap-2">
                 {order.status === 'submitted' && (

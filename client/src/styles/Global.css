@@ -9,6 +9,15 @@
   --neutral-200: #F7D0B2;
   --neutral-800: #1A1A1A;
   --neutral-900: #010000;
+  --text-primary: #171412;
+  --text-secondary: #514a47;
+  --text-muted: #766e6a;
+  --text-disabled: #9b928e;
+  --surface-page: #fdf5f0;
+  --surface-card: #ffffff;
+  --surface-subtle: #f8fafc;
+  --surface-muted: #f1f5f9;
+  --border-subtle: #e2e8f0;
   
   /* Layered Shadow System */
   --shadow-soft: 0 5px 15px rgba(0,0,0,0.03);
@@ -27,6 +36,15 @@
   --neutral-200: #2b2725;
   --neutral-800: #e2dfdd;
   --neutral-900: #f9f8f8;
+  --text-primary: #f9f8f8;
+  --text-secondary: #d1ccca;
+  --text-muted: #aaa19d;
+  --text-disabled: #827976;
+  --surface-page: #0f0e0d;
+  --surface-card: #171412;
+  --surface-subtle: #211e1c;
+  --surface-muted: #2b2725;
+  --border-subtle: #3a3431;
   --glass: rgba(23, 20, 18, 0.82);
   --glass-border: rgba(255, 255, 255, 0.08);
   --shadow-soft: 0 5px 15px rgba(0,0,0,0.2);
@@ -59,7 +77,14 @@ body {
    dark variants. Exact utility-token selectors preserve component structure. */
 .dark body,
 .dark #root,
-.dark .App { background-color: #0f0e0d; color: #e2dfdd; }
+.dark .App { background-color: var(--surface-page); color: var(--text-secondary); }
+
+/* Semantic text utilities used by shared UI and available to every screen. */
+.text-prose,
+.text-default { color: var(--text-primary); }
+.text-secondary { color: var(--text-secondary); }
+.text-muted { color: var(--text-muted); }
+.text-disabled { color: var(--text-disabled); }
 
 .dark [class~="bg-white"],
 .dark [class~="bg-white/95"],
@@ -67,37 +92,195 @@ body {
 .dark [class~="bg-white/80"],
 .dark [class~="bg-white/70"],
 .dark [class~="bg-white/60"],
-.dark [class~="bg-white/50"] { background-color: #171412; }
+.dark [class~="bg-white/50"],
+.dark [class~="bg-white/40"] { background-color: var(--surface-card); }
 
 .dark [class~="bg-slate-50"],
+.dark [class~="bg-gray-50"],
+.dark [class~="bg-zinc-50"],
 .dark [class~="bg-neutral-50"],
 .dark [class~="bg-[#F8FAFC]"],
 .dark [class~="bg-[#FDFCFB]"],
-.dark [class~="bg-[#fdfaf8]"] { background-color: #0f0e0d; }
+.dark [class~="bg-[#fdfaf8]"] { background-color: var(--surface-page); }
 
 .dark [class~="bg-slate-100"],
+.dark [class~="bg-gray-100"],
+.dark [class~="bg-zinc-100"],
 .dark [class~="bg-neutral-100"],
 .dark [class~="bg-slate-50/50"],
-.dark [class~="bg-neutral-50/50"] { background-color: #211e1c; }
+.dark [class~="bg-neutral-50/50"] { background-color: var(--surface-subtle); }
+
+.dark [class~="bg-slate-200"],
+.dark [class~="bg-gray-200"],
+.dark [class~="bg-zinc-200"],
+.dark [class~="bg-neutral-200"] { background-color: var(--surface-muted); }
+
+.dark [class~="bg-slate-300"],
+.dark [class~="bg-gray-300"],
+.dark [class~="bg-zinc-300"],
+.dark [class~="bg-neutral-300"] { background-color: #3a3431; }
+
+/* Keep pale brand/status surfaces recognizable without leaving light panels in dark mode. */
+.dark [class~="bg-primary-50"],
+.dark [class~="bg-primary-50/80"],
+.dark [class~="bg-primary-50/60"],
+.dark [class~="bg-primary-50/50"],
+.dark [class~="bg-primary-50/40"],
+.dark [class~="bg-primary-50/30"],
+.dark [class~="bg-primary-100"] { background-color: #2e1707; }
+.dark [class~="bg-primary-200"] { background-color: #46220a; }
+.dark [class~="bg-secondary-50"],
+.dark [class~="bg-secondary-50/80"],
+.dark [class~="bg-secondary-50/50"],
+.dark [class~="bg-secondary-50/30"],
+.dark [class~="bg-secondary-100"] { background-color: #302b29; }
+.dark [class~="bg-emerald-50"],
+.dark [class~="bg-emerald-50/50"],
+.dark [class~="bg-emerald-50/30"],
+.dark [class~="bg-emerald-50/20"],
+.dark [class~="bg-emerald-100"] { background-color: #052e2b; }
+.dark [class~="bg-rose-50"],
+.dark [class~="bg-rose-50/50"],
+.dark [class~="bg-rose-50/30"],
+.dark [class~="bg-rose-100"] { background-color: #4c1021; }
+.dark [class~="bg-amber-50"],
+.dark [class~="bg-amber-50/60"],
+.dark [class~="bg-amber-50/50"],
+.dark [class~="bg-amber-100"] { background-color: #422006; }
+.dark [class~="bg-blue-50"],
+.dark [class~="bg-blue-100"] { background-color: #172554; }
+.dark [class~="bg-indigo-50"],
+.dark [class~="bg-indigo-100"] { background-color: #1e1b4b; }
+.dark [class~="bg-purple-50"],
+.dark [class~="bg-purple-100"] { background-color: #3b0764; }
+.dark [class~="bg-red-50"],
+.dark [class~="bg-red-100"] { background-color: #450a0a; }
+.dark [class~="bg-green-50"],
+.dark [class~="bg-green-100"] { background-color: #052e16; }
+.dark [class~="bg-sky-50"],
+.dark [class~="bg-sky-100"] { background-color: #082f49; }
 
 .dark [class~="text-slate-900"],
+.dark [class~="text-slate-950"],
+.dark [class~="text-gray-900"],
+.dark [class~="text-gray-950"],
+.dark [class~="text-zinc-900"],
+.dark [class~="text-zinc-950"],
 .dark [class~="text-neutral-900"],
+.dark [class~="text-neutral-950"],
 .dark [class~="text-slate-800"],
+.dark [class~="text-gray-800"],
+.dark [class~="text-zinc-800"],
 .dark [class~="text-neutral-800"],
-.dark [class~="text-black"] { color: #f9f8f8; }
+.dark [class~="text-black"] { color: var(--text-primary); }
 
 .dark [class~="text-slate-700"],
-.dark [class~="text-neutral-700"] { color: #d1ccca; }
+.dark [class~="text-gray-700"],
+.dark [class~="text-zinc-700"],
+.dark [class~="text-neutral-700"] { color: var(--text-secondary); }
 
 .dark [class~="text-slate-600"],
-.dark [class~="text-neutral-600"] { color: #b8b1ae; }
+.dark [class~="text-gray-600"],
+.dark [class~="text-zinc-600"],
+.dark [class~="text-neutral-600"] { color: #c0b9b5; }
+
+.dark [class~="text-slate-500"],
+.dark [class~="text-gray-500"],
+.dark [class~="text-zinc-500"],
+.dark [class~="text-neutral-500"] { color: var(--text-muted); }
+
+.dark [class~="text-slate-400"],
+.dark [class~="text-gray-400"],
+.dark [class~="text-zinc-400"],
+.dark [class~="text-neutral-400"] { color: #9f9692; }
+
+/* Brand/status hues retain their meaning while using accessible dark-mode shades. */
+.dark [class~="text-primary-950"],
+.dark [class~="text-primary-900"],
+.dark [class~="text-primary-800"],
+.dark [class~="text-primary-700"],
+.dark [class~="text-primary-600"],
+.dark [class~="text-primary-500"] { color: #f3b587; }
+.dark [class~="text-secondary-950"],
+.dark [class~="text-secondary-900"],
+.dark [class~="text-secondary-800"],
+.dark [class~="text-secondary-700"],
+.dark [class~="text-secondary-600"] { color: #d9d0c9; }
+.dark [class~="text-emerald-900"],
+.dark [class~="text-emerald-800"],
+.dark [class~="text-emerald-700"] { color: #6ee7b7; }
+.dark [class~="text-rose-900"],
+.dark [class~="text-rose-800"],
+.dark [class~="text-rose-700"] { color: #fda4af; }
+.dark [class~="text-amber-900"],
+.dark [class~="text-amber-800"],
+.dark [class~="text-amber-700"] { color: #fcd34d; }
+.dark [class~="text-blue-900"],
+.dark [class~="text-blue-800"],
+.dark [class~="text-blue-700"] { color: #93c5fd; }
+.dark [class~="text-red-900"],
+.dark [class~="text-red-800"],
+.dark [class~="text-red-700"] { color: #fca5a5; }
+.dark [class~="text-green-900"],
+.dark [class~="text-green-800"],
+.dark [class~="text-green-700"] { color: #86efac; }
+
+/* Preserve readable interaction states when legacy components use dark hover text. */
+.dark [class~="hover:text-slate-900"]:hover,
+.dark [class~="hover:text-slate-800"]:hover,
+.dark [class~="hover:text-gray-900"]:hover,
+.dark [class~="hover:text-gray-800"]:hover,
+.dark [class~="hover:text-zinc-900"]:hover,
+.dark [class~="hover:text-zinc-800"]:hover,
+.dark [class~="hover:text-neutral-900"]:hover,
+.dark [class~="hover:text-neutral-800"]:hover,
+.dark [class~="hover:text-black"]:hover { color: var(--text-primary); }
+.dark [class~="hover:text-slate-700"]:hover,
+.dark [class~="hover:text-slate-600"]:hover,
+.dark [class~="hover:text-gray-700"]:hover,
+.dark [class~="hover:text-gray-600"]:hover,
+.dark [class~="hover:text-neutral-700"]:hover,
+.dark [class~="hover:text-neutral-600"]:hover { color: var(--text-secondary); }
+.dark [class~="hover:text-slate-500"]:hover,
+.dark [class~="hover:text-slate-400"]:hover,
+.dark [class~="hover:text-gray-500"]:hover,
+.dark [class~="hover:text-gray-400"]:hover { color: var(--text-muted); }
+.dark [class~="focus:text-slate-900"]:focus,
+.dark [class~="focus:text-gray-900"]:focus,
+.dark [class~="focus:text-neutral-900"]:focus { color: var(--text-primary); }
+.dark .group:hover [class~="group-hover:text-slate-900"] { color: var(--text-primary); }
+.dark .group:hover [class~="group-hover:text-slate-400"] { color: var(--text-muted); }
+
+.dark [class~="hover:bg-white"]:hover,
+.dark [class~="focus:bg-white"]:focus { background-color: var(--surface-card); }
+.dark [class~="hover:bg-slate-50"]:hover,
+.dark [class~="hover:bg-gray-50"]:hover,
+.dark [class~="hover:bg-neutral-50"]:hover { background-color: var(--surface-subtle); }
+.dark [class~="hover:bg-slate-100"]:hover,
+.dark [class~="hover:bg-gray-100"]:hover,
+.dark [class~="hover:bg-neutral-100"]:hover,
+.dark .group:hover [class~="group-hover:bg-slate-100"],
+.dark .group:hover [class~="group-hover:bg-white"] { background-color: var(--surface-muted); }
+.dark [class~="hover:bg-slate-200"]:hover,
+.dark [class~="hover:bg-gray-200"]:hover,
+.dark [class~="hover:bg-slate-300"]:hover,
+.dark [class~="hover:bg-gray-300"]:hover { background-color: #3a3431; }
 
 .dark [class~="border-slate-50"],
 .dark [class~="border-slate-100"],
 .dark [class~="border-slate-200"],
+.dark [class~="border-slate-300"],
+.dark [class~="border-gray-100"],
+.dark [class~="border-gray-200"],
+.dark [class~="border-gray-300"],
+.dark [class~="border-gray-400"],
+.dark [class~="border-zinc-100"],
+.dark [class~="border-zinc-200"],
+.dark [class~="border-zinc-300"],
 .dark [class~="border-neutral-100"],
 .dark [class~="border-neutral-200"],
-.dark [class~="border-neutral-300"] { border-color: #302b29; }
+.dark [class~="border-neutral-300"],
+.dark [class~="border-neutral-400"] { border-color: var(--border-subtle); }
 
 .dark input,
 .dark textarea,
@@ -108,7 +291,13 @@ body {
 }
 
 .dark input::placeholder,
-.dark textarea::placeholder { color: #827976; }
+.dark textarea::placeholder { color: var(--text-disabled); opacity: 1; }
+.dark input:disabled,
+.dark textarea:disabled,
+.dark select:disabled,
+.dark button:disabled { color: var(--text-disabled); }
+.dark :where(label, legend, th, td):not([class*="text-"]) { color: var(--text-secondary); }
+.dark :where([role="dialog"], [role="menu"], [role="listbox"]) { color: var(--text-secondary); }
 .dark select option { background: #211e1c; color: #f9f8f8; }
 .dark h1, .dark h2, .dark h3, .dark h4, .dark h5, .dark h6 { color: #f9f8f8; }
 .dark .card { background-color: #171412; border-color: #302b29; }

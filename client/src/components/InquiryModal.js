@@ -174,17 +174,17 @@ const InquiryModal = ({ isOpen, onClose, pet, onSubmit }) => {
                <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                      <Wallet className="h-4 w-4 text-primary-400" />
-                     <h3 className="text-[10px] font-black uppercase tracking-[0.2em]">Settlement Settings</h3>
+                     <h3 className="text-[10px] font-black uppercase tracking-[0.2em]">Payment</h3>
                   </div>
                   <span className="text-[9px] font-black text-primary-400 uppercase tracking-widest bg-white/5 px-3 py-1 rounded-full border border-white/5">
-                    {pet.paymentConfig === 'deposit_first' ? 'RESERVATION REQUIRED' : 'FULL PAYMONGO PAYMENT'}
+                    {pet.paymentConfig === 'deposit_first' ? 'Deposit required' : 'Pay with PayMongo'}
                   </span>
                </div>
 
                {/* Pricing Breakdown */}
                <div className="grid grid-cols-1 gap-2 p-4 bg-white/5 rounded-2xl border border-white/10">
                   <div className="flex justify-between items-center">
-                    <span className="text-[9px] font-black text-white/40 uppercase tracking-widest">Total Valuation</span>
+                     <span className="text-[9px] font-black text-white/40 uppercase tracking-widest">Total</span>
                     <span className="text-sm font-black text-white">₱{pet.price?.toLocaleString()}</span>
                   </div>
                   {pet.paymentConfig === 'deposit_first' && (
@@ -203,7 +203,7 @@ const InquiryModal = ({ isOpen, onClose, pet, onSubmit }) => {
 
                {/* Payment Methods Grid */}
                <div className="space-y-2">
-                  <label className="text-[9px] font-black text-white/40 uppercase tracking-widest ml-1">Preferred Settlement Method</label>
+                   <label className="text-[9px] font-black text-white/40 uppercase tracking-widest ml-1">Choose payment method</label>
                   <div className="grid grid-cols-2 gap-2">
                     {['paymongo'].map(m => (
                       <button
@@ -217,7 +217,7 @@ const InquiryModal = ({ isOpen, onClose, pet, onSubmit }) => {
                         }`}
                       >
                         <span className="text-[9px] font-black uppercase tracking-widest">
-                          PayMongo
+                           Pay with PayMongo
                         </span>
                         {formData.paymentMethod === m && <CheckCircle2 className="h-3 w-3 text-white" />}
                       </button>
@@ -272,10 +272,10 @@ const InquiryModal = ({ isOpen, onClose, pet, onSubmit }) => {
             type="submit"
             className="w-full py-3.5 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] shadow-xl hover:bg-primary-600 transition-all transform active:scale-[0.98]"
           >
-            Submit Professional Inquiry
+            Send inquiry
           </button>
           <p className="text-center text-[7px] font-bold text-slate-400 uppercase tracking-widest mt-3">
-            Submission creates a structured thread for seller review.
+            Your message will start a chat with the store.
           </p>
         </div>
       </div>

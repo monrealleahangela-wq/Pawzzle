@@ -6,6 +6,7 @@ import { adoptionService, uploadService, paymentService } from '../services/apiS
 import UserReportModal from './UserReportModal';
 import socket from '../utils/socket';
 import { formatChatTime } from '../utils/timeFormatters';
+import { formatPeso } from '../utils/paymentSummary';
 
 const EnhancedChatMessenger = ({
   isOpen,
@@ -181,7 +182,7 @@ const EnhancedChatMessenger = ({
       if (convId) fetchTransactionData(convId);
     } catch (error) {
       console.error('Error initializing conversation:', error);
-      toast.error('Failed to start chat');
+      toast.error('We could not start the chat. Please try again.');
     }
   };
 
@@ -229,7 +230,7 @@ const EnhancedChatMessenger = ({
       if (onMessageUpdate) onMessageUpdate();
     } catch (error) {
       console.error('Error sending message:', error);
-      toast.error('Failed to send message');
+      toast.error('Your message could not be sent. Please try again.');
       setNewMessage(savedMessage);
     } finally {
       setIsLoading(false);
@@ -294,7 +295,7 @@ const EnhancedChatMessenger = ({
       toast.success('Image sent!');
     } catch (error) {
       console.error('Error sending image:', error);
-      toast.error('Failed to send image');
+      toast.error('Your photo could not be sent. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -313,7 +314,7 @@ const EnhancedChatMessenger = ({
       loadMessages(conversationId);
     } catch (error) {
       console.error('Error requesting purchase:', error);
-      toast.error(error.response?.data?.message || 'Failed to submit request');
+      toast.error(error.response?.data?.message || 'We could not send your request. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -358,7 +359,7 @@ const EnhancedChatMessenger = ({
     }
     try {
       setIsLoading(true);
-      toast.info('Redirecting to secure payment gateway...');
+      toast.info('Opening PayMongo payment...');
       const response = await paymentService.createAdoptionCheckoutSession(transactionRequest._id);
       if (response.data?.checkoutUrl) {
         window.location.href = response.data.checkoutUrl;
@@ -367,7 +368,7 @@ const EnhancedChatMessenger = ({
       }
     } catch (error) {
       console.error('Checkout error:', error);
-      toast.error(error.response?.data?.message || 'Failed to initiate payment');
+      toast.error(error.response?.data?.message || 'Payment could not start. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -402,7 +403,7 @@ const EnhancedChatMessenger = ({
       loadMessages(conversationId);
     } catch (error) {
       console.error('Error cancelling request:', error);
-      toast.error(error.response?.data?.message || 'Failed to cancel request');
+      toast.error(error.response?.data?.message || 'We could not cancel your request. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -496,7 +497,7 @@ const EnhancedChatMessenger = ({
                   <button onClick={handleCancelRequest} className="text-[9px] font-black uppercase tracking-widest bg-white/20 border border-current px-3 py-1.5 rounded-lg hover:bg-white/10 transition-colors">Cancel Inquiry</button>
                 )}
                 {['pickup_scheduling', 'pickup_confirmed'].includes(transactionRequest.status) && (
-                  <button onClick={handleCancelRequest} className="text-[9px] font-black uppercase tracking-widest bg-rose-600 text-white px-3 py-1.5 rounded-lg shadow-sm">Request Cancellation</button>
+                  <button onClick={handleCancelRequest} className="text-[9px] font-black uppercase tracking-widest bg-rose-600 text-white px-3 py-1.5 rounded-lg shadow-sm">Cancel request</button>
                 )}
               </>
             )}
@@ -512,7 +513,7 @@ const EnhancedChatMessenger = ({
                </div>
                <div>
                   <div className="flex items-center gap-2 mb-0.5">
-                    <span className="text-[8px] font-black text-slate-300 uppercase tracking-widest">Financial Status</span>
+                    <span className="text-[8px] font-black text-slate-300 uppercase tracking-widest">Payment status</span>
                     {payment.method && <span className="text-[8px] font-black text-primary-500 uppercase tracking-widest px-2 bg-primary-50 rounded-full border border-primary-100">{payment.method.replace('_', ' ')}</span>}
                   </div>
                   <h4 className="text-[11px] font-black text-slate-900 uppercase tracking-tight flex items-center gap-2">
@@ -524,18 +525,18 @@ const EnhancedChatMessenger = ({
 
              <div className="flex items-center gap-6 sm:px-4 sm:border-l border-slate-50">
                 <div className="text-right">
-                   <p className="text-[8px] font-black text-slate-300 uppercase tracking-widest mb-0.5">Total Valuation</p>
-                   <p className="text-xs font-black text-slate-900">₱{pricing.totalPrice?.toLocaleString()}</p>
+                   <p className="text-[8px] font-black text-slate-300 uppercase tracking-widest mb-0.5">Total</p>
+                   <p className="text-xs font-black text-slate-900">{formatPeso(pricing.totalPrice)}</p>
                 </div>
                 {pricing.depositAmount > 0 && (
                   <div className="text-right">
-                    <p className="text-[8px] font-black text-primary-400 uppercase tracking-widest mb-0.5">Deposit Req.</p>
-                    <p className="text-xs font-black text-primary-600">₱{pricing.depositAmount?.toLocaleString()}</p>
+                     <p className="text-[8px] font-black text-primary-400 uppercase tracking-widest mb-0.5">Deposit</p>
+                    <p className="text-xs font-black text-primary-600">{formatPeso(pricing.depositAmount)}</p>
                   </div>
                 )}
                 <div className="text-right">
                    <p className="text-[8px] font-black text-rose-400 uppercase tracking-widest mb-0.5">Remaining Balance</p>
-                   <p className="text-xs font-black text-rose-600">₱{pricing.balanceDue?.toLocaleString()}</p>
+                   <p className="text-xs font-black text-rose-600">{formatPeso(pricing.balanceDue)}</p>
                 </div>
              </div>
           </div>
@@ -671,7 +672,7 @@ const EnhancedChatMessenger = ({
             </div>
             <div className="space-y-0.5">
               <h3 className="text-sm font-black text-slate-800 uppercase tracking-tight">Serious Inquiry?</h3>
-              <p className="text-[10px] text-slate-500 font-medium">Initiate the premium inquiry protocol.</p>
+              <p className="text-[10px] text-slate-500 font-medium">Ask the store about this pet.</p>
             </div>
             <button onClick={handlePurchaseRequest} className="btn btn-primary w-full py-2.5 text-[9px] font-black uppercase tracking-[0.2em] shadow-lg shadow-primary-100">
               Buy this Pet

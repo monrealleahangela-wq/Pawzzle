@@ -323,7 +323,7 @@ const Pets = () => {
             <div className="card border-dashed border-2 bg-slate-50/50 flex flex-col items-center justify-center py-12 text-center">
               <Heart className="h-8 w-8 text-slate-300 mb-3" />
               <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest">No Pets Found</h3>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tight mt-1 mb-4">No pets match your current filters</p>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tight mt-1 mb-4">We couldn't find any pets with these filters</p>
               <button
                 onClick={() => setFilters({
                   species: '', breed: '', size: '', gender: '',

@@ -245,7 +245,7 @@ const Stores = () => {
 
                                     <div className="flex items-center justify-center gap-3 sm:gap-6 pt-2 sm:pt-4 border-t border-slate-50 mt-auto">
                                         <div className="flex flex-col items-center">
-                                            <span className="text-[6px] sm:text-[10px] font-black text-slate-300 uppercase tracking-widest sm:mb-1">Sector</span>
+                                            <span className="text-[6px] sm:text-[10px] font-black text-slate-300 uppercase tracking-widest sm:mb-1">Area</span>
                                             <p className="text-[7px] sm:text-[10px] font-black text-slate-900 uppercase tracking-widest flex items-center gap-0.5 sm:gap-1">
                                                 <MapPin className="h-2 w-2 sm:h-3 sm:w-3 text-primary-500" />
                                                 {store.contactInfo?.address?.city || 'Local'}

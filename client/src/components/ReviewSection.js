@@ -21,23 +21,39 @@ const ReviewSection = ({ targetType, targetId }) => {
         totalPages: 1
     });
     const [isEligible, setIsEligible] = useState(false);
+    const [eligibilityChecked, setEligibilityChecked] = useState(false);
 
     const fetchReviews = useCallback(async (page = 1) => {
+        if (isAuthenticated) {
+            setEligibilityChecked(false);
+            setIsEligible(false);
+        }
         try {
             setLoading(true);
             const response = await reviewService.getTargetReviews(targetType, targetId, { page, limit: 10 });
             setReviews(response.data.reviews);
             setPagination(response.data.pagination);
 
-            // Check eligibility if authenticated
-            if (isAuthenticated) {
-                const eligibilityRes = await reviewService.checkReviewEligibility(targetType, targetId);
-                setIsEligible(eligibilityRes.data.isEligible);
-            }
         } catch (error) {
             console.error('Fetch reviews error:', error);
         } finally {
             setLoading(false);
+        }
+
+        if (!isAuthenticated) {
+            setIsEligible(false);
+            setEligibilityChecked(false);
+            return;
+        }
+
+        try {
+            const eligibilityRes = await reviewService.checkReviewEligibility(targetType, targetId);
+            setIsEligible(eligibilityRes.data.isEligible === true);
+        } catch (error) {
+            console.error('Review eligibility error:', error);
+            setIsEligible(false);
+        } finally {
+            setEligibilityChecked(true);
         }
     }, [targetType, targetId, isAuthenticated]);
 
@@ -90,7 +106,7 @@ const ReviewSection = ({ targetType, targetId }) => {
                     </h2>
                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">What our customers say</p>
                 </div>
-                {!showForm && isAuthenticated && (
+                {!showForm && isAuthenticated && eligibilityChecked && (
                     isEligible ? (
                         <button
                             onClick={() => setShowForm(true)}
@@ -99,10 +115,12 @@ const ReviewSection = ({ targetType, targetId }) => {
                             Write Review
                         </button>
                     ) : (
-                        <div className="flex items-center gap-2 bg-slate-50 border border-slate-100 px-4 py-2 rounded-xl group hover:border-secondary-200 transition-all">
+                        <div className="flex items-center gap-2 bg-slate-50 border border-slate-100 px-4 py-2 rounded-xl">
                             <AlertCircle className="h-3 w-3 text-secondary-500" />
-                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest group-hover:text-primary-600 transition-colors">
-                                Verified Buyers Only
+                            <p className="text-[10px] font-black text-slate-500 dark:text-slate-300">
+                                {targetType === 'Store'
+                                    ? 'Complete a purchase or service from this store before leaving a review.'
+                                    : 'Complete a purchase or service before leaving a review.'}
                             </p>
                         </div>
                     )

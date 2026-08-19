@@ -137,7 +137,7 @@ const FindShops = () => {
         }
       } catch (error) {
         console.error('Error fetching store locations:', error);
-        toast.error('Failed to load store GPS coordinates');
+        toast.error('We could not load store locations. Please try again.');
       } finally {
         setLoading(false);
       }
@@ -234,7 +234,7 @@ const FindShops = () => {
       }
     } catch (err) {
       console.error('Routing failed:', err);
-      toast.error('Failed to calculate route');
+      toast.error('We could not find a route. Please try again.');
     }
   };
 
@@ -274,7 +274,7 @@ const FindShops = () => {
             <div className="absolute inset-0 border-4 border-primary-600 rounded-full border-t-transparent animate-spin"></div>
             <MapPin className="absolute inset-0 m-auto h-8 w-8 text-primary-600 animate-bounce" />
           </div>
-          <p className="text-xs font-black uppercase tracking-[0.2em] text-slate-400">Mapping Sector...</p>
+          <p className="text-xs font-black uppercase tracking-[0.2em] text-slate-400">Loading map…</p>
         </div>
       </div>
     );
@@ -306,7 +306,7 @@ const FindShops = () => {
               <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">Shop GPS</h2>
               <div className="flex items-center gap-1.5 px-2 py-0.5 bg-primary-50 dark:bg-primary-900/20 rounded-lg w-fit mt-1">
                 <Target className="h-3 w-3 text-primary-600" />
-                <span className="text-[8px] font-black uppercase tracking-widest text-primary-700 dark:text-primary-400">Cavite Operationalized</span>
+                <span className="text-[8px] font-black uppercase tracking-widest text-primary-700 dark:text-primary-400">Serving Cavite</span>
               </div>
             </div>
             <button
@@ -456,7 +456,7 @@ const FindShops = () => {
               <div className="w-16 h-16 bg-slate-50 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto text-slate-200 dark:text-slate-700">
                 <StoreIcon className="h-8 w-8" />
               </div>
-              <p className="text-xs font-black uppercase text-slate-400 tracking-widest italic">No shops deployed in this sector.</p>
+              <p className="text-xs font-black uppercase text-slate-400 tracking-widest italic">We couldn't find any shops in this area.</p>
               <button
                 onClick={() => { setSearchTerm(''); setSelectedMunicipality('All Cavite'); }}
                 className="text-[10px] font-black text-primary-600 uppercase tracking-widest hover:underline"
@@ -607,7 +607,7 @@ const FindShops = () => {
                         </div>
                         <div className="flex items-center gap-2">
                             <Flag className="h-3 w-3" />
-                            <span>Sector E-12</span>
+                            <span>Service area</span>
                         </div>
                     </div>
                 </div>

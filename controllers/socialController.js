@@ -76,21 +76,27 @@ const getFollowing = async (req, res) => {
       .populate('following', 'firstName lastName username avatar role');
     const followingUsers = following.map(f => f.following).filter(Boolean);
 
-    // For sellers/admins, attach their storeId for direct shop navigation
+    // Attach the public store summary so the profile can render followed stores
+    // without making one request per card.
     const storeMap = {};
-    const sellerIds = followingUsers
-      .filter(u => u.role === 'admin' || u.role === 'seller')
-      .map(u => u._id);
+    const sellerIds = followingUsers.map(user => user._id);
 
     if (sellerIds.length > 0) {
-      const stores = await Store.find({ owner: { $in: sellerIds }, isDeleted: { $ne: true } }, '_id owner');
-      stores.forEach(s => { storeMap[s.owner.toString()] = s._id.toString(); });
+      const stores = await Store.find(
+        { owner: { $in: sellerIds }, isActive: true, isDeleted: { $ne: true } },
+        '_id owner name logo businessType operationalModules ratings contactInfo.address'
+      );
+      stores.forEach(store => { storeMap[store.owner.toString()] = store; });
     }
 
-    const result = followingUsers.map(u => ({
-      ...u.toObject(),
-      storeId: storeMap[u._id.toString()] || null
-    }));
+    const result = followingUsers.map(user => {
+      const store = storeMap[user._id.toString()] || null;
+      return {
+        ...user.toObject(),
+        storeId: store?._id?.toString() || null,
+        store: store?.toObject() || null
+      };
+    });
 
     res.json({ following: result });
   } catch (error) {

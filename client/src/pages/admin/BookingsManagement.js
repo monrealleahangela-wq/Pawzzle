@@ -26,8 +26,11 @@ import { useNavigate } from 'react-router-dom';
 import { formatTime12h, formatDateTime12h } from '../../utils/timeFormatters';
 import DeliveryAssignmentFields, { emptyExternal } from '../../components/delivery/DeliveryAssignmentFields';
 import ServiceCommunicationPanel from '../../components/booking/ServiceCommunicationPanel';
+import PaymentBreakdown from '../../components/payments/PaymentBreakdown';
+import { bookingPaymentSummary, formatPeso } from '../../utils/paymentSummary';
 import { PLATFORM_ADMIN_ROLES, STORE_ADMIN_ROLES, OPERATIONAL_ROLES, effectiveStaffType, hasUiActionPermission } from '../../utils/authorization';
 import { getUserFacingError } from '../../utils/userFacingError';
+import { ServiceIntakeSummary } from '../../components/booking/ServiceSpecificBookingFields';
 
 
 // Simple linear state transition mapping for manual progressing
@@ -407,12 +410,12 @@ const BookingsManagement = () => {
                       </p>
                     </td>
                     <td className="px-6 py-3.5">
-                      <p className="text-[12px] font-black text-slate-900 tracking-tighter leading-none">₱{booking.totalPrice?.toLocaleString()}</p>
+                      <p className="text-[12px] font-black text-slate-900 tracking-tighter leading-none">{formatPeso(booking.totalPrice)}</p>
                       <p className="text-[8px] font-bold text-slate-400 uppercase italic">
                         {booking.paymentMethod ? booking.paymentMethod.replace('_', ' ') : 'NET'}
                       </p>
                       <p className="text-[8px] font-bold text-slate-400 mt-1">
-                        Subtotal ₱{Number(booking.pricingBreakdown?.subtotal || booking.totalPrice || 0).toFixed(2)} · VAT ₱{Number(booking.pricingBreakdown?.vatAmount || 0).toFixed(2)}
+                        Subtotal {formatPeso(booking.pricingBreakdown?.subtotal)} · VAT {formatPeso(booking.pricingBreakdown?.vatAmount)}
                       </p>
                     </td>
                     <td className="px-6 py-3.5">
@@ -619,6 +622,15 @@ const BookingsManagement = () => {
                   </div>
                 )}
               </div>
+
+              {selectedBooking.serviceIntake && (
+                <ServiceIntakeSummary intake={selectedBooking.serviceIntake} service={selectedBooking.service} title="Customer service details" />
+              )}
+
+              <section className="rounded-2xl border border-slate-200 bg-white p-4">
+                <p className="mb-3 text-[9px] font-black uppercase tracking-widest text-primary-600">Authoritative Payment Summary</p>
+                <PaymentBreakdown summary={bookingPaymentSummary(selectedBooking)} compact />
+              </section>
 
               {/* Existing specialized staff assignment lifecycle */}
               <section className="p-4 bg-white rounded-2xl border border-slate-200 space-y-3">

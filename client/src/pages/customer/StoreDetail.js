@@ -46,7 +46,7 @@ const StoreDetail = () => {
 
   const handleToggleFollow = async () => {
     if (!isAuthenticated) {
-        toast.error('Please log in to follow this partner');
+        toast.error('Please log in to follow this store.');
         navigate('/login');
         return;
     }
@@ -70,7 +70,7 @@ const StoreDetail = () => {
             toast.success(`Following ${store.name}!`);
         }
     } catch (error) {
-        toast.error('Failed to update follow status');
+        toast.error('We could not update this store follow. Please try again.');
     } finally {
         setIsTogglingFollow(false);
     }
@@ -117,7 +117,7 @@ const StoreDetail = () => {
       }
     } catch (error) {
       console.error('Error starting chat:', error);
-      toast.error('Failed to start chat. Please try again.');
+      toast.error('We could not start the chat. Please try again.');
     } finally {
       setChatLoading(false);
     }
@@ -219,7 +219,7 @@ const StoreDetail = () => {
       setStaff(response.data.staff || []);
     } catch (error) {
       console.error('Error fetching store details:', error);
-      toast.error('Failed to load store details');
+      toast.error('We could not load this store. Please try again.');
     } finally {
       setLoading(false);
     }

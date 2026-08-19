@@ -6,13 +6,15 @@ import ReviewModal from '../../components/ReviewModal';
 import Adoptions from './Adoptions';
 import Bookings from './Bookings';
 import { normalizeRefundPolicy, refundPolicyLabel } from '../../utils/refundPolicy';
+import PaymentBreakdown from '../../components/payments/PaymentBreakdown';
+import { formatPeso, orderPaymentSummary } from '../../utils/paymentSummary';
 
 const STATUS_META = {
-  pending_payment: { label: 'Awaiting Payment', color: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-100', icon: Clock },
+  pending_payment: { label: 'Waiting for payment', color: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-100', icon: Clock },
   paid: { label: 'Payment Received', color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-100', icon: CheckCircle },
   awaiting_confirmation: { label: 'Processing', color: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-100', icon: Package },
   confirmed: { label: 'Confirmed', color: 'text-indigo-600', bg: 'bg-indigo-50', border: 'border-indigo-100', icon: CheckCircle },
-  preparing: { label: 'Merchant Packing', color: 'text-purple-600', bg: 'bg-purple-50', border: 'border-purple-100', icon: Package },
+  preparing: { label: 'Store is packing', color: 'text-purple-600', bg: 'bg-purple-50', border: 'border-purple-100', icon: Package },
   ready_for_pickup: { label: 'Awaiting Rider', color: 'text-sky-600', bg: 'bg-sky-50', border: 'border-sky-100', icon: Truck },
   rider_assigned: { label: 'Rider Coming', color: 'text-rose-600', bg: 'bg-rose-50', border: 'border-rose-100', icon: MapPin },
   picked_up: { label: 'In Transit', color: 'text-orange-600', bg: 'bg-orange-50', border: 'border-orange-100', icon: Truck },
@@ -78,8 +80,8 @@ const Orders = () => {
           {orders.length === 0 ? (
             <div className="text-center py-20 bg-white rounded-xl border border-dashed border-slate-200">
               <ShoppingBag className="h-12 w-12 text-slate-200 mx-auto mb-4" />
-              <p className="text-slate-500 font-medium">No orders found</p>
-              <Link to="/products" className="text-primary-600 font-bold mt-2 inline-block">Start Shopping</Link>
+              <p className="text-slate-500 font-medium">Nothing here yet.</p>
+              <Link to="/products" className="text-primary-600 font-bold mt-2 inline-block">Start shopping</Link>
             </div>
           ) : (
             <div className="grid gap-6">
@@ -112,7 +114,7 @@ const Orders = () => {
                       </div>
                       <div className="text-right">
                         <p className="text-xs font-bold text-slate-400 uppercase">Total Amount</p>
-                        <p className="text-xl font-bold text-slate-900">₱{(order.totalAmount || 0).toLocaleString()}</p>
+                        <p className="text-xl font-bold text-slate-900">{formatPeso(order.totalAmount)}</p>
                       </div>
                     </div>
 
@@ -127,10 +129,14 @@ const Orders = () => {
                           />
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-bold text-slate-900 truncate">{item.name}</p>
-                            <p className="text-xs text-slate-500">Qty: {item.quantity} · ₱{item.price.toLocaleString()}</p>
+                            <p className="text-xs text-slate-500">Qty: {item.quantity} · {formatPeso(item.price)}</p>
                           </div>
                         </div>
                       ))}
+                    </div>
+
+                    <div className="mx-4 mb-4 rounded-xl border border-slate-200 bg-slate-50 p-3">
+                      <PaymentBreakdown summary={orderPaymentSummary(order)} compact />
                     </div>
 
                     <div className="border-t border-slate-100 bg-slate-50 p-4">

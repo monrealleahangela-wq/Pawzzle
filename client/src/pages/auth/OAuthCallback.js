@@ -48,15 +48,7 @@ const OAuthCallback = () => {
     }, [location, navigate]);
 
     return (
-        <div style={{
-            minHeight: '100vh',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            background: '#fafaf9',
-            fontFamily: 'Inter, sans-serif'
-        }}>
+        <div className="flex min-h-screen flex-col items-center justify-center bg-stone-50 font-sans dark:bg-stone-950">
             {error ? (
                 <div style={{ color: '#dc2626', fontSize: 16 }}>
                     ⚠️ {error}
@@ -69,7 +61,7 @@ const OAuthCallback = () => {
                         animation: 'spin 0.8s linear infinite'
                     }} />
                     <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-                    <p style={{ marginTop: 20, color: '#78716c', fontSize: 15 }}>
+                    <p className="mt-5 text-[15px] text-secondary">
                         Completing sign-in…
                     </p>
                 </>

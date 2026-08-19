@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { Check, Save, Upload, X } from 'lucide-react';
 
-export const compactInputClass = 'mt-1 h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-800 outline-none transition focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400';
-export const compactTextareaClass = 'mt-1 w-full resize-none rounded-xl border border-slate-200 bg-white p-3 text-sm text-slate-800 outline-none transition focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10';
+export const compactInputClass = 'mt-1 h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-default outline-none transition placeholder:text-neutral-500 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400';
+export const compactTextareaClass = 'mt-1 w-full resize-none rounded-xl border border-slate-200 bg-white p-3 text-sm text-default outline-none transition placeholder:text-neutral-500 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10';
 
 export const RequiredMark = () => <span className="text-rose-500" aria-hidden="true"> *</span>;
 
@@ -12,8 +12,8 @@ export const CompactFormSection = ({ step, icon: Icon, title, description, child
       <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary-50 text-[10px] font-black text-primary-700">{step}</span>
       {Icon && <Icon className="mt-1 h-4 w-4 shrink-0 text-primary-600" />}
       <div>
-        <h3 className="text-sm font-black text-slate-900">{title}</h3>
-        {description && <p className="mt-0.5 text-[11px] text-slate-500">{description}</p>}
+        <h3 className="text-sm font-black text-default">{title}</h3>
+        {description && <p className="mt-0.5 text-[11px] text-muted">{description}</p>}
       </div>
     </div>
     {children}
@@ -61,8 +61,8 @@ export const CompactUploadCard = ({
           {preview ? <img src={preview} alt={`${title} preview`} className="h-full w-full object-cover" /> : <Upload className="h-7 w-7 text-slate-300" />}
         </div>
         <div className="min-w-0 flex-1">
-          <p className="text-xs font-black text-slate-800">{title}{required && <RequiredMark />}</p>
-          <p className="mt-1 truncate text-[11px] text-slate-500">{filenameFromValue(value, helper || 'Choose a file or drop it here')}</p>
+          <p className="text-xs font-black text-default">{title}{required && <RequiredMark />}</p>
+          <p className="mt-1 truncate text-[11px] text-muted">{filenameFromValue(value, helper || 'Choose a file or drop it here')}</p>
           {value && !loading && <span className="mt-1 inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700"><Check className="h-3 w-3" /> Uploaded</span>}
           {loading && <span className="mt-1 inline-flex items-center gap-1 text-[10px] font-bold text-primary-700"><span className="h-3 w-3 animate-spin rounded-full border-2 border-primary-200 border-t-primary-600" /> Uploading</span>}
           <div className="mt-3 flex flex-wrap justify-center gap-2 sm:justify-start">
@@ -80,7 +80,7 @@ export const CompactUploadCard = ({
 
 export const CompactToggle = ({ checked, onChange, label, description }) => (
   <button type="button" role="switch" aria-checked={checked} onClick={() => onChange(!checked)} className="flex w-full items-center justify-between gap-4 rounded-xl border border-slate-200 bg-slate-50 p-3 text-left">
-    <span><span className="block text-[11px] font-black text-slate-800">{label}</span>{description && <span className="mt-0.5 block text-[10px] text-slate-500">{description}</span>}</span>
+    <span><span className="block text-[11px] font-black text-default">{label}</span>{description && <span className="mt-0.5 block text-[10px] text-muted">{description}</span>}</span>
     <span className={`relative h-6 w-11 shrink-0 rounded-full transition ${checked ? 'bg-primary-600' : 'bg-slate-300'}`}><span className={`absolute top-1 h-4 w-4 rounded-full bg-white shadow transition ${checked ? 'left-6' : 'left-1'}`} /></span>
   </button>
 );
@@ -103,7 +103,7 @@ export const CompactFormModal = ({
       <header className="flex shrink-0 items-center justify-between border-b border-slate-200 bg-white px-4 py-3 sm:px-5">
         <div className="flex min-w-0 items-center gap-3">
           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary-600 text-white">{Icon && <Icon className="h-4 w-4" />}</span>
-          <div className="min-w-0"><h2 className="truncate text-base font-black text-slate-900">{title}</h2><p className="truncate text-[10px] text-slate-500">{subtitle}</p></div>
+          <div className="min-w-0"><h2 className="truncate text-base font-black text-default">{title}</h2><p className="truncate text-[10px] text-muted">{subtitle}</p></div>
         </div>
         <button type="button" onClick={onClose} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100" aria-label={`Close ${title}`}><X className="h-4 w-4" /></button>
       </header>

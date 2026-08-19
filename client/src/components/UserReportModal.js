@@ -56,7 +56,7 @@ const UserReportModal = ({ isOpen, onClose, reportedUser }) => {
                             <ShieldAlert className="h-6 w-6" />
                         </div>
                         <div>
-                            <p className="text-rose-400 text-[10px] font-black uppercase tracking-[0.4em]">Enforcement Protocol</p>
+                            <p className="text-rose-400 text-[10px] font-black uppercase tracking-[0.4em]">Safety report</p>
                             <h2 className="text-2xl sm:text-3xl font-black text-white uppercase tracking-tighter leading-none">Report <span className="text-rose-500 italic">User</span></h2>
                         </div>
                     </div>
@@ -67,7 +67,7 @@ const UserReportModal = ({ isOpen, onClose, reportedUser }) => {
                         </div>
                         <div>
                             <p className="text-[10px] font-black text-white uppercase tracking-widest">{reportedUser?.firstName || reportedUser?.username}</p>
-                            <p className="text-[8px] font-bold text-white/30 uppercase tracking-widest leading-none mt-1">Target Identity Confirmed</p>
+                            <p className="text-[8px] font-bold text-white/30 uppercase tracking-widest leading-none mt-1">Selected account</p>
                         </div>
                     </div>
                 </div>
@@ -75,7 +75,7 @@ const UserReportModal = ({ isOpen, onClose, reportedUser }) => {
                 {step === 1 ? (
                     <div className="p-8 sm:p-12 space-y-8 animate-in fade-in slide-in-from-right-8">
                         <div className="space-y-4">
-                            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Primary Breach Category</h3>
+                            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Reason for report</h3>
                             <div className="grid grid-cols-2 gap-3">
                                 {[
                                     { label: 'Scamming', value: 'scam' },
@@ -105,8 +105,8 @@ const UserReportModal = ({ isOpen, onClose, reportedUser }) => {
                     <form onSubmit={handleSubmit} className="p-8 sm:p-12 space-y-8 animate-in fade-in slide-in-from-left-8">
                         <div className="space-y-4">
                             <div className="flex justify-between items-end">
-                                <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Breach Intel</h3>
-                                <button type="button" onClick={() => setStep(1)} className="text-[9px] font-black text-primary-600 uppercase tracking-widest hover:underline">Change Category</button>
+                                <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Report details</h3>
+                                <button type="button" onClick={() => setStep(1)} className="text-[9px] font-black text-primary-600 uppercase tracking-widest hover:underline">Change reason</button>
                             </div>
                             <textarea
                                 required
@@ -133,14 +133,14 @@ const UserReportModal = ({ isOpen, onClose, reportedUser }) => {
                                 disabled={submitting}
                                 className="flex-1 py-5 bg-slate-900 text-white rounded-2xl font-black text-xs uppercase tracking-[0.2em] hover:bg-rose-600 transition-all shadow-2xl active:scale-95 disabled:opacity-50"
                             >
-                                {submitting ? 'Transmitting...' : 'Execute Submission'}
+                                {submitting ? 'Submitting…' : 'Submit report'}
                             </button>
                             <button
                                 type="button"
                                 onClick={onClose}
                                 className="px-10 py-5 bg-slate-100 text-slate-400 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-slate-200 transition-all"
                             >
-                                Abort
+                                Cancel
                             </button>
                         </div>
                     </form>

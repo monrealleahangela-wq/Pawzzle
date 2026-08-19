@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
 import { archiveService } from '../../services/apiService';
 import { Archive, RotateCcw, Trash2, Search, Heart, Package, Scissors, Building, Users, Calendar, ShoppingBag, ChevronRight, AlertTriangle, Filter } from 'lucide-react';
+import { formatPeso } from '../../utils/paymentSummary';
 
 const typeConfig = {
     pets: { icon: Heart, label: 'Pets', color: 'rose' },
@@ -110,7 +111,7 @@ const ArchiveManagement = () => {
             case 'stores': return item.businessType?.replace('_', ' ') || '';
             case 'users': return `${item.role || 'customer'} · ${item.email || ''}`;
             case 'bookings': return `${item.status || ''} · ${item.customer?.firstName || ''} ${item.customer?.lastName || ''}`;
-            case 'orders': return `${item.status || ''} · ₱${item.totalAmount?.toLocaleString() || 0}`;
+            case 'orders': return `${item.status || ''} · ${formatPeso(item.totalAmount)}`;
             default: return '';
         }
     };

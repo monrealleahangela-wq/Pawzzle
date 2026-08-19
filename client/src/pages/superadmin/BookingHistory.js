@@ -2,6 +2,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { toast } from 'react-toastify';
 import { bookingService } from '../../services/apiService';
 import { formatTime12h } from '../../utils/timeFormatters';
+import { bookingPaymentSummary, formatPeso } from '../../utils/paymentSummary';
+import PaymentBreakdown from '../../components/payments/PaymentBreakdown';
 import { Calendar, Search, Download, Eye, X, DollarSign, CheckCircle, XCircle, AlertCircle, Building, PawPrint, Target, Activity, Shield, Globe, Briefcase } from 'lucide-react';
 
 const BookingHistory = () => {
@@ -159,7 +161,7 @@ const BookingHistory = () => {
                 {[
                     { label: 'Total Bookings', value: pagination.totalBookings, icon: Calendar, color: 'primary' },
                     { label: 'Active Bookings', value: bookings.filter(b => b.status === 'confirmed').length, icon: Activity, color: 'emerald' },
-                    { label: 'Platform Revenue', value: `₱${bookings.reduce((a, b) => a + (b.totalPrice || 0), 0).toLocaleString()}`, icon: DollarSign, color: 'amber' },
+                    { label: 'Platform Revenue', value: formatPeso(bookings.reduce((a, b) => a + (b.totalPrice || 0), 0)), icon: DollarSign, color: 'amber' },
                     { label: 'System Status', value: 'Normal', icon: Shield, color: 'indigo' }
                 ].map((s, i) => (
                     <div key={i} className="bg-white border border-slate-100 p-5 rounded-[2rem] shadow-sm">
@@ -387,7 +389,7 @@ const BookingHistory = () => {
                                                 </div>
                                                 <div className="text-right">
                                                     <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Total Amount</p>
-                                                    <p className="text-[14px] font-black text-primary-600">₱{selectedBooking.totalPrice?.toLocaleString()}</p>
+                                                    <p className="text-[14px] font-black text-primary-600">{formatPeso(selectedBooking.totalPrice)}</p>
                                                 </div>
                                             </div>
                                             <div className="flex justify-between items-center border-b border-slate-50 pb-6">
@@ -400,6 +402,7 @@ const BookingHistory = () => {
                                                     <p className="text-[10px] font-black text-emerald-500 uppercase tracking-widest border border-emerald-100 bg-emerald-50 px-2 py-0.5 rounded-lg">{selectedBooking.paymentStatus || 'PAID'}</p>
                                                 </div>
                                             </div>
+                                            <PaymentBreakdown summary={bookingPaymentSummary(selectedBooking)} compact />
                                         </div>
                                     </div>
 

@@ -182,7 +182,7 @@ const FloatingChatManager = ({ currentUser }) => {
       fetchConversations();
     } catch (error) {
       console.error('Error sending message:', error);
-      toast.error('Failed to send message');
+      toast.error('Your message could not be sent. Please try again.');
       setNewMessage(savedMessage);
     } finally {
       setIsLoading(false);
@@ -246,7 +246,7 @@ const FloatingChatManager = ({ currentUser }) => {
       fetchConversations();
     } catch (error) {
       console.error('Error uploading image:', error);
-      toast.error('Failed to send image');
+      toast.error('Your photo could not be sent. Please try again.');
     } finally {
       setIsLoading(false);
     }

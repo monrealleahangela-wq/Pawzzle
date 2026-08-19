@@ -1,5 +1,5 @@
 import React from 'react';
-import { Camera, Check, FileText, HeartPulse, PawPrint, Upload } from 'lucide-react';
+import { Camera, Check, HeartPulse, PawPrint, Upload } from 'lucide-react';
 import { CompactFormModal, CompactFormSection, CompactUploadCard, RequiredMark, compactInputClass } from '../forms/CompactEntityForm';
 
 const inputClass = compactInputClass;
@@ -51,7 +51,6 @@ const PetProfileFormModal = ({
   loading
 }) => {
   const cards = petForm.vaccinationCards || [];
-  const support = petForm.supportingDocuments || [];
   const hasAge = Boolean(petForm.birthday || petForm.approximateAge?.value);
   const isVaccinated = petForm.vaccinationStatus === 'Vaccinated';
   const hasVaccinationRecord = cards.some(Boolean);
@@ -88,55 +87,10 @@ const PetProfileFormModal = ({
     setVaccinationPreviews(nextPreviews);
   };
 
-  const choosePcci = event => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    setPetForm(current => ({
-      ...current,
-      pcciRegistration: {
-        ...current.pcciRegistration,
-        status: 'yes',
-        certificateUrl: file,
-        informationStatus: 'customer_provided'
-      }
-    }));
-  };
-
-  const removePcci = () => setPetForm(current => ({
-    ...current,
-    pcciRegistration: {
-      ...current.pcciRegistration,
-      status: 'not_sure',
-      certificateUrl: '',
-      informationStatus: 'not_provided'
-    }
-  }));
-
-  const addSupportingDocuments = event => {
-    const files = Array.from(event.target.files || []);
-    if (!files.length) return;
-    setPetForm(current => ({
-      ...current,
-      supportingDocuments: [
-        ...(current.supportingDocuments || []),
-        ...files.map(file => ({ file, name: file.name, url: '' }))
-      ]
-    }));
-    event.target.value = '';
-  };
-
-  const removeSupportingDocument = index => setPetForm(current => ({
-    ...current,
-    supportingDocuments: (current.supportingDocuments || []).filter((_, itemIndex) => itemIndex !== index)
-  }));
-
   const setType = type => setPetForm(current => ({
     ...current,
     type,
-    breed: '',
-    ...(type === 'Dog' ? {} : {
-      pcciRegistration: { status: 'not_sure', registrationNumber: '', registeredName: '', certificateUrl: '', microchipNumber: '', informationStatus: 'not_provided' }
-    })
+    breed: ''
   }));
 
   return (
@@ -179,15 +133,6 @@ const PetProfileFormModal = ({
               <label className="text-[11px] font-bold text-slate-700">Weight <span className="font-normal text-slate-400">(optional)</span><div className="mt-1 flex gap-2"><input type="number" min="0" max="200" value={petForm.weight ?? ''} onChange={event => setPetForm(current => ({ ...current, weight: event.target.value }))} className={`${inputClass} mt-0`} /><select value={petForm.weightUnit || 'kg'} onChange={event => setPetForm(current => ({ ...current, weightUnit: event.target.value }))} className={`${inputClass} mt-0 w-20`}><option value="kg">kg</option><option value="lb">lb</option></select></div></label>
               <label className="text-[11px] font-bold text-slate-700">Allergies <span className="font-normal text-slate-400">(optional)</span><input value={petForm.allergies || ''} onChange={event => setPetForm(current => ({ ...current, allergies: event.target.value }))} className={inputClass} placeholder="None known" /></label>
               <label className="text-[11px] font-bold text-slate-700 sm:col-span-2">Medical Notes <span className="font-normal text-slate-400">(optional)</span><textarea rows="3" value={petForm.medicalConditions || ''} onChange={event => setPetForm(current => ({ ...current, medicalConditions: event.target.value }))} className="mt-1 w-full resize-none rounded-xl border border-slate-200 bg-white p-3 text-sm outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10" placeholder="Conditions, medication, or handling notes" /></label>
-            </div>
-          </Section>
-
-          <Section step="4" icon={FileText} title="Ownership Documents" description="All documents in this section are optional.">
-            <div className="space-y-2">
-              {petForm.type === 'Dog' && <UploadRow title="PCCI Registration Document (Philippine Canine Club Inc.)" value={petForm.pcciRegistration?.certificateUrl} accept="image/*,.pdf,.doc,.docx" onChange={choosePcci} onRemove={removePcci} fallback="Upload PCCI certificate" />}
-              {support.map((document, index) => <UploadRow key={`${document.url || document.name}-${index}`} title={`Supporting Document ${index + 1}`} value={document.file || document.url} accept="image/*,.pdf,.doc,.docx" onChange={event => { const file = event.target.files?.[0]; if (!file) return; setPetForm(current => ({ ...current, supportingDocuments: current.supportingDocuments.map((item, itemIndex) => itemIndex === index ? { file, name: file.name, url: '' } : item) })); }} onRemove={() => removeSupportingDocument(index)} fallback={document.name || 'Supporting document'} />)}
-              <label className="flex min-h-12 cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 bg-slate-50 px-3 text-[11px] font-black text-slate-600 hover:border-primary-300 hover:bg-primary-50"><Upload className="h-4 w-4" /> Add Supporting Documents<input type="file" multiple accept="image/*,.pdf,.doc,.docx" className="sr-only" onChange={addSupportingDocuments} /></label>
-              {petForm.type !== 'Dog' && <p className="text-[10px] text-slate-500">PCCI registration applies to dogs only.</p>}
             </div>
           </Section>
     </CompactFormModal>

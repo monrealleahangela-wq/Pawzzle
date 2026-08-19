@@ -24,7 +24,7 @@ const Adoptions = ({ isSubcomponent = false }) => {
             setRequests(response.data.requests || []);
         } catch (error) {
             console.error('Error fetching purchase inquiries:', error);
-            toast.error('Failed to load purchase history');
+            toast.error('We could not load your purchase history. Please try again.');
         } finally {
             setLoading(false);
         }
@@ -67,7 +67,7 @@ const Adoptions = ({ isSubcomponent = false }) => {
             fetchRequests();
         } catch (error) {
             console.error('Error cancelling purchase inquiry:', error);
-            toast.error(error.response?.data?.message || 'Failed to cancel inquiry');
+            toast.error(error.response?.data?.message || 'We could not cancel this inquiry. Please try again.');
         }
     };
 

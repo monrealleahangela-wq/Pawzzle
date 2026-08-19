@@ -493,7 +493,7 @@ const Layout = () => {
             {user && (
               <button onClick={handleLogout} className={`flex items-center gap-5 px-6 py-4 rounded-[1.5rem] text-slate-400 hover:bg-rose-50 hover:text-rose-600 transition-all duration-300 w-full ${sidebarCollapsed ? 'justify-center px-0' : ''}`}>
                 <LogOut className="h-5 w-5 shrink-0" />
-                {!sidebarCollapsed && <span className="text-[10px] font-black uppercase tracking-widest truncate">Sign Out</span>}
+                {!sidebarCollapsed && <span className="text-[10px] font-black uppercase tracking-widest truncate">Logout</span>}
               </button>
             )}
 
@@ -596,7 +596,7 @@ const Layout = () => {
               <button onClick={() => { setIsMobileMenuOpen(false); handleLogout(); }}
                       className="flex items-center gap-3 w-full p-3.5 bg-rose-50 text-rose-600 rounded-xl font-black text-[10px] uppercase tracking-[0.2em] active:scale-95 transition-all">
                 <LogOut className="h-6 w-6" />
-                <span>End Session</span>
+                <span>Logout</span>
               </button>
             )}
           </div>

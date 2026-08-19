@@ -57,7 +57,7 @@ const ReviewModal = ({
             setIsAnonymous(false);
             setComplimentTags([]);
         } catch (error) {
-            toast.error(error.response?.data?.message || 'Failed to submit review');
+            toast.error(error.response?.data?.message || 'We could not submit your review. Please try again.');
         } finally {
             setSubmitting(false);
         }
@@ -112,7 +112,7 @@ const ReviewModal = ({
                     </div>
 
                     <div className="space-y-2">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block ml-1">Media Manifest (Optional)</label>
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block ml-1">Photos (optional)</label>
                         <ImageUpload
                             images={images}
                             onImagesChange={setImages}

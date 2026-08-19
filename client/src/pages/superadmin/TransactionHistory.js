@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { toast } from 'react-toastify';
 import { orderService } from '../../services/apiService';
+import { formatPeso, orderPaymentSummary } from '../../utils/paymentSummary';
+import PaymentBreakdown from '../../components/payments/PaymentBreakdown';
 import {
   DollarSign,
   Calendar,
@@ -170,9 +172,9 @@ const TransactionHistory = () => {
       {/* Transaction Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {[
-          { label: 'Total Revenue', value: `₱${totals.revenue.toLocaleString()}`, icon: DollarSign, color: 'emerald', trend: '+18.2%' },
+          { label: 'Total Revenue', value: formatPeso(totals.revenue), icon: DollarSign, color: 'emerald', trend: '+18.2%' },
           { label: 'Total Orders', value: totals.count, icon: ShoppingCart, color: 'primary', trend: '+5.4%' },
-          { label: 'Avg Order Value', value: `₱${totals.avg.toFixed(2)}`, icon: Zap, color: 'amber', trend: '-2.1%' },
+          { label: 'Avg Order Value', value: formatPeso(totals.avg), icon: Zap, color: 'amber', trend: '-2.1%' },
           { label: 'System Status', value: 'Active', icon: Globe, color: 'indigo', trend: 'STABLE' }
         ].map((s, i) => (
           <div key={i} className="bg-white border border-slate-100 p-5 rounded-[2rem] shadow-sm">
@@ -262,7 +264,7 @@ const TransactionHistory = () => {
                       <div className="text-[9px] font-bold text-slate-400 uppercase tracking-tight italic opacity-60">{t.customer.email}</div>
                     </td>
                     <td className="px-8 py-6">
-                      <div className="text-[12px] font-black text-slate-900">₱{t.totalAmount?.toLocaleString()}</div>
+                      <div className="text-[12px] font-black text-slate-900">{formatPeso(t.totalAmount)}</div>
                       <div className="text-[9px] font-black text-primary-500 uppercase tracking-[0.1em]">{t.items.length} ITEMS</div>
                     </td>
                     <td className="px-8 py-6">
@@ -343,7 +345,7 @@ const TransactionHistory = () => {
                           {getStatusProps(selectedTransaction.status).label}
                         </span>
                       </div>
-                      <p className="text-3xl sm:text-4xl font-black tracking-tight">₱{selectedTransaction.totalAmount?.toLocaleString()}</p>
+                      <p className="text-3xl sm:text-4xl font-black tracking-tight">{formatPeso(selectedTransaction.totalAmount)}</p>
                       <div className="flex gap-4">
                         <div className="px-4 py-2 bg-white/5 border border-white/10 rounded-2xl">
                           <p className="text-[8px] font-black text-white/40 uppercase tracking-widest mb-1">Method</p>
@@ -391,10 +393,15 @@ const TransactionHistory = () => {
                             <p className="text-[10px] font-black text-slate-900 uppercase truncate leading-none mb-1">{item.name}</p>
                             <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">{item.quantity} ITEMS × ₱{item.price}</p>
                           </div>
-                          <div className="text-[11px] font-black text-slate-900">₱{(item.price * item.quantity).toLocaleString()}</div>
+                          <div className="text-[11px] font-black text-slate-900">{formatPeso(item.price * item.quantity)}</div>
                         </div>
                       ))}
                     </div>
+                  </div>
+
+                  <div className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm">
+                    <h3 className="mb-4 text-[11px] font-black uppercase tracking-widest text-slate-900">Payment Breakdown</h3>
+                    <PaymentBreakdown summary={orderPaymentSummary(selectedTransaction)} compact />
                   </div>
 
                   <div className="bg-white border border-slate-100 rounded-2xl p-8 shadow-sm">

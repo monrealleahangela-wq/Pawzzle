@@ -35,7 +35,7 @@ const OrderReviewModal = ({ isOpen, onClose, item, orderId, onReviewSubmitted })
                 images,
                 isAnonymous
             });
-            toast.success('Review submitted successfully!');
+            toast.success('Review submitted.');
             onReviewSubmitted();
             onClose();
             // Reset form
@@ -44,7 +44,7 @@ const OrderReviewModal = ({ isOpen, onClose, item, orderId, onReviewSubmitted })
             setImages([]);
             setIsAnonymous(false);
         } catch (error) {
-            toast.error(error.response?.data?.message || 'Failed to submit review');
+            toast.error(error.response?.data?.message || 'We could not submit your review. Please try again.');
         } finally {
             setSubmitting(false);
         }

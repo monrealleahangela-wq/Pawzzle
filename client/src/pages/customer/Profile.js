@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useLocation, Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { useAuth } from '../../contexts/AuthContext';
-import { userService, orderService, bookingService, uploadService, adminOrderService, adminBookingService, dssService, adoptionService, getImageUrl, socialService, petProfileService, staffService } from '../../services/apiService';
+import { userService, orderService, bookingService, uploadService, adminOrderService, adminBookingService, dssService, adoptionService, getImageUrl, socialService, petProfileService, staffService, petService, serviceService, storeService } from '../../services/apiService';
 import { User, Camera, Edit2, Save, X, Upload, Building, Store, TrendingUp, FileText, Check, AlertCircle, Clock, Mail, Phone, MapPin, Calendar, Package, Shield, CreditCard, Settings, Lock, Eye, EyeOff, LogOut, Zap, Plus, Trash2, PawPrint, FileBadge, Search } from 'lucide-react';
 import { getCitiesByProvince, getBarangaysByCity } from '../../constants/locationConstants';
 import storeApplicationService from '../../services/storeApplicationService';
@@ -12,8 +12,36 @@ import { Heart as HeartIcon, Globe, ShieldCheck, Users } from 'lucide-react';
 import MapPicker from '../../components/MapPicker';
 import LogoutModal from '../../components/auth/LogoutModal';
 import PetProfileFormModal from '../../components/pets/PetProfileFormModal';
+import { FavoritesPanel, FollowingPanel } from '../../components/profile/SavedProfileLists';
+import { formatPeso } from '../../utils/paymentSummary';
 
 import { useTheme } from '../../contexts/ThemeContext';
+
+const favoriteStorageKeys = {
+  pets: 'favoritePets',
+  services: 'favoriteServices',
+  stores: 'favoriteStores'
+};
+
+const getStoredFavoriteIds = key => {
+  try {
+    const value = JSON.parse(window.localStorage.getItem(key) || '[]');
+    return Array.isArray(value) ? [...new Set(value.filter(id => typeof id === 'string' && id))] : [];
+  } catch (error) {
+    return [];
+  }
+};
+
+const loadStoredFavorites = async (ids, loadItem) => {
+  const items = await Promise.all(ids.map(async id => {
+    try {
+      return await loadItem(id);
+    } catch (error) {
+      return null;
+    }
+  }));
+  return items.filter(Boolean);
+};
 
 const Profile = () => {
   const { user, updateUser, logout } = useAuth();
@@ -141,7 +169,6 @@ const Profile = () => {
     breed: '',
     isMixedBreed: false,
     breedStatus: 'unknown',
-    pcciRegistration: { status: 'not_sure', registrationNumber: '', registeredName: '', certificateUrl: '', microchipNumber: '', informationStatus: 'not_provided' },
     size: 'Unknown',
     birthday: '',
     approximateAge: { value: '', unit: 'years' },
@@ -161,13 +188,11 @@ const Profile = () => {
     behaviorNotes: 'Normal',
     emergencyContact: '',
     photo: null,
-    vaccinationCards: [null, null],
-    supportingDocuments: []
+    vaccinationCards: [null, null]
   });
   const [petSubmitLoading, setPetSubmitLoading] = useState(false);
   const [petPhotoPreview, setPetPhotoPreview] = useState(null);
   const [vaccinationPreviews, setVaccinationPreviews] = useState([null, null]);
-  const [breedSearch, setBreedSearch] = useState('');
   const [stats, setStats] = useState({
     totalOrders: 0,
     totalRevenue: 0,
@@ -178,10 +203,13 @@ const Profile = () => {
   const [toggling2FA, setToggling2FA] = useState(false);
   const [activityLogs, setActivityLogs] = useState([]);
   const [showActivityModal, setShowActivityModal] = useState(false);
-  const [favorites, setFavorites] = useState([]);
+  const [favorites, setFavorites] = useState({ pets: [], products: [], services: [], stores: [] });
   const [followers, setFollowers] = useState([]);
   const [following, setFollowing] = useState([]);
   const [socialLoading, setSocialLoading] = useState(false);
+  const [pendingFavoriteRemoval, setPendingFavoriteRemoval] = useState(null);
+  const [pendingUnfollow, setPendingUnfollow] = useState(null);
+  const favoriteCount = Object.values(favorites).reduce((total, items) => total + items.length, 0);
 
   useEffect(() => {
     if (user) {
@@ -223,7 +251,7 @@ const Profile = () => {
     const params = new URLSearchParams(location.search);
     const tab = params.get('tab');
     if (tab) {
-      setActiveTab(tab);
+      setActiveTab(tab === 'following' ? 'followers' : tab);
     }
   }, [location.search]);
 
@@ -247,19 +275,76 @@ const Profile = () => {
     if (!user) return;
     setSocialLoading(true);
     try {
-        const userId = user._id || user.id;
-        const [favRes, followersRes, followingRes] = await Promise.all([
-            socialService.getUserFavorites(userId),
-            socialService.getFollowers(userId),
-            socialService.getFollowing(userId)
-        ]);
-        setFavorites(favRes.data.favorites || []);
-        setFollowers(followersRes.data.followers || []);
-        setFollowing(followingRes.data.following || []);
+      const userId = user._id || user.id;
+      const petIds = getStoredFavoriteIds(favoriteStorageKeys.pets);
+      const serviceIds = getStoredFavoriteIds(favoriteStorageKeys.services);
+      const storeIds = getStoredFavoriteIds(favoriteStorageKeys.stores);
+      const [favRes, followersRes, followingRes, pets, services, stores] = await Promise.all([
+        socialService.getUserFavorites(userId),
+        socialService.getFollowers(userId),
+        socialService.getFollowing(userId),
+        loadStoredFavorites(petIds, async id => (await petService.getPetById(id)).data?.pet),
+        loadStoredFavorites(serviceIds, async id => (await serviceService.getServiceById(id)).data),
+        loadStoredFavorites(storeIds, async id => (await storeService.getStoreById(id)).data?.store)
+      ]);
+      setFavorites({
+        pets,
+        products: favRes.data.favorites || [],
+        services,
+        stores
+      });
+      setFollowers((followersRes.data.followers || []).filter(Boolean));
+      setFollowing((followingRes.data.following || []).filter(Boolean));
     } catch (error) {
-        console.error('Error fetching social data:', error);
+      console.error('Error fetching social data:', error);
+      toast.error('We could not load all of your saved items. Please try again.');
     } finally {
-        setSocialLoading(false);
+      setSocialLoading(false);
+    }
+  };
+
+  const handleRemoveFavorite = async (type, item) => {
+    const removalKey = `${type}:${item._id}`;
+    setPendingFavoriteRemoval(removalKey);
+    setFavorites(previous => ({
+      ...previous,
+      [type]: previous[type].filter(favorite => favorite._id !== item._id)
+    }));
+
+    try {
+      if (type === 'products') {
+        const response = await socialService.toggleFavorite(item._id);
+        if (response.data.isFavorite) {
+          setFavorites(previous => ({ ...previous, products: [...previous.products, item] }));
+          throw new Error('Favorite was not removed');
+        }
+      } else {
+        const storageKey = favoriteStorageKeys[type];
+        const remainingIds = getStoredFavoriteIds(storageKey).filter(id => id !== item._id);
+        window.localStorage.setItem(storageKey, JSON.stringify(remainingIds));
+      }
+      toast.success('Removed from favorites');
+    } catch (error) {
+      setFavorites(previous => previous[type].some(favorite => favorite._id === item._id)
+        ? previous
+        : { ...previous, [type]: [...previous[type], item] });
+      toast.error('We could not remove that favorite. Please try again.');
+    } finally {
+      setPendingFavoriteRemoval(null);
+    }
+  };
+
+  const handleUnfollow = async followed => {
+    setPendingUnfollow(followed._id);
+    setFollowing(previous => previous.filter(item => item._id !== followed._id));
+    try {
+      await socialService.unfollowUser(followed._id);
+      toast.success(`Unfollowed ${followed.store?.name || followed.username || 'store'}`);
+    } catch (error) {
+      setFollowing(previous => previous.some(item => item._id === followed._id) ? previous : [...previous, followed]);
+      toast.error('We could not unfollow that store. Please try again.');
+    } finally {
+      setPendingUnfollow(null);
     }
   };
 
@@ -477,7 +562,7 @@ const Profile = () => {
         setIsEditing(false);
       }
     } catch (error) {
-      toast.error('Failed to update profile');
+      toast.error('We could not update your profile. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -592,35 +677,10 @@ const Profile = () => {
         }
       }
 
-      let pcciCertificateUrl = petForm.pcciRegistration?.certificateUrl || '';
-      if (pcciCertificateUrl && typeof pcciCertificateUrl !== 'string') {
-        const documentData = new FormData();
-        documentData.append('document', pcciCertificateUrl);
-        const uploadRes = await uploadService.uploadDocument(documentData);
-        pcciCertificateUrl = uploadRes.data.url;
-      }
-
-      const supportingDocuments = [];
-      for (const document of (petForm.supportingDocuments || [])) {
-        if (document.file) {
-          const documentData = new FormData();
-          documentData.append('document', document.file);
-          const uploadRes = await uploadService.uploadDocument(documentData);
-          supportingDocuments.push({
-            url: uploadRes.data.url,
-            name: uploadRes.data.originalName || document.name || document.file.name
-          });
-        } else if (document.url) {
-          supportingDocuments.push({ url: document.url, name: document.name || 'Supporting document' });
-        }
-      }
-
       const dataToSubmit = {
         ...petForm,
         photo: photoUrl,
-        vaccinationCards: vaccinationUrls.filter(u => u !== null),
-        pcciRegistration: { ...petForm.pcciRegistration, certificateUrl: pcciCertificateUrl },
-        supportingDocuments
+        vaccinationCards: vaccinationUrls.filter(u => u !== null)
       };
 
       if (editingPet) {
@@ -637,7 +697,7 @@ const Profile = () => {
       resetPetForm();
     } catch (error) {
       console.error('Error submitting pet:', error);
-      toast.error(error.response?.data?.message || 'Failed to save pet profile');
+      toast.error(error.response?.data?.message || 'We could not save this pet. Please try again.');
     } finally {
       setPetSubmitLoading(false);
     }
@@ -650,7 +710,6 @@ const Profile = () => {
       breed: '',
       isMixedBreed: false,
       breedStatus: 'unknown',
-      pcciRegistration: { status: 'not_sure', registrationNumber: '', registeredName: '', certificateUrl: '', microchipNumber: '', informationStatus: 'not_provided' },
       size: 'Unknown',
       birthday: '',
       approximateAge: { value: '', unit: 'years' },
@@ -670,13 +729,11 @@ const Profile = () => {
       behaviorNotes: 'Normal',
       emergencyContact: '',
       photo: null,
-      vaccinationCards: [null, null],
-      supportingDocuments: []
+      vaccinationCards: [null, null]
     });
     setEditingPet(null);
     setPetPhotoPreview(null);
     setVaccinationPreviews([null, null]);
-    setBreedSearch('');
   };
 
   const handleEditPet = (pet) => {
@@ -691,7 +748,6 @@ const Profile = () => {
       breed: pet.breed || '',
       isMixedBreed: pet.isMixedBreed || false,
       breedStatus: pet.breedStatus || (pet.isMixedBreed ? 'mixed_breed' : 'unknown'),
-      pcciRegistration: { status: 'not_sure', registrationNumber: '', registeredName: '', certificateUrl: '', microchipNumber: '', informationStatus: 'not_provided', ...(pet.pcciRegistration || {}) },
       size: pet.size || 'Unknown',
       birthday: pet.birthday ? new Date(pet.birthday).toISOString().split('T')[0] : '',
       approximateAge: { value: pet.approximateAge?.value || '', unit: pet.approximateAge?.unit || 'years' },
@@ -711,12 +767,10 @@ const Profile = () => {
       behaviorNotes: pet.behaviorNotes || 'Normal',
       emergencyContact: pet.emergencyContact || '',
       photo: pet.photo,
-      vaccinationCards: pet.vaccinationCards?.length ? pet.vaccinationCards : [null, null],
-      supportingDocuments: pet.supportingDocuments || []
+      vaccinationCards: pet.vaccinationCards?.length ? pet.vaccinationCards : [null, null]
     });
     setPetPhotoPreview(getImageUrl(pet.photo));
     setVaccinationPreviews((pet.vaccinationCards || []).map(url => getImageUrl(url)));
-    setBreedSearch(pet.breed);
     setShowPetModal(true);
   };
 
@@ -727,7 +781,7 @@ const Profile = () => {
       setMyPets(myPets.filter(p => p._id !== petId));
       toast.success('Pet profile removed');
     } catch (error) {
-      toast.error('Failed to remove pet profile');
+      toast.error('We could not remove this pet. Please try again.');
     }
   };
 
@@ -760,7 +814,7 @@ const Profile = () => {
       toast.success(response.message || 'Password changed successfully');
       setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Failed to change password');
+      toast.error(error.response?.data?.message || 'We could not change your password. Please try again.');
     } finally {
       setPasswordLoading(false);
     }
@@ -774,10 +828,10 @@ const Profile = () => {
         toast.success(result.message);
         updateUser({ ...user, twoFactorEnabled: !user.twoFactorEnabled });
       } else {
-        toast.error(result.message || 'Failed to toggle 2FA');
+        toast.error(result.message || 'We could not change two-step verification. Please try again.');
       }
     } catch (error) {
-      toast.error('Failed to update 2FA settings');
+      toast.error('We could not update two-step verification. Please try again.');
     } finally {
       setToggling2FA(false);
     }
@@ -975,7 +1029,7 @@ const Profile = () => {
       "FINAL CONFIRMATION: Please type 'DELETE' to permanently close your account."
     );
     if (secondConfirm !== 'DELETE') {
-      if (secondConfirm !== null) toast.error('Confirmation failed. Please type DELETE exactly.');
+      if (secondConfirm !== null) toast.error('Please type DELETE exactly to confirm.');
       return;
     }
 
@@ -991,7 +1045,7 @@ const Profile = () => {
       }, 2000);
     } catch (err) {
       console.error('Account deletion failed:', err);
-      toast.error(err.response?.data?.message || 'Failed to delete account');
+      toast.error(err.response?.data?.message || 'We could not delete your account. Please try again.');
       setDeleteLoading(false);
     }
   };
@@ -1097,14 +1151,14 @@ const Profile = () => {
                       <p className="text-[9px] font-black text-neutral-300 uppercase tracking-widest mb-2 group-hover/stat:text-primary transition-colors">Followers</p>
                       <p className="text-2xl font-black text-neutral-900 leading-none">{followers.length}</p>
                     </div>
-                    <div className="text-center border-x border-slate-100 px-4 group/stat cursor-pointer">
+                    <button type="button" onClick={() => setActiveTab('followers')} className="text-center border-x border-slate-100 px-4 group/stat cursor-pointer">
                       <p className="text-[9px] font-black text-neutral-300 uppercase tracking-widest mb-2 group-hover/stat:text-primary transition-colors">Following</p>
                       <p className="text-2xl font-black text-neutral-900 leading-none">{following.length}</p>
-                    </div>
-                    <div className="text-center group/stat cursor-pointer">
+                    </button>
+                    <button type="button" onClick={() => setActiveTab('favorites')} className="text-center group/stat cursor-pointer">
                       <p className="text-[9px] font-black text-neutral-300 uppercase tracking-widest mb-2 group-hover/stat:text-rose-500 transition-colors">Favorites</p>
-                      <p className="text-2xl font-black text-neutral-900 leading-none">{favorites.length}</p>
-                    </div>
+                      <p className="text-2xl font-black text-neutral-900 leading-none">{favoriteCount}</p>
+                    </button>
                   </div>
                 )}
               </div>
@@ -1114,15 +1168,15 @@ const Profile = () => {
             <div className="space-y-4">
               <nav className="bg-white rounded-[2.5rem] shadow-premium border border-slate-50 p-3 lg:flex lg:flex-col overflow-x-auto no-scrollbar scroll-smooth w-full">
                 {[
-                  { id: 'overview', icon: TrendingUp, label: 'Ecosystem activity' },
-                  { id: 'details', icon: User, label: 'Personal records' },
-                  ...(isSpecializedStaff ? [{ id: 'professional', icon: FileBadge, label: 'Professional profile' }] : []),
-                  { id: 'pets', icon: PawPrint, label: 'Biological assets', role: 'customer' },
-                  { id: 'favorites', icon: HeartIcon, label: 'Curated list', role: ['customer', 'admin'] },
-                  { id: 'followers', icon: Users, label: 'Platform network', role: ['customer', 'admin'] },
-                  { id: 'security', icon: Shield, label: 'Access control' },
-                  { id: 'store', icon: Building, label: 'Venture node', role: 'admin' },
-                  { id: 'upgrade', icon: Store, label: 'Register as seller', role: 'customer' }
+                  { id: 'overview', icon: TrendingUp, label: 'Activity' },
+                  { id: 'details', icon: User, label: 'My Information' },
+                  ...(isSpecializedStaff ? [{ id: 'professional', icon: FileBadge, label: 'Professional Profile' }] : []),
+                  { id: 'pets', icon: PawPrint, label: 'My Pets', role: 'customer' },
+                  { id: 'favorites', icon: HeartIcon, label: 'Favorites', role: ['customer', 'admin'] },
+                  { id: 'followers', icon: Users, label: 'Following', role: ['customer', 'admin'] },
+                  { id: 'security', icon: Shield, label: 'Security' },
+                  { id: 'store', icon: Building, label: 'My Store', role: 'admin' },
+                  { id: 'upgrade', icon: Store, label: 'Become a Seller', role: 'customer' }
                 ].filter(item => {
                   if (!item.role) return true;
                   if (Array.isArray(item.role)) return item.role.includes(user.role);
@@ -1131,7 +1185,7 @@ const Profile = () => {
                   <button
                     key={item.id}
                     onClick={() => setActiveTab(item.id)}
-                    className={`flex items-center gap-4 whitespace-nowrap px-8 py-5 rounded-[1.5rem] font-black text-[11px] uppercase tracking-widest transition-all duration-500 group ${activeTab === item.id
+                    className={`flex items-center gap-4 whitespace-nowrap px-8 py-5 rounded-[1.5rem] font-black text-[11px] tracking-wide transition-all duration-500 group ${activeTab === item.id
                       ? 'bg-neutral-900 text-white shadow-strong scale-[1.02]'
                       : 'text-neutral-400 hover:bg-neutral-50 hover:text-neutral-900'
                       }`}
@@ -1147,7 +1201,7 @@ const Profile = () => {
                 className="w-full flex items-center justify-center gap-4 px-8 py-6 rounded-[2.5rem] bg-rose-50 text-rose-600 font-black text-[11px] uppercase tracking-[0.3em] hover:bg-rose-600 hover:text-white transition-all shadow-soft border border-rose-100 active:scale-95 group"
               >
                 <LogOut className="h-5 w-5 group-hover:rotate-12 transition-transform" />
-                Terminate Session
+                Logout
               </button>
             </div>
           </div>
@@ -1244,7 +1298,7 @@ const Profile = () => {
                                 </div>
                               </div>
                               <div className="text-right">
-                                <p className="text-[11px] sm:text-sm font-black text-slate-900 leading-none mb-1">₱{order.totalAmount?.toLocaleString()}</p>
+                                <p className="text-[11px] sm:text-sm font-black text-slate-900 leading-none mb-1">{formatPeso(order.totalAmount)}</p>
                                 <span className={`px-1.5 py-0.5 rounded text-[7px] sm:text-[9px] font-black uppercase tracking-widest ${order.status === 'delivered' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-secondary-50 text-primary-600 border border-secondary-100'}`}>
                                   {order.status}
                                 </span>
@@ -1279,7 +1333,7 @@ const Profile = () => {
                         </>
                       ) : (
                         <div className="py-12 text-center">
-                          <p className="text-[9px] sm:text-sm text-slate-300 font-black uppercase tracking-widest">No Activity Records Found</p>
+                          <p className="text-[9px] sm:text-sm text-slate-300 font-black tracking-wide">Nothing here yet.</p>
                         </div>
                       )}
                     </div>
@@ -1435,7 +1489,7 @@ const Profile = () => {
                         <div className="md:col-span-2 space-y-1">
                           <label className="text-[8px] sm:text-xs font-black text-slate-300 uppercase tracking-widest block ml-1">Street Address</label>
                           {isEditing ? (
-                            <input type="text" value={formData.address.street} onChange={(e) => handleAddressChange('street', e.target.value)} className="w-full px-4 py-3 sm:px-5 sm:py-4 bg-slate-50 border-2 border-slate-50 rounded-xl sm:rounded-2xl focus:border-primary-500 focus:bg-white outline-none font-bold text-sm sm:text-base transition-all" placeholder="Sector/Street" />
+                            <input type="text" value={formData.address.street} onChange={(e) => handleAddressChange('street', e.target.value)} className="w-full px-4 py-3 sm:px-5 sm:py-4 bg-slate-50 border-2 border-slate-50 rounded-xl sm:rounded-2xl focus:border-primary-500 focus:bg-white outline-none font-bold text-sm sm:text-base transition-all" placeholder="Street address" />
                           ) : (
                             <p className="text-sm sm:text-lg font-black text-slate-900 px-1 py-1 leading-none">{user.address?.street || '--'}</p>
                           )}
@@ -1504,7 +1558,7 @@ const Profile = () => {
                   {petsLoading ? (
                     <div className="py-20 flex flex-col items-center justify-center space-y-4">
                       <div className="w-12 h-12 border-4 border-primary-100 border-t-primary-600 rounded-full animate-spin" />
-                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Synchronizing Pet Data...</p>
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Loading your pets…</p>
                     </div>
                   ) : myPets.length === 0 ? (
                     <div className="py-24 text-center bg-slate-50 rounded-[3rem] border-2 border-dashed border-slate-200">
@@ -1558,7 +1612,6 @@ const Profile = () => {
                                 <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest bg-slate-50 px-3 py-1 rounded-full border border-slate-100">{pet.breed}</span>
                                 <span className="text-[9px] font-black text-primary-500 uppercase tracking-widest bg-primary-50 px-3 py-1 rounded-full border border-primary-50">{calculateAge(pet.birthday)}</span>
                             </div>
-                            {pet.type === 'Dog' && pet.breedStatus === 'purebred' && pet.pcciRegistration?.informationStatus === 'customer_provided' && <p className="text-[9px] font-bold text-amber-700">PCCI registration information provided</p>}
                           </div>
 
                           <button onClick={() => handleEditPet(pet)} className="mt-5 h-9 w-full bg-slate-900 text-white rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-primary-600 transition-all">
@@ -1588,7 +1641,7 @@ const Profile = () => {
                       Account <br />
                       <span className="text-primary-600 italic">Security</span>
                     </h2>
-                    <p className="text-[9px] sm:text-sm text-slate-400 font-bold uppercase tracking-tight">Password and access control</p>
+                    <p className="text-[9px] sm:text-sm text-slate-400 font-bold tracking-tight">Manage your password and sign-in settings.</p>
                   </header>
 
                   <div className="grid grid-cols-1 gap-3 sm:gap-6">
@@ -1848,194 +1901,31 @@ const Profile = () => {
                 </div>
               )}
               {activeTab === 'favorites' && (
-                <div className="space-y-10 animate-in fade-in slide-in-from-right-8 duration-700">
-                  <header>
-                    <h2 className="text-xl sm:text-3xl font-black text-slate-900 uppercase tracking-tighter leading-none">
-                      My <br />
-                      <span className="text-rose-600 italic">Favorites</span>
-                    </h2>
-                    <p className="text-[9px] sm:text-sm text-slate-400 font-bold uppercase tracking-tight mt-1">Items you've bookmarked for later</p>
-                  </header>
-
-                  {socialLoading ? (
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
-                      {[1, 2, 3].map(i => (
-                        <div key={i} className="aspect-square bg-slate-50 rounded-3xl animate-pulse" />
-                      ))}
-                    </div>
-                  ) : favorites.length > 0 ? (
-                    <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6">
-                      {favorites.map(product => (
-                        <div key={product._id} className="bg-white border border-slate-100 rounded-3xl overflow-hidden group hover:shadow-xl transition-all duration-500">
-                          <div className="aspect-square relative overflow-hidden bg-slate-50">
-                            {product.images?.[0] ? (
-                              <img src={getImageUrl(product.images[0])} alt={product.name} className="w-full h-full object-cover transition-transform group-hover:scale-110" />
-                            ) : (
-                              <Package className="w-full h-full p-8 text-slate-200" />
-                            )}
-                            <button 
-                              onClick={async (e) => {
-                                e.preventDefault();
-                                try {
-                                  const res = await socialService.toggleFavorite(product._id);
-                                  toast.success(res.data.message);
-                                  fetchSocialData();
-                                } catch(err) { toast.error('Failed to update'); }
-                              }}
-                              className="absolute top-2 right-2 p-2 bg-white/90 backdrop-blur-sm rounded-xl text-rose-500 shadow-sm opacity-0 group-hover:opacity-100 transition-all"
-                            >
-                              <X className="h-4 w-4" />
-                            </button>
-                          </div>
-                          <div className="p-4">
-                            <h4 className="text-[10px] sm:text-xs font-black text-slate-900 uppercase truncate mb-1">{product.name}</h4>
-                            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-2">{product.category}</p>
-                            <div className="flex justify-between items-center">
-                              <span className="text-xs sm:text-sm font-black text-slate-900">₱{product.price?.toLocaleString()}</span>
-                              <a href={`/products/${product._id}`} className="text-[8px] font-black text-primary-600 uppercase tracking-widest hover:underline">View Product</a>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="py-20 text-center bg-slate-50 rounded-[3rem] border border-dashed border-slate-200">
-                      <HeartIcon className="h-12 w-12 text-slate-200 mx-auto mb-4" />
-                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">No favorites yet</p>
-                    </div>
-                  )}
-                </div>
+                <FavoritesPanel
+                  favorites={favorites}
+                  loading={socialLoading}
+                  onRemove={handleRemoveFavorite}
+                  pendingRemoval={pendingFavoriteRemoval}
+                />
               )}
 
               {activeTab === 'followers' && (
-                <div className="space-y-10 animate-in fade-in slide-in-from-right-8 duration-700">
-                  <header>
-                    <h2 className="text-xl sm:text-3xl font-black text-slate-900 uppercase tracking-tighter leading-none">
-                      Troop <br />
-                      <span className="text-primary-600 italic">Followers</span>
-                    </h2>
-                    <p className="text-[9px] sm:text-sm text-slate-400 font-bold uppercase tracking-tight mt-1">Users following your tactical updates</p>
-                  </header>
-
-                  {socialLoading ? (
-                    <div className="space-y-4">
-                      {[1, 2, 3].map(i => (
-                        <div key={i} className="h-16 bg-slate-50 rounded-2xl animate-pulse" />
-                      ))}
-                    </div>
-                  ) : followers.length > 0 ? (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      {followers.map(f => (
-                        <div key={f._id} className="flex items-center gap-4 p-4 bg-white border border-slate-100 rounded-2xl hover:shadow-lg transition-all">
-                          <div className="w-12 h-12 rounded-xl overflow-hidden bg-slate-50 border border-slate-100">
-                            {f.avatar ? (
-                              <img src={getImageUrl(f.avatar)} alt="" className="w-full h-full object-cover" />
-                            ) : (
-                              <div className="w-full h-full flex items-center justify-center text-slate-300">
-                                <User className="h-6 w-6" />
-                              </div>
-                            )}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <h4 className="text-sm font-black text-slate-900 uppercase truncate">
-                                {f.firstName} {f.lastName}
-                            </h4>
-                            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">@{f.username}</p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="py-20 text-center bg-slate-50 rounded-[3rem] border border-dashed border-slate-200">
-                      <Users className="h-12 w-12 text-slate-200 mx-auto mb-4" />
-                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Base is quiet. No followers yet.</p>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {activeTab === 'following' && (
-                <div className="space-y-10 animate-in fade-in slide-in-from-right-8 duration-700">
-                  <header>
-                    <h2 className="text-xl sm:text-3xl font-black text-slate-900 uppercase tracking-tighter leading-none">
-                      Strategic <br />
-                      <span className="text-primary-600 italic">Following</span>
-                    </h2>
-                    <p className="text-[9px] sm:text-sm text-slate-400 font-bold uppercase tracking-tight mt-1">Tactical partners you're monitoring</p>
-                  </header>
-
-                  {socialLoading ? (
-                    <div className="space-y-4">
-                      {[1, 2, 3].map(i => (
-                        <div key={i} className="h-16 bg-slate-50 rounded-2xl animate-pulse" />
-                      ))}
-                    </div>
-                  ) : following.length > 0 ? (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      {following.map(f => {
-                        const canVisitShop = !!f.storeId;
-                        return (
-                          <div 
-                            key={f._id} 
-                            className={`flex items-center gap-4 p-4 bg-white border border-slate-100 rounded-2xl hover:shadow-lg transition-all group ${canVisitShop ? 'cursor-pointer hover:border-primary-200' : ''}`}
-                            onClick={() => f.storeId && window.location.assign(`/stores/${f.storeId}`)}
-                            title={canVisitShop ? `Visit ${f.firstName}'s shop` : ''}
-                          >
-                            <div className="w-12 h-12 rounded-xl overflow-hidden bg-slate-50 border border-slate-100 shrink-0">
-                              {f.avatar ? (
-                                <img src={getImageUrl(f.avatar)} alt="" className="w-full h-full object-cover" />
-                              ) : (
-                                <div className="w-full h-full flex items-center justify-center text-slate-300">
-                                  <User className="h-6 w-6" />
-                                </div>
-                              )}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <h4 className="text-sm font-black text-slate-900 uppercase truncate">
-                                  {f.firstName} {f.lastName}
-                              </h4>
-                              <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">@{f.username}</p>
-                              {canVisitShop && (
-                                <p className="text-[8px] font-black text-primary-500 uppercase tracking-widest mt-0.5 flex items-center gap-1">
-                                  <span className="w-1 h-1 rounded-full bg-primary-500 inline-block" />
-                                  View Shop
-                                </p>
-                              )}
-                            </div>
-                            <button 
-                              onClick={async (e) => {
-                                e.stopPropagation();
-                                try {
-                                    await socialService.unfollowUser(f._id);
-                                    toast.success(`Unfollowed @${f.username}`);
-                                    fetchSocialData();
-                                } catch(err) { toast.error('Failed to unfollow'); }
-                              }}
-                              className="bg-slate-50 text-slate-400 p-2 rounded-xl opacity-0 group-hover:opacity-100 hover:bg-rose-50 hover:text-rose-600 transition-all font-black text-[8px] uppercase tracking-widest shrink-0"
-                            >
-                              Unfollow
-                            </button>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <div className="py-20 text-center bg-slate-50 rounded-[3rem] border border-dashed border-slate-200">
-                      <User className="h-12 w-12 text-slate-200 mx-auto mb-4" />
-                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">No strategic following</p>
-                    </div>
-                  )}
-                </div>
+                <FollowingPanel
+                  following={following}
+                  loading={socialLoading}
+                  onUnfollow={handleUnfollow}
+                  pendingUnfollow={pendingUnfollow}
+                />
               )}
 
               {activeTab === 'upgrade' && (
                 <div className="space-y-8 sm:space-y-12 animate-in fade-in slide-in-from-right-8 duration-700">
                   <header>
                     <h2 className="text-xl sm:text-3xl font-black text-slate-900 uppercase tracking-tighter leading-none mb-1">
-                      Store <br />
-                      <span className="text-primary-600 italic">Partner</span>
+                      Become a <br />
+                      <span className="text-primary-600 italic">Seller</span>
                     </h2>
-                    <p className="text-[9px] sm:text-sm text-slate-400 font-bold uppercase tracking-tight">Join our store network</p>
+                    <p className="text-[9px] sm:text-sm text-slate-400 font-bold tracking-tight">Apply to start selling on Pawzzle.</p>
                   </header>
 
                   {!showUpgradeForm ? (
@@ -2071,7 +1961,7 @@ const Profile = () => {
                              {application.status !== 'approved' && application.status !== 'rejected' && (
                                <div className="space-y-2 mb-8 animate-in fade-in slide-in-from-top-4 duration-1000">
                                  <div className="flex justify-between items-end">
-                                   <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Verification Strength</p>
+                                   <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Application progress</p>
                                    <p className="text-xs font-black text-primary-600 italic">Level {application.verificationLevel || 1}</p>
                                  </div>
                                  <div className="h-3 bg-slate-100 rounded-full overflow-hidden p-0.5 border border-slate-50">
@@ -2082,7 +1972,7 @@ const Profile = () => {
                                      <div className="absolute inset-0 bg-white/20 animate-pulse" />
                                    </div>
                                  </div>
-                                 <p className="text-[7px] font-bold text-slate-400 uppercase tracking-tight">Complete more profile details to increase approval probability.</p>
+                                 <p className="text-[7px] font-bold text-slate-400 tracking-tight">Complete your application details to help us review it.</p>
                                </div>
                              )}
                             {application.status === 'rejected' && (
@@ -2104,7 +1994,7 @@ const Profile = () => {
                               To apply as a store owner, prepare your business documents for verification. Once approved, you'll gain access to your Store Owner Dashboard.
                             </p>
                             <button onClick={() => setShowUpgradeForm(true)} className="px-6 py-3 sm:px-12 sm:py-5 bg-white text-slate-900 rounded-xl sm:rounded-[2rem] font-black uppercase tracking-[0.2em] text-[10px] sm:text-sm hover:bg-primary-50 transition-all active:scale-95 shadow-2xl shadow-black/20">
-                              Start Application
+                              Apply to become a seller
                             </button>
                           </div>
                         </div>
@@ -2353,7 +2243,7 @@ const Profile = () => {
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4">
                           <div className="space-y-1">
-                            <label className="text-[8px] sm:text-xs font-black text-slate-300 uppercase tracking-widest block ml-1">Operational License Number *</label>
+                            <label className="text-[8px] sm:text-xs font-black text-slate-300 uppercase tracking-widest block ml-1">Business license number *</label>
                             <input required type="text" name="businessLicense.number" value={upgradeFormData.businessLicense.number} onChange={handleUpgradeFormChange} className="w-full px-4 py-3 bg-slate-50 border-2 border-slate-50 rounded-xl focus:border-primary-500 outline-none font-bold text-sm transition-all" />
                           </div>
                           <div className="space-y-1">
@@ -2449,7 +2339,7 @@ const Profile = () => {
                   <div className="absolute left-[11px] top-[26px] w-2.5 h-2.5 rounded-full bg-white border-2 border-indigo-200 group-hover:border-indigo-500 transition-colors z-10 shadow-sm" />
                   
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-1">
-                    <span className="text-[10px] sm:text-xs font-black text-slate-900 uppercase tracking-widest">{log.action || 'System Event'}</span>
+                    <span className="text-[10px] sm:text-xs font-black text-slate-900 uppercase tracking-widest">{log.action || 'Account activity'}</span>
                     <span className="text-[8px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-widest">{new Date(log.createdAt).toLocaleString()}</span>
                   </div>
                   <p className="text-xs sm:text-sm text-slate-500 font-medium">{log.details || 'No additional details provided'}</p>
@@ -2496,7 +2386,7 @@ const Profile = () => {
                   <PawPrint className="h-6 w-6 text-white" />
                 </div>
                 <div>
-                    <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tight">{editingPet ? 'Update Pet Dossier' : 'Register New Asset'}</h2>
+                    <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tight">{editingPet ? 'Update pet' : 'Add a pet'}</h2>
                     <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest leading-none mt-1">Complete your pet's biometric profile</p>
                 </div>
               </div>
@@ -2567,8 +2457,7 @@ const Profile = () => {
                                       type: e.target.value,
                                       breed: '',
                                       breedStatus: 'unknown',
-                                      isMixedBreed: false,
-                                      pcciRegistration: { status: 'not_sure', registrationNumber: '', registeredName: '', certificateUrl: '', microchipNumber: '', informationStatus: 'not_provided' }
+                                      isMixedBreed: false
                                     })}
                                     className="w-full px-5 py-4 bg-slate-50 border-2 border-slate-50 rounded-2xl focus:bg-white focus:border-primary-500 outline-none font-bold text-sm transition-all shadow-sm appearance-none cursor-pointer"
                                 >
@@ -2587,7 +2476,6 @@ const Profile = () => {
                                         type="text"
                                         value={petForm.breed}
                                         onChange={(e) => setPetForm({ ...petForm, breed: e.target.value })}
-                                        onFocus={() => setBreedSearch('')}
                                         className="w-full px-5 py-4 bg-slate-50 border-2 border-slate-50 rounded-2xl focus:bg-white focus:border-primary-500 outline-none font-bold text-sm transition-all shadow-sm pr-12"
                                         placeholder="Breed Type"
                                     />
@@ -2605,7 +2493,7 @@ const Profile = () => {
                               <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Breed Status</label>
                               <select value={petForm.breedStatus} onChange={(e) => {
                                 const breedStatus = e.target.value;
-                                setPetForm({ ...petForm, breedStatus, isMixedBreed: breedStatus === 'mixed_breed', pcciRegistration: breedStatus === 'purebred' ? petForm.pcciRegistration : { status: 'not_sure', registrationNumber: '', registeredName: '', certificateUrl: '', microchipNumber: '', informationStatus: 'not_provided' } });
+                                setPetForm({ ...petForm, breedStatus, isMixedBreed: breedStatus === 'mixed_breed' });
                               }} className="w-full px-5 py-4 bg-slate-50 border-2 border-slate-50 rounded-2xl focus:bg-white focus:border-primary-500 outline-none font-bold text-sm appearance-none">
                                 <option value="purebred">Purebred</option>
                                 <option value="mixed_breed">Mixed Breed</option>
@@ -2631,39 +2519,11 @@ const Profile = () => {
                     </div>
                 </div>
 
-                {petForm.type === 'Dog' && petForm.breedStatus === 'purebred' && <div className="space-y-5 rounded-2xl border border-amber-200 bg-amber-50/60 p-5">
-                  <div className="flex items-start gap-3">
-                    <FileBadge className="h-5 w-5 text-amber-700 shrink-0 mt-0.5" />
-                    <div><h3 className="text-sm font-black text-slate-900">PCCI Registration / Pedigree</h3><p className="text-xs text-slate-600 mt-1">Optional identification information for purebred dogs.</p></div>
-                  </div>
-                  <label className="block text-xs font-bold text-slate-700">Does this dog have PCCI registration or pedigree documentation?
-                    <select value={petForm.pcciRegistration.status} onChange={(e) => {
-                      const status = e.target.value;
-                      setPetForm({ ...petForm, pcciRegistration: status === 'yes' ? { ...petForm.pcciRegistration, status } : { status, registrationNumber: '', registeredName: '', certificateUrl: '', microchipNumber: '', informationStatus: 'not_provided' } });
-                    }} className="mt-2 w-full sm:max-w-xs h-10 px-3 rounded-xl border border-amber-200 bg-white text-sm font-semibold">
-                      <option value="yes">Yes</option><option value="no">No</option><option value="not_sure">Not Sure</option>
-                    </select>
-                  </label>
-                  {petForm.pcciRegistration.status === 'yes' && <div className="space-y-4">
-                    <p className="text-xs text-amber-800">Enter the registration information exactly as shown on the dog’s official PCCI documentation. Information submitted here is customer-provided and is not independently verified by Pawzzle.</p>
-                    <div className="grid sm:grid-cols-2 gap-3">
-                      <label className="text-[10px] font-bold uppercase tracking-wide text-slate-500">PCCI Registration Number<input type="text" maxLength="100" value={petForm.pcciRegistration.registrationNumber} onChange={(e) => setPetForm({ ...petForm, pcciRegistration: { ...petForm.pcciRegistration, registrationNumber: e.target.value } })} className="mt-1 w-full h-10 px-3 rounded-xl border border-slate-200 bg-white text-sm normal-case tracking-normal" placeholder="As shown on the certificate" /></label>
-                      <label className="text-[10px] font-bold uppercase tracking-wide text-slate-500">Registered Name<input type="text" maxLength="200" value={petForm.pcciRegistration.registeredName} onChange={(e) => setPetForm({ ...petForm, pcciRegistration: { ...petForm.pcciRegistration, registeredName: e.target.value } })} className="mt-1 w-full h-10 px-3 rounded-xl border border-slate-200 bg-white text-sm normal-case tracking-normal" placeholder="Official registered name" /></label>
-                      <label className="text-[10px] font-bold uppercase tracking-wide text-slate-500">Microchip Number (optional)<input type="text" maxLength="100" value={petForm.pcciRegistration.microchipNumber} onChange={(e) => setPetForm({ ...petForm, pcciRegistration: { ...petForm.pcciRegistration, microchipNumber: e.target.value } })} className="mt-1 w-full h-10 px-3 rounded-xl border border-slate-200 bg-white text-sm normal-case tracking-normal" placeholder="If available" /></label>
-                      <label className="text-[10px] font-bold uppercase tracking-wide text-slate-500">Pedigree / Registration Certificate
-                        <span className="mt-1 flex items-center gap-2 w-full min-h-10 px-3 rounded-xl border border-dashed border-amber-300 bg-white text-xs normal-case tracking-normal cursor-pointer"><Upload className="h-4 w-4 text-amber-700" />{typeof petForm.pcciRegistration.certificateUrl === 'string' && petForm.pcciRegistration.certificateUrl ? 'Replace certificate' : petForm.pcciRegistration.certificateUrl?.name || 'Upload image, PDF, or Word file'}<input type="file" accept="image/*,.pdf,.doc,.docx" className="sr-only" onChange={(e) => { const file = e.target.files?.[0]; if (file) setPetForm({ ...petForm, pcciRegistration: { ...petForm.pcciRegistration, certificateUrl: file } }); }} /></span>
-                      </label>
-                    </div>
-                    {typeof petForm.pcciRegistration.certificateUrl === 'string' && petForm.pcciRegistration.certificateUrl && <a href={petForm.pcciRegistration.certificateUrl} target="_blank" rel="noreferrer" className="inline-flex text-xs font-bold text-primary-700 hover:underline">View uploaded certificate</a>}
-                    <p className="inline-flex px-3 py-1.5 rounded-lg bg-white border border-amber-200 text-[10px] font-bold text-amber-800">PCCI Registration Information Provided — not system verified</p>
-                  </div>}
-                </div>}
-
                 {/* 2. Lifecycle & Growth */}
                 <div className="space-y-10">
                     <div className="flex items-center gap-4 border-b border-slate-50 pb-3">
                         <Zap className="h-4 w-4 text-secondary-500" />
-                        <h3 className="text-[10px] font-black text-slate-800 uppercase tracking-[0.3em]">Lifecycle & Calibration</h3>
+                        <h3 className="text-[10px] font-black text-slate-800 uppercase tracking-[0.3em]">Age and size</h3>
                     </div>
                     
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8">
@@ -2712,7 +2572,7 @@ const Profile = () => {
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-6">
                         <div className="space-y-2">
-                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Color / Marking Matrix</label>
+                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Color and markings</label>
                             <input 
                                 type="text" 
                                 value={petForm.color}
@@ -2735,7 +2595,7 @@ const Profile = () => {
                 </div>
 
                 <div className="space-y-5">
-                  <div className="flex items-center gap-4 border-b border-slate-100 pb-3"><HeartIcon className="h-4 w-4 text-primary-500" /><h3 className="text-[10px] font-black text-slate-800 uppercase tracking-[0.2em]">Service recommendation profile</h3></div>
+                  <div className="flex items-center gap-4 border-b border-slate-100 pb-3"><HeartIcon className="h-4 w-4 text-primary-500" /><h3 className="text-[10px] font-black text-slate-800 uppercase tracking-[0.2em]">Service preferences</h3></div>
                   <div className="grid sm:grid-cols-3 gap-3">
                     {[['length','Coat length',['unknown','short','medium','long']],['type','Coat type',['unknown','straight','wavy','curly','double_coat','other']],['condition','Coat condition',['unknown','normal','tangled','matted','heavy_shedding','dry_looking','other']]].map(([field,label,options]) => <label key={field} className="text-[9px] font-black uppercase tracking-wide text-slate-400">{label}<select value={petForm.coat[field]} onChange={e => setPetForm({ ...petForm, coat: { ...petForm.coat, [field]: e.target.value } })} className="mt-1 w-full h-10 px-3 rounded-xl border border-slate-200 bg-slate-50 text-xs font-semibold text-slate-700 normal-case">{options.map(v => <option key={v} value={v}>{v.replace('_',' ')}</option>)}</select></label>)}
                   </div>
@@ -2748,7 +2608,7 @@ const Profile = () => {
                 <div className="space-y-10">
                     <div className="flex items-center gap-4 border-b border-slate-50 pb-3">
                         <FileBadge className="h-4 w-4 text-emerald-500" />
-                        <h3 className="text-[10px] font-black text-slate-800 uppercase tracking-[0.3em]">Vaccination Credentials</h3>
+                        <h3 className="text-[10px] font-black text-slate-800 uppercase tracking-[0.3em]">Vaccination records</h3>
                     </div>
                     
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-10">
@@ -2774,7 +2634,7 @@ const Profile = () => {
                             </div>
                         ))}
                     </div>
-                    <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest text-center italic opacity-60">Providing clear scans expedites service authorization</p>
+                    <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest text-center italic opacity-60">Clear documents help the store review your pet information</p>
                 </div>
               </form>
             </div>
@@ -2782,8 +2642,8 @@ const Profile = () => {
             {/* Footer */}
             <div className="px-10 py-8 border-t border-slate-50 bg-slate-50/50 flex flex-col sm:flex-row items-center justify-between gap-4">
                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-tight text-center sm:text-left">
-                    * Ensure all biometric data is accurate.<br />
-                    System checks will verify vaccination status.
+                    * Please make sure your pet details are accurate.<br />
+                    We will check the vaccination status you provide.
                 </p>
                 <div className="flex items-center gap-4 w-full sm:w-auto">
                     <button 

@@ -105,7 +105,7 @@ const Home = () => {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-8 animate-pulse">
         <div className="w-24 h-24 border-4 border-primary/10 border-t-primary rounded-full animate-spin" />
-        <p className="text-[10px] font-black text-neutral-400 uppercase tracking-[0.4em]">Synchronizing Platform Data</p>
+        <p className="text-[10px] font-black text-neutral-400 uppercase tracking-[0.4em]">Loading the latest updates</p>
       </div>
     );
   }
@@ -178,7 +178,7 @@ const Home = () => {
               Explore Our <br />
               <span className="text-primary italic">Ecosystem .</span>
             </h2>
-            <p className="text-[11px] font-black text-neutral-400 uppercase tracking-[0.4em]">Integrated Marketplace and Service protocols</p>
+            <p className="text-[11px] font-black text-neutral-400 uppercase tracking-[0.4em]">Pets, products, and services in one place</p>
           </div>
           <div className="flex gap-4">
              <Link to="/pets" className="px-8 py-4 bg-neutral-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-primary transition-all">Pets</Link>
@@ -386,7 +386,7 @@ const Home = () => {
                  <span className="text-primary italic">Pet Security .</span>
                </h2>
                <p className="text-sm sm:text-lg text-neutral-400 font-medium uppercase tracking-widest leading-[1.8] max-w-xl">
-                 We've built an enterprise-grade platform combining advanced veterinary protocols with secure commerce infrastructure.
+                 Pawzzle brings trusted pet care services and secure shopping together in one easy-to-use platform.
                </p>
             </div>
 
@@ -419,7 +419,7 @@ const Home = () => {
                </div>
                <div>
                   <h4 className="text-2xl font-black text-white uppercase tracking-tighter leading-none mb-2">3k+ Success</h4>
-                  <p className="text-[10px] font-black text-white/60 uppercase tracking-[0.3em]">Monthly Successful Protocols</p>
+                  <p className="text-[10px] font-black text-white/60 uppercase tracking-[0.3em]">Successful services this month</p>
                </div>
             </div>
          </div>
@@ -445,7 +445,7 @@ const Home = () => {
                  <div className="absolute bottom-10 left-10 right-10 space-y-4">
                     <div className="flex items-center gap-3">
                        <service.icon size={20} className="text-primary" />
-                       <span className="text-[10px] font-black text-white/40 uppercase tracking-[0.3em]">{service.label} Protocol</span>
+                       <span className="text-[10px] font-black text-white/40 uppercase tracking-[0.3em]">{service.label} service</span>
                     </div>
                     <h4 className="text-3xl font-black text-white uppercase tracking-tighter leading-tight">{service.title}</h4>
                     <Link to="/services" className="h-12 w-12 bg-white text-neutral-900 rounded-xl flex items-center justify-center opacity-0 group-hover:opacity-100 translate-y-4 group-hover:translate-y-0 transition-all duration-500 hover:bg-primary hover:text-white">
@@ -468,7 +468,7 @@ const Home = () => {
                </div>
                <h2 className="text-5xl sm:text-9xl font-black text-white uppercase tracking-tighter leading-[0.85]">
                  Your Global <br />
-                 <span className="italic text-primary">Pet Protocol .</span>
+                 <span className="italic text-primary">Pet care.</span>
                </h2>
                <p className="text-white/40 text-sm sm:text-xl font-medium uppercase tracking-[0.3em] max-w-2xl mx-auto leading-relaxed">
                  Secure your place in the most advanced pet ecosystem today.

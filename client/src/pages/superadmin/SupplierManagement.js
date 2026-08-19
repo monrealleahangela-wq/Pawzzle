@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
 import { Truck, CheckCircle, XCircle, Clock, Search, ChevronDown, Shield, Eye, Package, Star, TrendingUp, Users, Ban, X } from 'lucide-react';
 import { supplierService, getImageUrl } from '../../services/apiService';
+import { formatPeso } from '../../utils/paymentSummary';
 
 const SupplierManagement = () => {
   const [suppliers, setSuppliers] = useState([]);
@@ -233,7 +234,7 @@ const SupplierManagement = () => {
 
               <div className="grid md:grid-cols-2 gap-4">
                 <div><h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Supplied Products</h4><div className="space-y-2">{supplierDetails.products?.map(product => <div key={product._id} className="p-3 bg-slate-50 rounded-lg text-xs flex justify-between"><div><b>{product.name}</b><p className="text-[9px] text-slate-400">{product.sku} · {product.availableStock} available</p></div><b>₱{product.wholesalePrice?.toLocaleString()}</b></div>)}{!supplierDetails.products?.length && <p className="text-xs text-slate-400">No products listed.</p>}</div></div>
-                <div><h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Purchase Orders</h4><div className="space-y-2">{supplierDetails.orders?.map(order => <div key={order._id} className="p-3 bg-slate-50 rounded-lg text-xs flex justify-between"><div><b>{order.orderNumber}</b><p className="text-[9px] text-slate-400">{order.store?.name} · {order.status} · {order.paymentStatus}</p></div><b>₱{order.totalCost?.toLocaleString()}</b></div>)}{!supplierDetails.orders?.length && <p className="text-xs text-slate-400">No purchase orders.</p>}</div></div>
+                <div><h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Purchase Orders</h4><div className="space-y-2">{supplierDetails.orders?.map(order => <div key={order._id} className="p-3 bg-slate-50 rounded-lg text-xs flex justify-between"><div><b>{order.orderNumber}</b><p className="text-[9px] text-slate-400">{order.store?.name} · {order.status} · {order.paymentStatus}</p></div><b>{formatPeso(order.totalCost)}</b></div>)}{!supplierDetails.orders?.length && <p className="text-xs text-slate-400">No purchase orders.</p>}</div></div>
               </div>
 
               {/* Admin Actions */}

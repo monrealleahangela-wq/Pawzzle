@@ -27,7 +27,7 @@ const AppealForm = () => {
                     setStep(3); // Already submitted
                 }
             } catch (error) {
-                toast.error('Failed to load report details');
+                toast.error('We could not load these report details. Please try again.');
                 navigate('/profile');
             } finally {
                 setLoading(false);
@@ -50,7 +50,7 @@ const AppealForm = () => {
             setStep(3);
             toast.success('Appeal submitted successfully');
         } catch (error) {
-            toast.error(error.response?.data?.message || 'Failed to submit appeal');
+            toast.error(error.response?.data?.message || 'We could not submit your appeal. Please try again.');
         } finally {
             setSubmitting(false);
         }
@@ -180,7 +180,7 @@ const AppealForm = () => {
                             <div className="flex items-start gap-4 p-6 bg-blue-50 rounded-3xl border border-blue-100">
                                 <Info className="h-6 w-6 text-blue-500 shrink-0" />
                                 <p className="text-[10px] font-bold text-blue-700 leading-relaxed uppercase tracking-tight">
-                                    The submission of this appeal marks it as 'Appealed' in the system. The Super Admin team will be notified immediately of your strategic rebuttal.
+                                    Submitting this appeal sends it to our safety team for review.
                                 </p>
                             </div>
 
@@ -214,7 +214,7 @@ const AppealForm = () => {
                                     Appeal <span className="text-emerald-500 italic">Logged</span>
                                 </h1>
                                 <p className="max-w-xs mx-auto text-[11px] font-bold text-slate-400 uppercase tracking-widest leading-relaxed">
-                                    Your strategic dispute has been successfully recorded in the Enforcement Registry. Our safety team will review it within 48 operational hours.
+                                    Your appeal was submitted. Our safety team will review it within 48 hours.
                                 </p>
                             </div>
 

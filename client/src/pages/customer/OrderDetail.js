@@ -8,6 +8,8 @@ import OrderReviewModal from '../../components/OrderReviewModal';
 import DeliveryAssignmentFields, { emptyExternal } from '../../components/delivery/DeliveryAssignmentFields';
 import { getTaxStatusLabel } from '../../utils/transactionTax';
 import { normalizeRefundPolicy, refundPolicyLabel } from '../../utils/refundPolicy';
+import PaymentBreakdown from '../../components/payments/PaymentBreakdown';
+import { formatPeso, orderPaymentSummary } from '../../utils/paymentSummary';
 
 const OrderDetail = () => {
   const { id } = useParams();
@@ -31,6 +33,7 @@ const OrderDetail = () => {
   const [lastRiderLink, setLastRiderLink] = useState('');
   const [deliveryAssignment, setDeliveryAssignment] = useState(null);
   const orderRefundPolicy = normalizeRefundPolicy(order?.refundPolicySnapshot || order?.store?.refundPolicy);
+  const authoritativePaymentSummary = order ? orderPaymentSummary(order) : null;
 
   useEffect(() => {
     if (!order?._id || !order.delivery || user?.role === 'customer') return;
@@ -65,10 +68,10 @@ const OrderDetail = () => {
   useEffect(() => {
     const queryParams = new URLSearchParams(location.search);
     if (queryParams.get('payment') === 'success') {
-      toast.success('Payment authorized. Verifying payment status...');
+      toast.success('Payment received. Checking its status...');
       paymentService.verifyPayment(id).then(res => {
         if (res.data.status === 'paid') {
-          toast.success('Payment successfully verified!');
+          toast.success('Payment successful.');
           fetchOrder(); // Reload the order fully
         } else {
           toast.info('Payment is still processing. Check back soon.');
@@ -96,7 +99,7 @@ const OrderDetail = () => {
         fetchOrderReviews(orderData);
       }
     } catch (error) {
-      toast.error('Failed to load order details');
+      toast.error('We could not load this order. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -130,6 +133,7 @@ const OrderDetail = () => {
     setIsGeneratingInvoice(true);
     try {
       const pricing = order.invoiceSnapshot?.pricingBreakdown || order.pricingBreakdown || {};
+      const paymentSummary = orderPaymentSummary(order);
       const sellerName = order.invoiceSnapshot?.sellerName || order.store?.name || 'Store';
       const sellerAddress = order.invoiceSnapshot?.sellerAddress || '';
       setIsGeneratingInvoice(false);
@@ -140,12 +144,15 @@ const OrderDetail = () => {
         Order ID: ${order.orderNumber}
         Date: ${new Date(order.orderDate).toLocaleDateString()}
         Customer: ${order.customer?.firstName} ${order.customer?.lastName}
-        Subtotal: ₱${Number(pricing.subtotal ?? order.totalAmount).toFixed(2)}
-        Discount: -₱${Number(pricing.discountAmount ?? order.discountAmount ?? 0).toFixed(2)}
-        Delivery Fee: ₱${Number(pricing.deliveryFee ?? order.shippingFee ?? 0).toFixed(2)}
+        Subtotal: ${formatPeso(paymentSummary.subtotal)}
+        Discount: -${formatPeso(paymentSummary.discountAmount)}
+        Delivery Fee: ${formatPeso(paymentSummary.deliveryFee)}
+        Service Fee: ${formatPeso(paymentSummary.serviceFee)}
+        Booking Fee: ${formatPeso(paymentSummary.bookingFee)}
+        Additional Charges: ${formatPeso(paymentSummary.additionalCharges)}
         Tax Treatment: ${getTaxStatusLabel(pricing)}
-        VAT (${Number(pricing.vatRatePercent || 0)}%): ₱${Number(pricing.vatAmount || 0).toFixed(2)}
-        Final Total: ₱${Number(order.totalAmount).toFixed(2)}
+        VAT (${Number(pricing.vatRatePercent || 0)}%): ${formatPeso(paymentSummary.vatAmount)}
+        Final Total: ${formatPeso(paymentSummary.finalTotal)}
         Payment Status: ${(order.paymentStatus || 'pending').toUpperCase()}
         Refund Policy: ${refundPolicyLabel(orderRefundPolicy.type)}
         Policy Summary: ${orderRefundPolicy.summary}
@@ -161,10 +168,10 @@ const OrderDetail = () => {
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
-      toast.success('Invoice generated and downloaded!');
+      toast.success('Invoice downloaded.');
     } catch (error) {
       setIsGeneratingInvoice(false);
-      toast.error('Unable to generate this invoice.');
+      toast.error('We could not create your invoice. Please try again.');
     }
   };
 
@@ -175,7 +182,7 @@ const OrderDetail = () => {
         toast.success('Order cancelled successfully');
         fetchOrder(); // Refresh order details
       } catch (error) {
-        toast.error('Failed to cancel order');
+        toast.error('We could not cancel this order. Please try again.');
       }
     }
   };
@@ -192,13 +199,13 @@ const OrderDetail = () => {
       
       // Attempt copy to clipboard
       navigator.clipboard.writeText(url);
-      toast.success('Rider Link Generated & Copied!', {
+      toast.success('Rider tracking link copied!', {
         description: 'You can now share this secure link with the rider.',
         icon: <Link2 className="text-primary-600" />
       });
       fetchOrder(); // Refresh to show delivery status if needed
     } catch (error) {
-      toast.error('Failed to generate tracking link');
+      toast.error('We could not create the tracking link. Please try again.');
     }
   };
 
@@ -280,7 +287,7 @@ const OrderDetail = () => {
                   {new Date(order.orderDate).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}
                 </span>
                 <h4 className="text-sm font-black text-slate-900 uppercase mt-1">Order Placed</h4>
-                <p className="text-xs text-slate-500 font-medium mt-1">Our system has received your order protocol.</p>
+                <p className="text-xs text-slate-500 font-medium mt-1">We have received your order.</p>
              </div>
           </div>
         </div>
@@ -330,7 +337,7 @@ const OrderDetail = () => {
               {order.status.replace('_', ' ')}
             </span>
             <p className="text-2xl font-black text-slate-900 tracking-tighter">
-              ₱{order.totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              {formatPeso(order.totalAmount)}
             </p>
           </div>
         </div>
@@ -410,38 +417,13 @@ const OrderDetail = () => {
                 <FileText className="h-4 w-4 text-primary-600" />
                 <h3 className="text-[11px] font-black text-slate-900 uppercase tracking-widest">Pricing Summary</h3>
               </div>
-              <div className="bg-slate-50 rounded-2xl p-4 space-y-3 border border-slate-100">
-                <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-widest text-slate-500">
-                  <span>Subtotal</span>
-                  <span className="text-slate-900">₱{(order.pricingBreakdown?.subtotal ?? (order.totalAmount - order.shippingFee + order.discountAmount)).toLocaleString()}</span>
-                </div>
-                {order.discountAmount > 0 && (
-                  <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-widest text-rose-500">
-                    <span>Voucher Discount</span>
-                    <span>-₱{order.discountAmount.toLocaleString()}</span>
-                  </div>
-                )}
-                <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-widest text-slate-500">
-                  <span>Shipping Fee</span>
-                  <span className="text-slate-900">₱{order.shippingFee.toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-widest text-slate-500">
-                  <span>{getTaxStatusLabel(order.pricingBreakdown)}{order.pricingBreakdown?.taxStatus === 'vat_registered' ? ` (${order.pricingBreakdown.vatRatePercent}%)` : ''}</span>
-                  <span className="text-slate-900">₱{Number(order.pricingBreakdown?.vatAmount || 0).toFixed(2)}</span>
-                </div>
-                <div className="pt-3 border-t border-slate-200 flex justify-between items-end">
-                  <div>
-                    <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Final Total</p>
-                    <p className="text-xl font-black text-primary-600 tracking-tighter leading-none">
-                      ₱{order.totalAmount.toLocaleString()}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Method</p>
-                    <p className="text-[10px] font-black text-slate-900 uppercase tracking-tight">
-                      {order.paymentMethod?.replace(/_/g, ' ')}
-                    </p>
-                  </div>
+              <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100">
+                <PaymentBreakdown summary={authoritativePaymentSummary} compact />
+                <div className="mt-3 border-t border-slate-200 pt-3 text-right">
+                  <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Method</p>
+                  <p className="text-[10px] font-black text-slate-900 uppercase tracking-tight">
+                    {order.paymentMethod?.replace(/_/g, ' ')}
+                  </p>
                 </div>
               </div>
               <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
@@ -612,36 +594,36 @@ const OrderDetail = () => {
                           window.location.href = response.data.checkoutUrl;
                         }
                       } catch (error) {
-                        toast.error('Failed to initiate payment. Please try again.');
+                        toast.error('Payment could not start. Please try again.');
                       }
                     }}
                     className="w-full mt-2 py-3 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-primary-600 transition-all shadow-lg flex items-center justify-center gap-2 group"
                   >
                     <CreditCard className="h-4 w-4 group-hover:scale-110 transition-transform" />
-                    Proceed to Payment
+                    Pay now
                   </button>
                 )}
 
               {order.paymentDetails?.sessionId && order.paymentStatus !== 'paid' && order.status !== 'cancelled' && (
                 <button
                   onClick={async () => {
-                    const toastId = toast.loading('Verifying payment with PayMongo...');
+                    const toastId = toast.loading('Checking payment...');
                     try {
                       const res = await paymentService.verifyPayment(order._id);
                       if (res.data.status === 'paid') {
-                        toast.update(toastId, { render: 'Payment verified successfully!', type: 'success', isLoading: false, autoClose: 3000 });
+                        toast.update(toastId, { render: 'Payment successful.', type: 'success', isLoading: false, autoClose: 3000 });
                         fetchOrder();
                       } else {
                         toast.update(toastId, { render: 'Payment is still pending on PayMongo.', type: 'info', isLoading: false, autoClose: 3000 });
                       }
                     } catch (error) {
-                      toast.update(toastId, { render: 'Failed to verify payment status.', type: 'error', isLoading: false, autoClose: 3000 });
+                      toast.update(toastId, { render: 'We could not check your payment. Please try again.', type: 'error', isLoading: false, autoClose: 3000 });
                     }
                   }}
                   className="w-full mt-2 py-3 bg-slate-100 text-slate-600 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-slate-200 transition-all shadow-sm flex items-center justify-center gap-2 group border border-slate-200"
                 >
                   <AlertCircle className="h-4 w-4 group-hover:rotate-180 transition-transform duration-500" />
-                  Refresh Payment Status
+                  Check payment status
                 </button>
               )}
 
@@ -952,7 +934,7 @@ const OrderDetail = () => {
                   className={`w-full py-4 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all shadow-lg flex items-center justify-center gap-2 group ${order.delivery ? 'bg-emerald-600 text-white hover:bg-emerald-700' : 'bg-slate-900 text-white hover:bg-primary-600'}`}
                 >
                   <Link2 className="h-4 w-4 group-hover:rotate-12 transition-transform" />
-                  {order.delivery ? 'Copy Rider Tracking Link' : 'Generate Delivery Link'}
+                  {order.delivery ? 'Copy rider tracking link' : 'Create delivery link'}
                 </button>
                 {assignmentType === 'third_party' && lastRiderLink && navigator.share && <button onClick={()=>navigator.share({title:'Pawzzle secure delivery link',url:lastRiderLink}).catch(()=>{})} className="w-full py-3 rounded-xl border border-slate-300 bg-white text-slate-700 text-[10px] font-black uppercase tracking-widest">Share Secure Link</button>}
                 {order.delivery && (

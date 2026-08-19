@@ -3,7 +3,7 @@ import { cn } from '../../utils/cn';
 
 const Badge = React.forwardRef(({ className, variant = "default", children, ...props }, ref) => {
   const variants = {
-    default: "bg-neutral-100 text-neutral-900 border-neutral-200",
+    default: "bg-neutral-100 text-default border-neutral-200",
     primary: "bg-primary-100 text-primary-900 border-primary-200",
     secondary: "bg-secondary-100 text-secondary-900 border-secondary-200",
     accent: "bg-accent-100 text-accent-900 border-accent-200",

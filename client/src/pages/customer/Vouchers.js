@@ -21,7 +21,7 @@ const Vouchers = () => {
             setMyVouchers(myRes.data.vouchers);
         } catch (error) {
             console.error('Error fetching vouchers:', error);
-            toast.error('Failed to load vouchers');
+            toast.error('We could not load your vouchers. Please try again.');
         } finally {
             setLoading(false);
         }
@@ -37,7 +37,7 @@ const Vouchers = () => {
             toast.success('Voucher claimed successfully!');
             fetchData();
         } catch (error) {
-            toast.error(error.response?.data?.message || 'Failed to claim voucher');
+            toast.error(error.response?.data?.message || 'We could not save this voucher. Please try again.');
         }
     };
 
@@ -118,7 +118,7 @@ const Vouchers = () => {
                                 onClick={() => handleClaim(voucher._id)}
                                 className="w-full py-5 bg-slate-900 text-white rounded-2xl text-[11px] font-black uppercase tracking-[0.4em] shadow-2xl shadow-slate-900/20 hover:bg-primary-600 hover:scale-[1.02] active:scale-95 transition-all duration-500 flex items-center justify-center gap-3 group/btn"
                             >
-                                Secure Asset <Sparkles size={16} className="group-hover:rotate-12 transition-transform" />
+                                Save voucher <Sparkles size={16} className="group-hover:rotate-12 transition-transform" />
                             </button>
                         ) : (
                             <div className="flex gap-4">
@@ -132,7 +132,7 @@ const Vouchers = () => {
                                     to="/products"
                                     className="flex-1 py-4 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-primary-600 transition-all flex items-center justify-center gap-2 shadow-lg shadow-slate-200"
                                 >
-                                    Deploy <ArrowRight size={14} />
+                                    Use voucher <ArrowRight size={14} />
                                 </Link>
                             </div>
                         )}
@@ -159,7 +159,7 @@ const Vouchers = () => {
                         <div className="w-8 h-8 bg-primary-500 rounded-full flex items-center justify-center">
                             <Gift className="text-white" size={16} />
                         </div>
-                        <span className="text-[9px] font-black text-white/80 uppercase tracking-[0.4em]">Resource Procurement Center</span>
+                        <span className="text-[9px] font-black text-white/80 uppercase tracking-[0.4em]">Voucher center</span>
                     </div>
                     
                     <h1 className="text-5xl sm:text-8xl font-black text-white uppercase tracking-tighter leading-[0.85] mb-8">

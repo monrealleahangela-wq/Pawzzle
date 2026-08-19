@@ -112,7 +112,7 @@ const Search = () => {
       });
     } catch (error) {
       console.error('Search error:', error);
-      toast.error('Failed to perform search');
+      toast.error('We could not complete your search. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -159,7 +159,7 @@ const Search = () => {
       });
       setFilters(prev => ({ ...prev, nearMe: true, city: '' }));
       setLoading(false);
-      toast.success('Location acquired! Sorting by distance.');
+      toast.success('Location found! Showing nearby results.');
     };
 
     const error = (err) => {
@@ -491,7 +491,7 @@ const Search = () => {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search assets..."
+              placeholder="Search pets, products, and services..."
               className="w-full !pl-20 pr-20 py-3 sm:py-5 bg-white border-2 border-slate-100 rounded-full sm:rounded-[28px] shadow-sm focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 outline-none transition-all font-bold text-slate-700 text-sm sm:text-lg"
             />
             <button
@@ -556,7 +556,7 @@ const Search = () => {
             </select>
           </div>
           <div className="space-y-1">
-            <label className="text-[8px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Sector</label>
+            <label className="text-[8px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Area</label>
             <select
               value={filters.city}
               onChange={(e) => {
@@ -883,7 +883,7 @@ const Search = () => {
             <div className="text-center py-20 bg-white/40 backdrop-blur-md rounded-[2rem] border border-white">
               <SearchIcon className="h-12 w-12 text-slate-200 mx-auto mb-4" />
               <h3 className="text-sm sm:text-xl font-black text-slate-900 uppercase tracking-tighter mb-1">Zero Matches</h3>
-              <p className="text-[9px] sm:text-sm text-slate-400 uppercase tracking-widest font-bold">No assets found for "{query}"</p>
+              <p className="text-[9px] sm:text-sm text-slate-400 uppercase tracking-widest font-bold">We couldn't find anything for "{query}"</p>
               <button
                 onClick={() => setSearchQuery('')}
                 className="mt-6 px-8 py-3 bg-slate-900 text-white rounded-xl text-[9px] font-black uppercase tracking-widest active:scale-95 transition-transform"

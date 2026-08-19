@@ -52,8 +52,8 @@ const QRScannerModal = ({ isOpen, onClose, onScanSuccess }) => {
       isProcessingRef.current = true;
       setIsProcessing(true);
       setError(null);
-      setStatus('Validating...');
-      setDebugInfo('Protocol data synchronized. Syncing with mainframe...');
+      setStatus('Checking code...');
+      setDebugInfo('Please wait while we check this QR code.');
       
       await stopScanner();
 
@@ -81,11 +81,11 @@ const QRScannerModal = ({ isOpen, onClose, onScanSuccess }) => {
         }
       }
       setScanResult(response.data.order || response.data.booking);
-      toast.success('Protocol Authenticated');
+      toast.success('QR code verified.');
     } catch (err) {
-      setError(err.response?.data?.message || 'Invalid or unregistered protocol identifier');
-      setStatus('System Lockout');
-      setDebugInfo('Hardware/Credential mismatch detected.');
+      setError(err.response?.data?.message || 'This QR code is invalid or not registered.');
+      setStatus('Code not verified');
+      setDebugInfo('Check the QR code and try again.');
     } finally {
       setIsProcessing(false);
       isProcessingRef.current = false;
@@ -94,8 +94,8 @@ const QRScannerModal = ({ isOpen, onClose, onScanSuccess }) => {
 
   const startScanner = useCallback(async () => {
     setError(null);
-    setStatus('Initializing Optics...');
-    setDebugInfo('Opening secure hardware channel...');
+    setStatus('Starting camera...');
+    setDebugInfo('Allow camera access to scan the QR code.');
     
     try {
       await stopScanner();
@@ -128,8 +128,8 @@ const QRScannerModal = ({ isOpen, onClose, onScanSuccess }) => {
         await videoRef.current.play();
         
         setIsScannerStarted(true);
-        setStatus('Optics Online');
-        setDebugInfo('High-speed synchronization established.');
+        setStatus('Camera ready');
+        setDebugInfo('Place the QR code inside the frame.');
       }
 
       const engine = new Html5Qrcode('qr-decoder-engine'); 
@@ -164,12 +164,12 @@ const QRScannerModal = ({ isOpen, onClose, onScanSuccess }) => {
 
     } catch (err) {
       console.error('Critical Hardware Failure:', err);
-      let errMsg = 'Hardware Link Failed. Ensure HTTPS and camera permissions are active.';
-      if (err.name === 'NotAllowedError') errMsg = 'Camera permission denied. Access is required for sync.';
-      if (err.name === 'NotFoundError') errMsg = 'No supported camera found on this hardware.';
+      let errMsg = 'We could not start the camera. Check camera permissions and try again.';
+      if (err.name === 'NotAllowedError') errMsg = 'Camera access was denied. Allow camera access and try again.';
+      if (err.name === 'NotFoundError') errMsg = 'We could not find a camera on this device.';
       
       setError(errMsg);
-      setStatus('System Offline');
+      setStatus('Camera unavailable');
       setDebugInfo(err.message);
     }
   }, [handleDecodedText, stopScanner]);
@@ -198,7 +198,7 @@ const QRScannerModal = ({ isOpen, onClose, onScanSuccess }) => {
                <QrCode className="h-6 w-6 text-white" />
             </div>
             <div>
-               <h3 className="text-[14px] font-black text-white uppercase tracking-tighter leading-none mb-1.5 text-rose-500">Optic-IV Terminal</h3>
+                <h3 className="text-[14px] font-black text-white uppercase tracking-tighter leading-none mb-1.5 text-rose-500">QR code scanner</h3>
                <div className="flex items-center gap-2.5">
                   <div className={`w-2 h-2 rounded-full ${isScannerStarted ? 'bg-emerald-500 animate-pulse shadow-[0_0_12px_#10b981]' : 'bg-rose-500 shadow-[0_0_12px_#f43f5e]'}`} />
                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{status}</p>
@@ -248,8 +248,8 @@ const QRScannerModal = ({ isOpen, onClose, onScanSuccess }) => {
 
           {!scanResult && !error && !isProcessing && (
             <div className="text-center space-y-2 max-w-xs transition-opacity duration-1000">
-               <p className="text-[11px] font-black text-white uppercase tracking-[0.4em]">Protocol Sync</p>
-               <p className="text-[9px] font-bold text-slate-600 uppercase tracking-widest underline decoration-primary-500/30">Stable Optics Required</p>
+               <p className="text-[11px] font-black text-white uppercase tracking-[0.4em]">Scan QR code</p>
+               <p className="text-[9px] font-bold text-slate-600 uppercase tracking-widest underline decoration-primary-500/30">Hold the camera steady</p>
             </div>
           )}
 
@@ -262,7 +262,7 @@ const QRScannerModal = ({ isOpen, onClose, onScanSuccess }) => {
                   </div>
                </div>
                <div className="space-y-4">
-                  <h4 className="text-3xl font-black text-white uppercase tracking-tighter mb-2">Decrypting...</h4>
+                   <h4 className="text-3xl font-black text-white uppercase tracking-tighter mb-2">Checking…</h4>
                   <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.4em] max-w-xs leading-relaxed">{debugInfo}</p>
                </div>
             </div>
@@ -278,7 +278,7 @@ const QRScannerModal = ({ isOpen, onClose, onScanSuccess }) => {
                   <div className="space-y-8 w-full">
                     <div>
                       <h4 className="text-4xl font-black text-white uppercase tracking-tight leading-none mb-2">Verified</h4>
-                      <p className="text-[12px] font-black text-emerald-100 uppercase tracking-[0.5em]">Protocol Identified</p>
+                       <p className="text-[12px] font-black text-emerald-100 uppercase tracking-[0.5em]">QR code verified</p>
                     </div>
 
                     <div className="bg-black/20 p-6 rounded-[2rem] border border-white/10 flex items-center gap-5">
@@ -287,7 +287,7 @@ const QRScannerModal = ({ isOpen, onClose, onScanSuccess }) => {
                        </div>
                        <div className="text-left">
                           <p className="text-[14px] font-black text-white uppercase leading-none mb-1">{scanResult.customer?.firstName} {scanResult.customer?.lastName}</p>
-                          <p className="text-[10px] font-bold text-white/50 uppercase tracking-widest leading-none">Authorized Holder</p>
+                           <p className="text-[10px] font-bold text-white/50 uppercase tracking-widest leading-none">Customer</p>
                        </div>
                     </div>
 
@@ -301,7 +301,7 @@ const QRScannerModal = ({ isOpen, onClose, onScanSuccess }) => {
                       onClick={() => { onScanSuccess(); onClose(); }}
                       className="flex-1 w-full flex items-center justify-center gap-3 px-8 py-5 bg-emerald-900 text-white rounded-[2rem] font-black text-[12px] uppercase tracking-widest hover:bg-emerald-800 active:scale-95 transition-all shadow-xl shadow-emerald-900/20"
                     >
-                      <Lock className="h-5 w-5" /> CONTINUE PROTOCOL
+                      <Lock className="h-5 w-5" /> Continue
                     </button>
                   </div>
                </div>
@@ -316,8 +316,8 @@ const QRScannerModal = ({ isOpen, onClose, onScanSuccess }) => {
                   </div>
                   <div className="space-y-8 w-full">
                     <div>
-                      <h4 className="text-3xl font-black text-white uppercase tracking-tight leading-none mb-2">Hardware Fail</h4>
-                      <p className="text-[12px] font-black text-rose-200 uppercase tracking-[0.5em]">Internal Protocol Error</p>
+                       <h4 className="text-3xl font-black text-white uppercase tracking-tight leading-none mb-2">Camera error</h4>
+                       <p className="text-[12px] font-black text-rose-200 uppercase tracking-[0.5em]">We could not scan the code</p>
                     </div>
                     <p className="text-[11px] font-bold text-white bg-black/10 py-5 px-6 rounded-2xl uppercase tracking-wide leading-relaxed border border-white/5">
                       {error}
@@ -326,7 +326,7 @@ const QRScannerModal = ({ isOpen, onClose, onScanSuccess }) => {
                        <button onClick={startScanner} className="py-6 bg-white text-rose-600 rounded-3xl text-[11px] font-black uppercase tracking-widest active:scale-95 transition-all flex items-center justify-center gap-3 shadow-xl">
                           <RefreshCcw className="h-5 w-5" /> RE-ENGAGE OPTICS
                        </button>
-                       <button onClick={onClose} className="py-4 text-white/60 text-[10px] font-black uppercase tracking-widest">EXIT TERMINAL</button>
+                       <button onClick={onClose} className="py-4 text-white/60 text-[10px] font-black uppercase tracking-widest">Close</button>
                     </div>
                   </div>
                </div>
@@ -340,9 +340,9 @@ const QRScannerModal = ({ isOpen, onClose, onScanSuccess }) => {
         <div className="px-8 py-5 bg-black border-t border-white/5 flex items-center justify-between">
            <div className="flex items-center gap-3">
               <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-              <p className="text-[9px] font-black text-slate-700 uppercase tracking-[0.5em]">System.Link: Active</p>
+               <p className="text-[9px] font-black text-slate-700 uppercase tracking-[0.5em]">Scanner ready</p>
            </div>
-           <p className="text-[9px] font-black text-slate-800 uppercase tracking-widest underline underline-offset-4 decoration-slate-800">BUILD.PROTOCOL_V6.0.0_DIRECT_HW</p>
+            <p className="text-[9px] font-black text-slate-800 uppercase tracking-widest underline underline-offset-4 decoration-slate-800">Keep the QR code inside the frame</p>
         </div>
       </div>
     </div>

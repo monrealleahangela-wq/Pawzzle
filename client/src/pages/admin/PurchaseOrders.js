@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
 import { Truck, Package, Plus, ShoppingCart, X, Eye, Minus, TrendingDown, Layers, Star } from 'lucide-react';
 import { supplierService, purchaseOrderService, getImageUrl, adminProductService } from '../../services/apiService';
+import PaymentBreakdown from '../../components/payments/PaymentBreakdown';
+import { formatPeso, purchaseOrderPaymentSummary } from '../../utils/paymentSummary';
 
 const PurchaseOrders = () => {
   const [activeTab, setActiveTab] = useState('orders');
@@ -154,7 +156,7 @@ const PurchaseOrders = () => {
                 </div>
                 <div className="flex items-center gap-3">
                   <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase bg-${statusColor(order.status)}-100 text-${statusColor(order.status)}-700`}>{order.status}</span>
-                  <p className="text-sm font-black text-slate-900">₱{order.totalCost?.toLocaleString()}</p>
+                  <p className="text-sm font-black text-slate-900">{formatPeso(order.totalCost)}</p>
                 </div>
               </div>
               <div className="text-[10px] text-slate-500 mb-2">{order.items?.length} items • Payment: {order.paymentStatus}</div>
@@ -277,7 +279,7 @@ const PurchaseOrders = () => {
         </div>
       )}
 
-      {selectedOrder && <div className="fixed inset-0 bg-slate-900/60 z-[105] flex items-center justify-center p-3"><div className="bg-white w-full max-w-xl rounded-2xl p-5 max-h-[90vh] overflow-y-auto"><div className="flex justify-between mb-4"><div><h3 className="text-base font-black">{selectedOrder.orderNumber}</h3><p className="text-[10px] text-slate-500">{selectedOrder.supplier?.businessName} · {selectedOrder.status}</p></div><button onClick={()=>setSelectedOrder(null)}><X className="h-4 w-4"/></button></div><div className="space-y-2">{selectedOrder.items?.map(item=><div key={item._id} className="p-3 bg-slate-50 rounded-xl flex justify-between text-xs"><div><p className="font-bold">{item.productName}</p><p className="text-[10px] text-slate-500">{item.quantity} × ₱{item.unitPrice?.toLocaleString()} · Received {item.receivedQuantity || 0}</p></div><p className="font-black">₱{item.totalPrice?.toLocaleString()}</p></div>)}</div><div className="mt-4 pt-3 border-t flex justify-between text-sm"><span>Payment: <b>{selectedOrder.paymentStatus}</b> (₱{Number(selectedOrder.paidAmount || 0).toLocaleString()})</span><b>₱{selectedOrder.totalCost?.toLocaleString()}</b></div></div></div>}
+      {selectedOrder && <div className="fixed inset-0 bg-slate-900/60 z-[105] flex items-center justify-center p-3"><div className="bg-white w-full max-w-xl rounded-2xl p-5 max-h-[90vh] overflow-y-auto"><div className="flex justify-between mb-4"><div><h3 className="text-base font-black">{selectedOrder.orderNumber}</h3><p className="text-[10px] text-slate-500">{selectedOrder.supplier?.businessName} · {selectedOrder.status}</p></div><button onClick={()=>setSelectedOrder(null)}><X className="h-4 w-4"/></button></div><div className="space-y-2">{selectedOrder.items?.map(item=><div key={item._id} className="p-3 bg-slate-50 rounded-xl flex justify-between text-xs"><div><p className="font-bold">{item.productName}</p><p className="text-[10px] text-slate-500">{item.quantity} × {formatPeso(item.unitPrice)} · Received {item.receivedQuantity || 0}</p></div><p className="font-black">{formatPeso(item.totalPrice)}</p></div>)}</div><div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3"><PaymentBreakdown summary={purchaseOrderPaymentSummary(selectedOrder)} compact /><p className="mt-3 border-t border-slate-200 pt-2 text-[10px] text-slate-500">Payment: <b>{selectedOrder.paymentStatus}</b> · Paid {formatPeso(selectedOrder.paidAmount || 0)}</p></div></div></div>}
 
       {/* ── CHECKOUT MODAL ── */}
       {showCheckout && (
@@ -294,9 +296,9 @@ const PurchaseOrders = () => {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-xs font-black text-slate-900">{item.product.name}</p>
-                      <p className="text-[9px] text-slate-400">{item.quantity} × ₱{item.product.wholesalePrice.toLocaleString()}</p>
+                    <p className="text-[9px] text-slate-400">{item.quantity} × {formatPeso(item.product.wholesalePrice)}</p>
                     </div>
-                    <p className="text-sm font-black text-slate-900">₱{(item.product.wholesalePrice * item.quantity).toLocaleString()}</p>
+                    <p className="text-sm font-black text-slate-900">{formatPeso(item.product.wholesalePrice * item.quantity)}</p>
                   </div>
                   <div className="space-y-1">
                     <label className="text-[8px] font-black text-orange-500 uppercase tracking-widest">Link to Store Product (for auto-stock update)</label>
@@ -312,9 +314,9 @@ const PurchaseOrders = () => {
                   </div>
                 </div>
               ))}
-              <div className="bg-indigo-50 rounded-xl p-4 border border-indigo-100 text-right">
-                <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">Total</p>
-                <p className="text-2xl font-black text-indigo-900">₱{cartTotal.toLocaleString()}</p>
+              <div className="bg-indigo-50 rounded-xl p-4 border border-indigo-100">
+                <p className="mb-3 text-[10px] font-black text-indigo-500 uppercase tracking-widest">Purchase Order Summary</p>
+                <PaymentBreakdown summary={purchaseOrderPaymentSummary({ subtotal: cartTotal, totalCost: cartTotal })} compact />
               </div>
             </div>
             <footer className="p-5 border-t border-slate-50 flex gap-3 shrink-0">

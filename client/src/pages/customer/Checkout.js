@@ -9,6 +9,8 @@ import { getCitiesByProvince, getBarangaysByCity } from '../../constants/locatio
 import MapPicker from '../../components/MapPicker';
 import { Info } from 'lucide-react';
 import { normalizeRefundPolicy, refundPolicyLabel, requiresRefundAcknowledgment } from '../../utils/refundPolicy';
+import PaymentBreakdown from '../../components/payments/PaymentBreakdown';
+import { formatPeso, orderPaymentSummary } from '../../utils/paymentSummary';
 
 const Checkout = () => {
   const { items, clearSelectedItems, getSelectedItems } = useCart();
@@ -21,12 +23,12 @@ const Checkout = () => {
     if (queryParams.get('payment') === 'cancelled') {
       const orderId = queryParams.get('id');
       if (orderId) paymentService.cancelPayment('order', orderId).catch(() => {});
-      toast.warn('PayMongo payment was cancelled. You can retry from your order.');
+      toast.warn('Payment was cancelled. You can try again from your order.');
     }
   }, [location.search]);
 
   // Use only selected items for checkout
-  const checkoutItems = items.filter(item => item.selected);
+  const checkoutItems = React.useMemo(() => items.filter(item => item.selected), [items]);
 
   // Calculate total price for selected items only
   const checkoutTotalPrice = checkoutItems.reduce((total, item) => total + (item.price * item.quantity), 0);
@@ -35,12 +37,6 @@ const Checkout = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [editAddress, setEditAddress] = useState(false);
   const [addressInputType, setAddressInputType] = useState('map'); // 'map' or 'manual'
-  const [adminSettings, setAdminSettings] = useState({
-    freeShipping: true,
-    shippingFee: 0,
-    freeShippingThreshold: 0
-  });
-
   // Auto-populate address from user profile (restricted to Cavite, Philippines)
   const [shippingAddress, setShippingAddress] = useState({
     street: user?.address?.street || '',
@@ -68,13 +64,14 @@ const Checkout = () => {
   const [agreedToPolicy, setAgreedToPolicy] = useState(false);
   const [pricingQuote, setPricingQuote] = useState(null);
   const [pricingQuoteError, setPricingQuoteError] = useState('');
+  const [isPricingQuoteLoading, setIsPricingQuoteLoading] = useState(false);
   const refundPolicy = normalizeRefundPolicy(pricingQuote?.refundPolicy);
   const refundAcknowledgmentRequired = requiresRefundAcknowledgment(refundPolicy);
 
   // Payment options - Online Only consistent with minimalist design
   const getPaymentOptions = () => {
     return [
-      { value: 'paymongo', label: 'PayMongo', icon: <CreditCard className="h-4 w-4" /> }
+      { value: 'paymongo', label: 'Pay with PayMongo', icon: <CreditCard className="h-4 w-4" /> }
     ];
   };
   const [deliveryMethod, setDeliveryMethod] = useState('delivery'); // 'delivery' or 'pickup'
@@ -108,38 +105,56 @@ const Checkout = () => {
     .sort()
     .join('|');
 
+  const quoteItems = React.useMemo(() => checkoutItems.map(item => ({
+    itemType: item.itemType,
+    itemId: item.itemId,
+    quantity: item.quantity
+  })), [checkoutItems]);
+
+  const quoteShippingAddress = React.useMemo(
+    () => deliveryMethod === 'delivery' ? shippingAddress : {},
+    [deliveryMethod, shippingAddress]
+  );
+  const appliedVoucherCode = appliedVoucher ? voucherCode : '';
+
   useEffect(() => {
-    if (!quoteItemsSignature || !phoneNumber) return undefined;
+    if (!quoteItemsSignature) {
+      setPricingQuote(null);
+      setPricingQuoteError('Unable to calculate your total because no checkout items are selected.');
+      setIsPricingQuoteLoading(false);
+      return undefined;
+    }
+
+    let active = true;
+    setPricingQuote(null);
+    setPricingQuoteError('');
+    setIsPricingQuoteLoading(true);
     const timer = setTimeout(async () => {
       try {
         const response = await orderService.quoteOrder({
-          items: items.filter(item => item.selected).map(item => ({ itemType: item.itemType, itemId: item.itemId, quantity: item.quantity })),
+          items: quoteItems,
           deliveryMethod,
-          shippingAddress: deliveryMethod === 'delivery' ? shippingAddress : {},
-          phoneNumber,
-          paymentMethod: 'paymongo',
-          voucherCode: appliedVoucher ? voucherCode : null
+          shippingAddress: quoteShippingAddress,
+          voucherCode: appliedVoucherCode || null
         });
-        setPricingQuote(response.data);
-        setPricingQuoteError('');
+        if (active) {
+          setPricingQuote(response.data);
+          setPricingQuoteError('');
+        }
       } catch (error) {
-        setPricingQuote(null);
-        setPricingQuoteError(error.response?.data?.message || 'Unable to calculate the current total.');
+        if (active) {
+          setPricingQuote(null);
+          setPricingQuoteError(error.response?.data?.message || "We couldn't calculate your total. Please try again.");
+        }
+      } finally {
+        if (active) setIsPricingQuoteLoading(false);
       }
     }, 300);
-    return () => clearTimeout(timer);
-  }, [quoteItemsSignature, items, deliveryMethod, shippingAddress, phoneNumber, appliedVoucher, voucherCode]);
-
-  // Use default settings instead of API call since endpoint doesn't exist yet
-  useEffect(() => {
-    // Default store settings
-    const defaultSettings = {
-      freeShipping: true,
-      shippingFee: 0,
-      freeShippingThreshold: 0
+    return () => {
+      active = false;
+      clearTimeout(timer);
     };
-    setAdminSettings(defaultSettings);
-  }, []);
+  }, [quoteItemsSignature, quoteItems, deliveryMethod, quoteShippingAddress, appliedVoucherCode]);
 
   // Fetch claimed vouchers
   useEffect(() => {
@@ -261,7 +276,7 @@ const Checkout = () => {
     setAddressApplied(true);
     setTimeout(() => setAddressApplied(false), 2000);
 
-    toast.success('Address applied successfully!');
+    toast.success('Address saved.');
   };
 
   const handleAddressChange = (field, value) => {
@@ -342,7 +357,7 @@ const Checkout = () => {
         // Handle Online Redirects
         if (paymentMethod === 'paymongo') {
           try {
-            toast.info('Redirecting to secure PayMongo checkout...');
+            toast.info('Opening PayMongo payment...');
             const paymentResponse = await paymentService.createCheckoutSession(orderId);
             if (paymentResponse.data && paymentResponse.data.checkoutUrl) {
               clearSelectedItems();
@@ -356,17 +371,17 @@ const Checkout = () => {
             }
           } catch (paymentError) {
             console.error('Payment Error:', paymentError);
-            toast.error('Order created, but PayMongo could not start. Retry from the order page.');
+            toast.error('Your order was created, but payment could not start. Try again from the order page.');
             navigate(`/orders/${orderId}`);
             return;
           }
         }
 
-        toast.success('Order placed successfully! Awaiting store confirmation.');
+        toast.success('Order placed! Waiting for store confirmation.');
         clearSelectedItems();
         navigate('/orders');
       } else {
-        toast.error('Failed to place order. Please try again.');
+        toast.error('We could not place your order. Please try again.');
       }
     } catch (error) {
       console.error('Error creating order:', error);
@@ -381,7 +396,7 @@ const Checkout = () => {
       } else if (error.response?.data?.message) {
         toast.error(error.response.data.message);
       } else {
-        toast.error('Failed to place order. Please check your information and try again.');
+        toast.error('We could not place your order. Check your information and try again.');
       }
     } finally {
       setIsLoading(false);
@@ -458,32 +473,8 @@ const Checkout = () => {
     return { isValid: true, reason: 'Applicable' };
   };
 
-  const calculateFinalTotal = () => {
-    if (pricingQuote?.pricingBreakdown) return pricingQuote.pricingBreakdown.finalTotal;
-    let total = checkoutTotalPrice;
-
-    // Add shipping
-    if (deliveryMethod === 'delivery' && !adminSettings.freeShipping) {
-      if (total < adminSettings.freeShippingThreshold) {
-        total += adminSettings.shippingFee;
-      }
-    }
-
-    // Subtract discount
-    if (appliedVoucher) {
-      total -= appliedVoucher.discountAmount;
-    }
-
-    return Math.max(0, total);
-  };
-
   const quoteBreakdown = pricingQuote?.pricingBreakdown;
-  const taxStatusLabel = {
-    non_vat: 'Store is not VAT-registered',
-    vat_registered: quoteBreakdown?.pricingMode === 'inclusive' ? 'VAT included' : 'VAT',
-    vat_exempt: 'VAT-exempt sale',
-    zero_rated: 'Zero-rated sale'
-  }[quoteBreakdown?.taxStatus] || 'Tax pending calculation';
+  const quoteSummary = quoteBreakdown ? orderPaymentSummary({ pricingBreakdown: quoteBreakdown }) : null;
 
   if (checkoutItems.length === 0) {
     const hasItemsInCart = items && items.length > 0;
@@ -494,18 +485,18 @@ const Checkout = () => {
           <ShoppingBag className="h-10 w-10 text-slate-200" />
         </div>
         <h2 className="text-3xl font-black text-slate-900 mb-2 uppercase tracking-tight">
-          {hasItemsInCart ? 'No Assets Selected' : 'Manifest Empty'}
+          {hasItemsInCart ? 'No items selected' : 'Your cart is empty'}
         </h2>
         <p className="text-slate-500 mb-10 max-w-sm mx-auto font-medium">
           {hasItemsInCart
-            ? 'Return to your manifest to select the assets you wish to deploy for checkout.'
-            : 'Your mission manifest is currently empty. Initialize procurement to proceed.'}
+            ? 'Return to your cart and select the items you want to buy.'
+            : 'Add something to your cart before checking out.'}
         </p>
         <button
           onClick={() => navigate('/cart')}
           className="btn btn-primary px-10 py-4 text-xs font-black uppercase tracking-widest shadow-xl shadow-primary-100"
         >
-          Return to Manifest
+          Return to cart
         </button>
       </div>
     );
@@ -860,12 +851,12 @@ const Checkout = () => {
                         setEditAddress(false);
                         setAddressApplied(true);
                         setTimeout(() => setAddressApplied(false), 2000);
-                        toast.success('Delivery address confirmed and applied!');
+                        toast.success('Delivery address saved.');
                       }}
                       className="w-full py-4 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-primary-600 transition-all shadow-xl shadow-slate-200 flex items-center justify-center gap-2 group"
                     >
                       <CheckCircle className="h-4 w-4 group-hover:scale-110 transition-transform" />
-                      Confirm & Apply Delivery Address
+                      Use this delivery address
                     </button>
                     <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tighter text-center mt-3 italic opacity-60">
                       * This address will only be used for this specific order
@@ -884,7 +875,7 @@ const Checkout = () => {
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-black text-slate-900 uppercase tracking-tighter">
                 <CreditCard className="inline h-5 w-5 mr-2 text-primary-600" />
-                Payment Method
+                Choose payment method
               </h2>
               <span className="text-[10px] font-black text-primary-600 bg-primary-50 px-2 py-0.5 rounded-full uppercase tracking-widest">Online Only</span>
             </div>
@@ -914,7 +905,7 @@ const Checkout = () => {
               <div className="flex items-start gap-2">
                 <Info className="h-3 w-3 text-slate-400 mt-0.5 shrink-0" />
                 <p className="text-[9px] font-bold text-slate-500 uppercase tracking-tight leading-relaxed">
-                  Payment is processed securely by PayMongo. The order updates after PayMongo confirms the transaction.
+                  Pay securely with PayMongo. We will update your order after your payment is confirmed.
                 </p>
               </div>
             </div>
@@ -925,7 +916,7 @@ const Checkout = () => {
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-black text-slate-900 uppercase tracking-tighter">
                 <Ticket className="inline h-6 w-6 mr-3 text-primary-600 animate-pulse" />
-                Voucher Selection
+                Available vouchers
               </h2>
               {appliedVoucher && (
                 <span className="px-3 py-1 bg-emerald-50 text-emerald-600 rounded-lg text-[9px] font-black uppercase tracking-widest animate-bounce">
@@ -941,7 +932,7 @@ const Checkout = () => {
                   <Tag className={`absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 transition-colors ${appliedVoucher ? 'text-emerald-500' : 'text-slate-400 group-focus-within:text-primary-500'}`} />
                   <input
                     type="text"
-                    placeholder="ENTER SECRET CODE..."
+                    placeholder="Enter voucher code"
                     className={`w-full !pl-16 pr-4 py-4 bg-slate-50 border-2 rounded-2xl outline-none transition-all font-black text-xs uppercase tracking-[0.2em] ${appliedVoucher 
                       ? 'border-emerald-200 bg-emerald-50/30 text-emerald-700' 
                       : 'border-transparent focus:border-primary-500 focus:bg-white text-slate-900 placeholder:text-slate-400'
@@ -963,22 +954,25 @@ const Checkout = () => {
                   {isVerifyingVoucher ? (
                     <div className="flex items-center gap-2">
                       <div className="w-3 h-3 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-                      Wait
+                      Checking…
                     </div>
-                  ) : appliedVoucher ? 'Eject' : 'Deploy'}
+                  ) : appliedVoucher ? 'Remove voucher' : 'Use voucher'}
                 </button>
               </div>
+              {!appliedVoucher && (
+                <p className="px-1 text-[9px] font-bold text-slate-400">No voucher selected</p>
+              )}
 
               {/* Quick Selection HUD - Only show if not applied and have vouchers */}
               {!appliedVoucher && myVouchers.length > 0 && (
                 <div className="space-y-3">
                   <div className="flex items-center justify-between px-1">
-                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Claimed Vouchers</p>
+                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Available vouchers</p>
                     <button 
                       onClick={() => setShowVoucherModal(true)}
                       className="text-[9px] font-black text-primary-600 uppercase tracking-widest hover:underline"
                     >
-                      View All ({myVouchers.length})
+                      View all ({myVouchers.length})
                     </button>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -1031,11 +1025,11 @@ const Checkout = () => {
                     </div>
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
-                        <span className="text-[9px] font-black text-emerald-600 uppercase tracking-[0.3em]">Authorized Discount</span>
+                        <span className="text-[9px] font-black text-emerald-600 uppercase tracking-[0.3em]">Voucher applied</span>
                       </div>
                       <h4 className="text-2xl font-black text-emerald-900 uppercase tracking-tighter leading-none">{appliedVoucher.code}</h4>
                       <p className="text-xs font-bold text-emerald-600 uppercase tracking-widest mt-1">
-                        Success: Deducted ₱{appliedVoucher.discountAmount.toLocaleString()} from total manifest
+                        You saved {formatPeso(appliedVoucher.discountAmount)} on this order
                       </p>
                     </div>
                   </div>
@@ -1061,36 +1055,14 @@ const Checkout = () => {
             <h2 className="text-xl font-semibold text-gray-900 mb-4">Order Summary</h2>
             <div className="space-y-3 mb-6">
               <div className="flex justify-between text-gray-600">
-                <span>Subtotal ({checkoutItems.length} items)</span>
-                <span>{quoteBreakdown ? `₱${quoteBreakdown.subtotal.toFixed(2)}` : 'Calculating…'}</span>
-              </div>
-              <div className="flex justify-between text-gray-600">
                 <span>Delivery Method</span>
                 <span className="capitalize">{deliveryMethod === 'delivery' ? 'Home Delivery' : 'Store Pickup'}</span>
               </div>
-              <div className="flex justify-between text-gray-600">
-                <span>Shipping</span>
-                <span>{deliveryMethod === 'pickup' || quoteBreakdown?.deliveryFee === 0 ? 'Free' : quoteBreakdown ? `₱${quoteBreakdown.deliveryFee.toFixed(2)}` : 'Calculating…'}</span>
-              </div>
-              <div className="flex justify-between text-gray-600">
-                <span>{taxStatusLabel}{quoteBreakdown?.taxStatus === 'vat_registered' ? ` (${quoteBreakdown.vatRatePercent}%)` : ''}</span>
-                <span>{quoteBreakdown ? `₱${quoteBreakdown.vatAmount.toFixed(2)}` : 'Calculating…'}</span>
-              </div>
-              {appliedVoucher && (
-                <div className="flex justify-between text-emerald-600 font-bold">
-                  <span>Discount ({appliedVoucher.code})</span>
-                  <span>-₱{Number(quoteBreakdown?.discountAmount ?? appliedVoucher.discountAmount).toFixed(2)}</span>
-                </div>
-              )}
-              <div className="border-t pt-3">
-                <div className="flex justify-between text-lg font-semibold text-gray-900">
-                  <span>Total</span>
-                  <span>₱{calculateFinalTotal().toFixed(2)}</span>
-                </div>
-              </div>
-              {pricingQuoteError && (
-                <p className="text-xs text-rose-600 bg-rose-50 border border-rose-100 rounded-lg p-3">{pricingQuoteError}</p>
-              )}
+              <PaymentBreakdown
+                summary={quoteSummary}
+                loading={isPricingQuoteLoading}
+                error={pricingQuoteError}
+              />
             </div>
 
             {/* Store refund policy */}
@@ -1117,7 +1089,7 @@ const Checkout = () => {
             <form onSubmit={handleSubmit}>
               <button
                 type="submit"
-                disabled={isLoading || !pricingQuote || Boolean(pricingQuoteError) || (refundAcknowledgmentRequired && !agreedToPolicy)}
+                disabled={isLoading || isPricingQuoteLoading || !pricingQuote || Boolean(pricingQuoteError) || (refundAcknowledgmentRequired && !agreedToPolicy)}
                 className={`btn btn-primary w-full flex items-center justify-center gap-3 py-5 text-[10px] font-black uppercase tracking-[0.3em] shadow-2xl transition-all active:scale-95 ${
                   ((refundAcknowledgmentRequired && !agreedToPolicy) || !pricingQuote || pricingQuoteError) ? 'opacity-50 cursor-not-allowed grayscale' : 'shadow-primary-200 hover:-translate-y-0.5'
                 }`}
@@ -1125,12 +1097,12 @@ const Checkout = () => {
                 {isLoading ? (
                   <>
                     <div className="animate-spin rounded-full h-4 w-4 border-2 border-white/20 border-t-white"></div>
-                    Executing...
+                    Placing order…
                   </>
                 ) : (
                   <>
                     <ShoppingBag className="h-4 w-4" />
-                    Place Order & Pay
+                    Pay now
                   </>
                 )}
               </button>

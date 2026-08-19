@@ -85,7 +85,7 @@ const MapPicker = ({ onLocationSelected, initialAddress = '', className = '' }) 
                             data.display_name?.toLowerCase().includes('cavite');
 
       if (!isCaviteState && !isWithinCavite(lat, lng)) {
-        toast.warning('Base operations must be within Cavite boundaries.');
+        toast.warning('Please choose a location within Cavite.');
         return null;
       }
 
@@ -100,7 +100,7 @@ const MapPicker = ({ onLocationSelected, initialAddress = '', className = '' }) 
       return formattedAddress;
     } catch (err) {
       console.error('Geocoding error:', err);
-      toast.error('Intelligence gathering failed. Try manual input.');
+      toast.error('We could not find that address. Try entering it manually.');
       return null;
     } finally {
       setLoading(false);
@@ -109,7 +109,7 @@ const MapPicker = ({ onLocationSelected, initialAddress = '', className = '' }) 
 
   const handleLocationDetection = () => {
     if (!navigator.geolocation) {
-      toast.error('GPS Protocol not supported by this device.');
+      toast.error('This device does not support location services.');
       return;
     }
 
@@ -126,7 +126,7 @@ const MapPicker = ({ onLocationSelected, initialAddress = '', className = '' }) 
       },
       () => {
         setLoading(false);
-        toast.error('GPS Signal lost or denied.');
+        toast.error('We could not access your location. Check your device permissions and try again.');
       },
       { enableHighAccuracy: true }
     );
@@ -163,7 +163,7 @@ const MapPicker = ({ onLocationSelected, initialAddress = '', className = '' }) 
       onLocationSelected(tempLocation);
       setAddress(tempLocation.full);
       setShowConfirm(false);
-      toast.success('Location calibrated successfully.');
+      toast.success('Location saved.');
     }
   };
 
@@ -177,7 +177,7 @@ const MapPicker = ({ onLocationSelected, initialAddress = '', className = '' }) 
           className="flex-1 flex items-center justify-center gap-2 px-6 py-4 bg-primary-600 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-slate-900 transition-all shadow-xl disabled:opacity-50 group"
         >
           <LocateFixed className="h-4 w-4 group-hover:scale-110 transition-transform" />
-          {loading ? 'CALIBRATING...' : 'USE CURRENT GPS LOCATION'}
+          {loading ? 'Finding location…' : 'Use current location'}
         </button>
       </div>
 
@@ -193,7 +193,7 @@ const MapPicker = ({ onLocationSelected, initialAddress = '', className = '' }) 
 
         <div className="absolute top-4 left-4 z-[1000] p-3 bg-white/90 backdrop-blur-md rounded-xl border border-white shadow-xl max-w-[200px]">
           <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1 flex items-center gap-1">
-            <Info className="h-2 w-2" /> Sector Directive
+            <Info className="h-2 w-2" /> Service area
           </p>
           <p className="text-[9px] font-bold text-slate-600 leading-tight uppercase">
             Click or drag marker to fine-tune your base location within Cavite.
@@ -239,7 +239,7 @@ const MapPicker = ({ onLocationSelected, initialAddress = '', className = '' }) 
             <Check className="h-4 w-4" />
           </div>
           <div className="min-w-0">
-            <p className="text-[9px] font-black text-emerald-700 uppercase tracking-widest mb-1">Sector Captured</p>
+            <p className="text-[9px] font-black text-emerald-700 uppercase tracking-widest mb-1">Location selected</p>
             <p className="text-[10px] font-bold text-emerald-600 uppercase truncate">{address}</p>
           </div>
         </div>

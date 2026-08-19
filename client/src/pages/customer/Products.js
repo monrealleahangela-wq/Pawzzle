@@ -404,7 +404,7 @@ const Products = () => {
           {products.length === 0 ? (
             <div className="card border-dashed border-2 bg-slate-50/50 flex flex-col items-center justify-center py-12 text-center">
               <Package className="h-8 w-8 text-slate-300 mb-3" />
-              <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest">No Products Found</h3>
+              <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest">We couldn't find any products</h3>
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tight mt-1 mb-4">Try adjusting your filters</p>
               <button
                 onClick={() => setFilters({
@@ -413,7 +413,7 @@ const Products = () => {
                 })}
                 className="text-[10px] font-black text-primary-600 uppercase tracking-widest underline"
               >
-                Clear All Filters
+                Clear filters
               </button>
             </div>
           ) : (

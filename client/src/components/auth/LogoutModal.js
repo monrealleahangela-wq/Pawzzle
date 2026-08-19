@@ -32,7 +32,7 @@ const LogoutModal = ({ isOpen, onClose, onConfirm }) => {
           Logout
         </h2>
         <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-12 leading-relaxed max-w-[200px]">
-          Are you sure you want to sign out of Pawzzle?
+          Are you sure you want to logout?
         </p>
 
         {/* Action Buttons */}
@@ -41,7 +41,7 @@ const LogoutModal = ({ isOpen, onClose, onConfirm }) => {
             onClick={onConfirm}
             className="w-full py-5 bg-rose-600 text-white rounded-[2rem] text-[10px] font-black uppercase tracking-[0.3em] shadow-xl shadow-rose-200 hover:bg-rose-700 active:scale-[0.98] transition-all"
           >
-            Yes, Sign Out
+            Logout
           </button>
           
           <button

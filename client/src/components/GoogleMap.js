@@ -165,7 +165,7 @@ const GoogleMap = ({
             </div>
             <div className="text-center space-y-2">
               <p className="text-lg font-black text-slate-800 uppercase tracking-tighter leading-tight">
-                {storeName || 'Base Location'}
+                {storeName || 'Store location'}
               </p>
               <p className="text-xs text-slate-400 font-bold uppercase tracking-widest leading-relaxed max-w-xs mx-auto">
                 {address}
@@ -175,7 +175,7 @@ const GoogleMap = ({
             {!loading && (
               <div className="mt-8 flex items-center gap-2 px-4 py-2 bg-secondary-50 rounded-xl border border-secondary-100">
                 <div className="w-1.5 h-1.5 rounded-full bg-secondary-400 animate-pulse" />
-                <span className="text-[9px] font-black text-primary-700 uppercase tracking-widest">Manual calibration recommended</span>
+                <span className="text-[9px] font-black text-primary-700 uppercase tracking-widest">Open the map to confirm the location</span>
               </div>
             )}
           </div>

@@ -212,7 +212,7 @@ const AccountUpgrade = () => {
       // Update user role to pending admin
       updateUser({ ...user, role: 'customer', pendingRoleUpgrade: true });
     } catch (error) {
-      toast.error('Error submitting application');
+      toast.error('We could not submit your application. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -379,7 +379,7 @@ const AccountUpgrade = () => {
             </div>
 
             <div className="mt-6">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Operational Modules * (Select at least one)</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Business features * (Select at least one)</label>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 {[
                   { id: 'pets', label: 'Pets', desc: 'Sell live pets and manage listings' },

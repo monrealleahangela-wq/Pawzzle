@@ -3,6 +3,7 @@ import { toast } from 'react-toastify';
 import { userService, petService, productService, orderService } from '../../services/apiService';
 import { formatTime12h } from '../../utils/timeFormatters';
 import { Users, Heart, Package, ShoppingCart, Shield, Search, Calendar, Filter, RefreshCw, ChevronDown, Target } from 'lucide-react';
+import { formatPeso } from '../../utils/paymentSummary';
 
 const ActivityHistory = () => {
     const [data, setData] = useState({
@@ -85,7 +86,7 @@ const ActivityHistory = () => {
                 id: o._id,
                 type: 'order',
                 label: 'New Order Placed',
-                detail: `Order #${o.orderNumber?.slice(-8).toUpperCase()} - ₱${o.totalAmount?.toLocaleString()}`,
+                detail: `Order #${o.orderNumber?.slice(-8).toUpperCase()} - ${formatPeso(o.totalAmount)}`,
                 customer: o.customer?.firstName || 'Unknown',
                 date: o.createdAt,
                 color: 'emerald'

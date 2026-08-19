@@ -48,12 +48,12 @@ const Modal = React.forwardRef(({
           <div className="flex items-center justify-between p-3.5 sm:px-5 sm:py-3.5 border-b border-neutral-200/50 shrink-0">
             <div>
               {title && (
-                <h3 className="text-lg font-black text-neutral-900 uppercase tracking-tighter leading-none">
+                <h3 className="text-lg font-black text-default uppercase tracking-tighter leading-none">
                   {title}
                 </h3>
               )}
               {description && (
-                <p className="text-sm text-neutral-600 mt-1">
+                <p className="text-sm text-secondary mt-1">
                   {description}
                 </p>
               )}
@@ -89,7 +89,7 @@ const ModalHeader = ({ className, ...props }) => (
 const ModalTitle = React.forwardRef(({ className, children, ...props }, ref) => (
   <h3
     ref={ref}
-    className={cn("text-lg font-black text-neutral-900 uppercase tracking-tighter leading-none", className)}
+    className={cn("text-lg font-black text-default uppercase tracking-tighter leading-none", className)}
     {...props}
   >
     {children}
@@ -100,7 +100,7 @@ ModalTitle.displayName = "ModalTitle";
 const ModalDescription = React.forwardRef(({ className, ...props }, ref) => (
   <p
     ref={ref}
-    className={cn("text-sm text-neutral-600", className)}
+    className={cn("text-sm text-secondary", className)}
     {...props}
   />
 ));

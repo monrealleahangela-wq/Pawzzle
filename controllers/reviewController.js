@@ -14,6 +14,33 @@ const { isOperationalStaff } = require('../config/permissions');
 
 const STAFF_COMPLIMENT_TAGS = new Set(['friendly', 'professional', 'gentle_with_pets', 'fast_service', 'clean_facility']);
 
+// Store-profile reviews are intentionally limited to one review per customer
+// and store. Keep this eligibility check shared by the button preflight and
+// review creation so the interface cannot offer an action the API will deny.
+const getStoreReviewEligibility = async (userId, storeId) => {
+    const store = await Store.findById(storeId).select('owner');
+    if (!store) return { isEligible: false, reason: 'store_not_found' };
+    if (String(store.owner) === String(userId)) return { isEligible: false, reason: 'own_store' };
+
+    const existingReview = await Review.exists({
+        user: userId,
+        targetType: 'Store',
+        targetId: storeId
+    });
+    if (existingReview) return { isEligible: false, reason: 'already_reviewed' };
+
+    const [order, booking, adoption] = await Promise.all([
+        Order.findOne({ customer: userId, store: storeId, status: { $in: ['delivered', 'completed'] }, 'reviewStatus.isRated': { $ne: true } }).select('_id'),
+        Booking.findOne({ customer: userId, store: storeId, status: 'completed', 'reviewStatus.isRated': { $ne: true } }).select('_id'),
+        AdoptionRequest.findOne({ customer: userId, seller: storeId, status: 'delivered' }).select('_id')
+    ]);
+
+    return {
+        isEligible: Boolean(order || booking || adoption),
+        reason: order || booking || adoption ? null : 'no_completed_transaction'
+    };
+};
+
 const refreshStaffRating = async staffId => {
     if (!staffId) return;
     const [summary] = await Review.aggregate([
@@ -125,22 +152,17 @@ const createReview = async (req, res) => {
             if (completedBooking) isTrusted = true;
         }
         else if (targetType === 'Store') {
-            const store = await Store.findById(targetId);
-            if (!store) return res.status(404).json({ message: 'Store not found' });
-
-            // PREVENT SELF-REVIEW: Check if user is the store owner
-            if (store.owner?.toString() === userId.toString()) {
-                return res.status(403).json({ message: 'Unauthorized: You cannot review your own store.' });
+            const storeEligibility = await getStoreReviewEligibility(userId, targetId);
+            if (storeEligibility.reason === 'store_not_found') return res.status(404).json({ message: 'Store not found' });
+            if (!storeEligibility.isEligible) {
+                return res.status(403).json({
+                    message: storeEligibility.reason === 'already_reviewed'
+                        ? 'You have already reviewed this store.'
+                        : 'Complete a purchase or service from this store before leaving a review.'
+                });
             }
             storeId = targetId;
-            // Check for ANY completed transaction with this store
-            const [order, booking, adoption] = await Promise.all([
-                Order.findOne({ customer: userId, store: storeId, status: 'delivered' }),
-                Booking.findOne({ customer: userId, store: storeId, status: 'completed' }),
-                AdoptionRequest.findOne({ customer: userId, seller: storeId, status: 'delivered' }) // Check via store's owner
-            ]);
-
-            if (order || booking || adoption) isTrusted = true;
+            isTrusted = true;
         }
 
         if (!isTrusted) {
@@ -464,17 +486,8 @@ const checkReviewEligibility = async (req, res) => {
             if (completedBooking) isEligible = true;
         }
         else if (targetType === 'Store') {
-            const store = await Store.findById(targetId);
-            if (store?.owner?.toString() === userId.toString()) {
-                return res.json({ isEligible: false });
-            }
-
-            const [order, booking, adoption] = await Promise.all([
-                Order.findOne({ customer: userId, store: targetId, status: 'delivered' }),
-                Booking.findOne({ customer: userId, store: targetId, status: 'completed' }),
-                AdoptionRequest.findOne({ customer: userId, seller: targetId, status: 'delivered' })
-            ]);
-            if (order || booking || adoption) isEligible = true;
+            const storeEligibility = await getStoreReviewEligibility(userId, targetId);
+            return res.json(storeEligibility);
         }
 
         res.json({ isEligible });

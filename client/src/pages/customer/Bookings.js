@@ -11,6 +11,26 @@ import StaffProfileModal from '../../components/booking/StaffProfileModal';
 import { useAuth } from '../../contexts/AuthContext';
 import { formatTime12h } from '../../utils/timeFormatters';
 import { normalizeRefundPolicy, refundPolicyLabel, requiresRefundAcknowledgment } from '../../utils/refundPolicy';
+import PaymentBreakdown from '../../components/payments/PaymentBreakdown';
+import { bookingPaymentSummary, formatPeso } from '../../utils/paymentSummary';
+import ServiceSpecificBookingFields, { ServiceIntakeSummary } from '../../components/booking/ServiceSpecificBookingFields';
+import { buildServiceIntake, createEmptyServiceDetails, resolveServiceBookingKind, validateServiceDetails } from '../../utils/serviceBookingForm';
+
+const createInitialBookingForm = () => ({
+  bookingDate: '',
+  startTime: '',
+  pet: {
+    name: '', type: 'Dog', breed: '', size: 'Small', age: '', gender: 'Male', weight: '', color: '', photo: null,
+    vaccinationStatus: 'Pending', specialNotes: '', allergies: 'None', medicalConditions: 'None', groomingPreferences: 'None', behaviorNotes: 'Normal'
+  },
+  serviceDetails: createEmptyServiceDetails(),
+  isHomeService: false,
+  serviceAddress: { street: '', city: '', province: '' },
+  notes: '',
+  paymentMethod: 'paymongo',
+  selectedAddOns: [],
+  selectedConditions: []
+});
 
 const StoreHoursHint = ({ bookingDate, businessHours }) => {
   const dayNames = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
@@ -59,37 +79,8 @@ const Bookings = ({ isSubcomponent = false }) => {
   const [showBookingForm, setShowBookingForm] = useState(false);
   const [selectedService, setSelectedService] = useState(null);
   const [ratingBooking, setRatingBooking] = useState(null);
-  const [bookingForm, setBookingForm] = useState({
-    bookingDate: '',
-    startTime: '',
-    pet: {
-      name: '',
-      type: 'Dog',
-      breed: '',
-      size: 'Small',
-      age: '',
-      gender: 'Male',
-      weight: '',
-      color: '',
-      photo: null,
-      vaccinationStatus: 'Pending',
-      specialNotes: '',
-      allergies: 'None',
-      medicalConditions: 'None',
-      groomingPreferences: 'None',
-      behaviorNotes: 'Normal'
-    },
-    isHomeService: false,
-    serviceAddress: {
-      street: '',
-      city: '',
-      province: ''
-    },
-    notes: '',
-    paymentMethod: 'paymongo',
-    selectedAddOns: [],
-    selectedConditions: []
-  });
+  const [bookingForm, setBookingForm] = useState(createInitialBookingForm);
+  const [serviceDetailErrors, setServiceDetailErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
   const [existingBookings, setExistingBookings] = useState([]);
   const [calendarMonth, setCalendarMonth] = useState(new Date());
@@ -99,12 +90,15 @@ const Bookings = ({ isSubcomponent = false }) => {
   const [myVouchers, setMyVouchers] = useState([]);
   const [showVoucherModal, setShowVoucherModal] = useState(false);
   const [savedPets, setSavedPets] = useState([]);
+  const [petsLoading, setPetsLoading] = useState(false);
   const [selectedPetProfile, setSelectedPetProfile] = useState(null);
   const [agreedToPolicy, setAgreedToPolicy] = useState(false);
   const serviceRefundPolicy = normalizeRefundPolicy(selectedService?.store?.refundPolicy);
   const serviceAcknowledgmentRequired = requiresRefundAcknowledgment(serviceRefundPolicy);
   const selectedRefundPolicy = normalizeRefundPolicy(selectedBooking?.refundPolicySnapshot || selectedBooking?.store?.refundPolicy);
+  const selectedPaymentSummary = selectedBooking ? bookingPaymentSummary(selectedBooking) : null;
   const selectedAcknowledgmentRequired = requiresRefundAcknowledgment(selectedRefundPolicy);
+  const serviceBookingKind = resolveServiceBookingKind(selectedService);
   const [eligibleStaff, setEligibleStaff] = useState([]);
   const [staffProfileId, setStaffProfileId] = useState(null);
   const [bookingActionLoading, setBookingActionLoading] = useState(false);
@@ -119,10 +113,10 @@ const Bookings = ({ isSubcomponent = false }) => {
 
   const stepMeta = [
     { num: 1, label: 'Service', icon: <Bell className="h-4 w-4" /> },
-    { num: 2, label: 'Schedule', icon: <Calendar className="h-4 w-4" /> },
-    { num: 3, label: 'Your Pet', icon: <Activity className="h-4 w-4" /> },
-    { num: 4, label: 'Options', icon: <Layers className="h-4 w-4" /> },
-    { num: 5, label: 'Confirm', icon: <ShieldCheck className="h-4 w-4" /> },
+    { num: 2, label: 'Pet', icon: <PawPrint className="h-4 w-4" /> },
+    { num: 3, label: 'Details', icon: <Layers className="h-4 w-4" /> },
+    { num: 4, label: 'Date & time', icon: <Calendar className="h-4 w-4" /> },
+    { num: 5, label: 'Review', icon: <ShieldCheck className="h-4 w-4" /> },
   ];
 
   const generateAvailableSlots = (dateString) => {
@@ -213,13 +207,16 @@ const Bookings = ({ isSubcomponent = false }) => {
 
   const canAdvance = (step) => {
     if (step === 2) {
-      if (!bookingForm.bookingDate || !bookingForm.startTime) return false;
-      return validateBookingTime(bookingForm.bookingDate, bookingForm.startTime);
+      if (selectedPetProfile && bookingForm.pet.name) return true;
+      const { name, type, breed, age, weight } = bookingForm.pet;
+      return Boolean(name?.trim() && type?.trim() && breed?.trim() && age !== '' && weight !== '');
     }
     if (step === 3) {
-      const { name, type, breed, age, weight } = bookingForm.pet;
-      const isValid = !!(name?.trim() && type?.trim() && breed?.trim() && (age !== '' && age !== null) && (weight !== '' && weight !== null));
-      return isValid;
+      return Object.keys(validateServiceDetails(serviceBookingKind, bookingForm.serviceDetails)).length === 0;
+    }
+    if (step === 4) {
+      if (!bookingForm.bookingDate || !bookingForm.startTime) return false;
+      return validateBookingTime(bookingForm.bookingDate, bookingForm.startTime);
     }
     return true;
   };
@@ -263,14 +260,27 @@ const Bookings = ({ isSubcomponent = false }) => {
         medicalConditions: pet.medicalConditions || 'None',
         groomingPreferences: pet.groomingPreferences || 'None',
         behaviorNotes: pet.behaviorNotes || 'Normal'
+      },
+      serviceDetails: {
+        ...prev.serviceDetails,
+        allergies: pet.allergies && pet.allergies !== 'None' ? pet.allergies : ''
       }
     }));
-    toast.info(`Synced with ${pet.name}'s profile!`);
-    
-    // Auto-progress depending on if options exist
-    const hasOptions = (selectedService?.addOns && selectedService.addOns.length > 0) || 
-                       (selectedService?.pricingRules?.condition && selectedService.pricingRules.condition.enabled);
-    setFormStep(hasOptions ? 4 : 5); 
+    toast.info(`${pet.name} selected.`);
+  };
+
+  const handleServiceDetailChange = (name, value) => {
+    setBookingForm(previous => {
+      const serviceDetails = { ...previous.serviceDetails, [name]: value };
+      if (name === 'takesMedication' && value !== 'yes') serviceDetails.medicationSchedule = '';
+      return {
+        ...previous,
+        bookingDate: name === 'checkInDate' ? value : previous.bookingDate,
+        startTime: name === 'checkInDate' && previous.bookingDate !== value ? '' : previous.startTime,
+        serviceDetails
+      };
+    });
+    setServiceDetailErrors(previous => ({ ...previous, [name]: undefined }));
   };
 
   useEffect(() => {
@@ -281,7 +291,7 @@ const Bookings = ({ isSubcomponent = false }) => {
     const bookingId = searchParams.get('id');
 
     if (paymentStatus === 'success') {
-      toast.success('Payment authorized. Verifying with store...', {
+      toast.success('Payment received. Checking with the store...', {
         id: 'payment-success',
         duration: 3000
       });
@@ -291,7 +301,7 @@ const Bookings = ({ isSubcomponent = false }) => {
         paymentService.verifyBookingPayment(bookingId)
           .then(async (res) => {
             if (res.data.status === 'paid') {
-              toast.success('Payment successfully verified!');
+              toast.success('Payment successful.');
             }
             // Refresh list anyway
             const params = {
@@ -313,7 +323,7 @@ const Bookings = ({ isSubcomponent = false }) => {
       }
     } else if (paymentStatus === 'cancelled' && bookingId) {
       paymentService.cancelPayment('booking', bookingId).catch(() => {});
-      toast.warning('PayMongo payment was cancelled. You can retry from the booking details.');
+      toast.warning('Payment was cancelled. You can try again from the booking details.');
     } else if (bookingId) {
         // If no payment status but we have a bookingId (from notification), find and select it
         const target = bookings.find(b => b._id === bookingId);
@@ -356,7 +366,7 @@ const Bookings = ({ isSubcomponent = false }) => {
     // SECURITY: Professional Sellers should not be booking services.
     const isSeller = user?.role === 'seller' || user?.role === 'store_owner';
     if (isSeller && showBookingForm) {
-      toast.info('Professional accounts are managed via the Merchant Dashboard.');
+      toast.info('Professional accounts are managed from the store dashboard.');
       navigate('/admin/dashboard');
       return;
     }
@@ -375,11 +385,15 @@ const Bookings = ({ isSubcomponent = false }) => {
   // Fetch saved pet profiles when booking form opens
   useEffect(() => {
     const fetchPetProfiles = async () => {
+      setPetsLoading(true);
       try {
         const res = await petProfileService.getMyPets();
         setSavedPets(res.data.pets || []);
       } catch (err) {
         console.error('Error fetching pet profiles:', err);
+        toast.error('We could not load your pets. Please try again.');
+      } finally {
+        setPetsLoading(false);
       }
     };
     if (showBookingForm) fetchPetProfiles();
@@ -400,7 +414,7 @@ const Bookings = ({ isSubcomponent = false }) => {
     } catch (error) {
       console.error('❌ Error fetching service details:', error.response?.data || error.message);
       const errorMsg = error.response?.data?.message || error.message;
-      toast.error(`Service load failed: ${errorMsg}`);
+      toast.error(errorMsg || 'We could not load the services. Please try again.');
       // Fallback: stay on bookings page if service not found
       if (error.response?.status === 404) {
         setShowBookingForm(false);
@@ -437,7 +451,7 @@ const Bookings = ({ isSubcomponent = false }) => {
       }
     } catch (error) {
       console.error('Error cancelling booking:', error);
-      toast.error('Failed to cancel appointment');
+      toast.error('We could not cancel this booking. Please try again.');
     }
   };
 
@@ -471,7 +485,7 @@ const Bookings = ({ isSubcomponent = false }) => {
       const response = await paymentService.createBookingCheckoutSession(bookingId);
       if (response.data.checkoutUrl) window.location.href = response.data.checkoutUrl;
     } catch (error) {
-      toast.error(error.response?.data?.message || 'The booking could not be revalidated for payment.');
+      toast.error(error.response?.data?.message || 'We could not confirm this booking for payment. Please try again.');
       const refreshed = await bookingService.getBookingById(bookingId).catch(() => null);
       if (refreshed?.data?.booking) setSelectedBooking(refreshed.data.booking);
     } finally {
@@ -481,13 +495,13 @@ const Bookings = ({ isSubcomponent = false }) => {
 
   const handlePayment = async (bookingId) => {
     try {
-      toast.info('Starting checkout...');
+      toast.info('Opening payment...');
       const response = await paymentService.createBookingCheckoutSession(bookingId);
       if (response.data.checkoutUrl) {
         window.location.href = response.data.checkoutUrl;
       }
     } catch (error) {
-      toast.error('Failed to initialise payment');
+      toast.error('Payment could not start. Please try again.');
     }
   };
 
@@ -604,10 +618,14 @@ const Bookings = ({ isSubcomponent = false }) => {
     const dayNum = String(selectedDate.getDate()).padStart(2, '0');
     const localDateString = `${year}-${month}-${dayNum}`;
 
-    setBookingForm({
-      ...bookingForm,
-      bookingDate: localDateString
-    });
+    setBookingForm(previous => ({
+      ...previous,
+      bookingDate: localDateString,
+      startTime: previous.bookingDate === localDateString ? previous.startTime : '',
+      serviceDetails: serviceBookingKind === 'boarding'
+        ? { ...previous.serviceDetails, checkInDate: localDateString }
+        : previous.serviceDetails
+    }));
   };
 
   const handlePrevMonth = () => {
@@ -665,7 +683,7 @@ const Bookings = ({ isSubcomponent = false }) => {
 
   const getStatusLabel = status => ({
     pending: 'Pending Store Review',
-    awaiting_customer_confirmation: 'Proposal Ready — Awaiting Your Confirmation',
+    awaiting_customer_confirmation: 'Proposal ready — waiting for your confirmation',
     awaiting_payment: 'Payment Required',
     confirmed: 'Booking Confirmed',
     approved: 'Booking Confirmed',
@@ -732,6 +750,20 @@ const Bookings = ({ isSubcomponent = false }) => {
       return;
     }
 
+    if (!canAdvance(2)) {
+      toast.error('Please choose a pet or complete the pet details.');
+      setFormStep(2);
+      return;
+    }
+
+    const intakeErrors = validateServiceDetails(serviceBookingKind, bookingForm.serviceDetails);
+    if (Object.keys(intakeErrors).length > 0) {
+      setServiceDetailErrors(intakeErrors);
+      toast.error(Object.values(intakeErrors)[0]);
+      setFormStep(3);
+      return;
+    }
+
     if (serviceAcknowledgmentRequired && !agreedToPolicy) {
       toast.error('You must acknowledge this store\'s No Refund policy to proceed.');
       return;
@@ -795,7 +827,8 @@ const Bookings = ({ isSubcomponent = false }) => {
         paymentMethod: bookingForm.paymentMethod,
         voucherCode: appliedVoucher ? voucherCode : null,
         selectedAddOns: bookingForm.selectedAddOns, // Add-on IDs
-        selectedConditions: bookingForm.selectedConditions // Condition IDs
+        selectedConditions: bookingForm.selectedConditions, // Condition IDs
+        serviceIntake: buildServiceIntake(serviceBookingKind, bookingForm.serviceDetails, selectedService)
       };
 
       const response = await bookingService.createBooking(bookingData);
@@ -810,14 +843,9 @@ const Bookings = ({ isSubcomponent = false }) => {
       toast.success('Booking request submitted. The store will review it and assign a qualified staff member before payment.');
 
       // Reset form and refresh bookings
-      setBookingForm({
-        bookingDate: '',
-        startTime: '',
-        pet: { name: '', type: '', breed: '', size: 'Small', age: '', weight: '' },
-        isHomeService: false,
-        serviceAddress: { street: '', city: '', province: '' },
-        notes: ''
-      });
+      setBookingForm(createInitialBookingForm());
+      setSelectedPetProfile(null);
+      setServiceDetailErrors({});
       setShowBookingForm(false);
       setSelectedService(null);
       fetchBookings();
@@ -827,7 +855,7 @@ const Bookings = ({ isSubcomponent = false }) => {
 
     } catch (error) {
       console.error('Error creating booking:', error);
-      toast.error(error.response?.data?.message || 'Failed to create booking');
+      toast.error(error.response?.data?.message || 'We could not create your booking. Please try again.');
     } finally {
       setSubmitting(false);
     }
@@ -836,14 +864,9 @@ const Bookings = ({ isSubcomponent = false }) => {
   const handleBackToBookings = () => {
     setShowBookingForm(false);
     setSelectedService(null);
-    setBookingForm({
-      bookingDate: '',
-      startTime: '',
-      pet: { name: '', type: '', breed: '', size: 'Small', age: '', weight: '' },
-      isHomeService: false,
-      serviceAddress: { street: '', city: '', province: '' },
-      notes: ''
-    });
+    setBookingForm(createInitialBookingForm());
+    setSelectedPetProfile(null);
+    setServiceDetailErrors({});
     navigate('/bookings', { replace: true });
   };
 
@@ -981,13 +1004,13 @@ const Bookings = ({ isSubcomponent = false }) => {
                 </div>
                 <button type="button" onClick={() => setFormStep(2)}
                   className="w-full py-5 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.25em] shadow-xl shadow-slate-200 hover:bg-primary-600 transition-all active:scale-95">
-                  Continue to Schedule →
+                  Choose a pet →
                 </button>
               </div>
             )}
 
-            {/* ── STEP 2: Schedule ── */}
-            {formStep === 2 && (
+            {/* ── STEP 4: Date and time ── */}
+            {formStep === 4 && (
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 animate-card-appear">
                 {/* Calendar */}
                 <div className="bg-white rounded-[2rem] border border-slate-100 p-6 shadow-sm flex flex-col">
@@ -1102,15 +1125,15 @@ const Bookings = ({ isSubcomponent = false }) => {
                       </div>
                     )}
                     
-                    <div className="mt-8 flex gap-3">
-                       <button type="button" onClick={() => setFormStep(1)} className="px-6 py-4 bg-slate-50 text-slate-400 rounded-2xl text-[9px] font-black uppercase hover:bg-slate-100 transition-all">Back</button>
+                    <div className="sticky bottom-3 z-20 mt-8 flex gap-3 rounded-2xl bg-white/90 p-2 shadow-xl backdrop-blur dark:bg-slate-900/90">
+                       <button type="button" onClick={() => setFormStep(3)} className="px-6 py-4 bg-slate-50 text-slate-400 rounded-2xl text-[9px] font-black uppercase hover:bg-slate-100 transition-all">Back</button>
                        <button 
                         type="button" 
                         disabled={!bookingForm.bookingDate || !bookingForm.startTime}
-                        onClick={() => { if (validateBookingTime(bookingForm.bookingDate, bookingForm.startTime, true)) setFormStep(3); }} 
+                        onClick={() => { if (validateBookingTime(bookingForm.bookingDate, bookingForm.startTime, true)) setFormStep(5); }}
                         className="flex-1 py-4 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-slate-200 hover:bg-primary-600 transition-all disabled:opacity-30"
                        >
-                         Continue Details
+                         Review booking
                        </button>
                     </div>
                   </div>
@@ -1118,8 +1141,8 @@ const Bookings = ({ isSubcomponent = false }) => {
               </div>
             )}
 
-            {/* ── STEP 3: Pet Details ── */}
-            {formStep === 3 && (
+            {/* ── STEP 2: Choose a pet ── */}
+            {formStep === 2 && (
               <div className="space-y-4 animate-card-appear">
                 <div className="bg-white rounded-[2.5rem] border border-slate-100 p-5 sm:p-8 shadow-sm">
                   <div className="flex items-center gap-3 mb-6">
@@ -1131,7 +1154,14 @@ const Bookings = ({ isSubcomponent = false }) => {
                   </div>
 
                   {/* ── Saved Pets Quick-Select ── */}
-                  {savedPets.length > 0 && (
+                  {petsLoading && (
+                    <div className="mb-7 flex gap-3 overflow-hidden" aria-label="Loading saved pets">
+                      {[1, 2, 3].map(item => (
+                        <div key={item} className="h-28 min-w-[160px] animate-pulse rounded-2xl border border-slate-100 bg-slate-100 dark:border-slate-700 dark:bg-slate-800" />
+                      ))}
+                    </div>
+                  )}
+                  {!petsLoading && savedPets.length > 0 && (
                     <div className="mb-7">
                       <div className="flex items-center justify-between mb-3">
                         <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
@@ -1141,10 +1171,15 @@ const Bookings = ({ isSubcomponent = false }) => {
                           <button type="button"
                             onClick={() => {
                               setSelectedPetProfile(null);
-                              setBookingForm(prev => ({ ...prev, pet: { name: '', type: '', breed: '', size: 'Small', age: '', weight: '' } }));
+                              const emptyForm = createInitialBookingForm();
+                              setBookingForm(prev => ({
+                                ...prev,
+                                pet: emptyForm.pet,
+                                serviceDetails: { ...prev.serviceDetails, allergies: '' }
+                              }));
                             }}
                             className="text-[8px] font-black text-slate-400 hover:text-rose-500 uppercase tracking-widest flex items-center gap-1 transition-colors">
-                            <X className="h-3 w-3" /> Clear / New Pet
+                            <X className="h-3 w-3" /> Choose another pet
                           </button>
                         )}
                       </div>
@@ -1153,20 +1188,7 @@ const Bookings = ({ isSubcomponent = false }) => {
                           const isSelected = selectedPetProfile?._id === pet._id;
                           return (
                             <button key={pet._id} type="button"
-                              onClick={() => {
-                                setSelectedPetProfile(pet);
-                                setBookingForm(prev => ({
-                                  ...prev,
-                                  pet: { 
-                                    name: pet.name, 
-                                    type: pet.type, 
-                                    breed: pet.breed, 
-                                    size: pet.size || 'Small', 
-                                    age: String(calculateAge(pet.birthday)), 
-                                    weight: String(pet.weight || '5.0') 
-                                  }
-                                }));
-                              }}
+                              onClick={() => handleSelectSavedPet(pet)}
                               className={`flex-shrink-0 min-w-[160px] p-4 rounded-2xl border-2 text-left transition-all ${
                                 isSelected
                                   ? 'border-primary-500 bg-primary-50 shadow-lg shadow-primary-100'
@@ -1193,13 +1215,40 @@ const Bookings = ({ isSubcomponent = false }) => {
                           );
                         })}
                       </div>
-                      <div className="mt-3 flex items-center gap-2 text-[8px] font-bold text-slate-400 uppercase tracking-widest">
+                      {!selectedPetProfile && <div className="mt-3 flex items-center gap-2 text-[8px] font-bold text-slate-400 uppercase tracking-widest">
                         <div className="flex-1 h-px bg-slate-100" />
                         or fill in manually
                         <div className="flex-1 h-px bg-slate-100" />
+                      </div>}
+                    </div>
+                  )}
+                  {!petsLoading && savedPets.length === 0 && (
+                    <div className="mb-6 rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-4 text-center dark:border-slate-700 dark:bg-slate-900/40">
+                      <p className="text-xs font-bold text-slate-600 dark:text-slate-300">No saved pets yet. Enter the pet details below for this booking.</p>
+                    </div>
+                  )}
+                  {selectedPetProfile && (
+                    <div className="mb-6 grid gap-4 rounded-3xl border border-primary-100 bg-primary-50/60 p-4 dark:border-primary-800 dark:bg-primary-950/20 sm:grid-cols-[auto_1fr]">
+                      <img src={bookingForm.pet.photo ? getImageUrl(bookingForm.pet.photo) : '/images/pet-placeholder.png'} alt={bookingForm.pet.name}
+                        className="h-20 w-20 rounded-2xl object-cover ring-2 ring-white dark:ring-slate-800" />
+                      <div className="min-w-0">
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <p className="text-sm font-black text-slate-900 dark:text-white">{bookingForm.pet.name}</p>
+                            <p className="text-xs font-semibold text-slate-500 dark:text-slate-300">{bookingForm.pet.breed} · {bookingForm.pet.age} years old</p>
+                          </div>
+                          <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-[9px] font-black text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300">Selected</span>
+                        </div>
+                        <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1 text-[10px] text-slate-600 dark:text-slate-300 sm:grid-cols-4">
+                          <span>{bookingForm.pet.gender || 'Gender not set'}</span>
+                          <span>{bookingForm.pet.size || 'Size not set'}</span>
+                          <span>{bookingForm.pet.vaccinationStatus || 'Vaccination unknown'}</span>
+                          <span className="truncate">{bookingForm.pet.specialNotes || bookingForm.pet.allergies || 'No special notes'}</span>
+                        </div>
                       </div>
                     </div>
                   )}
+                  {!selectedPetProfile && <>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                     {[
                       { label: 'Pet Name', name: 'pet.name', type: 'text', placeholder: 'e.g. Max', required: true, icon: User },
@@ -1251,19 +1300,17 @@ const Bookings = ({ isSubcomponent = false }) => {
                       placeholder="e.g. Sensitive skin, needs extra care…"
                       className="w-full px-5 py-5 bg-white/40 backdrop-blur-md border border-slate-100 rounded-[1.5rem] text-[13px] font-black text-slate-900 uppercase tracking-tight focus:outline-none focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 focus:bg-white transition-all resize-none shadow-sm placeholder:text-slate-300" />
                   </div>
+                  </>}
                 </div>
 
-                <div className="flex gap-3">
-                  <button type="button" onClick={() => setFormStep(2)}
+                <div className="sticky bottom-3 z-20 flex gap-3 rounded-2xl bg-white/90 p-2 shadow-xl backdrop-blur dark:bg-slate-900/90">
+                  <button type="button" onClick={() => setFormStep(1)}
                     className="px-8 py-4 bg-white border border-slate-100 text-slate-600 rounded-2xl text-[9px] font-black uppercase tracking-widest hover:border-slate-300 transition-all shadow-sm">
                     ← Back
                   </button>
                   <button type="button" onClick={() => {
-                        if (canAdvance(3)) {
-                          // Check if service has add-ons or options, if yes go to step 4, else go to step 5
-                          const hasOptions = (selectedService?.addOns && selectedService.addOns.length > 0) || 
-                                             (selectedService?.pricingRules?.condition && selectedService.pricingRules.condition.enabled);
-                          setFormStep(hasOptions ? 4 : 5);
+                        if (canAdvance(2)) {
+                          setFormStep(3);
                         } else {
                           const { name, type, breed, age, weight } = bookingForm.pet;
                           if (!name?.trim()) toast.info('Pet name is required');
@@ -1275,15 +1322,22 @@ const Bookings = ({ isSubcomponent = false }) => {
                         }
                       }}
                     className="flex-1 py-4 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.25em] shadow-xl shadow-slate-200 hover:bg-primary-600 transition-all active:scale-95">
-                    Continue to Options →
+                    Continue to service details →
                   </button>
                 </div>
               </div>
             )}
 
-            {/* ── STEP 4: Options & Add-Ons ── */}
-            {formStep === 4 && (
+            {/* ── STEP 3: Service-specific details and options ── */}
+            {formStep === 3 && (
               <div className="space-y-4 animate-card-appear">
+                <ServiceSpecificBookingFields
+                  service={selectedService}
+                  details={bookingForm.serviceDetails}
+                  onChange={handleServiceDetailChange}
+                  errors={serviceDetailErrors}
+                  pet={bookingForm.pet}
+                />
                 <div className="bg-white rounded-[2.5rem] border border-slate-100 p-5 sm:p-8 shadow-sm">
                   <div className="flex items-center gap-3 mb-6">
                     <div className="w-10 h-10 bg-primary-50 rounded-2xl flex items-center justify-center text-primary-600">
@@ -1291,7 +1345,7 @@ const Bookings = ({ isSubcomponent = false }) => {
                     </div>
                     <div>
                         <p className="text-[9px] font-black text-primary-600 uppercase tracking-[0.3em]">Personalize</p>
-                        <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight">Service Add-Ons & Conditions</h3>
+                        <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight">Optional extras</h3>
                     </div>
                   </div>
 
@@ -1386,14 +1440,19 @@ const Bookings = ({ isSubcomponent = false }) => {
                   </div>
                 </div>
 
-                <div className="flex gap-3">
-                  <button type="button" onClick={() => setFormStep(3)}
+                <div className="sticky bottom-3 z-20 flex gap-3 rounded-2xl bg-white/90 p-2 shadow-xl backdrop-blur dark:bg-slate-900/90">
+                  <button type="button" onClick={() => setFormStep(2)}
                     className="px-8 py-4 bg-white border border-slate-100 text-slate-600 rounded-2xl text-[9px] font-black uppercase tracking-widest hover:border-slate-300 transition-all shadow-sm">
                     ← Back
                   </button>
-                  <button type="button" onClick={() => setFormStep(5)}
+                  <button type="button" onClick={() => {
+                    const errors = validateServiceDetails(serviceBookingKind, bookingForm.serviceDetails);
+                    setServiceDetailErrors(errors);
+                    if (Object.keys(errors).length) return toast.info(Object.values(errors)[0]);
+                    setFormStep(4);
+                  }}
                     className="flex-1 py-4 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.25em] shadow-xl shadow-slate-200 hover:bg-primary-600 transition-all active:scale-95">
-                    Review & Confirm →
+                    Choose date and time →
                   </button>
                 </div>
               </div>
@@ -1505,6 +1564,28 @@ const Bookings = ({ isSubcomponent = false }) => {
                       </div>
                     </div>
 
+                    <ServiceIntakeSummary
+                      intake={buildServiceIntake(serviceBookingKind, bookingForm.serviceDetails, selectedService)}
+                      service={selectedService}
+                      title="Your service details"
+                      editable
+                      onEdit={() => setFormStep(3)}
+                    />
+
+                    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800">
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <p className="text-[8px] font-black uppercase tracking-widest text-slate-400">Specialist</p>
+                          <p className="mt-1 text-[11px] font-bold text-slate-900 dark:text-white">
+                            {bookingForm.serviceDetails.preferredSpecialistId
+                              ? buildServiceIntake(serviceBookingKind, bookingForm.serviceDetails, selectedService).details.preferredSpecialistName
+                              : 'The store will assign a qualified available specialist.'}
+                          </p>
+                        </div>
+                        <button type="button" onClick={() => setFormStep(3)} className="text-[9px] font-black text-primary-600 dark:text-primary-300">Edit</button>
+                      </div>
+                    </div>
+
                     {/* Voucher section */}
                     <div className="pt-8 border-t border-slate-100">
                       <div className="flex items-center justify-between mb-4">
@@ -1527,7 +1608,7 @@ const Bookings = ({ isSubcomponent = false }) => {
                              </div>
                              <input
                               type="text"
-                               placeholder="PROMO CODE..."
+                               placeholder="Enter voucher code"
                               className={`w-full !pl-16 pr-5 py-5 bg-slate-50 border-2 rounded-[1.5rem] outline-none transition-all font-black text-xs uppercase tracking-[0.25em] shadow-sm ${appliedVoucher 
                                 ? 'border-emerald-500/20 bg-emerald-50 text-emerald-700' 
                                 : 'border-slate-50 bg-slate-50/50 focus:border-primary-500/20 focus:bg-white text-slate-900 placeholder:text-slate-300'
@@ -1549,22 +1630,23 @@ const Bookings = ({ isSubcomponent = false }) => {
                             {isVerifyingVoucher ? (
                               <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                             ) : appliedVoucher ? (
-                              'EJECT'
+                              'Remove voucher'
                             ) : (
-                              'APPLY'
+                              'Use voucher'
                             )}
                           </button>
                         </div>
+                        {!appliedVoucher && <p className="px-1 text-[9px] font-bold text-slate-400">No voucher selected</p>}
 
                         {!appliedVoucher && myVouchers.length > 0 && (
                           <div className="pt-2">
                              <div className="flex items-center justify-between mb-3 px-1">
-                                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Claimed Vouchers</span>
+                                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Available vouchers</span>
                                 <button 
                                   onClick={() => setShowVoucherModal(true)}
                                   className="text-[9px] font-black text-primary-600 uppercase tracking-widest hover:underline"
                                 >
-                                  View All Vouchers ({myVouchers.length})
+                                  View all vouchers ({myVouchers.length})
                                 </button>
                              </div>
                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -1606,7 +1688,7 @@ const Bookings = ({ isSubcomponent = false }) => {
                                 </div>
                                 <div>
                                   <p className="text-[10px] font-black text-emerald-700 uppercase tracking-[0.2em] mb-0.5">{appliedVoucher.code} APPLIED</p>
-                                  <p className="text-[12px] font-black text-emerald-900 uppercase">Saving ₱{appliedVoucher.discountAmount.toLocaleString()}</p>
+                                  <p className="text-[12px] font-black text-emerald-900 uppercase">Saving {formatPeso(appliedVoucher.discountAmount)}</p>
                                 </div>
                               </div>
                             </div>
@@ -1704,14 +1786,14 @@ const Bookings = ({ isSubcomponent = false }) => {
                         {appliedVoucher && (
                           <div className="flex items-center justify-between text-emerald-600 pt-2 border-t border-slate-50">
                             <span className="text-[9px] font-black uppercase tracking-widest">Voucher Discount</span>
-                            <span className="text-xs font-black">- ₱{(appliedVoucher.discountAmount || 0).toLocaleString()}</span>
+                            <span className="text-xs font-black">−{formatPeso(appliedVoucher.discountAmount || 0)}</span>
                           </div>
                         )}
                         <div className="flex items-center justify-between text-slate-500 pt-2 border-t border-slate-50">
                           <span className="text-[9px] font-black uppercase tracking-widest">
                             {getTaxStatusLabel(taxBreakdown)}{taxBreakdown.taxStatus === 'vat_registered' ? ` (${taxBreakdown.vatRatePercent}%)` : ''}
                           </span>
-                          <span className="text-xs font-black">₱{taxBreakdown.vatAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                          <span className="text-xs font-black">{formatPeso(taxBreakdown.vatAmount)}</span>
                         </div>
                       </div>
 
@@ -1784,8 +1866,8 @@ const Bookings = ({ isSubcomponent = false }) => {
                   </div>
                 </div>
 
-                <div className="flex gap-3">
-                  <button type="button" onClick={() => setFormStep(3)}
+                <div className="sticky bottom-3 z-20 flex gap-3 rounded-2xl bg-white/90 p-2 shadow-xl backdrop-blur dark:bg-slate-900/90">
+                  <button type="button" onClick={() => setFormStep(4)}
                     className="px-8 py-4 bg-white border border-slate-100 text-slate-600 rounded-2xl text-[9px] font-black uppercase tracking-widest hover:border-slate-300 transition-all shadow-sm">
                     ← Edit
                   </button>
@@ -1796,7 +1878,7 @@ const Bookings = ({ isSubcomponent = false }) => {
                     {submitting ? (
                       <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Processing...</>
                     ) : (
-                      <><CheckCircle className="h-4 w-4" /> Submit Booking Request</>
+                      <><CheckCircle className="h-4 w-4" /> Continue to proposal</>
                     )}
                   </button>
                 </div>
@@ -1891,7 +1973,7 @@ const Bookings = ({ isSubcomponent = false }) => {
                     >
                       <option value="all">All Statuses</option>
                       <option value="pending">Pending Review</option>
-                      <option value="awaiting_customer_confirmation">Awaiting Your Confirmation</option>
+                      <option value="awaiting_customer_confirmation">Waiting for your confirmation</option>
                       <option value="awaiting_payment">Payment Required</option>
                       <option value="confirmed">Confirmed</option>
                       <option value="processing">Currently Processing</option>
@@ -1945,7 +2027,7 @@ const Bookings = ({ isSubcomponent = false }) => {
                   <div className="text-right">
                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Amount</p>
                     <p className="text-lg font-black text-slate-900 leading-none tracking-tighter">
-                      ₱{(booking.totalPrice || 0).toLocaleString()}
+                      {formatPeso(booking.totalPrice)}
                     </p>
                   </div>
                 </div>
@@ -2135,6 +2217,10 @@ const Bookings = ({ isSubcomponent = false }) => {
                 </div>
               </div>
 
+              {selectedBooking.serviceIntake && (
+                <ServiceIntakeSummary intake={selectedBooking.serviceIntake} service={selectedBooking.service} title="Information you shared" />
+              )}
+
               {/* Deployment Slot */}
               <div className="bg-slate-900 p-4 rounded-2xl text-white flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative overflow-hidden group">
                 <div className="absolute top-0 right-0 w-64 h-64 bg-primary-600/5 rounded-full -translate-y-32 translate-x-32 blur-3xl" />
@@ -2243,21 +2329,8 @@ const Bookings = ({ isSubcomponent = false }) => {
                       <TrendingUp className="h-6 w-6 text-white/50" />
                     </div>
                     <label className="text-[10px] font-black text-primary-100 uppercase tracking-[0.4em] block mb-4 opacity-70">Payment Summary</label>
-                    <div className="space-y-3 mb-6">
-                      <div className="flex justify-between items-center text-[11px] font-black text-white/70 uppercase">
-                        <span>Base Price</span>
-                        <span>₱{((selectedBooking.totalPrice || 0) + (selectedBooking.discountAmount || 0)).toLocaleString()}</span>
-                      </div>
-                      {selectedBooking.discountAmount > 0 && (
-                        <div className="flex justify-between items-center text-[11px] font-black text-emerald-300 uppercase">
-                          <span className="flex items-center gap-1.5"><Tag className="h-3 w-3" /> Discount</span>
-                          <span>- ₱{selectedBooking.discountAmount.toLocaleString()}</span>
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex items-end gap-2 border-t border-white/10 pt-4">
-                      <span className="text-5xl font-black tracking-tighter">₱{selectedBooking.totalPrice?.toLocaleString()}</span>
-                      <span className="text-[14px] font-black text-white/60 uppercase mb-2 tracking-widest">NET</span>
+                    <div className="rounded-2xl bg-white p-4 text-left shadow-inner dark:bg-slate-900">
+                      <PaymentBreakdown summary={selectedPaymentSummary} compact />
                     </div>
                   </div>
                 </div>
@@ -2276,7 +2349,7 @@ const Bookings = ({ isSubcomponent = false }) => {
                       </p>
                       <h4 className="text-2xl font-black uppercase tracking-tighter">
                         {selectedBooking.status === 'approved' ? '✅ Booking Confirmed' :
-                         selectedBooking.status === 'pending' && selectedBooking.paymentStatus === 'paid' ? '⏳ Awaiting Confirmation' :
+                         selectedBooking.status === 'pending' && selectedBooking.paymentStatus === 'paid' ? '⏳ Waiting for confirmation' :
                          selectedBooking.status === 'processing' ? '⚙️ Service In Progress' :
                          selectedBooking.status === 'finished' ? '🎉 Service Finished' :
                          selectedBooking.status === 'completed' ? '✅ Completed' :
@@ -2315,25 +2388,8 @@ const Bookings = ({ isSubcomponent = false }) => {
                       <span className="text-[11px] font-black text-slate-900 uppercase">{selectedBooking.store?.name}</span>
                     </div>
 
-                    <div className="flex items-center justify-between pb-4 border-b border-dashed border-slate-100">
-                      <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Subtotal</span>
-                      <span className="text-sm font-black text-slate-900 tracking-tighter">₱{(selectedBooking.pricingBreakdown?.subtotal || selectedBooking.totalPrice || 0).toLocaleString()}</span>
-                    </div>
-                    {selectedBooking.discountAmount > 0 && (
-                      <div className="flex items-center justify-between">
-                        <span className="text-[9px] font-black text-emerald-600 uppercase tracking-widest">Discount</span>
-                        <span className="text-sm font-black text-emerald-600">-₱{selectedBooking.discountAmount.toLocaleString()}</span>
-                      </div>
-                    )}
-                    <div className="flex items-center justify-between">
-                      <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
-                        {getTaxStatusLabel(selectedBooking.pricingBreakdown)}
-                      </span>
-                      <span className="text-sm font-black text-slate-900">₱{(selectedBooking.pricingBreakdown?.vatAmount || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-                    </div>
-                    <div className="flex items-center justify-between pb-4 border-b border-dashed border-slate-100">
-                      <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Final Total</span>
-                      <span className="text-xl font-black text-slate-900 tracking-tighter">₱{(selectedBooking.totalPrice || 0).toLocaleString()}</span>
+                    <div className="border-y border-dashed border-slate-100 py-4">
+                      <PaymentBreakdown summary={selectedPaymentSummary} compact />
                     </div>
 
                     <div className="flex items-center justify-between">
@@ -2380,11 +2436,11 @@ const Bookings = ({ isSubcomponent = false }) => {
                     className="flex-1 min-w-[220px] h-11 px-4 bg-emerald-600 text-white rounded-xl text-[10px] font-black uppercase tracking-wider hover:bg-emerald-700 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
                   >
                     <CreditCard className="h-4 w-4" />
-                    {bookingActionLoading ? 'Revalidating…' : 'Confirm & Proceed to Payment'}
+                    {bookingActionLoading ? 'Checking booking…' : 'Confirm and pay'}
                   </button>
                 )}
                 {selectedBooking.status === 'awaiting_payment' && selectedBooking.paymentStatus !== 'paid' && (
-                  <button onClick={() => handlePayment(selectedBooking._id)} className="flex-1 min-w-[200px] h-11 px-4 bg-sky-600 text-white rounded-xl text-[10px] font-black uppercase tracking-wider flex items-center justify-center gap-2"><CreditCard className="h-4 w-4" />Retry PayMongo Payment</button>
+                  <button onClick={() => handlePayment(selectedBooking._id)} className="flex-1 min-w-[200px] h-11 px-4 bg-sky-600 text-white rounded-xl text-[10px] font-black uppercase tracking-wider flex items-center justify-center gap-2"><CreditCard className="h-4 w-4" />Try PayMongo again</button>
                 )}
                 {['pending', 'awaiting_customer_confirmation', 'awaiting_payment'].includes(selectedBooking.status) && selectedBooking.paymentStatus !== 'paid' && (
                   <button
@@ -2458,7 +2514,7 @@ const Bookings = ({ isSubcomponent = false }) => {
               ) : (
                 <div className="text-center py-8">
                   <Ticket className="h-10 w-10 text-slate-200 mx-auto mb-3" />
-                  <p className="text-[11px] text-slate-500 font-bold uppercase tracking-widest px-8">No claimed vouchers found</p>
+                  <p className="text-[11px] text-slate-500 font-bold uppercase tracking-widest px-8">No vouchers available</p>
                 </div>
               )}
             </div>
@@ -2468,7 +2524,7 @@ const Bookings = ({ isSubcomponent = false }) => {
                     onClick={() => navigate('/vouchers')}
                     className="w-full py-3 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-xl hover:bg-primary-600 transition-all active:scale-[0.98]"
                 >
-                    Explore More Discounts
+                    Find more vouchers
                 </button>
             </div>
           </div>

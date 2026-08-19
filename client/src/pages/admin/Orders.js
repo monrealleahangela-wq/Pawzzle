@@ -5,6 +5,7 @@ import { adminOrderService, deliveryService, getImageUrl } from '../../services/
 import { ShoppingBag, Eye, Package, Filter, ChevronDown, Search, Link2, Copy } from 'lucide-react';
 import { formatTime12h } from '../../utils/timeFormatters';
 import { useRealTimeUpdates } from '../../hooks/useRealTimeUpdates';
+import { formatPeso } from '../../utils/paymentSummary';
 
 const AdminOrders = () => {
   // Real-time Updates
@@ -220,7 +221,7 @@ const AdminOrders = () => {
                         </div>
                       </td>
                       <td className="px-6 py-4">
-                        <p className="font-medium text-slate-900">₱{(order.totalAmount || 0).toLocaleString()}</p>
+                        <p className="font-medium text-slate-900">{formatPeso(order.totalAmount)}</p>
                         <p className="text-xs text-slate-500 uppercase">{order.paymentMethod ? order.paymentMethod.replace('_', ' ') : 'PENDING'}</p>
                       </td>
                       <td className="px-6 py-4">
@@ -274,7 +275,7 @@ const AdminOrders = () => {
                   </span>
                 </div>
                 <div className="flex justify-between items-center py-2 border-t border-slate-100">
-                  <p className="text-sm font-bold text-slate-900">₱{(order.totalAmount || 0).toLocaleString()}</p>
+                  <p className="text-sm font-bold text-slate-900">{formatPeso(order.totalAmount)}</p>
                   <Link to={`/admin/orders/${order._id}`} className="text-xs font-bold text-primary-600">View Details</Link>
                 </div>
               </div>

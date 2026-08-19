@@ -22,6 +22,7 @@ const {
 } = require('../services/bookingLifecycleService');
 const { getStaffSpecializationRole, getProfessionalVerificationStatus } = require('../utils/staffSpecialization');
 const { normalizeRefundPolicy, snapshotRefundPolicy, requiresAcknowledgment } = require('../utils/refundPolicy');
+const { prepareServiceIntake } = require('../utils/bookingIntake');
 
 const canStaffManageBooking = (user, booking) => {
   if (!isOperationalStaff(user) || isStoreAdmin(user) || isPlatformAdmin(user)) return false;
@@ -218,7 +219,8 @@ const createBooking = async (req, res) => {
       voucherCode,
       selectedAddOns,
       selectedConditions,
-      petProfileId
+      petProfileId,
+      serviceIntake
     } = req.body;
 
     // Check if booking date/time is in the past
@@ -230,10 +232,14 @@ const createBooking = async (req, res) => {
     }
 
     // Get service details
-    const service = await Service.findById(serviceId).populate('store');
+    const service = await Service.findById(serviceId)
+      .populate('store')
+      .populate('assignedStaff', 'firstName lastName');
     if (!service || !service.isActive) {
       return res.status(404).json({ message: 'Service not found or unavailable' });
     }
+    const preparedIntake = prepareServiceIntake(service, serviceIntake);
+    if (preparedIntake.error) return res.status(400).json({ message: preparedIntake.error });
     if (!normalizeTaxConfiguration(service.store?.taxConfiguration).isConfigured) {
       return res.status(409).json({ message: 'Store tax configuration is missing. Booking payment is temporarily unavailable.' });
     }
@@ -349,6 +355,7 @@ const createBooking = async (req, res) => {
       staff: null,
       pet,
       petProfile: linkedPetProfile?._id || null,
+      serviceIntake: preparedIntake.value,
       selectedAddOns: resolvedAddOns,
       selectedConditions: resolvedConditions,
       pricingBreakdown: breakdown,

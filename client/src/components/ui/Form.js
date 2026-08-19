@@ -13,7 +13,7 @@ const Input = React.forwardRef(({
   return (
     <div className="space-y-2">
       {label && (
-        <label className="text-sm font-medium text-neutral-700">
+        <label className="text-sm font-medium text-secondary">
           {label}
           {required && <span className="text-error-500 ml-1">*</span>}
         </label>
@@ -21,7 +21,7 @@ const Input = React.forwardRef(({
       <input
         type={type}
         className={cn(
-          "flex h-9 w-full rounded-lg border border-neutral-300 bg-white/80 backdrop-blur-sm px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-neutral-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 transition-all duration-200 hover:border-neutral-400",
+          "flex h-9 w-full rounded-lg border border-neutral-300 bg-white/80 px-3 py-2 text-sm text-default backdrop-blur-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-neutral-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:text-neutral-400 disabled:opacity-60 transition-all duration-200 hover:border-neutral-400",
           error && "border-error-500 focus-visible:ring-error-500 hover:border-error-600",
           className
         )}
@@ -31,7 +31,7 @@ const Input = React.forwardRef(({
       {helperText && (
         <p className={cn(
           "text-xs",
-          error ? "text-error-600" : "text-neutral-500"
+          error ? "text-error-600" : "text-muted"
         )}>
           {helperText}
         </p>
@@ -53,14 +53,14 @@ const Textarea = React.forwardRef(({
   return (
     <div className="space-y-2">
       {label && (
-        <label className="text-sm font-medium text-neutral-700">
+        <label className="text-sm font-medium text-secondary">
           {label}
           {required && <span className="text-error-500 ml-1">*</span>}
         </label>
       )}
       <textarea
         className={cn(
-          "flex min-h-[72px] w-full rounded-lg border border-neutral-300 bg-white/80 backdrop-blur-sm px-3 py-2 text-sm ring-offset-background placeholder:text-neutral-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 transition-all duration-200 hover:border-neutral-400 resize-none",
+          "flex min-h-[72px] w-full rounded-lg border border-neutral-300 bg-white/80 px-3 py-2 text-sm text-default backdrop-blur-sm ring-offset-background placeholder:text-neutral-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:text-neutral-400 disabled:opacity-60 transition-all duration-200 hover:border-neutral-400 resize-none",
           error && "border-error-500 focus-visible:ring-error-500 hover:border-error-600",
           className
         )}
@@ -70,7 +70,7 @@ const Textarea = React.forwardRef(({
       {helperText && (
         <p className={cn(
           "text-xs",
-          error ? "text-error-600" : "text-neutral-500"
+          error ? "text-error-600" : "text-muted"
         )}>
           {helperText}
         </p>
@@ -93,14 +93,14 @@ const Select = React.forwardRef(({
   return (
     <div className="space-y-2">
       {label && (
-        <label className="text-sm font-medium text-neutral-700">
+        <label className="text-sm font-medium text-secondary">
           {label}
           {required && <span className="text-error-500 ml-1">*</span>}
         </label>
       )}
       <select
         className={cn(
-          "flex h-9 w-full rounded-lg border border-neutral-300 bg-white/80 backdrop-blur-sm px-3 py-2 text-sm ring-offset-background placeholder:text-neutral-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 transition-all duration-200 hover:border-neutral-400 cursor-pointer",
+          "flex h-9 w-full rounded-lg border border-neutral-300 bg-white/80 px-3 py-2 text-sm text-default backdrop-blur-sm ring-offset-background placeholder:text-neutral-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:text-neutral-400 disabled:opacity-60 transition-all duration-200 hover:border-neutral-400 cursor-pointer",
           error && "border-error-500 focus-visible:ring-error-500 hover:border-error-600",
           className
         )}
@@ -112,7 +112,7 @@ const Select = React.forwardRef(({
       {helperText && (
         <p className={cn(
           "text-xs",
-          error ? "text-error-600" : "text-neutral-500"
+          error ? "text-error-600" : "text-muted"
         )}>
           {helperText}
         </p>
@@ -145,7 +145,7 @@ const Checkbox = React.forwardRef(({
           {...props}
         />
         {label && (
-          <label className="text-sm font-medium text-neutral-700 cursor-pointer">
+          <label className="text-sm font-medium text-secondary cursor-pointer">
             {label}
             {required && <span className="text-error-500 ml-1">*</span>}
           </label>
@@ -154,7 +154,7 @@ const Checkbox = React.forwardRef(({
       {helperText && (
         <p className={cn(
           "text-xs ml-6",
-          error ? "text-error-600" : "text-neutral-500"
+          error ? "text-error-600" : "text-muted"
         )}>
           {helperText}
         </p>

@@ -70,7 +70,7 @@ const Services = () => {
       setServices(response.data.services || []);
     } catch (error) {
       console.error('Error fetching services:', error);
-      toast.error('Failed to load services');
+      toast.error('We could not load the services. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -126,7 +126,7 @@ const Services = () => {
     }
 
     setLoading(true);
-    toast.info('Acquiring location...');
+    toast.info('Finding your location...');
 
     const options = {
       enableHighAccuracy: true,
@@ -142,7 +142,7 @@ const Services = () => {
       setUserLocation(loc);
       setFilters(prev => ({ ...prev, nearMe: true, city: '' }));
       setLoading(false);
-      toast.success('Location acquired! Sorting nearest services.');
+      toast.success('Location found! Showing nearby services.');
     };
 
     const error = (err) => {

@@ -3,6 +3,8 @@ import { AlertCircle, Camera, CheckCircle2, Clock3, FileText, Image, Loader2, Me
 import { toast } from 'react-toastify';
 import { adminBookingService, getImageUrl, petCareService } from '../../services/apiService';
 import socket from '../../utils/socket';
+import PaymentBreakdown from '../payments/PaymentBreakdown';
+import { bookingPaymentSummary } from '../../utils/paymentSummary';
 
 const stageLabels = {
   proposal_received: 'Proposal received',
@@ -361,7 +363,10 @@ const ServiceCommunicationPanel = ({ booking, staffMode = false, onBookingUpdate
           </div>
           {summary.serviceSummary.notes && <div className="mt-2 rounded-lg bg-white p-2"><p className="text-[8px] font-bold uppercase text-slate-400">Service notes</p><p className="mt-1 whitespace-pre-wrap text-[11px] text-slate-700">{summary.serviceSummary.notes}</p></div>}
           {summary.serviceSummary.aftercareInstructions && <div className="mt-2 rounded-lg border border-emerald-100 bg-emerald-50 p-2"><p className="text-[8px] font-bold uppercase text-emerald-700">Aftercare instructions</p><p className="mt-1 whitespace-pre-wrap text-[11px] text-emerald-900">{summary.serviceSummary.aftercareInstructions}</p></div>}
-          <div className="mt-2 flex flex-wrap justify-between gap-2 border-t border-slate-200 pt-2 text-[10px] text-slate-600"><span>{new Date(summary.serviceSummary.bookingDate).toLocaleDateString()} · {summary.serviceSummary.startTime}</span><span className="font-bold">PayMongo {summary.serviceSummary.paymentStatus} · ₱{Number(summary.serviceSummary.totalPrice || 0).toFixed(2)} · VAT ₱{Number(summary.serviceSummary.pricingBreakdown?.vatAmount || 0).toFixed(2)}</span></div>
+          <div className="mt-2 border-t border-slate-200 pt-2">
+            <div className="mb-2 flex flex-wrap justify-between gap-2 text-[10px] text-slate-600"><span>{new Date(summary.serviceSummary.bookingDate).toLocaleDateString()} · {summary.serviceSummary.startTime}</span><span className="font-bold">PayMongo · {summary.serviceSummary.paymentStatus}</span></div>
+            <PaymentBreakdown summary={bookingPaymentSummary(summary.serviceSummary)} compact />
+          </div>
         </section>
       )}
 
