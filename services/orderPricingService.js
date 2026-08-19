@@ -5,6 +5,7 @@ const Voucher = require('../models/Voucher');
 const DeliveryFeeRule = require('../models/DeliveryFeeRule');
 const DeliveryFeeService = require('./deliveryFeeService');
 const { calculateTransactionTax, normalizeTaxConfiguration, roundMoney } = require('../utils/taxCalculator');
+const { getPetAvailabilityIssue } = require('./petAvailabilityService');
 
 const idsEqual = (a, b) => a && b && a.toString() === b.toString();
 
@@ -59,6 +60,7 @@ const calculateOrderPricing = async ({ items, requestedDeliveryMethod, shippingA
   let subtotal = 0;
   let storeId = null;
   let hasPet = false;
+  const petIds = new Set();
 
   for (const item of items) {
     const quantity = Number(item.quantity);
@@ -66,8 +68,12 @@ const calculateOrderPricing = async ({ items, requestedDeliveryMethod, shippingA
     let itemDoc;
     if (item.itemType === 'pet') {
       hasPet = true;
+      const petId = String(item.itemId);
+      if (petIds.has(petId)) throw new Error('Each individual pet can appear only once in an order.');
+      petIds.add(petId);
       itemDoc = await Pet.findById(item.itemId);
-      if (!itemDoc || !itemDoc.isAvailable) throw new Error(`Pet "${itemDoc?.name || item.itemId}" is not available.`);
+      const issue = getPetAvailabilityIssue(itemDoc, quantity);
+      if (issue) throw new Error(issue);
     } else if (item.itemType === 'product') {
       itemDoc = await Product.findById(item.itemId);
       if (!itemDoc || !itemDoc.isActive || itemDoc.stockQuantity < quantity) {

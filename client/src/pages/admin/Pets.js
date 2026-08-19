@@ -3,9 +3,10 @@ import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { adminPetService, uploadService, adoptionService, getImageUrl } from '../../services/apiService';
 import { useAuth } from '../../contexts/AuthContext';
-import { Heart, Plus, Edit, Trash2, Filter, X, Search, ChevronLeft, ChevronRight, Activity, Shield, Image as ImageIcon, Zap, ArrowUpRight, Info, CheckCircle, PawPrint, Home, History, ClipboardList, Clock, CheckCircle2, XCircle, MessageSquare, UserCheck, Minus } from 'lucide-react';
+import { Heart, Plus, Edit, Trash2, Filter, X, Search, ChevronLeft, ChevronRight, Activity, Shield, Image as ImageIcon, Zap, ArrowUpRight, Info, CheckCircle, PawPrint, Home, History, ClipboardList, Clock, CheckCircle2, XCircle, MessageSquare, UserCheck, Minus, Copy } from 'lucide-react';
 import { formatTime12h } from '../../utils/timeFormatters';
 import { PLATFORM_ADMIN_ROLES, STORE_ADMIN_ROLES, hasUiActionPermission } from '../../utils/authorization';
+import PetListingFormModal from '../../components/pets/PetListingFormModal';
 
 const AdminPets = () => {
   const { user } = useAuth();
@@ -22,6 +23,7 @@ const AdminPets = () => {
   const canManageAdoptions = hasUiActionPermission(user, 'orders', 'update', isAdmin);
 
   const [showAddForm, setShowAddForm] = useState(false);
+  const [showAdvancedForm, setShowAdvancedForm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -43,9 +45,12 @@ const AdminPets = () => {
     dewormed: false,
     spayedNeutered: false,
     listingType: 'sale',
-    quantity: 1,
     specialNeeds: '', images: [], isAvailable: true,
     pedigreePapers: false,
+    pcciRegistration: { status: 'not_sure', registrationNumber: '', certificateUrl: '', informationStatus: 'not_provided' },
+    supportingDocuments: [],
+    healthNotes: '',
+    availabilityNotes: '',
     vaccinationRecords: [],
     dewormingRecords: [],
     vetRecords: [],
@@ -183,7 +188,7 @@ const AdminPets = () => {
       setPetForm({
         ...initialPetState,
         ...pet,
-        price: pet.price || '',
+        price: pet.price ?? '',
         age: pet.age || '',
         ageYears: years,
         ageMonths: months,
@@ -191,9 +196,15 @@ const AdminPets = () => {
         adoptionDetails: {
           ...initialPetState.adoptionDetails,
           ...(pet.adoptionDetails || {})
-        }
+        },
+        pcciRegistration: {
+          ...initialPetState.pcciRegistration,
+          ...(pet.pcciRegistration || {})
+        },
+        supportingDocuments: pet.supportingDocuments || []
       });
       setModalTab('identity');
+      setShowAdvancedForm(false);
       setShowAddForm(true);
     } catch (error) {
       toast.error('Error loading pet details');
@@ -204,7 +215,41 @@ const AdminPets = () => {
     setEditingPet(null);
     setPetForm(initialPetState);
     setModalTab('identity');
+    setShowAdvancedForm(false);
     setShowAddForm(true);
+  };
+
+  const handleDuplicateListingDetails = (pet) => {
+    setEditingPet(null);
+    setPetForm({
+      ...initialPetState,
+      species: pet.species || initialPetState.species,
+      breed: pet.breed || '',
+      age: pet.age || '',
+      ageUnit: pet.ageUnit || 'years',
+      ageYears: pet.ageUnit === 'years' ? (pet.age || '') : '',
+      ageMonths: pet.ageUnit === 'months' ? (pet.age || '') : '',
+      birthday: pet.birthday ? new Date(pet.birthday).toISOString().split('T')[0] : '',
+      size: pet.size || initialPetState.size,
+      description: pet.description || '',
+      price: pet.price ?? '',
+      listingType: pet.listingType || initialPetState.listingType,
+      isNegotiable: Boolean(pet.isNegotiable),
+      fulfillmentType: pet.fulfillmentType || initialPetState.fulfillmentType,
+      allowedPaymentMethods: pet.allowedPaymentMethods || initialPetState.allowedPaymentMethods,
+      paymentConfig: pet.paymentConfig || initialPetState.paymentConfig,
+      depositAmount: pet.depositAmount || 0,
+      paymentType: pet.paymentType || initialPetState.paymentType,
+      adoptionDetails: {
+        ...initialPetState.adoptionDetails,
+        ...(pet.adoptionDetails || {})
+      },
+      status: 'available'
+    });
+    setModalTab('identity');
+    setShowAdvancedForm(false);
+    setShowAddForm(true);
+    toast.info('Shared listing details copied. Add this pet\'s unique identity, photo, and records.');
   };
 
   const handleSubmit = async (e) => {
@@ -259,18 +304,27 @@ const AdminPets = () => {
       }
 
       // Enforce strict system defaults for this flow
-      const payload = { 
-        ...petForm, 
+      const pcciCertificate = petForm.pcciRegistration?.certificateUrl || '';
+      const individualPetForm = { ...petForm };
+      delete individualPetForm.quantity;
+      delete individualPetForm.reservation;
+      const payload = {
+        ...individualPetForm,
         age: finalAge, 
         ageUnit: finalUnit,
         price: parseFloat(petForm.price) || 0,
         weight: parseFloat(petForm.weight) || 0,
-        quantity: parseInt(petForm.quantity) || 1,
         fulfillmentType: 'pickup_only',
         allowedPaymentMethods: petForm.allowedPaymentMethods,
         paymentConfig: petForm.paymentConfig,
         depositAmount: parseFloat(petForm.depositAmount) || 0,
-        paymentType: 'online_only'
+        paymentType: 'online_only',
+        pedigreePapers: Boolean(pcciCertificate),
+        pcciRegistration: {
+          ...petForm.pcciRegistration,
+          status: pcciCertificate ? 'yes' : (petForm.pcciRegistration?.status || 'not_sure'),
+          informationStatus: pcciCertificate ? 'customer_provided' : 'not_provided'
+        }
       };
       if (editingPet) {
         await adminPetService.updatePet(editingPet._id, payload);
@@ -323,8 +377,8 @@ const AdminPets = () => {
     }));
   };
 
-  const handleImageUpload = async (e) => {
-    const files = e.target.files;
+  const handleImageUpload = async (input, replacePrimary = false) => {
+    const files = Array.isArray(input) ? input : Array.from(input.target?.files || []);
     if (!files || files.length === 0) return;
     setSubmitting(true);
     const formData = new FormData();
@@ -332,11 +386,51 @@ const AdminPets = () => {
     try {
       const response = await uploadService.uploadMultipleImages(formData);
       const newUrls = response.data.urls || response.data.imageUrls || [];
-      setPetForm(prev => ({ ...prev, images: [...prev.images, ...newUrls] }));
+      setPetForm(prev => ({ ...prev, images: replacePrimary ? [...newUrls, ...prev.images.slice(1)] : [...prev.images, ...newUrls] }));
       toast.success('Images uploaded');
     } catch (error) {
       console.error('Upload Error:', error);
       toast.error('Upload failed. Please ensure file is valid JPG or PNG.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleListingDocumentUpload = async (files, kind, replaceIndex = null) => {
+    if (!files?.length) return;
+    setSubmitting(true);
+    try {
+      const uploaded = [];
+      for (const file of files) {
+        const formData = new FormData();
+        formData.append('document', file);
+        const response = await uploadService.uploadDocument(formData);
+        uploaded.push({ url: response.data.url, name: response.data.originalName || file.name });
+      }
+
+      setPetForm(current => {
+        if (kind === 'pcci') {
+          return {
+            ...current,
+            pedigreePapers: true,
+            pcciRegistration: {
+              ...current.pcciRegistration,
+              status: 'yes',
+              certificateUrl: uploaded[0].url,
+              informationStatus: 'customer_provided'
+            }
+          };
+        }
+        if (kind === 'vaccination') return { ...current, vetRecords: [uploaded[0].url] };
+        const documents = [...(current.supportingDocuments || [])];
+        if (replaceIndex !== null) documents.splice(replaceIndex, 1, uploaded[0]);
+        else documents.push(...uploaded);
+        return { ...current, supportingDocuments: documents };
+      });
+      toast.success('Document uploaded successfully');
+    } catch (error) {
+      console.error('Document upload error:', error);
+      toast.error('Document upload failed. Please check the file type and try again.');
     } finally {
       setSubmitting(false);
     }
@@ -366,7 +460,7 @@ const AdminPets = () => {
     return map[status] || 'slate';
   };
   const getVaccColor = (status) => {
-    const map = { fully_vaccinated: 'emerald', partially_vaccinated: 'amber', not_vaccinated: 'rose' };
+    const map = { complete: 'emerald', partial: 'amber', none: 'rose' };
     return map[status] || 'slate';
   };
 
@@ -397,7 +491,7 @@ const AdminPets = () => {
             Manage <span className="text-rose-500">Pets</span>
           </h1>
           <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" /> Track and manage your pet inventory and sales
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" /> Manage individual pet listings and sales
           </p>
         </div>
         {canCreate && (
@@ -413,7 +507,7 @@ const AdminPets = () => {
           onClick={() => setActiveTab('inventory')}
           className={`px-8 py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all flex items-center gap-3 ${activeTab === 'inventory' ? 'bg-slate-900 text-white shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}
         >
-          <PawPrint className="h-4 w-4" /> Pet Inventory
+          <PawPrint className="h-4 w-4" /> Pet Listings
         </button>
         <button
           onClick={() => setActiveTab('sales')}
@@ -450,7 +544,7 @@ const AdminPets = () => {
                 { field: 'species', label: 'Species', options: ['dog', 'cat', 'bird', 'fish', 'rabbit', 'hamster', 'reptile'] },
                 { field: 'size', label: 'Size', options: ['small', 'medium', 'large', 'extra_large'] },
                 { field: 'gender', label: 'Gender', options: ['male', 'female'] },
-                { field: 'isAvailable', label: 'Availability', options: [{ v: 'true', l: 'AVAILABLE' }, { v: 'false', l: 'RESERVED' }] }
+                { field: 'isAvailable', label: 'Availability', options: [{ v: 'true', l: 'AVAILABLE' }, { v: 'false', l: 'NOT AVAILABLE' }] }
               ].map(({ field, label, options }) => (
                 <div key={field} className="space-y-2">
                   <label className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] px-1">{label}</label>
@@ -501,7 +595,7 @@ const AdminPets = () => {
                           pet.status === 'reserved' ? 'bg-secondary-500 text-white' :
                             'bg-rose-500 text-white'
                           }`}>
-                          {pet.status === 'adopted' ? 'SOLD' : pet.status?.toUpperCase() || (pet.isAvailable ? 'AVAILABLE' : 'RESERVED')}
+                          {pet.status?.toUpperCase() || (pet.isAvailable ? 'AVAILABLE' : 'UNAVAILABLE')}
                         </span>
                         <span className={`px-2.5 py-1 rounded-2xl text-[9px] font-black uppercase tracking-wider shadow-sm ${
                           pet.approvalStatus === 'approved' ? 'bg-emerald-100 text-emerald-600 border border-emerald-200' :
@@ -511,7 +605,7 @@ const AdminPets = () => {
                           {pet.approvalStatus?.toUpperCase() || 'PENDING'}
                         </span>
                         <span className={`px-2.5 py-1 rounded-2xl text-[9px] font-black uppercase tracking-wider shadow-sm bg-${getVaccColor(pet.vaccinationStatus)}-500 text-white`}>
-                          {pet.vaccinationStatus === 'fully_vaccinated' ? 'FULLY VAX' : pet.vaccinationStatus === 'partially_vaccinated' ? 'PARTIAL VAX' : 'NO VAX'}
+                          {pet.vaccinationStatus === 'complete' ? 'VACCINATED' : pet.vaccinationStatus === 'partial' ? 'PARTIAL VAX' : 'NO VAX'}
                         </span>
                       </div>
                     </div>
@@ -523,8 +617,15 @@ const AdminPets = () => {
                           <p className="text-[10px] font-black text-rose-500 uppercase tracking-widest leading-none mb-1.5">{pet.species} · {pet.gender}</p>
                           <h3 className="text-[16px] font-black text-slate-900 uppercase leading-none truncate mb-2">{pet.name}</h3>
                           <p className="text-[11px] font-bold text-slate-400 uppercase truncate tracking-tight">{pet.breed} · {pet.age} {pet.ageUnit}</p>
+                          <p className="mt-1 text-[9px] font-black uppercase tracking-wider text-slate-400">ID {String(pet._id).slice(-8).toUpperCase()} · PCCI {pet.pcciRegistration?.status === 'yes' ? 'provided' : 'not provided'}</p>
                         </div>
                       </div>
+
+                      {pet.quantity !== undefined && pet.quantity !== null && Number(pet.quantity) !== 1 && (
+                        <div className="rounded-xl border border-amber-200 bg-amber-50 p-2.5 text-[9px] font-bold leading-4 text-amber-800">
+                          Legacy quantity record (quantity {pet.quantity}). Checkout is blocked until each real pet is reviewed and entered separately.
+                        </div>
+                      )}
 
                       {/* Price + Action row */}
                       <div className="mt-auto pt-4 border-t border-slate-50 flex items-center justify-between gap-2">
@@ -532,6 +633,15 @@ const AdminPets = () => {
                           ₱{(pet.price || 0).toLocaleString()}
                         </span>
                         <div className="flex gap-1.5 shrink-0">
+                          {canCreate && (
+                            <button
+                              onClick={() => handleDuplicateListingDetails(pet)}
+                              className="p-2 sm:p-3 bg-primary-50 text-primary-600 rounded-2xl hover:bg-primary-600 hover:text-white transition-all border border-primary-100 active:scale-95"
+                              title="Duplicate shared listing details"
+                            >
+                              <Copy className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                            </button>
+                          )}
                           {canUpdate && (
                             <button 
                               onClick={() => handleEditPet(pet._id)}
@@ -694,7 +804,21 @@ const AdminPets = () => {
         </div>
       )}
 
-      {showAddForm && (
+      {showAddForm && !showAdvancedForm && (
+        <PetListingFormModal
+          editingPet={editingPet}
+          petForm={petForm}
+          setPetForm={setPetForm}
+          loading={submitting}
+          onClose={() => { setShowAddForm(false); setEditingPet(null); }}
+          onSubmit={handleSubmit}
+          onImageUpload={handleImageUpload}
+          onDocumentUpload={handleListingDocumentUpload}
+          onAdvanced={() => setShowAdvancedForm(true)}
+        />
+      )}
+
+      {showAddForm && showAdvancedForm && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-2 overflow-hidden animate-fade-in">
           <div className="bg-white w-full max-w-4xl rounded-[2rem] overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300 flex flex-col max-h-[95vh] border border-slate-200">
             <header className="p-5 border-b border-slate-100 flex items-center justify-between bg-white shrink-0">
@@ -998,23 +1122,21 @@ const AdminPets = () => {
                       <div className="p-8 bg-emerald-50 rounded-[2.5rem] border border-emerald-100">
                          <div className="flex items-center gap-3 mb-4">
                             <CheckCircle className="h-4 w-4 text-emerald-500" />
-                            <h4 className="text-[10px] font-black uppercase tracking-widest text-emerald-600">Inventory Status</h4>
+                            <h4 className="text-[10px] font-black uppercase tracking-widest text-emerald-600">Pet Availability</h4>
                          </div>
-                         <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-1.5">
-                               <label className="text-[9px] font-black text-emerald-900/40 uppercase tracking-widest">Stock Quantity</label>
-                               <input type="number" value={petForm.quantity} onChange={e => setPetForm(p => ({ ...p, quantity: e.target.value }))}
-                                 className="w-full px-4 py-3 bg-white border border-emerald-200 text-slate-900 rounded-xl text-[11px] font-black outline-none" />
-                            </div>
+                         <div className="space-y-3">
                             <div className="space-y-1.5">
                                <label className="text-[9px] font-black text-emerald-900/40 uppercase tracking-widest">Current Status</label>
-                               <select value={petForm.status} onChange={e => setPetForm(p => ({ ...p, status: e.target.value }))}
+                               <select disabled={Boolean(editingPet && (['sold', 'adopted'].includes(editingPet.status) || (editingPet.status === 'reserved' && (editingPet.reservation?.order || editingPet.reservation?.adoptionRequest))))} value={petForm.status} onChange={e => setPetForm(p => ({ ...p, status: e.target.value }))}
                                  className="w-full px-4 py-3 bg-white border border-emerald-200 text-slate-900 rounded-xl text-[11px] font-black uppercase outline-none">
                                   <option value="available">Available</option>
                                   <option value="reserved">Reserved</option>
+                                  <option value="unavailable">Unavailable</option>
                                   <option value="sold">Sold</option>
+                                  <option value="adopted">Adopted</option>
                                </select>
                             </div>
+                            <p className="text-[9px] font-bold leading-4 text-emerald-800/70">Each listing is one actual pet. Use Duplicate Listing Details to start another individual record.</p>
                          </div>
                       </div>
                     </div>

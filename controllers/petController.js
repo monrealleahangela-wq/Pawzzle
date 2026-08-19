@@ -3,6 +3,35 @@ const Pet = require('../models/Pet');
 const Store = require('../models/Store');
 const { isPlatformAdmin, isStoreAdmin, isOperationalStaff } = require('../config/permissions');
 const { canOperateStore } = require('../utils/authorizationPolicy');
+const { isIndividualPetRecord } = require('../services/petAvailabilityService');
+
+const toPublicPet = (pet) => {
+  const publicPet = pet?.toObject ? pet.toObject() : { ...pet };
+  delete publicPet.vetRecords;
+  delete publicPet.proofOfOwnership;
+  delete publicPet.permits;
+  delete publicPet.supportingDocuments;
+  delete publicPet.pickupInstructions;
+
+  if (!isIndividualPetRecord(publicPet)) {
+    publicPet.isAvailable = false;
+    publicPet.status = 'unavailable';
+    publicPet.legacyGroupedListing = true;
+  }
+  delete publicPet.quantity;
+  delete publicPet.reservation;
+
+  const pcci = publicPet.pcciRegistration;
+  if (pcci) {
+    publicPet.pcciRegistration = {
+      status: pcci.status,
+      registrationNumber: pcci.registrationNumber || '',
+      informationStatus: pcci.informationStatus,
+      certificateAvailable: Boolean(pcci.certificateUrl)
+    };
+  }
+  return publicPet;
+};
 
 // Get all pets with filtering
 const getAllPets = async (req, res) => {
@@ -80,15 +109,22 @@ const getAllPets = async (req, res) => {
 
     console.log('🔍 Filter being used:', filter);
 
+    const publicListingFilter = {
+      $and: [
+        filter,
+        { $or: [{ quantity: { $exists: false } }, { quantity: null }, { quantity: 1 }] }
+      ]
+    };
+
     const skip = (page - 1) * limit;
-    const pets = await Pet.find(filter)
+    const pets = await Pet.find(publicListingFilter)
       .populate('addedBy', 'username firstName lastName')
-      .populate('store', 'name contactInfo.address')
+      .populate('store', 'name contactInfo.address ratings stats verificationStatus')
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(parseInt(limit));
 
-    const total = await Pet.countDocuments(filter);
+    const total = await Pet.countDocuments(publicListingFilter);
 
     console.log('📊 Found pets:', pets.length);
     console.log('📊 Total pets:', total);
@@ -102,7 +138,7 @@ const getAllPets = async (req, res) => {
     }
 
     res.json({
-      pets,
+      pets: pets.map(toPublicPet),
       pagination: {
         currentPage: parseInt(page),
         totalPages: Math.ceil(total / limit),
@@ -122,7 +158,7 @@ const getPetById = async (req, res) => {
   try {
     const pet = await Pet.findById(req.params.id)
       .populate('addedBy', 'username firstName lastName')
-      .populate('store', 'name contactInfo.address');
+      .populate('store', 'name contactInfo.address ratings stats verificationStatus');
 
     if (!pet || pet.isDeleted) {
       return res.status(404).json({ message: 'Pet not found' });
@@ -132,7 +168,8 @@ const getPetById = async (req, res) => {
       return res.status(403).json({ message: 'Access denied for this pet listing.' });
     }
 
-    res.json({ pet });
+    const isAdminRequest = req.baseUrl?.includes('/admin');
+    res.json({ pet: isAdminRequest ? pet : toPublicPet(pet) });
   } catch (error) {
     console.error('Get pet error:', error);
     res.status(500).json({ message: 'Server error' });
@@ -173,8 +210,15 @@ const createPet = async (req, res) => {
       }
     }
 
+    const { quantity, reservation, ...listingData } = req.body;
+    const status = ['available', 'reserved', 'sold', 'adopted', 'unavailable'].includes(listingData.status)
+      ? listingData.status
+      : 'available';
     const petData = {
-      ...req.body,
+      ...listingData,
+      quantity: 1,
+      status,
+      isAvailable: status === 'available',
       paymentType: 'online_only',
       allowedPaymentMethods: ['paymongo'],
       paymentConfig: req.body.paymentConfig === 'deposit_first' ? 'deposit_first' : 'full_payment',
@@ -248,10 +292,21 @@ const updatePet = async (req, res) => {
     console.log('📝 updatePet PERMISSION GRANTED');
 
     // List of fields that shouldn't be updated directly via this endpoint
-    const { _id, id, addedBy, store, createdAt, updatedAt, ratings, ...updateData } = req.body;
+    const { _id, id, addedBy, store, createdAt, updatedAt, ratings, quantity, reservation, ...updateData } = req.body;
     updateData.paymentType = 'online_only';
     updateData.allowedPaymentMethods = ['paymongo'];
     updateData.paymentConfig = updateData.paymentConfig === 'deposit_first' ? 'deposit_first' : 'full_payment';
+
+    const targetStatus = updateData.status || pet.status;
+    if (['sold', 'adopted'].includes(pet.status) && targetStatus !== pet.status) {
+      return res.status(409).json({ message: `A ${pet.status} pet listing cannot be made purchasable again.` });
+    }
+    const hasOwnedReservation = Boolean(pet.reservation?.order || pet.reservation?.adoptionRequest);
+    if (pet.status === 'reserved' && targetStatus !== 'reserved' && hasOwnedReservation) {
+      return res.status(409).json({ message: 'This pet is reserved by an active transaction. Cancel or complete that transaction to change availability.' });
+    }
+    updateData.status = targetStatus;
+    updateData.isAvailable = targetStatus === 'available';
     
     // Validate Birthday (Cannot be in the future)
     if (updateData.birthday) {
@@ -278,9 +333,11 @@ const updatePet = async (req, res) => {
     }
 
     console.log('📝 updatePet EXECUTING UPDATE');
+    const updateOperation = { $set: updateData };
+    if (!['reserved', 'sold', 'adopted'].includes(targetStatus)) updateOperation.$unset = { reservation: 1 };
     const updatedPet = await Pet.findByIdAndUpdate(
       req.params.id,
-      { $set: updateData },
+      updateOperation,
       { new: true, runValidators: true }
     ).populate('addedBy', 'username firstName lastName');
 

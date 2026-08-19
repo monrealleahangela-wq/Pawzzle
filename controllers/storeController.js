@@ -77,13 +77,16 @@ const getStoreById = async (req, res) => {
     // Get store's pets and products
     const [pets, products] = await Promise.all([
       Pet.find({
-        $or: [
-          { store: store._id },
-          { addedBy: store.owner._id || store.owner }
+        $and: [
+          { $or: [
+            { store: store._id },
+            { addedBy: store.owner._id || store.owner }
+          ] },
+          { $or: [{ quantity: { $exists: false } }, { quantity: null }, { quantity: 1 }] }
         ],
         isAvailable: true,
         isDeleted: { $ne: true }
-      }).limit(6),
+      }).select('-pcciRegistration.certificateUrl -supportingDocuments -vetRecords -proofOfOwnership -permits -pickupInstructions').limit(6),
       Product.find({
         $or: [
           { store: store._id },
@@ -134,9 +137,12 @@ const getStoreDetails = async (req, res) => {
         isDeleted: { $ne: true }
       }).select('name description price duration category images'),
       Pet.find({
-        $or: [
-          { store: store._id },
-          { addedBy: store.owner._id || store.owner }
+        $and: [
+          { $or: [
+            { store: store._id },
+            { addedBy: store.owner._id || store.owner }
+          ] },
+          { $or: [{ quantity: { $exists: false } }, { quantity: null }, { quantity: 1 }] }
         ],
         isAvailable: true,
         isDeleted: { $ne: true }

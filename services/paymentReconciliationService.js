@@ -1,11 +1,15 @@
 const Order = require('../models/Order');
 const Booking = require('../models/Booking');
 const AdoptionRequest = require('../models/AdoptionRequest');
-const Pet = require('../models/Pet');
 const StockSyncService = require('./stockSyncService');
 const RevenueService = require('./revenueService');
 const { createNotification } = require('../controllers/notificationController');
 const { internalCreateDelivery } = require('../controllers/deliveryController');
+const {
+  releasePetReservation,
+  reservePetForAdoption,
+  reservePetForOrder
+} = require('./petAvailabilityService');
 
 const amountCentavos = (record, type) => {
   if (type === 'booking') return Math.round(Number(record.totalPrice) * 100);
@@ -131,13 +135,15 @@ const fulfillOrderOnce = async (orderId) => {
 
   if (!claimed) return Order.findById(orderId);
 
+  const claimedPetIds = [];
   try {
-    for (const item of claimed.items) {
-      if (item.itemType === 'product') {
-        await StockSyncService.reduceStockOnOrder(item.itemId, item.quantity, claimed.store);
-      } else if (item.itemType === 'pet') {
-        await Pet.findByIdAndUpdate(item.itemId, { isAvailable: false, status: 'reserved' });
-      }
+    for (const item of claimed.items.filter(item => item.itemType === 'pet')) {
+      const pet = await reservePetForOrder(item.itemId, claimed._id);
+      if (!pet) throw new Error(`Pet "${item.name}" is already reserved or unavailable.`);
+      claimedPetIds.push(item.itemId);
+    }
+    for (const item of claimed.items.filter(item => item.itemType === 'product')) {
+      await StockSyncService.reduceStockOnOrder(item.itemId, item.quantity, claimed.store);
     }
 
     await createNotification({
@@ -161,6 +167,11 @@ const fulfillOrderOnce = async (orderId) => {
       }
     }, { new: true });
   } catch (error) {
+    await Promise.all(claimedPetIds.map(petId => releasePetReservation({
+      petId,
+      source: 'order',
+      referenceId: claimed._id
+    })));
     await Order.findByIdAndUpdate(claimed._id, {
       $set: {
         'paymentDetails.fulfillmentStatus': 'failed',
@@ -220,11 +231,39 @@ const finalizeAdoption = async (adoption, payment) => {
   const alreadyRecorded = adoption.paymentDetails?.history?.some(row => row.paymentId === payment.id);
   if (alreadyRecorded) return adoption;
 
+  if (['cancelled', 'declined', 'expired', 'completed'].includes(adoption.status)) {
+    await AdoptionRequest.findByIdAndUpdate(adoption._id, {
+      $set: { 'paymentDetails.paymentStatus': 'payment_failed' },
+      $push: {
+        'paymentDetails.history': {
+          status: 'refund_review_required',
+          amount: Number(payment.attributes?.amount || 0) / 100,
+          paymentId: payment.id,
+          description: `Payment received after the inquiry became ${adoption.status}`,
+          timestamp: new Date()
+        }
+      }
+    });
+    const error = new Error(`This inquiry is ${adoption.status}. The payment requires refund review.`);
+    error.statusCode = 409;
+    throw error;
+  }
+
   if (!paymentMatches(adoption, 'adoption', payment)) {
     await AdoptionRequest.findByIdAndUpdate(adoption._id, {
       $set: { 'paymentDetails.paymentStatus': 'payment_failed' }
     });
     const error = new Error('PayMongo amount does not match the adoption amount due.');
+    error.statusCode = 409;
+    throw error;
+  }
+
+  const reservedPet = await reservePetForAdoption(adoption.pet, adoption._id);
+  if (!reservedPet) {
+    await AdoptionRequest.findByIdAndUpdate(adoption._id, {
+      $set: { 'paymentDetails.paymentStatus': 'payment_failed' }
+    });
+    const error = new Error('This pet is already reserved or unavailable. The payment requires refund review.');
     error.statusCode = 409;
     throw error;
   }

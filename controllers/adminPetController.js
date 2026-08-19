@@ -140,8 +140,6 @@ const approvePet = async (req, res) => {
     }
 
     pet.approvalStatus = 'approved';
-    pet.status = 'available';
-    pet.isAvailable = true;
     if (adminNotes) pet.description += `\n\n[Admin Note]: ${adminNotes}`;
     
     await pet.save();
@@ -168,7 +166,7 @@ const rejectPet = async (req, res) => {
     }
 
     pet.approvalStatus = 'rejected';
-    pet.isAvailable = false;
+    if (pet.status === 'available') pet.status = 'unavailable';
     pet.description += `\n\n[Rejection Reason]: ${adminNotes}`;
 
     await pet.save();

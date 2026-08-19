@@ -2,9 +2,45 @@ const AdoptionRequest = require('../models/AdoptionRequest');
 const Conversation = require('../models/Conversation');
 const Message = require('../models/Message');
 const Pet = require('../models/Pet');
+const PayMongo = require('../services/paymongoService');
 const { isPlatformAdmin, isOperationalStaff } = require('../config/permissions');
 const { canOperateStore, idsEqual } = require('../utils/authorizationPolicy');
 const { canAccessConversation } = require('../utils/conversationAuthorization');
+const {
+    finalizePetReservation,
+    getPetAvailabilityIssue,
+    releasePetReservation,
+    reservePetForAdoption
+} = require('../services/petAvailabilityService');
+
+const ADOPTION_STATUSES = [
+    'inquiry_submitted', 'under_review', 'reserved', 'approved', 'pickup_scheduling',
+    'pickup_confirmed', 'completed', 'cancelled', 'declined', 'expired'
+];
+
+const expireUnpaidCheckoutSession = async request => {
+    const sessionId = request.paymentDetails?.sessionId;
+    if (!sessionId || request.paymentDetails?.sessionStatus === 'expired') return;
+
+    let session;
+    try {
+        session = await PayMongo.getCheckoutSession(sessionId);
+    } catch (error) {
+        if (error.response?.status !== 404) throw error;
+    }
+
+    if (session && PayMongo.getPaidPayment(session)) {
+        const error = new Error('PayMongo has already confirmed payment. Complete or refund the transaction before closing it.');
+        error.statusCode = 409;
+        throw error;
+    }
+    if (session?.attributes?.status === 'active') await PayMongo.expireCheckoutSession(sessionId);
+
+    request.paymentDetails.sessionStatus = 'expired';
+    request.paymentDetails.paymentStatus = 'payment_cancelled';
+    const historyRow = request.paymentDetails.sessionHistory?.find(row => row.sessionId === sessionId);
+    if (historyRow) historyRow.status = 'expired';
+};
 
 // Create a structured pet purchase inquiry
 const createAdoptionRequest = async (req, res) => {
@@ -38,9 +74,8 @@ const createAdoptionRequest = async (req, res) => {
             return res.status(404).json({ message: 'Pet not found' });
         }
 
-        if (pet.status !== 'available' && pet.status !== 'available') {
-            return res.status(400).json({ message: `This pet is currently ${pet.status} and not available for new inquiries` });
-        }
+        const availabilityIssue = getPetAvailabilityIssue(pet, 1);
+        if (availabilityIssue) return res.status(409).json({ message: availabilityIssue });
 
         const conversation = await Conversation.findById(conversationId).populate('participants');
         if (!conversation) {
@@ -146,6 +181,10 @@ const updateAdoptionStatus = async (req, res) => {
         const { requestId } = req.params;
         const { status, reason } = req.body;
 
+        if (!ADOPTION_STATUSES.includes(status)) {
+            return res.status(400).json({ message: 'Invalid adoption request status.' });
+        }
+
         const request = await AdoptionRequest.findById(requestId).populate('conversation');
         if (!request) {
             return res.status(404).json({ message: 'Adoption request not found' });
@@ -160,6 +199,48 @@ const updateAdoptionStatus = async (req, res) => {
             return res.status(403).json({ message: 'Not authorized to update this request' });
         }
 
+        const closingStatuses = ['declined', 'cancelled', 'expired'];
+        const reservingStatuses = ['reserved', 'approved', 'pickup_scheduling', 'pickup_confirmed'];
+
+        if (request.status === status) {
+            if (closingStatuses.includes(status)) {
+                await expireUnpaidCheckoutSession(request);
+                await request.save();
+                await releasePetReservation({ petId: request.pet, source: 'adoption', referenceId: request._id });
+            } else if (status === 'completed') {
+                const pet = await Pet.findById(request.pet);
+                const finalStatus = pet?.listingType === 'adoption' ? 'adopted' : 'sold';
+                const ownedCompletion = String(pet?.reservation?.adoptionRequest || '') === String(request._id);
+                if (pet?.status === finalStatus && !ownedCompletion) {
+                    return res.status(409).json({ message: 'This pet was completed by another transaction.' });
+                }
+                if (pet && pet.status !== finalStatus) {
+                    const completedPet = await finalizePetReservation({
+                        petId: request.pet,
+                        source: 'adoption',
+                        referenceId: request._id,
+                        status: finalStatus
+                    });
+                    if (!completedPet) return res.status(409).json({ message: 'This pet is not reserved for this request.' });
+                }
+            } else if (reservingStatuses.includes(status)) {
+                const reservedPet = await reservePetForAdoption(request.pet, request._id);
+                if (!reservedPet) return res.status(409).json({ message: 'This pet is not reserved for this request.' });
+            }
+            return res.json({ message: 'Status is already up to date', request });
+        }
+
+        if (closingStatuses.includes(status)) {
+            await expireUnpaidCheckoutSession(request);
+        }
+
+        if (reservingStatuses.includes(status) || status === 'completed') {
+            const reservedPet = await reservePetForAdoption(request.pet, request._id);
+            if (!reservedPet) {
+                return res.status(409).json({ message: 'This pet is already reserved, sold, adopted, unavailable, or linked to another active transaction.' });
+            }
+        }
+
         request.status = status;
         request.history.push({
             status,
@@ -169,34 +250,20 @@ const updateAdoptionStatus = async (req, res) => {
         });
         await request.save();
 
-        // Sync Pet status based on pet inquiry status
-        if (['reserved', 'approved', 'pickup_scheduling', 'pickup_confirmed'].includes(status)) {
-            await Pet.findByIdAndUpdate(request.pet, {
-                status: 'reserved',
-                isAvailable: false 
-            });
-        } else if (status === 'completed') {
+        if (status === 'completed') {
             const pet = await Pet.findById(request.pet);
-            await Pet.findByIdAndUpdate(request.pet, {
-                status: pet.listingType === 'adoption' ? 'adopted' : 'sold',
-                isAvailable: false
+            const completedPet = await finalizePetReservation({
+                petId: request.pet,
+                source: 'adoption',
+                referenceId: request._id,
+                status: pet?.listingType === 'adoption' ? 'adopted' : 'sold'
             });
-        } else if (['declined', 'cancelled', 'expired'].includes(status)) {
-            // Check if there are ANY other active reserved/approved requests for this pet
-            const otherActiveRequest = await AdoptionRequest.findOne({
-                pet: request.pet,
-                _id: { $ne: request._id },
-                status: { $in: ['reserved', 'approved', 'pickup_scheduling', 'pickup_confirmed'] }
-            });
+            if (!completedPet) return res.status(409).json({ message: 'This pet is not reserved for this request.' });
+        }
 
-            if (!otherActiveRequest) {
-                const pet = await Pet.findById(request.pet);
-                if (pet && (pet.status === 'reserved')) {
-                    pet.status = 'available';
-                    pet.isAvailable = true;
-                    await pet.save();
-                }
-            }
+        // Sync Pet status based on pet inquiry status
+        if (closingStatuses.includes(status)) {
+            await releasePetReservation({ petId: request.pet, source: 'adoption', referenceId: request._id });
         }
 
         // Send professional system message to chat
@@ -224,7 +291,7 @@ const updateAdoptionStatus = async (req, res) => {
         res.json({ message: 'Status updated successfully', request });
     } catch (error) {
         console.error('Update adoption status error:', error);
-        res.status(500).json({ message: 'Server error' });
+        res.status(error.statusCode || 500).json({ message: error.message || 'Server error' });
     }
 };
 
@@ -285,9 +352,11 @@ const cancelAdoptionRequest = async (req, res) => {
         }
 
         // Check if the request is already in a final state or shipped
-        if (['delivered', 'cancelled', 'rejected', 'shipped'].includes(request.status)) {
+        if (['completed', 'cancelled', 'declined', 'expired'].includes(request.status)) {
             return res.status(400).json({ message: `Cannot cancel a request that is already ${request.status.replace(/_/g, ' ')}` });
         }
+
+        await expireUnpaidCheckoutSession(request);
 
         request.status = 'cancelled';
         request.history.push({
@@ -298,13 +367,9 @@ const cancelAdoptionRequest = async (req, res) => {
 
         await request.save();
 
-        // Sync Pet status back to available if it was reserved or adopted
-        const pet = await Pet.findById(request.pet);
-        if (pet && (pet.status === 'reserved' || pet.status === 'adopted')) {
-            pet.status = 'available';
-            pet.isAvailable = true;
-            await pet.save();
-        }
+        // Release only the reservation owned by this request. Sold/adopted pets
+        // can never be reopened by cancelling an inquiry.
+        await releasePetReservation({ petId: request.pet, source: 'adoption', referenceId: request._id });
 
         // Send system message to chat
         const systemMsg = new Message({
@@ -318,7 +383,7 @@ const cancelAdoptionRequest = async (req, res) => {
         res.json({ message: 'Inquiry cancelled successfully', request });
     } catch (error) {
         console.error('Cancel adoption request error:', error);
-        res.status(500).json({ message: 'Server error' });
+        res.status(error.statusCode || 500).json({ message: error.message || 'Server error' });
     }
 };
 

@@ -5,6 +5,7 @@ import { useCart } from '../../contexts/CartContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { petService, getImageUrl } from '../../services/apiService';
 import { Heart, Package, Plus, Minus, Trash2, ShoppingBag, AlertCircle } from 'lucide-react';
+import { formatPeso } from '../../utils/paymentSummary';
 
 const Cart = () => {
   const { items, removeFromCart, updateQuantity, getTotalPrice, clearCart, toggleItemSelection, selectAllItems, deselectAllItems, getSelectedItems } = useCart();
@@ -15,6 +16,9 @@ const Cart = () => {
 
   // Check pet availability when cart loads
   useEffect(() => {
+    items
+      .filter(item => item.itemType === 'pet' && Number(item.quantity) !== 1)
+      .forEach(item => updateQuantity(item.itemId, item.itemType, 1));
     checkPetAvailability();
   }, [items]);
 
@@ -126,7 +130,7 @@ const Cart = () => {
           <div className="flex items-center gap-2">
             <AlertCircle className="h-3.5 w-3.5 text-rose-600 shrink-0" />
             <p className="text-[9px] font-black text-rose-800 uppercase tracking-tight">
-              Decommissioned assets detected. Purge required.
+              Some items are no longer available. Please remove them.
             </p>
           </div>
         </div>
@@ -191,11 +195,15 @@ const Cart = () => {
                   </div>
 
                   <div className="flex items-center justify-between sm:justify-end gap-3 sm:gap-10">
-                    <div className="flex items-center bg-slate-50 rounded-lg sm:rounded-xl border border-slate-100 p-0.5 shadow-inner">
-                      <button onClick={() => handleQuantityChange(item.itemId, item.itemType, item.quantity - 1)} className="w-5 h-5 sm:w-8 sm:h-8 rounded-md hover:bg-white flex items-center justify-center transition-all disabled:opacity-20"><Minus className="h-2 w-2 sm:h-3 sm:w-3" /></button>
-                      <span className="w-6 sm:w-10 text-center text-[10px] sm:text-xs font-black text-slate-900">{item.quantity}</span>
-                      <button onClick={() => handleQuantityChange(item.itemId, item.itemType, item.quantity + 1)} className="w-5 h-5 sm:w-8 sm:h-8 rounded-md hover:bg-white flex items-center justify-center transition-all"><Plus className="h-2 w-2 sm:h-3 sm:w-3" /></button>
-                    </div>
+                    {item.itemType === 'pet' ? (
+                      <span className="rounded-lg border border-primary-100 bg-primary-50 px-2 py-1 text-[8px] font-black uppercase text-primary-700 sm:text-[10px]">1 individual pet</span>
+                    ) : (
+                      <div className="flex items-center bg-slate-50 rounded-lg sm:rounded-xl border border-slate-100 p-0.5 shadow-inner">
+                        <button onClick={() => handleQuantityChange(item.itemId, item.itemType, item.quantity - 1)} className="w-5 h-5 sm:w-8 sm:h-8 rounded-md hover:bg-white flex items-center justify-center transition-all disabled:opacity-20"><Minus className="h-2 w-2 sm:h-3 sm:w-3" /></button>
+                        <span className="w-6 sm:w-10 text-center text-[10px] sm:text-xs font-black text-slate-900">{item.quantity}</span>
+                        <button onClick={() => handleQuantityChange(item.itemId, item.itemType, item.quantity + 1)} className="w-5 h-5 sm:w-8 sm:h-8 rounded-md hover:bg-white flex items-center justify-center transition-all"><Plus className="h-2 w-2 sm:h-3 sm:w-3" /></button>
+                      </div>
+                    )}
                     <div className="flex items-center gap-2 sm:gap-6">
                       <span className="text-[11px] sm:text-2xl font-black text-slate-900 tracking-tighter">₱{(item.price * item.quantity).toLocaleString()}</span>
                       <button onClick={() => removeFromCart(item.itemId, item.itemType)} className="text-slate-300 hover:text-rose-600 p-1.5 sm:p-2.5 transition-all"><Trash2 className="h-3 w-3 sm:h-5 sm:w-5" /></button>
@@ -213,10 +221,11 @@ const Cart = () => {
             <div className="absolute top-0 right-0 w-64 h-64 bg-primary-600/10 rounded-full blur-[100px] -mr-32 -mt-32"></div>
             <h2 className="text-3xl font-black uppercase tracking-tighter mb-10 italic border-b border-white/10 pb-4 relative z-10">Order Summary</h2>
             <div className="space-y-6 mb-12 relative z-10">
-              <div className="flex justify-between items-center"><span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Payload Value</span><span className="text-xl font-black text-white">₱{totalPrice.toLocaleString()}</span></div>
-              <div className="flex justify-between items-center"><span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Selected Assets</span><span className="text-xl font-black text-primary-400">{selectedItems.length} UNITS</span></div>
+              <div className="flex justify-between items-center"><span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Items Subtotal</span><span className="text-xl font-black text-white">{formatPeso(totalPrice)}</span></div>
+              <div className="flex justify-between items-center"><span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Selected items</span><span className="text-xl font-black text-primary-400">{selectedItems.length} items</span></div>
               <div className="border-t border-white/10 pt-8">
-                <div className="flex justify-between items-end"><span className="text-[10px] font-black text-white uppercase tracking-[0.2em]">Net Total</span><span className="text-4xl font-black text-primary-500 tracking-tighter shadow-primary-900">₱{totalPrice.toLocaleString()}</span></div>
+                <div className="flex justify-between items-end"><span className="text-[10px] font-black text-white uppercase tracking-[0.2em]">Cart Subtotal</span><span className="text-4xl font-black text-primary-500 tracking-tighter shadow-primary-900">{formatPeso(totalPrice)}</span></div>
+                <p className="mt-3 text-[9px] font-semibold leading-relaxed text-slate-400">VAT, delivery fees, and eligible discounts are calculated from current store data during checkout.</p>
               </div>
             </div>
             <button
@@ -233,8 +242,8 @@ const Cart = () => {
       <div className="lg:hidden fixed bottom-[96px] left-1/2 -translate-x-1/2 w-[94%] max-w-lg z-50 bg-white/95 backdrop-blur-2xl border border-white/20 px-4 py-3.5 rounded-[2rem] shadow-[0_20px_60px_rgba(0,0,0,0.2)]">
         <div className="flex items-center justify-between gap-3 max-w-lg mx-auto">
           <div className="pl-1">
-            <p className="text-[7px] font-black text-slate-400 uppercase tracking-widest leading-none mb-0.5">Net Payload</p>
-            <p className="text-[17px] font-black text-slate-900 tracking-tighter leading-none">₱{totalPrice.toLocaleString()}</p>
+            <p className="text-[7px] font-black text-slate-400 uppercase tracking-widest leading-none mb-0.5">Selected total</p>
+            <p className="text-[17px] font-black text-slate-900 tracking-tighter leading-none">{formatPeso(totalPrice)}</p>
           </div>
           <button
             onClick={handleCheckout}

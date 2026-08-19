@@ -16,6 +16,16 @@ const {
 } = require('../controllers/petController');
 const { authenticate, adminOrStaff, platformAdminOnly, requirePermission } = require('../middleware/auth');
 
+const listingDocumentValidation = [
+  body('pcciRegistration.status').optional().isIn(['yes', 'no', 'not_sure']).withMessage('Invalid PCCI registration status'),
+  body('pcciRegistration.registrationNumber').optional({ checkFalsy: true }).isLength({ max: 100 }).withMessage('PCCI registration number is too long'),
+  body('pcciRegistration.certificateUrl').optional({ checkFalsy: true }).isURL().withMessage('PCCI certificate must be a valid URL'),
+  body('supportingDocuments.*.url').optional({ checkFalsy: true }).isURL().withMessage('Supporting document must be a valid URL'),
+  body('supportingDocuments.*.name').optional({ checkFalsy: true }).isLength({ max: 200 }).withMessage('Supporting document name is too long'),
+  body('healthNotes').optional({ checkFalsy: true }).isLength({ max: 2000 }).withMessage('Health notes are too long'),
+  body('availabilityNotes').optional({ checkFalsy: true }).isLength({ max: 1000 }).withMessage('Availability notes are too long')
+];
+
 // Validation rules (same as regular pets)
 const createPetValidation = [
   body('name').trim().notEmpty().withMessage('Pet name is required'),
@@ -31,6 +41,8 @@ const createPetValidation = [
   body('healthStatus').optional().isIn(['excellent', 'good', 'fair', 'needs_attention']).withMessage('Invalid health status'),
   body('healthCondition').optional().isIn(['healthy', 'needs_monitoring', 'condition_present']).withMessage('Invalid health condition'),
   body('listingType').optional().isIn(['sale', 'adoption']).withMessage('Invalid listing type'),
+  body('status').optional().isIn(['available', 'reserved', 'sold', 'adopted', 'unavailable']).withMessage('Invalid pet availability status'),
+  body('quantity').optional().equals('1').withMessage('Each pet listing must represent exactly one pet'),
   body('fulfillmentType').optional().isIn(['pickup_only', 'shipping', 'both']).withMessage('Invalid fulfillment type'),
   body('paymentType').optional().equals('online_only').withMessage('PayMongo online payment is required'),
   body('birthday').optional().isISO8601().toDate().withMessage('Valid birthday is required')
@@ -41,6 +53,7 @@ const createPetValidation = [
       }
       return true;
     }),
+  ...listingDocumentValidation
 ];
 
 const updatePetValidation = [
@@ -55,7 +68,9 @@ const updatePetValidation = [
   body('price').optional().isFloat({ min: 0 }).withMessage('Price must be a positive number'),
   body('vaccinationStatus').optional().isIn(['complete', 'partial', 'none']).withMessage('Invalid vaccination status'),
   body('healthStatus').optional().isIn(['excellent', 'good', 'fair', 'needs_attention']).withMessage('Invalid health status'),
-  body('healthCondition').optional().isIn(['healthy', 'needs_monitoring', 'condition_present']).withMessage('Invalid health condition')
+  body('healthCondition').optional().isIn(['healthy', 'needs_monitoring', 'condition_present']).withMessage('Invalid health condition'),
+  body('status').optional().isIn(['available', 'reserved', 'sold', 'adopted', 'unavailable']).withMessage('Invalid pet availability status'),
+  ...listingDocumentValidation
 ];
 
 // Debug endpoint to check all pets and their owners

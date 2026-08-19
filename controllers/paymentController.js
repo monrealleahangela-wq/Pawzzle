@@ -18,6 +18,12 @@ const {
 const { isPlatformAdmin, isStoreAdmin, isOperationalStaff, hasPermission } = require('../config/permissions');
 const { canAccessStore } = require('../utils/authorizationPolicy');
 const { requiresAcknowledgment } = require('../utils/refundPolicy');
+const {
+  getPetAvailabilityIssue,
+  releasePetReservation,
+  reservePetForAdoption,
+  reservePetForOrder
+} = require('../services/petAvailabilityService');
 
 const PAYMONGO_WEBHOOK_SECRET = process.env.PAYMONGO_WEBHOOK_SECRET;
 const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER;
@@ -27,6 +33,21 @@ if (!FRONTEND_URL || FRONTEND_URL.includes('localhost')) {
 }
 
 const sessionHistory = record => record.paymentDetails?.sessionHistory || [];
+
+const releaseTransactionPetReservations = async (type, record) => {
+  if (type === 'adoption' && record.pet) {
+    await releasePetReservation({
+      petId: record.pet?._id || record.pet,
+      source: 'adoption',
+      referenceId: record._id
+    });
+  }
+  if (type === 'order') {
+    await Promise.all((record.items || [])
+      .filter(item => item.itemType === 'pet')
+      .map(item => releasePetReservation({ petId: item.itemId, source: 'order', referenceId: record._id })));
+  }
+};
 
 const emitPaymentDashboardUpdate = (req, type, record, status) => {
   const io = req.app.get('socketio');
@@ -73,7 +94,7 @@ const updateSessionStatus = async (record, status) => {
   await record.save();
 };
 
-const getReusableSession = async record => {
+const getReusableSession = async (record, type) => {
   const sessionId = record.paymentDetails?.sessionId;
   if (!sessionId || record.paymentDetails?.sessionStatus === 'expired') return null;
   try {
@@ -87,16 +108,20 @@ const getReusableSession = async record => {
     }
     if (session.attributes?.status === 'active') return session;
     await updateSessionStatus(record, 'expired');
+    await releaseTransactionPetReservations(type, record);
     return null;
   } catch (error) {
     if (error.statusCode) throw error;
-    if (error.response?.status === 404) return null;
+    if (error.response?.status === 404) {
+      await releaseTransactionPetReservations(type, record);
+      return null;
+    }
     throw error;
   }
 };
 
 const ensureCheckoutSession = async ({ record, type, attributes }) => {
-  const existing = await getReusableSession(record);
+  const existing = await getReusableSession(record, type);
   if (existing) {
     if (type === 'adoption') record.paymentDetails.paymentStatus = 'payment_pending';
     else record.paymentStatus = 'pending';
@@ -134,17 +159,33 @@ const createCheckoutSession = async (req, res) => {
     for (const item of order.items) {
       const current = item.itemType === 'product'
         ? await Product.findById(item.itemId).select('price stockQuantity isActive')
-        : await Pet.findById(item.itemId).select('price isAvailable');
+        : await Pet.findById(item.itemId).select('price isAvailable status quantity reservation isDeleted name');
+      const reservedForThisOrder = item.itemType === 'pet'
+        && String(current?.reservation?.order || '') === String(order._id);
+      const petIssue = item.itemType === 'pet' && !reservedForThisOrder
+        ? getPetAvailabilityIssue(current, item.quantity)
+        : null;
       const unavailable = !current
         || Number(current.price) !== Number(item.price)
         || (item.itemType === 'product' && (!current.isActive || current.stockQuantity < item.quantity))
-        || (item.itemType === 'pet' && !current.isAvailable);
+        || Boolean(petIssue);
       if (unavailable) return res.status(409).json({ message: 'An item price or availability changed. Please recreate checkout.' });
     }
 
     const total = Number(order.pricingBreakdown?.finalTotal ?? order.totalAmount);
     if (!Number.isFinite(total) || total <= 0 || Math.abs(total - Number(order.totalAmount)) > 0.009) {
       return res.status(409).json({ message: 'Order amount is inconsistent. Please recreate checkout.' });
+    }
+
+    const petItems = order.items.filter(item => item.itemType === 'pet');
+    const reservedPetIds = [];
+    for (const item of petItems) {
+      const reserved = await reservePetForOrder(item.itemId, order._id);
+      if (!reserved) {
+        await Promise.all(reservedPetIds.map(petId => releasePetReservation({ petId, source: 'order', referenceId: order._id })));
+        return res.status(409).json({ message: `Pet "${item.name}" is already reserved or unavailable.` });
+      }
+      reservedPetIds.push(item.itemId);
     }
 
     if (!order.invoiceSnapshot?.issuedAt) {
@@ -158,10 +199,12 @@ const createCheckoutSession = async (req, res) => {
       };
     }
 
-    const session = await ensureCheckoutSession({
-      record: order,
-      type: 'order',
-      attributes: {
+    let session;
+    try {
+      session = await ensureCheckoutSession({
+        record: order,
+        type: 'order',
+        attributes: {
         send_email_receipt: true,
         show_description: true,
         show_line_items: true,
@@ -171,8 +214,15 @@ const createCheckoutSession = async (req, res) => {
         success_url: `${FRONTEND_URL}/orders/${order._id}?payment=success`,
         cancel_url: `${FRONTEND_URL}/checkout?payment=cancelled&type=order&id=${order._id}`,
         reference_number: order.orderNumber
+        }
+      });
+    } catch (error) {
+      const refreshed = await Order.findById(order._id);
+      if (refreshed?.paymentDetails?.sessionStatus !== 'active') {
+        await releaseTransactionPetReservations('order', order);
       }
-    });
+      throw error;
+    }
     res.json({ checkoutUrl: session.attributes.checkout_url });
   } catch (error) {
     console.error('PayMongo order checkout error:', error.response?.data || error.message);
@@ -251,19 +301,30 @@ const createAdoptionCheckoutSession = async (req, res) => {
   try {
     const adoption = await AdoptionRequest.findById(req.params.requestId).populate('customer').populate('pet');
     if (!adoption) return res.status(404).json({ message: 'Adoption request not found.' });
-    if (adoption.status === 'cancelled') return res.status(400).json({ message: 'Cannot pay for a cancelled inquiry.' });
+    if (['cancelled', 'declined', 'expired', 'completed'].includes(adoption.status)) {
+      return res.status(400).json({ message: `Cannot pay for an inquiry that is ${adoption.status}.` });
+    }
     const authorized = String(adoption.customer._id) === String(req.user._id)
       || String(adoption.seller) === String(req.user._id)
       || isPlatformAdmin(req.user);
     if (!authorized) return res.status(403).json({ message: 'Access denied.' });
 
+    const reservedForThisRequest = String(adoption.pet?.reservation?.adoptionRequest || '') === String(adoption._id);
+    const availabilityIssue = reservedForThisRequest ? null : getPetAvailabilityIssue(adoption.pet, 1);
+    if (availabilityIssue) return res.status(409).json({ message: availabilityIssue });
+
     const dueCentavos = amountCentavos(adoption, 'adoption');
     if (dueCentavos <= 0) return res.status(409).json({ message: 'This adoption payment is already complete.' });
 
-    const session = await ensureCheckoutSession({
-      record: adoption,
-      type: 'adoption',
-      attributes: {
+    const reservedPet = await reservePetForAdoption(adoption.pet._id, adoption._id);
+    if (!reservedPet) return res.status(409).json({ message: 'This pet is already reserved or unavailable.' });
+
+    let session;
+    try {
+      session = await ensureCheckoutSession({
+        record: adoption,
+        type: 'adoption',
+        attributes: {
         send_email_receipt: true,
         show_description: true,
         show_line_items: true,
@@ -273,8 +334,15 @@ const createAdoptionCheckoutSession = async (req, res) => {
         success_url: `${FRONTEND_URL}/pets/${adoption.pet._id}?payment=success&id=${adoption._id}`,
         cancel_url: `${FRONTEND_URL}/pets/${adoption.pet._id}?payment=cancelled&type=adoption&id=${adoption._id}`,
         reference_number: `AD-${adoption._id.toString().slice(-8).toUpperCase()}`
+        }
+      });
+    } catch (error) {
+      const refreshed = await AdoptionRequest.findById(adoption._id);
+      if (refreshed?.paymentDetails?.sessionStatus !== 'active') {
+        await releaseTransactionPetReservations('adoption', adoption);
       }
-    });
+      throw error;
+    }
     res.json({ checkoutUrl: session.attributes.checkout_url });
   } catch (error) {
     console.error('PayMongo adoption checkout error:', error.response?.data || error.message);
@@ -393,7 +461,10 @@ const verifyPayment = async (req, res) => {
       return res.json({ status, [target.type]: record });
     }
 
-    if (session.attributes?.status === 'expired') await updateSessionStatus(target.record, 'expired');
+    if (session.attributes?.status === 'expired') {
+      await updateSessionStatus(target.record, 'expired');
+      await releaseTransactionPetReservations(target.type, target.record);
+    }
     const status = target.type === 'adoption'
       ? target.record.paymentDetails.paymentStatus
       : target.record.paymentStatus;
@@ -435,6 +506,7 @@ const cancelPayment = async (req, res) => {
       target.record.paymentStatus = 'cancelled';
     }
     await target.record.save();
+    await releaseTransactionPetReservations(target.type, target.record);
     const status = target.type === 'adoption' ? target.record.paymentDetails.paymentStatus : target.record.paymentStatus;
     emitPaymentDashboardUpdate(req, target.type, target.record, status);
     res.json({ status, sessionStatus: 'expired' });

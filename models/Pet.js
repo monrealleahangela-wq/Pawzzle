@@ -129,8 +129,14 @@ const petSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['available', 'reserved', 'sold', 'adopted'],
+    enum: ['available', 'reserved', 'sold', 'adopted', 'unavailable'],
     default: 'available'
+  },
+  reservation: {
+    order: { type: mongoose.Schema.Types.ObjectId, ref: 'Order' },
+    adoptionRequest: { type: mongoose.Schema.Types.ObjectId, ref: 'AdoptionRequest' },
+    reservedAt: Date,
+    completedAt: Date
   },
   vaccinationStatus: {
     type: String,
@@ -167,6 +173,26 @@ const petSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
+  pcciRegistration: {
+    status: {
+      type: String,
+      enum: ['yes', 'no', 'not_sure'],
+      default: 'not_sure'
+    },
+    registrationNumber: { type: String, trim: true, maxlength: 100 },
+    certificateUrl: { type: String, trim: true },
+    informationStatus: {
+      type: String,
+      enum: ['customer_provided', 'not_provided'],
+      default: 'not_provided'
+    }
+  },
+  supportingDocuments: [{
+    url: { type: String, trim: true },
+    name: { type: String, trim: true, maxlength: 200 }
+  }],
+  healthNotes: { type: String, trim: true, maxlength: 2000 },
+  availabilityNotes: { type: String, trim: true, maxlength: 1000 },
   temperament: {
     type: String,
     trim: true
@@ -201,10 +227,9 @@ const petSchema = new mongoose.Schema({
 petSchema.pre('save', function (next) {
   this.updatedAt = Date.now();
 
-  // Sync isAvailable with status
-  if (this.status === 'adopted' || this.status === 'reserved' || this.status === 'sold') {
-    this.isAvailable = false;
-  }
+  // Status is authoritative for individual-pet availability. The deprecated
+  // quantity field remains untouched so historical grouped records are preserved.
+  this.isAvailable = this.status === 'available';
 
   next();
 });

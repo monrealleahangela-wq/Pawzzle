@@ -13,6 +13,12 @@ const { calculateOrderPricing } = require('../services/orderPricingService');
 const { isPlatformAdmin, isStoreAdmin, isOperationalStaff, hasPermission } = require('../config/permissions');
 const { getAuthorizedStoreIds, canOperateStore, idsEqual } = require('../utils/authorizationPolicy');
 const { normalizeRefundPolicy, snapshotRefundPolicy, requiresAcknowledgment } = require('../utils/refundPolicy');
+const {
+  finalizePetReservation,
+  getPetAvailabilityIssue,
+  releasePetReservation,
+  reservePetForOrder
+} = require('../services/petAvailabilityService');
 
 const canViewRetailOrders = user => isPlatformAdmin(user)
   || hasPermission(user, 'sales.view') || hasPermission(user, 'sales.manage')
@@ -177,15 +183,22 @@ const createOrderLegacy = async (req, res) => {
     const processedItems = [];
     let adminOwner = null;
     let storeId = null;
+    const petIds = new Set();
 
     // Validate and process each item
     for (const item of items) {
       let itemDoc;
 
       if (item.itemType === 'pet') {
+        const petId = String(item.itemId);
+        if (petIds.has(petId)) {
+          return res.status(400).json({ message: 'Each individual pet can appear only once in an order.' });
+        }
+        petIds.add(petId);
         itemDoc = await Pet.findById(item.itemId);
-        if (!itemDoc || !itemDoc.isAvailable) {
-          return res.status(400).json({ message: `Pet "${itemDoc?.name || item.itemId}" is not available` });
+        const issue = getPetAvailabilityIssue(itemDoc, item.quantity);
+        if (issue) {
+          return res.status(400).json({ message: issue });
         }
       } else if (item.itemType === 'product') {
         itemDoc = await Product.findById(item.itemId);
@@ -398,7 +411,7 @@ const createOrder = async (req, res) => {
       return res.status(400).json({ message: 'Validation error', errors: Object.values(error.errors).map(err => err.message) });
     }
     const expected = [
-      'Order must', 'Item quantity', 'Pet "', 'Product "', 'Invalid item', 'The store',
+      'Order must', 'Item quantity', 'Each pet', 'This legacy', 'Pet "', 'Product "', 'Invalid item', 'The store',
       'Items from different', 'Store is unavailable', 'Store tax configuration', 'Invalid delivery', 'Voucher',
       'A minimum purchase', 'Store and delivery', 'Destination is outside'
     ];
@@ -494,7 +507,8 @@ const updateOrderStatus = async (req, res) => {
         if (item.itemType === 'product') {
           await StockSyncService.reduceStockOnOrder(item.itemId, item.quantity, order.store);
         } else if (item.itemType === 'pet') {
-          await Pet.findByIdAndUpdate(item.itemId, { isAvailable: false, status: 'reserved' });
+          const reserved = await reservePetForOrder(item.itemId, order._id);
+          if (!reserved) throw new Error(`Pet "${item.name}" is already reserved or unavailable.`);
         }
       }
     }
@@ -583,13 +597,8 @@ const cancelOrder = async (req, res) => {
           console.error(`❌ Failed to restore stock for item ${item.itemId}:`, restoreError);
           // Continue with other items even if one fails
         }
-      } else if (item.itemType === 'pet' && stockWasDeducted) {
-        const pet = await Pet.findById(item.itemId);
-        if (pet) {
-          pet.isAvailable = true;
-          await pet.save();
-          console.log(`✅ Pet ${pet.name} is now available again after cancellation`);
-        }
+      } else if (item.itemType === 'pet') {
+        await releasePetReservation({ petId: item.itemId, source: 'order', referenceId: order._id });
       }
     }
 
@@ -650,10 +659,13 @@ const confirmOrderPickup = async (req, res) => {
     // Mark pets as SOLD
     for (const item of order.items) {
       if (item.itemType === 'pet') {
-        await Pet.findByIdAndUpdate(item.itemId, { 
-          isAvailable: false, 
-          status: 'sold' 
+        const soldPet = await finalizePetReservation({
+          petId: item.itemId,
+          source: 'order',
+          referenceId: order._id,
+          status: 'sold'
         });
+        if (!soldPet) return res.status(409).json({ message: `Pet "${item.name}" is not reserved for this order.` });
       }
     }
 
