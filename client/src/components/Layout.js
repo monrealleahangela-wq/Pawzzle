@@ -105,11 +105,12 @@ const getAdminMenu = (user) => {
   
   if (opsChildren.length > 0) menu.push({ label: 'Operations', icon: ShoppingBag, children: opsChildren });
 
-  if (hasProducts && hasAccess(['inventory_staff'])) {
+  if ((hasProducts || hasServices || isStoreOwner) && hasAccess(['inventory_staff'])) {
     menu.push({
       label: 'Supply Chain', icon: Truck, children: [
         { path: '/admin/purchase-orders', label: 'Purchase Orders', icon: Truck },
-        { path: '/admin/supplies', label: 'Manage Suppliers', icon: Layers },
+        { path: '/admin/purchase-orders?tab=suppliers', label: 'Browse Suppliers', icon: Building },
+        { path: '/admin/supplies', label: 'Service Supplies', icon: Layers },
       ]
     });
   }

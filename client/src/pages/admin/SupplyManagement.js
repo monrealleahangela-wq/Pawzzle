@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { Package, Plus, Edit2, Trash2, X, AlertTriangle, RefreshCw, TrendingDown, Clock, Droplets, CheckCircle, Activity } from 'lucide-react';
 import { serviceSupplyService } from '../../services/apiService';
@@ -111,6 +112,9 @@ const SupplyManagement = () => {
           <h1 className="text-2xl sm:text-3xl font-black text-slate-900 uppercase tracking-tight leading-none mb-2">
             Supply <span className="text-teal-600">Management</span>
           </h1>
+          <p className="mt-2 max-w-xl text-[10px] font-bold uppercase tracking-wider text-slate-400">
+            Track supplies used by your services. A marketplace supplier is optional.
+          </p>
         </div>
         <button onClick={() => { setForm(initialForm); setEditing(null); setShowModal(true); }}
           className="px-6 py-3 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-teal-600 transition-all flex items-center gap-2 shrink-0">
@@ -232,6 +236,25 @@ const SupplyManagement = () => {
                 </div>
               );
             })}
+            {supplies.length === 0 && (
+              <div className="col-span-full rounded-2xl border border-dashed border-slate-200 bg-white p-10 text-center">
+                <Package className="mx-auto mb-3 h-10 w-10 text-slate-300" />
+                <h3 className="text-sm font-black uppercase text-slate-800">No service supplies recorded</h3>
+                <p className="mx-auto mt-2 max-w-lg text-xs leading-relaxed text-slate-500">
+                  Add your current stock directly now. You do not need a verified marketplace supplier to track supplies in your store.
+                </p>
+                <div className="mt-5 flex flex-wrap justify-center gap-3">
+                  <button onClick={() => { setForm(initialForm); setEditing(null); setShowModal(true); }}
+                    className="rounded-xl bg-teal-600 px-5 py-3 text-[10px] font-black uppercase tracking-widest text-white hover:bg-slate-900">
+                    Add Supply
+                  </button>
+                  <Link to="/admin/purchase-orders?tab=suppliers"
+                    className="rounded-xl border border-slate-200 px-5 py-3 text-[10px] font-black uppercase tracking-widest text-slate-700 hover:border-teal-400 hover:text-teal-700">
+                    Browse Suppliers
+                  </Link>
+                </div>
+              </div>
+            )}
           </div>
         </>
       )}
@@ -294,6 +317,9 @@ const SupplyManagement = () => {
               <button onClick={() => setShowModal(false)} className="p-2 bg-slate-50 text-slate-400 rounded-xl hover:bg-rose-50 hover:text-rose-600"><X className="h-4 w-4" /></button>
             </header>
             <div className="flex-1 overflow-y-auto p-6 space-y-5">
+              <div className="rounded-xl border border-teal-100 bg-teal-50 p-3 text-[10px] font-semibold leading-relaxed text-teal-800">
+                Supplier link optional: enter the supply and current stock directly. You can use Browse Suppliers later when a verified supplier is available.
+              </div>
               <div className="grid grid-cols-2 gap-4">
                 {[
                   { key: 'name', label: 'Name', span: 2 },

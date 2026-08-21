@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { Truck, Package, Plus, ShoppingCart, X, Eye, Minus, TrendingDown, Layers, Star } from 'lucide-react';
 import { supplierService, purchaseOrderService, getImageUrl, adminProductService } from '../../services/apiService';
@@ -6,7 +7,9 @@ import PaymentBreakdown from '../../components/payments/PaymentBreakdown';
 import { formatPeso, purchaseOrderPaymentSummary } from '../../utils/paymentSummary';
 
 const PurchaseOrders = () => {
-  const [activeTab, setActiveTab] = useState('orders');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const requestedTab = searchParams.get('tab') === 'suppliers' ? 'suppliers' : 'orders';
+  const [activeTab, setActiveTab] = useState(requestedTab);
   const [orders, setOrders] = useState([]);
   const [suppliers, setSuppliers] = useState([]);
   const [catalog, setCatalog] = useState(null);
@@ -19,6 +22,15 @@ const PurchaseOrders = () => {
   const [productMapping, setProductMapping] = useState({});
 
   useEffect(() => { fetchData(); }, []);
+
+  useEffect(() => {
+    setActiveTab(requestedTab);
+  }, [requestedTab]);
+
+  const selectTab = (tab) => {
+    setActiveTab(tab);
+    setSearchParams(tab === 'suppliers' ? { tab: 'suppliers' } : {}, { replace: true });
+  };
 
   const fetchData = async () => {
     try {
@@ -131,7 +143,7 @@ const PurchaseOrders = () => {
           { id: 'orders', label: 'My Orders', icon: Layers },
           { id: 'suppliers', label: 'Browse Suppliers', icon: Truck }
         ].map(tab => (
-          <button key={tab.id} onClick={() => setActiveTab(tab.id)}
+          <button key={tab.id} onClick={() => selectTab(tab.id)}
             className={`px-5 py-3 rounded-xl flex items-center gap-2 text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeTab === tab.id ? 'bg-white text-slate-900 shadow' : 'text-white/60 hover:text-white'}`}>
             <tab.icon className="h-4 w-4" /> {tab.label}
           </button>
@@ -145,7 +157,7 @@ const PurchaseOrders = () => {
             <div className="bg-white rounded-2xl p-12 text-center border border-slate-100">
               <ShoppingCart className="h-12 w-12 text-slate-300 mx-auto mb-4" />
               <p className="text-sm font-bold text-slate-400">No purchase orders yet. Browse suppliers to get started.</p>
-              <button onClick={() => setActiveTab('suppliers')} className="mt-4 px-6 py-3 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest">Browse Suppliers</button>
+              <button onClick={() => selectTab('suppliers')} className="mt-4 px-6 py-3 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest">Browse Suppliers</button>
             </div>
           ) : orders.map(order => (
             <div key={order._id} className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm hover:shadow-lg transition-all">
@@ -209,7 +221,18 @@ const PurchaseOrders = () => {
           {suppliers.length === 0 && (
             <div className="col-span-full bg-white rounded-2xl p-12 text-center border border-slate-100">
               <Truck className="h-12 w-12 text-slate-300 mx-auto mb-4" />
-              <p className="text-sm font-bold text-slate-400">No verified suppliers available yet</p>
+              <h3 className="text-sm font-black text-slate-800 uppercase">No verified suppliers available yet</h3>
+              <p className="mx-auto mt-2 max-w-lg text-xs leading-relaxed text-slate-500">
+                Supplier accounts appear here after platform verification. You can still add products, update stock, or record service supplies manually while the supplier marketplace is empty.
+              </p>
+              <div className="mt-5 flex flex-wrap justify-center gap-3">
+                <Link to="/admin/products" className="rounded-xl bg-slate-900 px-5 py-3 text-[10px] font-black uppercase tracking-widest text-white hover:bg-primary-600">
+                  Add Inventory Manually
+                </Link>
+                <Link to="/admin/supplies" className="rounded-xl border border-slate-200 bg-white px-5 py-3 text-[10px] font-black uppercase tracking-widest text-slate-700 hover:border-teal-400 hover:text-teal-700">
+                  Manage Service Supplies
+                </Link>
+              </div>
             </div>
           )}
         </div>
