@@ -7,7 +7,6 @@ import authService from '../../services/authService';
 import { Store, User, MapPin, ShieldCheck, ArrowRight, CheckCircle2, Building2, FileCheck, Info, Lock, Eye, EyeOff, Map as MapIcon, RefreshCw, Heart, Package, Calendar } from 'lucide-react';
 import { getCitiesByProvince, getBarangaysByCity } from '../../constants/locationConstants';
 import MapPicker from '../../components/MapPicker';
-import PremiumCaptcha from '../../components/PremiumCaptcha';
 
 const SellerJoin = () => {
   const { isAuthenticated, completeOAuthLogin } = useAuth();
@@ -24,8 +23,6 @@ const SellerJoin = () => {
   const [otpDigits, setOtpDigits] = useState(['', '', '', '', '', '']);
   const [otpLoading, setOtpLoading] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
-  const [captchaToken, setCaptchaToken] = useState(null);
-  const [captchaResetKey, setCaptchaResetKey] = useState(0);
   const otpRefs = React.useRef([]);
 
   const [regData, setRegData] = useState({
@@ -128,11 +125,10 @@ const SellerJoin = () => {
     if (regData.password !== regData.confirmPassword) {
       return toast.error('Passwords do not match');
     }
-    if (!captchaToken) return toast.error('Please complete the security verification.');
     setLoading(true);
     try {
       const { confirmPassword, ...data } = regData;
-      await authService.sendRegisterOTP({ ...data, captchaToken });
+      await authService.sendRegisterOTP(data);
       setStep(2);
       setResendCooldown(60);
       toast.success('Verification code sent! Please check your email.');
@@ -143,8 +139,6 @@ const SellerJoin = () => {
       toast.error(errorMsg);
     } finally {
       setLoading(false);
-      setCaptchaToken(null);
-      setCaptchaResetKey(value => value + 1);
     }
   };
 
@@ -370,11 +364,7 @@ const SellerJoin = () => {
                    </div>
                 </div>
 
-                <div className="flex justify-center">
-                  <PremiumCaptcha onVerify={setCaptchaToken} resetKey={captchaResetKey} />
-                </div>
-
-                <button type="submit" disabled={loading || !captchaToken} className="w-full py-5 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.4em] hover:bg-primary-600 transition-all flex items-center justify-center gap-3 group disabled:opacity-50">
+                <button type="submit" disabled={loading} className="w-full py-5 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.4em] hover:bg-primary-600 transition-all flex items-center justify-center gap-3 group disabled:opacity-50">
                    {loading ? 'Creating Account...' : 'Continue to Next Step'}
                    <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
                 </button>

@@ -4,7 +4,6 @@ import { AlertCircle, Loader2 } from 'lucide-react';
 import { api } from '../services/apiService';
 
 const GOOGLE_TEST_SITE_KEY = '6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI';
-const PAWZZLE_PRODUCTION_SITE_KEY = '6LckpYUtAAAAALNjXnyczMrAwdl_bLUO8xzEoW5-';
 
 const usableSiteKey = (key) => Boolean(key) && (
   process.env.NODE_ENV !== 'production' || key !== GOOGLE_TEST_SITE_KEY
@@ -15,7 +14,7 @@ const PremiumCaptcha = ({ onVerify, theme = 'light', resetKey = 0 }) => {
   const configuredKey = process.env.REACT_APP_RECAPTCHA_SITE_KEY;
   const initialSiteKey = usableSiteKey(configuredKey)
     ? configuredKey
-    : (process.env.NODE_ENV === 'production' ? PAWZZLE_PRODUCTION_SITE_KEY : GOOGLE_TEST_SITE_KEY);
+    : (process.env.NODE_ENV === 'production' ? '' : GOOGLE_TEST_SITE_KEY);
   const [siteKey, setSiteKey] = useState(initialSiteKey);
   const [configState, setConfigState] = useState(initialSiteKey ? 'ready' : 'loading');
 

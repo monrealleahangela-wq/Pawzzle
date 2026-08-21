@@ -14,7 +14,7 @@ const {
   buildPublicRegistrationData
 } = require('../utils/authSecurity');
 const otpService = require('../services/otpService');
-const { verifyRecaptcha, __test: captchaTest } = require('../utils/captchaVerifier');
+const { verifyRecaptcha, getPublicRecaptchaConfig, __test: captchaTest } = require('../utils/captchaVerifier');
 const { createRateLimiter, __test: rateLimitTest } = require('../middleware/authRateLimit');
 
 test('customer profile updates allow personal fields and reject privilege fields', () => {
@@ -140,6 +140,7 @@ test('temporary UAT bypass removes CAPTCHA from login and registration but keeps
   const routeSource = fs.readFileSync(path.join(__dirname, '../routes/auth.js'), 'utf8');
   const loginPageSource = fs.readFileSync(path.join(__dirname, '../client/src/pages/auth/Login.js'), 'utf8');
   const registerPageSource = fs.readFileSync(path.join(__dirname, '../client/src/pages/auth/Register.js'), 'utf8');
+  const sellerJoinSource = fs.readFileSync(path.join(__dirname, '../client/src/pages/public/SellerJoin.js'), 'utf8');
   const forgotPasswordSource = fs.readFileSync(path.join(__dirname, '../client/src/pages/auth/ForgotPassword.js'), 'utf8');
 
   assert.equal(loginSource.includes('verifyRecaptcha'), false);
@@ -154,11 +155,13 @@ test('temporary UAT bypass removes CAPTCHA from login and registration but keeps
   assert.equal(loginPageSource.includes('captchaToken'), false);
   assert.equal(registerPageSource.includes('PremiumCaptcha'), false);
   assert.equal(registerPageSource.includes('captchaToken'), false);
+  assert.equal(sellerJoinSource.includes('PremiumCaptcha'), false);
+  assert.equal(sellerJoinSource.includes('captchaToken'), false);
   assert.match(forgotPasswordSource, /PremiumCaptcha/);
   assert.match(forgotPasswordSource, /requestPasswordResetOTP\(\{ email, captchaToken \}\)/);
 });
 
-test('production rejects the Google test secret and falls back to the registered Pawzzle site key', () => {
+test('production rejects Google test credentials and does not invent a site key', () => {
   const previousEnvironment = process.env.NODE_ENV;
   const previousSecret = process.env.RECAPTCHA_SECRET_KEY;
   const previousSiteKey = process.env.RECAPTCHA_SITE_KEY;
@@ -168,7 +171,12 @@ test('production rejects the Google test secret and falls back to the registered
   process.env.RECAPTCHA_SITE_KEY = captchaTest.GOOGLE_TEST_SITE_KEY;
   delete process.env.REACT_APP_RECAPTCHA_SITE_KEY;
   assert.equal(captchaTest.getSecretKey(), null);
-  assert.equal(captchaTest.getSiteKey(), captchaTest.PAWZZLE_PRODUCTION_SITE_KEY);
+  assert.equal(captchaTest.getSiteKey(), null);
+  assert.deepEqual(getPublicRecaptchaConfig(), {
+    provider: 'google-recaptcha-v2',
+    configured: false,
+    siteKey: null
+  });
   if (previousEnvironment === undefined) delete process.env.NODE_ENV;
   else process.env.NODE_ENV = previousEnvironment;
   if (previousSecret === undefined) delete process.env.RECAPTCHA_SECRET_KEY;
@@ -179,6 +187,16 @@ test('production rejects the Google test secret and falls back to the registered
   else process.env.REACT_APP_RECAPTCHA_SITE_KEY = previousReactSiteKey;
 });
 
+test('CAPTCHA component loads production configuration without a hardcoded fallback key', () => {
+  const captchaSource = fs.readFileSync(
+    path.join(__dirname, '../client/src/components/PremiumCaptcha.js'),
+    'utf8'
+  );
+
+  assert.doesNotMatch(captchaSource, /PAWZZLE_PRODUCTION_SITE_KEY|6LckpYUt/);
+  assert.match(captchaSource, /api\.get\('\/public\/captcha-config'\)/);
+});
+
 test('public CAPTCHA configuration exposes only the site key', () => {
   const previousEnvironment = process.env.NODE_ENV;
   const previousSiteKey = process.env.RECAPTCHA_SITE_KEY;
@@ -187,7 +205,6 @@ test('public CAPTCHA configuration exposes only the site key', () => {
   process.env.RECAPTCHA_SITE_KEY = 'production-public-site-key';
   process.env.RECAPTCHA_SECRET_KEY = 'production-private-secret';
 
-  const { getPublicRecaptchaConfig } = require('../utils/captchaVerifier');
   const config = getPublicRecaptchaConfig();
   assert.deepEqual(config, {
     provider: 'google-recaptcha-v2',
