@@ -1,6 +1,53 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { calculateTransactionTax } = require('../utils/taxCalculator');
+const fs = require('node:fs');
+const path = require('node:path');
+const { calculateTransactionTax, resolveTransactionTaxConfiguration } = require('../utils/taxCalculator');
+
+test('legacy stores without tax configuration can check out using an explicit non-VAT snapshot', () => {
+  const fallbackConfiguration = resolveTransactionTaxConfiguration({
+    isConfigured: false,
+    taxStatus: 'vat_registered',
+    pricingMode: 'exclusive',
+    vatRatePercent: 12,
+    deliveryFeeTaxable: true,
+    configuredAt: new Date()
+  });
+  const result = calculateTransactionTax({
+    subtotal: 500,
+    deliveryFee: 50,
+    taxConfiguration: fallbackConfiguration
+  });
+
+  assert.equal(result.taxStatus, 'non_vat');
+  assert.equal(result.pricingMode, 'inclusive');
+  assert.equal(result.vatRatePercent, 0);
+  assert.equal(result.vatAmount, 0);
+  assert.equal(result.finalTotal, 550);
+  assert.equal(result.configuredAt, null);
+
+  const orderPricingSource = fs.readFileSync(
+    path.join(__dirname, '../services/orderPricingService.js'),
+    'utf8'
+  );
+  assert.doesNotMatch(orderPricingSource, /Store tax configuration is missing/);
+  assert.match(orderPricingSource, /taxConfiguration: resolveTransactionTaxConfiguration\(store\.taxConfiguration\)/);
+});
+
+test('explicitly configured VAT settings remain authoritative for checkout', () => {
+  const configuration = resolveTransactionTaxConfiguration({
+    isConfigured: true,
+    taxStatus: 'vat_registered',
+    pricingMode: 'exclusive',
+    vatRatePercent: 12,
+    deliveryFeeTaxable: true
+  });
+  const result = calculateTransactionTax({ subtotal: 500, deliveryFee: 50, taxConfiguration: configuration });
+
+  assert.equal(result.taxStatus, 'vat_registered');
+  assert.equal(result.vatAmount, 66);
+  assert.equal(result.finalTotal, 616);
+});
 
 test('calculates 12% VAT-inclusive totals without adding VAT twice', () => {
   const result = calculateTransactionTax({

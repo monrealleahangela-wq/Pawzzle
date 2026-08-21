@@ -4,7 +4,7 @@ const Store = require('../models/Store');
 const Voucher = require('../models/Voucher');
 const DeliveryFeeRule = require('../models/DeliveryFeeRule');
 const DeliveryFeeService = require('./deliveryFeeService');
-const { calculateTransactionTax, normalizeTaxConfiguration, roundMoney } = require('../utils/taxCalculator');
+const { calculateTransactionTax, resolveTransactionTaxConfiguration, roundMoney } = require('../utils/taxCalculator');
 const { getPetAvailabilityIssue } = require('./petAvailabilityService');
 
 const idsEqual = (a, b) => a && b && a.toString() === b.toString();
@@ -108,9 +108,6 @@ const calculateOrderPricing = async ({ items, requestedDeliveryMethod, shippingA
 
   const store = await Store.findById(storeId);
   if (!store || !store.isActive || store.isDeleted) throw new Error('Store is unavailable.');
-  if (!normalizeTaxConfiguration(store.taxConfiguration).isConfigured) {
-    throw new Error('Store tax configuration is missing. Checkout is temporarily unavailable.');
-  }
   const deliveryMethod = hasPet ? 'pickup' : requestedDeliveryMethod;
   if (!['delivery', 'pickup'].includes(deliveryMethod)) throw new Error('Invalid delivery method.');
 
@@ -118,11 +115,15 @@ const calculateOrderPricing = async ({ items, requestedDeliveryMethod, shippingA
     resolveVoucher({ voucherCode, storeId, subtotal }),
     calculateDelivery({ store, deliveryMethod, shippingAddress })
   ]);
+  // Stores created before tax settings were introduced retain checkout
+  // compatibility through the calculator's explicit non-VAT fallback. A
+  // configured store still uses its saved VAT treatment, and either result is
+  // snapshotted on the order before a PayMongo session can be created.
   const pricingBreakdown = calculateTransactionTax({
     subtotal,
     discountAmount,
     deliveryFee: delivery.fee,
-    taxConfiguration: store.taxConfiguration
+    taxConfiguration: resolveTransactionTaxConfiguration(store.taxConfiguration)
   });
 
   return {

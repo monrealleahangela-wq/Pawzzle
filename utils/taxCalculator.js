@@ -22,6 +22,20 @@ const normalizeTaxConfiguration = (configuration = {}) => {
   };
 };
 
+const resolveTransactionTaxConfiguration = (configuration = {}) => {
+  const normalized = normalizeTaxConfiguration(configuration);
+  if (normalized.isConfigured) return normalized;
+
+  return {
+    ...normalized,
+    taxStatus: 'non_vat',
+    pricingMode: 'inclusive',
+    vatRatePercent: 0,
+    deliveryFeeTaxable: false,
+    configuredAt: null
+  };
+};
+
 /**
  * Calculates the complete customer-facing transaction breakdown using centavo
  * precision. Discounts reduce the merchandise/service amount before VAT.
@@ -98,5 +112,6 @@ module.exports = {
   calculateTax,
   calculateTransactionTax,
   normalizeTaxConfiguration,
+  resolveTransactionTaxConfiguration,
   roundMoney
 };
