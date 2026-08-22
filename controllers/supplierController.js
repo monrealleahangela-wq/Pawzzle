@@ -4,6 +4,11 @@ const PurchaseOrder = require('../models/PurchaseOrder');
 const User = require('../models/User');
 const SupplyChainLog = require('../models/SupplyChainLog');
 const { createNotification } = require('./notificationController');
+const {
+  getActiveSupplierFilter,
+  isSupplierAvailable,
+  applySupplierLifecycleAction
+} = require('../utils/supplierLifecycle');
 
 // ═══════════════════════════════════════════════════════════════
 // SUPPLIER ACCOUNT MANAGEMENT
@@ -147,7 +152,7 @@ const addProduct = async (req, res) => {
   try {
     const supplier = await Supplier.findOne({ user: req.user._id });
     if (!supplier) return res.status(404).json({ message: 'Supplier not found.' });
-    if (supplier.status !== 'verified') return res.status(403).json({ message: 'Only verified suppliers can add products.' });
+    if (!isSupplierAvailable(supplier)) return res.status(403).json({ message: 'Only active verified suppliers can add products.' });
 
     const { name, sku, description, category, images, wholesalePrice, retailPrice,
       availableStock, minimumOrderQuantity, unitOfMeasure, deliveryLeadTimeDays,
@@ -398,7 +403,7 @@ const updateOrderStatus = async (req, res) => {
 const browseSuppliers = async (req, res) => {
   try {
     const { category, search, page = 1, limit = 20 } = req.query;
-    let filter = { status: 'verified', isActive: true, isDeleted: false };
+    let filter = getActiveSupplierFilter();
     if (category) filter.productCategories = category;
     if (search) filter.businessName = { $regex: search, $options: 'i' };
 
@@ -418,8 +423,8 @@ const browseSuppliers = async (req, res) => {
 const getSupplierCatalog = async (req, res) => {
   try {
     const supplier = await Supplier.findById(req.params.supplierId);
-    if (!supplier || supplier.status !== 'verified') {
-      return res.status(404).json({ message: 'Supplier not found or not verified.' });
+    if (!isSupplierAvailable(supplier)) {
+      return res.status(404).json({ message: 'Supplier not found or unavailable.' });
     }
 
     const { category, search, page = 1, limit = 20 } = req.query;
@@ -467,50 +472,77 @@ const adminVerifySupplier = async (req, res) => {
     const supplier = await Supplier.findById(req.params.id);
     if (!supplier) return res.status(404).json({ message: 'Supplier not found.' });
 
-    const { action, reason } = req.body; // action: 'verify', 'reject', 'suspend'
+    const { action, reason } = req.body;
+    const wasInactive = supplier.isActive === false;
+    let legacyDeactivation = false;
 
-    if (action === 'verify') {
-      supplier.status = 'verified';
-      supplier.verifiedAt = new Date();
-      supplier.verifiedBy = req.user._id;
-    } else if (action === 'reject') {
-      supplier.status = 'rejected';
-      supplier.rejectionReason = reason || 'Application rejected.';
-    } else if (action === 'suspend') {
-      supplier.status = 'suspended';
-      supplier.suspensionReason = reason || 'Account suspended.';
-    } else {
-      return res.status(400).json({ message: 'Invalid action. Use verify, reject, or suspend.' });
+    if (action === 'reactivate' && wasInactive) {
+      const lastLifecycleLog = await SupplyChainLog.findOne({
+        supplier: supplier._id,
+        action: { $in: ['supplier_suspended', 'supplier_deactivated'] }
+      }).sort({ createdAt: -1 }).lean();
+      // Older deactivations disabled every catalog item, then failed to write their
+      // unsupported audit action. Repair that legacy state only when no lifecycle
+      // audit exists; current suspensions preserve each product's own active flag.
+      legacyDeactivation = !lastLifecycleLog;
     }
 
+    const transition = applySupplierLifecycleAction(supplier, action, {
+      actorId: req.user._id,
+      reason
+    });
+
     await supplier.save();
+
+    let legacyProductsRestored = 0;
+    if (action === 'reactivate' && legacyDeactivation) {
+      const repair = await SupplierProduct.updateMany(
+        { supplier: supplier._id, isDeleted: false, isActive: false },
+        { $set: { isActive: true } }
+      );
+      legacyProductsRestored = repair.modifiedCount || 0;
+    }
+
+    const actionLabels = {
+      verify: 'Verified',
+      reject: 'Rejected',
+      suspend: 'Suspended',
+      reactivate: 'Reactivated'
+    };
+    const actionMessages = {
+      verify: 'Your supplier account has been verified. You can now list products and receive orders.',
+      reject: `Your supplier application was rejected. Reason: ${reason || 'N/A'}`,
+      suspend: `Your supplier account has been suspended. Reason: ${reason || 'N/A'}`,
+      reactivate: 'Your supplier account has been reactivated and is available to sellers again.'
+    };
 
     // Notify supplier
     await createNotification({
       recipient: supplier.user,
       sender: req.user._id,
       type: 'supplier_verification',
-      title: `Supplier Account ${action === 'verify' ? 'Verified' : action === 'reject' ? 'Rejected' : 'Suspended'}`,
-      message: action === 'verify'
-        ? 'Your supplier account has been verified. You can now list products and receive orders.'
-        : `Your supplier account has been ${action}ed. Reason: ${reason || 'N/A'}`,
+      title: `Supplier Account ${actionLabels[action]}`,
+      message: actionMessages[action],
       relatedId: supplier._id,
       relatedModel: 'Supplier'
     });
 
     await SupplyChainLog.create({
-      action: `supplier_${action === 'verify' ? 'verified' : action === 'reject' ? 'rejected' : 'suspended'}`,
+      action: `supplier_${action === 'verify' ? 'verified' : action === 'reject' ? 'rejected' : action === 'suspend' ? 'suspended' : 'reactivated'}`,
       performedBy: req.user._id,
       userRole: req.user.role,
       relatedEntity: { type: 'Supplier', id: supplier._id },
-      description: `Supplier "${supplier.businessName}" ${action}ed ${reason ? `(${reason})` : ''}`,
-      supplier: supplier._id
+      description: `Supplier "${supplier.businessName}" ${actionLabels[action].toLowerCase()}${reason ? ` (${reason})` : ''}`,
+      supplier: supplier._id,
+      previousValue: transition.previous,
+      newValue: transition.current,
+      metadata: { legacyProductsRestored }
     });
 
     res.json(supplier);
   } catch (error) {
     console.error('Admin verify supplier error:', error);
-    res.status(500).json({ message: 'Server error' });
+    res.status(error.statusCode || 500).json({ message: error.statusCode ? error.message : 'Server error' });
   }
 };
 
@@ -542,7 +574,7 @@ const adminUpdateSupplier = async (req, res) => {
   try {
     const supplier = await Supplier.findOne({ _id: req.params.id, isDeleted: false });
     if (!supplier) return res.status(404).json({ message: 'Supplier not found.' });
-    const allowed = ['businessName', 'contactPerson', 'email', 'phone', 'address', 'description', 'productCategories', 'taxId', 'businessRegistrationNumber', 'logo', 'isActive'];
+    const allowed = ['businessName', 'contactPerson', 'email', 'phone', 'address', 'description', 'productCategories', 'taxId', 'businessRegistrationNumber', 'logo'];
     allowed.forEach(field => { if (req.body[field] !== undefined) supplier[field] = req.body[field]; });
     await supplier.save();
     await SupplyChainLog.create({ action: 'supplier_updated', performedBy: req.user._id, userRole: req.user.role, relatedEntity: { type: 'Supplier', id: supplier._id }, description: `Supplier "${supplier.businessName}" updated`, supplier: supplier._id });
@@ -556,14 +588,24 @@ const adminDeactivateSupplier = async (req, res) => {
     if (!supplier) return res.status(404).json({ message: 'Supplier not found.' });
     const activeOrders = await PurchaseOrder.countDocuments({ supplier: supplier._id, isDeleted: false, status: { $in: ['submitted', 'confirmed', 'processing', 'shipped'] } });
     if (activeOrders) return res.status(409).json({ message: `Supplier has ${activeOrders} active purchase order(s). Complete or cancel them first.` });
-    supplier.isActive = false;
-    supplier.status = 'suspended';
-    supplier.suspensionReason = req.body.reason || 'Deactivated by administrator';
+    const transition = applySupplierLifecycleAction(supplier, 'suspend', {
+      actorId: req.user._id,
+      reason: req.body.reason || 'Deactivated by administrator'
+    });
     await supplier.save();
-    await SupplierProduct.updateMany({ supplier: supplier._id }, { isActive: false });
-    await SupplyChainLog.create({ action: 'supplier_deactivated', performedBy: req.user._id, userRole: req.user.role, relatedEntity: { type: 'Supplier', id: supplier._id }, description: `Supplier "${supplier.businessName}" deactivated`, supplier: supplier._id });
+    await SupplyChainLog.create({
+      action: 'supplier_deactivated',
+      performedBy: req.user._id,
+      userRole: req.user.role,
+      relatedEntity: { type: 'Supplier', id: supplier._id },
+      description: `Supplier "${supplier.businessName}" deactivated`,
+      supplier: supplier._id,
+      previousValue: transition.previous,
+      newValue: transition.current,
+      metadata: { productAvailabilityPreserved: true }
+    });
     res.json(supplier);
-  } catch (error) { res.status(400).json({ message: error.message }); }
+  } catch (error) { res.status(error.statusCode || 400).json({ message: error.message }); }
 };
 
 module.exports = {

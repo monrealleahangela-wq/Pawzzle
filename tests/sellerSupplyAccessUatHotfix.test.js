@@ -33,5 +33,5 @@ test('service supplies can be entered without inventing or requiring a supplier 
   assert.match(supplyPage, /You do not need a verified marketplace supplier/);
   assert.match(supplyPage, /Supplier link optional/);
   assert.doesNotMatch(supplyModel, /supplier:\s*\{[^}]+required:\s*true/s);
-  assert.match(supplierController, /status: 'verified', isActive: true, isDeleted: false/);
+  assert.match(supplierController, /getActiveSupplierFilter\(\)/);
 });

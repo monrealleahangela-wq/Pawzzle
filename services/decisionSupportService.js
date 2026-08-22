@@ -4,6 +4,7 @@ const Inventory = require('../models/Inventory');
 const Supplier = require('../models/Supplier');
 const PurchaseOrder = require('../models/PurchaseOrder');
 const DSSRecommendation = require('../models/DSSRecommendation');
+const { getActiveSupplierFilter } = require('../utils/supplierLifecycle');
 
 const DAY_MS = 86400000;
 const round = (value, places = 2) => Number(Number(value || 0).toFixed(places));
@@ -399,7 +400,7 @@ class DecisionSupportService {
   }
 
   static async supplierScorecard({ store }) {
-    const suppliers = await Supplier.find({ isDeleted: false, status: 'verified' }).lean();
+    const suppliers = await Supplier.find(getActiveSupplierFilter()).lean();
     const orders = await PurchaseOrder.find({
       store, isDeleted: false, status: { $in: ['delivered', 'returned', 'cancelled'] }
     }).lean();

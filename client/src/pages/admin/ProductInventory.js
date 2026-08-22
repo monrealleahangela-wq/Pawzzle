@@ -5,7 +5,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { PLATFORM_ADMIN_ROLES, STORE_ADMIN_ROLES, OPERATIONAL_ROLES, hasUiActionPermission } from '../../utils/authorization';
 import { useRealTimeUpdates } from '../../hooks/useRealTimeUpdates';
 import ProductFormModal from '../../components/forms/ProductFormModal';
-import { Package, AlertTriangle, TrendingDown, Plus, Edit, Trash2, Search, Box, X, Activity, Image as ImageIcon, ChevronRight, Shield, Zap, Target, Layers, Tag, Star, Info, ChevronDown, ChevronUp, Video, FileText, MapPin, Clock } from 'lucide-react';
+import { Package, AlertTriangle, TrendingDown, Plus, Minus, RefreshCw, Edit, Trash2, Search, Box, X, Activity, Image as ImageIcon, ChevronRight, Shield, Zap, Layers, Tag, Star, Info, ChevronDown, ChevronUp, Video, FileText, MapPin, Clock } from 'lucide-react';
 
 const PhilippinePeso = ({ className }) => (
   <svg 
@@ -329,25 +329,38 @@ const ProductInventory = () => {
 
   const handleInventorySubmit = async (e) => {
     e.preventDefault();
+    const quantity = Number(inventoryForm.quantity);
+    if (!inventoryForm.productId) return toast.warn('Choose a product before updating its stock.');
+    if (!Number.isInteger(quantity) || quantity < 0) return toast.warn('Enter a whole number that is 0 or greater.');
+    if (inventoryForm.operation !== 'set' && quantity === 0) {
+      return toast.warn('Enter how many items you want to add or remove.');
+    }
+
     setSubmitting(true);
     try {
       if (selectedInventoryItem && selectedInventoryItem.inventoryId) {
         await inventoryService.updateQuantity(selectedInventoryItem.inventoryId, {
-          quantity: Number(inventoryForm.quantity),
+          quantity,
           operation: inventoryForm.operation,
           notes: inventoryForm.notes
         });
-        toast.success(`Inventory adjusted: ${inventoryForm.operation} ${inventoryForm.quantity}`);
       } else {
         await inventoryService.adminAddToInventory({
           productId: inventoryForm.productId,
-          quantity: Number(inventoryForm.quantity),
+          quantity,
           operation: inventoryForm.operation,
           reorderLevel: Number(inventoryForm.reorderLevel),
           notes: inventoryForm.notes
         });
-        toast.success(`Inventory stock updated successfully via ${inventoryForm.operation}`);
       }
+
+      const productName = selectedInventoryItem?.name || products.find(product => product._id === inventoryForm.productId)?.name || 'Product';
+      const successMessages = {
+        add: `${quantity} item${quantity === 1 ? '' : 's'} added to ${productName}.`,
+        subtract: `${quantity} item${quantity === 1 ? '' : 's'} removed from ${productName}.`,
+        set: `${productName} stock is now ${quantity}.`
+      };
+      toast.success(successMessages[inventoryForm.operation]);
 
       setShowInventoryModal(false);
       fetchInventory();
@@ -358,6 +371,37 @@ const ProductInventory = () => {
       setSubmitting(false);
     }
   };
+
+  const inventoryProduct = selectedInventoryItem
+    || products.find(product => product._id === inventoryForm.productId);
+  const currentInventoryStock = Number(
+    selectedInventoryItem?.currentStock ?? inventoryProduct?.stockQuantity ?? 0
+  );
+  const requestedInventoryQuantity = Math.max(0, Number(inventoryForm.quantity) || 0);
+  const projectedInventoryStock = inventoryForm.operation === 'add'
+    ? currentInventoryStock + requestedInventoryQuantity
+    : inventoryForm.operation === 'subtract'
+      ? Math.max(0, currentInventoryStock - requestedInventoryQuantity)
+      : requestedInventoryQuantity;
+  const inventoryOperationOptions = [
+    { value: 'add', label: 'Add items', description: 'New delivery or returned stock', icon: Plus },
+    { value: 'subtract', label: 'Remove items', description: 'Damaged, missing, or used stock', icon: Minus },
+    { value: 'set', label: 'Correct total', description: 'Replace stock with a counted total', icon: RefreshCw }
+  ];
+  const inventoryQuantityCopy = {
+    add: {
+      label: 'How many items are you adding?',
+      help: 'This amount will be added to the current stock.'
+    },
+    subtract: {
+      label: 'How many items are you removing?',
+      help: 'Stock will never be reduced below 0.'
+    },
+    set: {
+      label: 'What is the correct total stock?',
+      help: 'This replaces the current stock with the number entered.'
+    }
+  }[inventoryForm.operation];
 
   return (
     <div className="min-h-screen bg-slate-50/50 p-4 sm:p-8 space-y-8">
@@ -1245,66 +1289,87 @@ const ProductInventory = () => {
       {/* Inventory Adjustment Modal */}
       {showInventoryModal && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-2">
-          <div className="bg-white rounded-[2rem] max-w-sm w-full shadow-2xl animate-in zoom-in-95 duration-300 border border-slate-200 overflow-hidden flex flex-col">
-            <header className="p-5 border-b border-slate-100 flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div className="p-3 bg-emerald-50 text-emerald-600 rounded-2xl"><Activity className="h-6 w-6" /></div>
-                <h3 className="text-2xl font-black uppercase tracking-tighter">Update Stock</h3>
+          <div role="dialog" aria-modal="true" aria-labelledby="stock-dialog-title" className="bg-white rounded-[2rem] max-w-xl w-full max-h-[94vh] shadow-2xl animate-in zoom-in-95 duration-300 border border-slate-200 overflow-hidden flex flex-col">
+            <header className="p-5 sm:p-6 border-b border-slate-100 flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+                <div className="p-3 bg-emerald-50 text-emerald-600 rounded-2xl shrink-0"><Activity className="h-6 w-6" /></div>
+                <div className="min-w-0">
+                  <h3 id="stock-dialog-title" className="text-xl font-black text-slate-900 tracking-tight">Change Product Stock</h3>
+                  <p className="mt-1 text-xs text-slate-500">Add items, remove items, or correct the total count.</p>
+                </div>
               </div>
-              <button onClick={() => setShowInventoryModal(false)} className="p-3 bg-slate-50 text-slate-400 rounded-2xl hover:bg-rose-50 hover:text-rose-600 transition-all"><X className="h-5 w-5" /></button>
+              <button type="button" aria-label="Close stock update" onClick={() => setShowInventoryModal(false)} className="p-3 bg-slate-50 text-slate-400 rounded-2xl hover:bg-rose-50 hover:text-rose-600 transition-all shrink-0"><X className="h-5 w-5" /></button>
             </header>
-            <form onSubmit={handleInventorySubmit} className="p-6 space-y-6 bg-slate-50/20">
+            <form onSubmit={handleInventorySubmit} className="p-5 sm:p-6 space-y-6 bg-slate-50/20 overflow-y-auto">
               {selectedInventoryItem ? (
-                <div className="bg-slate-900 rounded-2xl p-6 text-white relative overflow-hidden group">
-                  <Target className="absolute -bottom-12 -right-12 w-48 h-48 opacity-10 animate-pulse pointer-events-none" />
-                  <div className="relative z-10">
-                    <label className="text-[10px] font-black text-primary-500 uppercase tracking-[0.4em] block mb-3">Product</label>
-                    <p className="text-xl font-black uppercase tracking-tighter mb-2">{selectedInventoryItem.name}</p>
-                    <div className="flex items-center gap-3">
-                      <span className="px-3 py-1.5 bg-emerald-500/20 text-emerald-400 rounded-2xl text-[10px] font-black uppercase tracking-widest border border-emerald-500/30">Current Stock: {selectedInventoryItem.currentStock}</span>
+                <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="h-11 w-11 rounded-xl bg-slate-100 text-slate-500 flex items-center justify-center shrink-0"><Package className="h-5 w-5" /></div>
+                    <div className="min-w-0">
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Selected product</p>
+                      <p className="mt-0.5 truncate text-sm font-black text-slate-900">{selectedInventoryItem.name}</p>
                     </div>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className="text-[10px] font-bold text-slate-400">Currently in stock</p>
+                    <p className="text-2xl font-black text-emerald-600">{currentInventoryStock}</p>
                   </div>
                 </div>
               ) : (
-                <div className="space-y-3">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Select Product</label>
-                  <select required value={inventoryForm.productId} onChange={e => setInventoryForm(p => ({ ...p, productId: e.target.value }))} className="w-full px-6 py-3.5 bg-white border border-slate-100 rounded-2xl text-[12px] font-black uppercase outline-none focus:ring-4 focus:ring-primary-600/5 appearance-none">
-                    <option value="">SELECT PRODUCT...</option>
-                    {products.map(p => <option key={p._id} value={p._id}>{p.name.toUpperCase()}</option>)}
+                <div className="space-y-2">
+                  <label htmlFor="stock-product" className="text-sm font-bold text-slate-800">Choose a product</label>
+                  <select id="stock-product" required value={inventoryForm.productId} onChange={e => setInventoryForm(p => ({ ...p, productId: e.target.value }))} className="w-full px-4 py-3.5 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-600/5 appearance-none">
+                    <option value="">Select a product</option>
+                    {products.map(p => <option key={p._id} value={p._id}>{p.name}</option>)}
                   </select>
                 </div>
               )}
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-3">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Action</label>
-                  <div className="grid grid-cols-3 gap-1.5 p-1.5 bg-white border border-slate-100 rounded-2xl shadow-inner">
-                    {[
-                      { value: 'add', label: 'ADD STOCK' },
-                      { value: 'subtract', label: 'REDUCE STOCK' },
-                      { value: 'set', label: 'SET TOTAL' }
-                    ].map(op => (
-                      <button key={op.value} type="button" onClick={() => setInventoryForm(p => ({ ...p, operation: op.value }))} className={`py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${inventoryForm.operation === op.value ? 'bg-slate-900 text-white shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}>
-                        {op.label}
+              <fieldset className="space-y-3">
+                <legend className="text-sm font-bold text-slate-800">What do you want to do?</legend>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  {inventoryOperationOptions.map(op => {
+                    const OperationIcon = op.icon;
+                    const selected = inventoryForm.operation === op.value;
+                    return (
+                      <button key={op.value} type="button" aria-pressed={selected} onClick={() => setInventoryForm(p => ({ ...p, operation: op.value }))} className={`min-h-28 rounded-2xl border p-4 text-left transition-all ${selected ? 'border-emerald-500 bg-emerald-50 text-emerald-900 shadow-sm ring-2 ring-emerald-100' : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50'}`}>
+                        <OperationIcon className={`h-5 w-5 mb-3 ${selected ? 'text-emerald-600' : 'text-slate-400'}`} />
+                        <span className="block text-sm font-black">{op.label}</span>
+                        <span className="mt-1 block text-[11px] leading-snug text-slate-500">{op.description}</span>
                       </button>
-                    ))}
+                    );
+                  })}
+                </div>
+              </fieldset>
+
+              <div className="space-y-2">
+                <label htmlFor="stock-quantity" className="text-sm font-bold text-slate-800">{inventoryQuantityCopy.label}</label>
+                <input id="stock-quantity" type="number" min="0" step="1" required value={inventoryForm.quantity} onChange={e => setInventoryForm(p => ({ ...p, quantity: e.target.value }))} className="w-full px-4 py-3.5 bg-white border border-slate-200 rounded-xl text-lg font-black text-slate-900 outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-600/5" placeholder="Enter quantity" />
+                <p className="text-xs text-slate-500">{inventoryQuantityCopy.help}</p>
+              </div>
+
+              {inventoryProduct && (
+                <div className="rounded-2xl border border-emerald-100 bg-emerald-50 p-4 flex items-center justify-between gap-4" aria-live="polite">
+                  <div>
+                    <p className="text-xs font-bold text-emerald-900">Stock after this update</p>
+                    <p className="mt-1 text-[11px] text-emerald-700">Current {currentInventoryStock} → New total {projectedInventoryStock}</p>
                   </div>
+                  <p className="text-3xl font-black text-emerald-700">{projectedInventoryStock}</p>
                 </div>
-                <div className="space-y-3">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Quantity</label>
-                  <input type="number" required value={inventoryForm.quantity} onChange={e => setInventoryForm(p => ({ ...p, quantity: e.target.value }))} className="w-full px-6 py-3.5 bg-white border border-slate-100 rounded-2xl text-2xl font-black outline-none focus:ring-4 focus:ring-primary-600/5" placeholder="0" />
-                </div>
+              )}
+
+              <div className="space-y-2">
+                <label htmlFor="stock-reason" className="text-sm font-bold text-slate-800">Why are you changing the stock? <span className="font-normal text-slate-400">(Optional)</span></label>
+                <input id="stock-reason" type="text" value={inventoryForm.notes} onChange={e => setInventoryForm(p => ({ ...p, notes: e.target.value }))} className="w-full px-4 py-3.5 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-800 outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-600/5" placeholder="Example: New delivery, damaged item, or inventory count" />
               </div>
 
-              <div className="space-y-3">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Reason for Update</label>
-                <input type="text" value={inventoryForm.notes} onChange={e => setInventoryForm(p => ({ ...p, notes: e.target.value }))} className="w-full px-8 py-3.5 bg-white border border-slate-100 rounded-2xl text-[11px] font-medium outline-none shadow-inner" placeholder="E.G. NEW DELIVERY, DAMAGED ITEM, INVENTORY COUNT..." />
+              <div className="flex flex-col-reverse sm:flex-row gap-3 pt-1">
+                <button type="button" onClick={() => setShowInventoryModal(false)} className="sm:w-32 py-3.5 border border-slate-200 bg-white text-slate-600 rounded-xl text-sm font-bold hover:bg-slate-50 transition-all">Cancel</button>
+                <button disabled={submitting} type="submit" className="flex-1 py-3.5 bg-emerald-600 text-white rounded-xl text-sm font-black hover:bg-slate-900 transition-all shadow-lg shadow-emerald-100 flex items-center justify-center gap-2 active:scale-[0.99] disabled:opacity-50">
+                  {submitting ? 'Updating stock...' : 'Update Stock'}
+                  {!submitting && <ChevronRight className="h-5 w-5" />}
+                </button>
               </div>
-
-              <button disabled={submitting} type="submit" className="w-full py-6 bg-emerald-600 text-white rounded-[2rem] text-[11px] font-black uppercase tracking-[0.3em] hover:bg-slate-900 transition-all shadow-xl shadow-emerald-100 flex items-center justify-center gap-4 active:scale-95 disabled:opacity-50">
-                {submitting ? 'Saving...' : 'Save Changes'}
-                <ChevronRight className="h-5 w-5" />
-              </button>
             </form>
           </div>
         </div>

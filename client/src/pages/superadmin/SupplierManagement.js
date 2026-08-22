@@ -36,9 +36,15 @@ const SupplierManagement = () => {
   const handleAction = async (id, action) => {
     try {
       await supplierService.adminVerify(id, { action, reason: actionReason || undefined });
-      toast.success(`Supplier ${action === 'verify' ? 'verified' : action === 'reject' ? 'rejected' : 'suspended'}`);
+      const successLabels = {
+        verify: 'verified',
+        reject: 'rejected',
+        suspend: 'suspended',
+        reactivate: 'reactivated and available to sellers'
+      };
+      toast.success(`Supplier ${successLabels[action]}`);
       setActionReason('');
-      fetchSuppliers();
+      await fetchSuppliers();
       if (showDetailModal) {
         const res = await supplierService.adminGetDetails(id);
         setSupplierDetails(res.data);
@@ -181,6 +187,10 @@ const SupplierManagement = () => {
                     <button onClick={() => handleAction(s._id, 'suspend')}
                       className="px-4 py-2.5 bg-amber-100 text-amber-700 rounded-xl text-[9px] font-black uppercase hover:bg-amber-600 hover:text-white transition-all">Suspend</button>
                   )}
+                  {s.status === 'suspended' && (
+                    <button onClick={() => handleAction(s._id, 'reactivate')}
+                      className="px-4 py-2.5 bg-emerald-600 text-white rounded-xl text-[9px] font-black uppercase hover:bg-emerald-700 transition-all">Reactivate</button>
+                  )}
                 </div>
               </div>
             </div>
@@ -246,7 +256,7 @@ const SupplierManagement = () => {
                     className="w-full px-4 py-2.5 bg-white border border-purple-200 rounded-xl text-sm outline-none" />
                   <div className="flex gap-2 flex-wrap">
                     <button onClick={editSupplier} className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-[9px] font-black uppercase">Edit details</button>
-                    {supplierDetails.supplier?.status !== 'verified' && (
+                    {['pending_verification', 'rejected'].includes(supplierDetails.supplier?.status) && (
                       <button onClick={() => handleAction(supplierDetails.supplier._id, 'verify')}
                         className="px-4 py-2 bg-emerald-600 text-white rounded-xl text-[9px] font-black uppercase">Verify</button>
                     )}
@@ -258,7 +268,11 @@ const SupplierManagement = () => {
                       <button onClick={() => handleAction(supplierDetails.supplier._id, 'suspend')}
                         className="px-4 py-2 bg-amber-600 text-white rounded-xl text-[9px] font-black uppercase">Suspend</button>
                     )}
-                    {supplierDetails.supplier?.isActive !== false && <button onClick={deactivateSupplier} className="px-4 py-2 bg-slate-900 text-white rounded-xl text-[9px] font-black uppercase">Deactivate</button>}
+                    {supplierDetails.supplier?.status === 'suspended' && (
+                      <button onClick={() => handleAction(supplierDetails.supplier._id, 'reactivate')}
+                        className="px-4 py-2 bg-emerald-600 text-white rounded-xl text-[9px] font-black uppercase">Reactivate supplier</button>
+                    )}
+                    {supplierDetails.supplier?.status === 'verified' && supplierDetails.supplier?.isActive !== false && <button onClick={deactivateSupplier} className="px-4 py-2 bg-slate-900 text-white rounded-xl text-[9px] font-black uppercase">Deactivate</button>}
                   </div>
                 </div>
               </div>

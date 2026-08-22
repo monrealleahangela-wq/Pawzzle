@@ -10,6 +10,7 @@ const InventoryLot = require('../models/InventoryLot');
 const SupplyChainLog = require('../models/SupplyChainLog');
 const InventoryLedgerService = require('../services/inventoryLedgerService');
 const { createNotification } = require('./notificationController');
+const { isSupplierAvailable } = require('../utils/supplierLifecycle');
 
 // ═══════════════════════════════════════════════════════════════
 // SELLER - Create & Manage Purchase Orders
@@ -28,8 +29,8 @@ const createPurchaseOrder = async (req, res) => {
 
     // Verify supplier
     const supplier = await Supplier.findById(supplierId);
-    if (!supplier || supplier.status !== 'verified') {
-      return res.status(400).json({ message: 'Only verified suppliers can receive orders.' });
+    if (!isSupplierAvailable(supplier)) {
+      return res.status(400).json({ message: 'Only active verified suppliers can receive orders.' });
     }
 
     // Resolve store
