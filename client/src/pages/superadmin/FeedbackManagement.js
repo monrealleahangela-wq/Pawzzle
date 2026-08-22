@@ -106,12 +106,12 @@ const FeedbackManagement = () => {
                 <div className="relative z-10">
                     <div className="flex items-center gap-3 mb-2">
                         <MessageSquare className="h-5 w-5 text-primary-600" />
-                        <span className="text-[10px] font-black text-primary-600 uppercase tracking-[0.4em]">SYSTEM INTEL</span>
+                        <span className="text-[10px] font-black text-primary-600 uppercase tracking-wider">User Insights</span>
                     </div>
                     <h1 className="text-2xl sm:text-3xl font-black text-slate-900 uppercase tracking-tight leading-none">
-                        Platform <span className="text-primary-600 italic">Feedback</span>
+                        Feedback
                     </h1>
-                    <p className="text-[10px] sm:text-xs text-slate-400 font-bold uppercase tracking-widest mt-2">Voice of the customers & developers</p>
+                    <p className="text-xs text-slate-500 font-medium mt-1">Review comments, ratings, suggestions, and bug reports.</p>
                 </div>
             </header>
 
@@ -127,7 +127,7 @@ const FeedbackManagement = () => {
                         </div>
                         <input
                             type="text" 
-                            placeholder="SEARCH BY COMMENT, USER, OR CATEGORY..."
+                            placeholder="Search comment, user, or category"
                             value={searchQuery} 
                             onChange={(e) => setSearchQuery(e.target.value)}
                             onKeyDown={(e) => {
@@ -189,7 +189,8 @@ const FeedbackManagement = () => {
                 ) : feedbacks.length === 0 ? (
                     <div className="bg-white p-20 rounded-[3rem] text-center border border-dashed border-slate-200 shadow-sm">
                         <Smile className="h-12 w-12 text-slate-200 mx-auto mb-4" />
-                        <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">No Feedback Missions Found</h3>
+                        <h3 className="text-sm font-bold text-slate-700">No feedback found</h3>
+                        <p className="mt-1 text-xs text-slate-500">Try changing the search or filters.</p>
                     </div>
                 ) : (
                     feedbacks.map((item) => {

@@ -127,7 +127,7 @@ const ActivityHistory = () => {
                 <div className="w-12 h-1 bg-slate-100 rounded-full overflow-hidden">
                     <div className="h-full bg-indigo-600 animate-[loading_1s_infinite_ease-in-out] w-1/2"></div>
                 </div>
-                <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">Auditing Platform History...</span>
+                <span className="text-xs font-bold text-slate-500">Loading activity...</span>
             </div>
         );
     }
@@ -139,12 +139,12 @@ const ActivityHistory = () => {
                 <div>
                     <div className="flex items-center gap-2 mb-2">
                         <Package className="h-3 w-3 text-indigo-600" />
-                        <span className="text-[9px] font-black text-indigo-600 uppercase tracking-[0.4em]">SYSTEM MONITOR : LEDGER</span>
+                        <span className="text-[9px] font-black text-indigo-600 uppercase tracking-wider">Platform Audit Log</span>
                     </div>
                     <h1 className="text-3xl font-black text-slate-900 uppercase tracking-tighter leading-none mb-2">
-                        Activity <br /> <span className="text-indigo-600 italic">History</span>
+                        Activity
                     </h1>
-                    <p className="text-[11px] font-bold text-slate-400 uppercase tracking-[0.3em]">Complete immutable platform event log</p>
+                    <p className="text-xs font-medium text-slate-500">Review platform actions, targets, and timestamps.</p>
                 </div>
 
                 <div className="flex items-center gap-3 w-full md:w-auto">
@@ -168,7 +168,7 @@ const ActivityHistory = () => {
                             type="text"
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            placeholder="SEARCH BY DETAIL, LABEL, ID..."
+                            placeholder="Search details, event, or ID"
                             className="w-full pl-16 pr-5 py-3.5 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl outline-none focus:ring-2 focus:ring-primary-500/50 placeholder:text-slate-600 transition-all font-sans"
                         />
                     </form>

@@ -144,12 +144,12 @@ const ArchiveManagement = () => {
                 <div>
                     <div className="flex items-center gap-2 mb-1">
                         <Archive className="h-3 w-3 text-primary-600" />
-                        <span className="text-[9px] font-black text-primary-600 uppercase tracking-[0.4em]">ADMIN PANEL : ARCHIVE</span>
+                        <span className="text-[9px] font-black text-primary-600 uppercase tracking-wider">Deleted Records</span>
                     </div>
                     <h1 className="text-xl sm:text-3xl font-black text-slate-900 uppercase tracking-tighter leading-none mb-1">
-                        Data <br /> <span className="text-primary-600 italic">Archive</span>
+                        Archive
                     </h1>
-                    <p className="text-[9px] sm:text-xs font-bold text-slate-400 uppercase tracking-widest leading-none">Deleted records · Restore or delete permanently</p>
+                    <p className="text-xs font-medium text-slate-500">Restore deleted records or permanently remove them where allowed.</p>
                 </div>
                 <div className="flex items-center gap-3">
                     <div className="px-4 py-2 bg-slate-900 rounded-2xl flex items-center gap-2">
@@ -167,7 +167,7 @@ const ArchiveManagement = () => {
                             <Search className="h-4 w-4 text-slate-500 group-focus-within:text-primary-500 transition-colors" />
                         </div>
                         <input
-                            type="text" placeholder="SEARCH BY NAME, ID, OR TYPE..."
+                            type="text" placeholder="Search name, ID, or type"
                             value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
                             onKeyDown={(e) => {
                                 if (e.key === 'Enter') {
@@ -219,8 +219,8 @@ const ArchiveManagement = () => {
                             <div className="w-16 h-16 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-200 mx-auto mb-4">
                                 <Archive className="h-8 w-8" />
                             </div>
-                            <h4 className="text-lg font-black text-slate-900 uppercase tracking-tighter mb-1">Archive Empty</h4>
-                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">No soft-deleted records found</p>
+                            <h4 className="text-base font-bold text-slate-900 mb-1">Archive is empty</h4>
+                            <p className="text-xs text-slate-500">No deleted records were found.</p>
                         </div>
                     ) : (
                         Object.entries(allResults).map(([type, typeItems]) => {

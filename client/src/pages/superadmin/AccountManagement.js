@@ -209,16 +209,16 @@ const AccountManagement = () => {
         <div>
           <div className="flex items-center gap-2 mb-1">
             <Shield className="h-3 w-3 text-primary-600" />
-            <span className="text-[9px] font-black text-primary-600 uppercase tracking-[0.4em]">ADMIN PANEL : USERS</span>
+            <span className="text-[9px] font-black text-primary-600 uppercase tracking-wider">Platform Users</span>
           </div>
           <h1 className="text-xl sm:text-3xl font-black text-slate-900 uppercase tracking-tighter leading-none mb-1">
-            User <br /> <span className="text-primary-600 italic">Management</span>
+            Accounts
           </h1>
-          <p className="text-[9px] sm:text-xs font-bold text-slate-400 uppercase tracking-widest leading-none">Manage platform users and store owners</p>
+          <p className="text-xs font-medium text-slate-500">Search, review, and manage platform accounts.</p>
         </div>
         <div className="flex gap-2 w-full sm:w-auto">
           <button onClick={exportAccounts} className="flex-1 sm:flex-none px-6 py-3.5 bg-white border border-slate-200 text-slate-600 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-50 transition-all flex items-center justify-center gap-2">
-            <Download className="h-4 w-4" /> Export Users CSV
+            <Download className="h-4 w-4" /> Export CSV
           </button>
         </div>
       </div>
@@ -234,7 +234,7 @@ const AccountManagement = () => {
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="SEARCH BY NAME, USERNAME, OR EMAIL..."
+              placeholder="Search name, username, or email"
               className="w-full pl-16 pr-5 py-3.5 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl outline-none focus:ring-2 focus:ring-primary-500/50 placeholder:text-slate-600 transition-all font-sans"
             />
           </form>
@@ -452,7 +452,7 @@ const AccountManagement = () => {
                   <div className="bg-white border border-slate-100 rounded-[2.5rem] p-8 shadow-sm overflow-hidden">
                     <div className="flex items-center justify-between mb-6">
                       <h3 className="text-[11px] font-black text-slate-900 uppercase tracking-widest flex items-center gap-2">
-                        <Lock className="h-4 w-4 text-primary-600" /> Access Matrix
+                        <Lock className="h-4 w-4 text-primary-600" /> Account Access
                       </h3>
                       <button
                         type="button"

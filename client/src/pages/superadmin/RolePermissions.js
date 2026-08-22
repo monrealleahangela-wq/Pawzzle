@@ -40,13 +40,17 @@ const permissionsData = [
   }
 ];
 
-const ToggleSwitch = ({ checked, onChange }) => (
-  <div 
+const ToggleSwitch = ({ checked, onChange, label }) => (
+  <button
+    type="button"
+    role="switch"
+    aria-checked={checked}
+    aria-label={label}
     onClick={onChange}
-    className={`w-12 h-6 flex items-center rounded-full p-1 cursor-pointer transition-colors duration-300 ${checked ? 'bg-[#10b981]' : 'bg-slate-700'}`}
+    className={`w-9 h-5 min-h-0 flex items-center rounded-full p-0.5 cursor-pointer transition-colors duration-300 ${checked ? 'bg-[#10b981]' : 'bg-slate-700'}`}
   >
-    <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform duration-300 ${checked ? 'translate-x-6' : 'translate-x-0'}`} />
-  </div>
+    <span className={`bg-white w-4 h-4 rounded-full shadow-sm transform transition-transform duration-300 ${checked ? 'translate-x-4' : 'translate-x-0'}`} />
+  </button>
 );
 
 const RolePermissions = () => {
@@ -87,55 +91,57 @@ const RolePermissions = () => {
   };
 
   return (
-    <div className="space-y-6 animate-fade-in relative z-10 w-full max-w-7xl mx-auto">
+    <div className="space-y-4 animate-fade-in relative z-10 w-full max-w-7xl mx-auto">
       {/* Header Area */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center p-6 bg-[#1f1614] rounded-[24px] shadow-2xl border border-white/5 relative overflow-hidden group">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 p-4 bg-[#1f1614] rounded-2xl shadow-sm border border-white/10 relative overflow-hidden group">
         <div className="absolute top-0 right-0 w-64 h-64 bg-secondary-500/10 rounded-full blur-[80px] -mr-32 -mt-32 pointer-events-none transition-transform duration-700 group-hover:scale-150" />
-        <div className="relative z-10 space-y-2">
+        <div className="relative z-10 space-y-1">
           <div className="flex items-center gap-3">
-            <Shield className="h-8 w-8 text-secondary-500" />
-            <h1 className="text-3xl font-black text-secondary-50 uppercase tracking-tight">Permissions</h1>
+            <Shield className="h-5 w-5 text-secondary-500" />
+            <h1 className="text-2xl font-black text-secondary-50 uppercase tracking-tight">Role Permissions</h1>
           </div>
-          <p className="text-secondary-100/60 font-medium">Manage role permissions for platform users.</p>
+          <p className="text-xs text-secondary-100/60 font-medium">Review which platform areas each role can access.</p>
         </div>
-        <div className="relative z-10 mt-4 md:mt-0 flex gap-3">
-          <button className="px-5 py-2.5 rounded-xl border border-secondary-500/30 text-secondary-500 hover:bg-secondary-500/10 transition-colors flex items-center gap-2 font-bold text-sm">
+        <div className="relative z-10 flex flex-wrap gap-2">
+          <button className="h-9 px-3 py-2 rounded-lg border border-secondary-500/30 text-secondary-500 hover:bg-secondary-500/10 transition-colors flex items-center gap-2 font-bold text-xs">
             <RefreshCcw className="h-4 w-4" /> Refresh
           </button>
-          <button className="px-5 py-2.5 rounded-xl border border-[#10b981]/30 text-[#10b981] hover:bg-[#10b981]/10 transition-colors font-bold text-sm">
-            Sync To Current Pages
+          <button className="h-9 px-3 py-2 rounded-lg border border-[#10b981]/30 text-[#10b981] hover:bg-[#10b981]/10 transition-colors font-bold text-xs">
+            Sync Pages
           </button>
         </div>
       </div>
 
       {/* Main Permissions Content - Dark Theme Container */}
-      <div className="bg-[#1f1614] rounded-[24px] shadow-2xl border border-white/5 overflow-hidden">
+      <div className="bg-[#1f1614] rounded-2xl shadow-sm border border-white/10 overflow-hidden">
         
         {/* Role Header */}
-        <div className="p-6 border-b border-white/10 bg-[#160e0d] flex justify-between items-center">
+        <div className="p-4 border-b border-white/10 bg-[#160e0d] flex justify-between items-center">
           <div>
-            <h2 className="text-xl font-bold text-secondary-50 tracking-wide">Owner</h2>
-            <p className="text-xs text-secondary-100/50 mt-1">Role Key: Owner</p>
+            <h2 className="text-base font-bold text-secondary-50 tracking-wide">Store Owner</h2>
+            <p className="text-xs text-secondary-100/50 mt-0.5">Role key: owner</p>
           </div>
-          <button className="px-8 py-2.5 rounded-xl bg-[#10b981] hover:bg-[#0ea5e9] hover:bg-emerald-400 text-white transition-colors flex items-center gap-2 font-bold text-sm shadow-lg shadow-emerald-500/20">
+          <button className="h-9 px-3 py-2 rounded-lg bg-[#10b981] hover:bg-emerald-400 text-white transition-colors flex items-center gap-2 font-bold text-xs shadow-sm">
             <Save className="h-4 w-4" /> Save
           </button>
         </div>
 
-        {/* Permissions Table Header */}
-        <div className="grid grid-cols-6 gap-4 p-4 px-6 bg-[#1a1312] border-b border-white/10 text-xs font-black uppercase tracking-widest text-[#a89b98]">
-          <div className="col-span-1">Resource</div>
-          <div className="text-center">View</div>
-          <div className="text-center">Create</div>
-          <div className="text-center">Update</div>
-          <div className="text-center">Disable</div>
-          <div className="text-center">Full Access</div>
-        </div>
+        <div className="overflow-x-auto">
+          <div className="min-w-[760px]">
+            {/* Permissions Table Header */}
+            <div className="grid grid-cols-6 gap-3 p-3 px-4 bg-[#1a1312] border-b border-white/10 text-[10px] font-black uppercase tracking-wider text-[#a89b98]">
+              <div className="col-span-1">Area</div>
+              <div className="text-center">View</div>
+              <div className="text-center">Create</div>
+              <div className="text-center">Update</div>
+              <div className="text-center">Disable</div>
+              <div className="text-center">Full Access</div>
+            </div>
 
-        {/* Permissions Table Rows */}
-        <div className="divide-y divide-white/5">
-          {permissionsData.map((resource) => (
-            <div key={resource.id} className="grid grid-cols-6 gap-4 p-4 px-6 items-center hover:bg-white/[0.02] transition-colors">
+            {/* Permissions Table Rows */}
+            <div className="divide-y divide-white/5">
+              {permissionsData.map((resource) => (
+                <div key={resource.id} className="grid grid-cols-6 gap-3 p-3 px-4 items-center hover:bg-white/[0.02] transition-colors">
               <div className="col-span-1 space-y-1">
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-bold text-secondary-50">{resource.title}</span>
@@ -147,34 +153,41 @@ const RolePermissions = () => {
                 <ToggleSwitch 
                   checked={permissions[resource.id].view} 
                   onChange={() => handleToggle(resource.id, 'view')} 
+                  label={`Allow viewing ${resource.title}`}
                 />
               </div>
               <div className="flex justify-center">
                 <ToggleSwitch 
                   checked={permissions[resource.id].create} 
                   onChange={() => handleToggle(resource.id, 'create')} 
+                  label={`Allow creating ${resource.title}`}
                 />
               </div>
               <div className="flex justify-center">
                 <ToggleSwitch 
                   checked={permissions[resource.id].update} 
                   onChange={() => handleToggle(resource.id, 'update')} 
+                  label={`Allow updating ${resource.title}`}
                 />
               </div>
               <div className="flex justify-center">
                 <ToggleSwitch 
                   checked={permissions[resource.id].disable} 
                   onChange={() => handleToggle(resource.id, 'disable')} 
+                  label={`Allow disabling ${resource.title}`}
                 />
               </div>
               <div className="flex justify-center border-l border-white/5 pl-4 ml-[-1rem]">
                 <ToggleSwitch 
                   checked={permissions[resource.id].fullAccess} 
                   onChange={() => handleToggle(resource.id, 'fullAccess')} 
+                  label={`Allow full access to ${resource.title}`}
                 />
               </div>
+                </div>
+              ))}
             </div>
-          ))}
+          </div>
         </div>
       </div>
     </div>

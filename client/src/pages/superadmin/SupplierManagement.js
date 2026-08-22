@@ -97,13 +97,13 @@ const SupplierManagement = () => {
         <div className="relative z-10">
           <div className="flex items-center gap-3 mb-4">
             <div className="p-2 bg-purple-600 text-white rounded-2xl shadow-lg shadow-purple-200"><Truck className="h-4 w-4" /></div>
-            <span className="text-[10px] font-black text-purple-600 uppercase tracking-[0.4em]">SUPER ADMIN : SUPPLIERS</span>
+            <span className="text-[10px] font-black text-purple-600 uppercase tracking-wider">Supply Network</span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-black text-slate-900 uppercase tracking-tight leading-none mb-2">
-            Supplier <span className="text-purple-600">Management</span>
+            Suppliers
           </h1>
-          <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" /> Verification • Performance • Audit
+          <p className="text-xs font-medium text-slate-500 flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-emerald-500" /> Verify suppliers, review performance, and manage account status.
           </p>
         </div>
       </div>
@@ -129,7 +129,7 @@ const SupplierManagement = () => {
         <div className="grid grid-cols-1 md:grid-cols-12 gap-2">
           <div className="md:col-span-6 relative">
             <Search className="absolute left-6 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
-            <input type="text" placeholder="SEARCH SUPPLIERS..." value={searchTerm}
+            <input type="text" placeholder="Search suppliers" value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)} onKeyDown={e => e.key === 'Enter' && fetchSuppliers()}
               className="w-full pl-16 pr-4 py-4 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl outline-none focus:ring-2 focus:ring-primary-500/50 placeholder:text-slate-600 font-sans" />
           </div>
@@ -211,7 +211,7 @@ const SupplierManagement = () => {
             <header className="p-5 border-b border-slate-100 flex items-center justify-between shrink-0">
               <div>
                 <h3 className="text-lg font-black uppercase text-slate-900 tracking-tighter">{supplierDetails.supplier?.businessName}</h3>
-                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Supplier Details & Audit</p>
+                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Profile and activity</p>
               </div>
               <button onClick={() => setShowDetailModal(false)} className="p-2 bg-slate-50 text-slate-400 rounded-xl hover:bg-rose-50 hover:text-rose-600"><X className="h-4 w-4" /></button>
             </header>

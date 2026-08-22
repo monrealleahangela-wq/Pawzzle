@@ -126,12 +126,12 @@ const SupportManagement = () => {
                 <div className="relative z-10">
                     <div className="flex items-center gap-3 mb-2">
                         <HelpCircle className="h-5 w-5 text-primary-600" />
-                        <span className="text-[10px] font-black text-primary-600 uppercase tracking-[0.4em]">SUPPORT HQ</span>
+                        <span className="text-[10px] font-black text-primary-600 uppercase tracking-wider">Customer Care</span>
                     </div>
                     <h1 className="text-2xl sm:text-3xl font-black text-slate-900 uppercase tracking-tight leading-none">
-                        Support <span className="text-primary-600 italic">Tickets</span>
+                        Support
                     </h1>
-                    <p className="text-[10px] sm:text-xs text-slate-400 font-bold uppercase tracking-widest mt-2">Manage account recovery & support requests</p>
+                    <p className="text-xs text-slate-500 font-medium mt-1">Review account recovery and support requests.</p>
                 </div>
             </header>
 
@@ -143,7 +143,7 @@ const SupportManagement = () => {
               <Search className="h-4 w-4 text-slate-500 group-focus-within:text-primary-500 transition-colors" />
             </div>
             <input
-                            type="text" placeholder="SEARCH BY NAME, EMAIL, OR SUBJECT..."
+                            type="text" placeholder="Search name, email, or subject"
                             value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
                             className="w-full pl-16 pr-5 py-3.5 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl outline-none focus:ring-2 focus:ring-primary-500/50 placeholder:text-slate-600 transition-all font-sans"
                         />
@@ -192,7 +192,7 @@ const SupportManagement = () => {
                 ) : messages.length === 0 ? (
                     <div className="bg-white p-20 rounded-[3rem] text-center border border-dashed border-slate-200 shadow-sm">
                         <HelpCircle className="h-12 w-12 text-slate-200 mx-auto mb-4" />
-                        <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">No Support Requests Found</h3>
+                        <h3 className="text-sm font-bold text-slate-700">No support requests found</h3>
                     </div>
                 ) : (
                     messages.map((item) => {

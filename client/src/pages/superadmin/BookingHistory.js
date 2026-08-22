@@ -139,19 +139,19 @@ const BookingHistory = () => {
                 <div>
                     <div className="flex items-center gap-2 mb-1">
                         <Activity className="h-3 w-3 text-primary-600" />
-                        <span className="text-[9px] font-black text-primary-600 uppercase tracking-[0.4em]">SUPER ADMIN PANEL</span>
+                        <span className="text-[9px] font-black text-primary-600 uppercase tracking-wider">Platform Bookings</span>
                     </div>
                     <h1 className="text-xl sm:text-3xl font-black text-slate-900 uppercase tracking-tighter leading-none mb-1">
-                        Booking <br /> <span className="text-primary-600 italic">History</span>
+                        Bookings
                     </h1>
-                    <p className="text-[9px] sm:text-xs font-bold text-slate-400 uppercase tracking-widest leading-none">View all pet service and medical bookings</p>
+                    <p className="text-xs font-medium text-slate-500">Review pet service and medical bookings across stores.</p>
                 </div>
                 <div className="flex gap-2 w-full sm:w-auto">
                     <button
                         onClick={exportBookings}
                         className="flex-1 sm:flex-none px-6 py-3.5 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-primary-600 transition-all flex items-center justify-center gap-2 shadow-xl shadow-slate-200"
                     >
-                        <Download className="h-4 w-4" /> Export Bookings CSV
+                        <Download className="h-4 w-4" /> Export CSV
                     </button>
                 </div>
             </div>
@@ -184,7 +184,7 @@ const BookingHistory = () => {
               <Search className="h-4 w-4 text-slate-500 group-focus-within:text-primary-500 transition-colors" />
             </div>
             <input
-                            type="text" placeholder="SEARCH BY CUSTOMER, STORE, OR PET..."
+                            type="text" placeholder="Search customer, store, or pet"
                             value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
                             className="w-full pl-16 pr-5 py-3.5 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl outline-none focus:ring-2 focus:ring-primary-500/50 placeholder:text-slate-600 transition-all font-sans"
                         />

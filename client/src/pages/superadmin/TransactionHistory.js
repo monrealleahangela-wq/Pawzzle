@@ -152,12 +152,12 @@ const TransactionHistory = () => {
         <div>
           <div className="flex items-center gap-2 mb-1">
             <PieChart className="h-3 w-3 text-primary-600" />
-            <span className="text-[9px] font-black text-primary-600 uppercase tracking-[0.4em]">ADMIN PANEL : TRANSACTIONS</span>
+            <span className="text-[9px] font-black text-primary-600 uppercase tracking-wider">Platform Payments</span>
           </div>
           <h1 className="text-xl sm:text-3xl font-black text-slate-900 uppercase tracking-tighter leading-none mb-1">
-            Global <br /> <span className="text-primary-600 italic">Transactions</span>
+            Transactions
           </h1>
-          <p className="text-[9px] sm:text-xs font-bold text-slate-400 uppercase tracking-widest leading-none">Track orders and completions</p>
+          <p className="text-xs font-medium text-slate-500">Track order payments, amounts, and completion status.</p>
         </div>
         <div className="flex gap-2 w-full sm:w-auto">
           <button
@@ -200,7 +200,7 @@ const TransactionHistory = () => {
               <Search className="h-4 w-4 text-slate-500 group-focus-within:text-primary-500 transition-colors" />
             </div>
             <input
-              type="text" placeholder="SEARCH BY ORDER #, CUSTOMER..."
+              type="text" placeholder="Search order number or customer"
               value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-16 pr-5 py-3.5 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl outline-none focus:ring-2 focus:ring-primary-500/50 placeholder:text-slate-600 transition-all font-sans"
             />

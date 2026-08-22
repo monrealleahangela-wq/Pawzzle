@@ -600,3 +600,210 @@ p { line-height: 1.6; color: var(--neutral-800); }
   .store-owner-interface [class~="p-10"],
   .store-owner-interface [class~="p-8"] { padding: 1rem !important; }
 }
+
+/* Platform administration uses a compact, information-dense management scale.
+   This scope deliberately changes presentation only; route and action behavior
+   remains owned by each existing page. */
+.super-admin-interface {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: clip;
+  font-size: 0.875rem;
+  color: #334155;
+}
+
+.super-admin-interface h1 {
+  font-size: clamp(1.25rem, 2vw, 1.5rem) !important;
+  line-height: 1.2 !important;
+  letter-spacing: -0.025em !important;
+}
+
+.super-admin-interface h2 {
+  font-size: clamp(1rem, 1.5vw, 1.125rem) !important;
+  line-height: 1.3 !important;
+}
+
+.super-admin-interface h3 {
+  font-size: 0.9375rem !important;
+  line-height: 1.35 !important;
+}
+
+.super-admin-interface p { line-height: 1.45; }
+
+.super-admin-interface button,
+.super-admin-interface input,
+.super-admin-interface select,
+.super-admin-interface textarea {
+  font-size: max(0.75rem, 12px);
+}
+
+.super-admin-interface button,
+.super-admin-interface input:not([type="checkbox"]):not([type="radio"]),
+.super-admin-interface select { min-height: 2.25rem; }
+
+.super-admin-interface input:not([type="checkbox"]):not([type="radio"]),
+.super-admin-interface select { max-height: 2.5rem; }
+
+.super-admin-interface textarea { min-height: 5rem; }
+
+.super-admin-interface [class~="text-6xl"],
+.super-admin-interface [class~="text-5xl"],
+.super-admin-interface [class~="sm:text-5xl"] { font-size: 1.75rem !important; }
+.super-admin-interface [class~="text-4xl"],
+.super-admin-interface [class~="sm:text-4xl"] { font-size: 1.5rem !important; }
+.super-admin-interface [class~="text-3xl"],
+.super-admin-interface [class~="sm:text-3xl"] { font-size: 1.25rem !important; }
+
+.super-admin-interface [class~="p-20"],
+.super-admin-interface [class~="p-16"],
+.super-admin-interface [class~="p-12"] { padding: 1.25rem !important; }
+.super-admin-interface [class~="p-10"],
+.super-admin-interface [class~="p-8"] { padding: 1rem !important; }
+.super-admin-interface [class~="p-6"] { padding: 0.875rem !important; }
+.super-admin-interface [class~="sm:p-10"],
+.super-admin-interface [class~="sm:p-8"] { padding: 1rem !important; }
+.super-admin-interface [class~="lg:p-8"] { padding: 1.25rem !important; }
+
+.super-admin-interface [class~="py-24"],
+.super-admin-interface [class~="py-20"],
+.super-admin-interface [class~="py-16"] {
+  padding-top: 2.5rem !important;
+  padding-bottom: 2.5rem !important;
+}
+
+.super-admin-interface [class~="pb-24"],
+.super-admin-interface [class~="pb-20"] { padding-bottom: 2rem !important; }
+.super-admin-interface [class~="gap-12"],
+.super-admin-interface [class~="gap-10"],
+.super-admin-interface [class~="gap-8"],
+.super-admin-interface [class~="gap-6"] { gap: 1rem !important; }
+.super-admin-interface [class~="space-y-12"] > :not([hidden]) ~ :not([hidden]),
+.super-admin-interface [class~="space-y-10"] > :not([hidden]) ~ :not([hidden]),
+.super-admin-interface [class~="space-y-8"] > :not([hidden]) ~ :not([hidden]),
+.super-admin-interface [class~="space-y-6"] > :not([hidden]) ~ :not([hidden]) { margin-top: 1rem !important; }
+
+.super-admin-interface [class~="rounded-[4rem]"],
+.super-admin-interface [class~="rounded-[3rem]"],
+.super-admin-interface [class~="rounded-[2.5rem]"],
+.super-admin-interface [class~="rounded-[2rem]"] { border-radius: 1rem !important; }
+
+.super-admin-interface [class~="shadow-2xl"],
+.super-admin-interface [class~="shadow-xl"] {
+  --tw-shadow: 0 8px 24px -14px rgb(15 23 42 / 0.2);
+  --tw-shadow-colored: 0 8px 24px -14px var(--tw-shadow-color);
+}
+
+.super-admin-interface table {
+  width: 100%;
+  font-size: 0.75rem;
+}
+
+.super-admin-interface table th,
+.super-admin-interface table td {
+  padding: 0.625rem 0.75rem !important;
+  line-height: 1.35;
+  vertical-align: middle;
+}
+
+.super-admin-interface table thead {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+}
+
+.super-admin-interface table thead th { white-space: nowrap; }
+.super-admin-interface table button { min-height: 2rem; }
+
+.super-admin-interface [class*="overflow-x-auto"] {
+  overscroll-behavior-inline: contain;
+  scrollbar-width: thin;
+}
+
+.super-admin-interface [class*="fixed"][class*="inset-0"] > div:not([class*="absolute"]) {
+  max-height: calc(100dvh - 1.5rem);
+}
+
+.super-admin-interface [class~="w-64"][class~="h-64"],
+.super-admin-interface [class~="w-48"][class~="h-48"] {
+  width: 7rem !important;
+  height: 7rem !important;
+}
+
+.super-admin-interface [class~="h-64"] { height: 12rem !important; }
+.super-admin-interface [class~="min-h-screen"] { min-height: 0 !important; }
+.super-admin-interface :focus-visible { outline: 2px solid #9f4f17; outline-offset: 2px; }
+
+/* Compact shell chrome for both super_admin and platform_admin aliases. */
+.super-admin-ui-shell .sidebar-nav-item {
+  gap: 0.625rem;
+  min-height: 2.25rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.75rem;
+}
+.super-admin-ui-shell .sidebar-nav-item svg { width: 1rem; height: 1rem; }
+.super-admin-ui-shell > aside:first-of-type [class~="w-12"][class~="h-12"] { width: 2.5rem !important; height: 2.5rem !important; }
+.super-admin-ui-shell > aside:first-of-type [class~="text-2xl"] { font-size: 1.125rem !important; }
+.super-admin-ui-shell > aside:first-of-type nav { padding: 0.5rem 0.75rem; }
+.super-admin-ui-shell > aside:first-of-type nav > div { gap: 0.125rem; }
+.super-admin-ui-shell > aside:first-of-type [class~="py-6"] { padding-top: 0.875rem !important; padding-bottom: 0.875rem !important; }
+.super-admin-ui-shell > aside:first-of-type [class~="py-5"] { padding-top: 0.75rem !important; padding-bottom: 0.75rem !important; }
+.super-admin-ui-shell > aside:first-of-type [class~="py-4"] { padding-top: 0.5rem !important; padding-bottom: 0.5rem !important; }
+
+.dark .super-admin-interface { color: #cbd5e1; }
+.dark .super-admin-interface .bg-white { background-color: #0f172a !important; }
+.dark .super-admin-interface .bg-slate-50,
+.dark .super-admin-interface .bg-slate-50\/30,
+.dark .super-admin-interface .bg-slate-50\/50 { background-color: #111827 !important; }
+.dark .super-admin-interface .bg-slate-100 { background-color: #1e293b !important; }
+.dark .super-admin-interface .text-slate-900,
+.dark .super-admin-interface .text-slate-950,
+.dark .super-admin-interface .text-neutral-900 { color: #f8fafc !important; }
+.dark .super-admin-interface .text-slate-700,
+.dark .super-admin-interface .text-neutral-700 { color: #cbd5e1 !important; }
+.dark .super-admin-interface .text-slate-500,
+.dark .super-admin-interface .text-neutral-500 { color: #94a3b8 !important; }
+.dark .super-admin-interface .border-slate-50,
+.dark .super-admin-interface .border-slate-100,
+.dark .super-admin-interface .border-slate-200 { border-color: #334155 !important; }
+.dark .super-admin-interface input,
+.dark .super-admin-interface select,
+.dark .super-admin-interface textarea {
+  color: #f8fafc;
+  background-color: #111827;
+  border-color: #475569;
+}
+.dark .super-admin-interface input::placeholder,
+.dark .super-admin-interface textarea::placeholder { color: #64748b; opacity: 1; }
+.dark .super-admin-interface table thead { background-color: #111827 !important; }
+
+@media (max-width: 768px) {
+  .super-admin-interface { overflow-x: hidden; font-size: 0.8125rem; }
+  .super-admin-interface h1 { font-size: 1.25rem !important; }
+  .super-admin-interface h2 { font-size: 1rem !important; }
+  .super-admin-interface [class~="p-20"],
+  .super-admin-interface [class~="p-16"],
+  .super-admin-interface [class~="p-12"],
+  .super-admin-interface [class~="p-10"],
+  .super-admin-interface [class~="p-8"],
+  .super-admin-interface [class~="p-6"],
+  .super-admin-interface [class~="sm:p-10"],
+  .super-admin-interface [class~="sm:p-8"] { padding: 0.875rem !important; }
+  .super-admin-interface [class~="gap-12"],
+  .super-admin-interface [class~="gap-10"],
+  .super-admin-interface [class~="gap-8"],
+  .super-admin-interface [class~="gap-6"] { gap: 0.75rem !important; }
+  .super-admin-interface [class~="py-24"],
+  .super-admin-interface [class~="py-20"],
+  .super-admin-interface [class~="py-16"] {
+    padding-top: 1.75rem !important;
+    padding-bottom: 1.75rem !important;
+  }
+  .super-admin-interface table { min-width: 42rem; }
+  .super-admin-interface [class*="fixed"][class*="inset-0"] { padding: 0.5rem !important; }
+  .super-admin-interface [class*="fixed"][class*="inset-0"] > div:not([class*="absolute"]) {
+    width: 100% !important;
+    max-width: 100% !important;
+    max-height: calc(100dvh - 1rem);
+  }
+}

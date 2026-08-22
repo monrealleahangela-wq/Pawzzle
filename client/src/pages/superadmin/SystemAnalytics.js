@@ -88,19 +88,19 @@ const SystemAnalytics = () => {
         <div>
           <div className="flex items-center gap-2 mb-1">
             <Shield className="h-4 w-4 text-primary-600" />
-            <span className="text-[9px] font-black text-primary-600 uppercase tracking-[0.4em]">ADMIN PANEL : ANALYTICS</span>
+            <span className="text-[9px] font-black text-primary-600 uppercase tracking-wider">Platform Performance</span>
           </div>
           <h1 className="text-xl sm:text-4xl font-black text-slate-900 uppercase tracking-tighter leading-none mb-1">
-            System <br /> <span className="text-primary-600 italic">Analytics</span>
+            Analytics
           </h1>
-          <p className="text-[9px] sm:text-xs font-bold text-slate-400 uppercase tracking-widest leading-none">Monitor platform performance</p>
+          <p className="text-xs font-medium text-slate-500">Monitor users, orders, revenue, and platform activity.</p>
         </div>
         <div className="flex gap-2 w-full sm:w-auto">
           <button onClick={fetchAnalytics} className="p-3 bg-slate-100 text-slate-600 rounded-2xl hover:bg-slate-200 transition-all active:scale-95 shadow-sm">
             <Zap className="h-4 w-4" />
           </button>
           <button className="flex-1 sm:flex-none px-6 py-3.5 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-primary-600 transition-all flex items-center justify-center gap-2 shadow-xl shadow-slate-200">
-            <Download className="h-3.5 w-3.5" /> Export Analytics CSV
+            <Download className="h-3.5 w-3.5" /> Export CSV
           </button>
         </div>
       </div>
@@ -230,7 +230,7 @@ const SystemAnalytics = () => {
             ))}
           </div>
           <Link to="/superadmin/activity-history" className="w-full mt-10 py-3.5 bg-slate-50 hover:bg-slate-100 rounded-2xl text-[9px] font-black text-slate-400 uppercase tracking-widest transition-all flex items-center justify-center">
-            See All Activity History
+            View Activity
           </Link>
         </div>
       </div>

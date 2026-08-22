@@ -10,7 +10,7 @@ import PasswordChangeModal from './auth/PasswordChangeModal';
 import LogoutModal from './auth/LogoutModal';
 import BottomNavBar from './BottomNavBar';
 import { useTheme } from '../contexts/ThemeContext';
-import { hasUiPermission, hasUiActionPermission, isCareProfessional, OPERATIONAL_ROLES, effectiveStaffType } from '../utils/authorization';
+import { hasUiPermission, hasUiActionPermission, isCareProfessional, OPERATIONAL_ROLES, PLATFORM_ADMIN_ROLES, effectiveStaffType } from '../utils/authorization';
 import { getStaffWorkspaceConfig } from '../utils/staffWorkspace';
 
 // ═══════════════════════════════════════════════════════════════
@@ -143,30 +143,31 @@ const superAdminMenu = [
   { path: '/superadmin/dashboard', label: 'Dashboard', icon: Activity },
   {
     label: 'Insights', icon: Brain, children: [
-      { path: '/superadmin/insights', label: 'Decisions', icon: Brain },
-      { path: '/superadmin/system-analytics', label: 'Statistics', icon: TrendingUp },
+      { path: '/superadmin/insights', label: 'Decision Support', icon: Brain },
+      { path: '/superadmin/system-analytics', label: 'Analytics', icon: TrendingUp },
     ]
   },
   {
     label: 'Users', icon: Users, children: [
-      { path: '/superadmin/account-management', label: 'Manage Accounts', icon: Users },
-      { path: '/superadmin/store-applications', label: 'Applications', icon: FileText },
+      { path: '/superadmin/account-management', label: 'Accounts', icon: Users },
+      { path: '/superadmin/permissions', label: 'Role Permissions', icon: ShieldCheck },
+      { path: '/superadmin/store-applications', label: 'Store Applications', icon: FileText },
     ]
   },
   {
     label: 'Operations', icon: ShoppingBag, children: [
-      { path: '/superadmin/transaction-history', label: 'Payments', icon: DollarSign },
+      { path: '/superadmin/transaction-history', label: 'Transactions', icon: DollarSign },
       { path: '/superadmin/booking-history', label: 'Bookings', icon: Calendar },
-      { path: '/superadmin/payouts', label: 'Withdrawals', icon: Wallet },
-      { path: '/superadmin/archive', label: 'Deleted Items', icon: Archive },
+      { path: '/superadmin/payouts', label: 'Payouts', icon: Wallet },
+      { path: '/superadmin/archive', label: 'Archive', icon: Archive },
     ]
   },
   {
     label: 'Support', icon: ShieldCheck, children: [
       { path: '/superadmin/reports', label: 'Reports', icon: AlertCircle },
       { path: '/superadmin/feedback', label: 'Feedback', icon: Star },
-      { path: '/superadmin/support', label: 'Chat Help', icon: HelpCircle },
-      { path: '/superadmin/activity-history', label: 'System Logs', icon: History },
+      { path: '/superadmin/support', label: 'Support', icon: HelpCircle },
+      { path: '/superadmin/activity-history', label: 'Activity', icon: History },
     ]
   },
   {
@@ -440,13 +441,20 @@ const Layout = () => {
   const isLandingPage = location.pathname === '/' && !isAuthenticated;
   const isCustomerUI = user?.role === 'customer';
   const isStoreOwnerUI = user?.role === 'store_owner' || user?.role === 'admin';
-  const sidebarWidth = isCustomerUI
+  const isPlatformAdminUI = PLATFORM_ADMIN_ROLES.has(user?.role);
+  const sidebarWidth = isPlatformAdminUI
+    ? (sidebarCollapsed ? 'w-[68px]' : 'w-[248px]')
+    : isCustomerUI
     ? (sidebarCollapsed ? 'w-[72px]' : 'w-[240px]')
     : (sidebarCollapsed ? 'w-[84px]' : 'w-[280px]');
-  const contentPadding = isCustomerUI
+  const contentPadding = isPlatformAdminUI
+    ? (isSidebarPinned ? 'lg:pl-[248px]' : 'lg:pl-[68px]')
+    : isCustomerUI
     ? (isSidebarPinned ? 'lg:pl-[240px]' : 'lg:pl-[72px]')
     : (isSidebarPinned ? 'lg:pl-[280px]' : 'lg:pl-[84px]');
-  const headerOffset = isCustomerUI
+  const headerOffset = isPlatformAdminUI
+    ? (sidebarCollapsed ? 'lg:left-[68px]' : 'lg:left-[248px]')
+    : isCustomerUI
     ? (sidebarCollapsed ? 'lg:left-[72px]' : 'lg:left-[240px]')
     : (sidebarCollapsed ? 'lg:left-[84px]' : 'lg:left-[280px]');
 
@@ -477,7 +485,7 @@ const Layout = () => {
   );
 
   return (
-    <div className={`min-h-screen bg-neutral-50 dark:bg-slate-950 flex flex-col lg:flex-row overflow-x-hidden transition-colors duration-300 ${user?.role === 'customer' ? 'customer-ui-shell' : ''} ${user?.role === 'staff' ? 'staff-ui-shell' : ''} ${isStoreOwnerUI ? 'store-owner-ui-shell' : ''} ${isLandingPage ? '!bg-transparent' : ''}`}>
+    <div className={`min-h-screen bg-neutral-50 dark:bg-slate-950 flex flex-col lg:flex-row overflow-x-hidden transition-colors duration-300 ${user?.role === 'customer' ? 'customer-ui-shell' : ''} ${user?.role === 'staff' ? 'staff-ui-shell' : ''} ${isStoreOwnerUI ? 'store-owner-ui-shell' : ''} ${isPlatformAdminUI ? 'super-admin-ui-shell' : ''} ${isLandingPage ? '!bg-transparent' : ''}`}>
       
       {!isLandingPage && (
         <div className="fixed top-0 left-0 h-1 bg-gradient-to-r from-primary via-secondary to-primary z-[100] transition-all duration-300" 
@@ -529,9 +537,9 @@ const Layout = () => {
         </aside>
       )}
 
-      <div className={`flex-1 flex flex-col min-w-0 ${isLandingPage ? '' : `${contentPadding} ${isCustomerUI ? 'pt-14 lg:pt-16' : 'pt-16 lg:pt-20'}`} transition-all duration-500`}>
+      <div className={`flex-1 flex flex-col min-w-0 ${isLandingPage ? '' : `${contentPadding} ${isCustomerUI || isPlatformAdminUI ? 'pt-14 lg:pt-16' : 'pt-16 lg:pt-20'}`} transition-all duration-500`}>
         {!isLandingPage && (
-          <header className={`fixed top-0 left-0 ${headerOffset} right-0 z-50 glass-effect dark:border-b dark:border-slate-800 ${isCustomerUI ? 'h-14 lg:h-16' : 'h-16 lg:h-20'} flex items-center px-4 sm:px-6 lg:px-8 justify-between transition-all duration-500 shadow-soft`}>
+          <header className={`fixed top-0 left-0 ${headerOffset} right-0 z-50 glass-effect dark:border-b dark:border-slate-800 ${isCustomerUI || isPlatformAdminUI ? 'h-14 lg:h-16' : 'h-16 lg:h-20'} flex items-center px-4 sm:px-6 lg:px-8 justify-between transition-all duration-500 shadow-soft`}>
             <div className="flex items-center gap-6">
               <div className="lg:hidden">
                 <button onClick={() => setIsMobileMenuOpen(true)} className="p-2.5 bg-white shadow-soft rounded-xl text-neutral-800">
@@ -541,7 +549,7 @@ const Layout = () => {
               <div className="hidden lg:flex items-center gap-4">
                  <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
                  <span className="text-[11px] font-black text-neutral-400 uppercase tracking-[0.4em]">
-                   {user?.role === 'super_admin' ? 'Master Control' : 'Platform Operations'}
+                   {isPlatformAdminUI ? 'Platform Operations' : 'Store Operations'}
                  </span>
               </div>
             </div>
@@ -585,8 +593,8 @@ const Layout = () => {
           </header>
         )}
 
-        <main className={`flex-1 ${isCustomerUI ? 'p-3 sm:p-4 lg:p-5' : 'p-4 sm:p-5 lg:p-8'} animate-fade-up ${isLandingPage ? 'p-0' : ''}`}>
-          <div className={`relative z-10 ${user?.role === 'customer' ? 'customer-interface' : ''} ${user?.role === 'staff' ? 'staff-interface' : ''} ${isStoreOwnerUI ? 'store-owner-interface' : ''}`}>
+        <main className={`flex-1 ${isCustomerUI || isPlatformAdminUI ? 'p-3 sm:p-4 lg:p-5' : 'p-4 sm:p-5 lg:p-8'} animate-fade-up ${isLandingPage ? 'p-0' : ''}`}>
+          <div className={`relative z-10 ${user?.role === 'customer' ? 'customer-interface' : ''} ${user?.role === 'staff' ? 'staff-interface' : ''} ${isStoreOwnerUI ? 'store-owner-interface' : ''} ${isPlatformAdminUI ? 'super-admin-interface' : ''}`}>
             <Outlet />
           </div>
         </main>

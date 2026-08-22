@@ -94,12 +94,12 @@ const ReportManagement = () => {
                 <div>
                     <div className="flex items-center gap-2 mb-1">
                         <ShieldAlert className="h-4 w-4 text-rose-600" />
-                        <span className="text-[9px] font-black text-rose-600 uppercase tracking-[0.4em]">SUPER ADMIN : SAFETY</span>
+                        <span className="text-[9px] font-black text-rose-600 uppercase tracking-wider">Safety Review</span>
                     </div>
                     <h1 className="text-xl sm:text-3xl font-black text-slate-900 uppercase tracking-tighter leading-none mb-1">
-                        Report <span className="text-rose-600 italic">Management</span>
+                        Reports
                     </h1>
-                    <p className="text-[9px] sm:text-xs font-bold text-slate-400 uppercase tracking-widest leading-none">Review and manage safety reports from sellers</p>
+                    <p className="text-xs font-medium text-slate-500">Review reports, investigation details, and resolution status.</p>
                 </div>
             </div>
 
@@ -111,7 +111,7 @@ const ReportManagement = () => {
               <Search className="h-4 w-4 text-slate-500 group-focus-within:text-primary-500 transition-colors" />
             </div>
             <input
-                            type="text" placeholder="SEARCH BY REPORTER, USER, OR DETAILS..."
+                            type="text" placeholder="Search reporter, user, or details"
                             value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
                             className="w-full pl-16 pr-5 py-3.5 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl outline-none focus:ring-2 focus:ring-rose-500/50 placeholder:text-slate-600 transition-all font-sans"
                         />
@@ -174,7 +174,8 @@ const ReportManagement = () => {
                                 <tr>
                                     <td colSpan="6" className="px-8 py-20 text-center">
                                         <ShieldAlert className="h-12 w-12 text-slate-100 mx-auto mb-4" />
-                                        <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest">No reports found matching criteria</p>
+                                        <p className="text-sm font-bold text-slate-600">No matching reports found</p>
+                                        <p className="mt-1 text-xs text-slate-400">Try changing the search or filters.</p>
                                     </td>
                                 </tr>
                             ) : (

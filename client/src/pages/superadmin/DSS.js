@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { dssService } from '../../services/apiService';
 import { toast } from 'react-toastify';
-import { Brain, TrendingUp, Activity, Sparkles, Flame, Zap, Users, Building, Shield, BarChart3, Globe2, Layers, Info, Star, Settings } from 'lucide-react';
+import { Brain, TrendingUp, Activity, Sparkles, Flame, Zap, Users, Building, Shield, BarChart3, Globe2, Layers, Info, Star, Settings, RefreshCw } from 'lucide-react';
 
 const SuperAdminDSS = () => {
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(true);
-    const [activeTab, setActiveTab] = useState('platform');
 
     useEffect(() => { fetchInsights(); }, []);
 
@@ -16,7 +15,7 @@ const SuperAdminDSS = () => {
             const res = await dssService.getSuperAdminInsights();
             setData(res.data);
         } catch (err) {
-            toast.error('Failed to load platform intelligence');
+            toast.error('Unable to load decision support data');
         } finally {
             setLoading(false);
         }
@@ -24,25 +23,35 @@ const SuperAdminDSS = () => {
 
     if (loading) {
         return (
-            <div className="flex flex-col items-center justify-center h-[70vh] gap-6">
+            <div className="flex flex-col items-center justify-center h-64 gap-3">
                 <div className="relative">
-                    <div className="w-20 h-20 border-4 border-slate-100 border-t-primary-600 rounded-full animate-spin"></div>
-                    <Brain className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-8 w-8 text-primary-600 animate-pulse" />
+                    <div className="w-12 h-12 border-2 border-slate-100 border-t-primary-600 rounded-full animate-spin"></div>
+                    <Brain className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-5 w-5 text-primary-600 animate-pulse" />
                 </div>
                 <div className="text-center">
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.4em] mb-2">Architecting Platform Intelligence...</p>
-                    <p className="text-[9px] font-bold text-slate-300 uppercase tracking-widest">Consulting Global Strategy Engine</p>
+                    <p className="text-xs font-bold text-slate-600">Loading decision support data...</p>
+                    <p className="text-xs text-slate-400">Reviewing current platform performance.</p>
                 </div>
             </div>
         );
     }
 
-    if (!data) return null;
+    if (!data) return (
+        <div className="flex min-h-48 flex-col items-center justify-center gap-3 rounded-2xl border border-slate-200 bg-white p-5 text-center">
+            <Brain className="h-7 w-7 text-slate-300" />
+            <div>
+                <h1 className="font-bold text-slate-900">Decision support is unavailable</h1>
+                <p className="mt-1 text-xs text-slate-500">The latest platform insights could not be loaded.</p>
+            </div>
+            <button type="button" onClick={fetchInsights} className="inline-flex h-9 items-center gap-2 rounded-lg bg-primary-600 px-3 text-xs font-bold text-white hover:bg-primary-700">
+                <RefreshCw size={14} /> Try Again
+            </button>
+        </div>
+    );
 
     const {
         platform = {},
         revenue = { combined: 0 },
-        orders = {},
         monthlyRevenue = [],
         customerGrowth = [],
         storePerformance = [],
@@ -57,12 +66,12 @@ const SuperAdminDSS = () => {
         ? (((customerGrowth[customerGrowth.length - 1].count - customerGrowth[0].count) / Math.max(customerGrowth[0].count, 1)) * 100).toFixed(1)
         : '0.0';
 
-    const cardClass = "bg-white border border-slate-100 rounded-2xl p-8 shadow-sm hover:shadow-xl transition-all duration-500 overflow-hidden relative group";
-    const labelClass = "text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4 block";
-    const titleClass = "text-xl font-black text-slate-900 tracking-tight mb-6 flex items-center gap-3 uppercase";
+    const cardClass = "bg-white border border-slate-100 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow overflow-hidden relative group";
+    const labelClass = "text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2 block";
+    const titleClass = "text-base font-bold text-slate-900 tracking-tight mb-4 flex items-center gap-2";
 
     return (
-        <div className="max-w-7xl mx-auto space-y-6 pb-24 animate-in fade-in duration-700">
+        <div className="max-w-7xl mx-auto space-y-4 pb-8 animate-in fade-in duration-700">
             {/* Super Admin Hero Section */}
             <div className="relative bg-slate-900 rounded-2xl p-5 sm:p-7 overflow-hidden shadow-lg">
                 <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-primary-600/10 rounded-full blur-[150px] -mr-32 -mt-32 animate-pulse" />
@@ -73,25 +82,25 @@ const SuperAdminDSS = () => {
                         <div className="p-2 bg-primary-600/20 rounded-xl backdrop-blur-md border border-primary-500/30">
                             <Brain size={20} className="text-primary-400" />
                         </div>
-                        <span className="text-[12px] font-black uppercase tracking-[0.6em] text-primary-400">Global DSS Core</span>
+                        <span className="text-xs font-bold uppercase tracking-wider text-primary-400">Decision Support</span>
                     </div>
 
                     <div className="max-w-4xl">
                         <h1 className="text-2xl sm:text-3xl font-black uppercase tracking-tight leading-none mb-3 text-white">
-                            Universal <br /> <span className="text-primary-500 italic">Meta-Intelligence</span>
+                            Platform <span className="text-primary-500">Decision Support</span>
                         </h1>
                         <p className="text-xs sm:text-sm font-medium text-slate-300 max-w-2xl leading-relaxed">
-                            A high-fidelity monitoring engine analyzing cross-store dynamics and global user behavior to drive platform expansion.
+                            Review platform performance, risks, trends, and recommended actions in one place.
                         </p>
                     </div>
 
                     <div className="flex flex-wrap gap-3 mt-5">
                         <div className="px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl backdrop-blur-md">
-                            <p className="text-[10px] font-black text-white/40 uppercase tracking-widest mb-1">Global Revenue</p>
+                            <p className="text-[10px] font-bold text-white/50 uppercase tracking-wider mb-1">Platform Revenue</p>
                             <p className="text-3xl font-black text-white tracking-tighter">₱{revenue.combined.toLocaleString()}</p>
                         </div>
                         <div className="px-8 py-3.5 bg-white text-slate-900 rounded-2xl">
-                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Growth Forecast</p>
+                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Customer Growth</p>
                             <p className="text-3xl font-black text-emerald-600 tracking-tighter">+{platformGrowthRate}%</p>
                         </div>
                     </div>
@@ -136,9 +145,9 @@ const SuperAdminDSS = () => {
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         {[
-                            { label: '24H TRANSACTIONS', val: throughput.daily, color: 'emerald', desc: 'Active platform liquidity' },
-                            { label: '7D VOLUME', val: throughput.weekly, color: 'indigo', desc: 'Weekly transaction flow' },
-                            { label: '30D THROUGHPUT', val: throughput.monthly, color: 'primary', desc: 'Monthly aggregate volume' }
+                            { label: 'Transactions Today', val: throughput.daily, color: 'emerald', desc: 'Completed in the last 24 hours' },
+                            { label: 'Transactions This Week', val: throughput.weekly, color: 'indigo', desc: 'Completed in the last 7 days' },
+                            { label: 'Transactions This Month', val: throughput.monthly, color: 'primary', desc: 'Completed in the last 30 days' }
                         ].map((node, i) => (
                             <div key={i} className="bg-white border border-slate-100 p-8 rounded-2xl shadow-sm relative overflow-hidden group">
                                 <div className={`absolute top-0 right-0 w-24 h-24 bg-${node.color}-500/5 rounded-full blur-2xl -mr-8 -mt-8`} />
@@ -150,7 +159,7 @@ const SuperAdminDSS = () => {
                     </div>
 
                     <div className="space-y-4 pt-4">
-                        <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.4em] mb-6 block pl-2 italic">Global Store Node Throughput</h3>
+                        <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-4 block pl-1">Top Store Performance</h3>
                         {storePerformance.map((store, i) => (
                             <div key={i} className="flex items-center justify-between p-8 bg-white border border-slate-100 rounded-2xl shadow-sm hover:shadow-2xl hover:border-primary-100 transition-all group">
                                 <div className="flex items-center gap-6">
@@ -162,13 +171,13 @@ const SuperAdminDSS = () => {
                                         <div className="flex items-center gap-3">
                                             <span className="text-[10px] font-black text-primary-600 uppercase tracking-widest">{store.orderCount} Orders</span>
                                             <div className="w-1.5 h-1.5 rounded-full bg-slate-200" />
-                                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Active Vendor</span>
+                                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Active Store</span>
                                         </div>
                                     </div>
                                 </div>
                                 <div className="text-right">
                                     <p className="text-2xl font-black text-slate-900 tracking-tighter">₱{store.revenue.toLocaleString()}</p>
-                                    <p className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">Efficiency Rating: 98%</p>
+                                    <p className="text-[10px] font-bold text-emerald-500 uppercase tracking-wider">Active performance</p>
                                 </div>
                             </div>
                         ))}
@@ -179,7 +188,7 @@ const SuperAdminDSS = () => {
                 <div className="lg:col-span-4 space-y-8">
                     <div className="flex items-center gap-3">
                         <Sparkles size={24} className="text-primary-600" />
-                        <h2 className="text-3xl font-black text-slate-900 uppercase tracking-tight">AI Directives</h2>
+                        <h2 className="text-lg font-bold text-slate-900">Recommended Actions</h2>
                     </div>
 
                     <div className="space-y-4">
@@ -201,9 +210,9 @@ const SuperAdminDSS = () => {
 
                     <div className="bg-slate-900 rounded-2xl p-10 text-white shadow-2xl relative overflow-hidden">
                         <Activity className="absolute -right-8 -bottom-8 w-40 h-40 text-white/5" />
-                        <h3 className="text-lg font-black uppercase tracking-widest mb-6 text-primary-400">Strategic Logic</h3>
+                        <h3 className="text-base font-bold mb-3 text-primary-400">How recommendations are created</h3>
                         <p className="text-xs font-bold leading-relaxed text-slate-400 uppercase tracking-widest">
-                            Our DSS engine monitors order cancellation rates, store inactivity, and category-level demand spikes to propose platform-wide optimizations every 24 hours.
+                            Recommendations use order cancellation rates, store activity, and category demand. They refresh every 24 hours.
                         </p>
                     </div>
                 </div>
@@ -212,7 +221,7 @@ const SuperAdminDSS = () => {
             {/* Growth Visualization */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 px-4">
                 <div className={cardClass}>
-                    <h3 className={titleClass}><BarChart3 size={20} className="text-indigo-600" /> Category Dynamics</h3>
+                    <h3 className={titleClass}><BarChart3 size={20} className="text-indigo-600" /> Category Demand</h3>
                     <div className="space-y-6">
                         {(unifiedCategories.length > 0 ? unifiedCategories : popularCategories).slice(0, 8).map((cat, i) => (
                             <div key={i}>
@@ -237,8 +246,8 @@ const SuperAdminDSS = () => {
                 <div className="lg:col-span-2 bg-white border border-slate-100 rounded-2xl p-10 shadow-sm overflow-hidden relative">
                     <div className="flex items-center justify-between mb-10">
                         <div className="space-y-1">
-                            <h3 className={titleClass}><Globe2 size={20} className="text-emerald-500" /> Transaction Velocity</h3>
-                            <p className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] pl-8">Analyzing 24-hour platform liquidity trends</p>
+                            <h3 className={titleClass}><Globe2 size={20} className="text-emerald-500" /> Transaction Pace</h3>
+                            <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider pl-7">Last 24 hours compared with the previous period</p>
                         </div>
                         <div className="flex items-center gap-3">
                             <div className={`px-4 py-2 border rounded-2xl flex items-center gap-3 ${parseFloat(velocity.trend) >= 0 ? 'bg-emerald-50 border-emerald-100 text-emerald-600' : 'bg-rose-50 border-rose-100 text-rose-600'}`}>
@@ -252,7 +261,7 @@ const SuperAdminDSS = () => {
                         <div className="p-8 bg-slate-50 rounded-[2rem] border border-slate-100">
                              <div className="flex items-center gap-3 mb-4">
                                 <Zap size={16} className="text-secondary-500" />
-                                <span className="text-[10px] font-black text-slate-400 tracking-widest uppercase italic">Pace Rating</span>
+                                <span className="text-[10px] font-bold text-slate-400 tracking-wider uppercase">Current pace</span>
                              </div>
                              <div className="flex items-end gap-3 mb-2">
                                 <span className="text-5xl font-black text-slate-900 tracking-tighter">{velocity.current}</span>
@@ -265,7 +274,7 @@ const SuperAdminDSS = () => {
                         <div className="p-8 bg-slate-900 rounded-[2rem] text-white">
                              <div className="flex items-center gap-3 mb-4">
                                 <Settings size={16} className="text-primary-400" />
-                                <span className="text-[10px] font-black text-white/40 tracking-widest uppercase italic">Platform Liquidity</span>
+                                <span className="text-[10px] font-bold text-white/50 tracking-wider uppercase">Transaction mix</span>
                              </div>
                              <div className="flex flex-col gap-2">
                                 <div className="flex items-center justify-between">
@@ -277,14 +286,14 @@ const SuperAdminDSS = () => {
                                     <span className="text-[11px] font-black text-indigo-400">+24%</span>
                                 </div>
                                 <div className="h-px w-full bg-white/10 my-1" />
-                                <p className="text-[9px] font-medium text-white/30 italic uppercase">Global synchronization frequency: 15s</p>
+                                <p className="text-[9px] font-medium text-white/40 uppercase">Data refresh interval: 15 seconds</p>
                              </div>
                         </div>
                     </div>
 
                     <div className="space-y-1">
                         <h4 className="text-[11px] font-black text-slate-900 uppercase tracking-[0.2em] mb-6 flex items-center gap-3">
-                            <Activity size={14} className="text-primary-600" /> Revenue Lifecycle Engine
+                            <Activity size={14} className="text-primary-600" /> Monthly Revenue
                         </h4>
                         <div className="h-40 flex items-end gap-3">
                             {monthlyRevenue.map((m, i) => (
