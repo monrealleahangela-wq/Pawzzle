@@ -65,25 +65,25 @@ const ToastItem = ({ toast, onDismiss }) => {
       descriptionColor: 'text-primary-700'
     },
     success: {
-      bg: 'bg-primary-50 border-primary-100',
+      bg: 'bg-success-50 border-success-200',
       icon: CheckCircle,
-      iconColor: 'text-[#60534D]',
-      titleColor: 'text-primary-900',
-      descriptionColor: 'text-primary-800'
+      iconColor: 'text-success-600',
+      titleColor: 'text-success-800',
+      descriptionColor: 'text-success-700'
     },
     error: {
-      bg: 'bg-red-50 border-red-100',
+      bg: 'bg-error-50 border-error-200',
       icon: XCircle,
-      iconColor: 'text-[#8B4513]',
-      titleColor: 'text-primary-950',
-      descriptionColor: 'text-primary-900'
+      iconColor: 'text-error-600',
+      titleColor: 'text-error-800',
+      descriptionColor: 'text-error-700'
     },
     warning: {
-      bg: 'bg-secondary-50 border-secondary-100',
+      bg: 'bg-warning-50 border-warning-200',
       icon: AlertCircle,
-      iconColor: 'text-[#B7A79F]',
-      titleColor: 'text-primary-950',
-      descriptionColor: 'text-primary-900'
+      iconColor: 'text-warning-600',
+      titleColor: 'text-warning-800',
+      descriptionColor: 'text-warning-700'
     }
   };
 

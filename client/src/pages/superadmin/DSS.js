@@ -75,7 +75,7 @@ const SuperAdminDSS = () => {
             {/* Super Admin Hero Section */}
             <div className="relative bg-slate-900 rounded-2xl p-5 sm:p-7 overflow-hidden shadow-lg">
                 <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-primary-600/10 rounded-full blur-[150px] -mr-32 -mt-32 animate-pulse" />
-                <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-indigo-500/10 rounded-full blur-[120px] -ml-16 -mb-16" />
+                <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-primary-500/10 rounded-full blur-[120px] -ml-16 -mb-16" />
 
                 <div className="relative z-10">
                     <div className="flex items-center gap-3 mb-4">
@@ -221,7 +221,7 @@ const SuperAdminDSS = () => {
             {/* Growth Visualization */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 px-4">
                 <div className={cardClass}>
-                    <h3 className={titleClass}><BarChart3 size={20} className="text-indigo-600" /> Category Demand</h3>
+                    <h3 className={titleClass}><BarChart3 size={20} className="text-primary-600" /> Category Demand</h3>
                     <div className="space-y-6">
                         {(unifiedCategories.length > 0 ? unifiedCategories : popularCategories).slice(0, 8).map((cat, i) => (
                             <div key={i}>
@@ -283,7 +283,7 @@ const SuperAdminDSS = () => {
                                 </div>
                                 <div className="flex items-center justify-between">
                                     <span className="text-[10px] font-bold text-white/50 uppercase">Booking Vel.</span>
-                                    <span className="text-[11px] font-black text-indigo-400">+24%</span>
+                                    <span className="text-[11px] font-black text-primary-400">+24%</span>
                                 </div>
                                 <div className="h-px w-full bg-white/10 my-1" />
                                 <p className="text-[9px] font-medium text-white/40 uppercase">Data refresh interval: 15 seconds</p>

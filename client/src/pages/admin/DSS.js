@@ -89,7 +89,7 @@ const AdminDSS = () => {
             {/* Header Hero Section */}
             <div className="relative bg-slate-900 rounded-2xl p-5 sm:p-7 overflow-hidden shadow-lg">
                 <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-primary-600/10 rounded-full blur-[120px] -mr-32 -mt-32 animate-pulse" />
-                <div className="absolute bottom-0 left-0 w-[300px] h-[300px] bg-indigo-500/10 rounded-full blur-[100px] -ml-16 -mb-16" />
+                <div className="absolute bottom-0 left-0 w-[300px] h-[300px] bg-primary-500/10 rounded-full blur-[100px] -ml-16 -mb-16" />
 
                 <div className="relative z-10">
                     <div className="flex items-center gap-3 mb-4">
@@ -209,7 +209,7 @@ const AdminDSS = () => {
                             </div>
 
                             {decision && (
-                                <div className={`${cardClass} border-l-8 border-l-indigo-500`}>
+                                <div className={`${cardClass} border-l-8 border-l-primary-500`}>
                                     <span className={labelClass}>Validated replenishment proposal</span>
                                     <h3 className="text-xl font-black text-slate-900 mb-3">
                                         Order {decision.decision.recommendedQuantity} units
@@ -242,7 +242,7 @@ const AdminDSS = () => {
                         <div className="lg:col-span-4 space-y-6">
                             <div className={cardClass}>
                                 <h3 className={titleClass}>
-                                    <Layers size={18} className="text-indigo-600" />
+                                    <Layers size={18} className="text-primary-600" />
                                     Stock Distribution
                                 </h3>
                                 <div className="space-y-6">
@@ -313,7 +313,7 @@ const AdminDSS = () => {
 
                         <div className={cardClass}>
                             <h2 className={titleClass}>
-                                <PieChart size={20} className="text-indigo-500" />
+                                <PieChart size={20} className="text-primary-500" />
                                 Category Marketplace Share
                             </h2>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

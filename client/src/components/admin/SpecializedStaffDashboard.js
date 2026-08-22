@@ -91,15 +91,15 @@ const SpecializedStaffDashboard = () => {
   if (loading) return <div className="flex min-h-[55vh] items-center justify-center"><RefreshCw className="h-5 w-5 animate-spin text-primary" /><span className="ml-2 text-sm font-semibold text-slate-500">Loading your work…</span></div>;
 
   const metricRows = role === 'boarding_staff' ? [
-    [config.todayLabel, summary.today, Calendar, 'bg-blue-50 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300'],
+    [config.todayLabel, summary.today, Calendar, 'bg-primary-50 text-primary-700 dark:bg-primary-950/50 dark:text-primary-300'],
     [config.activeLabel, summary.active, PawPrint, 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300'],
     ['Departures today', summary.departuresToday, Clock3, 'bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300'],
-    ['Care tasks', summary.active, CheckCircle2, 'bg-violet-50 text-violet-700 dark:bg-violet-950/50 dark:text-violet-300']
+    ['Care tasks', summary.active, CheckCircle2, 'bg-primary-50 text-primary-700 dark:bg-primary-950/50 dark:text-primary-300']
   ] : [
-    [config.todayLabel, summary.today, Calendar, 'bg-blue-50 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300'],
+    [config.todayLabel, summary.today, Calendar, 'bg-primary-50 text-primary-700 dark:bg-primary-950/50 dark:text-primary-300'],
     [config.activeLabel, summary.active, Activity, 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300'],
     [config.upcomingLabel, summary.upcoming.length, Clock3, 'bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300'],
-    ['Average rating', performance.reviewCount ? `${performance.averageRating}/5` : '—', Star, 'bg-violet-50 text-violet-700 dark:bg-violet-950/50 dark:text-violet-300']
+    ['Average rating', performance.reviewCount ? `${performance.averageRating}/5` : '—', Star, 'bg-primary-50 text-primary-700 dark:bg-primary-950/50 dark:text-primary-300']
   ];
 
   return (

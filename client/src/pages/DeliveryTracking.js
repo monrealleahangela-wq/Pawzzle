@@ -531,9 +531,9 @@ const DeliveryTracking = () => {
             )}
 
             {/* Path Overlays */}
-            {routeData && <Polyline positions={routeData} color="#3b82f6" weight={6} opacity={0.8} />}
+            {routeData && <Polyline positions={routeData} color="#8B4513" weight={6} opacity={0.8} />}
             {!routeData && delivery.riderLocation?.lat && targetCoords?.lat && (
-              <Polyline positions={[[delivery.riderLocation.lat, delivery.riderLocation.lng], [targetCoords.lat, targetCoords.lng]]} color="#3b82f6" weight={4} dashArray="8, 12" opacity={0.5} />
+              <Polyline positions={[[delivery.riderLocation.lat, delivery.riderLocation.lng], [targetCoords.lat, targetCoords.lng]]} color="#8B4513" weight={4} dashArray="8, 12" opacity={0.5} />
             )}
             <Polyline positions={(delivery.locationHistory || []).map(l => [l.lat, l.lng])} color="#94a3b8" weight={2} opacity={0.4} />
           </MapContainer>
@@ -576,7 +576,7 @@ const DeliveryTracking = () => {
                 )}
                 {delivery.status === 'picked_up' && (
                   <button onClick={() => handleStatusUpdate('in_transit')} 
-                    className="w-full py-5 bg-indigo-600 text-white rounded-[2rem] text-[11px] font-black uppercase tracking-[0.3em] flex items-center justify-center gap-4 hover:bg-rose-500 hover:scale-[1.02] active:scale-95 transition-all shadow-xl shadow-indigo-100">
+                    className="w-full py-5 bg-primary-600 text-white rounded-[2rem] text-[11px] font-black uppercase tracking-[0.3em] flex items-center justify-center gap-4 hover:bg-primary-700 hover:scale-[1.02] active:scale-95 transition-all shadow-xl shadow-primary-100">
                     <Navigation className="h-5 w-5" /> BEGIN TRANSIT MISSION
                   </button>
                 )}

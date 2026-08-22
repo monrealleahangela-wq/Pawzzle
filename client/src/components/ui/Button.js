@@ -13,12 +13,12 @@ const Button = React.forwardRef(({
   
   const variants = {
     primary: "bg-primary-600 text-white hover:bg-primary-700 focus-visible:ring-primary-500 shadow-soft hover:shadow-medium hover:-translate-y-0.5",
-    secondary: "bg-secondary-600 text-white hover:bg-secondary-700 focus-visible:ring-secondary-500 shadow-soft hover:shadow-medium hover:-translate-y-0.5",
-    accent: "bg-accent-600 text-white hover:bg-accent-700 focus-visible:ring-accent-500 shadow-soft hover:shadow-medium hover:-translate-y-0.5",
+    secondary: "border border-neutral-300 bg-white text-neutral-700 hover:border-primary-300 hover:bg-primary-50 hover:text-primary-700 focus-visible:ring-primary-500 shadow-soft",
+    accent: "bg-primary-50 text-primary-800 border border-primary-200 hover:bg-primary-100 focus-visible:ring-primary-500",
     outline: "border border-neutral-300 bg-white hover:bg-neutral-50 focus-visible:ring-neutral-500 hover:border-neutral-400",
     ghost: "hover:bg-neutral-100 focus-visible:ring-neutral-500",
-    destructive: "bg-error text-white hover:bg-error-700 focus-visible:ring-error shadow-soft hover:shadow-medium hover:-translate-y-0.5",
-    gradient: "bg-hero-gradient text-white hover:shadow-glow focus-visible:ring-primary-500 shadow-medium hover:shadow-strong hover:-translate-y-0.5",
+    destructive: "bg-error-600 text-white hover:bg-error-700 focus-visible:ring-error-500 shadow-soft",
+    gradient: "bg-primary-600 text-white hover:bg-primary-700 focus-visible:ring-primary-500 shadow-medium",
   };
   
   const sizes = {

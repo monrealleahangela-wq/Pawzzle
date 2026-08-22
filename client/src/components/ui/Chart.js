@@ -168,8 +168,10 @@ const PieChart = ({ data, className, size = 200 }) => {
   const total = data.reduce((sum, item) => sum + item.value, 0);
   let currentAngle = 0;
 
+  // Multiple series use restrained brand and neutral steps instead of a
+  // decorative rainbow while remaining visually distinguishable.
   const colors = [
-    '#8B4513', '#BFA6A0', '#2E2D2D', '#797878', '#454545', '#8B4513'
+    '#8B4513', '#BFA6A0', '#2E2D2D', '#766D6A', '#D9D0C9', '#5D2E0D'
   ];
 
   return (

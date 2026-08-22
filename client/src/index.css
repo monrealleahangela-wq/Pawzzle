@@ -73,6 +73,15 @@ h1, h2, h3, h4, h5, h6 {
   outline-offset: 2px;
 }
 
+::selection {
+  background: #F7D0B2;
+  color: #2E1707;
+}
+
+:where(input[type='checkbox'], input[type='radio'], input[type='range'], progress) {
+  accent-color: #8B4513;
+}
+
 :where(button, input, select, textarea):disabled {
   cursor: not-allowed;
   opacity: 0.55;
@@ -89,7 +98,7 @@ html {
 }
 
 .btn-secondary {
-  @apply bg-secondary-500 text-white hover:bg-secondary-600 shadow-xl shadow-secondary-900/10;
+  @apply bg-white text-slate-700 border border-slate-200 hover:border-primary-300 hover:bg-primary-50 hover:text-primary-700 shadow-sm;
 }
 
 .btn-outline {

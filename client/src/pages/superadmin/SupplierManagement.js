@@ -93,11 +93,11 @@ const SupplierManagement = () => {
     <div className="min-h-screen bg-slate-50/50 p-4 sm:p-6 space-y-5">
       {/* Header */}
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-4 bg-white p-4 sm:p-6 rounded-2xl border border-slate-100 shadow-sm relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-64 h-64 bg-purple-500/5 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl pointer-events-none" />
+        <div className="absolute top-0 right-0 w-64 h-64 bg-primary-500/5 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl pointer-events-none" />
         <div className="relative z-10">
           <div className="flex items-center gap-3 mb-4">
-            <div className="p-2 bg-purple-600 text-white rounded-2xl shadow-lg shadow-purple-200"><Truck className="h-4 w-4" /></div>
-            <span className="text-[10px] font-black text-purple-600 uppercase tracking-wider">Supply Network</span>
+            <div className="p-2 bg-primary-600 text-white rounded-2xl shadow-lg shadow-primary-200"><Truck className="h-4 w-4" /></div>
+            <span className="text-[10px] font-black text-primary-600 uppercase tracking-wider">Supply Network</span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-black text-slate-900 uppercase tracking-tight leading-none mb-2">
             Suppliers
@@ -134,7 +134,7 @@ const SupplierManagement = () => {
               className="w-full pl-16 pr-4 py-4 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl outline-none focus:ring-2 focus:ring-primary-500/50 placeholder:text-slate-600 font-sans" />
           </div>
           <div className="md:col-span-4 relative">
-            <Shield className="absolute left-6 top-1/2 -translate-y-1/2 h-4 w-4 text-purple-500" />
+            <Shield className="absolute left-6 top-1/2 -translate-y-1/2 h-4 w-4 text-primary-500" />
             <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
               className="w-full h-full bg-slate-800 text-white text-[10px] font-black uppercase tracking-widest rounded-2xl pl-16 pr-10 py-4 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none cursor-pointer font-sans">
               <option value="">All Statuses</option>
@@ -155,8 +155,8 @@ const SupplierManagement = () => {
           return (
             <div key={s._id} className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm hover:shadow-lg transition-all">
               <div className="flex items-center gap-5">
-                <div className="w-14 h-14 bg-purple-100 rounded-2xl flex items-center justify-center shrink-0">
-                  {s.logo ? <img src={getImageUrl(s.logo)} alt="" className="w-full h-full object-cover rounded-2xl" /> : <Truck className="h-6 w-6 text-purple-500" />}
+                <div className="w-14 h-14 bg-primary-100 rounded-2xl flex items-center justify-center shrink-0">
+                  {s.logo ? <img src={getImageUrl(s.logo)} alt="" className="w-full h-full object-cover rounded-2xl" /> : <Truck className="h-6 w-6 text-primary-500" />}
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
@@ -167,12 +167,12 @@ const SupplierManagement = () => {
                   <div className="flex items-center gap-4 mt-2">
                     <span className="text-[9px] font-bold text-slate-400"><Star className="h-3 w-3 inline text-amber-500" /> {s.ratings?.average?.toFixed(1) || '—'}</span>
                     <span className="text-[9px] font-bold text-slate-400"><TrendingUp className="h-3 w-3 inline text-emerald-500" /> {s.performance?.reliabilityScore || 100}%</span>
-                    <span className="text-[9px] font-bold text-slate-400"><Package className="h-3 w-3 inline text-indigo-500" /> {s.productCategories?.length || 0} categories</span>
+                    <span className="text-[9px] font-bold text-slate-400"><Package className="h-3 w-3 inline text-primary-500" /> {s.productCategories?.length || 0} categories</span>
                   </div>
                 </div>
                 <div className="flex gap-2 shrink-0">
                   <button onClick={() => viewDetails(s._id)}
-                    className="px-4 py-2.5 bg-slate-900 text-white rounded-xl text-[9px] font-black uppercase hover:bg-indigo-600 transition-all flex items-center gap-1.5">
+                    className="px-4 py-2.5 bg-slate-900 text-white rounded-xl text-[9px] font-black uppercase hover:bg-primary-600 transition-all flex items-center gap-1.5">
                     <Eye className="h-3.5 w-3.5" /> View
                   </button>
                   {s.status === 'pending_verification' && (
@@ -248,14 +248,14 @@ const SupplierManagement = () => {
               </div>
 
               {/* Admin Actions */}
-              <div className="bg-purple-50 rounded-xl p-5 border border-purple-100">
-                <h4 className="text-[10px] font-black text-purple-600 uppercase tracking-widest mb-3">Admin Actions</h4>
+              <div className="bg-primary-50 rounded-xl p-5 border border-primary-100">
+                <h4 className="text-[10px] font-black text-primary-600 uppercase tracking-widest mb-3">Admin Actions</h4>
                 <div className="space-y-3">
                   <input type="text" placeholder="Reason (optional)" value={actionReason}
                     onChange={e => setActionReason(e.target.value)}
-                    className="w-full px-4 py-2.5 bg-white border border-purple-200 rounded-xl text-sm outline-none" />
+                    className="w-full px-4 py-2.5 bg-white border border-primary-200 rounded-xl text-sm outline-none" />
                   <div className="flex gap-2 flex-wrap">
-                    <button onClick={editSupplier} className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-[9px] font-black uppercase">Edit details</button>
+                    <button onClick={editSupplier} className="px-4 py-2 bg-primary-600 text-white rounded-xl text-[9px] font-black uppercase">Edit details</button>
                     {['pending_verification', 'rejected'].includes(supplierDetails.supplier?.status) && (
                       <button onClick={() => handleAction(supplierDetails.supplier._id, 'verify')}
                         className="px-4 py-2 bg-emerald-600 text-white rounded-xl text-[9px] font-black uppercase">Verify</button>
@@ -283,7 +283,7 @@ const SupplierManagement = () => {
                 <div className="space-y-2">
                   {supplierDetails.recentLogs?.map((log, i) => (
                     <div key={i} className="flex items-center gap-3 bg-slate-50 rounded-lg p-3 border border-slate-100">
-                      <div className="w-2 h-2 rounded-full bg-indigo-400 shrink-0" />
+                      <div className="w-2 h-2 rounded-full bg-primary-400 shrink-0" />
                       <div className="flex-1 min-w-0">
                         <p className="text-[10px] font-bold text-slate-700 truncate">{log.description}</p>
                         <p className="text-[9px] text-slate-400">{log.performedBy?.firstName} {log.performedBy?.lastName} • {new Date(log.createdAt).toLocaleString()}</p>

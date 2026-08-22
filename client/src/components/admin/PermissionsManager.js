@@ -86,7 +86,7 @@ const PermissionsManager = ({ permissions = {}, onChange, roleName = "Staff memb
             <div className="px-8 py-6 border-b border-[#2a2725] flex items-center justify-between bg-gradient-to-r from-[#1a1817] to-[#121110]">
                 <div>
                     <h2 className="text-xl font-black text-[#f2ece9] uppercase tracking-tighter flex items-center gap-3">
-                        <Shield className="h-5 w-5 text-[#f59e0b]" />
+                        <Shield className="h-5 w-5 text-primary-400" />
                         Permissions Matrix
                     </h2>
                     <p className="text-[#8c827c] text-[10px] font-bold uppercase tracking-[0.2em] mt-1">
@@ -114,7 +114,7 @@ const PermissionsManager = ({ permissions = {}, onChange, roleName = "Staff memb
                             {ACTION_MAP.map(action => (
                                 <th key={action.key} className="px-4 py-5 text-center">
                                     <div className="flex flex-col items-center gap-1">
-                                        <action.icon className={`h-3.5 w-3.5 ${action.key === 'fullAccess' ? 'text-[#f59e0b]' : 'text-[#8c827c]'}`} />
+                                        <action.icon className={`h-3.5 w-3.5 ${action.key === 'fullAccess' ? 'text-primary-400' : 'text-[#8c827c]'}`} />
                                         <span className="text-[9px] font-black text-[#5c5450] uppercase tracking-widest">{action.label}</span>
                                     </div>
                                 </th>
@@ -128,7 +128,7 @@ const PermissionsManager = ({ permissions = {}, onChange, roleName = "Staff memb
                                 <tr key={resource.key} className="hover:bg-[#1a1817] transition-colors group">
                                     <td className="px-8 py-5">
                                         <div className="flex items-center gap-4">
-                                            <div className="w-10 h-10 rounded-2xl bg-[#1e1c1b] border border-[#2a2725] flex items-center justify-center group-hover:border-[#f59e0b]/50 transition-all">
+                                            <div className="w-10 h-10 rounded-2xl bg-[#1e1c1b] border border-[#2a2725] flex items-center justify-center group-hover:border-primary-400/50 transition-all">
                                                 <resource.icon className="h-4.5 w-4.5 text-[#8c827c] group-hover:text-[#f2ece9]" />
                                             </div>
                                             <div>
@@ -149,7 +149,7 @@ const PermissionsManager = ({ permissions = {}, onChange, roleName = "Staff memb
                                                 onClick={() => handleToggle(resource.key, action.key)}
                                                 className={`relative w-8 h-4 rounded-full transition-all duration-300 ${
                                                     resPermissions[action.key] 
-                                                        ? (action.key === 'fullAccess' ? 'bg-[#f59e0b]' : 'bg-[#10b981]') 
+                                                        ? 'bg-primary-600'
                                                         : 'bg-[#2a2725]'
                                                 }`}
                                             >

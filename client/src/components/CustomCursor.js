@@ -67,7 +67,7 @@ const CustomCursor = () => {
             // Update main cursor position
             mainPaw.style.transform = `translate(${mouseX}px, ${mouseY}px) rotate(${isHovering ? '15deg' : '-15deg'}) scale(${isClicking ? 0.8 : isHovering ? 1.2 : 1})`;
             mainPaw.style.opacity = isVisible ? '1' : '0';
-            mainPaw.style.color = isHovering ? '#b45309' : '#d97706';
+            mainPaw.style.color = isHovering ? '#743A10' : '#8B4513';
 
             // Spawn trail paw at intervals if cursor moved
             const dx = mouseX - prevX;

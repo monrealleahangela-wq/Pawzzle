@@ -1,3 +1,9 @@
+const pawzzleAccent = {
+  50: '#FDF5F0', 100: '#FBEBDD', 200: '#F7D0B2', 300: '#F3B587',
+  400: '#EF9A5C', 500: '#8B4513', 600: '#743A10', 700: '#5D2E0D',
+  800: '#46220A', 900: '#2E1707', 950: '#1A0B03',
+};
+
 /** @type {import('tailwindcss').Config} */
 module.exports = {
   content: [
@@ -86,19 +92,49 @@ module.exports = {
           middle: '#BFA6A0', // Mocha
           end: '#5D2E0D', // Deep Brown
         },
-        success: '#917871',
-        warning: '#D9D0C9',
-        error: '#8B4513',
-        info: '#BFA6A0',
+        // Legacy module accents now resolve to the established Pawzzle brand.
+        // Semantic green, amber, rose, and red families remain untouched.
+        blue: pawzzleAccent,
+        indigo: pawzzleAccent,
+        purple: pawzzleAccent,
+        violet: pawzzleAccent,
+        fuchsia: pawzzleAccent,
+        pink: pawzzleAccent,
+        cyan: pawzzleAccent,
+        sky: pawzzleAccent,
+        teal: pawzzleAccent,
+        lime: pawzzleAccent,
+        orange: pawzzleAccent,
+        yellow: pawzzleAccent,
+        success: {
+          DEFAULT: '#15803D',
+          50: '#F0FDF4', 100: '#DCFCE7', 200: '#BBF7D0',
+          500: '#22C55E', 600: '#15803D', 700: '#166534', 800: '#14532D',
+        },
+        warning: {
+          DEFAULT: '#B45309',
+          50: '#FFFBEB', 100: '#FEF3C7', 200: '#FDE68A',
+          500: '#F59E0B', 600: '#B45309', 700: '#92400E', 800: '#78350F',
+        },
+        error: {
+          DEFAULT: '#BE123C',
+          50: '#FFF1F2', 100: '#FFE4E6', 200: '#FECDD3',
+          500: '#F43F5E', 600: '#BE123C', 700: '#9F1239', 800: '#881337',
+        },
+        info: {
+          DEFAULT: '#8B4513',
+          50: '#FDF5F0', 100: '#FBEBDD', 200: '#F7D0B2',
+          500: '#8B4513', 600: '#743A10', 700: '#5D2E0D', 800: '#46220A',
+        },
       },
       backgroundImage: {
         'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
         'gradient-conic': 'conic-gradient(from 180deg at 50% 50%, var(--tw-gradient-stops))',
         'hero-gradient': 'linear-gradient(135deg, #8B4513 0%, #BFA6A0 100%)',
         'card-gradient': 'linear-gradient(135deg, #FDF5F0 0%, #E3DAD7 100%)',
-        'success-gradient': 'linear-gradient(135deg, #917871 0%, #766D6A 100%)',
-        'warning-gradient': 'linear-gradient(135deg, #D9D0C9 0%, #B7A79F 100%)',
-        'error-gradient': 'linear-gradient(135deg, #8B4513 0%, #743A10 100%)',
+        'success-gradient': 'linear-gradient(135deg, #15803D 0%, #166534 100%)',
+        'warning-gradient': 'linear-gradient(135deg, #B45309 0%, #92400E 100%)',
+        'error-gradient': 'linear-gradient(135deg, #BE123C 0%, #9F1239 100%)',
       },
       boxShadow: {
         'soft': '0 2px 15px -3px rgba(139, 69, 19, 0.07), 0 10px 20px -2px rgba(139, 69, 19, 0.04)',

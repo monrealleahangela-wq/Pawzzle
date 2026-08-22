@@ -37,7 +37,7 @@ const MetricCard = ({ label, value, icon: Icon, tone = 'primary', detail }) => {
   const tones = {
     primary: 'bg-primary/10 text-primary', emerald: 'bg-emerald-50 text-emerald-700',
     amber: 'bg-amber-50 text-amber-700', rose: 'bg-rose-50 text-rose-700',
-    blue: 'bg-blue-50 text-blue-700', slate: 'bg-slate-100 text-slate-700'
+    blue: 'bg-primary-50 text-primary-700', slate: 'bg-slate-100 text-slate-700'
   };
   return (
     <article className="min-w-0 rounded-2xl border border-slate-200 bg-white p-3.5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
@@ -102,7 +102,7 @@ const LineChart = ({ rows = [] }) => {
 const Donut = ({ rows = [] }) => {
   const total = rows.reduce((value, row) => value + Number(row.value || 0), 0);
   let cursor = 0;
-  const colors = ['#9a4d12', '#0f9f76', '#475569'];
+  const colors = ['#8B4513', '#BFA6A0', '#475569'];
   const slices = rows.map((row, index) => {
     const start = cursor;
     cursor += total ? Number(row.value || 0) / total * 360 : 0;
@@ -267,7 +267,7 @@ const Dashboard = () => {
         {isOwner && <Panel title="Workforce operations" subtitle={`${number(data?.workforce?.available)} available · ${number(data?.workforce?.activeWorkload)} active assignments`} action={<Link to="/admin/staff" className="text-xs font-semibold text-primary">Manage</Link>}>
           <div className="grid grid-cols-4 gap-2 text-center">{[
             ['Available', data?.workforce?.available, 'bg-emerald-50 text-emerald-700'],
-            ['Busy', data?.workforce?.busy, 'bg-blue-50 text-blue-700'],
+            ['Busy', data?.workforce?.busy, 'bg-primary-50 text-primary-700'],
             ['On leave', data?.workforce?.onLeave, 'bg-amber-50 text-amber-700'],
             ['Pending', data?.workforce?.pendingVerification, 'bg-slate-100 text-slate-700']
           ].map(([label,value,tone])=><div key={label} className={`rounded-xl p-2 ${tone}`}><strong className="block text-base">{number(value)}</strong><span className="text-[9px]">{label}</span></div>)}</div>
@@ -277,7 +277,7 @@ const Dashboard = () => {
         </Panel>}
 
         <Panel title="Inventory DSS" subtitle="Deterministic stock movement indicators" action={<Link to="/admin/inventory" className="text-xs font-semibold text-primary">Manage</Link>}>
-          <div className="grid grid-cols-3 gap-2 text-center"><div className="rounded-xl bg-amber-50 p-2"><strong className="block text-lg text-amber-700">{number(data?.inventory?.low)}</strong><span className="text-[10px] text-amber-700">Low</span></div><div className="rounded-xl bg-rose-50 p-2"><strong className="block text-lg text-rose-700">{number(data?.inventory?.critical)}</strong><span className="text-[10px] text-rose-700">Critical</span></div><div className="rounded-xl bg-blue-50 p-2"><strong className="block text-lg text-blue-700">{number(data?.inventory?.reorderRequired)}</strong><span className="text-[10px] text-blue-700">Reorder</span></div></div>
+          <div className="grid grid-cols-3 gap-2 text-center"><div className="rounded-xl bg-amber-50 p-2"><strong className="block text-lg text-amber-700">{number(data?.inventory?.low)}</strong><span className="text-[10px] text-amber-700">Low</span></div><div className="rounded-xl bg-rose-50 p-2"><strong className="block text-lg text-rose-700">{number(data?.inventory?.critical)}</strong><span className="text-[10px] text-rose-700">Critical</span></div><div className="rounded-xl bg-primary-50 p-2"><strong className="block text-lg text-primary-700">{number(data?.inventory?.reorderRequired)}</strong><span className="text-[10px] text-primary-700">Reorder</span></div></div>
           <div className="mt-3"><p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Fast moving (30 days)</p><BarChart rows={(data?.inventory?.fastMoving || []).slice(0, 4)} labelKey="name" valueKey="quantity" /></div>
           {(data?.inventory?.slowMoving || []).length > 0 && <p className="mt-3 truncate text-[11px] text-slate-500">Slow moving: <strong className="text-slate-700">{data.inventory.slowMoving.map(row => row.name).slice(0, 3).join(', ')}</strong></p>}
         </Panel>
@@ -296,7 +296,7 @@ const Dashboard = () => {
         </Panel>}
 
         <Panel title="Logistics" subtitle="Delivery execution and rider workload" action={<Link to="/admin/logistics" className="text-xs font-semibold text-primary">Open</Link>}>
-          <div className="grid grid-cols-3 gap-2 text-center"><div className="rounded-xl bg-blue-50 p-2"><strong className="block text-lg text-blue-700">{number(data?.logistics?.active)}</strong><span className="text-[10px] text-blue-700">Active</span></div><div className="rounded-xl bg-emerald-50 p-2"><strong className="block text-lg text-emerald-700">{number(data?.logistics?.completed)}</strong><span className="text-[10px] text-emerald-700">Completed</span></div><div className="rounded-xl bg-rose-50 p-2"><strong className="block text-lg text-rose-700">{number(data?.logistics?.failed)}</strong><span className="text-[10px] text-rose-700">Failed</span></div></div>
+          <div className="grid grid-cols-3 gap-2 text-center"><div className="rounded-xl bg-primary-50 p-2"><strong className="block text-lg text-primary-700">{number(data?.logistics?.active)}</strong><span className="text-[10px] text-primary-700">Active</span></div><div className="rounded-xl bg-emerald-50 p-2"><strong className="block text-lg text-emerald-700">{number(data?.logistics?.completed)}</strong><span className="text-[10px] text-emerald-700">Completed</span></div><div className="rounded-xl bg-rose-50 p-2"><strong className="block text-lg text-rose-700">{number(data?.logistics?.failed)}</strong><span className="text-[10px] text-rose-700">Failed</span></div></div>
           <div className="mt-3 grid grid-cols-2 gap-2 text-xs"><p className="rounded-lg border border-slate-100 p-2 text-slate-500">Avg. time<strong className="block text-slate-900">{number(data?.logistics?.averageDeliveryMinutes)} min</strong></p><p className="rounded-lg border border-slate-100 p-2 text-slate-500">Completion<strong className="block text-slate-900">{Number(data?.logistics?.completionRate || 0).toFixed(1)}%</strong></p><p className="rounded-lg border border-slate-100 p-2 text-slate-500">Internal / 3rd party<strong className="block text-slate-900">{number(data?.logistics?.internal)} / {number(data?.logistics?.thirdParty)}</strong></p><p className="rounded-lg border border-slate-100 p-2 text-slate-500">Active rider workload<strong className="block text-slate-900">{number(data?.logistics?.activeRiderWorkload)} deliveries</strong></p></div>
           <p className="mt-2 flex justify-between text-[11px] text-slate-500"><span>Rider earnings today</span><strong className="text-slate-900">{peso(data?.logistics?.riderEarningsToday)}</strong></p>
         </Panel>
@@ -321,7 +321,7 @@ const Dashboard = () => {
           {!(dss?.inventoryRecommendations || []).some(row => row.decision?.shouldReorder) && <Empty>No forecast inventory risks detected.</Empty>}
         </Panel>
         <Panel title="Recommended actions" subtitle="Highest-priority explainable DSS alerts" action={<Link to="/admin/insights" className="text-xs font-semibold text-primary">DSS details</Link>}>
-          {(dss?.recommendedActions || []).length ? <div className="space-y-2">{dss.recommendedActions.slice(0, 4).map((action, index) => <div key={`${action.title}-${index}`} className="flex gap-2 rounded-xl border border-slate-100 p-2.5"><span className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-lg ${action.severity === 'critical' ? 'bg-rose-50 text-rose-700' : action.severity === 'high' ? 'bg-amber-50 text-amber-700' : 'bg-blue-50 text-blue-700'}`}>{action.severity === 'critical' ? <AlertTriangle size={13} /> : <CheckCircle2 size={13} />}</span><span className="min-w-0"><strong className="block text-[11px] text-slate-900">{action.title}</strong><span className="block text-[10px] leading-relaxed text-slate-500">{action.recommendedAction}</span></span></div>)}</div> : <Empty>No operational interventions are currently indicated.</Empty>}
+          {(dss?.recommendedActions || []).length ? <div className="space-y-2">{dss.recommendedActions.slice(0, 4).map((action, index) => <div key={`${action.title}-${index}`} className="flex gap-2 rounded-xl border border-slate-100 p-2.5"><span className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-lg ${action.severity === 'critical' ? 'bg-rose-50 text-rose-700' : action.severity === 'high' ? 'bg-amber-50 text-amber-700' : 'bg-primary-50 text-primary-700'}`}>{action.severity === 'critical' ? <AlertTriangle size={13} /> : <CheckCircle2 size={13} />}</span><span className="min-w-0"><strong className="block text-[11px] text-slate-900">{action.title}</strong><span className="block text-[10px] leading-relaxed text-slate-500">{action.recommendedAction}</span></span></div>)}</div> : <Empty>No operational interventions are currently indicated.</Empty>}
         </Panel>
       </section>}
 

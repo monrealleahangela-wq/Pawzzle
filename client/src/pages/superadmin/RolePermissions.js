@@ -47,7 +47,7 @@ const ToggleSwitch = ({ checked, onChange, label }) => (
     aria-checked={checked}
     aria-label={label}
     onClick={onChange}
-    className={`w-9 h-5 min-h-0 flex items-center rounded-full p-0.5 cursor-pointer transition-colors duration-300 ${checked ? 'bg-[#10b981]' : 'bg-slate-700'}`}
+    className={`w-9 h-5 min-h-0 flex items-center rounded-full p-0.5 cursor-pointer transition-colors duration-300 ${checked ? 'bg-primary-600' : 'bg-slate-700'}`}
   >
     <span className={`bg-white w-4 h-4 rounded-full shadow-sm transform transition-transform duration-300 ${checked ? 'translate-x-4' : 'translate-x-0'}`} />
   </button>
@@ -106,7 +106,7 @@ const RolePermissions = () => {
           <button className="h-9 px-3 py-2 rounded-lg border border-secondary-500/30 text-secondary-500 hover:bg-secondary-500/10 transition-colors flex items-center gap-2 font-bold text-xs">
             <RefreshCcw className="h-4 w-4" /> Refresh
           </button>
-          <button className="h-9 px-3 py-2 rounded-lg border border-[#10b981]/30 text-[#10b981] hover:bg-[#10b981]/10 transition-colors font-bold text-xs">
+          <button className="h-9 px-3 py-2 rounded-lg border border-primary-500/30 text-primary-300 hover:bg-primary-500/10 transition-colors font-bold text-xs">
             Sync Pages
           </button>
         </div>
@@ -121,7 +121,7 @@ const RolePermissions = () => {
             <h2 className="text-base font-bold text-secondary-50 tracking-wide">Store Owner</h2>
             <p className="text-xs text-secondary-100/50 mt-0.5">Role key: owner</p>
           </div>
-          <button className="h-9 px-3 py-2 rounded-lg bg-[#10b981] hover:bg-emerald-400 text-white transition-colors flex items-center gap-2 font-bold text-xs shadow-sm">
+          <button className="h-9 px-3 py-2 rounded-lg bg-primary-600 hover:bg-primary-700 text-white transition-colors flex items-center gap-2 font-bold text-xs shadow-sm">
             <Save className="h-4 w-4" /> Save
           </button>
         </div>

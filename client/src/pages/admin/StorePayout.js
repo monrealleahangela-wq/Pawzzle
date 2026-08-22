@@ -9,11 +9,11 @@ import { generatePayoutReceipt } from '../../utils/payoutReceiptGenerator';
 import { formatPeso } from '../../utils/paymentSummary';
 
 const METHOD_ICONS = { gcash: Smartphone, maya: Smartphone, bank_transfer: Landmark };
-const METHOD_COLORS = { gcash: 'text-blue-500', maya: 'text-green-500', bank_transfer: 'text-slate-600' };
+const METHOD_COLORS = { gcash: 'text-primary-600', maya: 'text-primary-600', bank_transfer: 'text-slate-600' };
 
 const STATUS_STYLES = {
     pending: 'bg-secondary-50 text-primary-700 border-secondary-200',
-    processing: 'bg-blue-50 text-blue-700 border-blue-200',
+    processing: 'bg-primary-50 text-primary-700 border-primary-200',
     completed: 'bg-emerald-50 text-emerald-700 border-emerald-200',
     rejected: 'bg-rose-50 text-rose-700 border-rose-200'
 };

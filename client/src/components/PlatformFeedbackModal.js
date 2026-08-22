@@ -10,11 +10,11 @@ const PlatformFeedbackModal = ({ isOpen, onClose }) => {
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     const categories = [
-        { name: 'General', icon: Smile, color: 'text-secondary-500 bg-secondary-50' },
-        { name: 'UI/UX', icon: Layout, color: 'text-blue-500 bg-blue-50' },
-        { name: 'Performance', icon: Zap, color: 'text-emerald-500 bg-emerald-50' },
+        { name: 'General', icon: Smile, color: 'text-primary-600 bg-primary-50' },
+        { name: 'UI/UX', icon: Layout, color: 'text-primary-600 bg-primary-50' },
+        { name: 'Performance', icon: Zap, color: 'text-primary-600 bg-primary-50' },
         { name: 'Bug Report', icon: Bug, color: 'text-rose-500 bg-rose-50' },
-        { name: 'Features', icon: Sparkles, color: 'text-purple-500 bg-purple-50' }
+        { name: 'Features', icon: Sparkles, color: 'text-primary-600 bg-primary-50' }
     ];
 
     const handleSubmit = async (e) => {
@@ -51,7 +51,7 @@ const PlatformFeedbackModal = ({ isOpen, onClose }) => {
         <div className="fixed inset-0 z-[999] bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
             <div className="bg-white rounded-[3rem] w-full max-w-lg shadow-2xl relative overflow-hidden animate-slide-up">
                 {/* Header Decoration */}
-                <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-primary-400 via-purple-400 to-rose-400" />
+                <div className="absolute top-0 left-0 w-full h-1 bg-primary-600" />
 
                 <div className="p-8 sm:p-12">
                     <div className="flex justify-between items-start mb-8">

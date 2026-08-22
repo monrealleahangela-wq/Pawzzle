@@ -486,7 +486,7 @@ const FindShops = () => {
           {isNavigating && routeData && (
             <Polyline 
                 positions={routeData} 
-                color="#3b82f6" 
+                color="#8B4513"
                 weight={8} 
                 opacity={0.8}
                 lineJoin="round"

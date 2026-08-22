@@ -5,12 +5,12 @@ const Badge = React.forwardRef(({ className, variant = "default", children, ...p
   const variants = {
     default: "bg-neutral-100 text-default border-neutral-200",
     primary: "bg-primary-100 text-primary-900 border-primary-200",
-    secondary: "bg-secondary-100 text-secondary-900 border-secondary-200",
-    accent: "bg-accent-100 text-accent-900 border-accent-200",
-    success: "bg-success text-white border-success-200",
-    warning: "bg-warning text-white border-warning-200",
-    error: "bg-error text-white border-error-200",
-    gradient: "bg-hero-gradient text-white border-transparent",
+    secondary: "bg-neutral-100 text-secondary border-neutral-200",
+    accent: "bg-primary-50 text-primary-800 border-primary-200",
+    success: "bg-success-50 text-success-700 border-success-200",
+    warning: "bg-warning-50 text-warning-700 border-warning-200",
+    error: "bg-error-50 text-error-700 border-error-200",
+    gradient: "bg-primary-600 text-white border-primary-700",
   };
 
   return (

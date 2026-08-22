@@ -112,7 +112,7 @@ const PawCursor = () => {
                         style={{
                             transition: 'transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), color 0.3s ease',
                             transform: `scale(${isPressed ? 0.7 : isHovering ? 1.4 : 1.0})`,
-                            color: isHovering ? '#FB923C' : '#FBEBDD' 
+                            color: isHovering ? '#F3B587' : '#FBEBDD'
                         }}
                     >
                         <div className={`relative transition-all duration-300 ${isHovering ? 'rotate-[15deg]' : 'rotate-0'}`}>
@@ -122,7 +122,7 @@ const PawCursor = () => {
                                 className={`filter drop-shadow-[0_2px_8px_rgba(0,0,0,0.5)] ${isHovering ? 'opacity-100' : 'opacity-90'}`} 
                             />
                             {isHovering && (
-                                <div className="absolute inset-0 bg-orange-400/40 blur-2xl rounded-full -z-10 animate-pulse" />
+                                <div className="absolute inset-0 bg-primary-400/30 blur-2xl rounded-full -z-10 animate-pulse" />
                             )}
                         </div>
                     </div>
