@@ -14,6 +14,8 @@ import LogoutModal from '../../components/auth/LogoutModal';
 import PetProfileFormModal from '../../components/pets/PetProfileFormModal';
 import { FavoritesPanel, FollowingPanel } from '../../components/profile/SavedProfileLists';
 import { formatPeso } from '../../utils/paymentSummary';
+import { isCareProfessional } from '../../utils/authorization';
+import ProfessionalProfileWorkspace from '../../components/staff/ProfessionalProfileWorkspace';
 
 import { useTheme } from '../../contexts/ThemeContext';
 
@@ -139,8 +141,7 @@ const Profile = () => {
     certifications: []
   });
   const [activeTab, setActiveTab] = useState('overview');
-  const specializedRole = user?.role === 'staff' ? user?.staffType : user?.role;
-  const isSpecializedStaff = ['veterinarian','veterinary_technician','veterinary_assistant','veterinary_nurse','veterinary_laboratory_technician','groomer','trainer','boarding_staff','boarding_specialist'].includes(specializedRole);
+  const isSpecializedStaff = isCareProfessional(user);
   const [professionalDetails, setProfessionalDetails] = useState(null);
   const [professionalForm, setProfessionalForm] = useState({ bio: '', areasOfExpertise: '', languages: '' });
   const [professionalSaving, setProfessionalSaving] = useState(false);
@@ -237,12 +238,13 @@ const Profile = () => {
       setProfilePicture(currentAvatar);
       setPreviewImage(currentAvatar);
 
-      // Fetch user's store application status
-      fetchApplicationStatus();
-
-      // Fetch activity data for all roles
-      fetchActivityData();
-      fetchSocialData();
+      // Care professionals use the narrow professional-profile endpoint. Avoid
+      // loading customer social data or store-owner application/activity data.
+      if (!isCareProfessional(user)) {
+        fetchApplicationStatus();
+        fetchActivityData();
+        fetchSocialData();
+      }
     }
   }, [user]);
 
@@ -252,8 +254,10 @@ const Profile = () => {
     const tab = params.get('tab');
     if (tab) {
       setActiveTab(tab === 'following' ? 'followers' : tab);
+    } else if (isSpecializedStaff) {
+      setActiveTab('professional');
     }
-  }, [location.search]);
+  }, [isSpecializedStaff, location.search]);
 
   useEffect(() => {
     if (!isSpecializedStaff) return;
@@ -1145,7 +1149,7 @@ const Profile = () => {
                   </div>
                 </div>
 
-                {!['super_admin', 'platform_admin'].includes(user.role) && (
+                {!isSpecializedStaff && !['super_admin', 'platform_admin'].includes(user.role) && (
                   <div className="grid grid-cols-3 gap-6 pt-10 border-t border-slate-50">
                     <div className="text-center group/stat cursor-pointer">
                       <p className="text-[9px] font-black text-neutral-300 uppercase tracking-widest mb-2 group-hover/stat:text-primary transition-colors">Followers</p>
@@ -1168,9 +1172,9 @@ const Profile = () => {
             <div className="space-y-4">
               <nav className="bg-white rounded-[2.5rem] shadow-premium border border-slate-50 p-3 lg:flex lg:flex-col overflow-x-auto no-scrollbar scroll-smooth w-full">
                 {[
-                  { id: 'overview', icon: TrendingUp, label: 'Activity' },
-                  { id: 'details', icon: User, label: 'My Information' },
                   ...(isSpecializedStaff ? [{ id: 'professional', icon: FileBadge, label: 'Professional Profile' }] : []),
+                  ...(!isSpecializedStaff ? [{ id: 'overview', icon: TrendingUp, label: 'Activity' }] : []),
+                  { id: 'details', icon: User, label: 'My Information' },
                   { id: 'pets', icon: PawPrint, label: 'My Pets', role: 'customer' },
                   { id: 'favorites', icon: HeartIcon, label: 'Favorites', role: ['customer', 'admin'] },
                   { id: 'followers', icon: Users, label: 'Following', role: ['customer', 'admin'] },
@@ -1365,14 +1369,13 @@ const Profile = () => {
               )}
 
               {activeTab === 'professional' && isSpecializedStaff && (
-                <div className="space-y-5 animate-in fade-in duration-500">
-                  <header className="border-b pb-4"><p className="text-[9px] font-black uppercase tracking-widest text-primary-600">Professional account</p><h2 className="text-xl font-black text-slate-900">My Professional Profile</h2><p className="text-xs text-slate-500">Public care qualifications and private verification status.</p></header>
-                  {professionalDetails ? <>
-                    <section className="grid grid-cols-2 sm:grid-cols-4 gap-2">{[['Completed',professionalDetails.performance?.completedServices],['Rating',professionalDetails.performance?.reviewCount?`${professionalDetails.performance.averageRating}/5`:'—'],['Upcoming',professionalDetails.performance?.upcomingBookings],['Success',`${professionalDetails.performance?.successRate||0}%`]].map(([label,value])=><div key={label} className="rounded-xl border bg-slate-50 p-3"><p className="text-[8px] font-black uppercase text-slate-400">{label}</p><p className="mt-1 text-base font-black text-slate-800">{value ?? 0}</p></div>)}</section>
-                    <section className="rounded-xl border p-3"><div className="flex flex-wrap items-center justify-between gap-2"><div><p className="text-[9px] font-black uppercase text-slate-400">Verification status</p><p className="text-sm font-black capitalize text-slate-800">{(professionalDetails.staff?.professionalVerificationStatus||'pending_verification').replaceAll('_',' ')}</p></div>{professionalDetails.staff?.professionalVerificationStatus==='verified'&&<span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-3 py-1 text-[9px] font-black uppercase text-emerald-700"><ShieldCheck className="h-3.5 w-3.5"/>Verified</span>}</div><p className="mt-2 text-[10px] text-slate-500">Only Store Owners/Admins can verify credentials. Uploaded files are private and never shown to customers.</p><div className="mt-3 space-y-2">{professionalDetails.staff?.professionalProfile?.credentialDocuments?.length ? professionalDetails.staff.professionalProfile.credentialDocuments.map(document=><div key={document._id} className="flex items-center justify-between gap-2 rounded-lg bg-slate-50 p-2"><div><p className="text-[10px] font-bold text-slate-800">{document.name}</p><p className="text-[8px] uppercase text-slate-400">{document.status?.replaceAll('_',' ')}{document.expiresAt?` · Expires ${new Date(document.expiresAt).toLocaleDateString()}`:''}</p></div><a href={document.documentUrl} target="_blank" rel="noreferrer" className="text-[9px] font-black uppercase text-primary-700">View</a></div>) : <p className="text-xs text-slate-500">No credential documents uploaded. Contact your Store Owner/Admin.</p>}</div></section>
-                    <section className="rounded-xl border p-4 space-y-3"><div><p className="text-[9px] font-black uppercase text-slate-400">Public information you may update</p><p className="text-[10px] text-slate-500">Role, branch, experience, schedules, licenses, and verification remain administrator-managed.</p></div><label className="block text-[10px] font-bold text-slate-600">Professional biography<textarea value={professionalForm.bio} maxLength="3000" onChange={event=>setProfessionalForm(current=>({...current,bio:event.target.value}))} className="mt-1 min-h-24 w-full rounded-xl border p-3 text-xs"/></label><div className="grid sm:grid-cols-2 gap-3"><label className="text-[10px] font-bold text-slate-600">Areas of expertise<input value={professionalForm.areasOfExpertise} onChange={event=>setProfessionalForm(current=>({...current,areasOfExpertise:event.target.value}))} className="mt-1 h-9 w-full rounded-xl border px-3 text-xs" placeholder="Comma-separated"/></label><label className="text-[10px] font-bold text-slate-600">Languages spoken<input value={professionalForm.languages} onChange={event=>setProfessionalForm(current=>({...current,languages:event.target.value}))} className="mt-1 h-9 w-full rounded-xl border px-3 text-xs" placeholder="Comma-separated"/></label></div><div className="flex justify-end"><button onClick={saveProfessionalProfile} disabled={professionalSaving} className="h-9 rounded-xl bg-primary-600 px-4 text-[10px] font-black uppercase text-white disabled:opacity-50">{professionalSaving?'Saving…':'Save public profile'}</button></div></section>
-                  </> : <div className="rounded-xl border bg-slate-50 p-6 text-center text-xs text-slate-500">Professional profile is unavailable.</div>}
-                </div>
+                <ProfessionalProfileWorkspace
+                  details={professionalDetails}
+                  form={professionalForm}
+                  onFormChange={setProfessionalForm}
+                  onSave={saveProfessionalProfile}
+                  saving={professionalSaving}
+                />
               )}
 
               {activeTab === 'details' && (

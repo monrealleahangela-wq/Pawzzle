@@ -1,7 +1,7 @@
 import React from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { OPERATIONAL_ROLES, effectiveStaffType, hasUiPermission, portalHomeForRole } from '../utils/authorization';
+import { OPERATIONAL_ROLES, effectiveStaffType, hasUiActionPermission, hasUiPermission, portalHomeForRole } from '../utils/authorization';
 
 const roleMatches = (userRole, allowedRoles) =>
   allowedRoles.includes(userRole) ||
@@ -37,8 +37,19 @@ const ProtectedRoute = ({ children, roles = [], staffTypes = [], requiredPermiss
   // Enhanced Staff Access Logic
   if (OPERATIONAL_ROLES.has(user?.role)) {
     // 1. If a specific permission is required, check the matrix first
+    let requiredPermissionGranted = false;
+    let explicitActionPermissionGranted = false;
     if (requiredPermission) {
-      if (!hasUiPermission(user, requiredPermission)) {
+      const requiredPermissions = Array.isArray(requiredPermission) ? requiredPermission : [requiredPermission];
+      requiredPermissionGranted = requiredPermissions.some(permission => {
+        const [resource, action] = permission.split('.');
+        const granted = action
+          ? hasUiActionPermission(user, resource, action, false)
+          : hasUiPermission(user, permission);
+        if (action && granted) explicitActionPermissionGranted = true;
+        return granted;
+      });
+      if (!requiredPermissionGranted) {
         return <Navigate to="/admin/dashboard" replace />;
       }
     }
@@ -52,7 +63,10 @@ const ProtectedRoute = ({ children, roles = [], staffTypes = [], requiredPermiss
       boarding_staff: ['boarding_specialist']
     };
     const allowedType = staffTypes.includes(type) || (aliases[type] || []).some(alias => staffTypes.includes(alias));
-    if (staffTypes.length > 0 && !allowedType) {
+    // A broad resource permission must not let a specialist bypass a route's
+    // role boundary. Only an explicitly requested action can be used as a
+    // configured exception for a route that deliberately supports one.
+    if (staffTypes.length > 0 && !allowedType && !explicitActionPermissionGranted) {
       return <Navigate to="/admin/dashboard" replace />;
     }
   }

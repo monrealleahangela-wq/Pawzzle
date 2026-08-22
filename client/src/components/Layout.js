@@ -8,8 +8,10 @@ import FloatingChatManager from './FloatingChatManager';
 import NotificationBell from './NotificationBell';
 import PasswordChangeModal from './auth/PasswordChangeModal';
 import LogoutModal from './auth/LogoutModal';
+import BottomNavBar from './BottomNavBar';
 import { useTheme } from '../contexts/ThemeContext';
-import { hasUiPermission, OPERATIONAL_ROLES, effectiveStaffType } from '../utils/authorization';
+import { hasUiPermission, hasUiActionPermission, isCareProfessional, OPERATIONAL_ROLES, effectiveStaffType } from '../utils/authorization';
+import { getStaffWorkspaceConfig } from '../utils/staffWorkspace';
 
 // ═══════════════════════════════════════════════════════════════
 // NAVIGATION DATA — Role-based dropdown menu structures
@@ -187,6 +189,27 @@ const publicMenu = [
 ];
 
 const getStaffMenu = (user) => {
+  if (isCareProfessional(user)) {
+    const config = getStaffWorkspaceConfig(effectiveStaffType(user));
+    const menu = [
+      { path: '/admin/dashboard', label: 'My Work', icon: Activity },
+      { path: '/admin/bookings', label: config.bookingsTitle, icon: Calendar },
+      { path: '/profile', label: 'My Professional Profile', icon: User }
+    ];
+    const additional = [];
+    const can = (resource, action) => hasUiActionPermission(user, resource, action, false);
+
+    // Professional defaults such as inventory.vaccine and services.view do not
+    // represent permission to administer the store catalog. Only an explicit
+    // general module grant adds one of these management destinations.
+    if (can('inventory', 'view') || can('inventory', 'manage')) additional.push({ path: '/admin/inventory', label: 'Inventory', icon: Package });
+    if (can('procurement', 'view') || can('procurement', 'manage')) additional.push({ path: '/admin/purchase-orders', label: 'Procurement', icon: Truck });
+    if (can('finance', 'view') || can('finance', 'manage')) additional.push({ path: '/admin/finance', label: 'Finance', icon: DollarSign });
+    if (can('dss', 'view') || can('dss', 'manage')) additional.push({ path: '/admin/insights', label: 'Insights', icon: Brain });
+    if (additional.length) menu.push({ label: 'Additional Access', icon: ShieldCheck, children: additional });
+    return menu;
+  }
+
   const menu = [
     { path: '/admin/dashboard', label: 'Dashboard', icon: Activity },
   ];
@@ -606,6 +629,7 @@ const Layout = () => {
 
       <LogoutModal isOpen={showLogoutModal} onClose={() => setShowLogoutModal(false)} onConfirm={confirmLogout} />
       {user?.role === 'customer' && <div className="customer-floating-ui"><FloatingChatManager currentUser={user} /></div>}
+      {isCareProfessional(user) && <BottomNavBar />}
       <PasswordChangeModal />
     </div>
   );

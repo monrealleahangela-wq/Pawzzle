@@ -173,7 +173,7 @@ function App() {
                   {/* Catalog - inventory access */}
                   <Route path="admin/pets" element={<ProtectedRoute roles={['admin', 'super_admin', 'staff']} staffTypes={['inventory_staff']} requiredPermission="inventory"><AdminPets /></ProtectedRoute>} />
                   <Route path="admin/products" element={<ProtectedRoute roles={['admin', 'super_admin', 'staff']} staffTypes={['inventory_staff']} requiredPermission="inventory"><ProductInventory /></ProtectedRoute>} />
-                  <Route path="admin/inventory" element={<ProtectedRoute roles={['admin', 'super_admin', 'staff']} staffTypes={['inventory_staff']} requiredPermission="inventory"><ProductInventory /></ProtectedRoute>} />
+                  <Route path="admin/inventory" element={<ProtectedRoute roles={['admin', 'super_admin', 'staff']} staffTypes={['inventory_staff']} requiredPermission={['inventory.view', 'inventory.manage']}><ProductInventory /></ProtectedRoute>} />
 
                   {/* Orders - orders access */}
                   <Route path="admin/orders" element={<ProtectedRoute roles={['admin', 'super_admin', 'staff']} staffTypes={['order_staff']} requiredPermission="orders"><AdminOrders /></ProtectedRoute>} />

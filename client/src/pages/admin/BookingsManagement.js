@@ -28,9 +28,10 @@ import DeliveryAssignmentFields, { emptyExternal } from '../../components/delive
 import ServiceCommunicationPanel from '../../components/booking/ServiceCommunicationPanel';
 import PaymentBreakdown from '../../components/payments/PaymentBreakdown';
 import { bookingPaymentSummary, formatPeso } from '../../utils/paymentSummary';
-import { PLATFORM_ADMIN_ROLES, STORE_ADMIN_ROLES, OPERATIONAL_ROLES, effectiveStaffType, hasUiActionPermission } from '../../utils/authorization';
+import { PLATFORM_ADMIN_ROLES, STORE_ADMIN_ROLES, OPERATIONAL_ROLES, effectiveStaffType, hasUiActionPermission, isCareProfessional } from '../../utils/authorization';
 import { getUserFacingError } from '../../utils/userFacingError';
 import { ServiceIntakeSummary } from '../../components/booking/ServiceSpecificBookingFields';
+import { getStaffWorkspaceConfig } from '../../utils/staffWorkspace';
 
 
 // Simple linear state transition mapping for manual progressing
@@ -89,6 +90,8 @@ const BookingsManagement = () => {
   const isPlatformAdmin = PLATFORM_ADMIN_ROLES.has(user?.role);
   const isStoreAdmin = STORE_ADMIN_ROLES.has(user?.role);
   const staffType = effectiveStaffType(user);
+  const professionalWorkspace = isCareProfessional(user);
+  const workspaceConfig = getStaffWorkspaceConfig(staffType);
   const serviceUpdateRoles = new Set(['manager', 'veterinarian', 'veterinary_technician', 'veterinary_nurse', 'groomer', 'trainer', 'boarding_staff']);
   const canUpdate = hasUiActionPermission(user, 'bookings', 'update', isStoreAdmin || serviceUpdateRoles.has(staffType));
   const canDelete = hasUiActionPermission(user, 'bookings', 'update', isStoreAdmin);
@@ -216,12 +219,15 @@ const BookingsManagement = () => {
   };
 
   const analytics = useMemo(() => {
+    const today = new Date().toDateString();
     const total = bookings.length;
     const pending = bookings.filter(b => b.status === 'pending').length;
-    const live = bookings.filter(b => b.status === 'confirmed' || b.status === 'in_progress').length;
+    const live = bookings.filter(b => ['confirmed', 'approved', 'processing', 'finished'].includes(b.status)).length;
     const completed = bookings.filter(b => b.status === 'completed').length;
+    const todayCount = bookings.filter(b => new Date(b.bookingDate).toDateString() === today && !['completed', 'cancelled', 'no_show'].includes(b.status)).length;
+    const upcoming = bookings.filter(b => new Date(b.bookingDate) >= new Date().setHours(0, 0, 0, 0) && !['completed', 'cancelled', 'no_show'].includes(b.status)).length;
     const revenue = bookings.reduce((acc, b) => acc + (b.totalPrice || 0), 0);
-    return { total, pending, live, completed, revenue };
+    return { total, pending, live, completed, today: todayCount, upcoming, revenue };
   }, [bookings]);
 
   const filteredBookings = bookings.filter(booking => {
@@ -285,37 +291,42 @@ const BookingsManagement = () => {
             <div className="p-1.5 bg-slate-900 text-white rounded-lg shadow-sm">
               <Calendar className="h-4 w-4" />
             </div>
-            <span className="text-[9px] font-black text-slate-400 uppercase tracking-[0.4em]">ADMIN : BOOKINGS</span>
+            <span className="text-[9px] font-black text-slate-400 uppercase tracking-[0.4em]">{professionalWorkspace ? workspaceConfig.eyebrow : 'ADMIN : BOOKINGS'}</span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-black text-slate-900 uppercase tracking-tight leading-none mb-2">
-            Service <span className="text-primary-600">Bookings</span>
+            {professionalWorkspace ? workspaceConfig.bookingsTitle : <>Service <span className="text-primary-600">Bookings</span></>}
           </h1>
           <div className="flex items-center gap-3">
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
               <Activity className="h-3.5 w-3.5 text-emerald-500" />
-              Live Monitoring
+              {professionalWorkspace ? 'Assigned work only' : 'Live Monitoring'}
             </p>
           </div>
         </div>
         <div className="flex flex-wrap gap-3">
-          <Link
+          {(isStoreAdmin || hasUiActionPermission(user, 'services', 'manage', false)) && <Link
             to="/admin/services"
             className="group h-10 px-4 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-wider hover:bg-primary-600 transition-all flex items-center gap-2"
           >
             <Briefcase className="h-4 w-4" /> Manage Services
-          </Link>
+          </Link>}
         </div>
       </header>
 
       {/* Analytics Mini-Dashboard */}
-      <div className="relative z-10 grid grid-cols-2 md:grid-cols-5 gap-3">
-        {[
+      <div className={`relative z-10 grid grid-cols-2 gap-3 ${professionalWorkspace ? 'md:grid-cols-4' : 'md:grid-cols-5'}`}>
+        {(professionalWorkspace ? [
+          { label: 'Today', value: analytics.today, color: 'blue' },
+          { label: 'Upcoming', value: analytics.upcoming, color: 'amber' },
+          { label: 'Active', value: analytics.live, color: 'emerald' },
+          { label: 'Completed', value: analytics.completed, color: 'slate' }
+        ] : [
           { label: 'Total', value: analytics.total, color: 'slate' },
           { label: 'Pending', value: analytics.pending, color: 'amber' },
           { label: 'Active', value: analytics.live, color: 'blue' },
           { label: 'Done', value: analytics.completed, color: 'emerald' },
           { label: 'Revenue', value: `₱${analytics.revenue.toLocaleString()}`, color: 'rose' }
-        ].map((stat, i) => (
+        ]).map((stat, i) => (
           <div key={i} className="bg-white border border-slate-100 p-4 rounded-2xl shadow-sm hover:shadow-md transition-all">
             <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">{stat.label}</p>
             <p className="text-lg font-black text-slate-900 leading-none tracking-tight">{stat.value}</p>
@@ -366,7 +377,18 @@ const BookingsManagement = () => {
 
       {/* Bookings List - Table View */}
       <div className="relative z-10 bg-white rounded-[2rem] border border-slate-100 shadow-sm overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500 pb-10">
-        <div className="overflow-x-auto">
+        {professionalWorkspace && filteredBookings.length > 0 && <div className="divide-y divide-slate-100 md:hidden">
+          {filteredBookings.map(booking => <button key={booking._id} type="button" onClick={() => setSelectedBooking(booking)} className="flex min-h-24 w-full items-center gap-3 p-4 text-left active:bg-slate-50">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary-50 text-primary-700"><Calendar className="h-5 w-5" /></div>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-black text-slate-900">{booking.pet?.name || 'Pet'} · {booking.service?.name || 'Service'}</p>
+              <p className="mt-1 text-[11px] text-slate-500">{formatDateTime12h(booking.bookingDate)}{booking.startTime ? ` · ${formatTime12h(booking.startTime)}` : ''}</p>
+              <span className={`mt-2 inline-flex rounded-lg border px-2 py-1 text-[8px] font-black uppercase ${getStatusStyle(booking.status, booking.paymentStatus)}`}>{booking.status?.replaceAll('_', ' ')}</span>
+            </div>
+            <ChevronRight className="h-5 w-5 shrink-0 text-slate-300" />
+          </button>)}
+        </div>}
+        <div className={`overflow-x-auto ${professionalWorkspace && filteredBookings.length > 0 ? 'hidden md:block' : ''}`}>
           {filteredBookings.length > 0 ? (
             <table className="w-full">
               <thead>

@@ -9,9 +9,10 @@ import { storeService, getImageUrl } from '../../services/apiService';
 import { useAuth } from '../../contexts/AuthContext';
 import { useRealTimeUpdates } from '../../hooks/useRealTimeUpdates';
 import RiderDashboard from '../../components/admin/RiderDashboard';
+import SpecializedStaffDashboard from '../../components/admin/SpecializedStaffDashboard';
 import {
   OPERATIONAL_ROLES, PLATFORM_ADMIN_ROLES, STORE_ADMIN_ROLES,
-  effectiveStaffType, hasUiPermission
+  effectiveStaffType, hasUiPermission, isCareProfessional
 } from '../../utils/authorization';
 import { getUserFacingError } from '../../utils/userFacingError';
 
@@ -129,10 +130,11 @@ const Dashboard = () => {
   const [error, setError] = useState('');
   const [trendRange, setTrendRange] = useState('daily');
   const isOwner = PLATFORM_ADMIN_ROLES.has(user?.role) || STORE_ADMIN_ROLES.has(user?.role);
+  const isProfessionalWorkspace = isCareProfessional(user);
   const hasPerm = useCallback(resource => hasUiPermission(user, resource), [user]);
 
   const fetchDashboard = useCallback(async ({ quiet = false } = {}) => {
-    if (effectiveStaffType(user) === 'delivery_rider') return;
+    if (effectiveStaffType(user) === 'delivery_rider' || isProfessionalWorkspace) return;
     if (quiet && document.hidden) return;
     if (!quiet) setLoading(true);
     try {
@@ -145,14 +147,14 @@ const Dashboard = () => {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [user]);
+  }, [isProfessionalWorkspace, user]);
 
   useEffect(() => { fetchDashboard(); }, [fetchDashboard]);
   useEffect(() => {
-    if (!user || effectiveStaffType(user) === 'delivery_rider') return undefined;
+    if (!user || effectiveStaffType(user) === 'delivery_rider' || isProfessionalWorkspace) return undefined;
     const timer = window.setInterval(() => fetchDashboard({ quiet: true }), 60000);
     return () => window.clearInterval(timer);
-  }, [fetchDashboard, user]);
+  }, [fetchDashboard, isProfessionalWorkspace, user]);
 
   const refreshFromEvent = useCallback(() => fetchDashboard({ quiet: true }), [fetchDashboard]);
   useRealTimeUpdates({
@@ -189,6 +191,7 @@ const Dashboard = () => {
     { to: '/admin/logistics', label: 'Logistics', icon: Truck, show: isOwner || hasPerm('logistics') }
   ].filter(action => action.show), [hasPerm, isOwner]);
 
+  if (isProfessionalWorkspace) return <SpecializedStaffDashboard />;
   if (effectiveStaffType(user) === 'delivery_rider') return <RiderDashboard />;
   if (loading) return <div className="flex min-h-[50vh] items-center justify-center"><div className="flex items-center gap-3 text-sm font-medium text-slate-500"><RefreshCw className="h-5 w-5 animate-spin text-primary" />Loading operations…</div></div>;
 

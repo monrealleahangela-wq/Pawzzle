@@ -17,7 +17,7 @@ import { Activity, Heart, Package, ShoppingCart, Calendar, Users, MessageSquare,
 import { useAuth } from '../contexts/AuthContext';
 import {
   PLATFORM_ADMIN_ROLES, STORE_ADMIN_ROLES, OPERATIONAL_ROLES,
-  effectiveStaffType, hasUiPermission
+  effectiveStaffType, hasUiPermission, hasUiActionPermission, isCareProfessional
 } from '../utils/authorization';
 
 /* ─────────────────────────────────────────────
@@ -89,6 +89,18 @@ const STAFF_TYPE_CONFIGS = {
    ───────────────────────────────────────────── */
 function buildStaffMenu(user) {
   const staffType = effectiveStaffType(user);
+  if (isCareProfessional(user)) {
+    const items = [
+      { ...DASH_NAV, label: 'My Work' },
+      { ...PERMISSION_NAV_MAP.bookings, label: 'Appointments' }
+    ];
+    if (hasUiActionPermission(user, 'inventory', 'view', false) || hasUiActionPermission(user, 'inventory', 'manage', false)) {
+      items.push({ ...PERMISSION_NAV_MAP.inventory, label: 'Inventory' });
+    }
+    items.push({ ...PROF_NAV, label: 'Profile' });
+    return dedupe(items).slice(0, 5);
+  }
+
   // 1. If granular permissions exist, derive items from them
   const grantedResources = Object.keys(PERMISSION_NAV_MAP)
     .filter(resource => hasUiPermission(user, resource));

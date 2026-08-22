@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import authService from '../../services/authService';
 import { toast } from 'react-toastify';
-import { ShieldAlert, Lock, Eye, EyeOff, CheckCircle2, ArrowRight } from 'lucide-react';
+import { ShieldCheck, Lock, Eye, EyeOff, CheckCircle2, ArrowRight } from 'lucide-react';
 
 const PasswordChangeModal = () => {
     const { user, updateUser, logout } = useAuth();
@@ -45,85 +45,88 @@ const PasswordChangeModal = () => {
     };
 
     return (
-        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-xl z-[9999] flex items-center justify-center p-4 overflow-y-auto no-scrollbar">
-            <div className="bg-white w-full max-w-lg rounded-[2.5rem] shadow-2xl relative overflow-hidden border border-slate-200">
-                {/* Background Decor */}
-                <div className="absolute top-0 right-0 w-32 h-32 bg-primary-50 rounded-bl-[4rem] -z-10" />
-                <div className="absolute bottom-0 left-0 w-24 h-24 bg-rose-50 rounded-tr-[3rem] -z-10" />
-
-                <div className="p-8 sm:p-10 space-y-8">
-                    {/* Header */}
-                    <div className="text-center space-y-3">
-                        <div className="inline-flex p-4 bg-primary-600 rounded-3xl shadow-xl shadow-primary-200 mb-2">
-                            <ShieldAlert className="h-8 w-8 text-white animate-pulse" />
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/75 p-3 backdrop-blur-sm sm:p-4">
+            <section
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="password-change-title"
+                className="w-full max-w-md max-h-[calc(100vh-1.5rem)] overflow-y-auto rounded-3xl border border-slate-200 bg-white shadow-2xl sm:max-h-[calc(100vh-2rem)]"
+            >
+                <div className="p-5 sm:p-6">
+                    <div className="mb-4 flex items-start gap-3">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary-600 text-white shadow-sm">
+                            <ShieldCheck className="h-5 w-5" />
                         </div>
-                        <h2 className="text-3xl font-black text-slate-900 uppercase tracking-tighter leading-none">
-                            Security <span className="text-primary-600 italic">Enforced</span>
-                        </h2>
-                        <p className="text-slate-400 text-xs font-bold uppercase tracking-widest text-center">
-                            A password change is required on your first login
+                        <div className="min-w-0">
+                            <h2 id="password-change-title" className="text-xl font-black leading-tight text-slate-900">
+                                Create a new password
+                            </h2>
+                            <p className="mt-1 text-xs font-medium text-slate-500">
+                                Required before you can continue to your staff account.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div className="mb-4 flex items-start gap-3 rounded-xl border border-primary-100 bg-primary-50 p-3">
+                        <Lock className="mt-0.5 h-4 w-4 shrink-0 text-primary-600" />
+                        <p className="text-xs leading-relaxed text-primary-900">
+                            You are using a temporary password. Replace it with a private password only you know.
                         </p>
                     </div>
 
-                    <div className="bg-secondary-50 border border-secondary-100 rounded-2xl p-4 flex items-start gap-4">
-                        <div className="p-2 bg-white rounded-xl text-secondary-500 shrink-0">
-                            <Lock className="h-4 w-4" />
-                        </div>
-                        <div>
-                            <p className="text-[11px] font-black text-primary-900 uppercase tracking-widest leading-none mb-1">Temporary Credentials Detected</p>
-                            <p className="text-[10px] font-medium text-primary-700 leading-relaxed">For your protection, you must replace the system-generated password with a secure personal one before proceeding.</p>
-                        </div>
-                    </div>
-
-                    <form onSubmit={handleSubmit} className="space-y-5">
-                        <div className="space-y-4">
+                    <form onSubmit={handleSubmit} className="space-y-4">
+                        <div className="space-y-3">
                             {/* Current Password */}
                             <div>
-                                <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 px-1">Current Temporary Password</label>
+                                <label htmlFor="current-temporary-password" className="mb-1.5 block text-xs font-bold text-slate-700">Temporary password</label>
                                 <div className="relative group">
-                                    <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary-500 transition-colors">
+                                    <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 transition-colors group-focus-within:text-primary-500">
                                         <Lock className="h-4 w-4" />
                                     </div>
                                     <input
+                                        id="current-temporary-password"
                                         type={showCurrent ? "text" : "password"}
                                         value={passwords.current}
                                         onChange={e => setPasswords(p => ({ ...p, current: e.target.value }))}
-                                        className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-12 pr-12 py-4 text-slate-900 font-bold focus:outline-none focus:border-primary-400 transition-all text-sm"
-                                        placeholder="Enter current password"
+                                        className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-10 pr-11 text-sm font-semibold text-slate-900 transition-colors focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-100"
+                                        placeholder="Enter the password given to you"
+                                        autoComplete="current-password"
                                         required
                                     />
                                     <button
                                         type="button"
                                         onClick={() => setShowCurrent(!showCurrent)}
-                                        className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-900 transition-colors"
+                                        aria-label={showCurrent ? 'Hide temporary password' : 'Show temporary password'}
+                                        className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 transition-colors hover:text-slate-900"
                                     >
                                         {showCurrent ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                                     </button>
                                 </div>
                             </div>
 
-                            <div className="h-px bg-slate-100 mx-4" />
-
                             {/* New Password */}
                             <div>
-                                <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 px-1">New Secure Password</label>
+                                <label htmlFor="new-staff-password" className="mb-1.5 block text-xs font-bold text-slate-700">New password</label>
                                 <div className="relative group">
-                                    <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-emerald-500 transition-colors">
+                                    <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 transition-colors group-focus-within:text-emerald-500">
                                         <CheckCircle2 className="h-4 w-4" />
                                     </div>
                                     <input
+                                        id="new-staff-password"
                                         type={showNew ? "text" : "password"}
                                         value={passwords.new}
                                         onChange={e => setPasswords(p => ({ ...p, new: e.target.value }))}
-                                        className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-12 pr-12 py-4 text-slate-900 font-bold focus:outline-none focus:border-emerald-400 transition-all text-sm"
-                                        placeholder="Minimum 6 characters"
+                                        className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-10 pr-11 text-sm font-semibold text-slate-900 transition-colors focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+                                        placeholder="At least 6 characters"
+                                        autoComplete="new-password"
                                         required
                                         minLength={6}
                                     />
                                     <button
                                         type="button"
                                         onClick={() => setShowNew(!showNew)}
-                                        className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-900 transition-colors"
+                                        aria-label={showNew ? 'Hide new password' : 'Show new password'}
+                                        className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 transition-colors hover:text-slate-900"
                                     >
                                         {showNew ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                                     </button>
@@ -132,23 +135,26 @@ const PasswordChangeModal = () => {
 
                             {/* Confirm Password */}
                             <div>
-                                <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5 px-1">Confirm New Password</label>
+                                <label htmlFor="confirm-staff-password" className="mb-1.5 block text-xs font-bold text-slate-700">Confirm new password</label>
                                 <div className="relative group">
-                                    <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-emerald-500 transition-colors">
+                                    <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 transition-colors group-focus-within:text-emerald-500">
                                         <Lock className="h-4 w-4" />
                                     </div>
                                     <input
+                                        id="confirm-staff-password"
                                         type={showConfirm ? "text" : "password"}
                                         value={passwords.confirm}
                                         onChange={e => setPasswords(p => ({ ...p, confirm: e.target.value }))}
-                                        className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-12 pr-12 py-4 text-slate-900 font-bold focus:outline-none focus:border-emerald-400 transition-all text-sm"
-                                        placeholder="Confirm new password"
+                                        className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-10 pr-11 text-sm font-semibold text-slate-900 transition-colors focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+                                        placeholder="Enter the new password again"
+                                        autoComplete="new-password"
                                         required
                                     />
                                     <button
                                         type="button"
                                         onClick={() => setShowConfirm(!showConfirm)}
-                                        className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-900 transition-colors"
+                                        aria-label={showConfirm ? 'Hide confirmed password' : 'Show confirmed password'}
+                                        className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 transition-colors hover:text-slate-900"
                                     >
                                         {showConfirm ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                                     </button>
@@ -156,37 +162,33 @@ const PasswordChangeModal = () => {
                             </div>
                         </div>
 
-                        <div className="pt-4 flex flex-col gap-3">
+                        <p className="text-[11px] leading-relaxed text-slate-500">
+                            Use at least 6 characters. Do not reuse the temporary password.
+                        </p>
+
+                        <div className="flex flex-col gap-2 pt-1">
                             <button
                                 type="submit"
                                 disabled={loading}
-                                className="w-full py-4.5 bg-slate-900 text-white rounded-[1.5rem] font-black text-xs uppercase tracking-[0.2em] hover:bg-primary-600 transition-all active:scale-[0.98] shadow-2xl flex items-center justify-center gap-3 disabled:opacity-50"
+                                className="flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 py-3 text-sm font-bold text-white shadow-sm transition-colors hover:bg-primary-600 disabled:cursor-not-allowed disabled:opacity-50"
                             >
-                                {loading ? 'UPDATING SECURITY...' : (
+                                {loading ? 'Saving new password...' : (
                                     <>
-                                        Update Password & Proceed <ArrowRight className="h-4 w-4" />
+                                        Save new password <ArrowRight className="h-4 w-4" />
                                     </>
                                 )}
                             </button>
                             <button
                                 type="button"
                                 onClick={logout}
-                                className="w-full py-3 text-slate-400 hover:text-rose-600 font-black text-[10px] uppercase tracking-widest transition-colors flex items-center justify-center gap-2"
+                                className="w-full py-2 text-xs font-semibold text-slate-500 transition-colors hover:text-rose-600"
                             >
-                                Not you? Logout
+                                Sign out instead
                             </button>
                         </div>
                     </form>
                 </div>
-
-                {/* Footer Warning */}
-                <div className="bg-slate-50 p-6 flex justify-center border-t border-slate-100">
-                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2 italic">
-                        <div className="w-1.5 h-1.5 rounded-full bg-slate-300 animate-pulse" />
-                        This session is locked until password verification
-                    </p>
-                </div>
-            </div>
+            </section>
         </div>
     );
 };

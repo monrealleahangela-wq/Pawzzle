@@ -7,6 +7,12 @@ export const OPERATIONAL_ROLES = new Set([
   'boarding_staff', 'delivery_dispatcher', 'delivery_rider', 'auditor'
 ]);
 
+export const CARE_PROFESSIONAL_ROLES = new Set([
+  'veterinarian', 'veterinary_technician', 'veterinary_assistant',
+  'veterinary_nurse', 'veterinary_laboratory_technician',
+  'groomer', 'trainer', 'boarding_staff'
+]);
+
 const DIRECT_ROLE_RESOURCES = {
   manager: ['staff', 'customers', 'pets', 'services', 'orders', 'inventory', 'procurement', 'finance', 'logistics', 'reports', 'bookings', 'dss'],
   service_staff: ['customers', 'pets', 'services', 'bookings'],
@@ -42,6 +48,7 @@ const LEGACY_STAFF_ROLE_MAP = {
   logistics_staff: 'delivery_dispatcher',
   delivery_rider: 'delivery_rider',
   boarding_specialist: 'boarding_staff',
+  boarding_staff: 'boarding_staff',
   medical_assistant: 'veterinary_assistant',
   pet_handler: 'boarding_staff',
   veterinarian: 'veterinarian',
@@ -57,6 +64,8 @@ export const effectiveStaffType = user => {
   if (user?.role !== 'staff') return user?.role;
   return LEGACY_STAFF_ROLE_MAP[user.staffType] || user.staffType || 'unassigned_staff';
 };
+
+export const isCareProfessional = user => CARE_PROFESSIONAL_ROLES.has(effectiveStaffType(user));
 
 export const hasUiPermission = (user, resource) => {
   if (!user || !resource) return false;
