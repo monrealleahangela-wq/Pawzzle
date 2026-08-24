@@ -28,7 +28,8 @@ const userSummary = user => ({
   role: user.role,
   firstName: user.firstName,
   lastName: user.lastName,
-  store: user.store
+  store: user.store,
+  requiresPasswordChange: Boolean(user.requiresPasswordChange)
 });
 
 const otpFailureMessage = (result, lockedMessage) => result.reason === 'locked'
@@ -291,6 +292,7 @@ const verifyOTPAndResetPassword = async (req, res) => {
 
     // Assignment plus save intentionally invokes the User password hashing hook.
     user.password = newPassword;
+    user.requiresPasswordChange = false;
     await user.save();
     return res.json({ success: true, message: 'Password reset successful. You can now login with your new password.' });
   } catch (error) {
@@ -359,8 +361,13 @@ const changePassword = async (req, res) => {
     }
 
     user.password = newPassword;
+    user.requiresPasswordChange = false;
     await user.save();
-    return res.json({ success: true, message: 'Password changed successfully' });
+    return res.json({
+      success: true,
+      message: 'Password changed successfully',
+      requiresPasswordChange: false
+    });
   } catch (error) {
     return res.status(500).json({ message: 'Failed to change password' });
   }

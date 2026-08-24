@@ -241,6 +241,6 @@ test('authentication rate limiter blocks requests beyond its configured limit', 
 
 test('password mutation paths use document save hooks instead of query updates', () => {
   const source = fs.readFileSync(path.join(__dirname, '../controllers/authController.js'), 'utf8');
-  assert.match(source, /user\.password = newPassword;\s+await user\.save\(\)/);
+  assert.match(source, /user\.password = newPassword;\s+(?:user\.requiresPasswordChange = false;\s+)?await user\.save\(\)/);
   assert.doesNotMatch(source, /findByIdAndUpdate\([^\n]+password/);
 });

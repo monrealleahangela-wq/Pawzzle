@@ -26,7 +26,7 @@ const PasswordChangeModal = () => {
 
         setLoading(true);
         try {
-            await authService.changePassword({
+            const result = await authService.changePassword({
                 currentPassword: passwords.current,
                 newPassword: passwords.new
             });
@@ -34,7 +34,10 @@ const PasswordChangeModal = () => {
             toast.success('Password updated successfully! Welcome to the team.');
             
             // Update local user state to remove the flag
-            const updatedUser = { ...user, requiresPasswordChange: false };
+            const updatedUser = {
+                ...user,
+                requiresPasswordChange: result?.requiresPasswordChange ?? false
+            };
             updateUser(updatedUser);
             
         } catch (err) {

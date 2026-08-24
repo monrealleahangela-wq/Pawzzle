@@ -7,6 +7,10 @@ const source = fs.readFileSync(
   path.join(__dirname, '../client/src/components/auth/PasswordChangeModal.js'),
   'utf8'
 );
+const authController = fs.readFileSync(
+  path.join(__dirname, '../controllers/authController.js'),
+  'utf8'
+);
 
 test('first-login password dialog uses a compact viewport-safe layout', () => {
   assert.match(source, /max-w-md max-h-\[calc\(100vh-1\.5rem\)\] overflow-y-auto/);
@@ -30,10 +34,31 @@ test('compact redesign preserves enforcement, password submission, visibility, a
   assert.match(source, /authService\.changePassword\(\{/);
   assert.match(source, /currentPassword: passwords\.current/);
   assert.match(source, /newPassword: passwords\.new/);
-  assert.match(source, /requiresPasswordChange: false/);
+  assert.match(source, /requiresPasswordChange: result\?\.requiresPasswordChange \?\? false/);
   assert.match(source, /onClick=\{logout\}/);
   assert.match(source, /role="dialog"/);
   assert.match(source, /aria-modal="true"/);
   assert.match(source, /aria-label=\{showCurrent \?/);
   assert.match(source, /minLength=\{6\}/);
+});
+
+test('successful password changes clear the authoritative first-login flag', () => {
+  const changePasswordStart = authController.indexOf('const changePassword =');
+  const changePasswordEnd = authController.indexOf('const toggle2FA =', changePasswordStart);
+  const changePassword = authController.slice(changePasswordStart, changePasswordEnd);
+
+  assert.match(changePassword, /user\.password = newPassword;\s*user\.requiresPasswordChange = false;\s*await user\.save\(\)/);
+  assert.match(changePassword, /requiresPasswordChange: false/);
+});
+
+test('login and verified password reset cannot restore a stale password-change prompt', () => {
+  const summaryStart = authController.indexOf('const userSummary =');
+  const summaryEnd = authController.indexOf('const otpFailureMessage', summaryStart);
+  const summary = authController.slice(summaryStart, summaryEnd);
+  const resetStart = authController.indexOf('const verifyOTPAndResetPassword =');
+  const resetEnd = authController.indexOf('const resendPasswordResetOTP =', resetStart);
+  const reset = authController.slice(resetStart, resetEnd);
+
+  assert.match(summary, /requiresPasswordChange: Boolean\(user\.requiresPasswordChange\)/);
+  assert.match(reset, /user\.password = newPassword;\s*user\.requiresPasswordChange = false;\s*await user\.save\(\)/);
 });
