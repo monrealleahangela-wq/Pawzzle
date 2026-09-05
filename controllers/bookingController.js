@@ -10,7 +10,7 @@ const Review = require('../models/Review');
 const RevenueService = require('../services/revenueService');
 const { createNotification, notifyStoreStaff } = require('./notificationController');
 const { calculateServicePrice, validateBookingRules } = require('../utils/pricingEngine');
-const { calculateTransactionTax, normalizeTaxConfiguration } = require('../utils/taxCalculator');
+const { calculateTransactionTax, resolveTransactionTaxConfiguration } = require('../utils/taxCalculator');
 const { hasPermission, isPlatformAdmin, isStoreAdmin, isOperationalStaff } = require('../config/permissions');
 const { getAuthorizedStoreIds, canAccessStore } = require('../utils/authorizationPolicy');
 const {
@@ -23,6 +23,8 @@ const {
 const { getStaffSpecializationRole, getProfessionalVerificationStatus } = require('../utils/staffSpecialization');
 const { normalizeRefundPolicy, snapshotRefundPolicy, requiresAcknowledgment } = require('../utils/refundPolicy');
 const { prepareServiceIntake } = require('../utils/bookingIntake');
+const { buildBookingPetSnapshot } = require('../utils/bookingPetSnapshot');
+const { validateServiceSchedule } = require('../utils/serviceAvailability');
 
 const canStaffManageBooking = (user, booking) => {
   if (!isOperationalStaff(user) || isStoreAdmin(user) || isPlatformAdmin(user)) return false;
@@ -212,7 +214,6 @@ const createBooking = async (req, res) => {
       pet,
       bookingDate,
       startTime,
-      endTime,
       isHomeService,
       serviceAddress,
       notes,
@@ -235,14 +236,24 @@ const createBooking = async (req, res) => {
     const service = await Service.findById(serviceId)
       .populate('store')
       .populate('assignedStaff', 'firstName lastName');
-    if (!service || !service.isActive) {
+    if (!service || !service.isActive || service.isDeleted || !service.store || !service.store.isActive
+        || service.store.isDeleted || service.store.verificationStatus !== 'verified') {
       return res.status(404).json({ message: 'Service not found or unavailable' });
     }
+
+    let linkedPetProfile = null;
+    if (petProfileId) {
+      linkedPetProfile = await PetProfile.findOne({ _id: petProfileId, owner: req.user._id });
+      if (!linkedPetProfile) return res.status(400).json({ message: 'The selected pet profile was not found in your account.' });
+    }
+    const bookingPet = buildBookingPetSnapshot(pet || {}, linkedPetProfile);
+    if (!bookingPet.name || !bookingPet.type) {
+      return res.status(400).json({ message: 'Please choose one of your pets or enter the pet name and species.' });
+    }
+
     const preparedIntake = prepareServiceIntake(service, serviceIntake);
     if (preparedIntake.error) return res.status(400).json({ message: preparedIntake.error });
-    if (!normalizeTaxConfiguration(service.store?.taxConfiguration).isConfigured) {
-      return res.status(409).json({ message: 'Store tax configuration is missing. Booking payment is temporarily unavailable.' });
-    }
+    const taxConfiguration = resolveTransactionTaxConfiguration(service.store.taxConfiguration);
 
     // Check if home service is available
     if (isHomeService && !service.homeServiceAvailable) {
@@ -258,11 +269,22 @@ const createBooking = async (req, res) => {
     // ── Dynamic Pricing Engine ──────────────────────────────────────
     const { breakdown, resolvedAddOns } = calculateServicePrice(
       service,
-      pet || {},
+      bookingPet,
       { date: bookingDate, startTime, isHomeService },
       selectedAddOns || [],
       selectedConditions || []
     );
+
+    const serviceDuration = Number(service.duration || 0)
+      + resolvedAddOns.reduce((total, addOn) => total + Number(addOn.duration || 0), 0);
+    const scheduleCheck = validateServiceSchedule({
+      service,
+      store: service.store,
+      bookingDate,
+      startTime,
+      duration: serviceDuration
+    });
+    if (!scheduleCheck.valid) return res.status(400).json({ message: scheduleCheck.reason });
 
     // Resolve selected conditions to full objects for storage
     const resolvedConditions = [];
@@ -324,7 +346,7 @@ const createBooking = async (req, res) => {
       subtotal: breakdown.subtotal,
       discountAmount,
       deliveryFee: 0,
-      taxConfiguration: service.store?.taxConfiguration
+      taxConfiguration
     });
     breakdown.discount = taxBreakdown.discountAmount;
     breakdown.calculationVersion = taxBreakdown.calculationVersion;
@@ -340,20 +362,13 @@ const createBooking = async (req, res) => {
     breakdown.configuredAt = taxBreakdown.configuredAt;
     breakdown.finalPrice = taxBreakdown.finalTotal;
 
-    // ── Auto-Assign Staff ───────────────────────────────────────────
-    let linkedPetProfile = null;
-    if (petProfileId) {
-      linkedPetProfile = await PetProfile.findOne({ _id: petProfileId, owner: req.user._id });
-      if (!linkedPetProfile) return res.status(400).json({ message: 'The selected pet profile was not found in your account.' });
-    }
-
     const booking = new Booking({
       customer: req.user._id,
       addedBy: service.addedBy || (service.store ? service.store.owner : req.user._id),
       service: serviceId,
       store: storeId,
       staff: null,
-      pet,
+      pet: bookingPet,
       petProfile: linkedPetProfile?._id || null,
       serviceIntake: preparedIntake.value,
       selectedAddOns: resolvedAddOns,
@@ -361,7 +376,7 @@ const createBooking = async (req, res) => {
       pricingBreakdown: breakdown,
       bookingDate,
       startTime,
-      endTime,
+      endTime: scheduleCheck.endTime,
       isHomeService,
       serviceAddress: isHomeService ? serviceAddress : undefined,
       totalPrice: breakdown.finalPrice,
@@ -375,40 +390,39 @@ const createBooking = async (req, res) => {
 
     // ── Auto-save / update pet profile for this customer ──
     try {
-      const petName = (pet.name || '').trim();
-      const petType = (pet.type || '').trim();
+      const petName = bookingPet.name;
+      const petType = bookingPet.type;
 
-      if (petName && petType) {
+      if (linkedPetProfile) {
+        linkedPetProfile.lastBookedAt = new Date();
+        await linkedPetProfile.save();
+      } else if (petName && petType) {
         const existingPetProfile = await PetProfile.findOne({
           owner: req.user._id,
           name: { $regex: new RegExp(`^${petName}$`, 'i') },
           type: { $regex: new RegExp(`^${petType}$`, 'i') }
         });
 
-        // Compute a calculated birthday if age is provided but birthday isn't
-        let calculatedBirthday = pet.birthday;
-        if (!calculatedBirthday && pet.age) {
+        let calculatedBirthday = pet?.birthday || null;
+        if (!calculatedBirthday && Number.isFinite(bookingPet.age)) {
           const bday = new Date();
-          bday.setFullYear(bday.getFullYear() - parseInt(pet.age));
+          bday.setFullYear(bday.getFullYear() - Math.floor(bookingPet.age));
           bday.setMonth(0);
           bday.setDate(1);
           calculatedBirthday = bday;
-        } else if (!calculatedBirthday) {
-          // Absolute fallback to avoid validation error
-          calculatedBirthday = new Date(2020, 0, 1);
         }
 
         if (existingPetProfile) {
           // Update details in case they changed
-          existingPetProfile.breed = pet.breed || existingPetProfile.breed;
-          existingPetProfile.size = pet.size || existingPetProfile.size;
+          existingPetProfile.breed = bookingPet.breed || existingPetProfile.breed;
+          existingPetProfile.size = bookingPet.size || existingPetProfile.size;
           existingPetProfile.birthday = calculatedBirthday || existingPetProfile.birthday;
-          existingPetProfile.weight = pet.weight || existingPetProfile.weight;
-          existingPetProfile.gender = pet.gender || existingPetProfile.gender;
-          existingPetProfile.color = pet.color || existingPetProfile.color;
-          existingPetProfile.photo = pet.photo || existingPetProfile.photo;
-          existingPetProfile.vaccinationStatus = pet.vaccinationStatus || existingPetProfile.vaccinationStatus;
-          if (pet.specialNotes) existingPetProfile.specialNotes = pet.specialNotes;
+          existingPetProfile.weight = bookingPet.weight ?? existingPetProfile.weight;
+          existingPetProfile.gender = bookingPet.gender || existingPetProfile.gender;
+          existingPetProfile.color = bookingPet.color || existingPetProfile.color;
+          existingPetProfile.photo = bookingPet.photo || existingPetProfile.photo;
+          existingPetProfile.vaccinationStatus = bookingPet.vaccinationStatus || existingPetProfile.vaccinationStatus;
+          if (bookingPet.specialNotes) existingPetProfile.specialNotes = bookingPet.specialNotes;
           existingPetProfile.lastBookedAt = new Date();
           await existingPetProfile.save();
           if (!booking.petProfile) {
@@ -422,15 +436,15 @@ const createBooking = async (req, res) => {
             owner: req.user._id,
             name: petName,
             type: petType,
-            breed: pet.breed || 'Mixed',
-            size: pet.size || 'Small',
+            breed: bookingPet.breed || '',
+            size: bookingPet.size || 'Unknown',
             birthday: calculatedBirthday,
-            gender: pet.gender || 'Male',
-            weight: pet.weight || 5,
-            color: pet.color || '',
-            photo: pet.photo || null,
-            vaccinationStatus: pet.vaccinationStatus || 'Pending',
-            specialNotes: pet.specialNotes || '',
+            gender: bookingPet.gender || 'Male',
+            weight: bookingPet.weight,
+            color: bookingPet.color || '',
+            photo: bookingPet.photo || null,
+            vaccinationStatus: bookingPet.vaccinationStatus || 'Pending',
+            specialNotes: bookingPet.specialNotes || '',
             lastBookedAt: new Date()
           });
           booking.petProfile = createdPetProfile._id;

@@ -10,9 +10,10 @@ test('store-owner pet listings retain optional PCCI and customer-facing listing 
   const form = read('client/src/components/pets/PetListingFormModal.js');
   const page = read('client/src/pages/admin/Pets.js');
 
-  for (const label of ['Pet Photo', 'Listing Information', 'Listing Type', 'Adoption Fee', 'Health & Personality', 'PCCI Registration Document', 'Availability Notes', 'Add Supporting Documents']) {
+  for (const label of ['Pet Photo', 'Basic Information', 'Birth Date', 'Selling Price', 'Health & Personality', 'PCCI Registration Document', 'Availability Notes', 'Add Supporting Documents']) {
     assert.ok(form.includes(label), `missing listing field: ${label}`);
   }
+  assert.doesNotMatch(form, /Adoption Fee|<option value="adoption">Adoption<\/option>/);
   assert.match(form, /petForm\.species === 'dog'/);
   assert.match(form, /saveDisabled=\{!isComplete\}/);
   assert.match(page, /uploadService\.uploadDocument/);

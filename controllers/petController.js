@@ -3,6 +3,7 @@ const Pet = require('../models/Pet');
 const Store = require('../models/Store');
 const { isPlatformAdmin, isStoreAdmin, isOperationalStaff } = require('../config/permissions');
 const { canOperateStore } = require('../utils/authorizationPolicy');
+const { derivePetAge } = require('../utils/petAge');
 const { isIndividualPetRecord } = require('../services/petAvailabilityService');
 
 const toPublicPet = (pet) => {
@@ -202,20 +203,18 @@ const createPet = async (req, res) => {
 
     console.log('📦 Creating pet with data:', { ...req.body, addedBy: req.user._id, store: store._id });
     
-    // Validate Birthday (Cannot be in the future)
-    if (req.body.birthday) {
-      const bday = new Date(req.body.birthday);
-      if (bday > new Date()) {
-        return res.status(400).json({ message: 'Birth date cannot be in the future' });
-      }
-    }
+    const derivedAge = derivePetAge(req.body.birthday);
+    if (!derivedAge.valid) return res.status(400).json({ message: derivedAge.message });
 
-    const { quantity, reservation, ...listingData } = req.body;
-    const status = ['available', 'reserved', 'sold', 'adopted', 'unavailable'].includes(listingData.status)
+    const { quantity, reservation, adoptionDetails, ...listingData } = req.body;
+    const status = ['available', 'unavailable'].includes(listingData.status)
       ? listingData.status
       : 'available';
     const petData = {
       ...listingData,
+      age: derivedAge.age,
+      ageUnit: derivedAge.ageUnit,
+      listingType: 'sale',
       quantity: 1,
       status,
       isAvailable: status === 'available',
@@ -297,6 +296,10 @@ const updatePet = async (req, res) => {
     updateData.allowedPaymentMethods = ['paymongo'];
     updateData.paymentConfig = updateData.paymentConfig === 'deposit_first' ? 'deposit_first' : 'full_payment';
 
+    if (updateData.listingType === 'adoption' && pet.listingType !== 'adoption') {
+      return res.status(400).json({ message: 'Seller pet listings must be for sale.' });
+    }
+
     const targetStatus = updateData.status || pet.status;
     if (['sold', 'adopted'].includes(pet.status) && targetStatus !== pet.status) {
       return res.status(409).json({ message: `A ${pet.status} pet listing cannot be made purchasable again.` });
@@ -310,10 +313,10 @@ const updatePet = async (req, res) => {
     
     // Validate Birthday (Cannot be in the future)
     if (updateData.birthday) {
-      const bday = new Date(updateData.birthday);
-      if (bday > new Date()) {
-        return res.status(400).json({ message: 'Birth date cannot be in the future' });
-      }
+      const derivedAge = derivePetAge(updateData.birthday);
+      if (!derivedAge.valid) return res.status(400).json({ message: derivedAge.message });
+      updateData.age = derivedAge.age;
+      updateData.ageUnit = derivedAge.ageUnit;
     }
 
     console.log('📝 updatePet CLEANED DATA:', updateData);

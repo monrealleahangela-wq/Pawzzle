@@ -4,7 +4,7 @@ const Store = require('../models/Store');
 const User = require('../models/User');
 const Voucher = require('../models/Voucher');
 const { calculateServicePrice, getEligibleStaff, validateBookingRules } = require('../utils/pricingEngine');
-const { calculateTransactionTax, normalizeTaxConfiguration } = require('../utils/taxCalculator');
+const { calculateTransactionTax, resolveTransactionTaxConfiguration } = require('../utils/taxCalculator');
 
 const inactiveStatuses = ['cancelled', 'confirmation_expired', 'rejected', 'no_show', 'completed'];
 
@@ -20,7 +20,8 @@ const loadContext = async bookingOrId => {
   if (!service || !service.isActive || service.isDeleted) {
     throw Object.assign(new Error('The selected service is no longer available.'), { statusCode: 409 });
   }
-  if (!store || store.isActive === false) {
+  if (!store || store.isActive === false || store.isDeleted
+      || (store.verificationStatus && store.verificationStatus !== 'verified')) {
     throw Object.assign(new Error('The selected store or branch is no longer available.'), { statusCode: 409 });
   }
   return { booking, service, store };
@@ -53,15 +54,12 @@ const recalculateBooking = async (booking, service, store) => {
     }
   }
 
-  const normalizedTax = normalizeTaxConfiguration(store.taxConfiguration);
-  if (!normalizedTax.isConfigured) {
-    throw Object.assign(new Error('Store tax configuration is missing. Booking payment is temporarily unavailable.'), { statusCode: 409 });
-  }
+  const taxConfiguration = resolveTransactionTaxConfiguration(store.taxConfiguration);
   const tax = calculateTransactionTax({
     subtotal: breakdown.subtotal,
     discountAmount,
     deliveryFee: 0,
-    taxConfiguration: store.taxConfiguration
+    taxConfiguration
   });
   Object.assign(breakdown, {
     discount: tax.discountAmount,

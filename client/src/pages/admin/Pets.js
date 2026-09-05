@@ -3,7 +3,7 @@ import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { adminPetService, uploadService, adoptionService, getImageUrl } from '../../services/apiService';
 import { useAuth } from '../../contexts/AuthContext';
-import { Heart, Plus, Edit, Trash2, Filter, X, Search, ChevronLeft, ChevronRight, Activity, Shield, Image as ImageIcon, Zap, ArrowUpRight, Info, CheckCircle, PawPrint, Home, History, ClipboardList, Clock, CheckCircle2, XCircle, MessageSquare, UserCheck, Minus, Copy } from 'lucide-react';
+import { Heart, Plus, Edit, Trash2, Filter, X, Search, ChevronLeft, ChevronRight, Activity, Shield, Image as ImageIcon, Zap, ArrowUpRight, Info, CheckCircle, PawPrint, Home, History, ClipboardList, Clock, CheckCircle2, XCircle, MessageSquare, UserCheck, Copy } from 'lucide-react';
 import { formatTime12h } from '../../utils/timeFormatters';
 import { PLATFORM_ADMIN_ROLES, STORE_ADMIN_ROLES, hasUiActionPermission } from '../../utils/authorization';
 import PetListingFormModal from '../../components/pets/PetListingFormModal';
@@ -233,17 +233,14 @@ const AdminPets = () => {
       size: pet.size || initialPetState.size,
       description: pet.description || '',
       price: pet.price ?? '',
-      listingType: pet.listingType || initialPetState.listingType,
+      listingType: 'sale',
       isNegotiable: Boolean(pet.isNegotiable),
       fulfillmentType: pet.fulfillmentType || initialPetState.fulfillmentType,
       allowedPaymentMethods: pet.allowedPaymentMethods || initialPetState.allowedPaymentMethods,
       paymentConfig: pet.paymentConfig || initialPetState.paymentConfig,
       depositAmount: pet.depositAmount || 0,
       paymentType: pet.paymentType || initialPetState.paymentType,
-      adoptionDetails: {
-        ...initialPetState.adoptionDetails,
-        ...(pet.adoptionDetails || {})
-      },
+      adoptionDetails: { ...initialPetState.adoptionDetails },
       status: 'available'
     });
     setModalTab('identity');
@@ -267,8 +264,8 @@ const AdminPets = () => {
       const years = parseInt(petForm.ageYears) || 0;
       const months = parseInt(petForm.ageMonths) || 0;
 
-      if (years === 0 && months === 0) {
-        toast.error('Age cannot be 0 years and 0 months');
+      if (!editingPet && !petForm.birthday) {
+        toast.error('Birth date is required so the pet age can be calculated.');
         setSubmitting(false);
         return;
       }
@@ -291,7 +288,9 @@ const AdminPets = () => {
         finalUnit = 'months';
       }
 
-      if (petForm.listingType === 'sale' && (parseFloat(petForm.price) <= 0 || !petForm.price)) {
+      const isLegacyAdoptionEdit = editingPet?.listingType === 'adoption';
+      if ((!isLegacyAdoptionEdit && (parseFloat(petForm.price) <= 0 || !petForm.price))
+          || (isLegacyAdoptionEdit && (Number.isNaN(Number(petForm.price)) || Number(petForm.price) < 0))) {
         toast.error('Selling price must be greater than 0');
         setSubmitting(false);
         return;
@@ -310,6 +309,7 @@ const AdminPets = () => {
       delete individualPetForm.reservation;
       const payload = {
         ...individualPetForm,
+        listingType: editingPet?.listingType === 'adoption' ? 'adoption' : 'sale',
         age: finalAge, 
         ageUnit: finalUnit,
         price: parseFloat(petForm.price) || 0,
@@ -326,6 +326,7 @@ const AdminPets = () => {
           informationStatus: pcciCertificate ? 'customer_provided' : 'not_provided'
         }
       };
+      if (!editingPet) delete payload.adoptionDetails;
       if (editingPet) {
         await adminPetService.updatePet(editingPet._id, payload);
         toast.success('Pet updated');
@@ -926,42 +927,15 @@ const AdminPets = () => {
                           className="w-full px-4 py-3.5 bg-white border border-slate-100 rounded-2xl text-[11px] font-black outline-none focus:ring-4 focus:ring-primary-500/5 cursor-pointer transition-all" />
                       </div>
                       <div className="col-span-6 md:col-span-4 space-y-1.5">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1 block opacity-60">Age in Years</label>
-                        <div className="flex items-center bg-white border border-slate-100 rounded-2xl overflow-hidden focus-within:ring-4 focus-within:ring-rose-500/5 transition-all">
-                          <button type="button" onClick={() => setPetForm(p => ({ ...p, ageYears: Math.max(0, (parseInt(p.ageYears) || 0) - 1) }))} className="px-4 py-3.5 hover:bg-slate-50 text-slate-400 transition-colors">
-                            <Minus className="h-3 w-3" />
-                          </button>
-                          <input type="number" value={petForm.ageYears} onChange={e => setPetForm(p => ({ ...p, ageYears: e.target.value }))}
-                            className="w-full bg-transparent text-center font-black text-lg outline-none py-3" placeholder="0" />
-                          <button type="button" onClick={() => setPetForm(p => ({ ...p, ageYears: (parseInt(p.ageYears) || 0) + 1 }))} className="px-4 py-3.5 hover:bg-slate-50 text-slate-400 transition-colors">
-                            <Plus className="h-3 w-3" />
-                          </button>
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1 block opacity-60">Calculated Years</label>
+                        <div className="rounded-2xl border border-slate-100 bg-white px-4 py-3.5 text-center text-lg font-black text-slate-700">
+                          {Number(petForm.ageYears) || 0}
                         </div>
                       </div>
                       <div className="col-span-6 md:col-span-4 space-y-1.5">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1 block opacity-60">Extra Months</label>
-                        <div className="flex items-center bg-white border border-slate-100 rounded-2xl overflow-hidden focus-within:ring-4 focus-within:ring-rose-500/5 transition-all">
-                          <button type="button" onClick={() => setPetForm(p => ({ ...p, ageMonths: Math.max(0, (parseInt(p.ageMonths) || 0) - 1) }))} className="px-4 py-3.5 hover:bg-slate-50 text-slate-400 transition-colors">
-                            <Minus className="h-3 w-3" />
-                          </button>
-                          <input type="number" value={petForm.ageMonths} onChange={e => {
-                            let val = parseInt(e.target.value) || 0;
-                            if (val > 11) {
-                              setPetForm(p => ({ ...p, ageYears: (parseInt(p.ageYears) || 0) + Math.floor(val / 12), ageMonths: val % 12 }));
-                            } else {
-                              setPetForm(p => ({ ...p, ageMonths: e.target.value }));
-                            }
-                          }}
-                            className="w-full bg-transparent text-center font-black text-lg outline-none py-3" placeholder="0" />
-                          <button type="button" onClick={() => {
-                            setPetForm(p => {
-                              let m = (parseInt(p.ageMonths) || 0) + 1;
-                              if (m > 11) return { ...p, ageYears: (parseInt(p.ageYears) || 0) + 1, ageMonths: 0 };
-                              return { ...p, ageMonths: m };
-                            });
-                          }} className="px-4 py-3.5 hover:bg-slate-50 text-slate-400 transition-colors">
-                            <Plus className="h-3 w-3" />
-                          </button>
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1 block opacity-60">Calculated Months</label>
+                        <div className="rounded-2xl border border-slate-100 bg-white px-4 py-3.5 text-center text-lg font-black text-slate-700">
+                          {Number(petForm.ageMonths) || 0}
                         </div>
                       </div>
                     </div>
@@ -1130,10 +1104,10 @@ const AdminPets = () => {
                                <select disabled={Boolean(editingPet && (['sold', 'adopted'].includes(editingPet.status) || (editingPet.status === 'reserved' && (editingPet.reservation?.order || editingPet.reservation?.adoptionRequest))))} value={petForm.status} onChange={e => setPetForm(p => ({ ...p, status: e.target.value }))}
                                  className="w-full px-4 py-3 bg-white border border-emerald-200 text-slate-900 rounded-xl text-[11px] font-black uppercase outline-none">
                                   <option value="available">Available</option>
-                                  <option value="reserved">Reserved</option>
+                                  {editingPet && petForm.status === 'reserved' && <option value="reserved">Reserved</option>}
                                   <option value="unavailable">Unavailable</option>
-                                  <option value="sold">Sold</option>
-                                  <option value="adopted">Adopted</option>
+                                  {editingPet && petForm.status === 'sold' && <option value="sold">Sold</option>}
+                                  {editingPet && petForm.status === 'adopted' && <option value="adopted">Adopted (legacy)</option>}
                                </select>
                             </div>
                             <p className="text-[9px] font-bold leading-4 text-emerald-800/70">Each listing is one actual pet. Use Duplicate Listing Details to start another individual record.</p>

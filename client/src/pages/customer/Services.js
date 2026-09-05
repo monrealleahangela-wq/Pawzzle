@@ -38,6 +38,7 @@ const Services = () => {
   const navigate = useNavigate();
   const [services, setServices] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [filters, setFilters] = useState({
@@ -61,6 +62,7 @@ const Services = () => {
   const fetchServices = async () => {
     try {
       setLoading(true);
+      setLoadError(false);
       const params = {};
       if (selectedCategory !== 'all') params.category = selectedCategory;
       if (filters.city) params.city = filters.city;
@@ -70,6 +72,7 @@ const Services = () => {
       setServices(response.data.services || []);
     } catch (error) {
       console.error('Error fetching services:', error);
+      setLoadError(true);
       toast.error('We could not load the services. Please try again.');
     } finally {
       setLoading(false);
@@ -182,8 +185,26 @@ const Services = () => {
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 sm:gap-8 lg:grid-cols-3" aria-label="Loading services">
+        {[1, 2, 3, 4, 5, 6].map(item => (
+          <div key={item} className="h-72 animate-pulse rounded-2xl border border-slate-100 bg-white p-4">
+            <div className="h-32 rounded-xl bg-slate-100" />
+            <div className="mt-4 h-4 w-2/3 rounded bg-slate-100" />
+            <div className="mt-3 h-3 w-full rounded bg-slate-100" />
+            <div className="mt-8 h-10 rounded-xl bg-slate-100" />
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="mx-auto max-w-lg rounded-2xl border border-slate-200 bg-white p-6 text-center shadow-sm">
+        <Calendar className="mx-auto h-8 w-8 text-primary-600" />
+        <h2 className="mt-3 text-lg font-black text-slate-900">Unable to load services</h2>
+        <p className="mt-1 text-sm text-slate-500">Please check your connection and try again.</p>
+        <button type="button" onClick={fetchServices} className="mt-4 rounded-xl bg-primary-600 px-5 py-2.5 text-xs font-black text-white">Try Again</button>
       </div>
     );
   }
@@ -390,7 +411,7 @@ const Services = () => {
                   onClick={() => handleBookService(service._id)}
                   className="btn btn-primary w-full py-2.5 sm:py-3 text-[10px] font-black uppercase tracking-widest shadow-lg shadow-primary-100 group/btn"
                 >
-                  Book now
+                  View details &amp; book
                 </button>
               </div>
             </div>

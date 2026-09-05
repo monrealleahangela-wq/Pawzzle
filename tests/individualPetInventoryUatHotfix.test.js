@@ -40,7 +40,7 @@ test('server create and update paths cannot turn pet listings into quantity inve
   const petRoutes = read('routes/pets.js');
   const adminPetRoutes = read('routes/adminPets.js');
 
-  assert.match(controller, /const \{ quantity, reservation, \.\.\.listingData \} = req\.body/);
+  assert.match(controller, /const \{ quantity, reservation, adoptionDetails, \.\.\.listingData \} = req\.body/);
   assert.match(controller, /quantity: 1/);
   assert.match(controller, /ratings, quantity, reservation, \.\.\.updateData/);
   assert.match(controller, /\['sold', 'adopted'\]\.includes\(pet\.status\)/);
@@ -53,7 +53,7 @@ test('seller pet forms use availability and preserve product stock quantity', ()
   const sellerPets = read('client/src/pages/admin/Pets.js');
   const productForm = read('client/src/components/forms/ProductFormModal.js');
 
-  assert.match(compactPetForm, /One listing represents one individual pet/);
+  assert.match(compactPetForm, /one sale listing for one individual pet/i);
   assert.match(compactPetForm, />Availability</);
   assert.doesNotMatch(compactPetForm, /quantity|Stock Quantity/i);
   assert.doesNotMatch(sellerPets, /value=\{petForm\.quantity\}|Stock Quantity/);

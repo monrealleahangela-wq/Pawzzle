@@ -66,13 +66,15 @@ const Bookings = ({ isSubcomponent = false }) => {
   const { user } = useAuth();
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [bookingsError, setBookingsError] = useState(false);
   const [filterStatus, setFilterStatus] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
   const calculateAge = (birthday) => {
-    if (!birthday) return 1;
+    if (!birthday) return '';
     const birthDate = new Date(birthday);
+    if (Number.isNaN(birthDate.getTime()) || birthDate > new Date()) return '';
     const age = Math.floor((new Date() - birthDate) / (1000 * 60 * 60 * 24 * 365.25));
-    return age > 0 ? age : 1;
+    return Math.max(0, age);
   };
   const [showMobileFilters, setShowMobileFilters] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState(null);
@@ -251,7 +253,7 @@ const Bookings = ({ isSubcomponent = false }) => {
         size: pet.size,
         age: String(calculateAge(pet.birthday)),
         gender: pet.gender || 'Male',
-        weight: String(pet.weight || '5.0'),
+        weight: pet.weight === null || pet.weight === undefined ? '' : String(pet.weight),
         color: pet.color || '',
         photo: pet.photo || null,
         vaccinationStatus: pet.vaccinationStatus || 'Pending',
@@ -424,6 +426,7 @@ const Bookings = ({ isSubcomponent = false }) => {
 
   const fetchBookings = async () => {
     try {
+      setBookingsError(false);
       const params = {
         status: filterStatus !== 'all' ? filterStatus : undefined,
         search: searchTerm || undefined,
@@ -435,6 +438,8 @@ const Bookings = ({ isSubcomponent = false }) => {
       setBookings(response.data.bookings || []);
     } catch (error) {
       console.error('Error fetching bookings:', error);
+      setBookingsError(true);
+      toast.error('Unable to load your bookings. Please try again.', { toastId: 'booking-list-error' });
     } finally {
       setLoading(false);
     }
@@ -807,9 +812,9 @@ const Bookings = ({ isSubcomponent = false }) => {
           type: bookingForm.pet.type,
           breed: bookingForm.pet.breed,
           size: bookingForm.pet.size,
-          age: parseInt(bookingForm.pet.age),
+          age: bookingForm.pet.age === '' ? undefined : Number(bookingForm.pet.age),
           gender: bookingForm.pet.gender,
-          weight: parseFloat(bookingForm.pet.weight),
+          weight: bookingForm.pet.weight === '' ? undefined : Number(bookingForm.pet.weight),
           photo: bookingForm.pet.photo,
           vaccinationStatus: bookingForm.pet.vaccinationStatus,
           allergies: bookingForm.pet.allergies,
@@ -1204,7 +1209,7 @@ const Bookings = ({ isSubcomponent = false }) => {
                                 </div>
                               </div>
                               <p className="text-[8px] font-bold text-slate-500 uppercase tracking-wide">{pet.breed}</p>
-                              <p className="text-[8px] text-slate-400 font-bold mt-0.5">{calculateAge(pet.birthday)}yr · {pet.weight}kg · <span className="text-primary-500">{pet.size || 'Small'}</span></p>
+                              <p className="text-[8px] text-slate-400 font-bold mt-0.5">{pet.birthday ? `${calculateAge(pet.birthday)}yr` : 'Age not provided'} · {pet.weight == null ? 'Weight not provided' : `${pet.weight}kg`} · <span className="text-primary-500">{pet.size || 'Unknown size'}</span></p>
                               {isSelected && (
                                 <div className="flex items-center gap-1 mt-2">
                                   <CheckCircle className="h-3 w-3 text-primary-500" />
@@ -1235,7 +1240,7 @@ const Bookings = ({ isSubcomponent = false }) => {
                         <div className="flex items-start justify-between gap-3">
                           <div>
                             <p className="text-sm font-black text-slate-900 dark:text-white">{bookingForm.pet.name}</p>
-                            <p className="text-xs font-semibold text-slate-500 dark:text-slate-300">{bookingForm.pet.breed} · {bookingForm.pet.age} years old</p>
+                            <p className="text-xs font-semibold text-slate-500 dark:text-slate-300">{bookingForm.pet.breed || 'Breed not provided'} · {bookingForm.pet.age === '' ? 'Age not provided' : `${bookingForm.pet.age} years old`}</p>
                           </div>
                           <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-[9px] font-black text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300">Selected</span>
                         </div>
@@ -1473,8 +1478,6 @@ const Bookings = ({ isSubcomponent = false }) => {
                 discountAmount: appliedVoucher?.discountAmount || 0,
                 taxConfiguration: selectedService?.store?.taxConfiguration
               });
-              const taxConfigReady = selectedService?.store?.taxConfiguration?.isConfigured === true;
-
               return (
               <div className="space-y-4 animate-card-appear">
                 {/* Summary card */}
@@ -1550,8 +1553,8 @@ const Bookings = ({ isSubcomponent = false }) => {
                           ['Name', bookingForm.pet.name, User],
                           ['Type', bookingForm.pet.type, Heart],
                           ['Breed', bookingForm.pet.breed, Activity],
-                          ['Age', `${bookingForm.pet.age} yr`, Clock],
-                          ['Weight', `${bookingForm.pet.weight} kg`, TrendingUp],
+                          ['Age', bookingForm.pet.age === '' ? 'Not provided' : `${bookingForm.pet.age} yr`, Clock],
+                          ['Weight', bookingForm.pet.weight === '' ? 'Not provided' : `${bookingForm.pet.weight} kg`, TrendingUp],
                           ['Notes', bookingForm.notes || 'None', ShieldCheck],
                         ].map(([k, v, Icon]) => (
                           <div key={k} className="p-4 bg-white/40 backdrop-blur-md rounded-2xl border border-white/60 shadow-sm group hover:bg-white/60 transition-all">
@@ -1839,11 +1842,6 @@ const Bookings = ({ isSubcomponent = false }) => {
                     </div>
 
                     {/* Store refund policy */}
-                    {!taxConfigReady && (
-                      <p className="mt-4 p-3 rounded-xl bg-rose-50 border border-rose-100 text-xs text-rose-700">
-                        This store must complete its tax configuration before booking payment is available.
-                      </p>
-                    )}
                     <div className="mt-4">
                       <div className={`flex items-start gap-3 p-4 rounded-2xl border shadow-sm ${serviceAcknowledgmentRequired ? 'bg-rose-50 border-rose-100' : 'bg-slate-50 border-slate-200'}`}>
                         {serviceAcknowledgmentRequired && <div className="relative flex items-center mt-0.5">
@@ -1871,9 +1869,9 @@ const Bookings = ({ isSubcomponent = false }) => {
                     className="px-8 py-4 bg-white border border-slate-100 text-slate-600 rounded-2xl text-[9px] font-black uppercase tracking-widest hover:border-slate-300 transition-all shadow-sm">
                     ← Edit
                   </button>
-                  <button type="submit" disabled={submitting || !taxConfigReady || (serviceAcknowledgmentRequired && !agreedToPolicy)}
+                  <button type="submit" disabled={submitting || (serviceAcknowledgmentRequired && !agreedToPolicy)}
                     className={`flex-1 py-5 text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.25em] shadow-2xl transition-all flex items-center justify-center gap-3 ${
-                      ((serviceAcknowledgmentRequired && !agreedToPolicy) || !taxConfigReady) ? 'bg-slate-300 cursor-not-allowed grayscale shadow-none' : 'bg-primary-600 shadow-primary-200 hover:bg-primary-700 active:scale-95'
+                      (serviceAcknowledgmentRequired && !agreedToPolicy) ? 'bg-slate-300 cursor-not-allowed grayscale shadow-none' : 'bg-primary-600 shadow-primary-200 hover:bg-primary-700 active:scale-95'
                     }`}>
                     {submitting ? (
                       <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Processing...</>
@@ -1914,7 +1912,18 @@ const Bookings = ({ isSubcomponent = false }) => {
       }
 
       {
-        !showBookingForm && bookings.length === 0 && (
+        !showBookingForm && bookingsError && (
+          <div className="rounded-2xl border border-slate-200 bg-white p-6 text-center">
+            <AlertCircle className="mx-auto h-8 w-8 text-primary-600" />
+            <h2 className="mt-3 text-lg font-black text-slate-900">Unable to load bookings</h2>
+            <p className="mt-1 text-sm text-slate-500">Please check your connection and try again.</p>
+            <button type="button" onClick={fetchBookings} className="mt-4 rounded-xl bg-primary-600 px-5 py-2.5 text-xs font-black text-white">Try Again</button>
+          </div>
+        )
+      }
+
+      {
+        !showBookingForm && !bookingsError && bookings.length === 0 && (
           <div className="bg-white rounded-[3rem] border-2 border-dashed border-slate-100 py-24 text-center">
             <div className="w-20 h-20 bg-slate-50 rounded-[2rem] flex items-center justify-center mx-auto mb-6">
               <Calendar className="h-10 w-10 text-slate-200" />

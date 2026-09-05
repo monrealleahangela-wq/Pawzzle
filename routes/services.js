@@ -13,7 +13,7 @@ const {
   calculatePrice
 } = require('../controllers/serviceController');
 const { authenticate, requirePermission } = require('../middleware/auth');
-const { storeAdminOnly, canAccessStore } = require('../middleware/storeAuth');
+const { storeAdminOnly } = require('../middleware/storeAuth');
 
 // Validation rules
 const createServiceValidation = [
@@ -48,7 +48,8 @@ router.post('/calculate-price', calculatePrice);
 router.post('/admin', authenticate, requirePermission('services.create', 'services.manage'), createServiceValidation, createAdminService);
 
 // Store-specific routes
-router.get('/store/:storeId', canAccessStore, getStoreServices);
+// Customer-safe read. Management reads use /api/admin/services and retain RBAC.
+router.get('/store/:storeId', getStoreServices);
 router.post('/store/:storeId', authenticate, requirePermission('services.create', 'services.manage'), storeAdminOnly, createServiceValidation, createService);
 router.get('/:id', getServiceById);
 router.put('/:id', authenticate, requirePermission('services.update', 'services.manage'), storeAdminOnly, updateServiceValidation, updateService);
