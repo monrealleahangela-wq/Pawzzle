@@ -37,6 +37,7 @@ const sumItems = (items) => {
 
 export const orderPaymentSummary = (order = {}) => {
   const pricing = order.invoiceSnapshot?.pricingBreakdown || order.pricingBreakdown || {};
+  const delivery = order.invoiceSnapshot?.deliveryFeeCalculation || order.deliveryFeeCalculation || {};
   return {
     subtotal: firstMoney(pricing.subtotal, sumItems(order.items)),
     vatAmount: firstMoney(pricing.vatAmount, pricing.calculationVersion ? 0 : null),
@@ -48,7 +49,18 @@ export const orderPaymentSummary = (order = {}) => {
     bookingFee: firstMoney(pricing.bookingFee, order.bookingFee, 0),
     additionalCharges: firstMoney(pricing.additionalCharges, order.additionalCharges, 0),
     discountAmount: firstMoney(pricing.discountAmount, order.discountAmount, 0),
-    finalTotal: firstMoney(pricing.finalTotal, order.totalAmount)
+    finalTotal: firstMoney(pricing.finalTotal, order.totalAmount),
+    deliveryDetails: delivery?.breakdown ? {
+      distanceKm: firstMoney(delivery.distanceKm),
+      baseFee: firstMoney(delivery.breakdown.baseFee, 0),
+      ratePerKilometer: firstMoney(delivery.breakdown.ratePerKilometer, 0),
+      billableKilometers: firstMoney(delivery.breakdown.billableKilometers, 0),
+      distanceCharge: firstMoney(delivery.breakdown.distanceCharge, 0),
+      itemQuantity: firstMoney(delivery.itemQuantity, delivery.breakdown.itemQuantity, 1),
+      additionalItemQuantity: firstMoney(delivery.breakdown.additionalItemQuantity, 0),
+      additionalItemFee: firstMoney(delivery.breakdown.additionalItemFee, 0),
+      itemCharge: firstMoney(delivery.breakdown.itemCharge, 0)
+    } : null
   };
 };
 

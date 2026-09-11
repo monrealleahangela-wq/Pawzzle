@@ -14,12 +14,12 @@ export const CARE_PROFESSIONAL_ROLES = new Set([
 ]);
 
 const DIRECT_ROLE_RESOURCES = {
-  manager: ['staff', 'customers', 'pets', 'services', 'orders', 'inventory', 'procurement', 'finance', 'logistics', 'reports', 'bookings', 'dss'],
+  manager: ['staff', 'customers', 'pets', 'services', 'orders', 'inventory', 'procurement', 'finance', 'logistics', 'reports', 'bookings', 'dss', 'attendance', 'leave'],
   service_staff: ['customers', 'pets', 'services', 'bookings'],
   cashier: ['customers', 'pets', 'products', 'orders', 'payments'],
   inventory_staff: ['products', 'inventory', 'procurement', 'reports', 'pets', 'dss'],
   procurement_officer: ['inventory', 'procurement', 'suppliers', 'finance', 'dss'],
-  finance_staff: ['orders', 'procurement', 'finance', 'reports', 'payments'],
+  finance_staff: ['orders', 'procurement', 'finance', 'reports', 'payments', 'payroll', 'compensation', 'attendance', 'leave'],
   veterinarian: ['customers', 'pets', 'clinical', 'services', 'bookings', 'inventory'],
   veterinary_technician: ['customers', 'pets', 'services', 'bookings', 'clinical'],
   veterinary_assistant: ['customers', 'pets', 'services', 'bookings', 'clinical'],
@@ -66,6 +66,14 @@ export const effectiveStaffType = user => {
 };
 
 export const isCareProfessional = user => CARE_PROFESSIONAL_ROLES.has(effectiveStaffType(user));
+
+const PLATFORM_VERIFIED_SPECIALIST_ROLES = new Set(['veterinarian', 'groomer', 'trainer', 'boarding_staff']);
+export const requiresProfessionalVerification = user => PLATFORM_VERIFIED_SPECIALIST_ROLES.has(effectiveStaffType(user));
+export const professionalVerificationStatus = user => user?.professionalVerificationStatus
+  || user?.professionalProfile?.verification?.status
+  || (user?.isVerified ? 'verified' : 'pending_verification');
+export const isProfessionalVerificationPending = user => requiresProfessionalVerification(user)
+  && professionalVerificationStatus(user) !== 'verified';
 
 export const hasUiPermission = (user, resource) => {
   if (!user || !resource) return false;

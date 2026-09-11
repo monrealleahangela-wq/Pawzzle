@@ -2,7 +2,7 @@ import React from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import Landing from '../pages/public/Landing';
-import { portalHomeForRole } from '../utils/authorization';
+import { isProfessionalVerificationPending, portalHomeForRole } from '../utils/authorization';
 
 const RoleBasedRedirect = () => {
   const { user, isAuthenticated, loading } = useAuth();
@@ -17,7 +17,7 @@ const RoleBasedRedirect = () => {
     return <Landing />;
   }
 
-  return <Navigate to={portalHomeForRole(user?.role)} replace />;
+  return <Navigate to={isProfessionalVerificationPending(user) ? '/professional-verification' : portalHomeForRole(user?.role)} replace />;
 };
 
 export default RoleBasedRedirect;

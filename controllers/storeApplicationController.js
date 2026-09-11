@@ -8,6 +8,27 @@ const { createNotification } = require('./notificationController');
 const { uploadDoc, cloudinary } = require('../middleware/upload');
 const { CloudinaryStorage } = require('multer-storage-cloudinary');
 
+const attachStoreSummaries = async applications => {
+  const rows = Array.isArray(applications) ? applications : [applications];
+  const ownerIds = rows
+    .map(application => application?.populated?.('applicant') || application?.applicant?._id || application?.applicant)
+    .filter(Boolean);
+  const stores = ownerIds.length
+    ? await Store.find({ owner: { $in: ownerIds } })
+      .select('_id owner name verificationStatus isActive isDeleted contactInfo.address')
+      .lean()
+    : [];
+  const storesByOwner = new Map(stores.map(store => [String(store.owner), store]));
+
+  return rows.map(application => {
+    const ownerId = application?.populated?.('applicant') || application?.applicant?._id || application?.applicant;
+    return {
+      ...application.toObject({ virtuals: true }),
+      store: storesByOwner.get(String(ownerId)) || null
+    };
+  });
+};
+
 // Configure multer for file uploads
 // Configure Cloudinary storage for documents
 const storage = new CloudinaryStorage({
@@ -284,10 +305,11 @@ const getAllApplications = async (req, res) => {
       .limit(parseInt(limit));
 
     const total = await StoreApplication.countDocuments(filter);
+    const applicationsWithStores = await attachStoreSummaries(applications);
     console.log(`✅ FOUND ${applications.length} applications (Total Filtered: ${total})`);
 
     res.json({
-      applications,
+      applications: applicationsWithStores,
       pagination: {
         currentPage: parseInt(page),
         totalPages: Math.ceil(total / limit),
@@ -313,7 +335,8 @@ const getApplicationById = async (req, res) => {
       return res.status(404).json({ message: 'Application not found' });
     }
 
-    res.json({ application });
+    const [applicationWithStore] = await attachStoreSummaries(application);
+    res.json({ application: applicationWithStore });
   } catch (error) {
     console.error('Get application error:', error);
     res.status(500).json({ message: 'Server error' });
@@ -348,6 +371,18 @@ const reviewApplication = async (req, res) => {
     if (status === 'rejected') {
       application.rejectionReason = rejectionReason || '';
     } else if (status === 'approved') {
+      const applicant = await User.findOne({
+        _id: application.applicant,
+        isActive: { $ne: false },
+        isDeleted: { $ne: true }
+      });
+
+      if (!applicant) {
+        return res.status(409).json({
+          message: 'This application cannot be approved because its applicant account is missing, archived, or inactive.'
+        });
+      }
+
       if (application.applicationType === 'expansion') {
         // Handle Expansion Approval
         const store = await Store.findOne({ owner: application.applicant });
@@ -405,10 +440,15 @@ const reviewApplication = async (req, res) => {
           ]
         });
 
+        const existingStore = await Store.findOne({ owner: applicant._id, isDeleted: { $ne: true } });
+        if (existingStore) {
+          return res.status(409).json({ message: 'This applicant already owns a store. Review the existing store instead.' });
+        }
+
         const savedStore = await store.save();
 
         // Update user role and link store
-        await User.findByIdAndUpdate(application.applicant, {
+        await User.findByIdAndUpdate(applicant._id, {
           role: 'admin',
           store: savedStore._id
         });

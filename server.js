@@ -131,6 +131,7 @@ app.use('/api/suppliers', require('./routes/suppliers'));
 app.use('/api/purchase-orders', require('./routes/purchaseOrders'));
 app.use('/api/service-supplies', require('./routes/serviceSupplies'));
 app.use('/api/finance', require('./routes/finance'));
+app.use('/api/hr', require('./routes/hr'));
 app.use('/api/pet-care', require('./routes/petCare'));
 
 // Socket.io Real-Time Handler

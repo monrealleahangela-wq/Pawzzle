@@ -18,7 +18,9 @@ const {
     getEnabledSpecializedRoles,
     isRoleEligibleForService,
     getStaffSpecializationRole,
-    getProfessionalVerificationStatus
+    getProfessionalVerificationStatus,
+    requiresPlatformVerification,
+    hasTrustedLegacyProfessionalVerification
 } = require('../utils/staffSpecialization');
 
 const RIDER_STATUSES = ['active', 'inactive', 'suspended'];
@@ -305,7 +307,7 @@ const createStaff = async (req, res) => {
         if (SPECIALIZED_STAFF_ROLES.includes(staffType)) {
             normalizedProfessionalProfile.verification = {
                 status: 'pending_verification',
-                isRequired: staffType === 'veterinarian' || Boolean(professionalProfile?.verification?.isRequired),
+                isRequired: requiresPlatformVerification({ role: 'staff', staffType }),
                 notes: ''
             };
         }
@@ -346,6 +348,12 @@ const createStaff = async (req, res) => {
         });
         if (normalizedRiderProfile) staff.riderProfile = normalizedRiderProfile;
         staff.professionalProfile = normalizedProfessionalProfile;
+        staff.employmentProfile = {
+            staffId: generatedStaffId,
+            employmentStatus: staffStatus === 'active' ? 'active' : 'inactive',
+            dateHired: new Date(),
+            branchName: store.name
+        };
 
         await staff.save();
         await syncAssignedServices(staff._id, targetStoreId, validatedServices.map(service => service._id));
@@ -845,7 +853,7 @@ const uploadCredentialDocument = async (req, res) => {
             replacesDocument: replaced?._id
         });
         staff.professionalProfile.verification.status = 'pending_verification';
-        if (staff.staffType === 'veterinarian' || staff.role === 'veterinarian') staff.professionalProfile.verification.isRequired = true;
+        if (requiresPlatformVerification(staff)) staff.professionalProfile.verification.isRequired = true;
         await staff.save();
         await createNotification({
             recipient: staff._id,
@@ -873,7 +881,8 @@ const updateCredentialVerification = async (req, res) => {
         const document = staff.professionalProfile.credentialDocuments?.id(req.params.documentId);
         if (!document || document.status === 'archived') return res.status(404).json({ message: 'Active credential document not found.' });
         const status = req.body.status;
-        if (!['pending_verification', 'verified', 'expired', 'suspended'].includes(status)) return res.status(400).json({ message: 'Invalid verification status.' });
+        if (!['pending_verification', 'verified', 'rejected', 'expired', 'suspended'].includes(status)) return res.status(400).json({ message: 'Invalid verification status.' });
+        if (['rejected', 'suspended'].includes(status) && !String(req.body.notes || '').trim()) return res.status(400).json({ message: 'A reason is required for rejection or suspension.' });
         document.status = status;
         if (status === 'verified') {
             document.verifiedAt = new Date();
@@ -882,10 +891,10 @@ const updateCredentialVerification = async (req, res) => {
             staff.professionalProfile.verification.verifiedBy = req.user._id;
         }
         if (req.body.isRequired !== undefined) staff.professionalProfile.verification.isRequired = Boolean(req.body.isRequired);
-        if (staff.staffType === 'veterinarian' || staff.role === 'veterinarian') staff.professionalProfile.verification.isRequired = true;
+        if (requiresPlatformVerification(staff)) staff.professionalProfile.verification.isRequired = true;
         const credentialSufficient = hasSufficientVerifiedCredential(staff);
-        staff.professionalProfile.verification.status = status === 'suspended'
-            ? 'suspended'
+        staff.professionalProfile.verification.status = ['suspended', 'rejected', 'expired'].includes(status)
+            ? status
             : status === 'verified'
                 ? (credentialSufficient ? 'verified' : 'pending_verification')
                 : (staff.professionalProfile.verification.isRequired && !credentialSufficient ? status : (credentialSufficient ? 'verified' : 'pending_verification'));
@@ -896,7 +905,7 @@ const updateCredentialVerification = async (req, res) => {
             sender: req.user._id,
             type: 'schedule_change',
             title: `Credential ${status.replaceAll('_', ' ')}`,
-            message: `${document.name} was marked ${status.replaceAll('_', ' ')} by an administrator.`,
+            message: `${document.name} was marked ${status.replaceAll('_', ' ')} by Platform Admin.`,
             relatedId: staff._id,
             relatedModel: 'User',
             targetUrl: '/profile'
@@ -906,6 +915,55 @@ const updateCredentialVerification = async (req, res) => {
     } catch (error) {
         console.error('updateCredentialVerification error:', error);
         res.status(error.name === 'CastError' ? 404 : 500).json({ message: error.name === 'CastError' ? 'Credential not found.' : 'Unable to update credential verification.' });
+    }
+};
+
+const getProfessionalVerificationQueue = async (req, res) => {
+    try {
+        const requestedStatus = String(req.query.status || '').trim();
+        const specialists = await User.find({
+            isDeleted: false,
+            $or: [
+                { role: { $in: ['veterinarian', 'groomer', 'trainer', 'boarding_staff'] } },
+                { role: 'staff', staffType: { $in: ['veterinarian', 'groomer', 'trainer', 'boarding_staff', 'boarding_specialist'] } }
+            ]
+        }).select('-password -passwordResetToken -passwordResetExpires').populate('store', 'name').sort({ createdAt: -1 });
+        const rows = specialists
+            .filter(staff => !requestedStatus || getProfessionalVerificationStatus(staff) === requestedStatus)
+            .map(staff => ({ ...staff.toObject(), professionalVerificationStatus: getProfessionalVerificationStatus(staff) }));
+        res.json({ specialists: rows });
+    } catch (error) {
+        console.error('getProfessionalVerificationQueue error:', error);
+        res.status(500).json({ message: 'Unable to load professional verifications.' });
+    }
+};
+
+const updateProfessionalVerificationStatus = async (req, res) => {
+    try {
+        const staff = await User.findById(req.params.id);
+        if (!staff || staff.isDeleted || !requiresPlatformVerification(staff)) return res.status(404).json({ message: 'Specialized staff member not found.' });
+        const status = String(req.body.status || '');
+        const notes = String(req.body.notes || '').trim().slice(0, 1000);
+        if (!['pending_verification', 'verified', 'rejected', 'suspended'].includes(status)) return res.status(400).json({ message: 'Invalid verification status.' });
+        if (['rejected', 'suspended'].includes(status) && !notes) return res.status(400).json({ message: 'A reason is required for rejection or suspension.' });
+        if (status === 'verified' && !hasSufficientVerifiedCredential(staff) && !hasTrustedLegacyProfessionalVerification(staff)) {
+            return res.status(409).json({ message: 'Verify the required current professional credential before approving account access.' });
+        }
+        staff.professionalProfile.verification = staff.professionalProfile.verification || {};
+        staff.professionalProfile.verification.status = status;
+        staff.professionalProfile.verification.isRequired = true;
+        staff.professionalProfile.verification.notes = notes;
+        if (status === 'verified') {
+            staff.professionalProfile.verification.verifiedAt = new Date();
+            staff.professionalProfile.verification.verifiedBy = req.user._id;
+        }
+        await staff.save();
+        await notifyStaff(staff._id, req, `Professional Account ${status === 'verified' ? 'Approved' : status.replaceAll('_', ' ')}`, status === 'verified' ? 'Platform Admin approved your professional account. You can now access your authorized staff portal.' : `Your professional verification is ${status.replaceAll('_', ' ')}.${notes ? ` Reason: ${notes}` : ''}`);
+        await logStaffActivity(staff._id, 'Professional Verification Updated', `Platform Admin set account verification to ${status}.`, req);
+        res.json({ message: 'Professional verification updated.', specialist: { ...staff.toObject(), professionalVerificationStatus: getProfessionalVerificationStatus(staff) } });
+    } catch (error) {
+        console.error('updateProfessionalVerificationStatus error:', error);
+        res.status(error.name === 'CastError' ? 404 : 500).json({ message: error.name === 'CastError' ? 'Specialized staff member not found.' : 'Unable to update professional verification.' });
     }
 };
 
@@ -950,14 +1008,19 @@ const getEligibleRiders = async (req, res) => {
         };
         if (storeIds?.length) query.store = { $in: storeIds };
         const riders = await User.find(query).select('-password').populate('store', 'name').lean();
-        const counts = await Delivery.aggregate([
+        const [counts, ratings] = await Promise.all([Delivery.aggregate([
             { $match: { assignedRider: { $in: riders.map(r => r._id) }, status: { $nin: ['delivered', 'cancelled', 'returned_to_store'] } } },
             { $group: { _id: '$assignedRider', count: { $sum: 1 } } }
-        ]);
+        ]), Review.aggregate([
+            { $match: { targetType: 'Delivery', staffId: { $in: riders.map(r => r._id) }, isApproved: true, isDeleted: { $ne: true } } },
+            { $group: { _id: '$staffId', averageRating: { $avg: '$rating' }, totalRatings: { $sum: 1 } } }
+        ])]);
         const byRider = Object.fromEntries(counts.map(row => [row._id.toString(), row.count]));
+        const ratingsByRider = Object.fromEntries(ratings.map(row => [row._id.toString(), row]));
         res.json({ riders: riders.map(rider => {
             const activeDeliveryCount = byRider[rider._id.toString()] || 0;
-            return { ...rider, activeDeliveryCount, availability: activeDeliveryCount ? 'on_delivery' : 'available' };
+            const rating = ratingsByRider[rider._id.toString()];
+            return { ...rider, activeDeliveryCount, averageRating: rating ? Number(rating.averageRating.toFixed(2)) : 0, totalRatings: rating?.totalRatings || 0, availability: activeDeliveryCount ? 'on_delivery' : 'available' };
         }) });
     } catch (error) {
         console.error('getEligibleRiders error:', error);
@@ -971,10 +1034,16 @@ const getRiderDetails = async (req, res) => {
             .select('-password').populate('store', 'name').lean();
         if (!rider) return res.status(404).json({ message: 'Delivery Rider not found.' });
         if (req.user._id.toString() !== rider._id.toString() && !(await canAccessStore(req.user, rider.store._id || rider.store))) return res.status(403).json({ message: 'Access denied.' });
-        const [deliveries, earnings, payouts] = await Promise.all([
+        const [deliveries, earnings, payouts, ratingRows, recentFeedback] = await Promise.all([
             Delivery.find({ assignedRider: rider._id }).populate({ path: 'order', populate: { path: 'customer', select: 'firstName lastName' } }).sort({ createdAt: -1 }).limit(100).lean(),
             RiderEarning.find({ rider: rider._id }).populate('delivery', 'trackingToken status deliveredAt proofOfDelivery').sort({ earnedAt: -1 }).lean(),
-            RiderPayout.find({ rider: rider._id }).sort({ createdAt: -1 }).lean()
+            RiderPayout.find({ rider: rider._id }).sort({ createdAt: -1 }).lean(),
+            Review.aggregate([
+                { $match: { targetType: 'Delivery', staffId: rider._id, isApproved: true, isDeleted: { $ne: true } } },
+                { $group: { _id: '$staffId', averageRating: { $avg: '$rating' }, totalRatings: { $sum: 1 } } }
+            ]),
+            Review.find({ targetType: 'Delivery', staffId: rider._id, isApproved: true, isDeleted: { $ne: true } })
+                .select('rating comment deliveryId createdAt isAnonymous').populate('deliveryId', 'trackingToken deliveredAt').sort({ createdAt: -1 }).limit(10).lean()
         ]);
         const completed = deliveries.filter(d => d.status === 'delivered').length;
         const failed = deliveries.filter(d => ['failed_attempt', 'returned_to_store'].includes(d.status)).length;
@@ -983,7 +1052,8 @@ const getRiderDetails = async (req, res) => {
         const sum = (items, predicate = () => true) => items.filter(predicate).reduce((total, item) => total + item.amount, 0);
         res.json({
             rider,
-            stats: { totalAssigned: deliveries.length, completed, failed, successRate: totalFinished ? Math.round(completed / totalFinished * 100) : 0 },
+            stats: { totalAssigned: deliveries.length, completed, failed, successRate: totalFinished ? Math.round(completed / totalFinished * 100) : 0, averageRating: ratingRows[0] ? Number(ratingRows[0].averageRating.toFixed(2)) : 0, totalRatings: ratingRows[0]?.totalRatings || 0 },
+            recentFeedback: recentFeedback.map(review => ({ _id: review._id, rating: review.rating, comment: review.comment, deliveryReference: review.deliveryId?.trackingToken, deliveredAt: review.deliveryId?.deliveredAt, createdAt: review.createdAt })),
             earnings: {
                 today: sum(earnings, e => new Date(e.earnedAt) >= startToday),
                 available: sum(earnings, e => e.status === 'available'),
@@ -1052,6 +1122,8 @@ module.exports = {
     uploadCredentialDocument,
     authorizeCredentialManagement,
     updateCredentialVerification,
+    getProfessionalVerificationQueue,
+    updateProfessionalVerificationStatus,
     updateStaffAvailability,
     createStaff,
     updateStaff,

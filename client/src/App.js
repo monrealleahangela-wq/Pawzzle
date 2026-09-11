@@ -89,6 +89,10 @@ import ActivityHistory from './pages/superadmin/ActivityHistory';
 import SupportManagement from './pages/superadmin/SupportManagement';
 import RolePermissions from './pages/superadmin/RolePermissions';
 import SupplierManagement from './pages/superadmin/SupplierManagement';
+import SpecializedStaffVerification from './pages/superadmin/SpecializedStaffVerification';
+import ProfessionalVerificationStatus from './pages/staff/ProfessionalVerificationStatus';
+import EmployeeHR from './pages/staff/EmployeeHR';
+import HRManagement from './pages/admin/HRManagement';
 
 // Supplier Pages
 import SupplierDashboard from './pages/supplier/SupplierDashboard';
@@ -152,6 +156,10 @@ function App() {
                   <Route path="find-shops" element={<FindShops />} />
                   <Route path="search" element={<Search />} />
                   <Route path="profile" element={<ProtectedRoute roles={['customer', 'admin', 'super_admin', 'staff', 'supplier']}><Profile /></ProtectedRoute>} />
+                  <Route path="professional-verification" element={<ProtectedRoute roles={['staff']} allowPendingProfessional><ProfessionalVerificationStatus /></ProtectedRoute>} />
+                  <Route path="staff/attendance" element={<ProtectedRoute roles={['staff']}><EmployeeHR initialTab="attendance" /></ProtectedRoute>} />
+                  <Route path="staff/leave" element={<ProtectedRoute roles={['staff']}><EmployeeHR initialTab="leave" /></ProtectedRoute>} />
+                  <Route path="staff/payslips" element={<ProtectedRoute roles={['staff']}><EmployeeHR initialTab="payslips" /></ProtectedRoute>} />
                   <Route path="cart" element={<ProtectedRoute roles={['customer', 'admin', 'super_admin']}><Cart /></ProtectedRoute>} />
                   <Route path="checkout" element={<ProtectedRoute roles={['customer', 'admin', 'super_admin']}><Checkout /></ProtectedRoute>} />
                   <Route path="orders" element={<ProtectedRoute roles={['customer', 'admin', 'super_admin']}><Orders /></ProtectedRoute>} />
@@ -202,6 +210,7 @@ function App() {
                   <Route path="admin/purchase-orders" element={<ProtectedRoute roles={['admin', 'super_admin', 'staff']} requiredPermission="procurement"><PurchaseOrders /></ProtectedRoute>} />
                   <Route path="admin/supplies" element={<ProtectedRoute roles={['admin', 'super_admin', 'staff']} requiredPermission="inventory"><SupplyManagement /></ProtectedRoute>} />
                   <Route path="admin/finance" element={<ProtectedRoute roles={['admin', 'super_admin', 'staff']} requiredPermission="finance"><FinanceManagement /></ProtectedRoute>} />
+                  <Route path="admin/hr" element={<ProtectedRoute roles={['admin', 'super_admin', 'staff']} requiredPermission={['attendance', 'leave', 'payroll', 'compensation']}><HRManagement /></ProtectedRoute>} />
                   <Route path="admin/logistics" element={<ProtectedRoute roles={['admin', 'super_admin', 'staff']} staffTypes={['logistics_staff']} requiredPermission="logistics" excludedRoles={['delivery_rider']}><Logistics /></ProtectedRoute>} />
                   <Route path="admin/logistics/:id" element={<ProtectedRoute roles={['admin', 'super_admin', 'staff']} staffTypes={['logistics_staff']} requiredPermission="logistics" excludedRoles={['delivery_rider']}><LogisticsDetail /></ProtectedRoute>} />
                   <Route path="superadmin/payouts" element={<ProtectedRoute roles={['super_admin']}><AdminPayouts /></ProtectedRoute>} />
@@ -221,6 +230,7 @@ function App() {
                   <Route path="superadmin/insights" element={<ProtectedRoute roles={['super_admin']}><SuperAdminDSS /></ProtectedRoute>} />
                   <Route path="superadmin/activity-history" element={<ProtectedRoute roles={['super_admin']}><ActivityHistory /></ProtectedRoute>} />
                   <Route path="superadmin/suppliers" element={<ProtectedRoute roles={['super_admin']}><SupplierManagement /></ProtectedRoute>} />
+                  <Route path="superadmin/staff-verification" element={<ProtectedRoute roles={['super_admin']}><SpecializedStaffVerification /></ProtectedRoute>} />
 
                   {/* Supplier Routes - customers can access to register as supplier */}
                   <Route path="supplier/dashboard" element={<ProtectedRoute roles={['supplier', 'customer']}><SupplierDashboard /></ProtectedRoute>} />

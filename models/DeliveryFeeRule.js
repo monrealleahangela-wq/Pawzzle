@@ -6,6 +6,7 @@ const deliveryFeeRuleSchema = new mongoose.Schema({
   baseFee: { type: Number, default: 0, min: 0 },
   includedKilometers: { type: Number, default: 0, min: 0 },
   ratePerKilometer: { type: Number, required: true, min: 0 },
+  additionalItemFee: { type: Number, default: 0, min: 0 },
   minimumFee: { type: Number, default: 0, min: 0 },
   maximumFee: { type: Number, min: 0 },
   maximumDistanceKm: { type: Number, min: 0 },

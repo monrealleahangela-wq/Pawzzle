@@ -8,6 +8,7 @@ const { isPlatformAdmin, isStoreAdmin, isOperationalStaff } = require('../config
 const { canAccessStore, idsEqual } = require('../utils/authorizationPolicy');
 const { canAccessConversation } = require('../utils/conversationAuthorization');
 const { attachStoreRolePolicy } = require('./rolePermissionService');
+const { requiresPlatformVerification, getProfessionalVerificationStatus } = require('../utils/staffSpecialization');
 
 const socketCredentials = socket => ({
   token: socket.handshake.auth?.token || socket.handshake.headers?.authorization?.replace(/^Bearer\s+/i, ''),
@@ -21,6 +22,9 @@ const authenticateSocket = async (socket, next) => {
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
       const user = await User.findById(decoded.id).select('-password');
       if (!user || !user.isActive || user.isDeleted) return next(new Error('Authentication failed'));
+      if (requiresPlatformVerification(user) && getProfessionalVerificationStatus(user) !== 'verified') {
+        return next(new Error('Professional verification required'));
+      }
       await attachStoreRolePolicy(user);
       socket.user = user;
       return next();
@@ -28,8 +32,8 @@ const authenticateSocket = async (socket, next) => {
     if (deliveryToken) {
       const delivery = await Delivery.findOne({
         isLive: true,
-        $or: [{ riderToken: deliveryToken }, { trackingToken: deliveryToken }]
-      }).select('_id riderToken trackingToken isRiderVerified assignedRider');
+        $or: [{ riderToken: deliveryToken, assignmentType: 'internal' }, { trackingToken: deliveryToken }]
+      }).select('_id riderToken trackingToken isRiderVerified assignedRider assignmentType');
       if (!delivery) return next(new Error('Delivery capability is invalid or expired'));
       socket.deliveryCapability = {
         deliveryId: String(delivery._id),
@@ -71,6 +75,7 @@ const canAccessDeliveryRoom = async (socket, deliveryId, { mutate = false } = {}
     return Boolean(await Delivery.exists({
       _id: deliveryId,
       riderToken: socket.deliveryCapability.token,
+      assignmentType: 'internal',
       isLive: true,
       isRiderVerified: true
     }));

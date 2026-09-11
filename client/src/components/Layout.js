@@ -1,16 +1,16 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Link, useLocation, Outlet } from 'react-router-dom';
+import { Link, useLocation, Outlet, Navigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useCart } from '../contexts/CartContext';
 import { getImageUrl } from '../services/apiService';
-import { Heart, Package, Calendar, ShoppingCart, User, LogOut, Menu, X, Settings, Home as House, Activity, Users, Building, DollarSign, TrendingUp, FileText, ChevronDown, MessageSquare, ShoppingBag, Archive, Ticket, Star, Wallet, Brain, Moon, Sun, MapPin, AlertCircle, HelpCircle, History, ShieldCheck, Truck, Layers, ChevronsLeft, ChevronsRight, Store } from 'lucide-react';
+import { Heart, Package, Calendar, ShoppingCart, User, LogOut, Menu, X, Settings, Home as House, Activity, Users, Building, DollarSign, TrendingUp, FileText, ChevronDown, MessageSquare, ShoppingBag, Archive, Ticket, Star, Wallet, Brain, Moon, Sun, MapPin, AlertCircle, HelpCircle, History, ShieldCheck, Truck, Layers, ChevronsLeft, ChevronsRight, Store, Clock, CalendarOff, ReceiptText } from 'lucide-react';
 import FloatingChatManager from './FloatingChatManager';
 import NotificationBell from './NotificationBell';
 import PasswordChangeModal from './auth/PasswordChangeModal';
 import LogoutModal from './auth/LogoutModal';
 import BottomNavBar from './BottomNavBar';
 import { useTheme } from '../contexts/ThemeContext';
-import { hasUiPermission, hasUiActionPermission, isCareProfessional, OPERATIONAL_ROLES, PLATFORM_ADMIN_ROLES, effectiveStaffType } from '../utils/authorization';
+import { hasUiPermission, hasUiActionPermission, isCareProfessional, isProfessionalVerificationPending, OPERATIONAL_ROLES, PLATFORM_ADMIN_ROLES, effectiveStaffType } from '../utils/authorization';
 import { getStaffWorkspaceConfig } from '../utils/staffWorkspace';
 
 // ═══════════════════════════════════════════════════════════════
@@ -127,6 +127,14 @@ const getAdminMenu = (user) => {
   }
 
   if (isGlobalAdmin) {
+    menu.push({
+      label: 'Staff & Payroll', icon: Clock, children: [
+        { path: '/admin/hr?tab=attendance', label: 'Attendance', icon: Clock },
+        { path: '/admin/hr?tab=leave', label: 'Leave Requests', icon: CalendarOff },
+        { path: '/admin/hr?tab=payroll', label: 'Payroll', icon: ReceiptText },
+        { path: '/admin/hr?tab=settings', label: 'Payroll Settings', icon: Settings }
+      ]
+    });
     const settingsChildren = [
       { path: '/admin/store', label: 'Store Details', icon: Building },
       { path: '/admin/staff', label: 'Manage Staff', icon: Users },
@@ -152,6 +160,7 @@ const superAdminMenu = [
       { path: '/superadmin/account-management', label: 'Accounts', icon: Users },
       { path: '/superadmin/permissions', label: 'Role Permissions', icon: ShieldCheck },
       { path: '/superadmin/store-applications', label: 'Store Applications', icon: FileText },
+      { path: '/superadmin/staff-verification', label: 'Professional Verification', icon: ShieldCheck },
     ]
   },
   {
@@ -195,6 +204,9 @@ const getStaffMenu = (user) => {
     const menu = [
       { path: '/admin/dashboard', label: 'My Work', icon: Activity },
       { path: '/admin/bookings', label: config.bookingsTitle, icon: Calendar },
+      { path: '/staff/attendance', label: 'Attendance', icon: Clock },
+      { path: '/staff/leave', label: 'Leave', icon: CalendarOff },
+      { path: '/staff/payslips', label: 'Payslips', icon: ReceiptText },
       { path: '/profile', label: 'My Professional Profile', icon: User }
     ];
     const additional = [];
@@ -213,6 +225,11 @@ const getStaffMenu = (user) => {
 
   const menu = [
     { path: '/admin/dashboard', label: 'Dashboard', icon: Activity },
+    { label: 'My Employment', icon: Clock, children: [
+      { path: '/staff/attendance', label: 'Attendance', icon: Clock },
+      { path: '/staff/leave', label: 'Leave', icon: CalendarOff },
+      { path: '/staff/payslips', label: 'Payslips', icon: ReceiptText }
+    ] },
   ];
   if (hasUiPermission(user, 'dss')) menu.push({ path: '/admin/insights', label: 'Business Insights', icon: Brain });
 
@@ -237,11 +254,15 @@ const getStaffMenu = (user) => {
   if (supplyChildren.length > 0) menu.push({ label: 'Supply Chain', icon: Truck, children: supplyChildren });
 
   const financeChildren = [];
-  if (effectiveStaffType(user) === 'finance_staff') financeChildren.push({ path: '/admin/finance', label: 'Finance Records', icon: DollarSign });
+  if (effectiveStaffType(user) === 'finance_staff') {
+    financeChildren.push({ path: '/admin/finance', label: 'Finance Records', icon: DollarSign });
+    financeChildren.push({ path: '/admin/hr?tab=payroll', label: 'Payroll', icon: ReceiptText });
+  }
   if (hasUiPermission(user, 'vouchers')) financeChildren.push({ path: '/admin/vouchers', label: 'Vouchers', icon: Ticket });
   if (financeChildren.length > 0) menu.push({ label: 'Finance', icon: DollarSign, children: financeChildren });
 
   const mgmtChildren = [];
+  if (['manager'].includes(effectiveStaffType(user))) mgmtChildren.push({ path: '/admin/hr', label: 'Attendance & Leave', icon: Clock });
   if (hasUiPermission(user, 'analytics')) mgmtChildren.push({ path: '/admin/stats', label: 'Stats', icon: TrendingUp });
   if (hasUiPermission(user, 'staff')) mgmtChildren.push({ path: '/admin/staff', label: 'Staff', icon: Users });
   if (['admin', 'store_owner', 'super_admin', 'platform_admin'].includes(user?.role)) {
@@ -258,6 +279,7 @@ const getStaffMenu = (user) => {
 
 const NavLink = ({ item, isActive, collapsed, onClick }) => {
   const Icon = item.icon;
+
   return (
     <Link
       to={item.path}
@@ -483,6 +505,10 @@ const Layout = () => {
       ))}
     </div>
   );
+
+  const pendingProfessional = isProfessionalVerificationPending(user);
+  if (pendingProfessional && location.pathname !== '/professional-verification') return <Navigate to="/professional-verification" replace />;
+  if (pendingProfessional) return <><Outlet /><PasswordChangeModal /></>;
 
   return (
     <div className={`min-h-screen bg-neutral-50 dark:bg-slate-950 flex flex-col lg:flex-row overflow-x-hidden transition-colors duration-300 ${user?.role === 'customer' ? 'customer-ui-shell' : ''} ${user?.role === 'staff' ? 'staff-ui-shell' : ''} ${isStoreOwnerUI ? 'store-owner-ui-shell' : ''} ${isPlatformAdminUI ? 'super-admin-ui-shell' : ''} ${isLandingPage ? '!bg-transparent' : ''}`}>

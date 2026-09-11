@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import { userService, storeService } from '../../services/apiService';
+import { storeService } from '../../services/apiService';
 import { DollarSign, Truck, Save, Settings, Shield, Zap, Globe, Settings2, Building, CheckCircle, AlertCircle, Clock, Calendar, ChevronRight, Clock3, Timer, Users, XCircle, Info, Package, Heart, PlusCircle, UserCog, Bell, Palette } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { formatTime12h } from '../../utils/timeFormatters';
@@ -19,12 +19,17 @@ const AdminSettings = () => {
     }
   });
 
-  const [activeTab, setActiveTab] = useState('global'); // 'global' or 'booking'
-  const [globalSettings, setGlobalSettings] = useState({
-    freeShipping: true,
-    shippingFee: 0,
-    freeShippingThreshold: 0
+  const [activeTab, setActiveTab] = useState('delivery');
+  const [deliveryPricing, setDeliveryPricing] = useState({
+    baseFee: 40,
+    includedKilometers: 0,
+    ratePerKilometer: 10,
+    additionalItemFee: 5,
+    minimumFee: 0,
+    maximumFee: '',
+    maximumDistanceKm: 30
   });
+  const [hasStoreMapLocation, setHasStoreMapLocation] = useState(false);
   
   const [storeSettings, setStoreSettings] = useState({
     operationalModules: ['pets', 'products', 'services'],
@@ -81,17 +86,20 @@ const AdminSettings = () => {
 
   const fetchData = async () => {
     try {
-      const [globalRes, storeRes] = await Promise.all([
-        userService.getAdminSettings(),
-        storeService.getSettings()
+      const [storeRes, deliveryRes] = await Promise.all([
+        storeService.getSettings(),
+        storeService.getDeliveryPricing()
       ]);
-      
-      if (globalRes.data) setGlobalSettings(globalRes.data);
+
       const storeData = storeRes.data?.store || storeRes.data?.settings || storeRes.data;
       if (storeData) {
         setStoreSettings(prev => ({ ...prev, ...storeData }));
         if (storeData.taxConfiguration) setTaxConfiguration(prev => ({ ...prev, ...storeData.taxConfiguration }));
         if (storeData.refundPolicy) setRefundPolicy(prev => ({ ...prev, ...storeData.refundPolicy }));
+      }
+      setHasStoreMapLocation(Boolean(deliveryRes.data?.store?.hasMapLocation));
+      if (deliveryRes.data?.deliveryPricing) {
+        setDeliveryPricing(current => ({ ...current, ...deliveryRes.data.deliveryPricing }));
       }
       
     } catch (error) {
@@ -100,16 +108,16 @@ const AdminSettings = () => {
     }
   };
 
-  const handleSaveGlobal = async () => {
+  const handleSaveDeliveryPricing = async () => {
     setLoading(true);
     try {
-      await userService.updateAdminSettings(globalSettings);
-      toast.success('Global settings saved');
+      const response = await storeService.updateDeliveryPricing(deliveryPricing);
+      setDeliveryPricing(current => ({ ...current, ...response.data.deliveryPricing }));
+      setHasStoreMapLocation(true);
+      toast.success('Distance and item delivery pricing saved');
     } catch (error) {
-      toast.error('Failed to save global settings');
-    } finally {
-      setLoading(false);
-    }
+      toast.error(error.response?.data?.message || 'Failed to save delivery pricing');
+    } finally { setLoading(false); }
   };
 
   const handleSaveStore = async () => {
@@ -162,13 +170,6 @@ const AdminSettings = () => {
     } finally { setLoading(false); }
   };
 
-  const handleGlobalChange = (field, value) => {
-    setGlobalSettings(prev => ({
-      ...prev,
-      [field]: field === 'freeShipping' ? value : Number(value)
-    }));
-  };
-
   const handleHoursChange = (day, field, value) => {
     setStoreSettings(prev => ({
       ...prev,
@@ -188,7 +189,7 @@ const AdminSettings = () => {
 
   const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
   const settingsGroups = [
-    { label: 'Business', tabs: [['global', 'Store Info'], ['booking', 'Hours'], ['modules', 'Modules']] },
+    { label: 'Business', tabs: [['delivery', 'Delivery'], ['booking', 'Hours'], ['modules', 'Modules']] },
     { label: 'Financial', tabs: [['tax', 'VAT'], ['refund', 'Refunds']] },
     { label: 'Staff', tabs: [['staff', 'Workforce']] },
     { label: 'Notifications', tabs: [['notifications', 'Reminders']] },
@@ -218,51 +219,56 @@ const AdminSettings = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
         <div className="lg:col-span-8 space-y-6">
-          {activeTab === 'global' ? (
+          {activeTab === 'delivery' ? (
             <div className="bg-white border border-slate-100 rounded-[2.5rem] p-8 shadow-sm space-y-10 animate-in slide-in-from-left-4">
               <div className="flex items-center gap-4">
                 <div className="w-12 h-12 bg-primary-50 text-primary-600 rounded-2xl flex items-center justify-center"><Truck className="h-6 w-6" /></div>
                 <div>
-                  <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest leading-none mb-1">Logistics & Fees</h3>
-                  <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Global shipping parameters</p>
+                  <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest leading-none mb-1">Delivery Pricing</h3>
+                  <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Distance and item-based rates for new orders</p>
                 </div>
               </div>
 
               <div className="space-y-8">
                 <div className="flex items-center justify-between p-6 bg-slate-50 rounded-[2rem] border border-slate-100">
                   <div className="space-y-1">
-                    <p className="text-[11px] font-black text-slate-900 uppercase tracking-widest">Complimentary Shipping</p>
-                    <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Toggle zero-fee delivery globally</p>
+                    <p className="text-[11px] font-black text-slate-900 uppercase tracking-widest">Explainable Delivery Formula</p>
+                    <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Base + distance + each additional item</p>
                   </div>
                   <button 
-                    onClick={() => handleGlobalChange('freeShipping', !globalSettings.freeShipping)}
-                    className={`w-14 h-8 rounded-full transition-all relative p-1 ${globalSettings.freeShipping ? 'bg-emerald-500' : 'bg-slate-200'}`}
+                    type="button"
+                    disabled
+                    className="w-14 h-8 rounded-full relative p-1 bg-primary-600"
                   >
-                    <div className={`w-6 h-6 bg-white rounded-full shadow-sm transition-transform ${globalSettings.freeShipping ? 'translate-x-6' : 'translate-x-0'}`} />
+                    <div className="w-6 h-6 bg-white rounded-full shadow-sm translate-x-6" />
                   </button>
                 </div>
 
-                {!globalSettings.freeShipping && (
+                {(
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in zoom-in-95">
                     <div className="p-6 bg-white border border-slate-100 rounded-3xl">
                       <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-3">Base Delivery Fee</label>
                       <div className="flex items-center gap-3">
                          <span className="text-lg font-black text-slate-300">₱</span>
-                         <input type="number" value={globalSettings.shippingFee} onChange={(e) => handleGlobalChange('shippingFee', e.target.value)} className="w-full text-xl font-black bg-transparent outline-none" />
+                         <input type="number" min="0" value={deliveryPricing.baseFee} onChange={(e) => setDeliveryPricing(current => ({ ...current, baseFee: e.target.value }))} className="w-full text-xl font-black bg-transparent outline-none" />
                       </div>
                     </div>
                     <div className="p-6 bg-white border border-slate-100 rounded-3xl">
-                      <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-3">Free Shipping Threshold</label>
+                      <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-3">Rate Per Kilometer</label>
                       <div className="flex items-center gap-3">
                          <span className="text-lg font-black text-slate-300">₱</span>
-                         <input type="number" value={globalSettings.freeShippingThreshold} onChange={(e) => handleGlobalChange('freeShippingThreshold', e.target.value)} className="w-full text-xl font-black bg-transparent outline-none" />
+                         <input type="number" min="0" value={deliveryPricing.ratePerKilometer} onChange={(e) => setDeliveryPricing(current => ({ ...current, ratePerKilometer: e.target.value }))} className="w-full text-xl font-black bg-transparent outline-none" />
                       </div>
                     </div>
                   </div>
                 )}
                 
-                <button onClick={handleSaveGlobal} disabled={loading} className="w-full py-4 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.3em] hover:bg-primary-600 transition-all flex items-center justify-center gap-3 shadow-xl">
-                   {loading ? <Zap className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Save Global Registry
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                  {[["includedKilometers", "Included KM"], ["additionalItemFee", "Each Additional Item"], ["minimumFee", "Minimum Fee"], ["maximumFee", "Maximum Fee (Optional)"], ["maximumDistanceKm", "Maximum Distance (KM)"]].map(([field, label]) => <label key={field} className="rounded-2xl border border-slate-100 p-4 text-[9px] font-black uppercase tracking-widest text-slate-400">{label}<input type="number" min="0" value={deliveryPricing[field] ?? ''} onChange={(event) => setDeliveryPricing(current => ({ ...current, [field]: event.target.value }))} className="mt-2 w-full bg-transparent text-base text-slate-900 outline-none" /></label>)}
+                </div>
+                {!hasStoreMapLocation && <p className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs font-semibold text-amber-800">Add your store map location before saving distance-based delivery pricing.</p>}
+                <button onClick={handleSaveDeliveryPricing} disabled={loading || !hasStoreMapLocation} className="w-full py-4 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.3em] hover:bg-primary-600 transition-all flex items-center justify-center gap-3 shadow-xl disabled:cursor-not-allowed disabled:opacity-50">
+                   {loading ? <Zap className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Save Delivery Pricing
                 </button>
               </div>
             </div>

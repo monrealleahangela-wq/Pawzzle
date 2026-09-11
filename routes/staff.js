@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { authenticate, adminOnly, requirePermission } = require('../middleware/auth');
+const { authenticate, adminOnly, superAdminOnly, requirePermission } = require('../middleware/auth');
 const {
     getMyStaff,
     getStaffConfiguration,
@@ -10,6 +10,8 @@ const {
     uploadCredentialDocument,
     authorizeCredentialManagement,
     updateCredentialVerification,
+    getProfessionalVerificationQueue,
+    updateProfessionalVerificationStatus,
     updateStaffAvailability,
     createStaff,
     updateStaff,
@@ -32,6 +34,9 @@ router.get('/me/professional-profile', authenticate, getMyProfessionalProfile);
 router.patch('/me/professional-profile', authenticate, updateMyProfessionalProfile);
 router.get('/riders/eligible', authenticate, requirePermission('logistics.manage'), getEligibleRiders);
 router.get('/riders/:id', authenticate, requirePermission('logistics.manage'), getRiderDetails);
+router.get('/platform/verifications', authenticate, superAdminOnly, getProfessionalVerificationQueue);
+router.patch('/platform/verifications/:id', authenticate, superAdminOnly, updateProfessionalVerificationStatus);
+router.patch('/:id/credentials/:documentId/verification', authenticate, superAdminOnly, updateCredentialVerification);
 
 // Remaining routes require authentication and admin/super_admin role
 router.use(authenticate, adminOnly);
@@ -41,7 +46,6 @@ router.get('/roles', getRolePermissions);
 router.put('/roles/:role', updateRolePermissions);
 router.get('/:id/profile', getStaffProfile);
 router.post('/:id/credentials', authorizeCredentialManagement, uploadDoc.single('document'), handleUploadError, uploadCredentialDocument);
-router.patch('/:id/credentials/:documentId/verification', updateCredentialVerification);
 router.put('/:id/availability', updateStaffAvailability);
 router.get('/', getMyStaff);
 router.post('/riders/:id/payouts', createRiderPayout);

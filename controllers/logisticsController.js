@@ -198,7 +198,7 @@ const getDeliveryDetails = async (req, res) => {
       .populate('payout', 'payoutId status amount referenceNumber processedAt');
     const payload = serializeDelivery(delivery);
     payload.links = {
-      rider: `${clientUrl()}/rider-track/${delivery.riderToken}`,
+      rider: delivery.assignmentType === 'internal' ? `${clientUrl()}/rider-track/${delivery.riderToken}` : null,
       customer: `${clientUrl()}/track/${delivery.trackingToken}`,
       status: payload.linkStatus
     };

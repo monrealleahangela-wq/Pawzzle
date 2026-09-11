@@ -37,7 +37,7 @@ const OrderDetail = () => {
 
   useEffect(() => {
     if (!order?._id || !order.delivery || user?.role === 'customer') return;
-    deliveryService.getTrackingForOrder(order._id).then(response => { const delivery=response.data.delivery||null; setDeliveryAssignment(delivery); if(delivery?.assignmentType==='internal'){setAssignmentType('internal');setSelectedRiderId(delivery.assignedRider?._id||delivery.assignedRider||'');} else if(delivery?.assignmentType==='third_party'){setAssignmentType('third_party');setThirdPartyRider({...emptyExternal,...(delivery.thirdPartyRider||{})});} }).catch(()=>{});
+    deliveryService.getTrackingForOrder(order._id).then(response => { const delivery=response.data.delivery||null; setDeliveryAssignment(delivery); if(delivery?.assignmentType==='internal'){setAssignmentType('internal');setSelectedRiderId(delivery.assignedRider?._id||delivery.assignedRider||'');} else if(delivery?.assignmentType==='third_party'){setAssignmentType('third_party');setThirdPartyRider({...emptyExternal,providerKey:delivery.providerDelivery?.providerKey||emptyExternal.providerKey});} }).catch(()=>{});
   }, [order?._id, order?.delivery, user?.role]);
 
   useEffect(() => {
@@ -189,23 +189,20 @@ const OrderDetail = () => {
 
   const handleGenerateRiderLink = async () => {
     try {
-      if (!order?.delivery && assignmentType === 'internal' && !selectedRiderId) return toast.error('Select an active Delivery Rider first.');
-      const hasExternalDetails = thirdPartyRider.name || thirdPartyRider.mobile || thirdPartyRider.company;
-      const requestedAssignment = order?.delivery && ((assignmentType === 'internal' && !selectedRiderId) || (assignmentType === 'third_party' && !hasExternalDetails)) ? undefined : assignmentType;
-      const response = await deliveryService.generateLinks({ orderId: id, assignmentType: requestedAssignment, riderId: requestedAssignment === 'internal' ? selectedRiderId : undefined, thirdPartyRider: requestedAssignment === 'third_party' ? thirdPartyRider : undefined });
+      if (assignmentType === 'internal' && !selectedRiderId) return toast.error('Select an active Delivery Rider first.');
+      const response = await deliveryService.generateLinks({ orderId: id, assignmentType, riderId: assignmentType === 'internal' ? selectedRiderId : undefined, providerKey: assignmentType === 'third_party' ? thirdPartyRider.providerKey : undefined });
       const url = response.data.riderLink;
-      setLastRiderLink(url);
+      setLastRiderLink(url || '');
       setDeliveryAssignment(response.data.delivery || null);
-      
-      // Attempt copy to clipboard
-      navigator.clipboard.writeText(url);
-      toast.success('Rider tracking link copied!', {
-        description: 'You can now share this secure link with the rider.',
-        icon: <Link2 className="text-primary-600" />
-      });
+      if (assignmentType === 'internal') {
+        await navigator.clipboard.writeText(url);
+        toast.success('Rider tracking link copied!', { description: 'The internal rider also receives this assignment in Pawzzle.', icon: <Link2 className="text-primary-600" /> });
+      } else {
+        toast.success('Courier provider selected. Open Logistics to review a quote and request the delivery.');
+      }
       fetchOrder(); // Refresh to show delivery status if needed
     } catch (error) {
-      toast.error('We could not create the tracking link. Please try again.');
+      toast.error(error.response?.data?.message || 'We could not prepare this delivery. Please try again.');
     }
   };
 
@@ -928,7 +925,7 @@ const OrderDetail = () => {
                   Assign an active Delivery Rider and use the existing secure delivery link for navigation and proof of delivery.
                 </p>
                 <DeliveryAssignmentFields assignmentType={assignmentType} onAssignmentTypeChange={setAssignmentType} riders={eligibleRiders} selectedRiderId={selectedRiderId} onRiderChange={setSelectedRiderId} thirdPartyRider={thirdPartyRider} onThirdPartyChange={setThirdPartyRider}/>
-                {deliveryAssignment?.assignmentType && deliveryAssignment.assignmentType !== 'unassigned' && <div className="p-3 rounded-xl bg-white border text-xs"><p className="text-[9px] font-black uppercase text-slate-400">Current Delivery Assignment</p><p className="font-black text-slate-800 capitalize">{deliveryAssignment.assignmentType.replace('_',' ')} Rider</p>{deliveryAssignment.assignmentType==='internal'?<p className="text-slate-500">{deliveryAssignment.assignedRider?.firstName} {deliveryAssignment.assignedRider?.lastName} · {deliveryAssignment.assignedRider?.riderProfile?.staffId}</p>:<p className="text-slate-500">{deliveryAssignment.thirdPartyRider?.name} · {deliveryAssignment.thirdPartyRider?.company} · •••{deliveryAssignment.thirdPartyRider?.mobile?.slice(-4)}</p>}</div>}
+                {deliveryAssignment?.assignmentType && deliveryAssignment.assignmentType !== 'unassigned' && <div className="p-3 rounded-xl bg-white border text-xs"><p className="text-[9px] font-black uppercase text-slate-400">Current Delivery Method</p><p className="font-black text-slate-800 capitalize">{deliveryAssignment.assignmentType === 'internal' ? 'Pawzzle Rider' : 'Third-Party Courier'}</p>{deliveryAssignment.assignmentType==='internal'?<p className="text-slate-500">{deliveryAssignment.assignedRider?.firstName} {deliveryAssignment.assignedRider?.lastName} · {deliveryAssignment.assignedRider?.riderProfile?.staffId}</p>:<p className="text-slate-500">{deliveryAssignment.providerDelivery?.providerName || 'Courier provider'} · {(deliveryAssignment.providerDelivery?.requestState || 'not requested').replace(/_/g,' ')}</p>}</div>}
                 <button
                   onClick={handleGenerateRiderLink}
                   className={`w-full py-4 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all shadow-lg flex items-center justify-center gap-2 group ${order.delivery ? 'bg-emerald-600 text-white hover:bg-emerald-700' : 'bg-slate-900 text-white hover:bg-primary-600'}`}

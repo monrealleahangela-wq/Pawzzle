@@ -2,7 +2,6 @@ const Pet = require('../models/Pet');
 const Product = require('../models/Product');
 const Store = require('../models/Store');
 const Voucher = require('../models/Voucher');
-const DeliveryFeeRule = require('../models/DeliveryFeeRule');
 const DeliveryFeeService = require('./deliveryFeeService');
 const { calculateTransactionTax, resolveTransactionTaxConfiguration, roundMoney } = require('../utils/taxCalculator');
 const { getPetAvailabilityIssue } = require('./petAvailabilityService');
@@ -29,26 +28,18 @@ const resolveVoucher = async ({ voucherCode, storeId, subtotal }) => {
   return { voucher, discountAmount: roundMoney(Math.min(subtotal, rawDiscount)) };
 };
 
-const calculateDelivery = async ({ store, deliveryMethod, shippingAddress }) => {
+const calculateDelivery = async ({ store, deliveryMethod, shippingAddress, itemQuantity }) => {
   if (deliveryMethod === 'pickup') return { fee: 0, calculation: null };
   const origin = store.contactInfo?.address?.coordinates;
   const destination = shippingAddress?.coordinates;
-  if (!origin || !destination) throw new Error('Store and delivery address map coordinates are required.');
-
-  const now = new Date();
-  const hasRule = await DeliveryFeeRule.exists({
-    store: store._id,
-    isActive: true,
-    effectiveFrom: { $lte: now },
-    $or: [{ effectiveUntil: null }, { effectiveUntil: { $gte: now } }]
-  });
-  // Existing stores without a rule retain their current free-delivery behavior.
-  if (!hasRule) return { fee: 0, calculation: null };
+  if (!origin) throw new Error('This store must add its map location before delivery checkout is available.');
+  if (!destination) throw new Error('Select your delivery location on the map to calculate shipping.');
 
   const calculation = await DeliveryFeeService.calculate({
     store: store._id,
     origin,
-    destination
+    destination,
+    itemQuantity
   });
   return { fee: calculation.totalFee, calculation };
 };
@@ -111,9 +102,10 @@ const calculateOrderPricing = async ({ items, requestedDeliveryMethod, shippingA
   const deliveryMethod = hasPet ? 'pickup' : requestedDeliveryMethod;
   if (!['delivery', 'pickup'].includes(deliveryMethod)) throw new Error('Invalid delivery method.');
 
+  const totalItemQuantity = processedItems.reduce((total, item) => total + item.quantity, 0);
   const [{ voucher, discountAmount }, delivery] = await Promise.all([
     resolveVoucher({ voucherCode, storeId, subtotal }),
-    calculateDelivery({ store, deliveryMethod, shippingAddress })
+    calculateDelivery({ store, deliveryMethod, shippingAddress, itemQuantity: totalItemQuantity })
   ]);
   // Stores created before tax settings were introduced retain checkout
   // compatibility through the calculator's explicit non-VAT fallback. A

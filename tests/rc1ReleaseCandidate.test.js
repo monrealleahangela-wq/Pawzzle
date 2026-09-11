@@ -23,7 +23,7 @@ const sameShapeMatch = (dynamicRoute, literalRoute) => {
 };
 
 test('all route files have unique method and path declarations', () => {
-  assert.equal(routeFiles.length, 43);
+  assert.equal(routeFiles.length, 44);
   for (const file of routeFiles) {
     const seen = new Set();
     for (const entry of declarations(file)) {
@@ -51,7 +51,7 @@ test('API route mounts are unique and retain every protected domain', () => {
   const server = source('server.js');
   const mounts = [...server.matchAll(/app\.use\(['"](\/api\/[^'"]+)['"]/g)].map(match => match[1]);
   assert.equal(new Set(mounts).size, mounts.length);
-  for (const domain of ['auth', 'users', 'bookings', 'orders', 'staff', 'stores', 'products', 'services', 'deliveries', 'logistics', 'payment', 'uploads']) {
+  for (const domain of ['auth', 'users', 'bookings', 'orders', 'staff', 'stores', 'products', 'services', 'deliveries', 'logistics', 'payment', 'uploads', 'hr']) {
     assert.ok(mounts.some(mount => mount === `/api/${domain}`), `missing /api/${domain}`);
   }
 });

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { storeService, getImageUrl } from '../../services/apiService';
 import { Building, MapPin, Search, TrendingUp, Package, Scissors, Heart, Store as StoreIcon, Navigation, Star } from 'lucide-react';
 import { toast } from 'react-toastify';
+import { isCaviteAddress } from '../../utils/storeLocation';
 
 const calculateDistance = (lat1, lon1, lat2, lon2) => {
     if (!lat1 || !lon1 || !lat2 || !lon2) return Infinity;
@@ -29,24 +30,20 @@ const Stores = () => {
         const fetchStores = async () => {
             try {
                 setLoading(true);
-                const response = await storeService.getAllStores();
-                const fetchedStores = response.data.stores || response.data || [];
-                
-                // STRICT CAVITE FILTERING: Only allow stores in Cavite
-                const isCavite = (store) => {
-                    if (!store) return false;
-                    const address = store.contactInfo?.address;
-                    if (!address) return false;
-                    
-                    const state = (address.state || '').toLowerCase();
-                    const city = (address.city || '').toLowerCase();
-                    const street = (address.street || '').toLowerCase();
-                    
-                    return state.includes('cavite') || city.includes('cavite') || street.includes('cavite');
-                };
+                const fetchedStores = [];
+                let page = 1;
+                let hasNext = true;
 
-                const filtered = fetchedStores.filter(s => 
-                    s.name?.toLowerCase() !== 'admin pet store' && isCavite(s)
+                while (hasNext) {
+                    const response = await storeService.getAllStores({ page, limit: 50 });
+                    fetchedStores.push(...(response.data.stores || response.data || []));
+                    hasNext = Boolean(response.data.pagination?.hasNext);
+                    page += 1;
+                }
+
+                const filtered = fetchedStores.filter(store =>
+                    store.name?.toLowerCase() !== 'admin pet store' &&
+                    isCaviteAddress(store.contactInfo?.address)
                 );
                 
                 setStores(filtered);

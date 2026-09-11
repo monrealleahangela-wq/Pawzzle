@@ -42,7 +42,7 @@ export default function LogisticsDetail() {
       const delivery = deliveryResponse.data.delivery;
       setAssignmentType(delivery.assignmentType === 'third_party' ? 'third_party' : 'internal');
       setSelectedRiderId(delivery.assignedRider?._id || '');
-      setThirdPartyRider({ ...emptyExternal, ...(delivery.thirdPartyRider || {}) });
+      setThirdPartyRider({ ...emptyExternal, providerKey: delivery.providerDelivery?.providerKey || 'mock_delivery_provider' });
     } catch (error) { toast.error(error.response?.data?.message || 'Unable to load delivery.'); }
     finally { setLoading(false); }
   }, [id]);
@@ -56,15 +56,16 @@ export default function LogisticsDetail() {
   const customer = source?.customer;
   const store = source?.store;
   const address = delivery.order?.shippingAddress || delivery.booking?.serviceAddress;
-  const currentRider = delivery.assignmentType === 'internal' ? delivery.assignedRider : delivery.thirdPartyRider;
-  const isClosed = ['delivered','cancelled','returned_to_store'].includes(delivery.status);
+  const provider = delivery.providerDelivery;
+  const currentRider = delivery.assignmentType === 'internal' ? delivery.assignedRider : (provider?.rider || delivery.thirdPartyRider);
+  const isClosed = ['delivered','returned_to_store'].includes(delivery.status) || (delivery.status === 'cancelled' && delivery.providerDelivery?.externalStatus !== 'cancelled');
   const cod = ['cod','cash_on_delivery'].includes(source?.paymentMethod);
   const feeBreakdown = Object.entries(delivery.feeCalculation?.breakdown || {})
     .filter(([, value]) => Number.isFinite(Number(value)))
     .map(([key, value]) => [key, feeValue(key, value)]);
 
   const assign = async () => {
-    const selectedName = assignmentType === 'internal' ? fullName(riders.find(rider => rider._id === selectedRiderId)) : thirdPartyRider.name;
+    const selectedName = assignmentType === 'internal' ? fullName(riders.find(rider => rider._id === selectedRiderId)) : 'the selected courier provider';
     if (delivery.assignmentType !== 'unassigned' && !window.confirm(`Reassign Delivery?\n\nThis delivery is currently assigned to ${fullName(currentRider)}. Reassigning it will update the active assignment to ${selectedName} while preserving assignment history.`)) return;
     setSaving(true);
     try {
@@ -73,20 +74,41 @@ export default function LogisticsDetail() {
         bookingId: delivery.booking?._id,
         assignmentType,
         riderId: assignmentType === 'internal' ? selectedRiderId : undefined,
-        thirdPartyRider: assignmentType === 'third_party' ? thirdPartyRider : undefined
+        providerKey: assignmentType === 'third_party' ? thirdPartyRider.providerKey : undefined
       });
-      toast.success(delivery.assignmentType === 'unassigned' ? 'Rider assigned.' : 'Delivery reassigned.');
+      toast.success(assignmentType === 'third_party' ? 'Courier provider selected. Request a quote before confirming the job.' : (delivery.assignmentType === 'unassigned' ? 'Rider assigned.' : 'Delivery reassigned.'));
       setShowAssignment(false); await load();
     } catch (error) { toast.error(error.response?.data?.message || 'Unable to assign rider.'); }
     finally { setSaving(false); }
   };
 
   const shareLink = async () => {
+    if (delivery.assignmentType !== 'internal') {
+      toast.info('Third-party riders receive assignments through the courier provider, not a Pawzzle rider link.');
+      return;
+    }
     try {
       await navigator.clipboard.writeText(delivery.links.rider);
       if (navigator.share) await navigator.share({ title: 'Secure Pawzzle Delivery Link', text: `Delivery ${delivery.deliveryNumber}`, url: delivery.links.rider });
       toast.success('Secure delivery link copied and ready to share.');
     } catch (error) { if (error.name !== 'AbortError') toast.error('Unable to share the delivery link.'); }
+  };
+
+  const providerAction = async action => {
+    setSaving(true);
+    try {
+      const response = action === 'quote'
+        ? await deliveryService.quoteProvider(delivery._id, { providerKey: provider?.providerKey || thirdPartyRider.providerKey })
+        : action === 'request'
+          ? await deliveryService.requestProvider(delivery._id)
+          : action === 'refresh'
+            ? await deliveryService.refreshProvider(delivery._id)
+            : await deliveryService.cancelProvider(delivery._id, { reason: 'Cancelled by authorized Pawzzle dispatcher' });
+      toast.success(response.data.message);
+      await load();
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Unable to communicate with the courier provider right now.');
+    } finally { setSaving(false); }
   };
 
   const sortedTimeline = [...(delivery.statusHistory || [])].sort((a,b)=>new Date(a.timestamp)-new Date(b.timestamp));
@@ -105,7 +127,9 @@ export default function LogisticsDetail() {
       </div>
 
       <aside className="space-y-3">
-        <section className="bg-white border rounded-2xl p-4"><h2 className="text-xs font-black uppercase tracking-widest mb-4">Rider Assignment</h2><div className="space-y-4"><DataBlock label="Rider">{fullName(currentRider)}</DataBlock><DataBlock label="Rider type">{delivery.assignmentType?.replace('_',' ')}</DataBlock><DataBlock label="Contact">{delivery.assignedRider?.phone || delivery.thirdPartyRider?.mobile}</DataBlock><DataBlock label="Staff / courier reference">{delivery.assignedRider?.riderProfile?.staffId || delivery.thirdPartyRider?.referenceNumber}</DataBlock><DataBlock label="Company">{delivery.thirdPartyRider?.company || store?.name}</DataBlock><DataBlock label="Vehicle">{delivery.assignedRider?.riderProfile?.vehicleType || delivery.thirdPartyRider?.vehicleType} {delivery.assignedRider?.riderProfile?.plateNumber || delivery.thirdPartyRider?.plateNumber}</DataBlock><DataBlock label="Assigned at">{delivery.assignedAt && new Date(delivery.assignedAt).toLocaleString()}</DataBlock></div>{delivery.assignmentType!=='unassigned'&&<button onClick={shareLink} className="mt-4 w-full h-9 rounded-lg bg-orange-600 text-white text-[10px] font-black uppercase flex items-center justify-center gap-2"><Send size={13}/>{delivery.assignmentType==='internal'?'Send/Share Link to Rider':'Share Secure Delivery Link'}</button>}{delivery.assignmentHistory?.length>1&&<div className="mt-4 pt-4 border-t"><p className="text-[8px] font-black uppercase tracking-widest text-slate-400 mb-2">Assignment history</p>{delivery.assignmentHistory.map(entry=><div key={entry._id} className="text-[9px] text-slate-600 mb-2"><b>{entry.assignmentType==='internal'?fullName(entry.rider):entry.thirdPartyRider?.name}</b> · {new Date(entry.assignedAt).toLocaleString()}{entry.endedAt&&` → ${new Date(entry.endedAt).toLocaleString()}`}</div>)}</div>}</section>
+        {delivery.assignmentType === 'third_party' && <p className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-[10px] text-amber-900">The courier quote is the provider's charge for dispatch. It is stored separately and does not silently replace the customer shipping charge already recorded on the order.</p>}
+        {delivery.assignmentType === 'third_party' && <section className="bg-white border rounded-2xl p-4"><div className="flex items-start justify-between gap-3"><div><h2 className="text-xs font-black uppercase tracking-widest">Third-Party Courier</h2><p className="text-[9px] text-slate-500 mt-1">Pawzzle contacts the provider. The provider assigns and notifies its own rider.</p></div><span className={`px-2 py-1 rounded-lg text-[8px] font-black uppercase ${provider?.environment === 'live' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>{provider?.environment || 'sandbox'}</span></div><div className="grid grid-cols-2 gap-3 mt-4"><DataBlock label="Provider">{provider?.providerName}</DataBlock><DataBlock label="Request state">{provider?.requestState?.replace(/_/g,' ')}</DataBlock><DataBlock label="External job ID">{provider?.jobId}</DataBlock><DataBlock label="Tracking reference">{provider?.trackingId}</DataBlock><DataBlock label="Provider status">{provider?.externalStatus?.replace(/_/g,' ')}</DataBlock><DataBlock label="Last update">{provider?.lastSyncedAt && new Date(provider.lastSyncedAt).toLocaleString()}</DataBlock><DataBlock label="Courier quote">{provider?.quote?.amount != null ? `${money(provider.quote.amount)} ${provider.quote.currency || 'PHP'}` : null}</DataBlock><DataBlock label="ETA">{provider?.estimatedDeliveryAt && new Date(provider.estimatedDeliveryAt).toLocaleString()}</DataBlock><DataBlock label="Provider rider">{provider?.rider?.displayName}</DataBlock><DataBlock label="Vehicle">{[provider?.rider?.vehicleType,provider?.rider?.plateNumber].filter(Boolean).join(' ')}</DataBlock></div>{provider?.lastError?.message&&<p className="mt-3 rounded-lg bg-rose-50 p-2 text-[10px] text-rose-700">{provider.lastError.message}</p>}<div className="grid grid-cols-2 gap-2 mt-4">{!provider?.jobId&&<button disabled={saving} onClick={()=>providerAction('quote')} className="h-9 rounded-lg border text-[9px] font-black uppercase">{provider?.quote?.quoteId?'Refresh Quote':'Get Quote'}</button>}{provider?.quote?.quoteId&&!provider?.jobId&&<button disabled={saving} onClick={()=>providerAction('request')} className="h-9 rounded-lg bg-orange-600 text-white text-[9px] font-black uppercase">Request Delivery</button>}{provider?.jobId&&!['cancelled','delivered'].includes(provider?.externalStatus)&&<button disabled={saving} onClick={()=>providerAction('refresh')} className="h-9 rounded-lg border text-[9px] font-black uppercase">Refresh Status</button>}{provider?.jobId&&!['cancelled','delivered'].includes(provider?.externalStatus)&&<button disabled={saving} onClick={()=>window.confirm('Cancel this third-party courier job? This does not cancel the customer order.')&&providerAction('cancel')} className="h-9 rounded-lg border border-rose-200 text-rose-700 text-[9px] font-black uppercase">Cancel Courier</button>}{provider?.trackingUrl&&<a href={provider.trackingUrl} target="_blank" rel="noreferrer" className="col-span-2 h-9 rounded-lg bg-slate-900 text-white text-[9px] font-black uppercase flex items-center justify-center gap-2">Open Provider Tracking <ExternalLink size={12}/></a>}</div></section>}
+        {delivery.assignmentType === 'internal' && <section className="bg-white border rounded-2xl p-4"><h2 className="text-xs font-black uppercase tracking-widest mb-4">Pawzzle Rider Assignment</h2><div className="space-y-4"><DataBlock label="Rider">{fullName(currentRider)}</DataBlock><DataBlock label="Contact">{delivery.assignedRider?.phone}</DataBlock><DataBlock label="Staff ID">{delivery.assignedRider?.riderProfile?.staffId}</DataBlock><DataBlock label="Store">{store?.name}</DataBlock><DataBlock label="Vehicle">{delivery.assignedRider?.riderProfile?.vehicleType} {delivery.assignedRider?.riderProfile?.plateNumber}</DataBlock><DataBlock label="Assigned at">{delivery.assignedAt && new Date(delivery.assignedAt).toLocaleString()}</DataBlock></div><button onClick={shareLink} className="mt-4 w-full h-9 rounded-lg bg-orange-600 text-white text-[10px] font-black uppercase flex items-center justify-center gap-2"><Send size={13}/>Send/Share Link to Rider</button>{delivery.assignmentHistory?.length>1&&<div className="mt-4 pt-4 border-t"><p className="text-[8px] font-black uppercase tracking-widest text-slate-400 mb-2">Assignment history</p>{delivery.assignmentHistory.map(entry=><div key={entry._id} className="text-[9px] text-slate-600 mb-2"><b>{entry.assignmentType==='internal'?fullName(entry.rider):(entry.thirdPartyRider?.name || 'Third-party provider')}</b> · {new Date(entry.assignedAt).toLocaleString()}{entry.endedAt&&` → ${new Date(entry.endedAt).toLocaleString()}`}</div>)}</div>}</section>}
         <section className="bg-white border rounded-2xl p-4"><h2 className="text-xs font-black uppercase tracking-widest mb-4">Delivery Timeline</h2><div className="space-y-0">{sortedTimeline.length ? sortedTimeline.map((event,index)=><div key={`${event.status}-${event.timestamp}-${index}`} className="flex gap-3"><div className="flex flex-col items-center"><CheckCircle2 size={15} className="text-emerald-600"/>{index<sortedTimeline.length-1&&<div className="w-px flex-1 min-h-9 bg-slate-200"/>}</div><div className="pb-4"><p className="text-[10px] font-black capitalize">{eventLabel(event.status)}</p><p className="text-[9px] text-slate-400">{new Date(event.timestamp).toLocaleString()}</p>{event.notes&&<p className="text-[9px] text-slate-500 mt-1">{event.notes}</p>}</div></div>) : <p className="text-xs text-slate-400">No timeline entries.</p>}</div></section>
         <section className="bg-white border rounded-2xl p-4"><h2 className="text-xs font-black uppercase tracking-widest mb-4">Rider Earnings & Finance</h2>{earning ? <div className="space-y-3"><DataBlock label="Base rate">{money(earning.baseRate)}</DataBlock><DataBlock label="Incentive / bonus">{money((earning.incentive||0)+(earning.bonus||0))}</DataBlock><DataBlock label="Deduction">{money(earning.deduction)}</DataBlock><DataBlock label="Rider earning">{money(earning.amount)}</DataBlock><DataBlock label="Payout status">{earning.payout?.status || earning.status}</DataBlock><DataBlock label="Payout reference">{earning.payout?.payoutId || earning.payout?.referenceNumber}</DataBlock></div> : <p className="text-xs text-slate-400">Internal rider earnings are calculated from the rider configuration after successful delivery.</p>}</section>
         {(delivery.deliveryAttempts?.length>0||delivery.complaints?.length>0)&&<section className="bg-rose-50 border border-rose-100 rounded-2xl p-4"><h2 className="text-xs font-black text-rose-800 uppercase tracking-widest flex gap-2"><AlertTriangle size={14}/>Recorded Issues</h2><p className="text-[10px] text-rose-700 mt-2">{delivery.deliveryAttempts?.length||0} delivery attempts · {delivery.complaints?.length||0} complaints</p><button onClick={()=>navigate('/admin/logistics?tab=issues')} className="mt-3 h-8 px-3 bg-white border border-rose-200 rounded-lg text-[9px] font-black uppercase text-rose-700">Open Issue Center</button></section>}

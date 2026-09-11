@@ -28,6 +28,7 @@ const Orders = () => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [ratingOrder, setRatingOrder] = useState(null);
+  const [ratingDelivery, setRatingDelivery] = useState(null);
   const [pagination, setPagination] = useState({ currentPage: 1, totalPages: 1, hasNext: false, hasPrev: false });
 
   useEffect(() => { fetchOrders(); }, [pagination.currentPage]);
@@ -164,6 +165,14 @@ const Orders = () => {
                             <Star className="h-4 w-4 text-secondary-500" /> Review
                           </button>
                         )}
+                        {order.status === 'delivered' && order.delivery?.assignmentType === 'internal' && order.delivery?.assignedRider && !order.delivery?.reviewStatus?.isRated && (
+                          <button
+                            onClick={() => setRatingDelivery({ order, delivery: order.delivery })}
+                            className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-lg text-sm font-bold hover:bg-slate-50 transition-colors"
+                          >
+                            <Star className="h-4 w-4 text-primary-600" /> Rate Rider
+                          </button>
+                        )}
                       </div>
                       </div>
                     </div>
@@ -211,6 +220,17 @@ const Orders = () => {
                 fetchOrders();
                 setRatingOrder(null);
             }}
+        />
+      )}
+      {ratingDelivery && (
+        <ReviewModal
+          isOpen
+          onClose={() => setRatingDelivery(null)}
+          targetType="Delivery"
+          targetId={ratingDelivery.delivery._id}
+          targetName="your rider"
+          orderId={ratingDelivery.order._id}
+          onReviewSubmitted={() => { fetchOrders(); setRatingDelivery(null); }}
         />
       )}
     </div>

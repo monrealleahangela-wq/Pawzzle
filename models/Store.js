@@ -116,6 +116,66 @@ const storeSchema = new mongoose.Schema({
     maxBookingsPerSlot: { type: Number, default: 1 },
     confirmationWindowMinutes: { type: Number, default: 1440, min: 15, max: 10080 }
   },
+  hrSettings: {
+    payrollFrequency: {
+      type: String,
+      enum: ['weekly', 'semi_monthly', 'monthly'],
+      default: 'semi_monthly'
+    },
+    timezone: { type: String, default: 'Asia/Manila' },
+    weekly: {
+      weekStartsOn: { type: Number, min: 0, max: 6, default: 1 },
+      payDelayDays: { type: Number, min: 0, max: 31, default: 2 }
+    },
+    semiMonthly: {
+      firstCutoffDay: { type: Number, min: 1, max: 27, default: 15 },
+      firstPayDay: { type: Number, min: 1, max: 31, default: 20 },
+      secondPayDay: { type: Number, min: 1, max: 31, default: 5 }
+    },
+    monthly: {
+      cutoffDay: { type: Number, min: 1, max: 28, default: 25 },
+      payDay: { type: Number, min: 1, max: 31, default: 30 }
+    },
+    defaultWorkDays: {
+      type: [Number],
+      default: [1, 2, 3, 4, 5],
+      validate: value => value.every(day => Number.isInteger(day) && day >= 0 && day <= 6)
+    },
+    defaultShift: {
+      start: { type: String, match: /^([01]\d|2[0-3]):[0-5]\d$/, default: '09:00' },
+      end: { type: String, match: /^([01]\d|2[0-3]):[0-5]\d$/, default: '17:00' },
+      breakMinutes: { type: Number, min: 0, max: 480, default: 60 }
+    },
+    gracePeriodMinutes: { type: Number, min: 0, max: 240, default: 10 },
+    lateDeductionEnabled: { type: Boolean, default: true },
+    undertimeDeductionEnabled: { type: Boolean, default: true },
+    overtime: {
+      enabled: { type: Boolean, default: false },
+      multiplier: { type: Number, min: 1, max: 5, default: 1.25 },
+      requiresApproval: { type: Boolean, default: true }
+    },
+    attendanceRadiusMeters: { type: Number, min: 20, max: 5000, default: 150 },
+    maximumLocationAccuracyMeters: { type: Number, min: 10, max: 5000, default: 200 },
+    outsideGeofencePolicy: { type: String, enum: ['reject', 'flag'], default: 'reject' },
+    payrollApprovalRequired: { type: Boolean, default: true },
+    leaveTypes: {
+      type: [{
+        key: { type: String, required: true, trim: true, lowercase: true },
+        name: { type: String, required: true, trim: true, maxlength: 100 },
+        isPaid: { type: Boolean, default: false },
+        active: { type: Boolean, default: true }
+      }],
+      default: () => [
+        { key: 'vacation', name: 'Vacation Leave', isPaid: true, active: true },
+        { key: 'sick', name: 'Sick Leave', isPaid: true, active: true },
+        { key: 'emergency', name: 'Emergency Leave', isPaid: false, active: true },
+        { key: 'unpaid', name: 'Unpaid Leave', isPaid: false, active: true },
+        { key: 'other', name: 'Other', isPaid: false, active: true }
+      ]
+    },
+    updatedAt: Date,
+    updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
+  },
   refundPolicy: {
     type: {
       type: String,

@@ -104,7 +104,7 @@ const getAllOrders = async (req, res) => {
     const orders = await Order.find(filter)
       .populate('customer', 'username firstName lastName email')
       .populate('store', 'name')
-      .populate('delivery', 'status trackingToken isLive riderLocation')
+      .populate('delivery', 'status trackingToken isLive riderLocation assignmentType assignedRider deliveredAt reviewStatus')
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(parseInt(limit));
@@ -413,7 +413,8 @@ const createOrder = async (req, res) => {
     const expected = [
       'Order must', 'Item quantity', 'Each pet', 'This legacy', 'Pet "', 'Product "', 'Invalid item', 'The store',
       'Items from different', 'Store is unavailable', 'Store tax configuration', 'Invalid delivery', 'Voucher',
-      'A minimum purchase', 'Store and delivery', 'Destination is outside'
+      'A minimum purchase', 'Store and delivery', 'This store must add', 'Select your delivery',
+      'No active delivery fee rule', 'Destination is outside'
     ];
     const status = expected.some(prefix => error.message.startsWith(prefix)) ? 400 : 500;
     res.status(status).json({ message: status === 400 ? error.message : 'Server error while calculating the order.' });

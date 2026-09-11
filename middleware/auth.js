@@ -5,6 +5,11 @@ const {
   isPlatformAdmin, isStoreAdmin, isOperationalStaff
 } = require('../config/permissions');
 const { attachStoreRolePolicy } = require('../services/rolePermissionService');
+const { requiresPlatformVerification, getProfessionalVerificationStatus } = require('../utils/staffSpecialization');
+
+const isProfessionalRecoveryRoute = req => (req.baseUrl === '/api/auth'
+  && ['/me', '/change-password', '/logout'].includes(req.path))
+  || (req.baseUrl === '/api/staff' && req.path === '/me/professional-profile');
 
 // Authentication middleware
 const authenticate = async (req, res, next) => {
@@ -30,8 +35,15 @@ const authenticate = async (req, res, next) => {
       });
     }
 
-    await attachStoreRolePolicy(user);
     req.user = user;
+    if (requiresPlatformVerification(user) && getProfessionalVerificationStatus(user) !== 'verified' && !isProfessionalRecoveryRoute(req)) {
+      return res.status(403).json({
+        message: 'Your professional account is awaiting Platform Admin verification.',
+        code: 'PROFESSIONAL_VERIFICATION_REQUIRED',
+        verificationStatus: getProfessionalVerificationStatus(user)
+      });
+    }
+    await attachStoreRolePolicy(user);
     
     // Update lastSeen asynchronously (don't wait for it)
     User.findByIdAndUpdate(user._id, { lastSeen: Date.now() }).catch(err => 

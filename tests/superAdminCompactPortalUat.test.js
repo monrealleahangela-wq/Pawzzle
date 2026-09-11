@@ -21,18 +21,19 @@ const routePages = {
   insights: 'client/src/pages/superadmin/DSS.js',
   'activity-history': 'client/src/pages/superadmin/ActivityHistory.js',
   suppliers: 'client/src/pages/superadmin/SupplierManagement.js',
+  'staff-verification': 'client/src/pages/superadmin/SpecializedStaffVerification.js',
   payouts: 'client/src/pages/admin/Payouts.js'
 };
 
 test('every routed platform administration page remains present and protected', () => {
   const app = read('client/src/App.js');
-  assert.equal(Object.keys(routePages).length, 15);
+  assert.equal(Object.keys(routePages).length, 16);
   for (const [route, page] of Object.entries(routePages)) {
     assert.ok(fs.existsSync(path.join(root, page)), `missing page for /superadmin/${route}`);
     assert.ok(app.includes(`path="superadmin/${route}"`), `missing /superadmin/${route} route`);
   }
-  assert.equal((app.match(/path="superadmin\//g) || []).length, 15);
-  assert.equal((app.match(/roles=\{\['super_admin'\]\}/g) || []).length >= 15, true);
+  assert.equal((app.match(/path="superadmin\//g) || []).length, 16);
+  assert.equal((app.match(/roles=\{\['super_admin'\]\}/g) || []).length >= 16, true);
 });
 
 test('platform role aliases share the same compact shell and navigation', () => {

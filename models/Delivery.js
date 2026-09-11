@@ -61,9 +61,61 @@ const deliverySchema = new mongoose.Schema({
     referenceNumber: { type: String, trim: true },
     notes: { type: String, trim: true }
   },
+  providerDelivery: {
+    providerKey: { type: String, trim: true, lowercase: true },
+    providerName: { type: String, trim: true },
+    environment: { type: String, enum: ['sandbox', 'live'], default: 'sandbox' },
+    jobId: { type: String, trim: true },
+    trackingId: { type: String, trim: true },
+    externalStatus: { type: String, trim: true },
+    requestState: {
+      type: String,
+      enum: ['not_requested', 'quoting', 'quoted', 'requesting', 'requested', 'failed', 'cancelling', 'cancelled'],
+      default: 'not_requested'
+    },
+    quote: {
+      quoteId: String,
+      amount: Number,
+      currency: { type: String, default: 'PHP' },
+      breakdown: mongoose.Schema.Types.Mixed,
+      quotedAt: Date,
+      expiresAt: Date
+    },
+    trackingUrl: String,
+    rider: {
+      displayName: String,
+      phone: String,
+      vehicleType: String,
+      plateNumber: String
+    },
+    proof: {
+      reference: String,
+      url: String,
+      receivedAt: Date
+    },
+    estimatedPickupAt: Date,
+    estimatedDeliveryAt: Date,
+    lastSyncedAt: Date,
+    lastError: {
+      code: String,
+      message: String,
+      retryable: Boolean,
+      at: Date
+    },
+    processedWebhookEventIds: [{ type: String }],
+    statusHistory: [{
+      eventId: String,
+      externalStatus: String,
+      pawzzleStatus: String,
+      source: { type: String, enum: ['request', 'poll', 'webhook', 'cancel'] },
+      timestamp: { type: Date, default: Date.now }
+    }]
+  },
   assignmentHistory: [{
     assignmentType: { type: String, enum: ['internal', 'third_party', 'unassigned'] },
     rider: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    providerKey: String,
+    providerName: String,
     thirdPartyRider: {
       name: String, mobile: String, company: String, vehicleType: String,
       plateNumber: String, referenceNumber: String, notes: String
@@ -120,6 +172,10 @@ const deliverySchema = new mongoose.Schema({
   },
   deliveredAt: {
     type: Date
+  },
+  reviewStatus: {
+    isRated: { type: Boolean, default: false },
+    reviewId: { type: mongoose.Schema.Types.ObjectId, ref: 'Review' }
   },
   arrivedAt: Date,
   statusHistory: [{
@@ -185,5 +241,14 @@ deliverySchema.pre('save', function(next) {
   }
   next();
 });
+
+deliverySchema.index(
+  { 'providerDelivery.providerKey': 1, 'providerDelivery.jobId': 1 },
+  {
+    unique: true,
+    name: 'provider_job_identity',
+    partialFilterExpression: { 'providerDelivery.jobId': { $type: 'string' } }
+  }
+);
 
 module.exports = mongoose.model('Delivery', deliverySchema);

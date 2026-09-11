@@ -1,7 +1,7 @@
 import React from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { OPERATIONAL_ROLES, effectiveStaffType, hasUiActionPermission, hasUiPermission, portalHomeForRole } from '../utils/authorization';
+import { OPERATIONAL_ROLES, effectiveStaffType, hasUiActionPermission, hasUiPermission, isProfessionalVerificationPending, portalHomeForRole } from '../utils/authorization';
 
 const roleMatches = (userRole, allowedRoles) =>
   allowedRoles.includes(userRole) ||
@@ -9,7 +9,7 @@ const roleMatches = (userRole, allowedRoles) =>
   (allowedRoles.includes('staff') && OPERATIONAL_ROLES.has(userRole)) ||
   (allowedRoles.includes('super_admin') && userRole === 'platform_admin');
 
-const ProtectedRoute = ({ children, roles = [], staffTypes = [], requiredPermission = null, excludedRoles = [] }) => {
+const ProtectedRoute = ({ children, roles = [], staffTypes = [], requiredPermission = null, excludedRoles = [], allowPendingProfessional = false }) => {
   const { isAuthenticated, user, loading } = useAuth();
 
   if (loading) {
@@ -22,6 +22,10 @@ const ProtectedRoute = ({ children, roles = [], staffTypes = [], requiredPermiss
 
   if (!isAuthenticated) {
     return <Navigate to="/" replace />;
+  }
+
+  if (!allowPendingProfessional && isProfessionalVerificationPending(user)) {
+    return <Navigate to="/professional-verification" replace />;
   }
 
   if (excludedRoles.includes(user?.role) || excludedRoles.includes(effectiveStaffType(user))) {

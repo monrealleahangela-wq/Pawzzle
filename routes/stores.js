@@ -20,7 +20,9 @@ const {
   getTaxConfiguration,
   updateTaxConfiguration,
   getRefundPolicy,
-  updateRefundPolicy
+  updateRefundPolicy,
+  getDeliveryPricing,
+  updateDeliveryPricing
 } = require('../controllers/storeController');
 const { submitExpansionRequest, upload } = require('../controllers/storeApplicationController');
 const { authenticate, superAdminOnly, adminOnly, adminOrStaff } = require('../middleware/auth');
@@ -62,6 +64,8 @@ router.put('/settings', authenticate, adminOnly, updateStoreValidation, updateSt
 router.put('/my-store/tax-configuration', authenticate, adminOnly, updateTaxConfiguration);
 router.get('/my-store/refund-policy', authenticate, adminOnly, getRefundPolicy);
 router.put('/my-store/refund-policy', authenticate, adminOnly, updateRefundPolicy);
+router.get('/my-store/delivery-pricing', authenticate, adminOnly, getDeliveryPricing);
+router.put('/my-store/delivery-pricing', authenticate, adminOnly, updateDeliveryPricing);
 router.get('/dashboard/stats', authenticate, adminOrStaff, getStoreDashboard);
 router.post('/', authenticate, adminOnly, createStoreValidation, createStore);
 
@@ -89,5 +93,7 @@ router.patch('/:id/toggle-status', authenticate, superAdminOnly, toggleStoreStat
 router.patch('/:id/feature', authenticate, superAdminOnly, featureStore);
 router.put('/:id/tax-configuration', authenticate, superAdminOnly, updateTaxConfiguration);
 router.put('/:id/refund-policy', authenticate, superAdminOnly, updateRefundPolicy);
+router.get('/:id/delivery-pricing', authenticate, superAdminOnly, getDeliveryPricing);
+router.put('/:id/delivery-pricing', authenticate, superAdminOnly, updateDeliveryPricing);
 
 module.exports = router;

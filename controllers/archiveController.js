@@ -177,6 +177,15 @@ const permanentDelete = async (req, res) => {
             return res.status(400).json({ message: 'Item must be archived before permanent deletion' });
         }
 
+        if (type === 'users') {
+            const ownedStore = await Store.findOne({ owner: item._id }).select('_id name isDeleted');
+            if (ownedStore) {
+                return res.status(409).json({
+                    message: `This account owns ${ownedStore.name}. Restore or retain the account to preserve the store ownership record.`
+                });
+            }
+        }
+
         await Model.findByIdAndDelete(id);
 
         res.json({ message: `${type.slice(0, -1)} permanently deleted` });

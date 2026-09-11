@@ -93,6 +93,8 @@ const orderSchema = new mongoose.Schema({
   deliveryFeeCalculation: {
     distanceKm: Number,
     distanceMethod: String,
+    itemQuantity: Number,
+    finalShippingFee: Number,
     rule: {
       id: { type: mongoose.Schema.Types.ObjectId, ref: 'DeliveryFeeRule' },
       name: String,
@@ -200,7 +202,8 @@ const orderSchema = new mongoose.Schema({
     sellerName: String,
     sellerAddress: String,
     sellerTaxStatus: String,
-    pricingBreakdown: { type: mongoose.Schema.Types.Mixed }
+    pricingBreakdown: { type: mongoose.Schema.Types.Mixed },
+    deliveryFeeCalculation: { type: mongoose.Schema.Types.Mixed }
   },
   refundPolicySnapshot: {
     type: { type: String, enum: ['full_refund', 'conditional_refund', 'no_refund'] },

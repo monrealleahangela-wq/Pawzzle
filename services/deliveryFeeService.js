@@ -15,11 +15,42 @@ const haversineKm = (origin, destination) => {
 };
 
 const validateCoordinates = ({ lat, lng } = {}) =>
-  Number.isFinite(Number(lat)) && Number(lat) >= -90 && Number(lat) <= 90
+  lat !== null && lat !== undefined && lat !== ''
+  && lng !== null && lng !== undefined && lng !== ''
+  && Number.isFinite(Number(lat)) && Number(lat) >= -90 && Number(lat) <= 90
   && Number.isFinite(Number(lng)) && Number(lng) >= -180 && Number(lng) <= 180;
 
+const calculateBreakdown = ({ rule, distanceKm, itemQuantity = 1, surcharge = 0, discount = 0 }) => {
+  const quantity = Number(itemQuantity);
+  if (!Number.isInteger(quantity) || quantity < 1) throw new Error('Delivery item quantity must be a positive whole number.');
+  const billableKm = Math.max(0, Number(distanceKm) - Number(rule.includedKilometers || 0));
+  const distanceCharge = billableKm * Number(rule.ratePerKilometer || 0);
+  const additionalItemQuantity = Math.max(0, quantity - 1);
+  const itemCharge = additionalItemQuantity * Number(rule.additionalItemFee || 0);
+  let total = Number(rule.baseFee || 0) + distanceCharge + itemCharge + Number(surcharge) - Number(discount);
+  total = Math.max(Number(rule.minimumFee || 0), total);
+  if (rule.maximumFee != null) total = Math.min(Number(rule.maximumFee), total);
+  return {
+    itemQuantity: quantity,
+    finalShippingFee: roundCurrency(total),
+    breakdown: {
+      baseFee: roundCurrency(rule.baseFee),
+      includedKilometers: Number(rule.includedKilometers || 0),
+      billableKilometers: roundCurrency(billableKm),
+      ratePerKilometer: Number(rule.ratePerKilometer || 0),
+      distanceCharge: roundCurrency(distanceCharge),
+      itemQuantity: quantity,
+      additionalItemQuantity,
+      additionalItemFee: roundCurrency(rule.additionalItemFee || 0),
+      itemCharge: roundCurrency(itemCharge),
+      surcharge: roundCurrency(surcharge),
+      discount: roundCurrency(discount)
+    }
+  };
+};
+
 class DeliveryFeeService {
-  static async calculate({ store, origin, destination, surcharge = 0, discount = 0 }) {
+  static async calculate({ store, origin, destination, itemQuantity = 1, surcharge = 0, discount = 0 }) {
     if (!validateCoordinates(origin) || !validateCoordinates(destination)) {
       throw new Error('Valid origin and destination coordinates are required.');
     }
@@ -38,28 +69,20 @@ class DeliveryFeeService {
     if (rule.maximumDistanceKm && distanceKm > rule.maximumDistanceKm) {
       throw new Error(`Destination is outside the ${rule.maximumDistanceKm} km delivery radius.`);
     }
-    const billableKm = Math.max(0, distanceKm - rule.includedKilometers);
-    const distanceCharge = billableKm * rule.ratePerKilometer;
-    let total = rule.baseFee + distanceCharge + Number(surcharge) - Number(discount);
-    total = Math.max(rule.minimumFee || 0, total);
-    if (rule.maximumFee != null) total = Math.min(rule.maximumFee, total);
+    const fee = calculateBreakdown({ rule, distanceKm, itemQuantity, surcharge, discount });
     return {
       distanceKm: roundCurrency(distanceKm),
       distanceMethod: 'haversine_fallback',
       rule: { id: rule._id, name: rule.name, version: rule.version },
-      breakdown: {
-        baseFee: roundCurrency(rule.baseFee),
-        includedKilometers: rule.includedKilometers,
-        billableKilometers: roundCurrency(billableKm),
-        ratePerKilometer: rule.ratePerKilometer,
-        distanceCharge: roundCurrency(distanceCharge),
-        surcharge: roundCurrency(surcharge),
-        discount: roundCurrency(discount)
-      },
-      totalFee: roundCurrency(total),
+      itemQuantity: fee.itemQuantity,
+      breakdown: fee.breakdown,
+      finalShippingFee: fee.finalShippingFee,
+      totalFee: fee.finalShippingFee,
       calculatedAt: now
     };
   }
 }
+
+DeliveryFeeService.__test = { calculateBreakdown, haversineKm, validateCoordinates };
 
 module.exports = DeliveryFeeService;

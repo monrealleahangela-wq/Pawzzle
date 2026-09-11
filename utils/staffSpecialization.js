@@ -15,6 +15,10 @@ const VETERINARY_ROLES = new Set([
   'veterinary_nurse', 'veterinary_laboratory_technician'
 ]);
 
+const PLATFORM_VERIFIED_SPECIALIST_ROLES = new Set([
+  'veterinarian', 'groomer', 'trainer', 'boarding_staff', 'boarding_specialist'
+]);
+
 const textForService = service => `${service?.name || ''} ${service?.subCategory || ''} ${service?.description || ''}`.toLowerCase();
 const isLaboratoryService = service => /\b(lab|laboratory|diagnostic|pathology|testing|test)\b/.test(textForService(service));
 
@@ -36,6 +40,13 @@ const getStaffSpecializationRole = staff => {
   }
   return staff.role || (staff.staffType === 'boarding_specialist' ? 'boarding_staff' : staff.staffType);
 };
+
+const requiresPlatformVerification = staff => PLATFORM_VERIFIED_SPECIALIST_ROLES.has(getStaffSpecializationRole(staff));
+
+const hasTrustedLegacyProfessionalVerification = staff => Boolean(
+  staff?.isVerified === true
+  || (staff?.professionalProfile?.certifications || []).some(certification => certification?.isVerified === true)
+);
 
 const getEnabledSpecializedRoles = services => {
   const enabled = new Set();
@@ -63,9 +74,14 @@ const toMinutes = value => {
 const getProfessionalVerificationStatus = (staff, now = new Date()) => {
   const profile = staff?.professionalProfile;
   const verification = profile?.verification;
-  if (!verification) return 'legacy_unverified';
+  if (!verification) return requiresPlatformVerification(staff) && hasTrustedLegacyProfessionalVerification(staff)
+    ? 'verified'
+    : 'pending_verification';
   if (verification.status === 'suspended') return 'suspended';
   const currentDocuments = (profile.credentialDocuments || []).filter(document => document.status !== 'archived');
+  if (verification.status === 'pending_verification' && !currentDocuments.length && hasTrustedLegacyProfessionalVerification(staff)) {
+    return 'verified';
+  }
   const hasExpiredVerifiedDocument = currentDocuments.some(document =>
     document.status === 'verified' && document.expiresAt && new Date(document.expiresAt) <= now
   );
@@ -74,9 +90,10 @@ const getProfessionalVerificationStatus = (staff, now = new Date()) => {
 };
 
 const isProfessionallyAssignable = (staff, now = new Date()) => {
-  const verification = staff?.professionalProfile?.verification;
-  if (!verification) return true; // Preserve pre-verification staff until an administrator opts them in.
   const status = getProfessionalVerificationStatus(staff, now);
+  if (requiresPlatformVerification(staff)) return status === 'verified';
+  const verification = staff?.professionalProfile?.verification;
+  if (!verification) return true;
   if (['expired', 'suspended'].includes(status)) return false;
   return !verification.isRequired || status === 'verified';
 };
@@ -116,11 +133,14 @@ const isWithinStaffSchedule = (staff, bookingDate, startTime, endTime) => {
 module.exports = {
   SPECIALIZED_STAFF_ROLES,
   VETERINARY_ROLES,
+  PLATFORM_VERIFIED_SPECIALIST_ROLES,
   getEnabledSpecializedRoles,
   isLaboratoryService,
   getStaffSpecializationRole,
   isRoleEligibleForService,
   isWithinStaffSchedule,
   getProfessionalVerificationStatus,
-  isProfessionallyAssignable
+  isProfessionallyAssignable,
+  requiresPlatformVerification,
+  hasTrustedLegacyProfessionalVerification
 };

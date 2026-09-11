@@ -195,7 +195,8 @@ const createCheckoutSession = async (req, res) => {
         sellerName: order.store?.name || '',
         sellerAddress: address ? [address.street, address.barangay, address.city, address.state, address.zipCode].filter(Boolean).join(', ') : '',
         sellerTaxStatus: order.pricingBreakdown?.taxStatus || 'non_vat',
-        pricingBreakdown: order.pricingBreakdown?.toObject?.() || order.pricingBreakdown || {}
+        pricingBreakdown: order.pricingBreakdown?.toObject?.() || order.pricingBreakdown || {},
+        deliveryFeeCalculation: order.deliveryFeeCalculation?.toObject?.() || order.deliveryFeeCalculation || null
       };
     }
 

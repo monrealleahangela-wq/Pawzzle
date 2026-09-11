@@ -6,6 +6,7 @@ const Pet = require('../models/Pet');
 const Store = require('../models/Store');
 const Service = require('../models/Service');
 const Booking = require('../models/Booking');
+const Delivery = require('../models/Delivery');
 const AdoptionRequest = require('../models/AdoptionRequest');
 const User = require('../models/User');
 const { canOperateStore } = require('../utils/authorizationPolicy');
@@ -56,7 +57,7 @@ const refreshStaffRating = async staffId => {
 // Create a review for product/pet/store/service
 const createReview = async (req, res) => {
     try {
-        const { targetType, targetId, rating, comment, images, orderId, bookingId, isAnonymous, complimentTags } = req.body;
+        const { targetType, targetId, rating, comment, images, orderId, bookingId, deliveryId, isAnonymous, complimentTags } = req.body;
         const userId = req.user._id;
         const numericRating = Number(rating);
         if (!Number.isInteger(numericRating) || numericRating < 1 || numericRating > 5) {
@@ -133,6 +134,33 @@ const createReview = async (req, res) => {
             storeId = completedBooking.store;
             isTrusted = true;
         }
+        else if (targetType === 'Delivery') {
+            if (deliveryId && String(deliveryId) !== String(targetId)) {
+                return res.status(400).json({ message: 'The delivery reference does not match this review.' });
+            }
+            const completedDelivery = await Delivery.findOne({
+                _id: targetId,
+                status: 'delivered',
+                assignmentType: 'internal',
+                assignedRider: { $ne: null },
+                'reviewStatus.isRated': { $ne: true }
+            });
+            if (!completedDelivery) {
+                return res.status(403).json({ message: 'You can only rate the assigned rider after a completed delivery that has not already been rated.' });
+            }
+            const completedOrder = await Order.findOne({
+                _id: completedDelivery.order,
+                customer: userId,
+                store: completedDelivery.store,
+                status: { $in: ['delivered', 'completed'] }
+            });
+            if (!completedOrder || (orderId && String(orderId) !== String(completedOrder._id))) {
+                return res.status(403).json({ message: 'This delivery does not belong to your completed order.' });
+            }
+            staffId = completedDelivery.assignedRider;
+            storeId = completedDelivery.store;
+            isTrusted = true;
+        }
         else if (targetType === 'Service') {
             const service = await Service.findById(targetId).populate('store');
             if (!service) return res.status(404).json({ message: 'Service not found' });
@@ -177,7 +205,7 @@ const createReview = async (req, res) => {
 
         // Optional source IDs must point to the same completed transaction used to
         // qualify this review; never let a review mark an unrelated record as rated.
-        if (orderId) {
+        if (orderId && targetType !== 'Delivery') {
             const sourceOrder = await Order.findOne({ _id: orderId, customer: userId, status: 'delivered' });
             const matchesTarget = sourceOrder
                 && String(sourceOrder.store) === String(storeId)
@@ -204,6 +232,7 @@ const createReview = async (req, res) => {
             images,
             orderId,
             bookingId,
+            deliveryId: targetType === 'Delivery' ? targetId : deliveryId,
             serviceId,
             staffId,
             isAnonymous: !!isAnonymous,
@@ -213,7 +242,7 @@ const createReview = async (req, res) => {
         await review.save();
 
         // Mark the source transaction as rated if provided
-        if (orderId) {
+        if (orderId && targetType !== 'Delivery') {
             await Order.findByIdAndUpdate(orderId, {
                 'reviewStatus.isRated': true,
                 'reviewStatus.reviewId': review._id
@@ -247,6 +276,12 @@ const createReview = async (req, res) => {
                     'ratings.count': newCount
                 });
             }
+        }
+        if (targetType === 'Delivery') {
+            await Delivery.findByIdAndUpdate(targetId, {
+                'reviewStatus.isRated': true,
+                'reviewStatus.reviewId': review._id
+            });
         }
         if (targetType === 'Booking') await refreshStaffRating(staffId);
 

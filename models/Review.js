@@ -8,7 +8,7 @@ const reviewSchema = new mongoose.Schema({
     },
     targetType: {
         type: String,
-        enum: ['Product', 'Pet', 'Store', 'Service', 'PetProfile', 'Booking'],
+        enum: ['Product', 'Pet', 'Store', 'Service', 'PetProfile', 'Booking', 'Delivery'],
         required: true
     },
     targetId: {
@@ -23,6 +23,10 @@ const reviewSchema = new mongoose.Schema({
     bookingId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Booking'
+    },
+    deliveryId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Delivery'
     },
     serviceId: {
         type: mongoose.Schema.Types.ObjectId,
@@ -92,6 +96,10 @@ reviewSchema.index({ user: 1, targetId: 1, targetType: 1 }, { unique: true });
 reviewSchema.index(
     { bookingId: 1, staffId: 1 },
     { unique: true, partialFilterExpression: { targetType: 'Booking' } }
+);
+reviewSchema.index(
+    { deliveryId: 1, staffId: 1 },
+    { unique: true, partialFilterExpression: { targetType: 'Delivery' } }
 );
 
 module.exports = mongoose.model('Review', reviewSchema);

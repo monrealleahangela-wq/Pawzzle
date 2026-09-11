@@ -16,7 +16,7 @@ const staffCompliments = [
 const ReviewModal = ({ 
     isOpen, 
     onClose, 
-    targetType, // 'Product', 'Pet', 'Service', 'Store', 'Booking'
+    targetType, // 'Product', 'Pet', 'Service', 'Store', 'Booking', 'Delivery'
     targetId, 
     targetName,
     orderId, 
@@ -47,7 +47,7 @@ const ReviewModal = ({
                 isAnonymous,
                 complimentTags: targetType === 'Booking' ? complimentTags : []
             });
-            toast.success(targetType === 'Booking' ? 'Staff review submitted successfully!' : 'Review submitted successfully!');
+            toast.success(targetType === 'Delivery' ? 'Rider feedback submitted!' : targetType === 'Booking' ? 'Staff review submitted successfully!' : 'Review submitted successfully!');
             if (onReviewSubmitted) onReviewSubmitted();
             onClose();
             // Reset form
@@ -64,7 +64,7 @@ const ReviewModal = ({
     };
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title={targetType === 'Booking' ? `How was your experience with ${targetName}?` : `Rate ${targetName}`} size="sm">
+        <Modal isOpen={isOpen} onClose={onClose} title={targetType === 'Delivery' ? 'Rate your delivery rider' : targetType === 'Booking' ? `How was your experience with ${targetName}?` : `Rate ${targetName}`} size="sm">
             <form onSubmit={handleSubmit} className="p-1 space-y-4">
                 <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 flex flex-col items-center">
                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 block">Overall Rating</label>

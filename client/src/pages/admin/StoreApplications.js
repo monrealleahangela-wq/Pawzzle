@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
 import storeApplicationService from '../../services/storeApplicationService';
-import { getImageUrl } from '../../services/apiService';
+import { getImageUrl, storeService } from '../../services/apiService';
 import { Building, Check, X, Eye, AlertTriangle, TrendingUp, Shield, Zap, Briefcase, ChevronRight, ShieldAlert, Search, Activity, ExternalLink, Wallet, Camera, MapPin, Phone, Heart } from 'lucide-react';
 
 const StoreApplications = () => {
@@ -106,6 +106,20 @@ const StoreApplications = () => {
       console.error('Process application error:', error);
       const errorMsg = error.response?.data?.error || error.response?.data?.message || 'Failed to process application';
       toast.error(errorMsg);
+    }
+  };
+
+  const handleApproveStoreVerification = async () => {
+    const storeId = selectedApplication?.store?._id;
+    if (!storeId) return;
+    try {
+      await storeService.approveVerification(storeId);
+      const response = await storeApplicationService.getApplicationById(selectedApplication._id);
+      setSelectedApplication(response.data.application);
+      await fetchApplications();
+      toast.success('Store verified and available for eligible customer listings.');
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Unable to approve store verification.');
     }
   };
 
@@ -222,6 +236,14 @@ const StoreApplications = () => {
                       </>
                     )}
                     <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">REF: {app._id.slice(-8).toUpperCase()}</span>
+                    {app.store && (
+                      <span className={`text-[9px] font-black px-2 py-0.5 rounded uppercase tracking-tight ${app.store.verificationStatus === 'verified' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>
+                        Store {app.store.verificationStatus || 'unverified'}
+                      </span>
+                    )}
+                    {!app.applicant && (
+                      <span className="text-[9px] font-black text-rose-600 bg-rose-50 px-2 py-0.5 rounded uppercase tracking-tight">Applicant account unavailable</span>
+                    )}
                   </div>
 
                   <div className="grid grid-cols-2 gap-6 mb-8">
@@ -237,7 +259,9 @@ const StoreApplications = () => {
                     </div>
                     <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
                       <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Applicant Name</p>
-                      <p className="text-[11px] font-black text-slate-900 uppercase tracking-tight truncate leading-none mt-2">{app.applicant?.firstName} {app.applicant?.lastName}</p>
+                      <p className="text-[11px] font-black text-slate-900 uppercase tracking-tight truncate leading-none mt-2">
+                        {app.applicant ? `${app.applicant.firstName || ''} ${app.applicant.lastName || ''}`.trim() : 'Account unavailable'}
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -401,14 +425,22 @@ const StoreApplications = () => {
                     <h3 className="text-[11px] font-black text-slate-900 uppercase tracking-widest mb-6 flex items-center gap-2">
                       Applicant Information
                     </h3>
+                    {!selectedApplication.applicant && (
+                      <div className="mb-4 flex items-start gap-2 rounded-xl border border-rose-200 bg-rose-50 p-3 text-[10px] font-bold text-rose-700">
+                        <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                        The original applicant account is unavailable. The application remains visible for audit history, but ownership access cannot be restored without recovering that identity.
+                      </div>
+                    )}
                     <div className="grid grid-cols-2 gap-6">
                       <div>
                         <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Full Name</p>
-                        <p className="text-[12px] font-black text-slate-900 uppercase tracking-tight">{selectedApplication.applicant?.firstName} {selectedApplication.applicant?.lastName}</p>
+                        <p className="text-[12px] font-black text-slate-900 uppercase tracking-tight">
+                          {selectedApplication.applicant ? `${selectedApplication.applicant.firstName || ''} ${selectedApplication.applicant.lastName || ''}`.trim() : 'Account unavailable'}
+                        </p>
                       </div>
                       <div>
                         <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Email Address</p>
-                        <p className="text-[12px] font-black text-slate-900 lowercase italic opacity-80">{selectedApplication.applicant?.email}</p>
+                        <p className="text-[12px] font-black text-slate-900 lowercase italic opacity-80">{selectedApplication.applicant?.email || 'Unavailable'}</p>
                       </div>
                     </div>
                   </div>
@@ -609,6 +641,19 @@ const StoreApplications = () => {
                   <Shield className="h-4 w-4" />
                   <span className="text-[10px] font-black uppercase tracking-[0.4em]">Review Complete</span>
                 </div>
+                {selectedApplication.status === 'approved' && selectedApplication.store?.verificationStatus === 'pending' && (
+                  <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div>
+                        <p className="text-[10px] font-black uppercase tracking-wider text-amber-800">Store verification pending</p>
+                        <p className="mt-1 text-[10px] font-medium text-amber-700">Review the store documents before allowing this store to appear in customer listings.</p>
+                      </div>
+                      <button type="button" onClick={handleApproveStoreVerification} className="h-9 shrink-0 rounded-xl bg-slate-900 px-4 text-[9px] font-black uppercase tracking-wider text-white hover:bg-primary-700">
+                        Approve Store Verification
+                      </button>
+                    </div>
+                  </div>
+                )}
                 {selectedApplication.rejectionReason && (
                   <div className="p-5 bg-rose-50 border border-rose-100 rounded-2xl">
                     <p className="text-[10px] font-black text-rose-600 uppercase tracking-widest mb-1.5">Rejection Reason</p>

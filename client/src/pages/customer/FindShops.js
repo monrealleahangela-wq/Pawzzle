@@ -8,6 +8,7 @@ import { storeService, getImageUrl } from '../../services/apiService';
 import { formatTime12h } from '../../utils/timeFormatters';
 import { toast } from 'react-toastify';
 import 'leaflet/dist/leaflet.css';
+import { hasMapCoordinates } from '../../utils/storeLocation';
 
 // Fix for Leaflet default icon issues in React
 import markerIcon from 'leaflet/dist/images/marker-icon.png';
@@ -100,7 +101,7 @@ const FindShops = () => {
         if (store) {
             handleStoreSelect(store);
             // Auto start directions if shop is from query
-            setTimeout(() => getDirections(store), 500);
+            if (hasMapCoordinates(store)) setTimeout(() => getDirections(store), 500);
         }
     }
   }, [shopIdFromQuery, stores]);
@@ -117,6 +118,8 @@ const FindShops = () => {
       setIsSidebarOpen(false);
     }
   };
+
+  const selectedStoreHasCoordinates = hasMapCoordinates(selectedStore);
 
   useEffect(() => {
     const fetchStores = async () => {
@@ -239,6 +242,11 @@ const FindShops = () => {
   };
 
   const getDirections = (store) => {
+    if (!hasMapCoordinates(store)) {
+        toast.info('This shop has not added a map location yet.');
+        return;
+    }
+
     if (!userLocation) {
         toast.info('Please enable your location to start navigation', {
             onClick: () => getUserLocation()
@@ -428,7 +436,8 @@ const FindShops = () => {
                     <div className="flex gap-2">
                       <button
                         onClick={() => isNavigating ? stopNavigation() : getDirections(store)}
-                        className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${isNavigating ? 'bg-rose-50 text-rose-600 border border-rose-100 hover:bg-rose-600 hover:text-white' : 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:scale-105'}`}
+                        disabled={!hasMapCoordinates(store)}
+                        className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all disabled:cursor-not-allowed disabled:opacity-60 ${isNavigating ? 'bg-rose-50 text-rose-600 border border-rose-100 hover:bg-rose-600 hover:text-white' : 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 enabled:hover:scale-105'}`}
                       >
                         {isNavigating ? (
                             <>
@@ -436,7 +445,7 @@ const FindShops = () => {
                             </>
                         ) : (
                             <>
-                                <Navigation className="h-3 w-3" /> Get Directions
+                                <Navigation className="h-3 w-3" /> {hasMapCoordinates(store) ? 'Get Directions' : 'Map Location Unavailable'}
                             </>
                         )}
                       </button>
@@ -558,7 +567,7 @@ const FindShops = () => {
         </MapContainer>
 
         {/* Navigation HUD (Waze-like) */}
-        {isNavigating && selectedStore && (
+          {isNavigating && selectedStore && selectedStoreHasCoordinates && (
           <div className="absolute top-4 left-4 right-4 lg:left-auto lg:right-4 lg:w-[350px] z-[1000] animate-slide-up">
             <div className="bg-white dark:bg-slate-900 rounded-[2rem] shadow-2xl border border-slate-100 dark:border-slate-800 overflow-hidden">
                 {/* Instruction Header */}

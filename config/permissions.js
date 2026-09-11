@@ -5,19 +5,22 @@ const ROLE_PERMISSIONS = {
     'dashboard.view', 'users.manage', 'staff.manage', 'customers.manage',
     'pets.manage', 'clinical.manage', 'services.manage', 'bookings.manage', 'sales.manage',
     'inventory.manage', 'procurement.manage', 'finance.manage',
-    'logistics.manage', 'reports.view', 'dss.manage'
+    'logistics.manage', 'reports.view', 'dss.manage',
+    'attendance.manage', 'leave.approve', 'payroll.manage', 'compensation.manage'
   ],
   store_owner: [
     'dashboard.view', 'users.manage', 'staff.manage', 'customers.manage',
     'pets.manage', 'clinical.manage', 'services.manage', 'bookings.manage', 'sales.manage',
     'inventory.manage', 'procurement.manage', 'finance.manage',
-    'logistics.manage', 'reports.view', 'dss.manage'
+    'logistics.manage', 'reports.view', 'dss.manage',
+    'attendance.manage', 'leave.approve', 'payroll.manage', 'compensation.manage'
   ],
   manager: [
     'dashboard.view', 'staff.view', 'customers.manage', 'pets.manage',
     'clinical.view', 'services.manage', 'sales.manage', 'inventory.manage',
     'procurement.manage', 'finance.view', 'logistics.manage',
-    'reports.view', 'dss.view', 'bookings.manage'
+    'reports.view', 'dss.view', 'bookings.manage',
+    'attendance.view', 'leave.approve'
   ],
   service_staff: [
     'dashboard.view', 'customers.view', 'pets.view', 'services.view',
@@ -39,7 +42,8 @@ const ROLE_PERMISSIONS = {
   ],
   finance_staff: [
     'dashboard.view', 'sales.view', 'procurement.view', 'finance.manage',
-    'reports.finance', 'payments.manage'
+    'reports.finance', 'payments.manage', 'payroll.view', 'payroll.prepare',
+    'payroll.review', 'payroll.pay', 'compensation.manage', 'attendance.view', 'leave.view'
   ],
   veterinarian: [
     'dashboard.view', 'customers.view', 'pets.view', 'clinical.manage',

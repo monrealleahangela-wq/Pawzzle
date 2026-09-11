@@ -14,6 +14,7 @@ const {
   buildPublicRegistrationData
 } = require('../utils/authSecurity');
 const { attachStoreRolePolicy, serializeEffectivePermissionMap } = require('../services/rolePermissionService');
+const { requiresPlatformVerification, getProfessionalVerificationStatus } = require('../utils/staffSpecialization');
 
 const generateToken = id => jwt.sign(
   { id },
@@ -26,10 +27,13 @@ const userSummary = user => ({
   username: user.username,
   email: user.email,
   role: user.role,
+  staffType: user.staffType,
   firstName: user.firstName,
   lastName: user.lastName,
   store: user.store,
-  requiresPasswordChange: Boolean(user.requiresPasswordChange)
+  requiresPasswordChange: Boolean(user.requiresPasswordChange),
+  professionalVerificationRequired: requiresPlatformVerification(user),
+  professionalVerificationStatus: getProfessionalVerificationStatus(user)
 });
 
 const otpFailureMessage = (result, lockedMessage) => result.reason === 'locked'

@@ -8,21 +8,23 @@ const Service = require('../models/Service');
 const Follow = require('../models/Follow');
 const User = require('../models/User');
 const ActivityLog = require('../models/ActivityLog');
+const DeliveryFeeRule = require('../models/DeliveryFeeRule');
 const { TAX_STATUSES, PRICING_MODES, normalizeTaxConfiguration } = require('../utils/taxCalculator');
 const { POLICY_TYPES, normalizeRefundPolicy } = require('../utils/refundPolicy');
 const { isPlatformAdmin, isStoreAdmin, isOperationalStaff } = require('../config/permissions');
 const { buildStoreOperationsSnapshot } = require('../services/operationsDashboardService');
+const {
+  getCustomerVisibleOwnerIds,
+  buildCustomerVisibleStoreFilter
+} = require('../utils/storeVisibility');
 
 // Get all stores (public)
 const getAllStores = async (req, res) => {
   try {
     const { businessType, city, state, featured, search, page = 1, limit = 12 } = req.query;
 
-    const filter = {
-      isActive: true,
-      isDeleted: { $ne: true },
-      name: { $ne: 'Admin Pet Store' }
-    };
+    const ownerIds = await getCustomerVisibleOwnerIds();
+    const filter = buildCustomerVisibleStoreFilter(ownerIds);
 
     if (businessType) filter.businessType = businessType;
     if (city) {
@@ -67,8 +69,9 @@ const getAllStores = async (req, res) => {
 // Get store by ID (public)
 const getStoreById = async (req, res) => {
   try {
-    const store = await Store.findOne({ _id: req.params.id, isActive: true, isDeleted: { $ne: true } })
-      .populate('owner', 'username firstName lastName email lastSeen');
+    const ownerIds = await getCustomerVisibleOwnerIds();
+    const store = await Store.findOne(buildCustomerVisibleStoreFilter(ownerIds, { _id: req.params.id }))
+      .populate('owner', 'username firstName lastName');
 
     if (!store) {
       return res.status(404).json({ message: 'Store not found' });
@@ -111,8 +114,9 @@ const getStoreById = async (req, res) => {
 // Get store details with products, services, and pets (public)
 const getStoreDetails = async (req, res) => {
   try {
-    const store = await Store.findOne({ _id: req.params.id, isActive: true, isDeleted: { $ne: true } })
-      .populate('owner', 'username firstName lastName email lastSeen');
+    const ownerIds = await getCustomerVisibleOwnerIds();
+    const store = await Store.findOne(buildCustomerVisibleStoreFilter(ownerIds, { _id: req.params.id }))
+      .populate('owner', 'username firstName lastName');
 
     if (!store) {
       return res.status(404).json({ message: 'Store not found' });
@@ -420,7 +424,8 @@ const featureStore = async (req, res) => {
 const getStoreByOwner = async (req, res) => {
   try {
     const { ownerId } = req.params;
-    const store = await Store.findOne({ owner: ownerId, isActive: true, isDeleted: { $ne: true } }).select('_id name logo slug');
+    const ownerIds = await getCustomerVisibleOwnerIds();
+    const store = await Store.findOne(buildCustomerVisibleStoreFilter(ownerIds, { owner: ownerId })).select('_id name logo slug');
     if (!store) return res.status(404).json({ message: 'Store not found' });
     res.json({ store });
   } catch (error) {
@@ -466,6 +471,16 @@ const approveVerification = async (req, res) => {
   try {
     const store = await Store.findById(req.params.id);
     if (!store) return res.status(404).json({ message: 'Store not found' });
+
+    const owner = await User.findOne({
+      _id: store.owner,
+      role: { $in: ['admin', 'store_owner'] },
+      isActive: { $ne: false },
+      isDeleted: { $ne: true }
+    });
+    if (!owner) {
+      return res.status(409).json({ message: 'Store verification cannot be approved until its owner account is restored.' });
+    }
 
     store.verificationStatus = 'verified';
     store.verification.verifiedAt = new Date();
@@ -591,14 +606,91 @@ const updateRefundPolicy = async (req, res) => {
   }
 };
 
+const getDeliveryPricing = async (req, res) => {
+  try {
+    const store = isPlatformAdmin(req.user) && req.params.id
+      ? await Store.findById(req.params.id).select('_id name contactInfo.address.coordinates')
+      : await Store.findOne({ owner: req.user._id, isDeleted: { $ne: true } }).select('_id name contactInfo.address.coordinates');
+    if (!store) return res.status(404).json({ message: 'Store not found.' });
+    const now = new Date();
+    const rule = await DeliveryFeeRule.findOne({
+      store: store._id,
+      isActive: true,
+      effectiveFrom: { $lte: now },
+      $or: [{ effectiveUntil: null }, { effectiveUntil: { $gte: now } }]
+    }).sort({ effectiveFrom: -1, version: -1 }).lean();
+    res.json({
+      store: { _id: store._id, name: store.name, hasMapLocation: Number.isFinite(Number(store.contactInfo?.address?.coordinates?.lat)) && Number.isFinite(Number(store.contactInfo?.address?.coordinates?.lng)) },
+      deliveryPricing: rule || null
+    });
+  } catch (error) {
+    console.error('Get delivery pricing error:', error);
+    res.status(500).json({ message: 'Unable to load delivery pricing.' });
+  }
+};
+
+const updateDeliveryPricing = async (req, res) => {
+  try {
+    const store = isPlatformAdmin(req.user) && req.params.id
+      ? await Store.findById(req.params.id)
+      : await Store.findOne({ owner: req.user._id, isDeleted: { $ne: true } });
+    if (!store) return res.status(404).json({ message: 'Store not found.' });
+    const coordinates = store.contactInfo?.address?.coordinates;
+    if (!Number.isFinite(Number(coordinates?.lat)) || !Number.isFinite(Number(coordinates?.lng))) {
+      return res.status(400).json({ message: 'Add the store map location before enabling distance-based delivery.' });
+    }
+
+    const numericFields = ['baseFee', 'includedKilometers', 'ratePerKilometer', 'additionalItemFee', 'minimumFee', 'maximumFee', 'maximumDistanceKm'];
+    const values = Object.fromEntries(numericFields.map(field => [field, req.body[field] === '' || req.body[field] === null || req.body[field] === undefined ? null : Number(req.body[field])]));
+    const required = ['baseFee', 'includedKilometers', 'ratePerKilometer', 'additionalItemFee', 'minimumFee'];
+    if (required.some(field => !Number.isFinite(values[field]) || values[field] < 0)
+        || ['maximumFee', 'maximumDistanceKm'].some(field => values[field] !== null && (!Number.isFinite(values[field]) || values[field] < 0))) {
+      return res.status(400).json({ message: 'Delivery rates must be valid non-negative numbers.' });
+    }
+    if (values.maximumFee !== null && values.maximumFee < values.minimumFee) {
+      return res.status(400).json({ message: 'Maximum delivery fee cannot be lower than the minimum fee.' });
+    }
+
+    const now = new Date();
+    const previous = await DeliveryFeeRule.findOne({ store: store._id, isActive: true }).sort({ version: -1 });
+    const version = Number(previous?.version || 0) + 1;
+    await DeliveryFeeRule.updateMany({ store: store._id, isActive: true }, { $set: { isActive: false, effectiveUntil: now } });
+    const rule = await DeliveryFeeRule.create({
+      store: store._id,
+      name: `Distance and item delivery pricing v${version}`,
+      baseFee: values.baseFee,
+      includedKilometers: values.includedKilometers,
+      ratePerKilometer: values.ratePerKilometer,
+      additionalItemFee: values.additionalItemFee,
+      minimumFee: values.minimumFee,
+      maximumFee: values.maximumFee,
+      maximumDistanceKm: values.maximumDistanceKm,
+      version,
+      effectiveFrom: now,
+      effectiveUntil: null,
+      isActive: true
+    });
+    await ActivityLog.create({
+      user: req.user._id,
+      action: 'Delivery Pricing Updated',
+      details: `${store.name} activated delivery pricing version ${version}. Historical orders keep their saved calculation.`,
+      ipAddress: req.ip
+    });
+    const io = req.app.get('socketio');
+    if (io) io.to(`store_${store._id}`).emit('settingsUpdate', { type: 'delivery_pricing', version });
+    res.json({ message: 'Delivery pricing saved for new orders.', deliveryPricing: rule });
+  } catch (error) {
+    console.error('Update delivery pricing error:', error);
+    res.status(500).json({ message: 'Unable to update delivery pricing.' });
+  }
+};
+
 // Get all store locations for map (Filtered for Cavite only)
 const getStoreLocations = async (req, res) => {
   try {
-    const stores = await Store.find({
-      isActive: true,
-      isDeleted: { $ne: true },
-      name: { $ne: 'Admin Pet Store' }
-    }).select('name logo slug contactInfo.phone contactInfo.email contactInfo.address verificationStatus');
+    const ownerIds = await getCustomerVisibleOwnerIds();
+    const stores = await Store.find(buildCustomerVisibleStoreFilter(ownerIds))
+      .select('name logo coverImage slug businessType contactInfo.phone contactInfo.email contactInfo.address verificationStatus');
 
     res.json({ stores });
   } catch (error) {
@@ -625,5 +717,7 @@ module.exports = {
   getTaxConfiguration,
   updateTaxConfiguration,
   getRefundPolicy,
-  updateRefundPolicy
+  updateRefundPolicy,
+  getDeliveryPricing,
+  updateDeliveryPricing
 };

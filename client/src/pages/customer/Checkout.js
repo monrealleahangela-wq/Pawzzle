@@ -12,6 +12,14 @@ import { normalizeRefundPolicy, refundPolicyLabel, requiresRefundAcknowledgment 
 import PaymentBreakdown from '../../components/payments/PaymentBreakdown';
 import { formatPeso, orderPaymentSummary } from '../../utils/paymentSummary';
 
+const validCoordinates = (coordinates) => (
+  coordinates
+  && coordinates.lat !== null && coordinates.lat !== undefined && coordinates.lat !== ''
+  && coordinates.lng !== null && coordinates.lng !== undefined && coordinates.lng !== ''
+  && Number.isFinite(Number(coordinates.lat))
+  && Number.isFinite(Number(coordinates.lng))
+);
+
 const Checkout = () => {
   const { items, clearSelectedItems, getSelectedItems } = useCart();
   const { isAuthenticated, user } = useAuth();
@@ -45,10 +53,7 @@ const Checkout = () => {
     barangay: user?.address?.barangay || '',
     zipCode: user?.address?.zipCode || '',
     country: 'PH',
-    coordinates: user?.address?.coordinates || {
-      lat: 14.3121,
-      lng: 120.9326
-    }
+    coordinates: validCoordinates(user?.address?.coordinates) ? user.address.coordinates : undefined
   });
 
   const [phoneNumber, setPhoneNumber] = useState(user?.phone || '');
@@ -257,10 +262,7 @@ const Checkout = () => {
       barangay: user?.address?.barangay || '',
       zipCode: user?.address?.zipCode || '',
       country: 'PH',
-      coordinates: user?.address?.coordinates || {
-        lat: 14.3121,
-        lng: 120.9326
-      }
+      coordinates: validCoordinates(user?.address?.coordinates) ? user.address.coordinates : undefined
     };
     setShippingAddress(profileAddress);
     setPhoneNumber(user?.phone || '');
@@ -280,7 +282,7 @@ const Checkout = () => {
   };
 
   const handleAddressChange = (field, value) => {
-    setShippingAddress(prev => ({ ...prev, [field]: value }));
+    setShippingAddress(prev => ({ ...prev, [field]: value, coordinates: undefined }));
 
     // Handle cascading dropdowns
     if (field === 'province') {
@@ -290,14 +292,16 @@ const Checkout = () => {
       setShippingAddress(prev => ({
         ...prev,
         city: '',
-        barangay: ''
+        barangay: '',
+        coordinates: undefined
       }));
     } else if (field === 'city') {
       setBarangays(getBarangaysByCity(value));
       // Reset barangay when city changes
       setShippingAddress(prev => ({
         ...prev,
-        barangay: ''
+        barangay: '',
+        coordinates: undefined
       }));
     }
   };
@@ -474,7 +478,10 @@ const Checkout = () => {
   };
 
   const quoteBreakdown = pricingQuote?.pricingBreakdown;
-  const quoteSummary = quoteBreakdown ? orderPaymentSummary({ pricingBreakdown: quoteBreakdown }) : null;
+  const quoteSummary = quoteBreakdown ? orderPaymentSummary({
+    pricingBreakdown: quoteBreakdown,
+    deliveryFeeCalculation: pricingQuote?.deliveryFeeCalculation
+  }) : null;
 
   if (checkoutItems.length === 0) {
     const hasItemsInCart = items && items.length > 0;

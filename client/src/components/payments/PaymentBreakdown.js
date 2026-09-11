@@ -38,9 +38,16 @@ const PaymentBreakdown = ({
     );
   }
 
+  const deliveryRows = summary.deliveryDetails ? [
+    [`Shipping distance (${Number(summary.deliveryDetails.distanceKm || 0).toFixed(2)} km)`, null],
+    ['Base delivery fee', summary.deliveryDetails.baseFee],
+    [`Distance charge (${Number(summary.deliveryDetails.billableKilometers || 0).toFixed(2)} km x ${formatPeso(summary.deliveryDetails.ratePerKilometer)})`, summary.deliveryDetails.distanceCharge],
+    [`Additional items (${summary.deliveryDetails.additionalItemQuantity || 0} x ${formatPeso(summary.deliveryDetails.additionalItemFee)})`, summary.deliveryDetails.itemCharge]
+  ] : [];
   const rows = [
     ['Subtotal', summary.subtotal],
     [taxLabel(summary), summary.vatAmount],
+    ...deliveryRows,
     ['Delivery fee', summary.deliveryFee],
     ['Service fee', summary.serviceFee],
     ['Booking fee', summary.bookingFee],
@@ -52,7 +59,7 @@ const PaymentBreakdown = ({
       {rows.map(([label, value]) => (
         <div key={label} className="flex items-center justify-between gap-4 text-secondary">
           <span>{label}</span>
-          <span className="font-bold text-default">{formatPeso(value)}</span>
+          <span className="font-bold text-default">{value === null ? 'Calculated from the delivery address' : formatPeso(value)}</span>
         </div>
       ))}
       <div className="flex items-center justify-between gap-4 font-bold text-emerald-700 dark:text-emerald-300">

@@ -11,6 +11,7 @@ const riderEarningSchema = new mongoose.Schema({
   amount: { type: Number, min: 0, required: true },
   status: { type: String, enum: ['available', 'processing', 'paid'], default: 'available', index: true },
   payout: { type: mongoose.Schema.Types.ObjectId, ref: 'RiderPayout', default: null },
+  payrollPayslip: { type: mongoose.Schema.Types.ObjectId, ref: 'Payslip', default: null },
   earnedAt: { type: Date, default: Date.now }
 }, { timestamps: true });
 

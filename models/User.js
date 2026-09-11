@@ -183,6 +183,24 @@ const userSchema = new mongoose.Schema({
       bankName: { type: String, trim: true, default: '' }
     }
   },
+  employmentProfile: {
+    staffId: { type: String, trim: true, uppercase: true },
+    employmentStatus: {
+      type: String,
+      enum: ['active', 'probationary', 'part_time', 'contract', 'inactive', 'terminated'],
+      default: 'active'
+    },
+    dateHired: Date,
+    branchName: { type: String, trim: true, maxlength: 160, default: '' },
+    compensation: {
+      type: {
+        compensationType: { type: String, enum: ['salary', 'daily', 'hourly'], default: 'salary' },
+        baseRate: { type: Number, min: 0, default: 0 },
+        effectiveDate: Date
+      },
+      select: false
+    }
+  },
   // Trust & Reputation Layer
   isVerified: { type: Boolean, default: false },
   verificationBadge: { type: String, enum: ['none', 'starter', 'trusted', 'premium'], default: 'none' },
@@ -222,7 +240,7 @@ const userSchema = new mongoose.Schema({
     verification: {
       status: {
         type: String,
-        enum: ['pending_verification', 'verified', 'expired', 'suspended'],
+        enum: ['pending_verification', 'verified', 'rejected', 'expired', 'suspended'],
         default: 'pending_verification'
       },
       isRequired: { type: Boolean, default: false },
@@ -247,7 +265,7 @@ const userSchema = new mongoose.Schema({
       expiresAt: Date,
       status: {
         type: String,
-        enum: ['pending_verification', 'verified', 'expired', 'suspended', 'archived'],
+        enum: ['pending_verification', 'verified', 'rejected', 'expired', 'suspended', 'archived'],
         default: 'pending_verification'
       },
       verifiedAt: Date,
@@ -273,7 +291,8 @@ const userSchema = new mongoose.Schema({
     leaveSchedule: [{
       startDate: { type: Date, required: true },
       endDate: { type: Date, required: true },
-      reason: { type: String, trim: true, maxlength: 500, default: '' }
+      reason: { type: String, trim: true, maxlength: 500, default: '' },
+      leaveRequest: { type: mongoose.Schema.Types.ObjectId, ref: 'LeaveRequest' }
     }],
     temporaryUnavailable: {
       active: { type: Boolean, default: false },

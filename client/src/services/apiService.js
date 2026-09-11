@@ -164,6 +164,8 @@ export const staffService = {
   update: (id, data) => api.put(`/staff/${id}`, data),
   uploadCredential: (id, data) => api.post(`/staff/${id}/credentials`, data, { headers: { 'Content-Type': 'multipart/form-data' } }),
   updateCredentialVerification: (id, documentId, data) => api.patch(`/staff/${id}/credentials/${documentId}/verification`, data),
+  getProfessionalVerifications: (params) => api.get('/staff/platform/verifications', { params }),
+  updateProfessionalVerification: (id, data) => api.patch(`/staff/platform/verifications/${id}`, data),
   updateAvailability: (id, data) => api.put(`/staff/${id}/availability`, data),
   toggleStatus: (id, data) => api.patch(`/staff/${id}/toggle-status`, data),
   archive: (id, data) => api.patch(`/staff/${id}/archive`, data),
@@ -335,6 +337,8 @@ export const storeService = {
   updateTaxConfiguration: (data) => api.put('/stores/my-store/tax-configuration', data),
   getRefundPolicy: (id) => api.get(id ? `/stores/${id}/refund-policy` : '/stores/my-store/refund-policy'),
   updateRefundPolicy: (data, id) => api.put(id ? `/stores/${id}/refund-policy` : '/stores/my-store/refund-policy', data),
+  getDeliveryPricing: (id) => api.get(id ? `/stores/${id}/delivery-pricing` : '/stores/my-store/delivery-pricing'),
+  updateDeliveryPricing: (data, id) => api.put(id ? `/stores/${id}/delivery-pricing` : '/stores/my-store/delivery-pricing', data),
   submitVerification: (data) => api.post('/stores/my-store/verify', data),
   requestExpansion: (formData) => api.post('/stores/expansion-request', formData, {
     headers: { 'Content-Type': 'multipart/form-data' }
@@ -470,6 +474,35 @@ export const financeService = {
   voidProcurementPayment: (id, data) => api.patch(`/finance/procurement-payments/${id}/void`, data)
 };
 
+export const hrService = {
+  getMyAttendance: (params) => api.get('/hr/me/attendance', { params }),
+  timeIn: (location) => api.post('/hr/me/attendance/time-in', location),
+  timeOut: (location) => api.post('/hr/me/attendance/time-out', location),
+  getMyLeaves: () => api.get('/hr/me/leaves'),
+  requestLeave: (data) => api.post('/hr/me/leaves', data),
+  cancelLeave: (id, data) => api.patch(`/hr/me/leaves/${id}/cancel`, data),
+  getMyPayslips: () => api.get('/hr/me/payslips'),
+  getMyPayslip: (id) => api.get(`/hr/me/payslips/${id}`),
+  getSettings: () => api.get('/hr/settings'),
+  updateSettings: (data) => api.put('/hr/settings', data),
+  getEmployees: () => api.get('/hr/employees'),
+  getCompensation: (employeeId) => api.get(`/hr/employees/${employeeId}/compensation`),
+  updateCompensation: (employeeId, data) => api.put(`/hr/employees/${employeeId}/compensation`, data),
+  getAttendance: (params) => api.get('/hr/attendance', { params }),
+  createManualAttendance: (data) => api.post('/hr/attendance/manual', data),
+  correctAttendance: (id, data) => api.patch(`/hr/attendance/${id}/correct`, data),
+  getLeaves: (params) => api.get('/hr/leaves', { params }),
+  reviewLeave: (id, data) => api.patch(`/hr/leaves/${id}/review`, data),
+  getPayrollPeriods: () => api.get('/hr/payroll'),
+  createPayrollPeriod: (data) => api.post('/hr/payroll', data),
+  getPayrollPeriod: (id) => api.get(`/hr/payroll/${id}`),
+  computePayroll: (id) => api.post(`/hr/payroll/${id}/compute`),
+  addAdjustment: (payslipId, data) => api.post(`/hr/payslips/${payslipId}/adjustments`, data),
+  reviewPayroll: (id, data = {}) => api.patch(`/hr/payroll/${id}/review`, data),
+  approvePayroll: (id) => api.patch(`/hr/payroll/${id}/approve`),
+  payPayroll: (id, data) => api.patch(`/hr/payroll/${id}/pay`, data)
+};
+
 // Delivery services
 export const deliveryService = {
   generateLinks: (params) => api.post('/deliveries/generate', typeof params === 'string' ? { orderId: params } : params),
@@ -485,7 +518,12 @@ export const deliveryService = {
   reportFailedDelivery: (token, data) => api.post(`/deliveries/failed/${token}`, data),
   uploadDeliveryProof: (token, formData) => api.post(`/deliveries/proof-upload/${token}`, formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
   resolveComplaint: (deliveryId, complaintId) => api.patch(`/deliveries/resolve-complaint/${deliveryId}/${complaintId}`),
-  calculateFee: (data) => api.post('/deliveries/calculate-fee', data)
+  calculateFee: (data) => api.post('/deliveries/calculate-fee', data),
+  getProviders: () => api.get('/deliveries/providers'),
+  quoteProvider: (deliveryId, data) => api.post(`/deliveries/${deliveryId}/provider/quote`, data),
+  requestProvider: (deliveryId) => api.post(`/deliveries/${deliveryId}/provider/request`),
+  refreshProvider: (deliveryId) => api.post(`/deliveries/${deliveryId}/provider/refresh`),
+  cancelProvider: (deliveryId, data) => api.post(`/deliveries/${deliveryId}/provider/cancel`, data)
 };
 
 export const logisticsService = {

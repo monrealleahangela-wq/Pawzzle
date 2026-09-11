@@ -383,6 +383,22 @@ const DeliveryTracking = () => {
 
       {/* Main Content Area */}
       <main className="flex-1 flex flex-col min-h-0 bg-slate-50">
+        {role === 'customer' && delivery.assignmentType === 'third_party' && (
+          <section className="bg-amber-50 border-b border-amber-200 px-5 py-4">
+            <div className="max-w-4xl mx-auto flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p className="text-[9px] font-black uppercase tracking-widest text-amber-800">Delivery by third-party courier</p>
+                <h2 className="text-sm font-black text-slate-900 mt-1">{delivery.providerDelivery?.providerName || 'External courier provider'}</h2>
+                <p className="text-[10px] text-slate-600 mt-1">The courier provider assigns and notifies its own rider. Pawzzle displays provider updates here.</p>
+              </div>
+              <div className="text-right text-[10px] text-slate-600">
+                <p><b>Tracking:</b> {delivery.providerDelivery?.trackingId || 'Waiting for provider'}</p>
+                <p><b>Provider status:</b> {(delivery.providerDelivery?.externalStatus || delivery.providerDelivery?.requestState || 'not requested').replace(/_/g, ' ')}</p>
+                {delivery.providerDelivery?.estimatedDeliveryAt && <p><b>ETA:</b> {new Date(delivery.providerDelivery.estimatedDeliveryAt).toLocaleString()}</p>}
+              </div>
+            </div>
+          </section>
+        )}
         
         {/* State 1: Status & Info Overview (Formerly Floating Card) */}
         {!chatOpen && (
@@ -424,10 +440,10 @@ const DeliveryTracking = () => {
                   </button>
                 )}
 
-                <button onClick={() => setChatOpen(true)} 
+                {delivery.assignmentType === 'internal' && <button onClick={() => setChatOpen(true)}
                   className="flex-1 sm:flex-none p-4 bg-rose-500 text-white rounded-2xl hover:bg-rose-600 transition-all shadow-lg shadow-rose-100 flex items-center justify-center group">
                   <MessageSquare className="h-5 w-5 group-hover:scale-110 transition-transform" />
-                </button>
+                </button>}
                 {role === 'rider' && (
                   <button 
                     onClick={() => setShowDirections(!showDirections)}
