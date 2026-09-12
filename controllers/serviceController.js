@@ -6,6 +6,7 @@ const { isRoleEligibleForService } = require('../utils/staffSpecialization');
 const { calculateServicePrice } = require('../utils/pricingEngine');
 const { calculateTransactionTax, resolveTransactionTaxConfiguration } = require('../utils/taxCalculator');
 const { canOperateStore } = require('../utils/authorizationPolicy');
+const { getCustomerVisibleOwnerIds, buildCustomerVisibleStoreFilter } = require('../utils/storeVisibility');
 
 const DEFAULT_REQUIREMENTS = [
   "Valid ID and contact details",
@@ -15,12 +16,8 @@ const DEFAULT_REQUIREMENTS = [
   "Appointment confirmation (if required)"
 ];
 
-const PUBLIC_STORE_FILTER = Object.freeze({
-  isActive: true,
-  isDeleted: { $ne: true },
-  verificationStatus: { $in: ['verified', null] }
-});
-const PUBLIC_SERVICE_FIELDS = 'name description store category subCategory duration bufferTime price pricingRules addOns bookingRules assignedStaff schedule homeServiceAvailable homeServicePrice maxPetsPerSession requirements images ratings isActive';
+const PUBLIC_SERVICE_FIELDS = 'name description store category subCategory duration bufferTime price pricingRules addOns bookingRules assignedStaff schedule homeServiceAvailable homeServicePrice maxPetsPerSession requirements images ratings isActive isDeleted';
+const PUBLIC_SERVICE_STORE_FIELDS = 'name logo contactInfo.address businessHours bookingSettings taxConfiguration refundPolicy verificationStatus';
 
 const validateAssignedStaff = async (assignedStaff = [], storeId, serviceData) => {
   const ids = [...new Set((assignedStaff || []).map(String).filter(Boolean))];
@@ -41,7 +38,8 @@ const getStoreServices = async (req, res) => {
     const { storeId } = req.params;
     const { category } = req.query;
 
-    const store = await Store.findOne({ _id: storeId, ...PUBLIC_STORE_FILTER }).select('_id');
+    const ownerIds = await getCustomerVisibleOwnerIds();
+    const store = await Store.findOne(buildCustomerVisibleStoreFilter(ownerIds, { _id: storeId })).select('_id');
     if (!store) return res.status(404).json({ message: 'Store not found or unavailable' });
 
     const filter = { store: storeId, isActive: true, isDeleted: { $ne: true } };
@@ -49,7 +47,7 @@ const getStoreServices = async (req, res) => {
     if (category) filter.category = category;
 
     const services = await Service.find(filter).select(PUBLIC_SERVICE_FIELDS)
-      .populate('store', 'name logo contactInfo.address businessHours bookingSettings taxConfiguration refundPolicy')
+      .populate('store', PUBLIC_SERVICE_STORE_FIELDS)
       .populate({
         path: 'assignedStaff',
         match: { isActive: true, staffStatus: { $in: ['active', null] }, 'professionalProfile.isPublic': { $ne: false } },
@@ -392,17 +390,18 @@ const getAllServices = async (req, res) => {
 
     // Keep inactive, suspended, and deleted stores out of public discovery.
     // This is part of the database filter so pagination remains accurate.
-    const publicStoreFilter = { ...PUBLIC_STORE_FILTER };
+    const ownerIds = await getCustomerVisibleOwnerIds();
+    const publicStoreExtra = {};
     if (city) {
       const cityFilter = city.replace(/[nñ]/gi, '[nñ]');
-      publicStoreFilter['contactInfo.address.city'] = { $regex: new RegExp(cityFilter, 'i') };
+      publicStoreExtra['contactInfo.address.city'] = { $regex: new RegExp(cityFilter, 'i') };
     }
-    const publicStores = await Store.find(publicStoreFilter).select('_id');
+    const publicStores = await Store.find(buildCustomerVisibleStoreFilter(ownerIds, publicStoreExtra)).select('_id');
     filter.store = { $in: publicStores.map(store => store._id) };
 
     const skip = (page - 1) * limit;
     const services = await Service.find(filter).select(PUBLIC_SERVICE_FIELDS)
-      .populate('store', 'name logo contactInfo.address businessHours bookingSettings taxConfiguration refundPolicy verificationStatus')
+      .populate('store', PUBLIC_SERVICE_STORE_FIELDS)
       .populate({ path: 'assignedStaff', match: { isActive: true, staffStatus: { $in: ['active', null] }, 'professionalProfile.isPublic': { $ne: false } }, select: 'firstName lastName staffType professionalProfile.professionalTitle professionalProfile.specialty' })
       .sort({ createdAt: -1 })
       .skip(skip)
@@ -433,25 +432,30 @@ const getServiceById = async (req, res) => {
     const isAdminRequest = req.baseUrl?.includes('/admin');
     let serviceQuery = Service.findById(req.params.id);
     if (!isAdminRequest) serviceQuery = serviceQuery.select(PUBLIC_SERVICE_FIELDS);
-    const service = await serviceQuery
-      .populate('store', 'name logo contactInfo.address businessHours bookingSettings taxConfiguration refundPolicy isActive isDeleted verificationStatus')
-      .populate({ path: 'assignedStaff', match: { isActive: true, staffStatus: { $in: ['active', null] }, 'professionalProfile.isPublic': { $ne: false } }, select: 'firstName lastName staffType professionalProfile.professionalTitle professionalProfile.specialty' });
+    const service = await serviceQuery.populate({ path: 'assignedStaff', match: { isActive: true, staffStatus: { $in: ['active', null] }, 'professionalProfile.isPublic': { $ne: false } }, select: 'firstName lastName staffType professionalProfile.professionalTitle professionalProfile.specialty' });
     if (!service || service.isDeleted) {
       console.log('⚠️ Service not found (or deleted):', req.params.id);
       return res.status(404).json({ message: 'Service not found' });
     }
-    if (!isAdminRequest && (!service.isActive || !service.store || !service.store.isActive
-        || service.store.isDeleted || service.store.verificationStatus !== 'verified')) {
-      return res.status(404).json({ message: 'Service not found or unavailable' });
+    if (!isAdminRequest) {
+      if (!service.isActive || !service.store) return res.status(404).json({ message: 'Service not found or unavailable' });
+      const ownerIds = await getCustomerVisibleOwnerIds();
+      const publicStore = await Store.findOne(buildCustomerVisibleStoreFilter(ownerIds, { _id: service.store }))
+        .select(PUBLIC_SERVICE_STORE_FIELDS);
+      if (!publicStore) return res.status(404).json({ message: 'Service not found or unavailable' });
+      return res.json({ ...service.toObject(), store: publicStore.toObject() });
     }
-    if (isAdminRequest
-        && !(await canOperateStore(req.user, service.store?._id || service.store, ['services.view', 'services.manage']))) {
+
+    await service.populate('store', `${PUBLIC_SERVICE_STORE_FIELDS} owner isActive isDeleted`);
+    if (!(await canOperateStore(req.user, service.store?._id || service.store, ['services.view', 'services.manage']))) {
       return res.status(403).json({ message: 'Access denied for this service.' });
     }
     res.json(service);
   } catch (error) {
     console.error('Get service by ID error:', error);
-    res.status(500).json({ message: 'Server error' });
+    res.status(error.name === 'CastError' ? 404 : 500).json({
+      message: error.name === 'CastError' ? 'Service not found' : 'Server error'
+    });
   }
 };
 

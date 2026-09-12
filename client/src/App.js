@@ -33,6 +33,7 @@ import Products from './pages/customer/Products';
 import PetDetail from './pages/customer/PetDetail';
 import ProductDetail from './pages/customer/ProductDetail';
 import Services from './pages/customer/Services';
+import ServiceDetail from './pages/customer/ServiceDetail';
 import Cart from './pages/customer/Cart';
 import Checkout from './pages/customer/Checkout';
 import Orders from './pages/customer/Orders';
@@ -93,6 +94,7 @@ import SpecializedStaffVerification from './pages/superadmin/SpecializedStaffVer
 import ProfessionalVerificationStatus from './pages/staff/ProfessionalVerificationStatus';
 import EmployeeHR from './pages/staff/EmployeeHR';
 import HRManagement from './pages/admin/HRManagement';
+import CustomerPageErrorBoundary from './components/CustomerPageErrorBoundary';
 
 // Supplier Pages
 import SupplierDashboard from './pages/supplier/SupplierDashboard';
@@ -151,6 +153,11 @@ function App() {
                   <Route path="products" element={<Products />} />
                   <Route path="products/:id" element={<ProductDetail />} />
                   <Route path="services" element={<Services />} />
+                  <Route path="services/:id" element={
+                    <CustomerPageErrorBoundary pageName="service detail" title="Unable to show this service" message="Unable to load this service right now." backTo="/services" backLabel="Back to Services">
+                      <ServiceDetail />
+                    </CustomerPageErrorBoundary>
+                  } />
                   <Route path="stores" element={<Stores />} />
                   <Route path="stores/:storeId" element={<StoreDetail />} />
                   <Route path="find-shops" element={<FindShops />} />
@@ -164,7 +171,11 @@ function App() {
                   <Route path="checkout" element={<ProtectedRoute roles={['customer', 'admin', 'super_admin']}><Checkout /></ProtectedRoute>} />
                   <Route path="orders" element={<ProtectedRoute roles={['customer', 'admin', 'super_admin']}><Orders /></ProtectedRoute>} />
                   <Route path="orders/:id" element={<ProtectedRoute roles={['customer', 'admin', 'super_admin']}><OrderDetail /></ProtectedRoute>} />
-                  <Route path="bookings" element={<ProtectedRoute roles={['customer', 'admin', 'super_admin']}><Bookings /></ProtectedRoute>} />
+                  <Route path="bookings" element={<ProtectedRoute roles={['customer', 'admin', 'super_admin']}>
+                    <CustomerPageErrorBoundary pageName="customer bookings" title="Unable to show your bookings" message="Something in a booking record could not be displayed. Please try again." backTo="/services" backLabel="Browse Services">
+                      <Bookings />
+                    </CustomerPageErrorBoundary>
+                  </ProtectedRoute>} />
                   <Route path="booking-calendar" element={<ProtectedRoute roles={['customer', 'admin', 'super_admin']}><BookingCalendar /></ProtectedRoute>} />
                   <Route path="account-upgrade" element={<ProtectedRoute roles={['customer', 'admin', 'super_admin']}><StoreApplication /></ProtectedRoute>} />
                   <Route path="insights" element={<ProtectedRoute roles={['customer', 'admin', 'super_admin']}><CustomerDSS /></ProtectedRoute>} />

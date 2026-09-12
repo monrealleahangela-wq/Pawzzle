@@ -175,12 +175,7 @@ const Services = () => {
   };
 
   const handleBookService = (serviceId) => {
-    if (!isAuthenticated) {
-      toast.error('Please log in to book services');
-      return;
-    }
-    // This will navigate to booking page with pre-selected service
-    navigate(`/bookings?service=${serviceId}`);
+    navigate(`/services/${serviceId}`);
   };
 
   if (loading) {
@@ -411,7 +406,7 @@ const Services = () => {
                   onClick={() => handleBookService(service._id)}
                   className="btn btn-primary w-full py-2.5 sm:py-3 text-[10px] font-black uppercase tracking-widest shadow-lg shadow-primary-100 group/btn"
                 >
-                  View details &amp; book
+                  View Service
                 </button>
               </div>
             </div>

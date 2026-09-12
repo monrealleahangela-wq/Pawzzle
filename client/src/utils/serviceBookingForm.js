@@ -40,6 +40,7 @@ export const createEmptyServiceDetails = () => ({
 });
 
 export const resolveServiceBookingKind = (service = {}) => {
+  service = service && typeof service === 'object' ? service : {};
   const category = String(service.category || '').toLowerCase();
   const searchable = `${category} ${service.subCategory || ''} ${service.name || ''}`.toLowerCase();
   if (searchable.includes('adoption')) return SERVICE_BOOKING_KINDS.ADOPTION;

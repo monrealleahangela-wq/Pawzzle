@@ -17,24 +17,14 @@ test('checkout requests the authoritative quote without waiting for a profile ph
 
 test('shared payment summary displays a complete ordered breakdown and a bounded loading state', () => {
   const source = read('client/src/components/payments/PaymentBreakdown.js');
-  const orderedLabels = [
-    'Subtotal',
-    'Delivery fee',
-    'Service fee',
-    'Booking fee',
-    'Additional charges',
-    'Voucher discount',
-    'Total'
-  ];
-  const rowsSource = source.slice(source.indexOf('const rows'));
-  let cursor = -1;
-  for (const label of orderedLabels) {
-    const next = rowsSource.indexOf(label);
-    assert.ok(next > cursor, `${label} should appear in the requested order`);
-    cursor = next;
-  }
-  assert.match(rowsSource, /\['Subtotal',[\s\S]*\[taxLabel\(summary\),[\s\S]*\['Delivery fee'/);
-  assert.match(source, /return 'VAT \/ Tax'/);
+  const summary = read('client/src/utils/paymentSummary.js');
+  assert.match(source, /paymentSummaryRows\(summary, \{ showZeroFees \}\)/);
+  assert.match(source, /showZeroFees = false/);
+  assert.match(summary, /PRODUCT_ORDER: 'product_order'/);
+  assert.match(summary, /SERVICE_BOOKING: 'service_booking'/);
+  assert.match(summary, /Product subtotal/);
+  assert.match(summary, /Service price/);
+  assert.match(summary, /Tax status/);
   assert.match(source, /if \(loading\)/);
   assert.match(source, /Loading amount/);
   assert.match(source, /We couldn't calculate your total\. Please try again\./);

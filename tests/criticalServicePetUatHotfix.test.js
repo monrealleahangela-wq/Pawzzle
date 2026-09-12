@@ -26,15 +26,15 @@ test('customer service listing and store-specific reads are public and customer-
   assert.deepEqual(storeRead.handlers, ['getStoreServices']);
 
   const controller = read('controllers/serviceController.js');
-  assert.match(controller, /PUBLIC_STORE_FILTER[\s\S]*isActive: true[\s\S]*verificationStatus: \{ \$in: \['verified', null\] \}/);
+  assert.match(controller, /getCustomerVisibleOwnerIds\(\)[\s\S]*buildCustomerVisibleStoreFilter\(ownerIds/);
   assert.match(controller, /const filter = \{ store: storeId, isActive: true, isDeleted:/);
 });
 
 test('public service details reject inactive services and unavailable stores', () => {
   const controller = read('controllers/serviceController.js');
-  assert.match(controller, /!isAdminRequest && \(!service\.isActive/);
-  assert.match(controller, /service\.store\.verificationStatus !== 'verified'/);
-  assert.match(controller, /refundPolicy isActive isDeleted verificationStatus/);
+  assert.match(controller, /if \(!service\.isActive \|\| !service\.store\)/);
+  assert.match(controller, /if \(!publicStore\) return res\.status\(404\)/);
+  assert.match(controller, /PUBLIC_SERVICE_STORE_FIELDS/);
 });
 
 test('booking request uses an owned pet profile snapshot without requiring duplicate optional metrics', () => {

@@ -15,6 +15,7 @@ import PaymentBreakdown from '../../components/payments/PaymentBreakdown';
 import { bookingPaymentSummary, formatPeso } from '../../utils/paymentSummary';
 import ServiceSpecificBookingFields, { ServiceIntakeSummary } from '../../components/booking/ServiceSpecificBookingFields';
 import { buildServiceIntake, createEmptyServiceDetails, resolveServiceBookingKind, validateServiceDetails } from '../../utils/serviceBookingForm';
+import { formatRecordId, formatSafeDate, normalizeBookingCollection, normalizeBookingRecord, normalizeServiceDetail } from '../../utils/customerServiceData';
 
 const createInitialBookingForm = () => ({
   bookingDate: '',
@@ -313,7 +314,7 @@ const Bookings = ({ isSubcomponent = false }) => {
               limit: 10
             };
             const response = await bookingService.getCustomerBookings(params);
-            const newList = response.data.bookings || [];
+            const newList = normalizeBookingCollection(response.data?.bookings);
             setBookings(newList);
             const target = newList.find(b => b._id === bookingId);
             if (target) setSelectedBooking(target);
@@ -334,7 +335,7 @@ const Bookings = ({ isSubcomponent = false }) => {
         } else {
             // If not found in current loaded list, try to fetch it specifically or refresh
             bookingService.getBookingById(bookingId).then(res => {
-                if (res.data.booking) setSelectedBooking(res.data.booking);
+                if (res.data.booking) setSelectedBooking(normalizeBookingRecord(res.data.booking));
             }).catch(e => console.error(e));
         }
     }
@@ -406,7 +407,7 @@ const Bookings = ({ isSubcomponent = false }) => {
       console.log('🔍 Fetching service details for:', serviceId);
       const response = await serviceService.getServiceById(serviceId);
       // Handle various structural possibilities from backend
-      const service = response.data?.service || response.data;
+      const service = normalizeServiceDetail(response.data);
 
       console.log('✅ Service fetched:', service);
       if (!service || !service._id) throw new Error('Invalid service data received');
@@ -435,7 +436,7 @@ const Bookings = ({ isSubcomponent = false }) => {
       };
 
       const response = await bookingService.getCustomerBookings(params);
-      setBookings(response.data.bookings || []);
+      setBookings(normalizeBookingCollection(response.data?.bookings));
     } catch (error) {
       console.error('Error fetching bookings:', error);
       setBookingsError(true);
@@ -464,7 +465,7 @@ const Bookings = ({ isSubcomponent = false }) => {
     setBookingActionLoading(true);
     try {
       const response = await bookingService.selectStaff(selectedBooking._id, staffId);
-      setSelectedBooking(response.data.booking);
+      setSelectedBooking(normalizeBookingRecord(response.data.booking));
       setStaffProfileId(null);
       toast.success('Assigned staff updated. Review the final booking details before paying.');
       fetchBookings();
@@ -486,13 +487,13 @@ const Bookings = ({ isSubcomponent = false }) => {
     setBookingActionLoading(true);
     try {
       const confirmation = await bookingService.confirmForPayment(bookingId, { refundPolicyAcknowledged: selectedAcknowledgmentRequired ? agreedToPolicy : false });
-      setSelectedBooking(confirmation.data.booking);
+      setSelectedBooking(normalizeBookingRecord(confirmation.data.booking));
       const response = await paymentService.createBookingCheckoutSession(bookingId);
       if (response.data.checkoutUrl) window.location.href = response.data.checkoutUrl;
     } catch (error) {
       toast.error(error.response?.data?.message || 'We could not confirm this booking for payment. Please try again.');
       const refreshed = await bookingService.getBookingById(bookingId).catch(() => null);
-      if (refreshed?.data?.booking) setSelectedBooking(refreshed.data.booking);
+      if (refreshed?.data?.booking) setSelectedBooking(normalizeBookingRecord(refreshed.data.booking));
     } finally {
       setBookingActionLoading(false);
     }
@@ -2015,7 +2016,7 @@ const Bookings = ({ isSubcomponent = false }) => {
                   <div className="min-w-0">
                     <div className="flex items-center gap-3 mb-2">
                       <h3 className="text-base font-black text-slate-900 tracking-tight leading-none group-hover:text-primary-600 transition-colors">
-                        {booking.service?.name || 'Service'}
+                        {booking.service?.name || 'Service unavailable'}
                       </h3>
                       <div className="w-1.5 h-1.5 rounded-full bg-slate-200" />
                       <span className={`px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-[0.2em] shadow-sm border ${getStatusColor(booking.status)}`}>
@@ -2025,7 +2026,7 @@ const Bookings = ({ isSubcomponent = false }) => {
                     <div className="flex items-center gap-4">
                       <div className="flex items-center gap-2">
                         <Calendar className="h-3.5 w-3.5 text-primary-600" />
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">{new Date(booking.bookingDate).toLocaleDateString()}</p>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">{formatSafeDate(booking.bookingDate)}</p>
                       </div>
                       <div className="flex items-center gap-2">
                         <Clock className="h-3.5 w-3.5 text-primary-600" />
@@ -2058,8 +2059,8 @@ const Bookings = ({ isSubcomponent = false }) => {
                       <p className="text-[11px] font-black text-slate-800 uppercase truncate">{booking.pet?.breed || 'N/A'}</p>
                     </div>
                     <div><p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Specialist</p><p className="truncate text-[11px] font-black text-slate-800">{booking.staff ? `${booking.staff.firstName || ''} ${booking.staff.lastName || ''}`.trim() : 'Pending assignment'}</p>{booking.staff?.professionalProfile?.verification?.status === 'verified' && <span className="text-[8px] font-bold text-emerald-600">Verified</span>}</div>
-                    <div><p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Branch</p><p className="truncate text-[11px] font-black text-slate-800">{booking.store?.name || 'Store'}</p></div>
-                    <div><p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Payment</p><p className={`text-[11px] font-black capitalize ${booking.paymentStatus === 'paid' ? 'text-emerald-600' : 'text-amber-600'}`}>{booking.paymentStatus || 'pending'}</p></div>
+                    <div><p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Branch</p><p className="truncate text-[11px] font-black text-slate-800">{booking.store?.name || 'Store unavailable'}</p></div>
+                    <div><p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Payment</p><p className={`text-[11px] font-black capitalize ${booking.paymentStatus === 'paid' ? 'text-emerald-600' : 'text-amber-600'}`}>{booking.paymentStatus === 'unavailable' ? 'Payment information unavailable' : booking.paymentStatus}</p></div>
                   </div>
                 </div>
 
@@ -2076,7 +2077,7 @@ const Bookings = ({ isSubcomponent = false }) => {
                       >
                         <Store className="h-3.5 w-3.5 text-primary-600 group-hover/store:scale-110 transition-transform" />
                         <div className="flex flex-col">
-                          <span className="text-[9px] font-black text-slate-900 uppercase tracking-widest leading-none mb-0.5">{booking.store?.name || 'Store'}</span>
+                            <span className="text-[9px] font-black text-slate-900 uppercase tracking-widest leading-none mb-0.5">{booking.store?.name || 'Store unavailable'}</span>
                           <span className="text-[7.5px] font-bold text-slate-400 uppercase tracking-tight flex items-center gap-1">
                             <MapPin className="h-2 w-2 text-primary-500" /> {booking.store?.contactInfo?.address?.city || 'CAVITE'}
                           </span>
@@ -2138,7 +2139,7 @@ const Bookings = ({ isSubcomponent = false }) => {
                     <span className="text-[9px] font-black uppercase tracking-wider">Booking Information</span>
                   </div>
                 </div>
-                <h3 className="text-lg sm:text-xl font-black uppercase tracking-tight leading-none mb-2">#{selectedBooking._id.slice(-12).toUpperCase()}</h3>
+                <h3 className="text-lg sm:text-xl font-black uppercase tracking-tight leading-none mb-2">#{formatRecordId(selectedBooking._id)}</h3>
                 <div className="flex items-center gap-2 text-slate-400">
                   <Activity className="h-3.5 w-3.5 text-emerald-500" />
                   <p className="text-[10px] font-bold">{getStatusLabel(selectedBooking.status)}</p>
@@ -2187,8 +2188,8 @@ const Bookings = ({ isSubcomponent = false }) => {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="p-4 bg-slate-50/50 rounded-xl border border-slate-100 hover:border-primary-200 transition-all group">
                   <label className="text-[9px] font-black text-slate-400 uppercase tracking-[0.4em] block mb-3 group-hover:text-primary-600 transition-colors">Service</label>
-                  <p className="text-[13px] font-black text-slate-900 uppercase leading-none mb-1.5">{selectedBooking.service?.name}</p>
-                  <span className="text-[10px] font-black text-primary-600 bg-primary-50 px-2 py-0.5 rounded-md border border-primary-100">{selectedBooking.service?.duration} min</span>
+                  <p className="text-[13px] font-black text-slate-900 uppercase leading-none mb-1.5">{selectedBooking.service?.name || 'Service unavailable'}</p>
+                  <span className="text-[10px] font-black text-primary-600 bg-primary-50 px-2 py-0.5 rounded-md border border-primary-100">{selectedBooking.service?.duration ? `${selectedBooking.service.duration} min` : 'Duration unavailable'}</span>
                 </div>
                 <div className="p-4 bg-slate-50/50 rounded-xl border border-slate-100 hover:border-emerald-200 transition-all group">
                   <label className="text-[9px] font-black text-slate-400 uppercase tracking-[0.4em] block mb-3 group-hover:text-emerald-600 transition-colors">Service Location</label>
@@ -2240,7 +2241,7 @@ const Bookings = ({ isSubcomponent = false }) => {
                   </div>
                   <div>
                     <label className="text-[9px] font-black text-primary-500 uppercase tracking-[0.4em] block mb-2">Booking Date</label>
-                    <p className="text-sm font-black uppercase tracking-tight">{new Date(selectedBooking.bookingDate).toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}</p>
+                    <p className="text-sm font-black uppercase tracking-tight">{formatSafeDate(selectedBooking.bookingDate, { weekday: 'long', month: 'long', day: 'numeric' })}</p>
                   </div>
                 </div>
                 <div className="text-right relative z-10">
@@ -2371,18 +2372,18 @@ const Bookings = ({ isSubcomponent = false }) => {
                   <div className="bg-white p-8 space-y-5">
                     <div className="flex items-center justify-between pb-4 border-b border-dashed border-slate-100">
                       <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Booking ID</span>
-                      <span className="text-[11px] font-black text-slate-900 uppercase font-mono">#{selectedBooking._id.slice(-12).toUpperCase()}</span>
+                      <span className="text-[11px] font-black text-slate-900 uppercase font-mono">#{formatRecordId(selectedBooking._id)}</span>
                     </div>
 
                     <div className="flex items-center justify-between">
                       <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Service</span>
-                      <span className="text-[11px] font-black text-slate-900 uppercase">{selectedBooking.service?.name}</span>
+                      <span className="text-[11px] font-black text-slate-900 uppercase">{selectedBooking.service?.name || 'Service unavailable'}</span>
                     </div>
 
                     <div className="flex items-start justify-between">
                       <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-0.5">Schedule</span>
                       <div className="text-right">
-                        <p className="text-[11px] font-black text-slate-900 uppercase">{new Date(selectedBooking.bookingDate).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}</p>
+                        <p className="text-[11px] font-black text-slate-900 uppercase">{formatSafeDate(selectedBooking.bookingDate, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}</p>
                         <p className="text-[10px] font-bold text-primary-600">{formatTime12h(selectedBooking.startTime)} – {formatTime12h(selectedBooking.endTime)}</p>
                       </div>
                     </div>
@@ -2394,7 +2395,7 @@ const Bookings = ({ isSubcomponent = false }) => {
 
                     <div className="flex items-center justify-between">
                       <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Store</span>
-                      <span className="text-[11px] font-black text-slate-900 uppercase">{selectedBooking.store?.name}</span>
+                      <span className="text-[11px] font-black text-slate-900 uppercase">{selectedBooking.store?.name || 'Store unavailable'}</span>
                     </div>
 
                     <div className="border-y border-dashed border-slate-100 py-4">

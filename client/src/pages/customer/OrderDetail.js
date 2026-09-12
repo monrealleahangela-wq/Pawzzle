@@ -6,10 +6,9 @@ import { useAuth } from '../../contexts/AuthContext';
 import { Heart, Package, ArrowLeft, Truck, CreditCard, MapPin, Store, Star, CheckCircle, AlertCircle, Link2, Navigation, Phone, Activity, ChevronDown, ChevronUp, MessageSquare, FileText, ClipboardCheck } from 'lucide-react';
 import OrderReviewModal from '../../components/OrderReviewModal';
 import DeliveryAssignmentFields, { emptyExternal } from '../../components/delivery/DeliveryAssignmentFields';
-import { getTaxStatusLabel } from '../../utils/transactionTax';
 import { normalizeRefundPolicy, refundPolicyLabel } from '../../utils/refundPolicy';
 import PaymentBreakdown from '../../components/payments/PaymentBreakdown';
-import { formatPeso, orderPaymentSummary } from '../../utils/paymentSummary';
+import { formatPeso, orderPaymentSummary, paymentSummaryRows } from '../../utils/paymentSummary';
 
 const OrderDetail = () => {
   const { id } = useParams();
@@ -132,8 +131,8 @@ const OrderDetail = () => {
   const handleGenerateInvoice = async () => {
     setIsGeneratingInvoice(true);
     try {
-      const pricing = order.invoiceSnapshot?.pricingBreakdown || order.pricingBreakdown || {};
       const paymentSummary = orderPaymentSummary(order);
+      const pricingRows = paymentSummaryRows(paymentSummary);
       const sellerName = order.invoiceSnapshot?.sellerName || order.store?.name || 'Store';
       const sellerAddress = order.invoiceSnapshot?.sellerAddress || '';
       setIsGeneratingInvoice(false);
@@ -144,16 +143,8 @@ const OrderDetail = () => {
         Order ID: ${order.orderNumber}
         Date: ${new Date(order.orderDate).toLocaleDateString()}
         Customer: ${order.customer?.firstName} ${order.customer?.lastName}
-        Subtotal: ${formatPeso(paymentSummary.subtotal)}
-        Discount: -${formatPeso(paymentSummary.discountAmount)}
-        Delivery Fee: ${formatPeso(paymentSummary.deliveryFee)}
-        Service Fee: ${formatPeso(paymentSummary.serviceFee)}
-        Booking Fee: ${formatPeso(paymentSummary.bookingFee)}
-        Additional Charges: ${formatPeso(paymentSummary.additionalCharges)}
-        Tax Treatment: ${getTaxStatusLabel(pricing)}
-        VAT (${Number(pricing.vatRatePercent || 0)}%): ${formatPeso(paymentSummary.vatAmount)}
+        ${pricingRows.map(row => `${row.label}: ${row.displayValue}`).join('\n        ')}
         Final Total: ${formatPeso(paymentSummary.finalTotal)}
-        Payment Status: ${(order.paymentStatus || 'pending').toUpperCase()}
         Refund Policy: ${refundPolicyLabel(orderRefundPolicy.type)}
         Policy Summary: ${orderRefundPolicy.summary}
         Policy Conditions: ${orderRefundPolicy.conditions || 'None specified'}
@@ -416,12 +407,6 @@ const OrderDetail = () => {
               </div>
               <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100">
                 <PaymentBreakdown summary={authoritativePaymentSummary} compact />
-                <div className="mt-3 border-t border-slate-200 pt-3 text-right">
-                  <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Method</p>
-                  <p className="text-[10px] font-black text-slate-900 uppercase tracking-tight">
-                    {order.paymentMethod?.replace(/_/g, ' ')}
-                  </p>
-                </div>
               </div>
               <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                 <p className="text-[9px] font-black uppercase tracking-widest text-slate-800">{refundPolicyLabel(orderRefundPolicy.type)} Policy</p>

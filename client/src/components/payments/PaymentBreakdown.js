@@ -1,24 +1,13 @@
 import React from 'react';
 import { AlertCircle, Loader2 } from 'lucide-react';
-import { formatPeso, isCompletePaymentSummary } from '../../utils/paymentSummary';
-
-const taxLabel = (summary) => {
-  if (summary?.taxStatus === 'vat_registered') {
-    const prefix = summary.pricingMode === 'inclusive' ? 'VAT Included' : 'VAT';
-    return `${prefix}${summary.vatRatePercent !== null && summary.vatRatePercent !== undefined ? ` (${summary.vatRatePercent}%)` : ''}`;
-  }
-  if (summary?.taxStatus === 'vat_exempt') return 'VAT-Exempt Tax';
-  if (summary?.taxStatus === 'zero_rated') return 'Zero-Rated VAT';
-  if (summary?.taxStatus === 'non_vat') return 'VAT / Tax (Non-VAT)';
-  return 'VAT / Tax';
-};
+import { formatPeso, isCompletePaymentSummary, paymentSummaryRows } from '../../utils/paymentSummary';
 
 const PaymentBreakdown = ({
   summary,
   loading = false,
   error = '',
   compact = false,
-  showZeroFees = true,
+  showZeroFees = false,
   className = ''
 }) => {
   if (loading) {
@@ -38,34 +27,16 @@ const PaymentBreakdown = ({
     );
   }
 
-  const deliveryRows = summary.deliveryDetails ? [
-    [`Shipping distance (${Number(summary.deliveryDetails.distanceKm || 0).toFixed(2)} km)`, null],
-    ['Base delivery fee', summary.deliveryDetails.baseFee],
-    [`Distance charge (${Number(summary.deliveryDetails.billableKilometers || 0).toFixed(2)} km x ${formatPeso(summary.deliveryDetails.ratePerKilometer)})`, summary.deliveryDetails.distanceCharge],
-    [`Additional items (${summary.deliveryDetails.additionalItemQuantity || 0} x ${formatPeso(summary.deliveryDetails.additionalItemFee)})`, summary.deliveryDetails.itemCharge]
-  ] : [];
-  const rows = [
-    ['Subtotal', summary.subtotal],
-    [taxLabel(summary), summary.vatAmount],
-    ...deliveryRows,
-    ['Delivery fee', summary.deliveryFee],
-    ['Service fee', summary.serviceFee],
-    ['Booking fee', summary.bookingFee],
-    ['Additional charges', summary.additionalCharges]
-  ].filter(([, value]) => showZeroFees || Number(value || 0) !== 0);
+  const rows = paymentSummaryRows(summary, { showZeroFees });
 
   return (
     <div className={`${compact ? 'space-y-1.5 text-[10px]' : 'space-y-3 text-xs'} ${className}`}>
-      {rows.map(([label, value]) => (
-        <div key={label} className="flex items-center justify-between gap-4 text-secondary">
-          <span>{label}</span>
-          <span className="font-bold text-default">{value === null ? 'Calculated from the delivery address' : formatPeso(value)}</span>
+      {rows.map((row) => (
+        <div key={row.key} className="flex items-start justify-between gap-4 text-secondary">
+          <span>{row.label}</span>
+          <span className="text-right font-bold text-default">{row.displayValue}</span>
         </div>
       ))}
-      <div className="flex items-center justify-between gap-4 font-bold text-emerald-700 dark:text-emerald-300">
-        <span>Voucher discount</span>
-        <span>{Number(summary.discountAmount || 0) > 0 ? `−${formatPeso(summary.discountAmount)}` : formatPeso(0)}</span>
-      </div>
       <div className={`${compact ? 'pt-2' : 'pt-3'} flex items-end justify-between gap-4 border-t border-slate-200 dark:border-slate-700`}>
         <span className="font-black text-default">Total</span>
         <span className={`${compact ? 'text-base' : 'text-xl'} font-black text-primary-700 dark:text-primary-300`}>{formatPeso(summary.finalTotal)}</span>

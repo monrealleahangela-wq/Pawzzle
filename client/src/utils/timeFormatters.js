@@ -4,7 +4,7 @@
  * @returns {string} - Time in 12-hour format (e.g., "2:30 PM")
  */
 export const formatTime12h = (time24) => {
-  if (!time24) return '';
+  if (!time24) return 'Time unavailable';
   
   // Handle case where time might be a Date object
   if (time24 instanceof Date) {
@@ -15,7 +15,11 @@ export const formatTime12h = (time24) => {
     });
   }
 
-  const [hours, minutes] = time24.split(':');
+  if (typeof time24 !== 'string' || !/^([0-1]?\d|2[0-3]):[0-5]\d(?::\d{2})?$/.test(time24.trim())) {
+    return 'Time unavailable';
+  }
+
+  const [hours, minutes] = time24.trim().split(':');
   const h = parseInt(hours, 10);
   const ampm = h >= 12 ? 'PM' : 'AM';
   const h12 = h % 12 || 12;

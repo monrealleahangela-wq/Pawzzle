@@ -480,7 +480,8 @@ const Checkout = () => {
   const quoteBreakdown = pricingQuote?.pricingBreakdown;
   const quoteSummary = quoteBreakdown ? orderPaymentSummary({
     pricingBreakdown: quoteBreakdown,
-    deliveryFeeCalculation: pricingQuote?.deliveryFeeCalculation
+    deliveryFeeCalculation: pricingQuote?.deliveryFeeCalculation,
+    deliveryMethod
   }) : null;
 
   if (checkoutItems.length === 0) {
