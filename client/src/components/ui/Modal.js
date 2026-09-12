@@ -45,15 +45,15 @@ const Modal = React.forwardRef(({
       >
         {/* Header */}
         {(title || showCloseButton) && (
-          <div className="flex items-center justify-between p-3.5 sm:px-5 sm:py-3.5 border-b border-neutral-200/50 shrink-0">
-            <div>
+          <div className="flex min-w-0 items-center justify-between gap-3 p-3.5 sm:px-5 sm:py-3.5 border-b border-neutral-200/50 shrink-0">
+            <div className="min-w-0 flex-1">
               {title && (
-                <h3 className="text-lg font-black text-default uppercase tracking-tighter leading-none">
+                <h3 className="text-lg font-black text-default uppercase tracking-tighter leading-tight break-words">
                   {title}
                 </h3>
               )}
               {description && (
-                <p className="text-sm text-secondary mt-1">
+                <p className="text-sm text-secondary mt-1 break-words">
                   {description}
                 </p>
               )}
@@ -63,7 +63,7 @@ const Modal = React.forwardRef(({
                 variant="ghost"
                 size="icon"
                 onClick={onClose}
-                className="h-8 w-8 rounded-lg hover:bg-neutral-100"
+                className="h-8 w-8 shrink-0 rounded-lg hover:bg-neutral-100"
               >
                 <X className="h-4 w-4" />
               </Button>
@@ -83,13 +83,13 @@ const Modal = React.forwardRef(({
 Modal.displayName = "Modal";
 
 const ModalHeader = ({ className, ...props }) => (
-  <div className={cn("flex items-center justify-between p-4 sm:px-5 sm:py-3.5 border-b border-neutral-200/50", className)} {...props} />
+  <div className={cn("flex min-w-0 items-center justify-between gap-3 p-4 sm:px-5 sm:py-3.5 border-b border-neutral-200/50", className)} {...props} />
 );
 
 const ModalTitle = React.forwardRef(({ className, children, ...props }, ref) => (
   <h3
     ref={ref}
-    className={cn("text-lg font-black text-default uppercase tracking-tighter leading-none", className)}
+    className={cn("min-w-0 flex-1 text-lg font-black text-default uppercase tracking-tighter leading-tight break-words", className)}
     {...props}
   >
     {children}
@@ -100,7 +100,7 @@ ModalTitle.displayName = "ModalTitle";
 const ModalDescription = React.forwardRef(({ className, ...props }, ref) => (
   <p
     ref={ref}
-    className={cn("text-sm text-secondary", className)}
+    className={cn("text-sm text-secondary break-words", className)}
     {...props}
   />
 ));
@@ -112,7 +112,7 @@ const ModalContent = React.forwardRef(({ className, ...props }, ref) => (
 ModalContent.displayName = "ModalContent";
 
 const ModalFooter = ({ className, ...props }) => (
-  <div className={cn("flex items-center justify-end gap-3 p-4 sm:px-5 sm:py-3.5 border-t border-neutral-200/50", className)} {...props} />
+  <div className={cn("flex flex-wrap items-center justify-end gap-2 sm:gap-3 p-4 sm:px-5 sm:py-3.5 border-t border-neutral-200/50", className)} {...props} />
 );
 ModalFooter.displayName = "ModalFooter";
 

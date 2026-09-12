@@ -575,7 +575,7 @@ const AdminPets = () => {
                 <p className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">No pets found</p>
               </div>
             ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-4">
+              <div className="responsive-card-grid [--card-min:17rem] sm:[--card-min:18rem] [--card-gap:1rem]">
                 {pets.map((pet) => (
                   <div key={pet._id} className="group bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-xl hover:-translate-y-0.5 transition-all overflow-hidden flex flex-col">
                     {/* Image */}
@@ -616,8 +616,8 @@ const AdminPets = () => {
                       <div className="flex justify-between items-start">
                         <div className="min-w-0">
                           <p className="text-[10px] font-black text-rose-500 uppercase tracking-widest leading-none mb-1.5">{pet.species} · {pet.gender}</p>
-                          <h3 className="text-[16px] font-black text-slate-900 uppercase leading-none truncate mb-2">{pet.name}</h3>
-                          <p className="text-[11px] font-bold text-slate-400 uppercase truncate tracking-tight">{pet.breed} · {pet.age} {pet.ageUnit}</p>
+                          <h3 className="mb-2 min-h-[2.5rem] text-base font-black uppercase leading-tight text-slate-900 line-clamp-2 break-words">{pet.name}</h3>
+                          <p className="text-[11px] font-bold uppercase leading-tight tracking-tight text-slate-400 line-clamp-2 break-words">{pet.breed} · {pet.age} {pet.ageUnit}</p>
                           <p className="mt-1 text-[9px] font-black uppercase tracking-wider text-slate-400">ID {String(pet._id).slice(-8).toUpperCase()} · PCCI {pet.pcciRegistration?.status === 'yes' ? 'provided' : 'not provided'}</p>
                         </div>
                       </div>
@@ -630,7 +630,7 @@ const AdminPets = () => {
 
                       {/* Price + Action row */}
                       <div className="mt-auto pt-4 border-t border-slate-50 flex items-center justify-between gap-2">
-                        <span className="text-lg sm:text-xl font-black text-slate-900 tracking-tighter truncate">
+                        <span className="min-w-0 text-lg font-black leading-tight tracking-tighter text-slate-900 break-words sm:text-xl">
                           ₱{(pet.price || 0).toLocaleString()}
                         </span>
                         <div className="flex gap-1.5 shrink-0">

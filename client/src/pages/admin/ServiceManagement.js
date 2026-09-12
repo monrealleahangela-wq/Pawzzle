@@ -471,7 +471,7 @@ const ServiceManagement = () => {
       </div>
 
       {/* Services Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+      <div className="responsive-card-grid [--card-min:18rem] xl:[--card-min:19rem] [--card-gap:1.25rem]">
         {services
           .filter(s => {
             const matchSearch = !searchTerm || s.name.toLowerCase().includes(searchTerm.toLowerCase()) || s.description.toLowerCase().includes(searchTerm.toLowerCase());
@@ -507,7 +507,7 @@ const ServiceManagement = () => {
                     <span className="px-2 py-0.5 rounded text-[8px] font-black uppercase bg-indigo-500/90 text-white">HOME</span>
                   )}
                 </div>
-                <h3 className="text-base font-black text-white uppercase tracking-tight leading-tight line-clamp-1">{service.name}</h3>
+                <h3 className="text-base font-black uppercase leading-tight tracking-tight text-white line-clamp-2 break-words">{service.name}</h3>
               </div>
             </div>
 

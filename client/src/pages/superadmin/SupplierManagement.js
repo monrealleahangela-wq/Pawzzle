@@ -154,23 +154,23 @@ const SupplierManagement = () => {
           const cfg = statusConfig[s.status] || statusConfig.pending_verification;
           return (
             <div key={s._id} className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm hover:shadow-lg transition-all">
-              <div className="flex items-center gap-5">
+              <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-center sm:gap-5">
                 <div className="w-14 h-14 bg-primary-100 rounded-2xl flex items-center justify-center shrink-0">
                   {s.logo ? <img src={getImageUrl(s.logo)} alt="" className="w-full h-full object-cover rounded-2xl" /> : <Truck className="h-6 w-6 text-primary-500" />}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <h3 className="text-sm font-black text-slate-900 uppercase truncate">{s.businessName}</h3>
+                  <div className="mb-1 flex min-w-0 flex-wrap items-center gap-2">
+                    <h3 className="min-w-0 text-sm font-black uppercase leading-tight text-slate-900 line-clamp-2 break-words">{s.businessName}</h3>
                     <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase bg-${cfg.color}-100 text-${cfg.color}-700 shrink-0`}>{cfg.label}</span>
                   </div>
-                  <p className="text-[10px] text-slate-400 truncate">{s.contactPerson} • {s.email} • {s.address?.city}, {s.address?.province}</p>
-                  <div className="flex items-center gap-4 mt-2">
+                  <p className="text-[10px] leading-relaxed text-slate-400 break-words">{s.contactPerson} • {s.email} • {s.address?.city}, {s.address?.province}</p>
+                  <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2">
                     <span className="text-[9px] font-bold text-slate-400"><Star className="h-3 w-3 inline text-amber-500" /> {s.ratings?.average?.toFixed(1) || '—'}</span>
                     <span className="text-[9px] font-bold text-slate-400"><TrendingUp className="h-3 w-3 inline text-emerald-500" /> {s.performance?.reliabilityScore || 100}%</span>
                     <span className="text-[9px] font-bold text-slate-400"><Package className="h-3 w-3 inline text-primary-500" /> {s.productCategories?.length || 0} categories</span>
                   </div>
                 </div>
-                <div className="flex gap-2 shrink-0">
+                <div className="flex w-full shrink-0 flex-wrap gap-2 sm:w-auto sm:justify-end">
                   <button onClick={() => viewDetails(s._id)}
                     className="px-4 py-2.5 bg-slate-900 text-white rounded-xl text-[9px] font-black uppercase hover:bg-primary-600 transition-all flex items-center gap-1.5">
                     <Eye className="h-3.5 w-3.5" /> View

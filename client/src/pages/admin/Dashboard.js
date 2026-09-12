@@ -43,8 +43,8 @@ const MetricCard = ({ label, value, icon: Icon, tone = 'primary', detail }) => {
     <article className="min-w-0 rounded-2xl border border-slate-200 bg-white p-3.5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="truncate text-[11px] font-semibold uppercase tracking-wide text-slate-500">{label}</p>
-          <p className="mt-1.5 truncate text-xl font-bold tracking-tight text-slate-950">{value}</p>
+          <p className="text-[11px] font-semibold uppercase leading-tight tracking-wide text-slate-500 line-clamp-2 break-words">{label}</p>
+          <p className="mt-1.5 text-xl font-bold leading-tight tracking-tight text-slate-950 break-words">{value}</p>
           {detail && <p className="mt-1 text-[11px] text-slate-500">{detail}</p>}
         </div>
         <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl ${tones[tone] || tones.primary}`}>
@@ -62,7 +62,7 @@ const BarChart = ({ rows = [], labelKey = 'label', valueKey = 'value', formatter
     <div className="space-y-2.5" role="img" aria-label="Bar chart">
       {rows.map((row, index) => (
         <div key={row.key || row.id || index} className="grid grid-cols-[7rem_1fr_auto] items-center gap-2 text-xs">
-          <span className="truncate text-slate-600">{row[labelKey]}</span>
+          <span className="text-slate-600 line-clamp-2 break-words" title={row[labelKey]}>{row[labelKey]}</span>
           <span className="h-2 overflow-hidden rounded-full bg-slate-100">
             <span className="block h-full rounded-full bg-primary transition-all" style={{ width: `${Math.max(2, Number(row[valueKey] || 0) / max * 100)}%` }} />
           </span>

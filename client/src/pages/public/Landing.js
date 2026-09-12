@@ -249,8 +249,8 @@ const Landing = () => {
                       {item.image ? <img src={getImageUrl(item.image)} alt={item.title} className="h-full w-full object-cover transition duration-500 group-hover:scale-105" /> : <div className="flex h-full items-center justify-center"><img src="/images/logo.png" alt="" className="h-12 w-12 object-contain opacity-20" /></div>}
                     </div>
                     <div className="p-3.5">
-                      <h3 className="truncate text-sm font-black text-slate-900">{item.title}</h3>
-                      <p className="mt-1 truncate text-[10px] capitalize text-slate-400">{item.meta || 'Available on Pawzzle'}</p>
+                      <h3 className="min-h-[2.5rem] text-sm font-black leading-tight text-slate-900 line-clamp-2 break-words">{item.title}</h3>
+                      <p className="mt-1 text-[10px] capitalize leading-tight text-slate-400 line-clamp-2 break-words">{item.meta || 'Available on Pawzzle'}</p>
                       {item.price && <p className="mt-2 text-xs font-black text-primary-700">{item.price}</p>}
                     </div>
                   </Link>

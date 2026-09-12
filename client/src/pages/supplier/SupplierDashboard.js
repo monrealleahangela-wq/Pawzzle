@@ -241,14 +241,14 @@ const SupplierDashboard = () => {
       </div>
 
       {/* Tab Navigation */}
-      <div className="bg-slate-900 p-1.5 rounded-2xl flex gap-1 overflow-x-auto">
+      <div className="content-scroll-row gap-1 rounded-2xl bg-slate-900 p-1.5">
         {[
           { id: 'overview', label: 'Overview', icon: BarChart3 },
           { id: 'products', label: 'Products', icon: Package },
           { id: 'orders', label: 'Orders', icon: ShoppingCart }
         ].map(tab => (
           <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-            className={`px-5 py-3 rounded-xl flex items-center gap-2 text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeTab === tab.id ? 'bg-white text-slate-900 shadow' : 'text-white/60 hover:text-white'}`}>
+            className={`flex shrink-0 items-center gap-2 whitespace-nowrap rounded-xl px-5 py-3 text-[10px] font-black uppercase tracking-wide transition-all ${activeTab === tab.id ? 'bg-white text-slate-900 shadow' : 'text-white/60 hover:text-white'}`}>
             <tab.icon className="h-4 w-4" /> {tab.label}
           </button>
         ))}
@@ -291,7 +291,7 @@ const SupplierDashboard = () => {
               <Plus className="h-4 w-4" /> Add Product
             </button>
           </div>
-          <div className="responsive-card-grid [--card-min:15rem] [--card-gap:1rem]">
+          <div className="responsive-card-grid [--card-min:17rem] sm:[--card-min:18rem] [--card-gap:1rem]">
             {products.map(p => (
               <div key={p._id} className="bg-white border border-slate-100 rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition-all group">
                 <div className="h-32 bg-primary-50 flex items-center justify-center">
@@ -299,7 +299,7 @@ const SupplierDashboard = () => {
                 </div>
                 <div className="p-4">
                   <p className="text-[9px] font-black text-primary-600 uppercase tracking-widest">{p.category?.replace('_', ' ')}</p>
-                  <h4 className="text-sm font-black text-slate-900 uppercase mt-1 line-clamp-1">{p.name}</h4>
+                  <h4 className="mt-1 min-h-[2.5rem] text-sm font-black uppercase leading-tight text-slate-900 line-clamp-2 break-words">{p.name}</h4>
                   <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-50">
                     <div>
                       <p className="text-[8px] font-black text-slate-400 uppercase">Wholesale</p>

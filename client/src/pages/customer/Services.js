@@ -185,7 +185,7 @@ const Services = () => {
 
   if (loading) {
     return (
-      <div className="responsive-card-grid [--card-min:14rem] sm:[--card-min:16rem] sm:[--card-gap:2rem]" aria-label="Loading services">
+      <div className="responsive-card-grid [--card-min:17rem] sm:[--card-min:18rem] xl:[--card-min:19rem] sm:[--card-gap:1.5rem]" aria-label="Loading services">
         {[1, 2, 3, 4, 5, 6].map(item => (
           <div key={item} className="h-72 animate-pulse rounded-2xl border border-slate-100 bg-white p-4">
             <div className="h-32 rounded-xl bg-slate-100" />
@@ -247,14 +247,14 @@ const Services = () => {
           />
         </div>
 
-        <div className="flex flex-col md:flex-row gap-6 items-center">
+        <div className="flex min-w-0 flex-col gap-4 xl:flex-row xl:items-start">
           {/* Modern Horizontal Filter Scrolling */}
-          <div className="flex-1 flex items-center gap-3 overflow-x-auto pb-4 scrollbar-hide w-full">
+          <div className="content-scroll-row flex-1 items-center gap-2 pb-2 scrollbar-hide" aria-label="Service categories">
             {categories.map((category) => (
               <button
                 key={category.id}
                 onClick={() => handleCategoryChange(category.id)}
-                className={`px-8 py-3 rounded-2xl font-black text-xs uppercase tracking-widest transition-all whitespace-nowrap shadow-sm border ${selectedCategory === category.id
+                className={`shrink-0 whitespace-nowrap rounded-xl border px-4 py-2.5 text-xs font-black uppercase tracking-wide transition-all shadow-sm sm:px-5 ${selectedCategory === category.id
                   ? 'bg-primary-600 text-white border-primary-600 shadow-lg shadow-primary-100'
                   : 'bg-white text-slate-500 border-slate-100 hover:border-primary-300'
                   }`}
@@ -265,16 +265,16 @@ const Services = () => {
           </div>
 
           {/* Location Filters */}
-          <div className="flex flex-wrap items-center gap-4 w-full md:w-auto">
+          <div className="grid w-full min-w-0 grid-cols-1 gap-3 sm:grid-cols-[minmax(15rem,1fr)_auto] xl:w-auto xl:flex-none">
             {/* City Selector */}
-            <div className="relative w-full md:w-48">
-              <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-primary-500" />
+            <div className="relative w-full min-w-0 sm:min-w-[15rem]">
+              <MapPin className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-primary-500" />
               <select
                 value={filters.city}
                 onChange={(e) => {
                   setFilters(prev => ({ ...prev, city: e.target.value, nearMe: false }));
                 }}
-                className="w-full !pl-20 !pr-12 py-3 bg-white border border-slate-100 rounded-2xl text-xs font-black uppercase tracking-widest text-slate-700 outline-none focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 transition-all shadow-sm"
+                className="w-full rounded-xl border border-slate-100 bg-white py-3 pl-10 pr-9 text-xs font-black uppercase tracking-wide text-slate-700 shadow-sm outline-none transition-all focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10"
               >
                 <option value="">All Regions</option>
                 {CAVITE_CITIES.map(c => (
@@ -292,7 +292,7 @@ const Services = () => {
                   handleNearMe();
                 }
               }}
-              className={`flex items-center gap-2 px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-widest transition-all shadow-sm border w-full md:w-auto justify-center ${filters.nearMe
+              className={`flex min-h-11 w-full shrink-0 items-center justify-center gap-2 rounded-xl border px-5 py-2.5 text-xs font-black uppercase tracking-wide transition-all shadow-sm sm:w-auto ${filters.nearMe
                 ? 'bg-secondary-600 text-white border-secondary-600 shadow-lg shadow-secondary-200'
                 : 'bg-white text-slate-500 border-slate-100 hover:border-primary-300'
                 }`}
@@ -305,7 +305,7 @@ const Services = () => {
       </div>
 
       {/* Services Grid with Premium Cards */}
-      <div className="responsive-card-grid [--card-min:14rem] sm:[--card-min:16rem] sm:[--card-gap:2rem]">
+      <div className="responsive-card-grid [--card-min:17rem] sm:[--card-min:18rem] xl:[--card-min:19rem] sm:[--card-gap:1.5rem]">
         {filteredServices.map((service, idx) => (
           <div
             key={service._id}
@@ -317,7 +317,7 @@ const Services = () => {
               <div className="h-32 sm:h-48 w-full relative overflow-hidden shrink-0">
                 <img src={getImageUrl(service.images[0])} alt={service.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></div>
-                <span className="absolute bottom-3 left-4 text-[8px] sm:text-[10px] font-black uppercase tracking-widest text-white bg-primary-600/90 px-3 py-1 rounded-full backdrop-blur-md">
+                <span className="absolute bottom-3 left-3 right-3 w-fit max-w-[calc(100%-1.5rem)] rounded-xl bg-primary-600/90 px-3 py-1 text-[9px] font-black uppercase leading-tight tracking-wide text-white whitespace-normal break-words backdrop-blur-md sm:text-[10px]">
                   {getCategoryLabel(service.category)}
                 </span>
               </div>
@@ -326,19 +326,19 @@ const Services = () => {
             )}
 
             <div className="p-3 sm:p-5 flex flex-col flex-1 space-y-2 sm:space-y-4">
-              <div className="flex justify-between items-start">
+              <div className="flex min-w-0 items-start justify-between gap-2">
                 <div className="space-y-0.5 w-full min-w-0">
                   {!service.images?.[0] && (
-                    <span className="text-[7px] sm:text-[9px] font-black uppercase tracking-[0.1em] text-primary-500">
+                    <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-wide text-primary-500 leading-tight break-words">
                       {getCategoryLabel(service.category)}
                     </span>
                   )}
                   <div className="flex items-center gap-1.5 mt-1 mb-1">
-                    <span className="px-1.5 py-0.5 bg-slate-100 text-slate-600 text-[6px] sm:text-[8px] font-black rounded uppercase tracking-widest">
+                    <span className="max-w-full rounded bg-slate-100 px-1.5 py-0.5 text-[8px] font-black uppercase leading-tight tracking-wide text-slate-600 whitespace-normal break-words sm:text-[9px]">
                       {service.subCategory}
                     </span>
                   </div>
-                  <h3 className="text-xs sm:text-lg font-black text-slate-900 leading-tight group-hover:text-primary-600 transition-colors truncate min-h-[1rem] sm:min-h-[2.5rem]">
+                  <h3 className="min-h-[2.5rem] text-base font-black leading-tight text-slate-900 line-clamp-2 break-words transition-colors group-hover:text-primary-600 sm:text-lg">
                     {service.name}
                   </h3>
                   {service.ratings && service.ratings.count > 0 && (

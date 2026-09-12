@@ -181,7 +181,7 @@ const Stores = () => {
 
             {/* Stores Grid - High Density */}
             <div className="container-custom -mt-8 sm:-mt-12 relative z-20 px-2 sm:px-0">
-                <div className="responsive-card-grid [--card-min:14rem] sm:[--card-min:17rem] sm:[--card-gap:2rem]">
+                <div className="responsive-card-grid [--card-min:17rem] sm:[--card-min:18rem] xl:[--card-min:19rem] sm:[--card-gap:1.5rem]">
                     {filteredStores.length > 0 ? (
                         filteredStores.map((store, index) => (
                             <Link
@@ -212,7 +212,7 @@ const Stores = () => {
                                 </div>
 
                                 <div className="text-center mt-5 sm:mt-10 space-y-2 sm:space-y-4 flex-1 flex flex-col">
-                                    <h3 className="text-xs sm:text-2xl font-black text-slate-900 group-hover:text-primary-600 transition-colors uppercase tracking-tight truncate px-1">
+                                    <h3 className="min-h-[2.5rem] px-1 text-base font-black uppercase leading-tight tracking-tight text-slate-900 line-clamp-2 break-words transition-colors group-hover:text-primary-600 sm:text-xl">
                                         {store.name}
                                     </h3>
                                     <p className="text-slate-500 font-bold text-[8px] sm:text-sm line-clamp-1 sm:line-clamp-2 leading-relaxed h-4 sm:h-10 opacity-70">

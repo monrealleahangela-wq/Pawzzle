@@ -133,7 +133,7 @@ const Home = () => {
               <span className="text-[10px] sm:text-[11px] font-black text-white/80 uppercase tracking-[0.5em]">Global Pet Ecosystem Active</span>
             </div>
             
-            <h1 className="text-5xl sm:text-9xl font-black text-white uppercase tracking-tighter leading-[0.85] animate-scale-in">
+            <h1 className="text-[clamp(2.5rem,8vw,6rem)] font-black uppercase leading-[0.9] tracking-tighter text-white break-words animate-scale-in">
               The World's <br />
               <span className="italic text-transparent bg-clip-text bg-gradient-to-r from-primary-400 to-primary-600">Premium .</span> <br />
               <span className="text-white">Pet Network .</span>
@@ -174,7 +174,7 @@ const Home = () => {
       <section className="max-w-[1400px] mx-auto px-6 space-y-16">
         <div className="flex flex-col md:flex-row items-end justify-between gap-8">
           <div className="space-y-4">
-            <h2 className="text-4xl sm:text-7xl font-black text-neutral-900 uppercase tracking-tighter leading-none">
+            <h2 className="text-[clamp(2rem,5vw,4.5rem)] font-black uppercase leading-none tracking-tighter text-neutral-900 break-words">
               Explore Our <br />
               <span className="text-primary italic">Ecosystem .</span>
             </h2>
@@ -193,7 +193,7 @@ const Home = () => {
             <img src="https://images.unsplash.com/photo-1543466835-00a7907e9de1" alt="" loading="lazy" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-[2s]" />
             <div className="absolute inset-0 bg-gradient-to-t from-neutral-900 via-neutral-900/20 to-transparent" />
             <div className="absolute bottom-10 left-10 p-2 space-y-4">
-               <h3 className="text-5xl font-black text-white uppercase tracking-tighter">Healthy <br /> Pets .</h3>
+               <h3 className="text-[clamp(2rem,4vw,3rem)] font-black uppercase leading-tight tracking-tighter text-white">Healthy <br /> Pets .</h3>
                <p className="text-xs text-white/60 font-medium uppercase tracking-[0.2em]">Verified Breeders & Health Records</p>
                <div className="inline-flex items-center gap-4 px-6 py-3 bg-white text-neutral-900 rounded-2xl text-[10px] font-black uppercase tracking-widest group-hover:bg-primary group-hover:text-white transition-all">
                   Browse Available <ArrowRight size={16} />
@@ -206,7 +206,7 @@ const Home = () => {
             <img src="https://images.unsplash.com/photo-1583511655857-d19b40a7a54e" alt="" loading="lazy" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-[2s]" />
             <div className="absolute inset-0 bg-gradient-to-t from-primary-950 via-primary-950/20 to-transparent" />
             <div className="absolute bottom-10 left-10 p-2 space-y-4">
-               <h3 className="text-5xl font-black text-white uppercase tracking-tighter">Premium <br /> Supplies .</h3>
+               <h3 className="text-[clamp(2rem,4vw,3rem)] font-black uppercase leading-tight tracking-tighter text-white">Premium <br /> Supplies .</h3>
                <p className="text-xs text-white/60 font-medium uppercase tracking-[0.2em]">Curated Foods & Elite Accessories</p>
                <div className="inline-flex items-center gap-4 px-6 py-3 bg-white text-neutral-900 rounded-2xl text-[10px] font-black uppercase tracking-widest group-hover:bg-primary group-hover:text-white transition-all">
                   Shop Marketplace <ArrowRight size={16} />
@@ -219,7 +219,7 @@ const Home = () => {
             <img src="https://images.unsplash.com/photo-1516733725897-1aa73b87c8e8" alt="" loading="lazy" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-[2s]" />
             <div className="absolute inset-0 bg-gradient-to-t from-neutral-950 via-neutral-950/20 to-transparent" />
             <div className="absolute bottom-10 left-10 p-2 space-y-4">
-               <h3 className="text-5xl font-black text-white uppercase tracking-tighter">Expert <br /> Care .</h3>
+               <h3 className="text-[clamp(2rem,4vw,3rem)] font-black uppercase leading-tight tracking-tighter text-white">Expert <br /> Care .</h3>
                <p className="text-xs text-white/60 font-medium uppercase tracking-[0.2em]">Vets, Groomers & Master Trainers</p>
                <div className="inline-flex items-center gap-4 px-6 py-3 bg-white text-neutral-900 rounded-2xl text-[10px] font-black uppercase tracking-widest group-hover:bg-primary group-hover:text-white transition-all">
                   Book Professional <ArrowRight size={16} />
@@ -239,13 +239,13 @@ const Home = () => {
                     <ShieldCheck size={18} />
                     <span className="text-[10px] font-black uppercase tracking-[0.5em]">Verified Professionals</span>
                  </div>
-                 <h2 className="text-5xl sm:text-8xl font-black text-white uppercase tracking-tighter">Meet Our <br /> <span className="italic text-primary">Health Experts .</span></h2>
+                 <h2 className="text-[clamp(2.25rem,6vw,5rem)] font-black uppercase leading-tight tracking-tighter text-white break-words">Meet Our <br /> <span className="italic text-primary">Health Experts .</span></h2>
                  <p className="text-white/40 text-sm sm:text-lg max-w-2xl mx-auto font-medium uppercase tracking-widest leading-relaxed">
                    Consult with the world's most trusted veterinarians, groomers, and behavioral specialists.
                  </p>
               </div>
 
-              <div className="responsive-card-grid [--card-min:12rem] [--card-gap:2rem]">
+              <div className="responsive-card-grid [--card-min:17rem] sm:[--card-min:18rem] [--card-gap:1.5rem]">
                  {data.experts.map((expert, idx) => (
                     <div key={idx} className="bg-white/5 border border-white/10 rounded-[3rem] p-10 space-y-8 group hover:bg-white/10 transition-all duration-500 hover:-translate-y-4 shadow-2xl">
                        <div className="relative w-24 h-24 mx-auto">
@@ -259,8 +259,8 @@ const Home = () => {
                           </div>
                        </div>
                        <div className="text-center space-y-2">
-                          <h4 className="text-xl font-black text-white uppercase tracking-tight">{expert.firstName} {expert.lastName}</h4>
-                          <p className="text-[10px] font-black text-primary uppercase tracking-[0.3em]">
+                          <h4 className="text-lg font-black uppercase leading-tight tracking-tight text-white line-clamp-2 break-words">{expert.firstName} {expert.lastName}</h4>
+                          <p className="text-[10px] font-black uppercase leading-relaxed tracking-wide text-primary break-words">
                             {expert.staffType?.replace('_', ' ') || 'Licensed Specialist'}
                           </p>
                        </div>
@@ -284,7 +284,7 @@ const Home = () => {
         <section className="max-w-7xl mx-auto px-6 space-y-20">
           <div className="flex flex-col md:flex-row items-end justify-between gap-10">
              <div className="space-y-4">
-                <h2 className="text-4xl sm:text-7xl font-black text-neutral-900 uppercase tracking-tighter leading-none">
+                <h2 className="text-[clamp(2rem,5vw,4.5rem)] font-black uppercase leading-none tracking-tighter text-neutral-900 break-words">
                   Available <br />
                   <span className="text-primary italic">Companions .</span>
                 </h2>
@@ -297,7 +297,7 @@ const Home = () => {
              </Link>
           </div>
 
-          <div className="responsive-card-grid [--card-min:13rem] [--card-gap:2.5rem]">
+          <div className="responsive-card-grid [--card-min:17rem] sm:[--card-min:18rem] [--card-gap:1.5rem]">
              {data.pets.map((pet, idx) => (
                 <div key={idx} className="bg-white rounded-[3rem] border border-slate-50 p-4 group hover:shadow-premium hover:-translate-y-4 transition-all duration-700 animate-fade-up" style={{ animationDelay: `${idx * 0.1}s` }}>
                    <Link to={`/pets/${pet._id}`} className="block relative aspect-square rounded-[2.5rem] overflow-hidden mb-8 shadow-soft">
@@ -311,7 +311,7 @@ const Home = () => {
                    <div className="px-4 pb-4 space-y-6">
                       <div className="space-y-2">
                          <p className="text-[9px] font-black text-neutral-400 uppercase tracking-[0.4em]">{pet.breed}</p>
-                         <h4 className="text-2xl font-black text-neutral-900 uppercase tracking-tighter truncate">{pet.name}</h4>
+                         <h4 className="min-h-[2.75rem] text-xl font-black uppercase leading-tight tracking-tighter text-neutral-900 line-clamp-2 break-words">{pet.name}</h4>
                       </div>
                       <div className="flex items-center justify-between border-t border-slate-50 pt-6">
                          <div className="space-y-1">
@@ -335,7 +335,7 @@ const Home = () => {
            <div className="max-w-7xl mx-auto px-6 space-y-16">
               <div className="flex items-end justify-between">
                  <div className="space-y-4">
-                    <h2 className="text-4xl sm:text-6xl font-black text-neutral-900 uppercase tracking-tighter leading-none">
+                    <h2 className="text-[clamp(2rem,5vw,4rem)] font-black uppercase leading-none tracking-tighter text-neutral-900 break-words">
                       Essential <br />
                       <span className="text-primary italic">Hardware .</span>
                     </h2>
@@ -346,7 +346,7 @@ const Home = () => {
                  </Link>
               </div>
 
-              <div className="responsive-card-grid [--card-min:11rem] [--card-gap:2rem]">
+              <div className="responsive-card-grid [--card-min:17rem] sm:[--card-min:18rem] [--card-gap:1.5rem]">
                  {data.products.map((product, idx) => (
                     <div key={idx} className="bg-white rounded-[2.5rem] border border-transparent hover:border-slate-100 p-4 transition-all duration-500 group">
                        <Link to={`/products/${product._id}`} className="block relative aspect-square rounded-[2rem] overflow-hidden mb-6 bg-neutral-100">
@@ -363,7 +363,7 @@ const Home = () => {
                        <div className="space-y-4 px-2">
                           <div className="space-y-1">
                              <p className="text-[9px] font-black text-neutral-300 uppercase tracking-widest">{product.category}</p>
-                             <h4 className="text-sm font-black text-neutral-900 uppercase tracking-tight truncate">{product.name}</h4>
+                             <h4 className="min-h-[2.5rem] text-sm font-black uppercase leading-tight tracking-tight text-neutral-900 line-clamp-2 break-words">{product.name}</h4>
                           </div>
                           <div className="flex items-center justify-between">
                              <p className="text-lg font-black text-neutral-950 tracking-tighter">₱{product.price?.toLocaleString()}</p>
@@ -381,7 +381,7 @@ const Home = () => {
       <section className="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
          <div className="space-y-12">
             <div className="space-y-6">
-               <h2 className="text-4xl sm:text-7xl font-black text-neutral-900 uppercase tracking-tighter leading-none">
+               <h2 className="text-[clamp(2rem,5vw,4.5rem)] font-black uppercase leading-none tracking-tighter text-neutral-900 break-words">
                  The Standard in <br />
                  <span className="text-primary italic">Pet Security .</span>
                </h2>
@@ -428,7 +428,7 @@ const Home = () => {
       {/* ── 8. PROFESSIONAL SERVICE PIXELS ── */}
       <section className="max-w-7xl mx-auto px-6 space-y-20">
          <div className="text-center space-y-6">
-            <h2 className="text-4xl sm:text-7xl font-black text-neutral-900 uppercase tracking-tighter">Professional <br /><span className="text-primary italic">Service Labs .</span></h2>
+            <h2 className="text-[clamp(2rem,5vw,4.5rem)] font-black uppercase leading-tight tracking-tighter text-neutral-900 break-words">Professional <br /><span className="text-primary italic">Service Labs .</span></h2>
             <p className="text-[11px] font-black text-neutral-400 uppercase tracking-[0.5em]">Clinical Grade Pet Wellness & Styling</p>
          </div>
 
@@ -466,7 +466,7 @@ const Home = () => {
                   <Zap size={20} className="animate-pulse" />
                   <span className="text-[11px] font-black uppercase tracking-[0.6em]">Initialize Connection</span>
                </div>
-               <h2 className="text-5xl sm:text-9xl font-black text-white uppercase tracking-tighter leading-[0.85]">
+               <h2 className="text-[clamp(2.5rem,8vw,6rem)] font-black uppercase leading-[0.9] tracking-tighter text-white break-words">
                  Your Global <br />
                  <span className="italic text-primary">Pet care.</span>
                </h2>

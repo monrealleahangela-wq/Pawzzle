@@ -222,7 +222,7 @@ const BottomNavBar = () => {
                 relative flex flex-col items-center justify-center
                 gap-0.5 px-3 py-2 rounded-xl
                 transition-all duration-200 active:scale-90
-                min-w-[62px] shrink-0
+                min-w-[76px] shrink-0
                 ${active
                   ? 'bg-primary-600 text-white shadow-lg shadow-primary-200 dark:shadow-primary-900/40'
                   : 'text-slate-400 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800'
@@ -234,7 +234,7 @@ const BottomNavBar = () => {
                 <span className="absolute inset-0 rounded-2xl ring-2 ring-primary-400/30 animate-pulse pointer-events-none" />
               )}
               <Icon className={`h-[18px] w-[18px] shrink-0 ${active ? 'drop-shadow-sm' : ''}`} />
-              <span className={`text-[8px] font-black uppercase tracking-[0.04em] leading-none text-center truncate max-w-[56px] ${active ? 'text-white' : ''}`}>
+              <span className={`max-w-[72px] text-[9px] font-black uppercase tracking-[0.02em] leading-tight text-center line-clamp-2 break-words ${active ? 'text-white' : ''}`}>
                 {item.label}
               </span>
             </Link>

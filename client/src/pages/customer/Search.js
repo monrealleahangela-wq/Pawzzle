@@ -270,7 +270,7 @@ const Search = () => {
           </div>
         </div>
         <div className="p-5 flex-1 flex flex-col">
-          <h3 className="font-black text-slate-900 group-hover:text-primary-600 transition-colors uppercase tracking-tight truncate">{pet.name}</h3>
+          <h3 className="min-h-[2.5rem] font-black uppercase leading-tight tracking-tight text-slate-900 line-clamp-2 break-words transition-colors group-hover:text-primary-600">{pet.name}</h3>
           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">{pet.breed}</p>
 
           <div 
@@ -334,7 +334,7 @@ const Search = () => {
           </div>
         </div>
         <div className="p-3 sm:p-5 flex-1 flex flex-col">
-          <h3 className="text-xs sm:text-base font-black text-slate-900 group-hover:text-primary-600 transition-colors uppercase tracking-tight truncate mb-1">{product.name}</h3>
+          <h3 className="mb-1 min-h-[2.5rem] text-sm font-black uppercase leading-tight tracking-tight text-slate-900 line-clamp-2 break-words transition-colors group-hover:text-primary-600 sm:text-base">{product.name}</h3>
 
           <div 
             onClick={(e) => { e.stopPropagation(); navigate(`/stores/${product.store?._id || product.store}`); }}
@@ -391,7 +391,7 @@ const Search = () => {
           )}
         </div>
         <div className="p-3 sm:p-5 flex-1 flex flex-col">
-          <h3 className="text-xs sm:text-base font-black text-slate-900 group-hover:text-primary-600 transition-colors uppercase tracking-tight truncate mb-1">{service.name}</h3>
+          <h3 className="mb-1 min-h-[2.5rem] text-sm font-black uppercase leading-tight tracking-tight text-slate-900 line-clamp-2 break-words transition-colors group-hover:text-primary-600 sm:text-base">{service.name}</h3>
 
           <div 
             onClick={(e) => { e.stopPropagation(); navigate(`/stores/${service.store?._id || service.store}`); }}
@@ -451,7 +451,7 @@ const Search = () => {
           </div>
         </div>
         <div className="p-5 pt-10">
-          <h3 className="font-black text-slate-900 group-hover:text-primary-600 transition-colors uppercase tracking-tight truncate">{store.name}</h3>
+          <h3 className="min-h-[2.5rem] font-black uppercase leading-tight tracking-tight text-slate-900 line-clamp-2 break-words transition-colors group-hover:text-primary-600">{store.name}</h3>
           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-1">
             <MapPin className="h-3.5 w-3.5 text-primary-400" />
             {store.contactInfo?.address?.city || 'Cavite'}
@@ -611,7 +611,7 @@ const Search = () => {
       </div>
 
       {/* Results Tabs - High Density Capsule Style */}
-      <div className="flex gap-1 sm:gap-2 mb-4 sm:mb-8 overflow-x-auto pb-2 scrollbar-hide no-scrollbar">
+      <div className="content-scroll-row mb-4 gap-1 pb-2 scrollbar-hide no-scrollbar sm:mb-8 sm:gap-2" aria-label="Search result types">
         {[
           { id: 'all', label: 'All', count: totalResults },
           { id: 'pets', label: 'Fleet', count: filteredResults.pets.length },
@@ -622,7 +622,7 @@ const Search = () => {
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`whitespace-nowrap px-4 sm:px-8 py-2.5 sm:py-3.5 rounded-full font-black uppercase tracking-widest text-[8px] sm:text-[10px] transition-all flex items-center gap-2 ${activeTab === tab.id
+            className={`flex shrink-0 items-center gap-2 whitespace-nowrap rounded-full px-4 py-2.5 text-[10px] font-black uppercase tracking-wide transition-all sm:px-6 sm:py-3 ${activeTab === tab.id
               ? 'bg-slate-900 text-white shadow-lg'
               : 'bg-white text-slate-400 border border-slate-100 hover:bg-slate-50'
               }`}
@@ -654,7 +654,7 @@ const Search = () => {
               {filteredResults.pets.length > 0 && (
                 <div>
                   <h2 className="text-xs sm:text-xl font-black text-slate-900 mb-2 sm:mb-4 uppercase tracking-tighter px-1">Fleet ({filteredResults.pets.length})</h2>
-                  <div className="responsive-card-grid [--card-min:13rem] sm:[--card-min:14rem] sm:[--card-gap:1.5rem]">
+                  <div className="responsive-card-grid [--card-min:17rem] sm:[--card-min:18rem] sm:[--card-gap:1.5rem]">
                     {filteredResults.pets.map((pet) => (
                       <Link key={pet._id} to={`/pets/${pet._id}`} className="group bg-white rounded-xl sm:rounded-[2rem] p-1.5 sm:p-4 border border-slate-100 shadow-sm transition-all hover:shadow-lg h-full flex flex-col">
                         <div className="aspect-[4/3] sm:h-48 bg-slate-50 relative overflow-hidden rounded-lg sm:rounded-[1.5rem] mb-2 sm:mb-4">
@@ -670,8 +670,8 @@ const Search = () => {
                           </div>
                         </div>
                         <div className="flex-1 min-w-0">
-                          <h3 className="text-[10px] sm:text-lg font-black text-slate-900 truncate uppercase mb-0.5">{pet.name}</h3>
-                          <p className="text-[7px] sm:text-xs font-bold text-slate-400 uppercase tracking-tighter truncate leading-none mb-1">{pet.breed}</p>
+                          <h3 className="mb-1 min-h-[2.5rem] text-sm font-black uppercase leading-tight text-slate-900 line-clamp-2 break-words sm:text-lg">{pet.name}</h3>
+                          <p className="mb-1 truncate text-[10px] font-bold uppercase leading-tight tracking-tight text-slate-400 sm:text-xs" title={pet.breed}>{pet.breed}</p>
                           <div className="flex items-center justify-between mt-auto pt-2 border-t border-slate-50">
                             <p className="text-[10px] sm:text-xl font-black text-primary-600 tracking-tighter">₱{pet.price?.toLocaleString()}</p>
                             <div 
@@ -696,7 +696,7 @@ const Search = () => {
               {filteredResults.products.length > 0 && (
                 <div>
                   <h2 className="text-xs sm:text-xl font-black text-slate-900 mb-2 sm:mb-4 uppercase tracking-tighter px-1">Gear ({filteredResults.products.length})</h2>
-                   <div className="responsive-card-grid [--card-min:13rem] sm:[--card-min:14rem] sm:[--card-gap:1.5rem]">
+                   <div className="responsive-card-grid [--card-min:17rem] sm:[--card-min:18rem] sm:[--card-gap:1.5rem]">
                     {filteredResults.products.map((product) => (
                       <Link key={product._id} to={`/products/${product._id}`} className="group bg-white rounded-xl sm:rounded-[2rem] p-1.5 sm:p-4 border border-slate-100 shadow-sm transition-all hover:shadow-lg h-full flex flex-col">
                         <div className="aspect-square bg-slate-50 relative overflow-hidden rounded-lg sm:rounded-[1.5rem] mb-2 sm:mb-4">
@@ -707,8 +707,8 @@ const Search = () => {
                           )}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <h3 className="text-[10px] sm:text-lg font-black text-slate-900 truncate uppercase mb-0.5">{product.name}</h3>
-                          <p className="text-[7px] sm:text-xs font-bold text-slate-400 uppercase tracking-tighter truncate leading-none mb-1">{product.category}</p>
+                          <h3 className="mb-1 min-h-[2.5rem] text-sm font-black uppercase leading-tight text-slate-900 line-clamp-2 break-words sm:text-lg">{product.name}</h3>
+                          <p className="mb-1 truncate text-[10px] font-bold uppercase leading-tight tracking-tight text-slate-400 sm:text-xs" title={product.category}>{product.category}</p>
                           <div className="flex items-center justify-between mt-auto pt-2 border-t border-slate-50">
                             <p className="text-[10px] sm:text-xl font-black text-slate-900 tracking-tighter">₱{product.price?.toLocaleString()}</p>
                             <div 
@@ -744,7 +744,7 @@ const Search = () => {
                           )}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <h4 className="text-[11px] sm:text-xl font-black text-slate-900 uppercase truncate leading-tight">{service.name}</h4>
+                          <h4 className="text-sm font-black uppercase leading-tight text-slate-900 line-clamp-2 break-words sm:text-lg">{service.name}</h4>
                           <div className="flex items-center gap-2 mt-1">
                             <p className="text-[8px] sm:text-sm text-slate-400 font-bold uppercase tracking-widest leading-none">{service.duration} MIN</p>
                             <div 
@@ -779,7 +779,7 @@ const Search = () => {
                           {store.logo && <img src={store.logo} alt="Logo" className="w-full h-full object-cover" />}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <h4 className="text-[11px] sm:text-xl font-black text-slate-900 uppercase truncate leading-tight">{store.name}</h4>
+                          <h4 className="text-sm font-black uppercase leading-tight text-slate-900 line-clamp-2 break-words sm:text-lg">{store.name}</h4>
                           <div className="flex items-center gap-1 mt-1 text-[8px] sm:text-xs text-slate-400 font-bold uppercase tracking-widest">
                             <MapPin className="h-2.5 w-2.5" />
                             <span className="truncate">{store.contactInfo?.address?.city}</span>
@@ -795,7 +795,7 @@ const Search = () => {
           )}
 
           {activeTab === 'pets' && (
-            <div className="responsive-card-grid [--card-min:13rem] sm:[--card-min:14rem] sm:[--card-gap:1.5rem] px-1">
+            <div className="responsive-card-grid [--card-min:17rem] sm:[--card-min:18rem] sm:[--card-gap:1.5rem] px-1">
               {filteredResults.pets.map((pet) => (
                 <Link key={pet._id} to={`/pets/${pet._id}`} className="group bg-white rounded-xl sm:rounded-[2rem] p-1.5 sm:p-4 border border-slate-100 shadow-sm transition-all hover:shadow-lg h-full flex flex-col">
                   <div className="aspect-[4/3] sm:h-48 bg-slate-50 relative overflow-hidden rounded-lg sm:rounded-[1.5rem] mb-2 sm:mb-4">
@@ -806,8 +806,8 @@ const Search = () => {
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h3 className="text-[10px] sm:text-lg font-black text-slate-900 truncate uppercase mb-0.5">{pet.name}</h3>
-                    <p className="text-[7px] sm:text-xs font-bold text-slate-400 uppercase tracking-tighter truncate leading-none mb-2">{pet.breed}</p>
+                    <h3 className="mb-1 min-h-[2.5rem] text-sm font-black uppercase leading-tight text-slate-900 line-clamp-2 break-words sm:text-lg">{pet.name}</h3>
+                    <p className="mb-2 truncate text-[10px] font-bold uppercase leading-tight tracking-tight text-slate-400 sm:text-xs" title={pet.breed}>{pet.breed}</p>
                     <p className="text-[10px] sm:text-xl font-black text-primary-600 tracking-tighter">₱{pet.price?.toLocaleString()}</p>
                   </div>
                 </Link>
@@ -816,7 +816,7 @@ const Search = () => {
           )}
 
           {activeTab === 'products' && (
-            <div className="responsive-card-grid [--card-min:13rem] sm:[--card-min:14rem] sm:[--card-gap:1.5rem] px-1">
+            <div className="responsive-card-grid [--card-min:17rem] sm:[--card-min:18rem] sm:[--card-gap:1.5rem] px-1">
               {filteredResults.products.map((product) => (
                 <Link key={product._id} to={`/products/${product._id}`} className="group bg-white rounded-xl sm:rounded-[2rem] p-1.5 sm:p-4 border border-slate-100 shadow-sm transition-all hover:shadow-lg h-full flex flex-col">
                   <div className="aspect-square bg-slate-50 relative overflow-hidden rounded-lg sm:rounded-[1.5rem] mb-2 sm:mb-4">
@@ -827,8 +827,8 @@ const Search = () => {
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h3 className="text-[10px] sm:text-lg font-black text-slate-900 truncate uppercase mb-0.5">{product.name}</h3>
-                    <p className="text-[7px] sm:text-xs font-bold text-slate-400 uppercase tracking-tighter truncate leading-none mb-2">{product.category}</p>
+                    <h3 className="mb-1 min-h-[2.5rem] text-sm font-black uppercase leading-tight text-slate-900 line-clamp-2 break-words sm:text-lg">{product.name}</h3>
+                    <p className="mb-2 truncate text-[10px] font-bold uppercase leading-tight tracking-tight text-slate-400 sm:text-xs" title={product.category}>{product.category}</p>
                     <p className="text-[10px] sm:text-xl font-black text-slate-900 tracking-tighter">₱{product.price?.toLocaleString()}</p>
                   </div>
                 </Link>
@@ -848,7 +848,7 @@ const Search = () => {
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h4 className="text-[11px] sm:text-xl font-black text-slate-900 uppercase truncate leading-tight">{service.name}</h4>
+                    <h4 className="text-sm font-black uppercase leading-tight text-slate-900 line-clamp-2 break-words sm:text-lg">{service.name}</h4>
                     <p className="text-[8px] sm:text-sm text-slate-400 font-bold uppercase tracking-widest leading-none mt-1">{service.duration} MIN</p>
                   </div>
                   <div className="text-right shrink-0">
@@ -867,7 +867,7 @@ const Search = () => {
                     {store.logo && <img src={store.logo} alt="Logo" className="w-full h-full object-cover" />}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h4 className="text-[11px] sm:text-xl font-black text-slate-900 uppercase truncate leading-tight">{store.name}</h4>
+                    <h4 className="text-sm font-black uppercase leading-tight text-slate-900 line-clamp-2 break-words sm:text-lg">{store.name}</h4>
                     <div className="flex items-center gap-1 mt-1 text-[8px] sm:text-xs text-slate-400 font-bold uppercase tracking-widest">
                       <MapPin className="h-2.5 w-2.5" />
                       <span className="truncate">{store.contactInfo?.address?.city}</span>

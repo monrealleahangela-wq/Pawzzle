@@ -292,7 +292,7 @@ const NavLink = ({ item, isActive, collapsed, onClick }) => {
     >
       <Icon className={`h-5 w-5 shrink-0 transition-transform duration-300 ${isActive ? 'scale-110' : 'group-hover/link:scale-110'}`} />
       {!collapsed && (
-        <span className="text-xs font-bold tracking-tight truncate">{item.label}</span>
+        <span className="min-w-0 text-xs font-bold leading-tight tracking-tight whitespace-normal break-words">{item.label}</span>
       )}
       {collapsed && (
         <div className="absolute left-full ml-4 px-3 py-2 bg-neutral-900 text-white text-[10px] font-black uppercase tracking-widest rounded-xl opacity-0 group-hover/link:opacity-100 pointer-events-none transition-all duration-300 whitespace-nowrap z-[200] shadow-premium translate-x-2 group-hover/link:translate-x-0">
@@ -341,7 +341,7 @@ const NavGroup = ({ group, expanded, onToggle, isActive, collapsed, onNavigate }
           }`}
       >
         <Icon className="h-5 w-5 shrink-0 transition-transform group-hover/btn:scale-110" />
-        <span className="text-xs font-bold tracking-tight flex-1 text-left truncate">{group.label}</span>
+        <span className="min-w-0 flex-1 text-left text-xs font-bold leading-tight tracking-tight whitespace-normal break-words">{group.label}</span>
         <ChevronDown className={`h-4 w-4 shrink-0 transition-transform duration-500 ${expanded ? 'rotate-180' : ''} text-slate-300`} />
       </button>
       <div className={`overflow-hidden transition-all duration-500 ease-[cubic-bezier(0.23,1,0.32,1)] ${expanded ? 'max-h-[600px] opacity-100 mt-2' : 'max-h-0 opacity-0'}`}>
@@ -360,7 +360,7 @@ const NavGroup = ({ group, expanded, onToggle, isActive, collapsed, onNavigate }
                   }`}
               >
                 <ChildIcon className="h-4 w-4 shrink-0" />
-                <span className="text-[11px] font-bold tracking-tight truncate">{child.label}</span>
+                <span className="min-w-0 text-[11px] font-bold leading-tight tracking-tight whitespace-normal break-words">{child.label}</span>
               </Link>
             );
           })}

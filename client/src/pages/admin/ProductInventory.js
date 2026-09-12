@@ -492,7 +492,7 @@ const ProductInventory = () => {
             </div>
 
             {/* Products Grid */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+            <div className="responsive-card-grid [--card-min:17rem] sm:[--card-min:18rem] [--card-gap:1rem]">
               {products.map((product) => (
                 <div key={product._id} className="group bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-xl hover:-translate-y-0.5 transition-all overflow-hidden flex flex-col">
                   {/* Image */}
@@ -527,7 +527,7 @@ const ProductInventory = () => {
                   <div className="p-5 flex-1 flex flex-col gap-3">
                     <div>
                       <p className="text-[10px] font-black text-primary-600 uppercase tracking-widest leading-none mb-1.5 opacity-80">{product.category}</p>
-                      <h3 className="text-[15px] font-black text-slate-900 uppercase leading-none truncate mb-1.5">
+                      <h3 className="mb-1.5 min-h-[2.5rem] text-[15px] font-black uppercase leading-tight text-slate-900 line-clamp-2 break-words">
                         {product.name}
                       </h3>
                       <p className="text-[11px] font-bold text-slate-400 uppercase truncate tracking-tight">{product.brand || 'No Brand'}</p>
@@ -1307,7 +1307,7 @@ const ProductInventory = () => {
                     <div className="h-11 w-11 rounded-xl bg-slate-100 text-slate-500 flex items-center justify-center shrink-0"><Package className="h-5 w-5" /></div>
                     <div className="min-w-0">
                       <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Selected product</p>
-                      <p className="mt-0.5 truncate text-sm font-black text-slate-900">{selectedInventoryItem.name}</p>
+                      <p className="mt-0.5 text-sm font-black leading-tight text-slate-900 line-clamp-2 break-words">{selectedInventoryItem.name}</p>
                     </div>
                   </div>
                   <div className="text-right shrink-0">

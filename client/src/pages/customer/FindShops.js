@@ -391,7 +391,7 @@ const FindShops = () => {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex justify-between items-start gap-2">
-                      <h4 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white uppercase truncate tracking-tight">
+                      <h4 className="text-xs font-black uppercase leading-tight tracking-tight text-slate-900 line-clamp-2 break-words dark:text-white sm:text-sm">
                         {store.name}
                       </h4>
                       {store.verificationStatus === 'verified' && (
@@ -400,9 +400,9 @@ const FindShops = () => {
                         </div>
                       )}
                     </div>
-                    <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 flex items-center gap-1 mt-1 uppercase tracking-tight truncate">
-                      <MapPin className="h-3 w-3 text-primary-500" />
-                      {store.contactInfo.address.city}, Cavite
+                    <p className="mt-1 flex items-start gap-1 text-[10px] font-bold uppercase leading-tight tracking-tight text-slate-400 line-clamp-2 break-words dark:text-slate-500">
+                      <MapPin className="mt-0.5 h-3 w-3 shrink-0 text-primary-500" />
+                      <span>{store.contactInfo.address.city}, Cavite</span>
                     </p>
                     <div className="flex flex-wrap gap-1.5 mt-3">
                       <span className="px-2 py-0.5 bg-slate-50 dark:bg-slate-800 text-[8px] font-black uppercase text-slate-400 tracking-widest rounded-md">

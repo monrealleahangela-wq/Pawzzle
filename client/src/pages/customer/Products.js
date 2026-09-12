@@ -417,7 +417,7 @@ const Products = () => {
               </button>
             </div>
           ) : (
-            <div className="responsive-card-grid [--card-min:14rem] sm:[--card-min:15rem] xl:[--card-min:16rem]">
+            <div className="responsive-card-grid [--card-min:17rem] sm:[--card-min:18rem] xl:[--card-min:19rem]">
               {products.map((product, idx) => (
                 <div
                   key={product._id}
@@ -450,10 +450,10 @@ const Products = () => {
 
                   <div className="min-w-0 p-3 sm:p-4 flex-1 flex flex-col relative z-10">
                     <div className="mb-3">
-                      <p className="text-[8px] font-black text-slate-400 uppercase tracking-[0.25em] leading-none mb-1.5 truncate">
+                      <p className="mb-1.5 truncate text-[10px] font-black uppercase leading-tight tracking-wide text-slate-400" title={product.brand || 'Product'}>
                         {product.brand || 'Product'}
                       </p>
-                      <h3 className="text-[13px] sm:text-xl font-black text-slate-900 leading-tight uppercase truncate group-hover:text-primary-600 transition-colors">
+                      <h3 className="min-h-[2.5rem] text-base font-black uppercase leading-tight text-slate-900 line-clamp-2 break-words transition-colors group-hover:text-primary-600 sm:text-lg">
                         {product.name}
                       </h3>
                       {product.ratings && product.ratings.count > 0 && (
@@ -467,9 +467,9 @@ const Products = () => {
                     </div>
 
                     <div className="flex flex-col mt-auto gap-3">
-                      <div className="flex justify-between items-end">
-                        <div className="flex flex-col">
-                          <span className="text-[9px] font-black text-primary-600 uppercase tracking-widest -mb-0.5">{product.category}</span>
+                      <div className="flex min-w-0 items-end justify-between gap-2">
+                        <div className="flex min-w-0 flex-col">
+                          <span className="text-[10px] font-black uppercase leading-tight tracking-wide text-primary-600 break-words">{product.category}</span>
                           <span className="text-base sm:text-2xl font-black text-slate-900 tracking-tighter">₱{product.price?.toLocaleString()}</span>
                         </div>
                       </div>
@@ -491,11 +491,10 @@ const Products = () => {
                         </button>
                         <button
                           onClick={() => handleBuyNow(product)}
-                          className="h-10 min-w-0 flex items-center justify-center bg-slate-900 hover:bg-primary-600 text-white rounded-lg sm:rounded-xl text-[9px] sm:text-[10px] font-black uppercase tracking-wide sm:tracking-widest transition-all active:scale-95 shadow-lg gap-1.5"
+                          className="flex min-h-10 min-w-0 items-center justify-center gap-1.5 rounded-lg bg-slate-900 px-2 py-2 text-[10px] font-black uppercase leading-tight tracking-wide text-white shadow-lg transition-all hover:bg-primary-600 active:scale-95 sm:rounded-xl"
                         >
-                          <Zap className="h-2.5 w-2.5 sm:h-3.5 sm:w-3.5" />
-                          <span className="hidden sm:inline">Buy Now</span>
-                          <span className="sm:hidden">Buy</span>
+                          <Zap className="h-3.5 w-3.5 shrink-0" />
+                          <span>Buy Now</span>
                         </button>
                       </div>
                     </div>

@@ -164,7 +164,7 @@ const ProductDetail = () => {
           <div>
             <p className="text-[10px] font-black text-secondary-600 uppercase tracking-[0.2em] mb-1">{product.category}</p>
             <div className="flex justify-between items-start gap-4">
-                <h1 className="text-2xl sm:text-5xl font-black text-slate-900 mb-2 uppercase tracking-tight leading-none">{product.name}</h1>
+                <h1 className="mb-2 min-w-0 text-[clamp(1.5rem,5vw,3rem)] font-black uppercase leading-tight tracking-tight text-slate-900 break-words">{product.name}</h1>
                 {user?.role !== 'super_admin' && (
                   <button 
                       onClick={handleToggleFavorite}
@@ -205,7 +205,7 @@ const ProductDetail = () => {
             ].map((stat, i) => (
               <div key={i} className="bg-slate-50 p-3 sm:p-5 rounded-2xl border border-slate-100">
                 <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-0.5">{stat.label}</p>
-                <p className="text-[11px] sm:text-sm font-black text-slate-900 uppercase truncate">{stat.value}</p>
+                <p className="text-[11px] font-black uppercase leading-tight text-slate-900 line-clamp-2 break-words sm:text-sm" title={String(stat.value)}>{stat.value}</p>
               </div>
             ))}
           </div>
@@ -247,7 +247,7 @@ const ProductDetail = () => {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-[9px] font-black text-primary-500 uppercase tracking-[0.2em] mb-1">Verified Seller</p>
-                <h4 className="text-base sm:text-xl font-black text-slate-900 truncate uppercase tracking-tight">{product.store.name}</h4>
+                <h4 className="text-base font-black uppercase leading-tight tracking-tight text-slate-900 line-clamp-2 break-words sm:text-xl">{product.store.name}</h4>
                 <div className="flex items-center gap-1.5 mt-1 sm:mt-2">
                   <MapPin className="h-3 w-3 text-slate-300" />
                   <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest truncate">

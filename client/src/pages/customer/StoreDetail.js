@@ -358,7 +358,7 @@ const StoreDetail = () => {
                   </span>
                 )}
               </div>
-              <h1 className="text-xl sm:text-5xl md:text-6xl font-black text-slate-900 tracking-tighter leading-tight uppercase truncate max-w-full flex items-center gap-3">
+              <h1 className="flex max-w-full min-w-0 items-start gap-3 text-2xl font-black uppercase leading-tight tracking-tighter text-slate-900 break-words sm:text-3xl md:text-4xl">
                 {store.name}
                 {isAuthenticated && (
                   <button 
@@ -378,7 +378,7 @@ const StoreDetail = () => {
                   </span>
                 </div>
               )}
-              <p className="text-slate-500 font-bold text-[9px] sm:text-lg max-w-xl italic line-clamp-1 opacity-80 uppercase tracking-tight">
+              <p className="max-w-xl text-xs font-bold uppercase leading-relaxed tracking-tight text-slate-500 opacity-80 line-clamp-2 break-words sm:text-base">
                 {store.description}
               </p>
             </div>
@@ -416,7 +416,7 @@ const StoreDetail = () => {
           {/* Main Catalog View */}
           <div className="lg:col-span-8 space-y-4 sm:space-y-12">
             {/* Catalog Tabs - High Density Navigation */}
-            <div className="bg-white/90 backdrop-blur-xl p-1 sm:p-3 rounded-2xl sm:rounded-[2.5rem] border border-white shadow-xl shadow-slate-200/40 flex gap-1 sm:gap-2">
+            <div className="content-scroll-row gap-1 rounded-2xl border border-white bg-white/90 p-1 shadow-xl shadow-slate-200/40 backdrop-blur-xl sm:gap-2 sm:rounded-[2.5rem] sm:p-3">
               {[
                 { id: 'products', label: 'Gear', icon: Package, count: products.length },
                 { id: 'services', label: 'Ops', icon: Scissors, count: services.length },
@@ -426,7 +426,7 @@ const StoreDetail = () => {
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`flex-1 flex items-center justify-center gap-1.5 px-1 sm:px-8 py-2.5 sm:py-5 rounded-xl sm:rounded-[2rem] font-black uppercase tracking-tighter text-[8px] sm:text-xs transition-all ${activeTab === tab.id
+                  className={`flex min-w-[6.75rem] shrink-0 items-center justify-center gap-1.5 rounded-xl px-3 py-2.5 text-[10px] font-black uppercase tracking-tight transition-all sm:min-w-0 sm:flex-1 sm:rounded-[2rem] sm:px-5 sm:py-4 sm:text-xs ${activeTab === tab.id
                     ? 'bg-slate-900 text-white shadow-lg'
                     : 'text-slate-400 hover:bg-slate-50'
                     }`}
@@ -443,7 +443,7 @@ const StoreDetail = () => {
             {/* Grid Views - Maximum Density */}
             <div className="min-h-[300px]">
               {activeTab === 'products' && (
-                <div className="responsive-card-grid [--card-min:14rem] sm:[--card-min:16rem] sm:[--card-gap:2rem] animate-fade-in px-1">
+                <div className="responsive-card-grid [--card-min:17rem] sm:[--card-min:18rem] sm:[--card-gap:1.5rem] animate-fade-in px-1">
                   {products.length > 0 ? products.map(product => (
                     <div key={product._id} className="group bg-white rounded-xl sm:rounded-[2.5rem] p-2 sm:p-6 border border-slate-100 shadow-sm hover:shadow-xl transition-all flex flex-col h-full">
                       <Link to={`/products/${product._id}`} className="block flex-1">
@@ -455,8 +455,8 @@ const StoreDetail = () => {
                           )}
                         </div>
                         <div className="space-y-0.5 sm:space-y-4 mb-2 sm:mb-6 px-1">
-                          <p className="text-[6px] sm:text-[10px] font-black text-primary-600 uppercase tracking-widest">{product.category}</p>
-                          <h3 className="text-[10px] sm:text-lg font-black text-slate-900 truncate uppercase leading-tight">{product.name}</h3>
+                          <p className="text-[10px] font-black uppercase leading-tight tracking-wide text-primary-600 break-words">{product.category}</p>
+                          <h3 className="min-h-[2.5rem] text-sm font-black uppercase leading-tight text-slate-900 line-clamp-2 break-words sm:text-lg">{product.name}</h3>
                           <p className="text-[11px] sm:text-xl font-black text-slate-900 tracking-tighter">₱{product.price?.toLocaleString()}</p>
                         </div>
                       </Link>
@@ -489,20 +489,20 @@ const StoreDetail = () => {
               {activeTab === 'services' && (
                 <div className="grid grid-cols-1 gap-2 sm:gap-6 animate-fade-in px-1">
                   {services.length > 0 ? services.map(service => (
-                    <div key={service._id} className="group p-3 sm:p-8 bg-white rounded-xl sm:rounded-[2.5rem] border border-slate-100 shadow-sm flex items-center gap-3 sm:gap-10 hover:shadow-xl transition-all">
-                      <div className="w-12 h-12 sm:w-32 sm:h-32 shrink-0 bg-primary-50 rounded-lg sm:rounded-[2rem] flex items-center justify-center text-primary-600 overflow-hidden relative border border-slate-100">
+                    <div key={service._id} className="group flex flex-col gap-3 rounded-xl border border-slate-100 bg-white p-3 shadow-sm transition-all hover:shadow-xl sm:flex-row sm:items-center sm:gap-6 sm:rounded-[2.5rem] sm:p-6">
+                      <div className="relative h-32 w-full shrink-0 overflow-hidden rounded-lg border border-slate-100 bg-primary-50 text-primary-600 sm:h-28 sm:w-28 sm:rounded-[2rem]">
                         {service.images?.[0] ? (
                           <img src={getImageUrl(service.images[0])} alt={service.name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
                         ) : (
-                          <Scissors className="h-5 w-5 sm:h-12 sm:w-12" />
+                          <Scissors className="absolute left-1/2 top-1/2 h-8 w-8 -translate-x-1/2 -translate-y-1/2 sm:h-10 sm:w-10" />
                         )}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <h4 className="text-[11px] sm:text-2xl font-black text-slate-900 uppercase truncate leading-tight">{service.name}</h4>
-                        <p className="text-[8px] sm:text-base text-slate-500 font-bold uppercase tracking-tight opacity-70 line-clamp-1">{service.description}</p>
-                        <span className="text-[7px] sm:text-xs font-black text-slate-400 uppercase tracking-[0.2em]">{service.duration} MIN</span>
+                        <h4 className="text-base font-black uppercase leading-tight text-slate-900 line-clamp-2 break-words sm:text-xl">{service.name}</h4>
+                        <p className="text-xs font-bold leading-relaxed text-slate-500 opacity-70 line-clamp-2 break-words sm:text-sm">{service.description}</p>
+                        <span className="text-[10px] font-black uppercase tracking-wide text-slate-400 sm:text-xs">{service.duration} MIN</span>
                       </div>
-                      <div className="text-right shrink-0">
+                      <div className="flex w-full shrink-0 items-center justify-between gap-3 sm:w-auto sm:flex-col sm:items-end sm:text-right">
                         <p className="text-[11px] sm:text-3xl font-black text-slate-900 tracking-tighter mb-1 sm:mb-2">₱{service.price?.toLocaleString()}</p>
                         <Link to={`/bookings?service=${service._id}`} className="inline-block px-3 sm:px-8 py-1.5 sm:py-4 bg-slate-900 text-white rounded-lg sm:rounded-2xl text-[8px] sm:text-[10px] font-black uppercase tracking-widest active:scale-95">
                           Book
@@ -519,7 +519,7 @@ const StoreDetail = () => {
               )}
 
               {activeTab === 'pets' && (
-                <div className="responsive-card-grid [--card-min:14rem] sm:[--card-min:16rem] sm:[--card-gap:2rem] animate-fade-in px-1">
+                <div className="responsive-card-grid [--card-min:17rem] sm:[--card-min:18rem] sm:[--card-gap:1.5rem] animate-fade-in px-1">
                   {pets.length > 0 ? pets.map(pet => (
                     <Link to={`/pets/${pet._id}`} key={pet._id} className="group bg-white rounded-xl sm:rounded-[2.5rem] p-2 sm:p-6 border border-slate-100 shadow-sm hover:shadow-xl transition-all flex flex-col h-full">
                       <div className="relative aspect-[4/3] rounded-lg sm:rounded-[2rem] overflow-hidden mb-2 sm:mb-6 bg-slate-50">
@@ -533,7 +533,7 @@ const StoreDetail = () => {
                         </div>
                       </div>
                       <div className="flex-1 space-y-0.5 sm:space-y-4 px-1">
-                        <h3 className="text-[10px] sm:text-lg font-black text-slate-900 uppercase truncate leading-tight">{pet.name}</h3>
+                        <h3 className="min-h-[2.5rem] text-sm font-black uppercase leading-tight text-slate-900 line-clamp-2 break-words sm:text-lg">{pet.name}</h3>
                         <p className="text-[7px] sm:text-xs font-bold text-slate-400 uppercase tracking-widest truncate opacity-80">{pet.breed}</p>
                         <p className="text-[11px] sm:text-2xl font-black text-primary-600 tracking-tighter pt-1 sm:pt-4 border-t border-slate-50">₱{pet.price?.toLocaleString()}</p>
                       </div>

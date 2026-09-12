@@ -335,7 +335,7 @@ const Pets = () => {
               </button>
             </div>
           ) : (
-            <div className="responsive-card-grid [--card-min:14rem] sm:[--card-min:15rem] xl:[--card-min:16rem]">
+            <div className="responsive-card-grid [--card-min:17rem] sm:[--card-min:18rem] xl:[--card-min:19rem]">
               {pets.map((pet, idx) => (
                 <div
                   key={pet._id}
@@ -375,10 +375,10 @@ const Pets = () => {
 
                   <div className="min-w-0 p-3 sm:p-4 flex-1 flex flex-col relative z-10">
                     <div className="mb-3">
-                      <p className="text-[8px] font-black text-slate-400 uppercase tracking-[0.25em] leading-none mb-1.5 truncate">
+                      <p className="mb-1.5 truncate text-[10px] font-black uppercase leading-tight tracking-wide text-slate-400" title={pet.breed || 'Pet'}>
                         {pet.breed || 'Pet'}
                       </p>
-                      <h3 className="text-[11px] sm:text-lg font-black text-slate-900 leading-tight uppercase truncate group-hover:text-primary-600 transition-colors">
+                      <h3 className="min-h-[2.5rem] text-base font-black uppercase leading-tight text-slate-900 line-clamp-2 break-words transition-colors group-hover:text-primary-600 sm:text-lg">
                         {pet.name}
                       </h3>
                     </div>
