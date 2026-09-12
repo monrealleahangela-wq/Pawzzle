@@ -478,7 +478,7 @@ const Search = () => {
   );
 
   return (
-    <div className="max-w-7xl mx-auto px-1 sm:px-8 py-4 sm:py-8">
+    <div className="w-full max-w-7xl min-w-0 mx-auto px-1 sm:px-8 py-4 sm:py-8">
       {/* Search Header - Compact */}
       <div className="mb-4 sm:mb-12">
         <h1 className="text-xl sm:text-5xl font-black text-slate-900 tracking-tighter mb-2 sm:mb-6 uppercase">Discovery Hub</h1>
@@ -654,7 +654,7 @@ const Search = () => {
               {filteredResults.pets.length > 0 && (
                 <div>
                   <h2 className="text-xs sm:text-xl font-black text-slate-900 mb-2 sm:mb-4 uppercase tracking-tighter px-1">Fleet ({filteredResults.pets.length})</h2>
-                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-6">
+                  <div className="responsive-card-grid [--card-min:13rem] sm:[--card-min:14rem] sm:[--card-gap:1.5rem]">
                     {filteredResults.pets.map((pet) => (
                       <Link key={pet._id} to={`/pets/${pet._id}`} className="group bg-white rounded-xl sm:rounded-[2rem] p-1.5 sm:p-4 border border-slate-100 shadow-sm transition-all hover:shadow-lg h-full flex flex-col">
                         <div className="aspect-[4/3] sm:h-48 bg-slate-50 relative overflow-hidden rounded-lg sm:rounded-[1.5rem] mb-2 sm:mb-4">
@@ -696,7 +696,7 @@ const Search = () => {
               {filteredResults.products.length > 0 && (
                 <div>
                   <h2 className="text-xs sm:text-xl font-black text-slate-900 mb-2 sm:mb-4 uppercase tracking-tighter px-1">Gear ({filteredResults.products.length})</h2>
-                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-6">
+                   <div className="responsive-card-grid [--card-min:13rem] sm:[--card-min:14rem] sm:[--card-gap:1.5rem]">
                     {filteredResults.products.map((product) => (
                       <Link key={product._id} to={`/products/${product._id}`} className="group bg-white rounded-xl sm:rounded-[2rem] p-1.5 sm:p-4 border border-slate-100 shadow-sm transition-all hover:shadow-lg h-full flex flex-col">
                         <div className="aspect-square bg-slate-50 relative overflow-hidden rounded-lg sm:rounded-[1.5rem] mb-2 sm:mb-4">
@@ -733,7 +733,7 @@ const Search = () => {
               {filteredResults.services.length > 0 && (
                 <div>
                   <h2 className="text-xs sm:text-xl font-black text-slate-900 mb-2 sm:mb-4 uppercase tracking-tighter px-1">Ops ({filteredResults.services.length})</h2>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-6">
+                   <div className="responsive-card-grid [--card-min:18rem] sm:[--card-gap:1.5rem]">
                     {filteredResults.services.map((service) => (
                       <Link key={service._id} to={`/bookings?service=${service._id}`} className="group flex items-center gap-3 sm:gap-6 bg-white rounded-xl sm:rounded-[2rem] p-2.5 sm:p-6 border border-slate-100 shadow-sm transition-all hover:shadow-lg">
                         <div className="w-12 h-12 sm:w-20 sm:h-20 bg-primary-50 rounded-lg sm:rounded-2xl flex items-center justify-center text-primary-600 shrink-0 overflow-hidden border border-slate-100">
@@ -772,7 +772,7 @@ const Search = () => {
               {filteredResults.stores.length > 0 && (
                 <div>
                   <h2 className="text-xs sm:text-xl font-black text-slate-900 mb-2 sm:mb-4 uppercase tracking-tighter px-1">Bases ({filteredResults.stores.length})</h2>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-6">
+                   <div className="responsive-card-grid [--card-min:18rem] sm:[--card-gap:1.5rem]">
                     {filteredResults.stores.map((store) => (
                       <Link key={store._id} to={`/stores/${store._id}`} className="group bg-white rounded-xl sm:rounded-[2rem] p-2.5 sm:p-5 border border-slate-100 shadow-sm transition-all hover:shadow-lg flex items-center gap-4">
                         <div className="w-10 h-10 sm:w-16 sm:h-16 rounded-lg sm:rounded-2xl overflow-hidden bg-slate-50 shrink-0 border border-slate-100">
@@ -795,7 +795,7 @@ const Search = () => {
           )}
 
           {activeTab === 'pets' && (
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-6 px-1">
+            <div className="responsive-card-grid [--card-min:13rem] sm:[--card-min:14rem] sm:[--card-gap:1.5rem] px-1">
               {filteredResults.pets.map((pet) => (
                 <Link key={pet._id} to={`/pets/${pet._id}`} className="group bg-white rounded-xl sm:rounded-[2rem] p-1.5 sm:p-4 border border-slate-100 shadow-sm transition-all hover:shadow-lg h-full flex flex-col">
                   <div className="aspect-[4/3] sm:h-48 bg-slate-50 relative overflow-hidden rounded-lg sm:rounded-[1.5rem] mb-2 sm:mb-4">
@@ -816,7 +816,7 @@ const Search = () => {
           )}
 
           {activeTab === 'products' && (
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-6 px-1">
+            <div className="responsive-card-grid [--card-min:13rem] sm:[--card-min:14rem] sm:[--card-gap:1.5rem] px-1">
               {filteredResults.products.map((product) => (
                 <Link key={product._id} to={`/products/${product._id}`} className="group bg-white rounded-xl sm:rounded-[2rem] p-1.5 sm:p-4 border border-slate-100 shadow-sm transition-all hover:shadow-lg h-full flex flex-col">
                   <div className="aspect-square bg-slate-50 relative overflow-hidden rounded-lg sm:rounded-[1.5rem] mb-2 sm:mb-4">
@@ -837,7 +837,7 @@ const Search = () => {
           )}
 
           {activeTab === 'services' && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-6 px-1">
+            <div className="responsive-card-grid [--card-min:18rem] sm:[--card-gap:1.5rem] px-1">
               {filteredResults.services.map((service) => (
                 <Link key={service._id} to={`/bookings?service=${service._id}`} className="group flex items-center gap-3 sm:gap-6 bg-white rounded-xl sm:rounded-[2rem] p-2.5 sm:p-6 border border-slate-100 shadow-sm transition-all hover:shadow-lg">
                   <div className="w-12 h-12 sm:w-20 sm:h-20 bg-primary-50 rounded-lg sm:rounded-2xl flex items-center justify-center text-primary-600 shrink-0 overflow-hidden border border-slate-100">
@@ -860,7 +860,7 @@ const Search = () => {
           )}
 
           {activeTab === 'stores' && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-6 px-1">
+            <div className="responsive-card-grid [--card-min:18rem] sm:[--card-gap:1.5rem] px-1">
               {filteredResults.stores.map((store) => (
                 <Link key={store._id} to={`/stores/${store._id}`} className="group bg-white rounded-xl sm:rounded-[2rem] p-2.5 sm:p-5 border border-slate-100 shadow-sm transition-all hover:shadow-lg flex items-center gap-4">
                   <div className="w-10 h-10 sm:w-16 sm:h-16 rounded-lg sm:rounded-2xl overflow-hidden bg-slate-50 shrink-0 border border-slate-100">

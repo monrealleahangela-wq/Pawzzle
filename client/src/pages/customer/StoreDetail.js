@@ -443,7 +443,7 @@ const StoreDetail = () => {
             {/* Grid Views - Maximum Density */}
             <div className="min-h-[300px]">
               {activeTab === 'products' && (
-                <div className="grid grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-8 animate-fade-in px-1">
+                <div className="responsive-card-grid [--card-min:14rem] sm:[--card-min:16rem] sm:[--card-gap:2rem] animate-fade-in px-1">
                   {products.length > 0 ? products.map(product => (
                     <div key={product._id} className="group bg-white rounded-xl sm:rounded-[2.5rem] p-2 sm:p-6 border border-slate-100 shadow-sm hover:shadow-xl transition-all flex flex-col h-full">
                       <Link to={`/products/${product._id}`} className="block flex-1">
@@ -519,7 +519,7 @@ const StoreDetail = () => {
               )}
 
               {activeTab === 'pets' && (
-                <div className="grid grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-8 animate-fade-in px-1">
+                <div className="responsive-card-grid [--card-min:14rem] sm:[--card-min:16rem] sm:[--card-gap:2rem] animate-fade-in px-1">
                   {pets.length > 0 ? pets.map(pet => (
                     <Link to={`/pets/${pet._id}`} key={pet._id} className="group bg-white rounded-xl sm:rounded-[2.5rem] p-2 sm:p-6 border border-slate-100 shadow-sm hover:shadow-xl transition-all flex flex-col h-full">
                       <div className="relative aspect-[4/3] rounded-lg sm:rounded-[2rem] overflow-hidden mb-2 sm:mb-6 bg-slate-50">
@@ -548,7 +548,7 @@ const StoreDetail = () => {
               )}
 
               {activeTab === 'experts' && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-8 animate-fade-in px-1">
+                <div className="responsive-card-grid [--card-min:18rem] sm:[--card-gap:2rem] animate-fade-in px-1">
                   {staff.length > 0 ? staff.map(member => (
                     <div key={member._id} className="group bg-white rounded-xl sm:rounded-[2.5rem] p-4 sm:p-8 border border-slate-100 shadow-sm hover:shadow-xl transition-all">
                       <div className="flex items-center gap-4 sm:gap-6 mb-6">

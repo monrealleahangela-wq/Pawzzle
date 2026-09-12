@@ -123,7 +123,7 @@ const Stores = () => {
     }
 
     return (
-        <div className="min-h-screen bg-[#F8FAFC] pb-36 sm:pb-20 px-1 sm:px-2">
+        <div className="min-h-screen w-full max-w-full min-w-0 bg-[#F8FAFC] dark:bg-slate-950 pb-36 sm:pb-20 px-1 sm:px-2">
             {/* Premium Header Section - Optimized for Compactness */}
             <section className="relative pt-12 pb-20 sm:pt-20 sm:pb-32 overflow-hidden rounded-b-[2rem] sm:rounded-b-[4rem]">
                 <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-slate-800 to-primary-900"></div>
@@ -181,13 +181,13 @@ const Stores = () => {
 
             {/* Stores Grid - High Density */}
             <div className="container-custom -mt-8 sm:-mt-12 relative z-20 px-2 sm:px-0">
-                <div className="grid grid-cols-2 lg:grid-cols-3 gap-2.5 sm:gap-8">
+                <div className="responsive-card-grid [--card-min:14rem] sm:[--card-min:17rem] sm:[--card-gap:2rem]">
                     {filteredStores.length > 0 ? (
                         filteredStores.map((store, index) => (
                             <Link
                                 to={`/stores/${store._id}`}
                                 key={store._id}
-                                className="group bg-white rounded-2xl sm:rounded-[3rem] p-3 sm:p-8 border border-white shadow-xl shadow-slate-200/50 hover:shadow-2xl transition-all h-full flex flex-col"
+                                className="group w-full min-w-0 max-w-full bg-white dark:bg-slate-900 rounded-2xl sm:rounded-[3rem] p-3 sm:p-8 border border-white dark:border-slate-800 shadow-xl shadow-slate-200/50 hover:shadow-2xl transition-all h-full flex flex-col"
                                 style={{ animationDelay: `${index * 0.05}s` }}
                             >
                                 <div className="relative mb-3 sm:mb-8 shrink-0">

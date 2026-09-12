@@ -205,7 +205,7 @@ const SupplierDashboard = () => {
 
   // ── MAIN DASHBOARD ────────────────────────────────────
   return (
-    <div className="min-h-screen bg-slate-50/50 p-4 sm:p-8 space-y-8">
+    <div className="min-h-screen w-full max-w-full min-w-0 bg-slate-50/50 dark:bg-slate-950 p-4 sm:p-8 space-y-8">
       {/* Header */}
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-6 bg-white p-6 sm:p-10 rounded-[3rem] border border-slate-100 shadow-sm relative overflow-hidden">
         <div className="absolute top-0 right-0 w-64 h-64 bg-primary-500/5 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl pointer-events-none" />
@@ -224,7 +224,7 @@ const SupplierDashboard = () => {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="responsive-card-grid [--card-min:9rem] [--card-gap:1rem]">
         {[
           { label: 'Products', value: stats?.activeProducts || 0, icon: Package },
           { label: 'Total Stock', value: stats?.totalStock || 0, icon: Box },
@@ -291,7 +291,7 @@ const SupplierDashboard = () => {
               <Plus className="h-4 w-4" /> Add Product
             </button>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="responsive-card-grid [--card-min:15rem] [--card-gap:1rem]">
             {products.map(p => (
               <div key={p._id} className="bg-white border border-slate-100 rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition-all group">
                 <div className="h-32 bg-primary-50 flex items-center justify-center">
@@ -382,14 +382,14 @@ const SupplierDashboard = () => {
       {/* ── PRODUCT MODAL ── */}
       {showProductModal && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-2">
-          <div className="bg-white w-full max-w-2xl rounded-[2rem] overflow-hidden shadow-2xl flex flex-col max-h-[95vh] border border-slate-200">
+          <div className="bg-white dark:bg-slate-900 w-full min-w-0 max-w-2xl rounded-[2rem] overflow-hidden shadow-2xl flex flex-col max-h-[calc(100dvh-1rem)] border border-slate-200 dark:border-slate-800">
             <header className="p-5 border-b border-slate-100 flex items-center justify-between shrink-0">
               <h3 className="text-lg font-black uppercase text-slate-900 tracking-tighter">{editingProduct ? 'Edit Product' : 'Add Product'}</h3>
               <button onClick={() => setShowProductModal(false)} className="p-2 bg-slate-50 text-slate-400 rounded-xl hover:bg-rose-50 hover:text-rose-600"><X className="h-4 w-4" /></button>
             </header>
             <div className="flex-1 overflow-y-auto p-6 space-y-5">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="col-span-2 space-y-1">
+              <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2">
+                <div className="space-y-1 sm:col-span-2">
                   <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Product Name</label>
                   <input type="text" value={productForm.name} onChange={e => setProductForm(p => ({ ...p, name: e.target.value }))}
                     className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold outline-none" required />

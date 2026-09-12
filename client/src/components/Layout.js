@@ -511,7 +511,7 @@ const Layout = () => {
   if (pendingProfessional) return <><Outlet /><PasswordChangeModal /></>;
 
   return (
-    <div className={`min-h-screen bg-neutral-50 dark:bg-slate-950 flex flex-col lg:flex-row overflow-x-hidden transition-colors duration-300 ${user?.role === 'customer' ? 'customer-ui-shell' : ''} ${user?.role === 'staff' ? 'staff-ui-shell' : ''} ${isStoreOwnerUI ? 'store-owner-ui-shell' : ''} ${isPlatformAdminUI ? 'super-admin-ui-shell' : ''} ${isLandingPage ? '!bg-transparent' : ''}`}>
+    <div className={`app-shell min-h-screen w-full max-w-full min-w-0 bg-neutral-50 dark:bg-slate-950 flex flex-col lg:flex-row transition-colors duration-300 ${user?.role === 'customer' ? 'customer-ui-shell' : ''} ${user?.role === 'staff' ? 'staff-ui-shell' : ''} ${isStoreOwnerUI ? 'store-owner-ui-shell' : ''} ${isPlatformAdminUI ? 'super-admin-ui-shell' : ''} ${isLandingPage ? '!bg-transparent' : ''}`}>
       
       {!isLandingPage && (
         <div className="fixed top-0 left-0 h-1 bg-gradient-to-r from-primary via-secondary to-primary z-[100] transition-all duration-300" 
@@ -563,7 +563,7 @@ const Layout = () => {
         </aside>
       )}
 
-      <div className={`flex-1 flex flex-col min-w-0 ${isLandingPage ? '' : `${contentPadding} ${isCustomerUI || isPlatformAdminUI ? 'pt-14 lg:pt-16' : 'pt-16 lg:pt-20'}`} transition-all duration-500`}>
+      <div className={`app-content-shell w-full max-w-full flex-1 flex flex-col min-w-0 ${isLandingPage ? '' : `${contentPadding} ${isCustomerUI || isPlatformAdminUI ? 'pt-14 lg:pt-16' : 'pt-16 lg:pt-20'}`} transition-all duration-500`}>
         {!isLandingPage && (
           <header className={`fixed top-0 left-0 ${headerOffset} right-0 z-50 glass-effect dark:border-b dark:border-slate-800 ${isCustomerUI || isPlatformAdminUI ? 'h-14 lg:h-16' : 'h-16 lg:h-20'} flex items-center px-4 sm:px-6 lg:px-8 justify-between transition-all duration-500 shadow-soft`}>
             <div className="flex items-center gap-6">
@@ -619,8 +619,8 @@ const Layout = () => {
           </header>
         )}
 
-        <main className={`flex-1 ${isCustomerUI || isPlatformAdminUI ? 'p-3 sm:p-4 lg:p-5' : 'p-4 sm:p-5 lg:p-8'} animate-fade-up ${isLandingPage ? 'p-0' : ''}`}>
-          <div className={`relative z-10 ${user?.role === 'customer' ? 'customer-interface' : ''} ${user?.role === 'staff' ? 'staff-interface' : ''} ${isStoreOwnerUI ? 'store-owner-interface' : ''} ${isPlatformAdminUI ? 'super-admin-interface' : ''}`}>
+        <main className={`app-content-main w-full max-w-full min-w-0 flex-1 ${isCustomerUI || isPlatformAdminUI ? 'p-3 sm:p-4 lg:p-5' : 'p-4 sm:p-5 lg:p-8'} animate-fade-up ${isLandingPage ? 'p-0' : ''}`}>
+          <div className={`app-page relative z-10 w-full max-w-full min-w-0 ${user?.role === 'customer' ? 'customer-interface' : ''} ${user?.role === 'staff' ? 'staff-interface' : ''} ${isStoreOwnerUI ? 'store-owner-interface' : ''} ${isPlatformAdminUI ? 'super-admin-interface' : ''}`}>
             <Outlet />
           </div>
         </main>

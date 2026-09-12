@@ -185,7 +185,7 @@ const Services = () => {
 
   if (loading) {
     return (
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 sm:gap-8 lg:grid-cols-3" aria-label="Loading services">
+      <div className="responsive-card-grid [--card-min:14rem] sm:[--card-min:16rem] sm:[--card-gap:2rem]" aria-label="Loading services">
         {[1, 2, 3, 4, 5, 6].map(item => (
           <div key={item} className="h-72 animate-pulse rounded-2xl border border-slate-100 bg-white p-4">
             <div className="h-32 rounded-xl bg-slate-100" />
@@ -210,9 +210,9 @@ const Services = () => {
   }
 
   return (
-    <div className="space-y-12 animate-fade-in pb-20">
+    <div className="w-full max-w-full min-w-0 space-y-8 sm:space-y-12 animate-fade-in pb-20">
       {/* Decorative environment */}
-      <div className="fixed inset-0 z-[-1] pointer-events-none opacity-40">
+      <div className="fixed inset-0 z-[-1] pointer-events-none overflow-hidden opacity-40">
         <div className="absolute top-20 right-[-10%] w-[500px] h-[500px] bg-primary-50 rounded-full blur-[120px] blob-animation" />
         <div className="absolute bottom-[-10%] left-[-10%] w-[400px] h-[400px] bg-secondary-50 rounded-full blur-[100px] blob-animation" style={{ animationDelay: '-2s' }} />
       </div>
@@ -305,11 +305,11 @@ const Services = () => {
       </div>
 
       {/* Services Grid with Premium Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-8">
+      <div className="responsive-card-grid [--card-min:14rem] sm:[--card-min:16rem] sm:[--card-gap:2rem]">
         {filteredServices.map((service, idx) => (
           <div
             key={service._id}
-            className="card group p-0 flex flex-col h-full hover:shadow-2xl hover:shadow-primary-200/50 transition-all duration-500 animate-slide-up"
+            className="card group w-full min-w-0 max-w-full p-0 flex flex-col h-full hover:shadow-2xl hover:shadow-primary-200/50 transition-all duration-500 animate-slide-up"
             style={{ animationDelay: `${idx * 0.1}s` }}
           >
             {/* Top accent bar or Image */}

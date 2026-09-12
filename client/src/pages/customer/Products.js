@@ -245,23 +245,23 @@ const Products = () => {
   }
 
   return (
-    <div className="space-y-4 sm:space-y-10 animate-fade-in pb-20 px-1 sm:px-0">
+    <div className="w-full max-w-full min-w-0 space-y-4 sm:space-y-8 animate-fade-in pb-20 px-1 sm:px-0">
       {/* Decorative background element */}
-      <div className="fixed inset-0 z-[-1] pointer-events-none opacity-40">
+      <div className="fixed inset-0 z-[-1] pointer-events-none overflow-hidden opacity-40">
         <div className="absolute top-40 left-[-5%] w-[400px] h-[400px] sm:w-[600px] sm:h-[600px] bg-primary-50 rounded-full blur-[100px] blob-animation" />
         <div className="absolute bottom-[-10%] right-[-10%] w-[300px] h-[300px] sm:w-[500px] sm:h-[500px] bg-secondary-50 rounded-full blur-[80px] blob-animation" style={{ animationDelay: '-3s' }} />
       </div>
 
       {/* Header & Search */}
       <div className="flex flex-col space-y-4">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-3 sm:gap-6 bg-white p-4 rounded-3xl border border-slate-100 shadow-sm">
-          <div className="space-y-1">
+        <div className="flex min-w-0 flex-col md:flex-row justify-between items-start md:items-end gap-3 sm:gap-6 bg-white p-4 rounded-3xl border border-slate-100 shadow-sm dark:bg-slate-900 dark:border-slate-800">
+          <div className="min-w-0 space-y-1">
             <h1 className="text-xl sm:text-5xl font-black text-slate-900 tracking-tight uppercase">Pet Shop</h1>
             <p className="text-[9px] sm:text-lg text-slate-400 font-bold uppercase tracking-widest hidden sm:block">Premium supplies for your beloved pets</p>
           </div>
 
-          <form onSubmit={handleSearch} className="w-full md:w-auto flex gap-2">
-            <div className="input-container md:w-80">
+          <form onSubmit={handleSearch} className="flex w-full min-w-0 gap-2 md:max-w-sm">
+            <div className="input-container min-w-0 flex-1">
               <Search className="input-icon h-4 w-4 text-slate-400" />
               <input
                 type="text"
@@ -278,12 +278,12 @@ const Products = () => {
         </div>
       </div>
 
-      <div className="flex flex-col lg:flex-row gap-4 sm:gap-10">
+      <div className="flex w-full min-w-0 flex-col gap-4 xl:flex-row xl:items-start xl:gap-5">
         {/* Modern Filters Sidebar */}
-        <aside className="lg:w-64 flex-shrink-0">
+        <aside className="w-full min-w-0 xl:w-60 xl:shrink-0">
           <button
             onClick={() => setShowMobileFilters(!showMobileFilters)}
-            className="lg:hidden w-full flex items-center justify-between p-3 bg-white rounded-2xl border border-slate-100 shadow-sm"
+            className="xl:hidden w-full flex items-center justify-between p-3 bg-white rounded-2xl border border-slate-100 shadow-sm"
           >
             <div className="flex items-center gap-2">
               <Filter className="h-4 w-4 text-primary-600" />
@@ -292,7 +292,7 @@ const Products = () => {
             <ArrowRight className={`h-4 w-4 transition-transform ${showMobileFilters ? 'rotate-90' : ''}`} />
           </button>
 
-          <div className={`${showMobileFilters ? 'block' : 'hidden lg:block'} card sticky top-24 p-5 border-slate-100 bg-white shadow-xl animate-fade-in`}>
+          <div className={`${showMobileFilters ? 'block' : 'hidden xl:block'} card xl:sticky xl:top-24 p-4 border-slate-100 bg-white shadow-xl animate-fade-in dark:bg-slate-900 dark:border-slate-800`}>
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-2">
                 <Filter className="h-4 w-4 text-primary-600" />
@@ -400,7 +400,7 @@ const Products = () => {
         </aside>
 
         {/* Dynamic Product Grid */}
-        <main className="flex-1">
+        <main className="w-full min-w-0 flex-1">
           {products.length === 0 ? (
             <div className="card border-dashed border-2 bg-slate-50/50 flex flex-col items-center justify-center py-12 text-center">
               <Package className="h-8 w-8 text-slate-300 mb-3" />
@@ -417,11 +417,11 @@ const Products = () => {
               </button>
             </div>
           ) : (
-            <div className="grid grid-cols-2 md:grid-cols-2 xl:grid-cols-3 gap-3">
+            <div className="responsive-card-grid [--card-min:14rem] sm:[--card-min:15rem] xl:[--card-min:16rem]">
               {products.map((product, idx) => (
                 <div
                   key={product._id}
-                  className="group bg-white rounded-[2.5rem] border border-slate-100 p-2 flex flex-col transition-all hover:shadow-2xl hover:shadow-primary-100/10 relative overflow-hidden animate-slide-up"
+                  className="group w-full min-w-0 max-w-full bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 p-2 flex flex-col transition-all hover:shadow-2xl hover:shadow-primary-100/10 relative overflow-hidden animate-slide-up"
                   style={{ animationDelay: `${idx * 0.1}s` }}
                 >
                   <div className="absolute top-0 right-0 w-24 h-24 bg-slate-50 rounded-bl-[3rem] -translate-y-12 translate-x-12 group-hover:bg-primary-50 transition-colors duration-500" />
@@ -448,7 +448,7 @@ const Products = () => {
                     </div>
                   </div>
 
-                  <div className="p-4 flex-1 flex flex-col relative z-10">
+                  <div className="min-w-0 p-3 sm:p-4 flex-1 flex flex-col relative z-10">
                     <div className="mb-3">
                       <p className="text-[8px] font-black text-slate-400 uppercase tracking-[0.25em] leading-none mb-1.5 truncate">
                         {product.brand || 'Product'}
@@ -474,24 +474,24 @@ const Products = () => {
                         </div>
                       </div>
 
-                      <div className="flex gap-1.5">
+                      <div className="grid min-w-0 grid-cols-[2.5rem_2.5rem_minmax(0,1fr)] gap-1.5">
                         <Link
                           to={`/products/${product._id}`}
-                          className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center bg-slate-50 hover:bg-slate-200 rounded-lg sm:rounded-xl transition-colors shadow-sm"
+                           className="w-10 h-10 flex items-center justify-center bg-slate-50 hover:bg-slate-200 rounded-lg sm:rounded-xl transition-colors shadow-sm"
                           title="View Info"
                         >
                           <Eye className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-slate-600" />
                         </Link>
                         <button
                           onClick={() => handleAddToCart(product)}
-                          className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center bg-slate-100 text-slate-600 rounded-lg sm:rounded-xl hover:bg-slate-200 transition-all active:scale-90 shadow-sm"
+                          className="w-10 h-10 flex items-center justify-center bg-slate-100 text-slate-600 rounded-lg sm:rounded-xl hover:bg-slate-200 transition-all active:scale-90 shadow-sm"
                           title="Add to Cart"
                         >
                           <ShoppingCart className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                         </button>
                         <button
                           onClick={() => handleBuyNow(product)}
-                          className="flex-1 h-8 sm:h-10 flex items-center justify-center bg-slate-900 hover:bg-primary-600 text-white rounded-lg sm:rounded-xl text-[8px] sm:text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 shadow-lg gap-1.5"
+                          className="h-10 min-w-0 flex items-center justify-center bg-slate-900 hover:bg-primary-600 text-white rounded-lg sm:rounded-xl text-[9px] sm:text-[10px] font-black uppercase tracking-wide sm:tracking-widest transition-all active:scale-95 shadow-lg gap-1.5"
                         >
                           <Zap className="h-2.5 w-2.5 sm:h-3.5 sm:w-3.5" />
                           <span className="hidden sm:inline">Buy Now</span>

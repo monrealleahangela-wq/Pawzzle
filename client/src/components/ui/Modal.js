@@ -22,11 +22,11 @@ const Modal = React.forwardRef(({
     md: 'max-w-md',
     lg: 'max-w-xl',
     xl: 'max-w-2xl',
-    full: 'max-w-full mx-2 sm:mx-4'
+    full: 'max-w-none'
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4">
       {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/50 backdrop-blur-sm animate-fade-in"
@@ -37,7 +37,7 @@ const Modal = React.forwardRef(({
       <div
         ref={ref}
         className={cn(
-          "relative w-full bg-white/95 backdrop-blur-sm rounded-xl sm:rounded-2xl shadow-strong border border-neutral-200/50 animate-scale-in z-10 flex flex-col max-h-[94vh] overflow-hidden sm:m-4 m-2",
+          "relative w-full min-w-0 max-w-full bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm rounded-xl sm:rounded-2xl shadow-strong border border-neutral-200/50 dark:border-slate-700 animate-scale-in z-10 flex flex-col max-h-[calc(100dvh-1rem)] sm:max-h-[calc(100dvh-2rem)] overflow-hidden",
           sizes[size],
           className
         )}
@@ -72,7 +72,7 @@ const Modal = React.forwardRef(({
         )}
 
         {/* Content */}
-        <div className="p-3.5 sm:p-5 overflow-y-auto flex-1 custom-scrollbar">
+        <div className="min-w-0 p-3.5 sm:p-5 overflow-y-auto flex-1 custom-scrollbar">
           {children}
         </div>
       </div>

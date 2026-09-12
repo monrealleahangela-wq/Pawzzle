@@ -122,8 +122,8 @@ const AdminChat = () => {
   }
 
   return (
-    <div className="min-h-screen bg-white md:bg-slate-50/30">
-      <div className="max-w-[1600px] mx-auto min-h-screen flex flex-col md:p-4 lg:p-6">
+    <div className="min-h-screen w-full max-w-full min-w-0 bg-white md:bg-slate-50/30">
+      <div className="w-full max-w-[1600px] min-w-0 mx-auto min-h-screen flex flex-col md:p-4 lg:p-6">
 
         {/* Compact Header */}
         <header className="flex items-center justify-between px-4 py-3.5 md:px-0 md:pb-6">
@@ -147,7 +147,7 @@ const AdminChat = () => {
           </div>
         </header>
 
-        <div className="flex-1 flex overflow-hidden bg-white border border-slate-100 rounded-none md:rounded-2xl shadow-sm">
+        <div className="min-w-0 flex-1 flex overflow-hidden bg-white border border-slate-100 rounded-none md:rounded-2xl shadow-sm">
           {/* Sidebar - Conversation List */}
           <div className={`w-full md:w-80 lg:w-96 flex flex-col border-r border-slate-50 ${selectedConversation ? 'hidden md:flex' : 'flex'}`}>
             {/* Search & Filter - Compact */}
@@ -218,7 +218,7 @@ const AdminChat = () => {
           </div>
 
           {/* Chat Main Area */}
-          <div className={`flex-1 flex flex-col bg-white overflow-hidden relative ${!selectedConversation ? 'hidden md:flex' : 'flex'}`}>
+          <div className={`min-w-0 flex-1 flex flex-col bg-white overflow-hidden relative ${!selectedConversation ? 'hidden md:flex' : 'flex'}`}>
             {selectedConversation ? (
               <>
                 {/* Minimalist Chat Header */}

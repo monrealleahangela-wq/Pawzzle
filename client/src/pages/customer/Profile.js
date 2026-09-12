@@ -1070,7 +1070,7 @@ const Profile = () => {
   const actionReminders = bookings.filter(booking => ['awaiting_customer_confirmation', 'awaiting_payment'].includes(booking.status)).length;
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] pb-36 sm:pb-20 overflow-x-hidden">
+    <div className="min-h-screen w-full max-w-full min-w-0 bg-[#F8FAFC] dark:bg-slate-950 pb-36 sm:pb-20">
       {/* Profile Terminal - Root Node */}
       {/* Premium Header/Banner - Compacted */}
       <div className="relative h-24 sm:h-48 w-full overflow-hidden">

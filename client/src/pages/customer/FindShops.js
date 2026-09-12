@@ -289,7 +289,7 @@ const FindShops = () => {
   }
 
   return (
-    <div className="h-[calc(100vh-64px)] sm:h-[calc(100vh-80px)] flex flex-col lg:flex-row relative overflow-hidden bg-slate-50 dark:bg-slate-950">
+    <div className="h-[calc(100vh-64px)] sm:h-[calc(100vh-80px)] w-full max-w-full min-w-0 flex flex-col lg:flex-row relative overflow-hidden bg-slate-50 dark:bg-slate-950">
       {/* Sidebar Overlay for Mobile */}
       {!isSidebarOpen && (
         <button
@@ -302,7 +302,7 @@ const FindShops = () => {
 
       {/* Sidebar List */}
       <aside className={`
-        absolute lg:relative inset-y-0 left-0 w-full lg:w-[400px] bg-white dark:bg-slate-900 z-[1002] lg:z-10
+        absolute lg:relative inset-y-0 left-0 w-full lg:w-[min(24rem,38%)] lg:shrink-0 bg-white dark:bg-slate-900 z-[1002] lg:z-10
         transition-transform duration-500 ease-in-out border-r border-slate-100 dark:border-slate-800 flex flex-col
         shadow-2xl lg:shadow-none
         ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
@@ -478,7 +478,7 @@ const FindShops = () => {
       </aside>
 
       {/* Map Content */}
-      <div className="flex-1 relative z-0">
+      <div className="min-w-0 flex-1 relative z-0">
         <MapContainer
           center={mapCenter}
           zoom={mapZoom}

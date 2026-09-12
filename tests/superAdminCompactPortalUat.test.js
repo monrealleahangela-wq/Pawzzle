@@ -76,7 +76,8 @@ test('platform portal has explicit dark-mode and mobile safeguards', () => {
   assert.match(css, /\.dark \.super-admin-interface input::placeholder/);
   assert.match(css, /\.dark \.super-admin-interface table thead/);
   assert.match(css, /@media \(max-width: 768px\)[\s\S]*\.super-admin-interface table \{ min-width: 42rem; \}/);
-  assert.match(css, /overflow-x: hidden/);
+  assert.match(css, /\.app-page \[class~="overflow-x-auto"\][\s\S]*max-width: 100%;[\s\S]*min-width: 0;/);
+  assert.doesNotMatch(css, /\.super-admin-interface\s*\{[^}]*overflow-x:\s*(?:hidden|clip)/);
 });
 
 test('plain-language labels and accessible permission controls are present', () => {

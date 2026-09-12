@@ -163,7 +163,7 @@ const Home = () => {
       </section>
 
       {/* ── 2. REAL-TIME PLATFORM DATA ── */}
-      <section className="max-w-7xl mx-auto px-6 grid grid-cols-2 lg:grid-cols-4 gap-8">
+      <section className="responsive-card-grid max-w-7xl mx-auto px-6 [--card-min:11rem] [--card-gap:2rem]">
         <Counter target={data.stats.products || 0} label="Elite Products" icon={Package} />
         <Counter target={data.stats.experts || 0} label="Verified Experts" icon={ShieldCheck} />
         <Counter target={data.stats.services || 0} label="Active Services" icon={Sparkles} />
@@ -245,7 +245,7 @@ const Home = () => {
                  </p>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+              <div className="responsive-card-grid [--card-min:12rem] [--card-gap:2rem]">
                  {data.experts.map((expert, idx) => (
                     <div key={idx} className="bg-white/5 border border-white/10 rounded-[3rem] p-10 space-y-8 group hover:bg-white/10 transition-all duration-500 hover:-translate-y-4 shadow-2xl">
                        <div className="relative w-24 h-24 mx-auto">
@@ -297,7 +297,7 @@ const Home = () => {
              </Link>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10">
+          <div className="responsive-card-grid [--card-min:13rem] [--card-gap:2.5rem]">
              {data.pets.map((pet, idx) => (
                 <div key={idx} className="bg-white rounded-[3rem] border border-slate-50 p-4 group hover:shadow-premium hover:-translate-y-4 transition-all duration-700 animate-fade-up" style={{ animationDelay: `${idx * 0.1}s` }}>
                    <Link to={`/pets/${pet._id}`} className="block relative aspect-square rounded-[2.5rem] overflow-hidden mb-8 shadow-soft">
@@ -346,7 +346,7 @@ const Home = () => {
                  </Link>
               </div>
 
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+              <div className="responsive-card-grid [--card-min:11rem] [--card-gap:2rem]">
                  {data.products.map((product, idx) => (
                     <div key={idx} className="bg-white rounded-[2.5rem] border border-transparent hover:border-slate-100 p-4 transition-all duration-500 group">
                        <Link to={`/products/${product._id}`} className="block relative aspect-square rounded-[2rem] overflow-hidden mb-6 bg-neutral-100">

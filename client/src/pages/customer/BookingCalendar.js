@@ -115,7 +115,7 @@ const BookingCalendar = () => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="w-full min-w-0 max-w-full space-y-6">
       <div>
         <h1 className="text-3xl font-bold text-gray-900">Booking Calendar</h1>
         <p className="text-gray-600">View available dates and your bookings</p>
@@ -123,29 +123,29 @@ const BookingCalendar = () => {
 
       {/* Calendar Navigation */}
       <div className="card p-4">
-        <div className="flex justify-between items-center mb-4">
+        <div className="mb-4 grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2">
           <button
             onClick={handlePrevMonth}
-            className="btn btn-outline"
+            className="btn btn-outline px-3 sm:px-5"
           >
-            ← Previous
+            <span aria-hidden="true">←</span><span className="hidden sm:inline"> Previous</span>
           </button>
-          <h2 className="text-xl font-semibold text-gray-900">
+          <h2 className="min-w-0 text-center text-base font-semibold text-gray-900 dark:text-white sm:text-xl">
             {monthNames[currentMonth.getMonth()]} {currentMonth.getFullYear()}
           </h2>
           <button
             onClick={handleNextMonth}
-            className="btn btn-outline"
+            className="btn btn-outline px-3 sm:px-5"
           >
-            Next →
+            <span className="hidden sm:inline">Next </span><span aria-hidden="true">→</span>
           </button>
         </div>
 
         {/* Calendar Grid */}
-        <div className="grid grid-cols-7 gap-1">
+        <div className="grid min-w-0 grid-cols-7 gap-0.5 sm:gap-1">
           {/* Day headers */}
           {dayNames.map(day => (
-            <div key={day} className="text-center text-sm font-medium text-gray-700 p-2">
+            <div key={day} className="min-w-0 truncate p-1 text-center text-[10px] font-medium text-gray-700 dark:text-slate-300 sm:p-2 sm:text-sm">
               {day}
             </div>
           ))}
@@ -165,7 +165,7 @@ const BookingCalendar = () => {
                     key={dayIndex}
                     onClick={() => handleDateClick(day)}
                     className={`
-                      relative p-2 h-20 border border-gray-200 cursor-pointer
+                      relative min-w-0 p-1 h-14 sm:p-2 sm:h-20 border border-gray-200 cursor-pointer
                       ${!day ? 'bg-white hover:bg-gray-50' : 'bg-gray-50'}
                       ${isBooked ? 'bg-red-50 border-red-200' : ''}
                       ${isSelected ? 'ring-2 ring-primary-500' : ''}
@@ -176,7 +176,7 @@ const BookingCalendar = () => {
                         <div className="text-sm font-medium text-gray-900">{day}</div>
                         {isBooked && (
                           <div className="mt-1">
-                            <div className={`text-xs px-1 py-0.5 rounded-full ${
+                            <div title={status} className={`max-w-full truncate text-[8px] px-0.5 py-0.5 rounded-full sm:px-1 sm:text-xs ${
                               status === 'confirmed' ? 'bg-primary-100 text-primary-800' :
                               status === 'completed' ? 'bg-green-100 text-green-800' :
                               'bg-red-100 text-red-800'
@@ -198,7 +198,7 @@ const BookingCalendar = () => {
         </div>
 
         {/* Legend */}
-        <div className="mt-4 flex justify-center gap-4 text-sm">
+        <div className="mt-4 flex flex-wrap justify-center gap-3 text-xs sm:gap-4 sm:text-sm">
           <div className="flex items-center gap-2">
             <div className="w-4 h-4 bg-white border border-gray-200"></div>
             <span>Available</span>
@@ -224,8 +224,8 @@ const BookingCalendar = () => {
 
       {/* Selected Date Bookings */}
       {bookingModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
+          <div className="min-w-0 w-full max-w-md max-h-[calc(100dvh-1rem)] overflow-y-auto bg-white dark:bg-slate-900 rounded-lg p-4 sm:p-6">
             <div className="flex justify-between items-start mb-4">
               <h3 className="text-lg font-semibold text-gray-900">
                 Booking for {new Date(bookingModal.bookingDate).toLocaleDateString()}

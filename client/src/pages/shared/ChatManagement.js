@@ -148,12 +148,12 @@ const ChatManagement = ({ initialView = 'active' }) => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col">
+    <div className="min-h-screen w-full max-w-full min-w-0 bg-slate-50 dark:bg-slate-950 flex flex-col">
       {/* Dynamic Header / Action Bar */}
       <header className={`sticky top-0 z-50 transition-all duration-300 ${
         isSelectionMode ? 'bg-primary-900 text-white shadow-lg' : 'bg-white text-slate-900 border-b'
       }`}>
-        <div className="max-w-4xl mx-auto px-4 h-16 flex items-center justify-between">
+        <div className="w-full min-w-0 max-w-4xl mx-auto px-4 h-16 flex items-center justify-between">
           {isSelectionMode ? (
             <div className="flex items-center gap-4 animate-fade-in w-full">
               <button onClick={exitSelectionMode} className="p-2 hover:bg-white/10 rounded-full">
@@ -199,7 +199,7 @@ const ChatManagement = ({ initialView = 'active' }) => {
         </div>
       </header>
 
-      <main className="flex-1 max-w-4xl mx-auto w-full flex flex-col min-h-0">
+      <main className="flex-1 max-w-4xl mx-auto w-full min-w-0 flex flex-col min-h-0">
         {/* Search Bar */}
         <div className="p-4 flex-shrink-0">
           <div className="relative group">

@@ -90,9 +90,81 @@ body {
     radial-gradient(at 0% 0%, rgba(139, 69, 19, 0.03) 0px, transparent 50%),
     radial-gradient(at 100% 100%, rgba(191, 166, 160, 0.03) 0px, transparent 50%);
   min-height: 100vh;
-  overflow-x: hidden;
   font-size: 0.933rem;
   transition: background-color 220ms ease, color 220ms ease;
+}
+
+/* The fixed desktop sidebar is offset by Layout's content padding. Every
+   content layer must therefore size itself from that remaining space instead
+   of assuming it owns the complete viewport. */
+#root,
+.App,
+.app-shell,
+.app-content-shell,
+.app-content-main,
+.app-page {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.app-content-shell,
+.app-content-main,
+.app-page,
+.app-page > * {
+  min-width: 0;
+}
+
+.app-page .flex > *,
+.app-page .grid > * {
+  min-width: 0;
+}
+
+.app-page img,
+.app-page video,
+.app-page canvas,
+.app-page svg {
+  max-width: 100%;
+}
+
+.app-page :where(p, td, dd) {
+  overflow-wrap: anywhere;
+}
+
+/* Reusable intrinsic grids respond to their actual container (including a
+   filter/sidebar split), rather than viewport-only breakpoint columns. */
+.responsive-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, var(--card-min, 15rem)), 1fr));
+  gap: var(--card-gap, 0.875rem);
+  width: 100%;
+  min-width: 0;
+}
+
+.responsive-card-grid > * {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.scroll-region {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+}
+
+.app-page [class~="overflow-x-auto"] {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overscroll-behavior-inline: contain;
+}
+
+.app-page :where(input, select, textarea) {
+  min-width: 0;
+  max-width: 100%;
 }
 
 /* System-wide dark compatibility for legacy screens that predate Tailwind's
@@ -593,8 +665,6 @@ p { line-height: 1.6; color: var(--neutral-800); }
    customer routes; operational dashboards keep their existing proportions. */
 .customer-interface {
   font-size: 0.9375rem;
-  zoom: 0.92;
-  width: 108.6957%;
 }
 
 .customer-interface h1 { font-size: clamp(1.75rem, 3.2vw, 3rem) !important; line-height: 1 !important; }
@@ -657,7 +727,7 @@ p { line-height: 1.6; color: var(--neutral-800); }
 .customer-floating-ui button { min-width: 2.5rem; min-height: 2.5rem; }
 
 @media (max-width: 640px) {
-  .customer-interface { font-size: 0.875rem; zoom: 0.88; width: 113.6364%; }
+  .customer-interface { font-size: 0.875rem; }
   .customer-interface h1 { font-size: 1.75rem !important; }
   .customer-interface h2 { font-size: 1.4rem !important; }
   .customer-interface h3 { font-size: 1.05rem !important; }
@@ -673,17 +743,6 @@ p { line-height: 1.6; color: var(--neutral-800); }
   .customer-interface [class~="rounded-[5rem]"],
   .customer-interface [class~="rounded-[4rem]"],
   .customer-interface [class~="rounded-[3rem]"] { border-radius: 1.25rem !important; }
-}
-
-@supports not (zoom: 1) {
-  .customer-interface {
-    transform: scale(0.92);
-    transform-origin: top left;
-    width: 108.6957%;
-  }
-  @media (max-width: 640px) {
-    .customer-interface { transform: scale(0.88); width: 113.6364%; }
-  }
 }
 
 @media (min-width: 640px) {
@@ -735,7 +794,6 @@ p { line-height: 1.6; color: var(--neutral-800); }
   width: 100%;
   max-width: 100%;
   min-width: 0;
-  overflow-x: clip;
   font-size: 0.875rem;
   color: #334155;
 }
@@ -905,7 +963,7 @@ p { line-height: 1.6; color: var(--neutral-800); }
 .dark .super-admin-interface table thead { background-color: #111827 !important; }
 
 @media (max-width: 768px) {
-  .super-admin-interface { overflow-x: hidden; font-size: 0.8125rem; }
+  .super-admin-interface { font-size: 0.8125rem; }
   .super-admin-interface h1 { font-size: 1.25rem !important; }
   .super-admin-interface h2 { font-size: 1rem !important; }
   .super-admin-interface [class~="p-20"],
