@@ -13,7 +13,9 @@ const deliveryFeeRuleSchema = new mongoose.Schema({
   version: { type: Number, default: 1, min: 1 },
   effectiveFrom: { type: Date, default: Date.now },
   effectiveUntil: Date,
-  isActive: { type: Boolean, default: true }
+  isActive: { type: Boolean, default: true },
+  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  deactivatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
 }, { timestamps: true });
 
 deliveryFeeRuleSchema.index({ store: 1, isActive: 1, effectiveFrom: -1 });

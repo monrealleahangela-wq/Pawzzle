@@ -94,7 +94,7 @@ const getAllAdminBookings = async (req, res) => {
     const bookings = await Booking.find(filter)
       .populate('customer', 'username firstName lastName email')
       .populate('service', 'name description price duration requirements category')
-      .populate('store', 'name owner')
+      .populate('store', 'name owner taxConfiguration')
       .populate('staff', 'firstName lastName avatar staffType professionalProfile.professionalTitle professionalProfile.specialty professionalProfile.experienceYears professionalProfile.rating professionalProfile.reviewCount professionalProfile.verification.status')
       .populate('serviceProvider', 'firstName lastName avatar staffType professionalProfile.professionalTitle professionalProfile.specialty professionalProfile.experienceYears professionalProfile.rating professionalProfile.reviewCount professionalProfile.verification.status')
       .sort({ createdAt: -1 })

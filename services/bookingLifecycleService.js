@@ -33,7 +33,7 @@ const getConfirmationExpiry = store => {
   return new Date(Date.now() + minutes * 60000);
 };
 
-const recalculateBooking = async (booking, service, store) => {
+const recalculateBooking = async (booking, service, store, { includeAuthoritativeTax = true } = {}) => {
   const { breakdown, resolvedAddOns } = calculateServicePrice(
     service,
     booking.pet || {},
@@ -52,6 +52,16 @@ const recalculateBooking = async (booking, service, store) => {
         : voucher.discountValue;
       discountAmount = Math.min(discountAmount, breakdown.subtotal);
     }
+  }
+
+  if (!includeAuthoritativeTax) {
+    const discountedSubtotal = Math.max(0, Number(breakdown.subtotal || 0) - discountAmount);
+    Object.assign(breakdown, {
+      discount: discountAmount,
+      discountedSubtotal,
+      finalPrice: discountedSubtotal
+    });
+    return { breakdown, resolvedAddOns, discountAmount };
   }
 
   const taxConfiguration = resolveTransactionTaxConfiguration(store.taxConfiguration);
@@ -124,6 +134,7 @@ const prepareForPayment = async bookingOrId => {
   booking.pricingBreakdown = pricing.breakdown;
   booking.discountAmount = pricing.discountAmount;
   booking.totalPrice = pricing.breakdown.finalPrice;
+  booking.paymentMethod = 'paymongo';
   booking.staffRoleSnapshot = staff.staffType || '';
   booking.staffSpecialtySnapshot = staff.professionalProfile?.specialty || '';
   return { booking, service, store, staff };

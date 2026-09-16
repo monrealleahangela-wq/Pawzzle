@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { bookingService, serviceService, voucherService, getImageUrl, petProfileService, paymentService } from '../../services/apiService';
 import { calculateServicePrice } from '../../utils/pricingEngine';
-import { calculateTransactionTax, getTaxStatusLabel } from '../../utils/transactionTax';
 import { toast } from 'react-toastify';
 import { Clock, User, MapPin, Phone, DollarSign, CheckCircle, XCircle, AlertCircle, Filter, Search, Calendar, ArrowLeft, ChevronLeft, ChevronRight, Store, X, Activity, ShieldCheck, TrendingUp, Tag, Ticket, Bell, Heart, PawPrint, Star, CreditCard, Navigation, Receipt, Layers } from 'lucide-react';
 import ReviewModal from '../../components/ReviewModal';
@@ -28,7 +27,6 @@ const createInitialBookingForm = () => ({
   isHomeService: false,
   serviceAddress: { street: '', city: '', province: '' },
   notes: '',
-  paymentMethod: 'paymongo',
   selectedAddOns: [],
   selectedConditions: []
 });
@@ -100,6 +98,12 @@ const Bookings = ({ isSubcomponent = false }) => {
   const serviceAcknowledgmentRequired = requiresRefundAcknowledgment(serviceRefundPolicy);
   const selectedRefundPolicy = normalizeRefundPolicy(selectedBooking?.refundPolicySnapshot || selectedBooking?.store?.refundPolicy);
   const selectedPaymentSummary = selectedBooking ? bookingPaymentSummary(selectedBooking) : null;
+  const selectedHasAuthoritativePricing = Boolean(selectedPaymentSummary?.hasAuthoritativePricing);
+  const selectedIsPaymentStage = Boolean(selectedBooking && (
+    selectedBooking.status === 'awaiting_payment'
+    || selectedBooking.paymentStatus === 'paid'
+    || ['confirmed', 'approved', 'processing', 'finished', 'completed'].includes(selectedBooking.status)
+  ));
   const selectedAcknowledgmentRequired = requiresRefundAcknowledgment(selectedRefundPolicy);
   const serviceBookingKind = resolveServiceBookingKind(selectedService);
   const [eligibleStaff, setEligibleStaff] = useState([]);
@@ -477,13 +481,12 @@ const Bookings = ({ isSubcomponent = false }) => {
   };
 
   const handleConfirmAndPay = async bookingId => {
-    const vat = Number(selectedBooking?.pricingBreakdown?.vatAmount || 0).toLocaleString(undefined, { minimumFractionDigits: 2 });
     const total = Number(selectedBooking?.totalPrice || 0).toLocaleString(undefined, { minimumFractionDigits: 2 });
     if (selectedAcknowledgmentRequired && !agreedToPolicy) {
       toast.error('Acknowledge this store\'s No Refund policy before continuing to PayMongo.');
       return;
     }
-    if (!window.confirm(`Confirm this booking and continue to PayMongo?\n\nFinal total: ₱${total}\nVAT: ₱${vat}`)) return;
+    if (!window.confirm(`Accept this proposal and continue to secure payment?\n\nProposed service price: ₱${total}\nFinal tax and payment details will be calculated before PayMongo opens.`)) return;
     setBookingActionLoading(true);
     try {
       const confirmation = await bookingService.confirmForPayment(bookingId, { refundPolicyAcknowledged: selectedAcknowledgmentRequired ? agreedToPolicy : false });
@@ -507,7 +510,7 @@ const Bookings = ({ isSubcomponent = false }) => {
         window.location.href = response.data.checkoutUrl;
       }
     } catch (error) {
-      toast.error('Payment could not start. Please try again.');
+      toast.error(error.response?.data?.message || 'Payment could not start. Please try again.');
     }
   };
 
@@ -770,10 +773,6 @@ const Bookings = ({ isSubcomponent = false }) => {
       return;
     }
 
-    if (serviceAcknowledgmentRequired && !agreedToPolicy) {
-      toast.error('You must acknowledge this store\'s No Refund policy to proceed.');
-      return;
-    }
     setSubmitting(true);
 
     try {
@@ -791,12 +790,6 @@ const Bookings = ({ isSubcomponent = false }) => {
         breakdown.discount = appliedVoucher.discountAmount || 0;
         breakdown.finalPrice = Math.max(0, breakdown.subtotal - breakdown.discount);
       }
-      const taxBreakdown = calculateTransactionTax({
-        subtotal: breakdown.subtotal,
-        discountAmount: appliedVoucher?.discountAmount || 0,
-        taxConfiguration: selectedService?.store?.taxConfiguration
-      });
-
       // Calculate endTime based on duration + add-ons
       const duration = (selectedService.duration || 60) + resolvedAddOns.reduce((acc, curr) => acc + (curr.duration || 0), 0);
       const [hours, minutes] = bookingForm.startTime.split(':').map(Number);
@@ -830,7 +823,6 @@ const Bookings = ({ isSubcomponent = false }) => {
         isHomeService: bookingForm.isHomeService,
         serviceAddress: bookingForm.isHomeService ? bookingForm.serviceAddress : undefined,
         notes: bookingForm.notes,
-        paymentMethod: bookingForm.paymentMethod,
         voucherCode: appliedVoucher ? voucherCode : null,
         selectedAddOns: bookingForm.selectedAddOns, // Add-on IDs
         selectedConditions: bookingForm.selectedConditions, // Condition IDs
@@ -838,7 +830,8 @@ const Bookings = ({ isSubcomponent = false }) => {
       };
 
       const response = await bookingService.createBooking(bookingData);
-      if (Math.abs(Number(response.data.totalPrice) - Number(taxBreakdown.finalTotal)) > 0.009) {
+      const estimatedTotal = Math.max(0, Number(breakdown.subtotal || 0) - Number(appliedVoucher?.discountAmount || 0));
+      if (Math.abs(Number(response.data.totalPrice) - estimatedTotal) > 0.009) {
         toast.warning('The service price changed. Review the updated booking total before paying.');
         setShowBookingForm(false);
         setSelectedService(null);
@@ -1474,18 +1467,17 @@ const Bookings = ({ isSubcomponent = false }) => {
                 bookingForm.selectedAddOns,
                 bookingForm.selectedConditions
               );
-              const taxBreakdown = calculateTransactionTax({
-                subtotal: breakdown.subtotal,
-                discountAmount: appliedVoucher?.discountAmount || 0,
-                taxConfiguration: selectedService?.store?.taxConfiguration
-              });
+              const estimatedTotal = Math.max(
+                0,
+                Number(breakdown.subtotal || 0) - Number(appliedVoucher?.discountAmount || 0)
+              );
               return (
               <div className="space-y-4 animate-card-appear">
                 {/* Summary card */}
                 <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden">
                   <div className="bg-slate-900 px-6 sm:px-8 py-5">
-                    <p className="text-[9px] font-black text-primary-400 uppercase tracking-[0.3em] mb-1">Booking Summary</p>
-                    <h3 className="text-xl font-black text-white uppercase tracking-tight">Confirm Your Appointment</h3>
+                    <p className="text-[9px] font-black text-primary-400 uppercase tracking-[0.3em] mb-1">Booking Request Summary</p>
+                    <h3 className="text-xl font-black text-white uppercase tracking-tight">Review Your Request</h3>
                   </div>
                   <div className="p-6 sm:p-8 space-y-5">
                     {/* Service block */}
@@ -1793,72 +1785,26 @@ const Bookings = ({ isSubcomponent = false }) => {
                             <span className="text-xs font-black">−{formatPeso(appliedVoucher.discountAmount || 0)}</span>
                           </div>
                         )}
-                        <div className="flex items-center justify-between text-slate-500 pt-2 border-t border-slate-50">
-                          <span className="text-[9px] font-black uppercase tracking-widest">
-                            {getTaxStatusLabel(taxBreakdown)}{taxBreakdown.taxStatus === 'vat_registered' ? ` (${taxBreakdown.vatRatePercent}%)` : ''}
-                          </span>
-                          <span className="text-xs font-black">{formatPeso(taxBreakdown.vatAmount)}</span>
-                        </div>
-                      </div>
-
-                    {/* Standardized Online Payment Selection */}
-                    <div className="pt-6 mt-6 border-t border-slate-100">
-                        <div className="flex items-center justify-between mb-4 px-1">
-                          <div>
-                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.3em] mb-1">Payment Method</p>
-                            <p className="text-[8px] text-slate-400 font-bold uppercase tracking-tight italic">Online automated payout only</p>
-                          </div>
-                          <span className="px-2 py-1 bg-primary-50 text-primary-600 rounded-md text-[8px] font-black uppercase tracking-widest">Secure</span>
-                        </div>
-                        
-                        <div className="grid grid-cols-1 gap-3">
-                          {[
-                            { id: 'paymongo', label: 'PayMongo', icon: CreditCard }
-                          ].map((method) => (
-                            <button
-                              key={method.id}
-                              type="button"
-                              onClick={() => setBookingForm(prev => ({ ...prev, paymentMethod: method.id }))}
-                              className={`flex flex-col items-center justify-center gap-2 p-4 rounded-2xl border-2 transition-all group ${bookingForm.paymentMethod === method.id
-                                ? 'border-primary-600 bg-primary-50/50 shadow-sm'
-                                : 'border-slate-50 hover:border-slate-100 bg-slate-50/30'
-                                }`}
-                            >
-                              <div className={`p-2.5 rounded-xl transition-all ${bookingForm.paymentMethod === method.id ? 'bg-primary-600 text-white shadow-md' : 'bg-white text-slate-300 group-hover:text-slate-400'}`}>
-                                <method.icon size={16} />
-                              </div>
-                              <span className={`text-[9px] font-black uppercase tracking-tight transition-colors ${bookingForm.paymentMethod === method.id ? 'text-primary-900' : 'text-slate-400'}`}>
-                                {method.label}
-                              </span>
-                            </button>
-                          ))}
+                        <div className="rounded-xl border border-primary-100 bg-primary-50/50 p-3 text-[10px] font-semibold leading-relaxed text-primary-800 dark:border-primary-800 dark:bg-primary-950/30 dark:text-primary-200">
+                          Final tax and payment details will be shown after the store reviews your booking request.
                         </div>
                       </div>
 
                       <div className="flex items-center justify-between pt-4 border-t border-slate-50">
-                        <span className="text-[9px] font-black text-slate-900 uppercase tracking-widest">Total Amount</span>
+                        <span className="text-[9px] font-black text-slate-900 uppercase tracking-widest">Estimated Service Price</span>
                         <span className="text-3xl font-black text-primary-600 tracking-tighter">
-                          ₱{taxBreakdown.finalTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                          {formatPeso(estimatedTotal)}
                         </span>
                     </div>
 
                     {/* Store refund policy */}
                     <div className="mt-4">
                       <div className={`flex items-start gap-3 p-4 rounded-2xl border shadow-sm ${serviceAcknowledgmentRequired ? 'bg-rose-50 border-rose-100' : 'bg-slate-50 border-slate-200'}`}>
-                        {serviceAcknowledgmentRequired && <div className="relative flex items-center mt-0.5">
-                          <input
-                            type="checkbox"
-                            checked={agreedToPolicy}
-                            onChange={(e) => setAgreedToPolicy(e.target.checked)}
-                            className="w-5 h-5 rounded-md border-rose-300 text-rose-600 focus:ring-rose-500 cursor-pointer"
-                            required
-                          />
-                        </div>}
                         <div className="space-y-0.5">
                           <p className={`text-[10px] font-black uppercase tracking-wider ${serviceAcknowledgmentRequired ? 'text-rose-900' : 'text-slate-900'}`}>{refundPolicyLabel(serviceRefundPolicy.type)} Policy</p>
                           <p className="text-[9px] font-medium text-slate-600 leading-relaxed">{serviceRefundPolicy.summary}</p>
                           {serviceRefundPolicy.conditions && <p className="text-[9px] text-slate-500">Conditions: {serviceRefundPolicy.conditions}</p>}
-                          {serviceAcknowledgmentRequired && <p className="text-[9px] font-bold text-rose-700">Acknowledge before PayMongo payment.</p>}
+                          {serviceAcknowledgmentRequired && <p className="text-[9px] font-bold text-rose-700">You will acknowledge this policy if you accept the store's proposal and continue to payment.</p>}
                         </div>
                       </div>
                     </div>
@@ -1870,14 +1816,12 @@ const Bookings = ({ isSubcomponent = false }) => {
                     className="px-8 py-4 bg-white border border-slate-100 text-slate-600 rounded-2xl text-[9px] font-black uppercase tracking-widest hover:border-slate-300 transition-all shadow-sm">
                     ← Edit
                   </button>
-                  <button type="submit" disabled={submitting || (serviceAcknowledgmentRequired && !agreedToPolicy)}
-                    className={`flex-1 py-5 text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.25em] shadow-2xl transition-all flex items-center justify-center gap-3 ${
-                      (serviceAcknowledgmentRequired && !agreedToPolicy) ? 'bg-slate-300 cursor-not-allowed grayscale shadow-none' : 'bg-primary-600 shadow-primary-200 hover:bg-primary-700 active:scale-95'
-                    }`}>
+                  <button type="submit" disabled={submitting}
+                    className="flex-1 py-5 text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.25em] shadow-2xl transition-all flex items-center justify-center gap-3 bg-primary-600 shadow-primary-200 hover:bg-primary-700 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60">
                     {submitting ? (
                       <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Processing...</>
                     ) : (
-                      <><CheckCircle className="h-4 w-4" /> Continue to proposal</>
+                      <><CheckCircle className="h-4 w-4" /> Submit booking request</>
                     )}
                   </button>
                 </div>
@@ -2035,7 +1979,11 @@ const Bookings = ({ isSubcomponent = false }) => {
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Amount</p>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                      {booking.pricingBreakdown?.calculationVersion
+                        ? 'Total to Pay'
+                        : booking.status === 'awaiting_customer_confirmation' ? 'Proposed Service Price' : 'Estimated Service Price'}
+                    </p>
                     <p className="text-lg font-black text-slate-900 leading-none tracking-tighter">
                       {formatPeso(booking.totalPrice)}
                     </p>
@@ -2338,16 +2286,30 @@ const Bookings = ({ isSubcomponent = false }) => {
                       </div>
                       <TrendingUp className="h-6 w-6 text-white/50" />
                     </div>
-                    <label className="text-[10px] font-black text-primary-100 uppercase tracking-[0.4em] block mb-4 opacity-70">Payment Summary</label>
+                    <label className="text-[10px] font-black text-primary-100 uppercase tracking-[0.4em] block mb-4 opacity-70">
+                      {selectedHasAuthoritativePricing ? 'Payment Summary' : selectedBooking.status === 'awaiting_customer_confirmation' ? 'Proposal Estimate' : 'Request Estimate'}
+                    </label>
                     <div className="rounded-2xl bg-white p-4 text-left shadow-inner dark:bg-slate-900">
-                      <PaymentBreakdown summary={selectedPaymentSummary} compact />
+                      {selectedHasAuthoritativePricing ? (
+                        <PaymentBreakdown summary={selectedPaymentSummary} compact />
+                      ) : (
+                        <div className="space-y-3 text-[10px] text-slate-600 dark:text-slate-300">
+                          <div className="flex items-center justify-between gap-4">
+                            <span>{selectedBooking.status === 'awaiting_customer_confirmation' ? 'Proposed service price' : 'Estimated service price'}</span>
+                            <span className="font-black text-slate-900 dark:text-white">{formatPeso(selectedBooking.totalPrice)}</span>
+                          </div>
+                          <p className="border-t border-slate-200 pt-3 font-semibold leading-relaxed text-primary-700 dark:border-slate-700 dark:text-primary-300">
+                            Final tax and PayMongo details are calculated only after you accept the store's proposal.
+                          </p>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
               </div>
 
               {/* ── Digital Receipt ── */}
-              {!['cancelled', 'no_show'].includes(selectedBooking.status) && (
+              {selectedIsPaymentStage && selectedHasAuthoritativePricing && !['cancelled', 'no_show'].includes(selectedBooking.status) && (
                 <div className="rounded-[2.5rem] overflow-hidden border border-slate-100 shadow-xl">
                   <div className={`p-8 flex items-center justify-between ${
                     selectedBooking.status === 'approved' || selectedBooking.paymentStatus === 'paid'

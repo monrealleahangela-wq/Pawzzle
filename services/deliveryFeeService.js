@@ -70,6 +70,10 @@ class DeliveryFeeService {
       $or: [{ effectiveUntil: null }, { effectiveUntil: { $gte: now } }]
     }).sort({ effectiveFrom: -1, version: -1 });
     if (!rule) {
+      const hasConfiguredRule = await DeliveryFeeRule.exists({ store });
+      if (hasConfiguredRule) {
+        throw deliveryPricingError('HOME_DELIVERY_DISABLED', 'Home delivery is currently unavailable for this store.');
+      }
       throw deliveryPricingError('DELIVERY_RULE_REQUIRED', 'Delivery pricing is not configured for this store.');
     }
 

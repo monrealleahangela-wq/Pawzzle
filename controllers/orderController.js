@@ -417,6 +417,7 @@ const createOrder = async (req, res) => {
       'CUSTOMER_LOCATION_REQUIRED',
       'STORE_LOCATION_REQUIRED',
       'DELIVERY_RULE_REQUIRED',
+      'HOME_DELIVERY_DISABLED',
       'OUTSIDE_DELIVERY_RANGE'
     ]);
     if (deliveryErrorCodes.has(error.code)) {

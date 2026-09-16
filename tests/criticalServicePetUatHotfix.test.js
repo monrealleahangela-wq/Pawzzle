@@ -99,12 +99,13 @@ test('booking creation preserves store-derived tenant scope and does not require
   assert.match(read('services/bookingLifecycleService.js'), /getEligibleForBooking/);
 });
 
-test('service booking pricing requires an explicitly verified store tax configuration', () => {
+test('service booking payment pricing requires an explicitly verified store tax configuration', () => {
   const serviceController = read('controllers/serviceController.js');
   const bookingController = read('controllers/bookingController.js');
   const lifecycle = read('services/bookingLifecycleService.js');
   assert.match(serviceController, /resolveTransactionTaxConfiguration/);
-  assert.match(bookingController, /resolveTransactionTaxConfiguration/);
+  assert.match(bookingController, /prepareForPayment\(booking\)/);
+  assert.match(bookingController, /includeAuthoritativeTax: false/);
   assert.match(lifecycle, /resolveTransactionTaxConfiguration/);
   assert.match(read('utils/taxCalculator.js'), /STORE_TAX_VERIFICATION_REQUIRED/);
   assert.match(read('utils/taxCalculator.js'), /statusCode = 409/);

@@ -51,6 +51,7 @@ const SHIPPING_ERROR_MESSAGES = Object.freeze({
   CUSTOMER_LOCATION_REQUIRED: 'Select or confirm your delivery location.',
   STORE_LOCATION_REQUIRED: 'This store has not configured its delivery location.',
   DELIVERY_RULE_REQUIRED: 'Delivery pricing is not configured for this store.',
+  HOME_DELIVERY_DISABLED: 'Home delivery is currently unavailable for this store.',
   OUTSIDE_DELIVERY_RANGE: 'Home delivery is unavailable for the selected destination.',
   QUOTE_FAILED: 'Unable to calculate delivery right now. Please try again.'
 });

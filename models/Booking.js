@@ -92,7 +92,8 @@ const bookingSchema = new mongoose.Schema({
     fee:       { type: Number }
   }],
 
-  // ── Pricing Breakdown (snapshot at booking time) ──
+  // Request/proposal stages contain an unversioned estimate. A versioned tax
+  // snapshot is written only when the customer accepts the proposal for payment.
   pricingBreakdown: {
     calculationVersion: { type: Number },
     basePrice:        { type: Number, default: 0 },
@@ -108,14 +109,14 @@ const bookingSchema = new mongoose.Schema({
     discountedSubtotal: { type: Number, default: 0 },
     deliveryFee:      { type: Number, default: 0 },
     deliveryFeeTaxable: { type: Boolean, default: false },
-    taxStatus:        { type: String, enum: ['non_vat', 'vat_registered', 'vat_exempt', 'zero_rated'], default: 'non_vat' },
+    taxStatus:        { type: String, enum: ['non_vat', 'vat_registered', 'vat_exempt', 'zero_rated'] },
     storeTaxStatus:   { type: String },
     taxTreatment:     { type: String },
-    pricingMode:      { type: String, enum: ['inclusive', 'exclusive'], default: 'inclusive' },
-    vatRatePercent:   { type: Number, default: 0 },
-    vatExclusiveAmount: { type: Number, default: 0 },
-    vatAmount:        { type: Number, default: 0 },
-    nonTaxableAmount: { type: Number, default: 0 },
+    pricingMode:      { type: String, enum: ['inclusive', 'exclusive'] },
+    vatRatePercent:   { type: Number },
+    vatExclusiveAmount: { type: Number },
+    vatAmount:        { type: Number },
+    nonTaxableAmount: { type: Number },
     finalPrice:       { type: Number, default: 0 },
     configuredAt:     { type: Date },
     capturedAt:       { type: Date }

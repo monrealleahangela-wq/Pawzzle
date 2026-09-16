@@ -96,6 +96,10 @@ const BookingsManagement = () => {
   const canUpdate = hasUiActionPermission(user, 'bookings', 'update', isStoreAdmin || serviceUpdateRoles.has(staffType));
   const canDelete = hasUiActionPermission(user, 'bookings', 'update', isStoreAdmin);
   const canAssign = hasUiActionPermission(user, 'bookings', 'update', isStoreAdmin || staffType === 'manager');
+  const selectedPaymentSummary = useMemo(
+    () => selectedBooking ? bookingPaymentSummary(selectedBooking) : null,
+    [selectedBooking]
+  );
 
   useEffect(() => {
     const userData = JSON.parse(localStorage.getItem('user') || '{}');
@@ -647,8 +651,27 @@ const BookingsManagement = () => {
               )}
 
               <section className="rounded-2xl border border-slate-200 bg-white p-4">
-                <p className="mb-3 text-[9px] font-black uppercase tracking-widest text-primary-600">Authoritative Payment Summary</p>
-                <PaymentBreakdown summary={bookingPaymentSummary(selectedBooking)} compact />
+                <p className="mb-3 text-[9px] font-black uppercase tracking-widest text-primary-600">
+                  {selectedPaymentSummary?.hasAuthoritativePricing ? 'Authoritative Payment Summary' : 'Booking Price Estimate'}
+                </p>
+                {selectedPaymentSummary?.hasAuthoritativePricing ? (
+                  <PaymentBreakdown summary={selectedPaymentSummary} compact />
+                ) : (
+                  <div className="space-y-3 text-xs text-slate-600">
+                    <div className="flex items-center justify-between gap-4">
+                      <span>{selectedBooking.status === 'awaiting_customer_confirmation' ? 'Proposed service price' : 'Estimated service price'}</span>
+                      <span className="font-black text-slate-900">{formatPeso(selectedBooking.totalPrice)}</span>
+                    </div>
+                    <p className="rounded-xl border border-primary-100 bg-primary-50 p-3 font-semibold leading-relaxed text-primary-800">
+                      Final tax and payment values are captured when the customer accepts the proposal.
+                    </p>
+                    {selectedBooking.store?.taxConfiguration?.isConfigured !== true && (
+                      <p className="rounded-xl border border-amber-200 bg-amber-50 p-3 font-semibold leading-relaxed text-amber-800">
+                        Business &amp; Tax verification is pending. You may review and send this proposal, but customer payment remains unavailable until verification is complete.
+                      </p>
+                    )}
+                  </div>
+                )}
               </section>
 
               {/* Existing specialized staff assignment lifecycle */}

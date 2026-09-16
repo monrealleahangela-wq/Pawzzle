@@ -10,7 +10,6 @@ const Review = require('../models/Review');
 const RevenueService = require('../services/revenueService');
 const { createNotification, notifyStoreStaff } = require('./notificationController');
 const { calculateServicePrice, validateBookingRules } = require('../utils/pricingEngine');
-const { calculateTransactionTax, resolveTransactionTaxConfiguration } = require('../utils/taxCalculator');
 const { hasPermission, isPlatformAdmin, isStoreAdmin, isOperationalStaff } = require('../config/permissions');
 const { getAuthorizedStoreIds, canAccessStore } = require('../utils/authorizationPolicy');
 const {
@@ -257,8 +256,6 @@ const createBooking = async (req, res) => {
 
     const preparedIntake = prepareServiceIntake(service, serviceIntake);
     if (preparedIntake.error) return res.status(400).json({ message: preparedIntake.error });
-    const taxConfiguration = resolveTransactionTaxConfiguration(service.store.taxConfiguration);
-
     // Check if home service is available
     if (isHomeService && !service.homeServiceAvailable) {
       return res.status(400).json({ message: 'Home service is not available for this service' });
@@ -344,30 +341,11 @@ const createBooking = async (req, res) => {
       }
     }
 
-    // Apply the store's tax rules after discounts. Home-service fees are part of
-    // the service subtotal and therefore follow the same service tax treatment.
-    const taxBreakdown = calculateTransactionTax({
-      subtotal: breakdown.subtotal,
-      discountAmount,
-      deliveryFee: 0,
-      taxConfiguration
-    });
-    breakdown.discount = taxBreakdown.discountAmount;
-    breakdown.calculationVersion = taxBreakdown.calculationVersion;
-    breakdown.discountedSubtotal = taxBreakdown.discountedSubtotal;
-    breakdown.deliveryFee = taxBreakdown.deliveryFee;
-    breakdown.deliveryFeeTaxable = taxBreakdown.deliveryFeeTaxable;
-    breakdown.taxStatus = taxBreakdown.taxStatus;
-    breakdown.storeTaxStatus = taxBreakdown.storeTaxStatus;
-    breakdown.taxTreatment = taxBreakdown.taxTreatment;
-    breakdown.pricingMode = taxBreakdown.pricingMode;
-    breakdown.vatRatePercent = taxBreakdown.vatRatePercent;
-    breakdown.vatExclusiveAmount = taxBreakdown.vatExclusiveAmount;
-    breakdown.vatAmount = taxBreakdown.vatAmount;
-    breakdown.nonTaxableAmount = taxBreakdown.nonTaxableAmount;
-    breakdown.configuredAt = taxBreakdown.configuredAt;
-    breakdown.capturedAt = taxBreakdown.capturedAt;
-    breakdown.finalPrice = taxBreakdown.finalTotal;
+    // This is a request estimate, not a transaction-time tax snapshot. Tax is
+    // finalized only after the customer accepts the store's proposal.
+    breakdown.discount = discountAmount;
+    breakdown.discountedSubtotal = Math.max(0, Number(breakdown.subtotal || 0) - discountAmount);
+    breakdown.finalPrice = breakdown.discountedSubtotal;
 
     const booking = new Booking({
       customer: req.user._id,
@@ -387,7 +365,7 @@ const createBooking = async (req, res) => {
       isHomeService,
       serviceAddress: isHomeService ? serviceAddress : undefined,
       totalPrice: breakdown.finalPrice,
-      paymentMethod: 'paymongo',
+      paymentMethod: 'pending',
       voucher: appliedVoucherId,
       discountAmount,
       notes
@@ -496,7 +474,7 @@ const createBooking = async (req, res) => {
     }
   } catch (error) {
     console.error('❌ Create booking error:', error);
-    res.status(error.code === 'STORE_TAX_VERIFICATION_REQUIRED' ? 409 : 500).json({ message: error.message || 'Server error' });
+    res.status(500).json({ message: error.message || 'Server error' });
   }
 };
 
@@ -721,7 +699,9 @@ const assignBookingStaff = async (req, res) => {
     if (!Number.isInteger(requestedDuration) || requestedDuration < 1 || requestedDuration > 1440) {
       return res.status(400).json({ message: 'Estimated duration must be between 1 and 1,440 minutes.' });
     }
-    const pricing = await recalculateBooking(booking, service, store);
+    // A proposal can be sent while tax verification is pending. This remains an
+    // estimate until the customer accepts it and enters the payment transition.
+    const pricing = await recalculateBooking(booking, service, store, { includeAuthoritativeTax: false });
     booking.staff = selected.staff._id;
     booking.staffRoleSnapshot = getStaffSpecializationRole(selected.staff) || '';
     booking.staffSpecialtySnapshot = selected.staff.professionalProfile?.specialty || '';
@@ -862,7 +842,13 @@ const confirmBookingForPayment = async (req, res) => {
     const result = await populateBooking(Booking.findById(prepared.booking._id));
     res.json({ message: 'Booking accepted. Continue to PayMongo to confirm it.', booking: result });
   } catch (error) {
-    res.status(error.statusCode || 500).json({ message: error.message || 'Unable to confirm booking.' });
+    const isTaxPending = error.code === 'STORE_TAX_VERIFICATION_REQUIRED';
+    res.status(error.statusCode || 500).json({
+      code: error.code,
+      message: isTaxPending
+        ? "Payment is unavailable until the Store's tax information is verified. Your booking proposal is still saved."
+        : (error.message || 'Unable to confirm booking.')
+    });
   }
 };
 

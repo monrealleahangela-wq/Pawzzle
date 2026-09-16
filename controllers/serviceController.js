@@ -474,8 +474,6 @@ const calculatePrice = async (req, res) => {
         || service.store.isDeleted || service.store.verificationStatus !== 'verified') {
       return res.status(404).json({ message: 'Service not found or unavailable' });
     }
-    const taxConfiguration = resolveTransactionTaxConfiguration(service.store.taxConfiguration);
-
     const { breakdown, resolvedAddOns } = calculateServicePrice(
       service,
       pet || {},
@@ -483,13 +481,20 @@ const calculatePrice = async (req, res) => {
       selectedAddOns || [],
       selectedConditions || []
     );
-    const taxBreakdown = calculateTransactionTax({
-      subtotal: breakdown.subtotal,
-      taxConfiguration
-    });
+    const taxReady = service.store.taxConfiguration?.isConfigured === true;
+    const taxBreakdown = taxReady
+      ? calculateTransactionTax({
+        subtotal: breakdown.subtotal,
+        taxConfiguration: resolveTransactionTaxConfiguration(service.store.taxConfiguration)
+      })
+      : null;
 
     res.json({
-      breakdown: { ...breakdown, ...taxBreakdown, finalPrice: taxBreakdown.finalTotal },
+      pricingStage: taxReady ? 'verified_preview' : 'request_estimate',
+      taxVerificationPending: !taxReady,
+      breakdown: taxBreakdown
+        ? { ...breakdown, ...taxBreakdown, finalPrice: taxBreakdown.finalTotal }
+        : { ...breakdown, finalPrice: breakdown.subtotal },
       resolvedAddOns,
       availableAddOns: (service.addOns || []).filter(a => a.isActive),
       availableConditions: service.pricingRules?.condition?.enabled

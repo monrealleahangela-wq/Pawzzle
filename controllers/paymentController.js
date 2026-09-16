@@ -295,7 +295,13 @@ const createBookingCheckoutSession = async (req, res) => {
     res.json({ checkoutUrl: session.attributes.checkout_url });
   } catch (error) {
     console.error('PayMongo booking checkout error:', error.response?.data || error.message);
-    res.status(error.statusCode || 500).json({ message: error.message || 'Failed to create payment session.' });
+    const isTaxPending = error.code === 'STORE_TAX_VERIFICATION_REQUIRED';
+    res.status(error.statusCode || 500).json({
+      code: error.code,
+      message: isTaxPending
+        ? "Payment is unavailable until the Store's tax information is verified. Your booking proposal is still saved."
+        : (error.message || 'Failed to create payment session.')
+    });
   }
 };
 

@@ -340,6 +340,7 @@ export const storeService = {
   updateRefundPolicy: (data, id) => api.put(id ? `/stores/${id}/refund-policy` : '/stores/my-store/refund-policy', data),
   getDeliveryPricing: (id) => api.get(id ? `/stores/${id}/delivery-pricing` : '/stores/my-store/delivery-pricing'),
   updateDeliveryPricing: (data, id) => api.put(id ? `/stores/${id}/delivery-pricing` : '/stores/my-store/delivery-pricing', data),
+  previewDeliveryPricing: (data, id) => api.post(id ? `/stores/${id}/delivery-pricing/preview` : '/stores/my-store/delivery-pricing/preview', data),
   submitVerification: (data) => api.post('/stores/my-store/verify', data),
   requestExpansion: (formData) => api.post('/stores/expansion-request', formData, {
     headers: { 'Content-Type': 'multipart/form-data' }

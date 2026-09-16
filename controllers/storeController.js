@@ -10,6 +10,11 @@ const Follow = require('../models/Follow');
 const User = require('../models/User');
 const ActivityLog = require('../models/ActivityLog');
 const DeliveryFeeRule = require('../models/DeliveryFeeRule');
+const DeliveryFeeService = require('../services/deliveryFeeService');
+const {
+  validateRuleInput,
+  calculateRulePreview
+} = require('../services/deliveryPricingConfigurationService');
 const { TAX_STATUSES, PRICING_MODES, normalizeTaxConfiguration } = require('../utils/taxCalculator');
 const { POLICY_TYPES, normalizeRefundPolicy } = require('../utils/refundPolicy');
 const { isPlatformAdmin, isStoreAdmin, isOperationalStaff } = require('../config/permissions');
@@ -670,19 +675,38 @@ const updateRefundPolicy = async (req, res) => {
 const getDeliveryPricing = async (req, res) => {
   try {
     const store = isPlatformAdmin(req.user) && req.params.id
-      ? await Store.findById(req.params.id).select('_id name contactInfo.address.coordinates')
-      : await Store.findOne({ owner: req.user._id, isDeleted: { $ne: true } }).select('_id name contactInfo.address.coordinates');
+      ? await Store.findById(req.params.id).select('_id name contactInfo.address')
+      : await Store.findOne({ owner: req.user._id, isDeleted: { $ne: true } }).select('_id name contactInfo.address');
     if (!store) return res.status(404).json({ message: 'Store not found.' });
     const now = new Date();
-    const rule = await DeliveryFeeRule.findOne({
+    const activeRule = await DeliveryFeeRule.findOne({
       store: store._id,
       isActive: true,
       effectiveFrom: { $lte: now },
       $or: [{ effectiveUntil: null }, { effectiveUntil: { $gte: now } }]
     }).sort({ effectiveFrom: -1, version: -1 }).lean();
+    const latestRule = activeRule || await DeliveryFeeRule.findOne({ store: store._id })
+      .sort({ version: -1, createdAt: -1 })
+      .lean();
+    const hasMapLocation = DeliveryFeeService.isValidCoordinates(store.contactInfo?.address?.coordinates);
+    const status = !hasMapLocation
+      ? 'origin_required'
+      : activeRule
+        ? 'active'
+        : latestRule
+          ? 'inactive'
+          : 'not_configured';
     res.json({
-      store: { _id: store._id, name: store.name, hasMapLocation: Number.isFinite(Number(store.contactInfo?.address?.coordinates?.lat)) && Number.isFinite(Number(store.contactInfo?.address?.coordinates?.lng)) },
-      deliveryPricing: rule || null
+      store: {
+        _id: store._id,
+        name: store.name,
+        address: store.contactInfo?.address || null,
+        hasMapLocation
+      },
+      status,
+      enabled: Boolean(activeRule),
+      deliveryPricing: latestRule || null,
+      preview: activeRule ? calculateRulePreview({ input: activeRule, distanceKm: 5, itemQuantity: 3 }) : null
     });
   } catch (error) {
     console.error('Get delivery pricing error:', error);
@@ -696,26 +720,53 @@ const updateDeliveryPricing = async (req, res) => {
       ? await Store.findById(req.params.id)
       : await Store.findOne({ owner: req.user._id, isDeleted: { $ne: true } });
     if (!store) return res.status(404).json({ message: 'Store not found.' });
-    const coordinates = store.contactInfo?.address?.coordinates;
-    if (!Number.isFinite(Number(coordinates?.lat)) || !Number.isFinite(Number(coordinates?.lng))) {
-      return res.status(400).json({ message: 'Add the store map location before enabling distance-based delivery.' });
-    }
-
-    const numericFields = ['baseFee', 'includedKilometers', 'ratePerKilometer', 'additionalItemFee', 'minimumFee', 'maximumFee', 'maximumDistanceKm'];
-    const values = Object.fromEntries(numericFields.map(field => [field, req.body[field] === '' || req.body[field] === null || req.body[field] === undefined ? null : Number(req.body[field])]));
-    const required = ['baseFee', 'includedKilometers', 'ratePerKilometer', 'additionalItemFee', 'minimumFee'];
-    if (required.some(field => !Number.isFinite(values[field]) || values[field] < 0)
-        || ['maximumFee', 'maximumDistanceKm'].some(field => values[field] !== null && (!Number.isFinite(values[field]) || values[field] < 0))) {
-      return res.status(400).json({ message: 'Delivery rates must be valid non-negative numbers.' });
-    }
-    if (values.maximumFee !== null && values.maximumFee < values.minimumFee) {
-      return res.status(400).json({ message: 'Maximum delivery fee cannot be lower than the minimum fee.' });
-    }
-
     const now = new Date();
-    const previous = await DeliveryFeeRule.findOne({ store: store._id, isActive: true }).sort({ version: -1 });
+    if (req.body.enabled === false) {
+      const result = await DeliveryFeeRule.updateMany(
+        { store: store._id, isActive: true },
+        { $set: { isActive: false, effectiveUntil: now, deactivatedBy: req.user._id } }
+      );
+      const latestRule = await DeliveryFeeRule.findOne({ store: store._id }).sort({ version: -1, createdAt: -1 }).lean();
+      await ActivityLog.create({
+        user: req.user._id,
+        action: 'Home Delivery Disabled',
+        details: `${store.name} disabled home delivery. Existing order snapshots were not changed.`,
+        ipAddress: req.ip
+      });
+      const io = req.app.get('socketio');
+      if (io) io.to(`store_${store._id}`).emit('settingsUpdate', { type: 'delivery_pricing', status: 'inactive' });
+      return res.json({
+        message: result.modifiedCount ? 'Home delivery disabled.' : 'Home delivery is already disabled.',
+        status: latestRule ? 'inactive' : 'not_configured',
+        enabled: false,
+        deliveryPricing: latestRule || null
+      });
+    }
+
+    const coordinates = store.contactInfo?.address?.coordinates;
+    if (!DeliveryFeeService.isValidCoordinates(coordinates)) {
+      return res.status(400).json({
+        code: 'STORE_LOCATION_REQUIRED',
+        fieldErrors: { storeLocation: 'Confirm the store map location before enabling home delivery.' },
+        message: 'Add the store map location before enabling distance-based delivery.'
+      });
+    }
+
+    const { values, fieldErrors, valid } = validateRuleInput(req.body);
+    if (!valid) {
+      return res.status(400).json({
+        code: 'DELIVERY_PRICING_VALIDATION_FAILED',
+        fieldErrors,
+        message: 'Review the highlighted delivery pricing fields.'
+      });
+    }
+
+    const previous = await DeliveryFeeRule.findOne({ store: store._id }).sort({ version: -1, createdAt: -1 });
     const version = Number(previous?.version || 0) + 1;
-    await DeliveryFeeRule.updateMany({ store: store._id, isActive: true }, { $set: { isActive: false, effectiveUntil: now } });
+    await DeliveryFeeRule.updateMany(
+      { store: store._id, isActive: true },
+      { $set: { isActive: false, effectiveUntil: now, deactivatedBy: req.user._id } }
+    );
     const rule = await DeliveryFeeRule.create({
       store: store._id,
       name: `Distance and item delivery pricing v${version}`,
@@ -729,7 +780,8 @@ const updateDeliveryPricing = async (req, res) => {
       version,
       effectiveFrom: now,
       effectiveUntil: null,
-      isActive: true
+      isActive: true,
+      createdBy: req.user._id
     });
     await ActivityLog.create({
       user: req.user._id,
@@ -739,10 +791,42 @@ const updateDeliveryPricing = async (req, res) => {
     });
     const io = req.app.get('socketio');
     if (io) io.to(`store_${store._id}`).emit('settingsUpdate', { type: 'delivery_pricing', version });
-    res.json({ message: 'Delivery pricing saved for new orders.', deliveryPricing: rule });
+    res.json({
+      message: 'Delivery pricing updated.',
+      status: 'active',
+      enabled: true,
+      deliveryPricing: rule,
+      preview: calculateRulePreview({ input: rule, distanceKm: 5, itemQuantity: 3 })
+    });
   } catch (error) {
     console.error('Update delivery pricing error:', error);
     res.status(500).json({ message: 'Unable to update delivery pricing.' });
+  }
+};
+
+const previewDeliveryPricing = async (req, res) => {
+  try {
+    const store = isPlatformAdmin(req.user) && req.params.id
+      ? await Store.findById(req.params.id).select('_id')
+      : await Store.findOne({ owner: req.user._id, isDeleted: { $ne: true } }).select('_id');
+    if (!store) return res.status(404).json({ message: 'Store not found.' });
+
+    const preview = calculateRulePreview({
+      input: req.body,
+      distanceKm: req.body.distanceKm,
+      itemQuantity: req.body.itemQuantity
+    });
+    if (!preview.valid) {
+      return res.status(400).json({
+        code: 'DELIVERY_PRICING_VALIDATION_FAILED',
+        fieldErrors: preview.fieldErrors,
+        message: 'Complete the delivery pricing fields to see an estimate.'
+      });
+    }
+    res.json({ preview });
+  } catch (error) {
+    console.error('Preview delivery pricing error:', error);
+    res.status(500).json({ message: 'Unable to preview delivery pricing.' });
   }
 };
 
@@ -781,5 +865,6 @@ module.exports = {
   getRefundPolicy,
   updateRefundPolicy,
   getDeliveryPricing,
-  updateDeliveryPricing
+  updateDeliveryPricing,
+  previewDeliveryPricing
 };
