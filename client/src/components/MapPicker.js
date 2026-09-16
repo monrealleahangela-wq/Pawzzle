@@ -40,16 +40,41 @@ const MapController = ({ center }) => {
   return null;
 };
 
-const MapPicker = ({ onLocationSelected, initialAddress = '', className = '' }) => {
-  const [position, setPosition] = useState([14.3121, 120.9326]); // Center of Cavite (Dasma area)
-  const [address, setAddress] = useState(initialAddress);
+const validCoordinates = coordinates => {
+  const lat = Number(coordinates?.lat);
+  const lng = Number(coordinates?.lng);
+  return Number.isFinite(lat) && lat >= -90 && lat <= 90
+    && Number.isFinite(lng) && lng >= -180 && lng <= 180;
+};
+
+const MapPicker = ({ onLocationSelected, initialAddress = '', initialCoordinates, className = '' }) => {
+  const initialLat = initialCoordinates?.lat;
+  const initialLng = initialCoordinates?.lng;
+  const confirmedInitialCoordinates = validCoordinates({ lat: initialLat, lng: initialLng })
+    ? { lat: Number(initialLat), lng: Number(initialLng) }
+    : null;
+  const [position, setPosition] = useState(
+    confirmedInitialCoordinates
+      ? [confirmedInitialCoordinates.lat, confirmedInitialCoordinates.lng]
+      : [14.3121, 120.9326]
+  ); // Map viewport fallback only; never persisted as the customer's location.
+  const [address, setAddress] = useState(confirmedInitialCoordinates ? initialAddress : '');
+  const [locationConfirmed, setLocationConfirmed] = useState(Boolean(confirmedInitialCoordinates));
   const [loading, setLoading] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [tempLocation, setTempLocation] = useState(null);
 
+  useEffect(() => {
+    if (!validCoordinates({ lat: initialLat, lng: initialLng })) return;
+    const next = [Number(initialLat), Number(initialLng)];
+    setPosition(next);
+    setAddress(initialAddress);
+    setLocationConfirmed(true);
+  }, [initialAddress, initialLat, initialLng]);
+
   // Geocode initialAddress on mount
   useEffect(() => {
-    if (initialAddress && initialAddress !== 'N/A') {
+    if (!validCoordinates({ lat: initialLat, lng: initialLng }) && initialAddress && initialAddress !== 'N/A') {
       const geocodeInitial = async () => {
         try {
           const query = initialAddress.toLowerCase().includes('cavite') 
@@ -67,7 +92,7 @@ const MapPicker = ({ onLocationSelected, initialAddress = '', className = '' }) 
       };
       geocodeInitial();
     }
-  }, [initialAddress]);
+  }, [initialAddress, initialLat, initialLng]);
 
   // Reverse geocoding using Nominatim
   const reverseGeocode = async (lat, lng) => {
@@ -162,6 +187,7 @@ const MapPicker = ({ onLocationSelected, initialAddress = '', className = '' }) 
     if (tempLocation && onLocationSelected) {
       onLocationSelected(tempLocation);
       setAddress(tempLocation.full);
+      setLocationConfirmed(true);
       setShowConfirm(false);
       toast.success('Location saved.');
     }
@@ -233,7 +259,7 @@ const MapPicker = ({ onLocationSelected, initialAddress = '', className = '' }) 
         )}
       </div>
 
-      {address && !showConfirm && (
+      {locationConfirmed && address && !showConfirm && (
         <div className="p-4 bg-emerald-50 rounded-2xl border border-emerald-100 flex items-start gap-3">
           <div className="w-8 h-8 rounded-lg bg-emerald-500 text-white flex items-center justify-center shrink-0">
             <Check className="h-4 w-4" />

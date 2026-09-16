@@ -411,7 +411,16 @@ const createOrder = async (req, res) => {
       return res.status(400).json({ message: 'Validation error', errors: Object.values(error.errors).map(err => err.message) });
     }
     if (error.code === 'STORE_TAX_VERIFICATION_REQUIRED') {
-      return res.status(409).json({ message: error.message });
+      return res.status(409).json({ code: error.code, message: error.message });
+    }
+    const deliveryErrorCodes = new Set([
+      'CUSTOMER_LOCATION_REQUIRED',
+      'STORE_LOCATION_REQUIRED',
+      'DELIVERY_RULE_REQUIRED',
+      'OUTSIDE_DELIVERY_RANGE'
+    ]);
+    if (deliveryErrorCodes.has(error.code)) {
+      return res.status(error.statusCode || 400).json({ code: error.code, message: error.message });
     }
     const expected = [
       'Order must', 'Item quantity', 'Each pet', 'This legacy', 'Pet "', 'Product "', 'Invalid item', 'The store',
@@ -441,7 +450,10 @@ const quoteOrder = async (req, res) => {
       refundPolicy: normalizeRefundPolicy(pricing.store.refundPolicy)
     });
   } catch (error) {
-    res.status(400).json({ message: error.message });
+    const status = error.code === 'STORE_TAX_VERIFICATION_REQUIRED'
+      ? 409
+      : (error.statusCode || 400);
+    res.status(status).json({ code: error.code || 'QUOTE_FAILED', message: error.message });
   }
 };
 

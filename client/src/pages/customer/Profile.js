@@ -227,10 +227,7 @@ const Profile = () => {
           barangay: user.address?.barangay || '',
           zipCode: user.address?.zipCode || '',
           country: user.address?.country || 'PH',
-          coordinates: user.address?.coordinates || {
-            lat: 14.3121,
-            lng: 120.9326
-          }
+          coordinates: user.address?.coordinates || null
         }
       });
 
@@ -455,10 +452,7 @@ const Profile = () => {
           barangay: user.address?.barangay || '',
           zipCode: user.address?.zipCode || '',
           country: user.address?.country || 'PH',
-          coordinates: user.address?.coordinates || {
-            lat: 14.3121,
-            lng: 120.9326
-          }
+          coordinates: user.address?.coordinates || null
         }
       });
     }
@@ -481,10 +475,7 @@ const Profile = () => {
           barangay: user.address?.barangay || '',
           zipCode: user.address?.zipCode || '',
           country: user.address?.country || 'PH',
-          coordinates: user.address?.coordinates || {
-            lat: 14.3121,
-            lng: 120.9326
-          }
+          coordinates: user.address?.coordinates || null
         }
       });
     }
@@ -504,7 +495,8 @@ const Profile = () => {
       address: {
         ...prev.address,
         [field]: value,
-        ...(field === 'city' ? { barangay: '' } : {})
+        ...(field === 'city' ? { barangay: '' } : {}),
+        coordinates: null
       }
     }));
   };
@@ -1485,6 +1477,7 @@ const Profile = () => {
                             }));
                           }}
                           initialAddress={formData.address.street}
+                          initialCoordinates={formData.address.coordinates}
                         />
                       </div>
                     ) : (

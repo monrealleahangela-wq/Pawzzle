@@ -13,7 +13,9 @@ const pickProfileUpdates = (body = {}) => {
 
   if (body.address && typeof body.address === 'object' && !Array.isArray(body.address)) {
     const address = copyDefined(body.address, ADDRESS_FIELDS);
-    if (body.address.coordinates && typeof body.address.coordinates === 'object' && !Array.isArray(body.address.coordinates)) {
+    if (body.address.coordinates === null) {
+      address.coordinates = null;
+    } else if (body.address.coordinates && typeof body.address.coordinates === 'object' && !Array.isArray(body.address.coordinates)) {
       const coordinates = copyDefined(body.address.coordinates, COORDINATE_FIELDS);
       if (Object.keys(coordinates).length) address.coordinates = coordinates;
     }
@@ -33,8 +35,10 @@ const applyProfileUpdates = (user, updates) => {
     user.address = {
       ...existing,
       ...updates.address,
-      coordinates: updates.address.coordinates
-        ? { ...(existing.coordinates || {}), ...updates.address.coordinates }
+      coordinates: Object.prototype.hasOwnProperty.call(updates.address, 'coordinates')
+        ? (updates.address.coordinates
+          ? { ...(existing.coordinates || {}), ...updates.address.coordinates }
+          : undefined)
         : existing.coordinates
     };
   }

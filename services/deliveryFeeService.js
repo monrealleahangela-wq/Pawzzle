@@ -20,6 +20,13 @@ const validateCoordinates = ({ lat, lng } = {}) =>
   && Number.isFinite(Number(lat)) && Number(lat) >= -90 && Number(lat) <= 90
   && Number.isFinite(Number(lng)) && Number(lng) >= -180 && Number(lng) <= 180;
 
+const deliveryPricingError = (code, message) => {
+  const error = new Error(message);
+  error.code = code;
+  error.statusCode = 400;
+  return error;
+};
+
 const calculateBreakdown = ({ rule, distanceKm, itemQuantity = 1, surcharge = 0, discount = 0 }) => {
   const quantity = Number(itemQuantity);
   if (!Number.isInteger(quantity) || quantity < 1) throw new Error('Delivery item quantity must be a positive whole number.');
@@ -51,15 +58,20 @@ const calculateBreakdown = ({ rule, distanceKm, itemQuantity = 1, surcharge = 0,
 
 class DeliveryFeeService {
   static async calculate({ store, origin, destination, itemQuantity = 1, surcharge = 0, discount = 0 }) {
-    if (!validateCoordinates(origin) || !validateCoordinates(destination)) {
-      throw new Error('Valid origin and destination coordinates are required.');
+    if (!validateCoordinates(origin)) {
+      throw deliveryPricingError('STORE_LOCATION_REQUIRED', 'This store has not configured its delivery location.');
+    }
+    if (!validateCoordinates(destination)) {
+      throw deliveryPricingError('CUSTOMER_LOCATION_REQUIRED', 'Select or confirm your delivery location.');
     }
     const now = new Date();
     const rule = await DeliveryFeeRule.findOne({
       store, isActive: true, effectiveFrom: { $lte: now },
       $or: [{ effectiveUntil: null }, { effectiveUntil: { $gte: now } }]
     }).sort({ effectiveFrom: -1, version: -1 });
-    if (!rule) throw new Error('No active delivery fee rule is configured for this store.');
+    if (!rule) {
+      throw deliveryPricingError('DELIVERY_RULE_REQUIRED', 'Delivery pricing is not configured for this store.');
+    }
 
     // Haversine is an explicit fallback. A routing provider can replace distanceKm later.
     const distanceKm = haversineKm(
@@ -67,7 +79,10 @@ class DeliveryFeeService {
       { lat: Number(destination.lat), lng: Number(destination.lng) }
     );
     if (rule.maximumDistanceKm && distanceKm > rule.maximumDistanceKm) {
-      throw new Error(`Destination is outside the ${rule.maximumDistanceKm} km delivery radius.`);
+      throw deliveryPricingError(
+        'OUTSIDE_DELIVERY_RANGE',
+        `Delivery is unavailable because this destination is outside the ${rule.maximumDistanceKm} km delivery area.`
+      );
     }
     const fee = calculateBreakdown({ rule, distanceKm, itemQuantity, surcharge, discount });
     return {
@@ -84,5 +99,6 @@ class DeliveryFeeService {
 }
 
 DeliveryFeeService.__test = { calculateBreakdown, haversineKm, validateCoordinates };
+DeliveryFeeService.isValidCoordinates = validateCoordinates;
 
 module.exports = DeliveryFeeService;

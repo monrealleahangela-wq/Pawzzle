@@ -11,14 +11,13 @@ import { Info } from 'lucide-react';
 import { normalizeRefundPolicy, refundPolicyLabel, requiresRefundAcknowledgment } from '../../utils/refundPolicy';
 import PaymentBreakdown from '../../components/payments/PaymentBreakdown';
 import { formatPeso, orderLineItemRows, orderPaymentSummary } from '../../utils/paymentSummary';
-
-const validCoordinates = (coordinates) => (
-  coordinates
-  && coordinates.lat !== null && coordinates.lat !== undefined && coordinates.lat !== ''
-  && coordinates.lng !== null && coordinates.lng !== undefined && coordinates.lng !== ''
-  && Number.isFinite(Number(coordinates.lat))
-  && Number.isFinite(Number(coordinates.lng))
-);
+import {
+  formatDeliveryAddress,
+  getAddressCoordinates,
+  hasValidAddressCoordinates,
+  normalizeDeliveryAddress,
+  shippingQuoteErrorMessage
+} from '../../utils/deliveryAddress';
 
 const Checkout = () => {
   const { items, clearSelectedItems, getSelectedItems } = useCart();
@@ -46,15 +45,7 @@ const Checkout = () => {
   const [editAddress, setEditAddress] = useState(false);
   const [addressInputType, setAddressInputType] = useState('map'); // 'map' or 'manual'
   // Auto-populate address from user profile (restricted to Cavite, Philippines)
-  const [shippingAddress, setShippingAddress] = useState({
-    street: user?.address?.street || '',
-    city: user?.address?.city || '',
-    province: 'cavite', // Automatically set to Cavite
-    barangay: user?.address?.barangay || '',
-    zipCode: user?.address?.zipCode || '',
-    country: 'PH',
-    coordinates: validCoordinates(user?.address?.coordinates) ? user.address.coordinates : undefined
-  });
+  const [shippingAddress, setShippingAddress] = useState(() => normalizeDeliveryAddress(user?.address));
 
   const [phoneNumber, setPhoneNumber] = useState(user?.phone || '');
   const [hasPhoneBeenManuallyEdited, setHasPhoneBeenManuallyEdited] = useState(false);
@@ -70,6 +61,8 @@ const Checkout = () => {
   const [pricingQuote, setPricingQuote] = useState(null);
   const [pricingQuoteError, setPricingQuoteError] = useState('');
   const [isPricingQuoteLoading, setIsPricingQuoteLoading] = useState(false);
+  const [destinationConfirmed, setDestinationConfirmed] = useState(false);
+  const quoteRequestIdRef = React.useRef(0);
   const refundPolicy = normalizeRefundPolicy(pricingQuote?.refundPolicy);
   const refundAcknowledgmentRequired = requiresRefundAcknowledgment(refundPolicy);
 
@@ -82,6 +75,10 @@ const Checkout = () => {
   const [deliveryMethod, setDeliveryMethod] = useState('delivery'); // 'delivery' or 'pickup'
   const [notes, setNotes] = useState('');
   const [addressApplied, setAddressApplied] = useState(false);
+  const normalizedProfileAddress = React.useMemo(
+    () => normalizeDeliveryAddress(user?.address),
+    [user?.address]
+  );
 
   // Initialize cities and barangays for Cavite province
   useEffect(() => {
@@ -96,7 +93,13 @@ const Checkout = () => {
     if (user?.phone && !hasPhoneBeenManuallyEdited && phoneNumber !== user.phone) {
       setPhoneNumber(user.phone);
     }
-  }, [user?.phone, hasPhoneBeenManuallyEdited, phoneNumber]);
+  }, [user?.phone, user?.address?.city, hasPhoneBeenManuallyEdited, phoneNumber]);
+
+  useEffect(() => {
+    if (!destinationConfirmed && !editAddress) {
+      setShippingAddress(normalizedProfileAddress);
+    }
+  }, [normalizedProfileAddress, destinationConfirmed, editAddress]);
 
   // Reset payment method when delivery method changes
   useEffect(() => {
@@ -117,8 +120,8 @@ const Checkout = () => {
   })), [checkoutItems]);
 
   const quoteShippingAddress = React.useMemo(
-    () => deliveryMethod === 'delivery' ? shippingAddress : {},
-    [deliveryMethod, shippingAddress]
+    () => deliveryMethod === 'delivery' && destinationConfirmed ? shippingAddress : {},
+    [deliveryMethod, destinationConfirmed, shippingAddress]
   );
   const appliedVoucherCode = appliedVoucher ? voucherCode : '';
 
@@ -130,7 +133,20 @@ const Checkout = () => {
       return undefined;
     }
 
+    if (deliveryMethod === 'delivery' && (!destinationConfirmed || !hasValidAddressCoordinates(shippingAddress))) {
+      quoteRequestIdRef.current += 1;
+      setPricingQuote(null);
+      setPricingQuoteError(
+        hasValidAddressCoordinates(normalizedProfileAddress)
+          ? 'Use your saved address or choose another location to calculate shipping.'
+          : 'Confirm this delivery address on the map to calculate shipping.'
+      );
+      setIsPricingQuoteLoading(false);
+      return undefined;
+    }
+
     let active = true;
+    const requestId = ++quoteRequestIdRef.current;
     setPricingQuote(null);
     setPricingQuoteError('');
     setIsPricingQuoteLoading(true);
@@ -142,24 +158,36 @@ const Checkout = () => {
           shippingAddress: quoteShippingAddress,
           voucherCode: appliedVoucherCode || null
         });
-        if (active) {
+        if (active && quoteRequestIdRef.current === requestId) {
           setPricingQuote(response.data);
           setPricingQuoteError('');
         }
       } catch (error) {
-        if (active) {
+        if (active && quoteRequestIdRef.current === requestId) {
           setPricingQuote(null);
-          setPricingQuoteError(error.response?.data?.message || "We couldn't calculate your total. Please try again.");
+          setPricingQuoteError(shippingQuoteErrorMessage(
+            error.response?.data?.code,
+            error.response?.data?.message
+          ));
         }
       } finally {
-        if (active) setIsPricingQuoteLoading(false);
+        if (active && quoteRequestIdRef.current === requestId) setIsPricingQuoteLoading(false);
       }
     }, 300);
     return () => {
       active = false;
       clearTimeout(timer);
     };
-  }, [quoteItemsSignature, quoteItems, deliveryMethod, quoteShippingAddress, appliedVoucherCode]);
+  }, [
+    quoteItemsSignature,
+    quoteItems,
+    deliveryMethod,
+    destinationConfirmed,
+    quoteShippingAddress,
+    shippingAddress,
+    normalizedProfileAddress,
+    appliedVoucherCode
+  ]);
 
   // Fetch claimed vouchers
   useEffect(() => {
@@ -255,34 +283,49 @@ const Checkout = () => {
 
   // Function to reset address to user profile data (restricted to Cavite, Philippines)
   const resetToProfileAddress = () => {
-    const profileAddress = {
-      street: user?.address?.street || '',
-      city: user?.address?.city || '',
-      province: 'cavite', // Always Cavite
-      barangay: user?.address?.barangay || '',
-      zipCode: user?.address?.zipCode || '',
-      country: 'PH',
-      coordinates: validCoordinates(user?.address?.coordinates) ? user.address.coordinates : undefined
-    };
+    const profileAddress = normalizedProfileAddress;
     setShippingAddress(profileAddress);
     setPhoneNumber(user?.phone || '');
+    setPricingQuote(null);
+    setAddressApplied(false);
 
     // Re-initialize cities and barangays for Cavite
     setCities(getCitiesByProvince('cavite'));
     if (user?.address?.city) {
       setBarangays(getBarangaysByCity(user.address.city));
     }
+    if (!hasValidAddressCoordinates(profileAddress)) {
+      setDestinationConfirmed(false);
+      setEditAddress(true);
+      setAddressInputType('map');
+      setPricingQuoteError('Confirm this delivery address on the map to calculate shipping.');
+      toast.info('Confirm this saved address on the map before delivery can be calculated.');
+      return;
+    }
+
+    setDestinationConfirmed(true);
     setEditAddress(false);
 
     // Show visual feedback
     setAddressApplied(true);
     setTimeout(() => setAddressApplied(false), 2000);
 
-    toast.success('Address saved.');
+    toast.success('Address selected. Calculating delivery…');
+  };
+
+  const startAddressChange = () => {
+    setDestinationConfirmed(false);
+    setPricingQuote(null);
+    setPricingQuoteError('Select or confirm your delivery location.');
+    setAddressApplied(false);
+    setEditAddress(true);
   };
 
   const handleAddressChange = (field, value) => {
     setShippingAddress(prev => ({ ...prev, [field]: value, coordinates: undefined }));
+    setDestinationConfirmed(false);
+    setPricingQuote(null);
+    setPricingQuoteError('Confirm this delivery address on the map to calculate shipping.');
 
     // Handle cascading dropdowns
     if (field === 'province') {
@@ -308,6 +351,11 @@ const Checkout = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (deliveryMethod === 'delivery'
+        && (!destinationConfirmed || !hasValidAddressCoordinates(shippingAddress))) {
+      toast.error('Select or confirm your delivery location before paying.');
+      return;
+    }
     if (refundAcknowledgmentRequired && !agreedToPolicy) {
       toast.error('You must acknowledge this store\'s No Refund policy to proceed.');
       return;
@@ -693,7 +741,7 @@ const Checkout = () => {
                 </h2>
                 <button
                   type="button"
-                  onClick={() => setEditAddress(!editAddress)}
+                  onClick={editAddress ? resetToProfileAddress : startAddressChange}
                   className="text-sm text-primary-600 hover:text-primary-500 flex items-center gap-1"
                 >
                   <Edit2 className="h-4 w-4" />
@@ -707,8 +755,13 @@ const Checkout = () => {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       <div className="md:col-span-2">
                         <p className="text-sm text-gray-600">
-                          <strong>Current Address:</strong> {shippingAddress.street || 'No street'}, {shippingAddress.city || 'No city'}, {shippingAddress.barangay || 'No barangay'}, {shippingAddress.zipCode || 'No ZIP'}, Cavite, Philippines
+                          <strong>Current Address:</strong> {formatDeliveryAddress(shippingAddress) || 'No saved delivery address'}
                         </p>
+                        {!hasValidAddressCoordinates(shippingAddress) && (
+                          <p className="mt-2 text-xs font-semibold text-amber-700">
+                            This saved address needs a confirmed map pin before shipping can be calculated.
+                          </p>
+                        )}
                       </div>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -729,7 +782,7 @@ const Checkout = () => {
                           ) : (
                             <>
                               <Edit2 className="h-4 w-4" />
-                              Use This Address
+                              {hasValidAddressCoordinates(shippingAddress) ? 'Use This Address' : 'Confirm on Map'}
                             </>
                           )}
                         </button>
@@ -766,16 +819,20 @@ const Checkout = () => {
                           setShippingAddress(prev => ({
                             ...prev,
                             street: location.street || location.full,
-                            city: location.city.toLowerCase().replace(/\s+/g, '_').replace('municipality_of_', ''),
-                            barangay: location.barangay.toLowerCase().replace(/\s+/g, '_'),
+                            city: (location.city || '').toLowerCase().replace(/\s+/g, '_').replace('municipality_of_', ''),
+                            barangay: (location.barangay || '').toLowerCase().replace(/\s+/g, '_'),
                             zipCode: location.zipCode || prev.zipCode,
-                            coordinates: {
-                              lat: location.lat,
-                              lng: location.lng
-                            }
+                            coordinates: getAddressCoordinates(location)
                           }));
+                          setDestinationConfirmed(true);
+                          setPricingQuote(null);
+                          setPricingQuoteError('');
+                          setEditAddress(false);
+                          setAddressApplied(true);
+                          setTimeout(() => setAddressApplied(false), 2000);
                         }}
-                        initialAddress={shippingAddress.street}
+                        initialAddress={formatDeliveryAddress(shippingAddress)}
+                        initialCoordinates={getAddressCoordinates(shippingAddress)}
                       />
                     </div>
                   ) : (
@@ -862,10 +919,19 @@ const Checkout = () => {
                           toast.error('Please complete all required address fields');
                           return;
                         }
+                        if (!hasValidAddressCoordinates(shippingAddress)) {
+                          setAddressInputType('map');
+                          setDestinationConfirmed(false);
+                          setPricingQuote(null);
+                          setPricingQuoteError('Confirm this delivery address on the map to calculate shipping.');
+                          toast.info('Place and confirm the map pin to calculate delivery.');
+                          return;
+                        }
+                        setDestinationConfirmed(true);
                         setEditAddress(false);
                         setAddressApplied(true);
                         setTimeout(() => setAddressApplied(false), 2000);
-                        toast.success('Delivery address saved.');
+                        toast.success('Delivery address selected. Calculating delivery…');
                       }}
                       className="w-full py-4 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-primary-600 transition-all shadow-xl shadow-slate-200 flex items-center justify-center gap-2 group"
                     >
@@ -1072,6 +1138,14 @@ const Checkout = () => {
                 <span>Delivery Method</span>
                 <span className="capitalize">{deliveryMethod === 'delivery' ? 'Home Delivery' : 'Store Pickup'}</span>
               </div>
+              {deliveryMethod === 'delivery' && destinationConfirmed && (
+                <div className="flex items-start justify-between gap-4 text-gray-600">
+                  <span className="shrink-0">Delivering to</span>
+                  <span className="text-right font-semibold text-gray-900">
+                    {formatDeliveryAddress(shippingAddress)}
+                  </span>
+                </div>
+              )}
               <PaymentBreakdown
                 summary={quoteSummary}
                 loading={isPricingQuoteLoading}
@@ -1103,7 +1177,12 @@ const Checkout = () => {
             <form onSubmit={handleSubmit}>
               <button
                 type="submit"
-                disabled={isLoading || isPricingQuoteLoading || !pricingQuote || Boolean(pricingQuoteError) || (refundAcknowledgmentRequired && !agreedToPolicy)}
+                disabled={isLoading
+                  || isPricingQuoteLoading
+                  || !pricingQuote
+                  || Boolean(pricingQuoteError)
+                  || (deliveryMethod === 'delivery' && (!destinationConfirmed || !hasValidAddressCoordinates(shippingAddress)))
+                  || (refundAcknowledgmentRequired && !agreedToPolicy)}
                 className={`btn btn-primary w-full flex items-center justify-center gap-3 py-5 text-[10px] font-black uppercase tracking-[0.3em] shadow-2xl transition-all active:scale-95 ${
                   ((refundAcknowledgmentRequired && !agreedToPolicy) || !pricingQuote || pricingQuoteError) ? 'opacity-50 cursor-not-allowed grayscale' : 'shadow-primary-200 hover:-translate-y-0.5'
                 }`}

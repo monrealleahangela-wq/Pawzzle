@@ -8,6 +8,13 @@ const { getPetAvailabilityIssue } = require('./petAvailabilityService');
 
 const idsEqual = (a, b) => a && b && a.toString() === b.toString();
 
+const pricingError = (code, message) => {
+  const error = new Error(message);
+  error.code = code;
+  error.statusCode = 400;
+  return error;
+};
+
 const resolveVoucher = async ({ voucherCode, storeId, subtotal }) => {
   if (!voucherCode) return { voucher: null, discountAmount: 0 };
   const voucher = await Voucher.findOne({
@@ -32,8 +39,12 @@ const calculateDelivery = async ({ store, deliveryMethod, shippingAddress, itemQ
   if (deliveryMethod === 'pickup') return { fee: 0, calculation: null };
   const origin = store.contactInfo?.address?.coordinates;
   const destination = shippingAddress?.coordinates;
-  if (!origin) throw new Error('This store must add its map location before delivery checkout is available.');
-  if (!destination) throw new Error('Select your delivery location on the map to calculate shipping.');
+  if (!DeliveryFeeService.isValidCoordinates(origin)) {
+    throw pricingError('STORE_LOCATION_REQUIRED', 'This store has not configured its delivery location.');
+  }
+  if (!DeliveryFeeService.isValidCoordinates(destination)) {
+    throw pricingError('CUSTOMER_LOCATION_REQUIRED', 'Select or confirm your delivery location.');
+  }
 
   const calculation = await DeliveryFeeService.calculate({
     store: store._id,
