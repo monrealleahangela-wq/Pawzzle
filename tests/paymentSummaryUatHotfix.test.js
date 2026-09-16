@@ -59,7 +59,8 @@ test('all primary order, booking, receipt, platform, and supplier summaries reus
 test('PayMongo creation and reconciliation remain authoritative and untouched by display normalization', () => {
   const payment = read('controllers/paymentController.js');
   const reconciliation = read('services/paymentReconciliationService.js');
-  assert.match(payment, /pricingBreakdown\?\.finalTotal\s*\?\?\s*order\.totalAmount/);
+  assert.match(payment, /const recordedPricing = order\.pricingBreakdown\?\.calculationVersion \? order\.pricingBreakdown : null/);
+  assert.match(payment, /recordedPricing\?\.finalTotal\s*\?\?\s*order\.totalAmount/);
   assert.match(payment, /pricingBreakdown\?\.finalPrice\s*\?\?\s*booking\.totalPrice/);
   assert.match(reconciliation, /duplicatePaymentIds/);
   assert.match(reconciliation, /paymentDetails\.history\.paymentId/);

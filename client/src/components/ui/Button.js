@@ -9,7 +9,7 @@ const Button = React.forwardRef(({
   children, 
   ...props 
 }, ref) => {
-  const baseClasses = "inline-flex max-w-full min-w-0 items-center justify-center rounded-lg text-center leading-tight whitespace-normal break-words font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50";
+  const baseClasses = "inline-flex max-w-full min-w-0 items-center justify-center rounded-lg text-center leading-tight whitespace-normal break-normal font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50";
   
   const variants = {
     primary: "bg-primary-600 text-white hover:bg-primary-700 focus-visible:ring-primary-500 shadow-soft hover:shadow-medium hover:-translate-y-0.5",
@@ -22,11 +22,11 @@ const Button = React.forwardRef(({
   };
   
   const sizes = {
-    default: "min-h-9 h-auto px-3.5 py-2 text-sm",
-    sm: "min-h-8 h-auto rounded-lg px-3 py-1.5 text-xs",
+    default: "min-h-10 h-auto px-3.5 py-2 text-sm",
+    sm: "min-h-9 h-auto rounded-lg px-3 py-1.5 text-xs",
     lg: "min-h-10 h-auto px-5 py-2.5 text-base",
     xl: "min-h-12 h-auto px-7 py-3 text-lg",
-    icon: "h-9 w-9 shrink-0 whitespace-nowrap p-0",
+    icon: "h-10 w-10 shrink-0 whitespace-nowrap p-0",
   };
 
   return (

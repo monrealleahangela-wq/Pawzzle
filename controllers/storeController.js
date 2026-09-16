@@ -1,5 +1,6 @@
 const { validationResult } = require('express-validator');
 const Store = require('../models/Store');
+const StoreApplication = require('../models/StoreApplication');
 const Pet = require('../models/Pet');
 const Product = require('../models/Product');
 const Order = require('../models/Order');
@@ -13,6 +14,7 @@ const { TAX_STATUSES, PRICING_MODES, normalizeTaxConfiguration } = require('../u
 const { POLICY_TYPES, normalizeRefundPolicy } = require('../utils/refundPolicy');
 const { isPlatformAdmin, isStoreAdmin, isOperationalStaff } = require('../config/permissions');
 const { buildStoreOperationsSnapshot } = require('../services/operationsDashboardService');
+const { createNotification } = require('./notificationController');
 const {
   getCustomerVisibleOwnerIds,
   buildCustomerVisibleStoreFilter
@@ -43,6 +45,7 @@ const getAllStores = async (req, res) => {
 
     const skip = (page - 1) * limit;
     const stores = await Store.find(filter)
+      .select('-taxProfile -businessProfile.registrationNumber -verification.adminNotes')
       .populate('owner', 'username firstName lastName')
       .sort({ featured: -1, 'ratings.average': -1, createdAt: -1 })
       .skip(skip)
@@ -71,6 +74,7 @@ const getStoreById = async (req, res) => {
   try {
     const ownerIds = await getCustomerVisibleOwnerIds();
     const store = await Store.findOne(buildCustomerVisibleStoreFilter(ownerIds, { _id: req.params.id }))
+      .select('-taxProfile -businessProfile.registrationNumber -verification.adminNotes')
       .populate('owner', 'username firstName lastName');
 
     if (!store) {
@@ -116,6 +120,7 @@ const getStoreDetails = async (req, res) => {
   try {
     const ownerIds = await getCustomerVisibleOwnerIds();
     const store = await Store.findOne(buildCustomerVisibleStoreFilter(ownerIds, { _id: req.params.id }))
+      .select('-taxProfile -businessProfile.registrationNumber -verification.adminNotes')
       .populate('owner', 'username firstName lastName');
 
     if (!store) {
@@ -518,9 +523,21 @@ const rejectVerification = async (req, res) => {
 
 const getTaxConfiguration = async (req, res) => {
   try {
-    const store = await Store.findById(req.params.id).select('name taxConfiguration isActive isDeleted');
+    const store = await Store.findById(req.params.id).select('name taxConfiguration taxProfile.verificationStatus taxProfile.verifiedTaxStatus taxProfile.declaredTaxStatus taxProfile.registeredName taxProfile.verifiedAt taxProfile.updateRequestStatus isActive isDeleted');
     if (!store || !store.isActive || store.isDeleted) return res.status(404).json({ message: 'Store not found' });
-    res.json({ storeId: store._id, storeName: store.name, taxConfiguration: normalizeTaxConfiguration(store.taxConfiguration) });
+    res.json({
+      storeId: store._id,
+      storeName: store.name,
+      taxConfiguration: normalizeTaxConfiguration(store.taxConfiguration),
+      taxProfile: {
+        verificationStatus: store.taxProfile?.verificationStatus || 'unverified',
+        declaredTaxStatus: store.taxProfile?.declaredTaxStatus || null,
+        verifiedTaxStatus: store.taxProfile?.verifiedTaxStatus || null,
+        registeredName: store.taxProfile?.registeredName || null,
+        verifiedAt: store.taxProfile?.verifiedAt || null,
+        updateRequestStatus: store.taxProfile?.updateRequestStatus || 'none'
+      }
+    });
   } catch (error) {
     res.status(500).json({ message: 'Unable to load tax configuration.' });
   }
@@ -528,9 +545,10 @@ const getTaxConfiguration = async (req, res) => {
 
 const updateTaxConfiguration = async (req, res) => {
   try {
-    const store = isPlatformAdmin(req.user) && req.params.id
-      ? await Store.findById(req.params.id).select('+taxConfiguration.auditLog')
-      : await Store.findOne({ owner: req.user._id, isDeleted: { $ne: true } }).select('+taxConfiguration.auditLog');
+    if (!isPlatformAdmin(req.user)) {
+      return res.status(403).json({ message: 'Verified tax status can only be changed through Platform Admin review.' });
+    }
+    const store = await Store.findById(req.params.id).select('+taxConfiguration.auditLog');
     if (!store) return res.status(404).json({ message: 'Store not found' });
 
     const taxStatus = String(req.body.taxStatus || '');
@@ -540,6 +558,13 @@ const updateTaxConfiguration = async (req, res) => {
     if (!PRICING_MODES.includes(pricingMode)) return res.status(400).json({ message: 'Invalid pricing mode.' });
     if (!Number.isFinite(vatRatePercent) || vatRatePercent < 0 || vatRatePercent > 100) {
       return res.status(400).json({ message: 'VAT rate must be between 0 and 100.' });
+    }
+    if (store.taxProfile?.verificationStatus !== 'verified') {
+      return res.status(409).json({ message: 'Verify the Store Tax Profile from the Store Application before configuring tax calculations.' });
+    }
+    const verifiedStatus = store.taxProfile.verifiedTaxStatus === 'vat_registered' ? 'vat_registered' : 'non_vat';
+    if (taxStatus !== verifiedStatus) {
+      return res.status(409).json({ message: 'Tax configuration must match the verified Store Tax Profile.' });
     }
 
     const previous = normalizeTaxConfiguration(store.taxConfiguration);
@@ -564,6 +589,42 @@ const updateTaxConfiguration = async (req, res) => {
   } catch (error) {
     console.error('Update tax configuration error:', error);
     res.status(500).json({ message: 'Unable to update tax configuration.' });
+  }
+};
+
+const requestTaxProfileUpdate = async (req, res) => {
+  try {
+    const reason = String(req.body.reason || '').trim();
+    if (reason.length < 10) return res.status(400).json({ message: 'Explain the requested business or tax information change.' });
+    const store = await Store.findOne({ owner: req.user._id, isDeleted: { $ne: true } }).select('+taxProfile.updateRequestReason');
+    if (!store) return res.status(404).json({ message: 'Store not found.' });
+    if (store.taxProfile?.updateRequestStatus === 'pending') {
+      return res.status(409).json({ message: 'A business and tax information update is already awaiting review.' });
+    }
+    store.taxProfile.updateRequestStatus = 'pending';
+    store.taxProfile.updateRequestedAt = new Date();
+    store.taxProfile.updateRequestReason = reason;
+    await store.save();
+
+    const application = await StoreApplication.findOne({ applicant: req.user._id, applicationType: 'new_store' }).sort({ createdAt: -1 });
+    if (application) {
+      application.reviewHistory.push({ action: 'tax_update_requested', actor: req.user._id, notes: reason, sections: ['businessRegistrationDetails', 'taxProfile'] });
+      await application.save();
+    }
+    const platformAdmins = await User.find({ role: { $in: ['super_admin', 'platform_admin'] }, isActive: { $ne: false }, isDeleted: { $ne: true } }).select('_id');
+    await Promise.all(platformAdmins.map(admin => createNotification({
+      recipient: admin._id,
+      sender: req.user._id,
+      type: 'store_application',
+      title: 'Business & Tax Update Requested',
+      message: `${store.name} requested a reviewed update to its business or tax information.`,
+      relatedId: application?._id || store._id,
+      relatedModel: application ? 'StoreApplication' : 'Store'
+    })));
+    res.json({ message: 'Your update request was sent to Platform Admin for review.', status: 'pending' });
+  } catch (error) {
+    console.error('Request tax profile update error:', error);
+    res.status(500).json({ message: 'Unable to submit the update request.' });
   }
 };
 
@@ -716,6 +777,7 @@ module.exports = {
   rejectVerification,
   getTaxConfiguration,
   updateTaxConfiguration,
+  requestTaxProfileUpdate,
   getRefundPolicy,
   updateRefundPolicy,
   getDeliveryPricing,

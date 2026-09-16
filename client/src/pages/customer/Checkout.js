@@ -10,7 +10,7 @@ import MapPicker from '../../components/MapPicker';
 import { Info } from 'lucide-react';
 import { normalizeRefundPolicy, refundPolicyLabel, requiresRefundAcknowledgment } from '../../utils/refundPolicy';
 import PaymentBreakdown from '../../components/payments/PaymentBreakdown';
-import { formatPeso, orderPaymentSummary } from '../../utils/paymentSummary';
+import { formatPeso, orderLineItemRows, orderPaymentSummary } from '../../utils/paymentSummary';
 
 const validCoordinates = (coordinates) => (
   coordinates
@@ -481,8 +481,10 @@ const Checkout = () => {
   const quoteSummary = quoteBreakdown ? orderPaymentSummary({
     pricingBreakdown: quoteBreakdown,
     deliveryFeeCalculation: pricingQuote?.deliveryFeeCalculation,
-    deliveryMethod
+    deliveryMethod,
+    items: pricingQuote?.items || checkoutItems
   }) : null;
+  const checkoutLineItems = orderLineItemRows(pricingQuote?.items?.length ? pricingQuote.items : checkoutItems);
 
   if (checkoutItems.length === 0) {
     const hasItemsInCart = items && items.length > 0;
@@ -523,11 +525,11 @@ const Checkout = () => {
           <div className="card p-6">
             <h2 className="text-xl font-semibold text-gray-900 mb-4">Order Items</h2>
             <div className="space-y-4">
-              {!checkoutItems || checkoutItems.length === 0 ? (
+              {!checkoutLineItems.length ? (
                 <p className="text-gray-500 text-center py-4">Your cart is empty</p>
               ) : (
-                checkoutItems.map((item) => (
-                  <div key={`${item.itemType}-${item.itemId}`} className="flex items-center gap-4 pb-4 border-b last:border-b-0">
+                checkoutLineItems.map((item) => (
+                  <div key={item.key} className="flex items-center gap-4 pb-4 border-b last:border-b-0">
                     <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden">
                       {item.image ? (
                         <img
@@ -550,13 +552,17 @@ const Checkout = () => {
                     <div className="flex-1">
                       <h4 className="font-medium text-gray-900">{item.name}</h4>
                       <p className="text-sm text-gray-500">{item.itemType === 'pet' ? 'Pet' : 'Product'}</p>
-                      <p className="text-sm font-medium text-gray-900">₱{item.price} x {item.quantity}</p>
+                      <p className="text-sm font-medium text-gray-900">{formatPeso(item.unitPrice)} × {item.quantity}</p>
                     </div>
                     <div className="text-right">
-                      <p className="font-medium text-gray-900">₱{(item.price * item.quantity).toFixed(2)}</p>
+                      <p className="text-[10px] font-bold uppercase tracking-wide text-gray-500">Line total</p>
+                      <p className="font-medium text-gray-900">{formatPeso(item.lineTotal)}</p>
                     </div>
                   </div>
                 ))
+              )}
+              {quoteSummary?.taxStatus === 'vat_registered' && quoteSummary?.pricingMode === 'inclusive' && (
+                <p className="rounded-lg bg-primary-50 px-3 py-2 text-[10px] font-semibold text-primary-700">Displayed item prices already include VAT. VAT is not added again at payment.</p>
               )}
             </div>
           </div>

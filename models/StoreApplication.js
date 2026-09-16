@@ -11,6 +11,10 @@ const storeApplicationSchema = new mongoose.Schema({
     required: true,
     trim: true
   },
+  registeredBusinessName: { type: String, trim: true },
+  tradeName: { type: String, trim: true },
+  natureOfBusiness: { type: String, trim: true, maxlength: 500 },
+  yearBusinessStarted: { type: Number, min: 1800, max: 2200 },
   businessType: {
     type: String,
     enum: ['pet_store', 'breeder', 'shelter', 'veterinary', 'grooming', 'training', 'other'],
@@ -86,12 +90,82 @@ const storeApplicationSchema = new mongoose.Schema({
       required: true
     },
     address: {
+      unitBuilding: { type: String, trim: true },
       street: { type: String, required: false },
+      barangay: { type: String, required: false },
       city: { type: String, required: false },
       state: { type: String, required: false },
+      province: { type: String, required: false },
       zipCode: { type: String, required: false },
-      country: { type: String, required: false }
+      country: { type: String, required: false },
+      landmark: { type: String, trim: true },
+      coordinates: {
+        lat: { type: Number, min: -90, max: 90 },
+        lng: { type: Number, min: -180, max: 180 }
+      }
     }
+  },
+  representative: {
+    fullName: { type: String, trim: true },
+    role: { type: String, trim: true },
+    phone: { type: String, trim: true },
+    email: { type: String, trim: true, lowercase: true },
+    isAuthorizedRepresentative: { type: Boolean, default: false },
+    authorityDocumentUrl: { type: String, select: false }
+  },
+  businessRegistration: {
+    authority: { type: String, enum: ['dti', 'sec', 'cda', 'other'] },
+    certificateNumber: { type: String, trim: true },
+    registeredName: { type: String, trim: true },
+    registrationDate: Date,
+    expirationDate: Date,
+    documentUrl: { type: String, select: false }
+  },
+  taxProfile: {
+    birRegistrationStatus: {
+      type: String,
+      enum: ['registered', 'not_registered', 'pending_registration'],
+      default: 'pending_registration'
+    },
+    taxpayerClassification: { type: String, trim: true },
+    tin: { type: String, trim: true, select: false },
+    branchCode: { type: String, trim: true, select: false },
+    registeredName: { type: String, trim: true },
+    registeredAddress: {
+      unitBuilding: String,
+      street: String,
+      barangay: String,
+      city: String,
+      province: String,
+      postalCode: String,
+      country: { type: String, default: 'PH' }
+    },
+    lineOfBusiness: { type: String, trim: true },
+    declaredTaxStatus: {
+      type: String,
+      enum: ['vat_registered', 'non_vat_registered']
+    },
+    verifiedTaxStatus: {
+      type: String,
+      enum: ['vat_registered', 'non_vat_registered', null],
+      default: null
+    },
+    verificationStatus: {
+      type: String,
+      enum: ['unverified', 'pending', 'verified', 'rejected'],
+      default: 'unverified'
+    },
+    corDocumentUrl: { type: String, select: false },
+    submittedAt: Date,
+    verifiedAt: Date,
+    verifiedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    rejectionReason: { type: String, trim: true },
+    verificationNotes: { type: String, trim: true }
+  },
+  declaration: {
+    accepted: { type: Boolean, default: false },
+    acceptedAt: Date,
+    applicantName: { type: String, trim: true }
   },
   businessDescription: {
     type: String,
@@ -100,7 +174,7 @@ const storeApplicationSchema = new mongoose.Schema({
   },
   legalStructure: {
     type: String,
-    enum: ['single_proprietorship', 'partnership', 'corporation', 'cooperative', 'other'],
+    enum: ['single_proprietorship', 'sole_proprietorship', 'one_person_corporation', 'partnership', 'corporation', 'cooperative', 'other'],
     default: 'single_proprietorship'
   },
   yearsInBusiness: {
@@ -189,7 +263,7 @@ const storeApplicationSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['draft', 'submitted', 'pending_review', 'approved', 'rejected', 'requires_more_info', 'expansion_pending'],
+    enum: ['draft', 'submitted', 'pending_review', 'under_review', 'approved', 'rejected', 'requires_more_info', 'expansion_pending'],
     default: 'draft'
   },
   requiredCorrections: [{
@@ -198,7 +272,8 @@ const storeApplicationSchema = new mongoose.Schema({
       'businessName', 'businessType', 'businessDescription', 'storeLogo',
       'taxId', 'governmentId', 'businessRegistration', 'mayorsPermit',
       'birRegistration', 'barangayClearance', 'address', 'paymentInfo',
-      'references'
+      'references', 'representative', 'businessRegistrationDetails',
+      'taxProfile', 'taxStatus', 'coordinates', 'declaration'
     ]
   }],
   reviewNotes: {
@@ -228,6 +303,17 @@ const storeApplicationSchema = new mongoose.Schema({
     ref: 'User'
   },
   reviewedAt: Date,
+  approvedStore: { type: mongoose.Schema.Types.ObjectId, ref: 'Store' },
+  reviewHistory: [{
+    action: {
+      type: String,
+      enum: ['submitted', 'resubmitted', 'under_review', 'needs_correction', 'approved', 'rejected', 'tax_verified', 'tax_rejected', 'tax_update_requested']
+    },
+    actor: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    at: { type: Date, default: Date.now },
+    notes: { type: String, trim: true },
+    sections: [String]
+  }],
   createdAt: {
     type: Date,
     default: Date.now
@@ -296,46 +382,6 @@ storeApplicationSchema.methods.calculateVerificationScore = function () {
 
   this.verificationScore = score;
   return score;
-};
-
-// Auto-verification logic
-storeApplicationSchema.methods.autoVerify = function () {
-  const checks = this.verificationChecks;
-
-  // Check if license is not expired
-  if (this.businessLicense?.expiryDate && new Date(this.businessLicense.expiryDate) > new Date()) {
-    checks.licenseValid = true;
-  }
-
-  // Basic tax ID format validation (simplified)
-  if (this.taxId && this.taxId.length >= 9) {
-    checks.taxIdValid = true;
-  }
-
-  // Check insurance expiry
-  if (this.insurance?.expiryDate && new Date(this.insurance.expiryDate) > new Date()) {
-    checks.insuranceValid = true;
-  }
-
-  // Check certifications
-  if (this.certifications && this.certifications.length > 0) {
-    const validCerts = this.certifications.filter(cert =>
-      cert.expiryDate && new Date(cert.expiryDate) > new Date()
-    );
-    checks.certificationsValid = validCerts.length > 0;
-  }
-
-  // Basic reference validation
-  if (this.references?.length >= 2) {
-    checks.referencesValid = true;
-  }
-
-  // Business registration: Check if at least one major business doc is present
-  if (this.businessRegistrationUrl || this.birRegistrationUrl || this.mayorsPermitUrl) {
-    checks.businessRegistered = true;
-  }
-
-  return this.calculateVerificationScore();
 };
 
 module.exports = mongoose.model('StoreApplication', storeApplicationSchema);

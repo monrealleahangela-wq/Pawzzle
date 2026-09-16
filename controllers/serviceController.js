@@ -498,7 +498,9 @@ const calculatePrice = async (req, res) => {
     });
   } catch (error) {
     console.error('Calculate price error:', error);
-    res.status(500).json({ message: 'Server error' });
+    res.status(error.code === 'STORE_TAX_VERIFICATION_REQUIRED' ? 409 : 500).json({
+      message: error.code === 'STORE_TAX_VERIFICATION_REQUIRED' ? error.message : 'Server error'
+    });
   }
 };
 

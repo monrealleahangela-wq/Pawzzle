@@ -109,13 +109,16 @@ const bookingSchema = new mongoose.Schema({
     deliveryFee:      { type: Number, default: 0 },
     deliveryFeeTaxable: { type: Boolean, default: false },
     taxStatus:        { type: String, enum: ['non_vat', 'vat_registered', 'vat_exempt', 'zero_rated'], default: 'non_vat' },
+    storeTaxStatus:   { type: String },
+    taxTreatment:     { type: String },
     pricingMode:      { type: String, enum: ['inclusive', 'exclusive'], default: 'inclusive' },
     vatRatePercent:   { type: Number, default: 0 },
     vatExclusiveAmount: { type: Number, default: 0 },
     vatAmount:        { type: Number, default: 0 },
     nonTaxableAmount: { type: Number, default: 0 },
     finalPrice:       { type: Number, default: 0 },
-    configuredAt:     { type: Date }
+    configuredAt:     { type: Date },
+    capturedAt:       { type: Date }
   },
 
   bookingDate: {

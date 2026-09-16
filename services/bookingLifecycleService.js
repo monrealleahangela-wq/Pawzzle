@@ -68,12 +68,15 @@ const recalculateBooking = async (booking, service, store) => {
     deliveryFee: tax.deliveryFee,
     deliveryFeeTaxable: tax.deliveryFeeTaxable,
     taxStatus: tax.taxStatus,
+    storeTaxStatus: tax.storeTaxStatus,
+    taxTreatment: tax.taxTreatment,
     pricingMode: tax.pricingMode,
     vatRatePercent: tax.vatRatePercent,
     vatExclusiveAmount: tax.vatExclusiveAmount,
     vatAmount: tax.vatAmount,
     nonTaxableAmount: tax.nonTaxableAmount,
     configuredAt: tax.configuredAt,
+    capturedAt: tax.capturedAt,
     finalPrice: tax.finalTotal
   });
   return { breakdown, resolvedAddOns, discountAmount };

@@ -29,6 +29,15 @@
   --status-warning-soft: #fffbeb;
   --status-danger: #be123c;
   --status-danger-soft: #fff1f2;
+
+  /* Shared application sizing. These tokens support the existing Pawzzle
+     design language without globally overriding every component. */
+  --ui-page-gap: clamp(1rem, 1.8vw, 1.5rem);
+  --ui-section-gap: clamp(0.75rem, 1.25vw, 1rem);
+  --ui-card-padding: clamp(1rem, 1.5vw, 1.25rem);
+  --ui-control-height: 2.5rem;
+  --ui-control-radius: 0.75rem;
+  --ui-card-radius: 1rem;
   
   /* Layered Shadow System */
   --shadow-soft: 0 5px 15px rgba(0,0,0,0.03);
@@ -126,8 +135,15 @@ body {
   max-width: 100%;
 }
 
-.app-page :where(p, td, dd, label, li, button, a) {
+.app-page :where(p, td, dd, label, li) {
   overflow-wrap: anywhere;
+}
+
+/* Interactive labels wrap at word boundaries. Allowing `anywhere` here made
+   content-sized tabs and buttons collapse to one character per line. */
+.app-page :where(button, a, [role="button"]) {
+  overflow-wrap: normal;
+  word-break: normal;
 }
 
 /* Flex rows must opt individual structural children into shrinking. Applying
@@ -181,6 +197,86 @@ body {
 .app-page :where(input, select, textarea) {
   min-width: 0;
   max-width: 100%;
+}
+
+/* Opt-in application primitives for pages that do not use the React UI
+   components yet. They standardize proportions while leaving composition to
+   each workflow. */
+.ui-page-stack {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  flex-direction: column;
+  gap: var(--ui-page-gap);
+}
+
+.ui-page-header {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 0.75rem 1rem;
+}
+
+.ui-page-header > * { min-width: 0; }
+
+.ui-toolbar {
+  display: grid;
+  width: 100%;
+  min-width: 0;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 11rem), 1fr));
+  align-items: end;
+  gap: 0.625rem;
+}
+
+.ui-control {
+  width: 100%;
+  min-width: 0;
+  min-height: var(--ui-control-height);
+  border-radius: var(--ui-control-radius);
+}
+
+.ui-card-surface {
+  min-width: 0;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--ui-card-radius);
+  background: var(--surface-card);
+  padding: var(--ui-card-padding);
+  box-shadow: var(--shadow-soft);
+}
+
+.ui-table-region {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+  scrollbar-width: thin;
+}
+
+.ui-empty-state {
+  display: flex;
+  min-height: 10rem;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: clamp(1.5rem, 4vw, 2.5rem);
+  text-align: center;
+}
+
+.ui-primary-text {
+  min-width: 0;
+  overflow-wrap: break-word;
+  word-break: normal;
+}
+
+.ui-secondary-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* System-wide dark compatibility for legacy screens that predate Tailwind's
@@ -532,9 +628,9 @@ h1, h2, h3, h4, h5, h6 {
   color: var(--neutral-900);
 }
 
-h1 { font-size: 3rem; line-height: 1.1; letter-spacing: -0.04em; font-weight: 800; }
-h2 { font-size: 2rem; line-height: 1.2; letter-spacing: -0.03em; font-weight: 700; }
-h3 { font-size: 1.35rem; font-weight: 700; }
+h1 { font-size: clamp(1.75rem, 3vw, 2.5rem); line-height: 1.1; letter-spacing: -0.04em; font-weight: 800; }
+h2 { font-size: clamp(1.35rem, 2vw, 1.75rem); line-height: 1.2; letter-spacing: -0.03em; font-weight: 700; }
+h3 { font-size: clamp(1.05rem, 1.5vw, 1.25rem); font-weight: 700; }
 p { line-height: 1.6; color: var(--neutral-800); }
 
 /* Premium Components */
@@ -544,7 +640,7 @@ p { line-height: 1.6; color: var(--neutral-800); }
 }
 
 .card:hover {
-  transform: translateY(-10px) scale(1.02);
+  transform: translateY(-2px);
   box-shadow: var(--shadow-strong);
 }
 
@@ -582,7 +678,7 @@ p { line-height: 1.6; color: var(--neutral-800); }
 
 /* Premium Badges */
 .status-badge {
-  @apply px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest;
+  @apply px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wide;
 }
 
 .status-badge-active {
@@ -608,7 +704,7 @@ p { line-height: 1.6; color: var(--neutral-800); }
 
 /* Dashboard Widgets */
 .stat-card {
-  @apply p-6 rounded-2xl bg-white border border-slate-50 relative overflow-hidden;
+  @apply p-4 sm:p-5 rounded-2xl bg-white border border-slate-50 relative overflow-hidden;
   box-shadow: var(--shadow-medium);
 }
 
@@ -795,12 +891,40 @@ p { line-height: 1.6; color: var(--neutral-800); }
 .store-owner-ui-shell .sidebar-nav-item { padding-top: 0.625rem; padding-bottom: 0.625rem; border-radius: 0.75rem; gap: 0.75rem; }
 .store-owner-ui-shell .sidebar-nav-item svg { width: 1.1rem; height: 1.1rem; }
 
+/* Supplier pages previously fell through to the largest generic application
+   scale. Keep their existing structure while matching Pawzzle's management
+   density and readable content priorities. */
+.supplier-interface { font-size: 0.9375rem; }
+.supplier-interface h1 { font-size: clamp(1.5rem, 2.4vw, 2.25rem) !important; line-height: 1.1 !important; }
+.supplier-interface h2 { font-size: clamp(1.2rem, 1.8vw, 1.625rem) !important; }
+.supplier-interface h3 { font-size: clamp(1rem, 1.4vw, 1.25rem) !important; }
+.supplier-interface p { line-height: 1.5; }
+.supplier-interface button,
+.supplier-interface input,
+.supplier-interface select { min-height: var(--ui-control-height); }
+.supplier-interface [class~="p-12"],
+.supplier-interface [class~="p-10"] { padding: 1.5rem !important; }
+.supplier-interface [class~="p-8"] { padding: 1.25rem !important; }
+.supplier-interface [class~="gap-10"],
+.supplier-interface [class~="gap-8"] { gap: 1.25rem !important; }
+.supplier-interface [class~="space-y-8"] > :not([hidden]) ~ :not([hidden]) { margin-top: 1.25rem !important; }
+.supplier-interface [class~="rounded-[3rem]"],
+.supplier-interface [class~="rounded-[2.5rem]"] { border-radius: 1.25rem !important; }
+.supplier-ui-shell .sidebar-nav-item { padding-top: 0.625rem; padding-bottom: 0.625rem; border-radius: 0.75rem; gap: 0.75rem; }
+.supplier-ui-shell .sidebar-nav-item svg { width: 1.1rem; height: 1.1rem; }
+
 @media (max-width: 640px) {
   .store-owner-interface { font-size: 0.875rem; }
   .store-owner-interface h1 { font-size: 1.75rem !important; }
   .store-owner-interface h2 { font-size: 1.35rem !important; }
   .store-owner-interface [class~="p-10"],
   .store-owner-interface [class~="p-8"] { padding: 1rem !important; }
+  .supplier-interface { font-size: 0.875rem; }
+  .supplier-interface h1 { font-size: 1.5rem !important; }
+  .supplier-interface h2 { font-size: 1.2rem !important; }
+  .supplier-interface [class~="p-12"],
+  .supplier-interface [class~="p-10"],
+  .supplier-interface [class~="p-8"] { padding: 1rem !important; }
 }
 
 /* Platform administration uses a compact, information-dense management scale.

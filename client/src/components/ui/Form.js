@@ -8,20 +8,24 @@ const Input = React.forwardRef(({
   label, 
   helperText, 
   required = false,
+  id,
   ...props 
 }, ref) => {
+  const generatedId = React.useId();
+  const fieldId = id || generatedId;
   return (
     <div className="space-y-2">
       {label && (
-        <label className="text-sm font-medium text-secondary">
+        <label htmlFor={fieldId} className="text-sm font-medium text-secondary">
           {label}
           {required && <span className="text-error-500 ml-1">*</span>}
         </label>
       )}
       <input
         type={type}
+        id={fieldId}
         className={cn(
-          "flex h-9 w-full rounded-lg border border-neutral-300 bg-white/80 px-3 py-2 text-sm text-default backdrop-blur-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-neutral-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:text-neutral-400 disabled:opacity-60 transition-all duration-200 hover:border-neutral-400",
+          "flex h-10 w-full rounded-lg border border-neutral-300 bg-white/80 px-3 py-2 text-sm text-default backdrop-blur-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-neutral-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:text-neutral-400 disabled:opacity-60 transition-all duration-200 hover:border-neutral-400",
           error && "border-error-500 focus-visible:ring-error-500 hover:border-error-600",
           className
         )}
@@ -48,19 +52,23 @@ const Textarea = React.forwardRef(({
   label, 
   helperText, 
   required = false,
+  id,
   ...props 
 }, ref) => {
+  const generatedId = React.useId();
+  const fieldId = id || generatedId;
   return (
     <div className="space-y-2">
       {label && (
-        <label className="text-sm font-medium text-secondary">
+        <label htmlFor={fieldId} className="text-sm font-medium text-secondary">
           {label}
           {required && <span className="text-error-500 ml-1">*</span>}
         </label>
       )}
       <textarea
+        id={fieldId}
         className={cn(
-          "flex min-h-[72px] w-full rounded-lg border border-neutral-300 bg-white/80 px-3 py-2 text-sm text-default backdrop-blur-sm ring-offset-background placeholder:text-neutral-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:text-neutral-400 disabled:opacity-60 transition-all duration-200 hover:border-neutral-400 resize-none",
+          "flex min-h-[88px] w-full resize-y rounded-lg border border-neutral-300 bg-white/80 px-3 py-2 text-sm text-default backdrop-blur-sm ring-offset-background placeholder:text-neutral-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:text-neutral-400 disabled:opacity-60 transition-all duration-200 hover:border-neutral-400",
           error && "border-error-500 focus-visible:ring-error-500 hover:border-error-600",
           className
         )}
@@ -88,19 +96,23 @@ const Select = React.forwardRef(({
   helperText, 
   required = false,
   children,
+  id,
   ...props 
 }, ref) => {
+  const generatedId = React.useId();
+  const fieldId = id || generatedId;
   return (
     <div className="space-y-2">
       {label && (
-        <label className="text-sm font-medium text-secondary">
+        <label htmlFor={fieldId} className="text-sm font-medium text-secondary">
           {label}
           {required && <span className="text-error-500 ml-1">*</span>}
         </label>
       )}
       <select
+        id={fieldId}
         className={cn(
-          "flex h-9 w-full rounded-lg border border-neutral-300 bg-white/80 px-3 py-2 text-sm text-default backdrop-blur-sm ring-offset-background placeholder:text-neutral-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:text-neutral-400 disabled:opacity-60 transition-all duration-200 hover:border-neutral-400 cursor-pointer",
+          "flex h-10 w-full cursor-pointer rounded-lg border border-neutral-300 bg-white/80 px-3 py-2 pr-9 text-sm text-default backdrop-blur-sm ring-offset-background placeholder:text-neutral-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:text-neutral-400 disabled:opacity-60 transition-all duration-200 hover:border-neutral-400",
           error && "border-error-500 focus-visible:ring-error-500 hover:border-error-600",
           className
         )}
@@ -129,13 +141,17 @@ const Checkbox = React.forwardRef(({
   label, 
   helperText, 
   required = false,
+  id,
   ...props 
 }, ref) => {
+  const generatedId = React.useId();
+  const fieldId = id || generatedId;
   return (
     <div className="space-y-2">
       <div className="flex items-center space-x-2">
         <input
           type="checkbox"
+          id={fieldId}
           className={cn(
             "h-4 w-4 rounded border-neutral-300 text-primary-600 focus:ring-primary-500 transition-all duration-200",
             error && "border-error-500 focus:ring-error-500",
@@ -145,7 +161,7 @@ const Checkbox = React.forwardRef(({
           {...props}
         />
         {label && (
-          <label className="text-sm font-medium text-secondary cursor-pointer">
+          <label htmlFor={fieldId} className="cursor-pointer text-sm font-medium text-secondary">
             {label}
             {required && <span className="text-error-500 ml-1">*</span>}
           </label>

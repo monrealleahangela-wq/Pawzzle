@@ -126,9 +126,9 @@ const SupplierDashboard = () => {
 
   // ── REGISTRATION FORM ─────────────────────────────────
   if (showRegister) return (
-    <div className="min-h-screen bg-slate-50/50 p-4 sm:p-8">
+    <div className="w-full min-w-0 bg-slate-50/50 p-3 sm:p-5">
       <div className="max-w-2xl mx-auto">
-        <div className="bg-white rounded-[3rem] p-8 sm:p-12 border border-slate-100 shadow-sm">
+        <div className="mx-auto max-w-4xl rounded-2xl border border-slate-100 bg-white p-4 shadow-sm sm:p-6">
           <div className="flex items-center gap-3 mb-6">
             <div className="p-3 bg-primary-600 text-white rounded-2xl shadow-lg shadow-primary-200"><Truck className="h-6 w-6" /></div>
             <div>
@@ -180,7 +180,7 @@ const SupplierDashboard = () => {
                 className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-sm font-medium outline-none h-24 resize-none" placeholder="About your business..." />
             </div>
             <button type="submit" disabled={submitting}
-              className="w-full py-4 bg-primary-600 text-white rounded-2xl text-[11px] font-black uppercase tracking-[0.3em] hover:bg-primary-700 transition-all shadow-xl shadow-primary-200 disabled:opacity-50">
+              className="min-h-10 w-full rounded-xl bg-primary-600 px-4 py-2.5 text-[11px] font-black uppercase tracking-wide text-white shadow-sm transition-all hover:bg-primary-700 disabled:opacity-50">
               {submitting ? 'Submitting...' : 'Submit Application'}
             </button>
           </form>
@@ -194,8 +194,8 @@ const SupplierDashboard = () => {
 
   // ── PENDING VERIFICATION ──────────────────────────────
   if (supplier?.status === 'pending_verification') return (
-    <div className="min-h-screen bg-slate-50/50 flex items-center justify-center p-8">
-      <div className="bg-white rounded-[3rem] p-12 max-w-lg text-center border border-slate-100 shadow-sm">
+    <div className="flex min-h-[50vh] items-center justify-center bg-slate-50/50 p-4">
+      <div className="max-w-lg rounded-2xl border border-slate-100 bg-white p-6 text-center shadow-sm">
         <div className="w-20 h-20 bg-amber-100 rounded-2xl flex items-center justify-center mx-auto mb-6"><Clock className="h-10 w-10 text-amber-600" /></div>
         <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tighter mb-2">Under Review</h2>
         <p className="text-sm text-slate-500 leading-relaxed">Your supplier application is being reviewed. You'll be notified once verified.</p>
@@ -205,9 +205,9 @@ const SupplierDashboard = () => {
 
   // ── MAIN DASHBOARD ────────────────────────────────────
   return (
-    <div className="min-h-screen w-full max-w-full min-w-0 bg-slate-50/50 dark:bg-slate-950 p-4 sm:p-8 space-y-8">
+    <div className="ui-page-stack w-full max-w-full min-w-0 bg-slate-50/50 p-3 dark:bg-slate-950 sm:p-5">
       {/* Header */}
-      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-6 bg-white p-6 sm:p-10 rounded-[3rem] border border-slate-100 shadow-sm relative overflow-hidden">
+      <div className="ui-page-header relative overflow-hidden rounded-2xl border border-slate-100 bg-white p-4 shadow-sm sm:p-5">
         <div className="absolute top-0 right-0 w-64 h-64 bg-primary-500/5 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl pointer-events-none" />
         <div className="relative z-10">
           <div className="flex items-center gap-3 mb-4">
@@ -217,7 +217,7 @@ const SupplierDashboard = () => {
               {supplier?.status?.replace('_', ' ')}
             </span>
           </div>
-          <h1 className="text-3xl sm:text-5xl font-black text-slate-900 uppercase tracking-tighter leading-[0.9] mb-2">
+          <h1 className="mb-1 text-2xl font-black uppercase leading-tight tracking-tight text-slate-900 sm:text-3xl">
             {supplier?.businessName || 'Supplier'} <span className="text-primary-600">Hub</span>
           </h1>
         </div>
@@ -303,7 +303,7 @@ const SupplierDashboard = () => {
                   <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-50">
                     <div>
                       <p className="text-[8px] font-black text-slate-400 uppercase">Wholesale</p>
-                      <p className="text-sm font-black text-slate-900">₱{p.wholesalePrice?.toLocaleString()}</p>
+                      <p className="text-sm font-black text-slate-900">{formatPeso(p.wholesalePrice)}</p>
                     </div>
                     <div className="text-right">
                       <p className="text-[8px] font-black text-slate-400 uppercase">Stock</p>
@@ -331,7 +331,7 @@ const SupplierDashboard = () => {
       {activeTab === 'orders' && (
         <div className="space-y-4">
           {orders.length === 0 ? (
-            <div className="bg-white rounded-2xl p-12 text-center border border-slate-100">
+            <div className="ui-empty-state rounded-2xl border border-slate-100 bg-white">
               <ShoppingCart className="h-12 w-12 text-slate-300 mx-auto mb-4" />
               <p className="text-sm font-bold text-slate-400">No purchase orders received yet</p>
             </div>

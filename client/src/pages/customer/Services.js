@@ -214,8 +214,8 @@ const Services = () => {
 
       <div className="flex flex-col md:flex-row justify-between items-center sm:items-end gap-4 md:gap-6 text-center sm:text-left">
         <div className="space-y-1">
-          <h1 className="text-3xl md:text-5xl font-black text-slate-900 tracking-tight">Professional Services</h1>
-          <p className="text-base md:text-lg text-slate-500 font-medium tracking-tight">World-class care for your beloved family members</p>
+          <h1 className="text-2xl font-black tracking-tight text-slate-900 sm:text-3xl">Professional Services</h1>
+          <p className="text-sm font-medium tracking-tight text-slate-500 sm:text-base">World-class care for your beloved family members</p>
         </div>
         {isAuthenticated && (
           <Link

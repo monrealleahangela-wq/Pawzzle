@@ -107,10 +107,8 @@ const calculateOrderPricing = async ({ items, requestedDeliveryMethod, shippingA
     resolveVoucher({ voucherCode, storeId, subtotal }),
     calculateDelivery({ store, deliveryMethod, shippingAddress, itemQuantity: totalItemQuantity })
   ]);
-  // Stores created before tax settings were introduced retain checkout
-  // compatibility through the calculator's explicit non-VAT fallback. A
-  // configured store still uses its saved VAT treatment, and either result is
-  // snapshotted on the order before a PayMongo session can be created.
+  // Only an explicitly verified tax configuration can create a new financial
+  // snapshot. Existing orders retain their stored breakdown unchanged.
   const pricingBreakdown = calculateTransactionTax({
     subtotal,
     discountAmount,

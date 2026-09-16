@@ -10,6 +10,7 @@ import { Phone, Mail, Clock, Package, Scissors, ChevronLeft, ShoppingBag, Heart,
 import GoogleMap from '../../components/GoogleMap';
 import ReviewSection from '../../components/ReviewSection';
 import UserReportModal from '../../components/UserReportModal';
+import { formatPeso } from '../../utils/paymentSummary';
 
 const StoreDetail = () => {
   const { storeId } = useParams();
@@ -457,7 +458,7 @@ const StoreDetail = () => {
                         <div className="space-y-0.5 sm:space-y-4 mb-2 sm:mb-6 px-1">
                           <p className="text-[10px] font-black uppercase leading-tight tracking-wide text-primary-600 break-words">{product.category}</p>
                           <h3 className="min-h-[2.5rem] text-sm font-black uppercase leading-tight text-slate-900 line-clamp-2 break-words sm:text-lg">{product.name}</h3>
-                          <p className="text-[11px] sm:text-xl font-black text-slate-900 tracking-tighter">₱{product.price?.toLocaleString()}</p>
+                          <p className="text-[11px] font-black tracking-tighter text-slate-900 sm:text-xl">{formatPeso(product.price)}</p>
                         </div>
                       </Link>
                       <div className="flex gap-1.5 mt-auto">
@@ -503,7 +504,7 @@ const StoreDetail = () => {
                         <span className="text-[10px] font-black uppercase tracking-wide text-slate-400 sm:text-xs">{service.duration} MIN</span>
                       </div>
                       <div className="flex w-full shrink-0 items-center justify-between gap-3 sm:w-auto sm:flex-col sm:items-end sm:text-right">
-                        <p className="text-[11px] sm:text-3xl font-black text-slate-900 tracking-tighter mb-1 sm:mb-2">₱{service.price?.toLocaleString()}</p>
+                        <p className="mb-1 text-[11px] font-black tracking-tighter text-slate-900 sm:mb-2 sm:text-2xl">{formatPeso(service.price)}</p>
                         <Link to={`/bookings?service=${service._id}`} className="inline-block px-3 sm:px-8 py-1.5 sm:py-4 bg-slate-900 text-white rounded-lg sm:rounded-2xl text-[8px] sm:text-[10px] font-black uppercase tracking-widest active:scale-95">
                           Book
                         </Link>
@@ -535,7 +536,7 @@ const StoreDetail = () => {
                       <div className="flex-1 space-y-0.5 sm:space-y-4 px-1">
                         <h3 className="min-h-[2.5rem] text-sm font-black uppercase leading-tight text-slate-900 line-clamp-2 break-words sm:text-lg">{pet.name}</h3>
                         <p className="text-[7px] sm:text-xs font-bold text-slate-400 uppercase tracking-widest truncate opacity-80">{pet.breed}</p>
-                        <p className="text-[11px] sm:text-2xl font-black text-primary-600 tracking-tighter pt-1 sm:pt-4 border-t border-slate-50">₱{pet.price?.toLocaleString()}</p>
+                        <p className="border-t border-slate-50 pt-1 text-[11px] font-black tracking-tighter text-primary-600 sm:pt-4 sm:text-xl">{formatPeso(pet.price)}</p>
                       </div>
                     </Link>
                   )) : (

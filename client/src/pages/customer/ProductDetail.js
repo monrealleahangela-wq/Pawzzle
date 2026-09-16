@@ -8,6 +8,7 @@ import { Package, ArrowLeft, Plus, Minus, MapPin, Store, ShoppingBag, Star, Hear
 import LoginModal from '../../components/LoginModal';
 import ReviewSection from '../../components/ReviewSection';
 import { socialService } from '../../services/apiService';
+import { formatPeso } from '../../utils/paymentSummary';
 
 const ProductDetail = () => {
   const { id } = useParams();
@@ -180,7 +181,7 @@ const ProductDetail = () => {
                 )}
             </div>
             <div className="flex items-center gap-3">
-              <span className="text-xl sm:text-3xl font-black text-slate-900 tracking-tighter">₱{product.price?.toLocaleString()}</span>
+              <span className="text-xl font-black tracking-tighter text-slate-900 sm:text-2xl">{formatPeso(product.price)}</span>
               {product.brand && (
                 <span className="px-2 py-0.5 bg-slate-900 text-white rounded text-[8px] font-black uppercase tracking-widest">{product.brand}</span>
               )}
@@ -309,7 +310,7 @@ const ProductDetail = () => {
                       : 'bg-slate-800 text-slate-500 cursor-not-allowed'
                       }`}
                   >
-                    {product.stockQuantity === 0 ? 'Out of Stock' : `Buy Now [₱${(product.price * quantity).toLocaleString()}]`}
+                    {product.stockQuantity === 0 ? 'Out of Stock' : `Buy Now [${formatPeso(product.price * quantity)}]`}
                   </button>
                 </div>
               </>
@@ -339,7 +340,7 @@ const ProductDetail = () => {
               disabled={product.stockQuantity === 0}
               className={`flex-1 btn btn-primary py-3.5 text-[10px] font-black uppercase tracking-widest shadow-xl shadow-primary-200 text-center ${product.stockQuantity === 0 ? 'opacity-50 grayscale' : ''}`}
             >
-              {product.stockQuantity === 0 ? 'Out of Stock' : `Buy Now [₱${(product.price * quantity).toLocaleString()}]`}
+              {product.stockQuantity === 0 ? 'Out of Stock' : `Buy Now [${formatPeso(product.price * quantity)}]`}
             </button>
           </div>
         </div>

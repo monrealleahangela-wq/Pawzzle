@@ -358,12 +358,15 @@ const createBooking = async (req, res) => {
     breakdown.deliveryFee = taxBreakdown.deliveryFee;
     breakdown.deliveryFeeTaxable = taxBreakdown.deliveryFeeTaxable;
     breakdown.taxStatus = taxBreakdown.taxStatus;
+    breakdown.storeTaxStatus = taxBreakdown.storeTaxStatus;
+    breakdown.taxTreatment = taxBreakdown.taxTreatment;
     breakdown.pricingMode = taxBreakdown.pricingMode;
     breakdown.vatRatePercent = taxBreakdown.vatRatePercent;
     breakdown.vatExclusiveAmount = taxBreakdown.vatExclusiveAmount;
     breakdown.vatAmount = taxBreakdown.vatAmount;
     breakdown.nonTaxableAmount = taxBreakdown.nonTaxableAmount;
     breakdown.configuredAt = taxBreakdown.configuredAt;
+    breakdown.capturedAt = taxBreakdown.capturedAt;
     breakdown.finalPrice = taxBreakdown.finalTotal;
 
     const booking = new Booking({
@@ -493,7 +496,7 @@ const createBooking = async (req, res) => {
     }
   } catch (error) {
     console.error('❌ Create booking error:', error);
-    res.status(500).json({ message: error.message || 'Server error' });
+    res.status(error.code === 'STORE_TAX_VERIFICATION_REQUIRED' ? 409 : 500).json({ message: error.message || 'Server error' });
   }
 };
 

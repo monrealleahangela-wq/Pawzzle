@@ -7,6 +7,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { getCitiesByProvince } from '../../constants/locationConstants';
 import LoginModal from '../../components/LoginModal';
 import { useCart } from '../../contexts/CartContext';
+import { formatPeso } from '../../utils/paymentSummary';
 
 const CAVITE_CITIES = getCitiesByProvince('cavite');
 
@@ -256,7 +257,7 @@ const Products = () => {
       <div className="flex flex-col space-y-4">
         <div className="flex min-w-0 flex-col md:flex-row justify-between items-start md:items-end gap-3 sm:gap-6 bg-white p-4 rounded-3xl border border-slate-100 shadow-sm dark:bg-slate-900 dark:border-slate-800">
           <div className="min-w-0 space-y-1">
-            <h1 className="text-xl sm:text-5xl font-black text-slate-900 tracking-tight uppercase">Pet Shop</h1>
+            <h1 className="text-2xl font-black uppercase tracking-tight text-slate-900 sm:text-3xl">Pet Shop</h1>
             <p className="text-[9px] sm:text-lg text-slate-400 font-bold uppercase tracking-widest hidden sm:block">Premium supplies for your beloved pets</p>
           </div>
 
@@ -470,7 +471,7 @@ const Products = () => {
                       <div className="flex min-w-0 items-end justify-between gap-2">
                         <div className="flex min-w-0 flex-col">
                           <span className="text-[10px] font-black uppercase leading-tight tracking-wide text-primary-600 break-words">{product.category}</span>
-                          <span className="text-base sm:text-2xl font-black text-slate-900 tracking-tighter">₱{product.price?.toLocaleString()}</span>
+                          <span className="text-base font-black tracking-tighter text-slate-900 sm:text-xl">{formatPeso(product.price)}</span>
                         </div>
                       </div>
 

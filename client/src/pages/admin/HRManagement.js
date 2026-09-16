@@ -5,8 +5,9 @@ import { toast } from 'react-toastify';
 import { hrService } from '../../services/apiService';
 import { useAuth } from '../../contexts/AuthContext';
 import { effectiveStaffType } from '../../utils/authorization';
+import { formatPeso } from '../../utils/paymentSummary';
 
-const money = value => `₱${Number(value || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const money = formatPeso;
 const date = value => value ? new Date(value).toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: 'numeric' }) : '—';
 const time = value => value ? new Date(value).toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' }) : '—';
 const badge = status => status === 'approved' || status === 'paid' || status === 'present'

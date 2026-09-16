@@ -15,8 +15,9 @@ import {
   effectiveStaffType, hasUiPermission, isCareProfessional
 } from '../../utils/authorization';
 import { getUserFacingError } from '../../utils/userFacingError';
+import { formatPeso } from '../../utils/paymentSummary';
 
-const peso = value => `₱${Number(value || 0).toLocaleString('en-PH', { maximumFractionDigits: 2 })}`;
+const peso = formatPeso;
 const number = value => Number(value || 0).toLocaleString('en-PH');
 const titleCase = value => String(value || '').replace(/_/g, ' ').replace(/\b\w/g, letter => letter.toUpperCase());
 

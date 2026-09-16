@@ -3,6 +3,7 @@ import { Ticket, Store, Calendar, Copy, Sparkles, Gift, ShoppingBag, ArrowRight 
 import { voucherService } from '../../services/apiService';
 import { toast } from 'react-toastify';
 import { Link } from 'react-router-dom';
+import { formatPeso } from '../../utils/paymentSummary';
 
 const Vouchers = () => {
     const [availableVouchers, setAvailableVouchers] = useState([]);
@@ -80,7 +81,7 @@ const Vouchers = () => {
 
                     <div className="relative group/val">
                         <div className="flex items-baseline gap-1">
-                            <span className="text-5xl font-black text-slate-900 tracking-tighter group-hover:scale-105 transition-transform origin-left inline-block">
+                            <span className="inline-block origin-left text-3xl font-black tracking-tighter text-slate-900 transition-transform group-hover:scale-105 sm:text-4xl">
                                 {voucher.discountType === 'percentage' ? `${voucher.discountValue}%` : `₱${voucher.discountValue}`}
                             </span>
                             <span className="text-[11px] font-black text-primary-600 uppercase tracking-widest animate-pulse">reduction</span>
@@ -99,7 +100,7 @@ const Vouchers = () => {
                                 </div>
                                 <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Min. Liquid Capital</span>
                             </div>
-                            <span className="text-[12px] font-black text-slate-900">₱{voucher.minPurchase.toLocaleString()}</span>
+                            <span className="text-[12px] font-black text-slate-900">{formatPeso(voucher.minPurchase)}</span>
                         </div>
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-3">
@@ -162,7 +163,7 @@ const Vouchers = () => {
                         <span className="text-[9px] font-black text-white/80 uppercase tracking-[0.4em]">Voucher center</span>
                     </div>
                     
-                    <h1 className="text-5xl sm:text-8xl font-black text-white uppercase tracking-tighter leading-[0.85] mb-8">
+                    <h1 className="mb-5 text-3xl font-black uppercase leading-tight tracking-tight text-white sm:text-5xl">
                         Claim Your <br />
                         <span className="text-primary-500 italic relative inline-block">
                           Discounts

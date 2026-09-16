@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { useAuth } from '../../contexts/AuthContext';
 import storeApplicationService from '../../services/storeApplicationService';
@@ -10,6 +10,7 @@ import MapPicker from '../../components/MapPicker';
 
 const SellerJoin = () => {
   const { isAuthenticated, completeOAuthLogin } = useAuth();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   
   // Steps: 1: Owner Profile, 2: Verification, 3: Store Details, 4: Documents
@@ -69,6 +70,10 @@ const SellerJoin = () => {
     businessRegistration: null,
     birRegistration: null
   });
+
+  useEffect(() => {
+    if (isAuthenticated) navigate('/account-upgrade', { replace: true });
+  }, [isAuthenticated, navigate]);
 
   useEffect(() => {
     setCities(getCitiesByProvince('cavite'));
@@ -151,8 +156,8 @@ const SellerJoin = () => {
       if (result.success && result.token && result.user) {
         // Log in the user
         completeOAuthLogin(result.user, result.token);
-        toast.success('Account verified! Continue to store details.');
-        setStep(3);
+        toast.success('Account verified! Continue with your business application.');
+        navigate('/account-upgrade', { replace: true });
       } else {
          toast.error(result.message || 'Verification failed');
       }

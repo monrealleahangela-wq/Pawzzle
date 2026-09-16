@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import {
   Archive, CalendarDays, CheckCircle2, ChevronLeft, ChevronRight,
-  Filter, KeyRound, Plus, RefreshCw, Search,
+  KeyRound, Plus, RefreshCw, Search,
   ShieldCheck, Trash2, Upload, UserRound, Users, X
 } from 'lucide-react';
 import SpecializedStaffProfileModal from '../../components/admin/SpecializedStaffProfileModal';
@@ -30,6 +30,17 @@ const scheduleSummary = member => {
   return `${days.length} days · ${days[0][1].start || '09:00'}–${days[0][1].end || '17:00'}`;
 };
 const schedule = () => Object.fromEntries(DAYS.map(day => [day, { available: !['saturday', 'sunday'].includes(day), start: '09:00', end: '17:00', breaks: [{ start: '12:00', end: '13:00' }] }]));
+const verificationDetails = member => {
+  if (SPECIALISTS.includes(member.staffType)) {
+    const status = member.professionalProfile?.verification?.status || 'pending_verification';
+    return { status, label: status.replaceAll('_', ' '), professional: true };
+  }
+  if (member.staffType === 'delivery_rider') {
+    const status = member.riderProfile?.accountStatus || (member.isActive === false ? 'inactive' : 'active');
+    return { status, label: `Rider ${status.replaceAll('_', ' ')}`, professional: false };
+  }
+  return { status: 'not_required', label: 'Not required', professional: false };
+};
 const emptyForm = () => ({
   firstName: '', lastName: '', email: '', username: '', phone: '', avatar: '', avatarFile: null,
   address: { street: '', barangay: '', city: '', province: '', zipCode: '' },
@@ -91,10 +102,10 @@ export default function StaffManagement() {
     const normalized = query.trim().toLowerCase();
     return source.filter(member => {
       const name = `${member.firstName || ''} ${member.lastName || ''} ${member.email || ''} ${member.professionalProfile?.staffId || ''} ${member.riderProfile?.staffId || ''}`.toLowerCase();
-      const verification = member.professionalProfile?.verification?.status || 'pending_verification';
+      const verification = verificationDetails(member);
       return (!normalized || name.includes(normalized)) && (!roleFilter || member.staffType === roleFilter)
         && (!availabilityFilter || member.availabilityStatus === availabilityFilter)
-        && (!verificationFilter || verification === verificationFilter);
+        && (!verificationFilter || (verification.professional && verification.status === verificationFilter));
     }).sort((a, b) => sort === 'name' ? `${a.firstName} ${a.lastName}`.localeCompare(`${b.firstName} ${b.lastName}`)
       : sort === 'role' ? roleLabel(a.staffType).localeCompare(roleLabel(b.staffType))
         : new Date(b.createdAt) - new Date(a.createdAt));
@@ -106,7 +117,8 @@ export default function StaffManagement() {
     active: staff.filter(row => row.isActive !== false && (!row.staffStatus || row.staffStatus === 'active')).length,
     busy: staff.filter(row => row.availabilityStatus === 'busy').length,
     leave: staff.filter(row => row.availabilityStatus === 'on_leave').length,
-    pending: staff.filter(row => !['verified', 'expired', 'suspended'].includes(row.professionalProfile?.verification?.status)).length
+    pending: staff.filter(row => SPECIALISTS.includes(row.staffType)
+      && (row.professionalProfile?.verification?.status || 'pending_verification') === 'pending_verification').length
   }), [staff]);
 
   const openCreate = () => {
@@ -188,11 +200,23 @@ export default function StaffManagement() {
     if (value === 'status') return setConfirm({ kind: 'status', member, title: member.isActive ? 'Deactivate staff member?' : 'Activate staff member?', message: 'Existing historical records will not be changed.', success: member.isActive ? 'Staff account deactivated.' : 'Staff account activated.' });
   };
 
-  return <div className="mx-auto max-w-[1500px] space-y-4 p-3 sm:p-5">
-    <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div><p className="text-[10px] font-bold uppercase tracking-[.18em] text-primary">Workforce operations</p><h1 className="text-xl font-black text-slate-900">Staff Management</h1><p className="mt-1 text-xs text-slate-500">Accounts, schedules, qualifications, assignments, and role-inherited access.</p></div><div className="flex gap-2"><Link to="/admin/roles" className="inline-flex h-9 items-center gap-2 rounded-lg border px-3 text-xs font-bold text-slate-700"><ShieldCheck size={14}/>Role Management</Link><button onClick={openCreate} className="inline-flex h-9 items-center gap-2 rounded-lg bg-primary px-3 text-xs font-bold text-white"><Plus size={14}/>Add Staff</button></div></header>
+  return <div className="ui-page-stack mx-auto max-w-[1500px] p-3 sm:p-5">
+    <header className="ui-page-header"><div><p className="text-[10px] font-bold uppercase tracking-[.18em] text-primary">Workforce operations</p><h1 className="text-xl font-black text-slate-900">Staff Management</h1><p className="mt-1 text-xs text-slate-500">Accounts, schedules, qualifications, assignments, and role-inherited access.</p></div><div className="flex flex-wrap gap-2"><Link to="/admin/roles" className="inline-flex min-h-9 shrink-0 items-center gap-2 rounded-lg border px-3 text-xs font-bold text-slate-700"><ShieldCheck size={14}/>Role Management</Link><button onClick={openCreate} className="inline-flex min-h-9 shrink-0 items-center gap-2 rounded-lg bg-primary px-3 text-xs font-bold text-white"><Plus size={14}/>Add Staff</button></div></header>
     <section className="grid grid-cols-2 gap-2 md:grid-cols-5">{[[Users,'Total Staff',totals.total],[CheckCircle2,'Active',totals.active],[RefreshCw,'Busy',totals.busy],[CalendarDays,'On Leave',totals.leave],[ShieldCheck,'Pending Verification',totals.pending]].map(([Icon,label,value])=><article key={label} className="rounded-xl border bg-white p-3"><div className="flex items-center justify-between"><span className="text-[10px] font-bold uppercase text-slate-500">{label}</span><Icon size={14} className="text-primary"/></div><strong className="mt-2 block text-xl text-slate-900">{value}</strong></article>)}</section>
-    <section className="overflow-hidden rounded-xl border bg-white">
-      <div className="flex flex-col gap-2 border-b p-3 lg:flex-row lg:items-center"><div className="flex rounded-lg bg-slate-100 p-0.5">{[['active','Active Staff'],['matrix','Assignment Matrix'],['archived','Archived Staff']].map(([id,label])=><button key={id} onClick={()=>setTab(id)} className={`rounded-md px-3 py-1.5 text-[11px] font-bold ${tab===id?'bg-white text-slate-900 shadow-sm':'text-slate-500'}`}>{label}</button>)}</div><div className="relative min-w-0 flex-1"><Search size={13} className="absolute left-3 top-2.5 text-slate-400"/><input value={query} onChange={event=>setQuery(event.target.value)} placeholder="Search name, email, or staff ID" className={`${input} pl-8`}/></div><Filter size={13} className="hidden text-slate-400 lg:block"/><select value={roleFilter} onChange={event=>setRoleFilter(event.target.value)} className={input}><option value="">All roles</option>{ROLE_GROUPS.map(([group,roles])=><optgroup key={group} label={group}>{roles.map(([id,label])=><option key={id} value={id}>{label}</option>)}</optgroup>)}</select><select value={availabilityFilter} onChange={event=>setAvailabilityFilter(event.target.value)} className={input}><option value="">All availability</option>{['available','busy','break','on_leave','temporary_unavailable','emergency_unavailable'].map(value=><option key={value} value={value}>{roleLabel(value)}</option>)}</select><select value={verificationFilter} onChange={event=>setVerificationFilter(event.target.value)} className={input}><option value="">All verification</option>{['pending_verification','verified','expired','suspended'].map(value=><option key={value} value={value}>{roleLabel(value)}</option>)}</select><select value={sort} onChange={event=>setSort(event.target.value)} className={input}><option value="recent">Recently Added</option><option value="name">Name</option><option value="role">Role</option></select><button onClick={load} aria-label="Refresh staff" className="h-9 w-9 shrink-0 rounded-lg border text-slate-500"><RefreshCw size={13} className="mx-auto"/></button></div>
+    <section className="min-w-0 max-w-full overflow-hidden rounded-xl border bg-white">
+      <div className="space-y-3 border-b p-3">
+        <nav aria-label="Staff management views" className="flex w-full max-w-full gap-1 overflow-x-auto rounded-lg bg-slate-100 p-0.5 sm:w-fit">
+          {[['active','Active Staff'],['matrix','Assignment Matrix'],['archived','Archived Staff']].map(([id,label])=><button key={id} onClick={()=>setTab(id)} className={`shrink-0 whitespace-nowrap rounded-md px-3 py-1.5 text-[11px] font-bold ${tab===id?'bg-white text-slate-900 shadow-sm':'text-slate-500'}`}>{label}</button>)}
+        </nav>
+        <div className="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-[minmax(16rem,1.6fr)_repeat(4,minmax(8.5rem,1fr))_2.25rem]">
+          <div className="relative min-w-0 sm:col-span-2 xl:col-span-1"><Search size={13} className="absolute left-3 top-2.5 text-slate-400"/><input value={query} onChange={event=>setQuery(event.target.value)} placeholder="Search name, email, or staff ID" className={`${input} pl-8`}/></div>
+          <select value={roleFilter} onChange={event=>setRoleFilter(event.target.value)} className={input}><option value="">All roles</option>{ROLE_GROUPS.map(([group,roles])=><optgroup key={group} label={group}>{roles.map(([id,label])=><option key={id} value={id}>{label}</option>)}</optgroup>)}</select>
+          <select value={availabilityFilter} onChange={event=>setAvailabilityFilter(event.target.value)} className={input}><option value="">All availability</option>{['available','busy','break','on_leave','temporary_unavailable','emergency_unavailable'].map(value=><option key={value} value={value}>{roleLabel(value)}</option>)}</select>
+          <select value={verificationFilter} onChange={event=>setVerificationFilter(event.target.value)} className={input}><option value="">All verification</option>{['pending_verification','verified','rejected','expired','suspended'].map(value=><option key={value} value={value}>{roleLabel(value)}</option>)}</select>
+          <select value={sort} onChange={event=>setSort(event.target.value)} className={input}><option value="recent">Recently Added</option><option value="name">Name</option><option value="role">Role</option></select>
+          <button onClick={load} aria-label="Refresh staff" className="h-9 w-full shrink-0 rounded-lg border text-slate-500 sm:w-9"><RefreshCw size={13} className="mx-auto"/></button>
+        </div>
+      </div>
       {tab === 'matrix' ? <AssignmentMatrix rows={staff}/>:<StaffTable loading={loading} rows={paged} archived={tab==='archived'} onAction={chooseAction}/>}
       {tab !== 'matrix' && <footer className="flex items-center justify-between border-t px-3 py-2 text-[11px] text-slate-500"><span>{rows.length ? `${(page-1)*pageSize+1}–${Math.min(page*pageSize,rows.length)} of ${rows.length}` : '0 staff'}</span><div className="flex gap-1"><button disabled={page===1} onClick={()=>setPage(value=>value-1)} className="h-8 w-8 rounded-lg border disabled:opacity-30"><ChevronLeft size={13} className="mx-auto"/></button><button disabled={page*pageSize>=rows.length} onClick={()=>setPage(value=>value+1)} className="h-8 w-8 rounded-lg border disabled:opacity-30"><ChevronRight size={13} className="mx-auto"/></button></div></footer>}
     </section>
@@ -204,8 +228,13 @@ export default function StaffManagement() {
 
 function StaffTable({ loading, rows, archived, onAction }) {
   if (loading) return <div className="space-y-2 p-3">{[1,2,3,4].map(value=><div key={value} className="h-14 animate-pulse rounded-lg bg-slate-100"/>)}</div>;
-  if (!rows.length) return <div className="p-12 text-center"><Users size={24} className="mx-auto text-slate-300"/><p className="mt-2 text-xs font-bold text-slate-600">No staff match these filters.</p></div>;
-  return <div className="max-h-[62vh] overflow-auto"><table className="w-full min-w-[1180px] text-left"><thead className="sticky top-0 z-10 bg-slate-50 text-[9px] uppercase tracking-wide text-slate-500"><tr><th className="px-3 py-2">Profile</th><th>Staff ID</th><th>Name</th><th>Role</th><th>Status</th><th>Availability</th><th>Schedule</th><th>Verification</th><th>Assigned Services</th><th className="px-3 text-right">Actions</th></tr></thead><tbody className="divide-y">{rows.map(member=>{const staffId=member.professionalProfile?.staffId||member.riderProfile?.staffId||'—';const services=member.assignedServices||[];return <tr key={member._id} className="text-xs hover:bg-slate-50/70"><td className="px-3 py-2">{member.avatar?<img src={getImageUrl(member.avatar)} alt="" className="h-9 w-9 rounded-lg object-cover"/>:<div className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-100"><UserRound size={14}/></div>}</td><td><span className="font-mono text-[10px] font-bold text-slate-600">{staffId}</span></td><td><b className="block text-[11px] text-slate-900">{member.firstName} {member.lastName}</b><small className="text-[9px] text-slate-400">{member.email}</small></td><td><b className="text-[10px] text-slate-700">{roleLabel(member.staffType)}</b></td><td><Chip value={member.staffStatus||'active'}>{member.staffStatus||'active'}</Chip></td><td><Chip value={member.availabilityStatus}>{member.availabilityStatus?.replaceAll('_',' ')||'available'}</Chip>{member.activeWorkload>=3&&<span className="mt-1 block text-[8px] font-bold text-rose-600">High workload</span>}</td><td><span className="text-[10px] text-slate-600">{scheduleSummary(member)}</span></td><td><Chip value={member.professionalProfile?.verification?.status}>{member.professionalProfile?.verification?.status?.replaceAll('_',' ')||'not required'}</Chip></td><td><span title={services.map(service=>service.name).join(', ')} className="block max-w-36 truncate text-[10px] text-slate-600">{services.length?`${services.length} · ${services.map(service=>service.name).slice(0,2).join(', ')}`:'None'}</span></td><td className="px-3 text-right"><select aria-label={`Actions for ${member.firstName}`} defaultValue="" onChange={event=>{onAction(member,event.target.value);event.target.value='';}} className="h-8 rounded-lg border bg-white px-2 text-[10px] font-bold"><option value="" disabled>Actions</option><option value="view">View profile</option><option value="activity">View activity</option>{!archived&&<option value="edit">Edit</option>}{!archived&&<option value="reset">Reset password</option>}{!archived&&<option value="status">{member.isActive?'Deactivate':'Activate'}</option>}{!archived&&<option value="archive">Archive</option>}{archived&&<option value="restore">Restore</option>}{archived&&<option value="permanent">Permanently disable</option>}</select></td></tr>})}</tbody></table></div>;
+  if (!rows.length) return <div className="ui-empty-state"><Users size={24} className="text-slate-300"/><p className="text-xs font-bold text-slate-600">No staff match these filters.</p></div>;
+  return <div className="ui-table-region scroll-region max-h-[62vh] overflow-auto">
+    <table className="w-full min-w-[1180px] text-left">
+      <thead className="sticky top-0 z-10 whitespace-nowrap bg-slate-50 text-[9px] uppercase tracking-wide text-slate-500"><tr><th className="px-3 py-2">Profile</th><th>Staff ID</th><th>Name</th><th>Role</th><th>Status</th><th>Availability</th><th>Schedule</th><th>Verification</th><th>Assigned Services</th><th className="px-3 text-right">Actions</th></tr></thead>
+      <tbody className="divide-y">{rows.map(member=>{const staffId=member.professionalProfile?.staffId||member.riderProfile?.staffId||'—';const services=member.assignedServices||[];const verification=verificationDetails(member);return <tr key={member._id} className="text-xs hover:bg-slate-50/70"><td className="px-3 py-2">{member.avatar?<img src={getImageUrl(member.avatar)} alt="" className="h-9 w-9 rounded-lg object-cover"/>:<div className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-100"><UserRound size={14}/></div>}</td><td className="whitespace-nowrap"><span className="font-mono text-[10px] font-bold text-slate-600">{staffId}</span></td><td className="min-w-40 pr-3"><b className="block whitespace-nowrap text-[11px] text-slate-900">{member.firstName} {member.lastName}</b><small title={member.email} className="block max-w-44 truncate text-[9px] text-slate-400">{member.email}</small></td><td className="whitespace-nowrap pr-3"><b className="text-[10px] text-slate-700">{roleLabel(member.staffType)}</b></td><td className="whitespace-nowrap pr-3"><Chip value={member.staffStatus||'active'}>{member.staffStatus||'active'}</Chip></td><td className="whitespace-nowrap pr-3"><Chip value={member.availabilityStatus}>{member.availabilityStatus?.replaceAll('_',' ')||'available'}</Chip>{member.activeWorkload>=3&&<span className="mt-1 block text-[8px] font-bold text-rose-600">High workload</span>}</td><td className="whitespace-nowrap pr-3"><span className="text-[10px] text-slate-600">{scheduleSummary(member)}</span></td><td className="whitespace-nowrap pr-3"><Chip value={verification.status}>{verification.label}</Chip></td><td><span title={services.map(service=>service.name).join(', ')} className="block max-w-36 truncate text-[10px] text-slate-600">{services.length?`${services.length} · ${services.map(service=>service.name).slice(0,2).join(', ')}`:'None'}</span></td><td className="px-3 text-right"><select aria-label={`Actions for ${member.firstName}`} defaultValue="" onChange={event=>{onAction(member,event.target.value);event.target.value='';}} className="h-8 min-w-[5.5rem] whitespace-nowrap rounded-lg border bg-white px-2 text-[10px] font-bold"><option value="" disabled>Actions</option><option value="view">View profile</option><option value="activity">View activity</option>{!archived&&<option value="edit">Edit</option>}{!archived&&<option value="reset">Reset password</option>}{!archived&&<option value="status">{member.isActive?'Deactivate':'Activate'}</option>}{!archived&&<option value="archive">Archive</option>}{archived&&<option value="restore">Restore</option>}{archived&&<option value="permanent">Permanently disable</option>}</select></td></tr>})}</tbody>
+    </table>
+  </div>;
 }
 
 function AssignmentMatrix({ rows }) {

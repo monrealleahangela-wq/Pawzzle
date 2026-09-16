@@ -5,6 +5,7 @@ import { Heart, Package, Star, ArrowRight, Sparkles, Users, ShoppingBag, Zap, Ch
 import { useAuth } from '../../contexts/AuthContext';
 import { useCart } from '../../contexts/CartContext';
 import { toast } from 'react-toastify';
+import { formatPeso } from '../../utils/paymentSummary';
 
 // ═══════════════════════════════════════════════════════════════
 // ANIMATED COUNTER COMPONENT
@@ -45,7 +46,7 @@ const Counter = ({ target, label, icon: Icon, suffix = '+' }) => {
       <div className="w-14 h-14 bg-primary/5 rounded-2xl flex items-center justify-center mb-6 group-hover:bg-primary group-hover:text-white transition-all text-primary">
         <Icon className="h-6 w-6" />
       </div>
-      <h4 className="text-4xl font-black text-neutral-900 tracking-tighter mb-2">
+      <h4 className="mb-2 text-2xl font-black tracking-tighter text-neutral-900 sm:text-3xl">
         {count.toLocaleString()}{suffix}
       </h4>
       <p className="text-[10px] font-black text-neutral-400 uppercase tracking-[0.3em]">{label}</p>
@@ -316,7 +317,7 @@ const Home = () => {
                       <div className="flex items-center justify-between border-t border-slate-50 pt-6">
                          <div className="space-y-1">
                             <p className="text-[9px] font-black text-neutral-300 uppercase tracking-[0.3em]">Price Point</p>
-                            <p className="text-2xl font-black text-neutral-950 tracking-tighter">₱{pet.price?.toLocaleString()}</p>
+                            <p className="text-xl font-black tracking-tighter text-neutral-950">{formatPeso(pet.price)}</p>
                          </div>
                          <Link to={`/pets/${pet._id}`} className="w-12 h-12 bg-neutral-950 text-white rounded-xl flex items-center justify-center shadow-lg hover:bg-primary transition-all">
                             <ChevronRight size={20} />
@@ -366,7 +367,7 @@ const Home = () => {
                              <h4 className="min-h-[2.5rem] text-sm font-black uppercase leading-tight tracking-tight text-neutral-900 line-clamp-2 break-words">{product.name}</h4>
                           </div>
                           <div className="flex items-center justify-between">
-                             <p className="text-lg font-black text-neutral-950 tracking-tighter">₱{product.price?.toLocaleString()}</p>
+                             <p className="text-lg font-black tracking-tighter text-neutral-950">{formatPeso(product.price)}</p>
                              <div className="text-[9px] font-black text-emerald-600 uppercase tracking-widest">{product.stockQuantity > 5 ? 'In Stock' : 'Low Stock'}</div>
                           </div>
                        </div>

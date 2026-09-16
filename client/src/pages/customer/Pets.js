@@ -4,6 +4,7 @@ import { petService, getImageUrl } from '../../services/apiService';
 import { Heart, Filter, Search, Store, ArrowLeft, ArrowRight, Navigation, Star } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { getCitiesByProvince } from '../../constants/locationConstants';
+import { formatPeso } from '../../utils/paymentSummary';
 
 const CAVITE_CITIES = getCitiesByProvince('cavite');
 
@@ -168,7 +169,7 @@ const Pets = () => {
       <div className="flex flex-col space-y-4">
         <div className="flex min-w-0 flex-col md:flex-row justify-between items-start md:items-end gap-3 sm:gap-6 bg-white dark:bg-slate-900 p-4 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm">
           <div className="min-w-0 space-y-0.5">
-            <h1 className="text-xl sm:text-5xl font-black text-slate-900 tracking-tight uppercase leading-tight">Available <span className="text-primary-600">Pets</span></h1>
+            <h1 className="text-2xl font-black uppercase leading-tight tracking-tight text-slate-900 sm:text-3xl">Available <span className="text-primary-600">Pets</span></h1>
             <p className="text-[10px] sm:text-lg text-slate-400 font-bold uppercase tracking-widest hidden sm:block">Find your new best friend today</p>
           </div>
 
@@ -397,7 +398,7 @@ const Pets = () => {
                     <div className="flex min-w-0 flex-wrap justify-between items-center mt-auto gap-3">
                       <div className="min-w-0 flex flex-col">
                         <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest -mb-0.5">Price</span>
-                        <span className="text-sm sm:text-xl font-black text-slate-900 tracking-tighter">₱{pet.price?.toLocaleString()}</span>
+                        <span className="text-sm font-black tracking-tighter text-slate-900 sm:text-xl">{formatPeso(pet.price)}</span>
                       </div>
 
                       <Link

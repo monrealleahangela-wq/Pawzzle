@@ -12,12 +12,13 @@ const {
   archiveApplication,
   restoreApplication,
   getAuditCount,
+  verifyTaxProfile,
+  getApplicationDocument,
   upload
 } = require('../controllers/storeApplicationController');
 const { authenticate, superAdminOnly } = require('../middleware/auth');
 
-// Public audit link (Temporal)
-router.get('/audit-count', getAuditCount);
+router.get('/audit-count', authenticate, superAdminOnly, getAuditCount);
 
 // Validation rules
 const applicationValidation = [
@@ -63,6 +64,7 @@ router.post('/', authenticate, upload.fields([
   { name: 'insuranceDocument', maxCount: 1 },
   { name: 'certificationDocuments', maxCount: 10 },
   { name: 'governmentId', maxCount: 1 },
+  { name: 'authorityDocument', maxCount: 1 },
   { name: 'businessRegistration', maxCount: 1 },
   { name: 'birRegistration', maxCount: 1 },
   { name: 'barangayClearance', maxCount: 1 },
@@ -70,22 +72,14 @@ router.post('/', authenticate, upload.fields([
   { name: 'mayorsPermit', maxCount: 1 }
 ]), submitApplication);
 
-// Test endpoint to verify form structure
-router.post('/test', authenticate, (req, res) => {
-  console.log('=== TEST ENDPOINT ===');
-  console.log('Request body:', req.body);
-  console.log('Request files:', req.files);
-  console.log('Headers:', req.headers);
-  console.log('Content-Type:', req.get('Content-Type'));
-  res.json({ message: 'Test endpoint working', received: true });
-});
-
 router.get('/my-application', authenticate, getUserApplication);
+router.get('/:id/documents/:documentType', authenticate, getApplicationDocument);
 
 // Super Admin only routes
 router.get('/', authenticate, superAdminOnly, getAllApplications);
 router.get('/:id', authenticate, superAdminOnly, getApplicationById);
 router.put('/:id/review', authenticate, superAdminOnly, reviewValidation, reviewApplication);
+router.put('/:id/tax-verification', authenticate, superAdminOnly, verifyTaxProfile);
 router.put('/:id/request-info', authenticate, superAdminOnly, requestMoreInfo);
 router.delete('/:id', authenticate, superAdminOnly, archiveApplication);
 router.patch('/:id/restore', authenticate, superAdminOnly, restoreApplication);

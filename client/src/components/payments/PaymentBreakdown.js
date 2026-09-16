@@ -32,13 +32,13 @@ const PaymentBreakdown = ({
   return (
     <div className={`${compact ? 'space-y-1.5 text-[10px]' : 'space-y-3 text-xs'} ${className}`}>
       {rows.map((row) => (
-        <div key={row.key} className="flex items-start justify-between gap-4 text-secondary">
-          <span>{row.label}</span>
-          <span className="text-right font-bold text-default">{row.displayValue}</span>
+        <div key={row.key} className={`${row.key === 'historical-tax' ? 'rounded-lg border border-amber-200 bg-amber-50 p-2 dark:border-amber-800 dark:bg-amber-950/30' : 'flex items-start justify-between gap-4'} text-secondary`}>
+          <span className={row.key === 'historical-tax' ? 'block font-bold text-amber-800 dark:text-amber-300' : ''}>{row.label}</span>
+          <span className={`${row.key === 'historical-tax' ? 'mt-1 block font-medium text-amber-700 dark:text-amber-200' : 'text-right font-bold text-default'}`}>{row.displayValue}</span>
         </div>
       ))}
       <div className={`${compact ? 'pt-2' : 'pt-3'} flex items-end justify-between gap-4 border-t border-slate-200 dark:border-slate-700`}>
-        <span className="font-black text-default">Total</span>
+        <span className="font-black text-default">Total to Pay</span>
         <span className={`${compact ? 'text-base' : 'text-xl'} font-black text-primary-700 dark:text-primary-300`}>{formatPeso(summary.finalTotal)}</span>
       </div>
     </div>

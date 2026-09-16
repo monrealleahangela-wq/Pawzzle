@@ -25,15 +25,10 @@ const normalizeTaxConfiguration = (configuration = {}) => {
 const resolveTransactionTaxConfiguration = (configuration = {}) => {
   const normalized = normalizeTaxConfiguration(configuration);
   if (normalized.isConfigured) return normalized;
-
-  return {
-    ...normalized,
-    taxStatus: 'non_vat',
-    pricingMode: 'inclusive',
-    vatRatePercent: 0,
-    deliveryFeeTaxable: false,
-    configuredAt: null
-  };
+  const error = new Error('Store tax verification is required before checkout or booking payment can continue.');
+  error.code = 'STORE_TAX_VERIFICATION_REQUIRED';
+  error.statusCode = 409;
+  throw error;
 };
 
 /**
@@ -82,13 +77,16 @@ const calculateTransactionTax = ({ subtotal, discountAmount = 0, deliveryFee = 0
     deliveryFee: fromCents(deliveryCents),
     deliveryFeeTaxable: config.deliveryFeeTaxable,
     taxStatus: config.taxStatus,
+    storeTaxStatus: config.taxStatus,
+    taxTreatment: config.taxStatus === 'vat_registered' ? `vat_${config.pricingMode}` : config.taxStatus,
     pricingMode: config.pricingMode,
     vatRatePercent: config.vatRatePercent,
     vatExclusiveAmount: fromCents(vatExclusiveAmountCents),
     vatAmount: fromCents(vatAmountCents),
     nonTaxableAmount: fromCents(nonTaxableAmountCents),
     finalTotal: fromCents(finalTotalCents),
-    configuredAt: config.configuredAt
+    configuredAt: config.configuredAt,
+    capturedAt: new Date()
   };
 };
 

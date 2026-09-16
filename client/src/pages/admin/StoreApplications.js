@@ -9,7 +9,11 @@ const StoreApplications = () => {
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({
     status: '',
-    search: ''
+    search: '',
+    taxVerificationStatus: '',
+    declaredTaxStatus: '',
+    businessType: '',
+    city: ''
   });
   const [selectedApplication, setSelectedApplication] = useState(null);
   const [showReviewModal, setShowReviewModal] = useState(false);
@@ -19,6 +23,7 @@ const StoreApplications = () => {
     rejectionReason: '',
     requiredCorrections: []
   });
+  const [taxReview, setTaxReview] = useState({ decision: '', notes: '', rejectionReason: '', acknowledgeMismatch: false });
 
   const CORRECTION_OPTIONS = [
     { id: 'businessName', label: 'Business Name' },
@@ -123,6 +128,19 @@ const StoreApplications = () => {
     }
   };
 
+  const handleTaxVerification = async () => {
+    if (!taxReview.decision) return toast.error('Choose the verified tax decision.');
+    try {
+      await storeApplicationService.verifyTaxProfile(selectedApplication._id, taxReview);
+      const response = await storeApplicationService.getApplicationById(selectedApplication._id);
+      setSelectedApplication(response.data.application);
+      await fetchApplications();
+      toast.success(taxReview.decision === 'rejected' ? 'Tax information returned for correction.' : 'Tax profile verified.');
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Unable to verify the tax profile.');
+    }
+  };
+
   const getStatusProps = (status) => {
     const props = {
       pending: { color: 'primary', label: 'Under Review' },
@@ -162,7 +180,7 @@ const StoreApplications = () => {
       {/* Top HUD Filter - High Contrast & Always Visible */}
       <div className="bg-slate-900 p-2 rounded-2xl shadow-xl border border-white/5 relative z-10">
         <div className="grid grid-cols-1 md:grid-cols-12 gap-2">
-          <div className="md:col-span-6 relative group">
+          <div className="md:col-span-4 relative group">
             <div className="absolute left-5 top-1/2 -translate-y-1/2 flex items-center">
               <Search className="h-4 w-4 text-slate-500 group-focus-within:text-primary-500 transition-colors" />
             </div>
@@ -192,6 +210,10 @@ const StoreApplications = () => {
              </select>
              <ChevronRight className="absolute right-6 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500 pointer-events-none rotate-90" />
           </div>
+          <select value={filters.taxVerificationStatus} onChange={(e) => setFilters(prev => ({ ...prev, taxVerificationStatus: e.target.value }))} className="md:col-span-2 rounded-2xl border-none bg-slate-800 px-3 py-3 text-[9px] font-black uppercase text-white outline-none"><option value="">All tax reviews</option><option value="pending">Tax pending</option><option value="verified">Tax verified</option><option value="rejected">Tax correction</option><option value="unverified">Tax unverified</option></select>
+          <select value={filters.declaredTaxStatus} onChange={(e) => setFilters(prev => ({ ...prev, declaredTaxStatus: e.target.value }))} className="md:col-span-2 rounded-2xl border-none bg-slate-800 px-3 py-3 text-[9px] font-black uppercase text-white outline-none"><option value="">All declarations</option><option value="vat_registered">Declared VAT</option><option value="non_vat_registered">Declared Non-VAT</option></select>
+          <select value={filters.businessType} onChange={(e) => setFilters(prev => ({ ...prev, businessType: e.target.value }))} className="md:col-span-3 rounded-2xl border-none bg-slate-800 px-3 py-3 text-[9px] font-black uppercase text-white outline-none"><option value="">All business structures</option><option value="sole_proprietorship">Sole Proprietorship</option><option value="one_person_corporation">One Person Corporation</option><option value="corporation">Corporation</option><option value="partnership">Partnership</option><option value="cooperative">Cooperative</option></select>
+          <input value={filters.city} onChange={(e) => setFilters(prev => ({ ...prev, city: e.target.value }))} placeholder="City / municipality" className="md:col-span-3 rounded-2xl border-none bg-slate-800 px-4 py-3 text-[9px] font-black uppercase text-white outline-none placeholder:text-slate-500" />
         </div>
       </div>
 
@@ -241,6 +263,11 @@ const StoreApplications = () => {
                         Store {app.store.verificationStatus || 'unverified'}
                       </span>
                     )}
+                    <span className={`text-[9px] font-black px-2 py-0.5 rounded uppercase tracking-tight ${app.taxProfile?.verificationStatus === 'verified' ? 'bg-emerald-50 text-emerald-700' : app.taxProfile?.verificationStatus === 'rejected' ? 'bg-rose-50 text-rose-700' : 'bg-amber-50 text-amber-700'}`}>
+                      {app.taxProfile?.verificationStatus === 'verified'
+                        ? (app.taxProfile?.verifiedTaxStatus === 'vat_registered' ? 'VAT Verified' : 'Non-VAT Verified')
+                        : app.taxProfile?.verificationStatus === 'rejected' ? 'Tax Needs Correction' : 'Tax Verification Pending'}
+                    </span>
                     {!app.applicant && (
                       <span className="text-[9px] font-black text-rose-600 bg-rose-50 px-2 py-0.5 rounded uppercase tracking-tight">Applicant account unavailable</span>
                     )}
@@ -268,7 +295,7 @@ const StoreApplications = () => {
 
                 <div className="flex gap-2">
                   <button
-                    onClick={() => { setSelectedApplication(app); setShowReviewModal(true); }}
+                    onClick={() => autoOpenApplication(app._id)}
                     className="flex-1 py-3.5 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-primary-600 transition-all shadow-xl flex items-center justify-center gap-2"
                   >
                     <Eye className="h-3.5 w-3.5" />
@@ -386,8 +413,8 @@ const StoreApplications = () => {
                           <p className="text-[12px] font-black text-slate-900 uppercase tracking-widest">{(selectedApplication.legalStructure || 'N/A').replace('_', ' ')}</p>
                         </div>
                         <div>
-                          <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Tax ID (TIN)</p>
-                          <p className="text-[12px] font-black text-slate-900">{selectedApplication.taxId || 'N/A'}</p>
+                          <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1.5">TIN</p>
+                          <p className="text-[12px] font-black text-slate-900">{selectedApplication.taxProfile?.tinMasked || selectedApplication.taxId || 'N/A'}</p>
                         </div>
                         <div>
                           <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1.5">License No.</p>
@@ -632,6 +659,24 @@ const StoreApplications = () => {
                     </div>
                   </div>
                 </div>
+                <section className="md:col-span-2 rounded-2xl border border-primary-100 bg-primary-50 p-6 space-y-5">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                    <div><h3 className="text-sm font-black text-slate-900">BIR / Tax Verification</h3><p className="text-[10px] text-slate-600">Store approval and tax verification are separate decisions.</p></div>
+                    <span className="rounded-full bg-white px-3 py-1 text-[9px] font-black uppercase text-primary-700">{(selectedApplication.taxProfile?.verificationStatus || 'unverified').replace('_', ' ')}</span>
+                  </div>
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                    <div className="rounded-xl bg-white p-3"><span className="text-[8px] font-black uppercase text-slate-400">BIR registered name</span><strong className="mt-1 block text-[11px] text-slate-900">{selectedApplication.taxProfile?.registeredName || 'Not provided'}</strong></div>
+                    <div className="rounded-xl bg-white p-3"><span className="text-[8px] font-black uppercase text-slate-400">TIN / Branch</span><strong className="mt-1 block text-[11px] text-slate-900">{selectedApplication.taxProfile?.tinMasked || 'Not provided'} / {selectedApplication.taxProfile?.branchCode || '—'}</strong></div>
+                    <div className="rounded-xl bg-white p-3"><span className="text-[8px] font-black uppercase text-slate-400">Applicant declared</span><strong className="mt-1 block text-[11px] text-slate-900">{selectedApplication.taxProfile?.declaredTaxStatus === 'vat_registered' ? 'VAT Registered' : selectedApplication.taxProfile?.declaredTaxStatus === 'non_vat_registered' ? 'Non-VAT Registered' : 'Not declared'}</strong></div>
+                    <div className="rounded-xl bg-white p-3"><span className="text-[8px] font-black uppercase text-slate-400">Verified status</span><strong className="mt-1 block text-[11px] text-slate-900">{selectedApplication.taxProfile?.verifiedTaxStatus === 'vat_registered' ? 'VAT Registered' : selectedApplication.taxProfile?.verifiedTaxStatus === 'non_vat_registered' ? 'Non-VAT Registered' : 'Not verified'}</strong></div>
+                  </div>
+                  <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                    <select className="input w-full" value={taxReview.decision} onChange={(e) => setTaxReview(current => ({ ...current, decision: e.target.value }))}><option value="">Choose tax decision</option><option value="vat_registered">Verify as VAT Registered</option><option value="non_vat_registered">Verify as Non-VAT Registered</option><option value="rejected">Reject / Request Correction</option></select>
+                    <input className="input w-full md:col-span-2" value={taxReview.decision === 'rejected' ? taxReview.rejectionReason : taxReview.notes} onChange={(e) => setTaxReview(current => ({ ...current, [current.decision === 'rejected' ? 'rejectionReason' : 'notes']: e.target.value }))} placeholder={taxReview.decision === 'rejected' ? 'Required correction reason' : 'Verification notes'} />
+                  </div>
+                  {taxReview.decision && taxReview.decision !== 'rejected' && taxReview.decision !== selectedApplication.taxProfile?.declaredTaxStatus && <label className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-[10px] font-bold text-amber-800"><input type="checkbox" className="mt-0.5" checked={taxReview.acknowledgeMismatch} onChange={(e) => setTaxReview(current => ({ ...current, acknowledgeMismatch: e.target.checked }))} /> The document-supported decision differs from the applicant declaration. I reviewed the mismatch and recorded notes.</label>}
+                  <button type="button" onClick={handleTaxVerification} className="h-10 rounded-xl bg-primary-700 px-5 text-[9px] font-black uppercase tracking-wider text-white hover:bg-slate-900">Save Tax Verification Decision</button>
+                </section>
               </div>
             </div>
 

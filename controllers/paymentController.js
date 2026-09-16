@@ -172,7 +172,8 @@ const createCheckoutSession = async (req, res) => {
       if (unavailable) return res.status(409).json({ message: 'An item price or availability changed. Please recreate checkout.' });
     }
 
-    const total = Number(order.pricingBreakdown?.finalTotal ?? order.totalAmount);
+    const recordedPricing = order.pricingBreakdown?.calculationVersion ? order.pricingBreakdown : null;
+    const total = Number(recordedPricing?.finalTotal ?? order.totalAmount);
     if (!Number.isFinite(total) || total <= 0 || Math.abs(total - Number(order.totalAmount)) > 0.009) {
       return res.status(409).json({ message: 'Order amount is inconsistent. Please recreate checkout.' });
     }
@@ -194,8 +195,8 @@ const createCheckoutSession = async (req, res) => {
         issuedAt: new Date(),
         sellerName: order.store?.name || '',
         sellerAddress: address ? [address.street, address.barangay, address.city, address.state, address.zipCode].filter(Boolean).join(', ') : '',
-        sellerTaxStatus: order.pricingBreakdown?.taxStatus || 'non_vat',
-        pricingBreakdown: order.pricingBreakdown?.toObject?.() || order.pricingBreakdown || {},
+        sellerTaxStatus: recordedPricing?.taxStatus || 'unrecorded',
+        pricingBreakdown: recordedPricing?.toObject?.() || recordedPricing || {},
         deliveryFeeCalculation: order.deliveryFeeCalculation?.toObject?.() || order.deliveryFeeCalculation || null
       };
     }

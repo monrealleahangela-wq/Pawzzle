@@ -7,6 +7,111 @@ const path = require('path');
 const { createNotification } = require('./notificationController');
 const { uploadDoc, cloudinary } = require('../middleware/upload');
 const { CloudinaryStorage } = require('multer-storage-cloudinary');
+const { isPlatformAdmin } = require('../config/permissions');
+
+const BUSINESS_STRUCTURES = [
+  'single_proprietorship', 'sole_proprietorship', 'one_person_corporation',
+  'corporation', 'partnership', 'cooperative', 'other'
+];
+const REGISTRATION_AUTHORITIES = ['dti', 'sec', 'cda', 'other'];
+const DECLARED_TAX_STATUSES = ['vat_registered', 'non_vat_registered'];
+
+const maskTin = value => value ? `${String(value).replace(/\D/g, '').slice(0, 3)}-***-***` : null;
+
+const applicationValidationErrors = (data, files = {}) => {
+  const errors = [];
+  const address = data.contactInfo?.address || {};
+  const registration = data.businessRegistration || {};
+  const tax = data.taxProfile || {};
+  const coordinates = address.coordinates || {};
+  const required = (value, field, message) => {
+    if (value === undefined || value === null || String(value).trim() === '') errors.push({ field, msg: message });
+  };
+
+  required(data.businessName, 'businessName', 'Store / trade name is required.');
+  required(data.registeredBusinessName, 'registeredBusinessName', 'Registered business name is required.');
+  if (!['pet_store', 'breeder', 'shelter', 'veterinary', 'grooming', 'training', 'other'].includes(data.businessType)) errors.push({ field: 'businessType', msg: 'Select a valid store category.' });
+  if (!BUSINESS_STRUCTURES.includes(data.legalStructure)) errors.push({ field: 'legalStructure', msg: 'Select a valid business structure.' });
+  required(data.natureOfBusiness, 'natureOfBusiness', 'Nature or line of business is required.');
+  required(data.businessDescription, 'businessDescription', 'Store description is required.');
+  if (!Array.isArray(data.operationalModules) || data.operationalModules.length === 0) errors.push({ field: 'operationalModules', msg: 'Select at least one store operation.' });
+  required(data.contactInfo?.phone, 'contactInfo.phone', 'Primary contact number is required.');
+  required(data.contactInfo?.email, 'contactInfo.email', 'Business email is required.');
+  for (const [key, label] of [['street', 'Street'], ['barangay', 'Barangay'], ['city', 'City / municipality'], ['province', 'Province'], ['zipCode', 'Postal code']]) {
+    required(address[key] || (key === 'province' ? address.state : ''), `contactInfo.address.${key}`, `${label} is required.`);
+  }
+  if (!Number.isFinite(Number(coordinates.lat)) || !Number.isFinite(Number(coordinates.lng))
+      || Number(coordinates.lat) < -90 || Number(coordinates.lat) > 90
+      || Number(coordinates.lng) < -180 || Number(coordinates.lng) > 180) {
+    errors.push({ field: 'contactInfo.address.coordinates', msg: 'Select a valid store location on the map.' });
+  }
+  required(data.representative?.fullName, 'representative.fullName', 'Owner or representative legal name is required.');
+  required(data.representative?.role, 'representative.role', 'Owner or representative role is required.');
+  required(data.representative?.phone, 'representative.phone', 'Representative contact number is required.');
+  required(data.representative?.email, 'representative.email', 'Representative email is required.');
+  if (!REGISTRATION_AUTHORITIES.includes(registration.authority)) errors.push({ field: 'businessRegistration.authority', msg: 'Select a valid registration authority.' });
+  const expectedAuthority = ['single_proprietorship', 'sole_proprietorship'].includes(data.legalStructure)
+    ? 'dti'
+    : ['one_person_corporation', 'corporation', 'partnership'].includes(data.legalStructure)
+      ? 'sec'
+      : data.legalStructure === 'cooperative' ? 'cda' : null;
+  if (expectedAuthority && registration.authority !== expectedAuthority) {
+    errors.push({ field: 'businessRegistration.authority', msg: `${expectedAuthority.toUpperCase()} registration is expected for the selected business structure.` });
+  }
+  required(registration.certificateNumber, 'businessRegistration.certificateNumber', 'Registration number is required.');
+  required(registration.registeredName, 'businessRegistration.registeredName', 'Registered name is required.');
+  if (!registration.documentUrl && !files.businessRegistration) errors.push({ field: 'businessRegistration', msg: 'Business registration document is required.' });
+
+  if (!['registered', 'not_registered', 'pending_registration'].includes(tax.birRegistrationStatus)) {
+    errors.push({ field: 'taxProfile.birRegistrationStatus', msg: 'Select the current BIR registration status.' });
+  }
+  if (tax.birRegistrationStatus === 'registered') {
+    required(tax.tin, 'taxProfile.tin', 'TIN is required for a BIR-registered business.');
+    required(tax.branchCode, 'taxProfile.branchCode', 'BIR branch code is required.');
+    required(tax.registeredName, 'taxProfile.registeredName', 'BIR registered name is required.');
+    required(tax.lineOfBusiness, 'taxProfile.lineOfBusiness', 'BIR line of business is required.');
+    for (const [key, label] of [['street', 'street'], ['barangay', 'barangay'], ['city', 'city / municipality'], ['province', 'province'], ['postalCode', 'postal code']]) {
+      required(tax.registeredAddress?.[key], `taxProfile.registeredAddress.${key}`, `BIR registered ${label} is required.`);
+    }
+    if (!DECLARED_TAX_STATUSES.includes(tax.declaredTaxStatus)) errors.push({ field: 'taxProfile.declaredTaxStatus', msg: 'Declared VAT or Non-VAT status is required.' });
+    if (!tax.corDocumentUrl && !files.birRegistration) errors.push({ field: 'birRegistration', msg: 'BIR Certificate of Registration (Form 2303) is required.' });
+    if (tax.tin && !/^\d{3}[- ]?\d{3}[- ]?\d{3,6}$/.test(String(tax.tin).trim())) {
+      errors.push({ field: 'taxProfile.tin', msg: 'Enter a valid TIN using digits and optional hyphens.' });
+    }
+  }
+  if (data.representative?.isAuthorizedRepresentative && !data.representative?.authorityDocumentUrl && !files.authorityDocument) {
+    errors.push({ field: 'authorityDocument', msg: 'Proof of authority is required for an authorized representative.' });
+  }
+  if (data.declaration?.accepted !== true) errors.push({ field: 'declaration.accepted', msg: 'Accept the declaration before submitting.' });
+  return errors;
+};
+
+const applicationQueryWithPrivateFields = query => query.select([
+  '+taxProfile.tin', '+taxProfile.branchCode', '+taxProfile.corDocumentUrl',
+  '+businessRegistration.documentUrl', '+representative.authorityDocumentUrl'
+].join(' '));
+
+const toApplicationResponse = (application, { includeDocuments = false } = {}) => {
+  const object = application?.toObject ? application.toObject({ virtuals: true }) : { ...application };
+  if (object.taxProfile) {
+    object.taxProfile.tinMasked = maskTin(object.taxProfile.tin);
+    if (!includeDocuments) {
+      delete object.taxProfile.tin;
+      delete object.taxProfile.branchCode;
+      delete object.taxProfile.corDocumentUrl;
+    }
+  }
+  if (!includeDocuments) {
+    if (object.businessRegistration) delete object.businessRegistration.documentUrl;
+    if (object.representative) delete object.representative.authorityDocumentUrl;
+    delete object.governmentIdUrl;
+    delete object.businessRegistrationUrl;
+    delete object.birRegistrationUrl;
+    delete object.barangayClearanceUrl;
+    delete object.mayorsPermitUrl;
+  }
+  return object;
+};
 
 const attachStoreSummaries = async applications => {
   const rows = Array.isArray(applications) ? applications : [applications];
@@ -15,7 +120,7 @@ const attachStoreSummaries = async applications => {
     .filter(Boolean);
   const stores = ownerIds.length
     ? await Store.find({ owner: { $in: ownerIds } })
-      .select('_id owner name verificationStatus isActive isDeleted contactInfo.address')
+      .select('_id owner name verificationStatus isActive isDeleted contactInfo.address taxProfile.verificationStatus taxProfile.verifiedTaxStatus')
       .lean()
     : [];
   const storesByOwner = new Map(stores.map(store => [String(store.owner), store]));
@@ -23,7 +128,7 @@ const attachStoreSummaries = async applications => {
   return rows.map(application => {
     const ownerId = application?.populated?.('applicant') || application?.applicant?._id || application?.applicant;
     return {
-      ...application.toObject({ virtuals: true }),
+      ...toApplicationResponse(application),
       store: storesByOwner.get(String(ownerId)) || null
     };
   });
@@ -48,7 +153,7 @@ const upload = multer({
     const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
     const mimetype = allowedTypes.test(file.mimetype);
 
-    if (mimetype || extname) {
+    if (mimetype && extname) {
       return cb(null, true);
     } else {
       cb(new Error('Only document and image files are allowed'));
@@ -72,42 +177,77 @@ const safeParse = (data) => {
 const submitApplication = async (req, res) => {
   try {
     const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
-    }
-
-    // Check if user already has a pending or approved application
-    const existingApplication = await StoreApplication.findOne({
-      applicant: req.user.id,
-      status: { $in: ['under_review', 'approved'] }
-    });
-
-    if (existingApplication) {
-      return res.status(400).json({
-        message: 'You already have an application under review or approved'
-      });
-    }
+    if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
 
     const applicationData = {
       ...req.body,
       applicant: req.user.id,
       businessLicense: safeParse(req.body.businessLicense) || {},
-      contactInfo: safeParse(req.body.contactInfo),
+      contactInfo: safeParse(req.body.contactInfo) || {},
+      representative: safeParse(req.body.representative) || {},
+      businessRegistration: safeParse(req.body.businessRegistration) || {},
+      taxProfile: safeParse(req.body.taxProfile) || {},
+      declaration: safeParse(req.body.declaration) || {},
       socialMedia: safeParse(req.body.socialMedia),
       references: safeParse(req.body.references),
       certifications: safeParse(req.body.certifications),
       insurance: safeParse(req.body.insurance),
       emergencyContact: safeParse(req.body.emergencyContact),
       operationalModules: safeParse(req.body.operationalModules) || [],
-      hiringStaff: req.body.hiringStaff === 'true' || req.body.hiringStaff === true,
       staffTypes: safeParse(req.body.staffTypes) || [],
+      productCategories: safeParse(req.body.productCategories) || [],
+      paymentInfo: safeParse(req.body.paymentInfo),
+      productsOffered: safeParse(req.body.productsOffered),
+      hiringStaff: req.body.hiringStaff === 'true' || req.body.hiringStaff === true,
       supplierNeeds: req.body.supplierNeeds === 'true' || req.body.supplierNeeds === true,
       inventoryPlans: req.body.inventoryPlans || '',
-      productCategories: safeParse(req.body.productCategories) || [],
-      yearsInBusiness: parseInt(req.body.yearsInBusiness) || 0,
-      numberOfEmployees: parseInt(req.body.numberOfEmployees) || 1,
+      yearsInBusiness: Number.parseInt(req.body.yearsInBusiness, 10) || 0,
+      yearBusinessStarted: Number.parseInt(req.body.yearBusinessStarted, 10) || undefined,
+      numberOfEmployees: Number.parseInt(req.body.numberOfEmployees, 10) || 1,
       hasPhysicalStore: req.body.hasPhysicalStore === 'true' || req.body.hasPhysicalStore === true
     };
+
+    const existingApplication = await applicationQueryWithPrivateFields(StoreApplication.findOne({
+      applicant: req.user.id,
+      applicationType: 'new_store',
+      isDeleted: { $ne: true }
+    }).sort({ createdAt: -1 }));
+    // Never trust document URLs posted by the browser. Reuse the already-owned
+    // secure upload unless the applicant supplied a replacement file.
+    applicationData.businessRegistration.documentUrl = req.files?.businessRegistration
+      ? undefined
+      : existingApplication?.businessRegistration?.documentUrl;
+    applicationData.taxProfile.corDocumentUrl = req.files?.birRegistration
+      ? undefined
+      : existingApplication?.taxProfile?.corDocumentUrl;
+    applicationData.representative.authorityDocumentUrl = req.files?.authorityDocument
+      ? undefined
+      : existingApplication?.representative?.authorityDocumentUrl;
+
+    const structuredErrors = applicationValidationErrors(applicationData, req.files || {});
+    if (structuredErrors.length) {
+      return res.status(400).json({ message: 'Complete the required application sections.', errors: structuredErrors });
+    }
+
+    if (existingApplication && ['under_review', 'pending_review', 'submitted', 'approved'].includes(existingApplication.status)) {
+      return res.status(400).json({
+        message: existingApplication.status === 'approved'
+          ? 'Your store application has already been approved.'
+          : 'You already have an application under review.'
+      });
+    }
+
+    applicationData.taxProfile = {
+      ...applicationData.taxProfile,
+      verifiedTaxStatus: null,
+      verificationStatus: applicationData.taxProfile.birRegistrationStatus === 'registered' ? 'pending' : 'unverified',
+      submittedAt: new Date(),
+      verifiedAt: null,
+      verifiedBy: null,
+      rejectionReason: '',
+      verificationNotes: ''
+    };
+    applicationData.declaration = { ...applicationData.declaration, acceptedAt: new Date() };
 
     // Handle file uploads
     if (req.files) {
@@ -133,10 +273,17 @@ const submitApplication = async (req, res) => {
         applicationData.governmentIdUrl = req.files.governmentId[0].path || req.files.governmentId[0].secure_url;
       }
       if (req.files.businessRegistration) {
-        applicationData.businessRegistrationUrl = req.files.businessRegistration[0].path || req.files.businessRegistration[0].secure_url;
+        const documentUrl = req.files.businessRegistration[0].path || req.files.businessRegistration[0].secure_url;
+        applicationData.businessRegistrationUrl = documentUrl;
+        applicationData.businessRegistration.documentUrl = documentUrl;
       }
       if (req.files.birRegistration) {
-        applicationData.birRegistrationUrl = req.files.birRegistration[0].path || req.files.birRegistration[0].secure_url;
+        const documentUrl = req.files.birRegistration[0].path || req.files.birRegistration[0].secure_url;
+        applicationData.birRegistrationUrl = documentUrl;
+        applicationData.taxProfile.corDocumentUrl = documentUrl;
+      }
+      if (req.files.authorityDocument) {
+        applicationData.representative.authorityDocumentUrl = req.files.authorityDocument[0].path || req.files.authorityDocument[0].secure_url;
       }
       if (req.files.barangayClearance) {
         applicationData.barangayClearanceUrl = req.files.barangayClearance[0].path || req.files.barangayClearance[0].secure_url;
@@ -149,13 +296,13 @@ const submitApplication = async (req, res) => {
       }
     }
 
-    applicationData.paymentInfo = safeParse(req.body.paymentInfo);
-    applicationData.productsOffered = safeParse(req.body.productsOffered);
+    const isResubmission = Boolean(existingApplication && ['requires_more_info', 'rejected', 'draft'].includes(existingApplication.status));
+    const application = isResubmission ? existingApplication : new StoreApplication();
+    application.set(applicationData);
 
-    const application = new StoreApplication(applicationData);
-
-    // Run automatic verification to provide a score for the Super Admin
-    application.autoVerify();
+    // Completeness scoring is advisory only. Documents and tax status remain
+    // pending until a Platform Admin explicitly reviews them.
+    application.calculateVerificationScore();
 
     // All applications now require manual review by Super Admin
     // We set status to under_review to ensure it appears in the admin dashboard
@@ -163,6 +310,11 @@ const submitApplication = async (req, res) => {
     application.reviewNotes = application.verificationScore >= 60 
       ? 'Application submitted and awaiting manual review'
       : 'Application submitted but may require additional documentation due to low verification score';
+    application.reviewHistory.push({
+      action: isResubmission ? 'resubmitted' : 'submitted',
+      actor: req.user.id,
+      notes: isResubmission ? 'Applicant resubmitted requested corrections.' : 'Application submitted for Platform Admin review.'
+    });
 
     await application.save();
 
@@ -171,6 +323,7 @@ const submitApplication = async (req, res) => {
       application: {
         id: application._id,
         status: application.status,
+        taxVerificationStatus: application.taxProfile?.verificationStatus,
         verificationScore: application.verificationScore,
         reviewNotes: application.reviewNotes
       }
@@ -280,7 +433,7 @@ const submitExpansionRequest = async (req, res) => {
 // Get all applications (Super Admin only)
 const getAllApplications = async (req, res) => {
   try {
-    const { status, page = 1, limit = 50 } = req.query;
+    const { status, taxVerificationStatus, declaredTaxStatus, verifiedTaxStatus, businessType, city, search, page = 1, limit = 50 } = req.query;
     console.log('🔍 FETCHING APPLICATIONS. Filters:', { status, page, limit });
     
     // Use $ne: true to catch records where the field is missing entirely
@@ -294,6 +447,19 @@ const getAllApplications = async (req, res) => {
       } else {
         filter.status = status;
       }
+    }
+    if (taxVerificationStatus) filter['taxProfile.verificationStatus'] = taxVerificationStatus;
+    if (declaredTaxStatus) filter['taxProfile.declaredTaxStatus'] = declaredTaxStatus;
+    if (verifiedTaxStatus) filter['taxProfile.verifiedTaxStatus'] = verifiedTaxStatus;
+    if (businessType) filter.legalStructure = businessType;
+    if (city) filter['contactInfo.address.city'] = new RegExp(String(city).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+    if (search) {
+      const escaped = String(search).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      filter.$or = [
+        { businessName: new RegExp(escaped, 'i') },
+        { registeredBusinessName: new RegExp(escaped, 'i') },
+        { 'businessRegistration.certificateNumber': new RegExp(escaped, 'i') }
+      ];
     }
 
     const skip = (page - 1) * limit;
@@ -327,16 +493,17 @@ const getAllApplications = async (req, res) => {
 // Get application by ID
 const getApplicationById = async (req, res) => {
   try {
-    const application = await StoreApplication.findById(req.params.id)
+    const application = await applicationQueryWithPrivateFields(StoreApplication.findById(req.params.id))
       .populate('applicant', 'username firstName lastName email phone address')
-      .populate('reviewedBy', 'username firstName lastName');
+      .populate('reviewedBy', 'username firstName lastName')
+      .populate('taxProfile.verifiedBy', 'username firstName lastName');
 
     if (!application) {
       return res.status(404).json({ message: 'Application not found' });
     }
 
     const [applicationWithStore] = await attachStoreSummaries(application);
-    res.json({ application: applicationWithStore });
+    res.json({ application: { ...applicationWithStore, ...toApplicationResponse(application, { includeDocuments: true }), store: applicationWithStore.store } });
   } catch (error) {
     console.error('Get application error:', error);
     res.status(500).json({ message: 'Server error' });
@@ -352,7 +519,7 @@ const reviewApplication = async (req, res) => {
       return res.status(400).json({ message: 'Status is required' });
     }
 
-    const application = await StoreApplication.findById(req.params.id);
+    const application = await applicationQueryWithPrivateFields(StoreApplication.findById(req.params.id));
 
     if (!application) {
       return res.status(404).json({ message: 'Application not found' });
@@ -367,6 +534,12 @@ const reviewApplication = async (req, res) => {
     application.requiredCorrections = requiredCorrections || [];
     application.reviewedBy = req.user.id;
     application.reviewedAt = new Date();
+    application.reviewHistory.push({
+      action: status === 'requires_more_info' ? 'needs_correction' : status,
+      actor: req.user.id,
+      notes: reviewNotes || rejectionReason || '',
+      sections: requiredCorrections || []
+    });
 
     if (status === 'rejected') {
       application.rejectionReason = rejectionReason || '';
@@ -414,13 +587,59 @@ const reviewApplication = async (req, res) => {
             phone: application.contactInfo.phone,
             email: application.contactInfo.email,
             address: {
+              unitBuilding: application.contactInfo.address.unitBuilding,
               street: application.contactInfo.address.street || 'N/A',
               barangay: application.contactInfo.address.barangay || 'N/A',
               city: application.contactInfo.address.city || 'N/A',
               state: application.contactInfo.address.province || application.contactInfo.address.state || 'N/A',
               zipCode: application.contactInfo.address.zipCode || '4102',
-              country: application.contactInfo.address.country || 'PH'
+              country: application.contactInfo.address.country || 'PH',
+              landmark: application.contactInfo.address.landmark,
+              coordinates: application.contactInfo.address.coordinates
             }
+          },
+          verificationStatus: 'verified',
+          businessProfile: {
+            registeredBusinessName: application.registeredBusinessName || application.businessRegistration?.registeredName || application.businessName,
+            tradeName: application.tradeName || application.businessName,
+            legalStructure: application.legalStructure,
+            registrationAuthority: application.businessRegistration?.authority,
+            registrationNumber: application.businessRegistration?.certificateNumber,
+            registrationVerified: true,
+            sourceApplication: application._id
+          },
+          taxProfile: {
+            birRegistered: application.taxProfile?.birRegistrationStatus === 'registered',
+            declaredTaxStatus: application.taxProfile?.declaredTaxStatus || null,
+            verifiedTaxStatus: application.taxProfile?.verifiedTaxStatus || null,
+            verificationStatus: application.taxProfile?.verificationStatus || 'unverified',
+            tin: application.taxProfile?.tin,
+            branchCode: application.taxProfile?.branchCode,
+            registeredName: application.taxProfile?.registeredName,
+            registeredAddress: application.taxProfile?.registeredAddress,
+            lineOfBusiness: application.taxProfile?.lineOfBusiness,
+            corDocumentUrl: application.taxProfile?.corDocumentUrl,
+            sourceApplication: application._id,
+            submittedAt: application.taxProfile?.submittedAt,
+            verifiedAt: application.taxProfile?.verifiedAt,
+            verifiedBy: application.taxProfile?.verifiedBy,
+            verificationNotes: application.taxProfile?.verificationNotes
+          },
+          taxConfiguration: application.taxProfile?.verificationStatus === 'verified' ? {
+            isConfigured: true,
+            taxStatus: application.taxProfile.verifiedTaxStatus === 'vat_registered' ? 'vat_registered' : 'non_vat',
+            pricingMode: 'inclusive',
+            vatRatePercent: application.taxProfile.verifiedTaxStatus === 'vat_registered' ? 12 : 0,
+            deliveryFeeTaxable: false,
+            configuredAt: application.taxProfile.verifiedAt,
+            configuredBy: application.taxProfile.verifiedBy
+          } : {
+            isConfigured: false,
+            taxStatus: 'non_vat',
+            pricingMode: 'inclusive',
+            vatRatePercent: 0,
+            deliveryFeeTaxable: false,
+            configuredAt: null
           },
           socialMedia: application.socialMedia,
           payoutMethods: [
@@ -446,6 +665,7 @@ const reviewApplication = async (req, res) => {
         }
 
         const savedStore = await store.save();
+        application.approvedStore = savedStore._id;
 
         // Update user role and link store
         await User.findByIdAndUpdate(applicant._id, {
@@ -480,10 +700,156 @@ const reviewApplication = async (req, res) => {
   }
 };
 
+// Platform Admin explicitly verifies the tax declaration independently from
+// store approval. This is the only path that makes tax settings authoritative.
+const verifyTaxProfile = async (req, res) => {
+  try {
+    const { decision, notes = '', rejectionReason = '', acknowledgeMismatch = false } = req.body;
+    if (!['vat_registered', 'non_vat_registered', 'rejected'].includes(decision)) {
+      return res.status(400).json({ message: 'Choose VAT, Non-VAT, or reject the tax information.' });
+    }
+
+    const application = await applicationQueryWithPrivateFields(StoreApplication.findById(req.params.id));
+    if (!application || application.isDeleted) return res.status(404).json({ message: 'Application not found.' });
+    if (application.applicationType !== 'new_store') return res.status(400).json({ message: 'Tax verification applies to the original store application.' });
+
+    const tax = application.taxProfile || {};
+    if (decision !== 'rejected') {
+      if (tax.birRegistrationStatus !== 'registered' || !tax.tin || !tax.branchCode || !tax.corDocumentUrl) {
+        return res.status(400).json({ message: 'Complete BIR details and Form 2303 are required before tax verification.' });
+      }
+      if (tax.declaredTaxStatus !== decision && (acknowledgeMismatch !== true || !String(notes).trim())) {
+        return res.status(400).json({
+          message: 'The verified status differs from the applicant declaration. Acknowledge the mismatch and add review notes.'
+        });
+      }
+    } else if (!String(rejectionReason).trim()) {
+      return res.status(400).json({ message: 'A rejection or correction reason is required.' });
+    }
+
+    const now = new Date();
+    tax.verificationStatus = decision === 'rejected' ? 'rejected' : 'verified';
+    tax.verifiedTaxStatus = decision === 'rejected' ? null : decision;
+    tax.verifiedAt = now;
+    tax.verifiedBy = req.user.id;
+    tax.verificationNotes = String(notes).trim();
+    tax.rejectionReason = decision === 'rejected' ? String(rejectionReason).trim() : '';
+    application.markModified('taxProfile');
+    application.reviewHistory.push({
+      action: decision === 'rejected' ? 'tax_rejected' : 'tax_verified',
+      actor: req.user.id,
+      notes: decision === 'rejected' ? tax.rejectionReason : tax.verificationNotes,
+      sections: ['taxProfile']
+    });
+    if (decision === 'rejected' && application.status !== 'approved') {
+      application.status = 'requires_more_info';
+      application.requiredCorrections = Array.from(new Set([...(application.requiredCorrections || []), 'taxProfile']));
+    }
+    await application.save();
+
+    const storeCandidates = [{ owner: application.applicant, isDeleted: { $ne: true } }];
+    if (application.approvedStore) storeCandidates.unshift({ _id: application.approvedStore });
+    const store = await Store.findOne({ $or: storeCandidates })
+      .select('+taxProfile.tin +taxProfile.branchCode +taxProfile.corDocumentUrl +taxProfile.verifiedBy +taxProfile.rejectionReason +taxProfile.verificationNotes +taxConfiguration.auditLog');
+
+    if (store) {
+      const previous = store.taxConfiguration?.toObject ? store.taxConfiguration.toObject() : { ...(store.taxConfiguration || {}) };
+      store.taxProfile = {
+        birRegistered: tax.birRegistrationStatus === 'registered',
+        declaredTaxStatus: tax.declaredTaxStatus || null,
+        verifiedTaxStatus: tax.verifiedTaxStatus || null,
+        verificationStatus: tax.verificationStatus,
+        tin: tax.tin,
+        branchCode: tax.branchCode,
+        registeredName: tax.registeredName,
+        registeredAddress: tax.registeredAddress,
+        lineOfBusiness: tax.lineOfBusiness,
+        corDocumentUrl: tax.corDocumentUrl,
+        sourceApplication: application._id,
+        submittedAt: tax.submittedAt,
+        verifiedAt: now,
+        verifiedBy: req.user.id,
+        rejectionReason: tax.rejectionReason,
+        verificationNotes: tax.verificationNotes
+      };
+      const next = decision === 'rejected' ? {
+        isConfigured: false,
+        taxStatus: 'non_vat',
+        pricingMode: 'inclusive',
+        vatRatePercent: 0,
+        deliveryFeeTaxable: false,
+        configuredAt: null,
+        configuredBy: req.user.id
+      } : {
+        isConfigured: true,
+        taxStatus: decision === 'vat_registered' ? 'vat_registered' : 'non_vat',
+        pricingMode: 'inclusive',
+        vatRatePercent: decision === 'vat_registered' ? 12 : 0,
+        deliveryFeeTaxable: false,
+        configuredAt: now,
+        configuredBy: req.user.id
+      };
+      const auditLog = store.taxConfiguration?.auditLog || [];
+      auditLog.push({ changedBy: req.user.id, changedAt: now, previous, next });
+      store.taxConfiguration = { ...next, auditLog: auditLog.slice(-50) };
+      await store.save();
+    }
+
+    await createNotification({
+      recipient: application.applicant,
+      sender: req.user.id,
+      type: 'store_application',
+      title: decision === 'rejected' ? 'Tax Information Needs Correction' : 'Tax Information Verified',
+      message: decision === 'rejected'
+        ? tax.rejectionReason
+        : `Your store tax profile was verified as ${decision === 'vat_registered' ? 'VAT Registered' : 'Non-VAT Registered'}.`,
+      relatedId: application._id,
+      relatedModel: 'StoreApplication'
+    });
+
+    res.json({
+      message: decision === 'rejected' ? 'Tax information returned for correction.' : 'Tax information verified.',
+      taxProfile: {
+        declaredTaxStatus: tax.declaredTaxStatus,
+        verifiedTaxStatus: tax.verifiedTaxStatus,
+        verificationStatus: tax.verificationStatus,
+        verifiedAt: tax.verifiedAt,
+        tinMasked: maskTin(tax.tin)
+      }
+    });
+  } catch (error) {
+    console.error('Tax verification error:', error);
+    res.status(500).json({ message: 'Unable to update tax verification.' });
+  }
+};
+
+const getApplicationDocument = async (req, res) => {
+  try {
+    const application = await applicationQueryWithPrivateFields(StoreApplication.findById(req.params.id));
+    if (!application || application.isDeleted) return res.status(404).json({ message: 'Application not found.' });
+    const ownsApplication = String(application.applicant) === String(req.user._id || req.user.id);
+    if (!ownsApplication && !isPlatformAdmin(req.user)) return res.status(403).json({ message: 'You cannot access this application document.' });
+
+    const documents = {
+      governmentId: application.governmentIdUrl,
+      businessRegistration: application.businessRegistration?.documentUrl || application.businessRegistrationUrl,
+      birCertificate: application.taxProfile?.corDocumentUrl || application.birRegistrationUrl,
+      authorityDocument: application.representative?.authorityDocumentUrl,
+      mayorsPermit: application.mayorsPermitUrl,
+      barangayClearance: application.barangayClearanceUrl
+    };
+    const documentUrl = documents[req.params.documentType];
+    if (!documentUrl) return res.status(404).json({ message: 'Document not found.' });
+    res.json({ documentUrl });
+  } catch (error) {
+    res.status(500).json({ message: 'Unable to open the application document.' });
+  }
+};
+
 // Get user's application status
 const getUserApplication = async (req, res) => {
   try {
-    const application = await StoreApplication.findOne({ applicant: req.user.id })
+    const application = await applicationQueryWithPrivateFields(StoreApplication.findOne({ applicant: req.user.id }))
       .sort({ createdAt: -1 })
       .populate('reviewedBy', 'username firstName lastName');
 
@@ -491,7 +857,7 @@ const getUserApplication = async (req, res) => {
       return res.json({ application: null });
     }
 
-    res.json({ application });
+    res.json({ application: toApplicationResponse(application, { includeDocuments: true }) });
   } catch (error) {
     console.error('Get user application error:', error);
     res.status(500).json({ message: 'Server error' });
@@ -513,6 +879,12 @@ const requestMoreInfo = async (req, res) => {
     application.requiredInfo = requiredInfo;
     application.reviewedBy = req.user.id;
     application.reviewedAt = new Date();
+    application.reviewHistory.push({
+      action: 'needs_correction',
+      actor: req.user.id,
+      notes: message,
+      sections: requiredInfo || []
+    });
 
     await application.save();
 
@@ -612,6 +984,11 @@ module.exports = {
   archiveApplication,
   restoreApplication,
   getAuditCount,
+  verifyTaxProfile,
+  getApplicationDocument,
+  applicationValidationErrors,
+  maskTin,
+  toApplicationResponse,
   submitExpansionRequest,
   upload
 };

@@ -4,7 +4,8 @@ export const calculateTransactionTax = ({ subtotal, discountAmount = 0, delivery
   const discountCents = Math.min(subtotalCents, Math.max(0, toCents(discountAmount)));
   const deliveryCents = Math.max(0, toCents(deliveryFee));
   const discountedSubtotalCents = subtotalCents - discountCents;
-  const taxStatus = taxConfiguration?.taxStatus || 'non_vat';
+  const isConfigured = taxConfiguration?.isConfigured === true;
+  const taxStatus = isConfigured ? (taxConfiguration?.taxStatus || 'unverified') : 'unverified';
   const pricingMode = taxConfiguration?.pricingMode || 'inclusive';
   const vatRatePercent = taxStatus === 'vat_registered' ? Number(taxConfiguration?.vatRatePercent ?? 12) : 0;
   const deliveryFeeTaxable = Boolean(taxConfiguration?.deliveryFeeTaxable);
@@ -17,6 +18,8 @@ export const calculateTransactionTax = ({ subtotal, discountAmount = 0, delivery
     : Math.round(taxableCents * rate);
   const finalCents = discountedSubtotalCents + deliveryCents + (pricingMode === 'exclusive' ? vatCents : 0);
   return {
+    isConfigured,
+    verificationRequired: !isConfigured,
     calculationVersion: 1,
     subtotal: subtotalCents / 100,
     discountAmount: discountCents / 100,

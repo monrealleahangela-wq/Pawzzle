@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Activity, AlertTriangle, Bike, CheckCircle2, Clock3, MapPin, PackageCheck, RefreshCw, Search, Truck, Users, XCircle } from 'lucide-react';
 import { getImageUrl, logisticsService, staffService } from '../../services/apiService';
 import { toast } from 'react-toastify';
+import { formatPeso } from '../../utils/paymentSummary';
 
 const statusStyle = status => ({
   delivered: 'bg-emerald-50 text-emerald-700 border-emerald-100',
@@ -15,7 +16,7 @@ const statusStyle = status => ({
   assigned: 'bg-amber-50 text-amber-700 border-amber-100'
 }[status] || 'bg-slate-50 text-slate-600 border-slate-100');
 
-const money = value => `₱${Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const money = formatPeso;
 const personName = person => person ? `${person.firstName || person.name || ''} ${person.lastName || ''}`.trim() : 'Unassigned';
 
 const MiniBarChart = ({ rows }) => {

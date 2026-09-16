@@ -108,7 +108,7 @@ const Cart = () => {
         <div className="w-32 h-32 bg-slate-50 rounded-[40px] flex items-center justify-center mb-8 group-hover:rotate-12 transition-transform duration-700">
           <ShoppingBag className="h-14 w-14 text-slate-200" />
         </div>
-        <h2 className="text-4xl font-black text-slate-900 mb-4 uppercase tracking-tight">Your Cart is Empty</h2>
+        <h2 className="mb-3 text-2xl font-black uppercase tracking-tight text-slate-900">Your Cart is Empty</h2>
         <p className="text-slate-500 mb-12 max-w-sm font-medium italic">Find the perfect companions and the best supplies for your pets.</p>
         <div className="flex flex-col sm:flex-row gap-6">
           <Link to="/pets" className="btn btn-primary px-12 py-5 text-sm font-black uppercase tracking-widest shadow-2xl shadow-primary-200">
@@ -139,7 +139,7 @@ const Cart = () => {
       {/* Header - Optimized for Compactness */}
       <div className="max-w-7xl mx-auto px-2 sm:px-8 py-4 sm:py-8 flex flex-col md:flex-row justify-between items-start md:items-end gap-3 mb-2 px-2">
         <div className="space-y-0.5">
-          <h1 className="text-2xl sm:text-6xl font-black text-slate-900 tracking-tighter uppercase leading-[0.9]">
+          <h1 className="text-2xl font-black uppercase leading-tight tracking-tight text-slate-900 sm:text-3xl">
             Your Shopping <br />
             <span className="text-primary-600 italic">Cart</span>
           </h1>
@@ -190,7 +190,7 @@ const Cart = () => {
                       </span>
                     </div>
                     <p className="text-[8px] sm:text-xs font-bold text-slate-400 uppercase tracking-widest opacity-60">
-                      ₱{item.price?.toLocaleString()} • @{item.storeName}
+                      {formatPeso(item.price)} • @{item.storeName}
                     </p>
                   </div>
 
@@ -205,7 +205,7 @@ const Cart = () => {
                       </div>
                     )}
                     <div className="flex items-center gap-2 sm:gap-6">
-                      <span className="text-[11px] sm:text-2xl font-black text-slate-900 tracking-tighter">₱{(item.price * item.quantity).toLocaleString()}</span>
+                      <span className="text-[11px] font-black tracking-tighter text-slate-900 sm:text-xl">{formatPeso(item.price * item.quantity)}</span>
                       <button onClick={() => removeFromCart(item.itemId, item.itemType)} className="text-slate-300 hover:text-rose-600 p-1.5 sm:p-2.5 transition-all"><Trash2 className="h-3 w-3 sm:h-5 sm:w-5" /></button>
                     </div>
                   </div>
@@ -224,7 +224,7 @@ const Cart = () => {
               <div className="flex justify-between items-center"><span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Items Subtotal</span><span className="text-xl font-black text-white">{formatPeso(totalPrice)}</span></div>
               <div className="flex justify-between items-center"><span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Selected items</span><span className="text-xl font-black text-primary-400">{selectedItems.length} items</span></div>
               <div className="border-t border-white/10 pt-8">
-                <div className="flex justify-between items-end"><span className="text-[10px] font-black text-white uppercase tracking-[0.2em]">Cart Subtotal</span><span className="text-4xl font-black text-primary-500 tracking-tighter shadow-primary-900">{formatPeso(totalPrice)}</span></div>
+                <div className="flex items-end justify-between gap-3"><span className="text-[10px] font-black uppercase tracking-wide text-white">Cart Subtotal</span><span className="text-2xl font-black tracking-tighter text-primary-500 sm:text-3xl">{formatPeso(totalPrice)}</span></div>
                 <p className="mt-3 text-[9px] font-semibold leading-relaxed text-slate-400">VAT, delivery fees, and eligible discounts are calculated from current store data during checkout.</p>
               </div>
             </div>

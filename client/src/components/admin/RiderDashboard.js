@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { Activity, CheckCircle2, Package, Star, Wallet } from 'lucide-react';
 import { staffService } from '../../services/apiService';
+import { formatPeso } from '../../utils/paymentSummary';
 
-const money = value => `₱${Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const money = formatPeso;
 
 const RiderDashboard = () => {
   const [data, setData] = useState(null);

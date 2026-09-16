@@ -44,7 +44,7 @@ test('shared customer payment summary resolves to friendly loading, error, and t
   const source = read('client/src/components/payments/PaymentBreakdown.js');
   assert.match(source, /Loading amount/);
   assert.match(source, /We couldn't calculate your total\. Please try again\./);
-  assert.match(source, />Total</);
+  assert.match(source, />Total to Pay</);
   assert.doesNotMatch(source, /Calculating|Computed Total|Final Total/);
 });
 

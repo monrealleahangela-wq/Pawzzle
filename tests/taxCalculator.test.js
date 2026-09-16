@@ -4,33 +4,16 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { calculateTransactionTax, resolveTransactionTaxConfiguration } = require('../utils/taxCalculator');
 
-test('legacy stores without tax configuration can check out using an explicit non-VAT snapshot', () => {
-  const fallbackConfiguration = resolveTransactionTaxConfiguration({
+test('stores without verified tax configuration are not silently classified as Non-VAT', () => {
+  assert.throws(() => resolveTransactionTaxConfiguration({
     isConfigured: false,
-    taxStatus: 'vat_registered',
-    pricingMode: 'exclusive',
-    vatRatePercent: 12,
-    deliveryFeeTaxable: true,
-    configuredAt: new Date()
-  });
-  const result = calculateTransactionTax({
-    subtotal: 500,
-    deliveryFee: 50,
-    taxConfiguration: fallbackConfiguration
-  });
-
-  assert.equal(result.taxStatus, 'non_vat');
-  assert.equal(result.pricingMode, 'inclusive');
-  assert.equal(result.vatRatePercent, 0);
-  assert.equal(result.vatAmount, 0);
-  assert.equal(result.finalTotal, 550);
-  assert.equal(result.configuredAt, null);
-
+    taxStatus: 'vat_registered'
+  }), /tax verification is required/i);
   const orderPricingSource = fs.readFileSync(
     path.join(__dirname, '../services/orderPricingService.js'),
     'utf8'
   );
-  assert.doesNotMatch(orderPricingSource, /Store tax configuration is missing/);
+  assert.match(orderPricingSource, /Only an explicitly verified tax configuration/);
   assert.match(orderPricingSource, /taxConfiguration: resolveTransactionTaxConfiguration\(store\.taxConfiguration\)/);
 });
 

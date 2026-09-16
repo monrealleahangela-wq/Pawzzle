@@ -41,18 +41,54 @@ const sumItems = (items) => {
     : amounts.reduce((total, value) => total + value, 0);
 };
 
+export const orderLineItemRows = (items = []) => (Array.isArray(items) ? items : [])
+  .map((item, index) => {
+    const unitPrice = firstMoney(item?.price, item?.unitPrice);
+    const quantity = asMoney(item?.quantity);
+    const recordedTotal = firstMoney(item?.lineTotal, item?.totalPrice);
+    if (unitPrice === null || quantity === null) return null;
+    return {
+      key: String(item?._id || item?.itemId?._id || item?.itemId || `${item?.name || 'item'}-${index}`),
+      itemId: item?.itemId?._id || item?.itemId || item?._id,
+      name: item?.name || item?.productName || 'Item',
+      itemType: item?.itemType || 'product',
+      image: item?.image || item?.images?.[0] || null,
+      unitPrice,
+      quantity,
+      lineTotal: recordedTotal === null ? unitPrice * quantity : recordedTotal
+    };
+  })
+  .filter(Boolean);
+
 export const orderPaymentSummary = (order = {}) => {
-  const pricing = order.invoiceSnapshot?.pricingBreakdown || order.pricingBreakdown || {};
+  const invoicePricing = order.invoiceSnapshot?.pricingBreakdown;
+  const orderPricing = order.pricingBreakdown;
+  // Legacy Order documents are hydrated with schema defaults even when no
+  // transaction-time pricing snapshot was ever recorded. Only a versioned
+  // breakdown is authoritative; otherwise use the historical top-level data.
+  const pricing = invoicePricing?.calculationVersion
+    ? invoicePricing
+    : orderPricing?.calculationVersion ? orderPricing : {};
+  const hasAuthoritativePricing = Boolean(pricing.calculationVersion);
   const delivery = order.invoiceSnapshot?.deliveryFeeCalculation || order.deliveryFeeCalculation || {};
   const deliveryFee = firstMoney(pricing.deliveryFee, order.shippingFee, 0);
   const deliveryMethod = order.deliveryMethod || order.fulfillmentMethod || '';
   return {
     transactionType: TRANSACTION_TYPES.PRODUCT_ORDER,
+    calculationVersion: pricing.calculationVersion || null,
+    hasAuthoritativePricing,
+    historicalTaxBreakdownUnavailable: !hasAuthoritativePricing,
+    itemLines: orderLineItemRows(order.items),
     subtotal: firstMoney(pricing.subtotal, sumItems(order.items)),
+    discountedSubtotal: firstMoney(pricing.discountedSubtotal),
     vatAmount: firstMoney(pricing.vatAmount, pricing.calculationVersion ? 0 : null),
+    vatExclusiveAmount: firstMoney(pricing.vatExclusiveAmount),
     vatRatePercent: firstMoney(pricing.vatRatePercent),
     taxStatus: pricing.taxStatus,
+    taxTreatment: pricing.taxTreatment,
     pricingMode: pricing.pricingMode,
+    deliveryFeeTaxable: Boolean(pricing.deliveryFeeTaxable),
+    nonTaxableAmount: firstMoney(pricing.nonTaxableAmount),
     deliveryFee,
     deliveryApplies: deliveryMethod === 'delivery' || Boolean(delivery?.breakdown) || Number(deliveryFee || 0) > 0,
     deliveryMethod,
@@ -78,10 +114,13 @@ export const orderPaymentSummary = (order = {}) => {
 };
 
 export const bookingPaymentSummary = (booking = {}) => {
-  const pricing = booking.receiptSnapshot?.pricingBreakdown
-    || booking.serviceSummary?.pricingBreakdown
-    || booking.pricingBreakdown
-    || {};
+  const candidates = [
+    booking.receiptSnapshot?.pricingBreakdown,
+    booking.serviceSummary?.pricingBreakdown,
+    booking.pricingBreakdown
+  ].filter(Boolean);
+  const pricing = candidates.find(candidate => candidate?.calculationVersion) || candidates[0] || {};
+  const hasAuthoritativePricing = Boolean(pricing.calculationVersion);
   const additionalParts = [
     pricing.sizeSurcharge,
     pricing.weightSurcharge,
@@ -101,16 +140,20 @@ export const bookingPaymentSummary = (booking = {}) => {
 
   return {
     transactionType: TRANSACTION_TYPES.SERVICE_BOOKING,
-    // The service pricing engine stores its base price and surcharges inside
-    // `subtotal`. Split those recorded components for display so the visible
-    // rows reconcile to the final total instead of counting surcharges twice.
-    subtotal: hasDetailedServicePricing
-      ? firstMoney(pricing.basePrice, 0)
-      : firstMoney(pricing.subtotal),
-    vatAmount: firstMoney(pricing.vatAmount, pricing.calculationVersion ? 0 : null),
+    calculationVersion: pricing.calculationVersion || null,
+    hasAuthoritativePricing,
+    historicalTaxBreakdownUnavailable: !hasAuthoritativePricing,
+    baseAmount: hasDetailedServicePricing ? firstMoney(pricing.basePrice, 0) : firstMoney(pricing.subtotal),
+    subtotal: firstMoney(pricing.subtotal, pricing.basePrice),
+    discountedSubtotal: firstMoney(pricing.discountedSubtotal),
+    vatAmount: firstMoney(pricing.vatAmount, hasAuthoritativePricing ? 0 : null),
+    vatExclusiveAmount: firstMoney(pricing.vatExclusiveAmount),
     vatRatePercent: firstMoney(pricing.vatRatePercent),
-    taxStatus: pricing.taxStatus,
-    pricingMode: pricing.pricingMode,
+    taxStatus: hasAuthoritativePricing ? pricing.taxStatus : undefined,
+    taxTreatment: hasAuthoritativePricing ? pricing.taxTreatment : undefined,
+    pricingMode: hasAuthoritativePricing ? pricing.pricingMode : undefined,
+    deliveryFeeTaxable: hasAuthoritativePricing ? Boolean(pricing.deliveryFeeTaxable) : false,
+    nonTaxableAmount: hasAuthoritativePricing ? firstMoney(pricing.nonTaxableAmount) : null,
     deliveryFee: firstMoney(pricing.deliveryFee, 0),
     serviceFee: firstMoney(pricing.serviceFee, 0),
     bookingFee: firstMoney(pricing.bookingFee, booking.bookingFee, 0),
@@ -160,10 +203,19 @@ const textRow = (key, label, value) => ({ key, label, displayValue: value });
 
 const taxRows = summary => {
   const rate = summary.vatRatePercent !== null && summary.vatRatePercent !== undefined
-    ? ` (${Number(summary.vatRatePercent)}%)`
+    ? `${Number(summary.vatRatePercent)}%, `
     : '';
+  if (summary.historicalTaxBreakdownUnavailable) {
+    const recordType = summary.transactionType === TRANSACTION_TYPES.SERVICE_BOOKING ? 'booking' : 'order';
+    return [textRow('historical-tax', 'Tax breakdown', `Detailed tax breakdown unavailable for this historical ${recordType}`)];
+  }
+  if (summary.taxStatus === 'unverified') return [textRow('tax-status', 'Tax status', 'Verification required')];
   if (summary.taxStatus === 'vat_registered') {
-    return [moneyRow('vat', `${summary.pricingMode === 'inclusive' ? 'VAT included' : 'VAT'}${rate}`, summary.vatAmount)];
+    const mode = summary.pricingMode === 'inclusive' ? 'included' : 'added';
+    return [
+      moneyRow('vat-exclusive', 'Price before VAT', summary.vatExclusiveAmount),
+      moneyRow('vat', `VAT (${rate}${mode})`, summary.vatAmount)
+    ];
   }
   if (summary.taxStatus === 'non_vat') return [textRow('tax-status', 'Tax status', 'Non-VAT')];
   if (summary.taxStatus === 'vat_exempt') return [textRow('tax-status', 'Tax status', 'VAT Exempt')];
@@ -173,12 +225,49 @@ const taxRows = summary => {
 
 export const paymentSummaryRows = (summary = {}, { showZeroFees = false } = {}) => {
   const type = summary.transactionType;
-  const rows = [moneyRow(
-    'subtotal',
-    type === TRANSACTION_TYPES.SERVICE_BOOKING ? 'Service price' : (type === TRANSACTION_TYPES.PRODUCT_ORDER ? 'Product subtotal' : 'Items subtotal'),
-    summary.subtotal
-  ), ...taxRows(summary)];
   const nonZero = value => Number(value || 0) !== 0;
+  const isVatInclusive = summary.hasAuthoritativePricing
+    && summary.taxStatus === 'vat_registered'
+    && summary.pricingMode === 'inclusive';
+  const subtotalSuffix = isVatInclusive ? ' (VAT-inclusive)' : '';
+  const rows = [];
+
+  if (type === TRANSACTION_TYPES.SERVICE_BOOKING) {
+    rows.push(moneyRow('service-price', `Service price${subtotalSuffix}`, summary.baseAmount));
+    if (showZeroFees || nonZero(summary.serviceFee)) rows.push(moneyRow('service-fee', 'Service fee', summary.serviceFee));
+    if (showZeroFees || nonZero(summary.bookingFee)) rows.push(moneyRow('booking-fee', 'Booking fee', summary.bookingFee));
+    if (showZeroFees || nonZero(summary.homeServiceFee)) rows.push(moneyRow('home-service-fee', 'Home service fee', summary.homeServiceFee));
+    if (showZeroFees || nonZero(summary.additionalCharges)) rows.push(moneyRow('additional', 'Additional service charges', summary.additionalCharges));
+    const componentTotal = Number(summary.baseAmount || 0) + Number(summary.serviceFee || 0)
+      + Number(summary.bookingFee || 0) + Number(summary.homeServiceFee || 0)
+      + Number(summary.additionalCharges || 0);
+    if (Math.abs(componentTotal - Number(summary.subtotal || 0)) > 0.009) {
+      rows.push(moneyRow('subtotal', `Service subtotal${subtotalSuffix}`, summary.subtotal));
+    }
+  } else {
+    rows.push(moneyRow(
+      'subtotal',
+      type === TRANSACTION_TYPES.PRODUCT_ORDER ? `Product subtotal${subtotalSuffix}` : 'Items subtotal',
+      summary.subtotal
+    ));
+  }
+
+  if (nonZero(summary.discountAmount)) {
+    rows.push(moneyRow('discount', 'Voucher discount', summary.discountAmount, '−'));
+    if (summary.discountedSubtotal !== null && summary.discountedSubtotal !== undefined) {
+      rows.push(moneyRow(
+        'discounted-subtotal',
+        type === TRANSACTION_TYPES.SERVICE_BOOKING ? 'Service subtotal after discount' : 'Product subtotal after discount',
+        summary.discountedSubtotal
+      ));
+    }
+  }
+
+  const appendTaxRows = () => rows.push(...taxRows(summary));
+  const taxIncludesDelivery = type === TRANSACTION_TYPES.PRODUCT_ORDER
+    && summary.deliveryApplies
+    && summary.deliveryFeeTaxable;
+  if (!taxIncludesDelivery) appendTaxRows();
 
   if (type === TRANSACTION_TYPES.PRODUCT_ORDER) {
     if (summary.deliveryDetails) {
@@ -203,19 +292,21 @@ export const paymentSummaryRows = (summary = {}, { showZeroFees = false } = {}) 
       rows.push(Number(summary.deliveryFee || 0) === 0
         ? textRow('delivery-total', 'Delivery', 'Free')
         : moneyRow('delivery-total', 'Delivery total', summary.deliveryFee));
+      if (summary.taxStatus === 'vat_registered' && summary.hasAuthoritativePricing) {
+        rows.push(textRow(
+          'delivery-tax-treatment',
+          'Delivery tax treatment',
+          summary.deliveryFeeTaxable ? 'Included in VAT calculation' : 'Not included in VAT calculation'
+        ));
+      }
     }
     if (nonZero(summary.additionalCharges)) rows.push(moneyRow('additional', 'Other charges', summary.additionalCharges));
-  } else if (type === TRANSACTION_TYPES.SERVICE_BOOKING) {
-    if (showZeroFees || nonZero(summary.serviceFee)) rows.push(moneyRow('service-fee', 'Service fee', summary.serviceFee));
-    if (showZeroFees || nonZero(summary.bookingFee)) rows.push(moneyRow('booking-fee', 'Booking fee', summary.bookingFee));
-    if (showZeroFees || nonZero(summary.homeServiceFee)) rows.push(moneyRow('home-service-fee', 'Home service fee', summary.homeServiceFee));
-    if (showZeroFees || nonZero(summary.additionalCharges)) rows.push(moneyRow('additional', 'Additional service charges', summary.additionalCharges));
-  } else {
+  } else if (type !== TRANSACTION_TYPES.SERVICE_BOOKING) {
     if (showZeroFees || nonZero(summary.deliveryFee)) rows.push(moneyRow('delivery-total', 'Delivery fee', summary.deliveryFee));
     if (showZeroFees || nonZero(summary.additionalCharges)) rows.push(moneyRow('additional', 'Additional charges', summary.additionalCharges));
   }
 
-  if (nonZero(summary.discountAmount)) rows.push(moneyRow('discount', 'Voucher discount', summary.discountAmount, '−'));
+  if (taxIncludesDelivery) appendTaxRows();
   if (summary.paymentMethod) rows.push(textRow('payment-method', 'Payment method', readableValue(summary.paymentMethod)));
   if (summary.paymentStatus) rows.push(textRow('payment-status', 'Payment status', readableValue(summary.paymentStatus)));
   return rows;

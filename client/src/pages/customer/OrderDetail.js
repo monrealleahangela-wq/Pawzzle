@@ -8,7 +8,7 @@ import OrderReviewModal from '../../components/OrderReviewModal';
 import DeliveryAssignmentFields, { emptyExternal } from '../../components/delivery/DeliveryAssignmentFields';
 import { normalizeRefundPolicy, refundPolicyLabel } from '../../utils/refundPolicy';
 import PaymentBreakdown from '../../components/payments/PaymentBreakdown';
-import { formatPeso, orderPaymentSummary, paymentSummaryRows } from '../../utils/paymentSummary';
+import { formatPeso, orderLineItemRows, orderPaymentSummary, paymentSummaryRows } from '../../utils/paymentSummary';
 
 const OrderDetail = () => {
   const { id } = useParams();
@@ -33,6 +33,7 @@ const OrderDetail = () => {
   const [deliveryAssignment, setDeliveryAssignment] = useState(null);
   const orderRefundPolicy = normalizeRefundPolicy(order?.refundPolicySnapshot || order?.store?.refundPolicy);
   const authoritativePaymentSummary = order ? orderPaymentSummary(order) : null;
+  const orderLineItems = orderLineItemRows(order?.items);
 
   useEffect(() => {
     if (!order?._id || !order.delivery || user?.role === 'customer') return;
@@ -133,6 +134,7 @@ const OrderDetail = () => {
     try {
       const paymentSummary = orderPaymentSummary(order);
       const pricingRows = paymentSummaryRows(paymentSummary);
+      const itemRows = orderLineItemRows(order.items);
       const sellerName = order.invoiceSnapshot?.sellerName || order.store?.name || 'Store';
       const sellerAddress = order.invoiceSnapshot?.sellerAddress || '';
       setIsGeneratingInvoice(false);
@@ -143,8 +145,11 @@ const OrderDetail = () => {
         Order ID: ${order.orderNumber}
         Date: ${new Date(order.orderDate).toLocaleDateString()}
         Customer: ${order.customer?.firstName} ${order.customer?.lastName}
+        ITEMS
+        ${itemRows.map(item => `${item.name} | ${item.quantity} × ${formatPeso(item.unitPrice)} | Line total: ${formatPeso(item.lineTotal)}`).join('\n        ')}
+        PRICING SUMMARY
         ${pricingRows.map(row => `${row.label}: ${row.displayValue}`).join('\n        ')}
-        Final Total: ${formatPeso(paymentSummary.finalTotal)}
+        Total to Pay: ${formatPeso(paymentSummary.finalTotal)}
         Refund Policy: ${refundPolicyLabel(orderRefundPolicy.type)}
         Policy Summary: ${orderRefundPolicy.summary}
         Policy Conditions: ${orderRefundPolicy.conditions || 'None specified'}
@@ -341,7 +346,7 @@ const OrderDetail = () => {
             )}
           </div>
           <div className="space-y-4">
-            {order.items.map((item, index) => (
+            {orderLineItems.map((item, index) => (
               <div key={index} className="flex items-start gap-4 pb-4 border-b last:border-b-0 animate-slide-up" style={{ animationDelay: `${index * 50}ms` }}>
                 <div className="w-20 h-20 sm:w-24 sm:h-24 bg-slate-100 rounded-xl flex items-center justify-center flex-shrink-0 overflow-hidden shadow-sm border border-slate-100">
                   {item.image ? (
@@ -365,7 +370,7 @@ const OrderDetail = () => {
                 <div className="flex-1 min-w-0">
                   <h4 className="font-black text-slate-900 uppercase text-sm sm:text-base truncate">{item.name}</h4>
                   <p className="text-xs text-slate-500 font-bold uppercase tracking-widest mt-1">
-                    {item.itemType} • {item.quantity} × ₱{item.price?.toLocaleString()}
+                    {item.itemType} • {formatPeso(item.unitPrice)} × {item.quantity}
                   </p>
 
                   {user?.role === 'customer' && order.status === 'delivered' && (
@@ -380,17 +385,17 @@ const OrderDetail = () => {
 
                   <div className="mt-2 block sm:hidden">
                     <span className="font-black text-primary-600">
-                      ₱{(item.price * item.quantity).toLocaleString()}
+                      Line total: {formatPeso(item.lineTotal)}
                     </span>
                   </div>
                 </div>
                 <div className="text-right">
                   <span className="hidden sm:block font-black text-slate-900">
-                    ₱{(item.price * item.quantity).toLocaleString()}
+                    {formatPeso(item.lineTotal)}
                   </span>
                   {user?.role !== 'customer' && (
                     <p className="text-[9px] font-bold text-emerald-600 uppercase tracking-widest mt-1">
-                      +₱{(item.price * item.quantity * 0.9).toLocaleString()} Net
+                      +{formatPeso(item.lineTotal * 0.9)} Net
                     </p>
                   )}
                 </div>

@@ -2,7 +2,7 @@ import React from 'react';
 import { cn } from '../../utils';
 
 const ChartContainer = ({ className, ...props }) => (
-  <div className={cn("relative", className)} {...props} />
+  <div className={cn("relative w-full min-w-0 max-w-full overflow-hidden", className)} {...props} />
 );
 
 const ChartTooltip = ({ active, payload, label, className }) => {
@@ -175,7 +175,7 @@ const PieChart = ({ data, className, size = 200 }) => {
   ];
 
   return (
-    <div className={cn("relative", className)} style={{ width: size, height: size }}>
+    <div className={cn("relative mx-auto w-full min-w-0", className)} style={{ maxWidth: size, aspectRatio: '1 / 1' }}>
       <svg className="w-full h-full" viewBox="0 0 100 100">
         {data.map((item, index) => {
           const percentage = item.value / total;

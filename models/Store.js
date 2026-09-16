@@ -62,7 +62,7 @@ const storeSchema = new mongoose.Schema({
   },
   legalStructure: {
     type: String,
-    enum: ['single_proprietorship', 'partnership', 'corporation', 'cooperative', 'other'],
+    enum: ['single_proprietorship', 'sole_proprietorship', 'one_person_corporation', 'partnership', 'corporation', 'cooperative', 'other'],
     default: 'single_proprietorship'
   },
   yearsInBusiness: {
@@ -82,12 +82,14 @@ const storeSchema = new mongoose.Schema({
     email: { type: String, required: true },
     website: String,
     address: {
+      unitBuilding: { type: String },
       street: { type: String, required: true },
       barangay: { type: String, required: true },
       city: { type: String, required: true },
       state: { type: String, required: true },
       zipCode: { type: String, required: true },
       country: { type: String, required: true },
+      landmark: { type: String },
       coordinates: {
         lat: { type: Number },
         lng: { type: Number }
@@ -237,6 +239,50 @@ const storeSchema = new mongoose.Schema({
       select: false,
       default: []
     }
+  },
+  // Authoritative business/tax identity verified from the Store Application.
+  // Sensitive identifiers and documents are excluded unless explicitly selected.
+  taxProfile: {
+    birRegistered: { type: Boolean, default: false },
+    declaredTaxStatus: {
+      type: String,
+      enum: ['vat_registered', 'non_vat_registered', null],
+      default: null
+    },
+    verifiedTaxStatus: {
+      type: String,
+      enum: ['vat_registered', 'non_vat_registered', null],
+      default: null
+    },
+    verificationStatus: {
+      type: String,
+      enum: ['unverified', 'pending', 'verified', 'rejected'],
+      default: 'unverified'
+    },
+    tin: { type: String, select: false },
+    branchCode: { type: String, select: false },
+    registeredName: { type: String, trim: true },
+    registeredAddress: { type: mongoose.Schema.Types.Mixed },
+    lineOfBusiness: { type: String, trim: true },
+    corDocumentUrl: { type: String, select: false },
+    sourceApplication: { type: mongoose.Schema.Types.ObjectId, ref: 'StoreApplication' },
+    submittedAt: Date,
+    verifiedAt: Date,
+    verifiedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', select: false },
+    rejectionReason: { type: String, select: false },
+    verificationNotes: { type: String, select: false },
+    updateRequestStatus: { type: String, enum: ['none', 'pending', 'resolved'], default: 'none' },
+    updateRequestedAt: Date,
+    updateRequestReason: { type: String, trim: true, maxlength: 1000, select: false }
+  },
+  businessProfile: {
+    registeredBusinessName: { type: String, trim: true },
+    tradeName: { type: String, trim: true },
+    legalStructure: { type: String, trim: true },
+    registrationAuthority: { type: String, trim: true },
+    registrationNumber: { type: String, trim: true, select: false },
+    registrationVerified: { type: Boolean, default: false },
+    sourceApplication: { type: mongoose.Schema.Types.ObjectId, ref: 'StoreApplication' }
   },
   specialties: [{
     type: String,

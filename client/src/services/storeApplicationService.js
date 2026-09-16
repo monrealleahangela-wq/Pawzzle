@@ -20,6 +20,10 @@ const storeApplicationService = {
   // Review application (Super Admin only)
   reviewApplication: (id, reviewData) => api.put(`/store-applications/${id}/review`, reviewData),
 
+  verifyTaxProfile: (id, reviewData) => api.put(`/store-applications/${id}/tax-verification`, reviewData),
+
+  getDocument: (id, documentType) => api.get(`/store-applications/${id}/documents/${documentType}`),
+
   // Get user's application
   getUserApplication: () => api.get('/store-applications/my-application')
 };

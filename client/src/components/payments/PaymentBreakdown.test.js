@@ -2,7 +2,7 @@ import React from 'react';
 import '@testing-library/jest-dom';
 import { render, screen } from '@testing-library/react';
 import PaymentBreakdown from './PaymentBreakdown';
-import { bookingPaymentSummary, orderPaymentSummary } from '../../utils/paymentSummary';
+import { bookingPaymentSummary, orderLineItemRows, orderPaymentSummary, paymentSummaryRows } from '../../utils/paymentSummary';
 
 describe('context-aware payment breakdown', () => {
   test('product orders show their delivery and VAT details without service or booking rows', () => {
@@ -16,7 +16,9 @@ describe('context-aware payment breakdown', () => {
         taxStatus: 'vat_registered',
         pricingMode: 'inclusive',
         vatRatePercent: 12,
+        vatExclusiveAmount: 892.86,
         vatAmount: 107.14,
+        deliveryFeeTaxable: false,
         deliveryFee: 125,
         serviceFee: 30,
         bookingFee: 20,
@@ -38,8 +40,9 @@ describe('context-aware payment breakdown', () => {
 
     render(<PaymentBreakdown summary={summary} />);
 
-    expect(screen.getByText('Product subtotal')).toBeInTheDocument();
-    expect(screen.getByText('VAT included (12%)')).toBeInTheDocument();
+    expect(screen.getByText('Product subtotal (VAT-inclusive)')).toBeInTheDocument();
+    expect(screen.getByText('Price before VAT')).toBeInTheDocument();
+    expect(screen.getByText('VAT (12%, included)')).toBeInTheDocument();
     expect(screen.getByText('Shipping distance')).toBeInTheDocument();
     expect(screen.getByText('5.50 km')).toBeInTheDocument();
     expect(screen.getByText('Base delivery fee')).toBeInTheDocument();
@@ -118,15 +121,86 @@ describe('context-aware payment breakdown', () => {
   test('historical product orders render without inventing unavailable taxes or charges', () => {
     const summary = orderPaymentSummary({
       items: [{ price: 200, quantity: 2 }],
-      totalAmount: 400
+      totalAmount: 400,
+      // Mirrors Mongoose defaults applied while hydrating a pre-snapshot Order.
+      pricingBreakdown: {
+        subtotal: 0,
+        finalTotal: 0,
+        taxStatus: 'non_vat',
+        pricingMode: 'inclusive',
+        vatAmount: 0
+      }
     });
 
     render(<PaymentBreakdown summary={summary} />);
 
     expect(screen.getByText('Product subtotal')).toBeInTheDocument();
-    expect(screen.getByText('Total')).toBeInTheDocument();
+    expect(screen.getAllByText('₱400.00')).toHaveLength(2);
+    expect(screen.getByText('Total to Pay')).toBeInTheDocument();
+    expect(screen.queryByText('Non-VAT')).not.toBeInTheDocument();
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
     expect(screen.queryByText('VAT / Tax')).not.toBeInTheDocument();
     expect(screen.queryByText('Additional charges')).not.toBeInTheDocument();
+    expect(screen.getByText('Detailed tax breakdown unavailable for this historical order')).toBeInTheDocument();
+  });
+
+  test('VAT-inclusive ₱1,120 is decomposed without increasing the total', () => {
+    const summary = orderPaymentSummary({
+      items: [{ itemId: 'food', name: 'Dog Food', itemType: 'product', price: 560, quantity: 2 }],
+      pricingBreakdown: {
+        calculationVersion: 1,
+        subtotal: 1120,
+        discountedSubtotal: 1120,
+        taxStatus: 'vat_registered',
+        pricingMode: 'inclusive',
+        vatRatePercent: 12,
+        vatExclusiveAmount: 1000,
+        vatAmount: 120,
+        deliveryFee: 0,
+        deliveryFeeTaxable: false,
+        finalTotal: 1120
+      }
+    });
+
+    render(<PaymentBreakdown summary={summary} />);
+
+    expect(screen.getByText('Product subtotal (VAT-inclusive)')).toBeInTheDocument();
+    expect(screen.getByText('Price before VAT')).toBeInTheDocument();
+    expect(screen.getByText('VAT (12%, included)')).toBeInTheDocument();
+    expect(screen.getAllByText('₱1,120.00')).toHaveLength(2);
+    expect(screen.getByText('₱1,000.00')).toBeInTheDocument();
+    expect(screen.getByText('₱120.00')).toBeInTheDocument();
+  });
+
+  test('line items reconcile and discounts appear before the authoritative VAT decomposition', () => {
+    const lines = orderLineItemRows([
+      { itemId: 'a', name: 'Product A', price: 500, quantity: 2 },
+      { itemId: 'b', name: 'Product B', price: 250, quantity: 1 }
+    ]);
+    expect(lines.map(line => line.lineTotal)).toEqual([1000, 250]);
+    expect(lines.reduce((sum, line) => sum + line.lineTotal, 0)).toBe(1250);
+
+    const rows = paymentSummaryRows(orderPaymentSummary({
+      items: lines,
+      deliveryMethod: 'delivery',
+      pricingBreakdown: {
+        calculationVersion: 1,
+        subtotal: 1250,
+        discountAmount: 130,
+        discountedSubtotal: 1120,
+        taxStatus: 'vat_registered',
+        pricingMode: 'inclusive',
+        vatRatePercent: 12,
+        vatExclusiveAmount: 1000,
+        vatAmount: 120,
+        deliveryFee: 80,
+        deliveryFeeTaxable: false,
+        finalTotal: 1200
+      }
+    }));
+    const keys = rows.map(row => row.key);
+    expect(keys.indexOf('discount')).toBeLessThan(keys.indexOf('vat-exclusive'));
+    expect(keys.indexOf('vat')).toBeLessThan(keys.indexOf('delivery-total'));
+    expect(rows.find(row => row.key === 'delivery-tax-treatment').displayValue).toBe('Not included in VAT calculation');
   });
 });

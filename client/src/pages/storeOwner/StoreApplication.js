@@ -26,8 +26,12 @@ const StoreApplication = () => {
     inventoryPlans: '',
     productCategories: [],
     businessName: '',
+    tradeName: '',
+    registeredBusinessName: '',
+    natureOfBusiness: '',
+    yearBusinessStarted: new Date().getFullYear(),
     businessType: '',
-    legalStructure: 'single_proprietorship',
+    legalStructure: 'sole_proprietorship',
     yearsInBusiness: 0,
     numberOfEmployees: 1,
     hasPhysicalStore: true,
@@ -37,20 +41,47 @@ const StoreApplication = () => {
       issueDate: '',
       expiryDate: ''
     },
-    taxId: '',
+    representative: {
+      fullName: [user?.firstName, user?.lastName].filter(Boolean).join(' '),
+      role: 'Owner',
+      phone: user?.phone || '',
+      email: user?.email || '',
+      isAuthorizedRepresentative: false
+    },
+    businessRegistration: {
+      authority: 'dti',
+      certificateNumber: '',
+      registeredName: '',
+      registrationDate: '',
+      expirationDate: ''
+    },
+    taxProfile: {
+      birRegistrationStatus: 'registered',
+      taxpayerClassification: '',
+      tin: '',
+      branchCode: '000',
+      registeredName: '',
+      registeredAddress: { unitBuilding: '', street: '', barangay: '', city: '', province: 'Cavite', postalCode: '', country: 'PH' },
+      lineOfBusiness: '',
+      declaredTaxStatus: ''
+    },
+    declaration: { accepted: false, applicantName: '' },
     contactInfo: {
       phone: '',
       email: user?.email || '',
       address: {
+        unitBuilding: '',
         street: '',
         city: '',
         barangay: '',
         state: 'cavite',
+        province: 'Cavite',
         zipCode: '',
         country: 'PH',
+        landmark: '',
         coordinates: {
-          lat: 14.3121,
-          lng: 120.9326
+          lat: '',
+          lng: ''
         }
       }
     },
@@ -82,7 +113,8 @@ const StoreApplication = () => {
     businessRegistration: null,
     birRegistration: null,
     barangayClearance: null,
-    storeLogo: null
+    storeLogo: null,
+    authorityDocument: null
   });
 
   useEffect(() => {
@@ -98,10 +130,11 @@ const StoreApplication = () => {
 
   const checkExistingApplication = async () => {
     try {
-      const data = await storeApplicationService.getUserApplication();
-      if (data.application) {
-        setApplication(data.application);
-        if (data.application.status === 'approved' && user.role === 'customer') {
+      const response = await storeApplicationService.getUserApplication();
+      const currentApplication = response.data?.application;
+      if (currentApplication) {
+        setApplication(currentApplication);
+        if (currentApplication.status === 'approved' && user.role === 'customer') {
           try {
             const response = await fetch('/api/auth/me', {
               headers: {
@@ -122,34 +155,20 @@ const StoreApplication = () => {
   };
 
   const handleChange = (field, value) => {
-    if (field.includes('.')) {
-      const parts = field.split('.');
-      if (parts.length === 3) {
-        const [parent, child, grandChild] = parts;
-        setFormData(prev => ({
-          ...prev,
-          [parent]: {
-            ...prev[parent],
-            [child]: {
-              ...prev[parent][child],
-              [grandChild]: value,
-              ...(grandChild === 'city' ? { barangay: '' } : {})
-            }
-          }
-        }));
-      } else {
-        const [parent, child] = parts;
-        setFormData(prev => ({
-          ...prev,
-          [parent]: {
-            ...prev[parent],
-            [child]: value
-          }
-        }));
-      }
-    } else {
-      setFormData(prev => ({ ...prev, [field]: value }));
-    }
+    const parts = field.split('.');
+    setFormData(prev => {
+      const next = { ...prev };
+      let cursor = next;
+      parts.forEach((part, index) => {
+        if (index === parts.length - 1) cursor[part] = value;
+        else {
+          cursor[part] = { ...(cursor[part] || {}) };
+          cursor = cursor[part];
+        }
+      });
+      if (field === 'contactInfo.address.city') next.contactInfo.address.barangay = '';
+      return next;
+    });
   };
 
   const handleReferenceChange = (index, field, value) => {
@@ -187,6 +206,7 @@ const StoreApplication = () => {
             handleChange('contactInfo.address.city', city);
             handleChange('contactInfo.address.barangay', barangay);
             handleChange('contactInfo.address.zipCode', addr.postcode || '');
+            handleChange('contactInfo.address.coordinates', { lat: latitude, lng: longitude });
             
             toast.success('Location detected! Please verify the details.');
           }
@@ -222,12 +242,14 @@ const StoreApplication = () => {
       if (files.birRegistration) formDataToSend.append('birRegistration', files.birRegistration);
       if (files.barangayClearance) formDataToSend.append('barangayClearance', files.barangayClearance);
       if (files.storeLogo) formDataToSend.append('storeLogo', files.storeLogo);
+      if (files.authorityDocument) formDataToSend.append('authorityDocument', files.authorityDocument);
 
-      const data = await storeApplicationService.submitApplication(formDataToSend);
+      await storeApplicationService.submitApplication(formDataToSend);
+      const response = await storeApplicationService.getUserApplication();
       toast.success('Application submitted successfully!');
-      setApplication(data.application);
+      setApplication(response.data?.application || null);
     } catch (error) {
-      toast.error('Error submitting application');
+      toast.error(error.response?.data?.errors?.[0]?.msg || error.response?.data?.message || 'Error submitting application');
     } finally {
       setLoading(false);
     }
@@ -257,8 +279,12 @@ const StoreApplication = () => {
       inventoryPlans: application.inventoryPlans || '',
       productCategories: application.productCategories || [],
       businessName: application.businessName || '',
+      tradeName: application.tradeName || application.businessName || '',
+      registeredBusinessName: application.registeredBusinessName || application.businessRegistration?.registeredName || '',
+      natureOfBusiness: application.natureOfBusiness || '',
+      yearBusinessStarted: application.yearBusinessStarted || new Date().getFullYear(),
       businessType: application.businessType || '',
-      legalStructure: application.legalStructure || 'single_proprietorship',
+      legalStructure: application.legalStructure || 'sole_proprietorship',
       yearsInBusiness: application.yearsInBusiness || 0,
       numberOfEmployees: application.numberOfEmployees || 1,
       hasPhysicalStore: application.hasPhysicalStore ?? true,
@@ -268,17 +294,24 @@ const StoreApplication = () => {
         issueDate: '',
         expiryDate: ''
       },
-      taxId: application.taxId || '',
+      representative: application.representative || { fullName: '', role: 'Owner', phone: '', email: user?.email || '', isAuthorizedRepresentative: false },
+      businessRegistration: application.businessRegistration || { authority: 'dti', certificateNumber: '', registeredName: '', registrationDate: '', expirationDate: '' },
+      taxProfile: application.taxProfile || { birRegistrationStatus: 'registered', taxpayerClassification: '', tin: '', branchCode: '000', registeredName: '', registeredAddress: { unitBuilding: '', street: '', barangay: '', city: '', province: 'Cavite', postalCode: '', country: 'PH' }, lineOfBusiness: '', declaredTaxStatus: '' },
+      declaration: { accepted: false, applicantName: application.declaration?.applicantName || '' },
       contactInfo: {
         phone: application.contactInfo?.phone || '',
         email: application.contactInfo?.email || user?.email || '',
         address: {
+          unitBuilding: application.contactInfo?.address?.unitBuilding || '',
           street: application.contactInfo?.address?.street || '',
           city: application.contactInfo?.address?.city || '',
           barangay: application.contactInfo?.address?.barangay || '',
           state: application.contactInfo?.address?.state || 'cavite',
+          province: application.contactInfo?.address?.province || application.contactInfo?.address?.state || 'Cavite',
           zipCode: application.contactInfo?.address?.zipCode || '',
-          country: application.contactInfo?.address?.country || 'PH'
+          country: application.contactInfo?.address?.country || 'PH',
+          landmark: application.contactInfo?.address?.landmark || '',
+          coordinates: application.contactInfo?.address?.coordinates || { lat: '', lng: '' }
         }
       },
       paymentInfo: application.paymentInfo || {
@@ -491,20 +524,21 @@ const StoreApplication = () => {
            <p className="text-[12px] font-black text-neutral-400 uppercase tracking-[0.4em]">Register your business within the ecosystem</p>
         </div>
         <div className="flex gap-3">
-          {[0, 1, 2, 3, 4].map(s => (
+          {[0, 1, 2, 3, 4, 5].map(s => (
             <div key={s} className={`h-2 w-12 rounded-full transition-all duration-700 ${currentStep >= s ? 'bg-primary shadow-premium' : 'bg-neutral-100'}`} />
           ))}
         </div>
       </div>
 
       {/* Progress Steps Header */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4 p-4 bg-white rounded-[2.5rem] shadow-soft border border-slate-50">
+      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3 p-3 bg-white rounded-2xl shadow-soft border border-slate-50">
         {[
-          { icon: Info, label: 'Protocols' },
-          { icon: Building, label: 'Identity' },
-          { icon: FileText, label: 'Legal' },
-          { icon: Shield, label: 'Verification' },
-          { icon: Users, label: 'Workforce' }
+          { icon: Info, label: 'Start' },
+          { icon: Building, label: 'Business' },
+          { icon: Users, label: 'Owner & Team' },
+          { icon: MapPin, label: 'Location & Tax' },
+          { icon: FileText, label: 'Documents' },
+          { icon: Shield, label: 'Review' }
         ].map((step, idx) => (
           <div key={idx} className={`flex items-center justify-center gap-3 py-4 rounded-[1.5rem] transition-all duration-500 ${currentStep === idx ? 'bg-neutral-900 text-white shadow-strong scale-[1.05]' : 'opacity-40'}`}>
             <step.icon className="h-4 w-4" />
@@ -597,6 +631,10 @@ const StoreApplication = () => {
                   Store Name * {isFieldBroken('businessName') && <span className="px-2 py-0.5 bg-rose-100 text-rose-600 rounded-md text-[7px] animate-pulse">ACTION REQUIRED</span>}
                 </label>
                 <input type="text" className={`input-premium ${isFieldBroken('businessName') ? 'border-rose-500 ring-2 ring-rose-100' : ''}`} placeholder="Official Business Title" value={formData.businessName} onChange={(e) => handleChange('businessName', e.target.value)} required />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Registered Business Name *</label>
+                <input type="text" className="input-premium" value={formData.registeredBusinessName} onChange={(e) => { handleChange('registeredBusinessName', e.target.value); handleChange('businessRegistration.registeredName', e.target.value); }} required />
               </div>
               <div className="space-y-1.5">
                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 flex items-center gap-2">
@@ -778,13 +816,23 @@ const StoreApplication = () => {
                 </select>
               </div>
               <div className="space-y-1.5">
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Planned Operational Scope *</label>
-                <select className="input-premium" value={formData.legalStructure} onChange={(e) => handleChange('legalStructure', e.target.value)} required>
-                  <option value="single_proprietorship">Local / Neighborhood</option>
-                  <option value="partnership">City-wide / Regional</option>
-                  <option value="corporation">National / Multi-branch</option>
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Business Structure *</label>
+                <select className="input-premium" value={formData.legalStructure} onChange={(e) => { const value = e.target.value; handleChange('legalStructure', value); if (['sole_proprietorship', 'single_proprietorship'].includes(value)) handleChange('businessRegistration.authority', 'dti'); else if (['one_person_corporation', 'corporation', 'partnership'].includes(value)) handleChange('businessRegistration.authority', 'sec'); else if (value === 'cooperative') handleChange('businessRegistration.authority', 'cda'); }} required>
+                  <option value="sole_proprietorship">Sole Proprietorship</option>
+                  <option value="one_person_corporation">One Person Corporation</option>
+                  <option value="corporation">Corporation</option>
+                  <option value="partnership">Partnership</option>
+                  <option value="cooperative">Cooperative</option>
                   <option value="other">Other</option>
                 </select>
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Nature / Line of Business *</label>
+                <input className="input-premium" value={formData.natureOfBusiness} onChange={(e) => handleChange('natureOfBusiness', e.target.value)} placeholder="e.g. Pet supplies and grooming" required />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Year Business Started *</label>
+                <input type="number" min="1800" max={new Date().getFullYear()} className="input-premium" value={formData.yearBusinessStarted} onChange={(e) => handleChange('yearBusinessStarted', e.target.value)} required />
               </div>
             </div>
           </div>
@@ -792,6 +840,18 @@ const StoreApplication = () => {
 
         {currentStep === 2 && (
           <div className="card p-10 space-y-8 animate-slide-up">
+            <section className="space-y-4">
+              <div><h3 className="text-sm font-black text-slate-900">Owner / Authorized Representative</h3><p className="text-[10px] text-slate-500">Use the legal name and current contact details of the person responsible for this application.</p></div>
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <input className="input-premium" placeholder="Full legal name *" value={formData.representative.fullName} onChange={(e) => handleChange('representative.fullName', e.target.value)} required />
+                <input className="input-premium" placeholder="Role / position *" value={formData.representative.role} onChange={(e) => handleChange('representative.role', e.target.value)} required />
+                <input className="input-premium" placeholder="Contact number *" value={formData.representative.phone} onChange={(e) => handleChange('representative.phone', e.target.value)} required />
+                <input type="email" className="input-premium" placeholder="Email address *" value={formData.representative.email} onChange={(e) => handleChange('representative.email', e.target.value)} required />
+              </div>
+              <label className="flex items-center gap-3 rounded-xl border border-slate-200 p-3 text-xs text-slate-700"><input type="checkbox" checked={formData.representative.isAuthorizedRepresentative} onChange={(e) => handleChange('representative.isAuthorizedRepresentative', e.target.checked)} /> I am an authorized representative, not the registered owner.</label>
+              {formData.representative.isAuthorizedRepresentative && <label className="block rounded-xl border border-dashed border-slate-300 p-3 text-xs"><span className="mb-2 block font-bold">Proof of authority *</span><input type="file" accept=".pdf,.jpg,.jpeg,.png" onChange={(e) => handleFileChange('authorityDocument', e.target.files[0])} required /></label>}
+            </section>
+            <div className="border-t border-slate-100" />
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <div className="space-y-6">
                 <h3 className="text-[10px] font-black text-slate-900 uppercase tracking-[0.2em] flex items-center gap-2">
@@ -942,15 +1002,19 @@ const StoreApplication = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <div className="space-y-6">
                 <h3 className="text-[10px] font-black text-slate-900 uppercase tracking-[0.2em] flex items-center gap-2">
-                  <FileText className="h-3 w-3 text-primary-500" /> Identity Verification
+                  <FileText className="h-3 w-3 text-primary-500" /> Business Registration
                 </h3>
                 <div className="space-y-4">
                   <div className="space-y-1.5">
                     <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 flex items-center gap-2">
-                      Tax ID (TIN) * {isFieldBroken('taxId') && <span className="px-2 py-0.5 bg-rose-100 text-rose-600 rounded-md text-[7px] animate-pulse">VERIFICATION FAILED</span>}
+                      Registration Authority *
                     </label>
-                    <input type="text" className={`input-premium ${isFieldBroken('taxId') ? 'border-rose-500 ring-2 ring-rose-100' : ''}`} value={formData.taxId} onChange={(e) => handleChange('taxId', e.target.value)} required />
+                    <select className="input-premium" value={formData.businessRegistration.authority} onChange={(e) => handleChange('businessRegistration.authority', e.target.value)} required><option value="dti">DTI</option><option value="sec">SEC</option><option value="cda">CDA</option><option value="other">Other</option></select>
                   </div>
+                  <input className="input-premium" placeholder="Registration / certificate number *" value={formData.businessRegistration.certificateNumber} onChange={(e) => handleChange('businessRegistration.certificateNumber', e.target.value)} required />
+                  <div className="grid grid-cols-2 gap-3"><label className="text-[9px] font-bold text-slate-500">Registration date<input type="date" className="input-premium mt-1" value={formData.businessRegistration.registrationDate} onChange={(e) => handleChange('businessRegistration.registrationDate', e.target.value)} /></label><label className="text-[9px] font-bold text-slate-500">Expiration (if shown)<input type="date" className="input-premium mt-1" value={formData.businessRegistration.expirationDate} onChange={(e) => handleChange('businessRegistration.expirationDate', e.target.value)} /></label></div>
+                  <input className="input-premium" placeholder="Primary contact number *" value={formData.contactInfo.phone} onChange={(e) => handleChange('contactInfo.phone', e.target.value)} required />
+                  <input type="email" className="input-premium" placeholder="Business email *" value={formData.contactInfo.email} onChange={(e) => handleChange('contactInfo.email', e.target.value)} required />
                   <div className={`p-6 rounded-2xl border border-dashed transition-all ${isFieldBroken('governmentId') ? 'bg-rose-50 border-rose-500 ring-2 ring-rose-100' : 'bg-slate-50 border-slate-200'}`}>
                     <input type="file" onChange={(e) => handleFileChange('governmentId', e.target.files[0])} className="hidden" id="govIdFile" />
                     <label htmlFor="govIdFile" className="cursor-pointer flex flex-col items-center gap-2">
@@ -1024,6 +1088,10 @@ const StoreApplication = () => {
                       </select>
                     </div>
                     <div className="col-span-2 space-y-1.5">
+                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Unit / Building / House No.</label>
+                      <input type="text" className="input-premium" value={formData.contactInfo.address.unitBuilding || ''} onChange={(e) => handleChange('contactInfo.address.unitBuilding', e.target.value)} />
+                    </div>
+                    <div className="col-span-2 space-y-1.5">
                       <div className="flex items-center justify-between ml-1">
                         <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Street Address *</label>
                         <button 
@@ -1038,9 +1106,31 @@ const StoreApplication = () => {
                       </div>
                       <input type="text" className={`input-premium ${isFieldBroken('address') ? 'border-rose-500 ring-2 ring-rose-100' : ''}`} value={formData.contactInfo.address.street} onChange={(e) => handleChange('contactInfo.address.street', e.target.value)} required />
                     </div>
+                    <input className="input-premium" placeholder="Province *" value={formData.contactInfo.address.province} onChange={(e) => handleChange('contactInfo.address.province', e.target.value)} required />
+                    <input className="input-premium" placeholder="Postal code *" value={formData.contactInfo.address.zipCode} onChange={(e) => handleChange('contactInfo.address.zipCode', e.target.value)} required />
+                    <input className="input-premium col-span-2" placeholder="Landmark (optional)" value={formData.contactInfo.address.landmark || ''} onChange={(e) => handleChange('contactInfo.address.landmark', e.target.value)} />
                   </div>
                 )}
             </div>
+            <section className="rounded-2xl border border-primary-100 bg-primary-50 p-5 space-y-4">
+              <div><h3 className="text-sm font-black text-slate-900">BIR / Tax Information</h3><p className="text-[10px] text-slate-600">Your selection is a declaration only. Platform Admin verifies the final status from Form 2303.</p></div>
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <label className="text-[9px] font-black uppercase text-slate-500">BIR registration status<select className="input-premium mt-1" value={formData.taxProfile.birRegistrationStatus} onChange={(e) => handleChange('taxProfile.birRegistrationStatus', e.target.value)}><option value="registered">Registered</option><option value="pending_registration">Registration pending</option><option value="not_registered">Not registered</option></select></label>
+                {formData.taxProfile.birRegistrationStatus === 'registered' && <>
+                  <input className="input-premium" placeholder="TIN (000-000-000) *" value={formData.taxProfile.tin} onChange={(e) => handleChange('taxProfile.tin', e.target.value)} required />
+                  <input className="input-premium" placeholder="Branch code *" value={formData.taxProfile.branchCode} onChange={(e) => handleChange('taxProfile.branchCode', e.target.value)} required />
+                  <input className="input-premium" placeholder="BIR registered name *" value={formData.taxProfile.registeredName} onChange={(e) => handleChange('taxProfile.registeredName', e.target.value)} required />
+                  <input className="input-premium" placeholder="BIR line of business *" value={formData.taxProfile.lineOfBusiness} onChange={(e) => handleChange('taxProfile.lineOfBusiness', e.target.value)} required />
+                  <label className="text-[9px] font-black uppercase text-slate-500 md:col-span-2">Declared tax registration status<select className="input-premium mt-1" value={formData.taxProfile.declaredTaxStatus} onChange={(e) => handleChange('taxProfile.declaredTaxStatus', e.target.value)} required><option value="">Select the status shown on BIR registration</option><option value="vat_registered">VAT Registered</option><option value="non_vat_registered">Non-VAT Registered</option></select></label>
+                  <div className="md:col-span-2 flex items-center justify-between"><strong className="text-[10px] text-slate-700">BIR registered business address</strong><button type="button" className="text-[9px] font-black uppercase text-primary-700" onClick={() => handleChange('taxProfile.registeredAddress', { unitBuilding: formData.contactInfo.address.unitBuilding || '', street: formData.contactInfo.address.street, barangay: formData.contactInfo.address.barangay, city: formData.contactInfo.address.city, province: formData.contactInfo.address.province, postalCode: formData.contactInfo.address.zipCode, country: 'PH' })}>Use store address</button></div>
+                  <input className="input-premium md:col-span-2" placeholder="Registered street address *" value={formData.taxProfile.registeredAddress.street} onChange={(e) => handleChange('taxProfile.registeredAddress.street', e.target.value)} required />
+                  <input className="input-premium" placeholder="Barangay *" value={formData.taxProfile.registeredAddress.barangay} onChange={(e) => handleChange('taxProfile.registeredAddress.barangay', e.target.value)} required />
+                  <input className="input-premium" placeholder="City / municipality *" value={formData.taxProfile.registeredAddress.city} onChange={(e) => handleChange('taxProfile.registeredAddress.city', e.target.value)} required />
+                  <input className="input-premium" placeholder="Province *" value={formData.taxProfile.registeredAddress.province} onChange={(e) => handleChange('taxProfile.registeredAddress.province', e.target.value)} required />
+                  <input className="input-premium" placeholder="Postal code *" value={formData.taxProfile.registeredAddress.postalCode} onChange={(e) => handleChange('taxProfile.registeredAddress.postalCode', e.target.value)} required />
+                </>}
+              </div>
+            </section>
           </div>
         )}
 
@@ -1066,7 +1156,7 @@ const StoreApplication = () => {
                             {isFieldBroken(doc.id) && <p className="text-[7px] text-rose-600 font-black uppercase mt-0.5">RESUBMISSION REQUIRED</p>}
                           </div>
                         </div>
-                        <input type="file" className="hidden" id={doc.id} onChange={(e) => handleFileChange(doc.id, e.target.files[0])} />
+                        <input type="file" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" className="hidden" id={doc.id} onChange={(e) => handleFileChange(doc.id, e.target.files[0])} required={doc.id === 'businessRegistration' || (doc.id === 'birRegistration' && formData.taxProfile.birRegistrationStatus === 'registered')} />
                         <label htmlFor={doc.id} className={`cursor-pointer px-4 py-2 rounded-lg text-[9px] font-black uppercase transition-all shadow-sm ${isFieldBroken(doc.id) ? 'bg-rose-600 text-white hover:bg-rose-700' : 'bg-white text-primary-600 border border-slate-100 hover:bg-primary-600 hover:text-white'}`}>
                           {isFieldBroken(doc.id) ? 'Redo Upload' : files[doc.id] ? 'Replace' : 'Upload'}
                         </label>
@@ -1128,8 +1218,15 @@ const StoreApplication = () => {
               ))}
             </div>
 
+            <div className="rounded-2xl border border-primary-100 bg-primary-50 p-5 space-y-3">
+              <h3 className="text-sm font-black text-slate-900">Review & Declaration</h3>
+              <p className="text-xs leading-relaxed text-slate-600">I confirm that the business, location, registration, and tax information provided is accurate and matches the submitted documents. I understand that my declared VAT status is not authoritative until Platform Admin verifies it.</p>
+              <input className="input-premium bg-white" placeholder="Applicant full name *" value={formData.declaration.applicantName} onChange={(e) => handleChange('declaration.applicantName', e.target.value)} required />
+              <label className="flex items-start gap-3 text-xs font-bold text-slate-700"><input type="checkbox" className="mt-0.5" checked={formData.declaration.accepted} onChange={(e) => handleChange('declaration.accepted', e.target.checked)} required /> I accept this declaration and submit the application for manual review.</label>
+            </div>
+
             <button 
-              type="button" 
+              type={user.role === 'admin' ? 'button' : 'submit'}
               onClick={user.role === 'admin' ? handleExpansionRequest : undefined}
               disabled={loading} 
               className="w-full py-6 bg-primary-600 text-white rounded-[2rem] text-xs font-black uppercase tracking-[0.4em] hover:bg-slate-900 transition-all shadow-2xl shadow-primary-200 disabled:opacity-50 active:scale-95"

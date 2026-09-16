@@ -19,6 +19,7 @@ const {
   rejectVerification,
   getTaxConfiguration,
   updateTaxConfiguration,
+  requestTaxProfileUpdate,
   getRefundPolicy,
   updateRefundPolicy,
   getDeliveryPricing,
@@ -62,6 +63,7 @@ router.put('/my-store', authenticate, adminOnly, updateStoreValidation, updateSt
 router.get('/settings', authenticate, adminOrStaff, getMyStore);
 router.put('/settings', authenticate, adminOnly, updateStoreValidation, updateStore);
 router.put('/my-store/tax-configuration', authenticate, adminOnly, updateTaxConfiguration);
+router.post('/my-store/tax-profile-update-request', authenticate, adminOnly, requestTaxProfileUpdate);
 router.get('/my-store/refund-policy', authenticate, adminOnly, getRefundPolicy);
 router.put('/my-store/refund-policy', authenticate, adminOnly, updateRefundPolicy);
 router.get('/my-store/delivery-pricing', authenticate, adminOnly, getDeliveryPricing);

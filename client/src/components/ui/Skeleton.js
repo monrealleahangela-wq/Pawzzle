@@ -12,7 +12,7 @@ const Skeleton = React.forwardRef(({ className, ...props }, ref) => (
 Skeleton.displayName = "Skeleton";
 
 const SkeletonCard = () => (
-  <div className="rounded-2xl bg-white/80 backdrop-blur-md border border-neutral-200/50 shadow-soft p-6 space-y-4">
+  <div className="space-y-4 rounded-xl border border-neutral-200/50 bg-white/80 p-4 shadow-soft backdrop-blur-md sm:p-5">
     <Skeleton className="h-6 w-3/4" />
     <Skeleton className="h-4 w-1/2" />
     <Skeleton className="h-20 w-full" />

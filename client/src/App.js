@@ -230,7 +230,7 @@ function App() {
                   <Route path="superadmin/dashboard" element={<ProtectedRoute roles={['super_admin']}><SuperAdminDashboard /></ProtectedRoute>} />
                   <Route path="superadmin/permissions" element={<ProtectedRoute roles={['super_admin']}><RolePermissions /></ProtectedRoute>} />
                   <Route path="superadmin/account-management" element={<ProtectedRoute roles={['super_admin']}><AccountManagement /></ProtectedRoute>} />
-                  <Route path="superadmin/store-applications" element={<ProtectedRoute roles={['super_admin']}><StoreApplications /></ProtectedRoute>} />
+                  <Route path="superadmin/store-applications" element={<ProtectedRoute roles={['super_admin', 'platform_admin']}><StoreApplications /></ProtectedRoute>} />
                   <Route path="superadmin/transaction-history" element={<ProtectedRoute roles={['super_admin']}><TransactionHistory /></ProtectedRoute>} />
                   <Route path="superadmin/system-analytics" element={<ProtectedRoute roles={['super_admin']}><SystemAnalytics /></ProtectedRoute>} />
                   <Route path="superadmin/booking-history" element={<ProtectedRoute roles={['super_admin']}><BookingHistory /></ProtectedRoute>} />

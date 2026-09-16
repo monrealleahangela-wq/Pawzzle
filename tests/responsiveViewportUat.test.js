@@ -85,8 +85,10 @@ test('content-sized controls retain readable labels instead of shrinking or clip
   assert.match(services, /sm:min-w-\[15rem\]/);
   assert.doesNotMatch(services, /!pl-20|md:w-48/);
   assert.match(button, /min-h-9 h-auto/);
-  assert.match(button, /whitespace-normal break-words/);
-  assert.match(badge, /max-w-full min-w-0[^"]*whitespace-normal break-words/);
+  assert.match(button, /whitespace-normal break-normal/);
+  assert.doesNotMatch(button, /whitespace-normal break-words/);
+  assert.match(badge, /max-w-full min-w-0[^"]*whitespace-normal break-normal/);
+  assert.doesNotMatch(badge, /whitespace-normal break-words/);
   assert.match(modal, /flex flex-wrap items-center justify-end/);
   assert.match(layout, /whitespace-normal break-words/);
   assert.doesNotMatch(layout, /tracking-tight truncate">\{(?:item|group|child)\.label\}/);

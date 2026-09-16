@@ -2,8 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { DollarSign, Plus, Receipt, Truck, Wallet, X } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { financeService, purchaseOrderService } from '../../services/apiService';
+import { formatPeso } from '../../utils/paymentSummary';
 
-const money = value => `₱${Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const money = formatPeso;
 const inputClass = 'w-full h-9 px-3 rounded-lg border border-slate-200 bg-white text-xs outline-none focus:border-emerald-500';
 
 export default function FinanceManagement() {

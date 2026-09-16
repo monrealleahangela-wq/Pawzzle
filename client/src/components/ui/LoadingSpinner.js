@@ -35,18 +35,17 @@ export const LoadingSpinner = ({ size = 'md', className = '' }) => {
 };
 
 export const PageLoader = ({ message = 'Loading...' }) => (
-  <div className="min-h-screen bg-gradient-to-br from-neutral-50 via-white to-primary-50/30 flex items-center justify-center">
-    <div className="text-center space-y-6">
+  <div className="flex min-h-[min(70vh,36rem)] items-center justify-center bg-neutral-50 px-4">
+    <div className="space-y-4 text-center">
       <div className="relative">
-        <div className="w-20 h-20 bg-gradient-to-r from-primary-500 to-secondary-500 rounded-2xl animate-pulse-slow shadow-glow">
+        <div className="mx-auto h-14 w-14 rounded-xl bg-primary-600 shadow-soft">
           <div className="w-full h-full flex items-center justify-center">
             <LoadingSpinner size="lg" className="text-white" />
           </div>
         </div>
-        <div className="absolute inset-0 bg-gradient-to-r from-primary-500 to-secondary-500 rounded-2xl animate-ping opacity-20"></div>
       </div>
       <div className="space-y-2">
-        <p className="text-lg font-medium text-neutral-700 animate-fade-in">{message}</p>
+        <p className="text-sm font-medium text-neutral-700 animate-fade-in">{message}</p>
         <div className="flex justify-center space-x-1">
           {[0, 1, 2].map((i) => (
             <div

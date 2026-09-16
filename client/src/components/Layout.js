@@ -464,21 +464,35 @@ const Layout = () => {
   const isCustomerUI = user?.role === 'customer';
   const isStoreOwnerUI = user?.role === 'store_owner' || user?.role === 'admin';
   const isPlatformAdminUI = PLATFORM_ADMIN_ROLES.has(user?.role);
+  const isStaffUI = user?.role === 'staff' || OPERATIONAL_ROLES.has(user?.role);
+  const isSupplierUI = user?.role === 'supplier';
+  const isCompactShell = isCustomerUI || isPlatformAdminUI || isSupplierUI;
   const sidebarWidth = isPlatformAdminUI
     ? (sidebarCollapsed ? 'w-[68px]' : 'w-[248px]')
-    : isCustomerUI
+    : (isCustomerUI || isSupplierUI)
     ? (sidebarCollapsed ? 'w-[72px]' : 'w-[240px]')
     : (sidebarCollapsed ? 'w-[84px]' : 'w-[280px]');
   const contentPadding = isPlatformAdminUI
     ? (isSidebarPinned ? 'lg:pl-[248px]' : 'lg:pl-[68px]')
-    : isCustomerUI
+    : (isCustomerUI || isSupplierUI)
     ? (isSidebarPinned ? 'lg:pl-[240px]' : 'lg:pl-[72px]')
     : (isSidebarPinned ? 'lg:pl-[280px]' : 'lg:pl-[84px]');
   const headerOffset = isPlatformAdminUI
     ? (sidebarCollapsed ? 'lg:left-[68px]' : 'lg:left-[248px]')
-    : isCustomerUI
+    : (isCustomerUI || isSupplierUI)
     ? (sidebarCollapsed ? 'lg:left-[72px]' : 'lg:left-[240px]')
     : (sidebarCollapsed ? 'lg:left-[84px]' : 'lg:left-[280px]');
+  const workspaceLabel = isPlatformAdminUI
+    ? 'Platform Operations'
+    : isStoreOwnerUI
+      ? 'Store Operations'
+      : isSupplierUI
+        ? 'Supplier Workspace'
+        : isStaffUI
+          ? 'Staff Workspace'
+          : isCustomerUI
+            ? 'Customer Marketplace'
+            : 'Pawzzle';
 
   const renderNavItems = (items, collapsed = false, onNav) => (
     <div className="space-y-2">
@@ -511,7 +525,7 @@ const Layout = () => {
   if (pendingProfessional) return <><Outlet /><PasswordChangeModal /></>;
 
   return (
-    <div className={`app-shell min-h-screen w-full max-w-full min-w-0 bg-neutral-50 dark:bg-slate-950 flex flex-col lg:flex-row transition-colors duration-300 ${user?.role === 'customer' ? 'customer-ui-shell' : ''} ${user?.role === 'staff' ? 'staff-ui-shell' : ''} ${isStoreOwnerUI ? 'store-owner-ui-shell' : ''} ${isPlatformAdminUI ? 'super-admin-ui-shell' : ''} ${isLandingPage ? '!bg-transparent' : ''}`}>
+    <div className={`app-shell min-h-screen w-full max-w-full min-w-0 bg-neutral-50 dark:bg-slate-950 flex flex-col lg:flex-row transition-colors duration-300 ${isCustomerUI ? 'customer-ui-shell' : ''} ${isStaffUI ? 'staff-ui-shell' : ''} ${isStoreOwnerUI ? 'store-owner-ui-shell' : ''} ${isSupplierUI ? 'supplier-ui-shell' : ''} ${isPlatformAdminUI ? 'super-admin-ui-shell' : ''} ${isLandingPage ? '!bg-transparent' : ''}`}>
       
       {!isLandingPage && (
         <div className="fixed top-0 left-0 h-1 bg-gradient-to-r from-primary via-secondary to-primary z-[100] transition-all duration-300" 
@@ -543,7 +557,7 @@ const Layout = () => {
           </nav>
 
           <div className={`shrink-0 border-t border-slate-50 py-4 space-y-1 ${sidebarCollapsed ? 'px-3' : 'px-5'}`}>
-            <button onClick={toggleTheme} className={`sidebar-nav-item !py-4 ${sidebarCollapsed ? 'justify-center px-0' : 'px-6'}`}>
+            <button onClick={toggleTheme} aria-label="Change color theme" className={`sidebar-nav-item !py-4 ${sidebarCollapsed ? 'justify-center px-0' : 'px-6'}`}>
               {theme === 'dark' ? <Sun className="h-5 w-5 text-amber-500" /> : <Moon className="h-5 w-5 text-slate-400" />}
               {!sidebarCollapsed && <span className="text-xs">Appearance</span>}
             </button>
@@ -555,7 +569,7 @@ const Layout = () => {
               </button>
             )}
 
-            <button onClick={toggleSidebar} className={`flex items-center gap-5 px-6 py-4 text-slate-200 hover:text-primary transition-all duration-300 w-full ${sidebarCollapsed ? 'justify-center px-0' : ''}`}>
+            <button onClick={toggleSidebar} aria-label={isSidebarPinned ? 'Collapse navigation' : 'Expand navigation'} className={`flex items-center gap-5 px-6 py-4 text-slate-200 hover:text-primary transition-all duration-300 w-full ${sidebarCollapsed ? 'justify-center px-0' : ''}`}>
               {isSidebarPinned ? <ChevronsLeft className="h-5 w-5 shrink-0" /> : <ChevronsRight className="h-5 w-5 shrink-0" />}
               {!sidebarCollapsed && <span className="text-[9px] font-black uppercase tracking-widest truncate">Locked</span>}
             </button>
@@ -563,19 +577,19 @@ const Layout = () => {
         </aside>
       )}
 
-      <div className={`app-content-shell w-full max-w-full flex-1 flex flex-col min-w-0 ${isLandingPage ? '' : `${contentPadding} ${isCustomerUI || isPlatformAdminUI ? 'pt-14 lg:pt-16' : 'pt-16 lg:pt-20'}`} transition-all duration-500`}>
+      <div className={`app-content-shell w-full max-w-full flex-1 flex flex-col min-w-0 ${isLandingPage ? '' : `${contentPadding} ${isCompactShell ? 'pt-14 lg:pt-16' : 'pt-16 lg:pt-20'}`} transition-all duration-500`}>
         {!isLandingPage && (
-          <header className={`fixed top-0 left-0 ${headerOffset} right-0 z-50 glass-effect dark:border-b dark:border-slate-800 ${isCustomerUI || isPlatformAdminUI ? 'h-14 lg:h-16' : 'h-16 lg:h-20'} flex items-center px-4 sm:px-6 lg:px-8 justify-between transition-all duration-500 shadow-soft`}>
+          <header className={`fixed top-0 left-0 ${headerOffset} right-0 z-50 glass-effect dark:border-b dark:border-slate-800 ${isCompactShell ? 'h-14 lg:h-16' : 'h-16 lg:h-20'} flex items-center px-4 sm:px-6 lg:px-8 justify-between transition-all duration-500 shadow-soft`}>
             <div className="flex items-center gap-6">
               <div className="lg:hidden">
-                <button onClick={() => setIsMobileMenuOpen(true)} className="p-2.5 bg-white shadow-soft rounded-xl text-neutral-800">
+                <button onClick={() => setIsMobileMenuOpen(true)} aria-label="Open navigation" className="p-2.5 bg-white shadow-soft rounded-xl text-neutral-800">
                   <Menu className="h-5 w-5" />
                 </button>
               </div>
               <div className="hidden lg:flex items-center gap-4">
                  <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
                  <span className="text-[11px] font-black text-neutral-400 uppercase tracking-[0.4em]">
-                   {isPlatformAdminUI ? 'Platform Operations' : 'Store Operations'}
+                   {workspaceLabel}
                  </span>
               </div>
             </div>
@@ -619,8 +633,8 @@ const Layout = () => {
           </header>
         )}
 
-        <main className={`app-content-main w-full max-w-full min-w-0 flex-1 ${isCustomerUI || isPlatformAdminUI ? 'p-3 sm:p-4 lg:p-5' : 'p-4 sm:p-5 lg:p-8'} animate-fade-up ${isLandingPage ? 'p-0' : ''}`}>
-          <div className={`app-page relative z-10 w-full max-w-full min-w-0 ${user?.role === 'customer' ? 'customer-interface' : ''} ${user?.role === 'staff' ? 'staff-interface' : ''} ${isStoreOwnerUI ? 'store-owner-interface' : ''} ${isPlatformAdminUI ? 'super-admin-interface' : ''}`}>
+        <main className={`app-content-main w-full max-w-full min-w-0 flex-1 ${isCompactShell ? 'p-3 sm:p-4 lg:p-5' : 'p-4 sm:p-5 lg:p-8'} animate-fade-up ${isLandingPage ? 'p-0' : ''}`}>
+          <div className={`app-page relative z-10 w-full max-w-full min-w-0 ${isCustomerUI ? 'customer-interface' : ''} ${isStaffUI ? 'staff-interface' : ''} ${isStoreOwnerUI ? 'store-owner-interface' : ''} ${isSupplierUI ? 'supplier-interface' : ''} ${isPlatformAdminUI ? 'super-admin-interface' : ''}`}>
             <Outlet />
           </div>
         </main>
@@ -629,7 +643,7 @@ const Layout = () => {
       <div className={`fixed inset-0 z-[150] lg:hidden transition-all duration-500 ${isMobileMenuOpen ? 'visible' : 'invisible'}`}>
         <div className={`absolute inset-0 bg-neutral-900/40 backdrop-blur-md transition-opacity duration-500 ${isMobileMenuOpen ? 'opacity-100' : 'opacity-0'}`}
              onClick={() => setIsMobileMenuOpen(false)} />
-        <aside className={`absolute top-0 left-0 h-full ${isCustomerUI ? 'w-[260px]' : 'w-[280px]'} max-w-[88vw] bg-white dark:bg-slate-900 shadow-premium transition-transform duration-500 ease-[cubic-bezier(0.23,1,0.32,1)] flex flex-col ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+        <aside className={`absolute top-0 left-0 h-full ${isCustomerUI || isSupplierUI ? 'w-[260px]' : 'w-[280px]'} max-w-[88vw] bg-white dark:bg-slate-900 shadow-premium transition-transform duration-500 ease-[cubic-bezier(0.23,1,0.32,1)] flex flex-col ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
           <div className="shrink-0 p-5 flex items-center justify-between">
             <div className="flex items-center gap-4">
               <div className="w-10 h-10 bg-primary rounded-2xl flex items-center justify-center">
@@ -637,7 +651,7 @@ const Layout = () => {
               </div>
               <span className="font-black text-neutral-900 tracking-tighter uppercase text-xl">PAWZZLE</span>
             </div>
-            <button onClick={() => setIsMobileMenuOpen(false)} className="p-2.5 bg-neutral-50 rounded-xl text-neutral-400">
+            <button onClick={() => setIsMobileMenuOpen(false)} aria-label="Close navigation" className="p-2.5 bg-neutral-50 rounded-xl text-neutral-400">
               <X className="h-5 w-5" />
             </button>
           </div>

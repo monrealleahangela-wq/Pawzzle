@@ -335,6 +335,7 @@ export const storeService = {
   getStoreLocations: () => api.get('/stores/locations'),
   getTaxConfiguration: (id) => api.get(`/stores/${id}/tax-configuration`),
   updateTaxConfiguration: (data) => api.put('/stores/my-store/tax-configuration', data),
+  requestTaxProfileUpdate: (reason) => api.post('/stores/my-store/tax-profile-update-request', { reason }),
   getRefundPolicy: (id) => api.get(id ? `/stores/${id}/refund-policy` : '/stores/my-store/refund-policy'),
   updateRefundPolicy: (data, id) => api.put(id ? `/stores/${id}/refund-policy` : '/stores/my-store/refund-policy', data),
   getDeliveryPricing: (id) => api.get(id ? `/stores/${id}/delivery-pricing` : '/stores/my-store/delivery-pricing'),
