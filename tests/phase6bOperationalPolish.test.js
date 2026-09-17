@@ -61,7 +61,7 @@ test('workforce visibility recognizes current breaks without replacing assignmen
 
 test('store settings organize existing systems without introducing duplicate persistence', () => {
   const ui = source('client/src/pages/admin/AdminSettings.js');
-  for (const group of ['Business', 'Financial', 'Staff', 'Notifications', 'Appearance']) assert.match(ui, new RegExp(group));
+  for (const group of ['General', 'Business & Tax', 'Delivery', 'Policies', 'Workforce', 'Notifications', 'Appearance']) assert.match(ui, new RegExp(group));
   assert.match(ui, /to="\/admin\/roles"/);
   assert.match(ui, /to="\/admin\/store"/);
   assert.match(ui, /No duplicate notification switches/);

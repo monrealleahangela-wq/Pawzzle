@@ -213,7 +213,7 @@ function App() {
                   <Route path="admin/vouchers" element={<ProtectedRoute roles={['admin', 'super_admin']}><VoucherManagement /></ProtectedRoute>} />
                   <Route path="admin/users" element={<ProtectedRoute roles={['super_admin']}><AdminUsers /></ProtectedRoute>} />
                   <Route path="admin/reviews" element={<ProtectedRoute roles={['admin', 'super_admin', 'staff']} requiredPermission="reviews"><ReviewManagement /></ProtectedRoute>} />
-                  <Route path="admin/settings" element={<ProtectedRoute roles={['admin', 'super_admin']}><AdminSettings /></ProtectedRoute>} />
+                  <Route path="admin/settings" element={<ProtectedRoute roles={['admin']}><AdminSettings /></ProtectedRoute>} />
                   <Route path="admin/insights" element={<ProtectedRoute roles={['admin', 'super_admin', 'staff']} requiredPermission="dss"><AdminDSS /></ProtectedRoute>} />
                   <Route path="admin/payouts" element={<ProtectedRoute roles={['admin', 'super_admin']}><StorePayout /></ProtectedRoute>} />
                   <Route path="admin/staff" element={<ProtectedRoute roles={['admin', 'super_admin']}><StaffManagement /></ProtectedRoute>} />

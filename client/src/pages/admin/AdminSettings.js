@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { storeService } from '../../services/apiService';
 import { DollarSign, Save, Settings, Shield, Zap, Globe, Settings2, Building, CheckCircle, AlertCircle, Clock, Calendar, ChevronRight, Clock3, Timer, Users, XCircle, Info, Package, Heart, PlusCircle, UserCog, Bell, Palette } from 'lucide-react';
@@ -19,8 +19,12 @@ const emptyDeliveryPricing = {
   maximumDistanceKm: ''
 };
 
+const SETTINGS_SECTIONS = new Set(['delivery', 'booking', 'modules', 'tax', 'refund', 'staff', 'notifications', 'appearance']);
+
 const AdminSettings = () => {
   const { user, updateUser } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const requestedSection = searchParams.get('section');
 
   // Real-time Updates
   useRealTimeUpdates({
@@ -31,7 +35,7 @@ const AdminSettings = () => {
     }
   });
 
-  const [activeTab, setActiveTab] = useState('delivery');
+  const [activeTab, setActiveTab] = useState(() => SETTINGS_SECTIONS.has(requestedSection) ? requestedSection : 'delivery');
   const [deliveryPricing, setDeliveryPricing] = useState(emptyDeliveryPricing);
   const [hasStoreMapLocation, setHasStoreMapLocation] = useState(false);
   const [deliveryStatus, setDeliveryStatus] = useState('not_configured');
@@ -100,6 +104,18 @@ const AdminSettings = () => {
   useEffect(() => {
     fetchData();
   }, []);
+
+  useEffect(() => {
+    setActiveTab(SETTINGS_SECTIONS.has(requestedSection) ? requestedSection : 'delivery');
+  }, [requestedSection]);
+
+  const handleSectionChange = (section) => {
+    if (!SETTINGS_SECTIONS.has(section)) return;
+    setActiveTab(section);
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.set('section', section);
+    setSearchParams(nextParams);
+  };
 
   const fetchData = async () => {
     try {
@@ -283,9 +299,11 @@ const AdminSettings = () => {
 
   const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
   const settingsGroups = [
-    { label: 'Business', tabs: [['delivery', 'Delivery'], ['booking', 'Hours'], ['modules', 'Modules']] },
-    { label: 'Financial', tabs: [['tax', 'VAT'], ['refund', 'Refunds']] },
-    { label: 'Staff', tabs: [['staff', 'Workforce']] },
+    { label: 'General', tabs: [['booking', 'Hours'], ['modules', 'Modules']] },
+    { label: 'Business & Tax', tabs: [['tax', 'Tax Information']] },
+    { label: 'Delivery', tabs: [['delivery', 'Delivery & Shipping']] },
+    { label: 'Policies', tabs: [['refund', 'Refunds']] },
+    { label: 'Workforce', tabs: [['staff', 'Staff Settings']] },
     { label: 'Notifications', tabs: [['notifications', 'Reminders']] },
     { label: 'Appearance', tabs: [['appearance', 'Branding']] }
   ];
@@ -293,7 +311,7 @@ const AdminSettings = () => {
   return (
     <div className="space-y-4 pb-12 animate-in fade-in duration-500">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 border-b border-slate-100 pb-4">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 border-b border-slate-100 pb-4 dark:border-slate-800">
         <div>
           <div className="flex items-center gap-2 mb-2">
             <Settings2 className="h-3.5 w-3.5 text-primary-600" />
@@ -303,11 +321,16 @@ const AdminSettings = () => {
             Store <span className="text-primary-600">Settings</span>
           </h1>
         </div>
+        <Link to="/admin/store" className="inline-flex h-9 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold text-slate-700 transition hover:border-primary-300 hover:text-primary-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200">
+          <Building className="h-4 w-4" />
+          Store Information
+          <ChevronRight className="h-4 w-4" />
+        </Link>
       </div>
 
-      <div className="overflow-x-auto rounded-2xl border border-slate-100 bg-white p-2 shadow-sm">
+      <div className="overflow-x-auto rounded-2xl border border-slate-100 bg-white p-2 shadow-sm dark:border-slate-800 dark:bg-slate-900">
         <div className="flex min-w-max gap-2">
-          {settingsGroups.map(group => <div key={group.label} className="flex items-center gap-1 rounded-xl bg-slate-50 p-1"><span className="px-2 text-[8px] font-black uppercase tracking-widest text-slate-400">{group.label}</span>{group.tabs.map(([value, label]) => <button key={value} type="button" onClick={() => setActiveTab(value)} className={`h-8 rounded-lg px-3 text-[10px] font-bold transition ${activeTab === value ? 'bg-white text-primary-600 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}>{label}</button>)}</div>)}
+          {settingsGroups.map(group => <div key={group.label} className="flex items-center gap-1 rounded-xl bg-slate-50 p-1 dark:bg-slate-950/60"><span className="px-2 text-[8px] font-black uppercase tracking-widest text-slate-400">{group.label}</span>{group.tabs.map(([value, label]) => <button key={value} type="button" onClick={() => handleSectionChange(value)} className={`h-8 rounded-lg px-3 text-[10px] font-bold transition ${activeTab === value ? 'bg-white text-primary-600 shadow-sm dark:bg-slate-800 dark:text-primary-300' : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white'}`}>{label}</button>)}</div>)}
         </div>
       </div>
 

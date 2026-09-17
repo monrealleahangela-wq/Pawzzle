@@ -118,6 +118,16 @@ const adminOnly = (req, res, next) => {
   next();
 };
 
+// Store business settings belong to the owning Store account. Platform Admin
+// oversight uses explicit store-id routes instead of impersonating an owner.
+const storeOwnerOnly = (req, res, next) => {
+  if (!req.user) return res.status(401).json({ message: 'Access denied. User not authenticated.' });
+  if (!isStoreAdmin(req.user)) {
+    return res.status(403).json({ message: 'Access denied. Store Owner only.' });
+  }
+  next();
+};
+
 const platformAdminOnly = (req, res, next) => {
   if (!req.user) return res.status(401).json({ message: 'Access denied. User not authenticated.' });
   if (!isPlatformAdmin(req.user)) {
@@ -183,6 +193,7 @@ module.exports = {
   superAdminOnly,
   platformAdminOnly,
   adminOnly,
+  storeOwnerOnly,
   adminOrStaff,
   requireStaffType,
   customerOnly,

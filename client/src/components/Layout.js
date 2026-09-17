@@ -13,6 +13,12 @@ import { useTheme } from '../contexts/ThemeContext';
 import { hasUiPermission, hasUiActionPermission, isCareProfessional, isProfessionalVerificationPending, OPERATIONAL_ROLES, PLATFORM_ADMIN_ROLES, effectiveStaffType } from '../utils/authorization';
 import { getStaffWorkspaceConfig } from '../utils/staffWorkspace';
 
+const navigationPathname = (path = '') => path.split(/[?#]/)[0];
+const isNavigationPathActive = (currentPath, targetPath) => {
+  const target = navigationPathname(targetPath);
+  return currentPath === target || currentPath.startsWith(`${target}/`);
+};
+
 // ═══════════════════════════════════════════════════════════════
 // NAVIGATION DATA — Role-based dropdown menu structures
 // ═══════════════════════════════════════════════════════════════
@@ -137,6 +143,7 @@ const getAdminMenu = (user) => {
     });
     const settingsChildren = [
       { path: '/admin/store', label: 'Store Details', icon: Building },
+      { path: '/admin/settings?section=delivery', label: 'Store Settings', icon: Settings },
       { path: '/admin/staff', label: 'Manage Staff', icon: Users },
       { path: '/admin/roles', label: 'Role Management', icon: ShieldCheck }
     ];
@@ -303,7 +310,7 @@ const NavLink = ({ item, isActive, collapsed, onClick }) => {
   );
 };
 
-const NavGroup = ({ group, expanded, onToggle, isActive, collapsed, onNavigate }) => {
+const NavGroup = ({ group, expanded, onToggle, isActive, collapsed, onNavigate, currentPath }) => {
   const Icon = group.icon;
   const hasActiveChild = isActive;
 
@@ -323,7 +330,7 @@ const NavGroup = ({ group, expanded, onToggle, isActive, collapsed, onNavigate }
           <div className="px-5 py-2 text-[10px] font-black text-slate-300 uppercase tracking-[0.3em] mb-2">{group.label}</div>
           <div className="space-y-1">
             {group.children.map(child => (
-              <NavLink key={child.path} item={child} isActive={window.location.pathname === child.path} collapsed={false} onClick={onNavigate} />
+              <NavLink key={child.path} item={child} isActive={isNavigationPathActive(currentPath, child.path)} collapsed={false} onClick={onNavigate} />
             ))}
           </div>
         </div>
@@ -348,7 +355,7 @@ const NavGroup = ({ group, expanded, onToggle, isActive, collapsed, onNavigate }
         <div className="pl-6 space-y-1 border-l-2 border-slate-50 ml-7 py-2">
           {group.children.map(child => {
             const ChildIcon = child.icon;
-            const childActive = window.location.pathname === child.path;
+            const childActive = isNavigationPathActive(currentPath, child.path);
             return (
               <Link
                 key={child.path}
@@ -446,9 +453,10 @@ const Layout = () => {
     const currentPath = location.pathname;
     menuItems.forEach(item => {
       if (item.children) {
-        const hasActive = item.children.some(c => currentPath === c.path || currentPath.startsWith(c.path + '/'));
-        if (hasActive && !expandedGroups[item.label]) {
+        const hasActive = item.children.some(c => isNavigationPathActive(currentPath, c.path));
+        if (hasActive) {
           setExpandedGroups(prev => {
+            if (prev[item.label]) return prev;
             const next = { ...prev, [item.label]: true };
             try { sessionStorage.setItem('pawzzle_nav_groups', JSON.stringify(next)); } catch { }
             return next;
@@ -458,7 +466,7 @@ const Layout = () => {
     });
   }, [location.pathname, menuItems]);
 
-  const isActivePath = (path) => location.pathname === path || location.pathname.startsWith(path + '/');
+  const isActivePath = (path) => isNavigationPathActive(location.pathname, path);
   const isGroupActive = (group) => group.children?.some(c => isActivePath(c.path));
   const isLandingPage = location.pathname === '/' && !isAuthenticated;
   const isCustomerUI = user?.role === 'customer';
@@ -506,6 +514,7 @@ const Layout = () => {
             isActive={isGroupActive(item)}
             collapsed={collapsed}
             onNavigate={onNav}
+            currentPath={location.pathname}
           />
         ) : (
           <NavLink

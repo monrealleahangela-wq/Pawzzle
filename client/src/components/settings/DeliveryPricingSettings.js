@@ -77,6 +77,18 @@ const DeliveryPricingSettings = ({
       </button>
     </div>
 
+    {status === 'not_configured' && !pricing.enabled && (
+      <div className="flex flex-col gap-3 rounded-xl border border-primary-200 bg-primary-50 p-3 text-sm text-primary-950 dark:border-primary-900 dark:bg-primary-950/30 dark:text-primary-100 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p className="font-semibold">Delivery pricing is not configured.</p>
+          <p className="mt-0.5 text-xs text-primary-800 dark:text-primary-200">Set your delivery rates so Pawzzle can calculate shipping automatically during Checkout.</p>
+        </div>
+        <button type="button" onClick={() => setPricing(current => ({ ...current, enabled: true }))} className="h-9 shrink-0 rounded-xl bg-primary-600 px-3 text-xs font-bold text-white transition hover:bg-primary-700">
+          Configure Delivery Pricing
+        </button>
+      </div>
+    )}
+
     {pricing.enabled && (
       <>
         <div className="rounded-xl bg-primary-50 p-3 text-sm text-primary-900 dark:bg-primary-950/30 dark:text-primary-100">

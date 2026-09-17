@@ -27,7 +27,7 @@ const {
   previewDeliveryPricing
 } = require('../controllers/storeController');
 const { submitExpansionRequest, upload } = require('../controllers/storeApplicationController');
-const { authenticate, superAdminOnly, adminOnly, adminOrStaff } = require('../middleware/auth');
+const { authenticate, superAdminOnly, adminOnly, adminOrStaff, storeOwnerOnly } = require('../middleware/auth');
 
 // Validation rules
 const createStoreValidation = [
@@ -61,15 +61,15 @@ const updateStoreValidation = [
 // Protected routes (literal paths MUST come before /:id wildcard)
 router.get('/my-store', authenticate, adminOrStaff, getMyStore);
 router.put('/my-store', authenticate, adminOnly, updateStoreValidation, updateStore);
-router.get('/settings', authenticate, adminOrStaff, getMyStore);
-router.put('/settings', authenticate, adminOnly, updateStoreValidation, updateStore);
-router.put('/my-store/tax-configuration', authenticate, adminOnly, updateTaxConfiguration);
-router.post('/my-store/tax-profile-update-request', authenticate, adminOnly, requestTaxProfileUpdate);
-router.get('/my-store/refund-policy', authenticate, adminOnly, getRefundPolicy);
-router.put('/my-store/refund-policy', authenticate, adminOnly, updateRefundPolicy);
-router.get('/my-store/delivery-pricing', authenticate, adminOnly, getDeliveryPricing);
-router.put('/my-store/delivery-pricing', authenticate, adminOnly, updateDeliveryPricing);
-router.post('/my-store/delivery-pricing/preview', authenticate, adminOnly, previewDeliveryPricing);
+router.get('/settings', authenticate, storeOwnerOnly, getMyStore);
+router.put('/settings', authenticate, storeOwnerOnly, updateStoreValidation, updateStore);
+router.put('/my-store/tax-configuration', authenticate, storeOwnerOnly, updateTaxConfiguration);
+router.post('/my-store/tax-profile-update-request', authenticate, storeOwnerOnly, requestTaxProfileUpdate);
+router.get('/my-store/refund-policy', authenticate, storeOwnerOnly, getRefundPolicy);
+router.put('/my-store/refund-policy', authenticate, storeOwnerOnly, updateRefundPolicy);
+router.get('/my-store/delivery-pricing', authenticate, storeOwnerOnly, getDeliveryPricing);
+router.put('/my-store/delivery-pricing', authenticate, storeOwnerOnly, updateDeliveryPricing);
+router.post('/my-store/delivery-pricing/preview', authenticate, storeOwnerOnly, previewDeliveryPricing);
 router.get('/dashboard/stats', authenticate, adminOrStaff, getStoreDashboard);
 router.post('/', authenticate, adminOnly, createStoreValidation, createStore);
 

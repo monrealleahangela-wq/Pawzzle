@@ -106,9 +106,9 @@ test('checkout distinguishes no rule, intentionally inactive delivery, active ca
 
 test('management routes are protected and expose read, preview, update, and platform oversight endpoints', () => {
   const routes = read('routes/stores.js');
-  assert.match(routes, /get\('\/my-store\/delivery-pricing', authenticate, adminOnly/);
-  assert.match(routes, /post\('\/my-store\/delivery-pricing\/preview', authenticate, adminOnly/);
-  assert.match(routes, /put\('\/my-store\/delivery-pricing', authenticate, adminOnly/);
+  assert.match(routes, /get\('\/my-store\/delivery-pricing', authenticate, storeOwnerOnly/);
+  assert.match(routes, /post\('\/my-store\/delivery-pricing\/preview', authenticate, storeOwnerOnly/);
+  assert.match(routes, /put\('\/my-store\/delivery-pricing', authenticate, storeOwnerOnly/);
   assert.match(routes, /post\('\/:id\/delivery-pricing\/preview', authenticate, superAdminOnly/);
   assert.match(routes, /put\('\/:id\/delivery-pricing', authenticate, superAdminOnly/);
   assert.doesNotMatch(routes, /delivery-pricing', authenticate, customerOnly/);
