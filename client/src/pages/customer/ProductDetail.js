@@ -19,6 +19,7 @@ const ProductDetail = () => {
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [isFavorite, setIsFavorite] = useState(false);
   const [isTogglingFavorite, setIsTogglingFavorite] = useState(false);
+  const [showFullDescription, setShowFullDescription] = useState(false);
   const { addToCart, buyNow } = useCart();
   const { isAuthenticated, user } = useAuth();
 
@@ -143,16 +144,20 @@ const ProductDetail = () => {
     );
   }
 
+  const description = product.description || 'A great product for your pet.';
+  const hasLongDescription = description.length > 260;
+  const isSellerAccount = user?.role === 'seller' || user?.role === 'store_owner';
+
   return (
-    <div className="max-w-6xl mx-auto space-y-4 sm:space-y-8 animate-fade-in pb-24 px-1 sm:px-0">
+    <div className="mx-auto max-w-7xl space-y-4 px-1 pb-24 sm:space-y-5 sm:px-0 lg:pb-12 animate-fade-in">
       <Link to="/products" className="inline-flex items-center text-[10px] sm:text-sm font-black text-slate-400 hover:text-primary-600 uppercase tracking-widest transition-all px-2 md:px-0">
         <ArrowLeft className="h-3 w-3 mr-1.5" />
         Back to Products
       </Link>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-10">
+      <div className="grid grid-cols-1 items-start gap-4 sm:gap-6 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:gap-8">
         {/* Product Image */}
-        <div className="bg-slate-50 rounded-3xl aspect-[4/3] sm:aspect-square flex items-center justify-center p-8 border border-slate-100 shadow-sm sm:shadow-none">
+        <div className="flex aspect-[4/3] w-full items-center justify-center rounded-3xl border border-slate-100 bg-slate-50 p-5 shadow-sm sm:p-7 lg:sticky lg:top-4 lg:max-h-[34rem] lg:shadow-none">
           {product.images?.[0] ? (
             <img src={getImageUrl(product.images[0])} alt={product.name} className="w-full h-full object-contain" />
           ) : (
@@ -161,11 +166,11 @@ const ProductDetail = () => {
         </div>
 
         {/* Product Details */}
-        <div className="space-y-4 sm:space-y-8 px-2 sm:px-0">
+        <div className="space-y-4 px-2 sm:px-0 lg:space-y-3.5">
           <div>
             <p className="text-[10px] font-black text-secondary-600 uppercase tracking-[0.2em] mb-1">{product.category}</p>
             <div className="flex justify-between items-start gap-4">
-                <h1 className="mb-2 min-w-0 text-[clamp(1.5rem,5vw,3rem)] font-black uppercase leading-tight tracking-tight text-slate-900 break-words">{product.name}</h1>
+                <h1 className="mb-1.5 min-w-0 text-[clamp(1.5rem,3vw,2.65rem)] font-black uppercase leading-tight tracking-tight text-slate-900 break-words">{product.name}</h1>
                 {user?.role !== 'super_admin' && (
                   <button 
                       onClick={handleToggleFavorite}
@@ -175,6 +180,7 @@ const ProductDetail = () => {
                           : 'bg-white border-slate-100 text-slate-300 hover:border-slate-200 hover:text-slate-400'
                       }`}
                       title={isFavorite ? 'Remove from Favorites' : 'Add to Favorites'}
+                      aria-label={isFavorite ? 'Remove from Favorites' : 'Add to Favorites'}
                   >
                       <Heart className={`h-6 w-6 ${isFavorite ? 'fill-current' : ''}`} />
                   </button>
@@ -188,7 +194,7 @@ const ProductDetail = () => {
             </div>
 
             {product.ratings && product.ratings.count > 0 && (
-              <div className="flex items-center gap-1.5 mt-3 bg-secondary-50 rounded-xl px-3 py-1.5 w-fit border border-secondary-100">
+              <div className="mt-2 flex w-fit items-center gap-1.5 rounded-xl border border-secondary-100 bg-secondary-50 px-3 py-1.5">
                 <Star className="w-4 h-4 text-secondary-500 fill-secondary-500" />
                 <span className="text-xs font-black text-primary-700 tracking-wider">
                   {product.ratings.average.toFixed(1)} <span className="font-bold opacity-70">({product.ratings.count} REVIEWS)</span>
@@ -197,81 +203,42 @@ const ProductDetail = () => {
             )}
           </div>
 
-          <div className="grid grid-cols-2 gap-2 sm:gap-4">
+          <div className="grid grid-cols-2 gap-2">
             {[
               { label: 'Category', value: product.category },
               { label: 'Brand', value: product.brand || 'Premium' },
               { label: 'Weight', value: `${product.weight || '0'} ${product.weightUnit || 'kg'}` },
               { label: 'Good for', value: product.suitableFor?.[0] || 'All pets' }
             ].map((stat, i) => (
-              <div key={i} className="bg-slate-50 p-3 sm:p-5 rounded-2xl border border-slate-100">
+              <div key={i} className="rounded-2xl border border-slate-100 bg-slate-50 px-3 py-2.5">
                 <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-0.5">{stat.label}</p>
                 <p className="text-[11px] font-black uppercase leading-tight text-slate-900 line-clamp-2 break-words sm:text-sm" title={String(stat.value)}>{stat.value}</p>
               </div>
             ))}
           </div>
 
-          <div className="space-y-2">
+          <div className="space-y-1.5">
             <h3 className="text-[10px] font-black text-slate-900 uppercase tracking-widest">Description</h3>
-            <p className="text-[11px] sm:text-base font-bold text-slate-500 leading-relaxed italic pr-4">
-              "{product.description || 'A great product for your pet.'}"
+            <p className={`pr-4 text-[11px] font-bold italic leading-relaxed text-slate-500 sm:text-sm ${hasLongDescription && !showFullDescription ? 'line-clamp-3' : ''}`}>
+              "{description}"
             </p>
+            {hasLongDescription && (
+              <button
+                type="button"
+                onClick={() => setShowFullDescription(current => !current)}
+                className="text-[10px] font-black uppercase tracking-wide text-primary-600 hover:text-primary-700"
+                aria-expanded={showFullDescription}
+              >
+                {showFullDescription ? 'Show less' : 'Read full description'}
+              </button>
+            )}
           </div>
 
-          {/* Specifications */}
-          {(product.dimensions || product.material) && (
-            <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100 flex items-center justify-between">
-              <div>
-                <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Dimensions</p>
-                <p className="text-[10px] font-black text-slate-900 uppercase tracking-tighter">
-                  {product.dimensions?.length || '0'}x{product.dimensions?.width || '0'}x{product.dimensions?.height || '0'} {product.dimensions?.unit || 'cm'}
-                </p>
-              </div>
-              {product.material && (
-                <div className="text-right">
-                  <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Material</p>
-                  <p className="text-[10px] font-black text-slate-900 uppercase">{product.material}</p>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Seller Information */}
-          {product.store && (
-            <div className="bg-white rounded-[2.5rem] p-4 sm:p-6 border border-slate-100 shadow-xl shadow-slate-200/50 flex items-center gap-4">
-              <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-slate-50 border border-slate-100 flex-shrink-0 overflow-hidden">
-                {product.store.logo ? (
-                  <img src={getImageUrl(product.store.logo)} alt={product.store.name} className="w-full h-full object-cover" />
-                ) : (
-                  <Store className="w-full h-full p-4 text-slate-200" />
-                )}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-[9px] font-black text-primary-500 uppercase tracking-[0.2em] mb-1">Verified Seller</p>
-                <h4 className="text-base font-black uppercase leading-tight tracking-tight text-slate-900 line-clamp-2 break-words sm:text-xl">{product.store.name}</h4>
-                <div className="flex items-center gap-1.5 mt-1 sm:mt-2">
-                  <MapPin className="h-3 w-3 text-slate-300" />
-                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest truncate">
-                    {[
-                      product.store.contactInfo?.address?.street,
-                      product.store.contactInfo?.address?.barangay,
-                      product.store.contactInfo?.address?.city,
-                      product.store.contactInfo?.address?.state
-                    ].filter(Boolean).join(', ') || 'Cavite'}
-                  </span>
-                </div>
-              </div>
-              <Link to={`/stores/${product.store?._id || product.store}`} className="w-10 h-10 rounded-full bg-slate-900 flex items-center justify-center text-white shrink-0 hover:scale-110 transition-transform">
-                <ArrowLeft className="h-4 w-4 rotate-180" />
-              </Link>
-            </div>
-          )}
-
           {/* Buying Options */}
-          <div className="bg-slate-900 p-4 sm:p-8 rounded-[2.5rem] shadow-2xl relative overflow-hidden hidden sm:block">
+          <div className={`relative overflow-hidden rounded-3xl bg-slate-900 p-5 shadow-2xl ${isSellerAccount ? 'hidden sm:block' : 'hidden lg:block'}`}>
             <div className="absolute top-0 right-0 w-32 h-32 bg-secondary-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
             
-            {user?.role === 'seller' || user?.role === 'store_owner' ? (
+            {isSellerAccount ? (
               <div className="relative z-10 text-center py-4">
                 <p className="text-white text-[11px] font-black uppercase tracking-[0.2em] opacity-80 mb-2">Seller Account</p>
                 <div className="p-4 bg-white/5 border border-white/10 rounded-2xl">
@@ -282,20 +249,20 @@ const ProductDetail = () => {
               </div>
             ) : (
               <>
-                <div className="flex items-center justify-between mb-6 relative z-10">
+                <div className="relative z-10 mb-4 flex items-center justify-between">
                   <h3 className="text-white text-base font-black uppercase tracking-widest italic">Quantity</h3>
                   <div className="flex items-center gap-4 bg-white/10 rounded-xl p-1 px-4 border border-white/10">
-                    <button onClick={() => setQuantity(Math.max(1, quantity - 1))} className="text-slate-400 hover:text-white"><Minus className="h-4 w-4" /></button>
+                    <button onClick={() => setQuantity(Math.max(1, quantity - 1))} className="text-slate-400 hover:text-white" aria-label="Decrease quantity"><Minus className="h-4 w-4" /></button>
                     <span className="w-8 text-center text-white font-black">{quantity}</span>
-                    <button onClick={() => setQuantity(quantity + 1)} className="text-slate-400 hover:text-white"><Plus className="h-4 w-4" /></button>
+                    <button onClick={() => setQuantity(quantity + 1)} className="text-slate-400 hover:text-white" aria-label="Increase quantity"><Plus className="h-4 w-4" /></button>
                   </div>
                 </div>
 
-                <div className="flex flex-col gap-3 relative z-10">
+                <div className="relative z-10 grid grid-cols-2 gap-3">
                   <button
                     onClick={handleAddToCart}
                     disabled={product.stockQuantity === 0}
-                    className={`w-full py-4 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all ${product.stockQuantity > 0
+                    className={`w-full rounded-2xl px-4 py-3.5 text-[10px] font-black uppercase tracking-[0.16em] transition-all ${product.stockQuantity > 0
                       ? 'bg-white/10 text-white border border-white/10 hover:bg-white/20 active:scale-95'
                       : 'bg-slate-800 text-slate-500 cursor-not-allowed'
                       }`}
@@ -305,7 +272,7 @@ const ProductDetail = () => {
                   <button
                     onClick={handleBuyNow}
                     disabled={product.stockQuantity === 0}
-                    className={`w-full py-5 rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] transition-all ${product.stockQuantity > 0
+                    className={`w-full rounded-2xl px-4 py-3.5 text-[11px] font-black uppercase tracking-[0.16em] transition-all ${product.stockQuantity > 0
                       ? 'bg-primary-600 text-white shadow-xl shadow-primary-500/20 active:scale-95'
                       : 'bg-slate-800 text-slate-500 cursor-not-allowed'
                       }`}
@@ -316,21 +283,71 @@ const ProductDetail = () => {
               </>
             )}
           </div>
+
+          {/* Specifications */}
+          {(product.dimensions || product.material) && (
+            <div className="flex items-center justify-between rounded-2xl border border-slate-100 bg-slate-50 p-3">
+              <div>
+                <p className="mb-1 text-[8px] font-black uppercase tracking-widest text-slate-400">Dimensions</p>
+                <p className="text-[10px] font-black uppercase tracking-tighter text-slate-900">
+                  {product.dimensions?.length || '0'}x{product.dimensions?.width || '0'}x{product.dimensions?.height || '0'} {product.dimensions?.unit || 'cm'}
+                </p>
+              </div>
+              {product.material && (
+                <div className="text-right">
+                  <p className="mb-1 text-[8px] font-black uppercase tracking-widest text-slate-400">Material</p>
+                  <p className="text-[10px] font-black uppercase text-slate-900">{product.material}</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Seller Information */}
+          {product.store && (
+            <div className="flex items-center gap-3 rounded-2xl border border-slate-100 bg-white p-3 shadow-lg shadow-slate-200/40 sm:p-4">
+              <div className="h-14 w-14 flex-shrink-0 overflow-hidden rounded-full border border-slate-100 bg-slate-50 sm:h-16 sm:w-16">
+                {product.store.logo ? (
+                  <img src={getImageUrl(product.store.logo)} alt={product.store.name} className="w-full h-full object-cover" />
+                ) : (
+                  <Store className="w-full h-full p-3.5 text-slate-200" />
+                )}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="mb-0.5 text-[9px] font-black uppercase tracking-[0.18em] text-primary-500">Verified Seller</p>
+                <h4 className="line-clamp-2 break-words text-base font-black uppercase leading-tight tracking-tight text-slate-900">{product.store.name}</h4>
+                <div className="mt-1 flex items-center gap-1.5">
+                  <MapPin className="h-3 w-3 text-slate-300" />
+                  <span className="truncate text-[9px] font-bold uppercase tracking-wide text-slate-400">
+                    {[
+                      product.store.contactInfo?.address?.street,
+                      product.store.contactInfo?.address?.barangay,
+                      product.store.contactInfo?.address?.city,
+                      product.store.contactInfo?.address?.state
+                    ].filter(Boolean).join(', ') || 'Cavite'}
+                  </span>
+                </div>
+              </div>
+              <Link to={`/stores/${product.store?._id || product.store}`} aria-label={`View ${product.store.name}`} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-900 text-white transition-transform hover:scale-105">
+                <ArrowLeft className="h-4 w-4 rotate-180" />
+              </Link>
+            </div>
+          )}
         </div>
       </div>
 
       {/* Mobile Fixed Action Bar */}
-      {user?.role !== 'seller' && user?.role !== 'store_owner' && (
+      {!isSellerAccount && (
         <div className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-xl border-t border-slate-100 px-4 py-3 shadow-[0_-10px_40px_rgba(0,0,0,0.08)]">
           <div className="flex items-center justify-between gap-4 max-w-lg mx-auto">
             <div className="flex items-center gap-2 bg-slate-50 rounded-xl p-1 border border-slate-100 shrink-0">
-              <button onClick={() => setQuantity(Math.max(1, quantity - 1))} className="w-8 h-8 flex items-center justify-center text-slate-400"><Minus className="h-3 w-3" /></button>
+              <button onClick={() => setQuantity(Math.max(1, quantity - 1))} className="w-8 h-8 flex items-center justify-center text-slate-400" aria-label="Decrease quantity"><Minus className="h-3 w-3" /></button>
               <span className="w-6 text-center text-[11px] font-black text-slate-900">{quantity}</span>
-              <button onClick={() => setQuantity(quantity + 1)} className="w-8 h-8 flex items-center justify-center text-slate-400"><Plus className="h-3 w-3" /></button>
+              <button onClick={() => setQuantity(quantity + 1)} className="w-8 h-8 flex items-center justify-center text-slate-400" aria-label="Increase quantity"><Plus className="h-3 w-3" /></button>
             </div>
             <button
               onClick={handleAddToCart}
               disabled={product.stockQuantity === 0}
+              aria-label={product.stockQuantity === 0 ? 'Out of stock' : 'Add to Cart'}
               className={`w-12 h-12 flex items-center justify-center rounded-xl bg-slate-100 text-slate-600 shrink-0 ${product.stockQuantity === 0 ? 'opacity-50' : ''}`}
             >
               <ShoppingBag className="h-5 w-5" />
