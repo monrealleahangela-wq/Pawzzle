@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { dssService } from '../../services/apiService';
 import { toast } from 'react-toastify';
-import { Brain, Zap, Package, ShoppingBag, Activity, BarChart3, Flame, CheckCircle, AlertCircle, Sparkles, PieChart, Info, RefreshCw, Layers, ClipboardCheck } from 'lucide-react';
+import { Brain, Zap, Package, ShoppingBag, Activity, BarChart3, Flame, CheckCircle, AlertCircle, Sparkles, PieChart, Info, RefreshCw, Layers, ClipboardCheck, PawPrint, CalendarDays, TrendingUp, TrendingDown, Minus, Database } from 'lucide-react';
 
 import { useAuth } from '../../contexts/AuthContext';
 import { OPERATIONAL_ROLES } from '../../utils/authorization';
@@ -10,7 +10,7 @@ const AdminDSS = () => {
     const { user } = useAuth();
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(true);
-    const [activeTab, setActiveTab] = useState('inventory');
+    const [activeTab, setActiveTab] = useState(OPERATIONAL_ROLES.has(user?.role) ? 'inventory' : 'demand');
     const [decision, setDecision] = useState(null);
     const [decisionLoading, setDecisionLoading] = useState(false);
 
@@ -72,6 +72,7 @@ const AdminDSS = () => {
         overview,
         salesHistory,
         inventory,
+        sellerDemand,
         recommendations,
         conversionRate,
         roleProfile
@@ -83,6 +84,45 @@ const AdminDSS = () => {
     const cardClass = "bg-white border border-slate-100 rounded-2xl p-4 sm:p-5 shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden relative group";
     const labelClass = "text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4 block";
     const titleClass = "text-lg font-black text-slate-900 tracking-tight mb-4 flex items-center gap-3 uppercase";
+    const trendMeta = (classification) => ({
+        increasing: { label: 'Increasing', icon: TrendingUp, tone: 'text-emerald-600 bg-emerald-50 border-emerald-100' },
+        stable: { label: 'Stable', icon: Minus, tone: 'text-blue-600 bg-blue-50 border-blue-100' },
+        declining: { label: 'Declining', icon: TrendingDown, tone: 'text-amber-700 bg-amber-50 border-amber-100' },
+        insufficient_data: { label: 'Insufficient Data', icon: Database, tone: 'text-slate-500 bg-slate-50 border-slate-200' }
+    }[classification] || { label: 'Insufficient Data', icon: Database, tone: 'text-slate-500 bg-slate-50 border-slate-200' });
+    const DemandPanel = ({ title, icon: Icon, section, noun }) => (
+        <section className={`${cardClass} dark:bg-slate-900 dark:border-slate-800`}>
+            <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
+                <h2 className={`${titleClass} dark:text-white mb-0`}><Icon size={19} className="text-primary-600" />{title}</h2>
+                <div className="flex flex-wrap gap-1.5 text-[9px] font-black uppercase tracking-wider">
+                    <span className="rounded-lg bg-emerald-50 px-2 py-1 text-emerald-700">{section?.summary?.increasing || 0} rising</span>
+                    <span className="rounded-lg bg-blue-50 px-2 py-1 text-blue-700">{section?.summary?.stable || 0} stable</span>
+                    <span className="rounded-lg bg-amber-50 px-2 py-1 text-amber-700">{section?.summary?.declining || 0} declining</span>
+                </div>
+            </div>
+            <div className="space-y-3">
+                {(section?.trends || []).slice(0, 5).map((row) => {
+                    const meta = trendMeta(row.classification);
+                    const TrendIcon = meta.icon;
+                    return (
+                        <article key={`${noun}-${row.id}`} className="rounded-xl border border-slate-100 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800">
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                                <p className="min-w-0 font-black text-sm text-slate-900 dark:text-white capitalize">{row.name}</p>
+                                <span className={`inline-flex shrink-0 items-center gap-1 rounded-lg border px-2 py-1 text-[9px] font-black uppercase tracking-wide ${meta.tone}`}>
+                                    <TrendIcon size={11} />{meta.label}
+                                </span>
+                            </div>
+                            <p className="mt-2 text-[11px] font-semibold leading-relaxed text-slate-500 dark:text-slate-300">{row.why}</p>
+                            {noun === 'pet' && <p className="mt-1 text-[10px] text-slate-400">{row.availableListings} currently available unique listing{row.availableListings === 1 ? '' : 's'}.</p>}
+                            {noun === 'service' && <p className="mt-1 text-[10px] text-slate-400">{row.upcoming14Days || 0} upcoming in 14 days · Capacity evidence: {row.capacity?.pressure || 'unavailable'}.</p>}
+                            <p className="mt-2 text-[10px] font-bold text-primary-600">{row.recommendation}</p>
+                        </article>
+                    );
+                })}
+                {!section?.trends?.length && <p className="rounded-xl border border-dashed border-slate-200 p-5 text-center text-xs font-semibold text-slate-400">No recorded {noun} demand is available for these comparison periods.</p>}
+            </div>
+        </section>
+    );
 
     return (
         <div className="max-w-7xl mx-auto space-y-5 pb-24 animate-in fade-in duration-500">
@@ -96,7 +136,7 @@ const AdminDSS = () => {
                         <div className="p-2 bg-primary-600/20 rounded-2xl backdrop-blur-md border border-primary-500/30">
                             <Brain size={20} className="text-primary-400" />
                         </div>
-                        <span className="text-[10px] font-black uppercase tracking-[0.5em] text-primary-400">Inventory Management DSS</span>
+                        <span className="text-[10px] font-black uppercase tracking-[0.35em] text-primary-400">Store Decision Support</span>
                     </div>
 
                     <div className="max-w-3xl">
@@ -106,7 +146,7 @@ const AdminDSS = () => {
                         <p className="text-xs sm:text-sm font-medium text-slate-300 max-w-xl leading-relaxed">
                             {isStaff 
                                 ? `Specialized decision support for ${staffType} protocols. Analyze store-specific data to optimize your assigned operations.`
-                                : 'Analyze current stock levels and sales velocity to automate procurement and maximize marketplace efficiency.'
+                                : 'Review explainable product, pet-listing, service-demand, inventory, and procurement insights from your own store activity.'
                             }
                         </p>
                     </div>
@@ -127,6 +167,7 @@ const AdminDSS = () => {
             {/* Navigation Tabs */}
             <div className="flex flex-wrap sm:flex-nowrap gap-1.5 p-1.5 bg-slate-100 rounded-2xl w-full sm:w-fit mx-auto shadow-inner">
                 {[
+                    ...(sellerDemand ? [{ id: 'demand', label: 'Demand Overview', icon: TrendingUp }] : []),
                     { id: 'inventory', label: 'Smart Alerts', icon: AlertCircle },
                     { id: 'sales', label: 'Sales Velocity', icon: BarChart3 },
                     { id: 'how-it-works', label: 'Logics & Algorithms', icon: Info }
@@ -146,6 +187,38 @@ const AdminDSS = () => {
             </div>
 
             {/* Content Areas */}
+            {activeTab === 'demand' && sellerDemand && (
+                <div className="space-y-5 animate-fade-in-up">
+                    <div className="grid grid-cols-1 gap-5 xl:grid-cols-3">
+                        <DemandPanel title="Product Demand" icon={Package} section={sellerDemand.products} noun="product" />
+                        <DemandPanel title="Pet Listing Demand" icon={PawPrint} section={sellerDemand.pets} noun="pet" />
+                        <DemandPanel title="Service Demand" icon={CalendarDays} section={sellerDemand.services} noun="service" />
+                    </div>
+                    <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
+                        <section className="lg:col-span-2 bg-white border border-slate-100 rounded-2xl p-4 sm:p-5 shadow-sm dark:bg-slate-900 dark:border-slate-800">
+                            <h2 className={`${titleClass} dark:text-white`}><ClipboardCheck size={19} className="text-primary-600" />Actionable Recommendations</h2>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                {(sellerDemand.actions || []).map((item, index) => (
+                                    <article key={`${item.domain}-${item.subject}-${index}`} className="rounded-xl border border-slate-100 p-3 dark:border-slate-700">
+                                        <p className="text-[9px] font-black uppercase tracking-widest text-primary-600">{item.domain}</p>
+                                        <p className="mt-1 text-sm font-black text-slate-900 dark:text-white">{item.subject}</p>
+                                        <p className="mt-2 text-[11px] font-semibold leading-relaxed text-slate-500 dark:text-slate-300">{item.action}</p>
+                                        <p className="mt-2 text-[10px] text-slate-400">Why: {item.why}</p>
+                                    </article>
+                                ))}
+                                {!sellerDemand.actions?.length && <p className="text-xs font-semibold text-slate-400">No evidence-backed action is currently indicated. Continue collecting store activity.</p>}
+                            </div>
+                        </section>
+                        <aside className="rounded-2xl bg-slate-900 p-5 text-white shadow-sm">
+                            <p className="text-[9px] font-black uppercase tracking-[0.25em] text-primary-400">Evidence policy</p>
+                            <p className="mt-3 text-sm font-bold leading-relaxed">Latest {sellerDemand.policy.periodDays} days compared with the previous {sellerDemand.policy.periodDays} days.</p>
+                            <p className="mt-3 text-xs leading-relaxed text-slate-300">At least {sellerDemand.policy.minimumObservations} demand events and a {sellerDemand.policy.changeThresholdPercent}% change are required before Pawzzle labels demand as increasing or declining.</p>
+                            <p className="mt-3 text-[10px] leading-relaxed text-slate-400">{sellerDemand.pets.evidenceNotice}</p>
+                        </aside>
+                    </div>
+                </div>
+            )}
+
             {activeTab === 'inventory' && (
                 <div className="space-y-10 animate-fade-in-up">
                     {/* Primary Alerts Section */}

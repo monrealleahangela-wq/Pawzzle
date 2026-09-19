@@ -62,6 +62,22 @@ const inventorySchema = new mongoose.Schema({
   isActive: {
     type: Boolean,
     default: true
+  },
+  // State for operational inventory monitoring. This is intentionally kept
+  // separate from DSS recommendations: it records threshold transitions so a
+  // persistent low-stock condition does not spam users on every scheduler run.
+  operationalAlert: {
+    active: { type: Boolean, default: false },
+    severity: {
+      type: String,
+      enum: ['low_stock', 'critical_stock', 'projected_stockout', null],
+      default: null
+    },
+    cycle: { type: Number, default: 0, min: 0 },
+    triggeredAt: Date,
+    lastNotifiedAt: Date,
+    resolvedAt: Date,
+    projectedDaysRemaining: Number
   }
 }, {
   timestamps: true

@@ -8,6 +8,7 @@ const User = require('../models/User');
 const Store = require('../models/Store');
 const Review = require('../models/Review');
 const Service = require('../models/Service');
+const Inventory = require('../models/Inventory');
 const PetProfile = require('../models/PetProfile');
 const Delivery = require('../models/Delivery');
 const Supplier = require('../models/Supplier');
@@ -15,6 +16,11 @@ const StoreApplication = require('../models/StoreApplication');
 const PurchaseOrder = require('../models/PurchaseOrder');
 const DecisionSupportService = require('../services/decisionSupportService');
 const { isPlatformAdmin, isStoreAdmin, isOperationalStaff } = require('../config/permissions');
+const {
+    getCustomerVisibleOwnerIds,
+    buildCustomerVisibleStoreFilter,
+    withCustomerComplianceFilter
+} = require('../utils/storeVisibility');
 
 // ===== CUSTOMER DSS =====
 const getLegacyCustomerInsights = async (req, res) => {
@@ -361,6 +367,70 @@ const getCustomerInsights = async (req, res) => {
     }
 };
 
+const getCustomerPetRecommendations = async (req, res) => {
+    try {
+        const validation = DecisionSupportService.validatePetMatchPreferences(req.body);
+        if (validation.errors.length) {
+            return res.status(400).json({ message: 'Review the pet compatibility questionnaire.', errors: validation.errors });
+        }
+
+        const ownerIds = await getCustomerVisibleOwnerIds();
+        const visibleStores = await Store.find(withCustomerComplianceFilter(buildCustomerVisibleStoreFilter(ownerIds)))
+            .select('_id name')
+            .lean();
+        const visibleStoreIds = visibleStores.map(store => store._id);
+        const storeNames = new Map(visibleStores.map(store => [String(store._id), store.name]));
+        const [listings, householdPets] = await Promise.all([
+            Pet.find({
+                store: { $in: visibleStoreIds },
+                isDeleted: { $ne: true },
+                approvalStatus: 'approved',
+                listingType: 'sale',
+                status: 'available',
+                isAvailable: true,
+                $or: [{ quantity: { $exists: false } }, { quantity: null }, { quantity: 1 }]
+            })
+                .select('name species breed age ageUnit birthday gender size price images isAvailable status listingType approvalStatus vaccinationStatus healthCondition temperament description store')
+                .lean(),
+            PetProfile.find({ owner: req.user._id })
+                .select('name type breed size')
+                .lean()
+        ]);
+
+        const publicListings = listings.map(pet => ({
+            ...pet,
+            store: {
+                _id: pet.store,
+                name: storeNames.get(String(pet.store)) || 'Pawzzle Store',
+                isCustomerVisible: true
+            }
+        }));
+        const assessment = DecisionSupportService.petCompatibilityAssessment(publicListings, validation.value, householdPets);
+        const limitingCriteria = Object.entries(assessment.excluded)
+            .filter(([, count]) => count > 0)
+            .map(([criterion, count]) => ({ criterion, count }));
+
+        return res.json({
+            recommendations: assessment.recommendations,
+            weights: assessment.weights,
+            excluded: assessment.excluded,
+            limitingCriteria,
+            householdProfile: {
+                savedPetCount: householdPets.length,
+                species: [...new Set(householdPets.map(pet => String(pet.type || '').toLowerCase()).filter(Boolean))]
+            },
+            methodology: 'Deterministic weighted compatibility scoring using customer questionnaire answers and explicit fields from currently available, approved pet-for-sale listings at customer-visible stores.',
+            disclaimer: assessment.disclaimer,
+            noMatchMessage: assessment.recommendations.length
+                ? null
+                : 'No suitable matches were found based on your current preferences and available listings.'
+        });
+    } catch (error) {
+        console.error('Customer pet recommendation error:', error);
+        return res.status(500).json({ message: 'Unable to calculate pet compatibility recommendations.' });
+    }
+};
+
 const getAdminInsights = async (req, res) => {
     try {
         const { storeId: queryStoreId } = req.query;
@@ -392,20 +462,18 @@ const getAdminInsights = async (req, res) => {
         const storeId = store._id;
 
         // 1. Core Analytics: Revenue & Orders
-        // Be inclusive: check both storeId AND addedBy for historical consistency
+        // Store is authoritative. Only truly store-less legacy orders may fall
+        // back to the owner; records assigned to another store never leak in.
         const [orders, bookings] = await Promise.all([
             Order.find({ 
                 $or: [
                     { store: storeId },
-                    { addedBy: store.owner }
+                    { store: null, addedBy: store.owner }
                 ], 
                 isDeleted: { $ne: true } 
             }),
             Booking.find({ 
-                $or: [
-                    { store: storeId },
-                    { addedBy: store.owner }
-                ], 
+                store: storeId,
                 isDeleted: { $ne: true } 
             })
         ]);
@@ -437,8 +505,22 @@ const getAdminInsights = async (req, res) => {
         ]);
 
         // 3. Inventory Levels & Category Analysis
-        const allProducts = await Product.find({ store: storeId, isDeleted: { $ne: true } });
-        const allPets = await Pet.find({ store: storeId, isDeleted: { $ne: true } });
+        const [allProducts, allPets, allServices, storeInventory] = await Promise.all([
+            Product.find({ store: storeId, isDeleted: { $ne: true } }),
+            Pet.find({ store: storeId, isDeleted: { $ne: true } }),
+            Service.find({ store: storeId, isDeleted: { $ne: true } }),
+            Inventory.find({ store: storeId, isActive: { $ne: false } })
+                .populate('product', 'name category sku stockQuantity minStockThreshold')
+                .populate('supplierProductRef', 'deliveryLeadTimeDays')
+        ]);
+        const sellerDemand = DecisionSupportService.sellerDemandOverview({
+            orders,
+            bookings,
+            products: allProducts,
+            pets: allPets,
+            services: allServices,
+            inventories: storeInventory
+        });
 
         // Enrich performance data with current stock and category
         const enrichedPerformance = productPerformance.map(stat => {
@@ -462,34 +544,26 @@ const getAdminInsights = async (req, res) => {
             categoryTrends[item.category].products += 1;
         });
 
-        // 4. Customer Purchase Patterns
-        const customerPatterns = await Order.aggregate([
+        // 4. Customer demand is aggregated for DSS use. Individual names,
+        // avatars, messages, and customer identifiers are never returned.
+        const customerPatternRows = await Order.aggregate([
             { $match: { store: storeId, status: { $ne: 'cancelled' }, isDeleted: { $ne: true } } },
             {
                 $group: {
                     _id: '$customer',
                     orderCount: { $sum: 1 },
-                    totalSpent: { $sum: '$totalAmount' },
-                    lastOrder: { $max: '$createdAt' }
+                    totalSpent: { $sum: '$totalAmount' }
                 }
-            },
-            { $lookup: { from: 'users', localField: '_id', foreignField: '_id', as: 'userInfo' } },
-            { $unwind: '$userInfo' },
-            {
-                $project: {
-                    name: { $concat: ['$userInfo.firstName', ' ', '$userInfo.lastName'] },
-                    avatar: '$userInfo.avatar',
-                    orderCount: 1,
-                    totalSpent: 1,
-                    lastOrder: 1,
-                    loyaltyLevel: {
-                        $cond: [{ $gte: ['$orderCount', 10] }, 'Gold', { $cond: [{ $gte: ['$orderCount', 5] }, 'Silver', 'Bronze'] }]
-                    }
-                }
-            },
-            { $sort: { totalSpent: -1 } },
-            { $limit: 10 }
+            }
         ]);
+        const customerDemandSummary = {
+            uniqueCustomers: customerPatternRows.length,
+            returningCustomers: customerPatternRows.filter(row => row.orderCount > 1).length,
+            averageOrdersPerCustomer: customerPatternRows.length
+                ? Number((customerPatternRows.reduce((total, row) => total + row.orderCount, 0) / customerPatternRows.length).toFixed(1))
+                : 0,
+            aggregateRevenue: customerPatternRows.reduce((total, row) => total + Number(row.totalSpent || 0), 0)
+        };
 
         // 5. Insights Generation
         const topSelling = enrichedPerformance.slice(0, 5);
@@ -503,22 +577,30 @@ const getAdminInsights = async (req, res) => {
             return p.stockQuantity > 10 && hasLowSales;
         }).slice(0, 5);
 
-        // Needs restocking: Stock below threshold (Enhanced Logic)
-        const needsRestock = allProducts.filter(p => (p.stockQuantity <= 5 || p.stockQuantity < (p.minStockThreshold || 10)) && p.isActive).slice(0, 10);
+        // The Inventory ledger and its configured reorder level are authoritative
+        // when present; legacy Product stock fields are only a safe fallback.
+        const inventoryByProductId = new Map(storeInventory.filter(row => row.product).map(row => [String(row.product._id), row]));
+        const needsRestock = allProducts.filter(p => {
+            const inventoryRecord = inventoryByProductId.get(String(p._id));
+            return p.isActive && (inventoryRecord
+                ? Number(inventoryRecord.quantity) <= Number(inventoryRecord.reorderLevel)
+                : (p.stockQuantity <= 5 || p.stockQuantity < (p.minStockThreshold || 10)));
+        }).slice(0, 10);
 
         // 6. Recommendations Engine (Enhanced Inventory Intelligence)
         const recommendations = [];
 
         // Restock Recommendations with Sales Velocity Analysis
         needsRestock.forEach(p => {
-            const perf = enrichedPerformance.find(s => s._id.toString() === p._id.toString());
-            const salesIn30Days = perf ? perf.totalSold : 0;
+            const demand = sellerDemand.products.trends.find(row => row.id === String(p._id));
+            const salesIn30Days = demand?.current || 0;
+            const inventoryRecord = inventoryByProductId.get(String(p._id));
             const explained = DecisionSupportService.explainInventoryPosition({
                 product: p,
-                inventory: { quantity: p.stockQuantity, reorderLevel: p.minStockThreshold || 10 },
+                inventory: inventoryRecord || { quantity: p.stockQuantity, reorderLevel: p.minStockThreshold || 10 },
                 unitsLast30: salesIn30Days,
-                unitsPrevious30: 0,
-                observations: perf ? 1 : 0
+                unitsPrevious30: demand?.previous || 0,
+                observations: demand?.observations || 0
             });
 
             recommendations.push({
@@ -541,22 +623,18 @@ const getAdminInsights = async (req, res) => {
             });
         });
 
-        // Increasing Demand Recommendations
-        enrichedPerformance.slice(0, 3).forEach(item => {
-            if (item.totalSold > 15) {
-                recommendations.push({
-                    type: 'demand',
-                    title: 'Increasing Demand detected',
-                    productName: item.name,
-                    message: `${item.name} is seeing high acquisition rates. Consider increasing the next purchase order by 20%.`,
-                    priority: 'medium',
-                    action: 'Adjust Strategy',
-                    why: `${item.totalSold} paid units were recorded for ${item.name}.`,
-                    basedOn: [`${item.totalSold} units sold`, `₱${Number(item.revenue || 0).toLocaleString()} recorded revenue`],
-                    recommendedAction: 'Validate the recent trend and supplier lead time before increasing the next purchase quantity.'
-                });
-            }
-        });
+        sellerDemand.actions.forEach(insight => recommendations.push({
+            type: 'demand',
+            domain: insight.domain,
+            title: `${insight.domain} demand insight`,
+            productName: insight.subject,
+            message: insight.action,
+            priority: 'medium',
+            action: 'Review Insight',
+            why: insight.why,
+            basedOn: [`Latest ${sellerDemand.policy.periodDays} days`, `Previous ${sellerDemand.policy.periodDays} days`],
+            recommendedAction: insight.action
+        }));
 
         // Promotion/Discount Recommendations
         slowMoving.forEach(p => {
@@ -654,16 +732,23 @@ const getAdminInsights = async (req, res) => {
             },
             inventory: {
                 levels: {
-                    healthy: allProducts.filter(p => p.stockQuantity > 20).length,
-                    low: allProducts.filter(p => p.stockQuantity <= 20 && p.stockQuantity > 0).length,
-                    out: allProducts.filter(p => p.stockQuantity === 0).length
+                    healthy: storeInventory.length ? storeInventory.filter(row => Number(row.quantity) > Number(row.reorderLevel)).length : allProducts.filter(p => p.stockQuantity > 20).length,
+                    low: storeInventory.length ? storeInventory.filter(row => Number(row.quantity) > 0 && Number(row.quantity) <= Number(row.reorderLevel)).length : allProducts.filter(p => p.stockQuantity <= 20 && p.stockQuantity > 0).length,
+                    out: storeInventory.length ? storeInventory.filter(row => Number(row.quantity) === 0).length : allProducts.filter(p => p.stockQuantity === 0).length
                 },
                 slowMoving: slowMoving.map(p => ({ id: p._id, name: p.name, stock: p.stockQuantity, category: p.category })),
-                needsRestock: needsRestock.map(p => ({ id: p._id, name: p.name, stock: p.stockQuantity, category: p.category }))
+                needsRestock: needsRestock.map(p => ({
+                    id: p._id,
+                    name: p.name,
+                    stock: inventoryByProductId.get(String(p._id))?.quantity ?? p.stockQuantity,
+                    threshold: inventoryByProductId.get(String(p._id))?.reorderLevel ?? p.minStockThreshold,
+                    category: p.category
+                }))
             },
             customers: {
-                patterns: customerPatterns
+                summary: customerDemandSummary
             },
+            sellerDemand,
             recommendations,
             monthlyRevenue,
             bookings: {
@@ -870,6 +955,7 @@ const getSuperAdminInsights = async (req, res) => {
             existing.bookings = row.bookings || 0;
             monthlyRevenueMap.set(key, existing);
         });
+
         const combinedMonthlyRevenue = [...monthlyRevenueMap.values()].sort((a, b) => a._id.year - b._id.year || a._id.month - b._id.month);
 
         // User growth trend
@@ -1094,6 +1180,7 @@ const getSuperAdminInsights = async (req, res) => {
 
 module.exports = {
     getCustomerInsights,
+    getCustomerPetRecommendations,
     getAdminInsights,
     getStaffInsights,
     getSuperAdminInsights

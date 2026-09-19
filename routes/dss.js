@@ -1,14 +1,15 @@
 const express = require('express');
 const router = express.Router();
-const { authenticate, adminOnly, superAdminOnly, requirePermission } = require('../middleware/auth');
+const { authenticate, adminOnly, customerOnly, superAdminOnly, requirePermission } = require('../middleware/auth');
 const {
   productForecast, replenishment, supplierScorecard, decideRecommendation
 } = require('../controllers/decisionSupportController');
-const { getCustomerInsights, getAdminInsights, getStaffInsights, getSuperAdminInsights } = require('../controllers/dssController');
+const { getCustomerInsights, getCustomerPetRecommendations, getAdminInsights, getStaffInsights, getSuperAdminInsights } = require('../controllers/dssController');
 const { getServiceRecommendations, getDSSConfig, updateDSSConfig } = require('../controllers/serviceRecommendationController');
 
 // Customer DSS - any authenticated user
 router.get('/customer', authenticate, getCustomerInsights);
+router.post('/customer/pet-recommendations', authenticate, customerOnly, getCustomerPetRecommendations);
 router.get('/service-recommendations', authenticate, getServiceRecommendations);
 router.get('/service-config', authenticate, adminOnly, getDSSConfig);
 router.put('/service-config', authenticate, adminOnly, updateDSSConfig);

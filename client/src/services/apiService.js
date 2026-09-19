@@ -420,6 +420,7 @@ export const archiveService = {
 // DSS (Decision Support System) services
 export const dssService = {
   getCustomerInsights: () => api.get('/dss/customer'),
+  getPetRecommendations: (data) => api.post('/dss/customer/pet-recommendations', data),
   getServiceRecommendations: (params) => api.get('/dss/service-recommendations', { params }),
   getServiceConfig: () => api.get('/dss/service-config'),
   updateServiceConfig: (data) => api.put('/dss/service-config', data),

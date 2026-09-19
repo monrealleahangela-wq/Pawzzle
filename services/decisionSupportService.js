@@ -11,6 +11,250 @@ const round = (value, places = 2) => Number(Number(value || 0).toFixed(places));
 const clamp = (value, minimum = 0, maximum = 100) => Math.min(maximum, Math.max(minimum, Number(value || 0)));
 const confidenceLabel = confidence => confidence >= 0.75 ? 'high' : confidence >= 0.45 ? 'moderate' : 'limited';
 
+// Seller demand compares adjacent 30-day periods. Six demand events are
+// required before a direction is stated, and a 20% change must be exceeded to
+// leave the stable band. This prevents isolated activity becoming a trend.
+const SELLER_DEMAND_POLICY = Object.freeze({
+  periodDays: 30,
+  minimumObservations: 6,
+  changeThresholdPercent: 20
+});
+
+const entityId = value => String(value?._id || value?.id || value || '');
+const eventDate = value => new Date(value?.createdAt || value?.bookingDate || 0);
+const classifyDemandTrend = ({ current = 0, previous = 0, observations = 0 } = {}, policy = SELLER_DEMAND_POLICY) => {
+  const currentValue = Number(current || 0);
+  const previousValue = Number(previous || 0);
+  const sampleSize = Number(observations || 0);
+  const sufficient = sampleSize >= policy.minimumObservations;
+  const changePercent = previousValue > 0
+    ? round(((currentValue - previousValue) / previousValue) * 100, 1)
+    : currentValue > 0 ? 100 : 0;
+  let classification = 'insufficient_data';
+  if (sufficient) {
+    if (previousValue === 0 && currentValue > 0) classification = 'increasing';
+    else if (changePercent >= policy.changeThresholdPercent) classification = 'increasing';
+    else if (changePercent <= -policy.changeThresholdPercent) classification = 'declining';
+    else classification = 'stable';
+  }
+  const confidence = sufficient
+    ? round(Math.min(0.95, 0.4 + sampleSize / 50), 2)
+    : round(Math.min(0.39, sampleSize / policy.minimumObservations * 0.39), 2);
+  return {
+    classification,
+    current: round(currentValue),
+    previous: round(previousValue),
+    changePercent,
+    observations: sampleSize,
+    sufficient,
+    confidence,
+    confidenceLabel: confidenceLabel(confidence),
+    why: sufficient
+      ? `${round(currentValue)} recorded demand units/events in the latest ${policy.periodDays} days versus ${round(previousValue)} in the preceding ${policy.periodDays} days.`
+      : `Only ${sampleSize} recorded demand event${sampleSize === 1 ? '' : 's'} are available; at least ${policy.minimumObservations} are required to classify a trend.`
+  };
+};
+
+// Direct customer constraints (purchase budget, space, and companion style)
+// receive the greatest weight. Housing permission remains material, while
+// activity, care, household, and optional pet preferences refine the result.
+// Unknown dimensions are excluded from the denominator and surfaced through
+// evidence coverage instead of being assigned invented neutral values.
+const PET_MATCH_WEIGHTS = Object.freeze({
+  purchaseBudget: 20,
+  space: 20,
+  housing: 15,
+  lifestyle: 20,
+  activity: 10,
+  care: 5,
+  household: 5,
+  petPreference: 5
+});
+const PET_MATCH_OPTIONS = Object.freeze({
+  monthlyBudget: ['under_1000', '1000_3000', '3000_5000', '5000_10000', 'above_10000', 'not_sure'],
+  purchaseBudget: ['under_5000', '5000_10000', '10000_25000', 'above_25000', 'not_sure'],
+  space: ['limited_room', 'apartment', 'small_house', 'medium_house', 'large_house', 'outdoor_space', 'not_sure'],
+  homeOwnership: ['own', 'rent', 'family', 'other'],
+  livingArrangement: ['alone', 'family', 'shared', 'other'],
+  housingType: ['house', 'apartment', 'other'],
+  petRestrictions: ['allowed', 'restricted', 'not_sure', 'not_allowed'],
+  existingPets: ['none', 'dogs', 'cats', 'other', 'multiple'],
+  lifestyle: ['calm', 'energetic', 'affectionate', 'independent', 'social', 'outdoor', 'low_maintenance', 'grooming', 'training', 'interactive'],
+  species: ['dog', 'cat', 'bird', 'fish', 'rabbit', 'hamster', 'reptile', 'other'],
+  sizes: ['small', 'medium', 'large', 'extra_large']
+});
+const PURCHASE_BUDGET_MAX = Object.freeze({ under_5000: 5000, '5000_10000': 10000, '10000_25000': 25000, above_25000: Infinity });
+const TEMPERAMENT_EVIDENCE = Object.freeze({
+  calm: ['calm', 'quiet', 'gentle', 'relaxed'],
+  energetic: ['playful', 'energetic', 'active', 'lively'],
+  affectionate: ['affectionate', 'cuddly', 'loving'],
+  independent: ['independent', 'self-reliant'],
+  social: ['social', 'outgoing', 'friendly'],
+  outdoor: ['outdoor', 'active', 'energetic'],
+  interactive: ['interactive', 'engaging', 'social', 'playful']
+});
+
+const normalizeChoice = value => String(value || '').trim().toLowerCase();
+const uniqueAllowed = (values, allowed) => [...new Set((Array.isArray(values) ? values : []).map(normalizeChoice).filter(value => allowed.includes(value)))];
+const includesEvidence = (text, words) => words.some(word => text.includes(word));
+const petMatchPart = (criterion, label, weight, evaluated, ratio, explanation) => ({
+  criterion,
+  label,
+  weight,
+  evaluated: Boolean(evaluated),
+  score: evaluated ? round(clamp(ratio, 0, 1) * 100, 0) : null,
+  contribution: evaluated ? round(weight * clamp(ratio, 0, 1), 2) : 0,
+  explanation
+});
+
+const validatePetMatchPreferences = input => {
+  const source = input && typeof input === 'object' ? input : {};
+  const value = {
+    monthlyBudget: normalizeChoice(source.monthlyBudget),
+    purchaseBudget: normalizeChoice(source.purchaseBudget),
+    space: normalizeChoice(source.space),
+    homeOwnership: normalizeChoice(source.homeOwnership),
+    livingArrangement: normalizeChoice(source.livingArrangement),
+    housingType: normalizeChoice(source.housingType),
+    petRestrictions: normalizeChoice(source.petRestrictions),
+    existingPets: normalizeChoice(source.existingPets),
+    lifestyle: uniqueAllowed(source.lifestyle, PET_MATCH_OPTIONS.lifestyle),
+    preferredSpecies: uniqueAllowed(source.preferredSpecies, PET_MATCH_OPTIONS.species),
+    preferredSizes: uniqueAllowed(source.preferredSizes, PET_MATCH_OPTIONS.sizes)
+  };
+  const errors = [];
+  for (const key of ['monthlyBudget', 'purchaseBudget', 'space', 'homeOwnership', 'livingArrangement', 'housingType', 'petRestrictions', 'existingPets']) {
+    if (!PET_MATCH_OPTIONS[key].includes(value[key])) errors.push(`${key} is invalid.`);
+  }
+  for (const [key, allowed] of [['lifestyle', PET_MATCH_OPTIONS.lifestyle], ['preferredSpecies', PET_MATCH_OPTIONS.species], ['preferredSizes', PET_MATCH_OPTIONS.sizes]]) {
+    if (source[key] !== undefined && (!Array.isArray(source[key]) || source[key].some(item => !allowed.includes(normalizeChoice(item))))) {
+      errors.push(`${key} contains an invalid selection.`);
+    }
+  }
+  if (!value.lifestyle.length) errors.push('Select at least one lifestyle preference.');
+  if (Array.isArray(source.lifestyle) && source.lifestyle.length > 10) errors.push('Select no more than ten lifestyle preferences.');
+  return { value, errors };
+};
+
+const listingCompatibility = (pet, preferences, householdPets = []) => {
+  const parts = [];
+  const reasons = [];
+  const considerations = [];
+  const unknowns = [];
+  const temperament = normalizeChoice(pet.temperament);
+  const size = normalizeChoice(pet.size);
+  const price = Number(pet.price);
+
+  const purchaseMaximum = PURCHASE_BUDGET_MAX[preferences.purchaseBudget];
+  const budgetEvaluated = Number.isFinite(price) && purchaseMaximum !== undefined;
+  const budgetMatched = budgetEvaluated && price <= purchaseMaximum;
+  parts.push(petMatchPart('purchaseBudget', 'Listing price compatibility', PET_MATCH_WEIGHTS.purchaseBudget, budgetEvaluated, budgetMatched ? 1 : 0,
+    budgetEvaluated
+      ? budgetMatched ? 'The listed purchase price is within your selected maximum listing-price band.' : 'The listed purchase price exceeds your selected maximum listing-price band.'
+      : 'Listing-price compatibility could not be evaluated from the selected preference and available listing data.'));
+  if (budgetMatched) reasons.push('The listed purchase price is within your selected range.');
+  if (!budgetEvaluated) unknowns.push('Monthly care cost is not stored for this listing; Pawzzle does not estimate or invent it.');
+  else unknowns.push('The budget comparison covers the one-time listing price only; monthly ownership cost is unavailable.');
+
+  const limitedSpace = ['limited_room', 'apartment'].includes(preferences.space);
+  const generousSpace = ['medium_house', 'large_house', 'outdoor_space'].includes(preferences.space);
+  const calmEvidence = includesEvidence(temperament, TEMPERAMENT_EVIDENCE.calm || []);
+  const activeEvidence = includesEvidence(temperament, TEMPERAMENT_EVIDENCE.energetic || []);
+  const spaceEvaluated = Boolean(size && temperament && preferences.space !== 'not_sure');
+  let spaceRatio = 0.5;
+  if (spaceEvaluated) {
+    if (limitedSpace && ['small', 'medium'].includes(size) && calmEvidence) spaceRatio = 1;
+    else if (limitedSpace && (['large', 'extra_large'].includes(size) || activeEvidence)) spaceRatio = 0;
+    else if (generousSpace) spaceRatio = 1;
+  }
+  parts.push(petMatchPart('space', 'Space compatibility', PET_MATCH_WEIGHTS.space, spaceEvaluated, spaceRatio,
+    spaceEvaluated
+      ? spaceRatio === 1 ? 'The listing’s recorded size and temperament information support your selected space.' : spaceRatio === 0 ? 'The listing’s recorded size or activity wording may conflict with your selected space.' : 'The recorded size and temperament provide mixed space evidence.'
+      : 'Space compatibility needs both recorded size and temperament information; Pawzzle does not infer it from breed.'));
+  if (spaceEvaluated && spaceRatio === 1) reasons.push('Recorded size and temperament information fit your available space.');
+  if (spaceEvaluated && spaceRatio === 0) considerations.push('Recorded size or activity information may not fit the selected living space.');
+  if (!spaceEvaluated) unknowns.push('Space compatibility has limited evidence because size and temperament data are incomplete or space is uncertain.');
+
+  const restrictions = preferences.petRestrictions;
+  const housingEvaluated = restrictions !== 'not_sure';
+  const housingRatio = restrictions === 'allowed' ? 1 : restrictions === 'restricted' ? 0.4 : restrictions === 'not_allowed' ? 0 : null;
+  parts.push(petMatchPart('housing', 'Housing permission', PET_MATCH_WEIGHTS.housing, housingEvaluated, housingRatio,
+    restrictions === 'allowed' ? 'You indicated pets are allowed in your current home.'
+      : restrictions === 'restricted' ? 'Your housing may impose pet restrictions that must be confirmed before purchase.'
+        : restrictions === 'not_allowed' ? 'You indicated pets are not currently allowed in your housing.'
+          : 'Housing permission is unknown and must be confirmed.'));
+  if (restrictions === 'allowed') reasons.push('Your current housing permits pets.');
+  if (restrictions === 'restricted') considerations.push('Confirm landlord, condominium, or household pet restrictions before deciding.');
+  if (restrictions === 'not_allowed') considerations.push('Pets are not currently allowed in your housing; this is a conditional result, not an unconditional recommendation.');
+  if (!housingEvaluated) unknowns.push('Housing permission could not be evaluated because it is uncertain.');
+  unknowns.push('Home ownership, housing type, and living-arrangement compatibility are recorded context but are not scored because listings do not contain authoritative household-suitability evidence.');
+
+  const lifestyleKeys = preferences.lifestyle.filter(key => ['affectionate', 'independent', 'social', 'interactive'].includes(key));
+  const lifestyleEvaluated = Boolean(temperament && lifestyleKeys.length);
+  const lifestyleMatches = lifestyleEvaluated ? lifestyleKeys.filter(key => includesEvidence(temperament, TEMPERAMENT_EVIDENCE[key] || [])) : [];
+  parts.push(petMatchPart('lifestyle', 'Companion preference', PET_MATCH_WEIGHTS.lifestyle, lifestyleEvaluated, lifestyleMatches.length / Math.max(lifestyleKeys.length, 1),
+    lifestyleEvaluated
+      ? lifestyleMatches.length ? `Recorded temperament matches: ${lifestyleMatches.join(', ')}.` : 'The recorded temperament does not contain the selected companion preference evidence.'
+      : 'Lifestyle compatibility could not be evaluated because the listing has no applicable temperament information.'));
+  if (lifestyleMatches.length) reasons.push(`Recorded temperament matches your ${lifestyleMatches.join(' and ')} preference${lifestyleMatches.length === 1 ? '' : 's'}.`);
+  if (!lifestyleEvaluated && lifestyleKeys.length) unknowns.push('Companion-style compatibility is unknown because temperament information is incomplete.');
+
+  const activityKeys = preferences.lifestyle.filter(key => ['calm', 'energetic', 'outdoor'].includes(key));
+  const activityEvaluated = Boolean(temperament && activityKeys.length);
+  const activityMatches = activityEvaluated ? activityKeys.filter(key => includesEvidence(temperament, TEMPERAMENT_EVIDENCE[key] || [])) : [];
+  parts.push(petMatchPart('activity', 'Activity preference', PET_MATCH_WEIGHTS.activity, activityEvaluated, activityMatches.length / Math.max(activityKeys.length, 1),
+    activityEvaluated
+      ? activityMatches.length ? `Recorded temperament/activity wording matches: ${activityMatches.join(', ')}.` : 'The listing’s recorded temperament does not match the selected activity preference.'
+      : 'Activity compatibility could not be evaluated from the available listing information.'));
+  if (activityMatches.length) reasons.push(`Recorded activity wording matches your ${activityMatches.join(' and ')} preference${activityMatches.length === 1 ? '' : 's'}.`);
+  if (!activityEvaluated && activityKeys.length) unknowns.push('Activity compatibility is unknown because activity/temperament information is incomplete.');
+
+  const careKeys = preferences.lifestyle.filter(key => ['low_maintenance', 'grooming', 'training'].includes(key));
+  parts.push(petMatchPart('care', 'Care and grooming preference', PET_MATCH_WEIGHTS.care, false, 0,
+    careKeys.length ? 'This listing has no structured grooming, maintenance, or training-needs field, so Pawzzle does not infer one.' : 'No care or grooming preference was selected.'));
+  if (careKeys.length) unknowns.push('Care, grooming, and training compatibility cannot be scored because the listing has no structured evidence.');
+
+  const householdEvaluated = false;
+  parts.push(petMatchPart('household', 'Existing-pet compatibility', PET_MATCH_WEIGHTS.household, householdEvaluated, 0,
+    householdPets.length
+      ? `You have ${householdPets.length} saved pet profile${householdPets.length === 1 ? '' : 's'}, but this listing has no verified pet-compatibility field.`
+      : 'No authoritative individual-pet compatibility evidence is available for this listing.'));
+  if (preferences.existingPets !== 'none' || householdPets.length) unknowns.push('Compatibility with existing pets requires information that this listing does not provide.');
+
+  const speciesEvaluated = preferences.preferredSpecies.length > 0;
+  const sizePreferenceEvaluated = preferences.preferredSizes.length > 0 && Boolean(size);
+  const preferenceChecks = [
+    ...(speciesEvaluated ? [preferences.preferredSpecies.includes(normalizeChoice(pet.species))] : []),
+    ...(sizePreferenceEvaluated ? [preferences.preferredSizes.includes(size)] : [])
+  ];
+  parts.push(petMatchPart('petPreference', 'Pet preferences', PET_MATCH_WEIGHTS.petPreference, preferenceChecks.length > 0,
+    preferenceChecks.filter(Boolean).length / Math.max(preferenceChecks.length, 1),
+    preferenceChecks.length ? 'Compared the listing’s recorded species and size with your selected pet preferences.' : 'No evaluable species or size preference was selected.'));
+  if (preferenceChecks.length && preferenceChecks.every(Boolean)) reasons.push('The listing’s recorded species and size match your selected pet preferences.');
+
+  const evaluatedWeight = parts.filter(part => part.evaluated).reduce((sum, part) => sum + part.weight, 0);
+  const earnedWeight = parts.reduce((sum, part) => sum + part.contribution, 0);
+  const score = evaluatedWeight ? Math.round((earnedWeight / evaluatedWeight) * 100) : null;
+  const evidenceCoverage = Math.round((evaluatedWeight / Object.values(PET_MATCH_WEIGHTS).reduce((sum, weight) => sum + weight, 0)) * 100);
+  const conditional = ['restricted', 'not_allowed'].includes(restrictions);
+  const matchLevel = conditional ? 'Conditional Match'
+    : evidenceCoverage < 40 ? 'Limited Evidence'
+      : score >= 85 ? 'Best Match' : score >= 70 ? 'Strong Match' : score >= 55 ? 'Good Match' : 'Alternative';
+
+  return {
+    score,
+    matchLevel,
+    evidenceCoverage,
+    eligibility: { status: conditional ? 'conditional' : 'eligible', reasons: conditional ? considerations.slice(0, 1) : [] },
+    reasons,
+    considerations,
+    unknowns: [...new Set(unknowns)],
+    calculation: parts,
+    scoreSummary: { evaluatedWeight, earnedWeight: round(earnedWeight, 2), totalConfiguredWeight: 100 },
+    methodology: 'Deterministic weighted scoring from customer selections and explicitly stored listing attributes only.'
+  };
+};
+
 const dateKey = (date) => new Date(date).toISOString().slice(0, 10);
 
 const buildDailySeries = (events, start, days) => {
@@ -108,6 +352,249 @@ const selectForecast = (values, horizon) => {
 };
 
 class DecisionSupportService {
+  static classifyDemandTrend(input, policy) {
+    return classifyDemandTrend(input, policy);
+  }
+
+  static sellerDemandOverview({ orders = [], bookings = [], products = [], pets = [], services = [], inventories = [], now = new Date() } = {}) {
+    const currentStart = new Date(now.getTime() - SELLER_DEMAND_POLICY.periodDays * DAY_MS);
+    const previousStart = new Date(now.getTime() - SELLER_DEMAND_POLICY.periodDays * 2 * DAY_MS);
+    const windowFor = date => date >= currentStart && date <= now ? 'current' : date >= previousStart && date < currentStart ? 'previous' : null;
+    const validOrders = orders.filter(order => order.paymentStatus === 'paid'
+      && !['cancelled', 'refunded', 'returned', 'payment_failed'].includes(order.status)
+      && windowFor(eventDate(order)));
+    const validBookings = bookings.filter(booking => !['cancelled', 'rejected', 'no_show', 'confirmation_expired'].includes(booking.status)
+      && windowFor(eventDate(booking)));
+    const productById = new Map(products.map(row => [entityId(row), row]));
+    const petById = new Map(pets.map(row => [entityId(row), row]));
+    const serviceById = new Map(services.map(row => [entityId(row), row]));
+    const inventoryByProduct = new Map(inventories.filter(row => row.product).map(row => [entityId(row.product), row]));
+    const productGroups = new Map();
+    const petGroups = new Map();
+    const serviceGroups = new Map();
+
+    validOrders.forEach(order => {
+      const period = windowFor(eventDate(order));
+      (order.items || []).forEach(item => {
+        if (!['product', 'pet'].includes(item.itemType)) return;
+        const source = item.itemType === 'product' ? productById.get(entityId(item.itemId)) : petById.get(entityId(item.itemId));
+        if (item.itemType === 'product') {
+          const id = entityId(item.itemId);
+          const group = productGroups.get(id) || { id, name: item.name || source?.name || 'Product', category: source?.category || 'other', current: 0, previous: 0, observations: 0 };
+          group[period] += Number(item.quantity || 0);
+          group.observations += 1;
+          productGroups.set(id, group);
+        } else {
+          // Pets remain unique listings. Only actual paid pet purchases are
+          // aggregated by recorded species; no inventory-unit math is applied.
+          const category = source?.species || 'unknown';
+          const group = petGroups.get(category) || { id: category, name: category === 'unknown' ? 'Unclassified pet listings' : category, current: 0, previous: 0, observations: 0 };
+          group[period] += 1;
+          group.observations += 1;
+          petGroups.set(category, group);
+        }
+      });
+    });
+
+    validBookings.forEach(booking => {
+      const id = entityId(booking.service);
+      const source = serviceById.get(id);
+      const period = windowFor(eventDate(booking));
+      const group = serviceGroups.get(id) || {
+        id,
+        name: source?.name || booking.service?.name || 'Service',
+        category: source?.category || 'other',
+        current: 0,
+        previous: 0,
+        observations: 0,
+        completed: 0,
+        upcoming: 0
+      };
+      group[period] += 1;
+      group.observations += 1;
+      if (['completed', 'finished'].includes(booking.status)) group.completed += 1;
+      serviceGroups.set(id, group);
+    });
+
+    const productTrends = [...productGroups.values()].map(group => {
+      const trend = classifyDemandTrend(group);
+      const product = productById.get(group.id);
+      const inventory = inventoryByProduct.get(group.id);
+      const position = DecisionSupportService.explainInventoryPosition({
+        product,
+        inventory,
+        unitsLast30: group.current,
+        unitsPrevious30: group.previous,
+        observations: group.observations
+      });
+      return {
+        ...group,
+        ...trend,
+        inventory: position.inventoryPosition,
+        projectedDaysRemaining: position.inventoryPosition.daysRemaining,
+        recommendation: trend.classification === 'increasing' && position.decision.shouldReorder
+          ? 'Demand is increasing while inventory needs attention. Review replenishment and supplier lead time.'
+          : position.decision.shouldReorder ? position.recommendedAction
+            : trend.classification === 'declining' ? 'Demand is declining. Review merchandising before increasing stock.'
+              : trend.sufficient ? 'Continue monitoring demand and inventory.' : 'Collect more completed sales before acting on a trend.'
+      };
+    }).sort((a, b) => b.current - a.current || a.name.localeCompare(b.name));
+
+    const availableBySpecies = pets.filter(pet => pet.status === 'available' && pet.isAvailable !== false && pet.isDeleted !== true)
+      .reduce((map, pet) => map.set(pet.species || 'unknown', (map.get(pet.species || 'unknown') || 0) + 1), new Map());
+    const petTrends = [...new Set([...petGroups.keys(), ...availableBySpecies.keys()])].map(category => {
+      const group = petGroups.get(category) || { id: category, name: category, current: 0, previous: 0, observations: 0 };
+      const trend = classifyDemandTrend(group);
+      const availableListings = availableBySpecies.get(category) || 0;
+      return {
+        ...group,
+        ...trend,
+        availableListings,
+        evidenceType: 'completed paid pet purchases',
+        recommendation: trend.classification === 'increasing' && availableListings <= group.current
+          ? 'Recorded purchases increased while available listings are limited. Review listing availability.'
+          : trend.sufficient ? 'Review category demand alongside current unique listings.' : 'There is insufficient paid purchase history for a reliable pet-category trend.'
+      };
+    }).sort((a, b) => b.current - a.current || a.name.localeCompare(b.name));
+
+    const futureLimit = new Date(now.getTime() + 14 * DAY_MS);
+    bookings.forEach(booking => {
+      const id = entityId(booking.service);
+      const date = new Date(booking.bookingDate || booking.createdAt);
+      if (date <= now || date > futureLimit || ['cancelled', 'rejected', 'no_show', 'confirmation_expired'].includes(booking.status)) return;
+      const existing = serviceGroups.get(id);
+      if (existing) existing.upcoming += 1;
+    });
+    const serviceTrends = [...serviceGroups.values()].map(group => {
+      const trend = classifyDemandTrend(group);
+      const source = serviceById.get(group.id);
+      const maxDailyBookings = Number(source?.bookingRules?.maxDailyBookings || 0);
+      const configuredCapacity = maxDailyBookings > 0 ? maxDailyBookings * 14 : null;
+      const capacityPressure = configuredCapacity === null ? 'unavailable' : group.upcoming > configuredCapacity * 0.8 ? 'high' : 'normal';
+      return {
+        ...group,
+        ...trend,
+        upcoming14Days: group.upcoming,
+        capacity: { configured14DayCapacity: configuredCapacity, pressure: capacityPressure },
+        recommendation: capacityPressure === 'high'
+          ? 'Upcoming bookings are near configured capacity. Review specialist schedules and available slots.'
+          : trend.classification === 'increasing' ? 'Booking demand is increasing. Review staffing and schedule availability.'
+            : trend.sufficient ? 'Continue monitoring booking demand and completion.' : 'Collect more booking history before acting on a service trend.'
+      };
+    }).sort((a, b) => b.current - a.current || a.name.localeCompare(b.name));
+
+    const servicePatternHistory = bookings.filter(booking => {
+      const date = new Date(booking.bookingDate || booking.createdAt);
+      return date <= now
+        && date >= new Date(now.getTime() - 90 * DAY_MS)
+        && !['cancelled', 'rejected', 'no_show', 'confirmation_expired'].includes(booking.status);
+    });
+    const weekendBookings = servicePatternHistory.filter(booking => [0, 6].includes(new Date(booking.bookingDate || booking.createdAt).getDay())).length;
+    const recurringServicePattern = servicePatternHistory.length >= 12
+      ? {
+        status: 'available',
+        historyDays: 90,
+        sampleSize: servicePatternHistory.length,
+        weekendBookings,
+        weekdayBookings: servicePatternHistory.length - weekendBookings,
+        summary: weekendBookings / servicePatternHistory.length >= 0.4
+          ? 'Weekend booking demand is elevated relative to the number of weekend days.'
+          : 'Recorded booking demand is concentrated on weekdays.'
+      }
+      : {
+        status: 'insufficient_data',
+        historyDays: 90,
+        sampleSize: servicePatternHistory.length,
+        summary: 'Recurring weekly demand pattern unavailable due to insufficient booking history.'
+      };
+
+    const summarize = rows => ({
+      increasing: rows.filter(row => row.classification === 'increasing').length,
+      stable: rows.filter(row => row.classification === 'stable').length,
+      declining: rows.filter(row => row.classification === 'declining').length,
+      insufficientData: rows.filter(row => row.classification === 'insufficient_data').length
+    });
+    const actions = [
+      ...productTrends.filter(row => row.classification === 'increasing' || Number(row.inventory?.onHand) <= Number(row.inventory?.reorderLevel)).slice(0, 4).map(row => ({ domain: 'product', subject: row.name, action: row.recommendation, why: row.why })),
+      ...petTrends.filter(row => row.classification === 'increasing').slice(0, 2).map(row => ({ domain: 'pet', subject: row.name, action: row.recommendation, why: row.why })),
+      ...serviceTrends.filter(row => row.classification === 'increasing' || row.capacity.pressure === 'high').slice(0, 3).map(row => ({ domain: 'service', subject: row.name, action: row.recommendation, why: row.why }))
+    ];
+
+    return {
+      policy: SELLER_DEMAND_POLICY,
+      period: { currentStart, currentEnd: now, previousStart, previousEnd: currentStart },
+      products: {
+        summary: summarize(productTrends),
+        trends: productTrends,
+        forecastingNote: 'Detailed replenishment forecasts continue to use the existing per-product model selection, history window, confidence, and warning output.'
+      },
+      pets: {
+        summary: summarize(petTrends),
+        trends: petTrends,
+        evidenceNotice: 'Pet demand uses completed paid Pawzzle pet purchases. Views, favorites, and inquiries are not claimed because they are not tracked here as authoritative demand events.',
+        seasonalPattern: { status: 'insufficient_data', summary: 'A reliable pet-listing seasonal pattern is not claimed from the currently available purchase-only evidence.' }
+      },
+      services: { summary: summarize(serviceTrends), trends: serviceTrends, recurringPattern: recurringServicePattern },
+      actions,
+      privacyNotice: 'Demand insights are aggregated and do not expose individual customer identities.'
+    };
+  }
+
+  static validatePetMatchPreferences(input) {
+    return validatePetMatchPreferences(input);
+  }
+
+  static petCompatibilityAssessment(listings = [], preferences = {}, householdPets = []) {
+    const { value, errors } = validatePetMatchPreferences(preferences);
+    if (errors.length) return { errors, preferences: value, recommendations: [], excluded: {} };
+
+    const excluded = { unavailable: 0, listingStatus: 0, storeVisibility: 0, purchaseBudget: 0, speciesPreference: 0, insufficientEvidence: 0 };
+    const purchaseMaximum = PURCHASE_BUDGET_MAX[value.purchaseBudget];
+    const recommendations = [];
+    for (const pet of listings) {
+      if (pet.status !== 'available' || pet.isAvailable !== true) {
+        excluded.unavailable += 1;
+        continue;
+      }
+      if (pet.isDeleted === true || pet.approvalStatus !== 'approved' || pet.listingType !== 'sale') {
+        excluded.listingStatus += 1;
+        continue;
+      }
+      if (!pet.store || pet.store.isCustomerVisible !== true) {
+        excluded.storeVisibility += 1;
+        continue;
+      }
+      if (Number.isFinite(purchaseMaximum) && Number(pet.price) > purchaseMaximum) {
+        excluded.purchaseBudget += 1;
+        continue;
+      }
+      if (value.preferredSpecies.length && !value.preferredSpecies.includes(normalizeChoice(pet.species))) {
+        excluded.speciesPreference += 1;
+        continue;
+      }
+      const assessment = listingCompatibility(pet, value, householdPets);
+      if (assessment.score === null) {
+        excluded.insufficientEvidence += 1;
+        continue;
+      }
+      recommendations.push({ pet, ...assessment });
+    }
+    recommendations.sort((a, b) =>
+      b.score - a.score
+      || b.evidenceCoverage - a.evidenceCoverage
+      || String(a.pet.name || '').localeCompare(String(b.pet.name || ''))
+      || String(a.pet._id || '').localeCompare(String(b.pet._id || ''))
+    );
+    return {
+      errors: [],
+      preferences: value,
+      recommendations,
+      excluded,
+      weights: PET_MATCH_WEIGHTS,
+      disclaimer: 'Compatibility is decision support based on your answers and available listing data. It is not a guarantee, behavioral assessment, or veterinary diagnosis.'
+    };
+  }
+
   static explainInventoryPosition({ product, inventory, unitsLast30 = 0, unitsPrevious30 = 0, observations = 0 }) {
     const onHand = Number(inventory?.quantity ?? product?.stockQuantity ?? 0);
     const reorderLevel = Number(inventory?.reorderLevel ?? product?.minStockThreshold ?? 10);
@@ -438,3 +925,4 @@ class DecisionSupportService {
 }
 
 module.exports = DecisionSupportService;
+module.exports.SELLER_DEMAND_POLICY = SELLER_DEMAND_POLICY;
