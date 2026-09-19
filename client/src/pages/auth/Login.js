@@ -4,7 +4,7 @@ import { toast } from 'react-toastify';
 import { useAuth } from '../../contexts/AuthContext';
 import { Mail, Lock, Eye, EyeOff, AlertCircle, Send, MessageSquare, X } from 'lucide-react';
 import { supportService } from '../../services/apiService';
-import { portalHomeForRole } from '../../utils/authorization';
+import { portalHomeForRole, professionalVerificationStatus, requiresProfessionalVerification } from '../../utils/authorization';
 
 const BACKEND = process.env.REACT_APP_API_URL?.replace('/api', '') || 'http://localhost:5000';
 
@@ -47,6 +47,14 @@ const Login = () => {
     return portalHomeForRole(user.role);
   };
 
+  const showAuthenticatedToast = currentUser => {
+    if (requiresProfessionalVerification(currentUser) && professionalVerificationStatus(currentUser) !== 'verified') {
+      toast.info('Signed in. Professional access is restricted until credential review is complete.');
+      return;
+    }
+    toast.success('Login successful!');
+  };
+
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
@@ -75,7 +83,7 @@ const Login = () => {
         setLoginEmail(result.email);
         toast.info('Verification code sent to your email');
       } else if (result.success) {
-        toast.success('Login successful!');
+        showAuthenticatedToast(result.user);
         const userRole = result.user?.role;
         if (userRole === 'super_admin') navigate('/superadmin/dashboard');
         else if (userRole === 'admin' || userRole === 'staff') navigate('/admin/dashboard');
@@ -107,7 +115,7 @@ const Login = () => {
     try {
       const result = await verify2FA({ email: loginEmail, otp });
       if (result.success) {
-        toast.success('Verification successful!');
+        showAuthenticatedToast(result.user);
         const userRole = result.user?.role;
         if (userRole === 'super_admin') navigate('/superadmin/dashboard');
         else if (userRole === 'admin' || userRole === 'staff') navigate('/admin/dashboard');

@@ -20,7 +20,9 @@ const {
     getStaffSpecializationRole,
     getProfessionalVerificationStatus,
     requiresPlatformVerification,
-    hasTrustedLegacyProfessionalVerification
+    hasTrustedLegacyProfessionalVerification,
+    hasCurrentVerifiedProfessionalCredential,
+    isCredentialExpired
 } = require('../utils/staffSpecialization');
 
 const RIDER_STATUSES = ['active', 'inactive', 'suspended'];
@@ -88,14 +90,6 @@ const staffAccountFilter = (extra = {}, options = {}) => ({
     ...(options.onlyArchived ? { staffStatus: 'archived' } : options.includeArchived ? {} : { staffStatus: { $ne: 'archived' } }),
     $or: [{ role: 'staff' }, { role: { $in: DIRECT_STAFF_ROLES } }]
 });
-const hasSufficientVerifiedCredential = (staff, now = new Date()) => {
-    const role = getStaffSpecializationRole(staff);
-    return (staff.professionalProfile?.credentialDocuments || []).some(document =>
-        document.status === 'verified'
-        && (!document.expiresAt || new Date(document.expiresAt) > now)
-        && (role !== 'veterinarian' || document.documentType === 'professional_license')
-    );
-};
 const validateSpecialist = (staffType, profile, phone, enabledRoles) => {
     if (!SPECIALIZED_STAFF_ROLES.includes(staffType)) return null;
     if (!enabledRoles.includes(staffType)) return 'This role is not enabled because the store does not currently offer a relevant service.';
@@ -816,6 +810,17 @@ const authorizeCredentialManagement = async (req, res, next) => {
     }
 };
 
+const authorizeOwnCredentialManagement = async (req, res, next) => {
+    try {
+        const staff = await User.findOne({ _id: req.user._id, isDeleted: false });
+        if (!staff || !isSpecializedAccount(staff)) return res.status(403).json({ message: 'Specialized staff access only.' });
+        req.managedStaff = staff;
+        next();
+    } catch (error) {
+        res.status(500).json({ message: 'Unable to verify professional credential access.' });
+    }
+};
+
 const uploadCredentialDocument = async (req, res) => {
     try {
         if (!req.file) return res.status(400).json({ message: 'Select a license or certificate document.' });
@@ -827,6 +832,7 @@ const uploadCredentialDocument = async (req, res) => {
         if (!name || name.length > 160) return res.status(400).json({ message: 'Credential name is required and must be 160 characters or fewer.' });
         const expiresAt = req.body.expiresAt ? new Date(req.body.expiresAt) : undefined;
         if (expiresAt && Number.isNaN(expiresAt.getTime())) return res.status(400).json({ message: 'Enter a valid credential expiration date.' });
+        if (expiresAt && expiresAt <= new Date()) return res.status(400).json({ message: 'A renewed credential expiration date must be in the future.' });
 
         if (!staff.professionalProfile.verification) staff.professionalProfile.verification = { status: 'pending_verification', isRequired: false };
         if (!staff.professionalProfile.credentialDocuments) staff.professionalProfile.credentialDocuments = [];
@@ -883,6 +889,9 @@ const updateCredentialVerification = async (req, res) => {
         const status = req.body.status;
         if (!['pending_verification', 'verified', 'rejected', 'expired', 'suspended'].includes(status)) return res.status(400).json({ message: 'Invalid verification status.' });
         if (['rejected', 'suspended'].includes(status) && !String(req.body.notes || '').trim()) return res.status(400).json({ message: 'A reason is required for rejection or suspension.' });
+        if (status === 'verified' && isCredentialExpired(document)) {
+            return res.status(409).json({ message: 'This credential is expired. Review a current replacement credential instead.' });
+        }
         document.status = status;
         if (status === 'verified') {
             document.verifiedAt = new Date();
@@ -892,7 +901,7 @@ const updateCredentialVerification = async (req, res) => {
         }
         if (req.body.isRequired !== undefined) staff.professionalProfile.verification.isRequired = Boolean(req.body.isRequired);
         if (requiresPlatformVerification(staff)) staff.professionalProfile.verification.isRequired = true;
-        const credentialSufficient = hasSufficientVerifiedCredential(staff);
+        const credentialSufficient = hasCurrentVerifiedProfessionalCredential(staff);
         staff.professionalProfile.verification.status = ['suspended', 'rejected', 'expired'].includes(status)
             ? status
             : status === 'verified'
@@ -946,7 +955,7 @@ const updateProfessionalVerificationStatus = async (req, res) => {
         const notes = String(req.body.notes || '').trim().slice(0, 1000);
         if (!['pending_verification', 'verified', 'rejected', 'suspended'].includes(status)) return res.status(400).json({ message: 'Invalid verification status.' });
         if (['rejected', 'suspended'].includes(status) && !notes) return res.status(400).json({ message: 'A reason is required for rejection or suspension.' });
-        if (status === 'verified' && !hasSufficientVerifiedCredential(staff) && !hasTrustedLegacyProfessionalVerification(staff)) {
+        if (status === 'verified' && !hasCurrentVerifiedProfessionalCredential(staff) && !hasTrustedLegacyProfessionalVerification(staff)) {
             return res.status(409).json({ message: 'Verify the required current professional credential before approving account access.' });
         }
         staff.professionalProfile.verification = staff.professionalProfile.verification || {};
@@ -1119,6 +1128,7 @@ module.exports = {
     getStaffProfile,
     getMyProfessionalProfile,
     updateMyProfessionalProfile,
+    authorizeOwnCredentialManagement,
     uploadCredentialDocument,
     authorizeCredentialManagement,
     updateCredentialVerification,

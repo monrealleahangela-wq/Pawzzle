@@ -1,6 +1,10 @@
 const User = require('../models/User');
 const Store = require('../models/Store');
 const { createNotification } = require('../controllers/notificationController');
+const {
+  hasCurrentVerifiedProfessionalCredential,
+  isCredentialApplicableToRole
+} = require('../utils/staffSpecialization');
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -33,17 +37,8 @@ const processStaffCredentialExpirations = async (io) => {
       const set = { [`professionalProfile.credentialDocuments.$[document].reminderHistory.${window.field}`]: now };
       if (window.key === 'expired') {
         set['professionalProfile.credentialDocuments.$[document].status'] = 'expired';
-        const role = staff.role === 'staff' ? staff.staffType : staff.role;
-        const hasAlternateCredential = (staff.professionalProfile?.credentialDocuments || []).some(candidate =>
-          String(candidate._id) !== String(document._id)
-          && candidate.status === 'verified'
-          && (!candidate.expiresAt || new Date(candidate.expiresAt) > now)
-          && (role !== 'veterinarian' || candidate.documentType === 'professional_license')
-        );
-        const requiredCredentialExpired = !hasAlternateCredential
-          && (role === 'veterinarian'
-            ? document.documentType === 'professional_license'
-            : staff.professionalProfile?.verification?.isRequired);
+        const requiredCredentialExpired = isCredentialApplicableToRole(staff, document)
+          && !hasCurrentVerifiedProfessionalCredential(staff, now);
         if (requiredCredentialExpired) {
           set['professionalProfile.verification.status'] = 'expired';
         }

@@ -36,6 +36,12 @@ const userSummary = user => ({
   professionalVerificationStatus: getProfessionalVerificationStatus(user)
 });
 
+const withProfessionalVerificationState = (safeUser, sourceUser) => ({
+  ...safeUser,
+  professionalVerificationRequired: requiresPlatformVerification(sourceUser),
+  professionalVerificationStatus: getProfessionalVerificationStatus(sourceUser)
+});
+
 const otpFailureMessage = (result, lockedMessage) => result.reason === 'locked'
   ? lockedMessage
   : 'Invalid or expired code.';
@@ -326,7 +332,7 @@ const getCurrentUser = async (req, res) => {
     const user = await User.findById(req.user._id).populate('store');
     if (!user) return res.status(404).json({ message: 'User not found' });
     await attachStoreRolePolicy(user);
-    const safe = sanitizeUser(user);
+    const safe = withProfessionalVerificationState(sanitizeUser(user), user);
     if (user.$locals?.rolePolicyPermissions !== undefined) {
       safe.permissions = serializeEffectivePermissionMap(user);
       safe.permissionSource = 'store_role';
@@ -347,7 +353,7 @@ const updateProfile = async (req, res) => {
     applyProfileUpdates(user, pickProfileUpdates(req.body));
     await user.save();
     await user.populate('store');
-    return res.json({ success: true, user: sanitizeUser(user) });
+    return res.json({ success: true, user: withProfessionalVerificationState(sanitizeUser(user), user) });
   } catch (error) {
     return res.status(500).json({ message: 'Profile update failed' });
   }

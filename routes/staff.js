@@ -7,6 +7,7 @@ const {
     getStaffProfile,
     getMyProfessionalProfile,
     updateMyProfessionalProfile,
+    authorizeOwnCredentialManagement,
     uploadCredentialDocument,
     authorizeCredentialManagement,
     updateCredentialVerification,
@@ -32,6 +33,7 @@ const { getRolePermissions, updateRolePermissions } = require('../controllers/ro
 router.get('/me/rider-summary', authenticate, getMyRiderDetails);
 router.get('/me/professional-profile', authenticate, getMyProfessionalProfile);
 router.patch('/me/professional-profile', authenticate, updateMyProfessionalProfile);
+router.post('/me/credentials', authenticate, authorizeOwnCredentialManagement, uploadDoc.single('document'), handleUploadError, uploadCredentialDocument);
 router.get('/riders/eligible', authenticate, requirePermission('logistics.manage'), getEligibleRiders);
 router.get('/riders/:id', authenticate, requirePermission('logistics.manage'), getRiderDetails);
 router.get('/platform/verifications', authenticate, superAdminOnly, getProfessionalVerificationQueue);

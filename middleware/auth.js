@@ -9,7 +9,7 @@ const { requiresPlatformVerification, getProfessionalVerificationStatus } = requ
 
 const isProfessionalRecoveryRoute = req => (req.baseUrl === '/api/auth'
   && ['/me', '/change-password', '/logout'].includes(req.path))
-  || (req.baseUrl === '/api/staff' && req.path === '/me/professional-profile');
+  || (req.baseUrl === '/api/staff' && ['/me/professional-profile', '/me/credentials'].includes(req.path));
 
 // Authentication middleware
 const authenticate = async (req, res, next) => {

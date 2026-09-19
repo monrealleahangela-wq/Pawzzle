@@ -160,6 +160,7 @@ export const staffService = {
   getProfile: (id) => api.get(`/staff/${id}/profile`),
   getMyProfessionalProfile: () => api.get('/staff/me/professional-profile'),
   updateMyProfessionalProfile: (data) => api.patch('/staff/me/professional-profile', data),
+  uploadMyCredential: (data) => api.post('/staff/me/credentials', data, { headers: { 'Content-Type': 'multipart/form-data' } }),
   create: (data) => api.post('/staff', data),
   update: (id, data) => api.put(`/staff/${id}`, data),
   uploadCredential: (id, data) => api.post(`/staff/${id}/credentials`, data, { headers: { 'Content-Type': 'multipart/form-data' } }),

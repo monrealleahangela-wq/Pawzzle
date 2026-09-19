@@ -48,6 +48,31 @@ const hasTrustedLegacyProfessionalVerification = staff => Boolean(
   || (staff?.professionalProfile?.certifications || []).some(certification => certification?.isVerified === true)
 );
 
+const isCredentialApplicableToRole = (staff, document) => {
+  const role = getStaffSpecializationRole(staff);
+  return role !== 'veterinarian' || document?.documentType === 'professional_license';
+};
+
+const isCredentialExpired = (document, now = new Date()) => Boolean(
+  document?.expiresAt && new Date(document.expiresAt) <= now
+);
+
+const currentCredentialDocuments = staff => (staff?.professionalProfile?.credentialDocuments || [])
+  .filter(document => document?.status !== 'archived');
+
+const hasCurrentVerifiedProfessionalCredential = (staff, now = new Date()) => currentCredentialDocuments(staff).some(document =>
+  document.status === 'verified'
+  && !isCredentialExpired(document, now)
+  && isCredentialApplicableToRole(staff, document)
+);
+
+const hasExpiredRequiredProfessionalCredential = (staff, now = new Date()) => {
+  const documents = currentCredentialDocuments(staff).filter(document => isCredentialApplicableToRole(staff, document));
+  if (documents.some(document => ['verified', 'expired'].includes(document.status) && isCredentialExpired(document, now))) return true;
+  const registrationExpiry = staff?.professionalProfile?.registration?.expiresAt;
+  return Boolean(!documents.length && registrationExpiry && new Date(registrationExpiry) <= now);
+};
+
 const getEnabledSpecializedRoles = services => {
   const enabled = new Set();
   for (const service of services || []) {
@@ -74,18 +99,36 @@ const toMinutes = value => {
 const getProfessionalVerificationStatus = (staff, now = new Date()) => {
   const profile = staff?.professionalProfile;
   const verification = profile?.verification;
-  if (!verification) return requiresPlatformVerification(staff) && hasTrustedLegacyProfessionalVerification(staff)
-    ? 'verified'
-    : 'pending_verification';
+  const requiresVerification = requiresPlatformVerification(staff) || Boolean(verification?.isRequired);
+  const currentDocuments = currentCredentialDocuments(staff);
+  const hasCurrentCredential = hasCurrentVerifiedProfessionalCredential(staff, now);
+  const hasExpiredRequiredCredential = hasExpiredRequiredProfessionalCredential(staff, now);
+  if (!verification) {
+    if (hasExpiredRequiredCredential) return 'expired';
+    return requiresVerification && hasTrustedLegacyProfessionalVerification(staff)
+      ? 'verified'
+      : 'pending_verification';
+  }
   if (verification.status === 'suspended') return 'suspended';
-  const currentDocuments = (profile.credentialDocuments || []).filter(document => document.status !== 'archived');
-  if (verification.status === 'pending_verification' && !currentDocuments.length && hasTrustedLegacyProfessionalVerification(staff)) {
+  if (verification.status === 'rejected') return 'rejected';
+  // Credential validity is derived from the current approved evidence. This
+  // also repairs stale profile badges left as pending/expired after a newer
+  // credential was approved, without bypassing an explicit suspension or
+  // rejection decision.
+  if (hasCurrentCredential) return 'verified';
+  if (verification.status === 'pending_verification' && !currentDocuments.length && !hasExpiredRequiredCredential && hasTrustedLegacyProfessionalVerification(staff)) {
     return 'verified';
   }
-  const hasExpiredVerifiedDocument = currentDocuments.some(document =>
-    document.status === 'verified' && document.expiresAt && new Date(document.expiresAt) <= now
-  );
-  if (verification.status === 'expired' || hasExpiredVerifiedDocument) return 'expired';
+  if (verification.status === 'verified') {
+    // Preserve pre-document-workflow accounts that were already explicitly
+    // approved, unless their stored registration itself is expired. New
+    // approvals are guarded by the controller and require current evidence.
+    if (!requiresVerification || (!currentDocuments.length && !hasExpiredRequiredCredential)) {
+      return 'verified';
+    }
+    return hasExpiredRequiredCredential ? 'expired' : 'pending_verification';
+  }
+  if (verification.status === 'expired' || (!hasCurrentCredential && hasExpiredRequiredCredential)) return 'expired';
   return verification.status || 'pending_verification';
 };
 
@@ -142,5 +185,9 @@ module.exports = {
   getProfessionalVerificationStatus,
   isProfessionallyAssignable,
   requiresPlatformVerification,
-  hasTrustedLegacyProfessionalVerification
+  hasTrustedLegacyProfessionalVerification,
+  hasCurrentVerifiedProfessionalCredential,
+  hasExpiredRequiredProfessionalCredential,
+  isCredentialApplicableToRole,
+  isCredentialExpired
 };
