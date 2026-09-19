@@ -279,10 +279,77 @@ const storeSchema = new mongoose.Schema({
     registeredBusinessName: { type: String, trim: true },
     tradeName: { type: String, trim: true },
     legalStructure: { type: String, trim: true },
+    natureOfBusiness: { type: String, trim: true },
     registrationAuthority: { type: String, trim: true },
     registrationNumber: { type: String, trim: true, select: false },
+    registrationDate: Date,
+    registrationExpirationDate: Date,
+    registeredAddress: { type: mongoose.Schema.Types.Mixed },
     registrationVerified: { type: Boolean, default: false },
     sourceApplication: { type: mongoose.Schema.Types.ObjectId, ref: 'StoreApplication' }
+  },
+  // Current verified compliance documents and reason-aware operational blocks.
+  // The original StoreApplication remains historical; approved replacement
+  // documents are promoted here without deleting earlier versions.
+  businessCompliance: {
+    status: {
+      type: String,
+      enum: ['unverified', 'pending_review', 'needs_correction', 'verified', 'expiring_soon', 'restricted'],
+      default: 'unverified'
+    },
+    currentRequest: { type: mongoose.Schema.Types.ObjectId, ref: 'StoreComplianceRequest' },
+    representative: { type: mongoose.Schema.Types.Mixed, default: {} },
+    lastSubmittedAt: Date,
+    lastReviewedAt: Date,
+    lastVerifiedAt: Date,
+    documents: {
+      type: [{
+        requirementKey: { type: String, required: true },
+        label: { type: String, required: true },
+        requiredForOperation: { type: Boolean, default: false },
+        taxAffecting: { type: Boolean, default: false },
+        currentVersion: { type: Number, default: 0 },
+        versions: [{
+          version: { type: Number, required: true },
+          documentUrl: { type: String, required: true, select: false },
+          originalName: String,
+          mimeType: String,
+          size: Number,
+          issueDate: Date,
+          hasExpiration: { type: Boolean, default: false },
+          expirationDate: Date,
+          verificationStatus: { type: String, enum: ['pending', 'verified', 'needs_correction', 'rejected', 'superseded'], default: 'pending' },
+          submittedAt: { type: Date, default: Date.now },
+          submittedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+          verifiedAt: Date,
+          verifiedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+          sourceApplication: { type: mongoose.Schema.Types.ObjectId, ref: 'StoreApplication' },
+          sourceRequest: { type: mongoose.Schema.Types.ObjectId, ref: 'StoreComplianceRequest' },
+          supersededAt: Date
+        }]
+      }],
+      default: []
+    },
+    restrictionReasons: {
+      type: [{
+        code: { type: String, enum: ['expired_required_document', 'manual_platform_suspension', 'security_review', 'policy_violation'], required: true },
+        requirementKey: String,
+        active: { type: Boolean, default: true },
+        appliedAt: { type: Date, default: Date.now },
+        clearedAt: Date,
+        notes: String,
+        sourceRequest: { type: mongoose.Schema.Types.ObjectId, ref: 'StoreComplianceRequest' }
+      }],
+      default: []
+    },
+    reminderLog: {
+      type: [{ requirementKey: String, version: Number, thresholdDays: Number, sentAt: { type: Date, default: Date.now } }],
+      default: []
+    },
+    auditTrail: {
+      type: [{ event: String, actor: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, systemActor: String, at: { type: Date, default: Date.now }, reason: String, requirementKey: String, request: { type: mongoose.Schema.Types.ObjectId, ref: 'StoreComplianceRequest' } }],
+      default: []
+    }
   },
   specialties: [{
     type: String,

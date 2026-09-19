@@ -219,6 +219,12 @@ const Dashboard = () => {
       </header>
 
       {error && <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</div>}
+      {isOwner && data?.compliance && data.compliance.status !== 'verified' && (
+        <div className={`flex flex-col gap-3 rounded-2xl border p-4 sm:flex-row sm:items-center sm:justify-between ${data.compliance.restricted ? 'border-rose-200 bg-rose-50 text-rose-900' : 'border-amber-200 bg-amber-50 text-amber-900'}`}>
+          <div><strong className="block text-sm">{data.compliance.restricted ? 'Store compliance requires immediate action' : data.compliance.status === 'expiring_soon' ? 'A business document is expiring soon' : 'Complete Business & Tax Information'}</strong><p className="mt-1 text-xs">{data.compliance.blockingReasons?.[0]?.message || 'Review the current verification status, required documents, and pending requests.'}</p></div>
+          <Link to="/admin/settings?section=tax" className="inline-flex h-9 shrink-0 items-center justify-center rounded-xl bg-slate-900 px-4 text-xs font-bold text-white hover:bg-primary-700">Review Business & Tax</Link>
+        </div>
+      )}
 
       {OPERATIONAL_ROLES.has(user?.role) && (
         <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">

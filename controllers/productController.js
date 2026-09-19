@@ -3,6 +3,8 @@ const Product = require('../models/Product');
 const StockSyncService = require('../services/stockSyncService');
 const { isStoreAdmin, isOperationalStaff } = require('../config/permissions');
 const { canOperateStore } = require('../utils/authorizationPolicy');
+const Store = require('../models/Store');
+const { getCustomerVisibleOwnerIds, buildCustomerVisibleStoreFilter, withCustomerComplianceFilter } = require('../utils/storeVisibility');
 
 // Helper: auto-find or auto-create a default store for an admin
 const resolveAdminStore = async (user) => {
@@ -80,6 +82,11 @@ const getAllProducts = async (req, res) => {
         }
       }
       // super_admin sees everything (no extra filter)
+    } else {
+      const ownerIds = await getCustomerVisibleOwnerIds();
+      const extra = city ? { 'contactInfo.address.city': { $regex: new RegExp(city, 'i') } } : {};
+      const visibleStores = await Store.find(withCustomerComplianceFilter(buildCustomerVisibleStoreFilter(ownerIds, extra))).select('_id');
+      filter.store = { $in: visibleStores.map(store => store._id) };
     }
 
     if (category) filter.category = category;
@@ -143,6 +150,11 @@ const getProductById = async (req, res) => {
     if (req.baseUrl?.includes('/admin')
         && !(await canOperateStore(req.user, product.store?._id || product.store, ['products.view', 'inventory.view']))) {
       return res.status(403).json({ message: 'Access denied for this product.' });
+    }
+    if (!req.baseUrl?.includes('/admin')) {
+      const ownerIds = await getCustomerVisibleOwnerIds();
+      const visibleStore = await Store.exists(withCustomerComplianceFilter(buildCustomerVisibleStoreFilter(ownerIds, { _id: product.store?._id || product.store })));
+      if (!visibleStore || !product.isActive) return res.status(404).json({ message: 'Product not found or unavailable' });
     }
 
     res.json({ product });

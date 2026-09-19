@@ -22,7 +22,8 @@ const { buildStoreOperationsSnapshot } = require('../services/operationsDashboar
 const { createNotification } = require('./notificationController');
 const {
   getCustomerVisibleOwnerIds,
-  buildCustomerVisibleStoreFilter
+  buildCustomerVisibleStoreFilter,
+  withCustomerComplianceFilter
 } = require('../utils/storeVisibility');
 
 // Get all stores (public)
@@ -31,7 +32,7 @@ const getAllStores = async (req, res) => {
     const { businessType, city, state, featured, search, page = 1, limit = 12 } = req.query;
 
     const ownerIds = await getCustomerVisibleOwnerIds();
-    const filter = buildCustomerVisibleStoreFilter(ownerIds);
+    const filter = withCustomerComplianceFilter(buildCustomerVisibleStoreFilter(ownerIds));
 
     if (businessType) filter.businessType = businessType;
     if (city) {
@@ -50,7 +51,7 @@ const getAllStores = async (req, res) => {
 
     const skip = (page - 1) * limit;
     const stores = await Store.find(filter)
-      .select('-taxProfile -businessProfile.registrationNumber -verification.adminNotes')
+      .select('-taxProfile -businessProfile.registrationNumber -businessCompliance -verification.adminNotes')
       .populate('owner', 'username firstName lastName')
       .sort({ featured: -1, 'ratings.average': -1, createdAt: -1 })
       .skip(skip)
@@ -78,8 +79,8 @@ const getAllStores = async (req, res) => {
 const getStoreById = async (req, res) => {
   try {
     const ownerIds = await getCustomerVisibleOwnerIds();
-    const store = await Store.findOne(buildCustomerVisibleStoreFilter(ownerIds, { _id: req.params.id }))
-      .select('-taxProfile -businessProfile.registrationNumber -verification.adminNotes')
+    const store = await Store.findOne(withCustomerComplianceFilter(buildCustomerVisibleStoreFilter(ownerIds, { _id: req.params.id })))
+      .select('-taxProfile -businessProfile.registrationNumber -businessCompliance -verification.adminNotes')
       .populate('owner', 'username firstName lastName');
 
     if (!store) {
@@ -124,8 +125,8 @@ const getStoreById = async (req, res) => {
 const getStoreDetails = async (req, res) => {
   try {
     const ownerIds = await getCustomerVisibleOwnerIds();
-    const store = await Store.findOne(buildCustomerVisibleStoreFilter(ownerIds, { _id: req.params.id }))
-      .select('-taxProfile -businessProfile.registrationNumber -verification.adminNotes')
+    const store = await Store.findOne(withCustomerComplianceFilter(buildCustomerVisibleStoreFilter(ownerIds, { _id: req.params.id })))
+      .select('-taxProfile -businessProfile.registrationNumber -businessCompliance -verification.adminNotes')
       .populate('owner', 'username firstName lastName');
 
     if (!store) {
@@ -286,7 +287,7 @@ const updateStore = async (req, res) => {
     }
 
     // List of fields that SHOULD NOT be updated via this route
-    const protectedFields = ['_id', '__v', 'owner', 'slug', 'ratings', 'stats', 'taxConfiguration', 'refundPolicy', 'rolePermissions', 'staffSequence', 'verificationStatus', 'isActive', 'featured', 'subscriptionTier', 'subscriptionExpires', 'createdAt', 'updatedAt'];
+    const protectedFields = ['_id', '__v', 'owner', 'slug', 'ratings', 'stats', 'taxConfiguration', 'taxProfile', 'businessProfile', 'businessCompliance', 'refundPolicy', 'rolePermissions', 'staffSequence', 'verificationStatus', 'isActive', 'featured', 'subscriptionTier', 'subscriptionExpires', 'createdAt', 'updatedAt'];
 
     // Create a body clone without protected fields
     const updateData = { ...req.body };
@@ -435,7 +436,7 @@ const getStoreByOwner = async (req, res) => {
   try {
     const { ownerId } = req.params;
     const ownerIds = await getCustomerVisibleOwnerIds();
-    const store = await Store.findOne(buildCustomerVisibleStoreFilter(ownerIds, { owner: ownerId })).select('_id name logo slug');
+    const store = await Store.findOne(withCustomerComplianceFilter(buildCustomerVisibleStoreFilter(ownerIds, { owner: ownerId }))).select('_id name logo slug');
     if (!store) return res.status(404).json({ message: 'Store not found' });
     res.json({ store });
   } catch (error) {
@@ -835,6 +836,7 @@ const getStoreLocations = async (req, res) => {
   try {
     const ownerIds = await getCustomerVisibleOwnerIds();
     const stores = await Store.find(buildCustomerVisibleStoreFilter(ownerIds))
+      .where({ 'businessCompliance.restrictionReasons': { $not: { $elemMatch: { active: true } } } })
       .select('name logo coverImage slug businessType contactInfo.phone contactInfo.email contactInfo.address verificationStatus');
 
     res.json({ stores });

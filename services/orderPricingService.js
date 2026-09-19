@@ -5,6 +5,7 @@ const Voucher = require('../models/Voucher');
 const DeliveryFeeService = require('./deliveryFeeService');
 const { calculateTransactionTax, resolveTransactionTaxConfiguration, roundMoney } = require('../utils/taxCalculator');
 const { getPetAvailabilityIssue } = require('./petAvailabilityService');
+const { assertStoreTransactionEligible } = require('./storeComplianceService');
 
 const idsEqual = (a, b) => a && b && a.toString() === b.toString();
 
@@ -110,6 +111,7 @@ const calculateOrderPricing = async ({ items, requestedDeliveryMethod, shippingA
 
   const store = await Store.findById(storeId);
   if (!store || !store.isActive || store.isDeleted) throw new Error('Store is unavailable.');
+  assertStoreTransactionEligible(store, { requireTax: true });
   const deliveryMethod = hasPet ? 'pickup' : requestedDeliveryMethod;
   if (!['delivery', 'pickup'].includes(deliveryMethod)) throw new Error('Invalid delivery method.');
 

@@ -6,7 +6,7 @@ const { isRoleEligibleForService } = require('../utils/staffSpecialization');
 const { calculateServicePrice } = require('../utils/pricingEngine');
 const { calculateTransactionTax, resolveTransactionTaxConfiguration } = require('../utils/taxCalculator');
 const { canOperateStore } = require('../utils/authorizationPolicy');
-const { getCustomerVisibleOwnerIds, buildCustomerVisibleStoreFilter } = require('../utils/storeVisibility');
+const { getCustomerVisibleOwnerIds, buildCustomerVisibleStoreFilter, withCustomerComplianceFilter } = require('../utils/storeVisibility');
 
 const DEFAULT_REQUIREMENTS = [
   "Valid ID and contact details",
@@ -39,7 +39,7 @@ const getStoreServices = async (req, res) => {
     const { category } = req.query;
 
     const ownerIds = await getCustomerVisibleOwnerIds();
-    const store = await Store.findOne(buildCustomerVisibleStoreFilter(ownerIds, { _id: storeId })).select('_id');
+    const store = await Store.findOne(withCustomerComplianceFilter(buildCustomerVisibleStoreFilter(ownerIds, { _id: storeId }))).select('_id');
     if (!store) return res.status(404).json({ message: 'Store not found or unavailable' });
 
     const filter = { store: storeId, isActive: true, isDeleted: { $ne: true } };
@@ -396,7 +396,7 @@ const getAllServices = async (req, res) => {
       const cityFilter = city.replace(/[nñ]/gi, '[nñ]');
       publicStoreExtra['contactInfo.address.city'] = { $regex: new RegExp(cityFilter, 'i') };
     }
-    const publicStores = await Store.find(buildCustomerVisibleStoreFilter(ownerIds, publicStoreExtra)).select('_id');
+    const publicStores = await Store.find(withCustomerComplianceFilter(buildCustomerVisibleStoreFilter(ownerIds, publicStoreExtra))).select('_id');
     filter.store = { $in: publicStores.map(store => store._id) };
 
     const skip = (page - 1) * limit;
@@ -440,7 +440,7 @@ const getServiceById = async (req, res) => {
     if (!isAdminRequest) {
       if (!service.isActive || !service.store) return res.status(404).json({ message: 'Service not found or unavailable' });
       const ownerIds = await getCustomerVisibleOwnerIds();
-      const publicStore = await Store.findOne(buildCustomerVisibleStoreFilter(ownerIds, { _id: service.store }))
+      const publicStore = await Store.findOne(withCustomerComplianceFilter(buildCustomerVisibleStoreFilter(ownerIds, { _id: service.store })))
         .select(PUBLIC_SERVICE_STORE_FIELDS);
       if (!publicStore) return res.status(404).json({ message: 'Service not found or unavailable' });
       return res.json({ ...service.toObject(), store: publicStore.toObject() });

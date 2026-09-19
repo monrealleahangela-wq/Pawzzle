@@ -54,7 +54,7 @@ const notificationSchema = new mongoose.Schema({
     },
     relatedModel: {
         type: String, // 'Order', 'Booking', 'StoreApplication', etc.
-        enum: ['Order', 'Booking', 'Delivery', 'StoreApplication', 'Inventory', 'Report', 'User', 'Conversation', 'Service', 'Supplier', 'PurchaseOrder', 'ServiceSupply', 'Attendance', 'LeaveRequest', 'PayrollPeriod', 'Payslip']
+        enum: ['Order', 'Booking', 'Delivery', 'Store', 'StoreApplication', 'StoreComplianceRequest', 'Inventory', 'Report', 'User', 'Conversation', 'Service', 'Supplier', 'PurchaseOrder', 'ServiceSupply', 'Attendance', 'LeaveRequest', 'PayrollPeriod', 'Payslip']
     },
     targetUrl: {
         type: String // Optional: Pre-calculated dynamic URL for convenience

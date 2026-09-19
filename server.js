@@ -76,6 +76,12 @@ mongoose.connect(process.env.MONGODB_URI)
       processStaffCredentialExpirations(io).catch(error => console.error('Staff credential expiry sweep failed:', error.message));
     }, 24 * 60 * 60000);
     credentialExpiryTimer.unref();
+    const { processStoreComplianceExpirations } = require('./services/storeComplianceService');
+    processStoreComplianceExpirations(io).catch(error => console.error('Store compliance expiry sweep failed:', error.message));
+    const storeComplianceTimer = setInterval(() => {
+      processStoreComplianceExpirations(io).catch(error => console.error('Store compliance expiry sweep failed:', error.message));
+    }, 24 * 60 * 60000);
+    storeComplianceTimer.unref();
     const { processDssAlerts } = require('./services/dssAlertService');
     processDssAlerts(io).catch(error => console.error('DSS alert sweep failed:', error.message));
     const dssAlertTimer = setInterval(() => {

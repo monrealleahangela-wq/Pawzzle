@@ -18,6 +18,7 @@ const {
 const { isPlatformAdmin, isStoreAdmin, isOperationalStaff, hasPermission } = require('../config/permissions');
 const { canAccessStore } = require('../utils/authorizationPolicy');
 const { requiresAcknowledgment } = require('../utils/refundPolicy');
+const { assertStoreTransactionEligible } = require('../services/storeComplianceService');
 const {
   getPetAvailabilityIssue,
   releasePetReservation,
@@ -151,6 +152,7 @@ const createCheckoutSession = async (req, res) => {
     if (String(order.customer._id) !== String(req.user._id) && !isPlatformAdmin(req.user)) {
       return res.status(403).json({ message: 'Access denied.' });
     }
+    assertStoreTransactionEligible(order.store, { requireTax: true });
     if (requiresAcknowledgment(order.refundPolicySnapshot || order.store?.refundPolicy)
         && !order.refundPolicyAcknowledgment?.acknowledged) {
       return res.status(409).json({ message: 'Acknowledge the store No Refund policy before starting PayMongo.' });
@@ -247,6 +249,7 @@ const createBookingCheckoutSession = async (req, res) => {
     if (String(booking.customer._id) !== String(req.user._id) && !isPlatformAdmin(req.user)) {
       return res.status(403).json({ message: 'Access denied.' });
     }
+    assertStoreTransactionEligible(booking.store, { requireTax: true });
     if (requiresAcknowledgment(booking.refundPolicySnapshot || booking.store?.refundPolicy)
         && !booking.refundPolicyAcknowledgment?.acknowledged) {
       return res.status(409).json({ message: 'Acknowledge the store No Refund policy before starting PayMongo.' });

@@ -5,6 +5,7 @@ const User = require('../models/User');
 const Voucher = require('../models/Voucher');
 const { calculateServicePrice, getEligibleStaff, validateBookingRules } = require('../utils/pricingEngine');
 const { calculateTransactionTax, resolveTransactionTaxConfiguration } = require('../utils/taxCalculator');
+const { assertStoreTransactionEligible } = require('./storeComplianceService');
 
 const inactiveStatuses = ['cancelled', 'confirmation_expired', 'rejected', 'no_show', 'completed'];
 
@@ -125,6 +126,7 @@ const validateAssignedStaff = async (booking, service) => {
 
 const prepareForPayment = async bookingOrId => {
   const { booking, service, store } = await loadContext(bookingOrId);
+  assertStoreTransactionEligible(store, { requireTax: true });
   assertBookingIsCurrent(booking);
   const bookingRules = await validateBookingRules(service, booking.bookingDate, booking.startTime, booking._id);
   if (!bookingRules.valid) throw Object.assign(new Error(bookingRules.reason), { statusCode: 409 });

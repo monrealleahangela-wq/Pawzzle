@@ -17,12 +17,18 @@ const buildCustomerVisibleStoreFilter = (ownerIds, extra = {}) => ({
   ...(Object.keys(extra).length ? { $and: [extra] } : {})
 });
 
+const withCustomerComplianceFilter = filter => ({
+  ...filter,
+  'businessCompliance.restrictionReasons': { $not: { $elemMatch: { active: true } } }
+});
+
 const isCustomerVisibleStoreRecord = (store, owner) => Boolean(
   store &&
   owner &&
   store.isActive === true &&
   store.isDeleted !== true &&
   store.verificationStatus === 'verified' &&
+  !(store.businessCompliance?.restrictionReasons || []).some(reason => reason.active !== false) &&
   owner.isActive !== false &&
   owner.isDeleted !== true &&
   STORE_OWNER_ROLES.includes(owner.role) &&
@@ -33,5 +39,6 @@ module.exports = {
   STORE_OWNER_ROLES,
   getCustomerVisibleOwnerIds,
   buildCustomerVisibleStoreFilter,
+  withCustomerComplianceFilter,
   isCustomerVisibleStoreRecord
 };

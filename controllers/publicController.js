@@ -5,7 +5,7 @@ const Product = require('../models/Product');
 const Service = require('../models/Service');
 const Review = require('../models/Review');
 const { getPublicRecaptchaConfig } = require('../utils/captchaVerifier');
-const { getCustomerVisibleOwnerIds, buildCustomerVisibleStoreFilter } = require('../utils/storeVisibility');
+const { getCustomerVisibleOwnerIds, buildCustomerVisibleStoreFilter, withCustomerComplianceFilter } = require('../utils/storeVisibility');
 
 // Public site keys are designed to be sent to browsers. The matching secret
 // remains server-only and is never included in this response.
@@ -59,7 +59,7 @@ const getLandingPageData = async (req, res) => {
       
       // 5. Accurate Platform Stats
       Promise.all([
-        Store.countDocuments(buildCustomerVisibleStoreFilter(visibleOwnerIds)),
+        Store.countDocuments(withCustomerComplianceFilter(buildCustomerVisibleStoreFilter(visibleOwnerIds))),
         Pet.countDocuments({
           isAvailable: true,
           isDeleted: { $ne: true },

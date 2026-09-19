@@ -2,11 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { storeService } from '../../services/apiService';
-import { DollarSign, Save, Settings, Shield, Zap, Globe, Settings2, Building, CheckCircle, AlertCircle, Clock, Calendar, ChevronRight, Clock3, Timer, Users, XCircle, Info, Package, Heart, PlusCircle, UserCog, Bell, Palette } from 'lucide-react';
+import { Save, Settings, Shield, Zap, Globe, Settings2, Building, CheckCircle, AlertCircle, Clock, Calendar, ChevronRight, Clock3, Timer, Users, XCircle, Info, Package, Heart, PlusCircle, UserCog, Bell, Palette } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { formatTime12h } from '../../utils/timeFormatters';
 import { useRealTimeUpdates } from '../../hooks/useRealTimeUpdates';
 import DeliveryPricingSettings from '../../components/settings/DeliveryPricingSettings';
+import BusinessTaxComplianceSettings from '../../components/settings/BusinessTaxComplianceSettings';
 
 const emptyDeliveryPricing = {
   enabled: false,
@@ -61,22 +62,6 @@ const AdminSettings = () => {
       confirmationWindowMinutes: 1440
     }
   });
-  const [taxConfiguration, setTaxConfiguration] = useState({
-    isConfigured: false,
-    taxStatus: 'non_vat',
-    pricingMode: 'inclusive',
-    vatRatePercent: 12,
-    deliveryFeeTaxable: false
-  });
-  const [taxProfile, setTaxProfile] = useState({
-    verificationStatus: 'unverified',
-    declaredTaxStatus: null,
-    verifiedTaxStatus: null,
-    registeredName: '',
-    verifiedAt: null,
-    updateRequestStatus: 'none'
-  });
-  const [taxUpdateReason, setTaxUpdateReason] = useState('');
   const [refundPolicy, setRefundPolicy] = useState({
     type: 'conditional_refund',
     summary: 'Refund requests are reviewed by the store according to the order or service circumstances.',
@@ -127,8 +112,6 @@ const AdminSettings = () => {
       const storeData = storeRes.data?.store || storeRes.data?.settings || storeRes.data;
       if (storeData) {
         setStoreSettings(prev => ({ ...prev, ...storeData }));
-        if (storeData.taxConfiguration) setTaxConfiguration(prev => ({ ...prev, ...storeData.taxConfiguration }));
-        if (storeData.taxProfile) setTaxProfile(prev => ({ ...prev, ...storeData.taxProfile }));
         if (storeData.refundPolicy) setRefundPolicy(prev => ({ ...prev, ...storeData.refundPolicy }));
       }
       const deliveryData = deliveryRes.data || {};
@@ -247,21 +230,6 @@ const AdminSettings = () => {
       }
     } catch (error) {
       toast.error('Failed to save store settings');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleRequestTaxUpdate = async () => {
-    if (taxUpdateReason.trim().length < 10) return toast.error('Briefly explain what business or tax information needs to change.');
-    setLoading(true);
-    try {
-      await storeService.requestTaxProfileUpdate(taxUpdateReason);
-      setTaxProfile(prev => ({ ...prev, updateRequestStatus: 'pending' }));
-      setTaxUpdateReason('');
-      toast.success('Update request sent to Platform Admin');
-    } catch (error) {
-      toast.error(error.response?.data?.message || 'Failed to request an update');
     } finally {
       setLoading(false);
     }
@@ -470,32 +438,9 @@ const AdminSettings = () => {
               </div>
             </div>
           ) : activeTab === 'tax' ? (
-            <div className="bg-white border border-slate-100 rounded-[2.5rem] p-8 shadow-sm space-y-8 animate-in slide-in-from-right-4">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-primary-50 text-primary-600 rounded-2xl flex items-center justify-center"><DollarSign className="h-6 w-6" /></div>
-                <div>
-                  <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest leading-none mb-1">Business & Tax Information</h3>
-                  <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Verified by Platform Admin from your submitted documents</p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4"><span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Business registration</span><strong className="mt-1 block text-xs text-slate-900">{taxProfile.registeredName || 'Awaiting verified details'}</strong></div>
-                <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4"><span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Tax verification</span><strong className="mt-1 block text-xs capitalize text-slate-900">{(taxProfile.verificationStatus || 'unverified').replace('_', ' ')}</strong></div>
-                <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4"><span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Verified tax status</span><strong className="mt-1 block text-xs text-slate-900">{taxProfile.verifiedTaxStatus === 'vat_registered' ? 'VAT Registered' : taxProfile.verifiedTaxStatus === 'non_vat_registered' ? 'Non-VAT Registered' : 'Not yet verified'}</strong></div>
-                <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4"><span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Verified on</span><strong className="mt-1 block text-xs text-slate-900">{taxProfile.verifiedAt ? new Date(taxProfile.verifiedAt).toLocaleDateString() : 'Pending'}</strong></div>
-              </div>
-              <div className={`rounded-2xl border p-4 text-[10px] ${taxConfiguration.isConfigured ? 'border-emerald-100 bg-emerald-50 text-emerald-800' : 'border-amber-100 bg-amber-50 text-amber-800'}`}>
-                <strong className="block mb-1">{taxConfiguration.isConfigured ? 'Verified tax treatment is active.' : 'Complete Business & Tax Verification before customers can pay.'}</strong>
-                Store Owners cannot change VAT status directly. Existing transactions keep their saved tax snapshot.
-              </div>
-              <div className="space-y-2">
-                <label className="text-[9px] font-black uppercase tracking-widest text-slate-500">Request an information update</label>
-                <textarea value={taxUpdateReason} onChange={(event) => setTaxUpdateReason(event.target.value)} className="min-h-20 w-full rounded-xl border border-slate-200 p-3 text-xs" placeholder="Explain what changed and which documents you need to replace." disabled={taxProfile.updateRequestStatus === 'pending'} />
-                <button onClick={handleRequestTaxUpdate} disabled={loading || taxProfile.updateRequestStatus === 'pending'} className="flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 text-[10px] font-black uppercase tracking-widest text-white hover:bg-primary-600 disabled:opacity-50">
-                  {taxProfile.updateRequestStatus === 'pending' ? 'Update request pending' : 'Request reviewed update'}
-                </button>
-              </div>
+            <div>
+              {/* Store Owners cannot change VAT status directly; Platform Admin approval remains authoritative. */}
+              <BusinessTaxComplianceSettings />
             </div>
           ) : activeTab === 'refund' ? (
             <div className="bg-white border border-slate-100 rounded-[2.5rem] p-6 sm:p-8 shadow-sm space-y-6 animate-in slide-in-from-right-4">

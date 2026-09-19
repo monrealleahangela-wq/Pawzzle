@@ -17,6 +17,16 @@ const {
   upload
 } = require('../controllers/storeApplicationController');
 const { authenticate, superAdminOnly } = require('../middleware/auth');
+const { storeOwnerOnly } = require('../middleware/auth');
+const {
+  getMyCompliance,
+  getCurrentComplianceDocument,
+  submitComplianceRequest,
+  listComplianceRequests,
+  getComplianceRequest,
+  getComplianceDocument,
+  reviewComplianceRequest
+} = require('../controllers/storeComplianceController');
 
 router.get('/audit-count', authenticate, superAdminOnly, getAuditCount);
 
@@ -73,6 +83,20 @@ router.post('/', authenticate, upload.fields([
 ]), submitApplication);
 
 router.get('/my-application', authenticate, getUserApplication);
+router.get('/compliance/my-store', authenticate, storeOwnerOnly, getMyCompliance);
+router.get('/compliance/my-store/documents/:requirementKey', authenticate, storeOwnerOnly, getCurrentComplianceDocument);
+router.post('/compliance/my-store/requests', authenticate, storeOwnerOnly, upload.fields([
+  { name: 'businessRegistration', maxCount: 1 },
+  { name: 'birCertificate', maxCount: 1 },
+  { name: 'authorityDocument', maxCount: 1 },
+  { name: 'mayorsPermit', maxCount: 1 },
+  { name: 'barangayClearance', maxCount: 1 }
+]), submitComplianceRequest);
+router.get('/compliance/requests/:id/documents/:documentId', authenticate, getComplianceDocument);
+router.get('/compliance/admin/requests', authenticate, superAdminOnly, listComplianceRequests);
+router.get('/compliance/admin/requests/:id', authenticate, superAdminOnly, getComplianceRequest);
+router.get('/compliance/admin/stores/:storeId/documents/:requirementKey', authenticate, superAdminOnly, getCurrentComplianceDocument);
+router.put('/compliance/admin/requests/:id/review', authenticate, superAdminOnly, reviewComplianceRequest);
 router.get('/:id/documents/:documentType', authenticate, getApplicationDocument);
 
 // Super Admin only routes

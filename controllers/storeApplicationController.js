@@ -603,10 +603,36 @@ const reviewApplication = async (req, res) => {
             registeredBusinessName: application.registeredBusinessName || application.businessRegistration?.registeredName || application.businessName,
             tradeName: application.tradeName || application.businessName,
             legalStructure: application.legalStructure,
+            natureOfBusiness: application.natureOfBusiness,
             registrationAuthority: application.businessRegistration?.authority,
             registrationNumber: application.businessRegistration?.certificateNumber,
+            registrationDate: application.businessRegistration?.registrationDate,
+            registrationExpirationDate: application.businessRegistration?.expirationDate,
+            registeredAddress: application.contactInfo?.address,
             registrationVerified: true,
             sourceApplication: application._id
+          },
+          businessCompliance: {
+            status: application.taxProfile?.verificationStatus === 'verified' ? 'verified' : 'unverified',
+            representative: application.representative || {},
+            lastSubmittedAt: application.submittedAt || application.createdAt,
+            lastReviewedAt: new Date(),
+            lastVerifiedAt: application.taxProfile?.verificationStatus === 'verified' ? (application.taxProfile?.verifiedAt || new Date()) : undefined,
+            documents: [
+              application.businessRegistration?.documentUrl ? {
+                requirementKey: 'business_registration', label: 'Business Registration', requiredForOperation: true, taxAffecting: false, currentVersion: 1,
+                versions: [{ version: 1, documentUrl: application.businessRegistration.documentUrl, issueDate: application.businessRegistration.registrationDate, hasExpiration: Boolean(application.businessRegistration.expirationDate), expirationDate: application.businessRegistration.expirationDate, verificationStatus: 'verified', submittedAt: application.submittedAt || application.createdAt, submittedBy: application.applicant, verifiedAt: new Date(), verifiedBy: req.user.id, sourceApplication: application._id }]
+              } : null,
+              application.taxProfile?.corDocumentUrl && application.taxProfile?.verificationStatus === 'verified' ? {
+                requirementKey: 'bir_certificate', label: 'BIR Certificate of Registration (Form 2303)', requiredForOperation: true, taxAffecting: true, currentVersion: 1,
+                versions: [{ version: 1, documentUrl: application.taxProfile.corDocumentUrl, hasExpiration: false, verificationStatus: 'verified', submittedAt: application.taxProfile.submittedAt || application.createdAt, submittedBy: application.applicant, verifiedAt: application.taxProfile.verifiedAt || new Date(), verifiedBy: application.taxProfile.verifiedBy || req.user.id, sourceApplication: application._id }]
+              } : null,
+              application.representative?.authorityDocumentUrl ? {
+                requirementKey: 'authority_document', label: 'Proof of Authority', requiredForOperation: true, taxAffecting: false, currentVersion: 1,
+                versions: [{ version: 1, documentUrl: application.representative.authorityDocumentUrl, hasExpiration: false, verificationStatus: 'verified', submittedAt: application.submittedAt || application.createdAt, submittedBy: application.applicant, verifiedAt: new Date(), verifiedBy: req.user.id, sourceApplication: application._id }]
+              } : null
+            ].filter(Boolean),
+            restrictionReasons: [], reminderLog: [], auditTrail: [{ event: 'initial_application_approved', actor: req.user.id, at: new Date(), reason: 'Seeded from the approved original Store Application.' }]
           },
           taxProfile: {
             birRegistered: application.taxProfile?.birRegistrationStatus === 'registered',
@@ -792,6 +818,25 @@ const verifyTaxProfile = async (req, res) => {
       const auditLog = store.taxConfiguration?.auditLog || [];
       auditLog.push({ changedBy: req.user.id, changedAt: now, previous, next });
       store.taxConfiguration = { ...next, auditLog: auditLog.slice(-50) };
+      if (decision !== 'rejected' && tax.corDocumentUrl) {
+        store.businessCompliance = store.businessCompliance || {};
+        if (!Array.isArray(store.businessCompliance.documents)) store.businessCompliance.documents = [];
+        let cor = store.businessCompliance.documents.find(document => document.requirementKey === 'bir_certificate');
+        if (!cor) {
+          store.businessCompliance.documents.push({ requirementKey: 'bir_certificate', label: 'BIR Certificate of Registration (Form 2303)', requiredForOperation: true, taxAffecting: true, currentVersion: 1, versions: [] });
+          cor = store.businessCompliance.documents[store.businessCompliance.documents.length - 1];
+        }
+        const alreadyCurrent = (cor.versions || []).some(version => Number(version.version) === Number(cor.currentVersion) && version.verificationStatus === 'verified');
+        if (!alreadyCurrent) {
+          const version = Number(cor.currentVersion || 0) + 1;
+          cor.currentVersion = version;
+          cor.versions.push({ version, documentUrl: tax.corDocumentUrl, hasExpiration: false, verificationStatus: 'verified', submittedAt: tax.submittedAt || application.createdAt, submittedBy: application.applicant, verifiedAt: now, verifiedBy: req.user.id, sourceApplication: application._id });
+        }
+        store.businessCompliance.status = 'verified';
+        store.businessCompliance.lastVerifiedAt = now;
+        store.businessCompliance.auditTrail.push({ event: 'initial_tax_verified', actor: req.user.id, at: now, reason: tax.verificationNotes || 'Tax profile verified from the original Store Application.' });
+        store.markModified('businessCompliance');
+      }
       await store.save();
     }
 

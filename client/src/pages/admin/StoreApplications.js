@@ -3,6 +3,7 @@ import { toast } from 'react-toastify';
 import storeApplicationService from '../../services/storeApplicationService';
 import { getImageUrl, storeService } from '../../services/apiService';
 import { Building, Check, X, Eye, AlertTriangle, TrendingUp, Shield, Zap, Briefcase, ChevronRight, ShieldAlert, Search, Activity, ExternalLink, Wallet, Camera, MapPin, Phone, Heart } from 'lucide-react';
+import StoreComplianceReviewPanel from '../../components/admin/StoreComplianceReviewPanel';
 
 const StoreApplications = () => {
   const [applications, setApplications] = useState([]);
@@ -177,6 +178,7 @@ const StoreApplications = () => {
         <h1 className="mt-1 text-2xl font-black tracking-tight text-slate-900">Store Applications</h1>
         <p className="mt-1 text-xs text-slate-500">Review business details, documents, and application status.</p>
       </header>
+      <StoreComplianceReviewPanel />
       {/* Top HUD Filter - High Contrast & Always Visible */}
       <div className="bg-slate-900 p-2 rounded-2xl shadow-xl border border-white/5 relative z-10">
         <div className="grid grid-cols-1 md:grid-cols-12 gap-2">

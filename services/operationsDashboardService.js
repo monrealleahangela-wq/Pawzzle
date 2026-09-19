@@ -90,6 +90,7 @@ const isAvailableToday = (staff, now) => {
 };
 
 const buildStoreOperationsSnapshot = async (store, { includeFinancials = false } = {}) => {
+  const { getComplianceSummary } = require('./storeComplianceService');
   const now = new Date();
   const today = startOfDay(now);
   const tomorrow = addDays(today, 1);
@@ -327,6 +328,7 @@ const buildStoreOperationsSnapshot = async (store, { includeFinancials = false }
   const response = {
     generatedAt: now.toISOString(),
     store: { id: storeId, name: store.name, balance: money(store.balance) },
+    compliance: getComplianceSummary(store, now),
     counts: { pets: petCount, products: productCount, orders: orders.length, bookings: bookings.length },
     kpis: {
       todaySales: sum(todayPaidOrders, row => row.totalAmount) + sum(todayPaidBookings, row => row.totalPrice),

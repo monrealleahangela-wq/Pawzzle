@@ -24,7 +24,7 @@ const { normalizeRefundPolicy, snapshotRefundPolicy, requiresAcknowledgment } = 
 const { prepareServiceIntake } = require('../utils/bookingIntake');
 const { buildBookingPetSnapshot } = require('../utils/bookingPetSnapshot');
 const { validateServiceSchedule } = require('../utils/serviceAvailability');
-const { getCustomerVisibleOwnerIds, buildCustomerVisibleStoreFilter } = require('../utils/storeVisibility');
+const { getCustomerVisibleOwnerIds, buildCustomerVisibleStoreFilter, withCustomerComplianceFilter } = require('../utils/storeVisibility');
 
 const canStaffManageBooking = (user, booking) => {
   if (!isOperationalStaff(user) || isStoreAdmin(user) || isPlatformAdmin(user)) return false;
@@ -241,7 +241,7 @@ const createBooking = async (req, res) => {
       return res.status(404).json({ message: 'Service not found or unavailable' });
     }
     const customerVisibleOwnerIds = await getCustomerVisibleOwnerIds();
-    const customerVisibleStore = await Store.findOne(buildCustomerVisibleStoreFilter(customerVisibleOwnerIds, { _id: service.store._id })).select('_id');
+    const customerVisibleStore = await Store.findOne(withCustomerComplianceFilter(buildCustomerVisibleStoreFilter(customerVisibleOwnerIds, { _id: service.store._id }))).select('_id');
     if (!customerVisibleStore) return res.status(404).json({ message: 'Service not found or unavailable' });
 
     let linkedPetProfile = null;

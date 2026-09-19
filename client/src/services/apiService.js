@@ -349,6 +349,17 @@ export const storeService = {
   rejectVerification: (id, reason) => api.post(`/stores/${id}/reject-verification`, { reason })
 };
 
+export const storeComplianceService = {
+  getMyCompliance: () => api.get('/store-applications/compliance/my-store'),
+  submitRequest: (formData) => api.post('/store-applications/compliance/my-store/requests', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
+  getMyDocument: (requirementKey, version) => api.get(`/store-applications/compliance/my-store/documents/${requirementKey}`, { params: version ? { version } : {} }),
+  getRequests: (params) => api.get('/store-applications/compliance/admin/requests', { params }),
+  getRequest: (id) => api.get(`/store-applications/compliance/admin/requests/${id}`),
+  getRequestDocument: (id, documentId) => api.get(`/store-applications/compliance/requests/${id}/documents/${documentId}`),
+  reviewRequest: (id, data) => api.put(`/store-applications/compliance/admin/requests/${id}/review`, data),
+  getStoreDocument: (storeId, requirementKey, version) => api.get(`/store-applications/compliance/admin/stores/${storeId}/documents/${requirementKey}`, { params: version ? { version } : {} })
+};
+
 // Public aggregated services
 export const publicService = {
   getLandingData: () => api.get('/public/landing')
