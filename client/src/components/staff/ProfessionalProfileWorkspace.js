@@ -41,7 +41,7 @@ const ProfessionalProfileWorkspace = ({ details, form, onFormChange, onSave, sav
       </div>
     </header>
 
-    <section className="grid grid-cols-2 gap-2 sm:grid-cols-4"><Stat label="Completed services" value={performance.completedServices}/><Stat label="Average rating" value={performance.reviewCount ? `${performance.averageRating}/5` : '—'}/><Stat label="Customer reviews" value={performance.reviewCount}/><Stat label="Upcoming bookings" value={performance.upcomingBookings}/></section>
+    <section className="grid grid-cols-2 gap-2 sm:grid-cols-4"><Stat label="Completed services" value={performance.completedServices}/><Stat label="Average rating" value={performance.reviewCount ? `${performance.averageRating}/5` : 'No ratings yet'}/><Stat label="Customer reviews" value={performance.reviewCount}/><Stat label="Upcoming bookings" value={performance.upcomingBookings}/></section>
 
     <div className="grid gap-4 xl:grid-cols-2">
       <section className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900">

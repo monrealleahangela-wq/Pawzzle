@@ -572,8 +572,12 @@ const StoreDetail = () => {
                           </div>
                           <p className="text-[9px] sm:text-xs font-black text-primary-600 uppercase tracking-widest mb-2">{member.staffType?.replace(/_/g, ' ')}</p>
                           <div className="flex items-center gap-1.5">
-                            <Star className="h-3 w-3 text-secondary-500 fill-secondary-500" />
-                            <span className="text-[10px] sm:text-sm font-black text-slate-900">{member.professionalProfile?.rating || '5.0'}</span>
+                            <Star className={`h-3 w-3 text-secondary-500 ${member.professionalProfile?.reviewCount > 0 ? 'fill-secondary-500' : ''}`} />
+                            <span className="text-[10px] sm:text-sm font-black text-slate-900">
+                              {member.professionalProfile?.reviewCount > 0
+                                ? `${Number(member.professionalProfile.rating).toFixed(1)} · ${member.professionalProfile.reviewCount}`
+                                : 'No ratings yet'}
+                            </span>
                             <span className="text-slate-300">/</span>
                             <span className="text-[9px] sm:text-xs font-bold text-slate-400 uppercase tracking-widest">{member.professionalProfile?.experienceYears || 0}Y EXP</span>
                           </div>

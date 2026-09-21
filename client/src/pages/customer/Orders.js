@@ -173,6 +173,11 @@ const Orders = () => {
                             <Star className="h-4 w-4 text-primary-600" /> Rate Rider
                           </button>
                         )}
+                        {order.status === 'delivered' && order.delivery?.assignmentType === 'internal' && order.delivery?.reviewStatus?.isRated && (
+                          <span className="flex min-h-10 flex-1 items-center justify-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-4 text-xs font-bold text-emerald-700 sm:flex-none">
+                            <CheckCircle className="h-4 w-4" /> Rider rated
+                          </span>
+                        )}
                       </div>
                       </div>
                     </div>

@@ -356,7 +356,7 @@ const Bookings = ({ isSubcomponent = false }) => {
   }, [selectedBooking?._id, selectedBooking?.status, selectedBooking?.staff]);
 
   useEffect(() => {
-    if (searchParams.get('review') === '1' && selectedBooking?.status === 'completed' && !selectedBooking.reviewStatus?.isRated && (selectedBooking.serviceProvider || selectedBooking.staff)) {
+    if (searchParams.get('review') === '1' && selectedBooking?.status === 'completed' && selectedBooking.paymentStatus === 'paid' && !selectedBooking.reviewStatus?.isRated && (selectedBooking.serviceProvider || selectedBooking.staff)) {
       setRatingBooking(selectedBooking);
     }
   }, [searchParams, selectedBooking]);
@@ -2049,13 +2049,18 @@ const Bookings = ({ isSubcomponent = false }) => {
                     >
                       View Details <ChevronRight className="h-4 w-4" />
                     </button>
-                    {booking.status === 'completed' && !booking.reviewStatus?.isRated && (booking.serviceProvider || booking.staff) && (
+                    {booking.status === 'completed' && booking.paymentStatus === 'paid' && !booking.reviewStatus?.isRated && (booking.serviceProvider || booking.staff) && (
                       <button
                         onClick={() => setRatingBooking(booking)}
                         className="flex-1 sm:flex-none flex items-center justify-center gap-3 px-6 py-4 bg-emerald-50 text-emerald-600 border border-emerald-100 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] shadow-sm hover:bg-emerald-600 hover:text-white transition-all active:scale-95"
                       >
-                        <Star className="h-4 w-4" /> Rate Service
+                        <Star className="h-4 w-4" /> Rate Staff
                       </button>
+                    )}
+                    {booking.status === 'completed' && booking.reviewStatus?.isRated && (booking.serviceProvider || booking.staff) && (
+                      <span className="flex min-h-10 flex-1 items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 text-[10px] font-black uppercase tracking-wider text-emerald-700 sm:flex-none">
+                        <CheckCircle className="h-4 w-4" /> Staff rated
+                      </span>
                     )}
                     {['pending', 'awaiting_customer_confirmation', 'awaiting_payment'].includes(booking.status) && booking.paymentStatus !== 'paid' && (
                       <button
@@ -2401,6 +2406,16 @@ const Bookings = ({ isSubcomponent = false }) => {
 
               {/* Actions */}
               <footer className="shrink-0 p-4 sm:p-6 bg-slate-50 border-t border-slate-100 flex flex-wrap gap-3 relative z-10">
+                {selectedBooking.status === 'completed' && selectedBooking.paymentStatus === 'paid' && !selectedBooking.reviewStatus?.isRated && (selectedBooking.serviceProvider || selectedBooking.staff) && (
+                  <button onClick={() => setRatingBooking(selectedBooking)} className="flex-1 min-w-[180px] h-11 px-4 bg-emerald-600 text-white rounded-xl text-[10px] font-black uppercase tracking-wider hover:bg-emerald-700 transition-all flex items-center justify-center gap-2">
+                    <Star className="h-4 w-4" /> Rate Staff
+                  </button>
+                )}
+                {selectedBooking.status === 'completed' && selectedBooking.reviewStatus?.isRated && (selectedBooking.serviceProvider || selectedBooking.staff) && (
+                  <span className="flex h-11 min-w-[180px] flex-1 items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 text-[10px] font-black uppercase tracking-wider text-emerald-700">
+                    <CheckCircle className="h-4 w-4" /> Staff rated
+                  </span>
+                )}
                 {selectedBooking.status === 'awaiting_customer_confirmation' && selectedBooking.staff && (
                   <button
                     disabled={bookingActionLoading}
@@ -2512,6 +2527,11 @@ const Bookings = ({ isSubcomponent = false }) => {
             bookingId={ratingBooking._id}
             onReviewSubmitted={() => {
                 fetchBookings();
+                if (selectedBooking?._id === ratingBooking._id) {
+                    bookingService.getBookingById(ratingBooking._id)
+                      .then(response => setSelectedBooking(normalizeBookingRecord(response.data.booking)))
+                      .catch(() => setSelectedBooking(current => current ? { ...current, reviewStatus: { ...current.reviewStatus, isRated: true } } : current));
+                }
                 setRatingBooking(null);
             }}
         />

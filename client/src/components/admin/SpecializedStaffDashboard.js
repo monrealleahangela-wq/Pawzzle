@@ -99,7 +99,7 @@ const SpecializedStaffDashboard = () => {
     [config.todayLabel, summary.today, Calendar, 'bg-primary-50 text-primary-700 dark:bg-primary-950/50 dark:text-primary-300'],
     [config.activeLabel, summary.active, Activity, 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300'],
     [config.upcomingLabel, summary.upcoming.length, Clock3, 'bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300'],
-    ['Average rating', performance.reviewCount ? `${performance.averageRating}/5` : '—', Star, 'bg-primary-50 text-primary-700 dark:bg-primary-950/50 dark:text-primary-300']
+    ['Average rating', performance.reviewCount ? `${performance.averageRating}/5` : 'No ratings yet', Star, 'bg-primary-50 text-primary-700 dark:bg-primary-950/50 dark:text-primary-300']
   ];
 
   return (

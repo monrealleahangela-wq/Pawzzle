@@ -5,6 +5,7 @@ import { orderService, adminOrderService, paymentService, deliveryService, revie
 import { useAuth } from '../../contexts/AuthContext';
 import { Heart, Package, ArrowLeft, Truck, CreditCard, MapPin, Store, Star, CheckCircle, AlertCircle, Link2, Navigation, Phone, Activity, ChevronDown, ChevronUp, MessageSquare, FileText, ClipboardCheck } from 'lucide-react';
 import OrderReviewModal from '../../components/OrderReviewModal';
+import ReviewModal from '../../components/ReviewModal';
 import DeliveryAssignmentFields, { emptyExternal } from '../../components/delivery/DeliveryAssignmentFields';
 import { normalizeRefundPolicy, refundPolicyLabel } from '../../utils/refundPolicy';
 import PaymentBreakdown from '../../components/payments/PaymentBreakdown';
@@ -31,13 +32,30 @@ const OrderDetail = () => {
   const [thirdPartyRider, setThirdPartyRider] = useState(emptyExternal);
   const [lastRiderLink, setLastRiderLink] = useState('');
   const [deliveryAssignment, setDeliveryAssignment] = useState(null);
+  const [riderReviewOpen, setRiderReviewOpen] = useState(false);
+  const [riderReviewEligibility, setRiderReviewEligibility] = useState({ checked: false, isEligible: false, reason: null });
   const orderRefundPolicy = normalizeRefundPolicy(order?.refundPolicySnapshot || order?.store?.refundPolicy);
   const authoritativePaymentSummary = order ? orderPaymentSummary(order) : null;
   const orderLineItems = orderLineItemRows(order?.items);
 
   useEffect(() => {
-    if (!order?._id || !order.delivery || user?.role === 'customer') return;
-    deliveryService.getTrackingForOrder(order._id).then(response => { const delivery=response.data.delivery||null; setDeliveryAssignment(delivery); if(delivery?.assignmentType==='internal'){setAssignmentType('internal');setSelectedRiderId(delivery.assignedRider?._id||delivery.assignedRider||'');} else if(delivery?.assignmentType==='third_party'){setAssignmentType('third_party');setThirdPartyRider({...emptyExternal,providerKey:delivery.providerDelivery?.providerKey||emptyExternal.providerKey});} }).catch(()=>{});
+    if (!order?._id || !order.delivery) return;
+    deliveryService.getTrackingForOrder(order._id).then(response => {
+      const delivery = response.data.delivery || null;
+      setDeliveryAssignment(delivery);
+      if (user?.role === 'customer') {
+        if (delivery?._id && delivery.assignmentType === 'internal') {
+          reviewService.checkReviewEligibility('Delivery', delivery._id)
+            .then(eligibility => setRiderReviewEligibility({ checked: true, ...eligibility.data }))
+            .catch(() => setRiderReviewEligibility({ checked: true, isEligible: false, reason: 'unavailable' }));
+        } else {
+          setRiderReviewEligibility({ checked: true, isEligible: false, reason: 'not_internal' });
+        }
+        return;
+      }
+      if(delivery?.assignmentType==='internal'){setAssignmentType('internal');setSelectedRiderId(delivery.assignedRider?._id||delivery.assignedRider||'');}
+      else if(delivery?.assignmentType==='third_party'){setAssignmentType('third_party');setThirdPartyRider({...emptyExternal,providerKey:delivery.providerDelivery?.providerKey||emptyExternal.providerKey});}
+    }).catch(()=>{});
   }, [order?._id, order?.delivery, user?.role]);
 
   useEffect(() => {
@@ -904,6 +922,29 @@ const OrderDetail = () => {
               </div>
             </div>
           )}
+          {user?.role === 'customer' && deliveryAssignment?.assignmentType === 'internal' && ['delivered', 'completed'].includes(order.status) && (
+            <div className="card border-2 border-primary-100 bg-primary-50/20 p-6 dark:border-primary-900 dark:bg-primary-950/20">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <h2 className="flex items-center gap-2 text-sm font-black uppercase tracking-widest text-slate-900 dark:text-white">
+                    <Star className="h-4 w-4 text-primary-600" /> Delivery feedback
+                  </h2>
+                  <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">Rate the internal Pawzzle rider assigned to this completed delivery.</p>
+                </div>
+                {riderReviewEligibility.isEligible ? (
+                  <button onClick={() => setRiderReviewOpen(true)} className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-xl bg-primary-600 px-5 text-xs font-black text-white hover:bg-primary-700">
+                    <Star className="h-4 w-4" /> Rate Rider
+                  </button>
+                ) : (deliveryAssignment.reviewStatus?.isRated || riderReviewEligibility.reason === 'already_reviewed') ? (
+                  <span className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-5 text-xs font-black text-emerald-700">
+                    <CheckCircle className="h-4 w-4" /> Rider rated
+                  </span>
+                ) : riderReviewEligibility.checked ? (
+                  <span className="text-xs font-semibold text-slate-500">Rating unavailable</span>
+                ) : null}
+              </div>
+            </div>
+          )}
           {user?.role !== 'customer' && order.deliveryMethod === 'delivery' && !['cancelled', 'delivered', 'completed', 'finalized'].includes(order.status) && (
             <div className="card p-6 border-2 border-primary-100 bg-primary-50/10">
               <h2 className="text-sm font-black text-slate-900 uppercase tracking-widest mb-4 flex items-center gap-2">
@@ -1000,6 +1041,21 @@ const OrderDetail = () => {
         orderId={order._id}
         onReviewSubmitted={fetchOrder}
       />
+      {deliveryAssignment?._id && (
+        <ReviewModal
+          isOpen={riderReviewOpen}
+          onClose={() => setRiderReviewOpen(false)}
+          targetType="Delivery"
+          targetId={deliveryAssignment._id}
+          targetName="your rider"
+          orderId={order._id}
+          onReviewSubmitted={() => {
+            setRiderReviewEligibility({ checked: true, isEligible: false, reason: 'already_reviewed' });
+            setDeliveryAssignment(current => current ? { ...current, reviewStatus: { ...current.reviewStatus, isRated: true } } : current);
+            fetchOrder();
+          }}
+        />
+      )}
     </div>
   );
 };

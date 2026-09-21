@@ -50,10 +50,10 @@ test('delivery reviews have one source of truth and delivery-level duplicate pro
   assert.ok(Review.schema.path('targetType').enumValues.includes('Delivery'));
   assert.ok(Delivery.schema.path('reviewStatus.isRated'));
   const controller = source('controllers/reviewController.js');
-  assert.match(controller, /status: 'delivered'/);
-  assert.match(controller, /assignmentType: 'internal'/);
+  assert.match(controller, /delivery\.status !== 'delivered'/);
+  assert.match(controller, /delivery\.assignmentType !== 'internal'/);
   assert.match(controller, /customer: userId/);
-  assert.match(controller, /'reviewStatus\.isRated': \{ \$ne: true \}/);
+  assert.match(controller, /Review\.exists\(\{ targetType: 'Delivery', deliveryId: delivery\._id \}\)/);
 });
 
 test('rider performance uses only reviews linked to the requested rider', () => {

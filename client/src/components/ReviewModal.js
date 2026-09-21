@@ -23,7 +23,7 @@ const ReviewModal = ({
     bookingId,
     onReviewSubmitted 
 }) => {
-    const [rating, setRating] = useState(5);
+    const [rating, setRating] = useState(0);
     const [comment, setComment] = useState('');
     const [images, setImages] = useState([]);
     const [isAnonymous, setIsAnonymous] = useState(false);
@@ -34,6 +34,10 @@ const ReviewModal = ({
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        if (!rating) {
+            toast.info('Select a star rating before submitting.');
+            return;
+        }
         setSubmitting(true);
         try {
             await reviewService.createReview({
@@ -51,7 +55,7 @@ const ReviewModal = ({
             if (onReviewSubmitted) onReviewSubmitted();
             onClose();
             // Reset form
-            setRating(5);
+            setRating(0);
             setComment('');
             setImages([]);
             setIsAnonymous(false);
@@ -74,7 +78,9 @@ const ReviewModal = ({
                                 key={star}
                                 type="button"
                                 onClick={() => setRating(star)}
-                                className="focus:outline-none transition-transform hover:scale-110 active:scale-95"
+                                aria-label={`${star} star${star === 1 ? '' : 's'}`}
+                                aria-pressed={rating === star}
+                                className="rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 transition-transform hover:scale-110 active:scale-95"
                             >
                                 <Star
                                     className={`h-8 w-8 ${star <= rating ? 'fill-secondary-400 text-secondary-400' : 'text-slate-200'
@@ -84,7 +90,7 @@ const ReviewModal = ({
                         ))}
                     </div>
                     <p className="text-[11px] font-black text-slate-900 uppercase tracking-tighter italic">
-                        {rating === 5 ? 'Excellent!' : rating === 4 ? 'Very Good!' : rating === 3 ? 'Good' : rating === 2 ? 'Fair' : 'Poor'}
+                        {!rating ? 'Select your rating' : rating === 5 ? 'Excellent!' : rating === 4 ? 'Very Good!' : rating === 3 ? 'Good' : rating === 2 ? 'Fair' : 'Poor'}
                     </p>
                 </div>
 
@@ -136,7 +142,7 @@ const ReviewModal = ({
                 <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-slate-50">
                     <button
                         type="submit"
-                        disabled={submitting}
+                        disabled={submitting || !rating}
                         className="flex-1 py-4 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-[0.2em] text-[10px] hover:bg-primary-600 transition-all shadow-xl shadow-slate-200 flex items-center justify-center gap-3 disabled:opacity-50 active:scale-95"
                     >
                         {submitting ? 'Submitting...' : (

@@ -54,6 +54,64 @@ const refreshStaffRating = async staffId => {
     });
 };
 
+const resolveBookingStaffReview = async (userId, bookingId) => {
+    const booking = await Booking.findOne({ _id: bookingId, customer: userId });
+    if (!booking) return { isEligible: false, reason: 'booking_not_found' };
+    if (booking.status !== 'completed') return { isEligible: false, reason: 'booking_not_completed' };
+    if (booking.paymentStatus !== 'paid') return { isEligible: false, reason: 'booking_not_paid' };
+
+    const staffId = booking.serviceProvider || booking.staff;
+    if (!staffId) return { isEligible: false, reason: 'staff_not_recorded' };
+
+    const existingReview = await Review.exists({ targetType: 'Booking', bookingId: booking._id });
+    if (existingReview || booking.reviewStatus?.isRated) {
+        return { isEligible: false, reason: 'already_reviewed' };
+    }
+
+    return { isEligible: true, booking, staffId };
+};
+
+const resolveDeliveryRiderReview = async (userId, deliveryId, suppliedOrderId) => {
+    const delivery = await Delivery.findById(deliveryId);
+    if (!delivery) return { isEligible: false, reason: 'delivery_not_found' };
+    if (delivery.status !== 'delivered') return { isEligible: false, reason: 'delivery_not_completed' };
+    if (delivery.assignmentType !== 'internal' || !delivery.assignedRider) {
+        return { isEligible: false, reason: 'internal_rider_not_recorded' };
+    }
+
+    const order = await Order.findOne({
+        _id: delivery.order,
+        customer: userId,
+        store: delivery.store,
+        status: { $in: ['delivered', 'completed'] }
+    });
+    if (!order || (suppliedOrderId && String(suppliedOrderId) !== String(order._id))) {
+        return { isEligible: false, reason: 'order_not_owned' };
+    }
+
+    const existingReview = await Review.exists({ targetType: 'Delivery', deliveryId: delivery._id });
+    if (existingReview || delivery.reviewStatus?.isRated) {
+        return { isEligible: false, reason: 'already_reviewed' };
+    }
+
+    return { isEligible: true, delivery, order, staffId: delivery.assignedRider };
+};
+
+const staffReviewError = reason => {
+    const messages = {
+        booking_not_found: 'This booking does not belong to your account.',
+        booking_not_completed: 'You can rate the assigned staff member after the service is completed.',
+        booking_not_paid: 'Only a paid, completed booking can be rated.',
+        staff_not_recorded: 'The staff member who provided this service was not recorded.',
+        delivery_not_found: 'Delivery not found.',
+        delivery_not_completed: 'You can rate the assigned rider after delivery is completed.',
+        internal_rider_not_recorded: 'Only an assigned internal Pawzzle rider can receive a profile rating.',
+        order_not_owned: 'This delivery does not belong to your completed order.',
+        already_reviewed: 'Feedback has already been submitted for this transaction.'
+    };
+    return messages[reason] || 'This transaction is not eligible for a rating.';
+};
+
 // Create a review for product/pet/store/service
 const createReview = async (req, res) => {
     try {
@@ -118,47 +176,25 @@ const createReview = async (req, res) => {
             if (!bookingId || String(bookingId) !== String(targetId)) {
                 return res.status(400).json({ message: 'A valid completed booking is required for a staff review.' });
             }
-            const completedBooking = await Booking.findOne({
-                _id: bookingId,
-                customer: userId,
-                status: 'completed',
-                paymentStatus: 'paid',
-                'reviewStatus.isRated': { $ne: true }
-            });
-            if (!completedBooking) {
-                return res.status(403).json({ message: 'You can only review a paid, completed booking that has not already been reviewed.' });
+            const eligibility = await resolveBookingStaffReview(userId, bookingId);
+            if (!eligibility.isEligible) {
+                return res.status(eligibility.reason === 'staff_not_recorded' ? 409 : 403).json({ message: staffReviewError(eligibility.reason) });
             }
-            staffId = completedBooking.serviceProvider || completedBooking.staff;
-            if (!staffId) return res.status(409).json({ message: 'The staff member who provided this service was not recorded.' });
-            serviceId = completedBooking.service;
-            storeId = completedBooking.store;
+            staffId = eligibility.staffId;
+            serviceId = eligibility.booking.service;
+            storeId = eligibility.booking.store;
             isTrusted = true;
         }
         else if (targetType === 'Delivery') {
             if (deliveryId && String(deliveryId) !== String(targetId)) {
                 return res.status(400).json({ message: 'The delivery reference does not match this review.' });
             }
-            const completedDelivery = await Delivery.findOne({
-                _id: targetId,
-                status: 'delivered',
-                assignmentType: 'internal',
-                assignedRider: { $ne: null },
-                'reviewStatus.isRated': { $ne: true }
-            });
-            if (!completedDelivery) {
-                return res.status(403).json({ message: 'You can only rate the assigned rider after a completed delivery that has not already been rated.' });
+            const eligibility = await resolveDeliveryRiderReview(userId, targetId, orderId);
+            if (!eligibility.isEligible) {
+                return res.status(eligibility.reason === 'delivery_not_found' ? 404 : 403).json({ message: staffReviewError(eligibility.reason) });
             }
-            const completedOrder = await Order.findOne({
-                _id: completedDelivery.order,
-                customer: userId,
-                store: completedDelivery.store,
-                status: { $in: ['delivered', 'completed'] }
-            });
-            if (!completedOrder || (orderId && String(orderId) !== String(completedOrder._id))) {
-                return res.status(403).json({ message: 'This delivery does not belong to your completed order.' });
-            }
-            staffId = completedDelivery.assignedRider;
-            storeId = completedDelivery.store;
+            staffId = eligibility.staffId;
+            storeId = eligibility.delivery.store;
             isTrusted = true;
         }
         else if (targetType === 'Service') {
@@ -471,14 +507,12 @@ const checkReviewEligibility = async (req, res) => {
         let isEligible = false;
 
         if (targetType === 'Booking') {
-            const booking = await Booking.findOne({
-                _id: targetId,
-                customer: userId,
-                status: 'completed',
-                paymentStatus: 'paid',
-                $or: [{ 'reviewStatus.isRated': { $ne: true } }, { reviewStatus: { $exists: false } }]
-            });
-            if (booking && (booking.serviceProvider || booking.staff)) isEligible = true;
+            const eligibility = await resolveBookingStaffReview(userId, targetId);
+            return res.json({ isEligible: eligibility.isEligible, reason: eligibility.reason || null });
+        }
+        else if (targetType === 'Delivery') {
+            const eligibility = await resolveDeliveryRiderReview(userId, targetId);
+            return res.json({ isEligible: eligibility.isEligible, reason: eligibility.reason || null });
         }
         else if (targetType === 'Product') {
             const product = await Product.findById(targetId).populate('store');
@@ -624,5 +658,10 @@ module.exports = {
     replyToReview,
     checkReviewEligibility,
     toggleReviewStatus,
-    getStaffReviews
+    getStaffReviews,
+    __testing: {
+        refreshStaffRating,
+        resolveBookingStaffReview,
+        resolveDeliveryRiderReview
+    }
 };

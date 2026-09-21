@@ -343,7 +343,7 @@ const getDeliveryByOrder = async (req, res) => {
       || order.customer?.toString() === req.user._id.toString()
       || await canOperateStore(req.user, order.store, ['logistics.manage', 'deliveries.own']);
     if (!allowed) return res.status(403).json({ message: 'Access denied to this delivery.' });
-    const delivery = await Delivery.findOne({ order: orderId }).select('trackingToken riderToken status isLive assignmentType assignedRider thirdPartyRider providerDelivery assignedAt assignmentHistory').populate('assignedRider', 'firstName lastName riderProfile.staffId riderProfile.deliveryZone');
+    const delivery = await Delivery.findOne({ order: orderId }).select('trackingToken riderToken status isLive assignmentType assignedRider thirdPartyRider providerDelivery assignedAt assignmentHistory reviewStatus').populate('assignedRider', 'firstName lastName riderProfile.staffId riderProfile.deliveryZone');
     if (!delivery) return res.status(404).json({ message: 'No delivery active' });
     const payload = delivery.toObject();
     if (req.user.role === 'customer') { delete payload.riderToken; delete payload.thirdPartyRider; delete payload.assignedRider; delete payload.assignmentHistory; if (payload.providerDelivery) { delete payload.providerDelivery.jobId; delete payload.providerDelivery.lastError; delete payload.providerDelivery.processedWebhookEventIds; delete payload.providerDelivery.statusHistory; } }
@@ -363,7 +363,7 @@ const getDeliveryByBooking = async (req, res) => {
       || booking.customer?.toString() === req.user._id.toString()
       || await canOperateStore(req.user, booking.store, ['logistics.manage', 'deliveries.own']);
     if (!allowed) return res.status(403).json({ message: 'Access denied to this delivery.' });
-    const delivery = await Delivery.findOne({ booking: bookingId }).select('trackingToken riderToken status isLive assignmentType assignedRider thirdPartyRider providerDelivery assignedAt assignmentHistory').populate('assignedRider', 'firstName lastName riderProfile.staffId riderProfile.deliveryZone');
+    const delivery = await Delivery.findOne({ booking: bookingId }).select('trackingToken riderToken status isLive assignmentType assignedRider thirdPartyRider providerDelivery assignedAt assignmentHistory reviewStatus').populate('assignedRider', 'firstName lastName riderProfile.staffId riderProfile.deliveryZone');
     if (!delivery) return res.status(404).json({ message: 'No delivery active' });
     const payload = delivery.toObject();
     if (req.user.role === 'customer') { delete payload.riderToken; delete payload.thirdPartyRider; delete payload.assignedRider; delete payload.assignmentHistory; if (payload.providerDelivery) { delete payload.providerDelivery.jobId; delete payload.providerDelivery.lastError; delete payload.providerDelivery.processedWebhookEventIds; delete payload.providerDelivery.statusHistory; } }

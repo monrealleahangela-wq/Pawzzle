@@ -267,8 +267,12 @@ const Home = () => {
                        </div>
                        <div className="pt-8 border-t border-white/5 flex items-center justify-center gap-6">
                           <div className="flex items-center gap-2">
-                             <Star className="h-4 w-4 fill-primary text-primary" />
-                             <span className="text-[11px] font-black text-white">{expert.professionalProfile?.reputation || '5.0'}</span>
+                             <Star className={`h-4 w-4 text-primary ${expert.professionalProfile?.reviewCount > 0 ? 'fill-primary' : ''}`} />
+                             <span className="text-[11px] font-black text-white">
+                               {expert.professionalProfile?.reviewCount > 0
+                                 ? `${Number(expert.professionalProfile.rating).toFixed(1)} · ${expert.professionalProfile.reviewCount}`
+                                 : 'No ratings yet'}
+                             </span>
                           </div>
                           <div className="w-1.5 h-1.5 rounded-full bg-white/20" />
                           <span className="text-[10px] font-black text-white/40 uppercase tracking-widest">Active Now</span>
