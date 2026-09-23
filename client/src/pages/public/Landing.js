@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   ArrowRight, CalendarDays, Check, Heart, MapPin, Menu, MessageCircle,
-  Package, Search, ShieldCheck, ShoppingBag, Store, Users, X
+  Package, PawPrint, Search, ShieldCheck, ShoppingBag, Store, Users, X
 } from 'lucide-react';
 import { publicService, getImageUrl } from '../../services/apiService';
 import { PageLoader } from '../../components/ui/LoadingSpinner';
@@ -69,6 +69,15 @@ const Landing = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, [fetchLandingData]);
 
+  useEffect(() => {
+    if (!mobileMenuOpen) return undefined;
+    const closeOnEscape = (event) => {
+      if (event.key === 'Escape') setMobileMenuOpen(false);
+    };
+    window.addEventListener('keydown', closeOnEscape);
+    return () => window.removeEventListener('keydown', closeOnEscape);
+  }, [mobileMenuOpen]);
+
   const handleSearch = (event) => {
     event.preventDefault();
     const query = searchQuery.trim();
@@ -85,7 +94,8 @@ const Landing = () => {
       image: product.images?.[0], to: `/products/${product._id}`
     })),
     services: data.services.slice(0, 4).map((service) => ({
-      id: service._id, title: service.name, meta: [service.category?.replace(/_/g, ' '), service.duration ? `${service.duration} min` : null].filter(Boolean).join(' · '),
+      id: service._id, title: service.name,
+      meta: [service.category?.replace(/_/g, ' '), service.duration ? `${service.duration} min` : null].filter(Boolean).join(' · '),
       price: formatPrice(service.price), image: service.images?.[0], to: '/services'
     }))
   }), [data]);
@@ -106,197 +116,260 @@ const Landing = () => {
     { key: 'services', label: 'Services', count: data.stats.services, icon: CalendarDays, route: '/services' }
   ];
   const activeTab = catalogTabs.find((tab) => tab.key === activeCatalog);
+  const activeItems = catalogItems[activeCatalog];
+  const closeMobileMenu = () => setMobileMenuOpen(false);
 
   return (
-    <div className="landing-page min-h-screen bg-white text-slate-900 selection:bg-primary-100">
-      <header className={`fixed inset-x-0 top-0 z-[100] transition-all duration-300 ${isScrolled ? 'bg-white/95 shadow-sm border-b border-slate-100 backdrop-blur-xl' : 'bg-white/80 backdrop-blur-md'}`}>
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-          <Link to="/" className="flex items-center gap-2.5" aria-label="Pawzzle home">
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary-600 p-1.5 shadow-sm">
-              <img src="/images/logo.png" alt="" className="h-full w-full object-contain brightness-0 invert" />
-            </span>
-            <span className="text-base font-black uppercase tracking-tight">Pawzzle</span>
+    <div className="landing-page">
+      <header className={`landing-header ${isScrolled ? 'is-scrolled' : ''}`}>
+        <div className="landing-header-inner">
+          <Link to="/" className="landing-brand" aria-label="Pawzzle home">
+            <span className="landing-brand-mark"><img src="/images/logo.png" alt="" /></span>
+            <span>Pawzzle</span>
           </Link>
 
-          <nav className="hidden items-center gap-7 md:flex" aria-label="Primary navigation">
-            <a href="#explore" className="landing-nav-link">Explore</a>
-            <a href="#features" className="landing-nav-link">Features</a>
-            <a href="#how-it-works" className="landing-nav-link">How it works</a>
-            <Link to="/seller-join" className="landing-nav-link">For stores</Link>
+          <nav className="landing-desktop-nav" aria-label="Primary navigation">
+            <a href="#explore">Explore</a>
+            <a href="#features">Features</a>
+            <a href="#how-it-works">How it works</a>
+            <Link to="/seller-join">For stores</Link>
           </nav>
 
-          <div className="hidden items-center gap-2 md:flex">
-            <Link to="/login" className="rounded-lg px-3 py-2 text-xs font-bold text-slate-600 transition-colors hover:bg-slate-50 hover:text-primary-700">Sign in</Link>
-            <Link to="/register" className="rounded-lg bg-primary-600 px-4 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-primary-700">Create account</Link>
+          <div className="landing-header-actions">
+            <Link to="/login" className="landing-sign-in">Sign in</Link>
+            <Link to="/register" className="landing-button landing-button-small">Create account</Link>
           </div>
 
-          <button className="rounded-lg p-2 text-slate-600 md:hidden" onClick={() => setMobileMenuOpen((open) => !open)} aria-label="Toggle navigation" aria-expanded={mobileMenuOpen}>
-            {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          <button className="landing-menu-button" onClick={() => setMobileMenuOpen((open) => !open)} aria-label="Toggle navigation" aria-expanded={mobileMenuOpen} aria-controls="landing-mobile-menu">
+            {mobileMenuOpen ? <X /> : <Menu />}
           </button>
         </div>
 
         {mobileMenuOpen && (
-          <nav className="border-t border-slate-100 bg-white px-4 py-3 md:hidden" aria-label="Mobile navigation">
-            <div className="mx-auto grid max-w-7xl gap-1">
-              {[['Explore', '#explore'], ['Features', '#features'], ['How it works', '#how-it-works']].map(([label, href]) => (
-                <a key={href} href={href} onClick={() => setMobileMenuOpen(false)} className="rounded-lg px-3 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50">{label}</a>
-              ))}
-              <div className="mt-2 grid grid-cols-2 gap-2 border-t border-slate-100 pt-3">
-                <Link to="/login" className="rounded-lg border border-slate-200 px-3 py-2.5 text-center text-xs font-bold">Sign in</Link>
-                <Link to="/register" className="rounded-lg bg-primary-600 px-3 py-2.5 text-center text-xs font-bold text-white">Create account</Link>
-              </div>
+          <nav id="landing-mobile-menu" className="landing-mobile-nav" aria-label="Mobile navigation">
+            <a href="#explore" onClick={closeMobileMenu}>Explore</a>
+            <a href="#features" onClick={closeMobileMenu}>Features</a>
+            <a href="#how-it-works" onClick={closeMobileMenu}>How it works</a>
+            <Link to="/seller-join" onClick={closeMobileMenu}>For stores</Link>
+            <div className="landing-mobile-actions">
+              <Link to="/login" onClick={closeMobileMenu}>Sign in</Link>
+              <Link to="/register" onClick={closeMobileMenu}>Create account</Link>
             </div>
           </nav>
         )}
       </header>
 
       <main>
-        <section className="relative overflow-hidden border-b border-slate-100 bg-[#fdfaf8] pt-24 pb-12 sm:pt-28 sm:pb-16">
-          <div className="landing-grid-bg absolute inset-0 opacity-50" />
-          <div className="relative mx-auto grid max-w-7xl items-center gap-8 px-4 sm:px-6 lg:grid-cols-[1.05fr_.95fr] lg:px-8">
-            <div className="max-w-xl landing-reveal">
-              <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-primary-100 bg-white px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.16em] text-primary-700">
-                <MapPin className="h-3.5 w-3.5" /> Pet commerce and care in one place
-              </div>
-              <h1 className="max-w-xl text-3xl font-black leading-tight tracking-tight text-slate-950 sm:text-4xl">
-                Everything your pet journey needs, connected.
-              </h1>
-              <p className="mt-4 max-w-lg text-sm leading-6 text-slate-600 sm:text-base">
-                Discover listed pets, shop pet essentials, find stores, and book available care services through one organized platform.
+        <section className="landing-hero">
+          <div className="landing-orbit landing-orbit-one" aria-hidden="true" />
+          <div className="landing-shell landing-hero-grid">
+            <div className="landing-hero-copy landing-reveal">
+              <p className="landing-kicker"><PawPrint aria-hidden="true" /> Pet commerce and care, thoughtfully connected</p>
+              <h1>Everything your pet journey needs, <em>in one place.</em></h1>
+              <p className="landing-hero-intro">
+                Discover listed pets, shop trusted essentials, find nearby stores, and book available care services through one organized platform.
               </p>
 
-              <form onSubmit={handleSearch} className="mt-6 flex max-w-lg items-center gap-2 rounded-xl border border-slate-200 bg-white p-1.5 shadow-sm focus-within:border-primary-300 focus-within:ring-4 focus-within:ring-primary-50">
-                <Search className="ml-2 h-4 w-4 shrink-0 text-slate-400" />
-                <input value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder="Search pets, products, or stores" className="min-w-0 flex-1 bg-transparent px-1 py-2 text-sm outline-none placeholder:text-slate-400" />
-                <button type="submit" className="flex h-9 items-center gap-1.5 rounded-lg bg-primary-600 px-3 text-xs font-bold text-white transition hover:bg-primary-700">
-                  Search <ArrowRight className="h-3.5 w-3.5" />
-                </button>
+              <form onSubmit={handleSearch} className="landing-search" role="search">
+                <Search aria-hidden="true" />
+                <input value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} aria-label="Search Pawzzle" placeholder="Search pets, products, or stores" />
+                <button type="submit">Search <ArrowRight aria-hidden="true" /></button>
               </form>
 
-              <div className="mt-5 flex flex-wrap gap-2">
-                <Link to="/pets" className="landing-quick-link"><Heart className="h-3.5 w-3.5" /> Browse pets</Link>
-                <Link to="/products" className="landing-quick-link"><Package className="h-3.5 w-3.5" /> Shop products</Link>
-                <Link to="/services" className="landing-quick-link"><CalendarDays className="h-3.5 w-3.5" /> Book services</Link>
+              <div className="landing-hero-links" aria-label="Explore Pawzzle">
+                <Link to="/pets"><Heart aria-hidden="true" /> Browse pets</Link>
+                <Link to="/products"><Package aria-hidden="true" /> Shop products</Link>
+                <Link to="/services"><CalendarDays aria-hidden="true" /> Book services</Link>
               </div>
             </div>
 
-            <div className="relative mx-auto w-full max-w-lg landing-reveal landing-delay">
-              <div className="overflow-hidden rounded-2xl border border-white bg-slate-100 shadow-xl shadow-primary-950/10">
-                <img src="/images/landing_hero.png" alt="Pet owner spending time with a companion animal" className="h-[300px] w-full object-cover sm:h-[380px]" />
+            <div className="landing-hero-art landing-reveal landing-delay">
+              <figure className="landing-hero-photo landing-hero-photo-main">
+                <img src="/images/landing_hero.png" alt="Pet owner spending time with a companion cat" />
+              </figure>
+              <figure className="landing-hero-photo landing-hero-photo-secondary" aria-hidden="true">
+                <img src="/images/hero-premium.png" alt="" />
+              </figure>
+              <div className="landing-hero-note">
+                <span className="landing-note-icon"><Check aria-hidden="true" /></span>
+                <span><strong>One connected experience</strong><small>Discover · Shop · Book · Track</small></span>
               </div>
-              <div className="absolute -bottom-4 left-4 right-4 grid grid-cols-2 gap-2 rounded-xl border border-slate-100 bg-white/95 p-3 shadow-lg backdrop-blur sm:left-auto sm:right-4 sm:w-64">
-                <div><p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Live catalog</p><p className="mt-1 text-sm font-black text-slate-900">Database powered</p></div>
-                <div className="flex items-center justify-end"><span className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600"><Check className="h-4 w-4" /></span></div>
-              </div>
+              <span className="landing-scribble" aria-hidden="true"><PawPrint /></span>
             </div>
           </div>
         </section>
 
-        <section aria-label="Live platform statistics" className="border-b border-slate-100 bg-white">
-          <div className="mx-auto grid max-w-7xl grid-cols-2 divide-x divide-y divide-slate-100 px-4 sm:px-6 md:grid-cols-5 md:divide-y-0 lg:px-8">
+        <section className="landing-stats" aria-label="Live platform statistics">
+          <div className="landing-shell landing-stats-grid">
+            <article className="landing-stat-intro">
+              <span>Live from Pawzzle</span>
+              <h2>A growing community, built around better pet care.</h2>
+            </article>
             {stats.map(({ label, value, icon: Icon }) => (
-              <div key={label} className="flex items-center gap-3 px-3 py-5 sm:px-5">
-                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary-50 text-primary-700"><Icon className="h-4 w-4" /></span>
-                <div><p className="text-xl font-black tabular-nums text-slate-950"><CountUp value={value} /></p><p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">{label}</p></div>
-              </div>
+              <article key={label} className="landing-stat-card">
+                <Icon aria-hidden="true" />
+                <strong><CountUp value={value} /></strong>
+                <span>{label}</span>
+              </article>
             ))}
           </div>
         </section>
 
-        <section id="features" className="py-12 sm:py-16">
-          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-            <div className="mb-7 max-w-2xl">
-              <p className="landing-eyebrow">One connected experience</p>
-              <h2 className="mt-2 text-2xl font-black tracking-tight text-slate-950 sm:text-3xl">Built for everyday pet needs</h2>
-              <p className="mt-2 text-sm leading-6 text-slate-500">Move from discovery to purchase, booking, and communication without juggling separate systems.</p>
+        <section id="features" className="landing-section landing-features-section">
+          <div className="landing-shell">
+            <div className="landing-section-heading landing-section-heading-split">
+              <div>
+                <p className="landing-eyebrow">One connected experience</p>
+                <h2>Made for the everyday rhythm of pet life.</h2>
+              </div>
+              <p>Move from discovery to purchase, booking, communication, and tracking without juggling separate systems.</p>
             </div>
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              {[
-                { icon: Heart, title: 'Pet listings', text: 'Browse available pets with listing, health, fulfillment, and payment details.', to: '/pets' },
-                { icon: ShoppingBag, title: 'Pet marketplace', text: 'Explore active products from stores and manage orders through your account.', to: '/products' },
-                { icon: CalendarDays, title: 'Service booking', text: 'Review active care services and organize appointments from one calendar.', to: '/services' },
-                { icon: MessageCircle, title: 'Connected support', text: 'Use platform messaging, order updates, and delivery tracking where available.', to: '/login' }
-              ].map(({ icon: Icon, title, text, to }) => (
-                <Link key={title} to={to} className="group rounded-xl border border-slate-200 bg-white p-5 transition duration-300 hover:-translate-y-0.5 hover:border-primary-200 hover:shadow-lg hover:shadow-primary-950/5">
-                  <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-50 text-primary-700 transition group-hover:bg-primary-600 group-hover:text-white"><Icon className="h-4 w-4" /></span>
-                  <h3 className="mt-4 text-base font-black text-slate-900">{title}</h3>
-                  <p className="mt-2 text-xs leading-5 text-slate-500">{text}</p>
-                  <span className="mt-4 inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wider text-primary-700">Explore <ArrowRight className="h-3 w-3 transition group-hover:translate-x-1" /></span>
-                </Link>
-              ))}
+
+            <div className="landing-feature-bento">
+              <Link to="/pets" className="landing-feature-card landing-feature-pets">
+                <img src="/images/hero-premium.png" alt="A dog and cat relaxing together at home" />
+                <span className="landing-feature-shade" aria-hidden="true" />
+                <span className="landing-feature-content">
+                  <span className="landing-feature-icon"><Heart /></span>
+                  <small>Find a companion</small>
+                  <strong>Pet listings</strong>
+                  <span>Browse available pets with listing, health, fulfillment, and payment details.</span>
+                  <b>Explore pets <ArrowRight /></b>
+                </span>
+              </Link>
+
+              <Link to="/products" className="landing-feature-card landing-feature-products">
+                <span className="landing-feature-icon"><ShoppingBag /></span>
+                <small>Everyday essentials</small>
+                <strong>Pet marketplace</strong>
+                <span>Explore active products from Pawzzle stores and manage orders through your account.</span>
+                <b>Shop products <ArrowRight /></b>
+                <Package className="landing-feature-watermark" aria-hidden="true" />
+              </Link>
+
+              <Link to="/services" className="landing-feature-card landing-feature-services">
+                <span className="landing-feature-icon"><CalendarDays /></span>
+                <small>Care when you need it</small>
+                <strong>Service booking</strong>
+                <span>Review active pet-care services and organize appointments from one calendar.</span>
+                <b>Book services <ArrowRight /></b>
+              </Link>
+
+              <Link to="/login" className="landing-feature-card landing-feature-support">
+                <span className="landing-feature-icon"><MessageCircle /></span>
+                <span><small>Stay in the loop</small><strong>Connected support</strong></span>
+                <span>Keep messages, order updates, and delivery tracking together where available.</span>
+                <b>Sign in <ArrowRight /></b>
+              </Link>
             </div>
           </div>
         </section>
 
-        <section id="explore" className="border-y border-slate-100 bg-slate-50/60 py-12 sm:py-16">
-          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-            <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
-              <div><p className="landing-eyebrow">Live from Pawzzle</p><h2 className="mt-2 text-2xl font-black tracking-tight sm:text-3xl">Explore current listings</h2></div>
-              <div className="flex w-full gap-1 rounded-xl border border-slate-200 bg-white p-1 sm:w-auto" role="tablist" aria-label="Catalog type">
+        <section id="explore" className="landing-section landing-explore-section">
+          <div className="landing-shell">
+            <div className="landing-explore-header">
+              <div>
+                <p className="landing-eyebrow">Curated from the live catalog</p>
+                <h2>See what’s waiting on Pawzzle.</h2>
+              </div>
+              <div className="landing-catalog-tabs" role="tablist" aria-label="Catalog type">
                 {catalogTabs.map(({ key, label, count, icon: Icon }) => (
-                  <button key={key} onClick={() => setActiveCatalog(key)} role="tab" aria-selected={activeCatalog === key} className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-bold transition sm:flex-none ${activeCatalog === key ? 'bg-primary-600 text-white shadow-sm' : 'text-slate-500 hover:bg-slate-50'}`}>
-                    <Icon className="h-3.5 w-3.5" /> {label} <span className="opacity-70">{count}</span>
+                  <button key={key} onClick={() => setActiveCatalog(key)} role="tab" aria-selected={activeCatalog === key} className={activeCatalog === key ? 'is-active' : ''}>
+                    <Icon aria-hidden="true" /> <span>{label}</span> <small>{count}</small>
                   </button>
                 ))}
               </div>
             </div>
 
-            {catalogItems[activeCatalog].length > 0 ? (
-              <div className="mt-7 grid grid-cols-2 gap-3 lg:grid-cols-4">
-                {catalogItems[activeCatalog].map((item) => (
-                  <Link key={item.id} to={item.to} className="group overflow-hidden rounded-xl border border-slate-200 bg-white transition hover:border-primary-200 hover:shadow-md">
-                    <div className="aspect-[4/3] overflow-hidden bg-primary-50">
-                      {item.image ? <img src={getImageUrl(item.image)} alt={item.title} className="h-full w-full object-cover transition duration-500 group-hover:scale-105" /> : <div className="flex h-full items-center justify-center"><img src="/images/logo.png" alt="" className="h-12 w-12 object-contain opacity-20" /></div>}
+            {activeItems.length > 0 ? (
+              <div className={`landing-catalog-bento landing-catalog-count-${Math.min(activeItems.length, 4)}`}>
+                {activeItems.map((item, index) => (
+                  <Link key={item.id} to={item.to} className={`landing-catalog-card ${index === 0 ? 'is-featured' : ''}`}>
+                    <div className="landing-catalog-image">
+                      {item.image
+                        ? <img src={getImageUrl(item.image)} alt={item.title} />
+                        : <div className="landing-image-fallback"><img src="/images/logo.png" alt="" /></div>}
                     </div>
-                    <div className="p-3.5">
-                      <h3 className="min-h-[2.5rem] text-sm font-black leading-tight text-slate-900 line-clamp-2 break-words">{item.title}</h3>
-                      <p className="mt-1 text-[10px] capitalize leading-tight text-slate-400 line-clamp-2 break-words">{item.meta || 'Available on Pawzzle'}</p>
-                      {item.price && <p className="mt-2 text-xs font-black text-primary-700">{item.price}</p>}
+                    <div className="landing-catalog-copy">
+                      <div><small>{item.meta || 'Available on Pawzzle'}</small><h3>{item.title}</h3></div>
+                      <div className="landing-catalog-price">
+                        {item.price && <strong>{item.price}</strong>}
+                        <span aria-hidden="true"><ArrowRight /></span>
+                      </div>
                     </div>
                   </Link>
                 ))}
               </div>
             ) : (
-              <div className="mt-7 rounded-xl border border-dashed border-slate-200 bg-white px-4 py-10 text-center">
-                <p className="text-sm font-bold text-slate-600">No active {activeCatalog} are listed right now.</p>
-                <p className="mt-1 text-xs text-slate-400">Check back as stores update their catalogs.</p>
+              <div className="landing-empty-state">
+                <PawPrint aria-hidden="true" />
+                <h3>No active {activeCatalog} are listed right now.</h3>
+                <p>Check back as stores update their catalogs.</p>
               </div>
             )}
 
-            <div className="mt-6 text-center"><Link to={activeTab.route} className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-700 transition hover:border-primary-300 hover:text-primary-700">View all {activeTab.label.toLowerCase()} <ArrowRight className="h-3.5 w-3.5" /></Link></div>
+            <div className="landing-view-all">
+              <Link to={activeTab.route}>View all {activeTab.label.toLowerCase()} <ArrowRight aria-hidden="true" /></Link>
+            </div>
           </div>
         </section>
 
-        <section id="how-it-works" className="py-12 sm:py-16">
-          <div className="mx-auto grid max-w-7xl gap-8 px-4 sm:px-6 lg:grid-cols-[.8fr_1.2fr] lg:px-8">
-            <div><p className="landing-eyebrow">Simple by design</p><h2 className="mt-2 text-2xl font-black tracking-tight sm:text-3xl">From search to care in three steps</h2><p className="mt-3 max-w-md text-sm leading-6 text-slate-500">Pawzzle keeps discovery, transactions, bookings, and account activity organized in one place.</p></div>
-            <ol className="grid gap-3 sm:grid-cols-3">
-              {[
-                ['01', 'Discover', 'Search active pets, products, services, and stores.'],
-                ['02', 'Choose', 'Review listing information, availability, and pricing.'],
-                ['03', 'Manage', 'Track orders, bookings, messages, and updates in your account.']
-              ].map(([number, title, text]) => (
-                <li key={number} className="rounded-xl border border-slate-200 p-5"><span className="text-[10px] font-black tracking-widest text-primary-600">{number}</span><h3 className="mt-3 text-base font-black">{title}</h3><p className="mt-2 text-xs leading-5 text-slate-500">{text}</p></li>
-              ))}
-            </ol>
+        <section id="how-it-works" className="landing-section landing-how-section">
+          <div className="landing-shell landing-how-grid">
+            <figure className="landing-how-image">
+              <img src="/images/hero_pet_garden.png" alt="Dog and cat enjoying time together near a pet-friendly store" />
+              <figcaption><MapPin aria-hidden="true" /> From local discovery to everyday care</figcaption>
+            </figure>
+
+            <div className="landing-how-copy">
+              <p className="landing-eyebrow">Simple by design</p>
+              <h2>From first search to ongoing care.</h2>
+              <p>Pawzzle keeps discovery, transactions, bookings, messages, and account activity organized in one place.</p>
+              <ol>
+                {[
+                  ['01', 'Discover', 'Search active pets, products, services, and stores.'],
+                  ['02', 'Choose', 'Review listing information, availability, and pricing.'],
+                  ['03', 'Manage', 'Track orders, bookings, messages, and updates in your account.']
+                ].map(([number, title, text]) => (
+                  <li key={number}><span>{number}</span><div><h3>{title}</h3><p>{text}</p></div></li>
+                ))}
+              </ol>
+            </div>
           </div>
         </section>
 
-        <section className="px-4 pb-12 sm:px-6 sm:pb-16 lg:px-8">
-          <div className="mx-auto max-w-7xl overflow-hidden rounded-2xl bg-slate-900 px-5 py-8 text-white sm:px-8 sm:py-10">
-            <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
-              <div className="max-w-xl"><div className="mb-2 flex items-center gap-2 text-primary-300"><ShieldCheck className="h-4 w-4" /><span className="text-[10px] font-black uppercase tracking-widest">Join the platform</span></div><h2 className="text-2xl font-black tracking-tight">Ready to get started?</h2><p className="mt-2 text-sm leading-6 text-slate-300">Create an account to manage your pet marketplace activity, or apply to bring your store onto Pawzzle.</p></div>
-              <div className="flex flex-col gap-2 sm:flex-row"><Link to="/register" className="rounded-lg bg-primary-600 px-4 py-2.5 text-center text-xs font-bold text-white transition hover:bg-primary-500">Create account</Link><Link to="/seller-join" className="rounded-lg border border-white/15 px-4 py-2.5 text-center text-xs font-bold transition hover:bg-white/10">Join as a store</Link></div>
+        <section className="landing-cta-section">
+          <div className="landing-shell">
+            <div className="landing-cta-card">
+              <div className="landing-cta-paw" aria-hidden="true"><PawPrint /></div>
+              <div>
+                <p className="landing-eyebrow">A better-connected pet life</p>
+                <h2>Ready to make Pawzzle part of your routine?</h2>
+                <p>Create an account to manage your pet marketplace activity, or apply to bring your store onto Pawzzle.</p>
+              </div>
+              <div className="landing-cta-actions">
+                <Link to="/register" className="landing-button landing-button-light">Create account <ArrowRight /></Link>
+                <Link to="/seller-join" className="landing-button landing-button-outline-light">Join as a store</Link>
+              </div>
+              <ShieldCheck className="landing-cta-shield" aria-hidden="true" />
             </div>
           </div>
         </section>
       </main>
 
-      <footer className="border-t border-slate-100 bg-white py-8">
-        <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 text-center sm:px-6 md:flex-row md:items-center md:justify-between md:text-left lg:px-8">
-          <div className="flex items-center justify-center gap-2 md:justify-start"><img src="/images/logo.png" alt="" className="h-7 w-7 object-contain" /><span className="text-xs font-black uppercase tracking-wider">Pawzzle</span></div>
-          <p className="text-[10px] text-slate-400">Pet marketplace, store discovery, service booking, and account management.</p>
-          <div className="flex justify-center gap-4 text-[10px] font-bold text-slate-500"><Link to="/pets" className="hover:text-primary-700">Pets</Link><Link to="/products" className="hover:text-primary-700">Products</Link><Link to="/services" className="hover:text-primary-700">Services</Link></div>
+      <footer className="landing-footer">
+        <div className="landing-shell landing-footer-grid">
+          <div>
+            <Link to="/" className="landing-brand" aria-label="Pawzzle home"><span className="landing-brand-mark"><img src="/images/logo.png" alt="" /></span><span>Pawzzle</span></Link>
+            <p>Pet marketplace, store discovery, service booking, and account management—all thoughtfully connected.</p>
+          </div>
+          <nav aria-label="Footer navigation">
+            <span>Explore</span><Link to="/pets">Pets</Link><Link to="/products">Products</Link><Link to="/services">Services</Link>
+          </nav>
+          <nav aria-label="Account navigation">
+            <span>Join Pawzzle</span><Link to="/login">Sign in</Link><Link to="/register">Create account</Link><Link to="/seller-join">For stores</Link>
+          </nav>
+          <div className="landing-footer-note"><PawPrint aria-hidden="true" /><span>Made for pets, their people, and the stores that care for them.</span></div>
         </div>
       </footer>
     </div>
