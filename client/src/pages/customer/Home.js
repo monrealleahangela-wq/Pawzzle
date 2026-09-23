@@ -1,88 +1,89 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
+import {
+  Activity, ArrowRight, Brain, Building, CalendarDays, CheckCircle2,
+  ChevronRight, Dumbbell, Heart, Package, PawPrint, Scissors, Search,
+  ShieldCheck, ShoppingBag, Sparkles, Star, Stethoscope, ThumbsUp, Users
+} from 'lucide-react';
+import { toast } from 'react-toastify';
 import { publicService, getImageUrl } from '../../services/apiService';
-import { Heart, Package, Star, ArrowRight, Sparkles, Users, ShoppingBag, Zap, ChevronRight, Building, ShieldCheck, Search, CheckCircle2, ThumbsUp, Brain, Stethoscope, Scissors, Dumbbell, Activity } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useCart } from '../../contexts/CartContext';
-import { toast } from 'react-toastify';
 import { formatPeso } from '../../utils/paymentSummary';
+import '../../styles/CustomerHome.css';
 
-// ═══════════════════════════════════════════════════════════════
-// ANIMATED COUNTER COMPONENT
-// ═══════════════════════════════════════════════════════════════
+const EMPTY_DATA = {
+  pets: [], products: [], services: [], experts: [],
+  stats: { stores: 0, pets: 0, experts: 0, products: 0, services: 0 }
+};
 
-const Counter = ({ target, label, icon: Icon, suffix = '+' }) => {
+const Counter = ({ target, label, icon: Icon }) => {
   const [count, setCount] = useState(0);
   const ref = useRef(null);
 
   useEffect(() => {
-    const observer = new IntersectionObserver(([entry]) => {
-      if (entry.isIntersecting) {
-        let start = 0;
-        const duration = 2000;
-        const stepTime = 20;
-        const totalSteps = duration / stepTime;
-        const stepIncrement = target / totalSteps;
+    let timer;
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const finish = () => setCount(Number(target) || 0);
 
-        const timer = setInterval(() => {
-          start += stepIncrement;
-          if (start >= target) {
-            setCount(target);
-            clearInterval(timer);
-          } else {
-            setCount(Math.floor(start));
-          }
-        }, stepTime);
-        observer.disconnect();
-      }
-    }, { threshold: 0.5 });
+    if (reducedMotion || !('IntersectionObserver' in window)) {
+      finish();
+      return undefined;
+    }
+
+    const observer = new IntersectionObserver(([entry]) => {
+      if (!entry.isIntersecting) return;
+      const total = Number(target) || 0;
+      const steps = 24;
+      let currentStep = 0;
+      timer = window.setInterval(() => {
+        currentStep += 1;
+        setCount(Math.round(total * (currentStep / steps)));
+        if (currentStep >= steps) window.clearInterval(timer);
+      }, 24);
+      observer.disconnect();
+    }, { threshold: 0.25 });
 
     if (ref.current) observer.observe(ref.current);
-    return () => observer.disconnect();
+    return () => {
+      observer.disconnect();
+      if (timer) window.clearInterval(timer);
+    };
   }, [target]);
 
   return (
-    <div ref={ref} className="flex flex-col items-center p-8 bg-white/50 backdrop-blur-md rounded-[2.5rem] border border-white shadow-soft group hover:shadow-premium transition-all duration-500">
-      <div className="w-14 h-14 bg-primary/5 rounded-2xl flex items-center justify-center mb-6 group-hover:bg-primary group-hover:text-white transition-all text-primary">
-        <Icon className="h-6 w-6" />
-      </div>
-      <h4 className="mb-2 text-2xl font-black tracking-tighter text-neutral-900 sm:text-3xl">
-        {count.toLocaleString()}{suffix}
-      </h4>
-      <p className="text-[10px] font-black text-neutral-400 uppercase tracking-[0.3em]">{label}</p>
-    </div>
+    <article ref={ref} className="customer-home-stat">
+      <span><Icon aria-hidden="true" /></span>
+      <div><strong>{count.toLocaleString()}</strong><small>{label}</small></div>
+    </article>
   );
 };
 
-// ═══════════════════════════════════════════════════════════════
-// MAIN HOME COMPONENT
-// ═══════════════════════════════════════════════════════════════
+const SectionHeading = ({ eyebrow, title, description, to, linkLabel }) => (
+  <header className="customer-home-section-heading">
+    <div>
+      <p>{eyebrow}</p>
+      <h2>{title}</h2>
+      {description && <span>{description}</span>}
+    </div>
+    {to && <Link to={to}>{linkLabel} <ArrowRight aria-hidden="true" /></Link>}
+  </header>
+);
 
 const Home = () => {
   const { isAuthenticated } = useAuth();
   const { addToCart } = useCart();
-  const [data, setData] = useState({
-    pets: [],
-    products: [],
-    services: [],
-    experts: [],
-    stats: {
-      stores: 0,
-      experts: 0,
-      products: 0,
-      services: 0
-    }
-  });
+  const [data, setData] = useState(EMPTY_DATA);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const res = await publicService.getLandingData();
-        setData(res.data);
-      } catch (err) {
-        console.error('Core sync failure:', err);
+        const response = await publicService.getLandingData();
+        setData({ ...EMPTY_DATA, ...response.data, stats: { ...EMPTY_DATA.stats, ...response.data?.stats } });
+      } catch (error) {
+        console.error('Customer Home data error:', error);
       } finally {
         setLoading(false);
       }
@@ -104,400 +105,189 @@ const Home = () => {
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-8 animate-pulse">
-        <div className="w-24 h-24 border-4 border-primary/10 border-t-primary rounded-full animate-spin" />
-        <p className="text-[10px] font-black text-neutral-400 uppercase tracking-[0.4em]">Loading the latest updates</p>
+      <div className="customer-home-loading" role="status">
+        <span aria-hidden="true" />
+        <p>Loading the latest updates</p>
       </div>
     );
   }
 
+  const stats = [
+    { label: 'Active products', value: data.stats.products, icon: Package },
+    { label: 'Professionals', value: data.stats.experts, icon: ShieldCheck },
+    { label: 'Bookable services', value: data.stats.services, icon: Sparkles },
+    { label: 'Active stores', value: data.stats.stores, icon: Building }
+  ];
+
+  const categories = [
+    { to: '/pets', className: 'is-pets', image: '/images/hero-premium.png', icon: Heart, eyebrow: 'Find a companion', title: 'Available pets', text: 'Browse current pet listings and their available details.', action: 'Browse pets' },
+    { to: '/products', className: 'is-products', image: '/images/landing_hero.png', icon: ShoppingBag, eyebrow: 'Everyday essentials', title: 'Pet products', text: 'Shop active products from Pawzzle stores.', action: 'Shop products' },
+    { to: '/services', className: 'is-services', image: '/images/hero_pet_garden.png', icon: CalendarDays, eyebrow: 'Care made easier', title: 'Pet services', text: 'Review and book available professional care.', action: 'Book services' }
+  ];
+
+  const serviceTypes = [
+    { icon: Stethoscope, label: 'Medical', title: 'Veterinary care', image: '/images/landing_hero.png' },
+    { icon: Scissors, label: 'Grooming', title: 'Grooming services', image: '/images/hero-premium.png' },
+    { icon: Dumbbell, label: 'Training', title: 'Behavioral training', image: '/images/hero_pet_garden.png' }
+  ];
+
   return (
-    <div className="space-y-24 sm:space-y-32 pb-48 animate-fade-in">
-      
-      {/* ── 1. LUXE HERO SECTION ── */}
-      <section className="relative px-2">
-        <div className="relative h-[600px] sm:h-[800px] rounded-[4rem] sm:rounded-[6rem] overflow-hidden group shadow-premium ring-1 ring-white/20">
-          {/* Background Image / Pattern */}
-          <div className="absolute inset-0 bg-neutral-900">
-            <img 
-              src="/images/hero-premium.png" // Placeholder for an actual dynamic banner if available
-              alt="Hero" 
-              className="w-full h-full object-cover opacity-60 scale-105 group-hover:scale-100 transition-transform duration-[20s] ease-linear"
-              onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1450778869180-41d0601e046e?q=80&w=2686'; }}
-            />
+    <div className="customer-home">
+      <section className="customer-home-hero">
+        <div className="customer-home-hero-copy">
+          <p className="customer-home-eyebrow"><PawPrint aria-hidden="true" /> Your Pawzzle home</p>
+          <h1>Everything for their next <em>good day.</em></h1>
+          <p className="customer-home-hero-text">Find companions, shop essentials, and arrange pet care from one practical, connected place.</p>
+          <div className="customer-home-hero-actions">
+            <label className="customer-home-search">
+              <Search aria-hidden="true" />
+              <span className="sr-only">Search pets, products, or services</span>
+              <input type="text" placeholder="Search pets, products, or services" value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} />
+            </label>
+            <Link to="/pets" className="customer-home-primary-action">Explore pets <ChevronRight aria-hidden="true" /></Link>
           </div>
-          <div className="absolute inset-0 bg-gradient-to-t from-neutral-900 via-neutral-900/40 to-transparent" />
-          
-          <div className="relative z-10 h-full flex flex-col items-center justify-center text-center px-10 space-y-12 max-w-6xl mx-auto">
-            <div className="inline-flex items-center gap-4 px-6 py-2.5 bg-white/10 backdrop-blur-md rounded-full border border-white/20 animate-fade-down">
-              <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-              <span className="text-[10px] sm:text-[11px] font-black text-white/80 uppercase tracking-[0.5em]">Global Pet Ecosystem Active</span>
-            </div>
-            
-            <h1 className="text-[clamp(2.5rem,8vw,6rem)] font-black uppercase leading-[0.9] tracking-tighter text-white break-words animate-scale-in">
-              The World's <br />
-              <span className="italic text-transparent bg-clip-text bg-gradient-to-r from-primary-400 to-primary-600">Premium .</span> <br />
-              <span className="text-white">Pet Network .</span>
-            </h1>
-            
-            <p className="text-sm sm:text-xl text-white/50 max-w-2xl font-medium leading-relaxed animate-fade-up">
-              Connect with verified experts, shop elite supplies, and find your perfect companion in our secure, enterprise-grade marketplace.
-            </p>
+        </div>
+        <figure className="customer-home-hero-image">
+          <img src="/images/hero-premium.png" alt="A dog and cat relaxing together at home" />
+          <figcaption><CheckCircle2 aria-hidden="true" /><span><strong>One connected place</strong><small>Pets · Products · Care</small></span></figcaption>
+        </figure>
+      </section>
 
-            <div className="w-full max-w-3xl flex flex-col sm:flex-row gap-6 animate-fade-up" style={{ animationDelay: '0.4s' }}>
-              <div className="flex-1 relative group/search">
-                <Search className="absolute left-6 top-1/2 -translate-y-1/2 h-5 w-5 text-neutral-400 group-hover/search:text-primary transition-colors" />
-                <input 
-                  type="text"
-                  placeholder="Search pets, supplies, or services..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full h-16 sm:h-20 bg-white rounded-3xl pl-16 pr-8 text-neutral-900 font-bold placeholder:text-neutral-400 focus:ring-4 focus:ring-primary/20 transition-all shadow-2xl"
-                />
-              </div>
-              <Link to="/pets" className="h-16 sm:h-20 px-12 bg-primary text-white rounded-3xl flex items-center justify-center gap-4 text-xs font-black uppercase tracking-widest hover:brightness-110 active:scale-95 transition-all shadow-2xl shadow-primary/30">
-                Explore Now <ChevronRight className="h-5 w-5" />
-              </Link>
-            </div>
-          </div>
+      <section className="customer-home-stats" aria-label="Live Pawzzle statistics">
+        {stats.map((stat) => <Counter key={stat.label} target={stat.value || 0} label={stat.label} icon={stat.icon} />)}
+      </section>
+
+      <section className="customer-home-section">
+        <SectionHeading eyebrow="Explore Pawzzle" title="What do you need today?" description="The main parts of your pet journey, kept close at hand." />
+        <div className="customer-home-category-grid">
+          {categories.map(({ to, className, image, icon: Icon, eyebrow, title, text, action }) => (
+            <Link key={to} to={to} className={`customer-home-category ${className}`}>
+              <img src={image} alt="" aria-hidden="true" />
+              <span className="customer-home-category-overlay" aria-hidden="true" />
+              <span className="customer-home-category-content">
+                <span className="customer-home-category-icon"><Icon /></span>
+                <small>{eyebrow}</small><strong>{title}</strong><span>{text}</span>
+                <b>{action} <ArrowRight /></b>
+              </span>
+            </Link>
+          ))}
         </div>
       </section>
 
-      {/* ── 2. REAL-TIME PLATFORM DATA ── */}
-      <section className="responsive-card-grid max-w-7xl mx-auto px-6 [--card-min:11rem] [--card-gap:2rem]">
-        <Counter target={data.stats.products || 0} label="Elite Products" icon={Package} />
-        <Counter target={data.stats.experts || 0} label="Verified Experts" icon={ShieldCheck} />
-        <Counter target={data.stats.services || 0} label="Active Services" icon={Sparkles} />
-        <Counter target={data.stats.stores || 0} label="Global Ventures" icon={Building} />
-      </section>
-
-      {/* ── 3. FEATURED ECOSYSTEM CATEGORIES ── */}
-      <section className="max-w-[1400px] mx-auto px-6 space-y-16">
-        <div className="flex flex-col md:flex-row items-end justify-between gap-8">
-          <div className="space-y-4">
-            <h2 className="text-[clamp(2rem,5vw,4.5rem)] font-black uppercase leading-none tracking-tighter text-neutral-900 break-words">
-              Explore Our <br />
-              <span className="text-primary italic">Ecosystem .</span>
-            </h2>
-            <p className="text-[11px] font-black text-neutral-400 uppercase tracking-[0.4em]">Pets, products, and services in one place</p>
-          </div>
-          <div className="flex gap-4">
-             <Link to="/pets" className="px-8 py-4 bg-neutral-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-primary transition-all">Pets</Link>
-             <Link to="/products" className="px-8 py-4 bg-white border border-slate-100 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-neutral-50 transition-all">Products</Link>
-             <Link to="/services" className="px-8 py-4 bg-white border border-slate-100 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-neutral-50 transition-all">Services</Link>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
-          {/* Pets Card */}
-          <Link to="/pets" className="group relative h-[600px] rounded-[4rem] overflow-hidden shadow-strong hover:shadow-premium transition-all duration-700">
-            <img src="https://images.unsplash.com/photo-1543466835-00a7907e9de1" alt="" loading="lazy" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-[2s]" />
-            <div className="absolute inset-0 bg-gradient-to-t from-neutral-900 via-neutral-900/20 to-transparent" />
-            <div className="absolute bottom-10 left-10 p-2 space-y-4">
-               <h3 className="text-[clamp(2rem,4vw,3rem)] font-black uppercase leading-tight tracking-tighter text-white">Healthy <br /> Pets .</h3>
-               <p className="text-xs text-white/60 font-medium uppercase tracking-[0.2em]">Verified Breeders & Health Records</p>
-               <div className="inline-flex items-center gap-4 px-6 py-3 bg-white text-neutral-900 rounded-2xl text-[10px] font-black uppercase tracking-widest group-hover:bg-primary group-hover:text-white transition-all">
-                  Browse Available <ArrowRight size={16} />
-               </div>
-            </div>
-          </Link>
-          
-          {/* Products Card */}
-          <Link to="/products" className="group relative h-[600px] rounded-[4rem] overflow-hidden shadow-strong hover:shadow-premium transition-all duration-700">
-            <img src="https://images.unsplash.com/photo-1583511655857-d19b40a7a54e" alt="" loading="lazy" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-[2s]" />
-            <div className="absolute inset-0 bg-gradient-to-t from-primary-950 via-primary-950/20 to-transparent" />
-            <div className="absolute bottom-10 left-10 p-2 space-y-4">
-               <h3 className="text-[clamp(2rem,4vw,3rem)] font-black uppercase leading-tight tracking-tighter text-white">Premium <br /> Supplies .</h3>
-               <p className="text-xs text-white/60 font-medium uppercase tracking-[0.2em]">Curated Foods & Elite Accessories</p>
-               <div className="inline-flex items-center gap-4 px-6 py-3 bg-white text-neutral-900 rounded-2xl text-[10px] font-black uppercase tracking-widest group-hover:bg-primary group-hover:text-white transition-all">
-                  Shop Marketplace <ArrowRight size={16} />
-               </div>
-            </div>
-          </Link>
-
-          {/* Services Card */}
-          <Link to="/services" className="group relative h-[600px] rounded-[4rem] overflow-hidden shadow-strong hover:shadow-premium transition-all duration-700">
-            <img src="https://images.unsplash.com/photo-1516733725897-1aa73b87c8e8" alt="" loading="lazy" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-[2s]" />
-            <div className="absolute inset-0 bg-gradient-to-t from-neutral-950 via-neutral-950/20 to-transparent" />
-            <div className="absolute bottom-10 left-10 p-2 space-y-4">
-               <h3 className="text-[clamp(2rem,4vw,3rem)] font-black uppercase leading-tight tracking-tighter text-white">Expert <br /> Care .</h3>
-               <p className="text-xs text-white/60 font-medium uppercase tracking-[0.2em]">Vets, Groomers & Master Trainers</p>
-               <div className="inline-flex items-center gap-4 px-6 py-3 bg-white text-neutral-900 rounded-2xl text-[10px] font-black uppercase tracking-widest group-hover:bg-primary group-hover:text-white transition-all">
-                  Book Professional <ArrowRight size={16} />
-               </div>
-            </div>
-          </Link>
-        </div>
-      </section>
-
-      {/* ── 4. VERIFIED PROFESSIONALS (Experts) ── */}
       {data.experts.length > 0 && (
-        <section className="bg-neutral-900 py-32 sm:py-48 relative overflow-hidden">
-           <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-primary/10 rounded-full blur-[120px] -translate-y-1/2 translate-x-1/2" />
-           <div className="max-w-7xl mx-auto px-6 relative z-10 space-y-20">
-              <div className="text-center space-y-6">
-                 <div className="inline-flex items-center gap-4 px-6 py-2 bg-white/5 border border-white/10 rounded-full text-primary">
-                    <ShieldCheck size={18} />
-                    <span className="text-[10px] font-black uppercase tracking-[0.5em]">Verified Professionals</span>
-                 </div>
-                 <h2 className="text-[clamp(2.25rem,6vw,5rem)] font-black uppercase leading-tight tracking-tighter text-white break-words">Meet Our <br /> <span className="italic text-primary">Health Experts .</span></h2>
-                 <p className="text-white/40 text-sm sm:text-lg max-w-2xl mx-auto font-medium uppercase tracking-widest leading-relaxed">
-                   Consult with the world's most trusted veterinarians, groomers, and behavioral specialists.
-                 </p>
-              </div>
-
-              <div className="responsive-card-grid [--card-min:17rem] sm:[--card-min:18rem] [--card-gap:1.5rem]">
-                 {data.experts.map((expert, idx) => (
-                    <div key={idx} className="bg-white/5 border border-white/10 rounded-[3rem] p-10 space-y-8 group hover:bg-white/10 transition-all duration-500 hover:-translate-y-4 shadow-2xl">
-                       <div className="relative w-24 h-24 mx-auto">
-                          <div className="w-full h-full rounded-[2rem] bg-white/10 overflow-hidden shadow-inner flex items-center justify-center">
-                             {expert.avatar ? (
-                               <img src={getImageUrl(expert.avatar)} alt="" className="w-full h-full object-cover" />
-                             ) : <Users className="h-10 w-10 text-white/20" />}
-                          </div>
-                          <div className="absolute -bottom-2 -right-2 w-10 h-10 bg-primary text-white rounded-xl flex items-center justify-center shadow-lg">
-                             <CheckCircle2 size={20} />
-                          </div>
-                       </div>
-                       <div className="text-center space-y-2">
-                          <h4 className="text-lg font-black uppercase leading-tight tracking-tight text-white line-clamp-2 break-words">{expert.firstName} {expert.lastName}</h4>
-                          <p className="text-[10px] font-black uppercase leading-relaxed tracking-wide text-primary break-words">
-                            {expert.staffType?.replace('_', ' ') || 'Licensed Specialist'}
-                          </p>
-                       </div>
-                       <div className="pt-8 border-t border-white/5 flex items-center justify-center gap-6">
-                          <div className="flex items-center gap-2">
-                             <Star className={`h-4 w-4 text-primary ${expert.professionalProfile?.reviewCount > 0 ? 'fill-primary' : ''}`} />
-                             <span className="text-[11px] font-black text-white">
-                               {expert.professionalProfile?.reviewCount > 0
-                                 ? `${Number(expert.professionalProfile.rating).toFixed(1)} · ${expert.professionalProfile.reviewCount}`
-                                 : 'No ratings yet'}
-                             </span>
-                          </div>
-                          <div className="w-1.5 h-1.5 rounded-full bg-white/20" />
-                          <span className="text-[10px] font-black text-white/40 uppercase tracking-widest">Active Now</span>
-                       </div>
-                    </div>
-                 ))}
-              </div>
-           </div>
+        <section className="customer-home-experts">
+          <SectionHeading eyebrow="Public professional profiles" title="Meet Pawzzle professionals." description="View active public profiles across veterinary, grooming, training, and boarding services." />
+          <div className="customer-home-expert-grid">
+            {data.experts.map((expert) => {
+              const reviewCount = Number(expert.professionalProfile?.reviewCount) || 0;
+              return (
+                <article key={expert._id || `${expert.firstName}-${expert.lastName}`} className="customer-home-expert-card">
+                  <div className="customer-home-avatar">
+                    {expert.avatar ? <img src={getImageUrl(expert.avatar)} alt={`${expert.firstName} ${expert.lastName}`} /> : <Users aria-hidden="true" />}
+                    <CheckCircle2 aria-label="Verified professional" />
+                  </div>
+                  <div className="customer-home-expert-copy">
+                    <h3>{expert.firstName} {expert.lastName}</h3>
+                    <p>{expert.staffType?.replace(/_/g, ' ') || 'Specialist'}</p>
+                    <span><Star className={reviewCount > 0 ? 'is-rated' : ''} aria-hidden="true" /> {reviewCount > 0 ? `${Number(expert.professionalProfile.rating).toFixed(1)} · ${reviewCount} ${reviewCount === 1 ? 'rating' : 'ratings'}` : 'No ratings yet'}</span>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
         </section>
       )}
 
-      {/* ── 5. FEATURED BIOLOGICAL LISTINGS (Pets) ── */}
       {data.pets.length > 0 && (
-        <section className="max-w-7xl mx-auto px-6 space-y-20">
-          <div className="flex flex-col md:flex-row items-end justify-between gap-10">
-             <div className="space-y-4">
-                <h2 className="text-[clamp(2rem,5vw,4.5rem)] font-black uppercase leading-none tracking-tighter text-neutral-900 break-words">
-                  Available <br />
-                  <span className="text-primary italic">Companions .</span>
-                </h2>
-                <p className="text-[11px] font-black text-neutral-400 uppercase tracking-[0.4em]">Biological inventory from verified breeders</p>
-             </div>
-             <Link to="/pets" className="group text-[12px] font-black text-neutral-400 uppercase tracking-[0.3em] hover:text-primary transition-all flex items-center gap-6">
-                Full Catalog <div className="w-14 h-14 rounded-full border border-slate-100 flex items-center justify-center group-hover:bg-neutral-900 group-hover:text-white transition-all">
-                   <ChevronRight size={24} />
+        <section className="customer-home-section">
+          <SectionHeading eyebrow="Available companions" title="Meet pets looking for a home." description="Current pet listings available through Pawzzle stores." to="/pets" linkLabel="View all pets" />
+          <div className="customer-home-listing-grid responsive-card-grid [--card-min:13rem] [--card-gap:0.75rem]">
+            {data.pets.map((pet) => (
+              <article key={pet._id} className="customer-home-listing-card">
+                <Link to={`/pets/${pet._id}`} className="customer-home-listing-image">
+                  {pet.images?.[0] ? <img src={getImageUrl(pet.images[0])} alt={pet.name || 'Available pet'} loading="lazy" /> : <span><Heart aria-hidden="true" /></span>}
+                  <small>Available</small>
+                </Link>
+                <div className="customer-home-listing-copy">
+                  <p>{[pet.breed, pet.gender].filter(Boolean).join(' · ') || 'Pet listing'}</p>
+                  <h3>{pet.name}</h3>
+                  <div><strong>{formatPeso(pet.price)}</strong><Link to={`/pets/${pet._id}`} aria-label={`View ${pet.name}`}><ChevronRight /></Link></div>
                 </div>
-             </Link>
-          </div>
-
-          <div className="responsive-card-grid [--card-min:17rem] sm:[--card-min:18rem] [--card-gap:1.5rem]">
-             {data.pets.map((pet, idx) => (
-                <div key={idx} className="bg-white rounded-[3rem] border border-slate-50 p-4 group hover:shadow-premium hover:-translate-y-4 transition-all duration-700 animate-fade-up" style={{ animationDelay: `${idx * 0.1}s` }}>
-                   <Link to={`/pets/${pet._id}`} className="block relative aspect-square rounded-[2.5rem] overflow-hidden mb-8 shadow-soft">
-                      {pet.images?.[0] ? (
-                        <img src={getImageUrl(pet.images[0])} alt={pet.name || ''} loading="lazy" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-[2s]" />
-                      ) : <div className="w-full h-full bg-neutral-50 flex items-center justify-center text-neutral-200"><Heart size={48} /></div>}
-                      <div className="absolute top-6 left-6 px-4 py-2 bg-white/90 backdrop-blur-md rounded-xl text-[9px] font-black uppercase tracking-widest text-primary shadow-2xl">
-                         Verified Healthy
-                      </div>
-                   </Link>
-                   <div className="px-4 pb-4 space-y-6">
-                      <div className="space-y-2">
-                         <p className="text-[9px] font-black text-neutral-400 uppercase tracking-[0.4em]">{pet.breed}</p>
-                         <h4 className="min-h-[2.75rem] text-xl font-black uppercase leading-tight tracking-tighter text-neutral-900 line-clamp-2 break-words">{pet.name}</h4>
-                      </div>
-                      <div className="flex items-center justify-between border-t border-slate-50 pt-6">
-                         <div className="space-y-1">
-                            <p className="text-[9px] font-black text-neutral-300 uppercase tracking-[0.3em]">Price Point</p>
-                            <p className="text-xl font-black tracking-tighter text-neutral-950">{formatPeso(pet.price)}</p>
-                         </div>
-                         <Link to={`/pets/${pet._id}`} className="w-12 h-12 bg-neutral-950 text-white rounded-xl flex items-center justify-center shadow-lg hover:bg-primary transition-all">
-                            <ChevronRight size={20} />
-                         </Link>
-                      </div>
-                   </div>
-                </div>
-             ))}
-          </div>
-        </section>
-      )}
-
-      {/* ── 6. MARKETPLACE HIGHLIGHTS (Products) ── */}
-      {data.products.length > 0 && (
-        <section className="bg-neutral-50 py-24 sm:py-32 rounded-[4rem] sm:rounded-[6rem] mx-2">
-           <div className="max-w-7xl mx-auto px-6 space-y-16">
-              <div className="flex items-end justify-between">
-                 <div className="space-y-4">
-                    <h2 className="text-[clamp(2rem,5vw,4rem)] font-black uppercase leading-none tracking-tighter text-neutral-900 break-words">
-                      Essential <br />
-                      <span className="text-primary italic">Hardware .</span>
-                    </h2>
-                    <p className="text-[11px] font-black text-neutral-400 uppercase tracking-[0.4em]">Curated elite pet accessories & food</p>
-                 </div>
-                 <Link to="/products" className="group p-4 bg-white rounded-2xl shadow-soft hover:bg-primary hover:text-white transition-all">
-                    <ArrowRight size={24} />
-                 </Link>
-              </div>
-
-              <div className="responsive-card-grid [--card-min:17rem] sm:[--card-min:18rem] [--card-gap:1.5rem]">
-                 {data.products.map((product, idx) => (
-                    <div key={idx} className="bg-white rounded-[2.5rem] border border-transparent hover:border-slate-100 p-4 transition-all duration-500 group">
-                       <Link to={`/products/${product._id}`} className="block relative aspect-square rounded-[2rem] overflow-hidden mb-6 bg-neutral-100">
-                          {product.images?.[0] ? (
-                            <img src={getImageUrl(product.images[0])} alt={product.name || ''} loading="lazy" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
-                          ) : <Package size={32} className="m-auto text-neutral-300" />}
-                          <button 
-                            onClick={(e) => { e.preventDefault(); handleAddToCart(product); }}
-                            className="absolute bottom-4 right-4 w-12 h-12 bg-neutral-950 text-white rounded-[1.2rem] flex items-center justify-center shadow-2xl opacity-0 group-hover:opacity-100 translate-y-4 group-hover:translate-y-0 transition-all duration-500 hover:bg-primary"
-                          >
-                             <ShoppingBag size={20} />
-                          </button>
-                       </Link>
-                       <div className="space-y-4 px-2">
-                          <div className="space-y-1">
-                             <p className="text-[9px] font-black text-neutral-300 uppercase tracking-widest">{product.category}</p>
-                             <h4 className="min-h-[2.5rem] text-sm font-black uppercase leading-tight tracking-tight text-neutral-900 line-clamp-2 break-words">{product.name}</h4>
-                          </div>
-                          <div className="flex items-center justify-between">
-                             <p className="text-lg font-black tracking-tighter text-neutral-950">{formatPeso(product.price)}</p>
-                             <div className="text-[9px] font-black text-emerald-600 uppercase tracking-widest">{product.stockQuantity > 5 ? 'In Stock' : 'Low Stock'}</div>
-                          </div>
-                       </div>
-                    </div>
-                 ))}
-              </div>
-           </div>
-        </section>
-      )}
-
-      {/* ── 7. TRUST & TECHNOLOGY ── */}
-      <section className="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
-         <div className="space-y-12">
-            <div className="space-y-6">
-               <h2 className="text-[clamp(2rem,5vw,4.5rem)] font-black uppercase leading-none tracking-tighter text-neutral-900 break-words">
-                 The Standard in <br />
-                 <span className="text-primary italic">Pet Security .</span>
-               </h2>
-               <p className="text-sm sm:text-lg text-neutral-400 font-medium uppercase tracking-widest leading-[1.8] max-w-xl">
-                 Pawzzle brings trusted pet care services and secure shopping together in one easy-to-use platform.
-               </p>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
-               {[
-                 { icon: ShieldCheck, title: 'Secure Checkouts', desc: 'Enterprise encryption with PayMongo integration.' },
-                 { icon: Brain, title: 'AI Matching', desc: 'Intelligent companion recommendations based on lifestyle.' },
-                 { icon: Activity, title: 'Health Logs', desc: 'Digital medical passports for every pet on the platform.' },
-                 { icon: ThumbsUp, title: 'Vetted Stores', desc: 'Rigorous 24-step verification for all vendors.' }
-               ].map((feature, i) => (
-                 <div key={i} className="flex gap-6">
-                    <div className="w-12 h-12 bg-primary/5 rounded-xl flex items-center justify-center text-primary shrink-0">
-                       <feature.icon size={20} />
-                    </div>
-                    <div className="space-y-2">
-                       <h4 className="text-xs font-black text-neutral-900 uppercase tracking-widest">{feature.title}</h4>
-                       <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-widest leading-relaxed">{feature.desc}</p>
-                    </div>
-                 </div>
-               ))}
-            </div>
-         </div>
-
-         <div className="relative h-[600px] rounded-[5rem] overflow-hidden shadow-premium">
-            <img src="https://images.unsplash.com/photo-1594498653385-d5172b53adc7" alt="" loading="lazy" className="w-full h-full object-cover" />
-            <div className="absolute inset-0 bg-primary/20 backdrop-blur-[2px] mix-blend-overlay" />
-            <div className="absolute bottom-12 left-12 right-12 bg-white/10 backdrop-blur-3xl border border-white/20 rounded-[3rem] p-10 flex items-center gap-8 shadow-2xl">
-               <div className="w-20 h-20 bg-primary text-white rounded-[1.8rem] flex items-center justify-center shadow-lg">
-                  <Zap size={32} />
-               </div>
-               <div>
-                  <h4 className="text-2xl font-black text-white uppercase tracking-tighter leading-none mb-2">3k+ Success</h4>
-                  <p className="text-[10px] font-black text-white/60 uppercase tracking-[0.3em]">Successful services this month</p>
-               </div>
-            </div>
-         </div>
-      </section>
-
-      {/* ── 8. PROFESSIONAL SERVICE PIXELS ── */}
-      <section className="max-w-7xl mx-auto px-6 space-y-20">
-         <div className="text-center space-y-6">
-            <h2 className="text-[clamp(2rem,5vw,4.5rem)] font-black uppercase leading-tight tracking-tighter text-neutral-900 break-words">Professional <br /><span className="text-primary italic">Service Labs .</span></h2>
-            <p className="text-[11px] font-black text-neutral-400 uppercase tracking-[0.5em]">Clinical Grade Pet Wellness & Styling</p>
-         </div>
-
-         <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
-            {[
-              { icon: Stethoscope, label: 'Medical', title: 'Veterinary Diagnostics', img: 'https://images.unsplash.com/photo-1629909613654-28e377c37b09' },
-              { icon: Scissors, label: 'Style', title: 'Elite Grooming Studio', img: 'https://images.unsplash.com/photo-1516733725897-1aa73b87c8e8' },
-              { icon: Dumbbell, label: 'Mind', title: 'Behavioral Training', img: 'https://images.unsplash.com/photo-1587300003388-59208cc962cb' }
-            ].map((service, i) => (
-              <div key={i} className="group relative h-[500px] rounded-[4rem] overflow-hidden shadow-strong hover:shadow-premium transition-all duration-700">
-                 <img src={service.img} alt="" loading="lazy" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-[2s]" />
-                 <div className="absolute inset-0 bg-neutral-950/60 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                 <div className="absolute inset-0 bg-gradient-to-t from-neutral-950 via-neutral-950/20 to-transparent" />
-                 <div className="absolute bottom-10 left-10 right-10 space-y-4">
-                    <div className="flex items-center gap-3">
-                       <service.icon size={20} className="text-primary" />
-                       <span className="text-[10px] font-black text-white/40 uppercase tracking-[0.3em]">{service.label} service</span>
-                    </div>
-                    <h4 className="text-3xl font-black text-white uppercase tracking-tighter leading-tight">{service.title}</h4>
-                    <Link to="/services" className="h-12 w-12 bg-white text-neutral-900 rounded-xl flex items-center justify-center opacity-0 group-hover:opacity-100 translate-y-4 group-hover:translate-y-0 transition-all duration-500 hover:bg-primary hover:text-white">
-                       <ChevronRight size={24} />
-                    </Link>
-                 </div>
-              </div>
+              </article>
             ))}
-         </div>
+          </div>
+        </section>
+      )}
+
+      {data.products.length > 0 && (
+        <section className="customer-home-section customer-home-products-section">
+          <SectionHeading eyebrow="Pet essentials" title="Useful picks from active stores." description="Browse current products and add an item directly to your cart." to="/products" linkLabel="View all products" />
+          <div className="customer-home-product-grid responsive-card-grid [--card-min:13rem] [--card-gap:0.75rem]">
+            {data.products.map((product) => (
+              <article key={product._id} className="customer-home-product-card">
+                <div className="customer-home-product-image">
+                  <Link to={`/products/${product._id}`}>
+                    {product.images?.[0] ? <img src={getImageUrl(product.images[0])} alt={product.name || 'Pet product'} loading="lazy" /> : <span><Package aria-hidden="true" /></span>}
+                  </Link>
+                  <button type="button" onClick={() => handleAddToCart(product)} aria-label={`Add ${product.name} to cart`} title={`Add ${product.name} to cart`}><ShoppingBag /></button>
+                </div>
+                <div className="customer-home-product-copy">
+                  <p>{product.category || 'Pet product'}</p>
+                  <Link to={`/products/${product._id}`}><h3>{product.name}</h3></Link>
+                  <div><strong>{formatPeso(product.price)}</strong><small>{product.stockQuantity > 5 ? 'In stock' : 'Low stock'}</small></div>
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
+      )}
+
+      <section className="customer-home-trust">
+        <div className="customer-home-trust-copy">
+          <p className="customer-home-eyebrow"><ShieldCheck aria-hidden="true" /> Connected with care</p>
+          <h2>Useful tools for everyday pet decisions.</h2>
+          <p>Shop, book, compare, and keep up with pet activity through one customer account.</p>
+          <div className="customer-home-trust-list">
+            {[
+              { icon: ShieldCheck, title: 'Secure checkout', text: 'Online payments use Pawzzle’s existing PayMongo flow.' },
+              { icon: Brain, title: 'Pet matching support', text: 'Explainable recommendations use your preferences and available listings.' },
+              { icon: Activity, title: 'Care activity', text: 'Bookings and service updates stay connected to your account.' },
+              { icon: ThumbsUp, title: 'Store visibility', text: 'Customer discovery uses active, eligible Pawzzle stores.' }
+            ].map(({ icon: Icon, title, text }) => (
+              <article key={title}><span><Icon /></span><div><h3>{title}</h3><p>{text}</p></div></article>
+            ))}
+          </div>
+        </div>
+        <figure className="customer-home-trust-image">
+          <img src="/images/landing_hero.png" alt="Pet owner enjoying time at home with a cat" />
+          <figcaption><PawPrint aria-hidden="true" /><span><strong>One customer account</strong><small>Shop · Book · Follow updates</small></span></figcaption>
+        </figure>
       </section>
 
-      {/* ── 9. LUXE CTA TERMINAL ── */}
-      <section className="max-w-[1500px] mx-auto px-4">
-         <div className="bg-neutral-900 rounded-[5rem] p-16 sm:p-32 relative overflow-hidden text-center group border border-white/5 shadow-2xl">
-            <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-primary/10 rounded-full blur-[120px] -translate-y-1/2 translate-x-1/2" />
-            <div className="relative z-10 space-y-12">
-               <div className="inline-flex items-center gap-4 px-8 py-3 bg-white/5 border border-white/10 rounded-full text-primary">
-                  <Zap size={20} className="animate-pulse" />
-                  <span className="text-[11px] font-black uppercase tracking-[0.6em]">Initialize Connection</span>
-               </div>
-               <h2 className="text-[clamp(2.5rem,8vw,6rem)] font-black uppercase leading-[0.9] tracking-tighter text-white break-words">
-                 Your Global <br />
-                 <span className="italic text-primary">Pet care.</span>
-               </h2>
-               <p className="text-white/40 text-sm sm:text-xl font-medium uppercase tracking-[0.3em] max-w-2xl mx-auto leading-relaxed">
-                 Secure your place in the most advanced pet ecosystem today.
-               </p>
-               <div className="pt-8 flex flex-col sm:flex-row gap-8 justify-center">
-                  {!isAuthenticated ? (
-                    <>
-                      <Link to="/register" className="h-20 px-16 bg-white text-neutral-900 rounded-3xl flex items-center justify-center gap-4 text-xs font-black uppercase tracking-widest hover:bg-primary hover:text-white transition-all shadow-2xl shadow-white/5 active:scale-95">
-                         Sign Up <ArrowRight size={20} />
-                      </Link>
-                      <Link to="/login" className="h-20 px-16 bg-white/5 border border-white/10 text-white rounded-3xl flex items-center justify-center text-xs font-black uppercase tracking-widest hover:bg-white/10 transition-all active:scale-95">
-                         Login Access
-                      </Link>
-                    </>
-                  ) : (
-                    <Link to="/pets" className="h-20 px-20 bg-primary text-white rounded-3xl flex items-center justify-center gap-4 text-xs font-black uppercase tracking-widest hover:brightness-110 transition-all shadow-2xl shadow-primary/30 active:scale-95">
-                       Browse Catalog <ArrowRight size={20} />
-                    </Link>
-                  )}
-               </div>
-            </div>
-         </div>
+      <section className="customer-home-section">
+        <SectionHeading eyebrow="Professional pet care" title="Find the right kind of service." description="Browse Pawzzle’s active service catalog for availability and booking details." to="/services" linkLabel="View all services" />
+        <div className="customer-home-service-grid">
+          {serviceTypes.map(({ icon: Icon, label, title, image }) => (
+            <Link to="/services" key={title} className="customer-home-service-card">
+              <img src={image} alt="" aria-hidden="true" />
+              <span className="customer-home-service-overlay" aria-hidden="true" />
+              <span className="customer-home-service-copy"><small><Icon /> {label}</small><strong>{title}</strong><b>Browse services <ArrowRight /></b></span>
+            </Link>
+          ))}
+        </div>
       </section>
 
+      <section className="customer-home-cta">
+        <span className="customer-home-cta-mark" aria-hidden="true"><PawPrint /></span>
+        <div><p>Keep their world close</p><h2>Your Pawzzle activity, all in one place.</h2><span>Discover pets, products, services, and account updates without losing track of what matters.</span></div>
+        <div className="customer-home-cta-actions">
+          {!isAuthenticated ? (
+            <><Link to="/register">Create account <ArrowRight /></Link><Link to="/login">Sign in</Link></>
+          ) : (
+            <Link to="/pets">Browse catalog <ArrowRight /></Link>
+          )}
+        </div>
+      </section>
     </div>
   );
 };
