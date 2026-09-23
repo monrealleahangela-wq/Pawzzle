@@ -18,6 +18,45 @@ if (!CLIENT_URL || CLIENT_URL.includes('localhost')) {
     CLIENT_URL = isProduction ? 'https://pawzzle.io' : 'http://localhost:3000';
 }
 
+const PROOF_METHODS = new Set(['photo', 'qr', 'otp', 'signature', 'notes']);
+const COD_PAYMENT_STATUSES = new Set(['cash_received', 'digital_received', 'not_received']);
+
+const buildProofOfDelivery = (input = {}, delivery, isCod = false) => {
+  const photo = String(input.photo || '').trim();
+  const signature = String(input.signature || '').trim();
+  const otp = String(input.otp || '').trim();
+  const notes = String(input.notes || '').trim();
+  if (!photo && !signature && !notes && !otp) {
+    throw Object.assign(new Error('Add a photo, signature, OTP, or delivery notes as proof.'), { statusCode: 400 });
+  }
+
+  const codPaymentStatus = String(input.codPaymentStatus || '').trim();
+  if (codPaymentStatus && !COD_PAYMENT_STATUSES.has(codPaymentStatus)) {
+    throw Object.assign(new Error('Select a valid COD payment status.'), { statusCode: 400 });
+  }
+  if (isCod && !codPaymentStatus) {
+    throw Object.assign(new Error('Record the COD payment status before completing delivery.'), { statusCode: 400 });
+  }
+
+  const method = otp ? 'otp' : (input.method || (photo ? 'photo' : signature ? 'signature' : 'notes'));
+  if (!PROOF_METHODS.has(method)) {
+    throw Object.assign(new Error('Select a valid proof-of-delivery method.'), { statusCode: 400 });
+  }
+
+  return {
+    photo: photo || undefined,
+    signature: signature || undefined,
+    method,
+    otpVerified: false,
+    notes: notes || undefined,
+    location: input.location,
+    riderId: delivery.assignedRider || undefined,
+    riderName: delivery.riderName,
+    timestamp: new Date(),
+    ...(codPaymentStatus ? { codPaymentStatus } : {})
+  };
+};
+
 const notifyDeliveryParties = async (req, delivery, title, message) => {
   try {
     const source = delivery.order
@@ -459,20 +498,24 @@ const completeDelivery = async (req, res) => {
     if (!delivery.isRiderVerified) return res.status(403).json({ message: 'Verify the assigned rider before completing delivery.' });
     if (!delivery.isLive || delivery.status === 'delivered') return res.status(409).json({ message: 'Delivery has already been completed.' });
     if (delivery.status !== 'arrived') return res.status(400).json({ message: 'Mark the delivery as arrived before confirming completion.' });
-    const { photo, signature, method, otp, notes, location, codPaymentStatus } = req.body;
-    if (!photo && !signature && !notes?.trim() && !otp) return res.status(400).json({ message: 'Add a photo, signature, OTP, or delivery notes as proof.' });
+    const { otp } = req.body;
+    const order = delivery.order
+      ? await Order.findById(delivery.order).select('pickupSession.code paymentMethod')
+      : null;
+    const isCod = ['cod', 'cash_on_delivery'].includes(order?.paymentMethod);
+    let proofOfDelivery;
+    try {
+      proofOfDelivery = buildProofOfDelivery(req.body, delivery, isCod);
+    } catch (error) {
+      return res.status(error.statusCode || 400).json({ message: error.message });
+    }
     let otpVerified = false;
     if (otp) {
-      const order = delivery.order ? await Order.findById(delivery.order).select('pickupSession.code') : null;
       if (!order?.pickupSession?.code || String(order.pickupSession.code) !== String(otp).trim()) return res.status(400).json({ message: 'The delivery OTP is incorrect.' });
       otpVerified = true;
     }
-    delivery.proofOfDelivery = {
-      photo, signature, method: otp ? 'otp' : (method || (photo ? 'photo' : signature ? 'signature' : 'notes')),
-      otpVerified, notes: notes?.trim(), location, riderId: delivery.assignedRider || undefined,
-      riderName: delivery.riderName,
-      timestamp: new Date(), codPaymentStatus
-    };
+    proofOfDelivery.otpVerified = otpVerified;
+    delivery.proofOfDelivery = proofOfDelivery;
     delivery.status = 'delivered';
     delivery.deliveredAt = new Date();
     delivery.isLive = false;
@@ -502,7 +545,11 @@ const completeDelivery = async (req, res) => {
     res.json({ success: true, delivery });
   } catch (error) {
     console.error('Complete delivery error:', error);
-    res.status(500).json({ message: 'Unable to complete delivery.' });
+    if (error.name === 'ValidationError') {
+      const firstValidationError = Object.values(error.errors || {})[0];
+      return res.status(400).json({ message: firstValidationError?.message || 'The proof-of-delivery information is invalid.' });
+    }
+    res.status(error.statusCode || 500).json({ message: error.statusCode ? error.message : 'Unable to complete delivery.' });
   }
 };
 
@@ -742,5 +789,6 @@ module.exports = {
   calculateDeliveryFee,
   internalCreateDelivery,
   completeDelivery,
-  reportFailedDelivery
+  reportFailedDelivery,
+  __test: { buildProofOfDelivery }
 };

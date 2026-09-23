@@ -187,3 +187,10 @@ html {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Keep Leaflet's internal panes inside the rider map's stacking context so
+   proof, failure, and chat dialogs always render above the map. */
+.rider-delivery-workspace .leaflet-container {
+  position: relative;
+  z-index: 0;
+}

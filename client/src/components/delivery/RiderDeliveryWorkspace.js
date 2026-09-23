@@ -89,7 +89,9 @@ export default function RiderDeliveryWorkspace({ delivery, token, eta, distanceK
     setSubmitting(true);
     try {
       const location = await currentLocation();
-      await deliveryService.completeDelivery(token, { ...proof, location, method: proof.otp ? 'otp' : proof.photo ? 'photo' : proof.signature ? 'signature' : 'notes' });
+      const payload = { ...proof, location, method: proof.otp ? 'otp' : proof.photo ? 'photo' : proof.signature ? 'signature' : 'notes' };
+      if (!isCod) delete payload.codPaymentStatus;
+      await deliveryService.completeDelivery(token, payload);
       toast.success('Delivery completed'); setShowProof(false); await onRefresh();
     } catch (error) { toast.error(error.response?.data?.message || 'Unable to complete delivery'); }
     finally { setSubmitting(false); }
@@ -108,7 +110,7 @@ export default function RiderDeliveryWorkspace({ delivery, token, eta, distanceK
 
   if (completed) return <div className="min-h-[100dvh] bg-slate-50 p-4 flex items-center justify-center"><section className="w-full max-w-lg bg-white border rounded-2xl p-6 text-center shadow-sm"><CheckCircle2 className="w-12 h-12 text-emerald-500 mx-auto mb-3"/><p className="text-[10px] font-black uppercase tracking-[.25em] text-emerald-600">Delivery completed</p><h1 className="text-xl font-black text-slate-900 mt-1">{tracking}</h1><div className="mt-5 text-left divide-y text-sm"><p className="py-3"><b>Recipient:</b> {recipient?.firstName} {recipient?.lastName}</p><p className="py-3"><b>Completed:</b> {formatTime(delivery.deliveredAt)}</p><p className="py-3"><b>Verification:</b> {delivery.proofOfDelivery?.method || 'Recorded proof'}</p>{isCod && <p className="py-3"><b>COD:</b> {delivery.proofOfDelivery?.codPaymentStatus?.replace(/_/g, ' ')}</p>}</div><p className="mt-5 text-xs text-slate-500">This secure rider link is now inactive.</p></section></div>;
 
-  return <div className="min-h-[100dvh] bg-slate-50 pb-24 text-slate-900">
+  return <div className="rider-delivery-workspace min-h-[100dvh] bg-slate-50 pb-24 text-slate-900">
     <header className="sticky top-0 z-40 bg-white/95 backdrop-blur border-b px-4 py-3"><div className="max-w-3xl mx-auto flex items-center justify-between gap-3"><button onClick={()=>window.history.back()} className="w-11 h-11 rounded-xl bg-slate-100 flex items-center justify-center" aria-label="Back"><ArrowLeft size={18}/></button><div className="min-w-0 flex-1"><p className="text-[10px] uppercase font-black text-slate-400">{tracking}</p><h1 className="text-base font-black truncate">{STATUS[delivery.status] || delivery.status}</h1></div><a href="mailto:support@pawzzle.io" className="w-11 h-11 rounded-xl border flex items-center justify-center" aria-label="Help"><HelpCircle size={18}/></a></div></header>
     <main className="max-w-3xl mx-auto p-4 space-y-4">
       <section className="bg-slate-900 text-white rounded-2xl p-4"><p className="text-[10px] uppercase font-black text-white/50">Current status</p><div className="flex justify-between items-end gap-3"><h2 className="text-xl font-black text-white">{STATUS[delivery.status] || delivery.status}</h2>{eta && <span className="text-xs font-bold"><Clock size={14} className="inline mr-1"/>{eta} min ETA</span>}</div></section>
