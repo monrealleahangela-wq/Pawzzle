@@ -52,13 +52,13 @@ const Orders = () => {
   );
 
   return (
-    <div className="max-w-6xl mx-auto p-4 lg:p-6 space-y-5">
-      <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+    <div className="customer-marketplace-page marketplace-orders max-w-6xl mx-auto p-4 lg:p-6 space-y-5">
+      <header className="marketplace-orders-header flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">My Orders</h1>
           <p className="text-sm text-slate-500">Track purchases, delivery progress, policies, and receipts.</p>
         </div>
-        <div className="flex gap-2 bg-slate-100 p-1 rounded-lg">
+        <div className="marketplace-orders-tabs flex gap-2 bg-slate-100 p-1 rounded-lg">
           {[
             { id: 'orders', label: 'Products', icon: ShoppingBag },
             { id: 'pets', label: 'Pets', icon: Heart },
@@ -77,9 +77,9 @@ const Orders = () => {
       </header>
 
       {activeTab === 'orders' ? (
-        <div className="space-y-6">
+        <div className="marketplace-order-list space-y-6">
           {orders.length === 0 ? (
-            <div className="text-center py-20 bg-white rounded-xl border border-dashed border-slate-200">
+            <div className="marketplace-empty-state text-center py-20 bg-white rounded-xl border border-dashed border-slate-200">
               <ShoppingBag className="h-12 w-12 text-slate-200 mx-auto mb-4" />
               <p className="text-slate-500 font-medium">Nothing here yet.</p>
               <Link to="/products" className="text-primary-600 font-bold mt-2 inline-block">Start shopping</Link>
@@ -101,7 +101,7 @@ const Orders = () => {
                 const orderPolicy = normalizeRefundPolicy(order.refundPolicySnapshot || order.store?.refundPolicy);
                 
                 return (
-                  <div key={order._id} className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+                  <article key={order._id} className="marketplace-order-card bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm hover:shadow-md transition-shadow">
                     <div className="p-4 border-b border-slate-100 flex flex-wrap justify-between items-center gap-3">
                       <div className="flex items-center gap-4">
                         <div>
@@ -181,14 +181,14 @@ const Orders = () => {
                       </div>
                       </div>
                     </div>
-                  </div>
+                  </article>
                 );
               })}
             </div>
           )}
 
           {pagination.totalPages > 1 && (
-            <div className="flex justify-center items-center gap-4 mt-8">
+            <div className="marketplace-pagination flex justify-center items-center gap-4 mt-8">
               <button
                 onClick={() => setPagination(p => ({ ...p, currentPage: p.currentPage - 1 }))}
                 disabled={!pagination.hasPrev}

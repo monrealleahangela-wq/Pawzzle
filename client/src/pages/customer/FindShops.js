@@ -275,7 +275,7 @@ const FindShops = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950">
+      <div className="customer-marketplace-page marketplace-shops-loading min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950">
         <div className="flex flex-col items-center gap-4">
           <div className="relative w-20 h-20">
             <div className="absolute inset-0 border-4 border-primary-100 rounded-full animate-pulse"></div>
@@ -289,7 +289,7 @@ const FindShops = () => {
   }
 
   return (
-    <div className="h-[calc(100vh-64px)] sm:h-[calc(100vh-80px)] w-full max-w-full min-w-0 flex flex-col lg:flex-row relative overflow-hidden bg-slate-50 dark:bg-slate-950">
+    <div className="customer-marketplace-page marketplace-shops h-[calc(100vh-64px)] sm:h-[calc(100vh-80px)] w-full max-w-full min-w-0 flex flex-col lg:flex-row relative overflow-hidden bg-slate-50 dark:bg-slate-950">
       {/* Sidebar Overlay for Mobile */}
       {!isSidebarOpen && (
         <button
@@ -301,14 +301,14 @@ const FindShops = () => {
       )}
 
       {/* Sidebar List */}
-      <aside className={`
+      <aside className={`marketplace-shops-panel
         absolute lg:relative inset-y-0 left-0 w-full lg:w-[min(24rem,38%)] lg:shrink-0 bg-white dark:bg-slate-900 z-[1002] lg:z-10
         transition-transform duration-500 ease-in-out border-r border-slate-100 dark:border-slate-800 flex flex-col
         shadow-2xl lg:shadow-none
         ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
       `}>
         {/* Sidebar Header */}
-        <div className="p-4 sm:p-6 space-y-4 border-b border-slate-50 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md sticky top-0 z-10">
+        <div className="marketplace-shops-header p-4 sm:p-6 space-y-4 border-b border-slate-50 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md sticky top-0 z-10">
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">Shop GPS</h2>
@@ -366,13 +366,13 @@ const FindShops = () => {
         </div>
 
         {/* Results List */}
-        <div className="flex-1 overflow-y-auto px-4 py-6 space-y-4 no-scrollbar">
+        <div className="marketplace-shop-list flex-1 overflow-y-auto px-4 py-6 space-y-4 no-scrollbar">
           {filteredStores.length > 0 ? (
             filteredStores.map(store => (
               <div
                 key={store._id}
                 onClick={() => handleStoreSelect(store)}
-                className={`
+                className={`marketplace-shop-card
                   group p-4 rounded-2xl border transition-all cursor-pointer h-full
                   ${selectedStore?._id === store._id
                     ? 'bg-primary-50 dark:bg-primary-900/10 border-primary-200 dark:border-primary-800 shadow-lg'
@@ -478,7 +478,7 @@ const FindShops = () => {
       </aside>
 
       {/* Map Content */}
-      <div className="min-w-0 flex-1 relative z-0">
+      <div className="marketplace-shop-map min-w-0 flex-1 relative z-0">
         <MapContainer
           center={mapCenter}
           zoom={mapZoom}

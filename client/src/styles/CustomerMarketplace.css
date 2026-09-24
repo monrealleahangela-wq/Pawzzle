@@ -1,0 +1,326 @@
+.customer-marketplace-shell {
+  --market-cream: #f6efe4;
+  --market-paper: #fffaf2;
+  --market-tan: #ead9c2;
+  --market-peach: #e7b990;
+  --market-brown: #6f3b1f;
+  --market-deep: #2f1b11;
+  --market-ink: #2b201a;
+  --market-muted: #74645a;
+  --market-line: rgba(74, 45, 29, 0.15);
+  background: var(--market-cream) !important;
+  color: var(--market-ink);
+}
+
+.customer-marketplace-shell .desktop-shell-sidebar,
+.customer-marketplace-shell .mobile-shell-sidebar {
+  border-color: var(--market-line) !important;
+  background: var(--market-paper) !important;
+  box-shadow: 12px 0 34px rgba(74, 45, 29, 0.06) !important;
+}
+
+.customer-marketplace-shell .shell-brand > div:first-child {
+  border-radius: 50% 50% 42% 58% / 45% 43% 57% 55% !important;
+  background: var(--market-brown) !important;
+  box-shadow: 0 8px 20px rgba(111, 59, 31, 0.2) !important;
+}
+
+.customer-marketplace-shell .shell-brand span:first-child { color: var(--market-deep) !important; }
+.customer-marketplace-shell .shell-brand span:last-child { color: var(--market-brown) !important; letter-spacing: 0.26em !important; }
+.customer-marketplace-shell .desktop-shell-sidebar nav { padding-inline: 0.75rem !important; }
+.customer-marketplace-shell .desktop-shell-sidebar nav > div { gap: 0.18rem !important; }
+.customer-marketplace-shell .shell-nav-link,
+.customer-marketplace-shell .shell-nav-group-trigger,
+.customer-marketplace-shell .shell-nav-child {
+  min-width: 0;
+  border-radius: 0.85rem !important;
+  color: var(--market-muted) !important;
+  box-shadow: none !important;
+}
+.customer-marketplace-shell .shell-nav-link,
+.customer-marketplace-shell .shell-nav-group-trigger { min-height: 2.65rem; padding-block: 0.62rem !important; }
+.customer-marketplace-shell .shell-nav-child { min-height: 2.35rem; padding-block: 0.52rem !important; }
+.customer-marketplace-shell .shell-nav-link:hover,
+.customer-marketplace-shell .shell-nav-group-trigger:hover,
+.customer-marketplace-shell .shell-nav-child:hover { background: rgba(111, 59, 31, 0.07) !important; color: var(--market-brown) !important; }
+.customer-marketplace-shell .shell-nav-link[aria-current="page"],
+.customer-marketplace-shell .shell-nav-child[aria-current="page"] {
+  background: var(--market-brown) !important;
+  color: white !important;
+  box-shadow: 0 8px 18px rgba(111, 59, 31, 0.17) !important;
+  transform: none !important;
+}
+.customer-marketplace-shell .shell-nav-group-trigger[data-active="true"] { background: rgba(111, 59, 31, 0.08) !important; color: var(--market-brown) !important; }
+.customer-marketplace-shell .shell-topbar {
+  border-bottom: 1px solid var(--market-line) !important;
+  background: rgba(255, 250, 242, 0.9) !important;
+  box-shadow: 0 8px 24px rgba(74, 45, 29, 0.05) !important;
+  backdrop-filter: blur(18px);
+}
+.customer-marketplace-shell .app-content-main { background: var(--market-cream); }
+
+.customer-marketplace-interface,
+.customer-marketplace-shell .customer-marketplace-page {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.customer-marketplace-shell .customer-marketplace-page {
+  --market-cream: #f6efe4;
+  --market-paper: #fffaf2;
+  --market-tan: #ead9c2;
+  --market-peach: #e7b990;
+  --market-brown: #6f3b1f;
+  --market-deep: #2f1b11;
+  --market-ink: #2b201a;
+  --market-muted: #74645a;
+  --market-line: rgba(74, 45, 29, 0.15);
+  color: var(--market-ink);
+}
+
+.customer-marketplace-interface .customer-marketplace-page h1,
+.customer-marketplace-interface .customer-marketplace-page h2,
+.customer-marketplace-interface .customer-marketplace-page h3 { color: var(--market-deep); }
+
+.customer-marketplace-shell .customer-marketplace-page button:focus-visible,
+.customer-marketplace-shell .customer-marketplace-page a:focus-visible,
+.customer-marketplace-shell .customer-marketplace-page input:focus-visible,
+.customer-marketplace-shell .customer-marketplace-page select:focus-visible {
+  outline: 3px solid rgba(111, 59, 31, 0.25);
+  outline-offset: 2px;
+}
+
+/* Pets and products */
+.customer-marketplace-shell .marketplace-catalog { padding-bottom: 2.5rem !important; }
+.customer-marketplace-shell .marketplace-catalog > .fixed { opacity: 0.18 !important; }
+.customer-marketplace-shell .marketplace-page-header {
+  align-items: center !important;
+  gap: 1rem !important;
+  padding: 1rem 1.15rem !important;
+  border-color: var(--market-line) !important;
+  border-radius: 1.25rem 0.8rem 1.25rem 0.8rem !important;
+  background: var(--market-paper) !important;
+  box-shadow: 0 8px 24px rgba(74, 45, 29, 0.055) !important;
+}
+.customer-marketplace-interface .marketplace-page-header h1 {
+  color: var(--market-deep) !important;
+  font-size: clamp(1.65rem, 2.7vw, 2.35rem) !important;
+  font-weight: 800;
+  letter-spacing: -0.045em !important;
+  text-transform: none !important;
+}
+.customer-marketplace-shell .marketplace-page-header h1 span { color: var(--market-brown) !important; }
+.customer-marketplace-shell .marketplace-page-header p { color: var(--market-muted) !important; font-size: 0.68rem !important; letter-spacing: 0.04em !important; text-transform: none !important; }
+.customer-marketplace-shell .marketplace-page-search { min-width: min(100%, 18rem); }
+.customer-marketplace-shell .marketplace-page-search .input-container { min-height: 2.7rem; }
+.customer-marketplace-shell .marketplace-page-search input {
+  min-height: 2.7rem !important;
+  border: 1px solid var(--market-line) !important;
+  border-radius: 999px !important;
+  background: var(--market-cream) !important;
+  color: var(--market-ink) !important;
+  font-size: 0.72rem !important;
+  letter-spacing: 0 !important;
+  text-transform: none !important;
+}
+.customer-marketplace-shell .marketplace-page-search > button {
+  min-height: 2.7rem !important;
+  padding: 0.6rem 0.9rem !important;
+  border-radius: 999px !important;
+  background: var(--market-brown) !important;
+  box-shadow: none !important;
+  font-size: 0.62rem !important;
+  letter-spacing: 0.06em !important;
+}
+.customer-marketplace-shell .marketplace-catalog-layout { gap: 0.85rem !important; }
+.customer-marketplace-shell .marketplace-filter-sidebar { width: 13.75rem !important; }
+.customer-marketplace-shell .marketplace-filter-panel {
+  padding: 0.85rem !important;
+  border: 1px solid var(--market-line) !important;
+  border-radius: 1rem !important;
+  background: var(--market-paper) !important;
+  box-shadow: 0 8px 22px rgba(74, 45, 29, 0.05) !important;
+}
+.customer-marketplace-shell .marketplace-filter-panel > div:first-child { margin-bottom: 0.75rem !important; }
+.customer-marketplace-shell .marketplace-filter-panel .space-y-4 { gap: 0.75rem !important; }
+.customer-marketplace-shell .marketplace-filter-panel label { color: var(--market-muted) !important; }
+.customer-marketplace-shell .marketplace-filter-panel select,
+.customer-marketplace-shell .marketplace-filter-panel input {
+  min-height: 2.45rem !important;
+  border: 1px solid var(--market-line) !important;
+  border-radius: 0.7rem !important;
+  background: var(--market-cream) !important;
+  color: var(--market-ink) !important;
+}
+.customer-marketplace-shell .marketplace-filter-panel button[class*="bg-slate-900"],
+.customer-marketplace-shell .marketplace-filter-panel button[class*="bg-primary"] { background: var(--market-brown) !important; }
+.customer-marketplace-shell .marketplace-result-grid {
+  --card-min: min(100%, 15.75rem) !important;
+  --card-gap: 0.8rem !important;
+}
+.customer-marketplace-shell .marketplace-listing-card {
+  padding: 0.35rem !important;
+  border-color: var(--market-line) !important;
+  border-radius: 1.15rem !important;
+  background: var(--market-paper) !important;
+  box-shadow: 0 5px 18px rgba(74, 45, 29, 0.05) !important;
+}
+.customer-marketplace-shell .marketplace-listing-card:hover { transform: translateY(-2px) !important; border-color: rgba(111, 59, 31, 0.3) !important; box-shadow: 0 12px 25px rgba(74, 45, 29, 0.09) !important; }
+.customer-marketplace-shell .marketplace-listing-card > .absolute { display: none; }
+.customer-marketplace-shell .marketplace-listing-image { height: 9.75rem !important; border-radius: 0.9rem !important; background: var(--market-tan) !important; }
+.customer-marketplace-shell .marketplace-listing-image img { transform: none !important; }
+.customer-marketplace-shell .marketplace-listing-card:hover .marketplace-listing-image img { transform: scale(1.035) !important; }
+.customer-marketplace-shell .marketplace-listing-copy { padding: 0.7rem !important; }
+.customer-marketplace-interface .marketplace-listing-copy h3 {
+  min-height: 2rem !important;
+  color: var(--market-deep) !important;
+  font-size: 0.86rem !important;
+  line-height: 1.18 !important;
+  letter-spacing: -0.015em !important;
+  text-transform: none !important;
+}
+.customer-marketplace-shell .marketplace-listing-copy p,
+.customer-marketplace-shell .marketplace-listing-copy span { letter-spacing: 0.025em !important; }
+.customer-marketplace-shell .marketplace-listing-copy a[class*="bg-slate-900"],
+.customer-marketplace-shell .marketplace-listing-copy button[class*="bg-slate-900"] { background: var(--market-brown) !important; box-shadow: none !important; }
+.customer-marketplace-shell .marketplace-listing-copy [class*="text-primary"] { color: var(--market-brown) !important; }
+.customer-marketplace-shell .marketplace-empty-state {
+  min-height: 12rem;
+  padding: 1.5rem !important;
+  border-color: var(--market-line) !important;
+  border-radius: 1.15rem !important;
+  background: rgba(255, 250, 242, 0.7) !important;
+  box-shadow: none !important;
+}
+.customer-marketplace-shell .marketplace-pagination { margin-top: 1.25rem !important; }
+.customer-marketplace-shell .marketplace-pagination [class*="bg-slate-900"] { background: var(--market-brown) !important; }
+
+/* Find Shops */
+.customer-marketplace-shell .marketplace-shops {
+  border: 1px solid var(--market-line);
+  border-radius: 1.25rem;
+  background: var(--market-paper) !important;
+  box-shadow: 0 10px 30px rgba(74, 45, 29, 0.07);
+}
+.customer-marketplace-shell .marketplace-shops-panel { width: min(21rem, 36%) !important; border-color: var(--market-line) !important; background: var(--market-paper) !important; }
+.customer-marketplace-shell .marketplace-shops-header { padding: 1rem !important; border-color: var(--market-line) !important; background: rgba(255, 250, 242, 0.92) !important; }
+.customer-marketplace-interface .marketplace-shops-header h2 { color: var(--market-deep) !important; font-size: 1.35rem !important; letter-spacing: -0.035em !important; text-transform: none !important; }
+.customer-marketplace-shell .marketplace-shops-header input { min-height: 2.65rem !important; border-color: var(--market-line) !important; border-radius: 0.8rem !important; background: var(--market-cream) !important; color: var(--market-ink) !important; }
+.customer-marketplace-shell .marketplace-shops-header button { border-color: var(--market-line) !important; background: var(--market-paper) !important; color: var(--market-muted) !important; }
+.customer-marketplace-shell .marketplace-shops-header button[class*="bg-slate-900"],
+.customer-marketplace-shell .marketplace-shops-header button[class*="bg-primary"] { border-color: var(--market-brown) !important; background: var(--market-brown) !important; color: white !important; }
+.customer-marketplace-shell .marketplace-shop-list { padding: 0.75rem !important; gap: 0.55rem !important; background: var(--market-cream); }
+.customer-marketplace-shell .marketplace-shop-card {
+  padding: 0.75rem !important;
+  border-color: var(--market-line) !important;
+  border-radius: 0.9rem !important;
+  background: var(--market-paper) !important;
+  box-shadow: none !important;
+}
+.customer-marketplace-shell .marketplace-shop-card:hover { border-color: rgba(111, 59, 31, 0.32) !important; }
+.customer-marketplace-shell .marketplace-shop-card > div:first-child > div:first-child { width: 3.25rem !important; height: 3.25rem !important; border-radius: 0.8rem !important; }
+.customer-marketplace-shell .marketplace-shop-map { background: var(--market-tan); }
+
+/* Orders */
+.customer-marketplace-shell .marketplace-orders { max-width: 72rem !important; padding: 0 !important; }
+.customer-marketplace-shell .marketplace-orders-header {
+  padding: 1rem 1.1rem;
+  border: 1px solid var(--market-line);
+  border-radius: 1.25rem 0.8rem 1.25rem 0.8rem;
+  background: var(--market-paper);
+  box-shadow: 0 8px 24px rgba(74, 45, 29, 0.055);
+}
+.customer-marketplace-interface .marketplace-orders-header h1 { color: var(--market-deep) !important; font-size: 1.85rem !important; letter-spacing: -0.04em; }
+.customer-marketplace-shell .marketplace-orders-header p { color: var(--market-muted) !important; font-size: 0.72rem !important; }
+.customer-marketplace-shell .marketplace-orders-tabs { gap: 0.25rem !important; padding: 0.25rem !important; border: 1px solid var(--market-line); border-radius: 999px !important; background: var(--market-cream) !important; }
+.customer-marketplace-shell .marketplace-orders-tabs button { min-height: 2.4rem !important; padding: 0.5rem 0.75rem !important; border-radius: 999px !important; font-size: 0.68rem !important; }
+.customer-marketplace-shell .marketplace-orders-tabs button[class*="bg-white"] { background: var(--market-brown) !important; color: white !important; box-shadow: none !important; }
+.customer-marketplace-shell .marketplace-order-list { gap: 0.75rem !important; }
+.customer-marketplace-shell .marketplace-order-card { border-color: var(--market-line) !important; border-radius: 1rem !important; background: var(--market-paper) !important; box-shadow: 0 5px 18px rgba(74, 45, 29, 0.05) !important; }
+.customer-marketplace-shell .marketplace-order-card > div { border-color: var(--market-line) !important; }
+.customer-marketplace-shell .marketplace-order-card > div:first-child,
+.customer-marketplace-shell .marketplace-order-card > div:nth-child(2) { padding: 0.85rem 1rem !important; }
+.customer-marketplace-shell .marketplace-order-card > div:last-child { padding: 0.85rem 1rem !important; background: var(--market-cream) !important; }
+.customer-marketplace-shell .marketplace-order-card a[class*="bg-slate-900"] { background: var(--market-brown) !important; }
+
+/* Vouchers */
+.customer-marketplace-shell .marketplace-vouchers { min-height: 0 !important; padding-bottom: 2.5rem !important; border-radius: 1.25rem; background: transparent !important; overflow: hidden; }
+.customer-marketplace-shell .marketplace-vouchers-hero { min-height: 12rem; padding: 2.25rem 1rem 3.8rem !important; border-radius: 1.25rem 1.25rem 0 0; background: var(--market-deep) !important; }
+.customer-marketplace-shell .marketplace-vouchers-hero > div:nth-child(-n+3) { animation: none !important; }
+.customer-marketplace-shell .marketplace-vouchers-hero [class*="mb-10"] { margin-bottom: 0.8rem !important; }
+.customer-marketplace-interface .marketplace-vouchers-hero h1 { margin-bottom: 0.7rem !important; color: white !important; font-size: clamp(2rem, 4vw, 3.2rem) !important; letter-spacing: -0.05em !important; text-transform: none !important; }
+.customer-marketplace-shell .marketplace-vouchers-hero h1 span { color: var(--market-peach) !important; }
+.customer-marketplace-shell .marketplace-vouchers-hero p { color: #d9c7ba !important; font-size: 0.7rem !important; letter-spacing: 0.04em !important; line-height: 1.5 !important; text-transform: none !important; }
+.customer-marketplace-shell .marketplace-vouchers-content { max-width: 74rem !important; margin-top: -2rem !important; margin-bottom: 0 !important; }
+.customer-marketplace-shell .marketplace-voucher-tabs { padding: 0.35rem !important; gap: 0.35rem !important; border: 1px solid var(--market-line) !important; border-radius: 1rem !important; background: rgba(255, 250, 242, 0.94) !important; box-shadow: 0 12px 28px rgba(74, 45, 29, 0.09) !important; }
+.customer-marketplace-shell .marketplace-voucher-tabs button { min-height: 2.8rem !important; padding: 0.6rem 0.85rem !important; gap: 0.5rem !important; border-radius: 0.75rem !important; }
+.customer-marketplace-shell .marketplace-voucher-tabs button[class*="bg-slate-900"] { background: var(--market-brown) !important; box-shadow: none !important; }
+.customer-marketplace-shell .marketplace-voucher-results { margin-top: 1rem !important; }
+.customer-marketplace-shell .marketplace-voucher-grid { gap: 0.8rem !important; }
+.customer-marketplace-shell .marketplace-voucher-card { border-color: var(--market-line) !important; border-radius: 1.1rem !important; background: var(--market-paper) !important; box-shadow: 0 5px 18px rgba(74, 45, 29, 0.05) !important; transform: none !important; }
+.customer-marketplace-shell .marketplace-voucher-card:hover { transform: translateY(-2px) !important; box-shadow: 0 12px 26px rgba(74, 45, 29, 0.09) !important; }
+.customer-marketplace-shell .marketplace-voucher-card > .absolute:first-child { width: 0.35rem !important; background: var(--market-brown) !important; }
+.customer-marketplace-shell .marketplace-voucher-top { padding: 1rem 1rem 0.85rem 1.25rem !important; border-color: var(--market-line) !important; }
+.customer-marketplace-shell .marketplace-voucher-top > div:nth-child(3) { margin-bottom: 0.8rem !important; }
+.customer-marketplace-shell .marketplace-voucher-top [class*="w-16"][class*="h-16"] { width: 2.75rem !important; height: 2.75rem !important; border-radius: 0.8rem !important; background: var(--market-brown) !important; box-shadow: none !important; transform: none !important; }
+.customer-marketplace-shell .marketplace-voucher-top [class*="w-16"][class*="h-16"] svg { width: 1.2rem; height: 1.2rem; }
+.customer-marketplace-interface .marketplace-voucher-top h3 { color: var(--market-deep) !important; font-size: 1rem !important; letter-spacing: 0.02em !important; }
+.customer-marketplace-shell .marketplace-voucher-top [class*="text-3xl"] { color: var(--market-deep) !important; font-size: 1.7rem !important; }
+.customer-marketplace-shell .marketplace-voucher-body { padding: 0.9rem 1rem 1rem 1.25rem !important; }
+.customer-marketplace-shell .marketplace-voucher-body > div:first-child { gap: 0.55rem !important; }
+.customer-marketplace-shell .marketplace-voucher-body > div:last-child { margin-top: 0.9rem !important; }
+.customer-marketplace-shell .marketplace-voucher-body button,
+.customer-marketplace-shell .marketplace-voucher-body a { min-height: 2.55rem !important; padding: 0.55rem 0.7rem !important; border-radius: 0.75rem !important; letter-spacing: 0.06em !important; }
+.customer-marketplace-shell .marketplace-voucher-body button[class*="bg-slate-900"],
+.customer-marketplace-shell .marketplace-voucher-body a[class*="bg-slate-900"] { background: var(--market-brown) !important; box-shadow: none !important; }
+
+.dark .customer-marketplace-shell,
+.dark .customer-marketplace-shell .customer-marketplace-page {
+  --market-cream: #211a16;
+  --market-paper: #171311;
+  --market-tan: #34271f;
+  --market-peach: #e7b990;
+  --market-brown: #d99b68;
+  --market-deep: #f8eee5;
+  --market-ink: #f8eee5;
+  --market-muted: #b9aaa0;
+  --market-line: rgba(255, 238, 225, 0.13);
+}
+.dark .customer-marketplace-shell .shell-topbar { background: rgba(23, 19, 17, 0.92) !important; }
+.dark .customer-marketplace-shell .marketplace-vouchers-hero { background: #100d0b !important; }
+.dark .customer-marketplace-shell .marketplace-order-card [class*="bg-slate-50"] { background: #211a16 !important; }
+
+@media (max-width: 1279px) {
+  .customer-marketplace-shell .marketplace-filter-sidebar { width: 100% !important; }
+}
+
+@media (max-width: 900px) {
+  .customer-marketplace-shell .app-content-main { padding-inline: 0.75rem !important; }
+  .customer-marketplace-shell .marketplace-shops { height: calc(100vh - 5.5rem) !important; border-radius: 1rem; }
+  .customer-marketplace-shell .marketplace-shops-panel { width: min(22rem, 90vw) !important; }
+  .customer-marketplace-shell .marketplace-orders-header { align-items: stretch !important; }
+  .customer-marketplace-shell .marketplace-orders-tabs { width: 100%; overflow-x: auto; }
+  .customer-marketplace-shell .marketplace-orders-tabs button { flex: 1 0 max-content; }
+}
+
+@media (max-width: 560px) {
+  .customer-marketplace-shell .marketplace-page-header { padding: 0.85rem !important; }
+  .customer-marketplace-shell .marketplace-page-search { min-width: 100%; flex-direction: row !important; }
+  .customer-marketplace-shell .marketplace-page-search > button { padding-inline: 0.75rem !important; }
+  .customer-marketplace-shell .marketplace-result-grid { --card-min: min(100%, 14rem) !important; --card-gap: 0.65rem !important; }
+  .customer-marketplace-shell .marketplace-listing-image { height: 9rem !important; }
+  .customer-marketplace-shell .marketplace-orders-header { padding: 0.85rem; }
+  .customer-marketplace-interface .marketplace-orders-header h1 { font-size: 1.55rem !important; }
+  .customer-marketplace-shell .marketplace-orders-tabs button { padding-inline: 0.6rem !important; }
+  .customer-marketplace-shell .marketplace-order-card > div:first-child { align-items: flex-start !important; }
+  .customer-marketplace-shell .marketplace-vouchers-hero { min-height: 10rem; padding: 1.5rem 0.85rem 3.1rem !important; }
+  .customer-marketplace-shell .marketplace-voucher-tabs button span:nth-child(2) { font-size: 0.55rem !important; letter-spacing: 0.05em !important; }
+  .customer-marketplace-shell .marketplace-voucher-grid { grid-template-columns: 1fr !important; }
+  .customer-marketplace-shell .marketplace-voucher-body > div:last-child > div { flex-direction: column; gap: 0.5rem !important; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .customer-marketplace-shell *,
+  .customer-marketplace-shell .customer-marketplace-page * { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+}

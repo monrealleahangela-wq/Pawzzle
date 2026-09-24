@@ -158,7 +158,7 @@ const Pets = () => {
   }
 
   return (
-    <div className="w-full max-w-full min-w-0 space-y-4 sm:space-y-8 animate-fade-in pb-20 px-1 sm:px-0">
+    <div className="customer-marketplace-page marketplace-catalog marketplace-pets w-full max-w-full min-w-0 space-y-4 sm:space-y-8 animate-fade-in pb-20 px-1 sm:px-0">
       {/* Decorative background element */}
       <div className="fixed inset-0 z-[-1] pointer-events-none overflow-hidden opacity-30">
         <div className="absolute top-20 right-[-10%] w-[400px] h-[400px] sm:w-[500px] sm:h-[500px] bg-primary-100 rounded-full blur-[100px] blob-animation" />
@@ -167,13 +167,13 @@ const Pets = () => {
 
       {/* Header & Search */}
       <div className="flex flex-col space-y-4">
-        <div className="flex min-w-0 flex-col md:flex-row justify-between items-start md:items-end gap-3 sm:gap-6 bg-white dark:bg-slate-900 p-4 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm">
+        <div className="marketplace-page-header flex min-w-0 flex-col md:flex-row justify-between items-start md:items-end gap-3 sm:gap-6 bg-white dark:bg-slate-900 p-4 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm">
           <div className="min-w-0 space-y-0.5">
             <h1 className="text-2xl font-black uppercase leading-tight tracking-tight text-slate-900 sm:text-3xl">Available <span className="text-primary-600">Pets</span></h1>
             <p className="text-[10px] sm:text-lg text-slate-400 font-bold uppercase tracking-widest hidden sm:block">Find your new best friend today</p>
           </div>
 
-          <form onSubmit={handleSearch} className="flex w-full min-w-0 flex-col gap-2 sm:flex-row md:max-w-sm">
+          <form onSubmit={handleSearch} className="marketplace-page-search flex w-full min-w-0 flex-col gap-2 sm:flex-row md:max-w-sm">
             <div className="input-container min-w-0 flex-1">
               <Search className="input-icon h-4 w-4 text-slate-400" />
               <input
@@ -191,9 +191,9 @@ const Pets = () => {
         </div>
       </div>
 
-      <div className="flex w-full min-w-0 flex-col gap-4 xl:flex-row xl:items-start xl:gap-5">
+      <div className="marketplace-catalog-layout flex w-full min-w-0 flex-col gap-4 xl:flex-row xl:items-start xl:gap-5">
         {/* Modern Filters Sidebar */}
-        <aside className="w-full min-w-0 xl:w-60 xl:shrink-0">
+        <aside className="marketplace-filter-sidebar w-full min-w-0 xl:w-60 xl:shrink-0">
           <button
             onClick={() => setShowMobileFilters(!showMobileFilters)}
             className="xl:hidden w-full flex items-center justify-between px-4 py-2.5 bg-white rounded-xl border border-slate-100 shadow-sm transition-all active:scale-[0.98]"
@@ -205,7 +205,7 @@ const Pets = () => {
             <ArrowRight className={`h-3.5 w-3.5 transition-transform ${showMobileFilters ? 'rotate-90' : ''}`} />
           </button>
 
-          <div className={`${showMobileFilters ? 'block' : 'hidden xl:block'} card xl:sticky xl:top-24 p-4 border-slate-100 bg-white dark:bg-slate-900 dark:border-slate-800 shadow-xl animate-fade-in`}>
+          <div className={`${showMobileFilters ? 'block' : 'hidden xl:block'} marketplace-filter-panel card xl:sticky xl:top-24 p-4 border-slate-100 bg-white dark:bg-slate-900 dark:border-slate-800 shadow-xl animate-fade-in`}>
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-2">
                 <Filter className="h-4 w-4 text-primary-600" />
@@ -321,7 +321,7 @@ const Pets = () => {
         {/* Dynamic Pet Grid */}
         <main className="w-full min-w-0 flex-1">
           {pets.length === 0 ? (
-            <div className="card border-dashed border-2 bg-slate-50/50 flex flex-col items-center justify-center py-12 text-center">
+            <div className="marketplace-empty-state card border-dashed border-2 bg-slate-50/50 flex flex-col items-center justify-center py-12 text-center">
               <Heart className="h-8 w-8 text-slate-300 mb-3" />
               <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest">No Pets Found</h3>
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tight mt-1 mb-4">We couldn't find any pets with these filters</p>
@@ -336,16 +336,16 @@ const Pets = () => {
               </button>
             </div>
           ) : (
-            <div className="responsive-card-grid [--card-min:17rem] sm:[--card-min:18rem] xl:[--card-min:19rem]">
+            <div className="marketplace-result-grid responsive-card-grid [--card-min:17rem] sm:[--card-min:18rem] xl:[--card-min:19rem]">
               {pets.map((pet, idx) => (
                 <div
                   key={pet._id}
-                  className="group w-full min-w-0 max-w-full bg-white dark:bg-slate-900 rounded-3xl border border-slate-100 dark:border-slate-800 p-2 flex flex-col transition-all hover:shadow-2xl hover:shadow-primary-100/10 relative overflow-hidden animate-slide-up"
+                  className="marketplace-listing-card group w-full min-w-0 max-w-full bg-white dark:bg-slate-900 rounded-3xl border border-slate-100 dark:border-slate-800 p-2 flex flex-col transition-all hover:shadow-2xl hover:shadow-primary-100/10 relative overflow-hidden animate-slide-up"
                   style={{ animationDelay: `${idx * 0.1}s` }}
                 >
                   <div className="absolute top-0 right-0 w-24 h-24 bg-slate-50 rounded-bl-[3rem] -translate-y-12 translate-x-12 group-hover:bg-primary-50 transition-colors duration-500" />
 
-                  <div className="h-32 sm:h-56 bg-slate-50 flex items-center justify-center relative overflow-hidden rounded-[2rem] z-10">
+                  <div className="marketplace-listing-image h-32 sm:h-56 bg-slate-50 flex items-center justify-center relative overflow-hidden rounded-[2rem] z-10">
                     {pet.images && pet.images[0] ? (
                       <img
                         src={getImageUrl(pet.images[0])}
@@ -374,7 +374,7 @@ const Pets = () => {
                     </div>
                   </div>
 
-                  <div className="min-w-0 p-3 sm:p-4 flex-1 flex flex-col relative z-10">
+                  <div className="marketplace-listing-copy min-w-0 p-3 sm:p-4 flex-1 flex flex-col relative z-10">
                     <div className="mb-3">
                       <p className="mb-1.5 truncate text-[10px] font-black uppercase leading-tight tracking-wide text-slate-400" title={pet.breed || 'Pet'}>
                         {pet.breed || 'Pet'}
@@ -434,7 +434,7 @@ const Pets = () => {
 
           {/* Pagination */}
           {pagination.totalPages > 1 && (
-            <div className="flex justify-center items-center gap-3 mt-10">
+            <div className="marketplace-pagination flex justify-center items-center gap-3 mt-10">
               <button
                 onClick={() => handlePageChange(pagination.currentPage - 1)}
                 disabled={!pagination.hasPrev}

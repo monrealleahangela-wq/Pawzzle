@@ -52,12 +52,12 @@ const Vouchers = () => {
         if (!voucher) return null;
 
         return (
-            <div key={voucher._id} className="group relative bg-white rounded-[2.5rem] border border-slate-100 overflow-hidden hover:shadow-[0_48px_80px_-16px_rgba(0,0,0,0.12)] hover:-translate-y-3 transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] flex flex-col">
+            <article key={voucher._id} className="marketplace-voucher-card group relative bg-white rounded-[2.5rem] border border-slate-100 overflow-hidden hover:shadow-[0_48px_80px_-16px_rgba(0,0,0,0.12)] hover:-translate-y-3 transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] flex flex-col">
                 {/* Visual Accent - Color Bar */}
                 <div className="absolute top-0 left-0 w-3 h-full bg-gradient-to-b from-primary-600 to-primary-400 group-hover:w-4 transition-all duration-500" />
                 
                 {/* Hero Section of Coupon */}
-                <div className="p-8 pb-6 border-b-2 border-dashed border-slate-100 relative">
+                <div className="marketplace-voucher-top p-8 pb-6 border-b-2 border-dashed border-slate-100 relative">
                     {/* Ticket Cutouts */}
                     <div className="absolute -left-4 -bottom-4 w-8 h-8 bg-[#FDFCFB] rounded-full border border-slate-100 shadow-inner z-20" />
                     <div className="absolute -right-4 -bottom-4 w-8 h-8 bg-[#FDFCFB] rounded-full border border-slate-100 shadow-inner z-20" />
@@ -73,7 +73,7 @@ const Vouchers = () => {
                                     <div className="w-5 h-5 rounded-full bg-primary-50 flex items-center justify-center border border-primary-100">
                                         <Store size={10} className="text-primary-500" />
                                     </div>
-                                    <span className="text-[9px] font-black text-slate-400 font-bold uppercase tracking-[0.2em] truncate">{voucher.store?.name || 'Global Access'}</span>
+                                <span className="text-[9px] font-black text-slate-400 font-bold uppercase tracking-[0.2em] truncate">{voucher.store?.name || 'Pawzzle'}</span>
                                 </div>
                             </div>
                         </div>
@@ -84,21 +84,21 @@ const Vouchers = () => {
                             <span className="inline-block origin-left text-3xl font-black tracking-tighter text-slate-900 transition-transform group-hover:scale-105 sm:text-4xl">
                                 {voucher.discountType === 'percentage' ? `${voucher.discountValue}%` : `₱${voucher.discountValue}`}
                             </span>
-                            <span className="text-[11px] font-black text-primary-600 uppercase tracking-widest animate-pulse">reduction</span>
+                            <span className="text-[11px] font-black text-primary-600 uppercase tracking-widest">discount</span>
                         </div>
                         <div className="h-1 w-20 bg-primary-500/20 rounded-full mt-1 group-hover:w-32 transition-all duration-500" />
                     </div>
                 </div>
 
                 {/* Sub Section of Coupon */}
-                <div className="p-8 pt-10 flex-1 flex flex-col justify-between">
+                <div className="marketplace-voucher-body p-8 pt-10 flex-1 flex flex-col justify-between">
                     <div className="space-y-5 px-1">
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-3">
                                 <div className="w-8 h-8 bg-slate-50 rounded-xl flex items-center justify-center text-primary-500 group-hover:bg-primary-50 transition-colors">
                                     <ShoppingBag size={14} />
                                 </div>
-                                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Min. Liquid Capital</span>
+                                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Minimum purchase</span>
                             </div>
                             <span className="text-[12px] font-black text-slate-900">{formatPeso(voucher.minPurchase)}</span>
                         </div>
@@ -107,7 +107,7 @@ const Vouchers = () => {
                                 <div className="w-8 h-8 bg-slate-50 rounded-xl flex items-center justify-center text-primary-500 group-hover:bg-primary-50 transition-colors">
                                     <Calendar size={14} />
                                 </div>
-                                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Validity Horizon</span>
+                                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Valid until</span>
                             </div>
                             <span className="text-[12px] font-black text-slate-900">{new Date(voucher.endDate).toLocaleDateString()}</span>
                         </div>
@@ -127,7 +127,7 @@ const Vouchers = () => {
                                     onClick={() => copyToClipboard(voucher.code)}
                                     className="flex-1 py-4 bg-white text-slate-900 rounded-2xl text-[10px] font-black uppercase tracking-widest border-2 border-slate-100 hover:border-slate-900 transition-all flex items-center justify-center gap-2"
                                 >
-                                    <Copy size={14} /> Metadata
+                                    <Copy size={14} /> Copy code
                                 </button>
                                 <Link
                                     to="/products"
@@ -139,14 +139,14 @@ const Vouchers = () => {
                         )}
                     </div>
                 </div>
-            </div>
+            </article>
         );
     };
 
     return (
-        <div className="min-h-screen bg-[#FDFCFB] pb-32">
+        <div className="customer-marketplace-page marketplace-vouchers min-h-screen bg-[#FDFCFB] pb-32">
             {/* Hero Header - Refined with Premium Aesthetics */}
-            <div className="bg-slate-900 pt-40 pb-32 px-4 relative overflow-hidden">
+            <header className="marketplace-vouchers-hero bg-slate-900 pt-40 pb-32 px-4 relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-primary-600/20 rounded-full blur-[120px] -mr-64 -mt-64 animate-pulse" />
                 <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-secondary-500/10 rounded-full blur-[100px] -ml-48 -mb-48" />
                 
@@ -172,14 +172,14 @@ const Vouchers = () => {
                     </h1>
                     
                     <p className="text-slate-400 max-w-xl mx-auto text-[10px] sm:text-xs font-black uppercase tracking-[0.3em] leading-loose opacity-70">
-                        Acquire exclusive provisioning vouchers from partner bases and optimize your acquisition costs today.
+                        Save store vouchers and use them on eligible Pawzzle purchases.
                     </p>
                 </div>
-            </div>
+            </header>
 
             {/* Content Tabs - More Fluid and Integrated */}
-            <div className="max-w-7xl mx-auto px-4 -mt-12 mb-20 relative z-20">
-                <div className="bg-white/80 backdrop-blur-3xl rounded-[2.5rem] shadow-[0_32px_120px_-20px_rgba(0,0,0,0.15)] p-3 sm:p-5 flex gap-3 border border-white">
+            <div className="marketplace-vouchers-content max-w-7xl mx-auto px-4 -mt-12 mb-20 relative z-20">
+                <div className="marketplace-voucher-tabs bg-white/80 backdrop-blur-3xl rounded-[2.5rem] shadow-[0_32px_120px_-20px_rgba(0,0,0,0.15)] p-3 sm:p-5 flex gap-3 border border-white">
                     <button
                         onClick={() => setActiveTab('available')}
                         className={`flex-1 py-5 rounded-[1.8rem] flex items-center justify-center gap-4 transition-all duration-500 ${activeTab === 'available' ? 'bg-slate-900 text-white shadow-[0_20px_40px_-10px_rgba(0,0,0,0.3)]' : 'text-slate-400 hover:bg-slate-50'}`}
@@ -206,9 +206,9 @@ const Vouchers = () => {
                     </button>
                 </div>
 
-                <div className="mt-20">
+                <div className="marketplace-voucher-results mt-20">
                     {loading ? (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
+                            <div className="marketplace-voucher-grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
                             {[1, 2, 3].map(i => (
                                 <div key={i} className="bg-white rounded-[3rem] h-[400px] animate-pulse relative overflow-hidden">
                                   <div className="absolute inset-0 bg-gradient-to-br from-slate-50 to-white" />
@@ -219,29 +219,29 @@ const Vouchers = () => {
                         <div className="animate-fade-in">
                             {activeTab === 'available' ? (
                                 availableVouchers.length > 0 ? (
-                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
+                                    <div className="marketplace-voucher-grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
                                         {availableVouchers.map(v => renderVoucherCard(v, 'available'))}
                                     </div>
                                 ) : (
-                                    <div className="text-center py-40 bg-white rounded-[4rem] border border-slate-100 shadow-xl shadow-slate-100">
+                                    <div className="marketplace-empty-state text-center py-40 bg-white rounded-[4rem] border border-slate-100 shadow-xl shadow-slate-100">
                                         <div className="w-32 h-32 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-10 shadow-inner">
                                             <Sparkles size={56} className="text-slate-200" />
                                         </div>
-                                        <h3 className="text-3xl font-black text-slate-300 uppercase tracking-tighter mb-2">Inventory Depleted</h3>
-                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">Fresh promotions are currently being queued.</p>
+                                        <h3 className="text-3xl font-black text-slate-300 uppercase tracking-tighter mb-2">No vouchers available</h3>
+                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">New store promotions will appear here.</p>
                                     </div>
                                 )
                             ) : (
                                 myVouchers.length > 0 ? (
-                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
+                                    <div className="marketplace-voucher-grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
                                         {myVouchers.map(v => renderVoucherCard(v, 'my'))}
                                     </div>
                                 ) : (
-                                    <div className="text-center py-40 bg-white rounded-[4rem] border border-slate-100 shadow-xl shadow-slate-100">
+                                    <div className="marketplace-empty-state text-center py-40 bg-white rounded-[4rem] border border-slate-100 shadow-xl shadow-slate-100">
                                         <div className="w-32 h-32 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-10 shadow-inner">
                                             <Ticket size={56} className="text-slate-200" />
                                         </div>
-                                        <h3 className="text-3xl font-black text-slate-300 uppercase tracking-tighter mb-4">Collection Empty</h3>
+                                        <h3 className="text-3xl font-black text-slate-300 uppercase tracking-tighter mb-4">No saved vouchers</h3>
                                         <button 
                                             onClick={() => setActiveTab('available')} 
                                             className="px-10 py-5 bg-slate-900 text-white rounded-[1.5rem] text-[11px] font-black uppercase tracking-[0.3em] shadow-2xl shadow-slate-200 hover:bg-primary-600 transition-all hover:scale-105 active:scale-95"

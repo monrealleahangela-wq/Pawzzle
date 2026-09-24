@@ -12,6 +12,7 @@ import BottomNavBar from './BottomNavBar';
 import { useTheme } from '../contexts/ThemeContext';
 import { hasUiPermission, hasUiActionPermission, isCareProfessional, isProfessionalVerificationPending, OPERATIONAL_ROLES, PLATFORM_ADMIN_ROLES, effectiveStaffType } from '../utils/authorization';
 import { getStaffWorkspaceConfig } from '../utils/staffWorkspace';
+import '../styles/CustomerMarketplace.css';
 
 const navigationPathname = (path = '') => path.split(/[?#]/)[0];
 const isNavigationPathActive = (currentPath, targetPath) => {
@@ -292,7 +293,8 @@ const NavLink = ({ item, isActive, collapsed, onClick }) => {
       to={item.path}
       onClick={onClick}
       title={collapsed ? item.label : undefined}
-      className={`flex items-center gap-3 px-4 py-3 rounded-2xl transition-all duration-300 relative group/link ${isActive
+      aria-current={isActive ? 'page' : undefined}
+      className={`shell-nav-link flex items-center gap-3 px-4 py-3 rounded-2xl transition-all duration-300 relative group/link ${isActive
           ? 'bg-primary text-white shadow-strong'
           : 'text-slate-500 hover:bg-primary/5 hover:text-primary'
         } ${collapsed ? 'justify-center px-3' : ''}`}
@@ -319,7 +321,8 @@ const NavGroup = ({ group, expanded, onToggle, isActive, collapsed, onNavigate, 
       <div className="relative group/flyout">
         <button
           title={group.label}
-          className={`flex items-center justify-center w-full px-4 py-3 rounded-2xl transition-all duration-300 ${hasActiveChild
+          data-active={hasActiveChild ? 'true' : 'false'}
+          className={`shell-nav-group-trigger flex items-center justify-center w-full px-4 py-3 rounded-2xl transition-all duration-300 ${hasActiveChild
               ? 'bg-primary/10 text-primary'
               : 'text-slate-400 hover:bg-neutral-50 hover:text-slate-600'
             }`}
@@ -342,7 +345,8 @@ const NavGroup = ({ group, expanded, onToggle, isActive, collapsed, onNavigate, 
     <div className="space-y-1">
       <button
         onClick={onToggle}
-        className={`flex items-center gap-3 w-full px-4 py-3 rounded-2xl transition-all duration-300 group/btn ${hasActiveChild
+        data-active={hasActiveChild ? 'true' : 'false'}
+        className={`shell-nav-group-trigger flex items-center gap-3 w-full px-4 py-3 rounded-2xl transition-all duration-300 group/btn ${hasActiveChild
             ? 'bg-primary/5 text-primary'
             : 'text-slate-500 hover:bg-neutral-50 hover:text-neutral-900'
           }`}
@@ -361,7 +365,8 @@ const NavGroup = ({ group, expanded, onToggle, isActive, collapsed, onNavigate, 
                 key={child.path}
                 to={child.path}
                 onClick={onNavigate}
-                className={`flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-300 ${childActive
+                aria-current={childActive ? 'page' : undefined}
+                className={`shell-nav-child flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-300 ${childActive
                     ? 'bg-primary text-white shadow-medium scale-[1.02]'
                     : 'text-slate-400 hover:text-primary hover:bg-primary/5'
                   }`}
@@ -470,6 +475,10 @@ const Layout = () => {
   const isGroupActive = (group) => group.children?.some(c => isActivePath(c.path));
   const isLandingPage = location.pathname === '/' && !isAuthenticated;
   const isCustomerUI = user?.role === 'customer';
+  const customerMarketplacePaths = ['/pets', '/products', '/find-shops', '/orders', '/vouchers'];
+  const isCustomerMarketplaceRoute = isCustomerUI && customerMarketplacePaths.some((path) => (
+    location.pathname === path || location.pathname.startsWith(`${path}/`)
+  ));
   const isStoreOwnerUI = user?.role === 'store_owner' || user?.role === 'admin';
   const isPlatformAdminUI = PLATFORM_ADMIN_ROLES.has(user?.role);
   const isStaffUI = user?.role === 'staff' || OPERATIONAL_ROLES.has(user?.role);
@@ -534,7 +543,7 @@ const Layout = () => {
   if (pendingProfessional) return <><Outlet /><PasswordChangeModal /></>;
 
   return (
-    <div className={`app-shell min-h-screen w-full max-w-full min-w-0 bg-neutral-50 dark:bg-slate-950 flex flex-col lg:flex-row transition-colors duration-300 ${isCustomerUI ? 'customer-ui-shell' : ''} ${isStaffUI ? 'staff-ui-shell' : ''} ${isStoreOwnerUI ? 'store-owner-ui-shell' : ''} ${isSupplierUI ? 'supplier-ui-shell' : ''} ${isPlatformAdminUI ? 'super-admin-ui-shell' : ''} ${isLandingPage ? '!bg-transparent' : ''}`}>
+    <div className={`app-shell min-h-screen w-full max-w-full min-w-0 bg-neutral-50 dark:bg-slate-950 flex flex-col lg:flex-row transition-colors duration-300 ${isCustomerUI ? 'customer-ui-shell' : ''} ${isCustomerMarketplaceRoute ? 'customer-marketplace-shell' : ''} ${isStaffUI ? 'staff-ui-shell' : ''} ${isStoreOwnerUI ? 'store-owner-ui-shell' : ''} ${isSupplierUI ? 'supplier-ui-shell' : ''} ${isPlatformAdminUI ? 'super-admin-ui-shell' : ''} ${isLandingPage ? '!bg-transparent' : ''}`}>
       
       {!isLandingPage && (
         <div className="fixed top-0 left-0 h-1 bg-gradient-to-r from-primary via-secondary to-primary z-[100] transition-all duration-300" 
@@ -545,10 +554,10 @@ const Layout = () => {
         <aside 
           onMouseEnter={() => setIsHovered(true)}
           onMouseLeave={() => setIsHovered(false)}
-          className={`hidden lg:flex fixed left-0 top-0 h-screen ${sidebarWidth} bg-white dark:bg-slate-900 border-r border-slate-100 dark:border-slate-800 z-[60] flex-col transition-all duration-500 ease-[cubic-bezier(0.23,1,0.32,1)] shadow-2xl shadow-slate-900/5`}
+          className={`desktop-shell-sidebar hidden lg:flex fixed left-0 top-0 h-screen ${sidebarWidth} bg-white dark:bg-slate-900 border-r border-slate-100 dark:border-slate-800 z-[60] flex-col transition-all duration-500 ease-[cubic-bezier(0.23,1,0.32,1)] shadow-2xl shadow-slate-900/5`}
         >
           <div className={`shrink-0 flex items-center ${sidebarCollapsed ? 'px-3 py-5 justify-center' : 'px-6 py-6'} transition-all duration-500`}>
-            <Link to="/" className="flex items-center gap-5 group/logo">
+            <Link to="/" className="shell-brand flex items-center gap-5 group/logo">
               <div className="w-12 h-12 bg-primary rounded-[1.25rem] flex items-center justify-center shadow-strong group-hover/logo:scale-110 transition-transform duration-500">
                 <img src="/images/logo.png" alt="Logo" className="w-7 h-7 object-contain brightness-0 invert" />
               </div>
@@ -588,7 +597,7 @@ const Layout = () => {
 
       <div className={`app-content-shell w-full max-w-full flex-1 flex flex-col min-w-0 ${isLandingPage ? '' : `${contentPadding} ${isCompactShell ? 'pt-14 lg:pt-16' : 'pt-16 lg:pt-20'}`} transition-all duration-500`}>
         {!isLandingPage && (
-          <header className={`fixed top-0 left-0 ${headerOffset} right-0 z-50 glass-effect dark:border-b dark:border-slate-800 ${isCompactShell ? 'h-14 lg:h-16' : 'h-16 lg:h-20'} flex items-center px-4 sm:px-6 lg:px-8 justify-between transition-all duration-500 shadow-soft`}>
+          <header className={`shell-topbar fixed top-0 left-0 ${headerOffset} right-0 z-50 glass-effect dark:border-b dark:border-slate-800 ${isCompactShell ? 'h-14 lg:h-16' : 'h-16 lg:h-20'} flex items-center px-4 sm:px-6 lg:px-8 justify-between transition-all duration-500 shadow-soft`}>
             <div className="flex items-center gap-6">
               <div className="lg:hidden">
                 <button onClick={() => setIsMobileMenuOpen(true)} aria-label="Open navigation" className="p-2.5 bg-white shadow-soft rounded-xl text-neutral-800">
@@ -643,7 +652,7 @@ const Layout = () => {
         )}
 
         <main className={`app-content-main w-full max-w-full min-w-0 flex-1 ${isCompactShell ? 'p-3 sm:p-4 lg:p-5' : 'p-4 sm:p-5 lg:p-8'} animate-fade-up ${isLandingPage ? 'p-0' : ''}`}>
-          <div className={`app-page relative z-10 w-full max-w-full min-w-0 ${isCustomerUI ? 'customer-interface' : ''} ${isStaffUI ? 'staff-interface' : ''} ${isStoreOwnerUI ? 'store-owner-interface' : ''} ${isSupplierUI ? 'supplier-interface' : ''} ${isPlatformAdminUI ? 'super-admin-interface' : ''}`}>
+          <div className={`app-page relative z-10 w-full max-w-full min-w-0 ${isCustomerUI ? 'customer-interface' : ''} ${isCustomerMarketplaceRoute ? 'customer-marketplace-interface' : ''} ${isStaffUI ? 'staff-interface' : ''} ${isStoreOwnerUI ? 'store-owner-interface' : ''} ${isSupplierUI ? 'supplier-interface' : ''} ${isPlatformAdminUI ? 'super-admin-interface' : ''}`}>
             <Outlet />
           </div>
         </main>
@@ -652,7 +661,7 @@ const Layout = () => {
       <div className={`fixed inset-0 z-[150] lg:hidden transition-all duration-500 ${isMobileMenuOpen ? 'visible' : 'invisible'}`}>
         <div className={`absolute inset-0 bg-neutral-900/40 backdrop-blur-md transition-opacity duration-500 ${isMobileMenuOpen ? 'opacity-100' : 'opacity-0'}`}
              onClick={() => setIsMobileMenuOpen(false)} />
-        <aside className={`absolute top-0 left-0 h-full ${isCustomerUI || isSupplierUI ? 'w-[260px]' : 'w-[280px]'} max-w-[88vw] bg-white dark:bg-slate-900 shadow-premium transition-transform duration-500 ease-[cubic-bezier(0.23,1,0.32,1)] flex flex-col ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+        <aside className={`mobile-shell-sidebar absolute top-0 left-0 h-full ${isCustomerUI || isSupplierUI ? 'w-[260px]' : 'w-[280px]'} max-w-[88vw] bg-white dark:bg-slate-900 shadow-premium transition-transform duration-500 ease-[cubic-bezier(0.23,1,0.32,1)] flex flex-col ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
           <div className="shrink-0 p-5 flex items-center justify-between">
             <div className="flex items-center gap-4">
               <div className="w-10 h-10 bg-primary rounded-2xl flex items-center justify-center">
