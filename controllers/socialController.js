@@ -4,6 +4,11 @@ const User = require('../models/User');
 const Product = require('../models/Product');
 const Store = require('../models/Store');
 const Notification = require('../models/Notification');
+const {
+  getCustomerVisibleOwnerIds,
+  buildCustomerVisibleStoreFilter,
+  withCustomerComplianceFilter
+} = require('../utils/storeVisibility');
 
 // Following Logic
 const followUser = async (req, res) => {
@@ -82,10 +87,10 @@ const getFollowing = async (req, res) => {
     const sellerIds = followingUsers.map(user => user._id);
 
     if (sellerIds.length > 0) {
-      const stores = await Store.find(
-        { owner: { $in: sellerIds }, isActive: true, isDeleted: { $ne: true } },
-        '_id owner name logo businessType operationalModules ratings contactInfo.address'
-      );
+      const ownerIds = await getCustomerVisibleOwnerIds();
+      const stores = await Store.find(withCustomerComplianceFilter(buildCustomerVisibleStoreFilter(ownerIds, {
+        owner: { $in: sellerIds }
+      }))).select('_id owner name logo businessType operationalModules ratings contactInfo.address');
       stores.forEach(store => { storeMap[store.owner.toString()] = store; });
     }
 

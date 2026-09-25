@@ -54,8 +54,9 @@ test('orphaned jilay remains excluded while Pawzzle legacy admin ownership stays
 test('all customer store endpoints share the same visibility source of truth', () => {
   const controller = read('controllers/storeController.js');
   assert.match(controller, /const getAllStores[\s\S]*getCustomerVisibleOwnerIds\(\)[\s\S]*buildCustomerVisibleStoreFilter\(ownerIds\)/);
-  assert.match(controller, /const getStoreById[\s\S]*buildCustomerVisibleStoreFilter\(ownerIds, \{ _id: req\.params\.id \}\)/);
-  assert.match(controller, /const getStoreDetails[\s\S]*buildCustomerVisibleStoreFilter\(ownerIds, \{ _id: req\.params\.id \}\)/);
+  assert.match(controller, /const findCustomerVisibleStore[\s\S]*buildCustomerVisibleStoreFilter\(ownerIds, \{ _id: id \}\)/);
+  assert.match(controller, /const getStoreById[\s\S]*findCustomerVisibleStore\(req\.params\.id\)/);
+  assert.match(controller, /const getStoreDetails[\s\S]*findCustomerVisibleStore\(req\.params\.id\)/);
   assert.match(controller, /const getStoreByOwner[\s\S]*buildCustomerVisibleStoreFilter\(ownerIds, \{ owner: ownerId \}\)/);
   assert.match(controller, /const getStoreLocations[\s\S]*Store\.find\(buildCustomerVisibleStoreFilter\(ownerIds\)\)/);
 });

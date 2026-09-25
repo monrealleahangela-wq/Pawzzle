@@ -21,10 +21,24 @@ const { isPlatformAdmin, isStoreAdmin, isOperationalStaff } = require('../config
 const { buildStoreOperationsSnapshot } = require('../services/operationsDashboardService');
 const { createNotification } = require('./notificationController');
 const {
+  CUSTOMER_VISIBLE_STORE_FIELDS,
   getCustomerVisibleOwnerIds,
   buildCustomerVisibleStoreFilter,
   withCustomerComplianceFilter
 } = require('../utils/storeVisibility');
+
+const findCustomerVisibleStore = async id => {
+  const ownerIds = await getCustomerVisibleOwnerIds();
+  return Store.findOne(withCustomerComplianceFilter(buildCustomerVisibleStoreFilter(ownerIds, { _id: id })))
+    .select(CUSTOMER_VISIBLE_STORE_FIELDS)
+    .populate('owner', 'username firstName lastName');
+};
+
+const sendPublicStoreLookupError = (res, error, logLabel) => {
+  console.error(logLabel, error);
+  if (error?.name === 'CastError') return res.status(404).json({ message: 'Store not found' });
+  return res.status(500).json({ message: 'Unable to load store right now' });
+};
 
 // Get all stores (public)
 const getAllStores = async (req, res) => {
@@ -51,7 +65,7 @@ const getAllStores = async (req, res) => {
 
     const skip = (page - 1) * limit;
     const stores = await Store.find(filter)
-      .select('-taxProfile -businessProfile.registrationNumber -businessCompliance -verification.adminNotes')
+      .select(CUSTOMER_VISIBLE_STORE_FIELDS)
       .populate('owner', 'username firstName lastName')
       .sort({ featured: -1, 'ratings.average': -1, createdAt: -1 })
       .skip(skip)
@@ -78,10 +92,7 @@ const getAllStores = async (req, res) => {
 // Get store by ID (public)
 const getStoreById = async (req, res) => {
   try {
-    const ownerIds = await getCustomerVisibleOwnerIds();
-    const store = await Store.findOne(withCustomerComplianceFilter(buildCustomerVisibleStoreFilter(ownerIds, { _id: req.params.id })))
-      .select('-taxProfile -businessProfile.registrationNumber -businessCompliance -verification.adminNotes')
-      .populate('owner', 'username firstName lastName');
+    const store = await findCustomerVisibleStore(req.params.id);
 
     if (!store) {
       return res.status(404).json({ message: 'Store not found' });
@@ -116,18 +127,14 @@ const getStoreById = async (req, res) => {
       products
     });
   } catch (error) {
-    console.error('Get store error:', error);
-    res.status(500).json({ message: 'Server error' });
+    return sendPublicStoreLookupError(res, error, 'Get store error:');
   }
 };
 
 // Get store details with products, services, and pets (public)
 const getStoreDetails = async (req, res) => {
   try {
-    const ownerIds = await getCustomerVisibleOwnerIds();
-    const store = await Store.findOne(withCustomerComplianceFilter(buildCustomerVisibleStoreFilter(ownerIds, { _id: req.params.id })))
-      .select('-taxProfile -businessProfile.registrationNumber -businessCompliance -verification.adminNotes')
-      .populate('owner', 'username firstName lastName');
+    const store = await findCustomerVisibleStore(req.params.id);
 
     if (!store) {
       return res.status(404).json({ message: 'Store not found' });
@@ -183,8 +190,7 @@ const getStoreDetails = async (req, res) => {
       staff: isStaffVisibile ? staff : []
     });
   } catch (error) {
-    console.error('Get store details error:', error);
-    res.status(500).json({ message: 'Server error' });
+    return sendPublicStoreLookupError(res, error, 'Get store details error:');
   }
 };
 

@@ -2,6 +2,37 @@ const User = require('../models/User');
 
 const STORE_OWNER_ROLES = ['admin', 'store_owner'];
 
+// Public Store queries use an explicit allowlist. Excluding whole embedded
+// documents such as `taxProfile` conflicts with the schema's nested
+// `select: false` paths and MongoDB rejects the resulting projection as a path
+// collision. An allowlist also keeps compliance and payout data private by
+// construction.
+const CUSTOMER_VISIBLE_STORE_FIELDS = [
+  '_id',
+  'owner',
+  'name',
+  'slug',
+  'description',
+  'logo',
+  'coverImage',
+  'businessType',
+  'operationalModules',
+  'staffingConfiguration.isStaffVisibleToCustomers',
+  'contactInfo',
+  'socialMedia',
+  'businessHours',
+  'specialties',
+  'services',
+  'ratings',
+  'verificationStatus',
+  'featured',
+  'stats.responseRate',
+  'stats.responseTime',
+  'stats.activeListingsCount',
+  'createdAt',
+  'updatedAt'
+].join(' ');
+
 const getCustomerVisibleOwnerIds = async () => User.find({
   role: { $in: STORE_OWNER_ROLES },
   isActive: { $ne: false },
@@ -37,6 +68,7 @@ const isCustomerVisibleStoreRecord = (store, owner) => Boolean(
 
 module.exports = {
   STORE_OWNER_ROLES,
+  CUSTOMER_VISIBLE_STORE_FIELDS,
   getCustomerVisibleOwnerIds,
   buildCustomerVisibleStoreFilter,
   withCustomerComplianceFilter,

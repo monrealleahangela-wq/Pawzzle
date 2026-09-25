@@ -141,7 +141,10 @@ test('daily monitor, idempotent reminder log, and dashboard notice are wired', (
 
 test('public Store responses explicitly exclude private compliance metadata', () => {
   const controller = source('controllers/storeController.js');
-  assert.ok((controller.match(/-businessCompliance/g) || []).length >= 3);
+  const visibility = source('utils/storeVisibility.js');
+  assert.match(controller, /select\(CUSTOMER_VISIBLE_STORE_FIELDS\)/);
+  assert.doesNotMatch(visibility, /CUSTOMER_VISIBLE_STORE_FIELDS[\s\S]*'businessCompliance'/);
+  assert.doesNotMatch(visibility, /CUSTOMER_VISIBLE_STORE_FIELDS[\s\S]*'taxProfile'/);
   assert.match(source('controllers/storeComplianceController.js'), /tinMasked/);
 });
 

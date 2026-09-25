@@ -5,6 +5,11 @@ const { isPlatformAdmin, isStoreAdmin, isOperationalStaff } = require('../config
 const { canOperateStore } = require('../utils/authorizationPolicy');
 const { derivePetAge } = require('../utils/petAge');
 const { isIndividualPetRecord } = require('../services/petAvailabilityService');
+const {
+  getCustomerVisibleOwnerIds,
+  buildCustomerVisibleStoreFilter,
+  withCustomerComplianceFilter
+} = require('../utils/storeVisibility');
 
 const toPublicPet = (pet) => {
   const publicPet = pet?.toObject ? pet.toObject() : { ...pet };
@@ -77,6 +82,17 @@ const getAllPets = async (req, res) => {
           }
       }
       console.log(`🔒 Multi-tenant isolation for ${req.user.role} - applying filter:`, JSON.stringify(filter, null, 2));
+    } else {
+      const ownerIds = await getCustomerVisibleOwnerIds();
+      const storeExtra = {};
+      if (city) {
+        const escapedCity = String(city).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        storeExtra['contactInfo.address.city'] = { $regex: new RegExp(escapedCity, 'i') };
+      }
+      const visibleStores = await Store.find(
+        withCustomerComplianceFilter(buildCustomerVisibleStoreFilter(ownerIds, storeExtra))
+      ).select('_id');
+      filter.store = { $in: visibleStores.map(store => store._id) };
     }
 
     if (isAvailable === 'true') {
@@ -170,7 +186,17 @@ const getPetById = async (req, res) => {
     }
 
     const isAdminRequest = req.baseUrl?.includes('/admin');
-    res.json({ pet: isAdminRequest ? pet : toPublicPet(pet) });
+    if (!isAdminRequest) {
+      const ownerIds = await getCustomerVisibleOwnerIds();
+      const publicStore = await Store.findOne(withCustomerComplianceFilter(buildCustomerVisibleStoreFilter(ownerIds, {
+        _id: pet.store?._id || pet.store
+      }))).select('name contactInfo.address ratings stats verificationStatus');
+      if (!publicStore) return res.status(404).json({ message: 'Pet not found or unavailable' });
+      const publicPet = toPublicPet(pet);
+      publicPet.store = publicStore.toObject ? publicStore.toObject() : publicStore;
+      return res.json({ pet: publicPet });
+    }
+    res.json({ pet });
   } catch (error) {
     console.error('Get pet error:', error);
     res.status(500).json({ message: 'Server error' });

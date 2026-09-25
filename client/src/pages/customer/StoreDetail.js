@@ -18,6 +18,7 @@ const StoreDetail = () => {
   const { user, isAuthenticated } = useAuth();
   const { addToCart, buyNow } = useCart();
   const [store, setStore] = useState(null);
+  const [loadError, setLoadError] = useState(null);
   const [products, setProducts] = useState([]);
   const [services, setServices] = useState([]);
   const [pets, setPets] = useState([]);
@@ -211,6 +212,8 @@ const StoreDetail = () => {
   const fetchStoreDetails = useCallback(async () => {
     try {
       setLoading(true);
+      setLoadError(null);
+      setStore(null);
       const response = await storeService.getStoreDetails(storeId);
       setStore(response.data.store);
       setFollowerCount(response.data.followerCount || 0);
@@ -220,7 +223,9 @@ const StoreDetail = () => {
       setStaff(response.data.staff || []);
     } catch (error) {
       console.error('Error fetching store details:', error);
-      toast.error('We could not load this store. Please try again.');
+      const notFound = error.response?.status === 404;
+      setLoadError(notFound ? 'not_found' : 'failed');
+      toast.error(notFound ? 'Store not found.' : 'We could not load this store. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -278,6 +283,21 @@ const StoreDetail = () => {
           <div className="absolute inset-0 border-4 border-primary-200 rounded-full"></div>
           <div className="absolute inset-0 border-4 border-primary-600 rounded-full border-t-transparent animate-spin"></div>
           <Building className="absolute inset-0 m-auto h-8 w-8 text-primary-600 animate-pulse" />
+        </div>
+      </div>
+    );
+  }
+
+  if (!store && loadError === 'failed') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4">
+        <div className="bg-white p-12 rounded-[3rem] shadow-2xl border border-slate-100 text-center max-w-lg">
+          <div className="w-20 h-20 bg-amber-50 rounded-[1.5rem] flex items-center justify-center text-amber-600 mx-auto mb-8">
+            <AlertTriangle className="h-10 w-10" />
+          </div>
+          <h2 className="text-3xl font-black text-slate-900 mb-4 tracking-tight">Unable to Load Store</h2>
+          <p className="text-slate-500 font-medium mb-10 leading-relaxed">This store could not be loaded right now. Please retry the request.</p>
+          <button type="button" onClick={fetchStoreDetails} className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest text-sm hover:bg-black transition-all">Try Again</button>
         </div>
       </div>
     );

@@ -64,7 +64,10 @@ test('11 Store Owner settings present verified tax data read-only', () => {
 });
 test('12 customer cannot access tax documents through public Store responses', () => {
   const source = read('controllers/storeController.js');
-  assert.match(source, /select\('-taxProfile/);
+  const visibility = read('utils/storeVisibility.js');
+  assert.match(source, /select\(CUSTOMER_VISIBLE_STORE_FIELDS\)/);
+  assert.doesNotMatch(visibility, /CUSTOMER_VISIBLE_STORE_FIELDS[\s\S]*'taxProfile'/);
+  assert.doesNotMatch(visibility, /CUSTOMER_VISIBLE_STORE_FIELDS[\s\S]*'businessCompliance'/);
 });
 test('13 other stores cannot access another application document', () => assert.match(read('controllers/storeApplicationController.js'), /!ownsApplication && !isPlatformAdmin/));
 test('14 specialized staff receive no tax-document permission', () => assert.match(read('routes/storeApplications.js'), /documents\/:documentType', authenticate, getApplicationDocument/));
