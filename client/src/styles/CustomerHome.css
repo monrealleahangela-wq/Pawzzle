@@ -111,7 +111,6 @@
 .customer-home-stat small { margin-top: 0.25rem; color: var(--home-muted); font-size: 0.56rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }
 
 .customer-home-section,
-.customer-home-experts,
 .customer-home-trust,
 .customer-home-cta { min-width: 0; border: 1px solid var(--home-line); }
 
@@ -153,23 +152,6 @@
 .customer-home-category-content > b svg { width: 0.75rem; height: 0.75rem; }
 .customer-home-category.is-pets .customer-home-category-content { padding: 1.35rem; }
 .customer-home-category.is-pets .customer-home-category-content > strong { font-size: 1.65rem; }
-
-.customer-home-experts { padding: clamp(1rem, 2.2vw, 1.6rem); border-radius: 1.2rem 2.5rem 1.2rem 1.2rem; background: var(--home-deep); color: white; }
-.customer-home-experts .customer-home-section-heading p { color: var(--home-peach); }
-.customer-interface .customer-home .customer-home-experts .customer-home-section-heading h2 { color: white; }
-.customer-home-experts .customer-home-section-heading > div > span { color: rgba(255,255,255,0.56); }
-.customer-home-expert-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.65rem; }
-.customer-home-expert-card { min-width: 0; padding: 0.75rem; display: flex; align-items: center; gap: 0.7rem; border: 1px solid rgba(255,255,255,0.1); border-radius: 1rem; background: rgba(255,255,255,0.055); }
-.customer-home-avatar { position: relative; width: 3.2rem; height: 3.2rem; flex: 0 0 auto; display: grid; place-items: center; border-radius: 50% 50% 42% 58%; background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.45); }
-.customer-home-avatar > img { width: 100%; height: 100%; object-fit: cover; border-radius: inherit; }
-.customer-home-avatar > svg:first-child { width: 1.2rem; height: 1.2rem; }
-.customer-home-avatar > svg:last-child { position: absolute; width: 1rem; height: 1rem; right: -0.1rem; bottom: 0; padding: 0.12rem; border-radius: 50%; background: var(--home-peach); color: var(--home-deep); }
-.customer-home-expert-copy { min-width: 0; }
-.customer-interface .customer-home .customer-home-expert-copy h3 { overflow: hidden; color: white; font-size: 0.8rem !important; line-height: 1.2; text-overflow: ellipsis; white-space: nowrap; }
-.customer-home-expert-copy p { margin-top: 0.15rem; overflow: hidden; color: #e8b88c; font-size: 0.53rem; font-weight: 800; text-overflow: ellipsis; text-transform: capitalize; white-space: nowrap; }
-.customer-home-expert-copy span { margin-top: 0.35rem; display: flex; align-items: center; gap: 0.25rem; color: rgba(255,255,255,0.62); font-size: 0.55rem; }
-.customer-home-expert-copy span svg { width: 0.7rem; height: 0.7rem; color: #e8b88c; }
-.customer-home-expert-copy span svg.is-rated { fill: #e8b88c; }
 
 .customer-home-listing-grid, .customer-home-product-grid { gap: 0.75rem; }
 .customer-home-listing-card, .customer-home-product-card { min-width: 0; overflow: hidden; border: 1px solid var(--home-line); border-radius: 1.1rem; background: var(--home-paper); transition: transform 180ms ease, box-shadow 180ms ease; }
@@ -263,10 +245,6 @@
 .dark .customer-home-section { background: rgba(23,19,17,0.78); }
 .dark .customer-home-product-copy small { color: #6ee7b7; }
 
-@media (max-width: 1180px) {
-  .customer-home-expert-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-}
-
 @media (max-width: 900px) {
   .customer-home { gap: 1rem; }
   .customer-home-hero { min-height: 0; grid-template-columns: minmax(0, 1fr) minmax(16rem, 0.58fr); gap: 1.2rem; }
@@ -286,7 +264,7 @@
   .customer-home-stat { min-height: 4.5rem; padding: 0.65rem; gap: 0.55rem; }
   .customer-home-stat > span { width: 2rem; height: 2rem; }
   .customer-home-stat strong { font-size: 1rem; }
-  .customer-home-section, .customer-home-experts, .customer-home-trust { padding: 0.9rem; }
+  .customer-home-section, .customer-home-trust { padding: 0.9rem; }
   .customer-home-section-heading { align-items: flex-start; flex-direction: column; gap: 0.55rem; }
   .customer-home-section-heading > a { min-height: 2.25rem; }
   .customer-home-category-grid { display: grid; grid-template-columns: 1fr; grid-template-rows: none; }
@@ -294,9 +272,6 @@
   .customer-home-category.is-pets { min-height: 13rem; border-radius: 1.6rem 1rem 1rem 1rem; }
   .customer-home-category.is-services { border-radius: 1rem 1rem 1.6rem 1rem; }
   .customer-home-category-content { width: 88%; }
-  .customer-home-experts { border-radius: 1rem 1.8rem 1rem 1rem; }
-  .customer-home-expert-grid { grid-template-columns: 1fr; }
-  .customer-home-expert-card { padding: 0.65rem; }
   .customer-home-listing-grid, .customer-home-product-grid { gap: 0.55rem; }
   .customer-home-listing-copy, .customer-home-product-copy { padding: 0.6rem; }
   .customer-home-product-image { height: 8rem; }

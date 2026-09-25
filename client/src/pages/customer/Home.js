@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import {
   Activity, ArrowRight, Brain, Building, CalendarDays, CheckCircle2,
   ChevronRight, Dumbbell, Heart, Package, PawPrint, Scissors, Search,
-  ShieldCheck, ShoppingBag, Sparkles, Star, Stethoscope, ThumbsUp, Users
+  ShieldCheck, ShoppingBag, Sparkles, Stethoscope, ThumbsUp
 } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { publicService, getImageUrl } from '../../services/apiService';
@@ -13,7 +13,7 @@ import { formatPeso } from '../../utils/paymentSummary';
 import '../../styles/CustomerHome.css';
 
 const EMPTY_DATA = {
-  pets: [], products: [], services: [], experts: [],
+  pets: [], products: [], services: [],
   stats: { stores: 0, pets: 0, experts: 0, products: 0, services: 0 }
 };
 
@@ -173,30 +173,6 @@ const Home = () => {
           ))}
         </div>
       </section>
-
-      {data.experts.length > 0 && (
-        <section className="customer-home-experts">
-          <SectionHeading eyebrow="Public professional profiles" title="Meet Pawzzle professionals." description="View active public profiles across veterinary, grooming, training, and boarding services." />
-          <div className="customer-home-expert-grid">
-            {data.experts.map((expert) => {
-              const reviewCount = Number(expert.professionalProfile?.reviewCount) || 0;
-              return (
-                <article key={expert._id || `${expert.firstName}-${expert.lastName}`} className="customer-home-expert-card">
-                  <div className="customer-home-avatar">
-                    {expert.avatar ? <img src={getImageUrl(expert.avatar)} alt={`${expert.firstName} ${expert.lastName}`} /> : <Users aria-hidden="true" />}
-                    <CheckCircle2 aria-label="Verified professional" />
-                  </div>
-                  <div className="customer-home-expert-copy">
-                    <h3>{expert.firstName} {expert.lastName}</h3>
-                    <p>{expert.staffType?.replace(/_/g, ' ') || 'Specialist'}</p>
-                    <span><Star className={reviewCount > 0 ? 'is-rated' : ''} aria-hidden="true" /> {reviewCount > 0 ? `${Number(expert.professionalProfile.rating).toFixed(1)} · ${reviewCount} ${reviewCount === 1 ? 'rating' : 'ratings'}` : 'No ratings yet'}</span>
-                  </div>
-                </article>
-              );
-            })}
-          </div>
-        </section>
-      )}
 
       {data.pets.length > 0 && (
         <section className="customer-home-section">

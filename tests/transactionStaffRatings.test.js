@@ -114,7 +114,8 @@ test('transaction rating indexes and profiles start without fabricated ratings',
   const staff = new User({ firstName: 'New', lastName: 'Professional', email: 'new-professional@example.com', role: 'staff' });
   assert.equal(staff.professionalProfile.rating, 0);
   assert.equal(staff.professionalProfile.reviewCount, 0);
-  assert.match(source('client/src/pages/customer/Home.js'), /No ratings yet/);
+  assert.match(source('client/src/pages/customer/StoreDetail.js'), /No ratings yet/);
+  assert.match(source('client/src/components/admin/RiderDashboard.js'), /No ratings yet/);
   assert.doesNotMatch(source('client/src/pages/customer/Home.js'), /reputation \|\| '5\.0'/);
   assert.doesNotMatch(source('client/src/pages/customer/StoreDetail.js'), /rating \|\| '5\.0'/);
 });

@@ -28,13 +28,14 @@ test('customer home preserves customer routes and authenticated CTA behavior', (
   assert.match(home, /!isAuthenticated/);
 });
 
-test('customer home uses real conditional content and no fabricated professional rating', () => {
-  assert.match(home, /data\.experts\.length > 0/);
+test('customer home keeps customer discovery content without the public professional showcase', () => {
   assert.match(home, /data\.pets\.length > 0/);
   assert.match(home, /data\.products\.length > 0/);
-  assert.match(home, /professionalProfile\?\.reviewCount/);
-  assert.match(home, /No ratings yet/);
-  assert.doesNotMatch(home, /rating\s*\|\|\s*['"]5/);
+  assert.doesNotMatch(home, /data\.experts/);
+  assert.doesNotMatch(home, /Public professional profiles/i);
+  assert.doesNotMatch(home, /Meet Pawzzle professionals/i);
+  assert.doesNotMatch(home, /customer-home-expert/);
+  assert.doesNotMatch(css, /customer-home-expert/);
 });
 
 test('customer home uses project imagery without remote fallbacks', () => {
