@@ -220,7 +220,13 @@ const getEligibleStaff = async (service, bookingDate, startTime, endTime, exclud
   const Booking = require('../models/Booking');
   const User = require('../models/User');
   const { hasPermission } = require('../config/permissions');
-  const { getStaffSpecializationRole, isRoleEligibleForService, isWithinStaffSchedule, isProfessionallyAssignable } = require('./staffSpecialization');
+  const {
+    getStaffSpecializationRole,
+    getProfessionalVerificationStatus,
+    isRoleEligibleForService,
+    isWithinStaffSchedule,
+    isProfessionallyAssignable
+  } = require('./staffSpecialization');
   const candidates = [];
   const bufferTime = service.bufferTime || 0;
 
