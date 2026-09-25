@@ -113,25 +113,100 @@ const toApplicationResponse = (application, { includeDocuments = false } = {}) =
   return object;
 };
 
-const attachStoreSummaries = async applications => {
+const taxProfileObject = profile => profile?.toObject ? profile.toObject() : { ...(profile || {}) };
+
+// The Store becomes authoritative once an application has been approved. The
+// original StoreApplication remains an immutable onboarding/audit record, so
+// management responses must not treat its older tax decision as current.
+const resolveAuthoritativeTaxProfile = (application, store) => {
+  const submitted = taxProfileObject(application?.taxProfile);
+  if (!store) {
+    const fallback = { ...submitted, source: 'application' };
+    if (fallback.tin) fallback.tinMasked = maskTin(fallback.tin);
+    delete fallback.tin;
+    delete fallback.corDocumentUrl;
+    return fallback;
+  }
+
+  const current = taxProfileObject(store.taxProfile);
+  const resolved = {
+    ...submitted,
+    birRegistrationStatus: current.birRegistered ? 'registered' : 'not_registered',
+    declaredTaxStatus: current.declaredTaxStatus ?? null,
+    verifiedTaxStatus: current.verifiedTaxStatus ?? null,
+    verificationStatus: current.verificationStatus || 'unverified',
+    tinMasked: maskTin(current.tin || submitted.tin),
+    branchCode: current.branchCode || submitted.branchCode,
+    registeredName: current.registeredName || submitted.registeredName,
+    registeredAddress: current.registeredAddress || submitted.registeredAddress,
+    lineOfBusiness: current.lineOfBusiness || submitted.lineOfBusiness,
+    submittedAt: current.submittedAt || submitted.submittedAt,
+    verifiedAt: current.verifiedAt || null,
+    rejectionReason: current.rejectionReason || '',
+    verificationNotes: current.verificationNotes || '',
+    sourceApplication: current.sourceApplication || application?._id,
+    source: 'store'
+  };
+  delete resolved.tin;
+  delete resolved.corDocumentUrl;
+  return resolved;
+};
+
+const attachStoreSummaries = async (applications, { includeDocuments = false } = {}) => {
   const rows = Array.isArray(applications) ? applications : [applications];
   const ownerIds = rows
     .map(application => application?.populated?.('applicant') || application?.applicant?._id || application?.applicant)
     .filter(Boolean);
   const stores = ownerIds.length
-    ? await Store.find({ owner: { $in: ownerIds } })
-      .select('_id owner name verificationStatus isActive isDeleted contactInfo.address taxProfile.verificationStatus taxProfile.verifiedTaxStatus')
+    ? await Store.find({ owner: { $in: ownerIds }, isDeleted: { $ne: true } })
+      .select('_id owner name verificationStatus isActive isDeleted contactInfo.address taxProfile.birRegistered taxProfile.declaredTaxStatus taxProfile.verificationStatus taxProfile.verifiedTaxStatus taxProfile.registeredName taxProfile.registeredAddress taxProfile.lineOfBusiness taxProfile.sourceApplication taxProfile.submittedAt taxProfile.verifiedAt +taxProfile.tin +taxProfile.branchCode +taxProfile.rejectionReason +taxProfile.verificationNotes')
       .lean()
     : [];
   const storesByOwner = new Map(stores.map(store => [String(store.owner), store]));
 
   return rows.map(application => {
     const ownerId = application?.populated?.('applicant') || application?.applicant?._id || application?.applicant;
+    const store = storesByOwner.get(String(ownerId)) || null;
+    const storeSummary = store ? {
+      _id: store._id,
+      name: store.name,
+      verificationStatus: store.verificationStatus,
+      isActive: store.isActive,
+      isDeleted: store.isDeleted,
+      taxProfile: {
+        verificationStatus: store.taxProfile?.verificationStatus || 'unverified',
+        verifiedTaxStatus: store.taxProfile?.verifiedTaxStatus || null
+      }
+    } : null;
     return {
-      ...toApplicationResponse(application),
-      store: storesByOwner.get(String(ownerId)) || null
+      ...toApplicationResponse(application, { includeDocuments }),
+      currentTaxProfile: resolveAuthoritativeTaxProfile(application, store),
+      store: storeSummary
     };
   });
+};
+
+const applyAuthoritativeTaxFilters = async (filter, { taxVerificationStatus, declaredTaxStatus, verifiedTaxStatus }) => {
+  if (!taxVerificationStatus && !declaredTaxStatus && !verifiedTaxStatus) return;
+
+  const stores = await Store.find({ isDeleted: { $ne: true } })
+    .select('owner taxProfile.verificationStatus taxProfile.declaredTaxStatus taxProfile.verifiedTaxStatus')
+    .lean();
+  const allStoreOwnerIds = stores.map(store => store.owner).filter(Boolean);
+  const matchingStoreOwnerIds = stores.filter(store => (
+    (!taxVerificationStatus || store.taxProfile?.verificationStatus === taxVerificationStatus)
+    && (!declaredTaxStatus || store.taxProfile?.declaredTaxStatus === declaredTaxStatus)
+    && (!verifiedTaxStatus || store.taxProfile?.verifiedTaxStatus === verifiedTaxStatus)
+  )).map(store => store.owner).filter(Boolean);
+  const historicalApplicationMatch = { applicant: { $nin: allStoreOwnerIds } };
+  if (taxVerificationStatus) historicalApplicationMatch['taxProfile.verificationStatus'] = taxVerificationStatus;
+  if (declaredTaxStatus) historicalApplicationMatch['taxProfile.declaredTaxStatus'] = declaredTaxStatus;
+  if (verifiedTaxStatus) historicalApplicationMatch['taxProfile.verifiedTaxStatus'] = verifiedTaxStatus;
+
+  filter.$and = [
+    ...(filter.$and || []),
+    { $or: [{ applicant: { $in: matchingStoreOwnerIds } }, historicalApplicationMatch] }
+  ];
 };
 
 // Configure multer for file uploads
@@ -448,9 +523,6 @@ const getAllApplications = async (req, res) => {
         filter.status = status;
       }
     }
-    if (taxVerificationStatus) filter['taxProfile.verificationStatus'] = taxVerificationStatus;
-    if (declaredTaxStatus) filter['taxProfile.declaredTaxStatus'] = declaredTaxStatus;
-    if (verifiedTaxStatus) filter['taxProfile.verifiedTaxStatus'] = verifiedTaxStatus;
     if (businessType) filter.legalStructure = businessType;
     if (city) filter['contactInfo.address.city'] = new RegExp(String(city).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
     if (search) {
@@ -461,6 +533,7 @@ const getAllApplications = async (req, res) => {
         { 'businessRegistration.certificateNumber': new RegExp(escaped, 'i') }
       ];
     }
+    await applyAuthoritativeTaxFilters(filter, { taxVerificationStatus, declaredTaxStatus, verifiedTaxStatus });
 
     const skip = (page - 1) * limit;
     const applications = await StoreApplication.find(filter)
@@ -502,8 +575,8 @@ const getApplicationById = async (req, res) => {
       return res.status(404).json({ message: 'Application not found' });
     }
 
-    const [applicationWithStore] = await attachStoreSummaries(application);
-    res.json({ application: { ...applicationWithStore, ...toApplicationResponse(application, { includeDocuments: true }), store: applicationWithStore.store } });
+    const [applicationWithStore] = await attachStoreSummaries(application, { includeDocuments: true });
+    res.json({ application: applicationWithStore });
   } catch (error) {
     console.error('Get application error:', error);
     res.status(500).json({ message: 'Server error' });
@@ -1035,5 +1108,7 @@ module.exports = {
   maskTin,
   toApplicationResponse,
   submitExpansionRequest,
+  resolveAuthoritativeTaxProfile,
+  applyAuthoritativeTaxFilters,
   upload
 };

@@ -5,6 +5,8 @@ import { getImageUrl, storeService } from '../../services/apiService';
 import { Building, Check, X, Eye, AlertTriangle, TrendingUp, Shield, Zap, Briefcase, ChevronRight, ShieldAlert, Search, Activity, ExternalLink, Wallet, Camera, MapPin, Phone, Heart } from 'lucide-react';
 import StoreComplianceReviewPanel from '../../components/admin/StoreComplianceReviewPanel';
 
+const authoritativeTaxProfile = application => application?.currentTaxProfile || application?.taxProfile || {};
+
 const StoreApplications = () => {
   const [applications, setApplications] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -159,6 +161,7 @@ const StoreApplications = () => {
     if (score >= 60) return 'text-secondary-500';
     return 'text-rose-500';
   };
+  const selectedTaxProfile = authoritativeTaxProfile(selectedApplication);
 
   if (loading && applications.length === 0) {
     return (
@@ -236,6 +239,7 @@ const StoreApplications = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {applications.map((app) => {
             const status = getStatusProps(app.status);
+            const taxProfile = authoritativeTaxProfile(app);
             return (
               <div key={app._id} className="group bg-white border border-slate-100 rounded-2xl p-8 shadow-sm hover:shadow-2xl transition-all relative overflow-hidden flex flex-col">
                 <div className="absolute top-0 right-0 p-8">
@@ -265,10 +269,10 @@ const StoreApplications = () => {
                         Store {app.store.verificationStatus || 'unverified'}
                       </span>
                     )}
-                    <span className={`text-[9px] font-black px-2 py-0.5 rounded uppercase tracking-tight ${app.taxProfile?.verificationStatus === 'verified' ? 'bg-emerald-50 text-emerald-700' : app.taxProfile?.verificationStatus === 'rejected' ? 'bg-rose-50 text-rose-700' : 'bg-amber-50 text-amber-700'}`}>
-                      {app.taxProfile?.verificationStatus === 'verified'
-                        ? (app.taxProfile?.verifiedTaxStatus === 'vat_registered' ? 'VAT Verified' : 'Non-VAT Verified')
-                        : app.taxProfile?.verificationStatus === 'rejected' ? 'Tax Needs Correction' : 'Tax Verification Pending'}
+                    <span className={`text-[9px] font-black px-2 py-0.5 rounded uppercase tracking-tight ${taxProfile.verificationStatus === 'verified' ? 'bg-emerald-50 text-emerald-700' : taxProfile.verificationStatus === 'rejected' ? 'bg-rose-50 text-rose-700' : 'bg-amber-50 text-amber-700'}`}>
+                      {taxProfile.verificationStatus === 'verified'
+                        ? (taxProfile.verifiedTaxStatus === 'vat_registered' ? 'VAT Verified' : 'Non-VAT Verified')
+                        : taxProfile.verificationStatus === 'rejected' ? 'Tax Needs Correction' : 'Tax Verification Pending'}
                     </span>
                     {!app.applicant && (
                       <span className="text-[9px] font-black text-rose-600 bg-rose-50 px-2 py-0.5 rounded uppercase tracking-tight">Applicant account unavailable</span>
@@ -416,7 +420,7 @@ const StoreApplications = () => {
                         </div>
                         <div>
                           <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1.5">TIN</p>
-                          <p className="text-[12px] font-black text-slate-900">{selectedApplication.taxProfile?.tinMasked || selectedApplication.taxId || 'N/A'}</p>
+                          <p className="text-[12px] font-black text-slate-900">{selectedTaxProfile.tinMasked || selectedApplication.taxId || 'N/A'}</p>
                         </div>
                         <div>
                           <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1.5">License No.</p>
@@ -664,19 +668,19 @@ const StoreApplications = () => {
                 <section className="md:col-span-2 rounded-2xl border border-primary-100 bg-primary-50 p-6 space-y-5">
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                     <div><h3 className="text-sm font-black text-slate-900">BIR / Tax Verification</h3><p className="text-[10px] text-slate-600">Store approval and tax verification are separate decisions.</p></div>
-                    <span className="rounded-full bg-white px-3 py-1 text-[9px] font-black uppercase text-primary-700">{(selectedApplication.taxProfile?.verificationStatus || 'unverified').replace('_', ' ')}</span>
+                    <span className="rounded-full bg-white px-3 py-1 text-[9px] font-black uppercase text-primary-700">{(selectedTaxProfile.verificationStatus || 'unverified').replace('_', ' ')}</span>
                   </div>
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                    <div className="rounded-xl bg-white p-3"><span className="text-[8px] font-black uppercase text-slate-400">BIR registered name</span><strong className="mt-1 block text-[11px] text-slate-900">{selectedApplication.taxProfile?.registeredName || 'Not provided'}</strong></div>
-                    <div className="rounded-xl bg-white p-3"><span className="text-[8px] font-black uppercase text-slate-400">TIN / Branch</span><strong className="mt-1 block text-[11px] text-slate-900">{selectedApplication.taxProfile?.tinMasked || 'Not provided'} / {selectedApplication.taxProfile?.branchCode || '—'}</strong></div>
-                    <div className="rounded-xl bg-white p-3"><span className="text-[8px] font-black uppercase text-slate-400">Applicant declared</span><strong className="mt-1 block text-[11px] text-slate-900">{selectedApplication.taxProfile?.declaredTaxStatus === 'vat_registered' ? 'VAT Registered' : selectedApplication.taxProfile?.declaredTaxStatus === 'non_vat_registered' ? 'Non-VAT Registered' : 'Not declared'}</strong></div>
-                    <div className="rounded-xl bg-white p-3"><span className="text-[8px] font-black uppercase text-slate-400">Verified status</span><strong className="mt-1 block text-[11px] text-slate-900">{selectedApplication.taxProfile?.verifiedTaxStatus === 'vat_registered' ? 'VAT Registered' : selectedApplication.taxProfile?.verifiedTaxStatus === 'non_vat_registered' ? 'Non-VAT Registered' : 'Not verified'}</strong></div>
+                    <div className="rounded-xl bg-white p-3"><span className="text-[8px] font-black uppercase text-slate-400">BIR registered name</span><strong className="mt-1 block text-[11px] text-slate-900">{selectedTaxProfile.registeredName || 'Not provided'}</strong></div>
+                    <div className="rounded-xl bg-white p-3"><span className="text-[8px] font-black uppercase text-slate-400">TIN / Branch</span><strong className="mt-1 block text-[11px] text-slate-900">{selectedTaxProfile.tinMasked || 'Not provided'} / {selectedTaxProfile.branchCode || '—'}</strong></div>
+                    <div className="rounded-xl bg-white p-3"><span className="text-[8px] font-black uppercase text-slate-400">Current declaration</span><strong className="mt-1 block text-[11px] text-slate-900">{selectedTaxProfile.declaredTaxStatus === 'vat_registered' ? 'VAT Registered' : selectedTaxProfile.declaredTaxStatus === 'non_vat_registered' ? 'Non-VAT Registered' : 'Not declared'}</strong></div>
+                    <div className="rounded-xl bg-white p-3"><span className="text-[8px] font-black uppercase text-slate-400">Verified status</span><strong className="mt-1 block text-[11px] text-slate-900">{selectedTaxProfile.verifiedTaxStatus === 'vat_registered' ? 'VAT Registered' : selectedTaxProfile.verifiedTaxStatus === 'non_vat_registered' ? 'Non-VAT Registered' : 'Not verified'}</strong></div>
                   </div>
                   <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
                     <select className="input w-full" value={taxReview.decision} onChange={(e) => setTaxReview(current => ({ ...current, decision: e.target.value }))}><option value="">Choose tax decision</option><option value="vat_registered">Verify as VAT Registered</option><option value="non_vat_registered">Verify as Non-VAT Registered</option><option value="rejected">Reject / Request Correction</option></select>
                     <input className="input w-full md:col-span-2" value={taxReview.decision === 'rejected' ? taxReview.rejectionReason : taxReview.notes} onChange={(e) => setTaxReview(current => ({ ...current, [current.decision === 'rejected' ? 'rejectionReason' : 'notes']: e.target.value }))} placeholder={taxReview.decision === 'rejected' ? 'Required correction reason' : 'Verification notes'} />
                   </div>
-                  {taxReview.decision && taxReview.decision !== 'rejected' && taxReview.decision !== selectedApplication.taxProfile?.declaredTaxStatus && <label className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-[10px] font-bold text-amber-800"><input type="checkbox" className="mt-0.5" checked={taxReview.acknowledgeMismatch} onChange={(e) => setTaxReview(current => ({ ...current, acknowledgeMismatch: e.target.checked }))} /> The document-supported decision differs from the applicant declaration. I reviewed the mismatch and recorded notes.</label>}
+                  {taxReview.decision && taxReview.decision !== 'rejected' && taxReview.decision !== selectedTaxProfile.declaredTaxStatus && <label className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-[10px] font-bold text-amber-800"><input type="checkbox" className="mt-0.5" checked={taxReview.acknowledgeMismatch} onChange={(e) => setTaxReview(current => ({ ...current, acknowledgeMismatch: e.target.checked }))} /> The document-supported decision differs from the current Store declaration. I reviewed the mismatch and recorded notes.</label>}
                   <button type="button" onClick={handleTaxVerification} className="h-10 rounded-xl bg-primary-700 px-5 text-[9px] font-black uppercase tracking-wider text-white hover:bg-slate-900">Save Tax Verification Decision</button>
                 </section>
               </div>
