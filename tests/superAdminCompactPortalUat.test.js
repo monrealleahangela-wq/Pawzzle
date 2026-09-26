@@ -33,7 +33,9 @@ test('every routed platform administration page remains present and protected', 
     assert.ok(app.includes(`path="superadmin/${route}"`), `missing /superadmin/${route} route`);
   }
   assert.equal((app.match(/path="superadmin\//g) || []).length, 16);
-  assert.equal((app.match(/roles=\{\['super_admin'\]\}/g) || []).length >= 16, true);
+  const superAdminOnly = (app.match(/roles=\{\['super_admin'\]\}/g) || []).length;
+  const sharedPlatformAdmin = (app.match(/roles=\{\['super_admin', 'platform_admin'\]\}/g) || []).length;
+  assert.equal(superAdminOnly + sharedPlatformAdmin >= 16, true);
 });
 
 test('platform role aliases share the same compact shell and navigation', () => {

@@ -19,10 +19,11 @@ const SupplierDashboard = () => {
   const [editingProduct, setEditingProduct] = useState(null);
   const [showRegister, setShowRegister] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [applicationFiles, setApplicationFiles] = useState({ businessRegistration: null, birCertificate: null });
 
   const initialProduct = { name: '', sku: '', description: '', category: 'pet_food', wholesalePrice: 0, retailPrice: 0, availableStock: 0, minimumOrderQuantity: 1, unitOfMeasure: 'piece', deliveryLeadTimeDays: 3, brand: '', images: [] };
   const [productForm, setProductForm] = useState(initialProduct);
-  const [registerForm, setRegisterForm] = useState({ businessName: '', contactPerson: '', email: '', phone: '', address: { street: '', city: '', province: '', zipCode: '' }, description: '', productCategories: [] });
+  const [registerForm, setRegisterForm] = useState({ businessName: '', contactPerson: '', email: '', phone: '', taxId: '', address: { street: '', city: '', province: '', zipCode: '' }, description: '', productCategories: [] });
 
   const categories = [
     { id: 'pet_food', label: 'Pet Food', icon: '🍖' },
@@ -54,15 +55,40 @@ const SupplierDashboard = () => {
 
   const handleRegister = async (e) => {
     e.preventDefault();
+    if (!applicationFiles.businessRegistration || !applicationFiles.birCertificate) {
+      return toast.error('Business registration and BIR documents are required.');
+    }
     setSubmitting(true);
     try {
-      await supplierService.register(registerForm);
+      const data = new FormData();
+      Object.entries(registerForm).forEach(([key, value]) => {
+        data.append(key, typeof value === 'object' ? JSON.stringify(value) : value);
+      });
+      data.append('businessRegistration', applicationFiles.businessRegistration);
+      data.append('birCertificate', applicationFiles.birCertificate);
+      await supplierService.register(data);
       toast.success('Supplier registration submitted! Awaiting verification.');
       setShowRegister(false);
       loadData();
     } catch (e) {
       toast.error(e.response?.data?.message || 'Registration failed');
     } finally { setSubmitting(false); }
+  };
+
+  const handleResubmit = async (e) => {
+    e.preventDefault();
+    if (!applicationFiles.businessRegistration || !applicationFiles.birCertificate) return toast.error('Choose both replacement documents.');
+    setSubmitting(true);
+    try {
+      const data = new FormData();
+      if (applicationFiles.businessRegistration) data.append('businessRegistration', applicationFiles.businessRegistration);
+      if (applicationFiles.birCertificate) data.append('birCertificate', applicationFiles.birCertificate);
+      await supplierService.resubmitApplication(data);
+      toast.success('Documents resubmitted for review.');
+      setApplicationFiles({ businessRegistration: null, birCertificate: null });
+      await loadData();
+    } catch (error) { toast.error(error.response?.data?.message || 'Resubmission failed.'); }
+    finally { setSubmitting(false); }
   };
 
   const handleProductSubmit = async (e) => {
@@ -179,6 +205,18 @@ const SupplierDashboard = () => {
               <textarea value={registerForm.description} onChange={e => setRegisterForm(p => ({ ...p, description: e.target.value }))}
                 className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-sm font-medium outline-none h-24 resize-none" placeholder="About your business..." />
             </div>
+            <div className="grid gap-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 md:grid-cols-2">
+              <div className="md:col-span-2">
+                <h2 className="text-xs font-black uppercase text-amber-900">Platform supplier verification</h2>
+                <p className="mt-1 text-xs leading-5 text-amber-800">Platform suppliers must provide the same core business evidence used by Pawzzle business verification. Documents are visible only to the applicant and Platform Admin reviewers.</p>
+              </div>
+              <label className="text-xs font-bold text-slate-700">Business registration document
+                <input type="file" required accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" onChange={e => setApplicationFiles(files => ({ ...files, businessRegistration: e.target.files?.[0] || null }))} className="mt-2 block w-full text-xs" />
+              </label>
+              <label className="text-xs font-bold text-slate-700">BIR Certificate of Registration (Form 2303)
+                <input type="file" required accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" onChange={e => setApplicationFiles(files => ({ ...files, birCertificate: e.target.files?.[0] || null }))} className="mt-2 block w-full text-xs" />
+              </label>
+            </div>
             <button type="submit" disabled={submitting}
               className="min-h-10 w-full rounded-xl bg-primary-600 px-4 py-2.5 text-[11px] font-black uppercase tracking-wide text-white shadow-sm transition-all hover:bg-primary-700 disabled:opacity-50">
               {submitting ? 'Submitting...' : 'Submit Application'}
@@ -191,6 +229,21 @@ const SupplierDashboard = () => {
 
   const supplier = dashboard?.supplier;
   const stats = dashboard?.stats;
+
+  if (['resubmission_required', 'rejected'].includes(supplier?.status)) return (
+    <div className="flex min-h-[55vh] items-center justify-center bg-slate-50/50 p-4">
+      <form onSubmit={handleResubmit} className="w-full max-w-xl rounded-2xl border border-rose-100 bg-white p-6 shadow-sm">
+        <h2 className="text-xl font-black text-slate-900">{supplier.status === 'rejected' ? 'Application rejected' : 'Documents need an update'}</h2>
+        <p className="mt-2 rounded-xl bg-rose-50 p-3 text-sm text-rose-700">{supplier.rejectionReason || 'Platform Admin requested updated supplier documents.'}</p>
+        <p className="mt-4 text-xs leading-5 text-slate-500">Upload replacement business registration and BIR documents. Earlier versions remain in the protected application history.</p>
+        <div className="mt-4 grid gap-4 sm:grid-cols-2">
+          <label className="text-xs font-bold">Business registration<input required type="file" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" onChange={e => setApplicationFiles(files => ({ ...files, businessRegistration: e.target.files?.[0] || null }))} className="mt-2 block w-full text-xs" /></label>
+          <label className="text-xs font-bold">BIR Certificate<input required type="file" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" onChange={e => setApplicationFiles(files => ({ ...files, birCertificate: e.target.files?.[0] || null }))} className="mt-2 block w-full text-xs" /></label>
+        </div>
+        <button disabled={submitting} className="mt-5 w-full rounded-xl bg-primary-600 px-4 py-3 text-xs font-black uppercase text-white disabled:opacity-50">{submitting ? 'Submitting...' : 'Resubmit documents'}</button>
+      </form>
+    </div>
+  );
 
   // ── PENDING VERIFICATION ──────────────────────────────
   if (supplier?.status === 'pending_verification') return (

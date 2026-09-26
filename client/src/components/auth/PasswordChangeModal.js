@@ -65,7 +65,7 @@ const PasswordChangeModal = () => {
                                 Create a new password
                             </h2>
                             <p className="mt-1 text-xs font-medium text-slate-500">
-                                Required before you can continue to your staff account.
+                                Required before you can continue to your Pawzzle account.
                             </p>
                         </div>
                     </div>

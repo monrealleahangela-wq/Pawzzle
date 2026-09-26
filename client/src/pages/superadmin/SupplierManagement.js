@@ -39,6 +39,7 @@ const SupplierManagement = () => {
       const successLabels = {
         verify: 'verified',
         reject: 'rejected',
+        request_resubmission: 'returned for document resubmission',
         suspend: 'suspended',
         reactivate: 'reactivated and available to sellers'
       };
@@ -77,6 +78,7 @@ const SupplierManagement = () => {
 
   const statusConfig = {
     pending_verification: { color: 'amber', icon: Clock, label: 'Pending' },
+    resubmission_required: { color: 'orange', icon: Clock, label: 'Resubmission Required' },
     verified: { color: 'emerald', icon: CheckCircle, label: 'Verified' },
     suspended: { color: 'rose', icon: Ban, label: 'Suspended' },
     rejected: { color: 'slate', icon: XCircle, label: 'Rejected' }
@@ -162,6 +164,7 @@ const SupplierManagement = () => {
                   <div className="mb-1 flex min-w-0 flex-wrap items-center gap-2">
                     <h3 className="min-w-0 text-sm font-black uppercase leading-tight text-slate-900 line-clamp-2 break-words">{s.businessName}</h3>
                     <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase bg-${cfg.color}-100 text-${cfg.color}-700 shrink-0`}>{cfg.label}</span>
+                    <span className="rounded bg-primary-50 px-2 py-0.5 text-[8px] font-black uppercase text-primary-700">{s.supplierType === 'store_added' ? 'Store-added' : 'Platform'}</span>
                   </div>
                   <p className="text-[10px] leading-relaxed text-slate-400 break-words">{s.contactPerson} • {s.email} • {s.address?.city}, {s.address?.province}</p>
                   <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2">
@@ -175,7 +178,7 @@ const SupplierManagement = () => {
                     className="px-4 py-2.5 bg-slate-900 text-white rounded-xl text-[9px] font-black uppercase hover:bg-primary-600 transition-all flex items-center gap-1.5">
                     <Eye className="h-3.5 w-3.5" /> View
                   </button>
-                  {s.status === 'pending_verification' && (
+                  {s.status === 'pending_verification' && s.supplierType !== 'store_added' && (
                     <>
                       <button onClick={() => handleAction(s._id, 'verify')}
                         className="px-4 py-2.5 bg-emerald-600 text-white rounded-xl text-[9px] font-black uppercase hover:bg-emerald-700 transition-all">Verify</button>
@@ -242,6 +245,22 @@ const SupplierManagement = () => {
                 </div>
               </div>
 
+              {supplierDetails.supplier?.supplierType !== 'store_added' && (
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-5">
+                  <h4 className="mb-3 text-[10px] font-black uppercase tracking-widest text-slate-500">Application Documents</h4>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {supplierDetails.supplier?.applicationDocuments?.filter(document => document.status !== 'superseded').map(document => (
+                      <a key={document._id} href={getImageUrl(document.documentUrl)} target="_blank" rel="noreferrer" className="rounded-lg border border-slate-200 bg-white p-3 text-xs hover:border-primary-400">
+                        <b className="block capitalize">{document.documentType?.replaceAll('_', ' ')}</b>
+                        <span className="mt-1 block text-[9px] uppercase text-slate-500">{document.status}</span>
+                        {document.reviewerFeedback && <span className="mt-1 block text-[10px] text-rose-600">{document.reviewerFeedback}</span>}
+                      </a>
+                    ))}
+                    {!supplierDetails.supplier?.applicationDocuments?.length && <p className="text-xs text-amber-700">No structured documents are attached. Legacy evidence must be reviewed before approval.</p>}
+                  </div>
+                </div>
+              )}
+
               <div className="grid md:grid-cols-2 gap-4">
                 <div><h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Supplied Products</h4><div className="space-y-2">{supplierDetails.products?.map(product => <div key={product._id} className="p-3 bg-slate-50 rounded-lg text-xs flex justify-between"><div><b>{product.name}</b><p className="text-[9px] text-slate-400">{product.sku} · {product.availableStock} available</p></div><b>₱{product.wholesalePrice?.toLocaleString()}</b></div>)}{!supplierDetails.products?.length && <p className="text-xs text-slate-400">No products listed.</p>}</div></div>
                 <div><h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Purchase Orders</h4><div className="space-y-2">{supplierDetails.orders?.map(order => <div key={order._id} className="p-3 bg-slate-50 rounded-lg text-xs flex justify-between"><div><b>{order.orderNumber}</b><p className="text-[9px] text-slate-400">{order.store?.name} · {order.status} · {order.paymentStatus}</p></div><b>{formatPeso(order.totalCost)}</b></div>)}{!supplierDetails.orders?.length && <p className="text-xs text-slate-400">No purchase orders.</p>}</div></div>
@@ -256,9 +275,13 @@ const SupplierManagement = () => {
                     className="w-full px-4 py-2.5 bg-white border border-primary-200 rounded-xl text-sm outline-none" />
                   <div className="flex gap-2 flex-wrap">
                     <button onClick={editSupplier} className="px-4 py-2 bg-primary-600 text-white rounded-xl text-[9px] font-black uppercase">Edit details</button>
-                    {['pending_verification', 'rejected'].includes(supplierDetails.supplier?.status) && (
+                    {['pending_verification', 'rejected'].includes(supplierDetails.supplier?.status) && supplierDetails.supplier?.supplierType !== 'store_added' && (
                       <button onClick={() => handleAction(supplierDetails.supplier._id, 'verify')}
                         className="px-4 py-2 bg-emerald-600 text-white rounded-xl text-[9px] font-black uppercase">Verify</button>
+                    )}
+                    {['pending_verification', 'rejected'].includes(supplierDetails.supplier?.status) && supplierDetails.supplier?.supplierType !== 'store_added' && (
+                      <button onClick={() => handleAction(supplierDetails.supplier._id, 'request_resubmission')}
+                        className="px-4 py-2 bg-orange-100 text-orange-700 rounded-xl text-[9px] font-black uppercase">Request resubmission</button>
                     )}
                     {supplierDetails.supplier?.status !== 'rejected' && (
                       <button onClick={() => handleAction(supplierDetails.supplier._id, 'reject')}

@@ -546,7 +546,9 @@ export const logisticsService = {
 
 // Supplier services
 export const supplierService = {
-  register: (data) => api.post('/suppliers/register', data),
+  register: (data) => api.post('/suppliers/register', data, data instanceof FormData ? { headers: { 'Content-Type': 'multipart/form-data' } } : undefined),
+  resubmitApplication: (data) => api.post('/suppliers/application/resubmit', data, { headers: { 'Content-Type': 'multipart/form-data' } }),
+  activateInvitation: (token) => api.get(`/suppliers/activate/${encodeURIComponent(token)}`),
   getProfile: () => api.get('/suppliers/me'),
   updateProfile: (data) => api.put('/suppliers/me', data),
   getDashboard: () => api.get('/suppliers/dashboard'),
@@ -561,6 +563,10 @@ export const supplierService = {
   // Browse (seller side)
   browse: (params) => api.get('/suppliers/browse', { params }),
   getCatalog: (supplierId, params) => api.get(`/suppliers/catalog/${supplierId}`, { params }),
+  createStoreSupplier: (data) => api.post('/suppliers/store-managed', data),
+  getStoreManagedSuppliers: (params) => api.get('/suppliers/store-managed', { params }),
+  resendStoreInvitation: (id) => api.post(`/suppliers/store-managed/${id}/resend-invitation`),
+  updateStoreSupplierStatus: (id, action) => api.patch(`/suppliers/store-managed/${id}/status`, { action }),
   // Admin
   adminGetAll: (params) => api.get('/suppliers/admin/all', { params }),
   adminGetDetails: (id) => api.get(`/suppliers/admin/${id}`),

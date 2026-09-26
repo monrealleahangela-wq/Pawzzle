@@ -8,6 +8,8 @@ const supplyChainLogSchema = new mongoose.Schema({
       // Supplier actions
       'supplier_registered', 'supplier_verified', 'supplier_rejected', 'supplier_suspended',
       'supplier_reactivated', 'supplier_deactivated', 'supplier_updated',
+      'supplier_invited', 'supplier_activated', 'supplier_resubmission_requested',
+      'supplier_resubmitted', 'supplier_association_deactivated', 'supplier_association_reactivated',
       'supplier_product_added', 'supplier_product_updated', 'supplier_product_removed',
       // Purchase order actions
       'purchase_order_created', 'purchase_order_submitted', 'purchase_order_confirmed',
@@ -35,7 +37,8 @@ const supplyChainLogSchema = new mongoose.Schema({
   },
   userRole: {
     type: String,
-    enum: ['super_admin', 'platform_admin', 'admin', 'staff', 'supplier', 'customer', 'system'],
+    enum: ['super_admin', 'platform_admin', 'admin', 'store_owner', 'manager',
+      'procurement_officer', 'inventory_staff', 'staff', 'supplier', 'customer', 'system'],
     required: true
   },
 

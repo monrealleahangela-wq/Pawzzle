@@ -163,6 +163,16 @@ const requireStaffType = (...types) => (req, res, next) => {
 // Customer only middleware
 const customerOnly = authorize('customer');
 
+const requirePasswordChangeCompleted = (req, res, next) => {
+  if (req.user?.requiresPasswordChange) {
+    return res.status(403).json({
+      code: 'PASSWORD_CHANGE_REQUIRED',
+      message: 'Change your temporary password before using this account.'
+    });
+  }
+  next();
+};
+
 // Check if user can access their own resource or is admin
 const canAccessResource = (req, res, next) => {
   const { userId } = req.params;
@@ -197,5 +207,6 @@ module.exports = {
   adminOrStaff,
   requireStaffType,
   customerOnly,
+  requirePasswordChangeCompleted,
   canAccessResource
 };

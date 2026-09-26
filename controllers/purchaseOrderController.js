@@ -10,7 +10,13 @@ const InventoryLot = require('../models/InventoryLot');
 const SupplyChainLog = require('../models/SupplyChainLog');
 const InventoryLedgerService = require('../services/inventoryLedgerService');
 const { createNotification } = require('./notificationController');
-const { isSupplierAvailable } = require('../utils/supplierLifecycle');
+const { isSupplierSelectableForStore } = require('../utils/supplierLifecycle');
+
+const resolveUserStore = async user => {
+  if (user.store) return user.store._id || user.store;
+  const ownedStore = await Store.findOne({ owner: user._id, isDeleted: { $ne: true } }).select('_id');
+  return ownedStore?._id || null;
+};
 
 // ═══════════════════════════════════════════════════════════════
 // SELLER - Create & Manage Purchase Orders
@@ -27,21 +33,14 @@ const createPurchaseOrder = async (req, res) => {
     const productIds = items.map(item => String(item.supplierProductId || ''));
     if (new Set(productIds).size !== productIds.length) return res.status(400).json({ message: 'Duplicate products are not allowed in one purchase order.' });
 
-    // Verify supplier
-    const supplier = await Supplier.findById(supplierId);
-    if (!isSupplierAvailable(supplier)) {
-      return res.status(400).json({ message: 'Only active verified suppliers can receive orders.' });
-    }
-
-    // Resolve store
-    let store = null;
-    if (req.user.store) {
-      store = req.user.store;
-    } else {
-      const ownedStore = await Store.findOne({ owner: req.user._id });
-      if (ownedStore) store = ownedStore._id;
-    }
+    // Resolve the caller's authoritative store before checking supplier scope.
+    const store = await resolveUserStore(req.user);
     if (!store) return res.status(400).json({ message: 'You must have a store to create purchase orders.' });
+
+    const supplier = await Supplier.findById(supplierId);
+    if (!isSupplierSelectableForStore(supplier, store)) {
+      return res.status(400).json({ message: 'The selected supplier is not active or eligible for this store.' });
+    }
 
     // Validate items
     let subtotal = 0;
@@ -154,7 +153,9 @@ const createPurchaseOrder = async (req, res) => {
 const getSellerOrders = async (req, res) => {
   try {
     const { status, page = 1, limit = 20 } = req.query;
-    let filter = { seller: req.user._id, isDeleted: false };
+    const store = await resolveUserStore(req.user);
+    if (!store) return res.status(403).json({ message: 'Authorized store not found.' });
+    let filter = { store, isDeleted: false };
     if (status) filter.status = status;
 
     const skip = (page - 1) * limit;
@@ -203,7 +204,8 @@ const getOrderById = async (req, res) => {
 // Cancel order (by seller, only if not yet shipped)
 const cancelOrder = async (req, res) => {
   try {
-    const order = await PurchaseOrder.findOne({ _id: req.params.id, seller: req.user._id });
+    const store = await resolveUserStore(req.user);
+    const order = await PurchaseOrder.findOne({ _id: req.params.id, store });
     if (!order) return res.status(404).json({ message: 'Order not found.' });
 
     if (['shipped', 'delivered', 'cancelled'].includes(order.status)) {

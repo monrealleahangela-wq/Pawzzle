@@ -1,9 +1,13 @@
 const express = require('express');
 const router = express.Router();
-const { authenticate, superAdminOnly } = require('../middleware/auth');
+const { authenticate, superAdminOnly, requirePermission, requirePasswordChangeCompleted } = require('../middleware/auth');
+const { uploadDoc, handleUploadError } = require('../middleware/upload');
 
 const {
-  registerSupplier, getMySupplierProfile, updateSupplierProfile, getSupplierDashboard,
+  registerSupplier, resubmitSupplierApplication,
+  createStoreSupplier, getStoreManagedSuppliers, resendStoreSupplierInvitation, activateSupplierInvitation,
+  updateStoreSupplierAssociation,
+  getMySupplierProfile, updateSupplierProfile, getSupplierDashboard,
   addProduct, getMyProducts, updateProduct, deleteProduct,
   getSupplierOrders, updateOrderStatus,
   browseSuppliers, getSupplierCatalog,
@@ -12,20 +16,34 @@ const {
 } = require('../controllers/supplierController');
 
 // ── Supplier self-service routes ──────────────────────────
-router.post('/register', authenticate, registerSupplier);
-router.get('/me', authenticate, getMySupplierProfile);
-router.put('/me', authenticate, updateSupplierProfile);
-router.get('/dashboard', authenticate, getSupplierDashboard);
+const supplierDocumentUpload = uploadDoc.fields([
+  { name: 'businessRegistration', maxCount: 1 },
+  { name: 'birCertificate', maxCount: 1 }
+]);
+
+router.get('/activate/:token', activateSupplierInvitation);
+router.post('/register', authenticate, supplierDocumentUpload, handleUploadError, registerSupplier);
+router.post('/application/resubmit', authenticate, supplierDocumentUpload, handleUploadError, resubmitSupplierApplication);
+router.get('/me', authenticate, requirePasswordChangeCompleted, getMySupplierProfile);
+router.put('/me', authenticate, requirePasswordChangeCompleted, updateSupplierProfile);
+router.get('/dashboard', authenticate, requirePasswordChangeCompleted, getSupplierDashboard);
 
 // ── Supplier product management ───────────────────────────
-router.post('/products', authenticate, addProduct);
-router.get('/products', authenticate, getMyProducts);
-router.put('/products/:id', authenticate, updateProduct);
-router.delete('/products/:id', authenticate, deleteProduct);
+router.post('/products', authenticate, requirePasswordChangeCompleted, addProduct);
+router.get('/products', authenticate, requirePasswordChangeCompleted, getMyProducts);
+router.put('/products/:id', authenticate, requirePasswordChangeCompleted, updateProduct);
+router.delete('/products/:id', authenticate, requirePasswordChangeCompleted, deleteProduct);
 
 // ── Supplier order management ─────────────────────────────
-router.get('/orders', authenticate, getSupplierOrders);
-router.patch('/orders/:id/status', authenticate, updateOrderStatus);
+router.get('/orders', authenticate, requirePasswordChangeCompleted, getSupplierOrders);
+router.patch('/orders/:id/status', authenticate, requirePasswordChangeCompleted, updateOrderStatus);
+
+// Store-scoped supplier invitations and lifecycle. The server resolves the
+// caller's store; no client-provided store or owner id is trusted.
+router.get('/store-managed', authenticate, requirePermission('suppliers.manage', 'procurement.manage'), getStoreManagedSuppliers);
+router.post('/store-managed', authenticate, requirePermission('suppliers.manage', 'procurement.manage'), createStoreSupplier);
+router.post('/store-managed/:id/resend-invitation', authenticate, requirePermission('suppliers.manage', 'procurement.manage'), resendStoreSupplierInvitation);
+router.patch('/store-managed/:id/status', authenticate, requirePermission('suppliers.manage', 'procurement.manage'), updateStoreSupplierAssociation);
 
 // ── Public: Browse verified suppliers (for sellers) ───────
 router.get('/browse', authenticate, browseSuppliers);

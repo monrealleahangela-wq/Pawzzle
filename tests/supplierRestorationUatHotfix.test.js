@@ -25,6 +25,10 @@ const activeSupplier = () => ({
 
 test('active supplier filter is the shared seller, procurement, and DSS source of truth', () => {
   assert.deepEqual(getActiveSupplierFilter(), {
+    $or: [
+      { supplierType: 'platform' },
+      { supplierType: { $exists: false } }
+    ],
     status: 'verified',
     isActive: true,
     isDeleted: false
@@ -88,9 +92,9 @@ test('seller discovery, catalog, procurement, and DSS all enforce current suppli
   const purchaseOrderController = read('controllers/purchaseOrderController.js');
   const decisionSupportService = read('services/decisionSupportService.js');
 
-  assert.match(supplierController, /let filter = getActiveSupplierFilter\(\)/);
-  assert.match(supplierController, /if \(!isSupplierAvailable\(supplier\)\)[\s\S]*Supplier not found or unavailable/);
-  assert.match(purchaseOrderController, /if \(!isSupplierAvailable\(supplier\)\)[\s\S]*Only active verified suppliers can receive orders/);
+  assert.match(supplierController, /let filter = getSelectableSupplierFilterForStore\(store\._id\)/);
+  assert.match(supplierController, /if \(!store \|\| !isSupplierSelectableForStore\(supplier, store\._id\)\)[\s\S]*Supplier not found or unavailable/);
+  assert.match(purchaseOrderController, /if \(!isSupplierSelectableForStore\(supplier, store\)\)[\s\S]*not active or eligible for this store/);
   assert.match(decisionSupportService, /Supplier\.find\(getActiveSupplierFilter\(\)\)/);
 });
 

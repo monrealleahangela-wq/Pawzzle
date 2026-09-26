@@ -18,9 +18,9 @@ test('first-login password dialog uses a compact viewport-safe layout', () => {
   assert.doesNotMatch(source, /max-w-lg|rounded-\[2\.5rem\]|p-8 sm:p-10 space-y-8|text-3xl/);
 });
 
-test('password dialog explains the required action in clear staff-friendly language', () => {
+test('password dialog explains the required action for invited staff and supplier accounts', () => {
   assert.match(source, /Create a new password/);
-  assert.match(source, /Required before you can continue to your staff account/);
+  assert.match(source, /Required before you can continue to your Pawzzle account/);
   assert.match(source, /Temporary password/);
   assert.match(source, /New password/);
   assert.match(source, /Confirm new password/);

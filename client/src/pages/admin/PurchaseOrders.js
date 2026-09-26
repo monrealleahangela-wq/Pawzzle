@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import { Truck, Package, Plus, ShoppingCart, X, Eye, Minus, TrendingDown, Layers, Star } from 'lucide-react';
+import { Truck, Package, Plus, ShoppingCart, X, Eye, Minus, TrendingDown, Layers, Star, Mail, Power } from 'lucide-react';
 import { supplierService, purchaseOrderService, getImageUrl, adminProductService } from '../../services/apiService';
 import PaymentBreakdown from '../../components/payments/PaymentBreakdown';
 import { formatPeso, purchaseOrderPaymentSummary } from '../../utils/paymentSummary';
@@ -20,6 +20,10 @@ const PurchaseOrders = () => {
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [storeProducts, setStoreProducts] = useState([]);
   const [productMapping, setProductMapping] = useState({});
+  const [showSupplierForm, setShowSupplierForm] = useState(false);
+  const emptySupplierForm = { businessName: '', contactPerson: '', email: '', phone: '', address: { street: '', city: '', province: '', zipCode: '' }, description: '' };
+  const [supplierForm, setSupplierForm] = useState(emptySupplierForm);
+  const [savingSupplier, setSavingSupplier] = useState(false);
 
   useEffect(() => { fetchData(); }, []);
 
@@ -36,7 +40,7 @@ const PurchaseOrders = () => {
     try {
       const [ordRes, supRes, prodRes] = await Promise.all([
         purchaseOrderService.getAll(),
-        supplierService.browse(),
+        supplierService.getStoreManagedSuppliers(),
         adminProductService.getAllProducts()
       ]);
       setOrders(ordRes.data.orders || []);
@@ -53,6 +57,34 @@ const PurchaseOrders = () => {
       setShowCatalog(true);
       setCart([]);
     } catch (e) { toast.error('Failed to load catalog'); }
+  };
+
+  const inviteSupplier = async (event) => {
+    event.preventDefault();
+    setSavingSupplier(true);
+    try {
+      const response = await supplierService.createStoreSupplier(supplierForm);
+      toast[response.data.invitationDelivered ? 'success' : 'warning'](response.data.message);
+      setSupplierForm(emptySupplierForm);
+      setShowSupplierForm(false);
+      await fetchData();
+    } catch (error) { toast.error(error.response?.data?.message || 'Unable to invite supplier.'); }
+    finally { setSavingSupplier(false); }
+  };
+
+  const changeSupplierStatus = async (supplier, action) => {
+    try {
+      await supplierService.updateStoreSupplierStatus(supplier._id, action);
+      toast.success(`Supplier ${action}d for this store.`);
+      await fetchData();
+    } catch (error) { toast.error(error.response?.data?.message || 'Unable to update supplier.'); }
+  };
+
+  const resendInvitation = async supplier => {
+    try {
+      const response = await supplierService.resendStoreInvitation(supplier._id);
+      toast.success(response.data.message);
+    } catch (error) { toast.error(error.response?.data?.message || 'Unable to resend invitation.'); }
   };
 
   const addToCart = (product) => {
@@ -191,7 +223,12 @@ const PurchaseOrders = () => {
 
       {/* ── SUPPLIERS TAB ── */}
       {activeTab === 'suppliers' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
+            <div><h2 className="text-sm font-black text-slate-900">Supplier Management</h2><p className="mt-1 text-xs text-slate-500">Invite a trusted store supplier or order from an approved platform supplier.</p></div>
+            <button onClick={() => setShowSupplierForm(true)} className="inline-flex items-center gap-2 rounded-xl bg-primary-600 px-4 py-3 text-[10px] font-black uppercase text-white hover:bg-primary-700"><Plus className="h-4 w-4" /> Add Supplier</button>
+          </div>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
           {suppliers.map(s => (
             <div key={s._id} className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm hover:shadow-lg transition-all">
               <div className="flex items-center gap-3 mb-4">
@@ -201,6 +238,7 @@ const PurchaseOrders = () => {
                 <div>
                   <h3 className="text-sm font-black text-slate-900 uppercase">{s.businessName}</h3>
                   <p className="text-[9px] text-slate-400">{s.address?.city}, {s.address?.province}</p>
+                  <div className="mt-1 flex flex-wrap gap-1"><span className="rounded-full bg-primary-50 px-2 py-0.5 text-[8px] font-black uppercase text-primary-700">{s.supplierType === 'store_added' ? 'Store-added' : 'Platform supplier'}</span><span className={`rounded-full px-2 py-0.5 text-[8px] font-black uppercase ${s.selectable ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>{String(s.storeAssociationStatus || s.status).replaceAll('_', ' ')}</span></div>
                 </div>
               </div>
               <div className="flex items-center gap-4 mb-3">
@@ -212,10 +250,12 @@ const PurchaseOrders = () => {
                   <span key={c} className="px-2 py-0.5 bg-slate-100 rounded text-[8px] font-bold text-slate-500 uppercase">{c.replace('_', ' ')}</span>
                 ))}
               </div>
-              <button onClick={() => browseCatalog(s._id)}
-                className="w-full py-3 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-600 transition-all">
-                View Catalog
-              </button>
+              <div className="flex flex-wrap gap-2">
+                <button disabled={!s.selectable} onClick={() => browseCatalog(s._id)} className="min-w-[8rem] flex-1 rounded-xl bg-slate-900 py-3 text-[10px] font-black uppercase tracking-widest text-white hover:bg-indigo-600 disabled:cursor-not-allowed disabled:opacity-40">View Catalog</button>
+                {s.supplierType === 'store_added' && s.storeAssociationStatus === 'pending_activation' && <button title="Resend invitation" onClick={() => resendInvitation(s)} className="rounded-xl border border-slate-200 p-3 text-slate-600 hover:text-primary-600"><Mail className="h-4 w-4" /></button>}
+                {s.supplierType === 'store_added' && s.storeAssociationStatus === 'active' && <button title="Deactivate for this store" onClick={() => changeSupplierStatus(s, 'deactivate')} className="rounded-xl border border-rose-200 p-3 text-rose-600"><Power className="h-4 w-4" /></button>}
+                {s.supplierType === 'store_added' && s.storeAssociationStatus === 'inactive' && <button onClick={() => changeSupplierStatus(s, 'reactivate')} className="rounded-xl border border-emerald-200 px-3 py-2 text-[9px] font-black uppercase text-emerald-700">Reactivate</button>}
+              </div>
             </div>
           ))}
           {suppliers.length === 0 && (
@@ -235,6 +275,21 @@ const PurchaseOrders = () => {
               </div>
             </div>
           )}
+          </div>
+        </div>
+      )}
+
+      {showSupplierForm && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-slate-900/60 p-3 backdrop-blur-sm">
+          <form onSubmit={inviteSupplier} className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white p-5 shadow-2xl">
+            <div className="mb-4 flex items-start justify-between"><div><h2 className="text-lg font-black text-slate-900">Add Store Supplier</h2><p className="mt-1 text-xs text-slate-500">No platform documents are required. Pawzzle emails a single-use activation link and temporary password.</p></div><button type="button" onClick={() => setShowSupplierForm(false)}><X className="h-5 w-5" /></button></div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {[['businessName','Business name'],['contactPerson','Contact person'],['email','Email'],['phone','Phone']].map(([key,label]) => <label key={key} className="text-xs font-bold text-slate-700">{label}<input required type={key === 'email' ? 'email' : 'text'} value={supplierForm[key]} onChange={e => setSupplierForm(form => ({ ...form, [key]: e.target.value }))} className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm" /></label>)}
+              {[['street','Street'],['city','City'],['province','Province'],['zipCode','ZIP code']].map(([key,label]) => <label key={key} className="text-xs font-bold text-slate-700">{label}<input required={key !== 'zipCode'} value={supplierForm.address[key]} onChange={e => setSupplierForm(form => ({ ...form, address: { ...form.address, [key]: e.target.value } }))} className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm" /></label>)}
+              <label className="text-xs font-bold text-slate-700 sm:col-span-2">Description<textarea value={supplierForm.description} onChange={e => setSupplierForm(form => ({ ...form, description: e.target.value }))} className="mt-1 min-h-20 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm" /></label>
+            </div>
+            <div className="mt-5 flex justify-end gap-2"><button type="button" onClick={() => setShowSupplierForm(false)} className="rounded-xl px-4 py-2.5 text-xs font-bold text-slate-500">Cancel</button><button disabled={savingSupplier} className="rounded-xl bg-primary-600 px-5 py-2.5 text-xs font-black text-white disabled:opacity-50">{savingSupplier ? 'Creating invitation...' : 'Create & Email Invitation'}</button></div>
+          </form>
         </div>
       )}
 

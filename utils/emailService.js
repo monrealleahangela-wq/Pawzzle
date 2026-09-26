@@ -68,6 +68,68 @@ const wrapInTemplate = (title, body) => `
 </html>
 `;
 
+const escapeHtml = value => String(value || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+
+const deliverHtmlEmail = async ({ email, subject, html }) => {
+    const fromUser = process.env.EMAIL_USER;
+    const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
+    if (resend && process.env.RESEND_FROM_EMAIL) {
+        try {
+            const data = await resend.emails.send({
+                from: `Pawzzle <${process.env.RESEND_FROM_EMAIL}>`,
+                to: email,
+                subject,
+                html
+            });
+            return { success: true, provider: 'resend', id: data.id };
+        } catch (error) {
+            console.warn('[EmailService] Resend delivery failed; trying SMTP:', error.message);
+        }
+    }
+    for (const alternativePort of [false, true]) {
+        try {
+            const transporter = await getTransporter(alternativePort);
+            await transporter.sendMail({ from: `"Pawzzle Support" <${fromUser}>`, to: email, subject, html });
+            return { success: true, provider: 'smtp' };
+        } catch (error) {
+            if (alternativePort) return { success: false, errorMessage: error.message };
+        }
+    }
+    return { success: false, errorMessage: 'Email delivery failed.' };
+};
+
+const sendSupplierInvitation = async ({ email, temporaryPassword, contactPerson, businessName, activationToken }) => {
+    const clientUrl = process.env.CLIENT_URL || 'https://pawzzle.io';
+    const activationUrl = `${clientUrl}/supplier/activate/${encodeURIComponent(activationToken)}`;
+    const html = wrapInTemplate('Supplier Invitation', `
+        <h2 style="font-size:20px;color:#333333;margin:0 0 20px;font-weight:bold;">Welcome, ${escapeHtml(contactPerson)}!</h2>
+        <p style="font-size:14px;color:#666666;line-height:1.6;">${escapeHtml(businessName)} was invited as a supplier by a Pawzzle store. Activate this invitation before signing in.</p>
+        <p style="margin:28px 0;"><a href="${activationUrl}" style="display:inline-block;padding:13px 28px;background:#9db16b;color:#fff;text-decoration:none;font-weight:bold;border-radius:8px;">Activate supplier account</a></p>
+        <div style="background:#f8f9fa;border-radius:12px;padding:24px;margin:0 auto 20px;max-width:440px;">
+          <p style="margin:0 0 8px;color:#777;font-size:11px;">Temporary password</p>
+          <div style="font-size:24px;font-weight:bold;color:#59663b;letter-spacing:1px;font-family:monospace;">${escapeHtml(temporaryPassword)}</div>
+        </div>
+        <p style="font-size:12px;color:#777;line-height:1.5;">This activation link expires in 48 hours and works once. After activation, sign in with this email and temporary password. Pawzzle will require you to choose a private password before using the supplier portal.</p>
+    `);
+    return deliverHtmlEmail({ email, subject: 'Activate your Pawzzle supplier account', html });
+};
+
+const sendSupplierApplicationUpdate = async ({ email, contactPerson, businessName, status, reason }) => {
+    const safeStatus = escapeHtml(String(status || '').replace(/_/g, ' '));
+    const html = wrapInTemplate('Supplier Application', `
+      <h2 style="font-size:20px;color:#333;margin:0 0 18px;">Hello, ${escapeHtml(contactPerson)}</h2>
+      <p style="font-size:14px;color:#666;line-height:1.6;">The supplier application for <strong>${escapeHtml(businessName)}</strong> is now <strong>${safeStatus}</strong>.</p>
+      ${reason ? `<div style="margin:20px 0;padding:16px;background:#f8f4ee;border-radius:10px;color:#5d4638;font-size:13px;">Reviewer feedback: ${escapeHtml(reason)}</div>` : ''}
+      <p style="font-size:12px;color:#777;">Sign in to Pawzzle to review the current status and any required next step.</p>
+    `);
+    return deliverHtmlEmail({ email, subject: `Pawzzle supplier application: ${String(status).replace(/_/g, ' ')}`, html });
+};
+
 const sendStaffInvitation = async (email, password, firstName) => {
     const loginUrl = `${process.env.CLIENT_URL || 'https://pawzzle.io'}/login`;
     
@@ -155,5 +217,7 @@ const sendStaffInvitation = async (email, password, firstName) => {
 };
 
 module.exports = {
-    sendStaffInvitation
+    sendStaffInvitation,
+    sendSupplierInvitation,
+    sendSupplierApplicationUpdate
 };

@@ -65,11 +65,68 @@ const supplierSchema = new mongoose.Schema({
   businessPermit: { type: String },
   taxId: { type: String, trim: true },
   verificationDocuments: [{ type: String }],
+
+  // Supplier onboarding uses one profile and one account. Legacy records with
+  // no supplierType are treated as platform suppliers by the service layer.
+  supplierType: {
+    type: String,
+    enum: ['platform', 'store_added'],
+    default: 'platform'
+  },
+  originStore: { type: mongoose.Schema.Types.ObjectId, ref: 'Store', default: null },
+  storeAssociations: [{
+    store: { type: mongoose.Schema.Types.ObjectId, ref: 'Store', required: true },
+    addedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    status: {
+      type: String,
+      enum: ['pending_activation', 'active', 'inactive'],
+      default: 'pending_activation'
+    },
+    associatedAt: { type: Date, default: Date.now },
+    deactivatedAt: Date,
+    reactivatedAt: Date
+  }],
+  applicationDocuments: [{
+    documentType: {
+      type: String,
+      enum: ['business_registration', 'bir_certificate'],
+      required: true
+    },
+    documentUrl: { type: String, required: true, select: false },
+    originalName: String,
+    mimeType: String,
+    size: Number,
+    status: {
+      type: String,
+      enum: ['pending', 'verified', 'needs_resubmission', 'rejected', 'superseded'],
+      default: 'pending'
+    },
+    reviewerFeedback: String,
+    submittedAt: { type: Date, default: Date.now },
+    reviewedAt: Date,
+    reviewedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
+  }],
+  applicationHistory: [{
+    action: {
+      type: String,
+      enum: ['submitted', 'resubmitted', 'approved', 'rejected', 'resubmission_requested']
+    },
+    actor: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    reason: String,
+    at: { type: Date, default: Date.now }
+  }],
+  invitation: {
+    tokenHash: { type: String, select: false },
+    expiresAt: Date,
+    sentAt: Date,
+    acceptedAt: Date,
+    invitedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
+  },
   
   // ── Account Status ────────────────────────────────────
   status: {
     type: String,
-    enum: ['pending_verification', 'verified', 'suspended', 'rejected'],
+    enum: ['pending_verification', 'resubmission_required', 'verified', 'suspended', 'rejected'],
     default: 'pending_verification'
   },
   verifiedAt: { type: Date },
@@ -122,5 +179,8 @@ supplierSchema.pre('save', function (next) {
 supplierSchema.index({ status: 1 });
 supplierSchema.index({ 'productCategories': 1 });
 supplierSchema.index({ user: 1 });
+supplierSchema.index({ supplierType: 1, status: 1, isActive: 1 });
+supplierSchema.index({ 'storeAssociations.store': 1, 'storeAssociations.status': 1 });
+supplierSchema.index({ 'invitation.tokenHash': 1 }, { sparse: true });
 
 module.exports = mongoose.model('Supplier', supplierSchema);

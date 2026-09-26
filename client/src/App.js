@@ -98,6 +98,7 @@ import CustomerPageErrorBoundary from './components/CustomerPageErrorBoundary';
 
 // Supplier Pages
 import SupplierDashboard from './pages/supplier/SupplierDashboard';
+import SupplierActivation from './pages/supplier/SupplierActivation';
 
 // Not Found
 import NotFound from './pages/NotFound';
@@ -141,6 +142,7 @@ function App() {
                 <Route path="/forgot-password" element={<ForgotPassword />} />
                 <Route path="/oauth-callback" element={<OAuthCallback />} />
                 <Route path="/seller-join" element={<SellerJoin />} />
+                <Route path="/supplier/activate/:token" element={<SupplierActivation />} />
                 <Route path="/rider-track/:token" element={<DeliveryTracking isRider={true} />} />
                 <Route path="/track/:token" element={<DeliveryTracking isRider={false} />} />
 
@@ -240,7 +242,7 @@ function App() {
                   <Route path="superadmin/support" element={<ProtectedRoute roles={['super_admin']}><SupportManagement /></ProtectedRoute>} />
                   <Route path="superadmin/insights" element={<ProtectedRoute roles={['super_admin']}><SuperAdminDSS /></ProtectedRoute>} />
                   <Route path="superadmin/activity-history" element={<ProtectedRoute roles={['super_admin']}><ActivityHistory /></ProtectedRoute>} />
-                  <Route path="superadmin/suppliers" element={<ProtectedRoute roles={['super_admin']}><SupplierManagement /></ProtectedRoute>} />
+                  <Route path="superadmin/suppliers" element={<ProtectedRoute roles={['super_admin', 'platform_admin']}><SupplierManagement /></ProtectedRoute>} />
                   <Route path="superadmin/staff-verification" element={<ProtectedRoute roles={['super_admin']}><SpecializedStaffVerification /></ProtectedRoute>} />
 
                   {/* Supplier Routes - customers can access to register as supplier */}
