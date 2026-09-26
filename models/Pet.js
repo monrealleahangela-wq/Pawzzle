@@ -1,4 +1,12 @@
 const mongoose = require('mongoose');
+const {
+  PET_SPECIES,
+  PET_SIZES,
+  PET_TEMPERAMENT_TRAITS,
+  PET_ACTIVITY_LEVELS,
+  PET_CARE_LEVELS,
+  PET_COMPATIBILITY_LEVELS
+} = require('../utils/petListingAttributes');
 
 const petSchema = new mongoose.Schema({
   name: {
@@ -9,7 +17,7 @@ const petSchema = new mongoose.Schema({
   species: {
     type: String,
     required: true,
-    enum: ['dog', 'cat', 'bird', 'fish', 'rabbit', 'hamster', 'reptile', 'other']
+    enum: PET_SPECIES
   },
   breed: {
     type: String,
@@ -36,12 +44,13 @@ const petSchema = new mongoose.Schema({
   },
   size: {
     type: String,
-    enum: ['small', 'medium', 'large', 'extra_large'],
+    enum: PET_SIZES,
     required: true
   },
   color: {
     type: String,
-    trim: true
+    trim: true,
+    maxlength: 100
   },
   description: {
     type: String,
@@ -65,7 +74,8 @@ const petSchema = new mongoose.Schema({
     default: 'sale'
   },
   weight: {
-    type: Number
+    type: Number,
+    min: 0
   },
   quantity: {
     type: Number,
@@ -196,6 +206,25 @@ const petSchema = new mongoose.Schema({
   temperament: {
     type: String,
     trim: true
+  },
+  temperamentTraits: [{
+    type: String,
+    enum: PET_TEMPERAMENT_TRAITS
+  }],
+  activityLevel: {
+    type: String,
+    enum: PET_ACTIVITY_LEVELS,
+    default: 'unknown'
+  },
+  careNeeds: {
+    maintenance: { type: String, enum: PET_CARE_LEVELS, default: 'unknown' },
+    grooming: { type: String, enum: PET_CARE_LEVELS, default: 'unknown' },
+    training: { type: String, enum: PET_CARE_LEVELS, default: 'unknown' }
+  },
+  petCompatibility: {
+    dogs: { type: String, enum: PET_COMPATIBILITY_LEVELS, default: 'unknown' },
+    cats: { type: String, enum: PET_COMPATIBILITY_LEVELS, default: 'unknown' },
+    otherPets: { type: String, enum: PET_COMPATIBILITY_LEVELS, default: 'unknown' }
   },
   videos: [{
     type: String

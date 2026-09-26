@@ -23,7 +23,9 @@ const AdminPets = () => {
   const canManageAdoptions = hasUiActionPermission(user, 'orders', 'update', isAdmin);
 
   const [showAddForm, setShowAddForm] = useState(false);
-  const [showAdvancedForm, setShowAdvancedForm] = useState(false);
+  // Kept false while the legacy editor remains in source for compatibility;
+  // the supported Add Pet experience is the aligned compact form below.
+  const [showAdvancedForm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -38,14 +40,14 @@ const AdminPets = () => {
   const initialPetState = {
     name: '', species: 'dog', breed: '', age: '', ageUnit: 'years',
     ageYears: '', ageMonths: '', birthday: '',
-    gender: 'male', size: 'medium', weight: '', color: '', description: '', price: '',
-    vaccinationStatus: 'none', healthStatus: 'good',
+    gender: 'male', size: '', weight: '', color: '', description: '', price: '',
+    vaccinationStatus: 'none',
     healthCondition: 'healthy',
     isNegotiable: false,
     dewormed: false,
     spayedNeutered: false,
     listingType: 'sale',
-    specialNeeds: '', images: [], isAvailable: true,
+    images: [], isAvailable: true,
     pedigreePapers: false,
     pcciRegistration: { status: 'not_sure', registrationNumber: '', certificateUrl: '', informationStatus: 'not_provided' },
     supportingDocuments: [],
@@ -57,6 +59,10 @@ const AdminPets = () => {
     permits: [],
     proofOfOwnership: [],
     temperament: '',
+    temperamentTraits: [],
+    activityLevel: '',
+    careNeeds: { maintenance: 'unknown', grooming: 'unknown', training: 'unknown' },
+    petCompatibility: { dogs: 'unknown', cats: 'unknown', otherPets: 'unknown' },
     videos: [],
     location: '',
     pickupAvailability: 'scheduled',
@@ -66,38 +72,12 @@ const AdminPets = () => {
     paymentConfig: 'full_payment',
     depositAmount: 0,
     paymentType: 'online_only',
-    approvalStatus: 'pending',
     adoptionDetails: {
       requirements: '', trialPeriod: '', homeCheck: false,
       rescuePartner: '', transportAvailable: false,
       isKidFriendly: true, isPetFriendly: true
     },
     status: 'available'
-  };
-
-  const handleApprove = async (id) => {
-    const notes = window.prompt('Admin Notes (Internal):');
-    try {
-      await adminPetService.approvePet(id, notes || '');
-      toast.success('Listing Approved');
-      fetchPets();
-      setShowAddForm(false);
-    } catch (error) {
-      toast.error('Approval failed');
-    }
-  };
-
-  const handleReject = async (id) => {
-    const notes = window.prompt('Reason for Rejection (Required):');
-    if (!notes) return;
-    try {
-      await adminPetService.rejectPet(id, notes);
-      toast.success('Listing Rejected');
-      fetchPets();
-      setShowAddForm(false);
-    } catch (error) {
-      toast.error('Rejection failed');
-    }
   };
 
   const [petForm, setPetForm] = useState(initialPetState);
@@ -201,10 +181,12 @@ const AdminPets = () => {
           ...initialPetState.pcciRegistration,
           ...(pet.pcciRegistration || {})
         },
+        temperamentTraits: pet.temperamentTraits || [],
+        activityLevel: pet.activityLevel || '',
+        careNeeds: { ...initialPetState.careNeeds, ...(pet.careNeeds || {}) },
+        petCompatibility: { ...initialPetState.petCompatibility, ...(pet.petCompatibility || {}) },
         supportingDocuments: pet.supportingDocuments || []
       });
-      setModalTab('identity');
-      setShowAdvancedForm(false);
       setShowAddForm(true);
     } catch (error) {
       toast.error('Error loading pet details');
@@ -214,8 +196,6 @@ const AdminPets = () => {
   const handleOpenModal = () => {
     setEditingPet(null);
     setPetForm(initialPetState);
-    setModalTab('identity');
-    setShowAdvancedForm(false);
     setShowAddForm(true);
   };
 
@@ -231,6 +211,11 @@ const AdminPets = () => {
       ageMonths: pet.ageUnit === 'months' ? (pet.age || '') : '',
       birthday: pet.birthday ? new Date(pet.birthday).toISOString().split('T')[0] : '',
       size: pet.size || initialPetState.size,
+      temperament: pet.temperament || '',
+      temperamentTraits: pet.temperamentTraits || [],
+      activityLevel: pet.activityLevel || '',
+      careNeeds: { ...initialPetState.careNeeds, ...(pet.careNeeds || {}) },
+      petCompatibility: { ...initialPetState.petCompatibility, ...(pet.petCompatibility || {}) },
       description: pet.description || '',
       price: pet.price ?? '',
       listingType: 'sale',
@@ -243,8 +228,6 @@ const AdminPets = () => {
       adoptionDetails: { ...initialPetState.adoptionDetails },
       status: 'available'
     });
-    setModalTab('identity');
-    setShowAdvancedForm(false);
     setShowAddForm(true);
     toast.info('Shared listing details copied. Add this pet\'s unique identity, photo, and records.');
   };
@@ -279,6 +262,11 @@ const AdminPets = () => {
         setSubmitting(false);
         return;
       }
+      if (!petForm.size || !petForm.activityLevel || !petForm.temperamentTraits?.length) {
+        toast.error('Select the pet size, activity level, and at least one observed temperament trait.');
+        setSubmitting(false);
+        return;
+      }
 
       // Convert back to single fields for backend
       let finalAge = years;
@@ -307,6 +295,8 @@ const AdminPets = () => {
       const individualPetForm = { ...petForm };
       delete individualPetForm.quantity;
       delete individualPetForm.reservation;
+      delete individualPetForm.approvalStatus;
+      delete individualPetForm.healthStatus;
       const payload = {
         ...individualPetForm,
         listingType: editingPet?.listingType === 'adoption' ? 'adoption' : 'sale',
@@ -423,6 +413,8 @@ const AdminPets = () => {
           };
         }
         if (kind === 'vaccination') return { ...current, vetRecords: [uploaded[0].url] };
+        if (kind === 'permit') return { ...current, permits: [...(current.permits || []), ...uploaded.map(document => document.url)] };
+        if (kind === 'ownership') return { ...current, proofOfOwnership: [...(current.proofOfOwnership || []), ...uploaded.map(document => document.url)] };
         const documents = [...(current.supportingDocuments || [])];
         if (replaceIndex !== null) documents.splice(replaceIndex, 1, uploaded[0]);
         else documents.push(...uploaded);
@@ -456,10 +448,6 @@ const AdminPets = () => {
     }
   };
 
-  const getHealthColor = (status) => {
-    const map = { excellent: 'emerald', good: 'primary', fair: 'amber', needs_attention: 'rose' };
-    return map[status] || 'slate';
-  };
   const getVaccColor = (status) => {
     const map = { complete: 'emerald', partial: 'amber', none: 'rose' };
     return map[status] || 'slate';
@@ -585,12 +573,6 @@ const AdminPets = () => {
                       ) : (
                         <Heart className="h-10 w-10 text-slate-200" />
                       )}
-                      {/* Overlay gradient with health on hover */}
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-3">
-                        <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase bg-${getHealthColor(pet.healthStatus)}-500/90 text-white`}>
-                          {pet.healthStatus?.replace('_', ' ')}
-                        </span>
-                      </div>
                       <div className="absolute top-2 right-2 flex flex-col gap-1.5">
                         <span className={`px-2.5 py-1 rounded-2xl text-[9px] font-black uppercase tracking-wider shadow-sm ${pet.status === 'available' ? 'bg-emerald-500 text-white' :
                           pet.status === 'reserved' ? 'bg-secondary-500 text-white' :
@@ -815,7 +797,6 @@ const AdminPets = () => {
           onSubmit={handleSubmit}
           onImageUpload={handleImageUpload}
           onDocumentUpload={handleListingDocumentUpload}
-          onAdvanced={() => setShowAdvancedForm(true)}
         />
       )}
 

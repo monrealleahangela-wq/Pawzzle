@@ -17,7 +17,10 @@ test('store-owner pet listings retain optional PCCI and customer-facing listing 
   assert.match(form, /petForm\.species === 'dog'/);
   assert.match(form, /saveDisabled=\{!isComplete\}/);
   assert.match(page, /uploadService\.uploadDocument/);
-  assert.match(page, /showAdvancedForm/);
+  assert.doesNotMatch(form, /Advanced options/);
+  for (const label of ['Adult / Expected Size', 'Activity Level', 'Observed Temperament', 'Care Needs', 'Compatibility With Existing Pets', 'Sale & Pickup']) {
+    assert.match(form, new RegExp(label));
+  }
 
   assert.ok(Pet.schema.path('pcciRegistration.certificateUrl'));
   assert.ok(Pet.schema.path('supportingDocuments.url'));

@@ -227,12 +227,26 @@ const createPet = async (req, res) => {
       return res.status(400).json({ message: 'You must have a store to add pets. Please ensure your account is linked to a store.' });
     }
 
-    console.log('📦 Creating pet with data:', { ...req.body, addedBy: req.user._id, store: store._id });
+    console.log('📦 Creating pet listing:', {
+      name: req.body.name,
+      species: req.body.species,
+      addedBy: req.user._id,
+      store: store._id
+    });
     
     const derivedAge = derivePetAge(req.body.birthday);
     if (!derivedAge.valid) return res.status(400).json({ message: derivedAge.message });
 
-    const { quantity, reservation, adoptionDetails, ...listingData } = req.body;
+    const {
+      quantity,
+      reservation,
+      adoptionDetails,
+      approvalStatus,
+      ratings,
+      addedBy,
+      store: submittedStore,
+      ...listingData
+    } = req.body;
     const status = ['available', 'unavailable'].includes(listingData.status)
       ? listingData.status
       : 'available';
@@ -247,6 +261,9 @@ const createPet = async (req, res) => {
       paymentType: 'online_only',
       allowedPaymentMethods: ['paymongo'],
       paymentConfig: req.body.paymentConfig === 'deposit_first' ? 'deposit_first' : 'full_payment',
+      // Standard Store listings are immediately eligible under the existing
+      // Pet model policy. The browser cannot override this system field.
+      approvalStatus: 'approved',
       addedBy: req.user._id,
       store: store._id
     };
@@ -317,7 +334,7 @@ const updatePet = async (req, res) => {
     console.log('📝 updatePet PERMISSION GRANTED');
 
     // List of fields that shouldn't be updated directly via this endpoint
-    const { _id, id, addedBy, store, createdAt, updatedAt, ratings, quantity, reservation, ...updateData } = req.body;
+    const { _id, id, addedBy, store, createdAt, updatedAt, ratings, approvalStatus, quantity, reservation, ...updateData } = req.body;
     updateData.paymentType = 'online_only';
     updateData.allowedPaymentMethods = ['paymongo'];
     updateData.paymentConfig = updateData.paymentConfig === 'deposit_first' ? 'deposit_first' : 'full_payment';

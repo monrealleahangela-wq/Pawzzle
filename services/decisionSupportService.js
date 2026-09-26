@@ -142,8 +142,16 @@ const listingCompatibility = (pet, preferences, householdPets = []) => {
   const considerations = [];
   const unknowns = [];
   const temperament = normalizeChoice(pet.temperament);
+  const temperamentTraits = uniqueAllowed(pet.temperamentTraits, PET_MATCH_OPTIONS.lifestyle);
+  const activityLevel = normalizeChoice(pet.activityLevel);
   const size = normalizeChoice(pet.size);
   const price = Number(pet.price);
+  const hasStructuredTemperament = temperamentTraits.length > 0;
+  const hasKnownActivity = ['low', 'moderate', 'high'].includes(activityLevel);
+  const hasTemperamentEvidence = hasStructuredTemperament || Boolean(temperament);
+  const matchesTemperament = key => hasStructuredTemperament
+    ? temperamentTraits.includes(key)
+    : includesEvidence(temperament, TEMPERAMENT_EVIDENCE[key] || []);
 
   const purchaseMaximum = PURCHASE_BUDGET_MAX[preferences.purchaseBudget];
   const budgetEvaluated = Number.isFinite(price) && purchaseMaximum !== undefined;
@@ -158,20 +166,23 @@ const listingCompatibility = (pet, preferences, householdPets = []) => {
 
   const limitedSpace = ['limited_room', 'apartment'].includes(preferences.space);
   const generousSpace = ['medium_house', 'large_house', 'outdoor_space'].includes(preferences.space);
-  const calmEvidence = includesEvidence(temperament, TEMPERAMENT_EVIDENCE.calm || []);
-  const activeEvidence = includesEvidence(temperament, TEMPERAMENT_EVIDENCE.energetic || []);
-  const spaceEvaluated = Boolean(size && temperament && preferences.space !== 'not_sure');
+  const calmEvidence = matchesTemperament('calm') || (hasKnownActivity && activityLevel === 'low');
+  const activeEvidence = matchesTemperament('energetic') || matchesTemperament('outdoor')
+    || (hasKnownActivity && activityLevel === 'high');
+  const spaceEvaluated = Boolean(size && (hasKnownActivity || hasTemperamentEvidence) && preferences.space !== 'not_sure');
   let spaceRatio = 0.5;
   if (spaceEvaluated) {
     if (limitedSpace && ['small', 'medium'].includes(size) && calmEvidence) spaceRatio = 1;
     else if (limitedSpace && (['large', 'extra_large'].includes(size) || activeEvidence)) spaceRatio = 0;
+    else if (preferences.space === 'small_house' && ['small', 'medium'].includes(size) && activityLevel !== 'high') spaceRatio = 1;
+    else if (preferences.space === 'small_house' && (size === 'extra_large' || activityLevel === 'high')) spaceRatio = 0;
     else if (generousSpace) spaceRatio = 1;
   }
   parts.push(petMatchPart('space', 'Space compatibility', PET_MATCH_WEIGHTS.space, spaceEvaluated, spaceRatio,
     spaceEvaluated
-      ? spaceRatio === 1 ? 'The listing’s recorded size and temperament information support your selected space.' : spaceRatio === 0 ? 'The listing’s recorded size or activity wording may conflict with your selected space.' : 'The recorded size and temperament provide mixed space evidence.'
-      : 'Space compatibility needs both recorded size and temperament information; Pawzzle does not infer it from breed.'));
-  if (spaceEvaluated && spaceRatio === 1) reasons.push('Recorded size and temperament information fit your available space.');
+      ? spaceRatio === 1 ? 'The listing’s recorded size and activity information support your selected space.' : spaceRatio === 0 ? 'The listing’s recorded size or activity information may conflict with your selected space.' : 'The recorded size and activity information provide mixed space evidence.'
+      : 'Space compatibility needs recorded size plus activity or temperament information; Pawzzle does not infer it from breed.'));
+  if (spaceEvaluated && spaceRatio === 1) reasons.push('Recorded size and activity information fit your available space.');
   if (spaceEvaluated && spaceRatio === 0) considerations.push('Recorded size or activity information may not fit the selected living space.');
   if (!spaceEvaluated) unknowns.push('Space compatibility has limited evidence because size and temperament data are incomplete or space is uncertain.');
 
@@ -190,36 +201,75 @@ const listingCompatibility = (pet, preferences, householdPets = []) => {
   unknowns.push('Home ownership, housing type, and living-arrangement compatibility are recorded context but are not scored because listings do not contain authoritative household-suitability evidence.');
 
   const lifestyleKeys = preferences.lifestyle.filter(key => ['affectionate', 'independent', 'social', 'interactive'].includes(key));
-  const lifestyleEvaluated = Boolean(temperament && lifestyleKeys.length);
-  const lifestyleMatches = lifestyleEvaluated ? lifestyleKeys.filter(key => includesEvidence(temperament, TEMPERAMENT_EVIDENCE[key] || [])) : [];
+  const lifestyleEvaluated = Boolean(hasTemperamentEvidence && lifestyleKeys.length);
+  const lifestyleMatches = lifestyleEvaluated ? lifestyleKeys.filter(matchesTemperament) : [];
   parts.push(petMatchPart('lifestyle', 'Companion preference', PET_MATCH_WEIGHTS.lifestyle, lifestyleEvaluated, lifestyleMatches.length / Math.max(lifestyleKeys.length, 1),
     lifestyleEvaluated
-      ? lifestyleMatches.length ? `Recorded temperament matches: ${lifestyleMatches.join(', ')}.` : 'The recorded temperament does not contain the selected companion preference evidence.'
+      ? lifestyleMatches.length ? `Recorded temperament traits match: ${lifestyleMatches.join(', ')}.` : 'The recorded temperament does not contain the selected companion preference evidence.'
       : 'Lifestyle compatibility could not be evaluated because the listing has no applicable temperament information.'));
   if (lifestyleMatches.length) reasons.push(`Recorded temperament matches your ${lifestyleMatches.join(' and ')} preference${lifestyleMatches.length === 1 ? '' : 's'}.`);
   if (!lifestyleEvaluated && lifestyleKeys.length) unknowns.push('Companion-style compatibility is unknown because temperament information is incomplete.');
 
   const activityKeys = preferences.lifestyle.filter(key => ['calm', 'energetic', 'outdoor'].includes(key));
-  const activityEvaluated = Boolean(temperament && activityKeys.length);
-  const activityMatches = activityEvaluated ? activityKeys.filter(key => includesEvidence(temperament, TEMPERAMENT_EVIDENCE[key] || [])) : [];
+  const activityEvaluated = Boolean((hasKnownActivity || hasTemperamentEvidence) && activityKeys.length);
+  const activityMatches = activityEvaluated ? activityKeys.filter(key => {
+    if (matchesTemperament(key)) return true;
+    if (!hasKnownActivity) return false;
+    if (key === 'calm') return activityLevel === 'low';
+    return ['energetic', 'outdoor'].includes(key) && activityLevel === 'high';
+  }) : [];
   parts.push(petMatchPart('activity', 'Activity preference', PET_MATCH_WEIGHTS.activity, activityEvaluated, activityMatches.length / Math.max(activityKeys.length, 1),
     activityEvaluated
-      ? activityMatches.length ? `Recorded temperament/activity wording matches: ${activityMatches.join(', ')}.` : 'The listing’s recorded temperament does not match the selected activity preference.'
+      ? activityMatches.length ? `Recorded activity information matches: ${activityMatches.join(', ')}.` : 'The listing’s recorded activity information does not match the selected activity preference.'
       : 'Activity compatibility could not be evaluated from the available listing information.'));
   if (activityMatches.length) reasons.push(`Recorded activity wording matches your ${activityMatches.join(' and ')} preference${activityMatches.length === 1 ? '' : 's'}.`);
   if (!activityEvaluated && activityKeys.length) unknowns.push('Activity compatibility is unknown because activity/temperament information is incomplete.');
 
   const careKeys = preferences.lifestyle.filter(key => ['low_maintenance', 'grooming', 'training'].includes(key));
-  parts.push(petMatchPart('care', 'Care and grooming preference', PET_MATCH_WEIGHTS.care, false, 0,
-    careKeys.length ? 'This listing has no structured grooming, maintenance, or training-needs field, so Pawzzle does not infer one.' : 'No care or grooming preference was selected.'));
-  if (careKeys.length) unknowns.push('Care, grooming, and training compatibility cannot be scored because the listing has no structured evidence.');
+  const careNeeds = pet.careNeeds || {};
+  const careScores = careKeys.flatMap(key => {
+    const field = key === 'low_maintenance' ? 'maintenance' : key;
+    const level = normalizeChoice(careNeeds[field]);
+    if (!['low', 'moderate', 'high'].includes(level)) return [];
+    if (key === 'low_maintenance') return [level === 'low' ? 1 : level === 'moderate' ? 0.5 : 0];
+    return [1];
+  });
+  const careEvaluated = careScores.length > 0;
+  const careRatio = careEvaluated ? careScores.reduce((sum, value) => sum + value, 0) / careScores.length : 0;
+  parts.push(petMatchPart('care', 'Care and grooming preference', PET_MATCH_WEIGHTS.care, careEvaluated, careRatio,
+    careEvaluated
+      ? 'Compared the listing’s structured maintenance, grooming, and training needs with your selected care preferences.'
+      : careKeys.length ? 'Care compatibility could not be evaluated because the relevant listing needs are unknown.' : 'No care or grooming preference was selected.'));
+  if (careEvaluated && careRatio === 1) reasons.push('Recorded care needs fit the care preferences you selected.');
+  if (careEvaluated && careRatio < 0.5) considerations.push('The recorded maintenance needs may exceed your selected preference.');
+  if (careKeys.length && !careEvaluated) unknowns.push('Care, grooming, or training compatibility has limited evidence because the relevant listing fields are unknown.');
 
-  const householdEvaluated = false;
-  parts.push(petMatchPart('household', 'Existing-pet compatibility', PET_MATCH_WEIGHTS.household, householdEvaluated, 0,
-    householdPets.length
-      ? `You have ${householdPets.length} saved pet profile${householdPets.length === 1 ? '' : 's'}, but this listing has no verified pet-compatibility field.`
-      : 'No authoritative individual-pet compatibility evidence is available for this listing.'));
-  if (preferences.existingPets !== 'none' || householdPets.length) unknowns.push('Compatibility with existing pets requires information that this listing does not provide.');
+  const householdKinds = new Set();
+  const addHouseholdKind = value => {
+    const normalized = normalizeChoice(value);
+    if (normalized === 'dog' || normalized === 'dogs') householdKinds.add('dogs');
+    else if (normalized === 'cat' || normalized === 'cats') householdKinds.add('cats');
+    else if (normalized && normalized !== 'none' && normalized !== 'multiple') householdKinds.add('otherPets');
+  };
+  if (preferences.existingPets !== 'multiple') addHouseholdKind(preferences.existingPets);
+  householdPets.forEach(existingPet => addHouseholdKind(existingPet.type || existingPet.species));
+  const householdEvidence = [...householdKinds].flatMap(kind => {
+    const value = normalizeChoice(pet.petCompatibility?.[kind]);
+    return ['compatible', 'not_compatible'].includes(value) ? [{ kind, value }] : [];
+  });
+  const householdEvaluated = householdEvidence.length > 0;
+  const householdRatio = householdEvaluated
+    ? householdEvidence.filter(item => item.value === 'compatible').length / householdEvidence.length
+    : 0;
+  parts.push(petMatchPart('household', 'Existing-pet compatibility', PET_MATCH_WEIGHTS.household, householdEvaluated, householdRatio,
+    householdEvaluated
+      ? 'Compared the listing’s recorded compatibility with the pet types in your household.'
+      : preferences.existingPets === 'none' && !householdPets.length
+        ? 'You reported no existing pets, so this factor is not needed.'
+        : 'The listing has no known compatibility evidence for the pet types in your household.'));
+  if (householdEvaluated && householdRatio === 1) reasons.push('Recorded compatibility supports the existing pets in your household.');
+  if (householdEvaluated && householdRatio < 1) considerations.push('The listing reports a possible conflict with one or more existing pet types.');
+  if ((preferences.existingPets !== 'none' || householdPets.length) && !householdEvaluated) unknowns.push('Compatibility with existing pets is unknown for the relevant pet type.');
 
   const speciesEvaluated = preferences.preferredSpecies.length > 0;
   const sizePreferenceEvaluated = preferences.preferredSizes.length > 0 && Boolean(size);

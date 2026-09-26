@@ -390,7 +390,7 @@ const getCustomerPetRecommendations = async (req, res) => {
                 isAvailable: true,
                 $or: [{ quantity: { $exists: false } }, { quantity: null }, { quantity: 1 }]
             })
-                .select('name species breed age ageUnit birthday gender size price images isAvailable status listingType approvalStatus vaccinationStatus healthCondition temperament description store')
+                .select('name species breed age ageUnit birthday gender size price images isAvailable status listingType approvalStatus vaccinationStatus healthCondition temperament temperamentTraits activityLevel careNeeds petCompatibility description store')
                 .lean(),
             PetProfile.find({ owner: req.user._id })
                 .select('name type breed size')

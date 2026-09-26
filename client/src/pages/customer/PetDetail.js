@@ -160,7 +160,8 @@ const PetDetail = () => {
   const isPurchasable = pet?.status === 'available' && pet?.isAvailable === true;
   const pcciProvided = Boolean(pet?.pcciRegistration?.certificateAvailable);
   const temperament = useMemo(() => {
-    const values = String(pet?.temperament || '').split(/[,;|]/).map(value => value.trim()).filter(Boolean);
+    const values = (pet?.temperamentTraits || []).map(value => value.replaceAll('_', ' '));
+    if (!values.length) values.push(...String(pet?.temperament || '').split(/[,;|]/).map(value => value.trim()).filter(Boolean));
     if (pet?.adoptionDetails?.isKidFriendly) values.push('Good with Kids');
     if (pet?.adoptionDetails?.isPetFriendly) values.push('Good with Pets');
     return [...new Set(values)];
@@ -178,6 +179,8 @@ const PetDetail = () => {
     { icon: Sparkles, label: 'Breed', value: pet.breed },
     { icon: BadgeCheck, label: 'Sex', value: pet.gender },
     { icon: CalendarDays, label: 'Age', value: formatAge(pet) },
+    pet.size ? { icon: Ruler, label: 'Expected Size', value: pet.size.replaceAll('_', ' ') } : null,
+    pet.activityLevel && pet.activityLevel !== 'unknown' ? { icon: Sparkles, label: 'Activity', value: pet.activityLevel } : null,
     pet.weight ? { icon: Scale, label: 'Weight', value: `${pet.weight} kg` } : null,
     pet.color ? { icon: Ruler, label: 'Color', value: pet.color } : null,
     { icon: Syringe, label: 'Vaccination', value: pet.vaccinationStatus === 'complete' ? 'Vaccinated' : pet.vaccinationStatus === 'partial' ? 'Partially vaccinated' : 'Not yet vaccinated' },
@@ -221,6 +224,8 @@ const PetDetail = () => {
           <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm"><h2 className="text-sm font-black text-slate-900">Health Information</h2><div className="mt-3 grid gap-2 sm:grid-cols-2"><div className="rounded-xl bg-slate-50 p-3"><p className="text-[9px] font-black uppercase text-slate-400">Vaccination</p><p className="mt-1 text-xs font-bold text-slate-800">{pet.vaccinationStatus === 'complete' ? 'Vaccinated' : pet.vaccinationStatus === 'partial' ? 'Partially vaccinated' : 'Not yet vaccinated'}</p></div><div className="rounded-xl bg-slate-50 p-3"><p className="text-[9px] font-black uppercase text-slate-400">Deworming</p><p className="mt-1 text-xs font-bold text-slate-800">{pet.dewormed ? 'Dewormed' : 'Not specified'}</p></div>{pet.healthCondition && pet.healthCondition !== 'healthy' && <div className="rounded-xl bg-amber-50 p-3 sm:col-span-2"><p className="text-[9px] font-black uppercase text-amber-700">Health condition disclosure</p><p className="mt-1 text-xs font-bold capitalize text-slate-800">{pet.healthCondition.replaceAll('_', ' ')}</p></div>}{pet.healthNotes && <div className="rounded-xl bg-slate-50 p-3 sm:col-span-2"><p className="text-[9px] font-black uppercase text-slate-400">Health notes</p><p className="mt-1 whitespace-pre-line text-xs leading-5 text-slate-700">{pet.healthNotes}</p></div>}</div></section>
 
           {temperament.length > 0 && <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm"><h2 className="text-sm font-black text-slate-900">Temperament & Personality</h2><div className="mt-3 flex flex-wrap gap-2">{temperament.map(value => <span key={value} className="rounded-full border border-primary-100 bg-primary-50 px-3 py-1.5 text-[10px] font-bold text-primary-700">{value}</span>)}</div></section>}
+
+          {[...Object.values(pet.careNeeds || {}), ...Object.values(pet.petCompatibility || {})].some(value => value && value !== 'unknown') && <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm"><h2 className="text-sm font-black text-slate-900">Care & Household Information</h2><div className="mt-3 grid gap-2 sm:grid-cols-2">{Object.entries(pet.careNeeds || {}).filter(([, value]) => value && value !== 'unknown').map(([key, value]) => <div key={key} className="rounded-xl bg-slate-50 p-3"><p className="text-[9px] font-black uppercase text-slate-400">{key} needs</p><p className="mt-1 text-xs font-bold capitalize text-slate-800">{value}</p></div>)}{Object.entries(pet.petCompatibility || {}).filter(([, value]) => value && value !== 'unknown').map(([key, value]) => <div key={key} className="rounded-xl bg-slate-50 p-3"><p className="text-[9px] font-black uppercase text-slate-400">With {key.replace(/([A-Z])/g, ' $1')}</p><p className="mt-1 text-xs font-bold capitalize text-slate-800">{value.replaceAll('_', ' ')}</p></div>)}</div></section>}
 
           {pcciProvided && <section className="rounded-3xl border border-amber-200 bg-amber-50/60 p-5 shadow-sm"><div className="flex items-start gap-3"><span className="flex h-9 w-9 items-center justify-center rounded-xl bg-white text-amber-700"><ShieldCheck className="h-5 w-5" /></span><div><div className="flex flex-wrap items-center gap-2"><h2 className="text-sm font-black text-slate-900">PCCI Registration Information Provided</h2><span className="rounded-full bg-amber-100 px-2 py-1 text-[8px] font-black uppercase text-amber-800">Certificate available</span></div>{pet.pcciRegistration?.registrationNumber && <p className="mt-2 text-xs font-semibold text-slate-700">Certificate number: {pet.pcciRegistration.registrationNumber}</p>}<p className="mt-1 text-[10px] leading-4 text-slate-600">The uploaded certificate remains private. Ask the store if you need to review it before proceeding.</p></div></div></section>}
         </div>
