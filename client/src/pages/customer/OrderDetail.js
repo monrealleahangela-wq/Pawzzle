@@ -6,7 +6,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { Heart, Package, ArrowLeft, Truck, CreditCard, MapPin, Store, Star, CheckCircle, AlertCircle, Link2, Navigation, Phone, Activity, ChevronDown, ChevronUp, MessageSquare, FileText, ClipboardCheck } from 'lucide-react';
 import OrderReviewModal from '../../components/OrderReviewModal';
 import ReviewModal from '../../components/ReviewModal';
-import DeliveryAssignmentFields, { emptyExternal } from '../../components/delivery/DeliveryAssignmentFields';
+import DeliveryAssignmentFields from '../../components/delivery/DeliveryAssignmentFields';
 import { normalizeRefundPolicy, refundPolicyLabel } from '../../utils/refundPolicy';
 import PaymentBreakdown from '../../components/payments/PaymentBreakdown';
 import { formatPeso, orderLineItemRows, orderPaymentSummary, paymentSummaryRows } from '../../utils/paymentSummary';
@@ -28,9 +28,6 @@ const OrderDetail = () => {
   const [isGeneratingInvoice, setIsGeneratingInvoice] = useState(false);
   const [eligibleRiders, setEligibleRiders] = useState([]);
   const [selectedRiderId, setSelectedRiderId] = useState('');
-  const [assignmentType, setAssignmentType] = useState('internal');
-  const [thirdPartyRider, setThirdPartyRider] = useState(emptyExternal);
-  const [lastRiderLink, setLastRiderLink] = useState('');
   const [deliveryAssignment, setDeliveryAssignment] = useState(null);
   const [riderReviewOpen, setRiderReviewOpen] = useState(false);
   const [riderReviewEligibility, setRiderReviewEligibility] = useState({ checked: false, isEligible: false, reason: null });
@@ -53,14 +50,13 @@ const OrderDetail = () => {
         }
         return;
       }
-      if(delivery?.assignmentType==='internal'){setAssignmentType('internal');setSelectedRiderId(delivery.assignedRider?._id||delivery.assignedRider||'');}
-      else if(delivery?.assignmentType==='third_party'){setAssignmentType('third_party');setThirdPartyRider({...emptyExternal,providerKey:delivery.providerDelivery?.providerKey||emptyExternal.providerKey});}
+      if(delivery?.assignmentType==='internal') setSelectedRiderId(delivery.assignedRider?._id||delivery.assignedRider||'');
     }).catch(()=>{});
   }, [order?._id, order?.delivery, user?.role]);
 
   useEffect(() => {
     if (!['admin', 'super_admin', 'store_owner'].includes(user?.role)) return;
-    staffService.getEligibleRiders().then(response => { const riders=response.data.riders||[]; setEligibleRiders(riders); if (!riders.length) setAssignmentType('third_party'); }).catch(() => { setEligibleRiders([]); setAssignmentType('third_party'); });
+    staffService.getEligibleRiders().then(response => setEligibleRiders(response.data.riders || [])).catch(() => setEligibleRiders([]));
   }, [user?.role]);
 
   useEffect(() => {
@@ -203,17 +199,12 @@ const OrderDetail = () => {
 
   const handleGenerateRiderLink = async () => {
     try {
-      if (assignmentType === 'internal' && !selectedRiderId) return toast.error('Select an active Delivery Rider first.');
-      const response = await deliveryService.generateLinks({ orderId: id, assignmentType, riderId: assignmentType === 'internal' ? selectedRiderId : undefined, providerKey: assignmentType === 'third_party' ? thirdPartyRider.providerKey : undefined });
+      if (!selectedRiderId) return toast.error('Select an active Delivery Rider first.');
+      const response = await deliveryService.generateLinks({ orderId: id, assignmentType: 'internal', riderId: selectedRiderId });
       const url = response.data.riderLink;
-      setLastRiderLink(url || '');
       setDeliveryAssignment(response.data.delivery || null);
-      if (assignmentType === 'internal') {
-        await navigator.clipboard.writeText(url);
-        toast.success('Rider tracking link copied!', { description: 'The internal rider also receives this assignment in Pawzzle.', icon: <Link2 className="text-primary-600" /> });
-      } else {
-        toast.success('Courier provider selected. Open Logistics to review a quote and request the delivery.');
-      }
+      await navigator.clipboard.writeText(url);
+      toast.success('Rider tracking link copied!', { description: 'The internal rider also receives this assignment in Pawzzle.', icon: <Link2 className="text-primary-600" /> });
       fetchOrder(); // Refresh to show delivery status if needed
     } catch (error) {
       toast.error(error.response?.data?.message || 'We could not prepare this delivery. Please try again.');
@@ -955,8 +946,8 @@ const OrderDetail = () => {
                 <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest leading-relaxed">
                   Assign an active Delivery Rider and use the existing secure delivery link for navigation and proof of delivery.
                 </p>
-                <DeliveryAssignmentFields assignmentType={assignmentType} onAssignmentTypeChange={setAssignmentType} riders={eligibleRiders} selectedRiderId={selectedRiderId} onRiderChange={setSelectedRiderId} thirdPartyRider={thirdPartyRider} onThirdPartyChange={setThirdPartyRider}/>
-                {deliveryAssignment?.assignmentType && deliveryAssignment.assignmentType !== 'unassigned' && <div className="p-3 rounded-xl bg-white border text-xs"><p className="text-[9px] font-black uppercase text-slate-400">Current Delivery Method</p><p className="font-black text-slate-800 capitalize">{deliveryAssignment.assignmentType === 'internal' ? 'Pawzzle Rider' : 'Third-Party Courier'}</p>{deliveryAssignment.assignmentType==='internal'?<p className="text-slate-500">{deliveryAssignment.assignedRider?.firstName} {deliveryAssignment.assignedRider?.lastName} · {deliveryAssignment.assignedRider?.riderProfile?.staffId}</p>:<p className="text-slate-500">{deliveryAssignment.providerDelivery?.providerName || 'Courier provider'} · {(deliveryAssignment.providerDelivery?.requestState || 'not requested').replace(/_/g,' ')}</p>}</div>}
+                <DeliveryAssignmentFields riders={eligibleRiders} selectedRiderId={selectedRiderId} onRiderChange={setSelectedRiderId}/>
+                {deliveryAssignment?.assignmentType === 'internal' && <div className="p-3 rounded-xl bg-white border text-xs"><p className="text-[9px] font-black uppercase text-slate-400">Current Delivery Method</p><p className="font-black text-slate-800">Pawzzle Rider</p><p className="text-slate-500">{deliveryAssignment.assignedRider?.firstName} {deliveryAssignment.assignedRider?.lastName} · {deliveryAssignment.assignedRider?.riderProfile?.staffId}</p></div>}
                 <button
                   onClick={handleGenerateRiderLink}
                   className={`w-full py-4 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all shadow-lg flex items-center justify-center gap-2 group ${order.delivery ? 'bg-emerald-600 text-white hover:bg-emerald-700' : 'bg-slate-900 text-white hover:bg-primary-600'}`}
@@ -964,7 +955,6 @@ const OrderDetail = () => {
                   <Link2 className="h-4 w-4 group-hover:rotate-12 transition-transform" />
                   {order.delivery ? 'Copy rider tracking link' : 'Create delivery link'}
                 </button>
-                {assignmentType === 'third_party' && lastRiderLink && navigator.share && <button onClick={()=>navigator.share({title:'Pawzzle secure delivery link',url:lastRiderLink}).catch(()=>{})} className="w-full py-3 rounded-xl border border-slate-300 bg-white text-slate-700 text-[10px] font-black uppercase tracking-widest">Share Secure Link</button>}
                 {order.delivery && (
                   <>
                     <button

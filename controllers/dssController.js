@@ -1136,7 +1136,6 @@ const getSuperAdminInsights = async (req, res) => {
                 completed: completedDeliveries.length,
                 failed: deliveryRows.filter(row => ['failed_attempt', 'returned_to_store', 'declined'].includes(row.status)).length,
                 internal: deliveryRows.filter(row => row.assignmentType === 'internal').length,
-                thirdParty: deliveryRows.filter(row => row.assignmentType === 'third_party').length,
                 averageMinutes: deliveryDurations.length ? Math.round(deliveryDurations.reduce((total, value) => total + value, 0) / deliveryDurations.length) : 0
             },
             applicationStatus,

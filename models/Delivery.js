@@ -1,6 +1,56 @@
 const mongoose = require('mongoose');
 const crypto = require('crypto');
 
+const legacyProviderDeliverySchema = new mongoose.Schema({
+  providerKey: { type: String, trim: true, lowercase: true },
+  providerName: { type: String, trim: true },
+  environment: { type: String, enum: ['sandbox', 'live'] },
+  jobId: { type: String, trim: true },
+  trackingId: { type: String, trim: true },
+  externalStatus: { type: String, trim: true },
+  requestState: {
+    type: String,
+    enum: ['not_requested', 'quoting', 'quoted', 'requesting', 'requested', 'failed', 'cancelling', 'cancelled']
+  },
+  quote: {
+    quoteId: String,
+    amount: Number,
+    currency: String,
+    breakdown: mongoose.Schema.Types.Mixed,
+    quotedAt: Date,
+    expiresAt: Date
+  },
+  trackingUrl: String,
+  rider: {
+    displayName: String,
+    phone: String,
+    vehicleType: String,
+    plateNumber: String
+  },
+  proof: {
+    reference: String,
+    url: String,
+    receivedAt: Date
+  },
+  estimatedPickupAt: Date,
+  estimatedDeliveryAt: Date,
+  lastSyncedAt: Date,
+  lastError: {
+    code: String,
+    message: String,
+    retryable: Boolean,
+    at: Date
+  },
+  processedWebhookEventIds: [{ type: String }],
+  statusHistory: [{
+    eventId: String,
+    externalStatus: String,
+    pawzzleStatus: String,
+    source: { type: String, enum: ['request', 'poll', 'webhook', 'cancel'] },
+    timestamp: Date
+  }]
+}, { _id: false });
+
 const deliverySchema = new mongoose.Schema({
   store: {
     type: mongoose.Schema.Types.ObjectId,
@@ -48,11 +98,14 @@ const deliverySchema = new mongoose.Schema({
   },
   assignmentType: {
     type: String,
+    // Legacy value retained so historical deliveries can still be hydrated.
+    // Active assignment is restricted to internal Pawzzle riders by the controller.
     enum: ['internal', 'third_party', 'unassigned'],
     default: 'unassigned',
     index: true
   },
   thirdPartyRider: {
+    // Legacy read-only snapshot; active delivery flows no longer write it.
     name: { type: String, trim: true },
     mobile: { type: String, trim: true },
     company: { type: String, trim: true },
@@ -61,56 +114,8 @@ const deliverySchema = new mongoose.Schema({
     referenceNumber: { type: String, trim: true },
     notes: { type: String, trim: true }
   },
-  providerDelivery: {
-    providerKey: { type: String, trim: true, lowercase: true },
-    providerName: { type: String, trim: true },
-    environment: { type: String, enum: ['sandbox', 'live'], default: 'sandbox' },
-    jobId: { type: String, trim: true },
-    trackingId: { type: String, trim: true },
-    externalStatus: { type: String, trim: true },
-    requestState: {
-      type: String,
-      enum: ['not_requested', 'quoting', 'quoted', 'requesting', 'requested', 'failed', 'cancelling', 'cancelled'],
-      default: 'not_requested'
-    },
-    quote: {
-      quoteId: String,
-      amount: Number,
-      currency: { type: String, default: 'PHP' },
-      breakdown: mongoose.Schema.Types.Mixed,
-      quotedAt: Date,
-      expiresAt: Date
-    },
-    trackingUrl: String,
-    rider: {
-      displayName: String,
-      phone: String,
-      vehicleType: String,
-      plateNumber: String
-    },
-    proof: {
-      reference: String,
-      url: String,
-      receivedAt: Date
-    },
-    estimatedPickupAt: Date,
-    estimatedDeliveryAt: Date,
-    lastSyncedAt: Date,
-    lastError: {
-      code: String,
-      message: String,
-      retryable: Boolean,
-      at: Date
-    },
-    processedWebhookEventIds: [{ type: String }],
-    statusHistory: [{
-      eventId: String,
-      externalStatus: String,
-      pawzzleStatus: String,
-      source: { type: String, enum: ['request', 'poll', 'webhook', 'cancel'] },
-      timestamp: { type: Date, default: Date.now }
-    }]
-  },
+  // Legacy read-only snapshot retained for historical document compatibility.
+  providerDelivery: { type: legacyProviderDeliverySchema, default: undefined },
   assignmentHistory: [{
     assignmentType: { type: String, enum: ['internal', 'third_party', 'unassigned'] },
     rider: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
@@ -234,21 +239,11 @@ const deliverySchema = new mongoose.Schema({
 // Middleware to disable link after delivery
 deliverySchema.pre('save', function(next) {
   if (this.assignmentType === 'unassigned' && this.assignedRider) this.assignmentType = 'internal';
-  if (this.assignmentType === 'unassigned' && this.thirdPartyRider?.name) this.assignmentType = 'third_party';
   if (this.status === 'delivered') {
     this.isLive = false;
     if (!this.deliveredAt) this.deliveredAt = new Date();
   }
   next();
 });
-
-deliverySchema.index(
-  { 'providerDelivery.providerKey': 1, 'providerDelivery.jobId': 1 },
-  {
-    unique: true,
-    name: 'provider_job_identity',
-    partialFilterExpression: { 'providerDelivery.jobId': { $type: 'string' } }
-  }
-);
 
 module.exports = mongoose.model('Delivery', deliverySchema);

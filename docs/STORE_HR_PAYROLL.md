@@ -29,7 +29,7 @@ Legacy professional leave blocks do not say whether leave was paid. Payroll ther
 
 The Store configures weekly, fixed semi-monthly, or monthly cutoffs. A payroll period moves through Draft, Computed, Reviewed, Approved, and Paid. Computation is blocked until its attendance period ends.
 
-Each payslip snapshots compensation, attendance totals, additions, deductions, and the Store policy. Approved/finalized periods cannot be recomputed, so later rate or policy changes do not rewrite history. Internal rider earnings can be claimed once either by payroll or the existing rider-payout process. Third-party couriers have no Pawzzle employee account and are never included.
+Each payslip snapshots compensation, attendance totals, additions, deductions, and the Store policy. Approved/finalized periods cannot be recomputed, so later rate or policy changes do not rewrite history. Internal rider earnings can be claimed once either by payroll or the existing rider-payout process.
 
 `Recorded as Paid` means an authorized person recorded a salary payment completed outside Pawzzle. Pawzzle does not initiate a bank transfer.
 

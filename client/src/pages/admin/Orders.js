@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import { adminOrderService, deliveryService, getImageUrl } from '../../services/apiService';
-import { ShoppingBag, Eye, Package, Filter, ChevronDown, Search, Link2, Copy } from 'lucide-react';
+import { adminOrderService, getImageUrl } from '../../services/apiService';
+import { ShoppingBag, Eye, Package, Filter, ChevronDown, Search, UserRoundCheck } from 'lucide-react';
 import { formatTime12h } from '../../utils/timeFormatters';
 import { useRealTimeUpdates } from '../../hooks/useRealTimeUpdates';
 import { formatPeso } from '../../utils/paymentSummary';
@@ -73,22 +73,6 @@ const AdminOrders = () => {
       fetchOrders();
     } catch (error) {
       toast.error('Unable to update this order. Please try again.');
-    }
-  };
-
-  const handleGenerateRiderLink = async (orderId) => {
-    try {
-      const response = await deliveryService.generateLinks(orderId);
-      const url = response.data.riderLink;
-      
-      // Attempt copy to clipboard
-      navigator.clipboard.writeText(url);
-      toast.success('Rider Link Generated & Copied!', {
-        description: 'You can now share this secure link with the rider.',
-        icon: <Link2 className="text-primary-600" />
-      });
-    } catch (error) {
-      toast.error('Failed to generate tracking link');
     }
   };
 
@@ -237,13 +221,13 @@ const AdminOrders = () => {
                           
                           {getActionButton(order) && (
                             getActionButton(order).type === 'rider_link' ? (
-                              <button
-                                onClick={() => handleGenerateRiderLink(order._id)}
+                              <Link
+                                to={`/admin/orders/${order._id}`}
                                 className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${order.delivery ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-200' : 'bg-slate-900 text-white'}`}
                               >
-                                {order.delivery ? <Copy className="h-3.5 w-3.5" /> : <Link2 className="h-3.5 w-3.5" />}
-                                {order.delivery ? 'COPY LINK' : 'ASSIGN RIDER'}
-                              </button>
+                                <UserRoundCheck className="h-3.5 w-3.5" />
+                                {order.delivery ? 'MANAGE RIDER' : 'ASSIGN RIDER'}
+                              </Link>
                             ) : (
                               <button
                                 onClick={() => handleStatusUpdate(order._id, getActionButton(order).next)}

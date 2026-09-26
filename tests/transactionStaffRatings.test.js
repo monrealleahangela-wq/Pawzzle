@@ -88,7 +88,7 @@ test('rider eligibility is derived from an owned completed delivery and its actu
     delivery = { ...delivery, status: 'in_transit' };
     assert.equal((await __testing.resolveDeliveryRiderReview(customerId, 'delivery-1')).reason, 'delivery_not_completed');
 
-    delivery = { ...delivery, status: 'delivered', assignmentType: 'third_party', assignedRider: null };
+    delivery = { ...delivery, status: 'delivered', assignmentType: 'unassigned', assignedRider: null };
     assert.equal((await __testing.resolveDeliveryRiderReview(customerId, 'delivery-1')).reason, 'internal_rider_not_recorded');
 
     delivery = { ...delivery, assignmentType: 'internal', assignedRider: riderId };

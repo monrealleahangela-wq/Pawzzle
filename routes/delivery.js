@@ -17,14 +17,6 @@ const { authenticate, requirePermission } = require('../middleware/auth');
 const Delivery = require('../models/Delivery');
 const { uploadSingle, handleUploadError } = require('../middleware/upload');
 const { uploadImage } = require('../controllers/uploadController');
-const {
-  listDeliveryProviders,
-  quoteThirdPartyDelivery,
-  requestThirdPartyDelivery,
-  refreshThirdPartyDelivery,
-  cancelThirdPartyDelivery,
-  handleDeliveryProviderWebhook
-} = require('../controllers/deliveryProviderController');
 
 const validateActiveRiderToken = async (req, res, next) => {
   const delivery = await Delivery.findOne({ riderToken: req.params.token, assignmentType: 'internal' }).select('isLive isRiderVerified');
@@ -32,14 +24,7 @@ const validateActiveRiderToken = async (req, res, next) => {
   next();
 };
 
-// Provider callback: public network route, authenticated by adapter-specific signature.
-router.post('/provider-webhooks/:provider', handleDeliveryProviderWebhook);
 // Private Routes: authorized Store/Dispatcher operations.
-router.get('/providers', authenticate, requirePermission('logistics.manage'), listDeliveryProviders);
-router.post('/:id/provider/quote', authenticate, requirePermission('logistics.manage'), quoteThirdPartyDelivery);
-router.post('/:id/provider/request', authenticate, requirePermission('logistics.manage'), requestThirdPartyDelivery);
-router.post('/:id/provider/refresh', authenticate, requirePermission('logistics.manage'), refreshThirdPartyDelivery);
-router.post('/:id/provider/cancel', authenticate, requirePermission('logistics.manage'), cancelThirdPartyDelivery);
 router.post('/generate', authenticate, requirePermission('logistics.manage'), generateDeliveryLinks);
 router.post('/calculate-fee', authenticate, calculateDeliveryFee);
 router.get('/order/:orderId', authenticate, getDeliveryByOrder);

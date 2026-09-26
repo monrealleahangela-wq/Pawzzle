@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useParams, useLocation } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { MapContainer, TileLayer, Marker, Polyline, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -60,7 +60,6 @@ function RecenterMap({ coords }) {
 
 const DeliveryTracking = () => {
   const { token } = useParams();
-  const location = useLocation();
   const [delivery, setDelivery] = useState(null);
   const [role, setRole] = useState(null); // 'rider' or 'customer'
   const [loading, setLoading] = useState(true);
@@ -88,7 +87,6 @@ const DeliveryTracking = () => {
     content: ''
   });
   
-  const isRiderRoute = location.pathname.includes('/rider-track/');
 
   useEffect(() => {
     fetchDelivery();
@@ -383,23 +381,6 @@ const DeliveryTracking = () => {
 
       {/* Main Content Area */}
       <main className="flex-1 flex flex-col min-h-0 bg-slate-50">
-        {role === 'customer' && delivery.assignmentType === 'third_party' && (
-          <section className="bg-amber-50 border-b border-amber-200 px-5 py-4">
-            <div className="max-w-4xl mx-auto flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <p className="text-[9px] font-black uppercase tracking-widest text-amber-800">Delivery by third-party courier</p>
-                <h2 className="text-sm font-black text-slate-900 mt-1">{delivery.providerDelivery?.providerName || 'External courier provider'}</h2>
-                <p className="text-[10px] text-slate-600 mt-1">The courier provider assigns and notifies its own rider. Pawzzle displays provider updates here.</p>
-              </div>
-              <div className="text-right text-[10px] text-slate-600">
-                <p><b>Tracking:</b> {delivery.providerDelivery?.trackingId || 'Waiting for provider'}</p>
-                <p><b>Provider status:</b> {(delivery.providerDelivery?.externalStatus || delivery.providerDelivery?.requestState || 'not requested').replace(/_/g, ' ')}</p>
-                {delivery.providerDelivery?.estimatedDeliveryAt && <p><b>ETA:</b> {new Date(delivery.providerDelivery.estimatedDeliveryAt).toLocaleString()}</p>}
-              </div>
-            </div>
-          </section>
-        )}
-        
         {/* State 1: Status & Info Overview (Formerly Floating Card) */}
         {!chatOpen && (
           <section className="bg-white border-b border-slate-100 p-6 flex flex-col gap-5 z-20 shadow-sm shrink-0">

@@ -176,13 +176,12 @@ test('payroll cannot be paid twice and records external payment rather than clai
   assert.match(controller, /paymentStatus: 'recorded_paid'/);
 });
 
-test('internal rider earnings are included once and third-party couriers cannot enter employee payroll', () => {
+test('internal rider earnings are included once in employee payroll', () => {
   const controller = read('controllers/hrController.js');
   assert.match(controller, /staffType === 'delivery_rider'/);
   assert.match(controller, /payrollPayslip: null/);
   assert.match(controller, /payout: null/);
   assert.match(read('models/RiderEarning.js'), /payrollPayslip/);
-  assert.doesNotMatch(controller, /third_party/);
 });
 
 test('professional verification gate remains authoritative for specialized staff', () => {

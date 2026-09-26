@@ -392,7 +392,6 @@ const buildStoreOperationsSnapshot = async (store, { includeFinancials = false }
       failed: statusCount(deliveries, ['failed_attempt', 'returned_to_store', 'declined']),
       averageDeliveryMinutes: deliveryDurations.length ? Math.round(sum(deliveryDurations, value => value) / deliveryDurations.length) : 0,
       internal: deliveries.filter(row => row.assignmentType === 'internal').length,
-      thirdParty: deliveries.filter(row => row.assignmentType === 'third_party').length,
       activeRiderWorkload: [...riderWorkload.values()].reduce((total, value) => total + value, 0),
       riderEarningsToday: sum(riderEarnings, row => row.amount),
       completionRate: deliveries.length ? Number(((statusCount(deliveries, ['delivered']) / deliveries.length) * 100).toFixed(1)) : 0

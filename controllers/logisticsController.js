@@ -38,12 +38,18 @@ const resolveScope = async req => {
 
 const serializeDelivery = delivery => {
   const row = delivery.toObject ? delivery.toObject() : delivery;
-  return {
+  const assignmentType = row.assignedRider ? 'internal' : 'unassigned';
+  const payload = {
     ...row,
+    assignmentType,
+    assignmentHistory: (row.assignmentHistory || []).filter(entry => entry.assignmentType === 'internal'),
     deliveryNumber: `DLV-${String(row._id).slice(-8).toUpperCase()}`,
     statusLabel: getDeliveryStatusLabel(row.status),
-    linkStatus: getDeliveryLinkStatus(row)
+    linkStatus: getDeliveryLinkStatus({ ...row, assignmentType })
   };
+  delete payload.thirdPartyRider;
+  delete payload.providerDelivery;
+  return payload;
 };
 
 const getLogisticsDashboard = async (req, res) => {
@@ -103,10 +109,10 @@ const getLogisticsDashboard = async (req, res) => {
         byStatus,
         deliveriesOverTime,
         performance: { completed: summary.delivered, failed: summary.failed },
-        byAssignment: ['internal', 'third_party', 'unassigned'].map(key => ({
+        byAssignment: ['internal', 'unassigned'].map(key => ({
           key,
-          label: key === 'third_party' ? 'Third-party' : key.replace(/^./, character => character.toUpperCase()),
-          value: count(row => row.assignmentType === key)
+          label: key.replace(/^./, character => character.toUpperCase()),
+          value: count(row => key === 'internal' ? Boolean(row.assignedRider) : !row.assignedRider)
         }))
       },
       riderEarnings: earningTotals
@@ -123,7 +129,10 @@ const getDeliveries = async (req, res) => {
     const { status, riderType, rider, search, from, to, page = 1, limit = 20 } = req.query;
     const filters = [];
     if (status) filters.push({ status });
-    if (riderType) filters.push({ assignmentType: riderType });
+    if (riderType) {
+      if (!['internal', 'unassigned'].includes(riderType)) return res.status(400).json({ message: 'Invalid rider type filter.' });
+      filters.push(riderType === 'internal' ? { assignedRider: { $ne: null } } : { assignedRider: null });
+    }
     if (rider && mongoose.Types.ObjectId.isValid(rider)) filters.push({ assignedRider: rider });
     if (from || to) {
       const createdAt = {};
@@ -151,9 +160,7 @@ const getDeliveries = async (req, res) => {
       filters.push({
         $or: [
           { riderToken: pattern }, { trackingToken: pattern }, { order: { $in: orderIds } },
-          { booking: { $in: bookingIds } }, { assignedRider: { $in: riderIds } },
-          { 'thirdPartyRider.name': pattern }, { 'thirdPartyRider.company': pattern },
-          { 'thirdPartyRider.referenceNumber': pattern }
+          { booking: { $in: bookingIds } }, { assignedRider: { $in: riderIds } }
         ]
       });
     }
@@ -218,7 +225,7 @@ const getDeliveryIssues = async (req, res) => {
     const deliveries = await Delivery.find({
       $and: [scope.match, { $or: [{ 'deliveryAttempts.0': { $exists: true } }, { 'complaints.0': { $exists: true } }, { status: { $in: ['failed_attempt', 'returned_to_store'] } }] }]
     })
-      .select('order booking status assignedRider assignmentType thirdPartyRider deliveryAttempts complaints createdAt')
+      .select('order booking status assignedRider assignmentType deliveryAttempts complaints createdAt')
       .populate({ path: 'order', select: 'orderNumber customer', populate: { path: 'customer', select: 'firstName lastName' } })
       .populate({ path: 'booking', select: 'customer', populate: { path: 'customer', select: 'firstName lastName' } })
       .populate('assignedRider', 'firstName lastName riderProfile.staffId')
@@ -231,8 +238,8 @@ const getDeliveryIssues = async (req, res) => {
           deliveryNumber: `DLV-${String(delivery._id).slice(-8).toUpperCase()}`,
           orderNumber: delivery.order?.orderNumber || `Booking ${String(delivery.booking?._id || '').slice(-8).toUpperCase()}`,
           customer: delivery.order?.customer || delivery.booking?.customer,
-          rider: delivery.assignedRider || delivery.thirdPartyRider,
-          riderType: delivery.assignmentType, reason: attempt.reason, notes: attempt.notes,
+          rider: delivery.assignedRider,
+          riderType: delivery.assignedRider ? 'internal' : 'unassigned', reason: attempt.reason, notes: attempt.notes,
           photo: attempt.photo, date: attempt.timestamp,
           resolutionStatus: attempt.resolutionStatus || 'open', resolutionNotes: attempt.resolutionNotes
         });
@@ -243,8 +250,8 @@ const getDeliveryIssues = async (req, res) => {
           deliveryNumber: `DLV-${String(delivery._id).slice(-8).toUpperCase()}`,
           orderNumber: delivery.order?.orderNumber || `Booking ${String(delivery.booking?._id || '').slice(-8).toUpperCase()}`,
           customer: delivery.order?.customer || delivery.booking?.customer,
-          rider: delivery.assignedRider || delivery.thirdPartyRider,
-          riderType: delivery.assignmentType, reason: complaint.type, notes: complaint.content,
+          rider: delivery.assignedRider,
+          riderType: delivery.assignedRider ? 'internal' : 'unassigned', reason: complaint.type, notes: complaint.content,
           date: complaint.createdAt, resolutionStatus: complaint.status, resolvedAt: complaint.resolvedAt,
           resolutionNotes: complaint.resolutionNotes
         });

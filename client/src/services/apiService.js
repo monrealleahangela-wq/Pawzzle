@@ -533,12 +533,7 @@ export const deliveryService = {
   reportFailedDelivery: (token, data) => api.post(`/deliveries/failed/${token}`, data),
   uploadDeliveryProof: (token, formData) => api.post(`/deliveries/proof-upload/${token}`, formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
   resolveComplaint: (deliveryId, complaintId) => api.patch(`/deliveries/resolve-complaint/${deliveryId}/${complaintId}`),
-  calculateFee: (data) => api.post('/deliveries/calculate-fee', data),
-  getProviders: () => api.get('/deliveries/providers'),
-  quoteProvider: (deliveryId, data) => api.post(`/deliveries/${deliveryId}/provider/quote`, data),
-  requestProvider: (deliveryId) => api.post(`/deliveries/${deliveryId}/provider/request`),
-  refreshProvider: (deliveryId) => api.post(`/deliveries/${deliveryId}/provider/refresh`),
-  cancelProvider: (deliveryId, data) => api.post(`/deliveries/${deliveryId}/provider/cancel`, data)
+  calculateFee: (data) => api.post('/deliveries/calculate-fee', data)
 };
 
 export const logisticsService = {
