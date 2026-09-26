@@ -13,7 +13,7 @@ const {
 const read = relativePath => fs.readFileSync(path.join(__dirname, '..', relativePath), 'utf8');
 
 test('pet availability treats exactly one live animal as an individual listing', () => {
-  const availablePet = { _id: 'pet-1', name: 'Casper', quantity: 1, status: 'available', isAvailable: true };
+  const availablePet = { _id: 'pet-1', name: 'Casper', quantity: 1, status: 'available', isAvailable: true, approvalStatus: 'approved' };
 
   assert.equal(isIndividualPetRecord(availablePet), true);
   assert.equal(getPetAvailabilityIssue(availablePet, 1), null);

@@ -135,7 +135,7 @@ router.put('/:id', authenticate, adminOrStaff, requirePermission('pets.manage', 
 router.delete('/:id', authenticate, adminOrStaff, requirePermission('pets.manage', 'inventory.adjust'), deletePet);
 
 // Listing Moderation
-router.post('/:id/approve', authenticate, adminOrStaff, requirePermission('pets.manage', 'inventory.adjust'), approvePet);
-router.post('/:id/reject', authenticate, adminOrStaff, requirePermission('pets.manage', 'inventory.adjust'), rejectPet);
+router.post('/:id/approve', authenticate, platformAdminOnly, approvePet);
+router.post('/:id/reject', authenticate, platformAdminOnly, rejectPet);
 
 module.exports = router;

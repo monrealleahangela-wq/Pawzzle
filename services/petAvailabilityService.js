@@ -19,6 +19,7 @@ const isIndividualPetRecord = pet => {
 
 const getPetAvailabilityIssue = (pet, requestedQuantity = 1) => {
   if (!pet || pet.isDeleted) return 'Pet listing was not found.';
+  if (pet.approvalStatus !== 'approved') return 'Pet listing is not approved for purchase.';
   if (Number(requestedQuantity) !== 1) return 'Each pet listing represents one individual pet and must use quantity 1.';
   if (!isIndividualPetRecord(pet)) {
     return 'This legacy quantity-based pet listing requires manual cleanup before it can be purchased.';
@@ -31,6 +32,7 @@ const getPetAvailabilityIssue = (pet, requestedQuantity = 1) => {
 
 const availableIndividualFilter = {
   isDeleted: { $ne: true },
+  approvalStatus: 'approved',
   isAvailable: true,
   status: 'available',
   $or: [

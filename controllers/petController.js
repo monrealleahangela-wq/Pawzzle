@@ -48,7 +48,7 @@ const getAllPets = async (req, res) => {
 
     const filter = {
       isDeleted: { $ne: true },
-      approvalStatus: { $in: ['approved', 'pending'] } // Show both pending and approved to buyers
+      approvalStatus: 'approved'
     };
 
     // Filter by City (if provided, we need to find stores in that city first)
@@ -187,6 +187,9 @@ const getPetById = async (req, res) => {
 
     const isAdminRequest = req.baseUrl?.includes('/admin');
     if (!isAdminRequest) {
+      if (pet.approvalStatus !== 'approved') {
+        return res.status(404).json({ message: 'Pet not found or unavailable' });
+      }
       const ownerIds = await getCustomerVisibleOwnerIds();
       const publicStore = await Store.findOne(withCustomerComplianceFilter(buildCustomerVisibleStoreFilter(ownerIds, {
         _id: pet.store?._id || pet.store
@@ -261,9 +264,9 @@ const createPet = async (req, res) => {
       paymentType: 'online_only',
       allowedPaymentMethods: ['paymongo'],
       paymentConfig: req.body.paymentConfig === 'deposit_first' ? 'deposit_first' : 'full_payment',
-      // Standard Store listings are immediately eligible under the existing
-      // Pet model policy. The browser cannot override this system field.
-      approvalStatus: 'approved',
+      // Seller submissions always enter Platform Admin review. The browser
+      // cannot approve its own listing or choose another moderation state.
+      approvalStatus: 'pending',
       addedBy: req.user._id,
       store: store._id
     };
@@ -274,7 +277,7 @@ const createPet = async (req, res) => {
     const populatedPet = await Pet.findById(pet._id).populate('addedBy', 'username firstName lastName');
 
     res.status(201).json({
-      message: 'Pet created successfully',
+      message: 'Pet listing submitted for Platform Admin review',
       pet: populatedPet
     });
   } catch (error) {

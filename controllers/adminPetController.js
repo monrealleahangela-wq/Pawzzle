@@ -1,7 +1,6 @@
 const Pet = require('../models/Pet');
 const Store = require('../models/Store');
 const { isPlatformAdmin, isStoreAdmin, isOperationalStaff } = require('../config/permissions');
-const { canOperateStore } = require('../utils/authorizationPolicy');
 
 // Admin-only function for getting pets with multi-tenant isolation
 const getAllAdminPets = async (req, res) => {
@@ -134,9 +133,8 @@ const approvePet = async (req, res) => {
     const pet = await Pet.findById(id);
     if (!pet) return res.status(404).json({ message: 'Pet listing not found' });
 
-    // Multi-tenant check
-    if (!(await canOperateStore(req.user, pet.store, ['pets.manage', 'inventory.adjust']))) {
-      return res.status(403).json({ message: 'Access denied for this pet listing.' });
+    if (!isPlatformAdmin(req.user)) {
+      return res.status(403).json({ message: 'Platform administrator approval is required.' });
     }
 
     pet.approvalStatus = 'approved';
@@ -161,8 +159,8 @@ const rejectPet = async (req, res) => {
 
     const pet = await Pet.findById(id);
     if (!pet) return res.status(404).json({ message: 'Pet listing not found' });
-    if (!(await canOperateStore(req.user, pet.store, ['pets.manage', 'inventory.adjust']))) {
-      return res.status(403).json({ message: 'Access denied for this pet listing.' });
+    if (!isPlatformAdmin(req.user)) {
+      return res.status(403).json({ message: 'Platform administrator approval is required.' });
     }
 
     pet.approvalStatus = 'rejected';

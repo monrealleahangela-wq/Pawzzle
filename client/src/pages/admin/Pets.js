@@ -14,13 +14,14 @@ const AdminPets = () => {
   const [loading, setLoading] = useState(true);
 
   // Permission Checks
-  const isAdmin = PLATFORM_ADMIN_ROLES.has(user?.role) || STORE_ADMIN_ROLES.has(user?.role);
-  const canCreate = hasUiActionPermission(user, 'inventory', 'create', isAdmin);
-  const canUpdate = hasUiActionPermission(user, 'inventory', 'update', isAdmin);
-  const canDelete = hasUiActionPermission(user, 'inventory', 'delete', isAdmin);
+  const isPlatformReviewer = PLATFORM_ADMIN_ROLES.has(user?.role);
+  const isStoreAdmin = STORE_ADMIN_ROLES.has(user?.role);
+  const canCreate = !isPlatformReviewer && hasUiActionPermission(user, 'inventory', 'create', isStoreAdmin);
+  const canUpdate = !isPlatformReviewer && hasUiActionPermission(user, 'inventory', 'update', isStoreAdmin);
+  const canDelete = !isPlatformReviewer && hasUiActionPermission(user, 'inventory', 'delete', isStoreAdmin);
   
   // For Adoption (Sold Pets)
-  const canManageAdoptions = hasUiActionPermission(user, 'orders', 'update', isAdmin);
+  const canManageAdoptions = !isPlatformReviewer && hasUiActionPermission(user, 'orders', 'update', isStoreAdmin);
 
   const [showAddForm, setShowAddForm] = useState(false);
   // Kept false while the legacy editor remains in source for compatibility;
@@ -147,6 +148,30 @@ const AdminPets = () => {
       } catch (error) {
         toast.error('Unable to delete this pet. Please try again.');
       }
+    }
+  };
+
+  const handleApprovePet = async (petId) => {
+    const notes = window.prompt('Optional Platform Admin review note:');
+    if (notes === null) return;
+    try {
+      await adminPetService.approvePet(petId, notes.trim());
+      toast.success('Pet listing approved.');
+      fetchPets();
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Unable to approve this pet listing.');
+    }
+  };
+
+  const handleRejectPet = async (petId) => {
+    const notes = window.prompt('Reason for rejection:');
+    if (!notes?.trim()) return;
+    try {
+      await adminPetService.rejectPet(petId, notes.trim());
+      toast.success('Pet listing rejected.');
+      fetchPets();
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Unable to reject this pet listing.');
     }
   };
 
@@ -474,7 +499,7 @@ const AdminPets = () => {
             <div className="p-2 bg-rose-500 text-white rounded-2xl shadow-lg shadow-rose-200">
               <Heart className="h-4 w-4" />
             </div>
-            <span className="text-[10px] font-black text-rose-500 uppercase tracking-[0.4em]">ADMIN PANEL : PETS</span>
+            <span className="text-[10px] font-black text-rose-500 uppercase tracking-[0.4em]">{isPlatformReviewer ? 'PLATFORM REVIEW : PET LISTINGS' : 'ADMIN PANEL : PETS'}</span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-black text-slate-900 uppercase tracking-tight leading-none mb-2">
             Manage <span className="text-rose-500">Pets</span>
@@ -616,6 +641,24 @@ const AdminPets = () => {
                           ₱{(pet.price || 0).toLocaleString()}
                         </span>
                         <div className="flex gap-1.5 shrink-0">
+                          {isPlatformReviewer && pet.approvalStatus !== 'approved' && (
+                            <button
+                              onClick={() => handleApprovePet(pet._id)}
+                              className="p-2 sm:p-3 bg-emerald-50 text-emerald-600 rounded-2xl hover:bg-emerald-600 hover:text-white transition-all border border-emerald-100 active:scale-95"
+                              title="Approve Pet Listing"
+                            >
+                              <CheckCircle2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                            </button>
+                          )}
+                          {isPlatformReviewer && pet.approvalStatus !== 'rejected' && (
+                            <button
+                              onClick={() => handleRejectPet(pet._id)}
+                              className="p-2 sm:p-3 bg-rose-50 text-rose-500 rounded-2xl hover:bg-rose-500 hover:text-white transition-all border border-rose-100 active:scale-95"
+                              title="Reject Pet Listing"
+                            >
+                              <XCircle className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                            </button>
+                          )}
                           {canCreate && (
                             <button
                               onClick={() => handleDuplicateListingDetails(pet)}

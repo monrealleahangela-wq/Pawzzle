@@ -5,7 +5,9 @@ const path = require('node:path');
 const Pet = require('../models/Pet');
 const Store = require('../models/Store');
 const DecisionSupportService = require('../services/decisionSupportService');
+const { getPetAvailabilityIssue } = require('../services/petAvailabilityService');
 const { createPet } = require('../controllers/petController');
+const { approvePet, rejectPet } = require('../controllers/adminPetController');
 const {
   PET_SIZES,
   PET_TEMPERAMENT_TRAITS,
@@ -71,6 +73,14 @@ test('Pet schema persists the canonical DSS attributes and exact shared enum val
   assert.equal(pet.petCompatibility.cats, 'compatible');
 });
 
+test('seller pet listings default to pending Platform Admin approval', () => {
+  const petData = listing({ addedBy: '507f1f77bcf86cd799439011', store: '507f1f77bcf86cd799439012' });
+  delete petData._id;
+  delete petData.approvalStatus;
+  const pet = new Pet(petData);
+  assert.equal(pet.approvalStatus, 'pending');
+});
+
 test('structured seller attributes power space, temperament, activity, care, and household DSS factors', () => {
   const result = DecisionSupportService.petCompatibilityAssessment(
     [listing()],
@@ -122,7 +132,7 @@ test('create API requires aligned evidence and owns the approval/store identity 
     assert.match(routes, /body\('birthday'\)\.isISO8601/);
     assert.match(routes, /body\('images'\)\.isArray\(\{ min: 1 \}\)/);
   }
-  assert.match(controller, /approvalStatus: 'approved'/);
+  assert.match(controller, /approvalStatus: 'pending'/);
   assert.match(controller, /store: store\._id/);
   assert.match(controller, /approvalStatus,[\s\S]*\.\.\.listingData/);
 });
@@ -150,7 +160,7 @@ test('a valid aligned Add Pet payload is saved with authoritative Store and appr
       _id: undefined,
       store: '507f1f77bcf86cd799439099',
       addedBy: '507f1f77bcf86cd799439098',
-      approvalStatus: 'rejected',
+      approvalStatus: 'approved',
       birthday: '2024-01-15',
       paymentConfig: 'full_payment'
     }
@@ -165,10 +175,10 @@ test('a valid aligned Add Pet payload is saved with authoritative Store and appr
   try {
     await createPet(req, res);
     assert.equal(statusCode, 201);
-    assert.equal(response.message, 'Pet created successfully');
+    assert.equal(response.message, 'Pet listing submitted for Platform Admin review');
     assert.equal(String(saved.store), storeId);
     assert.equal(String(saved.addedBy), ownerId);
-    assert.equal(saved.approvalStatus, 'approved');
+    assert.equal(saved.approvalStatus, 'pending');
     assert.deepEqual(saved.temperamentTraits, ['calm', 'affectionate']);
     assert.equal(saved.activityLevel, 'low');
   } finally {
@@ -186,4 +196,74 @@ test('Customer DSS query fetches every structured listing attribute used for sco
   assert.match(controller, /approvalStatus: 'approved'/);
   assert.match(controller, /status: 'available'/);
   assert.match(controller, /isAvailable: true/);
+});
+
+test('customer visibility and purchase eligibility require Platform Admin approval', () => {
+  const controller = read('controllers/petController.js');
+  const availability = read('services/petAvailabilityService.js');
+  assert.match(controller, /approvalStatus: 'approved'/);
+  assert.doesNotMatch(controller, /approvalStatus:\s*\{\s*\$in:\s*\['approved',\s*'pending'\]/);
+  assert.match(controller, /pet\.approvalStatus !== 'approved'/);
+  assert.match(availability, /approvalStatus: 'approved'/);
+  assert.equal(getPetAvailabilityIssue(listing({ approvalStatus: 'pending' }), 1), 'Pet listing is not approved for purchase.');
+  assert.equal(getPetAvailabilityIssue(listing({ approvalStatus: 'rejected' }), 1), 'Pet listing is not approved for purchase.');
+  assert.equal(getPetAvailabilityIssue(listing(), 1), null);
+});
+
+test('only Platform Admin routes can approve or reject pet listings', () => {
+  const routes = read('routes/adminPets.js');
+  const controller = read('controllers/adminPetController.js');
+  const page = read('client/src/pages/admin/Pets.js');
+  const layout = read('client/src/components/Layout.js');
+  assert.match(routes, /router\.post\('\/:id\/approve', authenticate, platformAdminOnly, approvePet\)/);
+  assert.match(routes, /router\.post\('\/:id\/reject', authenticate, platformAdminOnly, rejectPet\)/);
+  assert.match(controller, /if \(!isPlatformAdmin\(req\.user\)\)/);
+  assert.match(page, /isPlatformReviewer && pet\.approvalStatus !== 'approved'/);
+  assert.match(page, /isPlatformReviewer && pet\.approvalStatus !== 'rejected'/);
+  assert.match(layout, /Pet Listing Approval/);
+});
+
+test('Platform Admin approval and rejection mutate the persisted moderation state', async () => {
+  const originalFindPet = Pet.findById;
+  let saved = 0;
+  const pet = {
+    _id: 'listing-1',
+    store: 'store-1',
+    description: 'Listing description',
+    status: 'available',
+    approvalStatus: 'pending',
+    async save() { saved += 1; }
+  };
+  Pet.findById = async () => pet;
+  const response = () => {
+    const result = { statusCode: 200, body: null };
+    return {
+      result,
+      status(value) { result.statusCode = value; return this; },
+      json(value) { result.body = value; return this; }
+    };
+  };
+
+  try {
+    const unauthorized = response();
+    await approvePet({ params: { id: pet._id }, body: {}, user: { role: 'store_owner' } }, unauthorized);
+    assert.equal(unauthorized.result.statusCode, 403);
+    assert.equal(pet.approvalStatus, 'pending');
+    assert.equal(saved, 0);
+
+    const approved = response();
+    await approvePet({ params: { id: pet._id }, body: {}, user: { role: 'super_admin' } }, approved);
+    assert.equal(approved.result.statusCode, 200);
+    assert.equal(pet.approvalStatus, 'approved');
+    assert.equal(saved, 1);
+
+    const rejected = response();
+    await rejectPet({ params: { id: pet._id }, body: { adminNotes: 'Listing evidence was not accepted.' }, user: { role: 'platform_admin' } }, rejected);
+    assert.equal(rejected.result.statusCode, 200);
+    assert.equal(pet.approvalStatus, 'rejected');
+    assert.equal(pet.status, 'unavailable');
+    assert.equal(saved, 2);
+  } finally {
+    Pet.findById = originalFindPet;
+  }
 });
