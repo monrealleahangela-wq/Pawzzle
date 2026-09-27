@@ -578,6 +578,12 @@ export const supplierService = {
 // Purchase Order services
 export const purchaseOrderService = {
   create: (data) => api.post('/purchase-orders', data),
+  getCart: () => api.get('/purchase-orders/cart/current'),
+  addCartItem: (supplierProductId, quantity) => api.post('/purchase-orders/cart/items', { supplierProductId, quantity }),
+  updateCartItem: (supplierProductId, data) => api.patch(`/purchase-orders/cart/items/${supplierProductId}`, data),
+  removeCartItem: (supplierProductId) => api.delete(`/purchase-orders/cart/items/${supplierProductId}`),
+  clearCart: () => api.delete('/purchase-orders/cart'),
+  submitCart: (data = {}) => api.post('/purchase-orders/cart/submit', data),
   getAll: (params) => api.get('/purchase-orders', { params }),
   getById: (id) => api.get(`/purchase-orders/${id}`),
   cancel: (id, data) => api.patch(`/purchase-orders/${id}/cancel`, data),

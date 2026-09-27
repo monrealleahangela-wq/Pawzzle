@@ -1,4 +1,7 @@
+const crypto = require('crypto');
+const mongoose = require('mongoose');
 const PurchaseOrder = require('../models/PurchaseOrder');
+const ProcurementCart = require('../models/ProcurementCart');
 const { isPlatformAdmin } = require('../config/permissions');
 const { canOperateStore } = require('../utils/authorizationPolicy');
 const Supplier = require('../models/Supplier');
@@ -11,6 +14,7 @@ const SupplyChainLog = require('../models/SupplyChainLog');
 const InventoryLedgerService = require('../services/inventoryLedgerService');
 const { createNotification } = require('./notificationController');
 const { isSupplierSelectableForStore } = require('../utils/supplierLifecycle');
+const { validateProcurementQuantity, groupProcurementItemsBySupplier } = require('../utils/procurementCart');
 
 const resolveUserStore = async user => {
   if (user.store) return user.store._id || user.store;
@@ -18,9 +22,412 @@ const resolveUserStore = async user => {
   return ownedStore?._id || null;
 };
 
+const populateProcurementCart = cart => cart.populate([
+  {
+    path: 'items.supplierProduct',
+    select: 'supplier name sku category images wholesalePrice availableStock minimumOrderQuantity unitOfMeasure deliveryLeadTimeDays isActive isDeleted'
+  },
+  { path: 'items.supplier', select: 'businessName supplierType status isActive isDeleted storeAssociations' },
+  { path: 'items.storeProduct', select: 'name sku stockQuantity store isDeleted' }
+]);
+
+const getOrCreateProcurementCart = async (userId, storeId) => {
+  let cart = await ProcurementCart.findOne({ user: userId, store: storeId });
+  if (!cart) {
+    try {
+      cart = await ProcurementCart.create({ user: userId, store: storeId, items: [] });
+    } catch (error) {
+      if (error.code !== 11000) throw error;
+      cart = await ProcurementCart.findOne({ user: userId, store: storeId });
+    }
+  }
+  return cart;
+};
+
+const serializeProcurementCart = (cart, storeId) => {
+  const items = (cart?.items || []).map(item => {
+    const product = item.supplierProduct;
+    const supplier = item.supplier;
+    const currentUnitPrice = Number(product?.wholesalePrice || 0);
+    const quantity = Number(item.quantity || 0);
+    const supplierEligible = isSupplierSelectableForStore(supplier, storeId);
+    const available = Boolean(product && product.isActive && !product.isDeleted && supplierEligible);
+    return {
+      _id: item._id,
+      cartItemId: item._id,
+      supplierProductId: product?._id || item.supplierProduct,
+      supplierId: supplier?._id || item.supplier,
+      supplier: supplier ? { _id: supplier._id, businessName: supplier.businessName } : null,
+      product: product ? {
+        _id: product._id,
+        name: product.name,
+        sku: product.sku,
+        category: product.category,
+        images: product.images,
+        wholesalePrice: currentUnitPrice,
+        availableStock: product.availableStock,
+        minimumOrderQuantity: product.minimumOrderQuantity,
+        unitOfMeasure: product.unitOfMeasure,
+        deliveryLeadTimeDays: product.deliveryLeadTimeDays
+      } : null,
+      storeProduct: item.storeProduct || null,
+      quantity,
+      addedUnitPrice: Number(item.addedUnitPrice),
+      priceChanged: Boolean(product && Number(item.addedUnitPrice) !== currentUnitPrice),
+      available,
+      lineTotal: currentUnitPrice * quantity,
+      addedAt: item.addedAt,
+      updatedAt: item.updatedAt
+    };
+  });
+  return {
+    _id: cart?._id,
+    items,
+    itemCount: items.length,
+    totalQuantity: items.reduce((total, item) => total + item.quantity, 0),
+    subtotal: items.reduce((total, item) => total + item.lineTotal, 0),
+    supplierCount: new Set(items.map(item => String(item.supplierId))).size,
+    updatedAt: cart?.updatedAt
+  };
+};
+
+const loadPopulatedProcurementCart = async (userId, storeId) => {
+  const cart = await getOrCreateProcurementCart(userId, storeId);
+  await populateProcurementCart(cart);
+  return serializeProcurementCart(cart, storeId);
+};
+
 // ═══════════════════════════════════════════════════════════════
 // SELLER - Create & Manage Purchase Orders
 // ═══════════════════════════════════════════════════════════════
+
+const getProcurementCart = async (req, res) => {
+  try {
+    const store = await resolveUserStore(req.user);
+    if (!store) return res.status(403).json({ message: 'Authorized store not found.' });
+    res.json(await loadPopulatedProcurementCart(req.user._id, store));
+  } catch (error) {
+    console.error('Get procurement cart error:', error);
+    res.status(500).json({ message: 'Unable to load the procurement cart.' });
+  }
+};
+
+const addProcurementCartItem = async (req, res) => {
+  try {
+    const store = await resolveUserStore(req.user);
+    if (!store) return res.status(403).json({ message: 'Authorized store not found.' });
+    const product = await SupplierProduct.findOne({
+      _id: req.body.supplierProductId,
+      isActive: true,
+      isDeleted: false
+    });
+    if (!product) return res.status(404).json({ message: 'Supplier product is unavailable.' });
+    const supplier = await Supplier.findById(product.supplier);
+    if (!isSupplierSelectableForStore(supplier, store)) {
+      return res.status(403).json({ message: 'This supplier is not eligible for your store.' });
+    }
+    const requested = req.body.quantity === undefined
+      ? Number(product.minimumOrderQuantity)
+      : Number(req.body.quantity);
+    const requestedQuantity = validateProcurementQuantity({
+      quantity: requested,
+      minimumOrderQuantity: product.minimumOrderQuantity,
+      availableStock: product.availableStock
+    });
+    if (!requestedQuantity.valid) {
+      if (requestedQuantity.reason === 'insufficient_stock') {
+        return res.status(409).json({ message: `Only ${product.availableStock} ${product.unitOfMeasure}(s) of "${product.name}" are available.` });
+      }
+      return res.status(400).json({ message: `Minimum order for "${product.name}" is ${product.minimumOrderQuantity} ${product.unitOfMeasure}(s).` });
+    }
+    const cart = await getOrCreateProcurementCart(req.user._id, store);
+    const existing = cart.items.find(item => String(item.supplierProduct) === String(product._id));
+    const nextQuantity = existing ? existing.quantity + requested : requested;
+    if (nextQuantity > product.availableStock) {
+      return res.status(409).json({ message: `Only ${product.availableStock} ${product.unitOfMeasure}(s) of "${product.name}" are available.` });
+    }
+    if (existing) {
+      existing.quantity = nextQuantity;
+      existing.supplier = product.supplier;
+      existing.addedUnitPrice = product.wholesalePrice;
+      existing.updatedAt = new Date();
+    } else {
+      cart.items.push({
+        supplierProduct: product._id,
+        supplier: product.supplier,
+        quantity: requested,
+        addedUnitPrice: product.wholesalePrice
+      });
+    }
+    await cart.save();
+    await populateProcurementCart(cart);
+    res.status(201).json(serializeProcurementCart(cart, store));
+  } catch (error) {
+    console.error('Add procurement cart item error:', error);
+    res.status(error.name === 'CastError' ? 400 : 500).json({ message: error.name === 'CastError' ? 'Invalid supplier product.' : 'Unable to add this supply.' });
+  }
+};
+
+const updateProcurementCartItem = async (req, res) => {
+  try {
+    const store = await resolveUserStore(req.user);
+    if (!store) return res.status(403).json({ message: 'Authorized store not found.' });
+    const cart = await ProcurementCart.findOne({ user: req.user._id, store });
+    if (!cart) return res.status(404).json({ message: 'Procurement cart not found.' });
+    const item = cart.items.find(entry => String(entry._id) === String(req.params.itemId)
+      || String(entry.supplierProduct) === String(req.params.itemId));
+    if (!item) return res.status(404).json({ message: 'Supply is not in your procurement cart.' });
+    const product = await SupplierProduct.findOne({ _id: item.supplierProduct, isActive: true, isDeleted: false });
+    if (!product) return res.status(409).json({ message: 'This supplier product is no longer available.' });
+    const supplier = await Supplier.findById(product.supplier);
+    if (!isSupplierSelectableForStore(supplier, store)) return res.status(409).json({ message: 'This supplier is no longer eligible for your store.' });
+
+    if (Object.prototype.hasOwnProperty.call(req.body, 'quantity')) {
+      const quantity = Number(req.body.quantity);
+      const quantityValidation = validateProcurementQuantity({
+        quantity,
+        minimumOrderQuantity: product.minimumOrderQuantity,
+        availableStock: product.availableStock
+      });
+      if (!quantityValidation.valid) {
+        if (quantityValidation.reason === 'insufficient_stock') {
+          return res.status(409).json({ message: `Only ${product.availableStock} ${product.unitOfMeasure}(s) are available.` });
+        }
+        return res.status(400).json({ message: `Minimum order for "${product.name}" is ${product.minimumOrderQuantity} ${product.unitOfMeasure}(s).` });
+      }
+      item.quantity = quantity;
+    }
+    if (Object.prototype.hasOwnProperty.call(req.body, 'storeProductId')) {
+      if (req.body.storeProductId) {
+        const storeProduct = await Product.exists({ _id: req.body.storeProductId, store, isDeleted: { $ne: true } });
+        if (!storeProduct) return res.status(400).json({ message: 'The selected inventory product does not belong to this store.' });
+        item.storeProduct = req.body.storeProductId;
+      } else {
+        item.storeProduct = null;
+      }
+    }
+    if (req.body.acceptCurrentPrice === true) item.addedUnitPrice = product.wholesalePrice;
+    item.supplier = product.supplier;
+    item.updatedAt = new Date();
+    await cart.save();
+    await populateProcurementCart(cart);
+    res.json(serializeProcurementCart(cart, store));
+  } catch (error) {
+    console.error('Update procurement cart item error:', error);
+    res.status(error.name === 'CastError' ? 400 : 500).json({ message: error.name === 'CastError' ? 'Invalid cart item.' : 'Unable to update this supply.' });
+  }
+};
+
+const removeProcurementCartItem = async (req, res) => {
+  try {
+    const store = await resolveUserStore(req.user);
+    if (!store) return res.status(403).json({ message: 'Authorized store not found.' });
+    const cart = await ProcurementCart.findOne({ user: req.user._id, store });
+    if (!cart) return res.status(404).json({ message: 'Procurement cart not found.' });
+    const before = cart.items.length;
+    cart.items = cart.items.filter(item => String(item._id) !== String(req.params.itemId)
+      && String(item.supplierProduct) !== String(req.params.itemId));
+    if (cart.items.length === before) return res.status(404).json({ message: 'Supply is not in your procurement cart.' });
+    await cart.save();
+    await populateProcurementCart(cart);
+    res.json(serializeProcurementCart(cart, store));
+  } catch (error) {
+    console.error('Remove procurement cart item error:', error);
+    res.status(error.name === 'CastError' ? 400 : 500).json({ message: error.name === 'CastError' ? 'Invalid cart item.' : 'Unable to remove this supply.' });
+  }
+};
+
+const clearProcurementCart = async (req, res) => {
+  try {
+    const store = await resolveUserStore(req.user);
+    if (!store) return res.status(403).json({ message: 'Authorized store not found.' });
+    const cart = await getOrCreateProcurementCart(req.user._id, store);
+    cart.items = [];
+    await cart.save();
+    res.json(serializeProcurementCart(cart, store));
+  } catch (error) {
+    console.error('Clear procurement cart error:', error);
+    res.status(500).json({ message: 'Unable to clear the procurement cart.' });
+  }
+};
+
+const submitProcurementCart = async (req, res) => {
+  let createdOrders = [];
+  let submissionIssue = null;
+  let committed = false;
+  try {
+    const store = await resolveUserStore(req.user);
+    if (!store) return res.status(403).json({ message: 'Authorized store not found.' });
+
+    await mongoose.connection.transaction(async session => {
+      const cart = await ProcurementCart.findOne({ user: req.user._id, store }).session(session);
+      if (!cart?.items?.length) {
+        submissionIssue = { status: 400, body: { code: 'PROCUREMENT_CART_EMPTY', message: 'Your procurement cart is empty.' } };
+        return;
+      }
+
+      const productIds = cart.items.map(item => item.supplierProduct);
+      const products = await SupplierProduct.find({ _id: { $in: productIds } }).session(session);
+      const productMap = new Map(products.map(product => [String(product._id), product]));
+      const supplierIds = [...new Set(products.map(product => String(product.supplier)))];
+      const suppliers = await Supplier.find({ _id: { $in: supplierIds } }).session(session);
+      const supplierMap = new Map(suppliers.map(supplier => [String(supplier._id), supplier]));
+      const mappedProductIds = cart.items.filter(item => item.storeProduct).map(item => item.storeProduct);
+      const mappedProducts = mappedProductIds.length
+        ? await Product.find({ _id: { $in: mappedProductIds }, store, isDeleted: { $ne: true } }).session(session)
+        : [];
+      const mappedProductSet = new Set(mappedProducts.map(product => String(product._id)));
+      const issues = [];
+      const priceChanges = [];
+      const transactionOrders = [];
+      const resolvedCartItems = [];
+
+      for (const item of cart.items) {
+        const product = productMap.get(String(item.supplierProduct));
+        if (!product || !product.isActive || product.isDeleted) {
+          issues.push({ supplierProductId: item.supplierProduct, message: 'A supply in your cart is no longer available.' });
+          continue;
+        }
+        const supplier = supplierMap.get(String(product.supplier));
+        if (!isSupplierSelectableForStore(supplier, store)) {
+          issues.push({ supplierProductId: product._id, message: `Supplier for "${product.name}" is no longer eligible for this store.` });
+          continue;
+        }
+        const quantity = Number(item.quantity);
+        const quantityValidation = validateProcurementQuantity({
+          quantity,
+          minimumOrderQuantity: product.minimumOrderQuantity,
+          availableStock: product.availableStock
+        });
+        if (!quantityValidation.valid) {
+          issues.push({ supplierProductId: product._id, message: `Quantity for "${product.name}" must be ${product.minimumOrderQuantity}-${product.availableStock}.` });
+          continue;
+        }
+        if (item.storeProduct && !mappedProductSet.has(String(item.storeProduct))) {
+          issues.push({ supplierProductId: product._id, message: `Inventory mapping for "${product.name}" does not belong to this store.` });
+          continue;
+        }
+        if (Number(item.addedUnitPrice) !== Number(product.wholesalePrice)) {
+          priceChanges.push({
+            supplierProductId: product._id,
+            name: product.name,
+            previousUnitPrice: Number(item.addedUnitPrice),
+            currentUnitPrice: Number(product.wholesalePrice)
+          });
+          item.addedUnitPrice = product.wholesalePrice;
+          item.updatedAt = new Date();
+        }
+        item.supplier = product.supplier;
+        resolvedCartItems.push({
+          supplier,
+          orderItem: {
+            supplierProduct: product._id,
+            storeProduct: item.storeProduct || null,
+            productName: product.name,
+            sku: product.sku,
+            quantity,
+            unitPrice: product.wholesalePrice,
+            totalPrice: product.wholesalePrice * quantity
+          }
+        });
+      }
+
+      if (issues.length) {
+        submissionIssue = { status: 409, body: { code: 'PROCUREMENT_CART_INVALID', message: 'Some cart items need attention before submission.', issues } };
+        return;
+      }
+      if (priceChanges.length) {
+        await cart.save({ session });
+        submissionIssue = {
+          status: 409,
+          body: {
+            code: 'PROCUREMENT_CART_PRICE_CHANGED',
+            message: 'Supplier prices changed. The cart has been refreshed; review the updated totals before submitting again.',
+            priceChanges
+          }
+        };
+        return;
+      }
+
+      const groups = groupProcurementItemsBySupplier(resolvedCartItems);
+      const batchId = crypto.randomBytes(5).toString('hex').toUpperCase();
+      let sequence = 0;
+      for (const { supplier, items } of groups.values()) {
+        sequence += 1;
+        const subtotal = items.reduce((total, item) => total + item.totalPrice, 0);
+        const order = new PurchaseOrder({
+          orderNumber: `PO-${Date.now()}-${batchId}-${String(sequence).padStart(2, '0')}`,
+          seller: req.user._id,
+          store,
+          supplier: supplier._id,
+          items,
+          subtotal,
+          shippingCost: 0,
+          tax: 0,
+          totalCost: subtotal,
+          shippingAddress: req.body.shippingAddress || {},
+          sellerNotes: req.body.sellerNotes,
+          paymentMethod: req.body.paymentMethod || 'bank_transfer',
+          status: 'submitted',
+          statusHistory: [{ status: 'submitted', changedBy: req.user._id, notes: 'Created from procurement cart', timestamp: new Date() }]
+        });
+        await order.save({ session });
+        await Supplier.updateOne({ _id: supplier._id }, { $inc: { 'performance.totalOrders': 1 } }, { session });
+        transactionOrders.push({ order, supplier });
+      }
+      cart.items = [];
+      await cart.save({ session });
+      createdOrders = transactionOrders;
+    });
+
+    if (submissionIssue) return res.status(submissionIssue.status).json(submissionIssue.body);
+    committed = true;
+
+    await Promise.allSettled(createdOrders.flatMap(({ order, supplier }) => [
+      createNotification({
+        recipient: supplier.user,
+        sender: req.user._id,
+        type: 'purchase_order',
+        title: 'New Purchase Order',
+        message: `New purchase order ${order.orderNumber} received. Total: ₱${order.totalCost.toLocaleString()}.`,
+        relatedId: order._id,
+        relatedModel: 'PurchaseOrder'
+      }),
+      SupplyChainLog.create({
+        action: 'purchase_order_created',
+        performedBy: req.user._id,
+        userRole: req.user.role,
+        relatedEntity: { type: 'PurchaseOrder', id: order._id },
+        description: `PO ${order.orderNumber} created for supplier "${supplier.businessName}" (₱${order.totalCost})`,
+        store,
+        supplier: supplier._id,
+        metadata: { source: 'procurement_cart' }
+      })
+    ]));
+
+    const orderDocuments = createdOrders.map(entry => entry.order);
+    await Promise.all(orderDocuments.map(order => order.populate([
+      { path: 'supplier', select: 'businessName' },
+      { path: 'items.supplierProduct', select: 'name sku images' }
+    ]).catch(() => order)));
+    res.status(201).json({
+      message: `${orderDocuments.length} supplier-specific purchase order${orderDocuments.length === 1 ? '' : 's'} submitted.`,
+      orders: orderDocuments,
+      supplierCount: orderDocuments.length
+    });
+  } catch (error) {
+    console.error('Submit procurement cart error:', error);
+    if (committed && !res.headersSent) {
+      return res.status(201).json({
+        message: `${createdOrders.length} supplier-specific purchase order${createdOrders.length === 1 ? '' : 's'} submitted. A non-critical response step could not be completed.`,
+        orders: createdOrders.map(entry => entry.order),
+        supplierCount: createdOrders.length
+      });
+    }
+    if (res.headersSent) return undefined;
+    res.status(500).json({ message: 'No purchase orders were created. Your procurement cart was preserved.' });
+  }
+};
 
 const createPurchaseOrder = async (req, res) => {
   try {
@@ -492,6 +899,12 @@ const adminGetAllOrders = async (req, res) => {
 };
 
 module.exports = {
+  getProcurementCart,
+  addProcurementCartItem,
+  updateProcurementCartItem,
+  removeProcurementCartItem,
+  clearProcurementCart,
+  submitProcurementCart,
   createPurchaseOrder,
   getSellerOrders,
   getOrderById,

@@ -13,10 +13,11 @@ const PurchaseOrders = () => {
   const [orders, setOrders] = useState([]);
   const [suppliers, setSuppliers] = useState([]);
   const [catalog, setCatalog] = useState(null);
-  const [cart, setCart] = useState([]);
+  const [procurementCart, setProcurementCart] = useState({ items: [], itemCount: 0, totalQuantity: 0, subtotal: 0, supplierCount: 0 });
   const [loading, setLoading] = useState(true);
   const [showCatalog, setShowCatalog] = useState(false);
   const [showCheckout, setShowCheckout] = useState(false);
+  const [submittingCart, setSubmittingCart] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [storeProducts, setStoreProducts] = useState([]);
   const [productMapping, setProductMapping] = useState({});
@@ -38,14 +39,17 @@ const PurchaseOrders = () => {
 
   const fetchData = async () => {
     try {
-      const [ordRes, supRes, prodRes] = await Promise.all([
+      const [ordRes, supRes, prodRes, cartRes] = await Promise.all([
         purchaseOrderService.getAll(),
         supplierService.getStoreManagedSuppliers(),
-        adminProductService.getAllProducts()
+        adminProductService.getAllProducts(),
+        purchaseOrderService.getCart()
       ]);
       setOrders(ordRes.data.orders || []);
       setSuppliers(supRes.data.suppliers || []);
       setStoreProducts(prodRes.data?.products || prodRes.data || []);
+      setProcurementCart(cartRes.data);
+      setProductMapping(Object.fromEntries((cartRes.data.items || []).map(item => [item.supplierProductId, item.storeProduct?._id || ''])));
     } catch (e) { console.error('Load error:', e); }
     finally { setLoading(false); }
   };
@@ -55,7 +59,6 @@ const PurchaseOrders = () => {
       const res = await supplierService.getCatalog(supplierId);
       setCatalog(res.data);
       setShowCatalog(true);
-      setCart([]);
     } catch (e) { toast.error('Failed to load catalog'); }
   };
 
@@ -87,43 +90,81 @@ const PurchaseOrders = () => {
     } catch (error) { toast.error(error.response?.data?.message || 'Unable to resend invitation.'); }
   };
 
-  const addToCart = (product) => {
-    setCart(prev => {
-      const existing = prev.find(i => i.supplierProductId === product._id);
-      if (existing) return prev.map(i => i.supplierProductId === product._id ? { ...i, quantity: i.quantity + product.minimumOrderQuantity } : i);
-      return [...prev, { supplierProductId: product._id, product, quantity: product.minimumOrderQuantity }];
-    });
-    toast.success(`${product.name} added to order`);
+  const addToCart = async (product) => {
+    try {
+      const response = await purchaseOrderService.addCartItem(product._id, product.minimumOrderQuantity);
+      setProcurementCart(response.data);
+      toast.success(`${product.name} added to procurement cart`);
+    } catch (error) { toast.error(error.response?.data?.message || 'Unable to add this supply.'); }
   };
 
-  const updateCartQty = (productId, delta) => {
-    setCart(prev => prev.map(i => {
-      if (i.supplierProductId === productId) {
-        const newQty = Math.max(i.product.minimumOrderQuantity, i.quantity + delta);
-        return { ...i, quantity: Math.min(newQty, i.product.availableStock) };
+  const updateCartQty = async (item, delta) => {
+    const nextQuantity = item.quantity + delta;
+    if (nextQuantity < item.product.minimumOrderQuantity) return removeCartItem(item);
+    try {
+      const response = await purchaseOrderService.updateCartItem(item.cartItemId || item.supplierProductId, { quantity: nextQuantity });
+      setProcurementCart(response.data);
+    } catch (error) { toast.error(error.response?.data?.message || 'Unable to update quantity.'); }
+  };
+
+  const removeCartItem = async item => {
+    try {
+      const response = await purchaseOrderService.removeCartItem(item.cartItemId || item.supplierProductId);
+      setProcurementCart(response.data);
+      setProductMapping(previous => {
+        const next = { ...previous };
+        delete next[item.supplierProductId];
+        return next;
+      });
+    } catch (error) { toast.error(error.response?.data?.message || 'Unable to remove this supply.'); }
+  };
+
+  const updateProductMapping = async (item, storeProductId) => {
+    try {
+      const response = await purchaseOrderService.updateCartItem(item.cartItemId || item.supplierProductId, { storeProductId: storeProductId || null });
+      setProcurementCart(response.data);
+      setProductMapping(previous => ({ ...previous, [item.supplierProductId]: storeProductId }));
+    } catch (error) { toast.error(error.response?.data?.message || 'Unable to save inventory mapping.'); }
+  };
+
+  const acceptCurrentPrices = async () => {
+    try {
+      let latest = procurementCart;
+      for (const item of cart.filter(entry => entry.priceChanged)) {
+        const response = await purchaseOrderService.updateCartItem(item.cartItemId || item.supplierProductId, { acceptCurrentPrice: true });
+        latest = response.data;
       }
-      return i;
-    }).filter(i => i.quantity > 0));
+      setProcurementCart(latest);
+      toast.info('Current supplier prices accepted. Review the updated totals before submitting.');
+    } catch (error) { toast.error(error.response?.data?.message || 'Unable to refresh supplier prices.'); }
+  };
+
+  const clearProcurementCart = async () => {
+    if (!window.confirm('Clear every supply from this procurement cart?')) return;
+    try {
+      const response = await purchaseOrderService.clearCart();
+      setProcurementCart(response.data);
+      setProductMapping({});
+    } catch (error) { toast.error(error.response?.data?.message || 'Unable to clear the procurement cart.'); }
   };
 
   const submitOrder = async () => {
-    if (!cart.length || !catalog?.supplier) return;
+    if (!procurementCart.items.length || submittingCart) return;
+    setSubmittingCart(true);
     try {
-      const data = {
-        supplierId: catalog.supplier._id,
-        items: cart.map(i => ({
-          supplierProductId: i.supplierProductId,
-          quantity: i.quantity,
-          storeProductId: productMapping[i.supplierProductId] || null
-        }))
-      };
-      await purchaseOrderService.create(data);
-      toast.success('Purchase order submitted!');
+      const response = await purchaseOrderService.submitCart();
+      toast.success(response.data.message);
       setShowCheckout(false);
-      setShowCatalog(false);
-      setCart([]);
-      fetchData();
-    } catch (e) { toast.error(e.response?.data?.message || 'Failed to submit order'); }
+      setProcurementCart({ items: [], itemCount: 0, totalQuantity: 0, subtotal: 0, supplierCount: 0 });
+      setProductMapping({});
+      await fetchData();
+    } catch (e) {
+      toast.error(e.response?.data?.message || 'Failed to submit purchase requests');
+      if (e.response?.data?.code === 'PROCUREMENT_CART_PRICE_CHANGED') {
+        const refreshed = await purchaseOrderService.getCart();
+        setProcurementCart(refreshed.data);
+      }
+    } finally { setSubmittingCart(false); }
   };
 
   const cancelOrder = async (id) => {
@@ -143,7 +184,14 @@ const PurchaseOrders = () => {
     } catch (e) { toast.error(e.response?.data?.message || 'Failed'); }
   };
 
-  const cartTotal = cart.reduce((s, i) => s + i.product.wholesalePrice * i.quantity, 0);
+  const cart = procurementCart.items || [];
+  const cartTotal = procurementCart.subtotal || 0;
+  const groupedCart = cart.reduce((groups, item) => {
+    const key = String(item.supplierId);
+    if (!groups[key]) groups[key] = { supplier: item.supplier, items: [] };
+    groups[key].items.push(item);
+    return groups;
+  }, {});
   const statusColor = (s) => ({ draft: 'slate', submitted: 'amber', confirmed: 'blue', processing: 'indigo', shipped: 'purple', delivered: 'emerald', cancelled: 'rose' }[s] || 'slate');
 
   if (loading) return (
@@ -180,6 +228,10 @@ const PurchaseOrders = () => {
             <tab.icon className="h-4 w-4" /> {tab.label}
           </button>
         ))}
+        <button onClick={() => setShowCheckout(true)} disabled={!cart.length}
+          className="ml-auto flex items-center gap-2 whitespace-nowrap rounded-xl bg-emerald-600 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-white disabled:cursor-not-allowed disabled:opacity-40">
+          <ShoppingCart className="h-4 w-4" /> Procurement Cart ({procurementCart.itemCount})
+        </button>
       </div>
 
       {/* ── ORDERS TAB ── */}
@@ -315,7 +367,7 @@ const PurchaseOrders = () => {
             <div className="flex-1 overflow-y-auto p-6">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {catalog.products?.map(p => {
-                  const inCart = cart.find(i => i.supplierProductId === p._id);
+                  const inCart = cart.find(i => String(i.supplierProductId) === String(p._id));
                   return (
                     <div key={p._id} className={`bg-white border ${inCart ? 'border-emerald-300 ring-2 ring-emerald-50' : 'border-slate-100'} rounded-2xl overflow-hidden shadow-sm`}>
                       <div className="h-28 bg-gradient-to-br from-indigo-100 to-purple-100 flex items-center justify-center">
@@ -337,9 +389,9 @@ const PurchaseOrders = () => {
                         <p className="text-[8px] text-slate-400 mt-1">Min order: {p.minimumOrderQuantity} • Lead: {p.deliveryLeadTimeDays}d</p>
                         {inCart ? (
                           <div className="flex items-center justify-center gap-3 mt-3 bg-emerald-50 rounded-xl py-2">
-                            <button onClick={() => updateCartQty(p._id, -1)} className="p-1 bg-white rounded-lg shadow-sm"><Minus className="h-3 w-3" /></button>
+                            <button onClick={() => updateCartQty(inCart, -1)} className="p-1 bg-white rounded-lg shadow-sm"><Minus className="h-3 w-3" /></button>
                             <span className="text-sm font-black text-emerald-700">{inCart.quantity}</span>
-                            <button onClick={() => updateCartQty(p._id, 1)} className="p-1 bg-white rounded-lg shadow-sm"><Plus className="h-3 w-3" /></button>
+                            <button onClick={() => updateCartQty(inCart, 1)} disabled={inCart.quantity >= p.availableStock} className="p-1 bg-white rounded-lg shadow-sm disabled:opacity-30"><Plus className="h-3 w-3" /></button>
                           </div>
                         ) : (
                           <button onClick={() => addToCart(p)} disabled={p.availableStock <= 0}
@@ -364,34 +416,38 @@ const PurchaseOrders = () => {
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[110] flex items-center justify-center p-2">
           <div className="bg-white w-full max-w-lg rounded-[2rem] overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
             <header className="p-5 border-b border-slate-100 flex items-center justify-between shrink-0">
-              <h3 className="text-lg font-black uppercase text-slate-900 tracking-tighter">Review Order</h3>
-              <button onClick={() => setShowCheckout(false)} className="p-2 bg-slate-50 text-slate-400 rounded-xl hover:bg-rose-50 hover:text-rose-600"><X className="h-4 w-4" /></button>
+              <div><h3 className="text-lg font-black uppercase text-slate-900 tracking-tighter">Review Purchase Requests</h3><p className="mt-1 text-[9px] font-bold uppercase tracking-widest text-slate-400">{procurementCart.supplierCount} supplier{procurementCart.supplierCount === 1 ? '' : 's'} · {procurementCart.totalQuantity} total units</p></div>
+              <div className="flex items-center gap-2">{cart.length > 0 && <button onClick={clearProcurementCart} className="rounded-lg px-2 py-1 text-[8px] font-black uppercase text-rose-600">Clear</button>}<button onClick={() => setShowCheckout(false)} className="p-2 bg-slate-50 text-slate-400 rounded-xl hover:bg-rose-50 hover:text-rose-600"><X className="h-4 w-4" /></button></div>
             </header>
             <div className="flex-1 overflow-y-auto p-6 space-y-4">
-              <div className="text-[9px] font-black text-indigo-600 uppercase tracking-widest">Supplier: {catalog?.supplier?.businessName}</div>
-              {cart.map(item => (
-                <div key={item.supplierProductId} className="bg-slate-50 rounded-xl p-4 border border-slate-100 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-xs font-black text-slate-900">{item.product.name}</p>
-                    <p className="text-[9px] text-slate-400">{item.quantity} × {formatPeso(item.product.wholesalePrice)}</p>
-                    </div>
-                    <p className="text-sm font-black text-slate-900">{formatPeso(item.product.wholesalePrice * item.quantity)}</p>
+              {Object.values(groupedCart).map(group => (
+                <section key={group.supplier?._id || group.items[0]?.supplierId || 'unavailable'} className="rounded-2xl border border-slate-200 bg-white p-3">
+                  <div className="mb-3 flex items-center justify-between border-b border-slate-100 pb-2">
+                    <div><p className="text-[9px] font-black uppercase tracking-widest text-indigo-600">{group.supplier?.businessName || 'Unavailable supplier'}</p><p className="mt-0.5 text-[9px] text-slate-400">Creates 1 supplier-specific purchase request</p></div>
+                    <span className="rounded-full bg-slate-100 px-2 py-1 text-[8px] font-black text-slate-600">{group.items.length} item{group.items.length === 1 ? '' : 's'}</span>
                   </div>
-                  <div className="space-y-1">
-                    <label className="text-[8px] font-black text-orange-500 uppercase tracking-widest">Link to Store Product (for auto-stock update)</label>
-                    <select 
-                      value={productMapping[item.supplierProductId] || ''}
-                      onChange={e => setProductMapping(prev => ({ ...prev, [item.supplierProductId]: e.target.value || null }))}
-                      className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-[10px] font-bold outline-none">
-                      <option value="">— No link (manual update later) —</option>
-                      {storeProducts.map(sp => (
-                        <option key={sp._id} value={sp._id}>{sp.name} (SKU: {sp.sku}) — Stock: {sp.stockQuantity}</option>
-                      ))}
-                    </select>
+                  <div className="space-y-3">
+                    {group.items.map(item => (
+                      <div key={item.supplierProductId} className={`rounded-xl border p-3 ${item.available ? 'border-slate-100 bg-slate-50' : 'border-rose-200 bg-rose-50'}`}>
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0"><p className="truncate text-xs font-black text-slate-900">{item.product?.name || 'Unavailable supply'}</p><p className="mt-1 text-[9px] text-slate-500">{item.quantity} × {formatPeso(item.product?.wholesalePrice || 0)} · {item.product?.unitOfMeasure}</p>{item.priceChanged && <p className="mt-1 text-[9px] font-bold text-amber-700">Price changed from {formatPeso(item.addedUnitPrice)}.</p>}{!item.available && <p className="mt-1 text-[9px] font-bold text-rose-700">This item or supplier is no longer available.</p>}</div>
+                          <div className="text-right"><p className="text-sm font-black text-slate-900">{formatPeso(item.lineTotal)}</p><button onClick={() => removeCartItem(item)} className="mt-1 text-[8px] font-black uppercase text-rose-600">Remove</button></div>
+                        </div>
+                        {item.product && <div className="mt-3 flex items-center gap-2"><button onClick={() => updateCartQty(item, -1)} className="rounded-lg border bg-white p-1.5"><Minus className="h-3 w-3" /></button><span className="min-w-8 text-center text-xs font-black">{item.quantity}</span><button onClick={() => updateCartQty(item, 1)} disabled={item.quantity >= item.product.availableStock} className="rounded-lg border bg-white p-1.5 disabled:opacity-30"><Plus className="h-3 w-3" /></button><span className="ml-1 text-[9px] text-slate-400">Available: {item.product.availableStock}</span></div>}
+                        <div className="mt-3 space-y-1">
+                          <label className="text-[8px] font-black uppercase tracking-widest text-orange-500">Link to Store Product (optional)</label>
+                          <select value={productMapping[item.supplierProductId] || ''} onChange={e => updateProductMapping(item, e.target.value)} className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-[10px] font-bold outline-none">
+                            <option value="">— No link (manual update later) —</option>
+                            {storeProducts.map(sp => <option key={sp._id} value={sp._id}>{sp.name} (SKU: {sp.sku}) — Stock: {sp.stockQuantity}</option>)}
+                          </select>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                </div>
+                </section>
               ))}
+              {!cart.length && <div className="rounded-2xl border border-dashed border-slate-200 p-8 text-center"><ShoppingCart className="mx-auto h-8 w-8 text-slate-300"/><p className="mt-3 text-xs font-bold text-slate-500">Your procurement cart is empty.</p></div>}
+              {cart.some(item => item.priceChanged) && <button onClick={acceptCurrentPrices} className="w-full rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-[10px] font-black uppercase text-amber-800">Accept current supplier prices</button>}
               <div className="bg-indigo-50 rounded-xl p-4 border border-indigo-100">
                 <p className="mb-3 text-[10px] font-black text-indigo-500 uppercase tracking-widest">Purchase Order Summary</p>
                 <PaymentBreakdown summary={purchaseOrderPaymentSummary({ subtotal: cartTotal, totalCost: cartTotal })} compact />
@@ -399,9 +455,9 @@ const PurchaseOrders = () => {
             </div>
             <footer className="p-5 border-t border-slate-50 flex gap-3 shrink-0">
               <button onClick={() => setShowCheckout(false)} className="px-6 py-2.5 bg-slate-50 text-slate-400 rounded-xl text-[10px] font-black uppercase">Back</button>
-              <button onClick={submitOrder}
-                className="flex-1 py-3 bg-emerald-600 text-white rounded-2xl text-[11px] font-black uppercase tracking-widest hover:bg-slate-900 transition-all">
-                Submit Purchase Order
+              <button onClick={submitOrder} disabled={submittingCart || !cart.length || cart.some(item => !item.available || item.priceChanged)}
+                className="flex-1 py-3 bg-emerald-600 text-white rounded-2xl text-[11px] font-black uppercase tracking-widest hover:bg-slate-900 transition-all disabled:cursor-not-allowed disabled:opacity-40">
+                {submittingCart ? 'Submitting...' : `Submit ${procurementCart.supplierCount || ''} Purchase Request${procurementCart.supplierCount === 1 ? '' : 's'}`}
               </button>
             </footer>
           </div>
