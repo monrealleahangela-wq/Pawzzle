@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const Inventory = require('../models/Inventory');
 const InventoryLot = require('../models/InventoryLot');
 const InventoryTransaction = require('../models/InventoryTransaction');
@@ -6,7 +7,28 @@ const Product = require('../models/Product');
 const INBOUND_TYPES = new Set(['opening', 'receipt', 'return_in', 'transfer_in', 'adjustment_in', 'release']);
 
 class InventoryLedgerService {
-  static async receiveLot(data) {
+  static async receiveLot(data, options = {}) {
+    if (options.session) return this.receiveLotInSession(data, options.session);
+
+    let receivedLot;
+    try {
+      await mongoose.connection.transaction(async session => {
+        receivedLot = await this.receiveLotInSession(data, session);
+      });
+    } catch (error) {
+      // A concurrent transaction may have committed the same idempotency key.
+      // Its unique-index failure aborts this transaction, so no lot/balance
+      // mutation from this attempt can survive. Resolve the committed result.
+      if (error?.code === 11000 && data.idempotencyKey) {
+        const existing = await InventoryTransaction.findOne({ idempotencyKey: data.idempotencyKey });
+        if (existing?.lot) return InventoryLot.findById(existing.lot);
+      }
+      throw error;
+    }
+    return receivedLot;
+  }
+
+  static async receiveLotInSession(data, session) {
     const {
       store, product, lotNumber, quantity, unitCost = 0, expiresAt,
       manufacturer, supplier, purchaseOrder, purchaseOrderItem,
@@ -21,11 +43,20 @@ class InventoryLedgerService {
     }
 
     if (idempotencyKey) {
-      const existing = await InventoryTransaction.findOne({ idempotencyKey });
-      if (existing) return InventoryLot.findById(existing.lot);
+      const existing = await InventoryTransaction.findOne({ idempotencyKey }).session(session);
+      if (existing?.lot) return InventoryLot.findById(existing.lot).session(session);
+      if (existing) throw new Error('Inventory receipt idempotency claim is incomplete.');
     }
 
-    let lot = await InventoryLot.findOne({ store, product, lotNumber: lotNumber.trim() });
+    // Claim the operation before changing stock. The claim, lot mutation,
+    // ledger entry and derived balances all commit (or abort) together.
+    const [movement] = await InventoryTransaction.create([{
+      store, product, type: 'receipt', quantity,
+      signedQuantity: Number(quantity), unitCost, referenceType: 'PurchaseOrder',
+      referenceId: purchaseOrder, performedBy, idempotencyKey
+    }], { session });
+
+    let lot = await InventoryLot.findOne({ store, product, lotNumber: lotNumber.trim() }).session(session);
     if (lot && ['recalled', 'quarantined', 'expired'].includes(lot.status)) {
       throw new Error(`Cannot receive into a ${lot.status} lot.`);
     }
@@ -34,22 +65,19 @@ class InventoryLedgerService {
       lot.quantityAvailable += Number(quantity);
       if (lot.status === 'depleted') lot.status = 'available';
       if (expiresAt) lot.expiresAt = expiresAt;
-      await lot.save();
+      await lot.save({ session });
     } else {
-      lot = await InventoryLot.create({
+      [lot] = await InventoryLot.create([{
         store, product, lotNumber: lotNumber.trim(), quantityReceived: quantity,
         quantityAvailable: quantity, unitCost, expiresAt, manufacturer, supplier,
         purchaseOrder, purchaseOrderItem, isVaccine, vaccineType, storageNotes,
         createdBy: performedBy
-      });
+      }], { session });
     }
 
-    await InventoryTransaction.create({
-      store, product, lot: lot._id, type: 'receipt', quantity,
-      signedQuantity: Number(quantity), unitCost, referenceType: 'PurchaseOrder',
-      referenceId: purchaseOrder, performedBy, idempotencyKey
-    });
-    await this.refreshBalance(store, product);
+    movement.lot = lot._id;
+    await movement.save({ session });
+    await this.refreshBalance(store, product, { session });
     return lot;
   }
 
@@ -110,10 +138,11 @@ class InventoryLedgerService {
     return movement;
   }
 
-  static async refreshBalance(store, product) {
+  static async refreshBalance(store, product, options = {}) {
+    const { session } = options;
     const lots = await InventoryLot.find({
       store, product, status: { $in: ['available', 'depleted'] }
-    }).select('quantityAvailable unitCost');
+    }).select('quantityAvailable unitCost').session(session || null);
     const quantity = lots.reduce((sum, lot) => sum + lot.quantityAvailable, 0);
     const totalCost = lots.reduce((sum, lot) => sum + lot.quantityAvailable * lot.unitCost, 0);
     const costPrice = quantity > 0 ? totalCost / quantity : 0;
@@ -121,11 +150,11 @@ class InventoryLedgerService {
     await Inventory.findOneAndUpdate(
       { store, product },
       { $set: { quantity, costPrice, lastRestocked: new Date(), isActive: true } },
-      { upsert: true, setDefaultsOnInsert: true }
+      { upsert: true, setDefaultsOnInsert: true, session }
     );
     await Product.findByIdAndUpdate(product, {
       $set: { stockQuantity: quantity, stockStatus: quantity > 0 ? 'in_stock' : 'out_of_stock' }
-    });
+    }, { session });
     return { quantity, costPrice };
   }
 }

@@ -1,11 +1,17 @@
 const crypto = require('crypto');
+const mongoose = require('mongoose');
 const Supplier = require('../models/Supplier');
 const SupplierProduct = require('../models/SupplierProduct');
+const Pet = require('../models/Pet');
 const PurchaseOrder = require('../models/PurchaseOrder');
+const ProcurementReceivingReport = require('../models/ProcurementReceivingReport');
 const User = require('../models/User');
 const Store = require('../models/Store');
 const SupplyChainLog = require('../models/SupplyChainLog');
 const { createNotification } = require('./notificationController');
+const { releasePurchaseOrderStock } = require('../services/procurementStockCommitmentService');
+const { getResolutionQuantities } = require('../utils/procurementResolution');
+const { sanitizeReceivingReport, sanitizeOrderReceivingReport } = require('../utils/procurementEvidence');
 const { sendSupplierInvitation, sendSupplierApplicationUpdate } = require('../utils/emailService');
 const {
   getSelectableSupplierFilterForStore,
@@ -15,6 +21,65 @@ const {
 } = require('../utils/supplierLifecycle');
 
 const REQUIRED_PLATFORM_DOCUMENTS = ['business_registration', 'bir_certificate'];
+const SUPPLIER_GOODS_TYPES = ['live_pets', 'pet_supplies', 'general_products'];
+
+const createHttpError = (message, statusCode) => Object.assign(new Error(message), { statusCode });
+
+const settleSupplierSecondaryEffects = async (context, effects) => {
+  const results = await Promise.allSettled(effects.filter(Boolean).map(effect => (
+    typeof effect === 'function' ? Promise.resolve().then(effect) : effect
+  )));
+  results.forEach(result => {
+    if (result.status === 'rejected') {
+      console.error(`${context} secondary operation failed:`, result.reason);
+    }
+  });
+};
+
+const inferSupplierGoodsType = itemType => itemType === 'live_pet'
+  ? 'live_pets'
+  : itemType === 'product' ? 'general_products' : 'pet_supplies';
+
+const buildSupplierPet = ({ input, supplier, userId, price, images }) => {
+  const pet = input && typeof input === 'object' ? input : {};
+  const required = ['name', 'species', 'breed', 'age', 'gender', 'size', 'description'];
+  const missing = required.filter(key => pet[key] === undefined || pet[key] === null || pet[key] === '');
+  if (missing.length) {
+    const error = new Error(`Live-pet details are incomplete: ${missing.join(', ')}.`);
+    error.statusCode = 400;
+    throw error;
+  }
+  return {
+    name: pet.name,
+    species: pet.species,
+    breed: pet.breed,
+    age: pet.age,
+    ageUnit: pet.ageUnit || 'years',
+    birthday: pet.birthday || undefined,
+    gender: pet.gender,
+    size: pet.size,
+    color: pet.color,
+    description: pet.description,
+    price,
+    images: images || [],
+    quantity: 1,
+    status: 'available',
+    isAvailable: true,
+    listingType: 'sale',
+    dewormed: Boolean(pet.dewormed),
+    spayedNeutered: Boolean(pet.spayedNeutered),
+    healthCondition: pet.healthCondition || 'healthy',
+    vaccinationStatus: pet.vaccinationStatus || 'none',
+    healthNotes: pet.healthNotes,
+    vetRecords: Array.isArray(pet.vetRecords) ? pet.vetRecords : [],
+    proofOfOwnership: Array.isArray(pet.proofOfOwnership) ? pet.proofOfOwnership : [],
+    pcciRegistration: pet.pcciRegistration,
+    approvalStatus: 'pending',
+    listingContext: 'supplier_catalog',
+    sourceSupplier: supplier._id,
+    addedBy: userId
+  };
+};
 
 const parseJsonField = (value, fallback) => {
   if (value === undefined || value === null || value === '') return fallback;
@@ -84,6 +149,7 @@ const registerSupplier = async (req, res) => {
     const { businessName, contactPerson, email, phone, description, businessPermit, taxId } = req.body;
     const address = parseJsonField(req.body.address, req.body.address || {});
     const productCategories = parseJsonField(req.body.productCategories, []);
+    const goodsTypes = parseJsonField(req.body.goodsTypes, []);
     const applicationDocuments = uploadedApplicationDocuments(req.files);
 
     if (!businessName || !contactPerson || !email || !phone || !address?.street || !address?.city || !address?.province) {
@@ -99,6 +165,7 @@ const registerSupplier = async (req, res) => {
       user: req.user._id,
       businessName, contactPerson, email, phone, address, description,
       productCategories: productCategories || [],
+      goodsTypes: (goodsTypes || []).filter(type => SUPPLIER_GOODS_TYPES.includes(type)),
       businessPermit, taxId,
       supplierType: 'platform',
       applicationDocuments,
@@ -112,34 +179,32 @@ const registerSupplier = async (req, res) => {
     // Update user role
     await User.findByIdAndUpdate(req.user._id, { role: 'supplier' });
 
-    // Log
-    await SupplyChainLog.create({
-      action: 'supplier_registered',
-      performedBy: req.user._id,
-      userRole: 'supplier',
-      relatedEntity: { type: 'Supplier', id: supplier._id },
-      description: `Supplier "${businessName}" registered`,
-      supplier: supplier._id
-    });
-
-    // Notify admins
-    const admins = await User.find({ role: { $in: ['super_admin', 'platform_admin'] } }).select('_id');
-    for (const admin of admins) {
-      await createNotification({
-        recipient: admin._id,
-        sender: req.user._id,
-        type: 'supplier_verification',
-        title: 'New Supplier Registration',
-        message: `${businessName} has registered as a supplier and requires verification.`,
-        relatedId: supplier._id,
-        relatedModel: 'Supplier'
-      });
-    }
-
-    await sendSupplierApplicationUpdate({
-      email: supplier.email, contactPerson: supplier.contactPerson,
-      businessName: supplier.businessName, status: 'submitted'
-    }).catch(() => ({ success: false }));
+    await settleSupplierSecondaryEffects('Register supplier', [
+      () => SupplyChainLog.create({
+        action: 'supplier_registered',
+        performedBy: req.user._id,
+        userRole: 'supplier',
+        relatedEntity: { type: 'Supplier', id: supplier._id },
+        description: `Supplier "${businessName}" registered`,
+        supplier: supplier._id
+      }),
+      async () => {
+        const admins = await User.find({ role: { $in: ['super_admin', 'platform_admin'] } }).select('_id');
+        await Promise.all(admins.map(admin => createNotification({
+          recipient: admin._id,
+          sender: req.user._id,
+          type: 'supplier_verification',
+          title: 'New Supplier Registration',
+          message: `${businessName} has registered as a supplier and requires verification.`,
+          relatedId: supplier._id,
+          relatedModel: 'Supplier'
+        })));
+      },
+      () => sendSupplierApplicationUpdate({
+        email: supplier.email, contactPerson: supplier.contactPerson,
+        businessName: supplier.businessName, status: 'submitted'
+      })
+    ]);
 
     res.status(201).json(supplier);
   } catch (error) {
@@ -177,11 +242,13 @@ const resubmitSupplierApplication = async (req, res) => {
       return res.status(400).json({ message: 'The application must contain current business registration and BIR documents.' });
     }
     await supplier.save();
-    await SupplyChainLog.create({
-      action: 'supplier_resubmitted', performedBy: req.user._id, userRole: 'supplier',
-      relatedEntity: { type: 'Supplier', id: supplier._id },
-      description: `Supplier "${supplier.businessName}" resubmitted verification documents`, supplier: supplier._id
-    });
+    await settleSupplierSecondaryEffects('Resubmit supplier application', [
+      () => SupplyChainLog.create({
+        action: 'supplier_resubmitted', performedBy: req.user._id, userRole: 'supplier',
+        relatedEntity: { type: 'Supplier', id: supplier._id },
+        description: `Supplier "${supplier.businessName}" resubmitted verification documents`, supplier: supplier._id
+      })
+    ]);
     res.json({ message: 'Documents resubmitted for Platform Admin review.', supplier });
   } catch (error) {
     console.error('Resubmit supplier application error:', error);
@@ -221,15 +288,21 @@ const createStoreSupplier = async (req, res) => {
         expiresAt: new Date(Date.now() + 48 * 60 * 60 * 1000), sentAt: new Date(), invitedBy: req.user._id
       }
     });
-    const delivery = await sendSupplierInvitation({
+    const [deliveryResult] = await Promise.allSettled([sendSupplierInvitation({
       email: cleanEmail, temporaryPassword, contactPerson, businessName, activationToken
-    });
-    await SupplyChainLog.create({
-      action: 'supplier_invited', performedBy: req.user._id, userRole: req.user.role,
-      relatedEntity: { type: 'Supplier', id: supplier._id },
-      description: `Store invited supplier "${businessName}"`, store: store._id, supplier: supplier._id,
-      metadata: { invitationDelivered: delivery.success }
-    });
+    })]);
+    const delivery = deliveryResult.status === 'fulfilled' ? deliveryResult.value : { success: false };
+    if (deliveryResult.status === 'rejected') {
+      console.error('Create store supplier invitation delivery failed:', deliveryResult.reason);
+    }
+    await settleSupplierSecondaryEffects('Create store supplier invitation', [
+      () => SupplyChainLog.create({
+        action: 'supplier_invited', performedBy: req.user._id, userRole: req.user.role,
+        relatedEntity: { type: 'Supplier', id: supplier._id },
+        description: `Store invited supplier "${businessName}"`, store: store._id, supplier: supplier._id,
+        metadata: { invitationDelivered: delivery.success }
+      })
+    ]);
     res.status(201).json({
       message: delivery.success
         ? 'Supplier invited. The activation email was sent.'
@@ -313,34 +386,41 @@ const resendStoreSupplierInvitation = async (req, res) => {
 };
 
 const activateSupplierInvitation = async (req, res) => {
+  let activatedSupplier;
+  let activatedUser;
   try {
     const tokenHash = crypto.createHash('sha256').update(String(req.params.token || '')).digest('hex');
-    const supplier = await Supplier.findOne({
-      'invitation.tokenHash': tokenHash, 'invitation.expiresAt': { $gt: new Date() },
-      'invitation.acceptedAt': { $exists: false }, supplierType: 'store_added', isDeleted: false
-    }).select('+invitation.tokenHash');
-    if (!supplier) return res.status(400).json({ message: 'This supplier activation link is invalid, expired, or already used.' });
-    const user = await User.findById(supplier.user);
-    if (!user) return res.status(404).json({ message: 'Supplier account not found.' });
-    user.isActive = true;
-    user.deactivationReason = null;
-    await user.save();
-    supplier.isActive = true;
-    supplier.invitation.acceptedAt = new Date();
-    supplier.invitation.tokenHash = undefined;
-    supplier.storeAssociations.forEach(association => {
-      if (association.status === 'pending_activation') association.status = 'active';
+    await mongoose.connection.transaction(async session => {
+      const supplier = await Supplier.findOne({
+        'invitation.tokenHash': tokenHash, 'invitation.expiresAt': { $gt: new Date() },
+        'invitation.acceptedAt': { $exists: false }, supplierType: 'store_added', isDeleted: false
+      }).select('+invitation.tokenHash').session(session);
+      if (!supplier) throw createHttpError('This supplier activation link is invalid, expired, or already used.', 400);
+      const user = await User.findById(supplier.user).session(session);
+      if (!user) throw createHttpError('Supplier account not found.', 404);
+      user.isActive = true;
+      user.deactivationReason = null;
+      supplier.isActive = true;
+      supplier.invitation.acceptedAt = new Date();
+      supplier.invitation.tokenHash = undefined;
+      supplier.storeAssociations.forEach(association => {
+        if (association.status === 'pending_activation') association.status = 'active';
+      });
+      await Promise.all([user.save({ session }), supplier.save({ session })]);
+      activatedSupplier = supplier;
+      activatedUser = user;
     });
-    await supplier.save();
-    await SupplyChainLog.create({
-      action: 'supplier_activated', performedBy: user._id, userRole: 'supplier',
-      relatedEntity: { type: 'Supplier', id: supplier._id }, description: `Supplier "${supplier.businessName}" activated its account`,
-      store: supplier.originStore, supplier: supplier._id
-    });
+    await settleSupplierSecondaryEffects('Activate supplier invitation', [
+      SupplyChainLog.create({
+        action: 'supplier_activated', performedBy: activatedUser._id, userRole: 'supplier',
+        relatedEntity: { type: 'Supplier', id: activatedSupplier._id }, description: `Supplier "${activatedSupplier.businessName}" activated its account`,
+        store: activatedSupplier.originStore, supplier: activatedSupplier._id
+      })
+    ]);
     res.json({ message: 'Supplier account activated. Sign in with your temporary password, then create a private password.' });
   } catch (error) {
     console.error('Activate supplier invitation error:', error);
-    res.status(500).json({ message: 'Unable to activate supplier invitation.' });
+    res.status(error.statusCode || 500).json({ message: error.statusCode ? error.message : 'Unable to activate supplier invitation.' });
   }
 };
 
@@ -370,12 +450,14 @@ const updateStoreSupplierAssociation = async (req, res) => {
     }
     supplier.isActive = supplier.storeAssociations.some(item => item.status === 'active');
     await supplier.save();
-    await SupplyChainLog.create({
-      action: action === 'deactivate' ? 'supplier_association_deactivated' : 'supplier_association_reactivated',
-      performedBy: req.user._id, userRole: req.user.role,
-      relatedEntity: { type: 'Supplier', id: supplier._id },
-      description: `Store ${action}d supplier "${supplier.businessName}"`, store: store._id, supplier: supplier._id
-    });
+    await settleSupplierSecondaryEffects('Update store supplier association', [
+      SupplyChainLog.create({
+        action: action === 'deactivate' ? 'supplier_association_deactivated' : 'supplier_association_reactivated',
+        performedBy: req.user._id, userRole: req.user.role,
+        relatedEntity: { type: 'Supplier', id: supplier._id },
+        description: `Store ${action}d supplier "${supplier.businessName}"`, store: store._id, supplier: supplier._id
+      })
+    ]);
     res.json({ message: `Supplier ${action}d for this store.`, supplier });
   } catch (error) {
     console.error('Update store supplier association error:', error);
@@ -402,7 +484,7 @@ const updateSupplierProfile = async (req, res) => {
     if (!supplier) return res.status(404).json({ message: 'Supplier profile not found.' });
 
     const allowed = ['businessName', 'contactPerson', 'email', 'phone', 'address',
-      'description', 'logo', 'productCategories', 'payoutAccount'];
+      'description', 'logo', 'productCategories', 'goodsTypes', 'payoutAccount'];
     allowed.forEach(key => { if (req.body[key] !== undefined) supplier[key] = req.body[key]; });
 
     await supplier.save();
@@ -465,38 +547,73 @@ const addProduct = async (req, res) => {
     const { name, sku, description, category, images, wholesalePrice, retailPrice,
       availableStock, minimumOrderQuantity, unitOfMeasure, deliveryLeadTimeDays,
       brand, specifications, weight, dimensions, expirationDate } = req.body;
+    const itemType = ['pet_supply', 'product', 'live_pet'].includes(req.body.itemType)
+      ? req.body.itemType : 'pet_supply';
 
     if (!name || !sku || !category || wholesalePrice === undefined) {
       return res.status(400).json({ message: 'Name, SKU, category, and wholesale price are required.' });
     }
 
-    const product = new SupplierProduct({
-      supplier: supplier._id,
-      name, sku, description, category, images: images || [],
-      wholesalePrice, retailPrice: retailPrice || 0,
-      availableStock: availableStock || 0,
-      minimumOrderQuantity: minimumOrderQuantity || 1,
-      unitOfMeasure: unitOfMeasure || 'piece',
-      deliveryLeadTimeDays: deliveryLeadTimeDays || 3,
-      brand, specifications, weight, dimensions, expirationDate
-    });
+    const authoritativeCategory = itemType === 'live_pet' ? 'live_pets' : category;
+    if (itemType !== 'live_pet' && category === 'live_pets') {
+      return res.status(400).json({ message: 'The live-pets category is reserved for exact live-pet catalog records.' });
+    }
+    let product;
+    const persistCatalogEntry = async session => {
+      let pet = null;
+      if (itemType === 'live_pet') {
+        pet = new Pet(buildSupplierPet({
+          input: req.body.pet,
+          supplier,
+          userId: req.user._id,
+          price: Number(wholesalePrice),
+          images
+        }));
+        await pet.save({ session });
+      }
 
-    await product.save();
+      product = new SupplierProduct({
+        supplier: supplier._id,
+        itemType,
+        pet: pet?._id || null,
+        name, sku, description, category: authoritativeCategory, images: images || [],
+        wholesalePrice, retailPrice: retailPrice || 0,
+        availableStock: itemType === 'live_pet' ? 1 : (availableStock || 0),
+        minimumOrderQuantity: itemType === 'live_pet' ? 1 : (minimumOrderQuantity || 1),
+        unitOfMeasure: itemType === 'live_pet' ? 'piece' : (unitOfMeasure || 'piece'),
+        deliveryLeadTimeDays: deliveryLeadTimeDays || 3,
+        brand, specifications, weight, dimensions, expirationDate
+      });
+      await product.save({ session });
+      await Supplier.updateOne({ _id: supplier._id }, {
+        $addToSet: { goodsTypes: inferSupplierGoodsType(itemType) }
+      }, { session });
+    };
 
-    await SupplyChainLog.create({
-      action: 'supplier_product_added',
-      performedBy: req.user._id,
-      userRole: 'supplier',
-      relatedEntity: { type: 'SupplierProduct', id: product._id },
-      description: `Product "${name}" (SKU: ${sku}) added to catalog`,
-      supplier: supplier._id
-    });
+    if (itemType === 'live_pet') {
+      await mongoose.connection.transaction(persistCatalogEntry);
+    } else {
+      await persistCatalogEntry(null);
+    }
+
+    await settleSupplierSecondaryEffects('Add supplier product', [
+      () => SupplyChainLog.create({
+        action: 'supplier_product_added',
+        performedBy: req.user._id,
+        userRole: 'supplier',
+        relatedEntity: { type: 'SupplierProduct', id: product._id },
+        description: `Product "${name}" (SKU: ${sku}) added to catalog`,
+        supplier: supplier._id
+      })
+    ]);
 
     res.status(201).json(product);
   } catch (error) {
     if (error.code === 11000) return res.status(400).json({ message: 'A product with this SKU already exists.' });
     console.error('Add supplier product error:', error);
-    res.status(500).json({ message: 'Server error' });
+    res.status(error.statusCode || (error.name === 'ValidationError' ? 400 : 500)).json({
+      message: error.message || 'Server error'
+    });
   }
 };
 
@@ -511,7 +628,7 @@ const getMyProducts = async (req, res) => {
     if (search) filter.name = { $regex: search, $options: 'i' };
 
     const skip = (page - 1) * limit;
-    const products = await SupplierProduct.find(filter).sort({ createdAt: -1 }).skip(skip).limit(parseInt(limit));
+    const products = await SupplierProduct.find(filter).populate('pet').sort({ createdAt: -1 }).skip(skip).limit(parseInt(limit));
     const total = await SupplierProduct.countDocuments(filter);
 
     res.json({ products, pagination: { page: parseInt(page), totalPages: Math.ceil(total / limit), total } });
@@ -521,13 +638,24 @@ const getMyProducts = async (req, res) => {
   }
 };
 
+const hasUnreleasedProductCommitment = ({ product, supplier, session }) => PurchaseOrder.exists({
+  supplier,
+  status: { $nin: ['completed', 'cancelled', 'returned'] },
+  items: {
+    $elemMatch: {
+      supplierProduct: product,
+      supplierStockCommittedQuantity: { $gt: 0 },
+      supplierStockCommitmentReleased: { $ne: true }
+    }
+  }
+}).session(session);
+
 const updateProduct = async (req, res) => {
+  let product;
+  let previousValue;
   try {
     const supplier = await Supplier.findOne({ user: req.user._id });
     if (!supplier) return res.status(404).json({ message: 'Supplier not found.' });
-
-    const product = await SupplierProduct.findOne({ _id: req.params.id, supplier: supplier._id });
-    if (!product) return res.status(404).json({ message: 'Product not found.' });
 
     const mutableFields = [
       'name', 'sku', 'description', 'category', 'images', 'wholesalePrice',
@@ -539,53 +667,129 @@ const updateProduct = async (req, res) => {
     mutableFields.forEach(field => {
       if (req.body[field] !== undefined) updates[field] = req.body[field];
     });
-    const prev = { ...product.toObject() };
-    Object.assign(product, updates);
-    await product.save();
 
-    await SupplyChainLog.create({
-      action: 'supplier_product_updated',
-      performedBy: req.user._id,
-      userRole: 'supplier',
-      relatedEntity: { type: 'SupplierProduct', id: product._id },
-      description: `Product "${product.name}" updated`,
-      supplier: supplier._id,
-      previousValue: { price: prev.wholesalePrice, stock: prev.availableStock },
-      newValue: { price: product.wholesalePrice, stock: product.availableStock }
+    await mongoose.connection.transaction(async session => {
+      product = await SupplierProduct.findOne({ _id: req.params.id, supplier: supplier._id }).session(session);
+      if (!product) throw createHttpError('Product not found.', 404);
+      previousValue = { price: product.wholesalePrice, stock: product.availableStock };
+      Object.assign(product, updates);
+
+      if (product.itemType === 'live_pet') {
+        const requestedStock = req.body.availableStock;
+        if (requestedStock !== undefined && ![0, 1].includes(Number(requestedStock))) {
+          throw createHttpError('A live pet availability must be zero or one.', 400);
+        }
+        const pet = product.pet
+          ? await Pet.findOne({
+              _id: product.pet,
+              sourceSupplier: supplier._id,
+              listingContext: 'supplier_catalog'
+            }).session(session)
+          : null;
+        const reservedPurchaseOrder = pet?.procurementReservation?.purchaseOrder;
+        if (reservedPurchaseOrder && requestedStock !== undefined && Number(requestedStock) !== 0) {
+          throw createHttpError('A live pet reserved by an active purchase order cannot be made available through a catalog edit.', 409);
+        }
+        product.availableStock = reservedPurchaseOrder
+          ? 0
+          : (requestedStock === undefined ? product.availableStock : Number(requestedStock));
+
+        if (req.body.pet && pet) {
+          const editablePetFields = ['name', 'species', 'breed', 'age', 'ageUnit', 'birthday', 'gender', 'size', 'color', 'description', 'dewormed', 'spayedNeutered', 'healthCondition', 'vaccinationStatus', 'healthNotes', 'vetRecords', 'proofOfOwnership', 'pcciRegistration'];
+          editablePetFields.forEach(field => { if (req.body.pet[field] !== undefined) pet[field] = req.body.pet[field]; });
+          if (req.body.images) pet.images = req.body.images;
+          if (req.body.wholesalePrice !== undefined) pet.price = req.body.wholesalePrice;
+        }
+        if (pet) {
+          if (reservedPurchaseOrder) {
+            pet.status = 'reserved';
+            pet.isAvailable = false;
+          } else if (!pet.acquiredThroughPurchaseOrder) {
+            pet.status = product.availableStock === 1 ? 'available' : 'unavailable';
+            pet.isAvailable = product.availableStock === 1;
+          }
+          await pet.save({ session });
+        }
+      }
+      await product.save({ session });
     });
+
+    await settleSupplierSecondaryEffects('Update supplier product', [
+      () => SupplyChainLog.create({
+        action: 'supplier_product_updated',
+        performedBy: req.user._id,
+        userRole: 'supplier',
+        relatedEntity: { type: 'SupplierProduct', id: product._id },
+        description: `Product "${product.name}" updated`,
+        supplier: supplier._id,
+        previousValue,
+        newValue: { price: product.wholesalePrice, stock: product.availableStock }
+      })
+    ]);
 
     res.json(product);
   } catch (error) {
     console.error('Update supplier product error:', error);
-    res.status(500).json({ message: 'Server error' });
+    res.status(error.statusCode || (error.name === 'CastError' ? 400 : 500)).json({ message: error.message || 'Server error' });
   }
 };
 
 const deleteProduct = async (req, res) => {
+  let product;
   try {
     const supplier = await Supplier.findOne({ user: req.user._id });
     if (!supplier) return res.status(404).json({ message: 'Supplier not found.' });
 
-    const product = await SupplierProduct.findOne({ _id: req.params.id, supplier: supplier._id });
-    if (!product) return res.status(404).json({ message: 'Product not found.' });
+    await mongoose.connection.transaction(async session => {
+      product = await SupplierProduct.findOne({ _id: req.params.id, supplier: supplier._id }).session(session);
+      if (!product) throw createHttpError('Product not found.', 404);
 
-    product.isDeleted = true;
-    product.isActive = false;
-    await product.save();
+      const activeCommitment = await hasUnreleasedProductCommitment({
+        product: product._id,
+        supplier: supplier._id,
+        session
+      });
+      if (activeCommitment) {
+        throw createHttpError('This catalog item has an active procurement commitment and cannot be removed yet.', 409);
+      }
 
-    await SupplyChainLog.create({
-      action: 'supplier_product_removed',
-      performedBy: req.user._id,
-      userRole: 'supplier',
-      relatedEntity: { type: 'SupplierProduct', id: product._id },
-      description: `Product "${product.name}" removed from catalog`,
-      supplier: supplier._id
+      let pet = null;
+      if (product.itemType === 'live_pet' && product.pet) {
+        pet = await Pet.findOne({
+          _id: product.pet,
+          sourceSupplier: supplier._id,
+          listingContext: 'supplier_catalog'
+        }).session(session);
+        if (pet?.procurementReservation?.purchaseOrder && !pet.acquiredThroughPurchaseOrder) {
+          throw createHttpError('This live pet is reserved by a purchase order and cannot be removed from the catalog.', 409);
+        }
+      }
+
+      product.isDeleted = true;
+      product.isActive = false;
+      if (pet && !pet.acquiredThroughPurchaseOrder) {
+        pet.status = 'unavailable';
+        pet.isAvailable = false;
+        await pet.save({ session });
+      }
+      await product.save({ session });
     });
+
+    await settleSupplierSecondaryEffects('Delete supplier product', [
+      () => SupplyChainLog.create({
+        action: 'supplier_product_removed',
+        performedBy: req.user._id,
+        userRole: 'supplier',
+        relatedEntity: { type: 'SupplierProduct', id: product._id },
+        description: `Product "${product.name}" removed from catalog`,
+        supplier: supplier._id
+      })
+    ]);
 
     res.json({ message: 'Product removed.' });
   } catch (error) {
     console.error('Delete supplier product error:', error);
-    res.status(500).json({ message: 'Server error' });
+    res.status(error.statusCode || (error.name === 'CastError' ? 400 : 500)).json({ message: error.message || 'Server error' });
   }
 };
 
@@ -606,11 +810,23 @@ const getSupplierOrders = async (req, res) => {
     const orders = await PurchaseOrder.find(filter)
       .populate('seller', 'firstName lastName email')
       .populate('store', 'name')
-      .populate('items.supplierProduct', 'name sku images')
+      .populate('items.supplierProduct', 'name sku images itemType pet')
+      .populate('items.pet', 'name species breed age ageUnit gender size images healthCondition vaccinationStatus')
+      .populate({
+        path: 'receivingReport',
+        populate: [
+          { path: 'receivedBy', select: 'firstName lastName' },
+          { path: 'resolutionSubmissions.decisionBy', select: 'firstName lastName' },
+          { path: 'resolutionSubmissions.financialAdjustment.reviewedBy', select: 'firstName lastName' }
+        ]
+      })
       .sort({ createdAt: -1 }).skip(skip).limit(parseInt(limit));
     const total = await PurchaseOrder.countDocuments(filter);
 
-    res.json({ orders, pagination: { page: parseInt(page), totalPages: Math.ceil(total / limit), total } });
+    res.json({
+      orders: orders.map(sanitizeOrderReceivingReport),
+      pagination: { page: parseInt(page), totalPages: Math.ceil(total / limit), total }
+    });
   } catch (error) {
     console.error('Get supplier orders error:', error);
     res.status(500).json({ message: 'Server error' });
@@ -631,76 +847,344 @@ const updateOrderStatus = async (req, res) => {
       submitted: ['confirmed', 'cancelled'],
       confirmed: ['processing', 'cancelled'],
       processing: ['shipped', 'cancelled'],
-      shipped: ['delivered'],
-      delivered: ['returned']
+      shipped: ['delivered']
     };
 
     if (!validTransitions[order.status]?.includes(status)) {
       return res.status(400).json({ message: `Cannot transition from "${order.status}" to "${status}".` });
     }
-
-    const prevStatus = order.status;
-    order.status = status;
-    if (supplierNotes) order.supplierNotes = supplierNotes;
-    if (trackingNumber) order.trackingNumber = trackingNumber;
-    if (carrier) order.carrier = carrier;
-    if (estimatedDeliveryDate) order.estimatedDeliveryDate = estimatedDeliveryDate;
-    if (status === 'delivered') order.actualDeliveryDate = new Date();
-
-    order.statusHistory.push({
-      status, changedBy: req.user._id,
-      notes: supplierNotes || `Status changed to ${status}`,
-      timestamp: new Date()
-    });
-
-    await order.save();
-
-    // Update supplier performance
-    if (status === 'delivered') {
-      supplier.performance.completedOrders += 1;
-      supplier.performance.totalRevenue += order.totalCost;
-      const deliveryDays = Math.ceil((order.actualDeliveryDate - order.createdAt) / (1000 * 60 * 60 * 24));
-      const totalCompleted = supplier.performance.completedOrders;
-      supplier.performance.averageDeliveryDays = Math.round(
-        ((supplier.performance.averageDeliveryDays * (totalCompleted - 1)) + deliveryDays) / totalCompleted
-      );
-      await supplier.save();
+    if (status === 'confirmed' && order.paymentTiming === 'pay_now' && order.paymentStatus !== 'paid') {
+      return res.status(409).json({ message: 'This pay-now purchase order must have a verified PayMongo payment before supplier acceptance.' });
     }
+    if (status === 'cancelled' && order.paymentStatus === 'paid') {
+      return res.status(409).json({ message: 'A paid purchase order cannot be cancelled without an authorized refund process.' });
+    }
+    if (status === 'cancelled' && (order.paymentStatus === 'pending' || order.paymentDetails?.sessionStatus === 'active')) {
+      return res.status(409).json({ message: 'The store must cancel its active PayMongo session before this purchase order can be rejected.' });
+    }
+
     if (status === 'cancelled') {
-      supplier.performance.cancelledOrders += 1;
-      const total = supplier.performance.totalOrders || 1;
-      supplier.performance.reliabilityScore = Math.round(
-        ((total - supplier.performance.cancelledOrders) / total) * 100
-      );
-      await supplier.save();
+      let cancelledOrder;
+      let cancelledSupplier;
+      await mongoose.connection.transaction(async session => {
+        cancelledSupplier = await Supplier.findOne({ user: req.user._id }).session(session);
+        if (!cancelledSupplier) throw Object.assign(new Error('Supplier not found.'), { statusCode: 404 });
+        cancelledOrder = await PurchaseOrder.findOne({
+          _id: req.params.id,
+          supplier: cancelledSupplier._id,
+          isDeleted: false
+        }).session(session);
+        if (!cancelledOrder) throw Object.assign(new Error('Order not found.'), { statusCode: 404 });
+        if (!['submitted', 'confirmed', 'processing'].includes(cancelledOrder.status)) {
+          throw Object.assign(new Error(`Cannot transition from "${cancelledOrder.status}" to "cancelled".`), { statusCode: 409 });
+        }
+        if (cancelledOrder.paymentStatus === 'paid') {
+          throw Object.assign(new Error('A paid purchase order cannot be cancelled without an authorized refund process.'), { statusCode: 409 });
+        }
+        if (cancelledOrder.paymentStatus === 'pending' || cancelledOrder.paymentDetails?.sessionStatus === 'active') {
+          throw Object.assign(new Error('The store must cancel its active PayMongo session before this purchase order can be rejected.'), { statusCode: 409 });
+        }
+
+        await releasePurchaseOrderStock({ order: cancelledOrder, session });
+        cancelledOrder.status = 'cancelled';
+        if (supplierNotes) cancelledOrder.supplierNotes = supplierNotes;
+        cancelledOrder.statusHistory.push({
+          status: 'cancelled', changedBy: req.user._id,
+          notes: supplierNotes || 'Status changed to cancelled', timestamp: new Date()
+        });
+        cancelledSupplier.performance.cancelledOrders += 1;
+        const total = cancelledSupplier.performance.totalOrders || 1;
+        cancelledSupplier.performance.reliabilityScore = Math.round(
+          ((total - cancelledSupplier.performance.cancelledOrders) / total) * 100
+        );
+        await Promise.all([
+          cancelledOrder.save({ session }),
+          cancelledSupplier.save({ session })
+        ]);
+      });
+
+      await Promise.allSettled([
+        createNotification({
+          recipient: cancelledOrder.seller,
+          sender: req.user._id,
+          type: 'purchase_order',
+          title: 'Purchase Order Cancelled',
+          message: `Your purchase order ${cancelledOrder.orderNumber} has been cancelled.`,
+          relatedId: cancelledOrder._id,
+          relatedModel: 'PurchaseOrder'
+        }),
+        SupplyChainLog.create({
+          action: 'purchase_order_cancelled',
+          performedBy: req.user._id,
+          userRole: 'supplier',
+          relatedEntity: { type: 'PurchaseOrder', id: cancelledOrder._id },
+          description: `Purchase order ${cancelledOrder.orderNumber} status: ${order.status} → cancelled`,
+          supplier: cancelledSupplier._id,
+          previousValue: { status: order.status },
+          newValue: { status: 'cancelled' }
+        })
+      ]);
+      return res.json(cancelledOrder);
     }
 
-    // Notify seller
-    await createNotification({
-      recipient: order.seller,
-      sender: req.user._id,
-      type: 'purchase_order',
-      title: `Purchase Order ${status.charAt(0).toUpperCase() + status.slice(1)}`,
-      message: `Your purchase order ${order.orderNumber} has been ${status}.`,
-      relatedId: order._id,
-      relatedModel: 'PurchaseOrder'
+    let transitionSupplier;
+    let transitionOrder;
+    let prevStatus;
+    await mongoose.connection.transaction(async session => {
+      transitionSupplier = await Supplier.findOne({ user: req.user._id }).session(session);
+      if (!transitionSupplier) throw Object.assign(new Error('Supplier not found.'), { statusCode: 404 });
+      transitionOrder = await PurchaseOrder.findOne({
+        _id: req.params.id,
+        supplier: transitionSupplier._id,
+        isDeleted: false
+      }).session(session);
+      if (!transitionOrder) throw Object.assign(new Error('Order not found.'), { statusCode: 404 });
+      if (!validTransitions[transitionOrder.status]?.includes(status) || status === 'cancelled') {
+        throw Object.assign(new Error(`Cannot transition from "${transitionOrder.status}" to "${status}".`), { statusCode: 409 });
+      }
+      if (status === 'confirmed' && transitionOrder.paymentTiming === 'pay_now' && transitionOrder.paymentStatus !== 'paid') {
+        throw Object.assign(new Error('This pay-now purchase order must have a verified PayMongo payment before supplier acceptance.'), { statusCode: 409 });
+      }
+
+      prevStatus = transitionOrder.status;
+      transitionOrder.status = status;
+      if (supplierNotes) transitionOrder.supplierNotes = supplierNotes;
+      if (trackingNumber) transitionOrder.trackingNumber = trackingNumber;
+      if (carrier) transitionOrder.carrier = carrier;
+      if (estimatedDeliveryDate) transitionOrder.estimatedDeliveryDate = estimatedDeliveryDate;
+      if (status === 'delivered') transitionOrder.actualDeliveryDate = new Date();
+      if (status === 'delivered') {
+        transitionOrder.inspectionStatus = 'awaiting_inspection';
+        if (transitionOrder.paymentTiming === 'after_inspection' && transitionOrder.paymentStatus !== 'paid') {
+          transitionOrder.paymentStatus = 'awaiting_inspection';
+        }
+      }
+
+      transitionOrder.statusHistory.push({
+        status, changedBy: req.user._id,
+        notes: supplierNotes || `Status changed to ${status}`,
+        timestamp: new Date()
+      });
+
+      await transitionOrder.save({ session });
+
+      if (status === 'delivered') {
+        transitionSupplier.performance.completedOrders += 1;
+        transitionSupplier.performance.totalRevenue += transitionOrder.totalCost;
+        const deliveryDays = Math.ceil((transitionOrder.actualDeliveryDate - transitionOrder.createdAt) / (1000 * 60 * 60 * 24));
+        const totalCompleted = transitionSupplier.performance.completedOrders;
+        transitionSupplier.performance.averageDeliveryDays = Math.round(
+          ((transitionSupplier.performance.averageDeliveryDays * (totalCompleted - 1)) + deliveryDays) / totalCompleted
+        );
+        await transitionSupplier.save({ session });
+      }
     });
 
-    await SupplyChainLog.create({
-      action: `purchase_order_${status}`,
-      performedBy: req.user._id,
-      userRole: 'supplier',
-      relatedEntity: { type: 'PurchaseOrder', id: order._id },
-      description: `Purchase order ${order.orderNumber} status: ${prevStatus} → ${status}`,
-      supplier: supplier._id,
-      previousValue: { status: prevStatus },
-      newValue: { status }
-    });
+    await Promise.allSettled([
+      createNotification({
+        recipient: transitionOrder.seller,
+        sender: req.user._id,
+        type: 'purchase_order',
+        title: `Purchase Order ${status.charAt(0).toUpperCase() + status.slice(1)}`,
+        message: `Your purchase order ${transitionOrder.orderNumber} has been ${status}.`,
+        relatedId: transitionOrder._id,
+        relatedModel: 'PurchaseOrder'
+      }),
+      SupplyChainLog.create({
+        action: `purchase_order_${status}`,
+        performedBy: req.user._id,
+        userRole: 'supplier',
+        relatedEntity: { type: 'PurchaseOrder', id: transitionOrder._id },
+        description: `Purchase order ${transitionOrder.orderNumber} status: ${prevStatus} → ${status}`,
+        supplier: transitionSupplier._id,
+        previousValue: { status: prevStatus },
+        newValue: { status }
+      })
+    ]);
 
-    res.json(order);
+    res.json(transitionOrder);
   } catch (error) {
     console.error('Update order status error:', error);
-    res.status(500).json({ message: 'Server error' });
+    res.status(error.statusCode || (error.name === 'CastError' ? 400 : 500)).json({
+      message: error.message || 'Unable to update this purchase order.'
+    });
+  }
+};
+
+const submitOrderResolution = async (req, res) => {
+  let result;
+  try {
+    const type = req.body.type;
+    if (!['replacement', 'return_correction', 'refund_credit'].includes(type)) {
+      return res.status(400).json({ message: 'Resolution type must be replacement, return/correction, or refund/credit.' });
+    }
+    const proposedAmount = Number(req.body.proposedAmount);
+    if (type === 'refund_credit' && (!Number.isFinite(proposedAmount) || proposedAmount <= 0)) {
+      return res.status(400).json({ message: 'A positive proposed refund/credit amount is required for Finance review.' });
+    }
+
+    await mongoose.connection.transaction(async session => {
+      const supplier = await Supplier.findOne({ user: req.user._id }).session(session);
+      if (!supplier) throw createHttpError('Supplier not found.', 404);
+      const order = await PurchaseOrder.findOne({
+        _id: req.params.id,
+        supplier: supplier._id,
+        isDeleted: false
+      }).session(session);
+      if (!order) throw createHttpError('Purchase order not found.', 404);
+      const report = await ProcurementReceivingReport.findOne({
+        purchaseOrder: order._id,
+        supplier: supplier._id,
+        store: order.store
+      }).session(session);
+      if (!report || report.processingStatus !== 'completed') {
+        throw createHttpError('A completed receiving report is required before a resolution can be submitted.', 409);
+      }
+      if (!['pending_supplier_resolution', 'resolution_rejected'].includes(report.resolutionStatus)) {
+        throw createHttpError(`A resolution cannot be submitted while the report is "${report.resolutionStatus}".`, 409);
+      }
+
+      const rows = Array.isArray(req.body.items) ? req.body.items : [];
+      if (!rows.length || rows.length > order.items.length) {
+        throw createHttpError('At least one affected purchase-order line is required.', 400);
+      }
+      const unresolved = new Map(getResolutionQuantities(report).map(row => [String(row.purchaseOrderItem), row.unresolvedQuantity]));
+      const seen = new Set();
+      const items = [];
+      for (const row of rows) {
+        const id = String(row.purchaseOrderItem || row.itemId || '');
+        const proposedQuantity = Number(row.proposedQuantity ?? row.quantity);
+        const available = Number(unresolved.get(id) || 0);
+        if (!id || seen.has(id) || !Number.isInteger(proposedQuantity) || proposedQuantity < 1 || proposedQuantity > available) {
+          throw createHttpError('Resolution quantities must be whole numbers within each line\'s unresolved quantity.', 400);
+        }
+        const orderItem = order.items.id(id);
+        if (!orderItem) throw createHttpError('A resolution item does not belong to this purchase order.', 400);
+        if (orderItem.itemType === 'live_pet' && type !== 'refund_credit') {
+          throw createHttpError('Exact live-pet procurement cannot use quantity-based replacement or correction. Submit a refund/credit proposal for authorized review.', 409);
+        }
+        seen.add(id);
+        items.push({ purchaseOrderItem: orderItem._id, unresolvedQuantity: available, proposedQuantity });
+      }
+
+      report.resolutionSubmissions.push({
+        type,
+        items,
+        notes: req.body.notes,
+        submittedBy: req.user._id,
+        status: 'submitted',
+        ...(type === 'refund_credit' ? {
+          financialProposal: {
+            adjustmentType: req.body.adjustmentType === 'refund' ? 'refund' : 'credit',
+            proposedAmount
+          },
+          financialAdjustment: { status: 'not_required' }
+        } : {})
+      });
+      const savedSubmission = report.resolutionSubmissions[report.resolutionSubmissions.length - 1];
+      report.resolutionStatus = 'resolution_submitted';
+      report.resolutionHistory.push({
+        status: 'resolution_submitted',
+        action: 'supplier_resolution_submitted',
+        actor: req.user._id,
+        actorRole: req.user.role,
+        resolutionSubmission: savedSubmission._id,
+        notes: req.body.notes
+      });
+      order.status = 'resolution_submitted';
+      order.statusHistory.push({ status: 'resolution_submitted', changedBy: req.user._id, notes: `Supplier proposed ${type}.` });
+      await Promise.all([report.save({ session }), order.save({ session })]);
+      result = { supplier, order, report, savedSubmission };
+    });
+
+    await settleSupplierSecondaryEffects('Submit supplier resolution', [
+      createNotification({
+        recipient: result.order.seller,
+        sender: req.user._id,
+        type: 'purchase_order',
+        title: 'Supplier Resolution Submitted',
+        message: `A ${type.replaceAll('_', ' ')} resolution was submitted for ${result.order.orderNumber}.`,
+        relatedId: result.order._id,
+        relatedModel: 'PurchaseOrder'
+      }),
+      SupplyChainLog.create({
+        action: 'purchase_order_resolution_submitted',
+        performedBy: req.user._id,
+        userRole: req.user.role,
+        relatedEntity: { type: 'PurchaseOrder', id: result.order._id },
+        description: `Supplier submitted ${type} resolution for ${result.order.orderNumber}.`,
+        store: result.order.store,
+        supplier: result.supplier._id,
+        metadata: { receivingReport: result.report._id, resolutionSubmission: result.savedSubmission._id }
+      })
+    ]);
+    res.status(201).json({
+      order: result.order,
+      receivingReport: sanitizeReceivingReport(result.report),
+      resolution: result.savedSubmission
+    });
+  } catch (error) {
+    console.error('Submit supplier resolution error:', error);
+    res.status(error.statusCode || (error.name === 'CastError' ? 400 : 500)).json({
+      message: error.name === 'CastError' ? 'Invalid purchase order.' : (error.message || 'Unable to submit the supplier resolution.')
+    });
+  }
+};
+
+const markResolutionDelivered = async (req, res) => {
+  let result;
+  try {
+    await mongoose.connection.transaction(async session => {
+      const supplier = await Supplier.findOne({ user: req.user._id }).session(session);
+      if (!supplier) throw createHttpError('Supplier not found.', 404);
+      const order = await PurchaseOrder.findOne({
+        _id: req.params.id,
+        supplier: supplier._id,
+        isDeleted: false
+      }).session(session);
+      if (!order) throw createHttpError('Purchase order not found.', 404);
+      const report = await ProcurementReceivingReport.findOne({
+        purchaseOrder: order._id,
+        supplier: supplier._id,
+        store: order.store
+      }).session(session);
+      const submission = report?.resolutionSubmissions?.id(req.params.resolutionId);
+      if (!submission) throw createHttpError('Resolution submission not found.', 404);
+      if (!['replacement', 'return_correction'].includes(submission.type)
+          || submission.status !== 'awaiting_replacement'
+          || report.resolutionStatus !== 'awaiting_replacement') {
+        throw createHttpError('This resolution is not awaiting a replacement/corrected delivery.', 409);
+      }
+      submission.status = 'replacement_delivered';
+      submission.replacementDeliveredBy = req.user._id;
+      submission.replacementDeliveredAt = new Date();
+      submission.replacementNotes = req.body.notes;
+      report.resolutionStatus = 'reinspection';
+      report.resolutionHistory.push({
+        status: 'reinspection', action: 'replacement_delivery_reported', actor: req.user._id,
+        actorRole: req.user.role, resolutionSubmission: submission._id, notes: req.body.notes
+      });
+      order.status = 'reinspection';
+      order.inspectionStatus = 'reinspection';
+      order.statusHistory.push({ status: 'reinspection', changedBy: req.user._id, notes: req.body.notes || 'Supplier reported replacement/correction delivery.' });
+      await Promise.all([report.save({ session }), order.save({ session })]);
+      result = { order, report };
+    });
+    await settleSupplierSecondaryEffects('Mark supplier resolution delivered', [createNotification({
+      recipient: result.order.seller,
+      sender: req.user._id,
+      type: 'purchase_order',
+      title: 'Replacement Ready for Reinspection',
+      message: `The supplier reported the resolution delivery for ${result.order.orderNumber}. Store receiving staff must reinspect it.`,
+      relatedId: result.order._id,
+      relatedModel: 'PurchaseOrder'
+    })]);
+    res.json({ order: result.order, receivingReport: sanitizeReceivingReport(result.report) });
+  } catch (error) {
+    console.error('Mark resolution delivered error:', error);
+    res.status(error.statusCode || (error.name === 'CastError' ? 400 : 500)).json({
+      message: error.name === 'CastError' ? 'Invalid resolution.' : (error.message || 'Unable to report the resolution delivery.')
+    });
   }
 };
 
@@ -744,7 +1228,7 @@ const getSupplierCatalog = async (req, res) => {
     if (search) filter.name = { $regex: search, $options: 'i' };
 
     const skip = (page - 1) * limit;
-    const products = await SupplierProduct.find(filter).sort({ createdAt: -1 }).skip(skip).limit(parseInt(limit));
+    const products = await SupplierProduct.find(filter).populate('pet').sort({ createdAt: -1 }).skip(skip).limit(parseInt(limit));
     const total = await SupplierProduct.countDocuments(filter);
 
     res.json({ supplier: { _id: supplier._id, businessName: supplier.businessName, logo: supplier.logo, ratings: supplier.ratings, supplierType: supplier.supplierType || 'platform' }, products, pagination: { page: parseInt(page), totalPages: Math.ceil(total / limit), total } });
@@ -855,37 +1339,36 @@ const adminVerifySupplier = async (req, res) => {
       reactivate: 'Your supplier account has been reactivated and is available to sellers again.'
     };
 
-    // Notify supplier
-    await createNotification({
-      recipient: supplier.user,
-      sender: req.user._id,
-      type: 'supplier_verification',
-      title: `Supplier Account ${actionLabels[action]}`,
-      message: actionMessages[action],
-      relatedId: supplier._id,
-      relatedModel: 'Supplier'
-    });
-
-    await sendSupplierApplicationUpdate({
-      email: supplier.email, contactPerson: supplier.contactPerson,
-      businessName: supplier.businessName,
-      status: action === 'verify' ? 'approved' : action === 'request_resubmission' ? 'resubmission_required' : action,
-      reason
-    }).catch(() => ({ success: false }));
-
-    await SupplyChainLog.create({
-      action: action === 'request_resubmission'
-        ? 'supplier_resubmission_requested'
-        : `supplier_${action === 'verify' ? 'verified' : action === 'reject' ? 'rejected' : action === 'suspend' ? 'suspended' : 'reactivated'}`,
-      performedBy: req.user._id,
-      userRole: req.user.role,
-      relatedEntity: { type: 'Supplier', id: supplier._id },
-      description: `Supplier "${supplier.businessName}" ${actionLabels[action].toLowerCase()}${reason ? ` (${reason})` : ''}`,
-      supplier: supplier._id,
-      previousValue: transition.previous,
-      newValue: transition.current,
-      metadata: { legacyProductsRestored }
-    });
+    await settleSupplierSecondaryEffects('Admin supplier lifecycle update', [
+      createNotification({
+        recipient: supplier.user,
+        sender: req.user._id,
+        type: 'supplier_verification',
+        title: `Supplier Account ${actionLabels[action]}`,
+        message: actionMessages[action],
+        relatedId: supplier._id,
+        relatedModel: 'Supplier'
+      }),
+      sendSupplierApplicationUpdate({
+        email: supplier.email, contactPerson: supplier.contactPerson,
+        businessName: supplier.businessName,
+        status: action === 'verify' ? 'approved' : action === 'request_resubmission' ? 'resubmission_required' : action,
+        reason
+      }),
+      SupplyChainLog.create({
+        action: action === 'request_resubmission'
+          ? 'supplier_resubmission_requested'
+          : `supplier_${action === 'verify' ? 'verified' : action === 'reject' ? 'rejected' : action === 'suspend' ? 'suspended' : 'reactivated'}`,
+        performedBy: req.user._id,
+        userRole: req.user.role,
+        relatedEntity: { type: 'Supplier', id: supplier._id },
+        description: `Supplier "${supplier.businessName}" ${actionLabels[action].toLowerCase()}${reason ? ` (${reason})` : ''}`,
+        supplier: supplier._id,
+        previousValue: transition.previous,
+        newValue: transition.current,
+        metadata: { legacyProductsRestored }
+      })
+    ]);
 
     res.json(supplier);
   } catch (error) {
@@ -944,17 +1427,19 @@ const adminDeactivateSupplier = async (req, res) => {
       reason: req.body.reason || 'Deactivated by administrator'
     });
     await supplier.save();
-    await SupplyChainLog.create({
-      action: 'supplier_deactivated',
-      performedBy: req.user._id,
-      userRole: req.user.role,
-      relatedEntity: { type: 'Supplier', id: supplier._id },
-      description: `Supplier "${supplier.businessName}" deactivated`,
-      supplier: supplier._id,
-      previousValue: transition.previous,
-      newValue: transition.current,
-      metadata: { productAvailabilityPreserved: true }
-    });
+    await settleSupplierSecondaryEffects('Admin supplier deactivation', [
+      SupplyChainLog.create({
+        action: 'supplier_deactivated',
+        performedBy: req.user._id,
+        userRole: req.user.role,
+        relatedEntity: { type: 'Supplier', id: supplier._id },
+        description: `Supplier "${supplier.businessName}" deactivated`,
+        supplier: supplier._id,
+        previousValue: transition.previous,
+        newValue: transition.current,
+        metadata: { productAvailabilityPreserved: true }
+      })
+    ]);
     res.json(supplier);
   } catch (error) { res.status(error.statusCode || 400).json({ message: error.message }); }
 };
@@ -967,7 +1452,7 @@ module.exports = {
   updateSupplierProfile,
   getSupplierDashboard,
   addProduct, getMyProducts, updateProduct, deleteProduct,
-  getSupplierOrders, updateOrderStatus,
+  getSupplierOrders, updateOrderStatus, submitOrderResolution, markResolutionDelivered,
   browseSuppliers, getSupplierCatalog,
   adminGetAllSuppliers, adminVerifySupplier, adminGetSupplierDetails,
   adminUpdateSupplier, adminDeactivateSupplier

@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import { Truck, Package, Plus, ShoppingCart, X, Eye, Minus, TrendingDown, Layers, Star, Mail, Power } from 'lucide-react';
-import { supplierService, purchaseOrderService, getImageUrl, adminProductService } from '../../services/apiService';
+import { Truck, Package, Plus, ShoppingCart, X, Eye, Minus, TrendingDown, Layers, Star, Mail, Power, Camera, CreditCard } from 'lucide-react';
+import { supplierService, purchaseOrderService, paymentService, getImageUrl, adminProductService } from '../../services/apiService';
 import PaymentBreakdown from '../../components/payments/PaymentBreakdown';
+import ProcurementEvidenceGallery, { ProcurementReinspectionEvidenceGallery } from '../../components/procurement/ProcurementEvidenceGallery';
 import { formatPeso, purchaseOrderPaymentSummary } from '../../utils/paymentSummary';
 
 const PurchaseOrders = () => {
@@ -25,8 +26,34 @@ const PurchaseOrders = () => {
   const emptySupplierForm = { businessName: '', contactPerson: '', email: '', phone: '', address: { street: '', city: '', province: '', zipCode: '' }, description: '' };
   const [supplierForm, setSupplierForm] = useState(emptySupplierForm);
   const [savingSupplier, setSavingSupplier] = useState(false);
+  const [paymentTiming, setPaymentTiming] = useState('pay_now');
+  const [inspectionOrder, setInspectionOrder] = useState(null);
+  const [inspectionForm, setInspectionForm] = useState({ items: {}, notes: '', photos: [] });
+  const [submittingInspection, setSubmittingInspection] = useState(false);
+  const [inspectionResolution, setInspectionResolution] = useState(null);
 
   useEffect(() => { fetchData(); }, []);
+
+  useEffect(() => {
+    const payment = searchParams.get('payment');
+    const id = searchParams.get('id');
+    if (!id || !['success', 'cancelled'].includes(payment)) return;
+    let active = true;
+    const request = payment === 'cancelled'
+      ? paymentService.cancelPayment('procurement', id)
+      : paymentService.verifyPayment(id);
+    request.then(response => {
+      if (!active) return;
+      if (payment === 'cancelled') toast.info('Procurement payment session cancelled.');
+      else toast[response.data.status === 'paid' ? 'success' : 'info'](response.data.status === 'paid' ? 'Procurement payment verified.' : 'Payment is still being verified by PayMongo.');
+      fetchData();
+    }).catch(error => active && toast.error(error.response?.data?.message || `Unable to ${payment === 'cancelled' ? 'cancel' : 'verify'} procurement payment.`))
+      .finally(() => {
+        if (active) setSearchParams({}, { replace: true });
+      });
+    return () => { active = false; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   useEffect(() => {
     setActiveTab(requestedTab);
@@ -152,7 +179,7 @@ const PurchaseOrders = () => {
     if (!procurementCart.items.length || submittingCart) return;
     setSubmittingCart(true);
     try {
-      const response = await purchaseOrderService.submitCart();
+      const response = await purchaseOrderService.submitCart({ paymentTiming, paymentMethod: 'paymongo' });
       toast.success(response.data.message);
       setShowCheckout(false);
       setProcurementCart({ items: [], itemCount: 0, totalQuantity: 0, subtotal: 0, supplierCount: 0 });
@@ -176,12 +203,68 @@ const PurchaseOrders = () => {
     } catch (e) { toast.error(e.response?.data?.message || 'Failed'); }
   };
 
-  const confirmDelivery = async (id) => {
+  const startPayment = async (order) => {
     try {
-      await purchaseOrderService.confirmDelivery(id, {});
-      toast.success('Delivery confirmed & inventory updated');
-      fetchData();
-    } catch (e) { toast.error(e.response?.data?.message || 'Failed'); }
+      const response = await paymentService.createProcurementCheckoutSession(order._id);
+      window.location.href = response.data.checkoutUrl;
+    } catch (e) { toast.error(e.response?.data?.message || 'Unable to start PayMongo payment.'); }
+  };
+
+  const openInspection = order => {
+    setInspectionResolution(null);
+    setInspectionOrder(order);
+    setInspectionForm({
+      items: Object.fromEntries((order.items || []).map(item => [item._id, { purchaseOrderItem: item._id, receivedQuantity: item.quantity, damagedQuantity: 0, incorrectQuantity: 0, condition: 'acceptable', notes: '' }])),
+      notes: '',
+      photos: []
+    });
+  };
+
+  const reviewResolution = async (order, resolution, decision) => {
+    const notes = window.prompt(`${decision === 'accept' ? 'Acceptance' : 'Rejection'} notes (optional)`) || '';
+    try {
+      await purchaseOrderService.reviewResolution(order._id, resolution._id, { decision, notes });
+      toast.success(`Resolution ${decision}ed.`);
+      await fetchData();
+    } catch (error) { toast.error(error.response?.data?.message || 'Unable to review the resolution.'); }
+  };
+
+  const openReinspection = (order, resolution) => {
+    setInspectionResolution(resolution);
+    const proposal = new Map((resolution.items || []).map(item => [String(item.purchaseOrderItem), item]));
+    setInspectionOrder(order);
+    setInspectionForm({
+      items: Object.fromEntries((order.items || []).filter(item => proposal.has(String(item._id))).map(item => {
+        const quantity = Number(proposal.get(String(item._id)).proposedQuantity || 0);
+        return [item._id, { purchaseOrderItem: item._id, receivedQuantity: quantity, damagedQuantity: 0, incorrectQuantity: 0, notes: '' }];
+      })),
+      notes: '',
+      photos: []
+    });
+  };
+
+  const updateInspectionItem = (itemId, key, value) => setInspectionForm(previous => ({
+    ...previous,
+    items: { ...previous.items, [itemId]: { ...previous.items[itemId], [key]: value } }
+  }));
+
+  const submitInspection = async () => {
+    if (!inspectionOrder || submittingInspection) return;
+    setSubmittingInspection(true);
+    try {
+      const body = new FormData();
+      body.append('items', JSON.stringify(Object.values(inspectionForm.items)));
+      body.append('notes', inspectionForm.notes);
+      inspectionForm.photos.forEach(file => body.append('images', file));
+      const response = inspectionResolution
+        ? await purchaseOrderService.submitReinspection(inspectionOrder._id, inspectionResolution._id, body)
+        : await purchaseOrderService.submitInspection(inspectionOrder._id, body);
+      toast.success(response.data?.message || (inspectionResolution ? 'Reinspection recorded.' : 'Receiving inspection recorded.'));
+      setInspectionOrder(null);
+      setInspectionResolution(null);
+      await fetchData();
+    } catch (e) { toast.error(e.response?.data?.message || 'Unable to submit receiving inspection.'); }
+    finally { setSubmittingInspection(false); }
   };
 
   const cart = procurementCart.items || [];
@@ -192,7 +275,13 @@ const PurchaseOrders = () => {
     groups[key].items.push(item);
     return groups;
   }, {});
-  const statusColor = (s) => ({ draft: 'slate', submitted: 'amber', confirmed: 'blue', processing: 'indigo', shipped: 'purple', delivered: 'emerald', cancelled: 'rose' }[s] || 'slate');
+  const statusColor = (s) => ({
+    draft: 'slate', submitted: 'amber', confirmed: 'blue', processing: 'indigo',
+    shipped: 'purple', delivered: 'emerald', completed: 'emerald', resolved: 'emerald',
+    issue_reported: 'rose', pending_supplier_resolution: 'amber', resolution_submitted: 'blue',
+    resolution_accepted: 'blue', resolution_rejected: 'rose', awaiting_replacement: 'amber',
+    reinspection: 'blue', returned: 'amber', cancelled: 'rose'
+  }[s] || 'slate');
 
   if (loading) return (
     <div className="flex flex-col items-center justify-center h-64 gap-4">
@@ -255,18 +344,36 @@ const PurchaseOrders = () => {
                   <p className="text-sm font-black text-slate-900">{formatPeso(order.totalCost)}</p>
                 </div>
               </div>
-              <div className="text-[10px] text-slate-500 mb-2">{order.items?.length} items • Payment: {order.paymentStatus}</div>
+              <div className="text-[10px] text-slate-500 mb-2">{order.items?.length} items • Payment: {order.paymentStatus?.replaceAll('_', ' ')} • Inspection: {order.inspectionStatus?.replaceAll('_', ' ')}</div>
               {order.trackingNumber && <p className="text-[10px] text-indigo-600 font-bold mb-2">📦 Tracking: {order.trackingNumber}</p>}
+              {order.receivingReport && typeof order.receivingReport === 'object' && order.receivingReport.outcome !== 'accepted' && <section className="mb-3 rounded-xl border border-amber-200 bg-amber-50 p-3">
+                <div className="flex flex-wrap items-center justify-between gap-2"><p className="text-[9px] font-black uppercase text-amber-900">Delivery discrepancy</p><span className="rounded-full bg-white px-2 py-1 text-[8px] font-black uppercase text-amber-800">{order.receivingReport.resolutionStatus?.replaceAll('_', ' ')}</span></div>
+                <div className="mt-2 space-y-1">{order.receivingReport.items?.filter(item => item.missingQuantity || item.damagedQuantity || item.incorrectQuantity).map(item => {
+                  const line = order.items?.find(row => String(row._id) === String(item.purchaseOrderItem));
+                  return <p key={item._id} className="text-[9px] text-amber-900"><strong>{line?.productName || 'Item'}:</strong> {item.expectedQuantity} ordered, {item.acceptedQuantity} accepted, {item.missingQuantity || 0} missing, {item.damagedQuantity || 0} damaged, {item.incorrectQuantity || 0} incorrect</p>;
+                })}</div>
+                <ProcurementEvidenceGallery orderId={order._id} evidence={order.receivingReport.evidence} />
+                <ProcurementReinspectionEvidenceGallery orderId={order._id} reinspections={order.receivingReport.reinspections} />
+                {order.receivingReport.resolutionSubmissions?.slice(-1).map(resolution => <div key={resolution._id} className="mt-3 rounded-lg border border-amber-200 bg-white p-3">
+                  <p className="text-[9px] font-black uppercase text-slate-700">{resolution.type?.replaceAll('_', ' ')} proposal</p>
+                  {resolution.notes && <p className="mt-1 text-[10px] text-slate-600">{resolution.notes}</p>}
+                  {resolution.financialProposal?.proposedAmount && <p className="mt-1 text-[10px] text-slate-600">Proposed {resolution.financialProposal.adjustmentType}: {formatPeso(resolution.financialProposal.proposedAmount)}. Finance approval is required.</p>}
+                  {resolution.status === 'submitted' && <div className="mt-2 flex gap-2"><button onClick={() => reviewResolution(order, resolution, 'accept')} className="rounded-lg bg-emerald-600 px-3 py-2 text-[9px] font-black uppercase text-white">Accept</button><button onClick={() => reviewResolution(order, resolution, 'reject')} className="rounded-lg bg-rose-100 px-3 py-2 text-[9px] font-black uppercase text-rose-700">Reject</button></div>}
+                  {resolution.status === 'replacement_delivered' && <button onClick={() => openReinspection(order, resolution)} className="mt-2 rounded-lg bg-primary-600 px-3 py-2 text-[9px] font-black uppercase text-white">Reinspect replacement</button>}
+                  {resolution.financialAdjustment?.status && resolution.financialAdjustment.status !== 'not_required' && <p className="mt-2 text-[9px] font-bold uppercase text-slate-500">Finance: {resolution.financialAdjustment.status.replaceAll('_', ' ')}</p>}
+                </div>)}
+              </section>}
               <div className="flex gap-2 flex-wrap">
                 <button onClick={() => setSelectedOrder(order)} className="px-4 py-2 bg-slate-100 text-slate-700 rounded-xl text-[9px] font-black uppercase flex items-center gap-1"><Eye className="h-3 w-3"/> Details</button>
-                {!['delivered', 'cancelled'].includes(order.status) && (
+                {!['shipped', 'delivered', 'issue_reported', 'pending_supplier_resolution', 'resolution_submitted', 'resolution_accepted', 'resolution_rejected', 'awaiting_replacement', 'reinspection', 'resolved', 'completed', 'returned', 'cancelled'].includes(order.status) && (
                   <button onClick={() => cancelOrder(order._id)}
                     className="px-4 py-2 bg-rose-50 text-rose-600 rounded-xl text-[9px] font-black uppercase hover:bg-rose-600 hover:text-white transition-all">Cancel</button>
                 )}
-                {order.status === 'delivered' && (
-                  <button onClick={() => confirmDelivery(order._id)}
-                    className="px-4 py-2 bg-emerald-600 text-white rounded-xl text-[9px] font-black uppercase hover:bg-emerald-700 transition-all">Confirm & Update Inventory</button>
+                {order.status === 'delivered' && !['accepted','partially_accepted','issue_reported'].includes(order.inspectionStatus) && (
+                  <button onClick={() => openInspection(order)}
+                    className="px-4 py-2 bg-emerald-600 text-white rounded-xl text-[9px] font-black uppercase hover:bg-emerald-700 transition-all">Inspect Delivery</button>
                 )}
+                {!['paid', 'settled'].includes(order.paymentStatus) && !['cancelled','returned','issue_reported','pending_supplier_resolution','resolution_submitted','resolution_accepted','resolution_rejected','awaiting_replacement','reinspection','completed'].includes(order.status) && (order.paymentTiming !== 'after_inspection' || ['accepted', 'resolved'].includes(order.inspectionStatus)) && <button onClick={() => startPayment(order)} className="flex items-center gap-1 rounded-xl bg-primary-600 px-4 py-2 text-[9px] font-black uppercase text-white"><CreditCard className="h-3 w-3" /> Pay with PayMongo</button>}
               </div>
             </div>
           ))}
@@ -374,7 +481,7 @@ const PurchaseOrders = () => {
                         {p.images?.[0] ? <img src={getImageUrl(p.images[0])} alt="" className="w-full h-full object-cover" /> : <Package className="h-8 w-8 text-indigo-300" />}
                       </div>
                       <div className="p-4">
-                        <p className="text-[8px] font-black text-indigo-500 uppercase">{p.category?.replace('_', ' ')}</p>
+                        <p className="text-[8px] font-black text-indigo-500 uppercase">{p.itemType === 'live_pet' ? 'Live pet · unique animal' : `${p.itemType === 'product' ? 'Product' : 'Pet supply'} · ${p.category?.replace('_', ' ')}`}</p>
                         <h4 className="text-xs font-black text-slate-900 uppercase mt-0.5 line-clamp-1">{p.name}</h4>
                         <div className="flex justify-between items-end mt-2">
                           <div>
@@ -383,15 +490,15 @@ const PurchaseOrders = () => {
                           </div>
                           <div className="text-right">
                             <p className="text-[8px] text-slate-400">Stock</p>
-                            <p className="text-xs font-bold text-slate-600">{p.availableStock} {p.unitOfMeasure}</p>
+                            <p className="text-xs font-bold text-slate-600">{p.itemType === 'live_pet' ? (p.availableStock === 1 ? 'Available' : 'Unavailable') : `${p.availableStock} ${p.unitOfMeasure}`}</p>
                           </div>
                         </div>
-                        <p className="text-[8px] text-slate-400 mt-1">Min order: {p.minimumOrderQuantity} • Lead: {p.deliveryLeadTimeDays}d</p>
+                        <p className="text-[8px] text-slate-400 mt-1">{p.itemType === 'live_pet' ? `${p.pet?.species || ''} · ${p.pet?.breed || ''} · ${p.pet?.age ?? ''} ${p.pet?.ageUnit || ''}` : `Min order: ${p.minimumOrderQuantity}`} • Lead: {p.deliveryLeadTimeDays}d</p>
                         {inCart ? (
                           <div className="flex items-center justify-center gap-3 mt-3 bg-emerald-50 rounded-xl py-2">
                             <button onClick={() => updateCartQty(inCart, -1)} className="p-1 bg-white rounded-lg shadow-sm"><Minus className="h-3 w-3" /></button>
                             <span className="text-sm font-black text-emerald-700">{inCart.quantity}</span>
-                            <button onClick={() => updateCartQty(inCart, 1)} disabled={inCart.quantity >= p.availableStock} className="p-1 bg-white rounded-lg shadow-sm disabled:opacity-30"><Plus className="h-3 w-3" /></button>
+                            {p.itemType !== 'live_pet' && <button onClick={() => updateCartQty(inCart, 1)} disabled={inCart.quantity >= p.availableStock} className="p-1 bg-white rounded-lg shadow-sm disabled:opacity-30"><Plus className="h-3 w-3" /></button>}
                           </div>
                         ) : (
                           <button onClick={() => addToCart(p)} disabled={p.availableStock <= 0}
@@ -410,6 +517,8 @@ const PurchaseOrders = () => {
       )}
 
       {selectedOrder && <div className="fixed inset-0 bg-slate-900/60 z-[105] flex items-center justify-center p-3"><div className="bg-white w-full max-w-xl rounded-2xl p-5 max-h-[90vh] overflow-y-auto"><div className="flex justify-between mb-4"><div><h3 className="text-base font-black">{selectedOrder.orderNumber}</h3><p className="text-[10px] text-slate-500">{selectedOrder.supplier?.businessName} · {selectedOrder.status}</p></div><button onClick={()=>setSelectedOrder(null)}><X className="h-4 w-4"/></button></div><div className="space-y-2">{selectedOrder.items?.map(item=><div key={item._id} className="p-3 bg-slate-50 rounded-xl flex justify-between text-xs"><div><p className="font-bold">{item.productName}</p><p className="text-[10px] text-slate-500">{item.quantity} × {formatPeso(item.unitPrice)} · Received {item.receivedQuantity || 0}</p></div><p className="font-black">{formatPeso(item.totalPrice)}</p></div>)}</div><div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3"><PaymentBreakdown summary={purchaseOrderPaymentSummary(selectedOrder)} compact /><p className="mt-3 border-t border-slate-200 pt-2 text-[10px] text-slate-500">Payment: <b>{selectedOrder.paymentStatus}</b> · Paid {formatPeso(selectedOrder.paidAmount || 0)}</p></div></div></div>}
+
+      {inspectionOrder && <div className="fixed inset-0 z-[115] flex items-center justify-center bg-slate-900/70 p-2"><div className="flex max-h-[95vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl"><header className="flex items-start justify-between border-b p-5"><div><h3 className="text-base font-black">Receiving inspection</h3><p className="mt-1 text-[10px] text-slate-500">{inspectionOrder.orderNumber} · {inspectionOrder.supplier?.businessName}</p></div><button onClick={() => setInspectionOrder(null)}><X className="h-5 w-5" /></button></header><div className="flex-1 space-y-3 overflow-y-auto p-5">{inspectionOrder.items?.map(item => { const row = inspectionForm.items[item._id] || {}; return <section key={item._id} className="rounded-xl border border-slate-200 p-3"><div className="mb-3 flex items-center justify-between"><div><p className="text-xs font-black">{item.productName}</p><p className="text-[9px] text-slate-500">Expected: {item.quantity} {item.itemType === 'live_pet' ? 'specific animal' : 'units'}</p></div>{item.itemType === 'live_pet' && <span className="rounded-full bg-amber-100 px-2 py-1 text-[8px] font-black uppercase text-amber-800">Live pet · max 1</span>}</div><div className="grid grid-cols-3 gap-2">{[['receivedQuantity','Received'],['damagedQuantity','Damaged'],['incorrectQuantity','Incorrect']].map(([key,label]) => <label key={key} className="text-[8px] font-black uppercase text-slate-500">{label}<input type="number" min="0" max={item.itemType === 'live_pet' ? 1 : item.quantity} value={row[key] ?? 0} onChange={e => updateInspectionItem(item._id, key, Number(e.target.value))} className="mt-1 w-full rounded-lg border border-slate-200 px-2 py-2 text-sm" /></label>)}</div><textarea placeholder="Item notes (optional)" value={row.notes || ''} onChange={e => updateInspectionItem(item._id, 'notes', e.target.value)} className="mt-3 min-h-16 w-full rounded-lg border border-slate-200 p-2 text-xs" /></section>; })}<label className="block text-[9px] font-black uppercase text-slate-500">Overall notes<textarea value={inspectionForm.notes} onChange={e => setInspectionForm(previous => ({ ...previous, notes: e.target.value }))} className="mt-1 min-h-20 w-full rounded-xl border border-slate-200 p-3 text-xs" /></label><label className="flex cursor-pointer items-center gap-2 rounded-xl border border-dashed border-slate-300 p-4 text-xs font-bold text-slate-600"><Camera className="h-4 w-4" /> Attach receiving photos<input type="file" multiple accept="image/*" className="hidden" onChange={e => setInspectionForm(previous => ({ ...previous, photos: Array.from(e.target.files || []) }))} /></label>{inspectionForm.photos.length > 0 && <p className="text-[9px] text-slate-500">{inspectionForm.photos.length} photo{inspectionForm.photos.length === 1 ? '' : 's'} selected</p>}</div><footer className="flex gap-2 border-t p-4"><button onClick={() => setInspectionOrder(null)} className="rounded-xl px-4 py-2 text-xs font-bold text-slate-500">Cancel</button><button disabled={submittingInspection} onClick={submitInspection} className="flex-1 rounded-xl bg-emerald-600 px-4 py-3 text-[10px] font-black uppercase text-white disabled:opacity-50">{submittingInspection ? 'Recording...' : 'Submit Inspection Report'}</button></footer></div></div>}
 
       {/* ── CHECKOUT MODAL ── */}
       {showCheckout && (
@@ -430,17 +539,17 @@ const PurchaseOrders = () => {
                     {group.items.map(item => (
                       <div key={item.supplierProductId} className={`rounded-xl border p-3 ${item.available ? 'border-slate-100 bg-slate-50' : 'border-rose-200 bg-rose-50'}`}>
                         <div className="flex items-start justify-between gap-3">
-                          <div className="min-w-0"><p className="truncate text-xs font-black text-slate-900">{item.product?.name || 'Unavailable supply'}</p><p className="mt-1 text-[9px] text-slate-500">{item.quantity} × {formatPeso(item.product?.wholesalePrice || 0)} · {item.product?.unitOfMeasure}</p>{item.priceChanged && <p className="mt-1 text-[9px] font-bold text-amber-700">Price changed from {formatPeso(item.addedUnitPrice)}.</p>}{!item.available && <p className="mt-1 text-[9px] font-bold text-rose-700">This item or supplier is no longer available.</p>}</div>
+                          <div className="min-w-0"><p className="truncate text-xs font-black text-slate-900">{item.product?.name || 'Unavailable supply'}</p><p className="mt-1 text-[9px] text-slate-500">{item.itemType === 'live_pet' ? 'Specific live pet · quantity fixed at 1' : `${item.quantity} × ${formatPeso(item.product?.wholesalePrice || 0)} · ${item.product?.unitOfMeasure}`}</p>{item.pet && <p className="mt-1 text-[9px] text-slate-500">{item.pet.species} · {item.pet.breed} · {item.pet.age} {item.pet.ageUnit}</p>}{item.priceChanged && <p className="mt-1 text-[9px] font-bold text-amber-700">Price changed from {formatPeso(item.addedUnitPrice)}.</p>}{!item.available && <p className="mt-1 text-[9px] font-bold text-rose-700">This item or supplier is no longer available.</p>}</div>
                           <div className="text-right"><p className="text-sm font-black text-slate-900">{formatPeso(item.lineTotal)}</p><button onClick={() => removeCartItem(item)} className="mt-1 text-[8px] font-black uppercase text-rose-600">Remove</button></div>
                         </div>
-                        {item.product && <div className="mt-3 flex items-center gap-2"><button onClick={() => updateCartQty(item, -1)} className="rounded-lg border bg-white p-1.5"><Minus className="h-3 w-3" /></button><span className="min-w-8 text-center text-xs font-black">{item.quantity}</span><button onClick={() => updateCartQty(item, 1)} disabled={item.quantity >= item.product.availableStock} className="rounded-lg border bg-white p-1.5 disabled:opacity-30"><Plus className="h-3 w-3" /></button><span className="ml-1 text-[9px] text-slate-400">Available: {item.product.availableStock}</span></div>}
-                        <div className="mt-3 space-y-1">
+                        {item.product && item.itemType !== 'live_pet' && <div className="mt-3 flex items-center gap-2"><button onClick={() => updateCartQty(item, -1)} className="rounded-lg border bg-white p-1.5"><Minus className="h-3 w-3" /></button><span className="min-w-8 text-center text-xs font-black">{item.quantity}</span><button onClick={() => updateCartQty(item, 1)} disabled={item.quantity >= item.product.availableStock} className="rounded-lg border bg-white p-1.5 disabled:opacity-30"><Plus className="h-3 w-3" /></button><span className="ml-1 text-[9px] text-slate-400">Available: {item.product.availableStock}</span></div>}
+                        {item.itemType !== 'live_pet' && <div className="mt-3 space-y-1">
                           <label className="text-[8px] font-black uppercase tracking-widest text-orange-500">Link to Store Product (optional)</label>
                           <select value={productMapping[item.supplierProductId] || ''} onChange={e => updateProductMapping(item, e.target.value)} className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-[10px] font-bold outline-none">
                             <option value="">— No link (manual update later) —</option>
                             {storeProducts.map(sp => <option key={sp._id} value={sp._id}>{sp.name} (SKU: {sp.sku}) — Stock: {sp.stockQuantity}</option>)}
                           </select>
-                        </div>
+                        </div>}
                       </div>
                     ))}
                   </div>
@@ -448,6 +557,12 @@ const PurchaseOrders = () => {
               ))}
               {!cart.length && <div className="rounded-2xl border border-dashed border-slate-200 p-8 text-center"><ShoppingCart className="mx-auto h-8 w-8 text-slate-300"/><p className="mt-3 text-xs font-bold text-slate-500">Your procurement cart is empty.</p></div>}
               {cart.some(item => item.priceChanged) && <button onClick={acceptCurrentPrices} className="w-full rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-[10px] font-black uppercase text-amber-800">Accept current supplier prices</button>}
+              <div className="rounded-2xl border border-slate-200 p-3">
+                <p className="text-[9px] font-black uppercase tracking-widest text-slate-500">Payment timing</p>
+                <div className="mt-2 grid grid-cols-2 gap-2">
+                  {[['pay_now','Pay with PayMongo'],['after_inspection','Pay after inspection']].map(([value,label]) => <button type="button" key={value} onClick={() => setPaymentTiming(value)} className={`rounded-xl border p-3 text-left text-[10px] font-black ${paymentTiming === value ? 'border-primary-500 bg-primary-50 text-primary-700' : 'border-slate-200 text-slate-600'}`}><span className="block">{label}</span><span className="mt-1 block text-[8px] font-medium opacity-70">{value === 'pay_now' ? 'Each supplier request is paid separately.' : 'Payment unlocks only after a fully accepted receiving report.'}</span></button>)}
+                </div>
+              </div>
               <div className="bg-indigo-50 rounded-xl p-4 border border-indigo-100">
                 <p className="mb-3 text-[10px] font-black text-indigo-500 uppercase tracking-widest">Purchase Order Summary</p>
                 <PaymentBreakdown summary={purchaseOrderPaymentSummary({ subtotal: cartTotal, totalCost: cartTotal })} compact />

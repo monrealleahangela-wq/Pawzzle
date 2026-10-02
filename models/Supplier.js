@@ -57,8 +57,12 @@ const supplierSchema = new mongoose.Schema({
     enum: [
       'pet_food', 'pet_treats', 'grooming_supplies', 'medical_supplies',
       'accessories', 'toys', 'cleaning_products', 'cages_habitats',
-      'leashes_collars', 'health_supplements', 'raw_materials', 'other'
+      'leashes_collars', 'health_supplements', 'raw_materials', 'live_pets', 'general_product', 'other'
     ]
+  }],
+  goodsTypes: [{
+    type: String,
+    enum: ['live_pets', 'pet_supplies', 'general_products']
   }],
 
   // ── Legal & Verification ──────────────────────────────

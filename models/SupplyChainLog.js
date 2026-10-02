@@ -15,6 +15,9 @@ const supplyChainLogSchema = new mongoose.Schema({
       'purchase_order_created', 'purchase_order_submitted', 'purchase_order_confirmed',
       'purchase_order_processing', 'purchase_order_shipped', 'purchase_order_delivered',
       'purchase_order_cancelled', 'purchase_order_returned',
+      'purchase_order_resolution_submitted', 'purchase_order_resolution_accepted',
+      'purchase_order_resolution_rejected', 'purchase_order_reinspection_issue',
+      'purchase_order_discrepancy_resolved',
       // Inventory actions
       'stock_added', 'stock_deducted', 'stock_adjusted', 'stock_expired',
       'restock_recommended', 'restock_completed',
@@ -22,7 +25,8 @@ const supplyChainLogSchema = new mongoose.Schema({
       'supply_added', 'supply_deducted', 'supply_restocked', 'supply_expired',
       'supply_linked', 'supply_unlinked',
       // Payment actions
-      'payment_received', 'payment_refunded',
+      'payment_received', 'payment_refunded', 'procurement_adjustment_approved',
+      'procurement_adjustment_rejected',
       // General
       'system_alert', 'admin_action'
     ],
@@ -38,7 +42,7 @@ const supplyChainLogSchema = new mongoose.Schema({
   userRole: {
     type: String,
     enum: ['super_admin', 'platform_admin', 'admin', 'store_owner', 'manager',
-      'procurement_officer', 'inventory_staff', 'staff', 'supplier', 'customer', 'system'],
+      'procurement_officer', 'inventory_staff', 'finance_staff', 'staff', 'supplier', 'customer', 'system'],
     required: true
   },
 

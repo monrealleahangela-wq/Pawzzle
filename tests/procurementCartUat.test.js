@@ -109,5 +109,6 @@ test('customer cart remains separate and unchanged by procurement persistence', 
   const procurementModel = read('models/ProcurementCart.js');
   assert.match(customerModel, /enum: \['pet', 'product', 'service'\]/);
   assert.doesNotMatch(customerModel, /SupplierProduct|ProcurementCart/);
-  assert.doesNotMatch(procurementModel, /itemType|selected/);
+  assert.match(procurementModel, /itemType/);
+  assert.doesNotMatch(procurementModel, /selected/);
 });

@@ -28,7 +28,7 @@ test('Discovery Hub initializes from URL state and submits later searches back t
 
 test('Discovery Hub searches all existing public catalog APIs with the submitted term', () => {
   assert.match(discovery, /const params = \{ search: term, limit: 50 \}/);
-  assert.match(discovery, /petService\.getAllPets\(params\)/);
+  assert.match(discovery, /petService\.getAllPets\(\{ \.\.\.params, isAvailable: true \}\)/);
   assert.match(discovery, /productService\.getAllProducts\(params\)/);
   assert.match(discovery, /serviceService\.getAllServices\(params\)/);
   assert.match(discovery, /storeService\.getAllStores\(params\)/);

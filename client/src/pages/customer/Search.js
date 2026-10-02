@@ -87,7 +87,7 @@ const Search = () => {
       if (city) params.city = city;
 
       const [petsResponse, productsResponse, servicesResponse, storesResponse] = await Promise.all([
-        petService.getAllPets(params),
+        petService.getAllPets({ ...params, isAvailable: true }),
         productService.getAllProducts(params),
         serviceService.getAllServices(params),
         storeService.getAllStores(params)

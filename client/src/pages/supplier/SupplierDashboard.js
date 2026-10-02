@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { supplierService, uploadService, getImageUrl } from '../../services/apiService';
 import PaymentBreakdown from '../../components/payments/PaymentBreakdown';
+import ProcurementEvidenceGallery, { ProcurementReinspectionEvidenceGallery } from '../../components/procurement/ProcurementEvidenceGallery';
 import { formatPeso, purchaseOrderPaymentSummary } from '../../utils/paymentSummary';
 
 const SupplierDashboard = () => {
@@ -20,8 +21,14 @@ const SupplierDashboard = () => {
   const [showRegister, setShowRegister] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [applicationFiles, setApplicationFiles] = useState({ businessRegistration: null, birCertificate: null });
+  const [resolutionDrafts, setResolutionDrafts] = useState({});
 
-  const initialProduct = { name: '', sku: '', description: '', category: 'pet_food', wholesalePrice: 0, retailPrice: 0, availableStock: 0, minimumOrderQuantity: 1, unitOfMeasure: 'piece', deliveryLeadTimeDays: 3, brand: '', images: [] };
+  const initialProduct = {
+    itemType: 'pet_supply', name: '', sku: '', description: '', category: 'pet_food',
+    wholesalePrice: 0, retailPrice: 0, availableStock: 0, minimumOrderQuantity: 1,
+    unitOfMeasure: 'piece', deliveryLeadTimeDays: 3, brand: '', images: [],
+    pet: { name: '', species: 'dog', breed: '', age: 0, ageUnit: 'years', gender: 'male', size: 'medium', color: '', description: '', vaccinationStatus: 'none', healthCondition: 'healthy', healthNotes: '', dewormed: false, spayedNeutered: false }
+  };
   const [productForm, setProductForm] = useState(initialProduct);
   const [registerForm, setRegisterForm] = useState({ businessName: '', contactPerson: '', email: '', phone: '', taxId: '', address: { street: '', city: '', province: '', zipCode: '' }, description: '', productCategories: [] });
 
@@ -34,6 +41,8 @@ const SupplierDashboard = () => {
     { id: 'toys', label: 'Toys', icon: '🧸' },
     { id: 'cleaning_products', label: 'Cleaning', icon: '🧹' },
     { id: 'health_supplements', label: 'Supplements', icon: '💉' },
+    { id: 'live_pets', label: 'Live Pets', icon: '🐾' },
+    { id: 'general_product', label: 'General Product', icon: '📦' },
     { id: 'other', label: 'Other', icon: '📦' }
   ];
 
@@ -117,7 +126,7 @@ const SupplierDashboard = () => {
       await supplierService.deleteProduct(id);
       toast.success('Product removed');
       setProducts(prev => prev.filter(p => p._id !== id));
-    } catch (e) { toast.error('Failed to delete'); }
+    } catch (e) { toast.error(e.response?.data?.message || 'Failed to delete'); }
   };
 
   const handleOrderAction = async (orderId, status, notes = '') => {
@@ -127,6 +136,70 @@ const SupplierDashboard = () => {
       const res = await supplierService.getOrders();
       setOrders(res.data.orders || []);
     } catch (e) { toast.error(e.response?.data?.message || 'Failed'); }
+  };
+
+  const unresolvedItemsFor = order => {
+    const report = order.receivingReport;
+    if (!report || typeof report !== 'object') return [];
+    const replacements = {};
+    (report.reinspections || []).filter(row => row.processingStatus === 'completed').forEach(row => {
+      (row.items || []).forEach(item => {
+        const id = String(item.purchaseOrderItem);
+        replacements[id] = (replacements[id] || 0) + Number(item.acceptedQuantity || 0);
+      });
+    });
+    const adjusted = {};
+    (report.resolutionSubmissions || []).filter(row => row.type === 'refund_credit' && row.financialAdjustment?.status === 'approved').forEach(row => {
+      (row.items || []).forEach(item => {
+        const id = String(item.purchaseOrderItem);
+        adjusted[id] = (adjusted[id] || 0) + Number(item.proposedQuantity || 0);
+      });
+    });
+    return (report.items || []).map(item => {
+      const id = String(item.purchaseOrderItem);
+      const orderItem = order.items?.find(row => String(row._id) === id);
+      return {
+        ...item,
+        productName: orderItem?.productName || 'Purchase order item',
+        itemType: orderItem?.itemType,
+        unresolvedQuantity: Math.max(0, Number(item.expectedQuantity || 0) - Number(item.acceptedQuantity || 0) - Number(replacements[id] || 0) - Number(adjusted[id] || 0))
+      };
+    }).filter(item => item.unresolvedQuantity > 0);
+  };
+
+  const resolutionTypeFor = order => unresolvedItemsFor(order).some(item => item.itemType === 'live_pet')
+    ? 'refund_credit'
+    : (resolutionDrafts[order._id]?.type || 'replacement');
+
+  const updateResolutionDraft = (orderId, patch) => setResolutionDrafts(previous => ({
+    ...previous,
+    [orderId]: { type: 'replacement', adjustmentType: 'credit', notes: '', quantities: {}, ...(previous[orderId] || {}), ...patch }
+  }));
+
+  const handleSubmitResolution = async order => {
+    const draft = { adjustmentType: 'credit', notes: '', quantities: {}, ...(resolutionDrafts[order._id] || {}), type: resolutionTypeFor(order) };
+    try {
+      await supplierService.submitOrderResolution(order._id, {
+        type: draft.type,
+        adjustmentType: draft.adjustmentType,
+        proposedAmount: draft.type === 'refund_credit' ? Number(draft.proposedAmount) : undefined,
+        notes: draft.notes,
+        items: unresolvedItemsFor(order).map(item => ({
+          purchaseOrderItem: item.purchaseOrderItem,
+          proposedQuantity: Number(draft.quantities?.[String(item.purchaseOrderItem)] ?? item.unresolvedQuantity)
+        })).filter(item => item.proposedQuantity > 0)
+      });
+      toast.success('Resolution submitted for Store review.');
+      await loadData();
+    } catch (error) { toast.error(error.response?.data?.message || 'Unable to submit the resolution.'); }
+  };
+
+  const handleResolutionDelivered = async (order, resolution) => {
+    try {
+      await supplierService.markResolutionDelivered(order._id, resolution._id, {});
+      toast.success('Store receiving staff were notified to reinspect the delivery.');
+      await loadData();
+    } catch (error) { toast.error(error.response?.data?.message || 'Unable to report the resolution delivery.'); }
   };
 
   const handleImageUpload = async (e) => {
@@ -141,7 +214,13 @@ const SupplierDashboard = () => {
     } catch (e) { toast.error('Upload failed'); }
   };
 
-  const statusColor = (s) => ({ submitted: 'amber', confirmed: 'primary', processing: 'primary', shipped: 'primary', delivered: 'emerald', cancelled: 'rose' }[s] || 'slate');
+  const statusColor = (s) => ({
+    submitted: 'amber', confirmed: 'primary', processing: 'primary', shipped: 'primary',
+    delivered: 'emerald', completed: 'emerald', resolved: 'emerald', issue_reported: 'rose',
+    pending_supplier_resolution: 'amber', resolution_submitted: 'primary', resolution_accepted: 'primary',
+    resolution_rejected: 'rose', awaiting_replacement: 'amber', reinspection: 'primary',
+    returned: 'amber', cancelled: 'rose'
+  }[s] || 'slate');
 
   if (loading) return (
     <div className="flex flex-col items-center justify-center h-64 gap-4">
@@ -351,7 +430,7 @@ const SupplierDashboard = () => {
                   {p.images?.[0] ? <img src={getImageUrl(p.images[0])} alt="" className="w-full h-full object-cover" /> : <Package className="h-10 w-10 text-primary-300" />}
                 </div>
                 <div className="p-4">
-                  <p className="text-[9px] font-black text-primary-600 uppercase tracking-widest">{p.category?.replace('_', ' ')}</p>
+                  <p className="text-[9px] font-black text-primary-600 uppercase tracking-widest">{p.itemType === 'live_pet' ? 'Live pet · unique animal' : `${p.itemType === 'product' ? 'Product' : 'Pet supply'} · ${p.category?.replace('_', ' ')}`}</p>
                   <h4 className="mt-1 min-h-[2.5rem] text-sm font-black uppercase leading-tight text-slate-900 line-clamp-2 break-words">{p.name}</h4>
                   <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-50">
                     <div>
@@ -359,8 +438,8 @@ const SupplierDashboard = () => {
                       <p className="text-sm font-black text-slate-900">{formatPeso(p.wholesalePrice)}</p>
                     </div>
                     <div className="text-right">
-                      <p className="text-[8px] font-black text-slate-400 uppercase">Stock</p>
-                      <p className={`text-sm font-black ${p.availableStock <= 0 ? 'text-rose-600' : p.availableStock < 10 ? 'text-amber-600' : 'text-emerald-600'}`}>{p.availableStock}</p>
+                      <p className="text-[8px] font-black text-slate-400 uppercase">{p.itemType === 'live_pet' ? 'Availability' : 'Stock'}</p>
+                      <p className={`text-sm font-black ${p.availableStock <= 0 ? 'text-rose-600' : p.availableStock < 10 ? 'text-amber-600' : 'text-emerald-600'}`}>{p.itemType === 'live_pet' ? (p.availableStock === 1 ? 'Available' : 'Unavailable') : p.availableStock}</p>
                     </div>
                   </div>
                   <div className="flex gap-2 mt-3">
@@ -404,12 +483,40 @@ const SupplierDashboard = () => {
               <div className="mb-4 rounded-xl border border-slate-200 bg-slate-50 p-3">
                 <PaymentBreakdown summary={purchaseOrderPaymentSummary(order)} compact />
               </div>
+              {order.receivingReport && typeof order.receivingReport === 'object' && <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 p-3">
+                <div className="flex flex-wrap items-center justify-between gap-2"><p className="text-[9px] font-black uppercase tracking-widest text-amber-900">Receiving inspection</p><span className="rounded-full bg-white px-2 py-1 text-[8px] font-black uppercase text-amber-800">{order.receivingReport.resolutionStatus?.replaceAll('_', ' ') || order.receivingReport.outcome?.replaceAll('_', ' ')}</span></div>
+                {order.receivingReport.notes && <p className="mt-2 text-[10px] text-amber-900">{order.receivingReport.notes}</p>}
+                <p className="mt-1 text-[9px] text-amber-800">Inspected {order.receivingReport.receivedAt ? new Date(order.receivingReport.receivedAt).toLocaleString() : ''}{order.receivingReport.receivedBy ? ` by ${order.receivingReport.receivedBy.firstName || ''} ${order.receivingReport.receivedBy.lastName || ''}` : ''}</p>
+                <div className="mt-2 space-y-1">{unresolvedItemsFor(order).map(item => <p key={String(item.purchaseOrderItem)} className="text-[9px] text-amber-900"><strong>{item.productName}:</strong> {item.expectedQuantity} ordered, {item.acceptedQuantity} accepted, {item.unresolvedQuantity} unresolved ({item.condition})</p>)}</div>
+                <div className="mt-2 space-y-1">{order.receivingReport.items?.filter(item => item.missingQuantity || item.damagedQuantity || item.incorrectQuantity).map(item => <p key={item._id} className="text-[9px] text-amber-900">Item discrepancy: {item.missingQuantity || 0} missing · {item.damagedQuantity || 0} damaged · {item.incorrectQuantity || 0} incorrect{item.notes ? ` · ${item.notes}` : ''}</p>)}</div>
+                <ProcurementEvidenceGallery orderId={order._id} evidence={order.receivingReport.evidence} imageClassName="h-16 w-16 rounded-lg object-cover" />
+                <ProcurementReinspectionEvidenceGallery orderId={order._id} reinspections={order.receivingReport.reinspections} imageClassName="h-16 w-16 rounded-lg object-cover" />
+                {['pending_supplier_resolution', 'resolution_rejected'].includes(order.receivingReport.resolutionStatus) && <div className="mt-3 space-y-3 rounded-xl border border-amber-200 bg-white p-3">
+                  <p className="text-[9px] font-black uppercase text-slate-700">Submit a resolution</p>
+                  <select value={resolutionTypeFor(order)} onChange={event => updateResolutionDraft(order._id, { type: event.target.value })} className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs">
+                    {!unresolvedItemsFor(order).some(item => item.itemType === 'live_pet') && <><option value="replacement">Replacement</option><option value="return_correction">Return / correction</option></>}
+                    <option value="refund_credit">Refund / credit proposal</option>
+                  </select>
+                  {unresolvedItemsFor(order).map(item => <label key={String(item.purchaseOrderItem)} className="grid grid-cols-[1fr_5rem] items-center gap-2 text-[10px] text-slate-700">
+                    <span>{item.productName} ({item.unresolvedQuantity} unresolved)</span>
+                    <input type="number" min="1" max={item.unresolvedQuantity} value={resolutionDrafts[order._id]?.quantities?.[String(item.purchaseOrderItem)] ?? item.unresolvedQuantity} onChange={event => updateResolutionDraft(order._id, { quantities: { ...(resolutionDrafts[order._id]?.quantities || {}), [String(item.purchaseOrderItem)]: event.target.value } })} className="rounded-lg border border-slate-200 px-2 py-1.5" />
+                  </label>)}
+                  {resolutionTypeFor(order) === 'refund_credit' && <div className="grid gap-2 sm:grid-cols-2">
+                    <select value={resolutionDrafts[order._id]?.adjustmentType || 'credit'} onChange={event => updateResolutionDraft(order._id, { adjustmentType: event.target.value })} className="rounded-lg border border-slate-200 px-3 py-2 text-xs"><option value="credit">Credit</option><option value="refund">Refund</option></select>
+                    <input type="number" min="0.01" step="0.01" placeholder="Proposed amount" value={resolutionDrafts[order._id]?.proposedAmount || ''} onChange={event => updateResolutionDraft(order._id, { proposedAmount: event.target.value })} className="rounded-lg border border-slate-200 px-3 py-2 text-xs" />
+                  </div>}
+                  <textarea placeholder="Resolution notes" value={resolutionDrafts[order._id]?.notes || ''} onChange={event => updateResolutionDraft(order._id, { notes: event.target.value })} className="min-h-16 w-full rounded-lg border border-slate-200 px-3 py-2 text-xs" />
+                  <button onClick={() => handleSubmitResolution(order)} className="rounded-lg bg-primary-600 px-3 py-2 text-[9px] font-black uppercase text-white">Submit resolution</button>
+                </div>}
+                {order.receivingReport.resolutionSubmissions?.slice(-1).map(resolution => resolution.status === 'awaiting_replacement' && <button key={resolution._id} onClick={() => handleResolutionDelivered(order, resolution)} className="mt-3 rounded-lg bg-primary-600 px-3 py-2 text-[9px] font-black uppercase text-white">Mark replacement/correction delivered</button>)}
+              </div>}
               {/* Action Buttons */}
               <div className="flex flex-wrap gap-2">
                 {order.status === 'submitted' && (
                   <>
-                    <button onClick={() => handleOrderAction(order._id, 'confirmed')}
+                    {order.paymentTiming === 'pay_now' && order.paymentStatus !== 'paid' ? <span className="rounded-xl bg-amber-100 px-4 py-2 text-[9px] font-black uppercase text-amber-800">Awaiting verified payment</span> : <button onClick={() => handleOrderAction(order._id, 'confirmed')}
                       className="px-4 py-2 bg-emerald-600 text-white rounded-xl text-[9px] font-black uppercase hover:bg-emerald-700 transition-all">Accept</button>
+                    }
                     <button onClick={() => handleOrderAction(order._id, 'cancelled', 'Rejected by supplier')}
                       className="px-4 py-2 bg-rose-100 text-rose-600 rounded-xl text-[9px] font-black uppercase hover:bg-rose-600 hover:text-white transition-all">Reject</button>
                   </>
@@ -441,9 +548,12 @@ const SupplierDashboard = () => {
               <button onClick={() => setShowProductModal(false)} className="p-2 bg-slate-50 text-slate-400 rounded-xl hover:bg-rose-50 hover:text-rose-600"><X className="h-4 w-4" /></button>
             </header>
             <div className="flex-1 overflow-y-auto p-6 space-y-5">
+              <div className="grid grid-cols-3 gap-2">
+                {[['pet_supply','Pet Supply'],['product','Other Product'],['live_pet','Live Pet']].map(([value,label]) => <button key={value} type="button" disabled={Boolean(editingProduct)} onClick={() => setProductForm(p => ({ ...p, itemType: value, category: value === 'live_pet' ? 'live_pets' : value === 'product' ? 'general_product' : (p.category === 'live_pets' || p.category === 'general_product' ? 'pet_food' : p.category), availableStock: value === 'live_pet' ? 1 : p.availableStock, minimumOrderQuantity: value === 'live_pet' ? 1 : p.minimumOrderQuantity }))} className={`rounded-xl border px-3 py-2 text-[9px] font-black uppercase ${productForm.itemType === value ? 'border-primary-600 bg-primary-50 text-primary-700' : 'border-slate-200 text-slate-500'} disabled:cursor-not-allowed`}>{label}</button>)}
+              </div>
               <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="space-y-1 sm:col-span-2">
-                  <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Product Name</label>
+                  <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{productForm.itemType === 'live_pet' ? 'Pet / Catalog Name' : 'Product Name'}</label>
                   <input type="text" value={productForm.name} onChange={e => setProductForm(p => ({ ...p, name: e.target.value }))}
                     className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold outline-none" required />
                 </div>
@@ -466,13 +576,13 @@ const SupplierDashboard = () => {
                 </div>
                 <div className="space-y-1">
                   <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Available Stock</label>
-                  <input type="number" value={productForm.availableStock} onChange={e => setProductForm(p => ({ ...p, availableStock: parseInt(e.target.value) || 0 }))}
-                    className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold outline-none" />
+                  <input type="number" disabled={productForm.itemType === 'live_pet'} value={productForm.itemType === 'live_pet' ? 1 : productForm.availableStock} onChange={e => setProductForm(p => ({ ...p, availableStock: parseInt(e.target.value) || 0 }))}
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold outline-none disabled:opacity-60" />
                 </div>
                 <div className="space-y-1">
                   <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Min Order Qty</label>
-                  <input type="number" value={productForm.minimumOrderQuantity} onChange={e => setProductForm(p => ({ ...p, minimumOrderQuantity: parseInt(e.target.value) || 1 }))}
-                    className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold outline-none" />
+                  <input type="number" disabled={productForm.itemType === 'live_pet'} value={productForm.itemType === 'live_pet' ? 1 : productForm.minimumOrderQuantity} onChange={e => setProductForm(p => ({ ...p, minimumOrderQuantity: parseInt(e.target.value) || 1 }))}
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold outline-none disabled:opacity-60" />
                 </div>
                 <div className="space-y-1">
                   <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Lead Time (days)</label>
@@ -480,6 +590,20 @@ const SupplierDashboard = () => {
                     className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold outline-none" />
                 </div>
               </div>
+              {productForm.itemType === 'live_pet' && <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 space-y-3">
+                <div><h4 className="text-xs font-black uppercase text-amber-900">Exact animal information</h4><p className="mt-1 text-[10px] text-amber-800">Each catalog entry represents one unique animal. Quantity is permanently limited to one.</p></div>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  {[['name','Pet name'],['breed','Breed'],['color','Color / markings']].map(([key,label]) => <label key={key} className="text-[9px] font-black uppercase text-slate-500">{label}<input required value={productForm.pet?.[key] || ''} onChange={e => setProductForm(p => ({ ...p, pet: { ...p.pet, [key]: e.target.value } }))} className="mt-1 w-full rounded-xl border border-amber-200 bg-white px-3 py-2.5 text-sm normal-case" /></label>)}
+                  <label className="text-[9px] font-black uppercase text-slate-500">Species<select value={productForm.pet?.species || 'dog'} onChange={e => setProductForm(p => ({ ...p, pet: { ...p.pet, species: e.target.value } }))} className="mt-1 w-full rounded-xl border border-amber-200 bg-white px-3 py-2.5 text-sm normal-case">{['dog','cat','bird','fish','rabbit','hamster','reptile','other'].map(value => <option key={value}>{value}</option>)}</select></label>
+                  <label className="text-[9px] font-black uppercase text-slate-500">Age<input required min="0" type="number" value={productForm.pet?.age ?? 0} onChange={e => setProductForm(p => ({ ...p, pet: { ...p.pet, age: Number(e.target.value) } }))} className="mt-1 w-full rounded-xl border border-amber-200 bg-white px-3 py-2.5 text-sm normal-case" /></label>
+                  <label className="text-[9px] font-black uppercase text-slate-500">Age unit<select value={productForm.pet?.ageUnit || 'years'} onChange={e => setProductForm(p => ({ ...p, pet: { ...p.pet, ageUnit: e.target.value } }))} className="mt-1 w-full rounded-xl border border-amber-200 bg-white px-3 py-2.5 text-sm normal-case"><option value="months">Months</option><option value="years">Years</option></select></label>
+                  <label className="text-[9px] font-black uppercase text-slate-500">Sex<select value={productForm.pet?.gender || 'male'} onChange={e => setProductForm(p => ({ ...p, pet: { ...p.pet, gender: e.target.value } }))} className="mt-1 w-full rounded-xl border border-amber-200 bg-white px-3 py-2.5 text-sm normal-case"><option value="male">Male</option><option value="female">Female</option></select></label>
+                  <label className="text-[9px] font-black uppercase text-slate-500">Size<select value={productForm.pet?.size || 'medium'} onChange={e => setProductForm(p => ({ ...p, pet: { ...p.pet, size: e.target.value } }))} className="mt-1 w-full rounded-xl border border-amber-200 bg-white px-3 py-2.5 text-sm normal-case">{['small','medium','large','extra_large'].map(value => <option key={value}>{value.replace('_', ' ')}</option>)}</select></label>
+                  <label className="text-[9px] font-black uppercase text-slate-500">Vaccination<select value={productForm.pet?.vaccinationStatus || 'none'} onChange={e => setProductForm(p => ({ ...p, pet: { ...p.pet, vaccinationStatus: e.target.value } }))} className="mt-1 w-full rounded-xl border border-amber-200 bg-white px-3 py-2.5 text-sm normal-case"><option value="none">None documented</option><option value="partial">Partial</option><option value="complete">Complete</option></select></label>
+                  <label className="text-[9px] font-black uppercase text-slate-500 sm:col-span-2">Pet description<textarea required value={productForm.pet?.description || ''} onChange={e => setProductForm(p => ({ ...p, pet: { ...p.pet, description: e.target.value } }))} className="mt-1 min-h-20 w-full rounded-xl border border-amber-200 bg-white px-3 py-2.5 text-sm normal-case" /></label>
+                  <label className="text-[9px] font-black uppercase text-slate-500 sm:col-span-2">Health notes<textarea value={productForm.pet?.healthNotes || ''} onChange={e => setProductForm(p => ({ ...p, pet: { ...p.pet, healthNotes: e.target.value } }))} className="mt-1 min-h-16 w-full rounded-xl border border-amber-200 bg-white px-3 py-2.5 text-sm normal-case" /></label>
+                </div>
+              </div>}
               <div className="space-y-1">
                 <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Description</label>
                 <textarea value={productForm.description} onChange={e => setProductForm(p => ({ ...p, description: e.target.value }))}

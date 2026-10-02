@@ -148,6 +148,11 @@ const petSchema = new mongoose.Schema({
     reservedAt: Date,
     completedAt: Date
   },
+  procurementReservation: {
+    purchaseOrder: { type: mongoose.Schema.Types.ObjectId, ref: 'PurchaseOrder' },
+    reservedAt: Date,
+    completedAt: Date
+  },
   vaccinationStatus: {
     type: String,
     enum: ['complete', 'partial', 'none'],
@@ -173,6 +178,22 @@ const petSchema = new mongoose.Schema({
   store: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Store'
+  },
+  listingContext: {
+    type: String,
+    enum: ['marketplace', 'supplier_catalog'],
+    default: 'marketplace',
+    index: true
+  },
+  sourceSupplier: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Supplier',
+    default: null
+  },
+  acquiredThroughPurchaseOrder: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'PurchaseOrder',
+    default: null
   },
   approvalStatus: {
     type: String,

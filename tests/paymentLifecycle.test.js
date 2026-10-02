@@ -117,16 +117,23 @@ test('concurrent revenue reconciliation increments store finance aggregates once
 });
 
 test('failed booking reconciliation never records paid revenue', async () => {
-  const originals = { findOne: Booking.findOne, update: Booking.findByIdAndUpdate };
+  const originals = { findOne: Booking.findOne, update: Booking.findOneAndUpdate };
   let update;
-  Booking.findOne = async () => ({ _id: 'booking-1', paymentStatus: 'pending' });
-  Booking.findByIdAndUpdate = async (_id, payload) => { update = payload; };
+  Booking.findOne = async () => ({
+    _id: 'booking-1', paymentStatus: 'pending', paymentMethod: 'paymongo', paymentDetails: {}
+  });
+  Booking.findOneAndUpdate = async (filter, payload) => {
+    assert.equal(filter.paymentMethod, 'paymongo');
+    assert.deepEqual(filter.paymentStatus, { $nin: ['paid', 'settled', 'failed'] });
+    update = payload;
+    return { _id: 'booking-1', ...payload.$set };
+  };
   try {
     await markSessionFailed({ id: 'cs_failed', attributes: {} });
     assert.equal(update.$set.paymentStatus, 'failed');
     assert.equal(update.$set.paymentMethod, 'paymongo');
   } finally {
     Booking.findOne = originals.findOne;
-    Booking.findByIdAndUpdate = originals.update;
+    Booking.findOneAndUpdate = originals.update;
   }
 });

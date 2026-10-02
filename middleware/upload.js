@@ -44,6 +44,34 @@ const multipleStorage = new CloudinaryStorage({
   })
 });
 
+// Procurement receiving evidence is intentionally isolated from Pawzzle's
+// public image uploads. Cloudinary's authenticated delivery type prevents the
+// asset URL returned at upload time from being used as a public delivery URL.
+const procurementEvidenceStorage = new CloudinaryStorage({
+  cloudinary,
+  params: (req) => ({
+    folder: 'pawzzle/procurement-evidence',
+    type: 'authenticated',
+    resource_type: 'image',
+    allowed_formats: ['jpeg', 'jpg', 'png', 'gif', 'webp'],
+    context: {
+      owner: String(req.user?._id || ''),
+      purchaseOrder: String(req.receivingInspectionOrderId || '')
+    }
+  })
+});
+
+// multer-storage-cloudinary removes files using the default `upload` type.
+// Override cleanup for this isolated authenticated storage so failed multipart
+// requests do not leave an authenticated asset behind.
+procurementEvidenceStorage._removeFile = (req, file, callback) => {
+  cloudinary.uploader.destroy(file.filename, {
+    resource_type: 'image',
+    type: 'authenticated',
+    invalidate: true
+  }, callback);
+};
+
 // Configure multer upload (single)
 const upload = multer({
   storage: singleStorage,
@@ -54,6 +82,12 @@ const upload = multer({
 // Configure multer upload (multiple)
 const uploadMulti = multer({
   storage: multipleStorage,
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter
+});
+
+const procurementEvidenceUpload = multer({
+  storage: procurementEvidenceStorage,
   limits: { fileSize: 5 * 1024 * 1024 },
   fileFilter
 });
@@ -88,6 +122,7 @@ const uploadDoc = multer({
 // Middleware exports
 const uploadSingle = upload.single('image');
 const uploadMultiple = uploadMulti.array('images', 10);
+const uploadProcurementEvidence = procurementEvidenceUpload.array('images', 10);
 const uploadServicePhotos = uploadMulti.fields([
   { name: 'images', maxCount: 5 },
   { name: 'image', maxCount: 1 }
@@ -110,6 +145,7 @@ module.exports = {
   cloudinary,
   uploadSingle,
   uploadMultiple,
+  uploadProcurementEvidence,
   uploadServicePhotos,
   uploadDoc,
   handleUploadError

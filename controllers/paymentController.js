@@ -1,9 +1,12 @@
 const crypto = require('crypto');
+const mongoose = require('mongoose');
 const Order = require('../models/Order');
 const Booking = require('../models/Booking');
 const Product = require('../models/Product');
 const Pet = require('../models/Pet');
 const AdoptionRequest = require('../models/AdoptionRequest');
+const PurchaseOrder = require('../models/PurchaseOrder');
+const ProcurementReceivingReport = require('../models/ProcurementReceivingReport');
 const PaymentWebhookEvent = require('../models/PaymentWebhookEvent');
 const PayMongo = require('../services/paymongoService');
 const { prepareForPayment } = require('../services/bookingLifecycleService');
@@ -13,10 +16,11 @@ const {
   markSessionFailed,
   finalizeOrder,
   finalizeBooking,
-  finalizeAdoption
+  finalizeAdoption,
+  finalizeProcurement
 } = require('../services/paymentReconciliationService');
 const { isPlatformAdmin, isStoreAdmin, isOperationalStaff, hasPermission } = require('../config/permissions');
-const { canAccessStore } = require('../utils/authorizationPolicy');
+const { canAccessStore, canOperateStore } = require('../utils/authorizationPolicy');
 const { requiresAcknowledgment } = require('../utils/refundPolicy');
 const { assertStoreTransactionEligible } = require('../services/storeComplianceService');
 const {
@@ -34,6 +38,129 @@ if (!FRONTEND_URL || FRONTEND_URL.includes('localhost')) {
 }
 
 const sessionHistory = record => record.paymentDetails?.sessionHistory || [];
+const PROCUREMENT_CHECKOUT_BLOCKED_STATUSES = [
+  'cancelled', 'returned', 'issue_reported', 'pending_supplier_resolution',
+  'resolution_submitted', 'resolution_accepted', 'resolution_rejected',
+  'awaiting_replacement', 'reinspection', 'completed'
+];
+
+const procurementCheckoutEligibilityFilter = record => ({
+  _id: record._id,
+  status: { $eq: record.status, $nin: PROCUREMENT_CHECKOUT_BLOCKED_STATUSES },
+  paymentStatus: { $eq: record.paymentStatus, $nin: ['paid', 'settled'] },
+  $and: [
+    {
+      $or: [
+        { 'paymentDetails.paymentId': { $exists: false } },
+        { 'paymentDetails.paymentId': null }
+      ]
+    },
+    Number(record.paymentDetails?.sessionVersion || 0) === 0
+      ? {
+          $or: [
+            { 'paymentDetails.sessionVersion': 0 },
+            { 'paymentDetails.sessionVersion': { $exists: false } }
+          ]
+        }
+      : { 'paymentDetails.sessionVersion': Number(record.paymentDetails.sessionVersion) },
+    Number(record.paidAmount || 0) === 0
+      ? { $or: [{ paidAmount: 0 }, { paidAmount: { $exists: false } }] }
+      : { paidAmount: Number(record.paidAmount) },
+    Number(record.approvedAdjustmentTotal || 0) === 0
+      ? { $or: [{ approvedAdjustmentTotal: 0 }, { approvedAdjustmentTotal: { $exists: false } }] }
+      : { approvedAdjustmentTotal: Number(record.approvedAdjustmentTotal) },
+    record.paymentDetails?.sessionId
+      ? { 'paymentDetails.sessionId': record.paymentDetails.sessionId }
+      : {
+          $or: [
+            { 'paymentDetails.sessionId': { $exists: false } },
+            { 'paymentDetails.sessionId': null }
+          ]
+        }
+  ]
+});
+
+const expireUnattachedCheckoutSession = async session => {
+  if (!session?.id || session.attributes?.status !== 'active') return;
+  try {
+    await PayMongo.expireCheckoutSession(session.id);
+  } catch (error) {
+    console.error(`Unable to expire unattached PayMongo session ${session.id}:`, error.response?.data || error.message);
+  }
+};
+
+const attachProcurementCheckoutSession = async (record, checkoutSession, version) => {
+  const createdAt = checkoutSession.attributes?.created_at
+    ? new Date(checkoutSession.attributes.created_at * 1000)
+    : new Date();
+  const historyRow = {
+    sessionId: checkoutSession.id,
+    checkoutUrl: checkoutSession.attributes.checkout_url,
+    status: checkoutSession.attributes.status || 'active',
+    createdAt
+  };
+  const attached = await PurchaseOrder.findOneAndUpdate(
+    procurementCheckoutEligibilityFilter(record),
+    {
+      $set: {
+        paymentMethod: 'paymongo',
+        paymentStatus: 'pending',
+        'paymentDetails.sessionId': checkoutSession.id,
+        'paymentDetails.checkoutUrl': checkoutSession.attributes.checkout_url,
+        'paymentDetails.sessionStatus': checkoutSession.attributes.status || 'active',
+        'paymentDetails.sessionVersion': version,
+        'paymentDetails.sessionCreatedAt': createdAt,
+        'paymentDetails.failureReason': null,
+        updatedAt: new Date()
+      },
+      $push: { 'paymentDetails.sessionHistory': historyRow }
+    },
+    { new: true, runValidators: true }
+  );
+  if (attached) return attached;
+
+  const current = await PurchaseOrder.findById(record._id);
+  if (current?.paymentDetails?.sessionId === checkoutSession.id
+      && current.paymentDetails?.sessionStatus === 'active'
+      && !PROCUREMENT_CHECKOUT_BLOCKED_STATUSES.includes(current.status)
+      && !['paid', 'settled'].includes(current.paymentStatus)) {
+    return current;
+  }
+
+  await expireUnattachedCheckoutSession(checkoutSession);
+  const error = new Error('The purchase order changed while PayMongo checkout was being created. Start payment again from the current order state.');
+  error.statusCode = 409;
+  throw error;
+};
+
+const markReusableProcurementSession = async (record, checkoutSession) => {
+  const current = await PurchaseOrder.findOneAndUpdate({
+    _id: record._id,
+    status: { $nin: PROCUREMENT_CHECKOUT_BLOCKED_STATUSES },
+    paymentStatus: { $nin: ['paid', 'settled'] },
+    'paymentDetails.sessionId': checkoutSession.id,
+    'paymentDetails.sessionStatus': { $ne: 'expired' },
+    $or: [
+      { 'paymentDetails.paymentId': { $exists: false } },
+      { 'paymentDetails.paymentId': null }
+    ]
+  }, {
+    $set: {
+      paymentMethod: 'paymongo',
+      paymentStatus: 'pending',
+      'paymentDetails.sessionStatus': 'active',
+      updatedAt: new Date()
+    }
+  }, { new: true, runValidators: true });
+  if (current) return current;
+
+  const authoritative = await PurchaseOrder.findById(record._id);
+  const error = new Error(['paid', 'settled'].includes(authoritative?.paymentStatus)
+    ? 'This purchase order is already financially settled.'
+    : 'This purchase order is no longer eligible for the existing PayMongo checkout.');
+  error.statusCode = 409;
+  throw error;
+};
 
 const releaseTransactionPetReservations = async (type, record) => {
   if (type === 'adoption' && record.pet) {
@@ -88,11 +215,36 @@ const saveCheckoutSession = async (record, type, session, version) => {
   await record.save();
 };
 
-const updateSessionStatus = async (record, status) => {
+const updateSessionStatus = async (record, status, type) => {
+  if (type === 'procurement') {
+    const updateFields = {
+      'paymentDetails.sessionStatus': status,
+      updatedAt: new Date()
+    };
+    const hasHistoryRow = sessionHistory(record)
+      .some(row => row.sessionId === record.paymentDetails?.sessionId);
+    if (hasHistoryRow) updateFields['paymentDetails.sessionHistory.$[sessionRow].status'] = status;
+    const current = await PurchaseOrder.findOneAndUpdate({
+      _id: record._id,
+      paymentStatus: { $nin: ['paid', 'settled'] },
+      'paymentDetails.sessionId': record.paymentDetails?.sessionId,
+      $or: [
+        { 'paymentDetails.paymentId': { $exists: false } },
+        { 'paymentDetails.paymentId': null }
+      ]
+    }, {
+      $set: updateFields
+    }, {
+      new: true,
+      ...(hasHistoryRow ? { arrayFilters: [{ 'sessionRow.sessionId': record.paymentDetails?.sessionId }] } : {})
+    });
+    return current || PurchaseOrder.findById(record._id);
+  }
   record.paymentDetails.sessionStatus = status;
   const row = sessionHistory(record).find(item => item.sessionId === record.paymentDetails.sessionId);
   if (row) row.status = status;
   await record.save();
+  return record;
 };
 
 const getReusableSession = async (record, type) => {
@@ -108,7 +260,19 @@ const getReusableSession = async (record, type) => {
       throw error;
     }
     if (session.attributes?.status === 'active') return session;
-    await updateSessionStatus(record, 'expired');
+    const current = await updateSessionStatus(record, 'expired', type);
+    if (type === 'procurement' && ['paid', 'settled'].includes(current?.paymentStatus)) {
+      const error = new Error('This purchase order is already financially settled.');
+      error.statusCode = 409;
+      throw error;
+    }
+    if (type === 'procurement'
+        && current?.paymentDetails?.sessionId
+        && current.paymentDetails.sessionId !== sessionId) {
+      const error = new Error('A newer PayMongo checkout session is already authoritative for this purchase order.');
+      error.statusCode = 409;
+      throw error;
+    }
     await releaseTransactionPetReservations(type, record);
     return null;
   } catch (error) {
@@ -124,9 +288,12 @@ const getReusableSession = async (record, type) => {
 const ensureCheckoutSession = async ({ record, type, attributes }) => {
   const existing = await getReusableSession(record, type);
   if (existing) {
-    if (type === 'adoption') record.paymentDetails.paymentStatus = 'payment_pending';
-    else record.paymentStatus = 'pending';
-    await record.save();
+    if (type === 'procurement') await markReusableProcurementSession(record, existing);
+    else {
+      if (type === 'adoption') record.paymentDetails.paymentStatus = 'payment_pending';
+      else record.paymentStatus = 'pending';
+      await record.save();
+    }
     return existing;
   }
 
@@ -139,7 +306,8 @@ const ensureCheckoutSession = async ({ record, type, attributes }) => {
       record_id: String(record._id)
     }
   }, PayMongo.buildCheckoutIdempotencyKey(type, record._id, version));
-  await saveCheckoutSession(record, type, session, version);
+  if (type === 'procurement') await attachProcurementCheckoutSession(record, session, version);
+  else await saveCheckoutSession(record, type, session, version);
   return session;
 };
 
@@ -361,6 +529,55 @@ const createAdoptionCheckoutSession = async (req, res) => {
   }
 };
 
+const createProcurementCheckoutSession = async (req, res) => {
+  try {
+    const order = await PurchaseOrder.findById(req.params.purchaseOrderId).populate('supplier', 'businessName');
+    if (!order) return res.status(404).json({ message: 'Purchase order not found.' });
+    if (!(isPlatformAdmin(req.user) || await canOperateStore(req.user, order.store, ['procurement.manage', 'finance.manage']))) {
+      return res.status(403).json({ message: 'Access denied.' });
+    }
+    if (PROCUREMENT_CHECKOUT_BLOCKED_STATUSES.includes(order.status)) {
+      return res.status(409).json({ message: `This purchase order cannot be paid while it is ${order.status.replaceAll('_', ' ')}.` });
+    }
+    if (['paid', 'settled'].includes(order.paymentStatus)) return res.status(409).json({ message: 'This purchase order is already financially settled.' });
+    if (order.paymentTiming === 'after_inspection') {
+      const report = await ProcurementReceivingReport.findOne({ purchaseOrder: order._id, store: order.store });
+      if (!report || report.processingStatus !== 'completed'
+          || !['not_required', 'resolved'].includes(report.resolutionStatus)
+          || !report.paymentReady) {
+        return res.status(409).json({ message: 'Payment becomes available after the delivered purchase order passes receiving inspection.' });
+      }
+    }
+    const dueCentavos = amountCentavos(order, 'procurement');
+    if (dueCentavos <= 0) return res.status(409).json({ message: 'This purchase order has no outstanding balance.' });
+
+    const session = await ensureCheckoutSession({
+      record: order,
+      type: 'procurement',
+      attributes: {
+        send_email_receipt: true,
+        show_description: true,
+        show_line_items: true,
+        description: `Procurement payment for ${order.orderNumber}`,
+        line_items: [{
+          amount: dueCentavos,
+          currency: 'PHP',
+          name: `${order.orderNumber} - ${order.supplier?.businessName || 'Supplier'}`,
+          quantity: 1
+        }],
+        payment_method_types: ['card', 'gcash', 'paymaya', 'dob', 'dob_ubp'],
+        success_url: `${FRONTEND_URL}/admin/purchase-orders?payment=success&id=${order._id}`,
+        cancel_url: `${FRONTEND_URL}/admin/purchase-orders?payment=cancelled&id=${order._id}`,
+        reference_number: order.orderNumber
+      }
+    });
+    res.json({ checkoutUrl: session.attributes.checkout_url });
+  } catch (error) {
+    console.error('PayMongo procurement checkout error:', error.response?.data || error.message);
+    res.status(error.statusCode || 500).json({ message: error.message || 'Failed to create procurement payment session.' });
+  }
+};
+
 const isValidWebhookSignature = req => {
   if (!PAYMONGO_WEBHOOK_SECRET) return !isProduction;
   const signatureHeader = req.get('Paymongo-Signature');
@@ -441,7 +658,9 @@ const findTargetById = async id => {
   const booking = await Booking.findById(id);
   if (booking) return { type: 'booking', record: booking };
   const adoption = await AdoptionRequest.findById(id);
-  return adoption ? { type: 'adoption', record: adoption } : null;
+  if (adoption) return { type: 'adoption', record: adoption };
+  const procurement = await PurchaseOrder.findById(id);
+  return procurement ? { type: 'procurement', record: procurement } : null;
 };
 
 const verifyPayment = async (req, res) => {
@@ -453,7 +672,7 @@ const verifyPayment = async (req, res) => {
     const isStoreOperator = (isStoreAdmin(req.user) || isOperationalStaff(req.user))
       && target.record.store
       && await canAccessStore(req.user, target.record.store)
-      && ['payments.manage', 'sales.manage', 'bookings.manage', 'finance.manage']
+      && ['payments.manage', 'sales.manage', 'bookings.manage', 'finance.manage', 'procurement.manage']
         .some(permission => hasPermission(req.user, permission));
     if (!isCustomer && !isSeller && !isStoreOperator && !isPlatformAdmin(req.user)) {
       return res.status(403).json({ message: 'Access denied.' });
@@ -466,15 +685,20 @@ const verifyPayment = async (req, res) => {
       let record;
       if (target.type === 'order') record = await finalizeOrder(target.record, payment);
       else if (target.type === 'booking') record = await finalizeBooking(target.record, payment);
-      else record = await finalizeAdoption(target.record, payment);
+      else if (target.type === 'adoption') record = await finalizeAdoption(target.record, payment);
+      else record = await finalizeProcurement(target.record, payment);
       const status = target.type === 'adoption' ? record.paymentDetails.paymentStatus : record.paymentStatus;
       emitPaymentDashboardUpdate(req, target.type, record, status);
       return res.json({ status, [target.type]: record });
     }
 
     if (session.attributes?.status === 'expired') {
-      await updateSessionStatus(target.record, 'expired');
+      target.record = await updateSessionStatus(target.record, 'expired', target.type);
       await releaseTransactionPetReservations(target.type, target.record);
+      if (target.type === 'procurement' && ['paid', 'settled'].includes(target.record.paymentStatus)) {
+        emitPaymentDashboardUpdate(req, target.type, target.record, target.record.paymentStatus);
+        return res.json({ status: target.record.paymentStatus, procurement: target.record });
+      }
     }
     const status = target.type === 'adoption'
       ? target.record.paymentDetails.paymentStatus
@@ -490,7 +714,9 @@ const cancelPayment = async (req, res) => {
   try {
     const target = await findTargetById(req.params.id);
     if (!target || target.type !== req.params.type) return res.status(404).json({ message: 'Transaction not found.' });
-    if (String(target.record.customer) !== String(req.user._id) && !isPlatformAdmin(req.user)) {
+    const procurementOperator = target.type === 'procurement'
+      && await canOperateStore(req.user, target.record.store, ['procurement.manage', 'finance.manage']);
+    if (String(target.record.customer) !== String(req.user._id) && !procurementOperator && !isPlatformAdmin(req.user)) {
       return res.status(403).json({ message: 'Access denied.' });
     }
     const sessionId = target.record.paymentDetails?.sessionId;
@@ -501,25 +727,63 @@ const cancelPayment = async (req, res) => {
     if (paidPayment) {
       if (target.type === 'order') await finalizeOrder(target.record, paidPayment);
       else if (target.type === 'booking') await finalizeBooking(target.record, paidPayment);
-      else await finalizeAdoption(target.record, paidPayment);
+      else if (target.type === 'adoption') await finalizeAdoption(target.record, paidPayment);
+      else await finalizeProcurement(target.record, paidPayment);
       return res.status(409).json({ message: 'PayMongo already confirmed this payment; it cannot be cancelled.' });
     }
-    if (session.attributes?.status === 'active') await PayMongo.expireCheckoutSession(sessionId);
+    let expiredSession = session;
+    if (session.attributes?.status === 'active') expiredSession = await PayMongo.expireCheckoutSession(sessionId);
+    const paidDuringExpiration = PayMongo.getPaidPayment(expiredSession);
+    if (paidDuringExpiration) {
+      if (target.type === 'order') await finalizeOrder(target.record, paidDuringExpiration);
+      else if (target.type === 'booking') await finalizeBooking(target.record, paidDuringExpiration);
+      else if (target.type === 'adoption') await finalizeAdoption(target.record, paidDuringExpiration);
+      else await finalizeProcurement(target.record, paidDuringExpiration);
+      return res.status(409).json({ message: 'PayMongo confirmed this payment while cancellation was in progress; it cannot be cancelled.' });
+    }
 
-    target.record.paymentDetails.sessionStatus = 'expired';
-    const historyRow = sessionHistory(target.record).find(row => row.sessionId === sessionId);
-    if (historyRow) historyRow.status = 'expired';
-    if (target.type === 'adoption') {
+    let cancelledRecord = target.record;
+    if (target.type === 'procurement') {
+      await mongoose.connection.transaction(async databaseSession => {
+        const current = await PurchaseOrder.findById(target.record._id).session(databaseSession);
+        if (!current) throw Object.assign(new Error('Purchase order not found.'), { statusCode: 404 });
+        if (current.paymentDetails?.sessionId !== sessionId) {
+          throw Object.assign(new Error('A newer PayMongo checkout session is already authoritative for this purchase order.'), { statusCode: 409 });
+        }
+        if (['paid', 'settled'].includes(current.paymentStatus)
+            || current.paymentDetails?.paymentId) {
+          throw Object.assign(new Error('PayMongo already confirmed this payment; it cannot be cancelled.'), { statusCode: 409 });
+        }
+        current.paymentDetails.sessionStatus = 'expired';
+        const currentHistoryRow = sessionHistory(current).find(row => row.sessionId === sessionId);
+        if (currentHistoryRow) currentHistoryRow.status = 'expired';
+        current.paymentMethod = 'paymongo';
+        current.paymentStatus = Number(current.paidAmount || 0) > 0
+          ? 'partially_paid'
+          : (current.paymentTiming === 'after_inspection' ? 'awaiting_payment' : 'unpaid');
+        await current.save({ session: databaseSession });
+        cancelledRecord = current;
+      });
+    } else if (target.type === 'adoption') {
+      target.record.paymentDetails.sessionStatus = 'expired';
+      const historyRow = sessionHistory(target.record).find(row => row.sessionId === sessionId);
+      if (historyRow) historyRow.status = 'expired';
       target.record.paymentDetails.method = 'paymongo';
       target.record.paymentDetails.paymentStatus = 'payment_cancelled';
-    } else if (target.record.paymentStatus !== 'paid') {
-      target.record.paymentMethod = 'paymongo';
-      target.record.paymentStatus = 'cancelled';
+      await target.record.save();
+    } else {
+      target.record.paymentDetails.sessionStatus = 'expired';
+      const historyRow = sessionHistory(target.record).find(row => row.sessionId === sessionId);
+      if (historyRow) historyRow.status = 'expired';
+      if (!['paid', 'settled'].includes(target.record.paymentStatus)) {
+        target.record.paymentMethod = 'paymongo';
+        target.record.paymentStatus = 'cancelled';
+      }
+      await target.record.save();
     }
-    await target.record.save();
-    await releaseTransactionPetReservations(target.type, target.record);
-    const status = target.type === 'adoption' ? target.record.paymentDetails.paymentStatus : target.record.paymentStatus;
-    emitPaymentDashboardUpdate(req, target.type, target.record, status);
+    await releaseTransactionPetReservations(target.type, cancelledRecord);
+    const status = target.type === 'adoption' ? cancelledRecord.paymentDetails.paymentStatus : cancelledRecord.paymentStatus;
+    emitPaymentDashboardUpdate(req, target.type, cancelledRecord, status);
     res.json({ status, sessionStatus: 'expired' });
   } catch (error) {
     console.error('PayMongo cancellation error:', error.response?.data || error.message);
@@ -531,6 +795,7 @@ module.exports = {
   createCheckoutSession,
   createBookingCheckoutSession,
   createAdoptionCheckoutSession,
+  createProcurementCheckoutSession,
   handleWebhook,
   verifyPayment,
   cancelPayment

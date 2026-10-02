@@ -11,6 +11,11 @@ const procurementCartItemSchema = new mongoose.Schema({
     ref: 'Supplier',
     required: true
   },
+  itemType: {
+    type: String,
+    enum: ['pet_supply', 'product', 'live_pet'],
+    default: 'pet_supply'
+  },
   quantity: { type: Number, required: true, min: 1 },
   storeProduct: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', default: null },
   addedUnitPrice: { type: Number, required: true, min: 0 },

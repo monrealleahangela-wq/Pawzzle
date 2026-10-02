@@ -381,6 +381,7 @@ export const paymentService = {
   createCheckoutSession: (orderId) => api.post(`/payment/create-checkout-session/${orderId}`),
   createBookingCheckoutSession: (bookingId) => api.post(`/payment/create-booking-checkout-session/${bookingId}`),
   createAdoptionCheckoutSession: (requestId) => api.post(`/payment/create-adoption-checkout-session/${requestId}`),
+  createProcurementCheckoutSession: (purchaseOrderId) => api.post(`/payment/create-procurement-checkout-session/${purchaseOrderId}`),
   verifyPayment: (orderId) => api.get(`/payment/verify/${orderId}`),
   verifyBookingPayment: (bookingId) => api.get(`/payment/verify/${bookingId}`),
   cancelPayment: (type, id) => api.post(`/payment/cancel/${type}/${id}`)
@@ -486,7 +487,9 @@ export const financeService = {
   updateExpenseStatus: (id, data) => api.patch(`/finance/expenses/${id}/status`, data),
   getProcurementPayments: (params) => api.get('/finance/procurement-payments', { params }),
   createProcurementPayment: (data) => api.post('/finance/procurement-payments', data),
-  voidProcurementPayment: (id, data) => api.patch(`/finance/procurement-payments/${id}/void`, data)
+  voidProcurementPayment: (id, data) => api.patch(`/finance/procurement-payments/${id}/void`, data),
+  getProcurementAdjustments: () => api.get('/finance/procurement-adjustments'),
+  reviewProcurementAdjustment: (reportId, resolutionId, data) => api.patch(`/finance/procurement-adjustments/${reportId}/${resolutionId}`, data)
 };
 
 export const hrService = {
@@ -560,6 +563,8 @@ export const supplierService = {
   // Orders (supplier side)
   getOrders: (params) => api.get('/suppliers/orders', { params }),
   updateOrderStatus: (id, data) => api.patch(`/suppliers/orders/${id}/status`, data),
+  submitOrderResolution: (id, data) => api.post(`/suppliers/orders/${id}/resolutions`, data),
+  markResolutionDelivered: (id, resolutionId, data = {}) => api.post(`/suppliers/orders/${id}/resolutions/${resolutionId}/delivered`, data),
   // Browse (seller side)
   browse: (params) => api.get('/suppliers/browse', { params }),
   getCatalog: (supplierId, params) => api.get(`/suppliers/catalog/${supplierId}`, { params }),
@@ -588,6 +593,11 @@ export const purchaseOrderService = {
   getById: (id) => api.get(`/purchase-orders/${id}`),
   cancel: (id, data) => api.patch(`/purchase-orders/${id}/cancel`, data),
   confirmDelivery: (id, data) => api.patch(`/purchase-orders/${id}/confirm-delivery`, data),
+  submitInspection: (id, formData) => api.post(`/purchase-orders/${id}/inspection`, formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
+  reviewResolution: (id, resolutionId, data) => api.patch(`/purchase-orders/${id}/resolutions/${resolutionId}`, data),
+  submitReinspection: (id, resolutionId, formData) => api.post(`/purchase-orders/${id}/resolutions/${resolutionId}/reinspection`, formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
+  getInspection: (id) => api.get(`/purchase-orders/${id}/inspection`),
+  getEvidenceAccess: (id, evidenceId) => api.get(`/purchase-orders/${id}/inspection/evidence/${evidenceId}/access`),
   adminGetAll: (params) => api.get('/purchase-orders/admin/all', { params })
 };
 

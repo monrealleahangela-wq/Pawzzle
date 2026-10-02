@@ -6,6 +6,18 @@ const purchaseOrderItemSchema = new mongoose.Schema({
     ref: 'SupplierProduct',
     required: true
   },
+  itemType: {
+    type: String,
+    enum: ['pet_supply', 'product', 'live_pet'],
+    default: 'pet_supply',
+    required: true
+  },
+  pet: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Pet',
+    default: null
+  },
+  petSnapshot: { type: mongoose.Schema.Types.Mixed },
   storeProduct: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Product'
@@ -16,6 +28,12 @@ const purchaseOrderItemSchema = new mongoose.Schema({
   unitPrice: { type: Number, required: true, min: 0 },
   totalPrice: { type: Number, required: true, min: 0 },
   receivedQuantity: { type: Number, default: 0, min: 0 },
+  // New procurement submissions commit supplier availability when the PO is
+  // created. A zero value identifies legacy POs whose stock is still consumed
+  // by the receiving path.
+  supplierStockCommittedQuantity: { type: Number, default: 0, min: 0 },
+  supplierStockCommitmentReleased: { type: Boolean, default: false },
+  supplierStockCommitmentReleasedAt: Date,
   notes: { type: String }
 }, { _id: true });
 
@@ -68,22 +86,60 @@ const purchaseOrderSchema = new mongoose.Schema({
   // ── Status ────────────────────────────────────────────
   status: {
     type: String,
-    enum: ['draft', 'submitted', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled', 'returned'],
+    enum: ['draft', 'submitted', 'confirmed', 'processing', 'shipped', 'delivered', 'issue_reported', 'pending_supplier_resolution', 'resolution_submitted', 'resolution_accepted', 'resolution_rejected', 'awaiting_replacement', 'reinspection', 'resolved', 'completed', 'cancelled', 'returned'],
     default: 'draft'
   },
   paymentStatus: {
     type: String,
-    enum: ['unpaid', 'partially_paid', 'paid', 'refunded'],
+    enum: ['unpaid', 'awaiting_inspection', 'awaiting_payment', 'pending', 'partially_paid', 'paid', 'settled', 'failed', 'refunded'],
     default: 'unpaid'
+  },
+  paymentTiming: {
+    type: String,
+    enum: ['pay_now', 'after_inspection'],
+    default: 'pay_now'
   },
   paymentMethod: {
     type: String,
-    enum: ['bank_transfer', 'gcash', 'maya', 'cod', 'credit_terms', 'other'],
+    enum: ['paymongo', 'bank_transfer', 'gcash', 'maya', 'cod', 'credit_terms', 'other'],
     default: 'bank_transfer'
   },
   paymentReference: { type: String },
   paymentDate: { type: Date },
   paidAmount: { type: Number, default: 0, min: 0 },
+  approvedAdjustmentTotal: { type: Number, default: 0, min: 0 },
+  paymentDetails: {
+    sessionId: String,
+    checkoutUrl: String,
+    sessionStatus: { type: String, enum: ['active', 'expired'] },
+    sessionVersion: { type: Number, default: 0 },
+    sessionCreatedAt: Date,
+    sessionHistory: [{
+      sessionId: String,
+      checkoutUrl: String,
+      status: { type: String, enum: ['active', 'expired'] },
+      createdAt: Date
+    }],
+    paymentIntentId: String,
+    paymentId: String,
+    duplicatePaymentIds: [String],
+    sourceType: String,
+    amountPaid: Number,
+    transactionDate: Date,
+    failureReason: String
+  },
+  inspectionStatus: {
+    type: String,
+    enum: ['not_required', 'awaiting_delivery', 'awaiting_inspection', 'accepted', 'partially_accepted', 'issue_reported', 'reinspection', 'resolved'],
+    default: 'not_required',
+    index: true
+  },
+  receivingReport: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'ProcurementReceivingReport',
+    default: null
+  },
+  completedAt: Date,
 
   // ── Notes & History ───────────────────────────────────
   sellerNotes: { type: String },

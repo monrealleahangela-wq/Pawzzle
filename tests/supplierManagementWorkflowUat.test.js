@@ -92,13 +92,13 @@ test('platform applications require protected uploaded documents and support rev
   assert.throws(() => applySupplierLifecycleAction(active({ supplierType: 'store_added' }), 'request_resubmission'), /do not use platform document verification/);
 });
 
-test('purchase orders route to the exact eligible supplier product and authoritative caller store', () => {
+test('purchase orders route through the authoritative cart with exact supplier products and caller store', () => {
   const controller = read('controllers/purchaseOrderController.js');
   assert.match(controller, /const store = await resolveUserStore\(req\.user\)/);
   assert.match(controller, /isSupplierSelectableForStore\(supplier, store\)/);
-  assert.match(controller, /_id: item\.supplierProductId,[\s\S]*supplier: supplierId/);
-  assert.match(controller, /supplier: supplierId,[\s\S]*items: resolvedItems/);
-  assert.doesNotMatch(controller.match(/const createPurchaseOrder[\s\S]*?const getSellerOrders/)?.[0] || '', /store\s*=\s*req\.body\.store/);
+  assert.match(controller, /SupplierProduct\.find\(\{ _id: \{ \$in: productIds \} \}\)/);
+  assert.match(controller, /supplier: supplier\._id,[\s\S]*items/);
+  assert.match(controller, /const createPurchaseOrder[\s\S]*PROCUREMENT_CART_REQUIRED/);
 });
 
 test('supplier and admin UIs expose invitation, document review, resubmission, products, and orders', () => {

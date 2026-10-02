@@ -6,6 +6,18 @@ const supplierProductSchema = new mongoose.Schema({
     ref: 'Supplier',
     required: true
   },
+  itemType: {
+    type: String,
+    enum: ['pet_supply', 'product', 'live_pet'],
+    default: 'pet_supply',
+    index: true
+  },
+  pet: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Pet',
+    default: null,
+    index: true
+  },
   name: {
     type: String,
     required: true,
@@ -25,7 +37,7 @@ const supplierProductSchema = new mongoose.Schema({
     enum: [
       'pet_food', 'pet_treats', 'grooming_supplies', 'medical_supplies',
       'accessories', 'toys', 'cleaning_products', 'cages_habitats',
-      'leashes_collars', 'health_supplements', 'raw_materials', 'other'
+      'leashes_collars', 'health_supplements', 'raw_materials', 'live_pets', 'general_product', 'other'
     ],
     required: true
   },
@@ -85,6 +97,11 @@ const supplierProductSchema = new mongoose.Schema({
 });
 
 supplierProductSchema.pre('save', function (next) {
+  if (this.itemType === 'live_pet') {
+    this.availableStock = Math.min(1, Number(this.availableStock));
+    this.minimumOrderQuantity = 1;
+    this.unitOfMeasure = 'piece';
+  }
   this.updatedAt = Date.now();
   next();
 });
@@ -92,5 +109,6 @@ supplierProductSchema.pre('save', function (next) {
 supplierProductSchema.index({ supplier: 1, sku: 1 }, { unique: true });
 supplierProductSchema.index({ category: 1 });
 supplierProductSchema.index({ supplier: 1, isActive: 1 });
+supplierProductSchema.index({ supplier: 1, pet: 1 }, { unique: true, sparse: true });
 
 module.exports = mongoose.model('SupplierProduct', supplierProductSchema);
