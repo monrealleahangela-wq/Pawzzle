@@ -26,6 +26,7 @@ const {
   buildCustomerVisibleStoreFilter,
   withCustomerComplianceFilter
 } = require('../utils/storeVisibility');
+const { buildPublicPetFilter } = require('../utils/catalogListing');
 
 const findCustomerVisibleStore = async id => {
   const ownerIds = await getCustomerVisibleOwnerIds();
@@ -100,17 +101,10 @@ const getStoreById = async (req, res) => {
 
     // Get store's pets and products
     const [pets, products] = await Promise.all([
-      Pet.find({
-        $and: [
-          { $or: [
-            { store: store._id },
-            { addedBy: store.owner._id || store.owner }
-          ] },
-          { $or: [{ quantity: { $exists: false } }, { quantity: null }, { quantity: 1 }] }
-        ],
-        isAvailable: true,
-        isDeleted: { $ne: true }
-      }).select('-pcciRegistration.certificateUrl -supportingDocuments -vetRecords -proofOfOwnership -permits -pickupInstructions').limit(6),
+      Pet.find(buildPublicPetFilter({ isAvailable: 'true' }, [], { ownership: { $or: [
+        { store: store._id },
+        { addedBy: store.owner._id || store.owner }
+      ] } })).select('-pcciRegistration.certificateUrl -supportingDocuments -vetRecords -proofOfOwnership -permits -pickupInstructions').limit(6),
       Product.find({
         $or: [
           { store: store._id },
@@ -158,17 +152,10 @@ const getStoreDetails = async (req, res) => {
         isActive: true,
         isDeleted: { $ne: true }
       }).select('name description price duration category images'),
-      Pet.find({
-        $and: [
-          { $or: [
-            { store: store._id },
-            { addedBy: store.owner._id || store.owner }
-          ] },
-          { $or: [{ quantity: { $exists: false } }, { quantity: null }, { quantity: 1 }] }
-        ],
-        isAvailable: true,
-        isDeleted: { $ne: true }
-      }).select('name breed age gender price images species description'),
+      Pet.find(buildPublicPetFilter({ isAvailable: 'true' }, [], { ownership: { $or: [
+        { store: store._id },
+        { addedBy: store.owner._id || store.owner }
+      ] } })).select('name breed age ageUnit gender price images species description status isAvailable'),
       Follow.countDocuments({ following: store.owner._id || store.owner }),
       User.find({
         store: store._id,

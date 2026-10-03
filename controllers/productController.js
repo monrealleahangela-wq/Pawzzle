@@ -5,6 +5,20 @@ const { isStoreAdmin, isOperationalStaff } = require('../config/permissions');
 const { canOperateStore } = require('../utils/authorizationPolicy');
 const Store = require('../models/Store');
 const { getCustomerVisibleOwnerIds, buildCustomerVisibleStoreFilter, withCustomerComplianceFilter } = require('../utils/storeVisibility');
+const { normalizeCatalogImages, normalizeProductWeight } = require('../utils/catalogListing');
+
+const PRODUCT_LISTING_FIELDS = [
+  'name', 'category', 'description', 'shortDescription', 'price', 'sku', 'barcode',
+  'unit', 'weight', 'weightUnit', 'images', 'video', 'brand', 'tags', 'stockStatus',
+  'collectionGroup', 'visibility', 'fulfillmentType', 'pickupInstructions',
+  'warrantyInfo', 'returnPolicy', 'expiryDate', 'ingredients', 'usageInstructions',
+  'variants', 'suitableFor', 'isActive', 'lowStockThreshold', 'maxOrderQuantity'
+];
+
+const pickProductListingFields = input => Object.fromEntries(
+  PRODUCT_LISTING_FIELDS.filter(field => Object.prototype.hasOwnProperty.call(input || {}, field))
+    .map(field => [field, input[field]])
+);
 
 // Helper: auto-find or auto-create a default store for an admin
 const resolveAdminStore = async (user) => {
@@ -175,8 +189,14 @@ const createProduct = async (req, res) => {
     const storeId = await resolveAdminStore(req.user);
 
     const initialStock = Number(req.body.stockQuantity || 0);
+    const listingData = pickProductListingFields(req.body);
+    const images = normalizeCatalogImages(listingData.images, { required: true });
+    const normalizedWeight = normalizeProductWeight(listingData.weight, listingData.weightUnit);
     const productData = {
-      ...req.body,
+      ...listingData,
+      ...normalizedWeight,
+      images,
+      coverImage: images[0],
       addedBy: req.user.id || req.user._id,
       store: storeId,
       stockQuantity: initialStock,
@@ -204,6 +224,7 @@ const createProduct = async (req, res) => {
     });
   } catch (error) {
     console.error('Create product error:', error);
+    if (error.statusCode) return res.status(error.statusCode).json({ message: error.message });
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -226,8 +247,16 @@ const updateProduct = async (req, res) => {
       return res.status(403).json({ message: 'Access denied. You do not have permission to update this asset.' });
     }
 
-    // Protect immutable/critical fields
-    const { stockQuantity, _id, id, store, addedBy, ...updateData } = req.body;
+    const updateData = pickProductListingFields(req.body);
+    if (Object.prototype.hasOwnProperty.call(updateData, 'images')) {
+      updateData.images = normalizeCatalogImages(updateData.images, { required: true });
+      updateData.coverImage = updateData.images[0];
+    }
+    if (Object.prototype.hasOwnProperty.call(updateData, 'weight')) {
+      Object.assign(updateData, normalizeProductWeight(updateData.weight, updateData.weightUnit));
+    } else if (Object.prototype.hasOwnProperty.call(updateData, 'weightUnit')) {
+      Object.assign(updateData, normalizeProductWeight(product.weight, updateData.weightUnit));
+    }
     
     // Explicitly update only mutable fields
     Object.assign(product, updateData);
@@ -247,6 +276,8 @@ const updateProduct = async (req, res) => {
     });
   } catch (error) {
     console.error('Update product error:', error);
+
+    if (error.statusCode) return res.status(error.statusCode).json({ message: error.message });
     
     // Specifically handle unique constraint violations (e.g., SKU already in use)
     if (error.code === 11000) {

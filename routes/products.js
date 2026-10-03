@@ -11,6 +11,7 @@ const {
   updateStock
 } = require('../controllers/productController');
 const { authenticate, adminOrStaff, requirePermission } = require('../middleware/auth');
+const { MAX_CATALOG_IMAGES, PRODUCT_WEIGHT_UNITS, isCatalogImageReference } = require('../utils/catalogListing');
 
 // Validation rules
 // Validation rules
@@ -22,7 +23,10 @@ const createProductValidation = [
   body('price').isFloat({ gt: 0 }).withMessage('Price must be greater than 0'),
   body('sku').trim().notEmpty().withMessage('SKU is required'),
   body('stockQuantity').isInt({ min: 0 }).withMessage('Stock quantity must be a positive integer'),
-  body('images').isArray({ min: 1 }).withMessage('At least one product image is required'),
+  body('images').isArray({ min: 1, max: MAX_CATALOG_IMAGES }).withMessage(`Provide between 1 and ${MAX_CATALOG_IMAGES} product images`),
+  body('images.*').custom(isCatalogImageReference).withMessage('Each product image must be a valid uploaded image reference'),
+  body('weight').optional({ checkFalsy: true }).isFloat({ gt: 0, max: 10000 }).withMessage('Package weight must be greater than zero'),
+  body('weightUnit').optional().isIn(PRODUCT_WEIGHT_UNITS).withMessage('Package weight unit must be g or kg'),
   body('fulfillmentType').equals('pickup_only').withMessage('Fulfillment must be pickup_only'),
   body('visibility').optional().isIn(['published', 'draft', 'hidden']).withMessage('Invalid visibility status'),
   body('barcode').optional().trim().isLength({ max: 100 }).withMessage('Barcode is too long'),
@@ -37,7 +41,10 @@ const updateProductValidation = [
   body('price').optional().isFloat({ gt: 0 }).withMessage('Price must be greater than 0'),
   body('sku').optional().trim().notEmpty().withMessage('SKU cannot be empty'),
   body('stockQuantity').optional().isInt({ min: 0 }).withMessage('Stock quantity must be a positive integer'),
-  body('images').optional().isArray({ min: 1 }).withMessage('At least one product image is required'),
+  body('images').optional().isArray({ min: 1, max: MAX_CATALOG_IMAGES }).withMessage(`Provide between 1 and ${MAX_CATALOG_IMAGES} product images`),
+  body('images.*').optional().custom(isCatalogImageReference).withMessage('Each product image must be a valid uploaded image reference'),
+  body('weight').optional({ checkFalsy: true }).isFloat({ gt: 0, max: 10000 }).withMessage('Package weight must be greater than zero'),
+  body('weightUnit').optional().isIn(PRODUCT_WEIGHT_UNITS).withMessage('Package weight unit must be g or kg'),
   body('visibility').optional().isIn(['published', 'draft', 'hidden']).withMessage('Invalid visibility status'),
   body('barcode').optional().trim().isLength({ max: 100 }).withMessage('Barcode is too long'),
   body('unit').optional().isIn(['piece', 'pack', 'box', 'bottle', 'bag', 'kg']).withMessage('Invalid product unit')

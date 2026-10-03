@@ -328,7 +328,9 @@ const AdminPets = () => {
         age: finalAge, 
         ageUnit: finalUnit,
         price: parseFloat(petForm.price) || 0,
-        weight: parseFloat(petForm.weight) || 0,
+        ...(petForm.weight === '' || petForm.weight === null
+          ? { weight: null }
+          : { weight: Number(petForm.weight) }),
         fulfillmentType: 'pickup_only',
         allowedPaymentMethods: petForm.allowedPaymentMethods,
         paymentConfig: petForm.paymentConfig,
@@ -394,15 +396,20 @@ const AdminPets = () => {
   };
 
   const handleImageUpload = async (input, replacePrimary = false) => {
-    const files = Array.isArray(input) ? input : Array.from(input.target?.files || []);
+    const files = Array.from(Array.isArray(input) ? input : input.target?.files || []);
     if (!files || files.length === 0) return;
+    if (files.some(file => !file.type?.startsWith('image/') || file.size > 5 * 1024 * 1024)) {
+      return toast.warn('Use image files up to 5 MB each.');
+    }
+    const retainedImages = replacePrimary && petForm.images.length ? petForm.images.length - 1 : petForm.images.length;
+    if (retainedImages + files.length > 10) return toast.warn('A maximum of 10 pet images is allowed.');
     setSubmitting(true);
     const formData = new FormData();
     for (let i = 0; i < files.length; i++) formData.append('images', files[i]);
     try {
       const response = await uploadService.uploadMultipleImages(formData);
       const newUrls = response.data.urls || response.data.imageUrls || [];
-      setPetForm(prev => ({ ...prev, images: replacePrimary ? [...newUrls, ...prev.images.slice(1)] : [...prev.images, ...newUrls] }));
+      setPetForm(prev => ({ ...prev, images: [...new Set(replacePrimary && newUrls.length ? [newUrls[0], ...prev.images.slice(1), ...newUrls.slice(1)] : [...prev.images, ...newUrls])].slice(0, 10) }));
       toast.success('Images uploaded');
     } catch (error) {
       console.error('Upload Error:', error);

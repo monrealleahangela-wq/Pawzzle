@@ -66,6 +66,8 @@ const ProductInventory = () => {
     sku: '',
     barcode: '',
     unit: 'piece',
+    weight: '',
+    weightUnit: 'kg',
     description: '',
     shortDescription: '',
     price: '',
@@ -239,6 +241,9 @@ const ProductInventory = () => {
     if (productForm.images.length > 10) {
       return toast.warn('Media Error: Maximum 10 images allowed.');
     }
+    if (productForm.weight !== '' && (!Number.isFinite(Number(productForm.weight)) || Number(productForm.weight) <= 0 || Number(productForm.weight) > 10000)) {
+      return toast.warn('Package weight must be greater than zero and no more than 10,000 in the selected unit.');
+    }
 
     setSubmitting(true);
     try {
@@ -250,7 +255,10 @@ const ProductInventory = () => {
         sku: productForm.sku?.trim() || `PZ-${productForm.name.trim().replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '').toUpperCase()}-${Date.now().toString(36).toUpperCase()}`,
         shortDescription: productForm.shortDescription?.trim() || productForm.description.trim().slice(0, 160),
         price: Number(productForm.price),
-        stockQuantity: Number(productForm.stockQuantity || 0)
+        stockQuantity: Number(productForm.stockQuantity || 0),
+        ...(productForm.weight === '' || productForm.weight === null
+          ? { weight: null, weightUnit: productForm.weightUnit || 'kg' }
+          : { weight: Number(productForm.weight), weightUnit: productForm.weightUnit || 'kg' })
       };
 
       if (editingProduct) {
@@ -273,8 +281,12 @@ const ProductInventory = () => {
   };
 
   const handleImageUpload = async (input, replacePrimary = false) => {
-    const files = Array.isArray(input) ? input : input.target.files;
+    const files = Array.from(Array.isArray(input) ? input : input.target.files || []);
     if (!files || files.length === 0) return;
+
+    if (files.some(file => !file.type?.startsWith('image/') || file.size > 5 * 1024 * 1024)) {
+      return toast.warn('Use image files up to 5 MB each.');
+    }
 
     const retainedImages = replacePrimary && productForm.images.length ? productForm.images.length - 1 : productForm.images.length;
     if (retainedImages + files.length > 10) {
@@ -292,9 +304,9 @@ const ProductInventory = () => {
       const newUrls = response.data.urls || response.data.imageUrls || [];
       setProductForm(prev => ({
         ...prev,
-        images: replacePrimary && newUrls.length
+        images: [...new Set(replacePrimary && newUrls.length
           ? [newUrls[0], ...prev.images.slice(1), ...newUrls.slice(1)]
-          : [...prev.images, ...newUrls]
+          : [...prev.images, ...newUrls])].slice(0, 10)
       }));
       toast.success('Product images uploaded successfully.');
     } catch (error) {
@@ -893,6 +905,26 @@ const ProductInventory = () => {
                                placeholder="Unlimited"
                              />
                           </div>
+                          <div className="space-y-2 lg:col-span-2">
+                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Package Weight (Optional)</label>
+                            <div className="grid grid-cols-[1fr_auto] gap-2">
+                              <input
+                                type="number" min="0.001" max="10000" step="0.001" value={productForm.weight}
+                                onChange={e => setProductForm(p => ({ ...p, weight: e.target.value }))}
+                                className="w-full px-5 py-3.5 bg-slate-50 border-2 border-slate-50 rounded-xl text-[12px] font-black outline-none focus:border-primary-500 transition-all"
+                                placeholder="Not specified"
+                              />
+                              <select
+                                value={productForm.weightUnit || 'kg'}
+                                onChange={e => setProductForm(p => ({ ...p, weightUnit: e.target.value }))}
+                                className="px-4 py-3.5 bg-slate-50 border-2 border-slate-50 rounded-xl text-[10px] font-black uppercase outline-none focus:border-primary-500"
+                              >
+                                <option value="g">g</option>
+                                <option value="kg">kg</option>
+                              </select>
+                            </div>
+                            <p className="px-1 text-[9px] font-semibold text-slate-400">Seller-declared package weight; delivery capacity uses the measured parcel weight.</p>
+                          </div>
                         </div>
                       )}
                     </section>
@@ -1020,13 +1052,11 @@ const ProductInventory = () => {
                               {productForm.images.map((img, i) => (
                                 <div key={i} className="aspect-square bg-slate-50 rounded-xl border-2 border-slate-100 relative group overflow-hidden">
                                   <img src={getImageUrl(img)} alt="" className="w-full h-full object-cover" />
-                                  <button 
-                                    type="button" 
-                                    onClick={() => setProductForm(p => ({ ...p, images: p.images.filter((_, idx) => idx !== i) }))}
-                                    className="absolute inset-0 bg-rose-600/90 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
-                                  >
-                                    <Trash2 className="h-4 w-4 text-white" />
-                                  </button>
+                                  {i === 0 && <span className="absolute left-1 top-1 rounded-md bg-slate-950/80 px-1.5 py-1 text-[7px] font-black uppercase text-white">Cover</span>}
+                                  <div className="absolute inset-x-1 bottom-1 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                                    {i > 0 && <button type="button" onClick={() => setProductForm(p => ({ ...p, images: [p.images[i], ...p.images.filter((_, idx) => idx !== i)] }))} className="flex-1 rounded-md bg-slate-950/80 py-1 text-[7px] font-black uppercase text-white">Cover</button>}
+                                    <button type="button" onClick={() => setProductForm(p => ({ ...p, images: p.images.filter((_, idx) => idx !== i) }))} className="flex h-6 w-6 items-center justify-center rounded-md bg-rose-600/90"><Trash2 className="h-3 w-3 text-white" /></button>
+                                  </div>
                                 </div>
                               ))}
                               {productForm.images.length < 10 && (

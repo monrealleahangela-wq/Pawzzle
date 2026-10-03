@@ -40,9 +40,13 @@ test('server create and update paths cannot turn pet listings into quantity inve
   const petRoutes = read('routes/pets.js');
   const adminPetRoutes = read('routes/adminPets.js');
 
-  assert.match(controller, /quantity,[\s\S]*reservation,[\s\S]*adoptionDetails,[\s\S]*\.\.\.listingData/);
+  assert.match(controller, /PET_LISTING_FIELDS/);
+  assert.match(controller, /pickPetListingFields\(req\.body\)/);
+  const listingFields = controller.match(/const PET_LISTING_FIELDS = \[([\s\S]*?)\];/)?.[1] || '';
+  assert.doesNotMatch(listingFields, /'quantity'/);
+  assert.doesNotMatch(listingFields, /'reservation'/);
   assert.match(controller, /quantity: 1/);
-  assert.match(controller, /ratings, approvalStatus, quantity, reservation, \.\.\.updateData/);
+  assert.match(controller, /const updateData = pickPetListingFields\(req\.body\)/);
   assert.match(controller, /\['sold', 'adopted'\]\.includes\(pet\.status\)/);
   assert.match(petRoutes, /Each pet listing must represent exactly one pet/);
   assert.match(adminPetRoutes, /Each pet listing must represent exactly one pet/);
@@ -130,9 +134,10 @@ test('legacy grouped pet records are not exposed as purchasable marketplace inve
   const detail = read('client/src/pages/customer/PetDetail.js');
 
   assert.match(petController, /legacyGroupedListing = true/);
-  assert.match(petController, /quantity: \{ \$exists: false \}/);
-  assert.match(storeController, /quantity: \{ \$exists: false \}/);
-  assert.match(publicController, /quantity: \{ \$exists: false \}/);
+  assert.match(petController, /buildPublicPetFilter/);
+  assert.match(storeController, /buildPublicPetFilter/);
+  assert.match(publicController, /buildPublicPetFilter/);
+  assert.match(read('utils/catalogListing.js'), /quantity: \{ \$exists: false \}/);
   assert.match(detail, /historical grouped listing is unavailable/i);
   assert.match(detail, /pet\?\.isAvailable === true/);
 });

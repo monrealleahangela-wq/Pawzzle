@@ -1,4 +1,5 @@
 const { validationResult } = require('express-validator');
+const mongoose = require('mongoose');
 const Pet = require('../models/Pet');
 const Store = require('../models/Store');
 const { isPlatformAdmin, isStoreAdmin, isOperationalStaff } = require('../config/permissions');
@@ -10,6 +11,54 @@ const {
   buildCustomerVisibleStoreFilter,
   withCustomerComplianceFilter
 } = require('../utils/storeVisibility');
+const {
+  buildPublicPetFilter,
+  escapeRegex,
+  filterStoresByDistance,
+  isMarketplacePet,
+  normalizeCatalogImages
+} = require('../utils/catalogListing');
+
+const PET_LISTING_FIELDS = [
+  'name', 'species', 'breed', 'birthday', 'age', 'ageUnit', 'gender', 'size',
+  'color', 'description', 'price', 'images', 'weight', 'isNegotiable', 'dewormed',
+  'spayedNeutered', 'healthCondition', 'vetRecords', 'proofOfOwnership', 'permits',
+  'pickupAvailability', 'fulfillmentType', 'paymentConfig', 'depositAmount', 'status',
+  'vaccinationStatus', 'pedigreePapers', 'pcciRegistration', 'supportingDocuments',
+  'healthNotes', 'availabilityNotes', 'temperament', 'temperamentTraits',
+  'activityLevel', 'careNeeds', 'petCompatibility', 'videos', 'location',
+  'pickupInstructions', 'adoptionDetails', 'listingType'
+];
+
+const pickPetListingFields = input => Object.fromEntries(
+  PET_LISTING_FIELDS.filter(field => Object.prototype.hasOwnProperty.call(input || {}, field))
+    .map(field => [field, input[field]])
+);
+
+const resolvePublicStores = async (query = {}) => {
+  const ownerIds = await getCustomerVisibleOwnerIds();
+  const extra = {};
+  if (query.city) extra['contactInfo.address.city'] = { $regex: new RegExp(escapeRegex(query.city), 'i') };
+  let stores = await Store.find(
+    withCustomerComplianceFilter(buildCustomerVisibleStoreFilter(ownerIds, extra))
+  ).select('_id contactInfo.address.coordinates').lean();
+
+  const hasLatitude = query.latitude !== undefined && query.latitude !== '';
+  const hasLongitude = query.longitude !== undefined && query.longitude !== '';
+  if (hasLatitude !== hasLongitude) throw Object.assign(new Error('Both latitude and longitude are required.'), { statusCode: 400 });
+  if (hasLatitude) {
+    const latitude = Number(query.latitude);
+    const longitude = Number(query.longitude);
+    const radiusKm = query.radiusKm === undefined || query.radiusKm === '' ? 5 : Number(query.radiusKm);
+    if (!Number.isFinite(latitude) || latitude < -90 || latitude > 90
+        || !Number.isFinite(longitude) || longitude < -180 || longitude > 180
+        || !Number.isFinite(radiusKm) || radiusKm <= 0 || radiusKm > 100) {
+      throw Object.assign(new Error('Invalid location filter.'), { statusCode: 400 });
+    }
+    stores = filterStoresByDistance(stores, { lat: latitude, lng: longitude }, radiusKm);
+  }
+  return stores;
+};
 
 const toPublicPet = (pet) => {
   const publicPet = pet?.toObject ? pet.toObject() : { ...pet };
@@ -42,122 +91,24 @@ const toPublicPet = (pet) => {
 // Get all pets with filtering
 const getAllPets = async (req, res) => {
   try {
-    console.log('🐕 getAllPets called with path:', req.path);
-
-    const { species, breed, size, gender, minAge, maxAge, minPrice, maxPrice, search, isAvailable, city, page = 1, limit = 10 } = req.query;
-
-    const filter = {
-      isDeleted: { $ne: true },
-      approvalStatus: 'approved'
-    };
-
-    // Filter by City (if provided, we need to find stores in that city first)
-    if (city) {
-      const cityFilter = city.replace(/[nñ]/gi, '[nñ]');
-      const storesInCity = await Store.find({
-        'contactInfo.address.city': { $regex: new RegExp(cityFilter, 'i') }
-      }).select('_id');
-      const storeIds = storesInCity.map(s => s._id);
-      filter.store = { $in: storeIds };
-    }
-
-    // Check if this is an admin route (path starts with /admin)
-    const isAdminRoute = req.path.startsWith('/admin');
-    console.log('🔍 Request path:', req.path);
-    console.log('🔍 Original URL:', req.originalUrl);
-    console.log('🔍 Is admin route:', isAdminRoute);
-
-    // If admin route, filter by store or user for data isolation
-    if (isAdminRoute) {
-      if (req.user.role === 'admin' || req.user.role === 'staff') {
-          // Priority: filter by store if user is assigned to one
-          if (req.user.store) {
-              filter.store = req.user.store;
-          } else if (req.user.role === 'admin') {
-              // Fallback for admins without a store field set
-              filter.addedBy = req.user._id;
-          } else if (req.user.role === 'staff') {
-              // Staff MUST have a store
-              return res.status(403).json({ message: 'Staff account not assigned to a store.' });
-          }
-      }
-      console.log(`🔒 Multi-tenant isolation for ${req.user.role} - applying filter:`, JSON.stringify(filter, null, 2));
-    } else {
-      const ownerIds = await getCustomerVisibleOwnerIds();
-      const storeExtra = {};
-      if (city) {
-        const escapedCity = String(city).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        storeExtra['contactInfo.address.city'] = { $regex: new RegExp(escapedCity, 'i') };
-      }
-      const visibleStores = await Store.find(
-        withCustomerComplianceFilter(buildCustomerVisibleStoreFilter(ownerIds, storeExtra))
-      ).select('_id');
-      filter.store = { $in: visibleStores.map(store => store._id) };
-    }
-
-    if (isAvailable === 'true') {
-      filter.isAvailable = true;
-    } else if (isAvailable === 'false') {
-      filter.isAvailable = false;
-    }
-
-    if (species) filter.species = species;
-    if (breed) filter.breed = new RegExp(breed, 'i');
-    if (size) filter.size = size;
-    if (gender) filter.gender = gender;
-    if (minAge || maxAge) {
-      filter.age = {};
-      if (minAge) filter.age.$gte = parseInt(minAge);
-      if (maxAge) filter.age.$lte = parseInt(maxAge);
-    }
-    if (minPrice || maxPrice) {
-      filter.price = {};
-      if (minPrice) filter.price.$gte = parseFloat(minPrice);
-      if (maxPrice) filter.price.$lte = parseFloat(maxPrice);
-    }
-
-    // Add general search functionality
-    if (search && search !== '') {
-      filter.$or = [
-        { name: { $regex: search, $options: 'i' } },
-        { breed: { $regex: search, $options: 'i' } }
-      ];
-    }
-
-    console.log('🔍 Filter being used:', filter);
-
-    const publicListingFilter = {
-      $and: [
-        filter,
-        { $or: [{ quantity: { $exists: false } }, { quantity: null }, { quantity: 1 }] }
-      ]
-    };
-
+    const page = Math.max(1, Number.parseInt(req.query.page, 10) || 1);
+    const limit = Math.min(50, Math.max(1, Number.parseInt(req.query.limit, 10) || 10));
+    const visibleStores = await resolvePublicStores(req.query);
+    const publicListingFilter = buildPublicPetFilter(req.query, visibleStores.map(store => store._id));
     const skip = (page - 1) * limit;
     const pets = await Pet.find(publicListingFilter)
       .populate('addedBy', 'username firstName lastName')
       .populate('store', 'name contactInfo.address ratings stats verificationStatus')
-      .sort({ createdAt: -1 })
+      .sort({ createdAt: -1, _id: -1 })
       .skip(skip)
-      .limit(parseInt(limit));
+      .limit(limit);
 
     const total = await Pet.countDocuments(publicListingFilter);
-
-    console.log('📊 Found pets:', pets.length);
-    console.log('📊 Total pets:', total);
-
-    // Debug: Show pet owners
-    if (pets.length > 0) {
-      console.log('🐕 Pet owners:');
-      pets.forEach((pet, index) => {
-        console.log(`  ${index + 1}. Pet: ${pet.name}, AddedBy: ${pet.addedBy}, AddedByUser: ${pet.addedBy?.username || pet.addedBy}`);
-      });
-    }
 
     res.json({
       pets: pets.map(toPublicPet),
       pagination: {
-        currentPage: parseInt(page),
+        currentPage: page,
         totalPages: Math.ceil(total / limit),
         totalPets: total,
         hasNext: page * limit < total,
@@ -166,6 +117,7 @@ const getAllPets = async (req, res) => {
     });
   } catch (error) {
     console.error('Get pets error:', error);
+    if (error.statusCode) return res.status(error.statusCode).json({ message: error.message });
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -173,6 +125,9 @@ const getAllPets = async (req, res) => {
 // Get pet by ID
 const getPetById = async (req, res) => {
   try {
+    if (!mongoose.isValidObjectId(req.params.id)) {
+      return res.status(400).json({ message: 'Invalid pet identifier' });
+    }
     const pet = await Pet.findById(req.params.id)
       .populate('addedBy', 'username firstName lastName')
       .populate('store', 'name contactInfo.address ratings stats verificationStatus');
@@ -187,7 +142,7 @@ const getPetById = async (req, res) => {
 
     const isAdminRequest = req.baseUrl?.includes('/admin');
     if (!isAdminRequest) {
-      if (pet.approvalStatus !== 'approved') {
+      if (pet.approvalStatus !== 'approved' || !isMarketplacePet(pet)) {
         return res.status(404).json({ message: 'Pet not found or unavailable' });
       }
       const ownerIds = await getCustomerVisibleOwnerIds();
@@ -240,16 +195,14 @@ const createPet = async (req, res) => {
     const derivedAge = derivePetAge(req.body.birthday);
     if (!derivedAge.valid) return res.status(400).json({ message: derivedAge.message });
 
-    const {
-      quantity,
-      reservation,
-      adoptionDetails,
-      approvalStatus,
-      ratings,
-      addedBy,
-      store: submittedStore,
-      ...listingData
-    } = req.body;
+    const listingData = pickPetListingFields(req.body);
+    delete listingData.adoptionDetails;
+    listingData.images = normalizeCatalogImages(listingData.images, { required: true });
+    if (listingData.weight === '' || listingData.weight === null || listingData.weight === undefined) {
+      delete listingData.weight;
+    } else {
+      listingData.weight = Number(listingData.weight);
+    }
     const status = ['available', 'unavailable'].includes(listingData.status)
       ? listingData.status
       : 'available';
@@ -282,6 +235,7 @@ const createPet = async (req, res) => {
     });
   } catch (error) {
     console.error('Create pet error:', error);
+    if (error.statusCode) return res.status(error.statusCode).json({ message: error.message });
     // Check for specific Mongoose validation errors or duplicate key errors
     if (error.name === 'ValidationError') {
       const errors = Object.values(error.errors).map(err => err.message);
@@ -336,8 +290,14 @@ const updatePet = async (req, res) => {
 
     console.log('📝 updatePet PERMISSION GRANTED');
 
-    // List of fields that shouldn't be updated directly via this endpoint
-    const { _id, id, addedBy, store, createdAt, updatedAt, ratings, approvalStatus, quantity, reservation, ...updateData } = req.body;
+    const updateData = pickPetListingFields(req.body);
+    if (Object.prototype.hasOwnProperty.call(updateData, 'images')) {
+      updateData.images = normalizeCatalogImages(updateData.images, { required: true });
+    }
+    const clearWeight = Object.prototype.hasOwnProperty.call(updateData, 'weight')
+      && (updateData.weight === '' || updateData.weight === null);
+    if (clearWeight) delete updateData.weight;
+    else if (Object.prototype.hasOwnProperty.call(updateData, 'weight')) updateData.weight = Number(updateData.weight);
     updateData.paymentType = 'online_only';
     updateData.allowedPaymentMethods = ['paymongo'];
     updateData.paymentConfig = updateData.paymentConfig === 'deposit_first' ? 'deposit_first' : 'full_payment';
@@ -383,7 +343,10 @@ const updatePet = async (req, res) => {
 
     console.log('📝 updatePet EXECUTING UPDATE');
     const updateOperation = { $set: updateData };
-    if (!['reserved', 'sold', 'adopted'].includes(targetStatus)) updateOperation.$unset = { reservation: 1 };
+    const unset = {};
+    if (!['reserved', 'sold', 'adopted'].includes(targetStatus)) unset.reservation = 1;
+    if (clearWeight) unset.weight = 1;
+    if (Object.keys(unset).length) updateOperation.$unset = unset;
     const updatedPet = await Pet.findByIdAndUpdate(
       req.params.id,
       updateOperation,
@@ -402,6 +365,7 @@ const updatePet = async (req, res) => {
     });
   } catch (error) {
     console.error('📝 updatePet CRASHED:', error);
+    if (error.statusCode) return res.status(error.statusCode).json({ message: error.message });
     res.status(500).json({ 
       message: 'Server error during pet update', 
       error: error.message

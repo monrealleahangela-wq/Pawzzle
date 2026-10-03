@@ -23,6 +23,7 @@ const {
   PET_CARE_LEVELS,
   PET_COMPATIBILITY_LEVELS
 } = require('../utils/petListingAttributes');
+const { MAX_CATALOG_IMAGES, isCatalogImageReference } = require('../utils/catalogListing');
 
 const listingDocumentValidation = [
   body('pcciRegistration.status').optional().isIn(['yes', 'no', 'not_sure']).withMessage('Invalid PCCI registration status'),
@@ -50,14 +51,15 @@ const dssAttributeValidation = [
 // Validation rules (same as regular pets)
 const createPetValidation = [
   body('name').trim().notEmpty().withMessage('Pet name is required'),
-  body('images').isArray({ min: 1 }).withMessage('Pet photo is required'),
+  body('images').isArray({ min: 1, max: MAX_CATALOG_IMAGES }).withMessage(`Provide between 1 and ${MAX_CATALOG_IMAGES} pet images`),
+  body('images.*').custom(isCatalogImageReference).withMessage('Each pet image must be a valid uploaded image reference'),
   body('species').isIn(PET_SPECIES).withMessage('Invalid species'),
   body('breed').trim().notEmpty().withMessage('Breed is required'),
   body('age').optional().isInt({ min: 0 }).withMessage('Age must be zero or greater'),
   body('ageUnit').optional().isIn(['months', 'years']).withMessage('Invalid age unit'),
   body('gender').isIn(['male', 'female']).withMessage('Gender must be male or female'),
   body('size').isIn(PET_SIZES).withMessage('Invalid size'),
-  body('weight').optional().isFloat({ min: 0 }).withMessage('Weight cannot be negative'),
+  body('weight').optional({ checkFalsy: true }).isFloat({ gt: 0, max: 10000 }).withMessage('Weight must be greater than zero'),
   body('color').optional({ checkFalsy: true }).trim().isLength({ max: 100 }).withMessage('Color or markings are too long'),
   body('description').trim().notEmpty().withMessage('Description is required'),
   body('price').isFloat({ gt: 0 }).withMessage('Selling price must be greater than zero'),
@@ -84,6 +86,8 @@ const createPetValidation = [
 ];
 
 const updatePetValidation = [
+  body('images').optional().isArray({ min: 1, max: MAX_CATALOG_IMAGES }).withMessage(`Provide between 1 and ${MAX_CATALOG_IMAGES} pet images`),
+  body('images.*').optional().custom(isCatalogImageReference).withMessage('Each pet image must be a valid uploaded image reference'),
   body('name').optional().trim().notEmpty().withMessage('Pet name cannot be empty'),
   body('species').optional().isIn(PET_SPECIES).withMessage('Invalid species'),
   body('breed').optional().trim().notEmpty().withMessage('Breed cannot be empty'),
@@ -91,7 +95,7 @@ const updatePetValidation = [
   body('ageUnit').optional().isIn(['months', 'years']).withMessage('Invalid age unit'),
   body('gender').optional().isIn(['male', 'female']).withMessage('Gender must be male or female'),
   body('size').optional().isIn(PET_SIZES).withMessage('Invalid size'),
-  body('weight').optional().isFloat({ min: 0 }).withMessage('Weight cannot be negative'),
+  body('weight').optional({ checkFalsy: true }).isFloat({ gt: 0, max: 10000 }).withMessage('Weight must be greater than zero'),
   body('color').optional({ checkFalsy: true }).trim().isLength({ max: 100 }).withMessage('Color or markings are too long'),
   body('description').optional().trim().notEmpty().withMessage('Description cannot be empty'),
   body('price').optional().isFloat({ min: 0 }).withMessage('Price must be a positive number'),

@@ -88,7 +88,11 @@ test('existing backend controllers still implement real database search fields',
   const products = read('controllers/productController.js');
   const services = read('controllers/serviceController.js');
   const stores = read('controllers/storeController.js');
-  for (const source of [pets, products, services, stores]) {
+  assert.match(pets, /buildPublicPetFilter/);
+  const publicPetFilter = read('utils/catalogListing.js');
+  assert.match(publicPetFilter, /query\.search/);
+  assert.match(publicPetFilter, /\$regex: pattern/);
+  for (const source of [products, services, stores]) {
     assert.match(source, /\bsearch\b/);
     assert.match(source, /\$regex:\s*search/);
   }

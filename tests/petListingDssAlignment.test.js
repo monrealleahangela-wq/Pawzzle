@@ -130,11 +130,13 @@ test('create API requires aligned evidence and owns the approval/store identity 
     assert.match(routes, /temperamentTraits.*isArray\(\{ min: 1/);
     assert.match(routes, /activityLevel.*isIn\(PET_ACTIVITY_LEVELS\.filter/);
     assert.match(routes, /body\('birthday'\)\.isISO8601/);
-    assert.match(routes, /body\('images'\)\.isArray\(\{ min: 1 \}\)/);
+    assert.match(routes, /body\('images'\)\.isArray\(\{ min: 1, max: MAX_CATALOG_IMAGES \}\)/);
   }
   assert.match(controller, /approvalStatus: 'pending'/);
   assert.match(controller, /store: store\._id/);
-  assert.match(controller, /approvalStatus,[\s\S]*\.\.\.listingData/);
+  assert.match(controller, /const listingData = pickPetListingFields\(req\.body\)/);
+  const listingFields = controller.match(/const PET_LISTING_FIELDS = \[([\s\S]*?)\];/)?.[1] || '';
+  assert.doesNotMatch(listingFields, /'approvalStatus'/);
 });
 
 test('a valid aligned Add Pet payload is saved with authoritative Store and approval state', async () => {
@@ -201,7 +203,7 @@ test('Customer DSS query fetches every structured listing attribute used for sco
 test('customer visibility and purchase eligibility require Platform Admin approval', () => {
   const controller = read('controllers/petController.js');
   const availability = read('services/petAvailabilityService.js');
-  assert.match(controller, /approvalStatus: 'approved'/);
+  assert.match(read('utils/catalogListing.js'), /approvalStatus: 'approved'/);
   assert.doesNotMatch(controller, /approvalStatus:\s*\{\s*\$in:\s*\['approved',\s*'pending'\]/);
   assert.match(controller, /pet\.approvalStatus !== 'approved'/);
   assert.match(availability, /approvalStatus: 'approved'/);

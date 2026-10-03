@@ -7,44 +7,25 @@ import { getCitiesByProvince } from '../../constants/locationConstants';
 import { formatPeso } from '../../utils/paymentSummary';
 
 const CAVITE_CITIES = getCitiesByProvince('cavite');
-
-const calculateDistance = (lat1, lon1, lat2, lon2) => {
-  if (!lat1 || !lon1 || !lat2 || !lon2) return Infinity;
-  const R = 6371;
-  const dLat = (lat2 - lat1) * Math.PI / 180;
-  const dLon = (lon2 - lon1) * Math.PI / 180;
-  const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c;
+const SPECIES_OPTIONS = ['dog', 'cat', 'bird', 'fish', 'rabbit', 'hamster', 'reptile', 'other'];
+const SIZE_OPTIONS = ['small', 'medium', 'large', 'extra_large'];
+const EMPTY_FILTERS = {
+  species: '', breed: '', size: '', gender: '', minAge: '', maxAge: '',
+  minPrice: '', maxPrice: '', city: '', nearMe: false
 };
-
-const normalizeString = (str) => {
-  if (!str) return '';
-  return str.toString().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
-};
-
 
 const Pets = () => {
   const [pets, setPets] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [filters, setFilters] = useState({
-    species: '',
-    breed: '',
-    size: '',
-    gender: '',
-    minAge: '',
-    maxAge: '',
-    minPrice: '',
-    maxPrice: '',
-    city: '',
-    nearMe: false
-  });
+  const [filters, setFilters] = useState(EMPTY_FILTERS);
   const [userLocation, setUserLocation] = useState(null);
+  const [loadError, setLoadError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [showMobileFilters, setShowMobileFilters] = useState(false);
   const [pagination, setPagination] = useState({
     currentPage: 1,
     totalPages: 1,
+    totalPets: 0,
     hasNext: false,
     hasPrev: false
   });
@@ -54,11 +35,12 @@ const Pets = () => {
       fetchPets();
     }, 350);
     return () => clearTimeout(debounce);
-  }, [filters.species, filters.breed, filters.size, filters.gender, filters.minAge, filters.maxAge, filters.minPrice, filters.maxPrice, filters.city, pagination.currentPage, searchTerm]);
+  }, [filters.species, filters.breed, filters.size, filters.gender, filters.minAge, filters.maxAge, filters.minPrice, filters.maxPrice, filters.city, filters.nearMe, userLocation, pagination.currentPage, searchTerm]);
 
   const fetchPets = async () => {
     try {
       setLoading(true);
+      setLoadError('');
       const params = {
         ...filters,
         isAvailable: true,
@@ -68,38 +50,23 @@ const Pets = () => {
 
       // Clean up nearMe/city params since we might handle them differently
       delete params.nearMe;
+      if (filters.nearMe && userLocation) {
+        params.latitude = userLocation.lat;
+        params.longitude = userLocation.lng;
+        params.radiusKm = 5;
+      }
 
       if (searchTerm) {
         params.search = searchTerm;
       }
 
       const response = await petService.getAllPets(params);
-      let fetchedPets = response.data.pets || [];
-
-
-      if (filters.nearMe && userLocation) {
-        fetchedPets = fetchedPets
-          .map(p => {
-            const storeLat = p.store?.contactInfo?.address?.coordinates?.lat;
-            const storeLng = p.store?.contactInfo?.address?.coordinates?.lng;
-
-            const distance = (storeLat && storeLng) ? calculateDistance(
-              userLocation.lat,
-              userLocation.lng,
-              storeLat,
-              storeLng
-            ) : Infinity;
-
-            return { ...p, distance };
-          })
-          .filter(p => p.distance <= 5) // Enforce 5km radius
-          .sort((a, b) => a.distance - b.distance);
-      }
-
-      setPets(fetchedPets);
+      setPets(response.data.pets || []);
       setPagination(response.data.pagination || pagination);
     } catch (error) {
       console.error('Error fetching pets:', error);
+      setPets([]);
+      setLoadError(error.response?.data?.message || 'We could not load pets right now. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -128,6 +95,7 @@ const Pets = () => {
           lng: position.coords.longitude
         });
         setFilters(prev => ({ ...prev, nearMe: true, city: '' }));
+        setPagination(prev => ({ ...prev, currentPage: 1 }));
         setLoading(false);
         toast.success('Location found! Showing nearby pets.');
       },
@@ -141,7 +109,7 @@ const Pets = () => {
 
   const handleSearch = (e) => {
     e.preventDefault();
-    fetchPets();
+    setPagination(prev => ({ ...prev, currentPage: 1 }));
   };
 
   const handlePageChange = (page) => {
@@ -181,7 +149,7 @@ const Pets = () => {
                 placeholder="SEARCH BY BREED..."
                 className="input input-with-icon border-none rounded-xl text-[10px] sm:text-sm font-bold uppercase tracking-widest bg-slate-50 focus:ring-2 focus:ring-primary-500/20 transition-all font-sans"
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e) => { setSearchTerm(e.target.value); setPagination(prev => ({ ...prev, currentPage: 1 })); }}
               />
             </div>
             <button type="submit" className="bg-slate-900 text-white px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg active:scale-95 transition-all whitespace-nowrap">
@@ -213,11 +181,9 @@ const Pets = () => {
               </div>
               <button
                 onClick={() => {
-                  setFilters({
-                    species: '', breed: '', size: '', gender: '',
-                    minAge: '', maxAge: '', minPrice: '', maxPrice: '',
-                    city: '', nearMe: false
-                  });
+                  setFilters(EMPTY_FILTERS);
+                  setUserLocation(null);
+                  setPagination(prev => ({ ...prev, currentPage: 1 }));
                   setShowMobileFilters(false);
                 }}
                 className="text-[8px] font-black text-primary-600 uppercase tracking-widest"
@@ -261,17 +227,19 @@ const Pets = () => {
                   onChange={(e) => handleFilterChange('species', e.target.value)}
                 >
                   <option value="">All Species</option>
-                  <option value="dog">Dog</option>
-                  <option value="cat">Cat</option>
-                  <option value="bird">Bird</option>
-                  <option value="fish">Fish</option>
+                  {SPECIES_OPTIONS.map(species => <option key={species} value={species}>{species.replaceAll('_', ' ')}</option>)}
                 </select>
               </div>
 
               <div className="space-y-1.5">
+                <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest ml-1">Breed</label>
+                <input type="text" value={filters.breed} onChange={event => handleFilterChange('breed', event.target.value)} placeholder="Any breed" className="w-full px-3 py-2 bg-slate-50 rounded-xl text-[10px] font-bold border-none focus:ring-2 focus:ring-primary-500/10" />
+              </div>
+
+              <div className="space-y-1.5">
                 <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest ml-1">Size</label>
-                <div className="grid grid-cols-3 gap-1.5">
-                  {['small', 'medium', 'large'].map(s => (
+                <div className="grid grid-cols-4 gap-1.5">
+                  {SIZE_OPTIONS.map(s => (
                     <button
                       key={s}
                       onClick={() => handleFilterChange('size', filters.size === s ? '' : s)}
@@ -280,10 +248,20 @@ const Pets = () => {
                         : 'bg-slate-50 text-slate-500'
                         }`}
                     >
-                      {s[0]}
+                      {s === 'extra_large' ? 'XL' : s[0]}
                     </button>
                   ))}
                 </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest ml-1">Sex</label>
+                <select value={filters.gender} onChange={event => handleFilterChange('gender', event.target.value)} className="w-full px-3 py-2 bg-slate-50 rounded-xl text-[10px] font-black uppercase border-none"><option value="">Any</option><option value="male">Male</option><option value="female">Female</option></select>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest ml-1">Age (years)</label>
+                <div className="flex items-center gap-2"><input type="number" min="0" step="0.1" placeholder="MIN" value={filters.minAge} onChange={event => handleFilterChange('minAge', event.target.value)} className="w-full px-2 py-2 bg-slate-50 rounded-lg text-[9px] font-black border-none" /><input type="number" min="0" step="0.1" placeholder="MAX" value={filters.maxAge} onChange={event => handleFilterChange('maxAge', event.target.value)} className="w-full px-2 py-2 bg-slate-50 rounded-lg text-[9px] font-black border-none" /></div>
               </div>
 
               <div className="space-y-1.5">
@@ -320,16 +298,21 @@ const Pets = () => {
 
         {/* Dynamic Pet Grid */}
         <main className="w-full min-w-0 flex-1">
-          {pets.length === 0 ? (
+          {!loadError && !loading && <p className="mb-3 text-[9px] font-black uppercase tracking-widest text-slate-400">{pagination.totalPets || pets.length} pet{(pagination.totalPets || pets.length) === 1 ? '' : 's'} found</p>}
+          {loadError ? (
+            <div className="marketplace-empty-state card border-dashed border-2 bg-rose-50/40 flex flex-col items-center justify-center py-12 text-center">
+              <Heart className="h-8 w-8 text-rose-300 mb-3" />
+              <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest">Unable to Load Pets</h3>
+              <p className="mt-1 mb-4 max-w-md text-[10px] font-bold text-slate-500">{loadError}</p>
+              <button type="button" onClick={fetchPets} className="rounded-xl bg-slate-900 px-5 py-2.5 text-[10px] font-black uppercase tracking-widest text-white">Retry</button>
+            </div>
+          ) : pets.length === 0 ? (
             <div className="marketplace-empty-state card border-dashed border-2 bg-slate-50/50 flex flex-col items-center justify-center py-12 text-center">
               <Heart className="h-8 w-8 text-slate-300 mb-3" />
               <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest">No Pets Found</h3>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tight mt-1 mb-4">We couldn't find any pets with these filters</p>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tight mt-1 mb-4">{Object.values(filters).some(Boolean) || searchTerm ? "No pets match the current filters" : 'No publicly available pets right now'}</p>
               <button
-                onClick={() => setFilters({
-                  species: '', breed: '', size: '', gender: '',
-                  minAge: '', maxAge: '', minPrice: '', maxPrice: ''
-                })}
+                onClick={() => { setFilters(EMPTY_FILTERS); setUserLocation(null); setSearchTerm(''); setPagination(prev => ({ ...prev, currentPage: 1 })); }}
                 className="text-[10px] font-black text-primary-600 uppercase tracking-widest underline"
               >
                 Clear All Filters
@@ -350,7 +333,7 @@ const Pets = () => {
                       <img
                         src={getImageUrl(pet.images[0])}
                         alt={pet.name}
-                        onError={(e) => { e.target.onerror = null; e.target.src = "https://images.unsplash.com/photo-1543466835-00a7907e9de1?w=400&h=400&fit=crop"; }}
+                        onError={(e) => { e.target.onerror = null; e.target.src = '/images/placeholder-pet.png'; }}
                         className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
                       />
                     ) : (
@@ -387,11 +370,11 @@ const Pets = () => {
                     <div className="flex gap-2 mb-4">
                       <div className="px-2 py-1 bg-slate-50 rounded-lg flex items-center gap-1.5 border border-slate-100">
                         <div className="w-1 h-1 rounded-full bg-primary-500" />
-                        <span className="text-[8px] font-black text-slate-600 uppercase tracking-widest">{pet.age} {pet.ageUnit[0]}</span>
+                        <span className="text-[8px] font-black text-slate-600 uppercase tracking-widest">{pet.age ?? '?'} {pet.ageUnit?.[0] || ''}</span>
                       </div>
                       <div className="px-2 py-1 bg-slate-50 rounded-lg flex items-center gap-1.5 border border-slate-100">
                         <div className="w-1 h-1 rounded-full bg-secondary-500" />
-                        <span className="text-[8px] font-black text-slate-600 uppercase tracking-widest">{pet.gender[0]}</span>
+                        <span className="text-[8px] font-black text-slate-600 uppercase tracking-widest">{pet.gender?.[0] || '?'}</span>
                       </div>
                     </div>
 

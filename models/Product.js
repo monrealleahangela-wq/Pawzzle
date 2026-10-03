@@ -58,6 +58,18 @@ const productSchema = new mongoose.Schema({
     enum: ['piece', 'pack', 'box', 'bottle', 'bag', 'kg'],
     default: 'piece'
   },
+  // Optional seller-declared package weight. Delivery assignment continues to
+  // use the separately measured parcel weight recorded by Store staff.
+  weight: {
+    type: Number,
+    min: 0.001,
+    max: 10000
+  },
+  weightUnit: {
+    type: String,
+    enum: ['g', 'kg'],
+    default: 'kg'
+  },
   images: [{
     type: String,
     required: true

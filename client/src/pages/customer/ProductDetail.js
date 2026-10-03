@@ -20,6 +20,7 @@ const ProductDetail = () => {
   const [isFavorite, setIsFavorite] = useState(false);
   const [isTogglingFavorite, setIsTogglingFavorite] = useState(false);
   const [showFullDescription, setShowFullDescription] = useState(false);
+  const [mainImage, setMainImage] = useState(null);
   const { addToCart, buyNow } = useCart();
   const { isAuthenticated, user } = useAuth();
 
@@ -61,6 +62,7 @@ const ProductDetail = () => {
     try {
       const response = await productService.getProductById(id);
       setProduct(response.data.product);
+      setMainImage(response.data.product?.images?.[0] || null);
     } catch (error) {
       toast.error('We could not load this product. Please try again.');
     } finally {
@@ -157,12 +159,15 @@ const ProductDetail = () => {
 
       <div className="grid grid-cols-1 items-start gap-4 sm:gap-6 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:gap-8">
         {/* Product Image */}
-        <div className="flex aspect-[4/3] w-full items-center justify-center rounded-3xl border border-slate-100 bg-slate-50 p-5 shadow-sm sm:p-7 lg:sticky lg:top-4 lg:max-h-[34rem] lg:shadow-none">
-          {product.images?.[0] ? (
-            <img src={getImageUrl(product.images[0])} alt={product.name} className="w-full h-full object-contain" />
-          ) : (
-            <Package className="h-20 w-20 text-slate-200" />
-          )}
+        <div className="lg:sticky lg:top-4">
+          <div className="flex aspect-[4/3] w-full items-center justify-center rounded-3xl border border-slate-100 bg-slate-50 p-5 shadow-sm sm:p-7 lg:max-h-[34rem] lg:shadow-none">
+            {mainImage ? (
+              <img src={getImageUrl(mainImage)} alt={product.name} onError={() => setMainImage(null)} className="w-full h-full object-contain" />
+            ) : (
+              <Package className="h-20 w-20 text-slate-200" />
+            )}
+          </div>
+          {product.images?.length > 1 && <div className="mt-3 flex gap-2 overflow-x-auto pb-1">{product.images.map((image, index) => <button key={`${image}-${index}`} type="button" onClick={() => setMainImage(image)} className={`h-16 w-16 shrink-0 overflow-hidden rounded-xl border-2 bg-white ${mainImage === image ? 'border-primary-500' : 'border-slate-100 opacity-70'}`}><img src={getImageUrl(image)} alt={`${product.name} view ${index + 1}`} onError={event => { event.currentTarget.style.display = 'none'; }} className="h-full w-full object-cover" /></button>)}</div>}
         </div>
 
         {/* Product Details */}
@@ -207,9 +212,9 @@ const ProductDetail = () => {
             {[
               { label: 'Category', value: product.category },
               { label: 'Brand', value: product.brand || 'Premium' },
-              { label: 'Weight', value: `${product.weight || '0'} ${product.weightUnit || 'kg'}` },
+              product.weight ? { label: 'Package weight', value: `${product.weight} ${product.weightUnit || 'kg'}` } : null,
               { label: 'Good for', value: product.suitableFor?.[0] || 'All pets' }
-            ].map((stat, i) => (
+            ].filter(Boolean).map((stat, i) => (
               <div key={i} className="rounded-2xl border border-slate-100 bg-slate-50 px-3 py-2.5">
                 <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-0.5">{stat.label}</p>
                 <p className="text-[11px] font-black uppercase leading-tight text-slate-900 line-clamp-2 break-words sm:text-sm" title={String(stat.value)}>{stat.value}</p>

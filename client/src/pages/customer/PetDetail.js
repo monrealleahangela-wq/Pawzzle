@@ -31,6 +31,7 @@ const PetDetail = () => {
   const location = useLocation();
   const [pet, setPet] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(null);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [showChat, setShowChat] = useState(false);
   const [showInquiryModal, setShowInquiryModal] = useState(false);
@@ -44,10 +45,12 @@ const PetDetail = () => {
     const fetchPet = async () => {
       try {
         setLoading(true);
+        setLoadError(null);
         const response = await petService.getPetById(id);
         setPet(response.data.pet);
       } catch (error) {
-        toast.error('We could not load this pet. Please try again.');
+        const unavailable = [400, 404].includes(error.response?.status);
+        setLoadError(unavailable ? 'This pet is unavailable or no longer exists.' : 'We could not load this pet. Please try again.');
       } finally {
         setLoading(false);
       }
@@ -172,7 +175,7 @@ const PetDetail = () => {
     .slice(0, 4), [storeDetails, pet]);
 
   if (loading && !pet) return <div className="flex h-64 items-center justify-center"><div className="h-10 w-10 animate-spin rounded-full border-2 border-slate-200 border-t-primary-600" /></div>;
-  if (!pet) return <div className="py-16 text-center"><h2 className="text-xl font-black text-slate-900">Pet not found</h2><Link to="/pets" className="mt-4 inline-flex h-10 items-center rounded-xl bg-primary-600 px-4 text-xs font-black text-white">Back to Pets</Link></div>;
+  if (!pet) return <div className="py-16 text-center"><h2 className="text-xl font-black text-slate-900">Pet unavailable</h2><p className="mt-2 text-sm text-slate-500">{loadError || 'This pet could not be found.'}</p><div className="mt-4 flex justify-center gap-2">{loadError?.includes('try again') && <button type="button" onClick={() => window.location.reload()} className="inline-flex h-10 items-center rounded-xl border border-slate-200 px-4 text-xs font-black text-slate-700">Retry</button>}<Link to="/pets" className="inline-flex h-10 items-center rounded-xl bg-primary-600 px-4 text-xs font-black text-white">Back to Pets</Link></div></div>;
 
   const quickFacts = [
     { icon: PawPrint, label: 'Species', value: pet.species },

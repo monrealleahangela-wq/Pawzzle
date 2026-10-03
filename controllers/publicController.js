@@ -6,6 +6,7 @@ const Service = require('../models/Service');
 const Review = require('../models/Review');
 const { getPublicRecaptchaConfig } = require('../utils/captchaVerifier');
 const { getCustomerVisibleOwnerIds, buildCustomerVisibleStoreFilter, withCustomerComplianceFilter } = require('../utils/storeVisibility');
+const { buildPublicPetFilter } = require('../utils/catalogListing');
 
 // Public site keys are designed to be sent to browsers. The matching secret
 // remains server-only and is never included in this response.
@@ -18,6 +19,13 @@ const getCaptchaConfig = (_req, res) => {
 const getLandingPageData = async (req, res) => {
   try {
     const visibleOwnerIds = await getCustomerVisibleOwnerIds();
+    const visibleStores = await Store.find(
+      withCustomerComplianceFilter(buildCustomerVisibleStoreFilter(visibleOwnerIds))
+    ).select('_id').lean();
+    const publicPetFilter = buildPublicPetFilter(
+      { isAvailable: 'true' },
+      visibleStores.map(store => store._id)
+    );
     const [
       pets,
       products,
@@ -26,11 +34,7 @@ const getLandingPageData = async (req, res) => {
       stats
     ] = await Promise.all([
       // 1. Featured Pets
-      Pet.find({
-        isAvailable: true,
-        isDeleted: { $ne: true },
-        $or: [{ quantity: { $exists: false } }, { quantity: null }, { quantity: 1 }]
-      })
+      Pet.find(publicPetFilter)
         .sort({ featured: -1, createdAt: -1 })
         .limit(8)
         .select('name breed price images gender age description'),
@@ -60,11 +64,7 @@ const getLandingPageData = async (req, res) => {
       // 5. Accurate Platform Stats
       Promise.all([
         Store.countDocuments(withCustomerComplianceFilter(buildCustomerVisibleStoreFilter(visibleOwnerIds))),
-        Pet.countDocuments({
-          isAvailable: true,
-          isDeleted: { $ne: true },
-          $or: [{ quantity: { $exists: false } }, { quantity: null }, { quantity: 1 }]
-        }),
+        Pet.countDocuments(publicPetFilter),
         User.countDocuments({ role: 'staff', isActive: true, isDeleted: { $ne: true } }),
         Product.countDocuments({ isActive: true, isDeleted: { $ne: true } }),
         Service.countDocuments({ isActive: true, isDeleted: { $ne: true } })

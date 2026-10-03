@@ -77,8 +77,8 @@ test('pet and followed-store entry points cannot expose an inaccessible Store pr
   const petController = read('controllers/petController.js');
   const socialController = read('controllers/socialController.js');
 
-  assert.match(petController, /const visibleStores = await Store\.find\([\s\S]*withCustomerComplianceFilter\(buildCustomerVisibleStoreFilter/);
-  assert.match(petController, /filter\.store = \{ \$in: visibleStores\.map\(store => store\._id\) \}/);
+  assert.match(petController, /const resolvePublicStores[\s\S]*Store\.find\([\s\S]*withCustomerComplianceFilter\(buildCustomerVisibleStoreFilter/);
+  assert.match(petController, /buildPublicPetFilter\(req\.query, visibleStores\.map\(store => store\._id\)\)/);
   assert.match(petController, /const publicStore = await Store\.findOne\(withCustomerComplianceFilter\(buildCustomerVisibleStoreFilter/);
   assert.match(petController, /if \(!publicStore\) return res\.status\(404\)\.json\(\{ message: 'Pet not found or unavailable' \}\)/);
   assert.match(socialController, /Store\.find\(withCustomerComplianceFilter\(buildCustomerVisibleStoreFilter\(ownerIds/);
