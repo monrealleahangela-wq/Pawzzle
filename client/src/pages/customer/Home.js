@@ -98,7 +98,9 @@ const Home = () => {
       name: product.name,
       price: product.price,
       image: product.images?.[0],
-      store: product.store
+      storeName: product.store?.name,
+      storeId: product.store?._id,
+      storeAddress: product.store?.contactInfo?.address
     });
     toast.success(`Added ${product.name} to cart!`);
   };

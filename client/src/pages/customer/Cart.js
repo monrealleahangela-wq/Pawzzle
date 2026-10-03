@@ -189,9 +189,21 @@ const Cart = () => {
                         {item.itemType}
                       </span>
                     </div>
-                    <p className="text-[8px] sm:text-xs font-bold text-slate-400 uppercase tracking-widest opacity-60">
-                      {formatPeso(item.price)} • @{item.storeName}
-                    </p>
+                    <div className="flex flex-wrap items-center gap-1 text-[8px] font-bold uppercase tracking-widest text-slate-400 opacity-60 sm:text-xs">
+                      <span>{formatPeso(item.price)}</span>
+                      <span aria-hidden="true">•</span>
+                      {item.storeId && item.storeName ? (
+                        <Link
+                          to={`/stores/${item.storeId}`}
+                          className="transition-colors hover:text-primary-600 hover:underline"
+                          aria-label={`View ${item.storeName} store`}
+                        >
+                          {item.storeName}
+                        </Link>
+                      ) : (
+                        <span>{item.storeName || 'Store unavailable'}</span>
+                      )}
+                    </div>
                   </div>
 
                   <div className="flex items-center justify-between sm:justify-end gap-3 sm:gap-10">

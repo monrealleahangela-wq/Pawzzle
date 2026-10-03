@@ -37,9 +37,6 @@ const Checkout = () => {
   // Use only selected items for checkout
   const checkoutItems = React.useMemo(() => items.filter(item => item.selected), [items]);
 
-  // Calculate total price for selected items only
-  const checkoutTotalPrice = checkoutItems.reduce((total, item) => total + (item.price * item.quantity), 0);
-
   // All hooks must be called before any conditional returns
   const [isLoading, setIsLoading] = useState(false);
   const [editAddress, setEditAddress] = useState(false);
@@ -462,16 +459,19 @@ const Checkout = () => {
       return;
     }
 
+    const quotedStoreId = pricingQuote?.store?._id;
+    const quotedSubtotal = Number(pricingQuote?.pricingBreakdown?.subtotal);
+    if (!quotedStoreId || !Number.isFinite(quotedSubtotal)) {
+      toast.error('Wait for the current order total before applying a voucher.');
+      return;
+    }
+
     setIsVerifyingVoucher(true);
     try {
-      // For now, we take the storeId of the first item if multiple stores exist
-      // In a real multi-vendor setup, we'd need to handle store-specific vouchers better
-      const storeId = checkoutItems[0]?.storeId;
-
       const response = await voucherService.verifyVoucher({
         code: codeToUse.toUpperCase(),
-        storeId: storeId,
-        purchaseAmount: checkoutTotalPrice
+        storeId: quotedStoreId,
+        purchaseAmount: quotedSubtotal
       });
 
       setAppliedVoucher(response.data.voucher);
@@ -490,7 +490,12 @@ const Checkout = () => {
     
     const voucher = mv.voucher;
     const now = new Date();
-    const currentStoreId = checkoutItems[0]?.storeId;
+    const currentStoreId = pricingQuote?.store?._id;
+    const currentSubtotal = Number(pricingQuote?.pricingBreakdown?.subtotal);
+
+    if (!currentStoreId || !Number.isFinite(currentSubtotal)) {
+      return { isValid: false, reason: 'Total unavailable' };
+    }
     
     // Check shop applicability
     // Handle both object and string ID comparison
@@ -503,7 +508,7 @@ const Checkout = () => {
     }
     
     // Check minimum purchase
-    if (checkoutTotalPrice < voucher.minPurchase) {
+    if (currentSubtotal < voucher.minPurchase) {
       return { isValid: false, reason: `Min. ₱${voucher.minPurchase.toLocaleString()}` };
     }
     

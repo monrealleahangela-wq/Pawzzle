@@ -724,15 +724,18 @@ const Bookings = ({ isSubcomponent = false }) => {
     setIsVerifyingVoucher(true);
     try {
       const storeId = selectedService.store?._id || selectedService.store;
-      let purchaseAmount = selectedService.price;
-      if (bookingForm.isHomeService) {
-        purchaseAmount += selectedService.homeServicePrice || 0;
-      }
+      const { breakdown } = calculateServicePrice(
+        selectedService,
+        bookingForm.pet,
+        { date: bookingForm.bookingDate, startTime: bookingForm.startTime, isHomeService: bookingForm.isHomeService },
+        bookingForm.selectedAddOns,
+        bookingForm.selectedConditions
+      );
 
       const response = await voucherService.verifyVoucher({
         code: codeToUse.toUpperCase(),
         storeId,
-        purchaseAmount
+        purchaseAmount: breakdown.subtotal
       });
 
       setAppliedVoucher(response.data.voucher);

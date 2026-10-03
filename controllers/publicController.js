@@ -43,7 +43,8 @@ const getLandingPageData = async (req, res) => {
       Product.find({ isActive: true, isDeleted: { $ne: true } })
         .sort({ featured: -1, createdAt: -1 })
         .limit(8)
-        .select('name price images category stockQuantity'),
+        .select('name price images category stockQuantity store')
+        .populate('store', 'name contactInfo.address'),
       
       // 3. Best Services
       Service.find({ isActive: true, isDeleted: { $ne: true } })
