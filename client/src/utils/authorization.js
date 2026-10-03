@@ -4,7 +4,7 @@ export const OPERATIONAL_ROLES = new Set([
   'staff', 'manager', 'service_staff', 'cashier', 'inventory_staff', 'procurement_officer',
   'finance_staff', 'veterinarian', 'veterinary_technician', 'veterinary_assistant',
   'veterinary_nurse', 'veterinary_laboratory_technician', 'groomer', 'trainer',
-  'boarding_staff', 'delivery_dispatcher', 'delivery_rider', 'auditor'
+  'boarding_staff', 'delivery_rider', 'auditor'
 ]);
 
 export const CARE_PROFESSIONAL_ROLES = new Set([
@@ -28,7 +28,6 @@ const DIRECT_ROLE_RESOURCES = {
   groomer: ['customers', 'pets', 'services', 'bookings'],
   trainer: ['customers', 'pets', 'services', 'bookings'],
   boarding_staff: ['customers', 'pets', 'services', 'bookings'],
-  delivery_dispatcher: ['orders', 'logistics', 'reports'],
   delivery_rider: ['deliveries'],
   auditor: ['reports', 'audit']
 };
@@ -42,10 +41,9 @@ const LEGACY_STAFF_ROLE_MAP = {
   cashier: 'cashier',
   procurement_officer: 'procurement_officer',
   finance_staff: 'finance_staff',
-  delivery_dispatcher: 'delivery_dispatcher',
   service_management_staff: 'manager',
   administrative_support: 'manager',
-  logistics_staff: 'delivery_dispatcher',
+  logistics_staff: 'retired_delivery_dispatcher',
   delivery_rider: 'delivery_rider',
   boarding_specialist: 'boarding_staff',
   boarding_staff: 'boarding_staff',
@@ -77,6 +75,7 @@ export const isProfessionalVerificationPending = user => requiresProfessionalVer
 
 export const hasUiPermission = (user, resource) => {
   if (!user || !resource) return false;
+  if (effectiveStaffType(user) === 'retired_delivery_dispatcher') return false;
   if (PLATFORM_ADMIN_ROLES.has(user.role) || STORE_ADMIN_ROLES.has(user.role)) return true;
   const override = user.permissions?.[resource];
   if (typeof override === 'boolean') return override;
@@ -91,6 +90,7 @@ export const hasUiPermission = (user, resource) => {
 
 export const hasUiActionPermission = (user, resource, action, inherited = false) => {
   if (!user || !resource || !action) return false;
+  if (effectiveStaffType(user) === 'retired_delivery_dispatcher') return false;
   const flatOverride = user.permissions?.[`${resource}.${action}`];
   if (typeof flatOverride === 'boolean') return flatOverride;
   const resourceOverride = user.permissions?.[resource];

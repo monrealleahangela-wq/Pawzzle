@@ -12,6 +12,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 import Layout from './components/Layout';
 import RoleBasedRedirect from './components/RoleBasedRedirect';
 import DeliveryTracking from './pages/DeliveryTracking';
+import RiderDeliveryPage from './pages/RiderDeliveryPage';
 import PawCursor from './components/PawCursor';
 import { useTheme } from './contexts/ThemeContext';
 import ChatManagement from './pages/shared/ChatManagement';
@@ -143,7 +144,6 @@ function App() {
                 <Route path="/oauth-callback" element={<OAuthCallback />} />
                 <Route path="/seller-join" element={<SellerJoin />} />
                 <Route path="/supplier/activate/:token" element={<SupplierActivation />} />
-                <Route path="/rider-track/:token" element={<DeliveryTracking isRider={true} />} />
                 <Route path="/track/:token" element={<DeliveryTracking isRider={false} />} />
 
                 {/* Protected Routes with Layout */}
@@ -189,7 +189,8 @@ function App() {
 
                   {/* Admin Routes */}
                   {/* Dashboard - all staff types can see */}
-                  <Route path="admin/dashboard" element={<ProtectedRoute roles={['admin', 'super_admin', 'staff']}><AdminDashboard /></ProtectedRoute>} />
+                  <Route path="admin/dashboard" element={<ProtectedRoute roles={['admin', 'super_admin', 'staff', 'delivery_rider']}><AdminDashboard /></ProtectedRoute>} />
+                  <Route path="rider/deliveries/:deliveryId" element={<ProtectedRoute roles={['delivery_rider', 'staff']} staffTypes={['delivery_rider']}><RiderDeliveryPage /></ProtectedRoute>} />
 
                   {/* Catalog - inventory access */}
                   <Route path="admin/pets" element={<ProtectedRoute roles={['admin', 'super_admin', 'staff']} staffTypes={['inventory_staff']} requiredPermission="inventory"><AdminPets /></ProtectedRoute>} />

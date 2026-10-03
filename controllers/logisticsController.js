@@ -47,6 +47,8 @@ const serializeDelivery = delivery => {
     statusLabel: getDeliveryStatusLabel(row.status),
     linkStatus: getDeliveryLinkStatus({ ...row, assignmentType })
   };
+  delete payload.riderToken;
+  delete payload.isRiderVerified;
   delete payload.thirdPartyRider;
   delete payload.providerDelivery;
   return payload;
@@ -159,7 +161,7 @@ const getDeliveries = async (req, res) => {
       ]);
       filters.push({
         $or: [
-          { riderToken: pattern }, { trackingToken: pattern }, { order: { $in: orderIds } },
+          { trackingToken: pattern }, { order: { $in: orderIds } },
           { booking: { $in: bookingIds } }, { assignedRider: { $in: riderIds } }
         ]
       });
@@ -205,7 +207,6 @@ const getDeliveryDetails = async (req, res) => {
       .populate('payout', 'payoutId status amount referenceNumber processedAt');
     const payload = serializeDelivery(delivery);
     payload.links = {
-      rider: delivery.assignmentType === 'internal' ? `${clientUrl()}/rider-track/${delivery.riderToken}` : null,
       customer: `${clientUrl()}/track/${delivery.trackingToken}`,
       status: payload.linkStatus
     };

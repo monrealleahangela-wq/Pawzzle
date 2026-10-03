@@ -18,7 +18,7 @@ const {
 const STAFF_ROLES = [
   'manager', 'service_staff', 'cashier', 'inventory_staff', 'procurement_officer',
   'finance_staff', 'veterinarian', 'groomer', 'trainer', 'boarding_staff',
-  'delivery_dispatcher', 'delivery_rider', 'auditor'
+  'delivery_rider', 'auditor'
 ];
 const activeStaffFilter = () => ({
   isDeleted: false, isActive: true, staffStatus: { $nin: ['archived', 'suspended', 'inactive'] },

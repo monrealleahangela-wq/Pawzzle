@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 const { validationResult } = require('express-validator');
 const Order = require('../models/Order');
+const Delivery = require('../models/Delivery');
 const Pet = require('../models/Pet');
 const Product = require('../models/Product');
 const Store = require('../models/Store');
@@ -9,14 +10,14 @@ const { createNotification, notifyStoreStaff } = require('./notificationControll
 const User = require('../models/User');
 const Voucher = require('../models/Voucher');
 const { internalCreateDelivery } = require('./deliveryController');
+const { cancelOrderDelivery, completePickupOrder } = require('../services/deliveryAssignmentService');
+const { emitAuthorizedDeliveryEvent, revokeDeliveryRoomForUser } = require('../services/socketAuthorization');
 const { calculateOrderPricing } = require('../services/orderPricingService');
 const { isPlatformAdmin, isStoreAdmin, isOperationalStaff, hasPermission } = require('../config/permissions');
 const { getAuthorizedStoreIds, canOperateStore, idsEqual } = require('../utils/authorizationPolicy');
 const { normalizeRefundPolicy, snapshotRefundPolicy, requiresAcknowledgment } = require('../utils/refundPolicy');
 const {
-  finalizePetReservation,
   getPetAvailabilityIssue,
-  releasePetReservation,
   reservePetForOrder
 } = require('../services/petAvailabilityService');
 
@@ -25,6 +26,9 @@ const canViewRetailOrders = user => isPlatformAdmin(user)
   || hasPermission(user, 'orders.view');
 const canManageRetailOrders = user => isPlatformAdmin(user)
   || hasPermission(user, 'sales.manage') || hasPermission(user, 'orders.update');
+const DELIVERY_CONTROLLED_ORDER_STATUSES = new Set([
+  'rider_assigned', 'picked_up', 'in_transit', 'delivered', 'delivery_failed', 'returned'
+]);
 
 // Get all orders (Admin only) or user's own orders (Customer)
 const getAllOrders = async (req, res) => {
@@ -496,6 +500,20 @@ const updateOrderStatus = async (req, res) => {
        return res.json({ message: 'Order metadata updated', order });
     }
 
+    const linkedDelivery = order.deliveryMethod === 'delivery'
+      ? await Delivery.findOne({ order: order._id }).select('_id status isLive')
+      : null;
+    if (linkedDelivery && status === 'cancelled') {
+      return res.status(409).json({ message: 'Use the Order cancellation action so the linked Delivery and rider capacity are closed together.' });
+    }
+    if (order.deliveryMethod === 'delivery' && DELIVERY_CONTROLLED_ORDER_STATUSES.has(status)) {
+      return res.status(409).json({ message: 'This status is controlled by the authenticated Delivery Rider workflow.' });
+    }
+    if (order.deliveryMethod === 'delivery' && DELIVERY_CONTROLLED_ORDER_STATUSES.has(order.status)
+        && !(order.status === 'delivered' && status === 'completed')) {
+      return res.status(409).json({ message: 'The linked Delivery must complete its authoritative lifecycle before this Order can change state.' });
+    }
+
     // Validate Transition (Bypass for super_admin for recovery)
     if (!isPlatformAdmin(req.user)) {
       const allowedNext = VALID_NEXT_STATES[order.status] || [];
@@ -581,148 +599,77 @@ const cancelOrder = async (req, res) => {
     if (!customerOwnsOrder && !isPlatformAdmin(req.user) && !storeCanCancel) {
       return res.status(403).json({ message: 'Access denied' });
     }
-    if (order.paymentStatus === 'paid') {
-      return res.status(409).json({ message: 'A paid order must be refunded through PayMongo before cancellation.' });
+    const cancellation = await cancelOrderDelivery({ orderId: order._id, actorId: req.user._id });
+    if (!cancellation.changed) return res.json({ message: 'Order is already cancelled' });
+    const cancelledOrder = cancellation.order;
+    const cancelledDelivery = cancellation.delivery;
+
+    const secondaryEffects = [];
+    if (cancelledDelivery) {
+      const io = req.app.get('socketio');
+      secondaryEffects.push((async () => {
+        await revokeDeliveryRoomForUser(io, cancelledDelivery._id, cancelledDelivery.assignedRider);
+        await emitAuthorizedDeliveryEvent(io, cancelledDelivery._id, 'statusChanged', {
+          deliveryId: cancelledDelivery._id,
+          status: 'cancelled'
+        });
+        const payload = { deliveryId: String(cancelledDelivery._id), status: 'cancelled', timestamp: new Date() };
+        if (cancelledDelivery.store) io?.to(`store_${cancelledDelivery.store}`).emit('deliveryUpdate', payload);
+        io?.to(`user_${cancelledOrder.customer}`).emit('deliveryUpdate', payload);
+        if (cancelledDelivery.assignedRider) io?.to(`user_${cancelledDelivery.assignedRider}`).emit('deliveryUpdate', payload);
+      })());
     }
-
-    // Check if order can be cancelled - only pending orders can be cancelled by customers
-    if (['confirmed', 'processing', 'shipped', 'delivered'].includes(order.status)) {
-      return res.status(400).json({ message: 'Order cannot be cancelled once confirmed or processed' });
-    }
-
-    // Restore product stock for cancelled orders ONLY if stock was already deducted (confirmed or beyond)
-    // Pets are restored regardless of status since they are marked unavailable immediately on order
-    const stockWasDeducted = ['confirmed', 'processing', 'shipped', 'delivered'].includes(order.status);
-
-    for (const item of order.items) {
-      if (item.itemType === 'product' && stockWasDeducted) {
-        try {
-          const product = await Product.findById(item.itemId);
-          if (product) {
-            // Find the seller's store for this product to restore inventory
-            const sellerStore = await Store.findOne({ owner: product.addedBy });
-
-            if (sellerStore) {
-              console.log(`🔄 Restoring stock for cancelled item: ${item.name} (${item.quantity} units) to store ${sellerStore._id}`);
-              await StockSyncService.addStockOnRestock(item.itemId, item.quantity, sellerStore._id);
-            } else {
-              console.warn(`⚠️ No store found for seller ${product.addedBy}, restoring product-level stock only`);
-              product.stockQuantity += item.quantity;
-              await product.save();
-            }
-          }
-        } catch (restoreError) {
-          console.error(`❌ Failed to restore stock for item ${item.itemId}:`, restoreError);
-          // Continue with other items even if one fails
-        }
-      } else if (item.itemType === 'pet') {
-        await releasePetReservation({ petId: item.itemId, source: 'order', referenceId: order._id });
-      }
-    }
-
-    // Decrement voucher usage if order is cancelled
-    if (order.voucher) {
-      await Voucher.findByIdAndUpdate(order.voucher, { $inc: { usedCount: -1 } });
-      console.log(`🎫 Voucher usage REVERSED for order #${order._id} due to cancellation.`);
-    }
-
-    order.status = 'cancelled';
-    await order.save();
-
-    res.json({ message: 'Order cancelled successfully' });
 
     // Notify the other party about cancellation
     const isCustomer = customerOwnsOrder;
-    await createNotification({
-      recipient: isCustomer ? order.addedBy : order.customer,
+    secondaryEffects.push(createNotification({
+      recipient: isCustomer ? cancelledOrder.addedBy : cancelledOrder.customer,
       sender: req.user._id,
       type: 'order_status',
       title: 'Order Cancelled',
-      message: `Order #${order._id.toString().slice(-6)} has been cancelled by the ${isCustomer ? 'customer' : 'store'}.`,
-      relatedId: order._id,
+      message: `Order #${cancelledOrder._id.toString().slice(-6)} has been cancelled by the ${isCustomer ? 'customer' : 'store'}.`,
+      relatedId: cancelledOrder._id,
       relatedModel: 'Order'
+    }));
+    const secondaryResults = await Promise.allSettled(secondaryEffects);
+    secondaryResults.filter(result => result.status === 'rejected').forEach(result => {
+      console.error('Post-cancellation secondary effect failed:', result.reason?.message || result.reason);
     });
+
+    res.json({ message: 'Order cancelled successfully' });
   } catch (error) {
     console.error('Cancel order error:', error);
-    res.status(500).json({ message: 'Server error' });
+    res.status(error.statusCode || 500).json({ message: error.statusCode ? error.message : 'Server error' });
   }
 };
 
 // Confirm order pickup (Buyer confirming they received the pet/item)
 const confirmOrderPickup = async (req, res) => {
   try {
-    const order = await Order.findById(req.params.id);
+    const result = await completePickupOrder({ orderId: req.params.id, customerId: req.user._id });
+    const order = result.order;
 
-    if (!order) {
-      return res.status(404).json({ message: 'Order not found' });
-    }
-
-    // Only buyer can confirm pickup for their own order
-    if (order.customer.toString() !== req.user._id.toString()) {
-      return res.status(403).json({ message: 'Access denied. Only the buyer can confirm receipt' });
-    }
-
-    if (order.paymentStatus !== 'paid') {
-      return res.status(400).json({ message: 'Order must be paid before confirming pickup' });
-    }
-
-    if (order.status === 'delivered') {
-      return res.status(400).json({ message: 'Pickup has already been confirmed' });
-    }
-
-    order.status = 'delivered';
-    order.payoutStatus = 'released';
-    order.pickupSession.verifiedAt = new Date();
-
-    // Mark pets as SOLD
-    for (const item of order.items) {
-      if (item.itemType === 'pet') {
-        const soldPet = await finalizePetReservation({
-          petId: item.itemId,
-          source: 'order',
-          referenceId: order._id,
-          status: 'sold'
-        });
-        if (!soldPet) return res.status(409).json({ message: `Pet "${item.name}" is not reserved for this order.` });
-      }
-    }
-
-    // Calculate Platform Commission (e.g., 10%)
-    const commissionRate = 0.10;
-    order.platformCommission = order.totalAmount * commissionRate;
-    const netPayout = order.totalAmount - order.platformCommission;
-
-    await order.save();
-
-    // Update Store Balance
-    if (order.store) {
-      const store = await Store.findById(order.store);
-      if (store) {
-        store.balance = (store.balance || 0) + netPayout;
-        store.stats.totalRevenue = (store.stats.totalRevenue || 0) + order.totalAmount;
-        store.stats.totalPlatformFees = (store.stats.totalPlatformFees || 0) + order.platformCommission;
-        await store.save();
-      }
+    // Notify seller about payout release
+    const notificationResult = await Promise.allSettled([createNotification({
+      recipient: order.addedBy,
+      sender: req.user._id,
+      type: 'payout_released',
+      title: 'Payout Released',
+      message: `Pickup confirmed for order #${order._id.toString().slice(-6)}. The seller payout is now released.`,
+      relatedId: order._id,
+      relatedModel: 'Order'
+    })]);
+    if (notificationResult[0].status === 'rejected') {
+      console.error('Post-pickup notification failed:', notificationResult[0].reason?.message || notificationResult[0].reason);
     }
 
     res.json({
       message: 'Pickup confirmed and payout released to seller',
       order: await Order.findById(order._id).populate('customer', 'username firstName lastName email')
     });
-
-    // Notify seller about payout release
-    await createNotification({
-      recipient: order.addedBy,
-      sender: req.user._id,
-      type: 'payout_released',
-      title: 'Payout Released',
-      message: `Pickup confirmed for order #${order._id.toString().slice(-6)}. ₱${netPayout.toLocaleString()} has been added to your balance.`,
-      relatedId: order._id,
-      relatedModel: 'Order'
-    });
   } catch (error) {
     console.error('Confirm pickup error:', error);
-    res.status(500).json({ message: 'Server error' });
+    res.status(error.statusCode || 500).json({ message: error.statusCode ? error.message : 'Server error' });
   }
 };
 

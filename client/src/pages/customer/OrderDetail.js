@@ -3,13 +3,14 @@ import { useNavigate, useParams, Link, useLocation } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { orderService, adminOrderService, paymentService, deliveryService, reviewService, staffService, getImageUrl } from '../../services/apiService';
 import { useAuth } from '../../contexts/AuthContext';
-import { Heart, Package, ArrowLeft, Truck, CreditCard, MapPin, Store, Star, CheckCircle, AlertCircle, Link2, Navigation, Phone, Activity, ChevronDown, ChevronUp, MessageSquare, FileText, ClipboardCheck } from 'lucide-react';
+import { Heart, Package, ArrowLeft, Truck, CreditCard, MapPin, Store, Star, CheckCircle, AlertCircle, Navigation, Phone, Activity, ChevronDown, ChevronUp, MessageSquare, FileText, ClipboardCheck } from 'lucide-react';
 import OrderReviewModal from '../../components/OrderReviewModal';
 import ReviewModal from '../../components/ReviewModal';
 import DeliveryAssignmentFields from '../../components/delivery/DeliveryAssignmentFields';
 import { normalizeRefundPolicy, refundPolicyLabel } from '../../utils/refundPolicy';
 import PaymentBreakdown from '../../components/payments/PaymentBreakdown';
 import { formatPeso, orderLineItemRows, orderPaymentSummary, paymentSummaryRows } from '../../utils/paymentSummary';
+import { useRealTimeUpdates } from '../../hooks/useRealTimeUpdates';
 
 const OrderDetail = () => {
   const { id } = useParams();
@@ -27,7 +28,7 @@ const OrderDetail = () => {
   const [isTimelineCollapsed, setIsTimelineCollapsed] = useState(user?.role !== 'customer');
   const [isGeneratingInvoice, setIsGeneratingInvoice] = useState(false);
   const [eligibleRiders, setEligibleRiders] = useState([]);
-  const [selectedRiderId, setSelectedRiderId] = useState('');
+  const [deliveryParcel, setDeliveryParcel] = useState({ weightKg: '', parcelCount: 1 });
   const [deliveryAssignment, setDeliveryAssignment] = useState(null);
   const [riderReviewOpen, setRiderReviewOpen] = useState(false);
   const [riderReviewEligibility, setRiderReviewEligibility] = useState({ checked: false, isEligible: false, reason: null });
@@ -50,7 +51,6 @@ const OrderDetail = () => {
         }
         return;
       }
-      if(delivery?.assignmentType==='internal') setSelectedRiderId(delivery.assignedRider?._id||delivery.assignedRider||'');
     }).catch(()=>{});
   }, [order?._id, order?.delivery, user?.role]);
 
@@ -118,6 +118,8 @@ const OrderDetail = () => {
       setLoading(false);
     }
   };
+
+  useRealTimeUpdates({ onDeliveryUpdate: fetchOrder, onOrderUpdate: fetchOrder });
 
   const fetchOrderReviews = async (orderData) => {
     try {
@@ -197,14 +199,12 @@ const OrderDetail = () => {
     }
   };
 
-  const handleGenerateRiderLink = async () => {
+  const handleAssignRider = async () => {
     try {
-      if (!selectedRiderId) return toast.error('Select an active Delivery Rider first.');
-      const response = await deliveryService.generateLinks({ orderId: id, assignmentType: 'internal', riderId: selectedRiderId });
-      const url = response.data.riderLink;
+      if (!Number(deliveryParcel.weightKg)) return toast.error('Enter the measured parcel weight first.');
+      const response = await deliveryService.assignRider({ orderId: id, parcel: deliveryParcel });
       setDeliveryAssignment(response.data.delivery || null);
-      await navigator.clipboard.writeText(url);
-      toast.success('Rider tracking link copied!', { description: 'The internal rider also receives this assignment in Pawzzle.', icon: <Link2 className="text-primary-600" /> });
+      toast.success('Delivery Rider assigned automatically.');
       fetchOrder(); // Refresh to show delivery status if needed
     } catch (error) {
       toast.error(error.response?.data?.message || 'We could not prepare this delivery. Please try again.');
@@ -756,8 +756,8 @@ const OrderDetail = () => {
                   Delivery Timeline
                 </h2>
                 <div className="flex items-center gap-3">
-                  <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border ${order.delivery.isRiderVerified ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-slate-100 text-slate-500 border-slate-200'}`}>
-                    {order.delivery.isRiderVerified ? 'Rider Verified' : 'Awaiting Rider'}
+                  <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border ${order.delivery.assignmentType === 'internal' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-slate-100 text-slate-500 border-slate-200'}`}>
+                    {order.delivery.assignmentType === 'internal' ? 'Rider Assigned' : 'Awaiting Rider'}
                   </span>
                   {user?.role !== 'customer' && (
                     isTimelineCollapsed ? <ChevronDown className="h-5 w-5 text-slate-400" /> : <ChevronUp className="h-5 w-5 text-slate-400" />
@@ -936,24 +936,24 @@ const OrderDetail = () => {
               </div>
             </div>
           )}
-          {user?.role !== 'customer' && order.deliveryMethod === 'delivery' && !['cancelled', 'delivered', 'completed', 'finalized'].includes(order.status) && (
+          {user?.role !== 'customer' && order.deliveryMethod === 'delivery' && ['ready_for_pickup', 'rider_assigned'].includes(order.status) && (
             <div className="card p-6 border-2 border-primary-100 bg-primary-50/10">
               <h2 className="text-sm font-black text-slate-900 uppercase tracking-widest mb-4 flex items-center gap-2">
                 <Truck className="h-4 w-4 text-primary-600" />
-                Dispatch Control
+                Delivery Assignment
               </h2>
               <div className="space-y-4">
                 <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest leading-relaxed">
-                  Assign an active Delivery Rider and use the existing secure delivery link for navigation and proof of delivery.
+                  Pawzzle assigns an active internal rider. Navigation and proof tools stay inside the rider's authenticated workspace.
                 </p>
-                <DeliveryAssignmentFields riders={eligibleRiders} selectedRiderId={selectedRiderId} onRiderChange={setSelectedRiderId}/>
+                <DeliveryAssignmentFields riders={eligibleRiders} parcel={deliveryParcel} onParcelChange={setDeliveryParcel}/>
                 {deliveryAssignment?.assignmentType === 'internal' && <div className="p-3 rounded-xl bg-white border text-xs"><p className="text-[9px] font-black uppercase text-slate-400">Current Delivery Method</p><p className="font-black text-slate-800">Pawzzle Rider</p><p className="text-slate-500">{deliveryAssignment.assignedRider?.firstName} {deliveryAssignment.assignedRider?.lastName} · {deliveryAssignment.assignedRider?.riderProfile?.staffId}</p></div>}
                 <button
-                  onClick={handleGenerateRiderLink}
+                  onClick={handleAssignRider}
                   className={`w-full py-4 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all shadow-lg flex items-center justify-center gap-2 group ${order.delivery ? 'bg-emerald-600 text-white hover:bg-emerald-700' : 'bg-slate-900 text-white hover:bg-primary-600'}`}
                 >
-                  <Link2 className="h-4 w-4 group-hover:rotate-12 transition-transform" />
-                  {order.delivery ? 'Copy rider tracking link' : 'Create delivery link'}
+                  <Truck className="h-4 w-4" />
+                  {order.delivery ? 'Reassign Rider Automatically' : 'Assign Rider Automatically'}
                 </button>
                 {order.delivery && (
                   <>

@@ -69,7 +69,7 @@ const getAdminMenu = (user) => {
 
   const hasAccess = (requiredRoles) => {
     if (isGlobalAdmin) return true;
-    if (role === 'delivery_dispatcher' && requiredRoles.includes('logistics_staff')) return true;
+    if (effectiveStaffType(user) === 'retired_delivery_dispatcher') return false;
     if (role === 'manager' && requiredRoles.includes('logistics_staff')) return true;
     if (role === 'staff' && requiredRoles.includes(staffType)) return true;
     return false;

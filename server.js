@@ -15,9 +15,9 @@ const cors = require('cors');
 const path = require('path');
 const http = require('http');
 const socketIo = require('socket.io');
-const { authenticateSocket, canAccessDeliveryRoom, canAccessConversationRoom, deriveDeliverySender } = require('./services/socketAuthorization');
+const { authenticateSocket, canAccessDeliveryRoom, canAccessConversationRoom } = require('./services/socketAuthorization');
 const { canAccessStore } = require('./utils/authorizationPolicy');
-const { isPlatformAdmin, isStoreAdmin, isOperationalStaff } = require('./config/permissions');
+const { isPlatformAdmin, isStoreAdmin, isOperationalStaff, hasPermission } = require('./config/permissions');
 
 const app = express();
 const server = http.createServer(app);
@@ -163,7 +163,9 @@ io.on('connection', (socket) => {
 
   socket.on('joinStore', async (storeId) => {
     const authorized = socket.user
-      && (isPlatformAdmin(socket.user) || isStoreAdmin(socket.user) || isOperationalStaff(socket.user))
+      && (isPlatformAdmin(socket.user) || isStoreAdmin(socket.user)
+        || (isOperationalStaff(socket.user)
+          && (hasPermission(socket.user, 'logistics.view') || hasPermission(socket.user, 'logistics.manage'))))
       && await canAccessStore(socket.user, storeId);
     if (!authorized) return;
     socket.join(`store_${storeId}`);
@@ -192,32 +194,6 @@ io.on('connection', (socket) => {
     data = { conversationId: data.conversationId, userId: socket.user._id };
     // data: { conversationId, userId }
     socket.to(`conversation_${data.conversationId}`).emit('userStopTyping', data);
-  });
-
-  socket.on('updateLocation', async (data) => {
-    if (!(await canAccessDeliveryRoom(socket, data?.deliveryId, { mutate: true }))) return;
-    data = { deliveryId: data.deliveryId, lat: data.lat, lng: data.lng, heading: data.heading, speed: data.speed };
-    // data: { deliveryId, lat, lng, heading, speed }
-    io.to(`delivery_${data.deliveryId}`).emit('locationUpdate', data);
-  });
-
-  socket.on('statusUpdate', async (data) => {
-    if (!(await canAccessDeliveryRoom(socket, data?.deliveryId, { mutate: true }))) return;
-    data = { deliveryId: data.deliveryId, status: data.status };
-    // data: { deliveryId, status }
-    io.to(`delivery_${data.deliveryId}`).emit('statusChanged', data);
-  });
-
-  socket.on('sendMessage', async (data) => {
-    if (!(await canAccessDeliveryRoom(socket, data?.deliveryId))) return;
-    data = {
-      deliveryId: data.deliveryId,
-      sender: deriveDeliverySender(socket),
-      content: data.content,
-      timestamp: data.timestamp || new Date()
-    };
-    // data: { deliveryId, sender, content, timestamp }
-    io.to(`delivery_${data.deliveryId}`).emit('newMessage', data);
   });
 
   socket.on('disconnect', () => {

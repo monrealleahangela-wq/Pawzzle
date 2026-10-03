@@ -63,7 +63,6 @@ const ProtectedRoute = ({ children, roles = [], staffTypes = [], requiredPermiss
     const aliases = {
       cashier: ['sales_staff', 'order_staff'],
       manager: ['service_management_staff', 'administrative_support', 'logistics_staff'],
-      delivery_dispatcher: ['logistics_staff'],
       boarding_staff: ['boarding_specialist']
     };
     const allowedType = staffTypes.includes(type) || (aliases[type] || []).some(alias => staffTypes.includes(alias));

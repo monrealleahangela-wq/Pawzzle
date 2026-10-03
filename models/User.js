@@ -170,6 +170,15 @@ const userSchema = new mongoose.Schema({
     plateNumber: { type: String, trim: true, uppercase: true, default: '' },
     licenseId: { type: String, trim: true, default: '' },
     deliveryZone: { type: String, trim: true, default: '' },
+    vehicleCapacity: {
+      maxWeightKg: { type: Number, min: 0, default: 0 },
+      maxParcelCount: { type: Number, min: 0, default: 0 }
+    },
+    currentLoad: {
+      weightKg: { type: Number, min: 0, default: 0 },
+      parcelCount: { type: Number, min: 0, default: 0 }
+    },
+    lastAssignedAt: { type: Date, default: null },
     earningRules: {
       baseRate: { type: Number, min: 0, default: 0 },
       incentive: { type: Number, min: 0, default: 0 },

@@ -23,7 +23,7 @@ const SPECIALIST_ROLES = [
 const OPERATIONAL_STAFF_ROLES = [
   'manager', 'service_staff', 'cashier', 'inventory_staff', 'procurement_officer',
   'finance_staff', 'veterinarian', 'groomer', 'trainer', 'boarding_staff',
-  'delivery_dispatcher', 'delivery_rider'
+  'delivery_rider'
 ];
 
 const startOfDay = date => new Date(date.getFullYear(), date.getMonth(), date.getDate());

@@ -67,7 +67,7 @@ test('editable role catalog contains only supported operational roles', () => {
   assert.deepEqual(EDITABLE_ROLES, [
     'manager', 'service_staff', 'cashier', 'inventory_staff', 'procurement_officer',
     'finance_staff', 'veterinarian', 'groomer', 'trainer', 'boarding_staff',
-    'delivery_dispatcher', 'delivery_rider'
+    'delivery_rider'
   ]);
   assert.equal(EDITABLE_ROLES.includes('customer'), false);
   assert.equal(EDITABLE_ROLES.includes('supplier'), false);

@@ -7,24 +7,27 @@ class StockSyncService {
    * @param {string} productId - Product ID
    * @param {string} storeId - Store ID (optional, for multi-store sync)
    */
-  static async updateProductStockFromInventory(productId, storeId = null) {
+  static async updateProductStockFromInventory(productId, storeId = null, options = {}) {
     try {
+      const { session } = options;
       console.log('🔧 Updating product stock from inventory:', { productId, storeId });
 
       let totalQuantity = 0;
 
       if (storeId) {
         // Get inventory for specific store
-        const inventory = await Inventory.findOne({ product: productId, store: storeId, isActive: true });
+        const query = Inventory.findOne({ product: productId, store: storeId, isActive: true });
+        const inventory = await (session ? query.session(session) : query);
         totalQuantity = inventory ? inventory.quantity : 0;
       } else {
         // Sum all inventory across all stores
-        const inventories = await Inventory.find({ product: productId, isActive: true });
+        const query = Inventory.find({ product: productId, isActive: true });
+        const inventories = await (session ? query.session(session) : query);
         totalQuantity = inventories.reduce((sum, inv) => sum + inv.quantity, 0);
       }
 
       // Update product stock
-      await Product.findByIdAndUpdate(productId, { stockQuantity: totalQuantity });
+      await Product.findByIdAndUpdate(productId, { stockQuantity: totalQuantity }, session ? { session } : {});
       console.log('✅ Product stock updated:', { productId, totalQuantity });
 
       return totalQuantity;
@@ -166,10 +169,12 @@ class StockSyncService {
    * @param {number} quantity - Quantity to add
    * @param {string} storeId - Store ID
    */
-  static async addStockOnRestock(productId, quantity, storeId) {
+  static async addStockOnRestock(productId, quantity, storeId, options = {}) {
     try {
+      const { session } = options;
       // Update inventory
-      const inventory = await Inventory.findOne({ product: productId, store: storeId, isActive: true });
+      const query = Inventory.findOne({ product: productId, store: storeId, isActive: true });
+      const inventory = await (session ? query.session(session) : query);
 
       if (!inventory) {
         throw new Error('Inventory record not found for this product and store');
@@ -177,10 +182,10 @@ class StockSyncService {
 
       inventory.quantity += quantity;
       inventory.lastRestocked = new Date();
-      await inventory.save();
+      await inventory.save(session ? { session } : undefined);
 
       // Update product stock (sum across all stores)
-      await this.updateProductStockFromInventory(productId);
+      await this.updateProductStockFromInventory(productId, null, { session });
 
       return inventory.quantity;
     } catch (error) {

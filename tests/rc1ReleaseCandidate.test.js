@@ -63,7 +63,7 @@ test('sensitive mutation routes retain authentication and permission middleware'
     ['routes/products.js', /router\.post\('\/', authenticate, adminOrStaff, requirePermission/],
     ['routes/staff.js', /router\.use\(authenticate, adminOnly\)/],
     ['routes/stores.js', /router\.put\('\/my-store', authenticate, adminOnly/],
-    ['routes/delivery.js', /router\.post\('\/generate', authenticate, requirePermission/]
+    ['routes/delivery.js', /router\.post\('\/assign', authenticate, requirePermission\('logistics\.manage'\)/]
   ];
   for (const [file, pattern] of checks) assert.match(source(file), pattern);
 });

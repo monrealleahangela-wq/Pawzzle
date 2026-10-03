@@ -135,6 +135,19 @@ const deliverySchema = new mongoose.Schema({
     default: null
   },
   assignedAt: Date,
+  parcel: {
+    weightKg: { type: Number, min: 0 },
+    parcelCount: { type: Number, min: 1 },
+    recordedAt: Date,
+    recordedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
+  },
+  capacityReservation: {
+    rider: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    weightKg: { type: Number, min: 0 },
+    parcelCount: { type: Number, min: 1 },
+    reservedAt: Date,
+    releasedAt: Date
+  },
   feeCalculation: {
     distanceKm: Number,
     distanceMethod: String,
@@ -245,5 +258,8 @@ deliverySchema.pre('save', function(next) {
   }
   next();
 });
+
+deliverySchema.index({ order: 1 }, { unique: true, partialFilterExpression: { order: { $type: 'objectId' } } });
+deliverySchema.index({ booking: 1 }, { unique: true, partialFilterExpression: { booking: { $type: 'objectId' } } });
 
 module.exports = mongoose.model('Delivery', deliverySchema);

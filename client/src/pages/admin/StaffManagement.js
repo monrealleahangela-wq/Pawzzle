@@ -18,7 +18,7 @@ const ROLE_GROUPS = [
   ['Procurement', [['procurement_officer', 'Procurement Officer']]],
   ['Finance', [['finance_staff', 'Finance Staff']]],
   ['Pet Care', [['veterinarian', 'Veterinarian'], ['groomer', 'Groomer'], ['trainer', 'Trainer'], ['boarding_staff', 'Boarding Staff']]],
-  ['Delivery', [['delivery_dispatcher', 'Delivery Dispatcher'], ['delivery_rider', 'Delivery Rider']]]
+  ['Delivery', [['delivery_rider', 'Delivery Rider']]]
 ];
 const ROLES = ROLE_GROUPS.flatMap(([, roles]) => roles);
 const SPECIALISTS = ['veterinarian', 'groomer', 'trainer', 'boarding_staff'];
@@ -46,7 +46,7 @@ const emptyForm = () => ({
   address: { street: '', barangay: '', city: '', province: '', zipCode: '' },
   staffType: 'service_staff', targetStoreId: '', temporaryPassword: '', assignedServices: [],
   professionalProfile: { staffId: '', experienceYears: 0, bio: '', specialty: '', areasOfExpertise: [], certifications: [], availability: schedule(), leaveSchedule: [], registration: { type: '', number: '', expiresAt: '' } },
-  riderProfile: { vehicleType: '', plateNumber: '', licenseId: '', deliveryZone: '', accountStatus: 'active' }
+  riderProfile: { vehicleType: '', plateNumber: '', licenseId: '', deliveryZone: '', accountStatus: 'active', vehicleCapacity: { maxWeightKg: '', maxParcelCount: '' } }
 });
 const statusTone = value => ({ available: 'bg-emerald-50 text-emerald-700', busy: 'bg-blue-50 text-blue-700', break: 'bg-violet-50 text-violet-700', on_leave: 'bg-amber-50 text-amber-700', emergency_unavailable: 'bg-rose-50 text-rose-700', temporary_unavailable: 'bg-orange-50 text-orange-700', verified: 'bg-emerald-50 text-emerald-700', active: 'bg-emerald-50 text-emerald-700', archived: 'bg-slate-100 text-slate-600', suspended: 'bg-rose-50 text-rose-700' }[value] || 'bg-slate-100 text-slate-600');
 const Chip = ({ value, children }) => <span className={`inline-flex rounded-full px-2 py-1 text-[9px] font-bold uppercase tracking-wide ${statusTone(value)}`}>{children || String(value || 'pending').replaceAll('_', ' ')}</span>;
@@ -145,6 +145,7 @@ export default function StaffManagement() {
     if (wizard.step === 2 && (!form.staffType || !form.targetStoreId)) return 'Select a role and assigned store.';
     if (wizard.step === 2 && SPECIALISTS.includes(form.staffType) && !form.assignedServices.length) return 'Assign at least one compatible service.';
     if (wizard.step === 2 && form.staffType === 'delivery_rider' && (!form.riderProfile.vehicleType || !form.riderProfile.licenseId)) return 'Complete the rider license and vehicle details.';
+    if (wizard.step === 2 && form.staffType === 'delivery_rider' && (!(Number(form.riderProfile.vehicleCapacity?.maxWeightKg) > 0) || !(Number(form.riderProfile.vehicleCapacity?.maxParcelCount) > 0))) return 'Configure the rider vehicle weight and parcel capacity.';
     if (wizard.step === 3 && !wizard.editing && (!form.username.trim() || !form.temporaryPassword)) return 'Enter a username and temporary password.';
     return '';
   };
@@ -221,6 +222,7 @@ export default function StaffManagement() {
       {tab !== 'matrix' && <footer className="flex items-center justify-between border-t px-3 py-2 text-[11px] text-slate-500"><span>{rows.length ? `${(page-1)*pageSize+1}–${Math.min(page*pageSize,rows.length)} of ${rows.length}` : '0 staff'}</span><div className="flex gap-1"><button disabled={page===1} onClick={()=>setPage(value=>value-1)} className="h-8 w-8 rounded-lg border disabled:opacity-30"><ChevronLeft size={13} className="mx-auto"/></button><button disabled={page*pageSize>=rows.length} onClick={()=>setPage(value=>value+1)} className="h-8 w-8 rounded-lg border disabled:opacity-30"><ChevronRight size={13} className="mx-auto"/></button></div></footer>}
     </section>
     {wizard && <StaffWizard state={wizard} setState={setWizard} setForm={setForm} setProfessional={setProfessional} config={configuration} next={next} submit={submit} submitting={submitting}/>}
+    {wizard?.step===2&&wizard.form.staffType==='delivery_rider'&&<div className="fixed bottom-20 right-4 z-[80] grid w-[min(36rem,calc(100vw-2rem))] gap-3 rounded-xl border bg-white p-4 shadow-xl sm:grid-cols-2"><Field label="Maximum load (kg)" hint="Required for automatic assignments."><input className={input} type="number" min="0.1" step="0.1" value={wizard.form.riderProfile.vehicleCapacity?.maxWeightKg||''} onChange={event=>setForm({riderProfile:{...wizard.form.riderProfile,vehicleCapacity:{...wizard.form.riderProfile.vehicleCapacity,maxWeightKg:event.target.value}}})}/></Field><Field label="Maximum parcels" hint="Required for automatic assignments."><input className={input} type="number" min="1" step="1" value={wizard.form.riderProfile.vehicleCapacity?.maxParcelCount||''} onChange={event=>setForm({riderProfile:{...wizard.form.riderProfile,vehicleCapacity:{...wizard.form.riderProfile.vehicleCapacity,maxParcelCount:event.target.value}}})}/></Field></div>}
     {profile && <SpecializedStaffProfileModal data={profile} onClose={()=>setProfile(null)}/>}
     {confirm && <ConfirmDialog action={confirm} setAction={setConfirm} submit={runAction} submitting={submitting}/>}
   </div>;

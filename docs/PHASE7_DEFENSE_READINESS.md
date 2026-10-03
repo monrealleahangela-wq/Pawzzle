@@ -30,7 +30,7 @@ This document summarizes the verified application structure at the Phase 7 check
 - ✅ Inventory, service supplies, procurement, suppliers, and finance
 - ✅ Staff onboarding, profiles, schedules, availability, verification, and archive
 - ✅ Store-scoped role management with inherited permissions
-- ✅ Logistics, dispatcher, rider, reports, reviews, and store settings
+- ✅ Logistics, system-managed rider assignment, rider, reports, reviews, and store settings
 - ✅ Store-level refund policy and customer acknowledgement
 - ✅ Explainable DSS recommendations, forecasts, risks, and health score
 
@@ -85,7 +85,6 @@ This document summarizes the verified application structure at the Phase 7 check
 | Finance Staff | Finance, payment administration, and finance reporting | PASS |
 | Veterinarian | Assigned bookings, clinical records, vaccinations, and care updates | PASS |
 | Groomer, Trainer, Boarding Staff | Assigned services, progress, and care updates | PASS |
-| Delivery Dispatcher | Same-store assignment and logistics management | PASS |
 | Delivery Rider | Assigned deliveries and rider-owned status updates | PASS |
 
 Assigned-workflow execution against real records remains a staging UAT item.
@@ -105,7 +104,6 @@ Assigned-workflow execution against real records remains a staging UAT item.
 | Groomer | Assigned grooming services and progress updates | Assigned work / own store |
 | Trainer | Assigned training services and progress updates | Assigned work / own store |
 | Boarding Staff | Assigned boarding care and progress updates | Assigned work / own store |
-| Delivery Dispatcher | Delivery assignment, tracking, and reporting | Own store |
 | Delivery Rider | Own assigned deliveries and permitted status/location updates | Assigned deliveries |
 | Customer | Own account, pets, orders, bookings, messages, and deliveries | Own records |
 | Supplier | Own profile, catalog, purchase orders, and supplier invoices | Own supplier records |
@@ -125,4 +123,3 @@ Pawzzle is a multi-store pet commerce and service-management platform. Customers
 - Google OAuth: verify provider consent, callback, canonical role redirect, and logout in the deployed origin.
 - Email/OTP: verify sender configuration, delivery, expiry, resend throttling, and password-reset messages.
 - Responsive UAT: perform keyboard, screen-reader, and representative-device checks in deployed Chromium, Firefox, and Safari/WebKit.
-

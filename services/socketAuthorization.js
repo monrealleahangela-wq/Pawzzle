@@ -4,7 +4,7 @@ const Delivery = require('../models/Delivery');
 const Conversation = require('../models/Conversation');
 const Order = require('../models/Order');
 const Booking = require('../models/Booking');
-const { isPlatformAdmin, isStoreAdmin, isOperationalStaff } = require('../config/permissions');
+const { isPlatformAdmin, isStoreAdmin, isOperationalStaff, hasPermission } = require('../config/permissions');
 const { canAccessStore, idsEqual } = require('../utils/authorizationPolicy');
 const { canAccessConversation } = require('../utils/conversationAuthorization');
 const { attachStoreRolePolicy } = require('./rolePermissionService');
@@ -27,20 +27,20 @@ const authenticateSocket = async (socket, next) => {
       }
       await attachStoreRolePolicy(user);
       socket.user = user;
+      socket.data = { ...(socket.data || {}), userId: String(user._id) };
       return next();
     }
     if (deliveryToken) {
-      const delivery = await Delivery.findOne({
-        isLive: true,
-        $or: [{ riderToken: deliveryToken, assignmentType: 'internal' }, { trackingToken: deliveryToken }]
-      }).select('_id riderToken trackingToken isRiderVerified assignedRider assignmentType');
+      const delivery = await Delivery.findOne({ isLive: true, trackingToken: deliveryToken })
+        .select('_id trackingToken assignedRider assignmentType');
       if (!delivery) return next(new Error('Delivery capability is invalid or expired'));
       socket.deliveryCapability = {
         deliveryId: String(delivery._id),
-        kind: delivery.riderToken === deliveryToken ? 'rider' : 'customer',
+        kind: 'customer',
         token: deliveryToken,
         assignedRider: delivery.assignedRider
       };
+      socket.data = { ...(socket.data || {}), deliveryCapability: socket.deliveryCapability };
       return next();
     }
     return next(new Error('Authentication required'));
@@ -68,26 +68,58 @@ const getDeliveryRelationship = async deliveryId => {
 
 const canAccessDeliveryRoom = async (socket, deliveryId, { mutate = false } = {}) => {
   if (!deliveryId) return false;
-  if (socket.deliveryCapability) {
-    if (socket.deliveryCapability.deliveryId !== String(deliveryId)) return false;
-    if (!mutate) return true;
-    if (socket.deliveryCapability.kind !== 'rider') return false;
-    return Boolean(await Delivery.exists({
-      _id: deliveryId,
-      riderToken: socket.deliveryCapability.token,
-      assignmentType: 'internal',
-      isLive: true,
-      isRiderVerified: true
-    }));
+  const capability = socket.deliveryCapability || socket.data?.deliveryCapability;
+  if (capability) {
+    if (capability.deliveryId !== String(deliveryId) || mutate) return false;
+    return Boolean(await Delivery.exists({ _id: deliveryId, trackingToken: capability.token }));
   }
-  if (!socket.user) return false;
+  let user = socket.user;
+  if (!user && socket.data?.userId) {
+    user = await User.findOne({ _id: socket.data.userId, isActive: true, isDeleted: false }).select('-password');
+    if (user) await attachStoreRolePolicy(user);
+  }
+  if (!user) return false;
   const relationship = await getDeliveryRelationship(deliveryId);
   if (!relationship) return false;
-  if (isPlatformAdmin(socket.user)) return true;
-  if (idsEqual(relationship.customer, socket.user._id)) return !mutate;
-  if (idsEqual(relationship.delivery.assignedRider, socket.user._id)) return true;
-  if (!relationship.store || !(await canAccessStore(socket.user, relationship.store))) return false;
-  return isStoreAdmin(socket.user) || isOperationalStaff(socket.user);
+  if (isPlatformAdmin(user)) return true;
+  if (idsEqual(relationship.customer, user._id)) return !mutate;
+  if (idsEqual(relationship.delivery.assignedRider, user._id)) return true;
+  if (!relationship.store || !(await canAccessStore(user, relationship.store))) return false;
+  return isStoreAdmin(user) || (isOperationalStaff(user)
+    && (hasPermission(user, 'logistics.view') || hasPermission(user, 'logistics.manage')));
+};
+
+const revokeDeliveryRoomForUser = async (io, deliveryId, userId) => {
+  if (!io || !deliveryId || !userId) return true;
+  try {
+    const sockets = await io.in(`user_${String(userId)}`).fetchSockets();
+    await Promise.all(sockets.map(socket => socket.leave(`delivery_${String(deliveryId)}`)));
+    return true;
+  } catch (error) {
+    console.error('Delivery room revocation error:', error.message);
+    return false;
+  }
+};
+
+const pruneDeliveryRoom = async (io, deliveryId) => {
+  if (!io || !deliveryId) return false;
+  try {
+    const room = `delivery_${String(deliveryId)}`;
+    const sockets = await io.in(room).fetchSockets();
+    for (const socket of sockets) {
+      if (!(await canAccessDeliveryRoom(socket, deliveryId))) await socket.leave(room);
+    }
+    return true;
+  } catch (error) {
+    console.error('Delivery room authorization refresh error:', error.message);
+    return false;
+  }
+};
+
+const emitAuthorizedDeliveryEvent = async (io, deliveryId, event, payload) => {
+  if (!(await pruneDeliveryRoom(io, deliveryId))) return false;
+  io.to(`delivery_${String(deliveryId)}`).emit(event, payload);
+  return true;
 };
 
 const canAccessConversationRoom = async (socket, conversationId) => {
@@ -96,13 +128,12 @@ const canAccessConversationRoom = async (socket, conversationId) => {
   return conversation ? canAccessConversation(socket.user, conversation) : false;
 };
 
-const deriveDeliverySender = socket => socket.deliveryCapability?.kind
-  || (socket.user?.role === 'customer' ? 'customer' : 'rider');
-
 module.exports = {
   socketCredentials,
   authenticateSocket,
   canAccessDeliveryRoom,
   canAccessConversationRoom,
-  deriveDeliverySender
+  revokeDeliveryRoomForUser,
+  pruneDeliveryRoom,
+  emitAuthorizedDeliveryEvent
 };

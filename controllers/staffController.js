@@ -4,6 +4,7 @@ const Store = require('../models/Store');
 const crypto = require('crypto');
 const { sendStaffInvitation } = require('../utils/emailService');
 const Delivery = require('../models/Delivery');
+const { isAvailableNow } = require('../services/deliveryAssignmentService');
 const RiderEarning = require('../models/RiderEarning');
 const RiderPayout = require('../models/RiderPayout');
 const Service = require('../models/Service');
@@ -12,6 +13,7 @@ const Review = require('../models/Review');
 const ActivityLog = require('../models/ActivityLog');
 const { createNotification } = require('./notificationController');
 const { normalizeRole, getEffectivePermissions } = require('../config/permissions');
+const { riderDeliveryView, riderFeedbackView } = require('../utils/deliveryViews');
 const { policyForRole } = require('../services/rolePermissionService');
 const {
     SPECIALIZED_STAFF_ROLES,
@@ -83,7 +85,7 @@ const cleanProfessionalProfile = (profile = {}, existing = {}) => ({
     reviewCount: Number(existing.reviewCount || 0)
 });
 const isSpecializedAccount = user => SPECIALIZED_STAFF_ROLES.includes(getStaffSpecializationRole(user));
-const DIRECT_STAFF_ROLES = ['manager', 'service_staff', 'cashier', 'inventory_staff', 'procurement_officer', 'finance_staff', 'veterinarian', 'groomer', 'trainer', 'boarding_staff', 'delivery_dispatcher', 'delivery_rider'];
+const DIRECT_STAFF_ROLES = ['manager', 'service_staff', 'cashier', 'inventory_staff', 'procurement_officer', 'finance_staff', 'veterinarian', 'groomer', 'trainer', 'boarding_staff', 'delivery_rider'];
 const staffAccountFilter = (extra = {}, options = {}) => ({
     ...extra,
     isDeleted: false,
@@ -159,6 +161,15 @@ const cleanRiderProfile = (profile = {}, existing = {}) => ({
     plateNumber: String(profile.plateNumber ?? existing.plateNumber ?? '').trim().toUpperCase(),
     licenseId: String(profile.licenseId ?? existing.licenseId ?? '').trim(),
     deliveryZone: String(profile.deliveryZone ?? existing.deliveryZone ?? '').trim(),
+    vehicleCapacity: {
+        maxWeightKg: Number(profile.vehicleCapacity?.maxWeightKg ?? existing.vehicleCapacity?.maxWeightKg ?? 0),
+        maxParcelCount: Number(profile.vehicleCapacity?.maxParcelCount ?? existing.vehicleCapacity?.maxParcelCount ?? 0)
+    },
+    currentLoad: {
+        weightKg: Number(existing.currentLoad?.weightKg || 0),
+        parcelCount: Number(existing.currentLoad?.parcelCount || 0)
+    },
+    lastAssignedAt: existing.lastAssignedAt || undefined,
     earningRules: {
         baseRate: Number(profile.earningRules?.baseRate ?? existing.earningRules?.baseRate ?? 0),
         incentive: Number(profile.earningRules?.incentive ?? existing.earningRules?.incentive ?? 0),
@@ -178,6 +189,8 @@ const validateRider = (profile, phone) => {
     if (!profile.vehicleType) return 'Vehicle type is required for a Delivery Rider.';
     if (profile.vehicleType !== 'bicycle' && !profile.plateNumber) return 'Vehicle plate number is required.';
     if (!RIDER_STATUSES.includes(profile.accountStatus)) return 'Invalid rider account status.';
+    if (!Number.isFinite(profile.vehicleCapacity.maxWeightKg) || profile.vehicleCapacity.maxWeightKg <= 0) return 'Vehicle weight capacity must be greater than zero.';
+    if (!Number.isInteger(profile.vehicleCapacity.maxParcelCount) || profile.vehicleCapacity.maxParcelCount <= 0) return 'Vehicle parcel capacity must be a whole number greater than zero.';
     if (Object.values(profile.earningRules).some(value => !Number.isFinite(value) || value < 0)) return 'Earning values must be valid non-negative amounts.';
     if (profile.earningRules.deduction > profile.earningRules.baseRate + profile.earningRules.incentive + profile.earningRules.bonus) return 'Deduction cannot exceed the rider earning.';
     if (profile.payoutMethod.type && (!profile.payoutMethod.accountName || !profile.payoutMethod.accountNumber)) return 'Complete the selected payout account details.';
@@ -256,7 +269,7 @@ const createStaff = async (req, res) => {
             return res.status(400).json({ message: 'Missing required staff metadata fields' });
         }
         if (!EMAIL_PATTERN.test(cleanEmail)) return res.status(400).json({ message: 'Enter a valid email address.' });
-        if (!User.schema.path('staffType').enumValues.includes(staffType)) return res.status(400).json({ message: 'Invalid staff role.' });
+        if (!DIRECT_STAFF_ROLES.includes(staffType)) return res.status(400).json({ message: 'Select an active staff role.' });
         if (!['active', 'inactive', 'suspended'].includes(staffStatus)) return res.status(400).json({ message: 'Invalid staff status.' });
 
         // Verify store access
@@ -428,7 +441,11 @@ const updateStaff = async (req, res) => {
 
         const existingType = getStaffSpecializationRole(staff);
         const resultingType = staffType || existingType;
-        if (!User.schema.path('staffType').enumValues.includes(resultingType) && !(staff.role !== 'staff' && resultingType === staff.role)) return res.status(400).json({ message: 'Invalid staff role.' });
+        if (staffType && !DIRECT_STAFF_ROLES.includes(staffType)) return res.status(400).json({ message: 'Select an active staff role.' });
+        if (normalizeRole(staff) === 'retired_delivery_dispatcher' && !staffType) {
+            return res.status(409).json({ message: 'This historical dispatcher account must be assigned an active staff role before it can be updated.' });
+        }
+        if (!DIRECT_STAFF_ROLES.includes(resultingType) && !(staff.role !== 'staff' && resultingType === staff.role)) return res.status(400).json({ message: 'Invalid staff role.' });
         if (staffType && staffType !== existingType && staff.role !== 'staff') return res.status(400).json({ message: 'Direct specialized roles cannot be converted through the legacy staff-role editor.' });
         if (staffType && staffType !== existingType && !confirmRoleChange) {
             return res.status(409).json({ message: 'Confirm the staff role change before saving.', requiresRoleChangeConfirmation: true, previousRole: existingType, newRole: staffType });
@@ -697,7 +714,7 @@ const getStaffConfiguration = async (req, res) => {
             services,
             enabledSpecializedRoles: getEnabledSpecializedRoles(services),
             nextStaffId: `STF-${String(Number(store.staffSequence || 0) + 1).padStart(4, '0')}`,
-            availableRoles: ['manager', 'service_staff', 'cashier', 'inventory_staff', 'procurement_officer', 'finance_staff', 'veterinarian', 'groomer', 'trainer', 'boarding_staff', 'delivery_dispatcher', 'delivery_rider']
+            availableRoles: ['manager', 'service_staff', 'cashier', 'inventory_staff', 'procurement_officer', 'finance_staff', 'veterinarian', 'groomer', 'trainer', 'boarding_staff', 'delivery_rider']
         });
     } catch (error) {
         console.error('getStaffConfiguration error:', error);
@@ -1007,12 +1024,14 @@ const updateStaffAvailability = async (req, res) => {
 
 const getEligibleRiders = async (req, res) => {
     try {
-        const storeIds = ['super_admin', 'platform_admin'].includes(req.user.role)
+        const platformScope = ['super_admin', 'platform_admin'].includes(req.user.role);
+        const storeIds = platformScope
             ? (req.query.storeId ? [req.query.storeId] : [])
             : await getOwnedStoreIds(req.user);
+        if (!platformScope && !storeIds.length) return res.json({ riders: [] });
         const query = {
             $or: [{ role: 'delivery_rider' }, { role: 'staff', staffType: 'delivery_rider' }],
-            isDeleted: false, isActive: true,
+            isDeleted: false, isActive: true, staffStatus: 'active',
             'riderProfile.accountStatus': 'active'
         };
         if (storeIds?.length) query.store = { $in: storeIds };
@@ -1029,7 +1048,11 @@ const getEligibleRiders = async (req, res) => {
         res.json({ riders: riders.map(rider => {
             const activeDeliveryCount = byRider[rider._id.toString()] || 0;
             const rating = ratingsByRider[rider._id.toString()];
-            return { ...rider, activeDeliveryCount, averageRating: rating ? Number(rating.averageRating.toFixed(2)) : 0, totalRatings: rating?.totalRatings || 0, availability: activeDeliveryCount ? 'on_delivery' : 'available' };
+            const scheduleAvailable = isAvailableNow(rider);
+            const capacity = rider.riderProfile?.vehicleCapacity || {};
+            const load = rider.riderProfile?.currentLoad || {};
+            const configured = Number(capacity.maxWeightKg) > 0 && Number(capacity.maxParcelCount) > 0;
+            return { ...rider, activeDeliveryCount, averageRating: rating ? Number(rating.averageRating.toFixed(2)) : 0, totalRatings: rating?.totalRatings || 0, availability: !scheduleAvailable ? 'unavailable' : configured ? (activeDeliveryCount ? 'on_delivery' : 'available') : 'capacity_not_configured', remainingCapacity: { weightKg: Math.max(0, Number(capacity.maxWeightKg || 0) - Number(load.weightKg || 0)), parcelCount: Math.max(0, Number(capacity.maxParcelCount || 0) - Number(load.parcelCount || 0)) } };
         }) });
     } catch (error) {
         console.error('getEligibleRiders error:', error);
@@ -1044,15 +1067,15 @@ const getRiderDetails = async (req, res) => {
         if (!rider) return res.status(404).json({ message: 'Delivery Rider not found.' });
         if (req.user._id.toString() !== rider._id.toString() && !(await canAccessStore(req.user, rider.store._id || rider.store))) return res.status(403).json({ message: 'Access denied.' });
         const [deliveries, earnings, payouts, ratingRows, recentFeedback] = await Promise.all([
-            Delivery.find({ assignedRider: rider._id }).populate({ path: 'order', populate: { path: 'customer', select: 'firstName lastName' } }).sort({ createdAt: -1 }).limit(100).lean(),
-            RiderEarning.find({ rider: rider._id }).populate('delivery', 'trackingToken status deliveredAt proofOfDelivery').sort({ earnedAt: -1 }).lean(),
+            Delivery.find({ assignedRider: rider._id }).select('-riderToken').populate({ path: 'order', populate: { path: 'customer', select: 'firstName lastName' } }).populate({ path: 'booking', populate: { path: 'customer', select: 'firstName lastName' } }).sort({ createdAt: -1 }).limit(100).lean(),
+            RiderEarning.find({ rider: rider._id }).populate('delivery', '_id status deliveredAt').sort({ earnedAt: -1 }).lean(),
             RiderPayout.find({ rider: rider._id }).sort({ createdAt: -1 }).lean(),
             Review.aggregate([
                 { $match: { targetType: 'Delivery', staffId: rider._id, isApproved: true, isDeleted: { $ne: true } } },
                 { $group: { _id: '$staffId', averageRating: { $avg: '$rating' }, totalRatings: { $sum: 1 } } }
             ]),
             Review.find({ targetType: 'Delivery', staffId: rider._id, isApproved: true, isDeleted: { $ne: true } })
-                .select('rating comment deliveryId createdAt isAnonymous').populate('deliveryId', 'trackingToken deliveredAt').sort({ createdAt: -1 }).limit(10).lean()
+                .select('rating comment deliveryId createdAt isAnonymous').populate('deliveryId', '_id deliveredAt').sort({ createdAt: -1 }).limit(10).lean()
         ]);
         const completed = deliveries.filter(d => d.status === 'delivered').length;
         const failed = deliveries.filter(d => ['failed_attempt', 'returned_to_store'].includes(d.status)).length;
@@ -1062,7 +1085,7 @@ const getRiderDetails = async (req, res) => {
         res.json({
             rider,
             stats: { totalAssigned: deliveries.length, completed, failed, successRate: totalFinished ? Math.round(completed / totalFinished * 100) : 0, averageRating: ratingRows[0] ? Number(ratingRows[0].averageRating.toFixed(2)) : 0, totalRatings: ratingRows[0]?.totalRatings || 0 },
-            recentFeedback: recentFeedback.map(review => ({ _id: review._id, rating: review.rating, comment: review.comment, deliveryReference: review.deliveryId?.trackingToken, deliveredAt: review.deliveryId?.deliveredAt, createdAt: review.createdAt })),
+            recentFeedback: recentFeedback.map(riderFeedbackView),
             earnings: {
                 today: sum(earnings, e => new Date(e.earnedAt) >= startToday),
                 available: sum(earnings, e => e.status === 'available'),
@@ -1071,7 +1094,7 @@ const getRiderDetails = async (req, res) => {
                 records: earnings
             },
             payouts,
-            deliveries
+            deliveries: deliveries.map(riderDeliveryView)
         });
     } catch (error) {
         console.error('getRiderDetails error:', error);

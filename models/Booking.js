@@ -39,6 +39,11 @@ const bookingSchema = new mongoose.Schema({
     ref: 'Store',
     required: true
   },
+  delivery: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Delivery',
+    default: null
+  },
   pet: {
     name: { type: String, required: true },
     type: { type: String, required: true },

@@ -215,11 +215,7 @@ Rider app:
 - failed-attempt recording and COD collection/remittance;
 - rider earnings/fee view if within business policy.
 
-Assignment in the capstone can use a transparent score:
-
-`assignment score = 0.45 proximity + 0.25 current workload + 0.20 successful-delivery rate + 0.10 vehicle suitability`
-
-The dispatcher sees the reasons and confirms the assignment. Full multi-stop vehicle routing should remain future scope.
+Assignment is server-authoritative: Pawzzle filters active same-store riders by schedule and availability, then enforces remaining vehicle weight and parcel-count capacity against the measured parcel. It selects deterministically by current load and last assignment. Authorized Store logistics users may request assignment or reassignment; there is no separate dispatcher role. Full multi-stop vehicle routing remains future scope.
 
 ### 4.8 Communication and Notification
 
@@ -267,7 +263,6 @@ Use configurable roles, but seed the following templates. “Manage” includes 
 | Veterinarian | Clinical care | Assigned appointments, pet medical/vaccination history, encounters, prescriptions, vaccine administration, owner clinical updates | No unrelated customer financials; clinical entries require signed amendments, not silent overwrite |
 | Groomer | Grooming service delivery | Assigned pet profile safety summary, grooming preferences, booking progress, approved photos, consumable use | No diagnosis, prescriptions, full finance, supplier data, or unrelated medical details |
 | Trainer/Boarding Staff | Assigned care service | Assigned bookings, care instructions, behavior notes, progress/photos, incident escalation | No unrelated records or financial configuration |
-| Delivery Dispatcher | Fulfillment control | Ready jobs, fee calculation, rider assignment, status exceptions, delivery reports | No clinical records beyond delivery safety note |
 | Delivery Rider | Safe delivery | Own accepted jobs, minimum customer contact/address, navigation, status, proof, COD record | No customer directory, product costs, finance reports, or other riders' jobs |
 | Customer/Pet Owner | Self-service and consent | Own/delegated pets, bookings, medical summaries, service updates, purchases, invoices, delivery, messages | Cannot view internal notes, other customers, internal costs, or staff/private documents |
 | Supplier | Fulfill procurement | Own profile/catalog, received RFQs/POs, confirmations, shipping documents, invoices, own score summary/disputes | No other suppliers' quotations, customers, retail margins, or branch-wide inventory |

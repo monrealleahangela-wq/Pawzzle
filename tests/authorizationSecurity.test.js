@@ -6,6 +6,7 @@ const path = require('node:path');
 process.env.JWT_SECRET ||= 'test-only-jwt-secret';
 
 const Store = require('../models/Store');
+const Delivery = require('../models/Delivery');
 const {
   normalizeRole,
   hasPermission,
@@ -15,7 +16,7 @@ const {
 const { adminOrStaff, platformAdminOnly, requirePermission } = require('../middleware/auth');
 const { canOperateStore, idsEqual } = require('../utils/authorizationPolicy');
 const { isParticipant, canAccessConversation } = require('../utils/conversationAuthorization');
-const { socketCredentials, canAccessDeliveryRoom, deriveDeliverySender } = require('../services/socketAuthorization');
+const { socketCredentials, canAccessDeliveryRoom } = require('../services/socketAuthorization');
 const source = relativePath => fs.readFileSync(path.join(__dirname, '..', relativePath), 'utf8');
 
 const response = () => {
@@ -136,20 +137,28 @@ test('unauthenticated socket has no accepted credentials', () => {
 });
 
 test('delivery capability authorizes only its own room', async () => {
-  const socket = { deliveryCapability: { deliveryId: 'delivery-a', kind: 'customer' } };
-  assert.equal(await canAccessDeliveryRoom(socket, 'delivery-a'), true);
-  assert.equal(await canAccessDeliveryRoom(socket, 'delivery-b'), false);
+  const original = Delivery.exists;
+  Delivery.exists = async query => query._id === 'delivery-a' && query.trackingToken === 'customer-capability';
+  try {
+    const socket = { deliveryCapability: { deliveryId: 'delivery-a', kind: 'customer', token: 'customer-capability' } };
+    assert.equal(await canAccessDeliveryRoom(socket, 'delivery-a'), true);
+    assert.equal(await canAccessDeliveryRoom(socket, 'delivery-b'), false);
+  } finally {
+    Delivery.exists = original;
+  }
 });
 
 test('socket without identity cannot join a delivery room', async () => {
   assert.equal(await canAccessDeliveryRoom({}, 'delivery-a'), false);
 });
 
-test('socket sender identity is derived server-side and ignores spoofed payload identity', () => {
-  const socket = { deliveryCapability: { kind: 'customer' } };
-  const spoofedPayload = { sender: 'rider' };
-  assert.equal(deriveDeliverySender(socket), 'customer');
-  assert.notEqual(deriveDeliverySender(socket), spoofedPayload.sender);
+test('delivery mutations and sender identity are persisted by authenticated HTTP handlers', () => {
+  const server = source('server.js');
+  const controller = source('controllers/deliveryController.js');
+  assert.doesNotMatch(server, /socket\.on\('updateLocation'|socket\.on\('statusUpdate'|socket\.on\('sendMessage'/);
+  assert.match(controller, /const message = \{ sender: 'customer'/);
+  assert.match(controller, /const message = \{ sender: 'rider'/);
+  assert.match(controller, /assignedRider: req\.user\._id/);
 });
 
 test('platform payout processing uses the platform-only middleware', () => {

@@ -5,7 +5,7 @@ const { normalizeRole, ROLE_PERMISSIONS, getEffectivePermissions, isPlatformAdmi
 const EDITABLE_ROLES = [
   'manager', 'service_staff', 'cashier', 'inventory_staff', 'procurement_officer',
   'finance_staff', 'veterinarian', 'groomer', 'trainer', 'boarding_staff',
-  'delivery_dispatcher', 'delivery_rider'
+  'delivery_rider'
 ];
 
 const PERMISSION_CATALOG = {

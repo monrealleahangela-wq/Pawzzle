@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { orderService, getImageUrl } from '../../services/apiService';
 import { ShoppingBag, Clock, Package, Truck, CheckCircle, XCircle, ChevronLeft, ChevronRight, Star, Heart, Calendar, Receipt, MapPin } from 'lucide-react';
@@ -8,6 +8,7 @@ import Bookings from './Bookings';
 import { normalizeRefundPolicy, refundPolicyLabel } from '../../utils/refundPolicy';
 import PaymentBreakdown from '../../components/payments/PaymentBreakdown';
 import { formatPeso, orderPaymentSummary } from '../../utils/paymentSummary';
+import { useRealTimeUpdates } from '../../hooks/useRealTimeUpdates';
 
 const STATUS_META = {
   pending_payment: { label: 'Waiting for payment', color: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-100', icon: Clock },
@@ -31,9 +32,7 @@ const Orders = () => {
   const [ratingDelivery, setRatingDelivery] = useState(null);
   const [pagination, setPagination] = useState({ currentPage: 1, totalPages: 1, hasNext: false, hasPrev: false });
 
-  useEffect(() => { fetchOrders(); }, [pagination.currentPage]);
-
-  const fetchOrders = async () => {
+  const fetchOrders = useCallback(async () => {
     try {
       const response = await orderService.getAllOrders({ page: pagination.currentPage, limit: 10 });
       setOrders(response.data.orders || []);
@@ -43,7 +42,9 @@ const Orders = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [pagination.currentPage]);
+  useEffect(() => { fetchOrders(); }, [fetchOrders]);
+  useRealTimeUpdates({ onDeliveryUpdate: fetchOrders, onOrderUpdate: fetchOrders });
 
   if (loading) return (
     <div className="flex justify-center items-center py-20">

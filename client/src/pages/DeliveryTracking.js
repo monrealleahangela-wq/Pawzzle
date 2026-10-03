@@ -1,716 +1,86 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { MapContainer, TileLayer, Marker, Polyline, useMap } from 'react-leaflet';
+import { MapContainer, Marker, Popup, TileLayer } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import axios from 'axios';
-import { MapPin, MessageSquare, Navigation, CheckCircle, Package, Send, User, ShieldCheck, AlertCircle, Navigation2, X } from 'lucide-react';
-import { Popup } from 'react-leaflet';
-import socket, { setDeliveryCapability, clearDeliveryCapability } from '../utils/socket';
+import { AlertCircle, MapPin, MessageSquare, Package, Phone, Send, Truck, X } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { deliveryService } from '../services/apiService';
-import RiderDeliveryWorkspace from '../components/delivery/RiderDeliveryWorkspace';
+import socket, { clearDeliveryCapability, setDeliveryCapability } from '../utils/socket';
 
-// Define custom icons for the map
-const riderIcon = new L.Icon({
-  iconUrl: 'https://cdn-icons-png.flaticon.com/512/2972/2972147.png',
-  iconSize: [40, 40],
-  iconAnchor: [20, 40],
+const validCoords = value => Number.isFinite(Number(value?.lat)) && Number.isFinite(Number(value?.lng))
+  && Number(value.lat) >= -90 && Number(value.lat) <= 90 && Number(value.lng) >= -180 && Number(value.lng) <= 180;
+const marker = (label, color) => L.divIcon({
+  className: '',
+  html: `<div aria-label="${label}" style="width:30px;height:30px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:${color};border:3px solid white;box-shadow:0 2px 8px rgba(15,23,42,.3)"><span style="display:block;transform:rotate(45deg);font-size:13px;text-align:center;line-height:24px;color:white">●</span></div>`,
+  iconSize: [30, 30], iconAnchor: [15, 30]
 });
+const riderMarker = marker('Rider', '#8B4513');
+const storeMarker = marker('Store', '#f97316');
+const customerMarker = marker('Customer', '#0f766e');
+const addressText = value => [value?.street, value?.barangay, value?.city, value?.province || value?.state, value?.zipCode].filter(Boolean).join(', ');
+const statusLabel = value => ({ pending:'Preparing delivery', unassigned:'Awaiting rider', assigned:'Rider assigned', accepted:'Rider assigned', picked_up:'Picked up', in_transit:'Out for delivery', arrived:'Rider arrived', delivered:'Delivered', failed_attempt:'Delivery attempt issue', returned_to_store:'Returned to store', cancelled:'Cancelled' }[value] || String(value || '').replace(/_/g,' '));
 
-const storeIcon = new L.Icon({
-  iconUrl: 'https://cdn-icons-png.flaticon.com/512/610/610413.png',
-  iconSize: [35, 35],
-  iconAnchor: [17, 35],
-});
-
-const homeIcon = new L.Icon({
-  iconUrl: 'https://cdn-icons-png.flaticon.com/512/25/25694.png',
-  iconSize: [35, 35],
-  iconAnchor: [17, 35],
-});
-
-// Helper component to center map on coordinates
-function RecenterMap({ coords }) {
-  const map = useMap();
-  useEffect(() => {
-    if (coords && coords.lat && coords.lng) {
-      map.setView([coords.lat, coords.lng], 16);
-    }
-    // Force Leaflet to recalculate its container size several times to ensure stability
-    const redraw = () => {
-      if (map) {
-        map.invalidateSize();
-        // Also force a redraw by triggering a slight window resize event back to normal
-        window.dispatchEvent(new Event('resize'));
-      }
-    };
-    
-    redraw();
-    const t1 = setTimeout(redraw, 100);
-    const t2 = setTimeout(redraw, 1000);
-    
-    return () => {
-      clearTimeout(t1);
-      clearTimeout(t2);
-    };
-  }, [coords, map]);
-  return null;
-}
-
-const DeliveryTracking = () => {
+export default function DeliveryTracking() {
   const { token } = useParams();
   const [delivery, setDelivery] = useState(null);
-  const [role, setRole] = useState(null); // 'rider' or 'customer'
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState('');
   const [chatOpen, setChatOpen] = useState(false);
-  const [newMessage, setNewMessage] = useState('');
-  const [routeData, setRouteData] = useState(null);
-  const [directions, setDirections] = useState([]);
-  const [showDirections, setShowDirections] = useState(false);
-  const [eta, setEta] = useState(null);
-  const [distanceKm, setDistanceKm] = useState(null);
-  const [isNearby, setIsNearby] = useState(false);
-  const chatEndRef = useRef(null);
-  
-  // Verification & Complaint State
-  const [isVerifying, setIsVerifying] = useState(false);
-  const [verificationForm, setVerificationForm] = useState({
-    riderName: '',
-    riderPhone: '',
-    riderVehicleInfo: ''
-  });
-  const [showComplaintModal, setShowComplaintModal] = useState(false);
-  const [complaintForm, setComplaintForm] = useState({
-    type: 'other',
-    content: ''
-  });
-  
-
-  useEffect(() => {
-    fetchDelivery();
-    setDeliveryCapability(token);
-    if (!socket.connected) socket.connect();
-    return () => {
-      socket.disconnect();
-      clearDeliveryCapability();
-    };
+  const [message, setMessage] = useState('');
+  const [complaintOpen, setComplaintOpen] = useState(false);
+  const [complaint, setComplaint] = useState({ type: 'other', content: '' });
+  const chatEnd = useRef(null);
+  const load = useCallback(async () => {
+    try { const response = await deliveryService.getTracking(token); setDelivery(response.data.delivery); setError(''); }
+    catch (requestError) { setError(requestError.response?.data?.message || 'Unable to load delivery tracking.'); }
   }, [token]);
 
   useEffect(() => {
-    if (delivery) {
-      socket.emit('joinDelivery', delivery._id);
-      
-      socket.on('locationUpdate', (data) => {
-        setDelivery(prev => {
-          const updated = {
-            ...prev,
-            riderLocation: { ...prev.riderLocation, lat: data.lat, lng: data.lng, lastUpdated: new Date() },
-            locationHistory: [...(prev.locationHistory || []), { lat: data.lat, lng: data.lng }]
-          };
-          
-          // Check if nearby (approx < 500m)
-          if (targetCoords?.lat) {
-            const dist = calculateDistance(data.lat, data.lng, targetCoords.lat, targetCoords.lng);
-            if (dist < 0.5 && !isNearby) {
-              setIsNearby(true);
-              if (role === 'customer') {
-                toast.success('🎉 Rider is nearby! Please prepare to receive your order.', {
-                  position: "top-center",
-                  autoClose: 10000,
-                  icon: '🛵'
-                });
-              }
-            }
-          }
-          return updated;
-        });
-      });
-
-      socket.on('statusChanged', (data) => {
-        setDelivery(prev => ({ ...prev, status: data.status }));
-        toast.info(`Delivery Status Updated: ${data.status.replace('_', ' ').toUpperCase()}`);
-      });
-
-      socket.on('newMessage', (data) => {
-        setDelivery(prev => ({ ...prev, chat: [...(prev.chat || []), data] }));
-        if (!chatOpen) toast.info(`New message from ${data.sender}`);
-      });
-    }
-
-    return () => {
-      socket.off('locationUpdate');
-      socket.off('statusChanged');
-      socket.off('newMessage');
-    };
-  }, [delivery?._id, role]);
-
+    load(); setDeliveryCapability(token); if (!socket.connected) socket.connect();
+    return () => { socket.disconnect(); clearDeliveryCapability(); };
+  }, [load, token]);
   useEffect(() => {
-    if (chatOpen) chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [delivery?.chat, chatOpen]);
+    if (!delivery?._id) return undefined;
+    socket.emit('joinDelivery', delivery._id);
+    const location = data => String(data.deliveryId) === String(delivery._id) && setDelivery(current => ({ ...current, riderLocation: { lat:data.lat, lng:data.lng, heading:data.heading, speed:data.speed, lastUpdated:data.lastUpdated } }));
+    const status = data => { if (String(data.deliveryId) !== String(delivery._id)) return; setDelivery(current=>({...current,status:data.status})); toast.info(`Delivery status: ${statusLabel(data.status)}`); };
+    const chat = data => String(data.deliveryId) === String(delivery._id) && setDelivery(current=>({...current,chat:[...(current.chat||[]),data]}));
+    const refresh = data => String(data.deliveryId) === String(delivery._id) && load();
+    socket.on('locationUpdate',location); socket.on('statusChanged',status); socket.on('newMessage',chat); socket.on('deliveryUpdate',refresh);
+    return () => { socket.off('locationUpdate',location); socket.off('statusChanged',status); socket.off('newMessage',chat); socket.off('deliveryUpdate',refresh); };
+  }, [delivery?._id, load]);
+  useEffect(() => { if (chatOpen) chatEnd.current?.scrollIntoView({ behavior:'smooth' }); }, [chatOpen, delivery?.chat]);
 
-  // GPS Tracking for Rider
-  useEffect(() => {
-    let watchId;
-    if (delivery && role === 'rider' && delivery.isLive) {
-      if (navigator.geolocation) {
-        watchId = navigator.geolocation.watchPosition(
-          (pos) => {
-            const { latitude, longitude, heading, speed } = pos.coords;
-            updateRiderLocation(latitude, longitude, heading, speed);
-          },
-          (err) => console.error('GPS Error:', err),
-          { enableHighAccuracy: true, maximumAge: 10000 }
-        );
-      }
-    }
-    return () => {
-      if (watchId) navigator.geolocation.clearWatch(watchId);
-    };
-  }, [delivery?._id, role]);
+  const order = delivery?.order;
+  const booking = delivery?.booking;
+  const store = order?.store || booking?.store;
+  const destination = order?.shippingAddress || booking?.serviceAddress;
+  const storeCoords = store?.contactInfo?.address?.coordinates || store?.address?.coordinates;
+  const center = validCoords(delivery?.riderLocation) ? delivery.riderLocation : validCoords(destination?.coordinates) ? destination.coordinates : validCoords(storeCoords) ? storeCoords : { lat:14.5995,lng:120.9842 };
+  const rider = delivery?.assignedRider;
 
-  const fetchDelivery = async () => {
-    try {
-      const res = await axios.get(`${process.env.REACT_APP_API_URL || '/api'}/deliveries/track/${token}`);
-      setDelivery(res.data.delivery);
-      setRole(res.data.role);
-    } catch (err) {
-      setError(err.response?.data?.message || 'Failed to initialize tracking.');
-    } finally {
-      setLoading(false);
-    }
+  const send = async event => {
+    event.preventDefault(); if (!message.trim()) return;
+    try { await deliveryService.sendMessage(token,{content:message.trim()}); setMessage(''); }
+    catch (requestError) { toast.error(requestError.response?.data?.message || 'Message could not be sent.'); }
+  };
+  const submitComplaint = async event => {
+    event.preventDefault(); if (!complaint.content.trim()) return;
+    try { await deliveryService.submitComplaint(token,complaint); setComplaintOpen(false); setComplaint({type:'other',content:''}); toast.success('Delivery concern submitted.'); }
+    catch (requestError) { toast.error(requestError.response?.data?.message || 'Unable to submit concern.'); }
   };
 
-  // Compute Target Information
-  const storeCoords = delivery?.order?.store?.contactInfo?.address?.coordinates;
-  const customerCoords = delivery?.order?.shippingAddress?.coordinates;
-  const isToStore = ['pending', 'unassigned', 'assigned', 'accepted'].includes(delivery?.status);
-  
-  const targetCoords = isToStore ? storeCoords : customerCoords;
-  const targetLabel = isToStore ? 'Pickup: Store' : 'Delivery: Customer';
-  const targetAddress = isToStore 
-    ? `${delivery?.order?.store?.name} (Store)`
-    : `${delivery?.order?.shippingAddress?.street}, ${delivery?.order?.shippingAddress?.barangay}`;
-  const targetPhone = isToStore ? delivery?.order?.store?.phone : delivery?.order?.customer?.phoneNumber;
-
-  useEffect(() => {
-    if (delivery?.riderLocation?.lat && targetCoords?.lat) {
-      fetchRoute(
-        delivery.riderLocation.lat, 
-        delivery.riderLocation.lng, 
-        targetCoords.lat, 
-        targetCoords.lng
-      );
-    }
-  }, [delivery?._id, targetCoords?.lat]);
-
-  const updateRiderLocation = async (lat, lng, heading, speed) => {
-    try {
-      socket.emit('updateLocation', { deliveryId: delivery._id, lat, lng, heading, speed });
-      await axios.patch(`${process.env.REACT_APP_API_URL || '/api'}/deliveries/location/${token}`, { lat, lng, heading, speed });
-      
-      // Update directions if destination exists
-      if (targetCoords?.lat) {
-        fetchRoute(lat, lng, targetCoords.lat, targetCoords.lng);
-      }
-    } catch (err) {
-      console.error('Location sync failed');
-    }
-  };
-
-  const calculateDistance = (lat1, lon1, lat2, lon2) => {
-    const R = 6371; // Radius of the earth in km
-    const dLat = (lat2 - lat1) * Math.PI / 180;
-    const dLon = (lon2 - lon1) * Math.PI / 180;
-    const a = 
-      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
-      Math.sin(dLon / 2) * Math.sin(dLon / 2)
-      ;
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    const d = R * c; // Distance in km
-    return d;
-  };
-
-  const fetchRoute = async (startLat, startLng, endLat, endLng) => {
-    try {
-      const url = `https://router.project-osrm.org/route/v1/driving/${startLng},${startLat};${endLng},${endLat}?overview=full&geometries=geojson&steps=true`;
-      const res = await axios.get(url);
-      if (res.data.routes && res.data.routes[0]) {
-        const route = res.data.routes[0];
-        setRouteData(route.geometry.coordinates.map(c => [c[1], c[0]]));
-        setEta(Math.ceil(route.duration / 60)); // Duration is in seconds
-        setDistanceKm(route.distance / 1000);
-        setDirections(route.legs[0].steps.map(s => ({
-          instruction: s.maneuver.instruction,
-          distance: s.distance,
-          name: s.name
-        })));
-      }
-    } catch (err) {
-      console.error('Routing failed:', err);
-    }
-  };
-
-  const handleStatusUpdate = async (status) => {
-    try {
-      await axios.patch(`${process.env.REACT_APP_API_URL || '/api'}/deliveries/status/${token}`, { status });
-      socket.emit('statusUpdate', { deliveryId: delivery._id, status });
-      setDelivery(prev => ({ ...prev, status }));
-      toast.success(`Success: En route to ${status.replace('_', ' ')}!`);
-    } catch (err) {
-      toast.error('Failed to update status.');
-    }
-  };
-
-  const handleRiderVerification = async (e) => {
-    e.preventDefault();
-    if (!verificationForm.riderName || !verificationForm.riderPhone) {
-      return toast.warning('Please complete all required fields');
-    }
-
-    try {
-      setIsVerifying(true);
-      await deliveryService.verifyRider(token, verificationForm);
-      toast.success('Identity verified! Starting delivery mission.');
-      fetchDelivery();
-    } catch (err) {
-      toast.error('Verification failed. Please try again.');
-    } finally {
-      setIsVerifying(false);
-    }
-  };
-
-  const handleSubmitComplaint = async (e) => {
-    e.preventDefault();
-    if (!complaintForm.content.trim()) return;
-
-    try {
-      await deliveryService.submitComplaint(token, complaintForm);
-      toast.success('Complaint submitted. We will review this immediately.');
-      setShowComplaintModal(false);
-      setComplaintForm({ type: 'other', content: '' });
-      fetchDelivery();
-    } catch (err) {
-      toast.error('Failed to submit complaint.');
-    }
-  };
-
-  const sendMessage = async (e) => {
-    e.preventDefault();
-    if (!newMessage.trim()) return;
-    
-    const msgData = { sender: role, content: newMessage, timestamp: new Date() };
-    try {
-      socket.emit('sendMessage', { deliveryId: delivery._id, ...msgData });
-      await axios.post(`${process.env.REACT_APP_API_URL || '/api'}/deliveries/chat/${token}`, msgData);
-      setNewMessage('');
-    } catch (err) {
-      toast.error('Message failed to send.');
-    }
-  };
-
-  const sendMessageContent = async (content) => {
-    if (!content?.trim()) return;
-    const msgData = { sender: role, content: content.trim(), timestamp: new Date() };
-    socket.emit('sendMessage', { deliveryId: delivery._id, ...msgData });
-    await axios.post(`${process.env.REACT_APP_API_URL || '/api'}/deliveries/chat/${token}`, msgData);
-  };
-
-  if (loading) return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-slate-50 gap-4">
-      <div className="w-16 h-16 border-4 border-rose-500 border-t-transparent rounded-full animate-spin"></div>
-      <p className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-400">Initializing Tracking Hub...</p>
-    </div>
-  );
-
-  if (error) return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-white p-8 text-center">
-      <div className="w-20 h-20 bg-rose-50 rounded-[2rem] flex items-center justify-center mb-6 text-rose-500">
-        <ShieldCheck className="h-10 w-10" />
-      </div>
-      <h2 className="text-2xl font-black uppercase tracking-tighter mb-2">Secure Link Expired</h2>
-      <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest max-w-xs">{error}</p>
-      <button onClick={() => window.location.reload()} className="mt-8 px-8 py-3 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest">Retry Connection</button>
-    </div>
-  );
-
-  const statusProgress = {
-    pending: 10,
-    picked_up: 40,
-    in_transit: 70,
-    delivered: 100
-  };
-
-  if (role === 'rider' && (delivery.isRiderVerified || !delivery.isLive)) {
-    return <RiderDeliveryWorkspace
-      delivery={delivery}
-      token={token}
-      eta={eta}
-      distanceKm={distanceKm}
-      onStatusUpdate={async status => { await handleStatusUpdate(status); await fetchDelivery(); }}
-      onSendMessage={sendMessageContent}
-      onRefresh={fetchDelivery}
-    />;
-  }
-
-
-  return (
-    <div className="flex flex-col min-h-[100dvh] bg-slate-50 overflow-hidden font-inter">
-      {/* Header */}
-      <header className="bg-white border-b border-slate-100 p-5 shrink-0 z-30 shadow-sm">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-slate-900 text-white rounded-xl">
-              <Package className="h-4 w-4" />
-            </div>
-            <div>
-              <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Order Tracking</p>
-              <h3 className="text-xs font-black uppercase tracking-tight text-slate-900">Ref: {delivery.order?.orderNumber}</h3>
-            </div>
-          </div>
-          <div className={`px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest border-2 ${
-            delivery.status === 'delivered' ? 'bg-emerald-50 border-emerald-100 text-emerald-600' :
-            'bg-rose-50 border-rose-100 text-rose-600 animate-pulse'
-          }`}>
-            {delivery.status.replace('_', ' ')}
-          </div>
-        </div>
-      </header>
-
-      {/* Main Content Area */}
-      <main className="flex-1 flex flex-col min-h-0 bg-slate-50">
-        {/* State 1: Status & Info Overview (Formerly Floating Card) */}
-        {!chatOpen && (
-          <section className="bg-white border-b border-slate-100 p-6 flex flex-col gap-5 z-20 shadow-sm shrink-0">
-            {/* Progress Visualization */}
-            <div className="space-y-3">
-              <div className="flex justify-between items-center px-1">
-                <span className="text-[9px] font-black uppercase text-slate-400 tracking-[0.2em] italic">Delivery Phase</span>
-                <span className="text-[10px] font-black uppercase text-rose-500 tracking-wider">
-                  {delivery.status === 'delivered' ? 'COMPLETED' : (eta ? `Estimated Arrival: ${eta} mins` : `${statusProgress[delivery.status]}% Complete`)}
-                </span>
-              </div>
-              <div className="relative h-2 bg-slate-100 rounded-full overflow-hidden">
-                <div 
-                  className="absolute left-0 top-0 h-full bg-rose-500 transition-all duration-1000 shadow-[0_0_10px_rgba(244,63,94,0.3)]" 
-                  style={{ width: `${statusProgress[delivery.status]}%` }}
-                />
-              </div>
-            </div>
-
-            {/* Address & Quick Actions */}
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-              <div className="flex items-center gap-4 flex-1 w-full">
-                <div className="w-12 h-12 bg-rose-50 rounded-2xl flex items-center justify-center shrink-0">
-                  <MapPin className="h-6 w-6 text-rose-500" />
-                </div>
-                <div className="min-w-0">
-                  <h4 className="text-[10px] font-black uppercase text-rose-500 mb-0.5 tracking-widest">{targetLabel}</h4>
-                  <p className="text-sm font-black text-slate-900 truncate leading-tight">{targetAddress}</p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2 w-full sm:w-auto shrink-0">
-                
-                {role === 'customer' && (
-                  <button onClick={() => setShowComplaintModal(true)} 
-                    className="flex-1 sm:flex-none p-4 bg-rose-50 text-rose-600 rounded-2xl hover:bg-rose-600 hover:text-white transition-all border-2 border-rose-100 flex items-center justify-center">
-                    <AlertCircle className="h-5 w-5" />
-                  </button>
-                )}
-
-                {delivery.assignmentType === 'internal' && <button onClick={() => setChatOpen(true)}
-                  className="flex-1 sm:flex-none p-4 bg-rose-500 text-white rounded-2xl hover:bg-rose-600 transition-all shadow-lg shadow-rose-100 flex items-center justify-center group">
-                  <MessageSquare className="h-5 w-5 group-hover:scale-110 transition-transform" />
-                </button>}
-                {role === 'rider' && (
-                  <button 
-                    onClick={() => setShowDirections(!showDirections)}
-                    className={`p-4 rounded-2xl transition-all border ${showDirections ? 'bg-primary-600 border-primary-700 text-white shadow-inner' : 'bg-white border-slate-200 text-slate-600 shadow-sm'} flex items-center justify-center`}
-                  >
-                    <Navigation2 className="h-5 w-5" />
-                  </button>
-                )}
-              </div>
-            </div>
-          </section>
-        )}
-
-        {/* Rider Verification Overlay */}
-        {role === 'rider' && !delivery.isRiderVerified && (
-          <div className="fixed inset-0 z-[100] bg-white flex flex-col p-8 overflow-y-auto">
-            <div className="max-w-md mx-auto w-full pt-12">
-              <div className="w-20 h-20 bg-slate-900 text-white rounded-[2rem] flex items-center justify-center mb-8 mx-auto">
-                <ShieldCheck className="h-10 w-10" />
-              </div>
-              <h2 className="text-3xl font-black uppercase tracking-tighter text-center mb-2">Identity Verification</h2>
-              <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest text-center mb-10 leading-loose">Please provide your details before starting the delivery mission</p>
-              
-              <form onSubmit={handleRiderVerification} className="space-y-6">
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Rider Full Name</label>
-                  <input 
-                    type="text" 
-                    required
-                    value={verificationForm.riderName}
-                    onChange={(e) => setVerificationForm({...verificationForm, riderName: e.target.value})}
-                    placeholder="Enter your name"
-                    className="w-full bg-slate-50 border-2 border-slate-100 px-6 py-5 rounded-[1.5rem] text-sm font-bold focus:border-slate-900 outline-none transition-all"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Contact Number</label>
-                  <input 
-                    type="tel" 
-                    required
-                    value={verificationForm.riderPhone}
-                    onChange={(e) => setVerificationForm({...verificationForm, riderPhone: e.target.value})}
-                    placeholder="Enter phone number"
-                    className="w-full bg-slate-50 border-2 border-slate-100 px-6 py-5 rounded-[1.5rem] text-sm font-bold focus:border-slate-900 outline-none transition-all"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Vehicle Info (e.g., Honda Click - RED)</label>
-                  <input 
-                    type="text" 
-                    value={verificationForm.riderVehicleInfo}
-                    onChange={(e) => setVerificationForm({...verificationForm, riderVehicleInfo: e.target.value})}
-                    placeholder="Optional details"
-                    className="w-full bg-slate-50 border-2 border-slate-100 px-6 py-5 rounded-[1.5rem] text-sm font-bold focus:border-slate-900 outline-none transition-all"
-                  />
-                </div>
-
-                <button 
-                  type="submit" 
-                  disabled={isVerifying}
-                  className="w-full py-6 bg-slate-900 text-white rounded-[2rem] text-[11px] font-black uppercase tracking-[0.4em] shadow-2xl transition-all active:scale-95 disabled:opacity-50 mt-4"
-                >
-                  {isVerifying ? 'Verifying Identity...' : 'Confirm & Start Mission'}
-                </button>
-              </form>
-            </div>
-          </div>
-        )}
-
-        {/* State 2: Interactive Map (The Interactive Zone) */}
-        <div className="flex-1 relative z-10 border-b border-slate-200 bg-slate-100 shadow-inner group min-h-[450px]">
-          <MapContainer 
-            key={delivery?._id}
-            center={[delivery.riderLocation?.lat || 14.5995, delivery.riderLocation?.lng || 120.9842]} 
-            zoom={16} 
-            style={{ position: 'absolute', top: 0, left: 0, height: '100%', width: '100%', minHeight: '450px' }}
-            zoomControl={false}
-          >
-            <TileLayer 
-              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" 
-            />
-            <RecenterMap coords={delivery.riderLocation} />
-            
-            {/* Markers */}
-            {delivery.riderLocation?.lat && (
-              <Marker position={[delivery.riderLocation.lat, delivery.riderLocation.lng]} icon={riderIcon}>
-                <Popup className="custom-popup">
-                  <div className="p-1 text-center min-w-[100px]">
-                    <span className="text-[8px] font-black uppercase text-rose-500 tracking-tighter">Current Location</span>
-                    <p className="text-[11px] font-black text-slate-900 mt-0.5">Rider Cyrus</p>
-                  </div>
-                </Popup>
-              </Marker>
-            )}
-            {storeCoords?.lat && (
-              <Marker position={[storeCoords.lat, storeCoords.lng]} icon={storeIcon} />
-            )}
-            {customerCoords?.lat && (
-              <Marker position={[customerCoords.lat, customerCoords.lng]} icon={homeIcon} />
-            )}
-
-            {/* Path Overlays */}
-            {routeData && <Polyline positions={routeData} color="#8B4513" weight={6} opacity={0.8} />}
-            {!routeData && delivery.riderLocation?.lat && targetCoords?.lat && (
-              <Polyline positions={[[delivery.riderLocation.lat, delivery.riderLocation.lng], [targetCoords.lat, targetCoords.lng]]} color="#8B4513" weight={4} dashArray="8, 12" opacity={0.5} />
-            )}
-            <Polyline positions={(delivery.locationHistory || []).map(l => [l.lat, l.lng])} color="#94a3b8" weight={2} opacity={0.4} />
-          </MapContainer>
-
-          {/* Compass / Zoom HUD (Optional overlay) */}
-          <div className="absolute right-4 top-4 flex flex-col gap-2 z-20">
-            <button className="w-10 h-10 bg-white/90 backdrop-blur-sm rounded-xl flex items-center justify-center text-slate-600 shadow-xl border border-slate-100 hover:text-rose-500 transition-all font-black">+</button>
-            <button className="w-10 h-10 bg-white/90 backdrop-blur-sm rounded-xl flex items-center justify-center text-slate-600 shadow-xl border border-slate-100 hover:text-rose-500 transition-all font-black">-</button>
-          </div>
-        </div>
-
-        {/* State 3: Operations & Footer Actions */}
-        <section className={`bg-white p-6 z-20 shrink-0 transition-all duration-300 ${!chatOpen ? 'translate-y-0' : 'translate-y-full opacity-0'}`}>
-          {/* Turn-by-Turn Panel */}
-          {showDirections && directions.length > 0 && (
-            <div className="mb-6 p-5 bg-slate-50 rounded-[2rem] border border-slate-100 max-h-40 overflow-y-auto no-scrollbar space-y-4">
-              <p className="text-[10px] font-black uppercase text-slate-400 tracking-[0.3em] sticky top-0 bg-slate-50 py-1">Mission Guidance</p>
-              {directions.map((step, i) => (
-                <div key={i} className="flex flex-col gap-1 pb-4 border-b border-slate-100 last:border-0 last:pb-0">
-                  <p className={`text-[11px] leading-snug ${i === 0 ? 'font-black text-rose-600' : 'font-bold text-slate-700'}`}>
-                    {step.instruction}
-                  </p>
-                  <p className="text-[9px] font-black text-slate-400 uppercase">
-                    {step.distance > 1000 ? `${(step.distance/1000).toFixed(1)} km` : `${Math.round(step.distance)} m`}
-                  </p>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Core Action Command Center */}
-          <div className="space-y-4">
-            {role === 'rider' && delivery.isLive && (
-              <div className="flex flex-col gap-3">
-                {delivery.status === 'pending' && (
-                  <button onClick={() => handleStatusUpdate('picked_up')} 
-                    className="w-full py-5 bg-slate-900 text-white rounded-[2rem] text-[11px] font-black uppercase tracking-[0.3em] flex items-center justify-center gap-4 hover:shadow-2xl hover:scale-[1.02] active:scale-95 transition-all shadow-xl shadow-slate-200 group">
-                    <Package className="h-5 w-5 text-rose-500 group-hover:rotate-12 transition-transform" /> START PICKUP PROCESS
-                  </button>
-                )}
-                {delivery.status === 'picked_up' && (
-                  <button onClick={() => handleStatusUpdate('in_transit')} 
-                    className="w-full py-5 bg-primary-600 text-white rounded-[2rem] text-[11px] font-black uppercase tracking-[0.3em] flex items-center justify-center gap-4 hover:bg-primary-700 hover:scale-[1.02] active:scale-95 transition-all shadow-xl shadow-primary-100">
-                    <Navigation className="h-5 w-5" /> BEGIN TRANSIT MISSION
-                  </button>
-                )}
-                {delivery.status === 'in_transit' && (
-                  <button onClick={() => handleStatusUpdate('delivered')} 
-                    className="w-full py-5 bg-emerald-600 text-white rounded-[2rem] text-[11px] font-black uppercase tracking-[0.3em] flex items-center justify-center gap-4 hover:bg-emerald-700 hover:scale-[1.02] active:scale-95 transition-all shadow-xl shadow-emerald-100 animate-pulse">
-                    <CheckCircle className="h-5 w-5" /> CONFIRM DELIVERY SUCCESS
-                  </button>
-                )}
-              </div>
-            )}
-            
-            {/* Contextual Navigation (External Maps) */}
-            {role === 'rider' && (
-              <a 
-                href={`https://www.google.com/maps/dir/?api=1&destination=${targetCoords?.lat || ''},${targetCoords?.lng || ''}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-full py-4 border-2 border-slate-100 text-slate-500 rounded-[2rem] text-[9px] font-black uppercase tracking-[0.2em] flex items-center justify-center gap-3 hover:bg-slate-50 transition-all active:scale-95"
-              >
-                <Navigation2 className="h-4 w-4" /> Open in External GPS App
-              </a>
-            )}
-          </div>
-        </section>
-      </main>
-
-      {/* Chat Interface (Minimalist Card) */}
-      <div className={`fixed bottom-6 right-6 z-50 transition-all duration-300 w-[calc(100%-3rem)] sm:w-[380px] origin-bottom-right ${chatOpen ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-10 scale-95 pointer-events-none'}`}>
-        <div className="bg-white rounded-[2rem] shadow-[0_20px_70px_rgba(0,0,0,0.15)] border border-slate-100 flex flex-col overflow-hidden max-h-[500px]">
-          {/* Compact Header */}
-          <div className="px-5 py-4 bg-slate-900 flex items-center justify-between shrink-0">
-            <div className="flex items-center gap-3">
-              <div className="relative">
-                <div className="w-8 h-8 bg-rose-500 rounded-full flex items-center justify-center text-white">
-                  <User className="h-4 w-4" />
-                </div>
-                <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-500 border-2 border-slate-900 rounded-full"></div>
-              </div>
-              <div>
-                <h3 className="text-[11px] font-black text-white uppercase tracking-widest leading-none mb-0.5">DIRECT CHAT</h3>
-                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter leading-none">{role === 'rider' ? 'Customer' : 'Rider'}</p>
-              </div>
-            </div>
-            <button onClick={() => setChatOpen(false)} className="p-2 bg-white/10 text-white hover:bg-white/20 rounded-lg transition-colors">
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-
-          {/* Messages Area - Compact & Scrollable */}
-          <div className="flex-1 overflow-y-auto no-scrollbar p-5 space-y-3 bg-slate-50/50 min-h-[250px]">
-            {(delivery.chat || []).map((msg, i) => (
-              <div key={i} className={`flex ${msg.sender === role ? 'justify-end' : 'justify-start'}`}>
-                <div className={`max-w-[85%] p-3 px-4 rounded-2xl shadow-sm ${
-                  msg.sender === role 
-                    ? 'bg-slate-900 text-white rounded-tr-none' 
-                    : 'bg-white border border-slate-100 text-slate-700 rounded-tl-none'
-                }`}>
-                  <p className="text-[12px] leading-relaxed font-semibold">{msg.content}</p>
-                  <p className={`text-[8px] mt-1 font-black uppercase opacity-40 ${msg.sender === role ? 'text-white text-right' : 'text-slate-400'}`}>
-                    {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                  </p>
-                </div>
-              </div>
-            ))}
-            <div ref={chatEndRef} />
-          </div>
-
-          {/* Slim Input Terminal */}
-          <form onSubmit={sendMessage} className="p-4 bg-white border-t border-slate-100 flex gap-2">
-            <input 
-              type="text" 
-              value={newMessage}
-              onChange={(e) => setNewMessage(e.target.value)}
-              placeholder="Type message..."
-              className="flex-1 bg-slate-50 border-none px-4 py-2.5 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-slate-900/5 transition-all transition-all placeholder:text-slate-300"
-            />
-            <button type="submit" className="bg-slate-900 text-white p-2.5 rounded-xl hover:bg-rose-500 transition-all active:scale-95 shadow-lg shadow-slate-100">
-              <Send className="h-4.5 w-4.5" />
-            </button>
-          </form>
-        </div>
-      </div>
-      {/* Complaint Modal */}
-      {showComplaintModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
-          <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setShowComplaintModal(false)}></div>
-          <div className="relative w-full max-w-md bg-white rounded-[3rem] shadow-2xl p-8 overflow-hidden">
-            <h3 className="text-2xl font-black uppercase tracking-tighter mb-2">Report Delivery Issue</h3>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-8">Tell us what's wrong with your delivery</p>
-
-            <form onSubmit={handleSubmitComplaint} className="space-y-6">
-              <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Issue Type</label>
-                <select 
-                  value={complaintForm.type}
-                  onChange={(e) => setComplaintForm({...complaintForm, type: e.target.value})}
-                  className="w-full bg-slate-50 border-2 border-slate-100 px-6 py-4 rounded-[1.5rem] text-sm font-bold outline-none"
-                >
-                  <option value="suspicious_location">Suspicious Location</option>
-                  <option value="damaged_items">Damaged Items</option>
-                  <option value="other">Other Issue</option>
-                </select>
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Details</label>
-                <textarea 
-                  required
-                  value={complaintForm.content}
-                  onChange={(e) => setComplaintForm({...complaintForm, content: e.target.value})}
-                  placeholder="Describe the problem..."
-                  className="w-full bg-slate-50 border-2 border-slate-100 px-6 py-4 rounded-[1.5rem] text-sm font-bold h-32 resize-none outline-none"
-                />
-              </div>
-
-              <div className="flex gap-3">
-                <button 
-                  type="button"
-                  onClick={() => setShowComplaintModal(false)}
-                  className="flex-1 py-4 border-2 border-slate-100 text-slate-500 rounded-[2rem] text-[10px] font-black uppercase tracking-widest"
-                >
-                  Cancel
-                </button>
-                <button 
-                  type="submit"
-                  className="flex-1 py-4 bg-rose-500 text-white rounded-[2rem] text-[10px] font-black uppercase tracking-widest shadow-xl shadow-rose-100"
-                >
-                  Submit Report
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
-
-export default DeliveryTracking;
+  if (error) return <div className="flex min-h-screen items-center justify-center p-6"><div className="max-w-sm rounded-2xl border bg-white p-6 text-center"><AlertCircle className="mx-auto mb-3 text-rose-500"/><h1 className="font-black">Tracking unavailable</h1><p className="mt-2 text-sm text-slate-500">{error}</p></div></div>;
+  if (!delivery) return <div className="flex min-h-screen items-center justify-center text-sm text-slate-500">Loading live delivery…</div>;
+  return <div className="min-h-screen bg-slate-50 pb-20">
+    <header className="border-b bg-white p-4"><div className="mx-auto flex max-w-5xl items-center justify-between gap-3"><div><p className="text-[10px] font-black uppercase tracking-widest text-rose-600">Live Delivery</p><h1 className="text-lg font-black">{order?.orderNumber || `DLV-${String(delivery._id).slice(-8).toUpperCase()}`}</h1></div><span className="rounded-full bg-rose-50 px-3 py-1 text-[10px] font-black uppercase text-rose-700">{statusLabel(delivery.status)}</span></div></header>
+    <main className="mx-auto grid max-w-5xl gap-4 p-4 lg:grid-cols-[1.5fr_1fr]">
+      <section className="overflow-hidden rounded-2xl border bg-white"><div className="h-[420px]"><MapContainer center={[Number(center.lat),Number(center.lng)]} zoom={14} className="h-full w-full"><TileLayer attribution="&copy; OpenStreetMap contributors" url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"/>{validCoords(storeCoords)&&<Marker position={[Number(storeCoords.lat),Number(storeCoords.lng)]} icon={storeMarker}><Popup>Pickup: {store?.name || 'Store'}</Popup></Marker>}{validCoords(destination?.coordinates)&&<Marker position={[Number(destination.coordinates.lat),Number(destination.coordinates.lng)]} icon={customerMarker}><Popup>Delivery destination</Popup></Marker>}{validCoords(delivery.riderLocation)&&<Marker position={[Number(delivery.riderLocation.lat),Number(delivery.riderLocation.lng)]} icon={riderMarker}><Popup>{rider?`${rider.firstName} ${rider.lastName}`:'Assigned rider'} · updated {delivery.riderLocation.lastUpdated?new Date(delivery.riderLocation.lastUpdated).toLocaleTimeString():'recently'}</Popup></Marker>}</MapContainer></div><div className="p-4"><p className="text-[10px] font-black uppercase text-slate-400">Delivery destination</p><p className="mt-1 text-sm font-bold"><MapPin className="mr-1 inline h-4 w-4"/>{addressText(destination)||'Address unavailable'}</p></div></section>
+      <aside className="space-y-4"><section className="rounded-2xl border bg-white p-4"><Truck color="#8B4513" className="mb-2"/><p className="text-[10px] font-black uppercase text-slate-400">Current status</p><h2 className="mt-1 text-xl font-black">{statusLabel(delivery.status)}</h2><p className="mt-2 text-xs text-slate-500">Updates shown here are persisted by Pawzzle before they are broadcast.</p></section>
+      <section className="rounded-2xl border bg-white p-4"><p className="text-[10px] font-black uppercase text-slate-400">Assigned rider</p>{rider?<><h2 className="mt-1 font-black">{rider.firstName} {rider.lastName}</h2><p className="text-xs text-slate-500">{rider.riderProfile?.vehicleType} {rider.riderProfile?.plateNumber}</p><div className="mt-3 grid grid-cols-2 gap-2"><a href={rider.phone?`tel:${rider.phone}`:undefined} className="flex h-10 items-center justify-center gap-2 rounded-xl bg-emerald-600 text-xs font-black text-white"><Phone size={15}/>Call</a><button onClick={()=>setChatOpen(true)} className="flex h-10 items-center justify-center gap-2 rounded-xl bg-slate-900 text-xs font-black text-white"><MessageSquare size={15}/>Message</button></div></>:<p className="mt-2 text-sm text-slate-500">Awaiting rider assignment.</p>}</section>
+      <section className="rounded-2xl border bg-white p-4"><p className="text-[10px] font-black uppercase text-slate-400">Parcel</p><p className="mt-1 text-sm font-bold"><Package className="mr-1 inline h-4 w-4"/>{delivery.parcel?.weightKg?`${delivery.parcel.weightKg} kg · ${delivery.parcel.parcelCount} parcel(s)`:'Parcel details pending'}</p><button onClick={()=>setComplaintOpen(true)} className="mt-3 text-xs font-black text-rose-600">Report a delivery concern</button></section></aside>
+    </main>
+    {chatOpen&&<div className="fixed inset-0 z-[100] flex items-end justify-center bg-slate-900/60 sm:items-center"><div className="w-full max-w-lg overflow-hidden rounded-t-2xl bg-white sm:rounded-2xl"><div className="flex justify-between border-b p-4"><b>Delivery messages</b><button onClick={()=>setChatOpen(false)}><X/></button></div><div className="max-h-[50vh] space-y-2 overflow-y-auto bg-slate-50 p-4">{(delivery.chat||[]).map((item,index)=><div key={`${item.timestamp}-${index}`} className={`max-w-[85%] rounded-xl p-3 text-xs ${item.sender==='customer'?'ml-auto bg-rose-600 text-white':'border bg-white'}`}>{item.content}<p className="mt-1 text-[9px] opacity-60">{item.sender}</p></div>)}<div ref={chatEnd}/></div><form onSubmit={send} className="flex gap-2 border-t p-3"><input value={message} onChange={event=>setMessage(event.target.value)} maxLength={1000} className="h-11 flex-1 rounded-xl border px-3 text-sm" placeholder="Message your rider"/><button className="flex h-11 w-11 items-center justify-center rounded-xl bg-slate-900 text-white"><Send size={16}/></button></form></div></div>}
+    {complaintOpen&&<div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 p-4"><form onSubmit={submitComplaint} className="w-full max-w-md space-y-3 rounded-2xl bg-white p-5"><div className="flex justify-between"><b>Report delivery concern</b><button type="button" onClick={()=>setComplaintOpen(false)}><X/></button></div><select value={complaint.type} onChange={event=>setComplaint({...complaint,type:event.target.value})} className="h-11 w-full rounded-xl border px-3"><option value="suspicious_location">Location concern</option><option value="damaged_items">Damaged items</option><option value="other">Other</option></select><textarea required maxLength={1000} value={complaint.content} onChange={event=>setComplaint({...complaint,content:event.target.value})} className="h-28 w-full rounded-xl border p-3" placeholder="Describe the concern"/><button className="h-11 w-full rounded-xl bg-rose-600 text-xs font-black text-white">Submit concern</button></form></div>}
+  </div>;
+}

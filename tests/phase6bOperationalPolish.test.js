@@ -16,7 +16,8 @@ test('staff workspace presents the complete compact operational table and summar
 
 test('ordinary staff onboarding exposes only operational store roles', () => {
   const ui = source('client/src/pages/admin/StaffManagement.js');
-  for (const role of ['manager', 'cashier', 'inventory_staff', 'procurement_officer', 'finance_staff', 'veterinarian', 'groomer', 'trainer', 'boarding_staff', 'delivery_dispatcher', 'delivery_rider']) assert.match(ui, new RegExp(role));
+  for (const role of ['manager', 'cashier', 'inventory_staff', 'procurement_officer', 'finance_staff', 'veterinarian', 'groomer', 'trainer', 'boarding_staff', 'delivery_rider']) assert.match(ui, new RegExp(role));
+  assert.doesNotMatch(ui, /Delivery Dispatcher/);
   for (const forbidden of ['platform_admin', 'super_admin', 'customer', 'supplier', 'auditor']) assert.doesNotMatch(ui, new RegExp(`value: '${forbidden}'`));
 });
 

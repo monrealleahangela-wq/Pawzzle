@@ -1,14 +1,17 @@
 const express = require('express');
 const router = express.Router();
 const {
-  generateDeliveryLinks,
+  assignDeliveryAutomatically,
+  getAssignedRiderDelivery,
   getDeliveryByToken,
   getDeliveryByOrder,
   getDeliveryByBooking,
   updateDeliveryStatus,
   updateLocation,
   sendDeliveryMessage,
-  verifyRider,
+  sendRiderDeliveryMessage,
+  completeDelivery,
+  reportFailedDelivery,
   submitComplaint,
   resolveComplaint,
   calculateDeliveryFee
@@ -18,28 +21,29 @@ const Delivery = require('../models/Delivery');
 const { uploadSingle, handleUploadError } = require('../middleware/upload');
 const { uploadImage } = require('../controllers/uploadController');
 
-const validateActiveRiderToken = async (req, res, next) => {
-  const delivery = await Delivery.findOne({ riderToken: req.params.token, assignmentType: 'internal' }).select('isLive isRiderVerified');
-  if (!delivery || !delivery.isLive || !delivery.isRiderVerified) return res.status(403).json({ message: 'Rider delivery link is inactive or unverified.' });
+const validateAssignedRider = async (req, res, next) => {
+  const delivery = await Delivery.findOne({ _id: req.params.deliveryId, assignedRider: req.user._id, assignmentType: 'internal', isLive: true }).select('_id');
+  if (!delivery) return res.status(403).json({ message: 'Assigned delivery is inactive or unavailable.' });
   next();
 };
 
-// Private Routes: authorized Store/Dispatcher operations.
-router.post('/generate', authenticate, requirePermission('logistics.manage'), generateDeliveryLinks);
+// Private routes: store assignment and authenticated rider workspaces.
+router.post('/assign', authenticate, requirePermission('logistics.manage'), assignDeliveryAutomatically);
 router.post('/calculate-fee', authenticate, calculateDeliveryFee);
 router.get('/order/:orderId', authenticate, getDeliveryByOrder);
 router.get('/booking/:bookingId', authenticate, getDeliveryByBooking);
 router.patch('/resolve-complaint/:deliveryId/:complaintId', authenticate, requirePermission('logistics.manage'), resolveComplaint);
+router.get('/rider/:deliveryId', authenticate, getAssignedRiderDelivery);
+router.patch('/rider/:deliveryId/status', authenticate, updateDeliveryStatus);
+router.patch('/rider/:deliveryId/location', authenticate, updateLocation);
+router.post('/rider/:deliveryId/chat', authenticate, sendRiderDeliveryMessage);
+router.post('/rider/:deliveryId/complete', authenticate, completeDelivery);
+router.post('/rider/:deliveryId/failed', authenticate, reportFailedDelivery);
+router.post('/rider/:deliveryId/proof-upload', authenticate, validateAssignedRider, uploadSingle, handleUploadError, uploadImage);
 
-// Public Routes: Rider / Customer (Secured by Token)
+// Public customer tracking capability. Rider mutation requires an authenticated assigned account.
 router.get('/track/:token', getDeliveryByToken);
-router.patch('/status/:token', updateDeliveryStatus);
-router.patch('/location/:token', updateLocation);
 router.post('/chat/:token', sendDeliveryMessage);
-router.patch('/verify/:token', verifyRider);
 router.post('/complaint/:token', submitComplaint);
-router.post('/complete/:token', require('../controllers/deliveryController').completeDelivery);
-router.post('/failed/:token', require('../controllers/deliveryController').reportFailedDelivery);
-router.post('/proof-upload/:token', validateActiveRiderToken, uploadSingle, handleUploadError, uploadImage);
 
 module.exports = router;

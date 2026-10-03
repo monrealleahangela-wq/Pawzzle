@@ -18,7 +18,7 @@ test('preserves existing delivery lifecycle values while presenting clear labels
 test('derives link status from the existing secure link state', () => {
   assert.equal(getDeliveryLinkStatus({ status: 'pending', isLive: true, assignmentType: 'unassigned' }), 'not_generated');
   assert.equal(getDeliveryLinkStatus({ status: 'assigned', isLive: true, assignmentType: 'internal' }), 'active');
-  assert.equal(getDeliveryLinkStatus({ status: 'assigned', isLive: true, assignmentType: 'internal', riderLinkOpenedAt: new Date() }), 'opened');
+  assert.equal(getDeliveryLinkStatus({ status: 'assigned', isLive: true, assignmentType: 'internal', trackingLinkOpenedAt: new Date() }), 'opened');
   assert.equal(getDeliveryLinkStatus({ status: 'delivered', isLive: false, assignmentType: 'internal' }), 'completed');
   assert.equal(getDeliveryLinkStatus({ status: 'cancelled', isLive: false, assignmentType: 'internal' }), 'inactive');
 });
@@ -37,10 +37,13 @@ test('courier-provider integration is retired while internal rider assignment re
 
   assert.doesNotMatch(routes, /provider-webhooks|\/providers|\/provider\/quote/);
   assert.doesNotMatch(controller, /DeliveryProviderService/);
-  assert.match(controller, /requestedType !== 'internal'/);
-  assert.match(controller, /role: 'delivery_rider'/);
+  assert.match(routes, /post\('\/assign', authenticate, requirePermission\('logistics\.manage'\)/);
+  assert.doesNotMatch(routes, /\/generate|\/verify\/:token|\/status\/:token|\/location\/:token/);
+  assert.match(controller, /assignDeliveryAutomatically/);
+  assert.doesNotMatch(controller, /riderId } = req\.body|generateDeliveryLinks|verifyRider/);
   assert.doesNotMatch(api, /getProviders|quoteProvider|requestProvider|refreshProvider|cancelProvider/);
-  assert.match(assignmentFields, /Pawzzle Delivery Rider/);
+  assert.match(assignmentFields, /System Rider Assignment/);
+  assert.doesNotMatch(assignmentFields, /selectedRiderId|onRiderChange/);
   assert.doesNotMatch(assignmentFields, /Courier Provider/);
 });
 

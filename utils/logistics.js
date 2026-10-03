@@ -9,7 +9,7 @@ const getDeliveryLinkStatus = delivery => {
   if (delivery.status === 'delivered') return 'completed';
   if (!delivery.isLive) return 'inactive';
   if (delivery.assignmentType === 'unassigned') return 'not_generated';
-  if (delivery.riderLinkOpenedAt) return 'opened';
+  if (delivery.trackingLinkOpenedAt) return 'opened';
   return 'active';
 };
 

@@ -523,18 +523,19 @@ export const hrService = {
 
 // Delivery services
 export const deliveryService = {
-  generateLinks: (params) => api.post('/deliveries/generate', typeof params === 'string' ? { orderId: params } : params),
+  assignRider: (params) => api.post('/deliveries/assign', typeof params === 'string' ? { orderId: params } : params),
   getTracking: (token) => api.get(`/deliveries/track/${token}`),
   getTrackingForOrder: (orderId) => api.get(`/deliveries/order/${orderId}`),
   getTrackingForBooking: (bookingId) => api.get(`/deliveries/booking/${bookingId}`),
-  updateStatus: (token, status) => api.patch(`/deliveries/status/${token}`, { status }),
-  updateLocation: (token, locationData) => api.patch(`/deliveries/location/${token}`, locationData),
+  getRiderDelivery: (deliveryId) => api.get(`/deliveries/rider/${deliveryId}`),
+  updateRiderStatus: (deliveryId, status) => api.patch(`/deliveries/rider/${deliveryId}/status`, { status }),
+  updateRiderLocation: (deliveryId, locationData) => api.patch(`/deliveries/rider/${deliveryId}/location`, locationData),
+  sendRiderMessage: (deliveryId, messageData) => api.post(`/deliveries/rider/${deliveryId}/chat`, messageData),
   sendMessage: (token, messageData) => api.post(`/deliveries/chat/${token}`, messageData),
-  verifyRider: (token, data) => api.patch(`/deliveries/verify/${token}`, data),
   submitComplaint: (token, data) => api.post(`/deliveries/complaint/${token}`, data),
-  completeDelivery: (token, data) => api.post(`/deliveries/complete/${token}`, data),
-  reportFailedDelivery: (token, data) => api.post(`/deliveries/failed/${token}`, data),
-  uploadDeliveryProof: (token, formData) => api.post(`/deliveries/proof-upload/${token}`, formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
+  completeDelivery: (deliveryId, data) => api.post(`/deliveries/rider/${deliveryId}/complete`, data),
+  reportFailedDelivery: (deliveryId, data) => api.post(`/deliveries/rider/${deliveryId}/failed`, data),
+  uploadDeliveryProof: (deliveryId, formData) => api.post(`/deliveries/rider/${deliveryId}/proof-upload`, formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
   resolveComplaint: (deliveryId, complaintId) => api.patch(`/deliveries/resolve-complaint/${deliveryId}/${complaintId}`),
   calculateFee: (data) => api.post('/deliveries/calculate-fee', data)
 };

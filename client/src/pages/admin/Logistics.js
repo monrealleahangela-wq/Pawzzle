@@ -4,6 +4,7 @@ import { Activity, AlertTriangle, Bike, CheckCircle2, Clock3, MapPin, PackageChe
 import { getImageUrl, logisticsService, staffService } from '../../services/apiService';
 import { toast } from 'react-toastify';
 import { formatPeso } from '../../utils/paymentSummary';
+import { useRealTimeUpdates } from '../../hooks/useRealTimeUpdates';
 
 const statusStyle = status => ({
   delivered: 'bg-emerald-50 text-emerald-700 border-emerald-100',
@@ -66,6 +67,7 @@ export default function Logistics() {
     } finally { setLoading(false); }
   }, [appliedFilters, page]);
   useEffect(() => { load(); }, [load]);
+  useRealTimeUpdates({ onDeliveryUpdate: load, onDashboardUpdate: load });
 
   const cards = [
     ['Total Deliveries', dashboard?.summary?.total, Truck, 'text-slate-700'],

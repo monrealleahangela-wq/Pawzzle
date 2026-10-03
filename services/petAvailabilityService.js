@@ -46,7 +46,10 @@ const reservationFields = source => source === 'order'
   ? { own: 'reservation.order', other: 'reservation.adoptionRequest' }
   : { own: 'reservation.adoptionRequest', other: 'reservation.order' };
 
-const hasCompetingReservation = async ({ petId, source, referenceId }) => {
+const withSession = (query, session) => session ? query.session(session) : query;
+const sessionOptions = session => session ? { session } : {};
+
+const hasCompetingReservation = async ({ petId, source, referenceId, session }) => {
   const orderFilter = {
     _id: source === 'order' ? { $ne: referenceId } : { $exists: true },
     status: { $in: ACTIVE_ORDER_STATUSES },
@@ -58,13 +61,13 @@ const hasCompetingReservation = async ({ petId, source, referenceId }) => {
     status: { $in: ACTIVE_ADOPTION_STATUSES }
   };
   const [order, adoption] = await Promise.all([
-    Order.exists(orderFilter),
-    AdoptionRequest.exists(adoptionFilter)
+    withSession(Order.exists(orderFilter), session),
+    withSession(AdoptionRequest.exists(adoptionFilter), session)
   ]);
   return Boolean(order || adoption);
 };
 
-const reservePet = async ({ petId, source, referenceId }) => {
+const reservePet = async ({ petId, source, referenceId, session }) => {
   const id = petIdOf(petId);
   const { own, other } = reservationFields(source);
   const claimed = await Pet.findOneAndUpdate({
@@ -86,20 +89,20 @@ const reservePet = async ({ petId, source, referenceId }) => {
       'reservation.reservedAt': new Date()
     },
     $unset: { [other]: 1 }
-  }, { new: true, runValidators: true });
+  }, { new: true, runValidators: true, ...sessionOptions(session) });
 
   if (claimed) return claimed;
 
   // Backward compatibility: attach ownership to an unowned legacy reservation
   // only when no other active order/request can claim it.
-  const legacyReserved = await Pet.findOne({
+  const legacyReserved = await withSession(Pet.findOne({
     _id: id,
     status: 'reserved',
     [own]: null,
     [other]: null
-  });
+  }), session);
   if (!legacyReserved || !isIndividualPetRecord(legacyReserved)) return null;
-  if (await hasCompetingReservation({ petId: id, source, referenceId })) return null;
+  if (await hasCompetingReservation({ petId: id, source, referenceId, session })) return null;
 
   return Pet.findOneAndUpdate({
     _id: id,
@@ -108,10 +111,10 @@ const reservePet = async ({ petId, source, referenceId }) => {
     [other]: null
   }, {
     $set: { [own]: referenceId, 'reservation.reservedAt': new Date(), isAvailable: false }
-  }, { new: true, runValidators: true });
+  }, { new: true, runValidators: true, ...sessionOptions(session) });
 };
 
-const releasePetReservation = async ({ petId, source, referenceId }) => {
+const releasePetReservation = async ({ petId, source, referenceId, session }) => {
   const id = petIdOf(petId);
   const { own, other } = reservationFields(source);
   const released = await Pet.findOneAndUpdate({
@@ -121,20 +124,20 @@ const releasePetReservation = async ({ petId, source, referenceId }) => {
   }, {
     $set: { status: 'available', isAvailable: true },
     $unset: { reservation: 1 }
-  }, { new: true, runValidators: true });
+  }, { new: true, runValidators: true, ...sessionOptions(session) });
   if (released) return released;
 
-  const legacyReserved = await Pet.findOne({ _id: id, status: 'reserved', [own]: null, [other]: null });
+  const legacyReserved = await withSession(Pet.findOne({ _id: id, status: 'reserved', [own]: null, [other]: null }), session);
   if (!legacyReserved || !isIndividualPetRecord(legacyReserved)) return null;
-  if (await hasCompetingReservation({ petId: id, source, referenceId })) return null;
+  if (await hasCompetingReservation({ petId: id, source, referenceId, session })) return null;
 
   return Pet.findOneAndUpdate({ _id: id, status: 'reserved', [own]: null, [other]: null }, {
     $set: { status: 'available', isAvailable: true },
     $unset: { reservation: 1 }
-  }, { new: true, runValidators: true });
+  }, { new: true, runValidators: true, ...sessionOptions(session) });
 };
 
-const finalizePetReservation = async ({ petId, source, referenceId, status }) => {
+const finalizePetReservation = async ({ petId, source, referenceId, status, session }) => {
   if (!['sold', 'adopted'].includes(status)) throw new Error('Invalid terminal pet status.');
   const id = petIdOf(petId);
   const { own, other } = reservationFields(source);
@@ -145,12 +148,12 @@ const finalizePetReservation = async ({ petId, source, referenceId, status }) =>
   }, {
     $set: { status, isAvailable: false, 'reservation.completedAt': new Date() },
     $unset: { [other]: 1 }
-  }, { new: true, runValidators: true });
+  }, { new: true, runValidators: true, ...sessionOptions(session) });
   if (completed) return completed;
 
-  const legacyReserved = await Pet.findOne({ _id: id, status: 'reserved', [own]: null, [other]: null });
+  const legacyReserved = await withSession(Pet.findOne({ _id: id, status: 'reserved', [own]: null, [other]: null }), session);
   if (!legacyReserved || !isIndividualPetRecord(legacyReserved)) return null;
-  if (await hasCompetingReservation({ petId: id, source, referenceId })) return null;
+  if (await hasCompetingReservation({ petId: id, source, referenceId, session })) return null;
 
   return Pet.findOneAndUpdate({ _id: id, status: 'reserved', [own]: null, [other]: null }, {
     $set: {
@@ -159,7 +162,7 @@ const finalizePetReservation = async ({ petId, source, referenceId, status }) =>
       [own]: referenceId,
       'reservation.completedAt': new Date()
     }
-  }, { new: true, runValidators: true });
+  }, { new: true, runValidators: true, ...sessionOptions(session) });
 };
 
 module.exports = {
@@ -169,6 +172,6 @@ module.exports = {
   getPetAvailabilityIssue,
   isIndividualPetRecord,
   releasePetReservation,
-  reservePetForAdoption: (petId, requestId) => reservePet({ petId, source: 'adoption', referenceId: requestId }),
-  reservePetForOrder: (petId, orderId) => reservePet({ petId, source: 'order', referenceId: orderId })
+  reservePetForAdoption: (petId, requestId, options = {}) => reservePet({ petId, source: 'adoption', referenceId: requestId, ...options }),
+  reservePetForOrder: (petId, orderId, options = {}) => reservePet({ petId, source: 'order', referenceId: orderId, ...options })
 };

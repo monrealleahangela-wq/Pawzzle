@@ -9,7 +9,7 @@ const labels = {
   manager: 'Manager', service_staff: 'Service Staff', cashier: 'Cashier', inventory_staff: 'Inventory Staff',
   procurement_officer: 'Procurement Officer', finance_staff: 'Finance Staff', veterinarian: 'Veterinarian',
   groomer: 'Groomer', trainer: 'Trainer', boarding_staff: 'Boarding Staff',
-  delivery_dispatcher: 'Delivery Dispatcher', delivery_rider: 'Delivery Rider'
+  delivery_rider: 'Delivery Rider'
 };
 const groups = [
   ['Customer Operations', ['bookings', 'sales', 'customers']],

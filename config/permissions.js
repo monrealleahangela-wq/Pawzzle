@@ -83,9 +83,6 @@ const ROLE_PERMISSIONS = {
     'services.view', 'bookings.assigned', 'bookings.update',
     'pet_updates.create'
   ],
-  delivery_dispatcher: [
-    'dashboard.view', 'sales.view', 'logistics.manage', 'reports.delivery'
-  ],
   delivery_rider: [
     'dashboard.view', 'deliveries.own', 'deliveries.update_own'
   ],
@@ -115,8 +112,8 @@ const LEGACY_STAFF_ROLE_MAP = {
   cashier: 'cashier',
   procurement_officer: 'procurement_officer',
   finance_staff: 'finance_staff',
-  delivery_dispatcher: 'delivery_dispatcher',
-  logistics_staff: 'delivery_dispatcher',
+  delivery_dispatcher: 'retired_delivery_dispatcher',
+  logistics_staff: 'retired_delivery_dispatcher',
   sales_staff: 'cashier',
   order_staff: 'cashier',
   service_staff: 'service_staff',
@@ -133,7 +130,7 @@ const SPECIALIZED_OPERATIONAL_ROLES = new Set([
   'manager', 'cashier', 'inventory_staff', 'procurement_officer',
   'finance_staff', 'service_staff', 'veterinarian', 'groomer', 'trainer', 'boarding_staff',
   'veterinary_technician', 'veterinary_assistant', 'veterinary_nurse',
-  'veterinary_laboratory_technician', 'delivery_dispatcher', 'delivery_rider',
+  'veterinary_laboratory_technician', 'delivery_rider',
   'auditor'
 ]);
 
@@ -146,6 +143,7 @@ const isStoreAdmin = userOrRole => STORE_ADMIN_ROLES.has(
 );
 
 const isOperationalStaff = userOrRole => {
+  if (typeof userOrRole !== 'string' && normalizeRole(userOrRole) === 'retired_delivery_dispatcher') return false;
   const role = typeof userOrRole === 'string' ? userOrRole : userOrRole?.role;
   return role === 'staff' || SPECIALIZED_OPERATIONAL_ROLES.has(role);
 };
@@ -158,6 +156,7 @@ const normalizeRole = (user) => {
     // An incomplete legacy staff record must never inherit manager access.
     return LEGACY_STAFF_ROLE_MAP[user.staffType] || 'unassigned_staff';
   }
+  if (user.role === 'delivery_dispatcher') return 'retired_delivery_dispatcher';
   return user.role;
 };
 
@@ -171,6 +170,7 @@ const permissionMatches = (granted, required) => {
 
 const getEffectivePermissions = (user) => {
   const role = normalizeRole(user);
+  if (role === 'retired_delivery_dispatcher') return [];
   const defaults = ROLE_PERMISSIONS[role] || [];
   const scopedPolicy = user?.$locals && Object.prototype.hasOwnProperty.call(user.$locals, 'rolePolicyPermissions')
     ? user.$locals.rolePolicyPermissions
@@ -217,6 +217,7 @@ const getExplicitPermissionState = (user, required) => {
 };
 
 const hasPermission = (user, required) => {
+  if (normalizeRole(user) === 'retired_delivery_dispatcher') return false;
   const explicitState = getExplicitPermissionState(user, required);
   if (explicitState !== undefined) return explicitState;
   return getEffectivePermissions(user).some((granted) => permissionMatches(granted, required));

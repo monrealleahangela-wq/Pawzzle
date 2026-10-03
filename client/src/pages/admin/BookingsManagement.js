@@ -18,7 +18,6 @@ import {
   CheckCircle,
   Briefcase,
   ExternalLink,
-  Link2,
   Truck,
   Navigation
 } from 'lucide-react';
@@ -51,7 +50,7 @@ const BookingsManagement = () => {
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [user, setUser] = useState(null);
   const [eligibleRiders, setEligibleRiders] = useState([]);
-  const [selectedRiderId, setSelectedRiderId] = useState('');
+  const [deliveryParcel, setDeliveryParcel] = useState({ weightKg: '', parcelCount: 1 });
   const [deliveryAssignment, setDeliveryAssignment] = useState(null);
   const [eligibleServiceStaff, setEligibleServiceStaff] = useState([]);
   const [selectedServiceStaffId, setSelectedServiceStaffId] = useState('');
@@ -79,9 +78,9 @@ const BookingsManagement = () => {
   }, [selectedBooking?._id, selectedBooking?.status, selectedBooking?.staff]);
 
   useEffect(() => {
-    if (!selectedBooking?._id || !selectedBooking.delivery) { setDeliveryAssignment(null); return; }
-    deliveryService.getTrackingForBooking(selectedBooking._id).then(response=>{const delivery=response.data.delivery||null;setDeliveryAssignment(delivery);if(delivery?.assignmentType==='internal')setSelectedRiderId(delivery.assignedRider?._id||delivery.assignedRider||'');}).catch(()=>setDeliveryAssignment(null));
-  }, [selectedBooking?._id, selectedBooking?.delivery]);
+    if (!selectedBooking?._id) { setDeliveryAssignment(null); return; }
+    deliveryService.getTrackingForBooking(selectedBooking._id).then(response=>setDeliveryAssignment(response.data.delivery||null)).catch(()=>setDeliveryAssignment(null));
+  }, [selectedBooking?._id]);
 
   // Permission Checks
   const isPlatformAdmin = PLATFORM_ADMIN_ROLES.has(user?.role);
@@ -186,14 +185,12 @@ const BookingsManagement = () => {
     }
   };
 
-  const handleGenerateRiderLink = async (bookingId) => {
+  const handleAssignRider = async (bookingId) => {
     try {
-      if (!selectedRiderId) return toast.error('Select an active Delivery Rider first.');
-      const response = await deliveryService.generateLinks({ bookingId, assignmentType: 'internal', riderId: selectedRiderId });
-      const url = response.data.riderLink;
+      if (!Number(deliveryParcel.weightKg)) return toast.error('Enter the measured parcel weight first.');
+      const response = await deliveryService.assignRider({ bookingId, parcel: deliveryParcel, reassign: Boolean(deliveryAssignment) });
       setDeliveryAssignment(response.data.delivery || null);
-      await navigator.clipboard.writeText(url);
-      toast.success('Internal rider link generated and copied!', { icon: <Link2 className="text-primary-600" /> });
+      toast.success('Delivery Rider assigned automatically.');
       fetchBookings();
     } catch (error) {
       toast.error(error.response?.data?.message || 'Unable to prepare this delivery.');
@@ -203,9 +200,7 @@ const BookingsManagement = () => {
   const handleViewLiveTracking = async (bookingId) => {
     try {
       const response = await deliveryService.getTrackingForBooking(bookingId);
-      if (response.data.delivery?.riderToken) {
-        navigate(`/rider-track/${response.data.delivery.riderToken}`);
-      }
+      if (response.data.delivery?.trackingToken) navigate(`/track/${response.data.delivery.trackingToken}`);
     } catch (error) {
       toast.error('No active tracking found for this booking');
     }
@@ -726,7 +721,7 @@ const BookingsManagement = () => {
               </div>
 
               {/* Staff Delivery Link Action */}
-              {user?.role !== 'customer' && selectedBooking.isHomeService && selectedBooking.status !== 'cancelled' && selectedBooking.status !== 'completed' && (
+              {user?.role !== 'customer' && selectedBooking.isHomeService && selectedBooking.paymentStatus === 'paid' && ['confirmed', 'approved', 'processing'].includes(selectedBooking.status) && (
                 <div className="p-6 bg-primary-50 rounded-[2rem] border border-primary-100 space-y-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
@@ -734,25 +729,25 @@ const BookingsManagement = () => {
                         <Truck className="h-5 w-5" />
                       </div>
                       <div>
-                        <h4 className="text-sm font-black text-slate-900 uppercase tracking-tighter leading-none mb-0.5">Staff Dispatch</h4>
-                        <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest leading-none">Home Service Logistics</p>
+                        <h4 className="text-sm font-black text-slate-900 uppercase tracking-tighter leading-none mb-0.5">Delivery Assignment</h4>
+                        <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest leading-none">Home Service Delivery</p>
                       </div>
                     </div>
                   </div>
                   <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest leading-relaxed">
-                    Assign an active Delivery Rider and use the existing secure link for navigation and delivery proof.
+                    Pawzzle assigns an active internal rider. The rider opens navigation and proof tools from their authenticated workspace.
                   </p>
-                  <DeliveryAssignmentFields riders={eligibleRiders} selectedRiderId={selectedRiderId} onRiderChange={setSelectedRiderId}/>
+                  <DeliveryAssignmentFields riders={eligibleRiders} parcel={deliveryParcel} onParcelChange={setDeliveryParcel}/>
                   {deliveryAssignment?.assignmentType === 'internal' && <div className="p-3 rounded-xl bg-white border text-xs"><p className="text-[9px] font-black uppercase text-slate-400">Current Delivery Method</p><p className="font-black text-slate-800">Pawzzle Rider</p><p className="text-slate-500">{deliveryAssignment.assignedRider?.firstName} {deliveryAssignment.assignedRider?.lastName} · {deliveryAssignment.assignedRider?.riderProfile?.staffId}</p></div>}
                   <button
-                    onClick={() => handleGenerateRiderLink(selectedBooking._id)}
-                    className={`w-full py-3.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all shadow-lg flex items-center justify-center gap-2 group ${selectedBooking.delivery ? 'bg-emerald-600 text-white hover:bg-emerald-700' : 'bg-slate-900 text-white hover:bg-primary-600'}`}
+                    onClick={() => handleAssignRider(selectedBooking._id)}
+                    className={`w-full py-3.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all shadow-lg flex items-center justify-center gap-2 group ${deliveryAssignment ? 'bg-emerald-600 text-white hover:bg-emerald-700' : 'bg-slate-900 text-white hover:bg-primary-600'}`}
                   >
-                    <Link2 className="h-4 w-4 group-hover:rotate-12 transition-transform" />
-                    {selectedBooking.delivery ? 'Copy Tracking Link' : 'Generate Online Link'}
+                    <Truck className="h-4 w-4" />
+                    {deliveryAssignment ? 'Reassign Automatically' : 'Assign Rider Automatically'}
                   </button>
 
-                  {selectedBooking.delivery && (
+                  {deliveryAssignment && (
                     <button
                       onClick={() => handleViewLiveTracking(selectedBooking._id)}
                       className="w-full py-3.5 bg-white border-2 border-slate-900 text-slate-900 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-slate-900 hover:text-white transition-all shadow-md flex items-center justify-center gap-2"

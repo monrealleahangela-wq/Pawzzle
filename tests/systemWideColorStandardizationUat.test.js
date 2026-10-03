@@ -102,7 +102,7 @@ test('global theme reaches every routed interface without changing route ownersh
   assert.match(app, /import '\.\/styles\/Global\.css'/);
   assert.match(index, /import '\.\/index\.css'/);
   for (const routeFragment of [
-    'seller-join', 'rider-track/:token', 'checkout', 'booking-calendar',
+    'seller-join', 'rider/deliveries/:deliveryId', 'checkout', 'booking-calendar',
     'admin/dashboard', 'admin/purchase-orders', 'admin/logistics',
     'supplier/dashboard', 'superadmin/dashboard', 'superadmin/suppliers'
   ]) assert.ok(app.includes(routeFragment), `representative routed interface missing: ${routeFragment}`);

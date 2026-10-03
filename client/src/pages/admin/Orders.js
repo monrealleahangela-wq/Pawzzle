@@ -100,7 +100,7 @@ const AdminOrders = () => {
       case 'awaiting_confirmation': return { label: 'START PREPARING', next: 'confirmed', color: 'bg-blue-500 hover:bg-blue-600' };
       case 'confirmed': return { label: 'START PACKING', next: 'preparing', color: 'bg-indigo-500 hover:bg-indigo-600' };
       case 'preparing': return { label: 'READY FOR PICKUP', next: 'ready_for_pickup', color: 'bg-purple-600 hover:bg-purple-700' };
-      case 'ready_for_pickup': return { label: 'ASSIGN RIDER', type: 'rider_link', color: 'bg-slate-900 hover:bg-rose-500' };
+      case 'ready_for_pickup': return { label: 'ASSIGN RIDER', type: 'rider_assignment', color: 'bg-slate-900 hover:bg-rose-500' };
       case 'delivered': return { label: 'CLOSE ORDER', next: 'completed', color: 'bg-slate-900 hover:bg-black' };
       default: return null;
     }
@@ -220,7 +220,7 @@ const AdminOrders = () => {
                           </Link>
                           
                           {getActionButton(order) && (
-                            getActionButton(order).type === 'rider_link' ? (
+                            getActionButton(order).type === 'rider_assignment' ? (
                               <Link
                                 to={`/admin/orders/${order._id}`}
                                 className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${order.delivery ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-200' : 'bg-slate-900 text-white'}`}
