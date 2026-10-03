@@ -31,6 +31,7 @@ const userSummary = user => ({
   firstName: user.firstName,
   lastName: user.lastName,
   store: user.store,
+  permissions: serializeEffectivePermissionMap(user),
   requiresPasswordChange: Boolean(user.requiresPasswordChange),
   professionalVerificationRequired: requiresPlatformVerification(user),
   professionalVerificationStatus: getProfessionalVerificationStatus(user)
@@ -217,6 +218,7 @@ const login = async (req, res) => {
       });
     }
 
+    await attachStoreRolePolicy(user);
     return res.json({ success: true, token: generateToken(user._id), user: userSummary(user) });
   } catch (error) {
     const databaseUnavailable = [
@@ -255,6 +257,7 @@ const verify2FA = async (req, res) => {
     if (!user) return res.status(404).json({ message: 'User not found' });
     if (!user.isActive) return res.status(403).json({ message: 'Account disabled. Contact support.' });
 
+    await attachStoreRolePolicy(user);
     return res.json({ success: true, token: generateToken(user._id), user: userSummary(user) });
   } catch (error) {
     console.error('2FA verification failed');
@@ -333,10 +336,8 @@ const getCurrentUser = async (req, res) => {
     if (!user) return res.status(404).json({ message: 'User not found' });
     await attachStoreRolePolicy(user);
     const safe = withProfessionalVerificationState(sanitizeUser(user), user);
-    if (user.$locals?.rolePolicyPermissions !== undefined) {
-      safe.permissions = serializeEffectivePermissionMap(user);
-      safe.permissionSource = 'store_role';
-    }
+    safe.permissions = serializeEffectivePermissionMap(user);
+    if (user.$locals?.rolePolicyPermissions !== undefined) safe.permissionSource = 'store_role';
     return res.json({ user: safe });
   } catch (error) {
     return res.status(500).json({ message: 'Failed to fetch user data' });

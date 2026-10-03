@@ -4,7 +4,111 @@ import { toast } from 'react-toastify';
 import { Brain, Zap, Package, ShoppingBag, Activity, BarChart3, Flame, CheckCircle, AlertCircle, Sparkles, PieChart, Info, RefreshCw, Layers, ClipboardCheck, PawPrint, CalendarDays, TrendingUp, TrendingDown, Minus, Database } from 'lucide-react';
 
 import { useAuth } from '../../contexts/AuthContext';
-import { OPERATIONAL_ROLES } from '../../utils/authorization';
+import { OPERATIONAL_ROLES, effectiveStaffType, hasUiActionPermission } from '../../utils/authorization';
+
+const compactNumber = value => Number(value || 0).toLocaleString();
+const percent = value => `${(Number(value || 0) * 100).toFixed(1)}%`;
+
+const StaffAnalyticsWorkspace = ({ data, onRefresh, onAnalyze, decisionLoading }) => {
+    const scope = data.roleProfile?.analyticsScope;
+    const role = String(data.roleProfile?.staffType || 'staff').replaceAll('_', ' ');
+    const overview = data.overview || {};
+    const inventory = data.inventory || {};
+    const suppliers = data.suppliers || [];
+    const metrics = scope === 'operations'
+        ? [
+            ['Orders', overview.totalOrders, ShoppingBag],
+            ['Bookings', overview.totalBookings, CalendarDays],
+            ['Products', overview.activeProducts, Package],
+            ['Pet listings', overview.activePets, PawPrint]
+        ]
+        : [
+            ['Products', overview.activeProducts, Package],
+            ['Healthy stock', inventory.levels?.healthy, CheckCircle],
+            ['Low stock', inventory.levels?.low, AlertCircle],
+            ['Out of stock', inventory.levels?.out, Layers]
+        ];
+
+    return (
+        <div className="mx-auto max-w-6xl space-y-5 pb-24">
+            <header className="flex flex-col gap-3 rounded-2xl bg-slate-900 p-5 text-white shadow-lg sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                    <p className="text-[10px] font-black uppercase tracking-[0.3em] text-primary-400">Authorized analytics</p>
+                    <h1 className="mt-2 text-2xl font-black capitalize">{role} intelligence</h1>
+                    <p className="mt-1 text-xs text-slate-300">
+                        {scope === 'supplier' ? 'Supplier performance from this store\'s completed purchase orders.'
+                            : scope === 'inventory' ? 'Inventory alerts and recorded stock levels for this store.'
+                                : 'Store operations counts and attention items authorized for management.'}
+                    </p>
+                </div>
+                <button type="button" onClick={onRefresh} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-white/20 px-4 text-xs font-bold hover:bg-white/10">
+                    <RefreshCw size={15} /> Refresh
+                </button>
+            </header>
+
+            {scope !== 'supplier' && (
+                <section className="grid grid-cols-2 gap-3 lg:grid-cols-4" aria-label="Authorized analytics summary">
+                    {metrics.map(([label, value, Icon]) => (
+                        <article key={label} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+                            <Icon className="mb-2 h-5 w-5 text-primary-600" />
+                            <p className="text-xl font-black text-slate-950 dark:text-white">{compactNumber(value)}</p>
+                            <p className="text-[10px] font-bold uppercase tracking-wide text-slate-500">{label}</p>
+                        </article>
+                    ))}
+                </section>
+            )}
+
+            {scope === 'supplier' ? (
+                <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+                    <h2 className="text-sm font-black text-slate-950 dark:text-white">Supplier scorecard</h2>
+                    <p className="mt-1 text-xs text-slate-500">Rankings use only this store's delivery, fill-rate, and cancellation evidence.</p>
+                    <div className="mt-4 space-y-3">
+                        {suppliers.map(row => (
+                            <article key={row.supplier?.id} className="rounded-xl border border-slate-100 p-4 dark:border-slate-700">
+                                <div className="flex flex-wrap items-start justify-between gap-3">
+                                    <div><p className="font-black text-slate-900 dark:text-white">{row.supplier?.name}</p><p className="mt-1 text-[11px] text-slate-500">{row.why}</p></div>
+                                    <span className="rounded-lg bg-primary-50 px-3 py-1.5 text-xs font-black text-primary-700">{row.score}/100</span>
+                                </div>
+                                <div className="mt-3 grid grid-cols-2 gap-2 text-[11px] sm:grid-cols-4">
+                                    <p>Orders <b className="block text-slate-900 dark:text-white">{compactNumber(row.evidence?.orders)}</b></p>
+                                    <p>On time <b className="block text-slate-900 dark:text-white">{percent(row.criteria?.onTimeRate)}</b></p>
+                                    <p>Fill rate <b className="block text-slate-900 dark:text-white">{percent(row.criteria?.fillRate)}</b></p>
+                                    <p>Cancelled <b className="block text-slate-900 dark:text-white">{percent(row.criteria?.cancellationRate)}</b></p>
+                                </div>
+                                <p className="mt-3 text-[11px] font-semibold text-primary-700">{row.recommendedAction}</p>
+                                {row.warning && <p className="mt-2 text-[10px] text-amber-700">{row.warning}</p>}
+                            </article>
+                        ))}
+                        {!suppliers.length && <p className="rounded-xl border border-dashed border-slate-200 p-8 text-center text-xs text-slate-500">No completed supplier evidence is available yet.</p>}
+                    </div>
+                </section>
+            ) : (
+                <div className="grid gap-4 lg:grid-cols-2">
+                    <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+                        <h2 className="text-sm font-black text-slate-950 dark:text-white">Inventory attention</h2>
+                        <div className="mt-3 space-y-3">
+                            {(data.recommendations || []).map(rec => (
+                                <article key={String(rec.productId || rec.productName)} className="rounded-xl border border-slate-100 p-3 dark:border-slate-700">
+                                    <p className="text-xs font-black text-slate-900 dark:text-white">{rec.productName}</p>
+                                    <p className="mt-1 text-[11px] text-slate-500">{rec.message}</p>
+                                    {rec.productId && <button type="button" disabled={decisionLoading} onClick={() => onAnalyze(rec)} className="mt-3 min-h-10 rounded-xl bg-slate-900 px-3 text-[10px] font-black uppercase text-white disabled:opacity-50">Forecast reorder</button>}
+                                </article>
+                            ))}
+                            {!data.recommendations?.length && <p className="rounded-xl bg-slate-50 p-6 text-center text-xs text-slate-500 dark:bg-slate-800">No current inventory alerts.</p>}
+                        </div>
+                    </section>
+                    {scope === 'operations' && <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+                        <h2 className="text-sm font-black text-slate-950 dark:text-white">Operational attention</h2>
+                        <div className="mt-3 space-y-3">
+                            {(data.criticalAlerts || []).map(alert => <article key={`${alert.type}-${alert.message}`} className="rounded-xl border border-amber-100 bg-amber-50 p-3 text-xs text-amber-900"><b>{alert.title}</b><p className="mt-1">{alert.message}</p></article>)}
+                            {!data.criticalAlerts?.length && <p className="rounded-xl bg-slate-50 p-6 text-center text-xs text-slate-500 dark:bg-slate-800">No current operational alerts.</p>}
+                        </div>
+                    </section>}
+                </div>
+            )}
+        </div>
+    );
+};
 
 const AdminDSS = () => {
     const { user } = useAuth();
@@ -19,10 +123,25 @@ const AdminDSS = () => {
     const fetchInsights = async () => {
         try {
             setLoading(true);
-            const res = OPERATIONAL_ROLES.has(user?.role)
-                ? await dssService.getStaffInsights() 
-                : await dssService.getAdminInsights();
-            setData(res.data);
+            if (OPERATIONAL_ROLES.has(user?.role)) {
+                const supplierOnly = hasUiActionPermission(user, 'dss', 'suppliers', false)
+                    && !hasUiActionPermission(user, 'dss', 'view', false)
+                    && !hasUiActionPermission(user, 'dss', 'manage', false)
+                    && !hasUiActionPermission(user, 'dss', 'inventory', false);
+                if (supplierOnly) {
+                    const res = await dssService.getSupplierScorecard();
+                    setData({
+                        roleProfile: { role: user.role, isStaff: true, staffType: effectiveStaffType(user), analyticsScope: 'supplier' },
+                        suppliers: res.data.suppliers || []
+                    });
+                } else {
+                    const res = await dssService.getStaffInsights();
+                    setData(res.data);
+                }
+            } else {
+                const res = await dssService.getAdminInsights();
+                setData(res.data);
+            }
         } catch (err) {
             toast.error('Failed to load store intelligence');
         } finally {
@@ -68,18 +187,18 @@ const AdminDSS = () => {
 
     if (!data) return null;
 
+    if (data.roleProfile?.isStaff) {
+        return <StaffAnalyticsWorkspace data={data} onRefresh={fetchInsights} onAnalyze={analyzeReplenishment} decisionLoading={decisionLoading} />;
+    }
+
     const {
         overview,
         salesHistory,
         inventory,
         sellerDemand,
         recommendations,
-        conversionRate,
-        roleProfile
+        conversionRate
     } = data;
-
-    const isStaff = roleProfile?.isStaff;
-    const staffType = roleProfile?.staffType?.replace('_', ' ');
 
     const cardClass = "bg-white border border-slate-100 rounded-2xl p-4 sm:p-5 shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden relative group";
     const labelClass = "text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4 block";
@@ -141,13 +260,10 @@ const AdminDSS = () => {
 
                     <div className="max-w-3xl">
                         <h1 className="text-2xl sm:text-3xl font-black uppercase tracking-tight leading-none mb-3 text-white">
-                            {isStaff ? `${staffType}` : 'Explainable'} <br /> <span className="text-primary-500 italic">Intelligence</span>
+                            Explainable <br /> <span className="text-primary-500 italic">Intelligence</span>
                         </h1>
                         <p className="text-xs sm:text-sm font-medium text-slate-300 max-w-xl leading-relaxed">
-                            {isStaff 
-                                ? `Specialized decision support for ${staffType} protocols. Analyze store-specific data to optimize your assigned operations.`
-                                : 'Review explainable product, pet-listing, service-demand, inventory, and procurement insights from your own store activity.'
-                            }
+                            Review explainable product, pet-listing, service-demand, inventory, and procurement insights from your own store activity.
                         </p>
                     </div>
 

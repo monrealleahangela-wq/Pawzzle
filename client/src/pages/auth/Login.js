@@ -4,7 +4,7 @@ import { toast } from 'react-toastify';
 import { useAuth } from '../../contexts/AuthContext';
 import { Mail, Lock, Eye, EyeOff, AlertCircle, Send, MessageSquare, X } from 'lucide-react';
 import { supportService } from '../../services/apiService';
-import { portalHomeForRole, professionalVerificationStatus, requiresProfessionalVerification } from '../../utils/authorization';
+import { portalHomeForUser, professionalVerificationStatus, requiresProfessionalVerification } from '../../utils/authorization';
 
 const BACKEND = process.env.REACT_APP_API_URL?.replace('/api', '') || 'http://localhost:5000';
 
@@ -37,14 +37,14 @@ const Login = () => {
   const [supportData, setSupportData] = useState({ email: '', message: '' });
   const [sendingSupport, setSendingSupport] = useState(false);
 
-  const getRedirectPath = () => {
+  const getRedirectPath = (authenticatedUser) => {
     const params = new URLSearchParams(location.search);
     const redirect = params.get('redirect');
     if (redirect) return redirect;
     const savedRedirect = localStorage.getItem('redirectPath');
     if (savedRedirect) { localStorage.removeItem('redirectPath'); return savedRedirect; }
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
-    return portalHomeForRole(user.role);
+    const user = authenticatedUser || JSON.parse(localStorage.getItem('user') || '{}');
+    return portalHomeForUser(user);
   };
 
   const showAuthenticatedToast = currentUser => {
@@ -84,10 +84,7 @@ const Login = () => {
         toast.info('Verification code sent to your email');
       } else if (result.success) {
         showAuthenticatedToast(result.user);
-        const userRole = result.user?.role;
-        if (userRole === 'super_admin') navigate('/superadmin/dashboard');
-        else if (userRole === 'admin' || userRole === 'staff') navigate('/admin/dashboard');
-        else navigate(getRedirectPath());
+        navigate(getRedirectPath(result.user));
       } else if (result.isDisabled) {
         setDeactivationInfo({
           reason: result.deactivationReason,
@@ -116,10 +113,7 @@ const Login = () => {
       const result = await verify2FA({ email: loginEmail, otp });
       if (result.success) {
         showAuthenticatedToast(result.user);
-        const userRole = result.user?.role;
-        if (userRole === 'super_admin') navigate('/superadmin/dashboard');
-        else if (userRole === 'admin' || userRole === 'staff') navigate('/admin/dashboard');
-        else navigate(getRedirectPath());
+        navigate(getRedirectPath(result.user));
       } else {
         toast.error(result.error || 'Verification failed');
       }

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import SessionService from '../../services/sessionService';
-import { portalHomeForRole } from '../../utils/authorization';
+import { portalHomeForUser } from '../../utils/authorization';
 
 /**
  * This page is the redirect target for Google OAuth.
@@ -39,7 +39,7 @@ const OAuthCallback = () => {
             // Defer navigation slightly so AuthContext has time to propagate the new state
             // to all consumers (like ProtectedRoute), circumventing false access rejections.
             setTimeout(() => {
-                navigate(portalHomeForRole(user.role), { replace: true });
+                navigate(portalHomeForUser(user), { replace: true });
             }, 300);
         } catch (e) {
             setError('Could not parse login data. Please try again.');

@@ -23,68 +23,68 @@ const ROLE_PERMISSIONS = {
     'attendance.view', 'leave.approve'
   ],
   service_staff: [
-    'dashboard.view', 'customers.view', 'pets.view', 'services.view',
+    'customers.view', 'pets.view', 'services.view',
     'bookings.view', 'bookings.confirm', 'bookings.update',
     'pet_updates.create'
   ],
   cashier: [
-    'dashboard.view', 'customers.view', 'pets.view', 'products.view',
+    'customers.view', 'pets.view', 'products.view',
     'sales.create', 'sales.view', 'payments.create'
   ],
   inventory_staff: [
-    'dashboard.view', 'products.view', 'inventory.view', 'inventory.create',
+    'products.view', 'inventory.view', 'inventory.create',
     'inventory.adjust', 'inventory.receive', 'procurement.view',
     'reports.inventory', 'dss.inventory'
   ],
   procurement_officer: [
-    'dashboard.view', 'inventory.view', 'procurement.manage',
+    'inventory.view', 'procurement.manage',
     'suppliers.manage', 'finance.view', 'dss.suppliers'
   ],
   finance_staff: [
-    'dashboard.view', 'sales.view', 'procurement.view', 'finance.manage',
+    'sales.view', 'procurement.view', 'finance.manage',
     'reports.finance', 'payments.manage', 'payroll.view', 'payroll.prepare',
     'payroll.review', 'payroll.pay', 'compensation.manage', 'attendance.view', 'leave.view'
   ],
   veterinarian: [
-    'dashboard.view', 'customers.view', 'pets.view', 'clinical.manage',
+    'customers.view', 'pets.view', 'clinical.manage',
     'services.view', 'bookings.assigned', 'inventory.vaccine',
     'pet_updates.create', 'bookings.update'
   ],
   veterinary_technician: [
-    'dashboard.view', 'customers.assigned', 'pets.safety_summary',
+    'customers.assigned', 'pets.safety_summary',
     'services.view', 'bookings.assigned', 'bookings.update',
     'clinical.assist', 'pet_updates.create'
   ],
   veterinary_assistant: [
-    'dashboard.view', 'customers.assigned', 'pets.safety_summary',
+    'customers.assigned', 'pets.safety_summary',
     'services.view', 'bookings.assigned', 'clinical.assist'
   ],
   veterinary_nurse: [
-    'dashboard.view', 'customers.assigned', 'pets.safety_summary',
+    'customers.assigned', 'pets.safety_summary',
     'services.view', 'bookings.assigned', 'bookings.update',
     'clinical.nursing', 'pet_updates.create'
   ],
   veterinary_laboratory_technician: [
-    'dashboard.view', 'customers.assigned', 'pets.safety_summary',
+    'customers.assigned', 'pets.safety_summary',
     'services.view', 'bookings.assigned', 'clinical.lab'
   ],
   groomer: [
-    'dashboard.view', 'customers.assigned', 'pets.safety_summary',
+    'customers.assigned', 'pets.safety_summary',
     'services.view', 'bookings.assigned', 'bookings.update',
     'pet_updates.create'
   ],
   trainer: [
-    'dashboard.view', 'customers.assigned', 'pets.safety_summary',
+    'customers.assigned', 'pets.safety_summary',
     'services.view', 'bookings.assigned', 'bookings.update',
     'pet_updates.create'
   ],
   boarding_staff: [
-    'dashboard.view', 'customers.assigned', 'pets.safety_summary',
+    'customers.assigned', 'pets.safety_summary',
     'services.view', 'bookings.assigned', 'bookings.update',
     'pet_updates.create'
   ],
   delivery_rider: [
-    'dashboard.view', 'deliveries.own', 'deliveries.update_own'
+    'deliveries.own', 'deliveries.update_own'
   ],
   supplier: [
     'dashboard.view', 'supplier_profile.own', 'supplier_catalog.own',
@@ -94,7 +94,7 @@ const ROLE_PERMISSIONS = {
     'products.view', 'services.view', 'account.own', 'pets.own',
     'orders.own', 'bookings.own', 'deliveries.own', 'messages.own'
   ],
-  auditor: ['dashboard.view', 'reports.view', 'audit.view']
+  auditor: ['reports.view', 'audit.view']
 };
 
 const LEGACY_STAFF_ROLE_MAP = {

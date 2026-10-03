@@ -15,7 +15,7 @@ const Supplier = require('../models/Supplier');
 const StoreApplication = require('../models/StoreApplication');
 const PurchaseOrder = require('../models/PurchaseOrder');
 const DecisionSupportService = require('../services/decisionSupportService');
-const { isPlatformAdmin, isStoreAdmin, isOperationalStaff } = require('../config/permissions');
+const { hasPermission, isPlatformAdmin, isStoreAdmin, isOperationalStaff, normalizeRole } = require('../config/permissions');
 const {
     getCustomerVisibleOwnerIds,
     buildCustomerVisibleStoreFilter,
@@ -436,14 +436,6 @@ const getAdminInsights = async (req, res) => {
         const { storeId: queryStoreId } = req.query;
         let store;
         
-        // Block staff from central admin dashboard stats (Financials)
-        if (req.user.role === 'staff') {
-            return res.status(403).json({ 
-                message: 'Access Restricted. You are only allowed to see Staff Intelligence.',
-                redirectUrl: '/staff/intelligence'
-            });
-        }
-
         // Admin or Super Admin
         if (queryStoreId) {
             store = await Store.findOne({ _id: queryStoreId });
@@ -776,14 +768,19 @@ const getStaffInsights = async (req, res) => {
             return res.status(400).json({ message: 'Staff account not linked to any store.' });
         }
 
-        const staffType = req.user.staffType || 'general';
+        const staffType = normalizeRole(req.user);
+        const canViewOperations = hasPermission(req.user, 'dss.view') || hasPermission(req.user, 'dss.manage');
+        const canViewInventory = canViewOperations || hasPermission(req.user, 'dss.inventory');
+        if (!canViewOperations && !canViewInventory) {
+            return res.status(403).json({ message: 'Access denied. Missing required analytics permission.' });
+        }
 
-        // 1. Fetch relevant datasets
+        // Query only the datasets authorized for this analytics scope.
         const [orders, bookings, products, pets] = await Promise.all([
-            Order.find({ store: storeId, isDeleted: { $ne: true } }).lean(),
-            Booking.find({ store: storeId, isDeleted: { $ne: true } }).lean(),
-            Product.find({ store: storeId, isDeleted: { $ne: true } }).lean(),
-            Pet.find({ store: storeId, isDeleted: { $ne: true } }).lean()
+            canViewOperations ? Order.find({ store: storeId, isDeleted: { $ne: true } }).lean() : [],
+            canViewOperations ? Booking.find({ store: storeId, isDeleted: { $ne: true } }).lean() : [],
+            canViewInventory ? Product.find({ store: storeId, isDeleted: { $ne: true } }).lean() : [],
+            canViewOperations ? Pet.find({ store: storeId, isDeleted: { $ne: true } }).lean() : []
         ]);
 
         const now = new Date();
@@ -814,6 +811,7 @@ const getStaffInsights = async (req, res) => {
         const lowStock = products.filter(p => (p.stockQuantity <= 5 || p.stockQuantity < (p.minStockThreshold || 10)) && p.isActive);
         lowStock.forEach(p => {
             recommendations.push({
+                productId: p._id,
                 type: 'restock',
                 title: 'Restock Required',
                 productName: p.name,
@@ -841,45 +839,40 @@ const getStaffInsights = async (req, res) => {
         // --- SERVICE LOGIC ---
         const bookingsPending = bookings.filter(b => b.status === 'pending');
 
-        // Compatible Structure for AdminDSS.js
-        res.json({
+        const growth = {};
+        if (canViewOperations) {
+            growth.orders = calculateGrowth(currentOrders, previousOrders);
+            growth.bookings = calculateGrowth(currentBookings, previousBookings);
+            growth.pets = calculateGrowth(currentPets, previousPets);
+        }
+        if (canViewInventory) growth.products = calculateGrowth(currentProducts, previousProducts);
+
+        const payload = {
             roleProfile: {
                 role: req.user.role,
                 isStaff: true,
-                staffType
+                staffType,
+                analyticsScope: canViewOperations ? 'operations' : 'inventory'
             },
             overview: {
-                totalRevenue: 0, // Staff don't see financial data usually
-                totalOrders: orders.length,
-                totalBookings: bookings.length,
-                activeProducts: products.length,
-                activePets: pets.length,
-                growth: {
-                    orders: calculateGrowth(currentOrders, previousOrders),
-                    bookings: calculateGrowth(currentBookings, previousBookings),
-                    revenue: 0,
-                    pets: calculateGrowth(currentPets, previousPets),
-                    products: calculateGrowth(currentProducts, previousProducts),
-                    balance: 0
-                }
+                ...(canViewOperations ? {
+                    totalOrders: orders.length,
+                    totalBookings: bookings.length,
+                    activePets: pets.length
+                } : {}),
+                ...(canViewInventory ? { activeProducts: products.length } : {}),
+                growth
             },
-            inventory: {
+            ...(canViewInventory ? { inventory: {
                 levels: {
                     healthy: products.filter(p => p.stockQuantity > 20).length,
                     low: products.filter(p => p.stockQuantity <= 20 && p.stockQuantity > 0).length,
                     out: products.filter(p => p.stockQuantity === 0).length
                 }
-            },
-            salesHistory: {
-                topSelling: [],
-                categoryTrends: {}
-            },
-            customers: { patterns: [] },
-            recommendations,
-            criticalAlerts,
-            monthlyRevenue: [],
-            conversionRate: 0
-        });
+            }, recommendations } : {}),
+            ...(canViewOperations ? { criticalAlerts } : {})
+        };
+        res.json(payload);
     } catch (error) {
         console.error('Staff DSS error:', error);
         res.status(500).json({ message: 'Server error', error: error.message });

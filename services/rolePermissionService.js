@@ -9,6 +9,7 @@ const EDITABLE_ROLES = [
 ];
 
 const PERMISSION_CATALOG = {
+  dashboard: ['view'],
   bookings: ['view', 'confirm', 'update', 'cancel', 'manage'],
   sales: ['view', 'manage'],
   inventory: ['view', 'manage'],

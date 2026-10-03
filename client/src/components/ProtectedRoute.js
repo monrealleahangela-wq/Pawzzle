@@ -1,7 +1,7 @@
 import React from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { OPERATIONAL_ROLES, effectiveStaffType, hasUiActionPermission, hasUiPermission, isProfessionalVerificationPending, portalHomeForRole } from '../utils/authorization';
+import { OPERATIONAL_ROLES, canAccessDashboard, effectiveStaffType, hasUiActionPermission, hasUiPermission, isProfessionalVerificationPending, portalHomeForUser } from '../utils/authorization';
 
 const roleMatches = (userRole, allowedRoles) =>
   allowedRoles.includes(userRole) ||
@@ -9,7 +9,7 @@ const roleMatches = (userRole, allowedRoles) =>
   (allowedRoles.includes('staff') && OPERATIONAL_ROLES.has(userRole)) ||
   (allowedRoles.includes('super_admin') && userRole === 'platform_admin');
 
-const ProtectedRoute = ({ children, roles = [], staffTypes = [], requiredPermission = null, excludedRoles = [], allowPendingProfessional = false }) => {
+const ProtectedRoute = ({ children, roles = [], staffTypes = [], requiredPermission = null, excludedRoles = [], allowPendingProfessional = false, requireDashboardAccess = false }) => {
   const { isAuthenticated, user, loading } = useAuth();
 
   if (loading) {
@@ -29,13 +29,17 @@ const ProtectedRoute = ({ children, roles = [], staffTypes = [], requiredPermiss
   }
 
   if (excludedRoles.includes(user?.role) || excludedRoles.includes(effectiveStaffType(user))) {
-    return <Navigate to="/admin/dashboard" replace />;
+    return <Navigate to={portalHomeForUser(user)} replace />;
   }
 
   // Check basic role access
   if (roles.length > 0 && !roleMatches(user?.role, roles)) {
-    if (user?.role) return <Navigate to={portalHomeForRole(user.role)} replace />;
+    if (user?.role) return <Navigate to={portalHomeForUser(user)} replace />;
     return <Navigate to="/login" replace />;
+  }
+
+  if (requireDashboardAccess && !canAccessDashboard(user)) {
+    return <Navigate to={portalHomeForUser(user)} replace />;
   }
 
   // Enhanced Staff Access Logic
@@ -54,7 +58,7 @@ const ProtectedRoute = ({ children, roles = [], staffTypes = [], requiredPermiss
         return granted;
       });
       if (!requiredPermissionGranted) {
-        return <Navigate to="/admin/dashboard" replace />;
+        return <Navigate to={portalHomeForUser(user)} replace />;
       }
     }
 
@@ -70,7 +74,7 @@ const ProtectedRoute = ({ children, roles = [], staffTypes = [], requiredPermiss
     // role boundary. Only an explicitly requested action can be used as a
     // configured exception for a route that deliberately supports one.
     if (staffTypes.length > 0 && !allowedType && !explicitActionPermissionGranted) {
-      return <Navigate to="/admin/dashboard" replace />;
+      return <Navigate to={portalHomeForUser(user)} replace />;
     }
   }
 

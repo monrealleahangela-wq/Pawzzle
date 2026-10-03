@@ -3,6 +3,7 @@ const { body } = require('express-validator');
 const router = express.Router();
 const jwt = require('jsonwebtoken');
 const passport = require('../config/passport');
+const { attachStoreRolePolicy, serializeEffectivePermissionMap } = require('../services/rolePermissionService');
 
 const {
   register,
@@ -138,9 +139,10 @@ router.post('/verify-2fa', authRateLimits.authIp, authRateLimits.otpVerify, otpV
 router.post('/toggle-2fa', authenticate, toggle2FA);
 
 // ─── Helper: issue JWT after OAuth and redirect to frontend ───────────────────
-const issueTokenAndRedirect = (req, res) => {
+const issueTokenAndRedirect = async (req, res) => {
   try {
     const user = req.user;
+    await attachStoreRolePolicy(user);
     const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
     const userData = JSON.stringify({
       _id: user._id,
@@ -148,6 +150,9 @@ const issueTokenAndRedirect = (req, res) => {
       firstName: user.firstName,
       lastName: user.lastName,
       role: user.role,
+      staffType: user.staffType,
+      store: user.store,
+      permissions: serializeEffectivePermissionMap(user),
       avatar: user.avatar || '',
       authProvider: user.authProvider
     });

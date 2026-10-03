@@ -47,9 +47,9 @@ test('direct operational staff dashboard resolves the assigned store without own
   assert.equal((controller.match(/if \(isOperationalStaff\(req\.user\) && req\.user\.store\)/g) || []).length, 2);
 });
 
-test('OAuth redirects through the canonical role destination helper', () => {
+test('OAuth redirects through the permission-aware user destination helper', () => {
   const oauth = source('client/src/pages/auth/OAuthCallback.js');
-  assert.match(oauth, /portalHomeForRole\(user\.role\)/);
+  assert.match(oauth, /portalHomeForUser\(user\)/);
   assert.doesNotMatch(oauth, /user\.role === 'super_admin'/);
   assert.doesNotMatch(oauth, /user\.role === 'admin'/);
 });

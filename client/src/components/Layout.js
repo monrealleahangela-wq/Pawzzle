@@ -232,14 +232,28 @@ const getStaffMenu = (user) => {
     return menu;
   }
 
-  const menu = [
-    { path: '/admin/dashboard', label: 'Dashboard', icon: Activity },
+  if (effectiveStaffType(user) === 'delivery_rider') {
+    return [
+      { path: '/admin/dashboard', label: 'My Deliveries', icon: Truck },
+      { label: 'My Employment', icon: Clock, children: [
+        { path: '/staff/attendance', label: 'Attendance', icon: Clock },
+        { path: '/staff/leave', label: 'Leave', icon: CalendarOff },
+        { path: '/staff/payslips', label: 'Payslips', icon: ReceiptText }
+      ] }
+    ];
+  }
+
+  const menu = [];
+  if (hasUiPermission(user, 'dashboard')) {
+    menu.push({ path: '/admin/dashboard', label: 'Dashboard', icon: Activity });
+  }
+  menu.push(
     { label: 'My Employment', icon: Clock, children: [
       { path: '/staff/attendance', label: 'Attendance', icon: Clock },
       { path: '/staff/leave', label: 'Leave', icon: CalendarOff },
       { path: '/staff/payslips', label: 'Payslips', icon: ReceiptText }
-    ] },
-  ];
+    ] }
+  );
   if (hasUiPermission(user, 'dss')) menu.push({ path: '/admin/insights', label: 'Business Insights', icon: Brain });
 
   const catalogChildren = [];

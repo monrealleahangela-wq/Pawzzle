@@ -18,7 +18,7 @@ const {
 const { TAX_STATUSES, PRICING_MODES, normalizeTaxConfiguration } = require('../utils/taxCalculator');
 const { POLICY_TYPES, normalizeRefundPolicy } = require('../utils/refundPolicy');
 const { isPlatformAdmin, isStoreAdmin, isOperationalStaff } = require('../config/permissions');
-const { buildStoreOperationsSnapshot } = require('../services/operationsDashboardService');
+const { buildStoreOperationsSnapshot, projectStoreOperationsSnapshot } = require('../services/operationsDashboardService');
 const { createNotification } = require('./notificationController');
 const {
   CUSTOMER_VISIBLE_STORE_FIELDS,
@@ -373,7 +373,7 @@ const getStoreDashboard = async (req, res) => {
 
     const includeFinancials = isStoreAdmin(req.user) || isPlatformAdmin(req.user);
     const dashboardData = await buildStoreOperationsSnapshot(store, { includeFinancials });
-    res.json(dashboardData);
+    res.json(projectStoreOperationsSnapshot(dashboardData, req.user));
   } catch (error) {
     console.error('Get store dashboard error:', error);
     res.status(500).json({ message: 'Server error' });

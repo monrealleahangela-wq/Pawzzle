@@ -188,8 +188,8 @@ function App() {
                   <Route path="archived-messages" element={<ProtectedRoute roles={['customer', 'admin', 'super_admin']}><ChatManagement initialView="archived" /></ProtectedRoute>} />
 
                   {/* Admin Routes */}
-                  {/* Dashboard - all staff types can see */}
-                  <Route path="admin/dashboard" element={<ProtectedRoute roles={['admin', 'super_admin', 'staff', 'delivery_rider']}><AdminDashboard /></ProtectedRoute>} />
+                  {/* Store overview for authorized managers/owners; assigned-work hubs for specialists and riders. */}
+                  <Route path="admin/dashboard" element={<ProtectedRoute roles={['admin', 'super_admin', 'staff', 'delivery_rider']} requireDashboardAccess><AdminDashboard /></ProtectedRoute>} />
                   <Route path="rider/deliveries/:deliveryId" element={<ProtectedRoute roles={['delivery_rider', 'staff']} staffTypes={['delivery_rider']}><RiderDeliveryPage /></ProtectedRoute>} />
 
                   {/* Catalog - inventory access */}
@@ -198,8 +198,8 @@ function App() {
                   <Route path="admin/inventory" element={<ProtectedRoute roles={['admin', 'super_admin', 'staff']} staffTypes={['inventory_staff']} requiredPermission={['inventory.view', 'inventory.manage']}><ProductInventory /></ProtectedRoute>} />
 
                   {/* Orders - orders access */}
-                  <Route path="admin/orders" element={<ProtectedRoute roles={['admin', 'super_admin', 'staff']} staffTypes={['order_staff']} requiredPermission="orders"><AdminOrders /></ProtectedRoute>} />
-                  <Route path="admin/orders/:id" element={<ProtectedRoute roles={['admin', 'super_admin', 'staff']} staffTypes={['order_staff']} requiredPermission="orders"><OrderDetail /></ProtectedRoute>} />
+                  <Route path="admin/orders" element={<ProtectedRoute roles={['admin', 'super_admin', 'staff']} staffTypes={['order_staff']} requiredPermission={['sales.view', 'sales.manage', 'orders.view']}><AdminOrders /></ProtectedRoute>} />
+                  <Route path="admin/orders/:id" element={<ProtectedRoute roles={['admin', 'super_admin', 'staff']} staffTypes={['order_staff']} requiredPermission={['sales.view', 'sales.manage', 'orders.view']}><OrderDetail /></ProtectedRoute>} />
 
                   {/* Bookings - bookings access */}
                   <Route path="admin/bookings" element={<ProtectedRoute roles={['admin', 'super_admin', 'staff']} staffTypes={['service_staff', 'service_management_staff', 'veterinarian', 'veterinary_technician', 'veterinary_assistant', 'veterinary_nurse', 'veterinary_laboratory_technician', 'groomer', 'trainer', 'boarding_specialist']} requiredPermission="bookings"><BookingsManagement /></ProtectedRoute>} />

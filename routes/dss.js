@@ -15,7 +15,7 @@ router.get('/service-config', authenticate, adminOnly, getDSSConfig);
 router.put('/service-config', authenticate, adminOnly, updateDSSConfig);
 
 // Staff-Specific Intelligence Dashboard (DSS) - staff or admin
-router.get('/staff', authenticate, getStaffInsights);
+router.get('/staff', authenticate, requirePermission('dss.view', 'dss.manage', 'dss.inventory'), getStaffInsights);
 
 // Admin (Store Owner) DSS - admin or super_admin ONLY
 router.get('/admin', authenticate, adminOnly, getAdminInsights);

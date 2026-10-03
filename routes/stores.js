@@ -27,7 +27,7 @@ const {
   previewDeliveryPricing
 } = require('../controllers/storeController');
 const { submitExpansionRequest, upload } = require('../controllers/storeApplicationController');
-const { authenticate, superAdminOnly, adminOnly, adminOrStaff, storeOwnerOnly } = require('../middleware/auth');
+const { authenticate, superAdminOnly, adminOnly, adminOrStaff, storeOwnerOnly, requirePermission } = require('../middleware/auth');
 
 // Validation rules
 const createStoreValidation = [
@@ -70,7 +70,7 @@ router.put('/my-store/refund-policy', authenticate, storeOwnerOnly, updateRefund
 router.get('/my-store/delivery-pricing', authenticate, storeOwnerOnly, getDeliveryPricing);
 router.put('/my-store/delivery-pricing', authenticate, storeOwnerOnly, updateDeliveryPricing);
 router.post('/my-store/delivery-pricing/preview', authenticate, storeOwnerOnly, previewDeliveryPricing);
-router.get('/dashboard/stats', authenticate, adminOrStaff, getStoreDashboard);
+router.get('/dashboard/stats', authenticate, adminOrStaff, requirePermission('dashboard.view'), getStoreDashboard);
 router.post('/', authenticate, adminOnly, createStoreValidation, createStore);
 
 // Public routes with parameter (must come AFTER literal paths)

@@ -14,7 +14,7 @@ export const CARE_PROFESSIONAL_ROLES = new Set([
 ]);
 
 const DIRECT_ROLE_RESOURCES = {
-  manager: ['staff', 'customers', 'pets', 'services', 'orders', 'inventory', 'procurement', 'finance', 'logistics', 'reports', 'bookings', 'dss', 'attendance', 'leave'],
+  manager: ['dashboard', 'staff', 'customers', 'pets', 'services', 'orders', 'inventory', 'procurement', 'finance', 'logistics', 'reports', 'bookings', 'dss', 'attendance', 'leave'],
   service_staff: ['customers', 'pets', 'services', 'bookings'],
   cashier: ['customers', 'pets', 'products', 'orders', 'payments'],
   inventory_staff: ['products', 'inventory', 'procurement', 'reports', 'pets', 'dss'],
@@ -102,9 +102,38 @@ export const hasUiActionPermission = (user, resource, action, inherited = false)
   return inherited;
 };
 
-export const portalHomeForRole = role => {
+const canUseAction = (user, resource, action) => hasUiActionPermission(
+  user,
+  resource,
+  action,
+  hasUiPermission(user, resource)
+);
+
+export const canAccessDashboard = user => {
+  if (!user) return false;
+  if (PLATFORM_ADMIN_ROLES.has(user.role) || STORE_ADMIN_ROLES.has(user.role)) return true;
+  if (canUseAction(user, 'dashboard', 'view')) return true;
+  const role = effectiveStaffType(user);
+  if (CARE_PROFESSIONAL_ROLES.has(role)) return canUseAction(user, 'bookings', 'assigned');
+  if (role === 'delivery_rider') return canUseAction(user, 'deliveries', 'own');
+  return false;
+};
+
+export const portalHomeForUser = user => {
+  const role = user?.role;
   if (PLATFORM_ADMIN_ROLES.has(role)) return '/superadmin/dashboard';
-  if (STORE_ADMIN_ROLES.has(role) || OPERATIONAL_ROLES.has(role)) return '/admin/dashboard';
+  if (STORE_ADMIN_ROLES.has(role)) return '/admin/dashboard';
   if (role === 'supplier') return '/supplier/dashboard';
-  return '/home';
+  if (!OPERATIONAL_ROLES.has(role)) return '/home';
+
+  const effective = effectiveStaffType(user);
+  if (CARE_PROFESSIONAL_ROLES.has(effective) && canAccessDashboard(user)) return '/admin/dashboard';
+  if (effective === 'delivery_rider' && canAccessDashboard(user)) return '/admin/dashboard';
+  if (canUseAction(user, 'dashboard', 'view')) return '/admin/dashboard';
+  if (effective === 'cashier' && (hasUiPermission(user, 'orders') || hasUiPermission(user, 'sales'))) return '/admin/orders';
+  if (effective === 'inventory_staff' && hasUiPermission(user, 'inventory')) return '/admin/inventory';
+  if (effective === 'procurement_officer' && hasUiPermission(user, 'procurement')) return '/admin/purchase-orders';
+  if (effective === 'finance_staff' && hasUiPermission(user, 'finance')) return '/admin/finance';
+  if (effective === 'service_staff' && hasUiPermission(user, 'bookings')) return '/admin/bookings';
+  return '/profile';
 };

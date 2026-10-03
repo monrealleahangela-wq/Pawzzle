@@ -13,7 +13,7 @@
 
 import React, { useMemo } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Activity, Heart, Package, ShoppingCart, Calendar, Users, MessageSquare, Home as House, MapPin, ShoppingBag, User, Tag, PieChart, Loader2 } from 'lucide-react';
+import { Activity, Heart, Package, ShoppingCart, Calendar, Users, MessageSquare, Home as House, MapPin, ShoppingBag, User, Tag, PieChart, Loader2, Truck, DollarSign } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import {
   PLATFORM_ADMIN_ROLES, STORE_ADMIN_ROLES, OPERATIONAL_ROLES,
@@ -31,6 +31,8 @@ const PERMISSION_NAV_MAP = {
   customers: { path: '/admin/customers',label: 'Customers', icon: Users },
   vouchers:  { path: '/admin/vouchers', label: 'Vouchers',  icon: Tag },
   dss:       { path: '/admin/insights', label: 'Insights',  icon: PieChart },
+  procurement: { path: '/admin/purchase-orders', label: 'Procurement', icon: Truck },
+  finance:   { path: '/admin/finance', label: 'Finance', icon: DollarSign },
 };
 
 /* The pets route is tied to inventory access */
@@ -77,9 +79,19 @@ const BASE_CONFIGS = {
    when no fine-grained permissions exist yet)
    ───────────────────────────────────────────── */
 const STAFF_TYPE_CONFIGS = {
-  inventory_staff: [DASH_NAV, PET_NAV, PERMISSION_NAV_MAP.inventory, PROF_NAV],
-  order_staff:     [DASH_NAV, PERMISSION_NAV_MAP.orders, PERMISSION_NAV_MAP.customers, PROF_NAV],
-  service_staff:   [DASH_NAV, PERMISSION_NAV_MAP.services, PERMISSION_NAV_MAP.bookings, PROF_NAV],
+  inventory_staff: [PET_NAV, PERMISSION_NAV_MAP.inventory, PROF_NAV],
+  order_staff:     [PERMISSION_NAV_MAP.orders, PERMISSION_NAV_MAP.customers, PROF_NAV],
+  service_staff:   [PERMISSION_NAV_MAP.bookings, PERMISSION_NAV_MAP.services, PROF_NAV],
+};
+
+const PRIMARY_STAFF_NAV = {
+  manager: DASH_NAV,
+  cashier: PERMISSION_NAV_MAP.orders,
+  inventory_staff: PERMISSION_NAV_MAP.inventory,
+  procurement_officer: PERMISSION_NAV_MAP.procurement,
+  finance_staff: PERMISSION_NAV_MAP.finance,
+  service_staff: PERMISSION_NAV_MAP.bookings,
+  delivery_rider: { ...DASH_NAV, label: 'Deliveries' }
 };
 
 /* ─────────────────────────────────────────────
@@ -101,12 +113,17 @@ function buildStaffMenu(user) {
     return dedupe(items).slice(0, 5);
   }
 
+  if (staffType === 'delivery_rider') return [PRIMARY_STAFF_NAV.delivery_rider, PROF_NAV];
+
   // 1. If granular permissions exist, derive items from them
   const grantedResources = Object.keys(PERMISSION_NAV_MAP)
     .filter(resource => hasUiPermission(user, resource));
 
   if (grantedResources.length > 0) {
-    const items = [DASH_NAV];
+    const primary = PRIMARY_STAFF_NAV[staffType];
+    const items = [];
+    if (hasUiPermission(user, 'dashboard')) items.push(DASH_NAV);
+    else if (primary) items.push(primary);
 
     // inventory permission also unlocks the Pets nav item
     if (grantedResources.includes('inventory') || hasUiPermission(user, 'pets')) {
@@ -135,7 +152,7 @@ function buildStaffMenu(user) {
   }
 
   // 3. Minimal fallback
-  return [DASH_NAV, PROF_NAV];
+  return [PROF_NAV];
 }
 
 function dedupe(items) {

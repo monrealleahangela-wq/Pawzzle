@@ -66,28 +66,35 @@ const initialState = {
 export const AuthProvider = ({ children }) => {
   const [state, dispatch] = useReducer(authReducer, initialState);
 
-  // Initialize session cleanup on app load
+  // Rehydrate from the server before protected routes render so cached role
+  // and permission data cannot survive a role-policy change.
   useEffect(() => {
     console.log('🔐 AuthContext: Simple session initialization...');
 
-    // Only run session cleanup, no validation to avoid loops
     SessionService.initializeSessionCleanup();
 
-    // Get current session info without validation
     const currentSession = SessionService.getCurrentSession();
     console.log('🔐 Current session state:', currentSession.isAuthenticated ? 'Authenticated' : 'Not authenticated');
 
-    // Only set authenticated state if we have valid session data
     if (currentSession.isAuthenticated && currentSession.user) {
       console.log('🔐 Setting authenticated state for user:', currentSession.user.email);
-      dispatch({
-        type: 'LOGIN_SUCCESS',
-        payload: {
-          user: currentSession.user,
-          token: currentSession.token,
-          sessionId: currentSession.sessionId
-        }
-      });
+      let active = true;
+      authService.getCurrentUser()
+        .then(response => {
+          if (!active) return;
+          const updatedUser = response.user || response;
+          localStorage.setItem('user', JSON.stringify(updatedUser));
+          dispatch({
+            type: 'LOGIN_SUCCESS',
+            payload: { user: updatedUser, token: currentSession.token, sessionId: currentSession.sessionId }
+          });
+        })
+        .catch(() => {
+          if (!active) return;
+          SessionService.clearAllSessions();
+          dispatch({ type: 'LOGOUT' });
+        });
+      return () => { active = false; };
     } else {
       console.log('🔐 No valid session, User is not authenticated');
       dispatch({ type: 'LOGOUT' });
@@ -299,14 +306,14 @@ export const AuthProvider = ({ children }) => {
     try {
       const response = await authService.getCurrentUser();
       const updatedUser = response.user || response;
+      const previousUser = state.user || JSON.parse(localStorage.getItem('user') || '{}');
 
       // Always update user data in context and localStorage to ensure sync
       updateUser(updatedUser);
 
-      // Check if role has changed
-      const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
-      if (currentUser.role !== updatedUser.role) {
-        console.log('User role changed from', currentUser.role, 'to', updatedUser.role);
+      // Compare before replacing the cached user so role transitions are observable.
+      if (previousUser.role !== updatedUser.role || previousUser.staffType !== updatedUser.staffType) {
+        console.log('User role changed from', previousUser.role, 'to', updatedUser.role);
         return { roleChanged: true, newRole: updatedUser.role };
       }
 

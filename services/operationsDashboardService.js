@@ -14,6 +14,7 @@ const RiderPayout = require('../models/RiderPayout');
 const Review = require('../models/Review');
 const User = require('../models/User');
 const DecisionSupportService = require('./decisionSupportService');
+const { hasPermission, isPlatformAdmin, isStoreAdmin } = require('../config/permissions');
 
 const SPECIALIST_ROLES = [
   'veterinarian', 'veterinary_technician', 'veterinary_assistant',
@@ -462,9 +463,91 @@ const buildStoreOperationsSnapshot = async (store, { includeFinancials = false }
   return response;
 };
 
+const hasAny = (user, permissions) => permissions.some(permission => hasPermission(user, permission));
+
+// The aggregate builder is shared, but its response must still be projected to
+// the caller's effective capabilities before it leaves the server.
+const projectStoreOperationsSnapshot = (snapshot, user) => {
+  if (isPlatformAdmin(user) || isStoreAdmin(user)) return snapshot;
+
+  const access = {
+    sales: hasAny(user, ['sales.view', 'sales.create', 'sales.manage']),
+    bookings: hasAny(user, ['bookings.view', 'bookings.manage']),
+    inventory: hasAny(user, ['inventory.view', 'inventory.manage']),
+    procurement: hasAny(user, ['procurement.view', 'procurement.manage']),
+    finance: hasAny(user, ['finance.view', 'finance.manage', 'reports.finance']),
+    logistics: hasAny(user, ['logistics.view', 'logistics.manage']),
+    customers: hasAny(user, ['customers.view', 'customers.manage']),
+    staff: hasAny(user, ['staff.view', 'staff.manage']),
+    dss: hasAny(user, ['dss.view', 'dss.manage']),
+    inventoryDss: hasPermission(user, 'dss.inventory'),
+    supplierDss: hasPermission(user, 'dss.suppliers')
+  };
+  const projected = {
+    generatedAt: snapshot.generatedAt,
+    store: {
+      id: snapshot.store?.id,
+      name: snapshot.store?.name,
+      ...(access.finance ? { balance: snapshot.store?.balance } : {})
+    }
+  };
+
+  const counts = {};
+  if (access.inventory) counts.products = snapshot.counts?.products;
+  if (hasAny(user, ['pets.view', 'pets.manage'])) counts.pets = snapshot.counts?.pets;
+  if (access.sales) counts.orders = snapshot.counts?.orders;
+  if (access.bookings) counts.bookings = snapshot.counts?.bookings;
+  if (Object.keys(counts).length) projected.counts = counts;
+
+  const kpis = {};
+  if (access.sales) Object.assign(kpis, {
+    todaySales: snapshot.kpis?.todaySales,
+    monthlySales: snapshot.kpis?.monthlySales,
+    ordersToday: snapshot.kpis?.ordersToday,
+    pendingOrders: snapshot.kpis?.pendingOrders,
+    revenueGrowth: snapshot.kpis?.revenueGrowth
+  });
+  if (access.bookings) Object.assign(kpis, {
+    bookingsToday: snapshot.kpis?.bookingsToday,
+    pendingBookings: snapshot.kpis?.pendingBookings
+  });
+  if (access.logistics) kpis.activeDeliveries = snapshot.kpis?.activeDeliveries;
+  if (access.inventory) kpis.lowStockItems = snapshot.kpis?.lowStockItems;
+  if (Object.keys(kpis).length) projected.kpis = kpis;
+
+  const weekly = {};
+  if (access.sales || access.finance) weekly.revenue = snapshot.weekly?.revenue;
+  if (access.bookings) weekly.bookings = snapshot.weekly?.bookings;
+  if (access.staff || access.bookings) weekly.activeWorkload = snapshot.weekly?.activeWorkload;
+  if (Object.keys(weekly).length) projected.weekly = weekly;
+
+  if (access.sales) {
+    projected.sales = snapshot.sales;
+    projected.recentOrders = snapshot.recentOrders;
+  }
+  if (access.bookings) projected.bookings = snapshot.bookings;
+  if (access.bookings || access.staff) projected.specialists = snapshot.specialists;
+  if (access.staff) projected.workforce = snapshot.workforce;
+  if (access.inventory) projected.inventory = snapshot.inventory;
+  if (access.procurement && snapshot.procurement) projected.procurement = snapshot.procurement;
+  if (access.finance && snapshot.finance) projected.finance = snapshot.finance;
+  if (access.logistics) projected.logistics = snapshot.logistics;
+  if (access.customers || access.sales || access.bookings) projected.customers = snapshot.customers;
+
+  if (access.dss) projected.decisionSupport = snapshot.decisionSupport;
+  else if (access.inventoryDss || access.supplierDss) {
+    projected.decisionSupport = {
+      ...(access.inventoryDss ? { inventoryRecommendations: snapshot.decisionSupport?.inventoryRecommendations } : {}),
+      ...(access.supplierDss ? { procurement: snapshot.decisionSupport?.procurement } : {})
+    };
+  }
+  return projected;
+};
+
 module.exports = {
   SPECIALIST_ROLES,
   buildSeries,
   growthRate,
-  buildStoreOperationsSnapshot
+  buildStoreOperationsSnapshot,
+  projectStoreOperationsSnapshot
 };

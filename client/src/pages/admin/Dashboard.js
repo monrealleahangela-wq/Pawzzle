@@ -12,7 +12,7 @@ import RiderDashboard from '../../components/admin/RiderDashboard';
 import SpecializedStaffDashboard from '../../components/admin/SpecializedStaffDashboard';
 import {
   OPERATIONAL_ROLES, PLATFORM_ADMIN_ROLES, STORE_ADMIN_ROLES,
-  effectiveStaffType, hasUiPermission, isCareProfessional
+  effectiveStaffType, hasUiActionPermission, hasUiPermission, isCareProfessional
 } from '../../utils/authorization';
 import { getUserFacingError } from '../../utils/userFacingError';
 import { formatPeso } from '../../utils/paymentSummary';
@@ -133,6 +133,12 @@ const Dashboard = () => {
   const isOwner = PLATFORM_ADMIN_ROLES.has(user?.role) || STORE_ADMIN_ROLES.has(user?.role);
   const isProfessionalWorkspace = isCareProfessional(user);
   const hasPerm = useCallback(resource => hasUiPermission(user, resource), [user]);
+  const canSales = isOwner || hasPerm('sales') || hasPerm('orders');
+  const canBookings = isOwner || hasPerm('bookings') || hasPerm('services');
+  const canStaff = isOwner || hasPerm('staff');
+  const canInventory = isOwner || hasPerm('inventory');
+  const canLogistics = isOwner || hasPerm('logistics');
+  const canCustomers = isOwner || hasPerm('customers') || canSales || canBookings;
 
   const fetchDashboard = useCallback(async ({ quiet = false } = {}) => {
     if (effectiveStaffType(user) === 'delivery_rider' || isProfessionalWorkspace) return;
@@ -182,7 +188,7 @@ const Dashboard = () => {
   };
 
   const quickActions = useMemo(() => [
-    { to: '/admin/staff', label: 'Add Staff', icon: UserPlus, show: isOwner || hasPerm('staff') },
+    { to: '/admin/staff', label: 'Add Staff', icon: UserPlus, show: isOwner || hasUiActionPermission(user, 'staff', 'manage', false) },
     { to: '/admin/roles', label: 'Role Management', icon: ShieldCheck, show: isOwner },
     { to: '/admin/bookings', label: 'Bookings', icon: Calendar, show: isOwner || hasPerm('bookings') || hasPerm('services') },
     { to: '/admin/orders', label: 'Orders', icon: ShoppingBag, show: isOwner || hasPerm('orders') },
@@ -190,7 +196,7 @@ const Dashboard = () => {
     { to: '/admin/purchase-orders', label: 'Procurement', icon: Zap, show: isOwner || hasPerm('procurement') },
     { to: '/admin/finance', label: 'Finance', icon: Wallet, show: isOwner || hasPerm('finance') },
     { to: '/admin/logistics', label: 'Logistics', icon: Truck, show: isOwner || hasPerm('logistics') }
-  ].filter(action => action.show), [hasPerm, isOwner]);
+  ].filter(action => action.show), [hasPerm, isOwner, user]);
 
   if (isProfessionalWorkspace) return <SpecializedStaffDashboard />;
   if (effectiveStaffType(user) === 'delivery_rider') return <RiderDashboard />;
@@ -208,7 +214,7 @@ const Dashboard = () => {
         <div>
           <p className="text-xs font-semibold uppercase tracking-wider text-primary">Operations overview</p>
           <h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-950 sm:text-3xl">{data?.store?.name || user?.store?.name || 'Store'} Dashboard</h1>
-          <p className="mt-1 text-xs text-slate-500">Live store health, sales, bookings, stock, staff and fulfillment.</p>
+          <p className="mt-1 text-xs text-slate-500">{isOwner ? 'Live store health, sales, bookings, stock, staff and fulfillment.' : 'Operational information authorized for your current role.'}</p>
         </div>
         <div className="flex items-center gap-2">
           <span className="hidden text-[11px] text-slate-400 md:inline">Updated {data?.generatedAt ? new Date(data.generatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—'}</span>
@@ -236,40 +242,40 @@ const Dashboard = () => {
         </div>
       )}
 
-      <section aria-label="Today's priorities">
+      {(canBookings || canSales || canStaff || canInventory) && <section aria-label="Today's priorities">
         <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-slate-400">Today</p>
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-          <MetricCard label="Bookings" value={number(kpis.bookingsToday)} icon={Calendar} tone="primary" />
-          <MetricCard label="Pending orders" value={number(kpis.pendingOrders)} icon={ShoppingBag} tone="blue" />
-          <MetricCard label="Staff available" value={number(data?.workforce?.available)} icon={Users} tone="emerald" detail={`${number(data?.workforce?.busy)} busy · ${number(data?.workforce?.onBreak)} on break`} />
-          <MetricCard label="Inventory alerts" value={number(kpis.lowStockItems)} icon={AlertTriangle} tone={kpis.lowStockItems ? 'rose' : 'emerald'} />
+          {canBookings && <MetricCard label="Bookings" value={number(kpis.bookingsToday)} icon={Calendar} tone="primary" />}
+          {canSales && <MetricCard label="Pending orders" value={number(kpis.pendingOrders)} icon={ShoppingBag} tone="blue" />}
+          {canStaff && <MetricCard label="Staff available" value={number(data?.workforce?.available)} icon={Users} tone="emerald" detail={`${number(data?.workforce?.busy)} busy · ${number(data?.workforce?.onBreak)} on break`} />}
+          {canInventory && <MetricCard label="Inventory alerts" value={number(kpis.lowStockItems)} icon={AlertTriangle} tone={kpis.lowStockItems ? 'rose' : 'emerald'} />}
         </div>
-      </section>
+      </section>}
 
-      <section aria-label="This week's operations">
+      {(canSales || canBookings || canStaff) && <section aria-label="This week's operations">
         <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-slate-400">This Week</p>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <MetricCard label="Revenue" value={peso(data?.weekly?.revenue)} icon={DollarSign} tone="emerald" />
-          <MetricCard label="Bookings" value={number(data?.weekly?.bookings)} icon={BarChart3} tone="primary" />
-          <MetricCard label="Active workload" value={number(data?.weekly?.activeWorkload)} icon={Activity} tone="amber" detail="Current staff assignments" />
+          {canSales && <MetricCard label="Revenue" value={peso(data?.weekly?.revenue)} icon={DollarSign} tone="emerald" />}
+          {canBookings && <MetricCard label="Bookings" value={number(data?.weekly?.bookings)} icon={BarChart3} tone="primary" />}
+          {(canStaff || canBookings) && <MetricCard label="Active workload" value={number(data?.weekly?.activeWorkload)} icon={Activity} tone="amber" detail="Current staff assignments" />}
         </div>
-      </section>
+      </section>}
 
-      <section className="grid gap-4 xl:grid-cols-3">
+      {canSales && <section className="grid gap-4 xl:grid-cols-3">
         <Panel title="Sales trend" subtitle="Paid product orders and service bookings" className="xl:col-span-2" action={<div className="flex rounded-lg bg-slate-100 p-0.5">{['daily', 'weekly', 'monthly'].map(range => <button key={range} type="button" onClick={() => setTrendRange(range)} className={`rounded-md px-2.5 py-1 text-[11px] font-semibold capitalize ${trendRange === range ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'}`}>{range}</button>)}</div>}>
           <LineChart rows={trendRows} />
         </Panel>
         <Panel title="Revenue mix" subtitle="Actual paid transaction snapshots"><Donut rows={data?.sales?.breakdown || []} /></Panel>
-      </section>
+      </section>}
 
       <section className="grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
-        <Panel title="Booking activity" subtitle={`${number(data?.bookings?.today)} today · ${number(data?.bookings?.upcoming)} upcoming`}>
+        {canBookings && <Panel title="Booking activity" subtitle={`${number(data?.bookings?.today)} today · ${number(data?.bookings?.upcoming)} upcoming`}>
           <BarChart rows={statusRows} />
-        </Panel>
+        </Panel>}
 
-        <Panel title="Specialist performance" subtitle={`${number(data?.specialists?.availableToday)} of ${number(data?.specialists?.active)} available today`} action={<Link to="/admin/staff" className="text-xs font-semibold text-primary">View staff</Link>}>
+        {(canBookings || canStaff) && <Panel title="Specialist performance" subtitle={`${number(data?.specialists?.availableToday)} of ${number(data?.specialists?.active)} available today`} action={isOwner ? <Link to="/admin/staff" className="text-xs font-semibold text-primary">View staff</Link> : null}>
           {(data?.specialists?.topRated || []).length ? <div className="grid gap-3 sm:grid-cols-2"><div><p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-slate-500">Top rated</p>{data.specialists.topRated.slice(0, 3).map(staff => <div key={staff.id} className="mb-1.5 flex items-center gap-2 rounded-lg bg-slate-50 p-2"><div className="flex h-7 w-7 items-center justify-center overflow-hidden rounded-lg bg-white text-slate-400">{staff.photo ? <img src={getImageUrl(staff.photo)} alt="" className="h-full w-full object-cover" /> : <UserRound size={14} />}</div><span className="min-w-0 flex-1"><strong className="block truncate text-[11px] text-slate-900">{staff.name}</strong><span className="block truncate text-[9px] text-slate-500">{titleCase(staff.role)}</span></span><b className="text-[11px] text-amber-600">★ {staff.rating || '—'}</b></div>)}</div><div><p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-slate-500">Most completed</p>{(data.specialists.mostCompleted || []).slice(0, 3).map(staff => <div key={staff.id} className="mb-1.5 flex items-center justify-between rounded-lg bg-slate-50 p-2 text-[11px]"><span className="truncate font-semibold text-slate-800">{staff.name}</span><b className="text-primary">{number(staff.completedServices)}</b></div>)}</div></div> : <Empty>No specialist performance data yet.</Empty>}
-        </Panel>
+        </Panel>}
 
         {isOwner && <Panel title="Workforce operations" subtitle={`${number(data?.workforce?.available)} available · ${number(data?.workforce?.activeWorkload)} active assignments`} action={<Link to="/admin/staff" className="text-xs font-semibold text-primary">Manage</Link>}>
           <div className="grid grid-cols-4 gap-2 text-center">{[
@@ -283,11 +289,11 @@ const Dashboard = () => {
           {(data?.workforce?.upcomingLeave || []).length > 0 && <p className="mt-2 truncate text-[10px] text-slate-500">Upcoming leave: <b>{data.workforce.upcomingLeave.map(row=>row.name).join(', ')}</b></p>}
         </Panel>}
 
-        <Panel title="Inventory DSS" subtitle="Deterministic stock movement indicators" action={<Link to="/admin/inventory" className="text-xs font-semibold text-primary">Manage</Link>}>
+        {canInventory && <Panel title="Inventory DSS" subtitle="Deterministic stock movement indicators" action={<Link to="/admin/inventory" className="text-xs font-semibold text-primary">Manage</Link>}>
           <div className="grid grid-cols-3 gap-2 text-center"><div className="rounded-xl bg-amber-50 p-2"><strong className="block text-lg text-amber-700">{number(data?.inventory?.low)}</strong><span className="text-[10px] text-amber-700">Low</span></div><div className="rounded-xl bg-rose-50 p-2"><strong className="block text-lg text-rose-700">{number(data?.inventory?.critical)}</strong><span className="text-[10px] text-rose-700">Critical</span></div><div className="rounded-xl bg-primary-50 p-2"><strong className="block text-lg text-primary-700">{number(data?.inventory?.reorderRequired)}</strong><span className="text-[10px] text-primary-700">Reorder</span></div></div>
           <div className="mt-3"><p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Fast moving (30 days)</p><BarChart rows={(data?.inventory?.fastMoving || []).slice(0, 4)} labelKey="name" valueKey="quantity" /></div>
           {(data?.inventory?.slowMoving || []).length > 0 && <p className="mt-3 truncate text-[11px] text-slate-500">Slow moving: <strong className="text-slate-700">{data.inventory.slowMoving.map(row => row.name).slice(0, 3).join(', ')}</strong></p>}
-        </Panel>
+        </Panel>}
 
         {isOwner && <Panel title="Procurement" subtitle="Purchase order and supplier health" action={<Link to="/admin/purchase-orders" className="text-xs font-semibold text-primary">Open</Link>}>
           <div className="grid grid-cols-3 gap-2"><div className="rounded-xl bg-slate-50 p-2.5"><p className="text-[10px] text-slate-500">Pending POs</p><strong className="text-lg text-slate-900">{number(data?.procurement?.pendingPurchaseOrders)}</strong></div><div className="rounded-xl bg-slate-50 p-2.5"><p className="text-[10px] text-slate-500">Delivered</p><strong className="text-lg text-slate-900">{number(data?.procurement?.deliveredPurchaseOrders)}</strong></div><div className="rounded-xl bg-slate-50 p-2.5"><p className="text-[10px] text-slate-500">Monthly cost</p><strong className="text-sm text-slate-900">{peso(data?.procurement?.monthlyCost)}</strong></div></div>
@@ -302,17 +308,17 @@ const Dashboard = () => {
           <p className="mt-3 flex justify-between text-xs text-slate-500"><span>Pending procurement payments</span><strong className="text-slate-900">{peso(finance?.pendingProcurementPayments)}</strong></p>
         </Panel>}
 
-        <Panel title="Logistics" subtitle="Delivery execution and rider workload" action={<Link to="/admin/logistics" className="text-xs font-semibold text-primary">Open</Link>}>
+        {canLogistics && <Panel title="Logistics" subtitle="Delivery execution and rider workload" action={<Link to="/admin/logistics" className="text-xs font-semibold text-primary">Open</Link>}>
           <div className="grid grid-cols-3 gap-2 text-center"><div className="rounded-xl bg-primary-50 p-2"><strong className="block text-lg text-primary-700">{number(data?.logistics?.active)}</strong><span className="text-[10px] text-primary-700">Active</span></div><div className="rounded-xl bg-emerald-50 p-2"><strong className="block text-lg text-emerald-700">{number(data?.logistics?.completed)}</strong><span className="text-[10px] text-emerald-700">Completed</span></div><div className="rounded-xl bg-rose-50 p-2"><strong className="block text-lg text-rose-700">{number(data?.logistics?.failed)}</strong><span className="text-[10px] text-rose-700">Failed</span></div></div>
           <div className="mt-3 grid grid-cols-2 gap-2 text-xs"><p className="rounded-lg border border-slate-100 p-2 text-slate-500">Avg. time<strong className="block text-slate-900">{number(data?.logistics?.averageDeliveryMinutes)} min</strong></p><p className="rounded-lg border border-slate-100 p-2 text-slate-500">Completion<strong className="block text-slate-900">{Number(data?.logistics?.completionRate || 0).toFixed(1)}%</strong></p><p className="rounded-lg border border-slate-100 p-2 text-slate-500">Internal riders<strong className="block text-slate-900">{number(data?.logistics?.internal)}</strong></p><p className="rounded-lg border border-slate-100 p-2 text-slate-500">Active rider workload<strong className="block text-slate-900">{number(data?.logistics?.activeRiderWorkload)} deliveries</strong></p></div>
           <p className="mt-2 flex justify-between text-[11px] text-slate-500"><span>Rider earnings today</span><strong className="text-slate-900">{peso(data?.logistics?.riderEarningsToday)}</strong></p>
-        </Panel>
+        </Panel>}
 
-        <Panel title="Customer insights" subtitle="Derived from actual store transactions">
+        {canCustomers && <Panel title="Customer insights" subtitle="Derived from actual store transactions">
           <div className="mb-3 grid grid-cols-2 gap-2"><div className="rounded-xl bg-slate-50 p-2.5"><p className="text-[10px] text-slate-500">New customers</p><strong className="text-lg text-slate-900">{number(data?.customers?.newCustomers)}</strong></div><div className="rounded-xl bg-slate-50 p-2.5"><p className="text-[10px] text-slate-500">Returning</p><strong className="text-lg text-slate-900">{number(data?.customers?.returningCustomers)}</strong></div></div>
           <BarChart rows={(data?.customers?.popularServices || []).slice(0, 4)} labelKey="name" valueKey="count" empty="No paid service data yet." />
           <div className="mt-3 grid grid-cols-2 gap-2 text-[11px]"><p className="rounded-lg border border-slate-100 p-2 text-slate-500">Top product<strong className="block truncate text-slate-900">{data?.customers?.topProducts?.[0]?.name || 'No data'}</strong></p><p className="rounded-lg border border-slate-100 p-2 text-slate-500">Peak booking hour<strong className="block text-slate-900">{data?.customers?.peakBookingHours?.[0] ? `${String(data.customers.peakBookingHours[0].hour).padStart(2, '0')}:00` : 'No data'}</strong></p></div>
-        </Panel>
+        </Panel>}
       </section>
 
       {isOwner && <section className="grid gap-4 lg:grid-cols-2 xl:grid-cols-4" aria-label="Decision support">
@@ -332,14 +338,14 @@ const Dashboard = () => {
         </Panel>
       </section>}
 
-      <section className="grid gap-4 xl:grid-cols-[1fr_2fr]">
-        <Panel title="Quick actions" subtitle="Common operational destinations">
+      {(quickActions.length > 0 || canSales) && <section className="grid gap-4 xl:grid-cols-[1fr_2fr]">
+        {quickActions.length > 0 && <Panel title="Quick actions" subtitle="Common operational destinations">
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-2">{quickActions.map(action => <Link key={action.to} to={action.to} className="flex min-h-10 items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 transition hover:border-primary hover:bg-primary/5 hover:text-primary"><action.icon size={15} />{action.label}</Link>)}</div>
-        </Panel>
-        <Panel title="Recent orders" subtitle="Latest store order activity" action={<Link to="/admin/orders" className="inline-flex items-center gap-1 text-xs font-semibold text-primary">All orders <ChevronRight size={13} /></Link>}>
+        </Panel>}
+        {canSales && <Panel title="Recent orders" subtitle="Latest store order activity" action={<Link to="/admin/orders" className="inline-flex items-center gap-1 text-xs font-semibold text-primary">All orders <ChevronRight size={13} /></Link>}>
           {(data?.recentOrders || []).length ? <div className="divide-y divide-slate-100">{data.recentOrders.map(order => <Link key={order._id} to={`/admin/orders?id=${order._id}`} className="grid grid-cols-[1fr_auto] gap-3 py-2.5 text-xs transition hover:bg-slate-50"><span className="min-w-0"><strong className="block truncate text-slate-900">#{String(order.orderNumber || order._id).slice(-8).toUpperCase()}</strong><span className="text-slate-500">{new Date(order.createdAt).toLocaleDateString()} · {titleCase(order.status)}</span></span><span className="text-right"><strong className="block text-slate-900">{peso(order.totalAmount)}</strong><span className={order.paymentStatus === 'paid' ? 'text-emerald-600' : 'text-amber-600'}>{titleCase(order.paymentStatus)}</span></span></Link>)}</div> : <Empty>No customer orders yet.</Empty>}
-        </Panel>
-      </section>
+        </Panel>}
+      </section>}
     </div>
   );
 };
