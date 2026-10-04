@@ -341,7 +341,9 @@ const SellerJoin = () => {
                         <button 
                             type="button" 
                             onClick={() => setShowPassword(!showPassword)}
-                            className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-primary-600 transition-colors"
+                            aria-label={showPassword ? 'Hide password' : 'Show password'}
+                            aria-pressed={showPassword}
+                            className="absolute right-2 top-1/2 inline-flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-xl text-slate-400 transition-colors hover:text-primary-600"
                         >
                            {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                         </button>
@@ -361,7 +363,9 @@ const SellerJoin = () => {
                         <button 
                             type="button" 
                             onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                            className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-primary-600 transition-colors"
+                            aria-label={showConfirmPassword ? 'Hide confirmed password' : 'Show confirmed password'}
+                            aria-pressed={showConfirmPassword}
+                            className="absolute right-2 top-1/2 inline-flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-xl text-slate-400 transition-colors hover:text-primary-600"
                         >
                            {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                         </button>

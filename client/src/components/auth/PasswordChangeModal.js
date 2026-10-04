@@ -100,7 +100,7 @@ const PasswordChangeModal = () => {
                                         type="button"
                                         onClick={() => setShowCurrent(!showCurrent)}
                                         aria-label={showCurrent ? 'Hide temporary password' : 'Show temporary password'}
-                                        className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 transition-colors hover:text-slate-900"
+                                        className="absolute right-1.5 top-1/2 inline-flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-lg text-slate-400 transition-colors hover:text-slate-900"
                                     >
                                         {showCurrent ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                                     </button>
@@ -129,7 +129,7 @@ const PasswordChangeModal = () => {
                                         type="button"
                                         onClick={() => setShowNew(!showNew)}
                                         aria-label={showNew ? 'Hide new password' : 'Show new password'}
-                                        className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 transition-colors hover:text-slate-900"
+                                        className="absolute right-1.5 top-1/2 inline-flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-lg text-slate-400 transition-colors hover:text-slate-900"
                                     >
                                         {showNew ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                                     </button>
@@ -157,7 +157,7 @@ const PasswordChangeModal = () => {
                                         type="button"
                                         onClick={() => setShowConfirm(!showConfirm)}
                                         aria-label={showConfirm ? 'Hide confirmed password' : 'Show confirmed password'}
-                                        className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 transition-colors hover:text-slate-900"
+                                        className="absolute right-1.5 top-1/2 inline-flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-lg text-slate-400 transition-colors hover:text-slate-900"
                                     >
                                         {showConfirm ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                                     </button>

@@ -88,23 +88,32 @@ const NotificationBell = () => {
     return (
         <div className="relative" ref={dropdownRef}>
             <button
+                type="button"
                 onClick={() => setIsOpen(!isOpen)}
-                className="relative p-2 text-slate-600 hover:text-primary-600 transition-colors bg-white/50 rounded-xl border border-slate-100"
+                aria-label={isOpen ? 'Close notifications' : `Open notifications${unreadCount ? `, ${unreadCount} unread` : ''}`}
+                aria-expanded={isOpen}
+                aria-haspopup="dialog"
+                className="notification-trigger relative rounded-xl border p-2 transition-colors"
             >
                 <Bell className="h-5 w-5" />
                 {unreadCount > 0 && (
-                    <span className="absolute top-1.5 right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white ring-2 ring-white">
+                    <span className="notification-count absolute top-1.5 right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white">
                         {unreadCount > 9 ? '9+' : unreadCount}
                     </span>
                 )}
             </button>
 
             {isOpen && (
-                <div className="fixed left-3 right-3 top-[64px] sm:absolute sm:inset-auto sm:right-0 sm:top-full sm:mt-2 sm:w-80 bg-white rounded-xl shadow-2xl border border-slate-100 z-[100] overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
-                    <div className="p-3 border-b border-slate-50 flex items-center justify-between bg-slate-50/50">
-                        <h3 className="font-black text-xs uppercase tracking-widest text-slate-900">Notifications</h3>
+                <div
+                    role="dialog"
+                    aria-label="Notifications"
+                    className="notification-popover fixed left-3 right-3 top-[64px] z-[100] overflow-hidden rounded-xl border shadow-2xl animate-in fade-in slide-in-from-top-2 duration-200 sm:absolute sm:inset-auto sm:right-0 sm:top-full sm:mt-2 sm:w-80"
+                >
+                    <div className="notification-section flex items-center justify-between border-b p-3">
+                        <h3 className="notification-title font-black text-xs uppercase tracking-widest">Notifications</h3>
                         {unreadCount > 0 && (
                             <button
+                                type="button"
                                 onClick={markAllRead}
                                 className="text-[10px] font-bold text-primary-600 uppercase tracking-tight hover:underline"
                             >
@@ -116,46 +125,48 @@ const NotificationBell = () => {
                     <div className="max-h-[60vh] sm:max-h-[400px] overflow-y-auto custom-scrollbar">
                         {notifications.length === 0 ? (
                             <div className="p-6 text-center">
-                                <Bell className="h-8 w-8 text-slate-200 mx-auto mb-3" />
-                                <p className="text-sm text-slate-400 font-medium">All caught up!</p>
+                                <Bell className="notification-empty mx-auto mb-3 h-8 w-8" />
+                                <p className="notification-empty text-sm font-medium">All caught up!</p>
                             </div>
                         ) : (
-                            <div className="divide-y divide-slate-50">
+                            <div>
                                 {notifications.map((n) => (
                                     <div
                                         key={n._id}
-                                        className={`p-3 hover:bg-slate-50 transition-colors cursor-pointer relative group ${!n.isRead ? 'bg-primary-50/30' : ''}`}
-                                        onClick={() => handleNotificationClick(n)}
+                                        className={`notification-item flex items-start gap-2 border-b border-slate-100 p-3 transition-colors last:border-b-0 ${!n.isRead ? 'notification-item-unread' : ''}`}
                                     >
-                                        <div className="flex gap-3">
+                                        <button
+                                            type="button"
+                                            onClick={() => handleNotificationClick(n)}
+                                            className="flex min-w-0 flex-1 gap-3 text-left"
+                                        >
                                             <div className={`mt-1 h-2 w-2 rounded-full flex-shrink-0 ${!n.isRead ? 'bg-primary-500' : 'bg-transparent'}`} />
                                             <div className="flex-1 min-w-0">
                                                 <div className="flex items-center justify-between gap-2 mb-1">
-                                                    <p className="font-bold text-xs text-slate-900 truncate uppercase tracking-tight">{n.title}</p>
-                                                    <span className="text-[10px] font-medium text-slate-400 whitespace-nowrap">
+                                                    <p className="notification-title truncate text-xs font-bold uppercase tracking-tight">{n.title}</p>
+                                                    <span className="notification-meta whitespace-nowrap text-[10px] font-medium">
                                                         {formatDistanceToNow(new Date(n.createdAt), { addSuffix: true })}
                                                     </span>
                                                 </div>
-                                                <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed">{n.message}</p>
+                                                <p className="notification-copy line-clamp-2 text-xs leading-relaxed">{n.message}</p>
                                             </div>
-                                            <button
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    deleteNotification(n._id);
-                                                }}
-                                                className="opacity-0 group-hover:opacity-100 p-1 text-slate-300 hover:text-red-500 transition-all"
-                                            >
-                                                <Trash2 className="h-3 w-3" />
-                                            </button>
-                                        </div>
+                                        </button>
+                                        <button
+                                            type="button"
+                                            aria-label={`Delete notification: ${n.title}`}
+                                            onClick={() => deleteNotification(n._id)}
+                                            className="notification-delete inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors"
+                                        >
+                                            <Trash2 className="h-3.5 w-3.5" />
+                                        </button>
                                     </div>
                                 ))}
                             </div>
                         )}
                     </div>
 
-                    <div className="p-3 bg-slate-50 border-t border-slate-50 text-center">
-                        <button className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 hover:text-primary-600 transition-colors">
+                    <div className="notification-section border-t p-3 text-center">
+                        <button type="button" className="notification-meta text-[10px] font-black uppercase tracking-[0.2em] transition-colors hover:text-primary-600">
                             View Search History
                         </button>
                     </div>

@@ -198,11 +198,11 @@ const Login = () => {
             <form className="space-y-6" onSubmit={handleSubmit} autoComplete="off">
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <label className="text-xs font-black uppercase tracking-widest text-slate-400 ml-1">Email or Username</label>
+                  <label htmlFor="login-identifier" className="ml-1 text-xs font-black uppercase tracking-widest text-muted">Email or Username</label>
                   <div className="input-container group">
                     <Mail className="input-icon h-5 w-5" />
                     <input
-                      name="email" type="text" required
+                      id="login-identifier" name="email" type="text" required
                       className="input input-with-icon bg-white/50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 outline-none transition-all font-medium text-slate-700 py-4"
                       placeholder="email@example.com or username"
                       value={formData.email}
@@ -213,11 +213,11 @@ const Login = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-xs font-black uppercase tracking-widest text-slate-400 ml-1">Secret Key</label>
+                  <label htmlFor="login-password" className="ml-1 text-xs font-black uppercase tracking-widest text-muted">Secret Key</label>
                   <div className="input-container group">
                     <Lock className="input-icon h-5 w-5" />
                     <input
-                      name="password" type={showPassword ? 'text' : 'password'} required
+                      id="login-password" name="password" type={showPassword ? 'text' : 'password'} required
                       className="input input-with-both-icons bg-white/50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 outline-none transition-all font-medium text-slate-700 py-4 pr-12 select-none [appearance:none] [&::-ms-reveal]:hidden [&::-ms-clear]:hidden [&::-webkit-credentials-store-indicator]:hidden"
                       placeholder="••••••••"
                       value={formData.password}
@@ -228,6 +228,8 @@ const Login = () => {
                       type="button"
                       className="input-icon-right pointer-events-auto hover:text-primary-500 transition-colors"
                       onClick={() => setShowPassword(!showPassword)}
+                      aria-label={showPassword ? 'Hide password' : 'Show password'}
+                      aria-pressed={showPassword}
                     >
                       {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                     </button>

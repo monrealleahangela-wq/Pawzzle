@@ -108,6 +108,54 @@ html {
 /* ── Inputs ── */
 .input {
   @apply w-full py-3 px-4 bg-white border-2 border-slate-50 rounded-xl focus:outline-none focus:border-primary-500 transition-all duration-300 font-bold text-sm shadow-sm;
+  color: var(--text-primary, #171412);
+}
+
+.input::placeholder {
+  color: var(--text-muted, #766e6a);
+  opacity: 1;
+}
+
+/* Shared text-field shell. Scope every rule to this opt-in wrapper so native
+   checkbox, radio, date, file, range, and other special controls are unchanged. */
+.input-container {
+  position: relative;
+  width: 100%;
+  min-width: 0;
+}
+
+.input-container > .input-icon {
+  position: absolute;
+  inset-inline-start: 1rem;
+  top: 50%;
+  z-index: 1;
+  color: var(--text-muted, #766e6a);
+  pointer-events: none;
+  transform: translateY(-50%);
+}
+
+.input-container > .input-icon-right {
+  position: absolute;
+  inset-inline-end: 0.5rem;
+  top: 50%;
+  z-index: 2;
+  display: inline-flex;
+  width: 2.5rem;
+  height: 2.5rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.75rem;
+  color: var(--text-muted, #766e6a);
+  transform: translateY(-50%);
+}
+
+.input-container > .input.input-with-icon,
+.input-container > .input.input-with-both-icons {
+  padding-inline-start: 3rem;
+}
+
+.input-container > .input.input-with-both-icons {
+  padding-inline-end: 3.25rem;
 }
 
 /* ── Cards ── */

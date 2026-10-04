@@ -618,8 +618,41 @@ body {
 .dark .sidebar-nav-item.active { color: white; }
 .dark .premium-table td { background-color: #171412; border-color: #302b29; }
 .dark .stat-card { background-color: #171412; border-color: #302b29; }
-.dark .Toastify__toast { background: #211e1c; color: #f9f8f8; }
-.dark .Toastify__close-button { color: #d1ccca; }
+.Toastify__toast {
+  background: var(--surface-card);
+  color: var(--text-primary);
+}
+.Toastify__toast .pawzzle-toast-body { color: var(--text-primary); }
+.Toastify__close-button { color: var(--text-secondary); }
+
+/* Shared notification surfaces use the existing semantic theme roles rather
+   than independent light/dark palettes. */
+.notification-trigger {
+  border-color: var(--border-subtle);
+  background: var(--surface-card);
+  color: var(--text-secondary);
+}
+.notification-trigger:hover { color: var(--brand-primary); }
+.notification-count { box-shadow: 0 0 0 2px var(--surface-card); }
+.notification-popover {
+  border-color: var(--border-subtle);
+  background: var(--surface-card);
+  color: var(--text-secondary);
+}
+.notification-section {
+  border-color: var(--border-subtle);
+  background: var(--surface-subtle);
+}
+.notification-item { background: var(--surface-card); }
+.notification-item:hover,
+.notification-item:focus-within { background: var(--surface-subtle); }
+.notification-item-unread { background: var(--brand-primary-soft); }
+.notification-title { color: var(--text-primary); }
+.notification-copy { color: var(--text-secondary); }
+.notification-meta,
+.notification-empty,
+.notification-delete { color: var(--text-muted); }
+.notification-delete:hover { color: var(--status-danger); }
 
 /* Typography Hierarchy */
 h1, h2, h3, h4, h5, h6 {

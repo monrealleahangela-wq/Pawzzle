@@ -24,6 +24,7 @@ const Register = () => {
     }
   });
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
   // OTP state
@@ -226,11 +227,11 @@ const Register = () => {
           <form className="space-y-6" onSubmit={handleSubmit}>
             <div className="space-y-4">
               <div className="space-y-2">
-                <label className="text-xs font-black uppercase tracking-widest text-slate-400 ml-1">Username / Name</label>
+                <label htmlFor="register-username" className="ml-1 text-xs font-black uppercase tracking-widest text-muted">Username / Name</label>
                 <div className="input-container group">
                   <User className="input-icon h-5 w-5" />
                   <input
-                    name="username" type="text" required
+                    id="register-username" name="username" type="text" required
                     className="input input-with-icon bg-white/50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 outline-none transition-all font-medium text-slate-700 py-4"
                     placeholder="TheLuckyPaw"
                     value={formData.username}
@@ -240,11 +241,11 @@ const Register = () => {
               </div>
 
               <div className="space-y-2">
-                <label className="text-xs font-black uppercase tracking-widest text-slate-400 ml-1">Email Address</label>
+                <label htmlFor="register-email" className="ml-1 text-xs font-black uppercase tracking-widest text-muted">Email Address</label>
                 <div className="input-container group">
                   <Mail className="input-icon h-5 w-5" />
                   <input
-                    name="email" type="email" required
+                    id="register-email" name="email" type="email" required
                     className="input input-with-icon bg-white/50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 outline-none transition-all font-medium text-slate-700 py-4"
                     placeholder="woof@example.com"
                     value={formData.email}
@@ -253,34 +254,37 @@ const Register = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
-                  <label className="text-xs font-black uppercase tracking-widest text-slate-400 ml-1">Passphrase</label>
+                  <label htmlFor="register-password" className="ml-1 text-xs font-black uppercase tracking-widest text-muted">Passphrase</label>
                   <div className="input-container group">
                     <Lock className="input-icon h-4 w-4" />
                     <input
-                      name="password" type={showPassword ? 'text' : 'password'} required
+                      id="register-password" name="password" type={showPassword ? 'text' : 'password'} required
                       className="input input-with-both-icons bg-white/50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 outline-none transition-all font-medium text-slate-700 py-4 text-xs select-none [appearance:none] [&::-ms-reveal]:hidden [&::-ms-clear]:hidden [&::-webkit-credentials-store-indicator]:hidden"
                       placeholder="••••••••"
                       value={formData.password}
                       onChange={handleChange}
                     />
-                    <button type="button" onClick={() => setShowPassword(!showPassword)} className="input-icon-right pointer-events-auto hover:text-primary-500">
+                    <button type="button" onClick={() => setShowPassword(!showPassword)} aria-label={showPassword ? 'Hide password' : 'Show password'} aria-pressed={showPassword} className="input-icon-right pointer-events-auto hover:text-primary-500">
                       {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </button>
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <label className="text-xs font-black uppercase tracking-widest text-slate-400 ml-1">Confirm</label>
+                  <label htmlFor="register-confirm-password" className="ml-1 text-xs font-black uppercase tracking-widest text-muted">Confirm</label>
                   <div className="input-container group">
                     <Lock className="input-icon h-4 w-4" />
                     <input
-                      name="confirmPassword" type={showPassword ? 'text' : 'password'} required
-                      className="input input-with-icon bg-white/50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 outline-none transition-all font-medium text-slate-700 py-4 text-xs select-none [appearance:none] [&::-ms-reveal]:hidden [&::-ms-clear]:hidden [&::-webkit-credentials-store-indicator]:hidden"
+                      id="register-confirm-password" name="confirmPassword" type={showConfirmPassword ? 'text' : 'password'} required
+                      className="input input-with-both-icons bg-white/50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 outline-none transition-all font-medium text-slate-700 py-4 text-xs select-none [appearance:none] [&::-ms-reveal]:hidden [&::-ms-clear]:hidden [&::-webkit-credentials-store-indicator]:hidden"
                       placeholder="••••••••"
                       value={formData.confirmPassword}
                       onChange={handleChange}
                     />
+                    <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} aria-label={showConfirmPassword ? 'Hide confirmed password' : 'Show confirmed password'} aria-pressed={showConfirmPassword} className="input-icon-right pointer-events-auto hover:text-primary-500">
+                      {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
                   </div>
                 </div>
               </div>

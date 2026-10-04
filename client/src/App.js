@@ -260,7 +260,7 @@ function App() {
                 transition={Slide} 
                 icon={BrandedToastIcon}
                 toastClassName="!rounded-2xl !p-4 !shadow-strong !border-none"
-                bodyClassName="!font-bold !text-[12px] !uppercase !tracking-widest !text-primary-900"
+                bodyClassName="pawzzle-toast-body !font-bold !text-[12px] !uppercase !tracking-widest"
               />
             </div>
           </Router>

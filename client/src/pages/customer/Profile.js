@@ -159,6 +159,7 @@ const Profile = () => {
   const [passwordLoading, setPasswordLoading] = useState(false);
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const [myPets, setMyPets] = useState([]);
   const [petsLoading, setPetsLoading] = useState(false);
@@ -1679,16 +1680,17 @@ const Profile = () => {
                       <form onSubmit={handlePasswordChange} className="space-y-6">
                         <div className="grid grid-cols-1 gap-6">
                           <div className="space-y-1">
-                            <label className="text-[8px] sm:text-xs font-black text-slate-300 uppercase tracking-widest block ml-1">Current Password</label>
+                            <label htmlFor="profile-current-password" className="ml-1 block text-[8px] font-black uppercase tracking-widest text-muted sm:text-xs">Current Password</label>
                             <div className="relative">
                               <input
+                                id="profile-current-password"
                                 type={showCurrentPassword ? 'text' : 'password'}
                                 value={passwordData.currentPassword}
                                 onChange={(e) => setPasswordData({ ...passwordData, currentPassword: e.target.value })}
-                                className="w-full px-4 py-3 sm:px-5 sm:py-4 bg-white border-2 border-slate-50 rounded-xl sm:rounded-2xl focus:border-primary-500 outline-none font-bold text-sm transition-all"
+                                className="w-full bg-white px-4 py-3 pr-12 text-sm font-bold border-2 border-slate-50 rounded-xl outline-none transition-all focus:border-primary-500 sm:px-5 sm:py-4 sm:pr-12 sm:rounded-2xl"
                                 required
                               />
-                              <button type="button" onClick={() => setShowCurrentPassword(!showCurrentPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400">
+                              <button type="button" onClick={() => setShowCurrentPassword(!showCurrentPassword)} aria-label={showCurrentPassword ? 'Hide current password' : 'Show current password'} aria-pressed={showCurrentPassword} className="absolute right-1.5 top-1/2 inline-flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-lg text-slate-400">
                                 {showCurrentPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                               </button>
                             </div>
@@ -1696,29 +1698,36 @@ const Profile = () => {
 
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="space-y-1">
-                              <label className="text-[8px] sm:text-xs font-black text-slate-300 uppercase tracking-widest block ml-1">New Password</label>
+                              <label htmlFor="profile-new-password" className="ml-1 block text-[8px] font-black uppercase tracking-widest text-muted sm:text-xs">New Password</label>
                               <div className="relative">
                                 <input
+                                  id="profile-new-password"
                                   type={showNewPassword ? 'text' : 'password'}
                                   value={passwordData.newPassword}
                                   onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
-                                  className="w-full px-4 py-3 sm:px-5 sm:py-4 bg-white border-2 border-slate-50 rounded-xl sm:rounded-2xl focus:border-primary-500 outline-none font-bold text-sm transition-all"
+                                  className="w-full bg-white px-4 py-3 pr-12 text-sm font-bold border-2 border-slate-50 rounded-xl outline-none transition-all focus:border-primary-500 sm:px-5 sm:py-4 sm:pr-12 sm:rounded-2xl"
                                   required
                                 />
-                                <button type="button" onClick={() => setShowNewPassword(!showNewPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400">
+                                <button type="button" onClick={() => setShowNewPassword(!showNewPassword)} aria-label={showNewPassword ? 'Hide new password' : 'Show new password'} aria-pressed={showNewPassword} className="absolute right-1.5 top-1/2 inline-flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-lg text-slate-400">
                                   {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                                 </button>
                               </div>
                             </div>
                             <div className="space-y-1">
-                              <label className="text-[8px] sm:text-xs font-black text-slate-300 uppercase tracking-widest block ml-1">Confirm New Password</label>
-                              <input
-                                type="password"
-                                value={passwordData.confirmPassword}
-                                onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
-                                className="w-full px-4 py-3 sm:px-5 sm:py-4 bg-white border-2 border-slate-50 rounded-xl sm:rounded-2xl focus:border-primary-500 outline-none font-bold text-sm transition-all"
-                                required
-                              />
+                              <label htmlFor="profile-confirm-password" className="ml-1 block text-[8px] font-black uppercase tracking-widest text-muted sm:text-xs">Confirm New Password</label>
+                              <div className="relative">
+                                <input
+                                  id="profile-confirm-password"
+                                  type={showConfirmPassword ? 'text' : 'password'}
+                                  value={passwordData.confirmPassword}
+                                  onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
+                                  className="w-full bg-white px-4 py-3 pr-12 text-sm font-bold border-2 border-slate-50 rounded-xl outline-none transition-all focus:border-primary-500 sm:px-5 sm:py-4 sm:pr-12 sm:rounded-2xl"
+                                  required
+                                />
+                                <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} aria-label={showConfirmPassword ? 'Hide confirmed password' : 'Show confirmed password'} aria-pressed={showConfirmPassword} className="absolute right-1.5 top-1/2 inline-flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-lg text-slate-400">
+                                  {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                </button>
+                              </div>
                             </div>
                           </div>
                         </div>

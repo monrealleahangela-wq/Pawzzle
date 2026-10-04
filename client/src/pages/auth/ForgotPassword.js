@@ -11,6 +11,7 @@ const ForgotPassword = () => {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [step, setStep] = useState(1); // 1: email, 2: otp + new password, 3: success
   const [loading, setLoading] = useState(false);
   const [captchaToken, setCaptchaToken] = useState(null);
@@ -163,10 +164,11 @@ const ForgotPassword = () => {
 
               <form onSubmit={handleRequestOTP} className="space-y-6">
                 <div className="space-y-2">
-                  <label className="text-xs font-black uppercase tracking-widest text-slate-400 ml-1">Email Address</label>
+                  <label htmlFor="recovery-email" className="ml-1 text-xs font-black uppercase tracking-widest text-muted">Email Address</label>
                   <div className="input-container group">
                     <Mail className="input-icon h-5 w-5" />
                     <input
+                      id="recovery-email"
                       type="email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
@@ -209,7 +211,7 @@ const ForgotPassword = () => {
 
               <form onSubmit={handleVerifyAndReset} className="space-y-6">
                 {/* OTP Grid */}
-                <div className="flex justify-center gap-2 sm:gap-3">
+                <div className="flex justify-center gap-1.5 xs:gap-2 sm:gap-3">
                   {otpDigits.map((digit, index) => (
                     <input
                       key={index}
@@ -225,7 +227,7 @@ const ForgotPassword = () => {
                         const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
                         handleOtpChange(index, pasted);
                       }}
-                      className={`w-11 h-13 sm:w-13 sm:h-15 text-center text-xl sm:text-2xl font-black rounded-2xl border-2 outline-none transition-all duration-300
+                      className={`h-12 w-9 text-center text-xl font-black rounded-xl border-2 outline-none transition-all duration-300 xs:w-10 sm:h-15 sm:w-13 sm:rounded-2xl sm:text-2xl
                         ${digit
                           ? 'border-primary-500 bg-primary-50 text-primary-700 shadow-lg shadow-primary-100'
                           : 'border-slate-200 bg-white/50 text-slate-900 hover:border-slate-300'
@@ -256,10 +258,11 @@ const ForgotPassword = () => {
                 <div className="space-y-4 pt-2 border-t border-slate-100">
                   <h3 className="text-xs font-black uppercase tracking-[0.2em] text-primary-600 pt-2">New Password</h3>
                   <div className="space-y-2">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Password</label>
+                    <label htmlFor="recovery-password" className="ml-1 text-[10px] font-black uppercase tracking-widest text-muted">Password</label>
                     <div className="input-container group">
                       <Lock className="input-icon h-5 w-5" />
                       <input
+                        id="recovery-password"
                         type={showPassword ? 'text' : 'password'}
                         value={newPassword}
                         onChange={(e) => setNewPassword(e.target.value)}
@@ -270,6 +273,8 @@ const ForgotPassword = () => {
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
+                        aria-label={showPassword ? 'Hide new password' : 'Show new password'}
+                        aria-pressed={showPassword}
                         className="input-icon-right pointer-events-auto hover:text-primary-500 transition-colors"
                       >
                         {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
@@ -277,11 +282,12 @@ const ForgotPassword = () => {
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Confirm Password</label>
+                    <label htmlFor="recovery-confirm-password" className="ml-1 text-[10px] font-black uppercase tracking-widest text-muted">Confirm Password</label>
                     <div className="input-container group">
                       <Lock className="input-icon h-5 w-5" />
                       <input
-                        type={showPassword ? 'text' : 'password'}
+                        id="recovery-confirm-password"
+                        type={showConfirmPassword ? 'text' : 'password'}
                         value={confirmPassword}
                         onChange={(e) => setConfirmPassword(e.target.value)}
                         className="input input-with-both-icons w-full py-4 bg-white/50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 outline-none transition-all font-medium text-slate-700"
@@ -290,10 +296,12 @@ const ForgotPassword = () => {
                       />
                       <button
                         type="button"
-                        onClick={() => setShowPassword(!showPassword)}
+                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        aria-label={showConfirmPassword ? 'Hide confirmed password' : 'Show confirmed password'}
+                        aria-pressed={showConfirmPassword}
                         className="input-icon-right pointer-events-auto hover:text-primary-500 transition-colors"
                       >
-                        {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                        {showConfirmPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                       </button>
                     </div>
                   </div>
