@@ -47,7 +47,7 @@ const populateProcurementCart = cart => cart.populate([
   {
     path: 'items.supplierProduct',
     select: 'supplier itemType pet name sku category images wholesalePrice availableStock minimumOrderQuantity unitOfMeasure deliveryLeadTimeDays isActive isDeleted',
-    populate: { path: 'pet', select: 'name species breed age ageUnit gender size color healthCondition vaccinationStatus healthNotes images approvalStatus listingContext' }
+    populate: { path: 'pet', select: 'name species breed age ageUnit gender size color healthCondition vaccinationStatus healthNotes images listingContext' }
   },
   { path: 'items.supplier', select: 'businessName supplierType status isActive isDeleted storeAssociations' },
   { path: 'items.storeProduct', select: 'name sku stockQuantity store isDeleted' }
@@ -919,7 +919,6 @@ const applyReceivingItem = async ({
     pet.addedBy = order.seller;
     pet.acquiredThroughPurchaseOrder = order._id;
     pet.listingContext = 'marketplace';
-    pet.approvalStatus = 'pending';
     pet.status = 'unavailable';
     pet.isAvailable = false;
     pet.quantity = 1;

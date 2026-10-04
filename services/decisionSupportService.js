@@ -606,7 +606,7 @@ class DecisionSupportService {
         excluded.unavailable += 1;
         continue;
       }
-      if (pet.isDeleted === true || pet.approvalStatus !== 'approved' || pet.listingType !== 'sale') {
+      if (pet.isDeleted === true || (pet.listingType && pet.listingType !== 'sale')) {
         excluded.listingStatus += 1;
         continue;
       }

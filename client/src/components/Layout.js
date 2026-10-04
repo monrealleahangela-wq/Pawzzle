@@ -175,7 +175,7 @@ const superAdminMenu = [
     label: 'Operations', icon: ShoppingBag, children: [
       { path: '/superadmin/transaction-history', label: 'Transactions', icon: DollarSign },
       { path: '/superadmin/booking-history', label: 'Bookings', icon: Calendar },
-      { path: '/admin/pets', label: 'Pet Listing Approval', icon: Heart },
+      { path: '/admin/pets', label: 'Pet Listings', icon: Heart },
       { path: '/superadmin/payouts', label: 'Payouts', icon: Wallet },
       { path: '/superadmin/archive', label: 'Archive', icon: Archive },
     ]

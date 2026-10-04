@@ -1,6 +1,12 @@
 const Pet = require('../models/Pet');
 const Order = require('../models/Order');
 const AdoptionRequest = require('../models/AdoptionRequest');
+const {
+  individualPetClause,
+  isMarketplacePet,
+  publicPetContextClause,
+  publicPetSaleClause
+} = require('../utils/catalogListing');
 
 const ACTIVE_ORDER_STATUSES = [
   'pending_payment', 'paid', 'awaiting_confirmation', 'confirmed', 'preparing', 'ready_for_pickup',
@@ -19,11 +25,11 @@ const isIndividualPetRecord = pet => {
 
 const getPetAvailabilityIssue = (pet, requestedQuantity = 1) => {
   if (!pet || pet.isDeleted) return 'Pet listing was not found.';
-  if (pet.approvalStatus !== 'approved') return 'Pet listing is not approved for purchase.';
   if (Number(requestedQuantity) !== 1) return 'Each pet listing represents one individual pet and must use quantity 1.';
   if (!isIndividualPetRecord(pet)) {
     return 'This legacy quantity-based pet listing requires manual cleanup before it can be purchased.';
   }
+  if (!isMarketplacePet(pet)) return 'Pet listing is not eligible for marketplace purchase.';
   if (pet.status !== 'available' || pet.isAvailable !== true) {
     return `Pet "${pet.name || pet._id}" is ${pet.status || 'unavailable'} and cannot be purchased.`;
   }
@@ -32,14 +38,9 @@ const getPetAvailabilityIssue = (pet, requestedQuantity = 1) => {
 
 const availableIndividualFilter = {
   isDeleted: { $ne: true },
-  approvalStatus: 'approved',
   isAvailable: true,
   status: 'available',
-  $or: [
-    { quantity: { $exists: false } },
-    { quantity: null },
-    { quantity: 1 }
-  ]
+  $and: [publicPetContextClause, publicPetSaleClause, individualPetClause]
 };
 
 const reservationFields = source => source === 'order'

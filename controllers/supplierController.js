@@ -74,7 +74,6 @@ const buildSupplierPet = ({ input, supplier, userId, price, images }) => {
     vetRecords: Array.isArray(pet.vetRecords) ? pet.vetRecords : [],
     proofOfOwnership: Array.isArray(pet.proofOfOwnership) ? pet.proofOfOwnership : [],
     pcciRegistration: pet.pcciRegistration,
-    approvalStatus: 'pending',
     listingContext: 'supplier_catalog',
     sourceSupplier: supplier._id,
     addedBy: userId

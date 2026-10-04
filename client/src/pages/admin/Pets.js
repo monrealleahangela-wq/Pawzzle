@@ -151,30 +151,6 @@ const AdminPets = () => {
     }
   };
 
-  const handleApprovePet = async (petId) => {
-    const notes = window.prompt('Optional Platform Admin review note:');
-    if (notes === null) return;
-    try {
-      await adminPetService.approvePet(petId, notes.trim());
-      toast.success('Pet listing approved.');
-      fetchPets();
-    } catch (error) {
-      toast.error(error.response?.data?.message || 'Unable to approve this pet listing.');
-    }
-  };
-
-  const handleRejectPet = async (petId) => {
-    const notes = window.prompt('Reason for rejection:');
-    if (!notes?.trim()) return;
-    try {
-      await adminPetService.rejectPet(petId, notes.trim());
-      toast.success('Pet listing rejected.');
-      fetchPets();
-    } catch (error) {
-      toast.error(error.response?.data?.message || 'Unable to reject this pet listing.');
-    }
-  };
-
   const handleEditPet = async (petId) => {
     try {
       const response = await adminPetService.getPetById(petId);
@@ -346,10 +322,10 @@ const AdminPets = () => {
       if (!editingPet) delete payload.adoptionDetails;
       if (editingPet) {
         await adminPetService.updatePet(editingPet._id, payload);
-        toast.success('Pet updated');
+        toast.success('Pet updated.');
       } else {
         await adminPetService.createPet(payload);
-        toast.success('Pet added');
+        toast.success('Pet added.');
       }
       setShowAddForm(false);
       setEditingPet(null);
@@ -506,13 +482,16 @@ const AdminPets = () => {
             <div className="p-2 bg-rose-500 text-white rounded-2xl shadow-lg shadow-rose-200">
               <Heart className="h-4 w-4" />
             </div>
-            <span className="text-[10px] font-black text-rose-500 uppercase tracking-[0.4em]">{isPlatformReviewer ? 'PLATFORM REVIEW : PET LISTINGS' : 'ADMIN PANEL : PETS'}</span>
+            <span className="text-[10px] font-black text-rose-500 uppercase tracking-[0.4em]">{isPlatformReviewer ? 'PLATFORM ADMIN : PET LISTINGS' : 'ADMIN PANEL : PETS'}</span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-black text-slate-900 uppercase tracking-tight leading-none mb-2">
             Manage <span className="text-rose-500">Pets</span>
           </h1>
           <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" /> Manage individual pet listings and sales
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            {isPlatformReviewer
+              ? 'View marketplace Pet listings across Stores'
+              : 'Manage individual Pet listings and availability'}
           </p>
         </div>
         {canCreate && (
@@ -530,12 +509,14 @@ const AdminPets = () => {
         >
           <PawPrint className="h-4 w-4" /> Pet Listings
         </button>
-        <button
-          onClick={() => setActiveTab('sales')}
-          className={`px-8 py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all flex items-center gap-3 ${activeTab === 'sales' ? 'bg-slate-900 text-white shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}
-        >
-          <History className="h-4 w-4" /> Sale History
-        </button>
+        {!isPlatformReviewer && (
+          <button
+            onClick={() => setActiveTab('sales')}
+            className={`px-8 py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all flex items-center gap-3 ${activeTab === 'sales' ? 'bg-slate-900 text-white shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}
+          >
+            <History className="h-4 w-4" /> Sale History
+          </button>
+        )}
       </div>
 
       {activeTab === 'inventory' ? (
@@ -612,13 +593,6 @@ const AdminPets = () => {
                           }`}>
                           {pet.status?.toUpperCase() || (pet.isAvailable ? 'AVAILABLE' : 'UNAVAILABLE')}
                         </span>
-                        <span className={`px-2.5 py-1 rounded-2xl text-[9px] font-black uppercase tracking-wider shadow-sm ${
-                          pet.approvalStatus === 'approved' ? 'bg-emerald-100 text-emerald-600 border border-emerald-200' :
-                          pet.approvalStatus === 'rejected' ? 'bg-rose-100 text-rose-600 border border-rose-200' :
-                          'bg-secondary-100 text-primary-600 border border-secondary-200'
-                        }`}>
-                          {pet.approvalStatus?.toUpperCase() || 'PENDING'}
-                        </span>
                         <span className={`px-2.5 py-1 rounded-2xl text-[9px] font-black uppercase tracking-wider shadow-sm bg-${getVaccColor(pet.vaccinationStatus)}-500 text-white`}>
                           {pet.vaccinationStatus === 'complete' ? 'VACCINATED' : pet.vaccinationStatus === 'partial' ? 'PARTIAL VAX' : 'NO VAX'}
                         </span>
@@ -648,24 +622,6 @@ const AdminPets = () => {
                           ₱{(pet.price || 0).toLocaleString()}
                         </span>
                         <div className="flex gap-1.5 shrink-0">
-                          {isPlatformReviewer && pet.approvalStatus !== 'approved' && (
-                            <button
-                              onClick={() => handleApprovePet(pet._id)}
-                              className="p-2 sm:p-3 bg-emerald-50 text-emerald-600 rounded-2xl hover:bg-emerald-600 hover:text-white transition-all border border-emerald-100 active:scale-95"
-                              title="Approve Pet Listing"
-                            >
-                              <CheckCircle2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                            </button>
-                          )}
-                          {isPlatformReviewer && pet.approvalStatus !== 'rejected' && (
-                            <button
-                              onClick={() => handleRejectPet(pet._id)}
-                              className="p-2 sm:p-3 bg-rose-50 text-rose-500 rounded-2xl hover:bg-rose-500 hover:text-white transition-all border border-rose-100 active:scale-95"
-                              title="Reject Pet Listing"
-                            >
-                              <XCircle className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                            </button>
-                          )}
                           {canCreate && (
                             <button
                               onClick={() => handleDuplicateListingDetails(pet)}

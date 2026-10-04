@@ -12,7 +12,7 @@ const getAllAdminPets = async (req, res) => {
     let filter = { isDeleted: { $ne: true } };
 
     if (isPlatformAdmin(req.user)) {
-      // Super-admins see everything
+      // Platform administrators retain read-only cross-store management visibility.
       if (storeId) filter.store = storeId;
       console.log('🔓 Super-admin detected');
     } else if (isOperationalStaff(req.user)) {
@@ -55,7 +55,6 @@ const getAllAdminPets = async (req, res) => {
     } else if (isAvailable === 'false') {
       filter.isAvailable = false;
     }
-
     if (species) filter.species = species;
     if (breed) filter.breed = new RegExp(breed, 'i');
     if (size) filter.size = size;
@@ -124,60 +123,6 @@ const getAllAdminPets = async (req, res) => {
   }
 };
 
-// Approve a pet listing
-const approvePet = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { adminNotes } = req.body;
-
-    const pet = await Pet.findById(id);
-    if (!pet) return res.status(404).json({ message: 'Pet listing not found' });
-
-    if (!isPlatformAdmin(req.user)) {
-      return res.status(403).json({ message: 'Platform administrator approval is required.' });
-    }
-
-    pet.approvalStatus = 'approved';
-    if (adminNotes) pet.description += `\n\n[Admin Note]: ${adminNotes}`;
-    
-    await pet.save();
-
-    res.json({ message: 'Pet listing approved successfully', pet });
-  } catch (error) {
-    console.error('Approve pet error:', error);
-    res.status(500).json({ message: 'Server error during approval' });
-  }
-};
-
-// Reject a pet listing
-const rejectPet = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { adminNotes } = req.body;
-
-    if (!adminNotes) return res.status(400).json({ message: 'Rejection notes are required' });
-
-    const pet = await Pet.findById(id);
-    if (!pet) return res.status(404).json({ message: 'Pet listing not found' });
-    if (!isPlatformAdmin(req.user)) {
-      return res.status(403).json({ message: 'Platform administrator approval is required.' });
-    }
-
-    pet.approvalStatus = 'rejected';
-    if (pet.status === 'available') pet.status = 'unavailable';
-    pet.description += `\n\n[Rejection Reason]: ${adminNotes}`;
-
-    await pet.save();
-
-    res.json({ message: 'Pet listing rejected', pet });
-  } catch (error) {
-    console.error('Reject pet error:', error);
-    res.status(500).json({ message: 'Server error during rejection' });
-  }
-};
-
 module.exports = {
-  getAllAdminPets,
-  approvePet,
-  rejectPet
+  getAllAdminPets
 };

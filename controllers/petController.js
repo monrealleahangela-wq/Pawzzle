@@ -142,7 +142,7 @@ const getPetById = async (req, res) => {
 
     const isAdminRequest = req.baseUrl?.includes('/admin');
     if (!isAdminRequest) {
-      if (pet.approvalStatus !== 'approved' || !isMarketplacePet(pet)) {
+      if (!isMarketplacePet(pet)) {
         return res.status(404).json({ message: 'Pet not found or unavailable' });
       }
       const ownerIds = await getCustomerVisibleOwnerIds();
@@ -217,9 +217,6 @@ const createPet = async (req, res) => {
       paymentType: 'online_only',
       allowedPaymentMethods: ['paymongo'],
       paymentConfig: req.body.paymentConfig === 'deposit_first' ? 'deposit_first' : 'full_payment',
-      // Seller submissions always enter Platform Admin review. The browser
-      // cannot approve its own listing or choose another moderation state.
-      approvalStatus: 'pending',
       addedBy: req.user._id,
       store: store._id
     };
@@ -230,7 +227,7 @@ const createPet = async (req, res) => {
     const populatedPet = await Pet.findById(pet._id).populate('addedBy', 'username firstName lastName');
 
     res.status(201).json({
-      message: 'Pet listing submitted for Platform Admin review',
+      message: 'Pet listing created successfully',
       pet: populatedPet
     });
   } catch (error) {

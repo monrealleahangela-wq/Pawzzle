@@ -97,10 +97,11 @@ test('public pet filter combines authoritative visibility, availability, search,
   }, ['store-1']);
   const serialized = JSON.stringify(filter);
   for (const expected of [
-    '"approvalStatus":"approved"', '"listingContext":"marketplace"', '"isAvailable":true',
+    '"listingContext":"marketplace"', '"listingType":"sale"', '"isAvailable":true',
     '"status":"available"', '"species":"dog"', '"gender":"female"', '"size":"large"',
     '"$divide"', '"$gte"', '"$lte"', '"description"'
   ]) assert.match(serialized, new RegExp(expected.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+  assert.doesNotMatch(serialized, /approvalStatus/);
   assert.throws(() => buildPublicPetFilter({ species: 'dragon' }, []), /Invalid species/);
   assert.throws(() => buildPublicPetFilter({ minPrice: 10, maxPrice: 1 }, []), /cannot exceed/);
 });
@@ -108,6 +109,8 @@ test('public pet filter combines authoritative visibility, availability, search,
 test('marketplace detail compatibility rejects supplier, grouped, and deleted pet records', () => {
   assert.equal(isMarketplacePet({ listingContext: 'marketplace', quantity: 1 }), true);
   assert.equal(isMarketplacePet({ quantity: undefined }), true);
+  assert.equal(isMarketplacePet({ listingContext: 'marketplace', listingType: 'sale', quantity: 1 }), true);
+  assert.equal(isMarketplacePet({ listingContext: 'marketplace', listingType: 'adoption', quantity: 1 }), false);
   assert.equal(isMarketplacePet({ listingContext: 'supplier_catalog', quantity: 1 }), false);
   assert.equal(isMarketplacePet({ listingContext: 'marketplace', quantity: 2 }), false);
   assert.equal(isMarketplacePet({ listingContext: 'marketplace', quantity: 1, isDeleted: true }), false);
@@ -167,6 +170,6 @@ test('catalog mutations retain server-owned relationships through explicit allow
   assert.match(products, /store: storeId/);
   assert.doesNotMatch(products, /const productData = \{\s*\.\.\.req\.body/);
   assert.match(pets, /PET_LISTING_FIELDS/);
-  assert.match(pets, /approvalStatus: 'pending'/);
+  assert.doesNotMatch(pets.match(/const PET_LISTING_FIELDS = \[([\s\S]*?)\];/)?.[1] || '', /approvalStatus/);
   assert.match(pets, /store: store\._id/);
 });

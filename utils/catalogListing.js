@@ -58,6 +58,14 @@ const publicPetContextClause = {
   ]
 };
 
+const publicPetSaleClause = {
+  $or: [
+    { listingType: 'sale' },
+    { listingType: { $exists: false } },
+    { listingType: null }
+  ]
+};
+
 const individualPetClause = {
   $or: [{ quantity: { $exists: false } }, { quantity: null }, { quantity: 1 }]
 };
@@ -65,9 +73,9 @@ const individualPetClause = {
 const buildPublicPetFilter = (query = {}, storeIds = [], options = {}) => {
   const conditions = [
     { isDeleted: { $ne: true } },
-    { approvalStatus: 'approved' },
     options.ownership || { store: { $in: storeIds } },
     publicPetContextClause,
+    publicPetSaleClause,
     individualPetClause
   ];
 
@@ -132,6 +140,7 @@ const buildPublicPetFilter = (query = {}, storeIds = [], options = {}) => {
 
 const isMarketplacePet = pet => (
   (!pet?.listingContext || pet.listingContext === 'marketplace')
+  && (!pet?.listingType || pet.listingType === 'sale')
   && (pet?.quantity === undefined || pet?.quantity === null || pet?.quantity === 1)
   && pet?.isDeleted !== true
 );
@@ -166,5 +175,6 @@ module.exports = {
   isMarketplacePet,
   normalizeCatalogImages,
   normalizeProductWeight,
-  publicPetContextClause
+  publicPetContextClause,
+  publicPetSaleClause
 };

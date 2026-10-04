@@ -99,7 +99,7 @@ test('live-pet receiving remains exact-document transfer inside the receiving tr
   const applyItem = controller.match(/const applyReceivingItem[\s\S]*?const submitReceivingInspection/)?.[0] || '';
   assert.match(applyItem, /'procurementReservation\.purchaseOrder': order\._id/);
   assert.match(applyItem, /pet\.acquiredThroughPurchaseOrder = order\._id/);
-  assert.match(applyItem, /pet\.approvalStatus = 'pending'/);
+  assert.doesNotMatch(applyItem, /pet\.approvalStatus\s*=/);
   assert.match(applyItem, /pet\.status = 'unavailable'/);
   assert.match(applyItem, /pet\.save\(\{ session \}\)/);
   assert.doesNotMatch(applyItem, /Pet\.create/);

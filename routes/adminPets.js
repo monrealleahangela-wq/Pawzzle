@@ -2,11 +2,7 @@ const express = require('express');
 const { body } = require('express-validator');
 const router = express.Router();
 
-const {
-  getAllAdminPets,
-  approvePet,
-  rejectPet
-} = require('../controllers/adminPetController');
+const { getAllAdminPets } = require('../controllers/adminPetController');
 
 const {
   getPetById,
@@ -137,9 +133,5 @@ router.get('/:id', authenticate, adminOrStaff, requirePermission('pets.view', 'p
 router.post('/', authenticate, adminOrStaff, requirePermission('pets.manage', 'inventory.adjust'), createPetValidation, createPet);
 router.put('/:id', authenticate, adminOrStaff, requirePermission('pets.manage', 'inventory.adjust'), updatePetValidation, updatePet);
 router.delete('/:id', authenticate, adminOrStaff, requirePermission('pets.manage', 'inventory.adjust'), deletePet);
-
-// Listing Moderation
-router.post('/:id/approve', authenticate, platformAdminOnly, approvePet);
-router.post('/:id/reject', authenticate, platformAdminOnly, rejectPet);
 
 module.exports = router;

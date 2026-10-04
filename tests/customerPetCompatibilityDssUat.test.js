@@ -91,19 +91,20 @@ test('missing pet attributes stay unknown and are excluded from the evaluated de
   assert.ok(recommendation.unknowns.length >= 3);
 });
 
-test('eligibility excludes unavailable, sold, inactive, unapproved, adoption, and hidden-store listings before scoring', () => {
+test('eligibility ignores legacy approval metadata but excludes unavailable, sold, deleted, adoption, and hidden-store listings', () => {
   const result = assess([
     pet(),
     pet({ _id: 'unavailable', isAvailable: false }),
     pet({ _id: 'sold', status: 'sold' }),
     pet({ _id: 'deleted', isDeleted: true }),
     pet({ _id: 'pending', approvalStatus: 'pending' }),
+    pet({ _id: 'rejected', approvalStatus: 'rejected' }),
     pet({ _id: 'adoption', listingType: 'adoption' }),
     pet({ _id: 'hidden-store', store: { _id: 'hidden', isCustomerVisible: false } })
   ]);
-  assert.deepEqual(result.recommendations.map(row => row.pet._id), ['pet-1']);
+  assert.deepEqual(result.recommendations.map(row => row.pet._id), ['pending', 'pet-1', 'rejected']);
   assert.equal(result.excluded.unavailable, 2);
-  assert.equal(result.excluded.listingStatus, 3);
+  assert.equal(result.excluded.listingStatus, 2);
   assert.equal(result.excluded.storeVisibility, 1);
 });
 
@@ -128,10 +129,7 @@ test('controller loads owned Pet Profiles and filters actual sale listings throu
   assert.match(controller, /PetProfile\.find\(\{ owner: req\.user\._id \}\)/);
   assert.match(controller, /getCustomerVisibleOwnerIds/);
   assert.match(controller, /withCustomerComplianceFilter\(buildCustomerVisibleStoreFilter\(ownerIds\)\)/);
-  assert.match(controller, /approvalStatus: 'approved'/);
-  assert.match(controller, /listingType: 'sale'/);
-  assert.match(controller, /status: 'available'/);
-  assert.match(controller, /isAvailable: true/);
+  assert.match(controller, /buildPublicPetFilter\(\{ isAvailable: 'true' \}, visibleStoreIds\)/);
   assert.doesNotMatch(controller, /professionalProfile|taxProfile|documentUrl/);
 });
 

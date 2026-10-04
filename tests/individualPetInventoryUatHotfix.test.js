@@ -19,6 +19,8 @@ test('pet availability treats exactly one live animal as an individual listing',
   assert.equal(getPetAvailabilityIssue(availablePet, 1), null);
   assert.match(getPetAvailabilityIssue(availablePet, 2), /one individual pet/i);
   assert.match(getPetAvailabilityIssue({ ...availablePet, quantity: 5 }, 1), /manual cleanup/i);
+  assert.match(getPetAvailabilityIssue({ ...availablePet, listingContext: 'supplier_catalog' }, 1), /not eligible/i);
+  assert.match(getPetAvailabilityIssue({ ...availablePet, listingType: 'adoption' }, 1), /not eligible/i);
   assert.match(getPetAvailabilityIssue({ ...availablePet, status: 'sold', isAvailable: false }, 1), /cannot be purchased/i);
   assert.match(getPetAvailabilityIssue({ ...availablePet, status: 'adopted', isAvailable: false }, 1), /cannot be purchased/i);
 });
@@ -79,6 +81,11 @@ test('reservation claims are atomic and tied to the owning transaction', async (
     const result = await reservePetForOrder('pet-1', 'order-1');
     assert.equal(result.status, 'reserved');
     assert.equal(captured.filter._id, 'pet-1');
+    assert.deepEqual(captured.filter.$or[0].$and, [
+      { $or: [{ listingContext: 'marketplace' }, { listingContext: { $exists: false } }, { listingContext: null }] },
+      { $or: [{ listingType: 'sale' }, { listingType: { $exists: false } }, { listingType: null }] },
+      { $or: [{ quantity: { $exists: false } }, { quantity: null }, { quantity: 1 }] }
+    ]);
     assert.equal(captured.update.$set.status, 'reserved');
     assert.equal(captured.update.$set.isAvailable, false);
     assert.equal(captured.update.$set['reservation.order'], 'order-1');

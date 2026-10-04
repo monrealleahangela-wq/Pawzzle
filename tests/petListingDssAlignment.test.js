@@ -6,8 +6,7 @@ const Pet = require('../models/Pet');
 const Store = require('../models/Store');
 const DecisionSupportService = require('../services/decisionSupportService');
 const { getPetAvailabilityIssue } = require('../services/petAvailabilityService');
-const { createPet } = require('../controllers/petController');
-const { approvePet, rejectPet } = require('../controllers/adminPetController');
+const { createPet, updatePet } = require('../controllers/petController');
 const {
   PET_SIZES,
   PET_TEMPERAMENT_TRAITS,
@@ -73,12 +72,14 @@ test('Pet schema persists the canonical DSS attributes and exact shared enum val
   assert.equal(pet.petCompatibility.cats, 'compatible');
 });
 
-test('seller pet listings default to pending Platform Admin approval', () => {
+test('approvalStatus is optional legacy metadata and is not assigned to new Pet records', () => {
   const petData = listing({ addedBy: '507f1f77bcf86cd799439011', store: '507f1f77bcf86cd799439012' });
   delete petData._id;
   delete petData.approvalStatus;
   const pet = new Pet(petData);
-  assert.equal(pet.approvalStatus, 'pending');
+  assert.equal(pet.approvalStatus, undefined);
+  pet.approvalStatus = 'rejected';
+  assert.equal(pet.validateSync(), undefined);
 });
 
 test('structured seller attributes power space, temperament, activity, care, and household DSS factors', () => {
@@ -122,7 +123,7 @@ test('compact Add Pet collects aligned fields without exposing a separate Advanc
   assert.doesNotMatch(form, /Advanced options/);
 });
 
-test('create API requires aligned evidence and owns the approval/store identity fields server-side', () => {
+test('create API requires aligned evidence and owns Store and internal identity fields server-side', () => {
   const adminRoutes = read('routes/adminPets.js');
   const regularRoutes = read('routes/pets.js');
   const controller = read('controllers/petController.js');
@@ -132,14 +133,14 @@ test('create API requires aligned evidence and owns the approval/store identity 
     assert.match(routes, /body\('birthday'\)\.isISO8601/);
     assert.match(routes, /body\('images'\)\.isArray\(\{ min: 1, max: MAX_CATALOG_IMAGES \}\)/);
   }
-  assert.match(controller, /approvalStatus: 'pending'/);
+  assert.doesNotMatch(controller, /approvalStatus:/);
   assert.match(controller, /store: store\._id/);
   assert.match(controller, /const listingData = pickPetListingFields\(req\.body\)/);
   const listingFields = controller.match(/const PET_LISTING_FIELDS = \[([\s\S]*?)\];/)?.[1] || '';
   assert.doesNotMatch(listingFields, /'approvalStatus'/);
 });
 
-test('a valid aligned Add Pet payload is saved with authoritative Store and approval state', async () => {
+test('a valid aligned Add Pet payload is saved with authoritative Store and ignores deprecated approval input', async () => {
   const originalFindStore = Store.findOne;
   const originalSave = Pet.prototype.save;
   const originalFindPet = Pet.findById;
@@ -177,10 +178,10 @@ test('a valid aligned Add Pet payload is saved with authoritative Store and appr
   try {
     await createPet(req, res);
     assert.equal(statusCode, 201);
-    assert.equal(response.message, 'Pet listing submitted for Platform Admin review');
+    assert.equal(response.message, 'Pet listing created successfully');
     assert.equal(String(saved.store), storeId);
     assert.equal(String(saved.addedBy), ownerId);
-    assert.equal(saved.approvalStatus, 'pending');
+    assert.equal(saved.approvalStatus, undefined);
     assert.deepEqual(saved.temperamentTraits, ['calm', 'affectionate']);
     assert.equal(saved.activityLevel, 'low');
   } finally {
@@ -195,49 +196,54 @@ test('Customer DSS query fetches every structured listing attribute used for sco
   for (const field of ['temperamentTraits', 'activityLevel', 'careNeeds', 'petCompatibility']) {
     assert.match(controller, new RegExp(field));
   }
-  assert.match(controller, /approvalStatus: 'approved'/);
-  assert.match(controller, /status: 'available'/);
-  assert.match(controller, /isAvailable: true/);
+  assert.match(controller, /buildPublicPetFilter\(\{ isAvailable: 'true' \}, visibleStoreIds\)/);
 });
 
-test('customer visibility and purchase eligibility require Platform Admin approval', () => {
+test('legacy approval metadata does not affect customer visibility or purchase eligibility', () => {
   const controller = read('controllers/petController.js');
   const availability = read('services/petAvailabilityService.js');
-  assert.match(read('utils/catalogListing.js'), /approvalStatus: 'approved'/);
-  assert.doesNotMatch(controller, /approvalStatus:\s*\{\s*\$in:\s*\['approved',\s*'pending'\]/);
-  assert.match(controller, /pet\.approvalStatus !== 'approved'/);
-  assert.match(availability, /approvalStatus: 'approved'/);
-  assert.equal(getPetAvailabilityIssue(listing({ approvalStatus: 'pending' }), 1), 'Pet listing is not approved for purchase.');
-  assert.equal(getPetAvailabilityIssue(listing({ approvalStatus: 'rejected' }), 1), 'Pet listing is not approved for purchase.');
+  assert.doesNotMatch(read('utils/catalogListing.js'), /approvalStatus/);
+  assert.doesNotMatch(controller, /approvalStatus/);
+  assert.doesNotMatch(availability, /approvalStatus/);
+  assert.equal(getPetAvailabilityIssue(listing({ approvalStatus: 'pending' }), 1), null);
+  assert.equal(getPetAvailabilityIssue(listing({ approvalStatus: 'rejected' }), 1), null);
   assert.equal(getPetAvailabilityIssue(listing(), 1), null);
 });
 
-test('only Platform Admin routes can approve or reject pet listings', () => {
+test('manual Pet approval workflow is not exposed by routes, services, UI, or navigation', () => {
   const routes = read('routes/adminPets.js');
   const controller = read('controllers/adminPetController.js');
   const page = read('client/src/pages/admin/Pets.js');
+  const api = read('client/src/services/apiService.js');
   const layout = read('client/src/components/Layout.js');
-  assert.match(routes, /router\.post\('\/:id\/approve', authenticate, platformAdminOnly, approvePet\)/);
-  assert.match(routes, /router\.post\('\/:id\/reject', authenticate, platformAdminOnly, rejectPet\)/);
-  assert.match(controller, /if \(!isPlatformAdmin\(req\.user\)\)/);
-  assert.match(page, /isPlatformReviewer && pet\.approvalStatus !== 'approved'/);
-  assert.match(page, /isPlatformReviewer && pet\.approvalStatus !== 'rejected'/);
-  assert.match(layout, /Pet Listing Approval/);
+  for (const source of [routes, controller, page, api]) {
+    assert.doesNotMatch(source, /approvePet|rejectPet|PENDING APPROVAL/);
+  }
+  assert.doesNotMatch(routes, /\/:id\/approve|\/:id\/reject/);
+  assert.match(page, /delete individualPetForm\.approvalStatus/);
+  assert.doesNotMatch(layout, /Pet Listing Approval/);
+  assert.match(layout, /Pet Listings/);
 });
 
-test('Platform Admin approval and rejection mutate the persisted moderation state', async () => {
+test('seller edits ignore deprecated approval input and never re-enter a moderation state', async () => {
   const originalFindPet = Pet.findById;
-  let saved = 0;
-  const pet = {
-    _id: 'listing-1',
-    store: 'store-1',
-    description: 'Listing description',
-    status: 'available',
-    approvalStatus: 'pending',
-    async save() { saved += 1; }
+  const originalUpdatePet = Pet.findByIdAndUpdate;
+  const originalFindStores = Store.find;
+  const ownerId = '507f1f77bcf86cd799439011';
+  const storeId = '507f1f77bcf86cd799439012';
+  const operations = [];
+  let currentPet;
+
+  Store.find = () => ({
+    select() { return this; },
+    async lean() { return [{ _id: storeId }]; }
+  });
+  Pet.findById = async () => currentPet;
+  Pet.findByIdAndUpdate = (_id, operation) => {
+    operations.push(operation);
+    return { populate: async () => ({ ...currentPet, ...operation.$set }) };
   };
-  Pet.findById = async () => pet;
-  const response = () => {
+  const respond = () => {
     const result = { statusCode: 200, body: null };
     return {
       result,
@@ -245,27 +251,53 @@ test('Platform Admin approval and rejection mutate the persisted moderation stat
       json(value) { result.body = value; return this; }
     };
   };
+  const request = body => ({
+    params: { id: 'listing-1' },
+    body,
+    user: { _id: ownerId, role: 'store_owner' }
+  });
 
   try {
-    const unauthorized = response();
-    await approvePet({ params: { id: pet._id }, body: {}, user: { role: 'store_owner' } }, unauthorized);
-    assert.equal(unauthorized.result.statusCode, 403);
-    assert.equal(pet.approvalStatus, 'pending');
-    assert.equal(saved, 0);
+    currentPet = {
+      _id: 'listing-1', name: 'Mochi', store: storeId, addedBy: ownerId,
+      status: 'available', approvalStatus: 'approved', paymentConfig: 'full_payment'
+    };
+    const changed = respond();
+    await updatePet(request({ name: 'Mochi Updated', approvalStatus: 'approved' }), changed);
+    assert.equal(changed.result.statusCode, 200);
+    assert.equal(Object.prototype.hasOwnProperty.call(operations.at(-1).$set, 'approvalStatus'), false);
+    assert.equal(changed.result.body.message, 'Pet updated successfully');
 
-    const approved = response();
-    await approvePet({ params: { id: pet._id }, body: {}, user: { role: 'super_admin' } }, approved);
-    assert.equal(approved.result.statusCode, 200);
-    assert.equal(pet.approvalStatus, 'approved');
-    assert.equal(saved, 1);
+    currentPet = { ...currentPet, approvalStatus: 'rejected' };
+    const corrected = respond();
+    await updatePet(request({ description: 'Corrected listing evidence for a new review.' }), corrected);
+    assert.equal(Object.prototype.hasOwnProperty.call(operations.at(-1).$set, 'approvalStatus'), false);
 
-    const rejected = response();
-    await rejectPet({ params: { id: pet._id }, body: { adminNotes: 'Listing evidence was not accepted.' }, user: { role: 'platform_admin' } }, rejected);
-    assert.equal(rejected.result.statusCode, 200);
-    assert.equal(pet.approvalStatus, 'rejected');
-    assert.equal(pet.status, 'unavailable');
-    assert.equal(saved, 2);
+    currentPet = { ...currentPet, approvalStatus: 'approved' };
+    const availabilityOnly = respond();
+    await updatePet(request({ status: 'unavailable', approvalStatus: 'rejected' }), availabilityOnly);
+    assert.equal(Object.prototype.hasOwnProperty.call(operations.at(-1).$set, 'approvalStatus'), false);
+
+    currentPet = { ...currentPet, store: '507f1f77bcf86cd799439099' };
+    const operationCount = operations.length;
+    const crossStore = respond();
+    await updatePet(request({ name: 'Unauthorized change' }), crossStore);
+    assert.equal(crossStore.result.statusCode, 403);
+    assert.equal(operations.length, operationCount);
   } finally {
     Pet.findById = originalFindPet;
+    Pet.findByIdAndUpdate = originalUpdatePet;
+    Store.find = originalFindStores;
   }
+});
+
+test('status audit helper is read-only and the management UI uses operational statuses only', () => {
+  const audit = read('test_pets_status.js');
+  const page = read('client/src/pages/admin/Pets.js');
+  assert.doesNotMatch(audit, /updateMany|findOneAndUpdate|bulkWrite/);
+  assert.match(audit, /No records were modified/);
+  assert.doesNotMatch(audit, /approvalStatus/);
+  assert.doesNotMatch(page, /PENDING APPROVAL/);
+  assert.match(page, /delete individualPetForm\.approvalStatus/);
+  assert.match(page, /Availability/);
 });

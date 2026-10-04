@@ -21,6 +21,7 @@ const {
     buildCustomerVisibleStoreFilter,
     withCustomerComplianceFilter
 } = require('../utils/storeVisibility');
+const { buildPublicPetFilter } = require('../utils/catalogListing');
 
 // ===== CUSTOMER DSS =====
 const getLegacyCustomerInsights = async (req, res) => {
@@ -381,16 +382,8 @@ const getCustomerPetRecommendations = async (req, res) => {
         const visibleStoreIds = visibleStores.map(store => store._id);
         const storeNames = new Map(visibleStores.map(store => [String(store._id), store.name]));
         const [listings, householdPets] = await Promise.all([
-            Pet.find({
-                store: { $in: visibleStoreIds },
-                isDeleted: { $ne: true },
-                approvalStatus: 'approved',
-                listingType: 'sale',
-                status: 'available',
-                isAvailable: true,
-                $or: [{ quantity: { $exists: false } }, { quantity: null }, { quantity: 1 }]
-            })
-                .select('name species breed age ageUnit birthday gender size price images isAvailable status listingType approvalStatus vaccinationStatus healthCondition temperament temperamentTraits activityLevel careNeeds petCompatibility description store')
+            Pet.find(buildPublicPetFilter({ isAvailable: 'true' }, visibleStoreIds))
+                .select('name species breed age ageUnit birthday gender size price images isAvailable status listingType vaccinationStatus healthCondition temperament temperamentTraits activityLevel careNeeds petCompatibility description store')
                 .lean(),
             PetProfile.find({ owner: req.user._id })
                 .select('name type breed size')

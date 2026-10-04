@@ -96,9 +96,7 @@ export const adminPetService = {
   getPetById: (id) => api.get(`/admin/pets/${id}`),
   createPet: (petData) => api.post('/admin/pets', petData),
   updatePet: (id, petData) => api.put(`/admin/pets/${id}`, petData),
-  deletePet: (id) => api.delete(`/admin/pets/${id}`),
-  approvePet: (id, adminNotes) => api.post(`/admin/pets/${id}/approve`, { adminNotes }),
-  rejectPet: (id, adminNotes) => api.post(`/admin/pets/${id}/reject`, { adminNotes })
+  deletePet: (id) => api.delete(`/admin/pets/${id}`)
 };
 
 // Product services

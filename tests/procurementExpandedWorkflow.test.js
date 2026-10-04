@@ -38,7 +38,7 @@ test('supplier live-pet catalog reuses Pet identity and is isolated from the cus
   assert.match(supplierController, /new Pet\(buildSupplierPet/);
   assert.match(supplierController, /pet\.save\(\{ session \}\)/);
   assert.match(supplierController, /listingContext: 'supplier_catalog'/);
-  assert.match(supplierController, /approvalStatus: 'pending'/);
+  assert.doesNotMatch(supplierController, /approvalStatus:/);
   assert.match(petModel, /listingContext:[\s\S]*\['marketplace', 'supplier_catalog'\]/);
   assert.match(petModel, /sourceSupplier:[\s\S]*ref: 'Supplier'/);
 });
@@ -103,7 +103,7 @@ test('accepted product quantities enter the existing ledger while exact pets tra
   assert.match(receiving, /idempotencyKey = `po-inspection-receipt:/);
   assert.match(receiving, /pet\.acquiredThroughPurchaseOrder = order\._id/);
   assert.match(receiving, /pet\.store = order\.store/);
-  assert.match(receiving, /pet\.approvalStatus = 'pending'/);
+  assert.doesNotMatch(receiving, /pet\.approvalStatus\s*=/);
   assert.match(receiving, /pet\.status = 'unavailable'/);
   assert.doesNotMatch(receiving, /pet\.quantity \+=/);
 });
@@ -174,5 +174,5 @@ test('customer discovery cannot expose an accepted live pet until it is made ava
   const search = read('client/src/pages/customer/Search.js');
   const dss = read('controllers/dssController.js');
   assert.match(search, /petService\.getAllPets\(\{ \.\.\.params, isAvailable: true \}\)/);
-  assert.match(dss, /approvalStatus: 'approved'[\s\S]*status: 'available'[\s\S]*isAvailable: true/);
+  assert.match(dss, /buildPublicPetFilter\(\{ isAvailable: 'true' \}, visibleStoreIds\)/);
 });

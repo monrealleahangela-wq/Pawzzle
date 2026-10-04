@@ -200,7 +200,7 @@ test('real MongoDB enforces procurement stock commitments, exact-pet cancellatio
     assert.equal(pet.status, 'available');
     assert.equal(pet.isAvailable, true);
     assert.equal(pet.listingContext, 'supplier_catalog');
-    assert.equal(pet.approvalStatus, 'pending');
+    assert.equal(pet.approvalStatus, undefined);
     assert.equal(pet.procurementReservation?.purchaseOrder, undefined);
     assert.ok(supplier.goodsTypes.includes('live_pets'));
     assert.equal(await SupplyChainLog.countDocuments({
@@ -468,7 +468,7 @@ test('real MongoDB enforces procurement stock commitments, exact-pet cancellatio
       species: 'dog', breed: 'Mixed', age: 1, ageUnit: 'years', gender: 'male', size: 'small',
       description: 'Exact procurement pet fixture', price: 1000,
       status: 'available', isAvailable: true, listingContext: 'supplier_catalog',
-      sourceSupplier: supplierId, addedBy: supplierUser, approvalStatus: 'pending'
+      sourceSupplier: supplierId, addedBy: supplierUser
     });
     petIds.push(pet._id);
     const product = await makeSupplierProduct({
@@ -600,7 +600,7 @@ test('real MongoDB enforces procurement stock commitments, exact-pet cancellatio
     assert.equal(String(transferred.store), String(store));
     assert.equal(transferred.listingContext, 'marketplace');
     assert.equal(transferred.status, 'unavailable');
-    assert.equal(transferred.approvalStatus, 'pending');
+    assert.equal(transferred.approvalStatus, undefined);
   });
 
   await t.test('failed exact-pet release rolls back PO cancellation and cannot release an irreversible pet', async () => {
