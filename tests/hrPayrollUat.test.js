@@ -4,8 +4,9 @@ const fs = require('node:fs');
 const path = require('node:path');
 const {
   isValidCoordinates, distanceMeters, getScheduleForDate, calculateAttendance,
-  generatePayrollPeriod, computePay, dateAtTime
+  generatePayrollPeriod, computePay, dateAtTime, getTimeInWindow
 } = require('../utils/hrPolicy');
+const { configuredMaximum, processStoreAutoClockOuts } = require('../services/attendanceAutomationService');
 
 const root = path.join(__dirname, '..');
 const read = file => fs.readFileSync(path.join(root, file), 'utf8');
@@ -39,6 +40,51 @@ test('attendance derives late, undertime, overtime and worked time from server t
   assert.equal(result.lateMinutes, 10);
   assert.equal(result.overtimeMinutes, 60);
   assert.equal(result.workedMinutes, 460);
+});
+
+test('time-in admission is server-schedule-aware and uses Store configuration', () => {
+  const schedule = { isWorkDay: true, start: '09:00', end: '17:00', breakMinutes: 60, timezone: 'Asia/Manila' };
+  const legacy = { gracePeriodMinutes: 10 };
+  assert.equal(getTimeInWindow({ dateKey: '2026-09-14', schedule, settings: legacy, now: dateAtTime('2026-09-14', '08:50') }).allowed, true);
+  assert.equal(getTimeInWindow({ dateKey: '2026-09-14', schedule, settings: legacy, now: dateAtTime('2026-09-14', '09:11') }).code, 'too_late');
+  const configured = { gracePeriodMinutes: 10, timeInWindow: { earlyMinutes: 30, lateMinutes: 120 } };
+  assert.equal(getTimeInWindow({ dateKey: '2026-09-14', schedule, settings: configured, now: dateAtTime('2026-09-14', '10:59') }).allowed, true);
+  assert.equal(getTimeInWindow({ dateKey: '2026-09-14', schedule, settings: configured, now: dateAtTime('2026-09-14', '11:01') }).allowed, false);
+  assert.equal(getTimeInWindow({ dateKey: '2026-09-13', schedule: { ...schedule, isWorkDay: false }, settings: configured, now: dateAtTime('2026-09-13', '09:00') }).code, 'not_scheduled');
+});
+
+test('overnight shifts compute against the following-day end boundary', () => {
+  const schedule = { isWorkDay: true, start: '22:00', end: '06:00', breakMinutes: 60, timezone: 'Asia/Manila' };
+  const result = calculateAttendance({ timeIn: dateAtTime('2026-09-14', '22:00'), timeOut: dateAtTime('2026-09-15', '06:00'), schedule, graceMinutes: 10, overtimeEnabled: true });
+  assert.deepEqual(result, { status: 'present', workedMinutes: 420, lateMinutes: 0, undertimeMinutes: 0, overtimeMinutes: 0 });
+});
+
+test('auto clock-out requires explicit Store enablement and duration', () => {
+  assert.equal(configuredMaximum({ hrSettings: { autoClockOut: { enabled: false, maximumShiftMinutes: 480 } } }), null);
+  assert.equal(configuredMaximum({ hrSettings: { autoClockOut: { enabled: true } } }), null);
+  assert.equal(configuredMaximum({ hrSettings: { autoClockOut: { enabled: true, maximumShiftMinutes: 1441 } } }), null);
+  assert.equal(configuredMaximum({ hrSettings: { autoClockOut: { enabled: true, maximumShiftMinutes: 480 } } }), 480);
+});
+
+test('auto clock-out is atomic, idempotent, notified, and left pending for review', async () => {
+  const timeIn = dateAtTime('2026-09-14', '09:00');
+  const storeWithAutomation = { _id: 'store-a', hrSettings: { gracePeriodMinutes: 10, overtime: { enabled: false }, autoClockOut: { enabled: true, maximumShiftMinutes: 480 } } };
+  const record = { _id: 'attendance-a', employee: 'employee-a', workDate: '2026-09-14', timeIn: { at: timeIn }, schedule: { isWorkDay: true, start: '09:00', end: '17:00', breakMinutes: 60, timezone: 'Asia/Manila' } };
+  let open = true; let savedUpdate = null; const notifications = [];
+  const dependencies = {
+    Attendance: {
+      find: async () => open ? [record] : [],
+      findOneAndUpdate: async (_filter, update) => { if (!open) return null; open = false; savedUpdate = update; return { ...record, ...update.$set }; }
+    },
+    User: { find: () => ({ select: () => ({ lean: async () => [{ _id: 'employee-a' }, { _id: 'manager-a' }] }) }) },
+    createNotification: async data => { notifications.push(data); }
+  };
+  assert.equal(await processStoreAutoClockOuts(storeWithAutomation, dateAtTime('2026-09-14', '18:00'), null, dependencies), 1);
+  assert.equal(savedUpdate.$set.autoClockOutReview.status, 'pending');
+  assert.equal(savedUpdate.$set.timeOut.validationStatus, 'system_generated');
+  assert.equal(notifications.length, 2);
+  assert.deepEqual(notifications.map(item => item.recipient), ['employee-a', 'manager-a']);
+  assert.equal(await processStoreAutoClockOuts(storeWithAutomation, dateAtTime('2026-09-14', '18:05'), null, dependencies), 0);
 });
 
 test('rest-day attendance does not use missing shift boundaries and can become overtime', () => {
@@ -104,7 +150,19 @@ test('attendance routes are self-only and management operations are explicitly p
   assert.match(routes, /me\/attendance\/time-out/);
   assert.doesNotMatch(routes, /me\/attendance\/:employeeId/);
   assert.match(routes, /requirePermission\('attendance\.manage'\)/);
+  assert.match(routes, /requirePermission\('attendance\.review', 'attendance\.manage'\)/);
   assert.match(routes, /requirePermission\('leave\.approve'\)/);
+});
+
+test('location and auto-clock exceptions have explicit review and payroll blockers', () => {
+  const controller = read('controllers/hrController.js');
+  const attendance = read('models/Attendance.js');
+  const payroll = read('models/PayrollPeriod.js');
+  assert.match(attendance, /locationReviews/);
+  assert.match(attendance, /autoClockOutReview/);
+  assert.match(controller, /employeeReason/);
+  assert.match(controller, /Resolve all attendance exceptions and recompute payroll/);
+  assert.match(payroll, /blocking:/);
 });
 
 test('payroll preparation, approval, payment and compensation use separate permissions', () => {

@@ -11,12 +11,15 @@ import { normalizeRefundPolicy, refundPolicyLabel } from '../../utils/refundPoli
 import PaymentBreakdown from '../../components/payments/PaymentBreakdown';
 import { formatPeso, orderLineItemRows, orderPaymentSummary, paymentSummaryRows } from '../../utils/paymentSummary';
 import { useRealTimeUpdates } from '../../hooks/useRealTimeUpdates';
+import { hasUiActionPermission } from '../../utils/authorization';
 
 const OrderDetail = () => {
   const { id } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const canManageOrders = ['admin', 'store_owner', 'super_admin', 'platform_admin'].includes(user?.role)
+    || hasUiActionPermission(user, 'sales', 'manage', false);
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [reviewItem, setReviewItem] = useState(null);
@@ -664,7 +667,7 @@ const OrderDetail = () => {
               </div>
               
               <div className="grid grid-cols-1 gap-4">
-                {order.status !== 'finalized' && (
+                {canManageOrders && order.status !== 'finalized' && (
                   <button
                     onClick={handleFinalizeOrder}
                     className="w-full py-5 bg-slate-900 text-white rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] hover:bg-primary-600 transition-all shadow-xl flex items-center justify-center gap-3 group relative overflow-hidden"
@@ -858,7 +861,7 @@ const OrderDetail = () => {
                           <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">
                             {new Date(complaint.createdAt).toLocaleString()}
                           </p>
-                          {user?.role !== 'customer' && complaint.status === 'pending' && (
+                          {canManageOrders && complaint.status === 'pending' && (
                             <button
                               onClick={() => handleResolveComplaint(order.delivery._id || order.delivery, complaint._id)}
                               className="px-3 py-1 bg-emerald-600 text-white rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-emerald-700 transition-all flex items-center gap-1 shadow-sm"
@@ -936,7 +939,7 @@ const OrderDetail = () => {
               </div>
             </div>
           )}
-          {user?.role !== 'customer' && order.deliveryMethod === 'delivery' && ['ready_for_pickup', 'rider_assigned'].includes(order.status) && (
+          {canManageOrders && order.deliveryMethod === 'delivery' && ['ready_for_pickup', 'rider_assigned'].includes(order.status) && (
             <div className="card p-6 border-2 border-primary-100 bg-primary-50/10">
               <h2 className="text-sm font-black text-slate-900 uppercase tracking-widest mb-4 flex items-center gap-2">
                 <Truck className="h-4 w-4 text-primary-600" />

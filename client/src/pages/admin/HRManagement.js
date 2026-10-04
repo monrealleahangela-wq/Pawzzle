@@ -4,7 +4,7 @@ import { Clock, CalendarOff, WalletCards, Settings, Users, Loader2, AlertCircle 
 import { toast } from 'react-toastify';
 import { hrService } from '../../services/apiService';
 import { useAuth } from '../../contexts/AuthContext';
-import { effectiveStaffType } from '../../utils/authorization';
+import { effectiveStaffType, hasUiActionPermission } from '../../utils/authorization';
 import { formatPeso } from '../../utils/paymentSummary';
 
 const money = formatPeso;
@@ -24,12 +24,39 @@ const PayrollCutoffFields = ({ settings, setSettings }) => {
 };
 const LeavePolicyFields = ({ settings, setSettings }) => <div className="rounded-xl border border-slate-200 p-4 dark:border-slate-800"><h3 className="text-sm font-bold">Leave pay treatment</h3><p className="mb-3 text-xs text-slate-500">This Store policy—not the employee form—decides whether approved leave is paid.</p><div className="grid gap-2 sm:grid-cols-2">{(settings.leaveTypes || []).map((type, index) => <label key={type.key} className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2 text-sm dark:bg-slate-800/60"><span>{type.name}</span><span className="flex items-center gap-2 text-xs"><input type="checkbox" checked={!!type.isPaid} onChange={e => { const leaveTypes = settings.leaveTypes.map((item, itemIndex) => itemIndex === index ? { ...item, isPaid: e.target.checked } : item); setSettings({ ...settings, leaveTypes }); }} />Paid</span></label>)}</div></div>;
 
+const LocationEvidence = ({ row, punchType }) => {
+  const evidence = punchType === 'time_out' ? row.timeOut : row.timeIn;
+  if (!evidence?.at) return null;
+  const coordinates = evidence.coordinates;
+  return <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-[11px]">
+    <div><dt className="font-semibold">Server time</dt><dd>{date(evidence.at)} {time(evidence.at)}</dd></div>
+    <div><dt className="font-semibold">Distance</dt><dd>{Number.isFinite(evidence.distanceMeters) ? `${Math.round(evidence.distanceMeters)} m` : 'Unavailable'}</dd></div>
+    <div><dt className="font-semibold">GPS accuracy</dt><dd>{Number.isFinite(evidence.accuracyMeters) ? `${Math.round(evidence.accuracyMeters)} m` : 'Unavailable'}</dd></div>
+    <div><dt className="font-semibold">Coordinates</dt><dd>{Number.isFinite(coordinates?.lat) && Number.isFinite(coordinates?.lng) ? `${coordinates.lat.toFixed(5)}, ${coordinates.lng.toFixed(5)}` : 'Unavailable'}</dd></div>
+  </dl>;
+};
+
+const AttendanceReviewCell = ({ row, canReview, onLocationReview, onAutoReview }) => {
+  const reviews = row.locationReviews || [];
+  const actionable = reviews.filter(review => ['pending', 'rejected'].includes(review.status));
+  const latest = reviews[reviews.length - 1];
+  const autoStatus = row.autoClockOutReview?.status;
+  if (!canReview) return <div className="min-w-40 space-y-1 text-xs"><p className="font-semibold capitalize">Location {latest?.status || (row.locationFlagged ? 'pending' : 'valid')}</p>{autoStatus && <p className="font-semibold capitalize">Auto clock-out {autoStatus}</p>}</div>;
+  return <div className="min-w-40 space-y-2 text-xs">
+    <p className="font-semibold capitalize">{actionable.length || (row.locationFlagged && !reviews.length) ? `Location ${latest?.status || 'pending'}` : latest ? `Location ${latest.status}` : 'Location valid'}</p>
+    {actionable.map(review => <div key={review._id || review.punchType} className="rounded-lg bg-amber-50 p-2 text-amber-900"><p>{review.punchType.replace('_', ' ')}: {review.employeeReason}</p><LocationEvidence row={row} punchType={review.punchType} />{review.reviewerNote && <p className="mt-1">Last decision: {review.reviewerNote}</p>}{canReview && <div className="mt-2 flex gap-1"><Button onClick={() => onLocationReview(row, review.punchType, 'approved')}>{review.status === 'rejected' ? 'Approve after correction' : 'Approve'}</Button>{review.status !== 'rejected' && <Button secondary onClick={() => onLocationReview(row, review.punchType, 'rejected')}>Reject</Button>}</div>}</div>)}
+    {row.locationFlagged && !reviews.length && canReview && <div className="rounded-lg bg-amber-50 p-2 text-amber-900"><LocationEvidence row={row} punchType={row.timeOut?.at ? 'time_out' : 'time_in'} /><div className="mt-2 flex gap-1"><Button onClick={() => onLocationReview(row, row.timeOut?.at ? 'time_out' : 'time_in', 'approved')}>Approve legacy flag</Button><Button secondary onClick={() => onLocationReview(row, row.timeOut?.at ? 'time_out' : 'time_in', 'rejected')}>Reject</Button></div></div>}
+    {autoStatus && <div className={`rounded-lg p-2 ${['approved', 'corrected'].includes(autoStatus) ? 'bg-emerald-50 text-emerald-800' : 'bg-amber-50 text-amber-900'}`}><p className="font-semibold capitalize">Auto clock-out {autoStatus}</p>{canReview && ['pending', 'rejected'].includes(autoStatus) && <div className="mt-2 flex flex-wrap gap-1"><Button onClick={() => onAutoReview(row, 'approve')}>Approve</Button><Button secondary onClick={() => onAutoReview(row, 'reject')}>Reject</Button><Button secondary onClick={() => onAutoReview(row, 'correct')}>Correct</Button></div>}</div>}
+  </div>;
+};
+
 const HRManagement = () => {
   const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const role = effectiveStaffType(user);
   const owner = ['admin', 'store_owner', 'super_admin', 'platform_admin'].includes(user?.role);
   const finance = role === 'finance_staff';
+  const canReviewAttendance = owner || hasUiActionPermission(user, 'attendance', 'review', false);
   const tabs = useMemo(() => [
     { id: 'attendance', label: 'Attendance', icon: Clock, show: true },
     { id: 'leave', label: 'Leave Requests', icon: CalendarOff, show: true },
@@ -75,6 +102,24 @@ const HRManagement = () => {
   const reviewLeave = async (id, status) => {
     try { await hrService.reviewLeave(id, { status }); toast.success(`Leave ${status}.`); loadTab(); }
     catch (error) { toast.error(error.response?.data?.message || 'Unable to review leave.'); }
+  };
+  const reviewLocation = async (record, punchType, status) => {
+    const reviewerNote = window.prompt(`Reason for ${status === 'approved' ? 'approving' : 'rejecting'} this ${punchType.replace('_', ' ')} location:`);
+    if (!reviewerNote) return;
+    try { const response = await hrService.reviewAttendanceLocation(record._id, { punchType, status, reviewerNote }); toast.success(response.data.message); await loadTab(); }
+    catch (error) { toast.error(error.response?.data?.message || 'Unable to review attendance location.'); }
+  };
+  const reviewAutoClockOut = async (record, action) => {
+    const reviewerNote = window.prompt(`Reason for ${action === 'correct' ? 'correcting' : `${action}ing`} this auto clock-out:`);
+    if (!reviewerNote) return;
+    const data = { action, reviewerNote };
+    if (action === 'correct') {
+      const correctedTimeOut = window.prompt('Correct time out (ISO date/time, for example 2026-10-04T17:00:00+08:00):');
+      if (!correctedTimeOut) return;
+      data.correctedTimeOut = correctedTimeOut;
+    }
+    try { const response = await hrService.reviewAutoClockOut(record._id, data); toast.success(response.data.message); await loadTab(); }
+    catch (error) { toast.error(error.response?.data?.message || 'Unable to review auto clock-out.'); }
   };
   const openPeriod = async id => {
     try { const response = await hrService.getPayrollPeriod(id); setSelectedPeriod(response.data.period); setPayslips(response.data.payslips || []); }
@@ -133,6 +178,10 @@ const HRManagement = () => {
     <div className="mb-5"><h1 className="text-2xl font-bold">Employees & Payroll</h1><p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Store-scoped attendance, leave, compensation, and payroll records.</p></div>
     <nav className="content-scroll-row mb-5 gap-2 border-b border-slate-200 dark:border-slate-800">{tabs.map(item => <button key={item.id} onClick={() => setSearchParams({ tab: item.id })} className={`flex shrink-0 items-center gap-2 whitespace-nowrap border-b-2 px-3 py-2 text-sm font-semibold ${tab === item.id ? 'border-primary text-primary' : 'border-transparent text-slate-500'}`}><item.icon size={16} />{item.label}</button>)}</nav>
     {loading && <div className="flex min-h-48 items-center justify-center"><Loader2 className="animate-spin text-primary" /></div>}
+
+    {!loading && tab === 'settings' && settings && <section className="mx-auto mb-5 max-w-4xl space-y-4 rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900"><div><h2 className="font-bold">Attendance timing controls</h2><p className="text-sm text-slate-500">Configure the schedule admission window and optional maximum-shift safeguard for this Store.</p></div><div className="grid gap-4 sm:grid-cols-2"><NumberField label="Time in before shift (minutes)" min={0} max={720} value={settings.timeInWindow?.earlyMinutes ?? settings.gracePeriodMinutes ?? 0} onChange={earlyMinutes => setSettings({ ...settings, timeInWindow: { ...settings.timeInWindow, earlyMinutes, lateMinutes: settings.timeInWindow?.lateMinutes ?? settings.gracePeriodMinutes ?? 0 } })} /><NumberField label="Time in after shift start (minutes)" min={0} max={720} value={settings.timeInWindow?.lateMinutes ?? settings.gracePeriodMinutes ?? 0} onChange={lateMinutes => setSettings({ ...settings, timeInWindow: { ...settings.timeInWindow, earlyMinutes: settings.timeInWindow?.earlyMinutes ?? settings.gracePeriodMinutes ?? 0, lateMinutes } })} /></div><label className="flex items-center gap-3 rounded-xl border border-slate-200 p-3 text-sm font-semibold dark:border-slate-800"><input type="checkbox" checked={!!settings.autoClockOut?.enabled} onChange={event => setSettings({ ...settings, autoClockOut: { ...settings.autoClockOut, enabled: event.target.checked } })} />Enable automatic clock-out after a configured maximum shift</label>{settings.autoClockOut?.enabled && <NumberField label="Maximum shift duration (minutes)" min={60} max={1440} value={settings.autoClockOut?.maximumShiftMinutes} onChange={maximumShiftMinutes => setSettings({ ...settings, autoClockOut: { ...settings.autoClockOut, maximumShiftMinutes } })} />}<p className="text-xs text-slate-500">Auto clock-outs remain pending until an authorized reviewer approves or corrects them; unresolved records block payroll review.</p><Button onClick={saveSettings}>Save Attendance Timing</Button></section>}
+
+    {!loading && tab === 'attendance' && attendance.some(row => row.locationFlagged || row.locationReviews?.length || row.autoClockOutReview?.status) && <section className="mb-4 space-y-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-900 dark:bg-amber-950/20"><div><h2 className="font-bold text-amber-950 dark:text-amber-100">Attendance exception review</h2><p className="text-xs text-amber-800 dark:text-amber-200">Employee reasons, captured GPS evidence, and auto clock-outs remain attached to the attendance record.</p></div>{attendance.filter(row => row.locationFlagged || row.locationReviews?.length || row.autoClockOutReview?.status).map(row => <article key={`review-${row._id}`} className="rounded-xl bg-white p-3 dark:bg-slate-900"><p className="mb-2 text-xs font-bold">{row.employee?.firstName} {row.employee?.lastName} · {row.workDate}</p><AttendanceReviewCell row={row} canReview={canReviewAttendance} onLocationReview={reviewLocation} onAutoReview={reviewAutoClockOut} /></article>)}</section>}
 
     {!loading && tab === 'attendance' && <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900"><div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 px-4 py-3 dark:border-slate-800"><div><h2 className="font-bold">Attendance Records</h2><p className="text-xs text-slate-500">Location validation and schedule results for this Store only.</p></div><span className="text-xs text-slate-500">{attendance.length} records</span></div><div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead className="bg-slate-50 text-xs uppercase text-slate-500 dark:bg-slate-800/60"><tr>{['Employee','Date','Shift','Time In','Time Out','Hours','Late','Location','Status'].map(value => <th key={value} className="px-3 py-3">{value}</th>)}</tr></thead><tbody>{attendance.map(row => <tr key={row._id} className="border-t border-slate-100 dark:border-slate-800"><td className="px-3 py-3 font-semibold">{row.employee?.firstName} {row.employee?.lastName}<span className="block text-xs font-normal text-slate-500">{(row.employee?.staffType || row.employee?.role || '').replaceAll('_', ' ')}</span></td><td className="px-3 py-3">{row.workDate}</td><td className="px-3 py-3">{row.schedule?.start || '—'}–{row.schedule?.end || '—'}</td><td className="px-3 py-3">{time(row.timeIn?.at)}</td><td className="px-3 py-3">{time(row.timeOut?.at)}</td><td className="px-3 py-3">{(row.workedMinutes / 60).toFixed(2)}</td><td className="px-3 py-3">{row.lateMinutes}m</td><td className="px-3 py-3">{row.locationFlagged ? 'Review needed' : 'Valid'}</td><td className="px-3 py-3"><span className={`rounded-full px-2 py-1 text-xs font-semibold capitalize ${badge(row.status)}`}>{row.status.replaceAll('_', ' ')}</span></td></tr>)}</tbody></table></div>{!attendance.length && <p className="p-8 text-center text-sm text-slate-500">No attendance records for this period.</p>}</section>}
 

@@ -20,7 +20,7 @@ const ROLE_PERMISSIONS = {
     'clinical.view', 'services.manage', 'sales.manage', 'inventory.manage',
     'procurement.manage', 'finance.view', 'logistics.manage',
     'reports.view', 'dss.view', 'bookings.manage',
-    'attendance.view', 'leave.approve'
+    'attendance.view', 'attendance.review', 'leave.approve'
   ],
   service_staff: [
     'customers.view', 'pets.view', 'services.view',

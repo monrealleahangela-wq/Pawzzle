@@ -25,6 +25,8 @@ router.put('/employees/:employeeId/compensation', requirePermission('compensatio
 router.get('/attendance', requirePermission('attendance.view', 'attendance.manage'), hr.managementAttendance);
 router.post('/attendance/manual', requirePermission('attendance.manage'), hr.createManualAttendance);
 router.patch('/attendance/:id/correct', requirePermission('attendance.manage'), hr.correctAttendance);
+router.patch('/attendance/:id/location-review', requirePermission('attendance.review', 'attendance.manage'), hr.reviewLocationAttendance);
+router.patch('/attendance/:id/auto-clock-out-review', requirePermission('attendance.review', 'attendance.manage'), hr.reviewAutoClockOut);
 router.get('/leaves', requirePermission('leave.view', 'leave.approve'), hr.listLeaves);
 router.patch('/leaves/:id/review', requirePermission('leave.approve'), hr.reviewLeave);
 

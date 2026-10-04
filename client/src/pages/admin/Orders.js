@@ -6,8 +6,13 @@ import { ShoppingBag, Eye, Package, Filter, ChevronDown, Search, UserRoundCheck 
 import { formatTime12h } from '../../utils/timeFormatters';
 import { useRealTimeUpdates } from '../../hooks/useRealTimeUpdates';
 import { formatPeso } from '../../utils/paymentSummary';
+import { useAuth } from '../../contexts/AuthContext';
+import { hasUiActionPermission } from '../../utils/authorization';
 
 const AdminOrders = () => {
+  const { user } = useAuth();
+  const canManageOrders = ['admin', 'store_owner', 'super_admin', 'platform_admin'].includes(user?.role)
+    || hasUiActionPermission(user, 'sales', 'manage', false);
   // Real-time Updates
   useRealTimeUpdates({
     onOrderUpdate: (data) => {
@@ -219,7 +224,7 @@ const AdminOrders = () => {
                             <Eye className="h-4 w-4" />
                           </Link>
                           
-                          {getActionButton(order) && (
+                          {canManageOrders && getActionButton(order) && (
                             getActionButton(order).type === 'rider_assignment' ? (
                               <Link
                                 to={`/admin/orders/${order._id}`}

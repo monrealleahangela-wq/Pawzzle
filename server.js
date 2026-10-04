@@ -88,6 +88,12 @@ mongoose.connect(process.env.MONGODB_URI)
       processDssAlerts(io).catch(error => console.error('DSS alert sweep failed:', error.message));
     }, 6 * 60 * 60000);
     dssAlertTimer.unref();
+    const { processAttendanceAutoClockOuts } = require('./services/attendanceAutomationService');
+    processAttendanceAutoClockOuts(io).catch(error => console.error('Attendance auto clock-out sweep failed:', error.message));
+    const attendanceAutomationTimer = setInterval(() => {
+      processAttendanceAutoClockOuts(io).catch(error => console.error('Attendance auto clock-out sweep failed:', error.message));
+    }, 5 * 60000);
+    attendanceAutomationTimer.unref();
   })
   .catch((error) => console.error('❌ MongoDB connection error:', error));
 

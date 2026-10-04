@@ -8,7 +8,7 @@ Pawzzle's Store HR module is deliberately scoped to Store employees. It adds att
 - Staff self-service routes derive the employee ID from the authenticated account.
 - Store Owners can configure policy, manage compensation, prepare, approve, and record payroll payment.
 - Finance Staff can view compensation and same-Store attendance, prepare/review payroll, and record an approved payroll as paid. They do not receive final approval by default.
-- Managers receive attendance visibility and leave approval, but no salary access by default.
+- Managers receive attendance visibility, attendance-exception review, and leave approval, but no salary access by default.
 - Employees see only their own finalized payslips.
 
 ## Attendance
@@ -16,6 +16,12 @@ Pawzzle's Store HR module is deliberately scoped to Store employees. It adds att
 Time In and Time Out use the server timestamp. The browser supplies current coordinates and optional accuracy; the backend validates them and computes Haversine distance from the Store's saved map coordinates. The Store controls radius, accuracy threshold, and whether an invalid location is rejected or retained as a flagged exception.
 
 Schedules come from the employee professional availability schedule when one exists, otherwise from Store defaults. Manual corrections append original value, corrected value, reason, actor, and timestamp rather than erasing the prior value.
+
+Time In is admitted only inside the employee's server-evaluated schedule window. Stores may configure minutes before and after shift start; legacy Stores use their existing grace-period value until explicit window values are saved. Overnight shifts use the following calendar day's end boundary.
+
+When Store policy retains an out-of-area or low-accuracy punch, the employee must provide a reason. Pawzzle preserves the original punch evidence and creates a Pending location review. An authorized same-Store reviewer can approve or reject it, cannot review their own exception, and every decision is retained in the review history. Rejected or pending exceptions remain ineligible for payroll review.
+
+Automatic clock-out is opt-in per Store and has no implicit twelve-hour rule. A Store Owner must configure a maximum shift duration. The retry-safe background sweep closes only still-open records, records the configured duration and generated timestamp, notifies the employee and reviewers, and leaves the record Pending until approved or corrected.
 
 GPS is evidence, not proof against spoofing. Pawzzle records accuracy, distance, basic request metadata, duplicates, invalid sequences, and correction history for review.
 
@@ -30,6 +36,8 @@ Legacy professional leave blocks do not say whether leave was paid. Payroll ther
 The Store configures weekly, fixed semi-monthly, or monthly cutoffs. A payroll period moves through Draft, Computed, Reviewed, Approved, and Paid. Computation is blocked until its attendance period ends.
 
 Each payslip snapshots compensation, attendance totals, additions, deductions, and the Store policy. Approved/finalized periods cannot be recomputed, so later rate or policy changes do not rewrite history. Internal rider earnings can be claimed once either by payroll or the existing rider-payout process.
+
+Pending/rejected location reviews and pending/rejected auto clock-outs do not contribute approved worked time. They create blocking payroll issues; payroll must be recomputed after the attendance exception is resolved before it can move to Reviewed.
 
 `Recorded as Paid` means an authorized person recorded a salary payment completed outside Pawzzle. Pawzzle does not initiate a bank transfer.
 

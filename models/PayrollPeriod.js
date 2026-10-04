@@ -21,7 +21,8 @@ const payrollPeriodSchema = new mongoose.Schema({
   },
   reviewIssues: [{
     employeeId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-    reason: { type: String, required: true, maxlength: 500 }
+    reason: { type: String, required: true, maxlength: 500 },
+    blocking: { type: Boolean, default: false }
   }],
   generatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   computedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },

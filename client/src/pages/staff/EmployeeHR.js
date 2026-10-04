@@ -24,6 +24,7 @@ const EmployeeHR = ({ initialTab = 'attendance' }) => {
   const [attendance, setAttendance] = useState({ today: null, schedule: null, records: [] });
   const [leaveData, setLeaveData] = useState({ leaves: [], leaveTypes: [] });
   const [payslips, setPayslips] = useState([]);
+  const [offsiteReason, setOffsiteReason] = useState('');
   const [leaveForm, setLeaveForm] = useState({ leaveTypeKey: '', startDate: '', endDate: '', reason: '', attachmentUrl: '' });
 
   const load = useCallback(async () => {
@@ -49,7 +50,8 @@ const EmployeeHR = ({ initialTab = 'attendance' }) => {
     setBusy(true);
     try {
       const location = await captureLocation();
-      const response = action === 'in' ? await hrService.timeIn(location) : await hrService.timeOut(location);
+      const payload = { ...location, offsiteReason: offsiteReason.trim() };
+      const response = action === 'in' ? await hrService.timeIn(payload) : await hrService.timeOut(payload);
       toast.success(response.data.message); await load();
     } catch (error) { toast.error(error.response?.data?.message || error.message || 'Unable to record attendance.'); }
     finally { setBusy(false); }
@@ -88,14 +90,16 @@ const EmployeeHR = ({ initialTab = 'attendance' }) => {
               <div><p className="text-slate-500">Hours Worked</p><p className="font-semibold">{((attendance.today?.workedMinutes || 0) / 60).toFixed(2)}</p></div>
             </div>
             <div className="mt-5 flex gap-3">
-              <button disabled={busy || !!attendance.today?.timeIn?.at} onClick={() => recordAttendance('in')} className="rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-white disabled:opacity-40">Time In</button>
+              <button disabled={busy || !!attendance.today?.timeIn?.at || attendance.timeInWindow?.allowed === false} onClick={() => recordAttendance('in')} className="rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-white disabled:opacity-40">Time In</button>
               <button disabled={busy || !attendance.today?.timeIn?.at || !!attendance.today?.timeOut?.at} onClick={() => recordAttendance('out')} className="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-bold dark:border-slate-700 disabled:opacity-40">Time Out</button>
             </div>
+            {!attendance.today?.timeIn?.at && attendance.timeInWindow && <p className={`mt-3 text-xs ${attendance.timeInWindow.allowed ? 'text-emerald-700' : 'text-amber-700'}`}>{attendance.timeInWindow.message}{attendance.timeInWindow.earliestAt && attendance.timeInWindow.latestAt ? ` Window: ${formatTime(attendance.timeInWindow.earliestAt)}–${formatTime(attendance.timeInWindow.latestAt)}.` : ''}</p>}
           </div>
           <div className="rounded-2xl border border-primary/20 bg-primary/5 p-5">
             <MapPin className="text-primary" size={22} /><h2 className="mt-3 font-bold">Workplace check</h2>
             <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">Your device location is sent only when you tap Time In or Time Out. The backend verifies distance from your assigned Store.</p>
             <p className="mt-3 text-xs text-slate-500">GPS can be inaccurate or spoofed. Low accuracy and out-of-area attempts are rejected or flagged under Store policy.</p>
+            {attendance.locationPolicy?.outsideGeofencePolicy === 'flag' && <label className="mt-4 block text-xs font-semibold text-slate-700 dark:text-slate-200">Off-site reason <span className="font-normal text-slate-500">(required if GPS is flagged)</span><textarea value={offsiteReason} onChange={event => setOffsiteReason(event.target.value)} rows={2} maxLength={1000} placeholder="Explain the remote or off-site work reason" className="mt-1 w-full rounded-xl border border-primary/20 bg-white px-3 py-2 text-sm dark:bg-slate-900" /></label>}
           </div>
         </section>
         <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">

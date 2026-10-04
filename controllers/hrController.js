@@ -9,10 +9,11 @@ const User = require('../models/User');
 const ActivityLog = require('../models/ActivityLog');
 const resolveStore = require('../utils/resolveStore');
 const { createNotification } = require('./notificationController');
+const { processStoreAutoClockOuts } = require('../services/attendanceAutomationService');
 const { hasPermission, isOperationalStaff, isStoreAdmin, isPlatformAdmin } = require('../config/permissions');
 const {
   isValidCoordinates, distanceMeters, dateKeyInTimezone, getScheduleForDate,
-  calculateAttendance, generatePayrollPeriod, computePay, roundMoney, addDays
+  getTimeInWindow, calculateAttendance, generatePayrollPeriod, computePay, roundMoney, addDays
 } = require('../utils/hrPolicy');
 
 const STAFF_ROLES = [
@@ -76,14 +77,24 @@ const updateSettings = async (req, res) => {
   try {
     const store = await storeFor(req);
     const shift = req.body.defaultShift;
-    if (shift && (!/^([01]\d|2[0-3]):[0-5]\d$/.test(shift.start || '') || !/^([01]\d|2[0-3]):[0-5]\d$/.test(shift.end || '') || shift.start >= shift.end)) {
-      throw fail('Default shift must contain a valid start time before its end time.');
+    if (shift && (!/^([01]\d|2[0-3]):[0-5]\d$/.test(shift.start || '') || !/^([01]\d|2[0-3]):[0-5]\d$/.test(shift.end || '') || shift.start === shift.end)) {
+      throw fail('Default shift must contain different valid start and end times. Overnight shifts are supported.');
     }
     if (req.body.leaveTypes) {
       const keys = req.body.leaveTypes.map(type => String(type.key || '').trim().toLowerCase());
       if (keys.some(key => !key) || new Set(keys).size !== keys.length) throw fail('Leave types must have unique non-empty keys.');
     }
-    const editable = ['payrollFrequency', 'weekly', 'semiMonthly', 'monthly', 'defaultWorkDays', 'defaultShift', 'gracePeriodMinutes', 'lateDeductionEnabled', 'undertimeDeductionEnabled', 'overtime', 'attendanceRadiusMeters', 'maximumAccuracyMeters', 'outsideGeofencePolicy', 'payrollApprovalRequired', 'leaveTypes'];
+    if (req.body.timeInWindow) {
+      for (const key of ['earlyMinutes', 'lateMinutes']) {
+        const value = Number(req.body.timeInWindow[key]);
+        if (!Number.isFinite(value) || value < 0 || value > 720) throw fail('Time-in window values must be between 0 and 720 minutes.');
+      }
+    }
+    if (req.body.autoClockOut?.enabled) {
+      const maximum = Number(req.body.autoClockOut.maximumShiftMinutes);
+      if (!Number.isFinite(maximum) || maximum < 60 || maximum > 1440) throw fail('Configure a maximum shift duration between 60 and 1440 minutes before enabling auto clock-out.');
+    }
+    const editable = ['payrollFrequency', 'weekly', 'semiMonthly', 'monthly', 'defaultWorkDays', 'defaultShift', 'gracePeriodMinutes', 'timeInWindow', 'autoClockOut', 'lateDeductionEnabled', 'undertimeDeductionEnabled', 'overtime', 'attendanceRadiusMeters', 'maximumLocationAccuracyMeters', 'outsideGeofencePolicy', 'payrollApprovalRequired', 'leaveTypes'];
     editable.forEach(key => { if (req.body[key] !== undefined) store.hrSettings[key] = req.body[key]; });
     store.hrSettings.updatedAt = new Date(); store.hrSettings.updatedBy = req.user._id;
     await store.save();
@@ -140,7 +151,7 @@ const validateLocation = (body, store) => {
   if (accuracy !== null && (!Number.isFinite(accuracy) || accuracy < 0)) throw fail('Location accuracy is invalid.');
   const distance = distanceMeters({ lat, lng }, workplace);
   const reasons = [];
-  if (accuracy !== null && accuracy > Number(store.hrSettings?.maximumAccuracyMeters || 200)) reasons.push('GPS accuracy is too low');
+  if (accuracy !== null && accuracy > Number(store.hrSettings?.maximumLocationAccuracyMeters || 200)) reasons.push('GPS accuracy is too low');
   if (distance > Number(store.hrSettings?.attendanceRadiusMeters || 100)) reasons.push('Outside workplace geofence');
   const validationStatus = distance > Number(store.hrSettings?.attendanceRadiusMeters || 100) ? 'outside_geofence' : reasons.length ? 'poor_accuracy' : 'valid';
   if (reasons.length && store.hrSettings?.outsideGeofencePolicy !== 'flag') {
@@ -153,6 +164,43 @@ const point = (req, location, now) => ({
   distanceMeters: location.distance, validationStatus: location.validationStatus,
   userAgent: req.get('user-agent') || '', ipAddress: req.ip
 });
+const locationReview = (body, location, punchType) => {
+  if (!location.reasons.length) return null;
+  const employeeReason = String(body.offsiteReason || '').trim();
+  if (employeeReason.length < 5) throw fail('Explain why this attendance punch is outside the normal workplace check.');
+  return { punchType, status: 'pending', employeeReason, evidenceReasons: location.reasons };
+};
+const projectAttendanceForViewer = (row, canReview) => {
+  if (canReview || row.isDerived) return row;
+  const safePoint = value => value?.at ? { at: value.at, validationStatus: value.validationStatus } : value;
+  return {
+    ...row,
+    timeIn: safePoint(row.timeIn),
+    timeOut: safePoint(row.timeOut),
+    suspiciousReasons: [],
+    locationReviews: (row.locationReviews || []).map(review => ({
+      _id: review._id,
+      punchType: review.punchType,
+      status: review.status,
+      reviewedAt: review.reviewedAt
+    })),
+    locationReview: row.locationReview?.reviewedAt ? { reviewedAt: row.locationReview.reviewedAt } : undefined,
+    autoClockOutReview: row.autoClockOutReview?.status ? {
+      status: row.autoClockOutReview.status,
+      generatedAt: row.autoClockOutReview.generatedAt,
+      maximumShiftMinutes: row.autoClockOutReview.maximumShiftMinutes
+    } : undefined
+  };
+};
+const resolveTimeInEligibility = (employee, store, now = new Date()) => {
+  const today = dateKeyInTimezone(now, store.hrSettings?.timezone);
+  const yesterday = dateKeyInTimezone(addDays(now, -1), store.hrSettings?.timezone);
+  const candidates = [today, yesterday].map(workDate => {
+    const schedule = getScheduleForDate(employee, store, workDate);
+    return { workDate, schedule, window: getTimeInWindow({ dateKey: workDate, schedule, settings: store.hrSettings, now }) };
+  });
+  return candidates.find(candidate => candidate.window.allowed) || candidates[0];
+};
 const addDerivedAbsences = (records, employees, store, from, to) => {
   const rows = records.map(row => row.toObject ? row.toObject() : row);
   const seen = new Set(rows.map(row => `${row.employee?._id || row.employee}:${row.workDate}`));
@@ -174,14 +222,24 @@ const addDerivedAbsences = (records, employees, store, from, to) => {
 const timeIn = async (req, res) => {
   try {
     if (!isOperationalStaff(req.user) || !req.user.store) throw fail('Attendance is available only to assigned Store employees.', 403);
-    const store = await storeFor(req); await employeeFor(store._id, req.user._id);
-    const now = new Date(); const workDate = dateKeyInTimezone(now, store.hrSettings?.timezone);
+    const store = await storeFor(req); const employee = await employeeFor(store._id, req.user._id);
+    const now = new Date();
+    const eligibility = resolveTimeInEligibility(employee, store, now);
+    const { workDate } = eligibility;
+    if (!eligibility.window.allowed) throw fail(eligibility.window.message, 409);
     if (await Attendance.exists({ store: store._id, employee: req.user._id, workDate, 'timeIn.at': { $exists: true } })) throw fail('You have already timed in today.', 409);
     if (await LeaveRequest.exists({ store: store._id, employee: req.user._id, status: 'approved', startDate: { $lte: dateEnd(workDate) }, endDate: { $gte: parseDate(workDate) } })) throw fail('You are on approved leave today. Attendance is not required.', 409);
     const location = validateLocation(req.body, store);
+    const review = locationReview(req.body, location, 'time_in');
+    const update = {
+      $setOnInsert: { schedule: eligibility.schedule },
+      $set: { timeIn: point(req, location, now), status: 'incomplete', locationFlagged: Boolean(review) },
+      $addToSet: { suspiciousReasons: { $each: location.reasons } }
+    };
+    if (review) update.$push = { locationReviews: review };
     const record = await Attendance.findOneAndUpdate(
       { store: store._id, employee: req.user._id, workDate, 'timeIn.at': { $exists: false } },
-      { $setOnInsert: { schedule: getScheduleForDate(req.user, store, workDate) }, $set: { timeIn: point(req, location, now), status: 'incomplete', locationFlagged: location.reasons.length > 0 }, $addToSet: { suspiciousReasons: { $each: location.reasons } } },
+      update,
       { upsert: true, new: true, runValidators: true }
     );
     await audit(req, 'Attendance Time In', `Employee ${req.user._id} timed in for ${workDate}; server time recorded.`);
@@ -197,21 +255,31 @@ const timeOut = async (req, res) => {
   try {
     if (!isOperationalStaff(req.user) || !req.user.store) throw fail('Attendance is available only to assigned Store employees.', 403);
     const store = await storeFor(req); const now = new Date();
-    const workDate = dateKeyInTimezone(now, store.hrSettings?.timezone);
-    const record = await Attendance.findOne({ store: store._id, employee: req.user._id, workDate });
-    if (!record?.timeIn?.at) throw fail('You must time in before timing out.', 409);
+    await processStoreAutoClockOuts(store, now, req.app.get('socketio'));
+    const record = await Attendance.findOne({ store: store._id, employee: req.user._id, 'timeIn.at': { $exists: true }, 'timeOut.at': { $exists: false } }).sort({ 'timeIn.at': -1 });
+    if (!record?.timeIn?.at) {
+      const automated = await Attendance.findOne({ store: store._id, employee: req.user._id, 'autoClockOutReview.status': { $in: ['pending', 'rejected'] } }).sort({ 'timeIn.at': -1 });
+      if (automated) throw fail('This shift was automatically clocked out at the Store maximum and is awaiting review.', 409);
+      throw fail('You must time in before timing out.', 409);
+    }
     if (record.timeOut?.at) throw fail('You have already timed out today.', 409);
     if (now - record.timeIn.at < 60000) throw fail('Time out is too soon after time in. Please wait and try again.', 429);
     const location = validateLocation(req.body, store);
+    const review = locationReview(req.body, location, 'time_out');
     const computed = calculateAttendance({ timeIn: record.timeIn.at, timeOut: now, schedule: record.schedule, graceMinutes: store.hrSettings?.gracePeriodMinutes, overtimeEnabled: store.hrSettings?.overtime?.enabled });
+    const update = {
+      $set: { timeOut: point(req, location, now), ...computed, locationFlagged: record.locationFlagged || Boolean(review) },
+      $addToSet: { suspiciousReasons: { $each: location.reasons } }
+    };
+    if (review) update.$push = { locationReviews: review };
     const updated = await Attendance.findOneAndUpdate(
       { _id: record._id, store: store._id, employee: req.user._id, 'timeOut.at': { $exists: false } },
-      { $set: { timeOut: point(req, location, now), ...computed, locationFlagged: record.locationFlagged || location.reasons.length > 0 }, $addToSet: { suspiciousReasons: { $each: location.reasons } } },
+      update,
       { new: true, runValidators: true }
     );
     if (!updated) throw fail('You have already timed out today.', 409);
-    await audit(req, 'Attendance Time Out', `Employee ${req.user._id} timed out for ${workDate}; server time recorded.`);
-    if (location.reasons.length) await notifyStoreRoles(req, store._id, ['admin', 'store_owner', 'manager'], ['manager'], 'attendance_update', 'Attendance exception', `${req.user.firstName || 'An employee'} recorded flagged attendance for ${workDate}.`, updated._id, 'Attendance', '/admin/hr?tab=attendance');
+    await audit(req, 'Attendance Time Out', `Employee ${req.user._id} timed out for ${record.workDate}; server time recorded.`);
+    if (location.reasons.length) await notifyStoreRoles(req, store._id, ['admin', 'store_owner', 'manager'], ['manager'], 'attendance_update', 'Attendance exception', `${req.user.firstName || 'An employee'} recorded flagged attendance for ${record.workDate}.`, updated._id, 'Attendance', '/admin/hr?tab=attendance');
     res.json({ message: location.reasons.length ? 'Time out recorded and flagged for review.' : 'Time out recorded.', attendance: updated });
   } catch (error) { safeError(res, error); }
 };
@@ -219,12 +287,20 @@ const timeOut = async (req, res) => {
 const myAttendance = async (req, res) => {
   try {
     if (!isOperationalStaff(req.user) || !req.user.store) throw fail('Attendance is available only to assigned Store employees.', 403);
-    const store = await storeFor(req); const today = dateKeyInTimezone(new Date(), store.hrSettings?.timezone);
+    const store = await storeFor(req); const employee = await employeeFor(store._id, req.user._id); const now = new Date(); const today = dateKeyInTimezone(now, store.hrSettings?.timezone);
     const from = req.query.from ? String(req.query.from).slice(0, 10) : dateKeyInTimezone(addDays(new Date(), -30), store.hrSettings?.timezone);
     const to = req.query.to ? String(req.query.to).slice(0, 10) : today;
     const records = await Attendance.find({ store: store._id, employee: req.user._id, workDate: { $gte: from, $lte: to } }).sort({ workDate: -1 });
     const history = addDerivedAbsences(records, [req.user], store, from, to);
-    res.json({ today: history.find(row => row.workDate === today) || null, schedule: getScheduleForDate(req.user, store, today), records: history });
+    const eligibility = resolveTimeInEligibility(employee, store, now);
+    const openRecord = history.find(row => row.timeIn?.at && !row.timeOut?.at);
+    res.json({
+      today: openRecord || history.find(row => row.workDate === today) || null,
+      schedule: openRecord?.schedule || eligibility.schedule,
+      timeInWindow: eligibility.window,
+      locationPolicy: { outsideGeofencePolicy: store.hrSettings?.outsideGeofencePolicy || 'reject' },
+      records: history
+    });
   } catch (error) { safeError(res, error); }
 };
 
@@ -240,7 +316,10 @@ const managementAttendance = async (req, res) => {
       Attendance.find(filter).populate('employee', 'firstName lastName role staffType professionalProfile.staffId riderProfile.staffId').sort({ workDate: -1 }),
       User.find({ store: store._id, ...activeStaffFilter(), ...(req.query.employeeId ? { _id: req.query.employeeId } : {}) }).select('firstName lastName role staffType professionalProfile.availability professionalProfile.leaveSchedule professionalProfile.staffId riderProfile.staffId').lean()
     ]);
-    res.json({ records: addDerivedAbsences(records, employees, store, from, to) });
+    const canReview = hasPermission(req.user, 'attendance.review') || hasPermission(req.user, 'attendance.manage');
+    const projected = addDerivedAbsences(records, employees, store, from, to)
+      .map(row => projectAttendanceForViewer(row, canReview));
+    res.json({ records: projected });
   } catch (error) { safeError(res, error); }
 };
 
@@ -258,13 +337,78 @@ const correctAttendance = async (req, res) => {
     });
     if (!changes.length) throw fail('No valid attendance correction was provided.');
     record.corrections.push(...changes); record.suspiciousReasons = [...new Set([...(record.suspiciousReasons || []), 'Manual attendance correction'])];
-    if (record.locationFlagged) {
-      record.locationFlagged = false;
-      record.locationReview = { reviewedBy: req.user._id, reviewedAt: new Date(), reason };
-    }
     await record.save(); await audit(req, 'Attendance Corrected', `Attendance ${record._id} corrected: ${reason}`);
     await notify(req, record.employee, 'attendance_update', 'Attendance updated', `Your ${record.workDate} attendance was corrected: ${reason}`, record._id, 'Attendance', '/staff/attendance');
     res.json({ message: 'Attendance corrected with an audit record.', attendance: record });
+  } catch (error) { safeError(res, error); }
+};
+
+const reviewLocationAttendance = async (req, res) => {
+  try {
+    const store = await storeFor(req); const record = await Attendance.findOne({ _id: req.params.id, store: store._id });
+    if (!record) throw fail('Attendance record not found.', 404);
+    if (String(record.employee) === String(req.user._id) && !isPlatformAdmin(req.user)) throw fail('You cannot review your own attendance exception.', 403);
+    const status = String(req.body.status || '');
+    const punchType = String(req.body.punchType || '');
+    const reviewerNote = String(req.body.reviewerNote || '').trim();
+    if (!['approved', 'rejected'].includes(status)) throw fail('Choose Approved or Rejected.');
+    if (!['time_in', 'time_out'].includes(punchType)) throw fail('Select the attendance punch to review.');
+    if (reviewerNote.length < 5) throw fail('A reviewer note of at least 5 characters is required.');
+    let review = record.locationReviews?.find(item => item.punchType === punchType && ['pending', 'rejected'].includes(item.status));
+    if (!review && record.locationFlagged && !(record.locationReviews || []).length) {
+      const evidence = punchType === 'time_in' ? record.timeIn : record.timeOut;
+      if (!evidence?.at) throw fail('The selected attendance punch has no evidence to review.', 409);
+      record.locationReviews.push({
+        punchType,
+        status: 'pending',
+        employeeReason: 'Legacy flagged punch; employee reason was not captured.',
+        evidenceReasons: record.suspiciousReasons || []
+      });
+      review = record.locationReviews[record.locationReviews.length - 1];
+    }
+    if (!review) throw fail('That attendance punch has no pending location review.', 409);
+    const reviewedAt = new Date();
+    review.history.push({ status, reviewedBy: req.user._id, reviewedAt, reviewerNote });
+    review.status = status; review.reviewedBy = req.user._id; review.reviewedAt = reviewedAt; review.reviewerNote = reviewerNote;
+    record.locationFlagged = record.locationReviews.some(item => item.status !== 'approved');
+    record.locationReview = { reviewedBy: req.user._id, reviewedAt, reason: reviewerNote };
+    await record.save();
+    await audit(req, `Attendance Location ${status === 'approved' ? 'Approved' : 'Rejected'}`, `Attendance ${record._id} ${punchType} location review: ${reviewerNote}`);
+    await notify(req, record.employee, 'attendance_update', `Attendance location ${status}`, `Your ${record.workDate} ${punchType.replace('_', ' ')} location was ${status}: ${reviewerNote}`, record._id, 'Attendance', '/staff/attendance');
+    res.json({ message: `Attendance location ${status}.`, attendance: record });
+  } catch (error) { safeError(res, error); }
+};
+
+const reviewAutoClockOut = async (req, res) => {
+  try {
+    const store = await storeFor(req); const record = await Attendance.findOne({ _id: req.params.id, store: store._id });
+    if (!record) throw fail('Attendance record not found.', 404);
+    if (String(record.employee) === String(req.user._id) && !isPlatformAdmin(req.user)) throw fail('You cannot review your own auto clock-out.', 403);
+    if (!['pending', 'rejected'].includes(record.autoClockOutReview?.status)) throw fail('This attendance record does not require auto clock-out review.', 409);
+    const action = String(req.body.action || '');
+    const reviewerNote = String(req.body.reviewerNote || '').trim();
+    if (!['approve', 'reject', 'correct'].includes(action)) throw fail('Choose Approve, Reject, or Correct.');
+    if (reviewerNote.length < 5) throw fail('A reviewer note of at least 5 characters is required.');
+    const reviewedAt = new Date();
+    if (action === 'correct') {
+      const correctedTimeOut = new Date(req.body.correctedTimeOut);
+      const durationMinutes = Math.round((correctedTimeOut - record.timeIn.at) / 60000);
+      if (Number.isNaN(correctedTimeOut.getTime()) || durationMinutes < 1 || durationMinutes > 1440 || correctedTimeOut > reviewedAt) throw fail('Enter a valid corrected time out after time in and no later than now.');
+      const originalTimeOut = record.timeOut?.at;
+      const computed = calculateAttendance({ timeIn: record.timeIn.at, timeOut: correctedTimeOut, schedule: record.schedule, graceMinutes: store.hrSettings?.gracePeriodMinutes, overtimeEnabled: store.hrSettings?.overtime?.enabled });
+      record.timeOut.at = correctedTimeOut;
+      Object.assign(record, computed);
+      record.corrections.push({ field: 'timeOut.at', originalValue: originalTimeOut, correctedValue: correctedTimeOut, reason: reviewerNote, changedBy: req.user._id });
+      record.autoClockOutReview.status = 'corrected';
+    } else record.autoClockOutReview.status = action === 'approve' ? 'approved' : 'rejected';
+    record.autoClockOutReview.reviewedBy = req.user._id;
+    record.autoClockOutReview.reviewedAt = reviewedAt;
+    record.autoClockOutReview.reviewerNote = reviewerNote;
+    record.autoClockOutReview.history.push({ status: record.autoClockOutReview.status, reviewedBy: req.user._id, reviewedAt, reviewerNote });
+    await record.save();
+    await audit(req, `Auto Clock-Out ${action === 'correct' ? 'Corrected' : action === 'approve' ? 'Approved' : 'Rejected'}`, `Attendance ${record._id}: ${reviewerNote}`);
+    await notify(req, record.employee, 'attendance_update', `Auto clock-out ${record.autoClockOutReview.status}`, `Your ${record.workDate} auto clock-out was ${record.autoClockOutReview.status}: ${reviewerNote}`, record._id, 'Attendance', '/staff/attendance');
+    res.json({ message: `Auto clock-out ${record.autoClockOutReview.status}.`, attendance: record });
   } catch (error) { safeError(res, error); }
 };
 
@@ -400,7 +544,7 @@ const summarizeAttendance = async (employee, store, start, end) => {
     LeaveRequest.find({ store: store._id, employee: employee._id, status: 'approved', startDate: { $lte: end }, endDate: { $gte: start } }).lean()
   ]);
   const recordMap = new Map(records.map(row => [row.workDate, row]));
-  const summary = { scheduledWorkDays: 0, daysPresent: 0, paidLeaveDays: 0, unpaidLeaveDays: 0, legacyUnclassifiedLeaveDays: 0, flaggedAttendanceDays: 0, absences: 0, restDays: 0, incompleteDays: 0, lateMinutes: 0, undertimeMinutes: 0, overtimeMinutes: 0, workedMinutes: 0 };
+  const summary = { scheduledWorkDays: 0, daysPresent: 0, paidLeaveDays: 0, unpaidLeaveDays: 0, legacyUnclassifiedLeaveDays: 0, flaggedAttendanceDays: 0, autoClockOutReviewDays: 0, absences: 0, restDays: 0, incompleteDays: 0, lateMinutes: 0, undertimeMinutes: 0, overtimeMinutes: 0, workedMinutes: 0 };
   dateLoop(start, end, date => {
     const key = date.toISOString().slice(0, 10); const schedule = getScheduleForDate(employee, store, key);
     if (!schedule.isWorkDay) { summary.restDays += 1; return; }
@@ -411,7 +555,12 @@ const summarizeAttendance = async (employee, store, start, end) => {
     if (legacyLeave) { summary.legacyUnclassifiedLeaveDays += 1; return; }
     const attendance = recordMap.get(key);
     if (!attendance) { summary.absences += 1; return; }
-    if (attendance.locationFlagged) summary.flaggedAttendanceDays += 1;
+    const unresolvedLocation = attendance.locationFlagged
+      || (attendance.locationReviews || []).some(review => review.status !== 'approved');
+    const unresolvedAutoClockOut = ['pending', 'rejected'].includes(attendance.autoClockOutReview?.status);
+    if (unresolvedLocation) summary.flaggedAttendanceDays += 1;
+    if (unresolvedAutoClockOut) summary.autoClockOutReviewDays += 1;
+    if (unresolvedLocation || unresolvedAutoClockOut) { summary.incompleteDays += 1; return; }
     if (attendance.status === 'absent') summary.absences += 1;
     else if (attendance.status === 'rest_day') summary.restDays += 1;
     else if (['incomplete', 'on_leave'].includes(attendance.status)) summary.incompleteDays += 1;
@@ -459,8 +608,9 @@ const computePeriod = async (req, res) => {
       if (!compensation || Number(compensation.baseRate) <= 0) { await Payslip.deleteOne({ payrollPeriod: period._id, employee: employee._id }); issues.push({ employeeId: employee._id, reason: 'Compensation is not configured.' }); continue; }
       if (compensation.effectiveDate && compensation.effectiveDate > period.periodEnd) { await Payslip.deleteOne({ payrollPeriod: period._id, employee: employee._id }); issues.push({ employeeId: employee._id, reason: 'Compensation is not effective in this payroll period.' }); continue; }
       const attendanceSummary = await summarizeAttendance(employee, store, period.periodStart, period.periodEnd);
-      if (attendanceSummary.legacyUnclassifiedLeaveDays) issues.push({ employeeId: employee._id, reason: `${attendanceSummary.legacyUnclassifiedLeaveDays} legacy leave day(s) need paid/unpaid classification; no automatic deduction was made.` });
-      if (attendanceSummary.flaggedAttendanceDays) issues.push({ employeeId: employee._id, reason: `${attendanceSummary.flaggedAttendanceDays} location-flagged attendance day(s) require review before approval.` });
+      if (attendanceSummary.legacyUnclassifiedLeaveDays) issues.push({ employeeId: employee._id, reason: `${attendanceSummary.legacyUnclassifiedLeaveDays} legacy leave day(s) need paid/unpaid classification; no automatic deduction was made.`, blocking: false });
+      if (attendanceSummary.flaggedAttendanceDays) issues.push({ employeeId: employee._id, reason: `${attendanceSummary.flaggedAttendanceDays} location-flagged attendance day(s) require a final approval before payroll review.`, blocking: true });
+      if (attendanceSummary.autoClockOutReviewDays) issues.push({ employeeId: employee._id, reason: `${attendanceSummary.autoClockOutReviewDays} auto clock-out attendance day(s) require approval or correction before payroll review.`, blocking: true });
       const pay = computePay({ compensation, summary: attendanceSummary, settings: period.policySnapshot });
       const existing = await Payslip.findOne({ payrollPeriod: period._id, employee: employee._id });
       const manualAdditions = (existing?.additions || []).filter(item => item.source === 'manual').map(item => item.toObject());
@@ -531,6 +681,7 @@ const statusHandler = nextStatus => async (req, res) => {
     const prior = { reviewed: 'computed', approved: 'reviewed', paid: 'approved' }[nextStatus];
     if (period.status !== prior) throw fail(`Payroll must be ${prior} before it can be ${nextStatus}.`, 409);
     if (nextStatus === 'reviewed' && await Payslip.countDocuments({ payrollPeriod: period._id, store: store._id }) === 0) throw fail('Payroll has no employee payslips to review. Configure compensation and recompute it first.', 409);
+    if (nextStatus === 'reviewed' && period.reviewIssues?.some(issue => issue.blocking)) throw fail('Resolve all attendance exceptions and recompute payroll before continuing.', 409);
     if (nextStatus === 'reviewed' && period.reviewIssues?.length && req.body.acknowledgeIssues !== true) throw fail('Review the listed payroll issues and explicitly acknowledge them before continuing.', 409);
     if (nextStatus === 'approved') {
       const slips = await Payslip.find({ payrollPeriod: period._id, store: store._id });
@@ -589,6 +740,7 @@ const myPayslip = async (req, res) => {
 module.exports = {
   getSettings, updateSettings, listEmployees, getCompensation, updateCompensation,
   timeIn, timeOut, myAttendance, managementAttendance, correctAttendance, createManualAttendance,
+  reviewLocationAttendance, reviewAutoClockOut,
   createLeave, myLeaves, cancelLeave, listLeaves, reviewLeave,
   generatePeriod, listPeriods, periodDetails, computePeriod, addAdjustment,
   reviewPeriod, approvePeriod, payPeriod, myPayslips, myPayslip, summarizeAttendance

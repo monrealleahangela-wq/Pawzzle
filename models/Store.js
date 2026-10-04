@@ -149,6 +149,14 @@ const storeSchema = new mongoose.Schema({
       breakMinutes: { type: Number, min: 0, max: 480, default: 60 }
     },
     gracePeriodMinutes: { type: Number, min: 0, max: 240, default: 10 },
+    timeInWindow: {
+      earlyMinutes: { type: Number, min: 0, max: 720 },
+      lateMinutes: { type: Number, min: 0, max: 720 }
+    },
+    autoClockOut: {
+      enabled: { type: Boolean, default: false },
+      maximumShiftMinutes: { type: Number, min: 60, max: 1440 }
+    },
     lateDeductionEnabled: { type: Boolean, default: true },
     undertimeDeductionEnabled: { type: Boolean, default: true },
     overtime: {

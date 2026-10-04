@@ -35,6 +35,51 @@ const dateAtTime = (dateKey, time = '00:00', timezone = 'Asia/Manila') => {
   return new Date(`${dateKey}T${time}:00${offset}`);
 };
 
+const scheduleBounds = (dateKey, schedule) => {
+  if (!schedule?.isWorkDay || !schedule.start || !schedule.end) return null;
+  const start = dateAtTime(dateKey, schedule.start, schedule.timezone);
+  let end = dateAtTime(dateKey, schedule.end, schedule.timezone);
+  if (end <= start) end = new Date(end.getTime() + 86400000);
+  return { start, end };
+};
+
+const getTimeInWindow = ({ dateKey, schedule, settings = {}, now = new Date() }) => {
+  const bounds = scheduleBounds(dateKey, schedule);
+  if (!bounds) {
+    return {
+      allowed: false,
+      code: 'not_scheduled',
+      message: 'You are not scheduled to work on this date.',
+      earliestAt: null,
+      latestAt: null
+    };
+  }
+  // Existing Store grace is the compatibility fallback. New window values are
+  // intentionally Store-configured instead of imposing a new global cutoff.
+  const fallback = Math.max(0, Number(settings.gracePeriodMinutes || 0));
+  const configuredEarly = Number(settings.timeInWindow?.earlyMinutes);
+  const configuredLate = Number(settings.timeInWindow?.lateMinutes);
+  const earlyMinutes = Number.isFinite(configuredEarly) ? Math.max(0, configuredEarly) : fallback;
+  const lateMinutes = Number.isFinite(configuredLate) ? Math.max(0, configuredLate) : fallback;
+  const earliestAt = new Date(bounds.start.getTime() - earlyMinutes * 60000);
+  const latestAt = new Date(bounds.start.getTime() + lateMinutes * 60000);
+  const instant = new Date(now);
+  const allowed = instant >= earliestAt && instant <= latestAt;
+  return {
+    allowed,
+    code: allowed ? 'open' : instant < earliestAt ? 'too_early' : 'too_late',
+    message: allowed
+      ? 'Time in is available.'
+      : instant < earliestAt
+        ? 'Time in is not open yet for your scheduled shift.'
+        : 'The time-in window for your scheduled shift has closed. Ask an authorized manager to record a correction.',
+    earliestAt,
+    latestAt,
+    earlyMinutes,
+    lateMinutes
+  };
+};
+
 const minutesBetween = (start, end) => Math.max(0, Math.round((new Date(end) - new Date(start)) / 60000));
 
 const getScheduleForDate = (employee, store, dateKey) => {
@@ -70,8 +115,9 @@ const calculateAttendance = ({ timeIn, timeOut, schedule, graceMinutes = 0, over
     return { status: 'present', workedMinutes, lateMinutes: 0, undertimeMinutes: 0, overtimeMinutes: overtimeEnabled ? workedMinutes : 0 };
   }
   const workDate = dateKeyInTimezone(new Date(timeIn), schedule.timezone);
-  const scheduledStart = dateAtTime(workDate, schedule.start, schedule.timezone);
-  const scheduledEnd = dateAtTime(workDate, schedule.end, schedule.timezone);
+  const bounds = scheduleBounds(workDate, schedule);
+  const scheduledStart = bounds.start;
+  const scheduledEnd = bounds.end;
   const workedMinutes = Math.max(0, minutesBetween(timeIn, timeOut) - (schedule.breakMinutes || 0));
   const lateMinutes = Math.max(0, minutesBetween(scheduledStart, timeIn) - Number(graceMinutes || 0));
   const undertimeMinutes = Math.max(0, minutesBetween(timeOut, scheduledEnd));
@@ -177,6 +223,8 @@ module.exports = {
   distanceMeters,
   dateKeyInTimezone,
   dateAtTime,
+  scheduleBounds,
+  getTimeInWindow,
   getScheduleForDate,
   calculateAttendance,
   generatePayrollPeriod,
