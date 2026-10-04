@@ -60,5 +60,5 @@ test('staff actions, paging, and previously fixed marketplace responsive primiti
   assert.match(staff, /setPage\(value=>value\+1\)/);
   assert.match(css, /\.responsive-card-grid/);
   assert.match(products, /responsive-card-grid/);
-  assert.match(services, /content-scroll-row/);
+  assert.match(services, /flex min-w-0 flex-wrap items-center gap-2/);
 });

@@ -79,10 +79,10 @@ test('content-sized controls retain readable labels instead of shrinking or clip
 
   assert.doesNotMatch(css, /\.app-page \.flex > \*/);
   assert.match(css, /\.content-scroll-row > \* \{\s*flex: 0 0 auto;/);
-  assert.match(services, /content-scroll-row[^"]*Service categories|content-scroll-row[^\n]*aria-label="Service categories"/i);
-  assert.match(services, /shrink-0 whitespace-nowrap[^`]*tracking-wide/);
-  assert.match(services, /sm:grid-cols-\[minmax\(15rem,1fr\)_auto\]/);
-  assert.match(services, /sm:min-w-\[15rem\]/);
+  assert.match(services, /flex min-w-0 flex-wrap items-center gap-2[^\n]*aria-label="Service categories"/i);
+  assert.match(services, /min-h-10 shrink-0 whitespace-nowrap/);
+  assert.match(services, /sm:grid-cols-\[minmax\(14rem,18rem\)_auto\]/);
+  assert.match(services, /sm:min-w-\[14rem\]/);
   assert.doesNotMatch(services, /!pl-20|md:w-48/);
   assert.match(button, /min-h-9 h-auto/);
   assert.match(button, /whitespace-normal break-normal/);
@@ -100,7 +100,7 @@ test('primary marketplace and management card titles receive a practical content
   const expectations = new Map([
     ['client/src/pages/customer/Pets.js', /\[--card-min:17rem\][\s\S]*line-clamp-2 break-words/],
     ['client/src/pages/customer/Products.js', /\[--card-min:17rem\][\s\S]*line-clamp-2 break-words/],
-    ['client/src/pages/customer/Services.js', /\[--card-min:17rem\][\s\S]*line-clamp-2 break-words/],
+    ['client/src/pages/customer/Services.js', /\[--card-min:16rem\][\s\S]*line-clamp-2 break-words/],
     ['client/src/pages/customer/Stores.js', /\[--card-min:17rem\][\s\S]*line-clamp-2 break-words/],
     ['client/src/pages/customer/Search.js', /\[--card-min:17rem\][\s\S]*line-clamp-2 break-words/],
     ['client/src/pages/customer/StoreDetail.js', /\[--card-min:17rem\][\s\S]*line-clamp-2 break-words/],

@@ -76,8 +76,8 @@ test('marketplace primary names wrap and grids respond to actual content width',
   assert.match(products, /line-clamp-2 break-words/);
   assert.match(pets, /responsive-card-grid/);
   assert.match(pets, /line-clamp-2 break-words/);
-  assert.match(services, /content-scroll-row/);
-  assert.match(services, /shrink-0 whitespace-nowrap/);
+  assert.match(services, /flex min-w-0 flex-wrap items-center gap-2/);
+  assert.match(services, /min-h-10 shrink-0 whitespace-nowrap/);
 });
 
 test('wide staff data stays in a local scroll region and actions remain reachable', () => {

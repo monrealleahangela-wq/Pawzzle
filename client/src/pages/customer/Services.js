@@ -180,13 +180,15 @@ const Services = () => {
 
   if (loading) {
     return (
-      <div className="responsive-card-grid [--card-min:17rem] sm:[--card-min:18rem] xl:[--card-min:19rem] sm:[--card-gap:1.5rem]" aria-label="Loading services">
-        {[1, 2, 3, 4, 5, 6].map(item => (
-          <div key={item} className="h-72 animate-pulse rounded-2xl border border-slate-100 bg-white p-4">
-            <div className="h-32 rounded-xl bg-slate-100" />
-            <div className="mt-4 h-4 w-2/3 rounded bg-slate-100" />
-            <div className="mt-3 h-3 w-full rounded bg-slate-100" />
-            <div className="mt-8 h-10 rounded-xl bg-slate-100" />
+      <div className="responsive-card-grid mx-auto max-w-[1440px] [--card-min:16rem] [--card-gap:1.125rem] lg:[--card-gap:1.25rem]" aria-label="Loading services">
+        {[1, 2, 3, 4, 5, 6, 7, 8].map(item => (
+          <div key={item} className="animate-pulse overflow-hidden rounded-2xl border border-slate-100 bg-white dark:border-slate-800 dark:bg-slate-900">
+            <div className="aspect-[16/10] bg-slate-100 dark:bg-slate-800" />
+            <div className="p-4">
+              <div className="h-4 w-2/3 rounded bg-slate-100 dark:bg-slate-800" />
+              <div className="mt-3 h-3 w-full rounded bg-slate-100 dark:bg-slate-800" />
+              <div className="mt-6 h-10 rounded-xl bg-slate-100 dark:bg-slate-800" />
+            </div>
           </div>
         ))}
       </div>
@@ -195,32 +197,32 @@ const Services = () => {
 
   if (loadError) {
     return (
-      <div className="mx-auto max-w-lg rounded-2xl border border-slate-200 bg-white p-6 text-center shadow-sm">
+      <div className="mx-auto max-w-lg rounded-2xl border border-slate-200 bg-white p-6 text-center shadow-sm dark:border-slate-800 dark:bg-slate-900">
         <Calendar className="mx-auto h-8 w-8 text-primary-600" />
-        <h2 className="mt-3 text-lg font-black text-slate-900">Unable to load services</h2>
-        <p className="mt-1 text-sm text-slate-500">Please check your connection and try again.</p>
-        <button type="button" onClick={fetchServices} className="mt-4 rounded-xl bg-primary-600 px-5 py-2.5 text-xs font-black text-white">Try Again</button>
+        <h2 className="mt-3 text-lg font-black text-slate-900 dark:text-white">Unable to load services</h2>
+        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Please check your connection and try again.</p>
+        <button type="button" onClick={fetchServices} className="mt-4 min-h-11 rounded-xl bg-primary-600 px-5 py-2.5 text-sm font-bold text-white focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary-500/20">Try Again</button>
       </div>
     );
   }
 
   return (
-    <div className="w-full max-w-full min-w-0 space-y-8 sm:space-y-12 animate-fade-in pb-20">
+    <div className="customer-marketplace-page marketplace-services mx-auto w-full max-w-[1440px] min-w-0 space-y-6 animate-fade-in pb-16 lg:space-y-7">
       {/* Decorative environment */}
       <div className="fixed inset-0 z-[-1] pointer-events-none overflow-hidden opacity-40">
         <div className="absolute top-20 right-[-10%] w-[500px] h-[500px] bg-primary-50 rounded-full blur-[120px] blob-animation" />
         <div className="absolute bottom-[-10%] left-[-10%] w-[400px] h-[400px] bg-secondary-50 rounded-full blur-[100px] blob-animation" style={{ animationDelay: '-2s' }} />
       </div>
 
-      <div className="flex flex-col md:flex-row justify-between items-center sm:items-end gap-4 md:gap-6 text-center sm:text-left">
-        <div className="space-y-1">
-          <h1 className="text-2xl font-black tracking-tight text-slate-900 sm:text-3xl">Professional Services</h1>
-          <p className="text-sm font-medium tracking-tight text-slate-500 sm:text-base">World-class care for your beloved family members</p>
+      <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-end">
+        <div className="space-y-1.5 text-left">
+          <h1 className="text-[1.875rem] font-black leading-tight tracking-tight text-slate-900 dark:text-white lg:text-[2.125rem]">Professional Services</h1>
+          <p className="text-[15px] font-medium leading-relaxed text-slate-500 dark:text-slate-400 sm:text-base">World-class care for your beloved family members</p>
         </div>
         {isAuthenticated && (
           <Link
             to="/bookings"
-            className="group px-6 py-3 bg-white border border-slate-100 text-slate-900 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-sm hover:bg-slate-50 transition-all flex items-center gap-2"
+            className="group flex min-h-11 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-800 shadow-sm transition-colors hover:border-primary-200 hover:bg-primary-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800"
           >
             <Calendar className="h-4 w-4 text-primary-600" />
             My Bookings
@@ -231,27 +233,31 @@ const Services = () => {
 
       <div className="flex flex-col gap-4">
         {/* Search Bar */}
-        <div className="relative w-full md:w-96">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+        <div className="relative w-full sm:max-w-[28rem]">
+          <label htmlFor="service-search" className="sr-only">Search services</label>
+          <Search className="pointer-events-none absolute left-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
           <input
+            id="service-search"
             type="text"
             placeholder="Search services..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-11 pr-4 py-3 bg-white border border-slate-100 rounded-2xl text-sm font-medium text-slate-700 focus:outline-none focus:ring-4 focus:ring-primary-500/10 focus:border-primary-400 shadow-sm transition-all"
+            className="h-12 w-full rounded-xl border border-slate-200 bg-white pl-11 pr-4 text-[15px] font-medium text-slate-700 shadow-sm transition-colors placeholder:text-slate-400 focus:border-primary-400 focus:outline-none focus:ring-4 focus:ring-primary-500/10 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
           />
         </div>
 
-        <div className="flex min-w-0 flex-col gap-4 xl:flex-row xl:items-start">
-          {/* Modern Horizontal Filter Scrolling */}
-          <div className="content-scroll-row flex-1 items-center gap-2 pb-2 scrollbar-hide" aria-label="Service categories">
+        <div className="flex min-w-0 flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+          {/* Category filters wrap at their natural width. */}
+          <div className="flex min-w-0 flex-wrap items-center gap-2" role="group" aria-label="Service categories">
             {categories.map((category) => (
               <button
                 key={category.id}
+                type="button"
                 onClick={() => handleCategoryChange(category.id)}
-                className={`shrink-0 whitespace-nowrap rounded-xl border px-4 py-2.5 text-xs font-black uppercase tracking-wide transition-all shadow-sm sm:px-5 ${selectedCategory === category.id
-                  ? 'bg-primary-600 text-white border-primary-600 shadow-lg shadow-primary-100'
-                  : 'bg-white text-slate-500 border-slate-100 hover:border-primary-300'
+                aria-pressed={selectedCategory === category.id}
+                className={`min-h-10 shrink-0 whitespace-nowrap rounded-full border px-4 py-2 text-[13px] font-semibold leading-none transition-colors focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary-500/20 sm:px-5 ${selectedCategory === category.id
+                  ? 'border-primary-600 bg-primary-600 text-white shadow-sm'
+                  : 'border-slate-200 bg-white text-slate-600 hover:border-primary-300 hover:text-primary-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300'
                   }`}
               >
                 {category.label}
@@ -260,16 +266,18 @@ const Services = () => {
           </div>
 
           {/* Location Filters */}
-          <div className="grid w-full min-w-0 grid-cols-1 gap-3 sm:grid-cols-[minmax(15rem,1fr)_auto] xl:w-auto xl:flex-none">
+          <div className="grid w-full min-w-0 grid-cols-1 gap-2 sm:grid-cols-[minmax(14rem,18rem)_auto] xl:w-auto xl:flex-none">
             {/* City Selector */}
-            <div className="relative w-full min-w-0 sm:min-w-[15rem]">
+            <div className="relative w-full min-w-0 sm:min-w-[14rem]">
+              <label htmlFor="service-region" className="sr-only">Filter services by region</label>
               <MapPin className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-primary-500" />
               <select
+                id="service-region"
                 value={filters.city}
                 onChange={(e) => {
                   setFilters(prev => ({ ...prev, city: e.target.value, nearMe: false }));
                 }}
-                className="w-full rounded-xl border border-slate-100 bg-white py-3 pl-10 pr-9 text-xs font-black uppercase tracking-wide text-slate-700 shadow-sm outline-none transition-all focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10"
+                className="h-11 w-full rounded-xl border border-slate-200 bg-white pl-10 pr-9 text-sm font-semibold text-slate-700 shadow-sm outline-none transition-colors focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
               >
                 <option value="">All Regions</option>
                 {CAVITE_CITIES.map(c => (
@@ -280,6 +288,8 @@ const Services = () => {
 
             {/* Near Me Button */}
             <button
+              type="button"
+              aria-pressed={filters.nearMe}
               onClick={() => {
                 if (filters.nearMe) {
                   setFilters(prev => ({ ...prev, nearMe: false }));
@@ -287,9 +297,9 @@ const Services = () => {
                   handleNearMe();
                 }
               }}
-              className={`flex min-h-11 w-full shrink-0 items-center justify-center gap-2 rounded-xl border px-5 py-2.5 text-xs font-black uppercase tracking-wide transition-all shadow-sm sm:w-auto ${filters.nearMe
-                ? 'bg-secondary-600 text-white border-secondary-600 shadow-lg shadow-secondary-200'
-                : 'bg-white text-slate-500 border-slate-100 hover:border-primary-300'
+              className={`flex h-11 w-full shrink-0 items-center justify-center gap-2 rounded-xl border px-4 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary-500/20 sm:w-auto ${filters.nearMe
+                ? 'border-secondary-600 bg-secondary-600 text-white shadow-sm'
+                : 'border-slate-200 bg-white text-slate-600 hover:border-primary-300 hover:text-primary-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300'
                 }`}
             >
               <Navigation className={`h-4 w-4 ${filters.nearMe ? 'animate-pulse' : ''}`} />
@@ -300,75 +310,64 @@ const Services = () => {
       </div>
 
       {/* Services Grid with Premium Cards */}
-      <div className="responsive-card-grid [--card-min:17rem] sm:[--card-min:18rem] xl:[--card-min:19rem] sm:[--card-gap:1.5rem]">
-        {filteredServices.map((service, idx) => (
-          <div
+      <div className="responsive-card-grid [--card-min:16rem] [--card-gap:1.125rem] lg:[--card-gap:1.25rem]">
+        {filteredServices.map((service) => (
+          <article
             key={service._id}
-            className="card group w-full min-w-0 max-w-full p-0 flex flex-col h-full hover:shadow-2xl hover:shadow-primary-200/50 transition-all duration-500 animate-slide-up"
-            style={{ animationDelay: `${idx * 0.1}s` }}
+            className="group flex h-full w-full min-w-0 max-w-full flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-primary-200 hover:shadow-lg dark:border-slate-800 dark:bg-slate-900"
+            aria-labelledby={`service-title-${service._id}`}
           >
-            {/* Top accent bar or Image */}
-            {service.images?.[0] ? (
-              <div className="h-32 sm:h-48 w-full relative overflow-hidden shrink-0">
+            {/* Consistent media area keeps cards aligned across source image sizes. */}
+            <div className="relative aspect-[16/10] w-full shrink-0 overflow-hidden bg-primary-50 dark:bg-slate-800">
+              {service.images?.[0] ? (
                 <img src={getImageUrl(service.images[0])} alt={service.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></div>
-                <span className="absolute bottom-3 left-3 right-3 w-fit max-w-[calc(100%-1.5rem)] rounded-xl bg-primary-600/90 px-3 py-1 text-[9px] font-black uppercase leading-tight tracking-wide text-white whitespace-normal break-words backdrop-blur-md sm:text-[10px]">
-                  {getCategoryLabel(service.category)}
-                </span>
-              </div>
-            ) : (
-              <div className="h-1.5 sm:h-2 w-full shrink-0 bg-gradient-to-r from-primary-500 to-secondary-500 rounded-t-xl sm:rounded-t-[23px] opacity-70 group-hover:opacity-100 transition-all duration-500" />
-            )}
+              ) : (
+                <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-primary-50 to-secondary-50 dark:from-slate-800 dark:to-slate-900">
+                  <Calendar className="h-10 w-10 text-primary-300 dark:text-primary-500" aria-hidden="true" />
+                </div>
+              )}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-transparent to-transparent" />
+              <span className="absolute bottom-3 left-3 max-w-[calc(100%-1.5rem)] rounded-full bg-primary-600/95 px-2.5 py-1 text-[11px] font-bold leading-tight text-white backdrop-blur-sm">
+                {getCategoryLabel(service.category)}
+              </span>
+            </div>
 
-            <div className="p-3 sm:p-5 flex flex-col flex-1 space-y-2 sm:space-y-4">
-              <div className="flex min-w-0 items-start justify-between gap-2">
-                <div className="space-y-0.5 w-full min-w-0">
-                  {!service.images?.[0] && (
-                    <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-wide text-primary-500 leading-tight break-words">
-                      {getCategoryLabel(service.category)}
-                    </span>
-                  )}
-                  <div className="flex items-center gap-1.5 mt-1 mb-1">
-                    <span className="max-w-full rounded bg-slate-100 px-1.5 py-0.5 text-[8px] font-black uppercase leading-tight tracking-wide text-slate-600 whitespace-normal break-words sm:text-[9px]">
-                      {service.subCategory}
-                    </span>
-                  </div>
-                  <h3 className="min-h-[2.5rem] text-base font-black leading-tight text-slate-900 line-clamp-2 break-words transition-colors group-hover:text-primary-600 sm:text-lg">
+            <div className="flex flex-1 flex-col p-4">
+              <div className="flex min-w-0 items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <span className="inline-flex max-w-full rounded-md bg-slate-100 px-2 py-1 text-[11px] font-semibold leading-tight text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                    {service.subCategory}
+                  </span>
+                  <h3 id={`service-title-${service._id}`} className="mt-2 min-h-[2.75rem] text-lg font-bold leading-snug text-slate-900 line-clamp-2 break-words transition-colors group-hover:text-primary-600 dark:text-white">
                     {service.name}
                   </h3>
-                  {service.ratings && service.ratings.count > 0 && (
-                    <div className="flex items-center gap-1 mt-0.5 opacity-80 group-hover:opacity-100 transition-opacity">
-                      <Star className="w-2.5 h-2.5 text-secondary-400 fill-secondary-400" />
-                      <span className="text-[9px] font-bold text-slate-600">
-                        {service.ratings.average.toFixed(1)} <span className="text-slate-400 font-normal">({service.ratings.count})</span>
-                      </span>
-                    </div>
-                  )}
                 </div>
-                <div className="flex flex-col items-end shrink-0 pl-2">
-                  <span className="text-xs sm:text-lg font-black text-primary-600 tracking-tighter">₱{service.price}</span>
-                </div>
+                {service.ratings && service.ratings.count > 0 && (
+                  <div className="flex shrink-0 items-center gap-1 rounded-full bg-secondary-50 px-2 py-1 text-xs font-semibold text-slate-700 dark:bg-slate-800 dark:text-slate-200">
+                    <Star className="h-3.5 w-3.5 fill-secondary-400 text-secondary-400" />
+                    <span>{service.ratings.average.toFixed(1)}</span>
+                    <span className="sr-only">from {service.ratings.count} reviews</span>
+                  </div>
+                )}
               </div>
 
-              <p className="text-[10px] sm:text-xs text-slate-500 italic leading-relaxed line-clamp-2 hidden sm:block min-h-[2rem]">
-                "{service.description || 'Expertly delivered service focused on the health and comfort of your pet.'}"
+              <p className="mt-2 text-xl font-black tracking-tight text-primary-600">₱{service.price}</p>
+
+              <p className="mt-2 min-h-[2.5rem] text-sm leading-5 text-slate-500 line-clamp-2 dark:text-slate-400">
+                {service.description || 'Expertly delivered service focused on the health and comfort of your pet.'}
               </p>
 
               {/* Bottom Fixed Section - Unified for perfect alignment */}
-              <div className="mt-auto pt-3 sm:pt-4 space-y-3 sm:space-y-4">
+              <div className="mt-auto space-y-3 pt-4">
                 {/* Stats Grid */}
-                <div className="grid grid-cols-2 gap-2 py-2 border-y border-slate-50 group-hover:border-primary-100 transition-colors">
+                <div className="grid grid-cols-2 gap-2 border-y border-slate-100 py-2.5 transition-colors group-hover:border-primary-100 dark:border-slate-800">
                   <div className="flex items-center gap-2">
-                    <div className="w-6 h-6 rounded-lg bg-slate-50 group-hover:bg-primary-50 flex items-center justify-center transition-colors">
-                      <Clock className="h-3 w-3 text-primary-500" />
-                    </div>
-                    <span className="text-[10px] font-bold text-slate-600 italic">{service.duration}m</span>
+                    <Clock className="h-4 w-4 shrink-0 text-primary-500" />
+                    <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">{service.duration} min</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <div className="w-6 h-6 rounded-lg bg-slate-50 group-hover:bg-secondary-50 flex items-center justify-center transition-colors">
-                      <MapPin className="h-3 w-3 text-secondary-500" />
-                    </div>
-                    <span className="text-[10px] font-bold text-slate-600 italic uppercase">
+                    <MapPin className="h-4 w-4 shrink-0 text-secondary-500" />
+                    <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">
                       {service.homeServiceAvailable ? 'Home' : 'Store'}
                     </span>
                   </div>
@@ -378,9 +377,9 @@ const Services = () => {
                 {service.store && (
                   <Link
                     to={`/stores/${service.store?._id || service.store}`}
-                    className="flex items-center gap-3 p-2 bg-slate-50 rounded-xl border border-slate-100 group-hover:bg-primary-50 group-hover:border-primary-100 transition-all hover:scale-[1.02] active:scale-95"
+                    className="flex min-h-12 items-center gap-2.5 rounded-xl border border-slate-100 bg-slate-50 p-2 transition-colors hover:border-primary-100 hover:bg-primary-50 dark:border-slate-800 dark:bg-slate-800/70 dark:hover:bg-slate-800"
                   >
-                    <div className="w-8 h-8 rounded-lg bg-white overflow-hidden flex items-center justify-center shadow-sm shrink-0 border border-slate-100">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-slate-100 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
                       {service.store.logo ? (
                         <img src={getImageUrl(service.store.logo)} alt="" className="w-full h-full object-cover" />
                       ) : (
@@ -388,11 +387,11 @@ const Services = () => {
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-[9px] font-black text-slate-900 uppercase truncate leading-tight">
+                      <p className="truncate text-xs font-bold leading-tight text-slate-900 dark:text-white">
                         {service.store.name}
                       </p>
-                      <div className="text-[8px] font-bold text-slate-400 uppercase flex items-center gap-1.5 group/addr">
-                        <MapPin className="h-2 w-2 text-primary-400 group-hover/addr:text-primary-600 transition-colors" />
+                      <div className="mt-0.5 flex items-center gap-1 text-[11px] font-medium text-slate-500 dark:text-slate-400">
+                        <MapPin className="h-3 w-3 shrink-0 text-primary-400" />
                         <span className="truncate">
                           {service.store.contactInfo?.address?.city || 'Cavite'}
                         </span>
@@ -403,29 +402,32 @@ const Services = () => {
 
                 {/* Enhanced Footer Button */}
                 <button
+                  type="button"
                   onClick={() => handleBookService(service._id)}
-                  className="btn btn-primary w-full py-2.5 sm:py-3 text-[10px] font-black uppercase tracking-widest shadow-lg shadow-primary-100 group/btn"
+                  aria-label={`View ${service.name}`}
+                  className="btn btn-primary min-h-11 w-full py-2.5 text-sm font-bold shadow-sm"
                 >
                   View Service
                 </button>
               </div>
             </div>
-          </div>
+          </article>
         ))}
       </div>
 
       {filteredServices.length === 0 && !loading && (
-        <div className="card bg-slate-50/50 border-dashed border-2 py-20 flex flex-col items-center justify-center space-y-4">
-          <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center">
-            <Calendar className="h-10 w-10 text-slate-300" />
+        <div className="flex flex-col items-center justify-center space-y-4 rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50/50 py-12 dark:border-slate-700 dark:bg-slate-900/50">
+          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800">
+            <Calendar className="h-7 w-7 text-slate-300 dark:text-slate-500" />
           </div>
           <div className="text-center px-6">
-            <h3 className="text-xl sm:text-2xl font-black text-slate-800 uppercase tracking-tight">Available Soon</h3>
-            <p className="text-xs sm:text-base text-slate-500 max-w-xs mx-auto font-medium">We're expanding our service network. Please check back later or try another category.</p>
+            <h3 className="text-xl font-black text-slate-800 dark:text-white">Available Soon</h3>
+            <p className="mx-auto mt-1 max-w-sm text-sm font-medium leading-relaxed text-slate-500 dark:text-slate-400">We're expanding our service network. Please check back later or try another category.</p>
           </div>
           <button
+            type="button"
             onClick={() => setSelectedCategory('all')}
-            className="btn btn-outline border-slate-300"
+            className="btn btn-outline min-h-11 border-slate-300"
           >
             Show all available services
           </button>
