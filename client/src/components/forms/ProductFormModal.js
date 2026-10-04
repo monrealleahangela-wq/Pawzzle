@@ -1,6 +1,7 @@
 import React from 'react';
 import { Eye, Image as ImageIcon, Info, Package, SlidersHorizontal, Tag, Upload, X } from 'lucide-react';
 import { getImageUrl } from '../../services/apiService';
+import { PRODUCT_CATEGORIES } from '../../constants/productCategories';
 import {
   CompactFormModal,
   CompactFormSection,
@@ -60,7 +61,7 @@ const ProductFormModal = ({ editingProduct, form, setForm, onClose, onSubmit, on
       <CompactFormSection step="2" icon={Info} title="Basic Information" description="Core catalog information appears on the customer product page.">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <label className="text-[11px] font-bold text-slate-700">Product Name<RequiredMark /><input value={form.name} onChange={event => set('name', event.target.value)} className={compactInputClass} placeholder="Product name" />{!form.name?.trim() && <span className="mt-1 block text-[10px] text-rose-600">Product name is required.</span>}</label>
-          <label className="text-[11px] font-bold text-slate-700">Category<RequiredMark /><select value={form.category} onChange={event => set('category', event.target.value)} className={compactInputClass}><option value="Pet Food">Pet Food</option><option value="Pet Accessories">Pet Accessories</option><option value="Pet Clothing and Accessories">Pet Clothing and Accessories</option><option value="Pet Health Care">Pet Health Care</option><option value="Others">Others</option></select></label>
+          <label className="text-[11px] font-bold text-slate-700">Category<RequiredMark /><select value={form.category} onChange={event => set('category', event.target.value)} className={compactInputClass}>{PRODUCT_CATEGORIES.map(category => <option key={category.value} value={category.value}>{category.label}</option>)}</select></label>
           <label className="text-[11px] font-bold text-slate-700">Brand <span className="font-normal text-slate-400">(optional)</span><input value={form.brand || ''} onChange={event => set('brand', event.target.value)} className={compactInputClass} placeholder="Brand" /></label>
           <label className="text-[11px] font-bold text-slate-700">SKU <span className="font-normal text-slate-400">(optional)</span><input value={form.sku || ''} onChange={event => set('sku', event.target.value)} className={compactInputClass} placeholder="Generated automatically if blank" /></label>
           <label className="text-[11px] font-bold text-slate-700 sm:col-span-2">Barcode <span className="font-normal text-slate-400">(optional)</span><input value={form.barcode || ''} onChange={event => set('barcode', event.target.value)} className={compactInputClass} placeholder="UPC, EAN, or internal barcode" /></label>

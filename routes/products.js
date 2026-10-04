@@ -12,12 +12,13 @@ const {
 } = require('../controllers/productController');
 const { authenticate, adminOrStaff, requirePermission } = require('../middleware/auth');
 const { MAX_CATALOG_IMAGES, PRODUCT_WEIGHT_UNITS, isCatalogImageReference } = require('../utils/catalogListing');
+const { normalizeProductCategory } = require('../utils/productCategories');
 
 // Validation rules
 // Validation rules
 const createProductValidation = [
   body('name').trim().notEmpty().withMessage('Product name is required'),
-  body('category').notEmpty().withMessage('Category is required'),
+  body('category').custom(value => Boolean(normalizeProductCategory(value))).withMessage('Invalid product category'),
   body('description').trim().notEmpty().withMessage('Description is required'),
   body('shortDescription').trim().notEmpty().withMessage('Short description is required'),
   body('price').isFloat({ gt: 0 }).withMessage('Price must be greater than 0'),
@@ -35,7 +36,7 @@ const createProductValidation = [
 
 const updateProductValidation = [
   body('name').optional().trim().notEmpty().withMessage('Product name cannot be empty'),
-  body('category').optional().notEmpty().withMessage('Category cannot be empty'),
+  body('category').optional().custom(value => Boolean(normalizeProductCategory(value))).withMessage('Invalid product category'),
   body('description').optional().trim().notEmpty().withMessage('Description cannot be empty'),
   body('shortDescription').optional().trim().notEmpty().withMessage('Short description cannot be empty'),
   body('price').optional().isFloat({ gt: 0 }).withMessage('Price must be greater than 0'),

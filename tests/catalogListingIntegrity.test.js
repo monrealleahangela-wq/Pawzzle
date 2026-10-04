@@ -4,7 +4,13 @@ const fs = require('node:fs');
 const path = require('node:path');
 const Product = require('../models/Product');
 const StockSyncService = require('../services/stockSyncService');
-const { createProduct } = require('../controllers/productController');
+const { createProduct, getAllProducts } = require('../controllers/productController');
+const {
+  CATEGORY_CONTRACT,
+  PRODUCT_CATEGORY_VALUES,
+  buildProductCategoryFilter,
+  normalizeProductCategory
+} = require('../utils/productCategories');
 const {
   MAX_CATALOG_IMAGES,
   buildPublicPetFilter,
@@ -39,6 +45,126 @@ test('product package weight is optional, persisted with a unit, and rejects inv
   assert.deepEqual(normalizeProductWeight('', 'kg'), { weight: undefined, weightUnit: undefined });
 });
 
+test('Product schema and creation use the canonical category contract', () => {
+  assert.deepEqual(PRODUCT_CATEGORY_VALUES, [
+    'Pet Food', 'Pet Accessories', 'Pet Clothing and Accessories', 'Pet Health Care', 'Others'
+  ]);
+  const canonical = new Product(productData({ category: 'Pet Accessories' }));
+  assert.equal(canonical.validateSync(), undefined);
+  assert.equal(canonical.category, 'Pet Accessories');
+
+  const compatible = new Product(productData({ category: '  accessories  ' }));
+  assert.equal(compatible.validateSync(), undefined);
+  assert.equal(compatible.category, 'Pet Accessories');
+
+  const historical = Product.hydrate(productData({ category: ' accessories ' }));
+  assert.equal(historical.validateSync(), undefined);
+
+  const invalidCategory = new Product(productData({ category: 'Electronics' })).validateSync();
+  assert.ok(invalidCategory?.errors?.category);
+});
+
+test('customer category filtering is authoritative, compatible, searchable, and applied before pagination', async () => {
+  const originalFind = Product.find;
+  const originalCount = Product.countDocuments;
+  const records = [
+    { _id: 'accessory-1', name: 'Walking Harness', category: 'Pet Accessories', isActive: true, isDeleted: false },
+    { _id: 'accessory-2', name: 'Travel Bowl', category: '  accessories ', isActive: true, isDeleted: false },
+    { _id: 'food-1', name: 'Dog Food', category: 'Pet Food', isActive: true, isDeleted: false }
+  ];
+  const matching = filter => records.filter(record => {
+    if (filter.category && !new RegExp(filter.category.$regex, filter.category.$options).test(record.category)) return false;
+    if (filter.$or) {
+      const matchesSearch = filter.$or.some(clause => {
+        const [field, expression] = Object.entries(clause)[0];
+        return new RegExp(expression.$regex, expression.$options).test(String(record[field] || ''));
+      });
+      if (!matchesSearch) return false;
+    }
+    return true;
+  });
+  Product.find = filter => {
+    let skip = 0;
+    const rows = matching(filter);
+    return {
+      populate() { return this; },
+      sort() { return this; },
+      skip(value) { skip = value; return this; },
+      limit(value) { return Promise.resolve(rows.slice(skip, skip + Number(value))); }
+    };
+  };
+  Product.countDocuments = async filter => matching(filter).length;
+  const request = query => ({
+    query,
+    originalUrl: '/api/admin/products',
+    user: { _id: '507f1f77bcf86cd799439012', role: 'staff', staffType: 'inventory_staff', store: '507f1f77bcf86cd799439011' }
+  });
+  const respond = () => {
+    const output = { statusCode: 200, body: null };
+    output.res = { status(value) { output.statusCode = value; return this; }, json(value) { output.body = value; return this; } };
+    return output;
+  };
+
+  try {
+    const firstPage = respond();
+    await getAllProducts(request({ category: 'Accessories', page: 1, limit: 1 }), firstPage.res);
+    assert.equal(firstPage.statusCode, 200);
+    assert.deepEqual(firstPage.body.products.map(product => product._id), ['accessory-1']);
+    assert.equal(firstPage.body.pagination.totalProducts, 2);
+    assert.equal(firstPage.body.pagination.totalPages, 2);
+
+    const secondPage = respond();
+    await getAllProducts(request({ category: 'Pet Accessories', page: 2, limit: 1 }), secondPage.res);
+    assert.deepEqual(secondPage.body.products.map(product => product._id), ['accessory-2']);
+
+    const searched = respond();
+    await getAllProducts(request({ category: ' accessories ', search: 'Harness', page: 1, limit: 10 }), searched.res);
+    assert.deepEqual(searched.body.products.map(product => product._id), ['accessory-1']);
+
+    const all = respond();
+    await getAllProducts(request({ category: '', page: 1, limit: 10 }), all.res);
+    assert.equal(all.body.pagination.totalProducts, 3);
+
+    const invalid = respond();
+    await getAllProducts(request({ category: 'Electronics' }), invalid.res);
+    assert.equal(invalid.statusCode, 400);
+    assert.match(invalid.body.message, /Invalid product category filter/);
+  } finally {
+    Product.find = originalFind;
+    Product.countDocuments = originalCount;
+  }
+});
+
+test('safe Product category compatibility is exact rather than fuzzy', () => {
+  assert.equal(normalizeProductCategory('PET FOOD'), 'Pet Food');
+  assert.equal(normalizeProductCategory(' Pet Clothing '), 'Pet Clothing and Accessories');
+  assert.equal(normalizeProductCategory('toys'), 'Pet Accessories');
+  assert.equal(normalizeProductCategory('food supplements'), null);
+  assert.equal(buildProductCategoryFilter(''), undefined);
+  assert.throws(() => buildProductCategoryFilter('unknown'), /Invalid product category filter/);
+});
+
+test('Store forms and Customer filters import the same Product category contract', () => {
+  assert.equal(CATEGORY_CONTRACT.length, 5);
+  for (const file of [
+    'client/src/components/forms/ProductFormModal.js',
+    'client/src/pages/admin/ProductInventory.js',
+    'client/src/pages/customer/Products.js'
+  ]) assert.match(read(file), /PRODUCT_CATEGORIES/);
+  assert.match(read('models/Product.js'), /PRODUCT_CATEGORY_VALUES/);
+  assert.match(read('routes/products.js'), /normalizeProductCategory/);
+  assert.match(read('routes/adminProducts.js'), /normalizeProductCategory/);
+});
+
+test('Product category filtering retains public eligibility and runs before database pagination', () => {
+  const controller = read('controllers/productController.js');
+  assert.match(controller, /isActive: true, isDeleted: \{ \$ne: true \}/);
+  assert.match(controller, /buildCustomerVisibleStoreFilter/);
+  assert.match(controller, /filter\.store = \{ \$in: visibleStores/);
+  assert.ok(controller.indexOf('buildProductCategoryFilter(category)') < controller.indexOf('.skip(skip)'));
+  assert.match(controller, /Product\.countDocuments\(filter\)/);
+});
+
 test('seller product creation persists normalized weight, cover order, and server-owned relationships', async () => {
   const originalSave = Product.prototype.save;
   const originalFindById = Product.findById;
@@ -68,6 +194,7 @@ test('seller product creation persists normalized weight, cover order, and serve
     assert.equal(body.message, 'Product created successfully');
     assert.equal(saved.weight, 750);
     assert.equal(saved.weightUnit, 'g');
+    assert.equal(saved.category, 'Pet Accessories');
     assert.deepEqual(saved.images, ['/front.jpg', '/side.jpg']);
     assert.equal(saved.coverImage, '/front.jpg');
     assert.equal(String(saved.store), '507f1f77bcf86cd799439011');

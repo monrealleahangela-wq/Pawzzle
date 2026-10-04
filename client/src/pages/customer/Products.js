@@ -8,6 +8,7 @@ import { getCitiesByProvince } from '../../constants/locationConstants';
 import LoginModal from '../../components/LoginModal';
 import { useCart } from '../../contexts/CartContext';
 import { formatPeso } from '../../utils/paymentSummary';
+import { PRODUCT_CATEGORIES } from '../../constants/productCategories';
 
 const CAVITE_CITIES = getCitiesByProvince('cavite');
 
@@ -33,6 +34,7 @@ const Products = () => {
   const { user, isAuthenticated } = useAuth();
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [filters, setFilters] = useState({
     category: '',
@@ -64,6 +66,7 @@ const Products = () => {
   const fetchProducts = async () => {
     try {
       setLoading(true);
+      setError('');
       const params = {
         ...filters,
         page: pagination.currentPage,
@@ -110,6 +113,7 @@ const Products = () => {
       setPagination(response.data.pagination || pagination);
     } catch (error) {
       console.error('Error fetching products:', error);
+      setError(error.response?.data?.message || 'Unable to load products. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -269,7 +273,10 @@ const Products = () => {
                 placeholder="SEARCH FOR ITEMS..."
                 className="input input-with-icon border-none rounded-xl text-[10px] sm:text-sm font-bold uppercase tracking-widest bg-slate-50 focus:ring-2 focus:ring-primary-500/20 transition-all"
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value);
+                  setPagination(prev => ({ ...prev, currentPage: 1 }));
+                }}
               />
             </div>
             <button type="submit" className="bg-slate-900 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg active:scale-95 transition-all">
@@ -349,9 +356,7 @@ const Products = () => {
                   onChange={(e) => handleFilterChange('category', e.target.value)}
                 >
                   <option value="">All Types</option>
-                  <option value="food">Food</option>
-                  <option value="toys">Toys</option>
-                  <option value="accessories">Accessories</option>
+                  {PRODUCT_CATEGORIES.map(category => <option key={category.value} value={category.value}>{category.label}</option>)}
                 </select>
               </div>
 
@@ -402,7 +407,14 @@ const Products = () => {
 
         {/* Dynamic Product Grid */}
         <main className="w-full min-w-0 flex-1">
-          {products.length === 0 ? (
+          {error ? (
+            <div className="marketplace-empty-state card border-2 border-rose-200 bg-rose-50/50 flex flex-col items-center justify-center py-12 text-center">
+              <Package className="h-8 w-8 text-rose-300 mb-3" />
+              <h3 className="text-sm font-black text-rose-800 uppercase tracking-widest">Unable to load products</h3>
+              <p className="mt-1 mb-4 text-[10px] font-bold text-rose-600">{error}</p>
+              <button onClick={fetchProducts} className="text-[10px] font-black text-primary-600 uppercase tracking-widest underline">Try again</button>
+            </div>
+          ) : products.length === 0 ? (
             <div className="marketplace-empty-state card border-dashed border-2 bg-slate-50/50 flex flex-col items-center justify-center py-12 text-center">
               <Package className="h-8 w-8 text-slate-300 mb-3" />
               <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest">We couldn't find any products</h3>

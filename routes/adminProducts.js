@@ -11,13 +11,14 @@ const {
 } = require('../controllers/productController');
 const { authenticate, adminOrStaff, requirePermission } = require('../middleware/auth');
 const { MAX_CATALOG_IMAGES, PRODUCT_WEIGHT_UNITS, isCatalogImageReference } = require('../utils/catalogListing');
+const { normalizeProductCategory } = require('../utils/productCategories');
 
 // Enhanced Validation rules for detailed product management
 const createProductValidation = [
   body('name').trim().notEmpty().withMessage('Product name is required'),
   body('price').isFloat({ min: 0 }).withMessage('Price must be a positive number'),
   body('description').trim().notEmpty().withMessage('Description is required'),
-  body('category').isIn(['food', 'toys', 'toy', 'accessories', 'accessory', 'grooming', 'training', 'health', 'housing', 'other', 'Pet Food', 'Pet Accessories', 'Pet Clothing and Accessories', 'Pet Health Care', 'Others']).withMessage('Invalid category'),
+  body('category').custom(value => Boolean(normalizeProductCategory(value))).withMessage('Invalid product category'),
 
   // Optional detailed fields
   body('brand').optional().trim(),
@@ -48,7 +49,7 @@ const updateProductValidation = [
   body('name').optional().trim().notEmpty().withMessage('Product name cannot be empty'),
   body('price').optional().isFloat({ min: 0 }).withMessage('Price must be a positive number'),
   body('description').optional().trim().notEmpty().withMessage('Description cannot be empty'),
-  body('category').optional().isIn(['food', 'toys', 'toy', 'accessories', 'accessory', 'grooming', 'training', 'health', 'housing', 'other', 'Pet Food', 'Pet Accessories', 'Pet Clothing and Accessories', 'Pet Health Care', 'Others']).withMessage('Invalid category'),
+  body('category').optional().custom(value => Boolean(normalizeProductCategory(value))).withMessage('Invalid product category'),
 
   body('brand').optional().trim(),
   body('barcode').optional().trim().isLength({ max: 100 }).withMessage('Barcode is too long'),

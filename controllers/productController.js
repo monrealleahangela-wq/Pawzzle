@@ -6,6 +6,7 @@ const { canOperateStore } = require('../utils/authorizationPolicy');
 const Store = require('../models/Store');
 const { getCustomerVisibleOwnerIds, buildCustomerVisibleStoreFilter, withCustomerComplianceFilter } = require('../utils/storeVisibility');
 const { normalizeCatalogImages, normalizeProductWeight } = require('../utils/catalogListing');
+const { buildProductCategoryFilter, requireProductCategory } = require('../utils/productCategories');
 
 const PRODUCT_LISTING_FIELDS = [
   'name', 'category', 'description', 'shortDescription', 'price', 'sku', 'barcode',
@@ -103,7 +104,8 @@ const getAllProducts = async (req, res) => {
       filter.store = { $in: visibleStores.map(store => store._id) };
     }
 
-    if (category) filter.category = category;
+    const categoryFilter = buildProductCategoryFilter(category);
+    if (categoryFilter) filter.category = categoryFilter;
     if (brand) filter.brand = new RegExp(brand, 'i');
     if (suitableFor) filter.suitableFor = suitableFor;
     if (minPrice || maxPrice) {
@@ -146,6 +148,7 @@ const getAllProducts = async (req, res) => {
       }
     });
   } catch (error) {
+    if (error.statusCode) return res.status(error.statusCode).json({ message: error.message });
     console.error('Get products error:', error);
     res.status(500).json({ message: 'Server error' });
   }
@@ -190,6 +193,7 @@ const createProduct = async (req, res) => {
 
     const initialStock = Number(req.body.stockQuantity || 0);
     const listingData = pickProductListingFields(req.body);
+    listingData.category = requireProductCategory(listingData.category);
     const images = normalizeCatalogImages(listingData.images, { required: true });
     const normalizedWeight = normalizeProductWeight(listingData.weight, listingData.weightUnit);
     const productData = {
@@ -248,6 +252,9 @@ const updateProduct = async (req, res) => {
     }
 
     const updateData = pickProductListingFields(req.body);
+    if (Object.prototype.hasOwnProperty.call(updateData, 'category')) {
+      updateData.category = requireProductCategory(updateData.category);
+    }
     if (Object.prototype.hasOwnProperty.call(updateData, 'images')) {
       updateData.images = normalizeCatalogImages(updateData.images, { required: true });
       updateData.coverImage = updateData.images[0];

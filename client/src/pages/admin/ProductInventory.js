@@ -5,6 +5,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { PLATFORM_ADMIN_ROLES, STORE_ADMIN_ROLES, OPERATIONAL_ROLES, hasUiActionPermission } from '../../utils/authorization';
 import { useRealTimeUpdates } from '../../hooks/useRealTimeUpdates';
 import ProductFormModal from '../../components/forms/ProductFormModal';
+import { PRODUCT_CATEGORIES, normalizeProductCategory } from '../../constants/productCategories';
 import { Package, AlertTriangle, TrendingDown, Plus, Minus, RefreshCw, Edit, Trash2, Search, Box, X, Activity, Image as ImageIcon, ChevronRight, Shield, Zap, Layers, Tag, Star, Info, ChevronDown, ChevronUp, Video, FileText, MapPin, Clock } from 'lucide-react';
 
 const PhilippinePeso = ({ className }) => (
@@ -61,7 +62,7 @@ const ProductInventory = () => {
   // Form States
   const initialProductState = {
     name: '',
-    category: 'Pet Food',
+    category: PRODUCT_CATEGORIES[0].value,
     brand: '',
     sku: '',
     barcode: '',
@@ -169,15 +170,6 @@ const ProductInventory = () => {
   const canDelete = hasUiActionPermission(user, 'inventory', 'delete', isAdmin);
   const canAdjustStock = canUpdate;
 
-  const categoryHierarchy = {
-    'Pet Food': ['Dog Food', 'Cat Food', 'Small Pet Food', 'Others'],
-    'Pet Accessories': ['Bowls/Feeders', 'Toys', 'Furniture', 'Grooming', 'Others'],
-    'Pet Clothing and Accessories': ['Clothing', 'Accessories', 'Others'],
-    'Pet Health Care': ['Vitamins', 'Medication', 'Others'],
-    'Others': ['Miscellaneous']
-  };
-
-
   useEffect(() => {
     if (activeTab === 'products') fetchProducts();
     else fetchInventory();
@@ -210,7 +202,7 @@ const ProductInventory = () => {
       setProductForm({
         ...initialProductState,
         ...product,
-        category: product.category === 'Pet Clothing' ? 'Pet Clothing and Accessories' : product.category,
+        category: normalizeProductCategory(product.category) || PRODUCT_CATEGORIES[0].value,
         price: product.price || '',
         stockQuantity: product.stockQuantity || '',
         sku: product.sku || ''
@@ -494,8 +486,8 @@ const ProductInventory = () => {
                             className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-2xl pl-16 pr-10 py-4 outline-none focus:ring-2 focus:ring-primary-500/20 appearance-none transition-all cursor-pointer font-sans"
                         >
                             <option value="" className="bg-slate-900 text-white font-black">ALL CATEGORIES: VIEW ALL</option>
-                            {Object.keys(categoryHierarchy).map(c => (
-                              <option key={c} value={c} className="bg-slate-900 text-white font-black">{c.toUpperCase()}</option>
+                            {PRODUCT_CATEGORIES.map(category => (
+                              <option key={category.value} value={category.value} className="bg-slate-900 text-white font-black">{category.label.toUpperCase()}</option>
                             ))}
                         </select>
                         <ChevronDown className="absolute right-6 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500 pointer-events-none" />
@@ -781,11 +773,7 @@ const ProductInventory = () => {
                               onChange={e => setProductForm(p => ({ ...p, category: e.target.value }))}
                               className="w-full px-5 py-3.5 bg-slate-50 border-2 border-slate-50 rounded-xl text-[12px] font-black uppercase outline-none focus:border-primary-500 appearance-none"
                             >
-                              <option value="Pet Food">Pet Food</option>
-                              <option value="Pet Accessories">Pet Accessories</option>
-                              <option value="Pet Clothing and Accessories">Pet Clothing and Accessories</option>
-                              <option value="Pet Health Care">Pet Health Care</option>
-                              <option value="Others">Others</option>
+                              {PRODUCT_CATEGORIES.map(category => <option key={category.value} value={category.value}>{category.label}</option>)}
                             </select>
                           </div>
                           <div className="space-y-2">

@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { PRODUCT_CATEGORY_VALUES, normalizeProductCategory } = require('../utils/productCategories');
 
 const productSchema = new mongoose.Schema({
   name: {
@@ -8,7 +9,12 @@ const productSchema = new mongoose.Schema({
   },
   category: {
     type: String,
-    required: true
+    required: true,
+    validate: {
+      validator: value => PRODUCT_CATEGORY_VALUES.includes(normalizeProductCategory(value)),
+      message: 'Invalid product category'
+    },
+    set: value => normalizeProductCategory(value) || value
   },
   description: {
     type: String,

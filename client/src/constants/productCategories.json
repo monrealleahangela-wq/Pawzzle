@@ -1,0 +1,27 @@
+[
+  {
+    "value": "Pet Food",
+    "label": "Pet Food",
+    "aliases": ["food"]
+  },
+  {
+    "value": "Pet Accessories",
+    "label": "Pet Accessories",
+    "aliases": ["accessories", "accessory", "toys", "toy", "grooming", "training", "housing"]
+  },
+  {
+    "value": "Pet Clothing and Accessories",
+    "label": "Pet Clothing and Accessories",
+    "aliases": ["Pet Clothing"]
+  },
+  {
+    "value": "Pet Health Care",
+    "label": "Pet Health Care",
+    "aliases": ["health"]
+  },
+  {
+    "value": "Others",
+    "label": "Others",
+    "aliases": ["other"]
+  }
+]
