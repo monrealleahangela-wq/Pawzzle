@@ -295,8 +295,11 @@ const StoreManagement = () => {
             </nav>
           </div>
 
-          <div className="lg:col-span-8">
-            <div className="bg-white/80 backdrop-blur-xl rounded-[3rem] shadow-2xl border border-white min-h-[700px] p-8 lg:p-12">
+          <div className="min-w-0 lg:col-span-8">
+            <div className={`border border-white bg-white/80 shadow-2xl backdrop-blur-xl dark:border-slate-800 dark:bg-slate-900/90 ${activeTab === 'hours'
+              ? 'min-h-0 rounded-2xl p-4 sm:rounded-[2.5rem] sm:p-6 lg:min-h-[700px] lg:rounded-[3rem] lg:p-12'
+              : 'min-h-[700px] rounded-[3rem] p-8 lg:p-12'
+              }`}>
               {activeTab === 'info' && (
                 <div className="space-y-12 animate-in fade-in slide-in-from-right-12 duration-700">
                   <h2 className="text-3xl font-black text-slate-900">Basic Info</h2>
@@ -507,26 +510,60 @@ const StoreManagement = () => {
               )}
 
               {activeTab === 'hours' && (
-                <div className="space-y-12 animate-in fade-in slide-in-from-right-12 duration-700">
-                  <h2 className="text-3xl font-black text-slate-900">Business Hours</h2>
-                  <div className="grid grid-cols-1 gap-4">
-                    {['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'].map((day) => (
-                      <div key={day} className="p-6 bg-slate-50 hover:bg-white rounded-[2rem] border border-slate-100 hover:border-indigo-200 transition-all flex flex-col md:flex-row md:items-center gap-6">
-                        <div className="w-32 shrink-0">
-                          <h4 className="text-lg font-black text-slate-900 capitalize">{day}</h4>
-                          <input type="checkbox" checked={!store.businessHours?.[day]?.closed} onChange={(e) => handleBusinessHoursChange(day, 'closed', !e.target.checked)} />
-                          <span className="ml-2 text-xs font-black uppercase text-slate-400">{store.businessHours?.[day]?.closed ? 'Closed' : 'Active'}</span>
-                        </div>
-                        {!store.businessHours?.[day]?.closed && (
-                          <div className="flex-1 grid grid-cols-2 gap-6">
-                            <input type="time" value={store.businessHours?.[day]?.open || ''} onChange={(e) => handleBusinessHoursChange(day, 'open', e.target.value)} className="w-full px-4 py-3.5 bg-white border-2 border-slate-100 rounded-2xl" />
-                            <input type="time" value={store.businessHours?.[day]?.close || ''} onChange={(e) => handleBusinessHoursChange(day, 'close', e.target.value)} className="w-full px-4 py-3.5 bg-white border-2 border-slate-100 rounded-2xl" />
+                <section aria-labelledby="business-hours-heading" className="space-y-5 animate-in fade-in slide-in-from-right-12 duration-700 sm:space-y-8 lg:space-y-12">
+                  <h2 id="business-hours-heading" className="text-2xl font-black tracking-tight text-slate-900 dark:text-white sm:text-3xl">Business Hours</h2>
+                  <div className="grid grid-cols-1 gap-3 sm:gap-4">
+                    {['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'].map((day) => {
+                      const hours = store.businessHours?.[day] || {};
+                      const dayLabel = day.charAt(0).toUpperCase() + day.slice(1);
+                      return (
+                        <article key={day} aria-label={`${dayLabel} business hours`} className="min-w-0 rounded-2xl border border-slate-200 bg-slate-50 p-4 transition-colors hover:border-indigo-200 hover:bg-white dark:border-slate-700 dark:bg-slate-950/50 dark:hover:border-indigo-500/50 dark:hover:bg-slate-900 sm:rounded-[2rem] sm:p-5 lg:grid lg:grid-cols-[minmax(13rem,0.55fr)_minmax(0,1fr)] lg:items-center lg:gap-6">
+                          <div className="flex min-w-0 items-center justify-between gap-3">
+                            <h3 className="min-w-0 text-lg font-bold capitalize text-slate-900 dark:text-white sm:text-xl">{day}</h3>
+                            <label htmlFor={`${day}-active`} className="inline-flex min-h-11 shrink-0 cursor-pointer items-center gap-2 rounded-xl px-2 text-sm font-bold text-slate-600 focus-within:ring-4 focus-within:ring-indigo-500/15 dark:text-slate-300">
+                              <input
+                                id={`${day}-active`}
+                                aria-label={`${dayLabel} active`}
+                                type="checkbox"
+                                checked={!hours.closed}
+                                onChange={(e) => handleBusinessHoursChange(day, 'closed', !e.target.checked)}
+                                className="h-5 w-5 shrink-0 accent-indigo-600"
+                              />
+                              <span>{hours.closed ? 'Closed' : 'Active'}</span>
+                            </label>
                           </div>
-                        )}
-                      </div>
-                    ))}
+
+                          {!hours.closed && (
+                            <div className="mt-3 grid min-w-0 grid-cols-1 gap-3 min-[360px]:grid-cols-2 sm:mt-4 sm:gap-4 lg:mt-0">
+                              <label htmlFor={`${day}-open`} className="min-w-0 space-y-1.5">
+                                <span className="block text-xs font-bold text-slate-500 dark:text-slate-400">Start</span>
+                                <input
+                                  id={`${day}-open`}
+                                  aria-label={`${dayLabel} start time`}
+                                  type="time"
+                                  value={hours.open || ''}
+                                  onChange={(e) => handleBusinessHoursChange(day, 'open', e.target.value)}
+                                  className="h-11 w-full min-w-0 max-w-full rounded-xl border-2 border-slate-200 bg-white px-2 text-base font-semibold text-slate-800 outline-none transition-colors focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 dark:border-slate-700 dark:bg-slate-900 dark:text-white sm:px-3 sm:text-sm"
+                                />
+                              </label>
+                              <label htmlFor={`${day}-close`} className="min-w-0 space-y-1.5">
+                                <span className="block text-xs font-bold text-slate-500 dark:text-slate-400">End</span>
+                                <input
+                                  id={`${day}-close`}
+                                  aria-label={`${dayLabel} end time`}
+                                  type="time"
+                                  value={hours.close || ''}
+                                  onChange={(e) => handleBusinessHoursChange(day, 'close', e.target.value)}
+                                  className="h-11 w-full min-w-0 max-w-full rounded-xl border-2 border-slate-200 bg-white px-2 text-base font-semibold text-slate-800 outline-none transition-colors focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 dark:border-slate-700 dark:bg-slate-900 dark:text-white sm:px-3 sm:text-sm"
+                                />
+                              </label>
+                            </div>
+                          )}
+                        </article>
+                      );
+                    })}
                   </div>
-                </div>
+                </section>
               )}
 
               {activeTab === 'social' && (

@@ -96,6 +96,20 @@ test('content-sized controls retain readable labels instead of shrinking or clip
   assert.match(bottomNav, /line-clamp-2 break-words/);
 });
 
+test('Business Hours keeps compact non-overlapping controls from phone to desktop widths', () => {
+  const store = read('client/src/pages/admin/StoreManagement.js');
+
+  assert.match(store, /activeTab === 'hours'[\s\S]*min-h-0 rounded-2xl p-4[\s\S]*lg:min-h-\[700px\][\s\S]*lg:p-12/);
+  assert.match(store, /grid min-w-0 grid-cols-1 gap-3 min-\[360px\]:grid-cols-2 sm:mt-4 sm:gap-4/);
+  assert.match(store, /lg:grid lg:grid-cols-\[minmax\(13rem,0\.55fr\)_minmax\(0,1fr\)\] lg:items-center lg:gap-6/);
+  assert.match(store, /h-11 w-full min-w-0 max-w-full[^"\n]*focus:border-indigo-500[^"\n]*dark:border-slate-700/);
+  assert.match(store, /aria-label=\{`\$\{dayLabel\} active`\}/);
+  assert.match(store, /aria-label=\{`\$\{dayLabel\} start time`\}/);
+  assert.match(store, /aria-label=\{`\$\{dayLabel\} end time`\}/);
+  assert.match(store, /\['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'\]/);
+  assert.doesNotMatch(store, /activeTab === 'hours'[\s\S]*?<div className="flex-1 grid grid-cols-2 gap-6">/);
+});
+
 test('primary marketplace and management card titles receive a practical content width', () => {
   const expectations = new Map([
     ['client/src/pages/customer/Pets.js', /\[--card-min:17rem\][\s\S]*line-clamp-2 break-words/],
