@@ -386,92 +386,98 @@ const ServiceManagement = () => {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50/50 p-4 sm:p-8 space-y-8">
+    <div className="min-h-screen min-w-0 bg-slate-50/50 p-4 sm:p-6 lg:p-7 space-y-5 sm:space-y-6">
       {/* Header */}
-      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-4 bg-white p-4 sm:p-6 rounded-2xl border border-slate-100 shadow-sm relative overflow-hidden">
+      <div className="relative flex flex-col items-start justify-between gap-4 overflow-hidden rounded-2xl border border-slate-100 bg-white p-5 shadow-sm sm:p-6 lg:flex-row lg:items-center">
         <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/5 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl pointer-events-none" />
-        <div className="relative z-10">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="p-2 bg-indigo-600 text-white rounded-2xl shadow-lg shadow-indigo-200">
+        <div className="relative z-10 min-w-0">
+          <div className="mb-3 flex items-center gap-2.5">
+            <div className="rounded-xl bg-indigo-600 p-2 text-white shadow-md shadow-indigo-200">
               <Settings className="h-4 w-4" />
             </div>
-            <span className="text-[10px] font-black text-indigo-600 uppercase tracking-[0.4em]">ADMIN PANEL : SERVICES</span>
+            <span className="text-[11px] font-black uppercase tracking-[0.28em] text-indigo-600">ADMIN PANEL : SERVICES</span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 uppercase tracking-tight leading-none mb-2">
+          <div role="heading" aria-level="1" className="mb-1.5 text-[1.75rem] font-black uppercase leading-none tracking-tight text-slate-900 sm:text-[2rem]">
             Service <span className="text-indigo-600">Manager</span>
-          </h1>
-          <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+          </div>
+          <p className="flex items-center gap-2 text-[12px] font-semibold text-slate-500 sm:text-[13px]">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" /> Full customization • Pricing rules • Staff assignment
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-4">
-          {isAdmin && <button type="button" onClick={() => setShowDSSConfig(true)} className="px-5 py-3 bg-indigo-50 border border-indigo-100 text-indigo-700 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2"><Target className="h-4 w-4" /> DSS Weights</button>}
+        <div className="relative z-10 flex w-full flex-wrap items-center gap-2.5 sm:w-auto lg:justify-end">
+          {isAdmin && <button type="button" onClick={() => setShowDSSConfig(true)} className="flex h-11 flex-1 items-center justify-center gap-2 rounded-xl border border-indigo-100 bg-indigo-50 px-4 text-[13px] font-bold text-indigo-700 transition-colors hover:bg-indigo-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 sm:flex-none"><Target className="h-4 w-4" /> DSS Weights</button>}
           <Link
             to="/admin/bookings"
-            className="px-8 py-3.5 bg-white border border-slate-100 text-slate-900 rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] hover:bg-slate-50 transition-all shadow-sm flex items-center gap-3"
+            className="flex h-11 flex-1 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-[13px] font-bold text-slate-700 shadow-sm transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 sm:flex-none"
           >
             <Calendar className="h-4 w-4 text-indigo-600" /> View Bookings
           </Link>
           {canCreate && (
-            <button onClick={() => { resetForm(); setShowModal(true); }}
-              className="px-8 py-3.5 bg-slate-900 text-white rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] hover:bg-indigo-600 transition-all shadow-xl shadow-slate-200 flex items-center gap-3 group">
-              <Plus className="h-4 w-4 group-hover:rotate-90 transition-transform" /> Create Service
+            <button type="button" onClick={() => { resetForm(); setShowModal(true); }}
+              className="group flex h-11 flex-1 items-center justify-center gap-2 rounded-xl bg-slate-900 px-5 text-[13px] font-bold text-white shadow-md shadow-slate-200 transition-colors hover:bg-indigo-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 sm:flex-none">
+              <Plus className="h-4 w-4 transition-transform group-hover:rotate-90" /> Create Service
             </button>
           )}
         </div>
       </div>
 
       {/* Summary */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         {[
           { label: 'Active Services', value: services.filter(s => s.isActive).length, icon: Activity, color: 'emerald' },
           { label: 'Total Services', value: services.length, icon: Package, color: 'primary' },
           { label: 'With Pricing Rules', value: services.filter(s => s.pricingRules && Object.values(s.pricingRules).some(r => r?.enabled)).length, icon: DollarSign, color: 'indigo' },
           { label: 'With Add-Ons', value: services.filter(s => s.addOns && s.addOns.length > 0).length, icon: Layers, color: 'amber' }
         ].map((stat, idx) => (
-          <div key={idx} className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm group hover:shadow-lg hover:border-indigo-100 transition-all">
-            <div className={`w-10 h-10 rounded-2xl bg-${stat.color}-50 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}>
-              <stat.icon className={`h-5 w-5 text-${stat.color}-600`} />
+          <div key={idx} className="group flex min-h-24 min-w-0 items-center gap-3 rounded-2xl border border-slate-100 bg-white p-4 shadow-sm transition-all hover:border-indigo-100 hover:shadow-md">
+            <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-${stat.color}-50 transition-transform group-hover:scale-105`}>
+              <stat.icon className={`h-4 w-4 text-${stat.color}-600`} />
             </div>
-            <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1 leading-tight">{stat.label}</p>
-            <p className="text-xl font-black text-slate-900 tracking-tighter">{stat.value}</p>
+            <div className="min-w-0">
+              <p className="mb-1 text-[10px] font-black uppercase leading-tight tracking-wide text-slate-500">{stat.label}</p>
+              <p className="text-xl font-black tracking-tight text-slate-900">{stat.value}</p>
+            </div>
           </div>
         ))}
       </div>
 
       {/* Service HUD Filter */}
-      <div className="bg-slate-900 p-2 rounded-[1.5rem] shadow-xl border border-slate-800">
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-2">
-          <div className="md:col-span-6 relative group">
-            <div className="absolute left-6 top-1/2 -translate-y-1/2 flex items-center justify-center pointer-events-none">
+      <div className="rounded-2xl border border-slate-800 bg-slate-900 p-2 shadow-lg">
+        <div className="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(14rem,20rem)]">
+          <div className="group relative min-w-0">
+            <label htmlFor="service-manager-search" className="sr-only">Search services</label>
+            <div className="pointer-events-none absolute left-3.5 top-1/2 flex -translate-y-1/2 items-center justify-center">
               <Search className="h-4 w-4 text-slate-500 group-focus-within:text-primary-500 transition-colors" />
             </div>
             <input
+              id="service-manager-search"
               type="text" placeholder="SEARCH SERVICES..."
               value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-16 pr-4 py-4 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl outline-none focus:ring-2 focus:ring-primary-500/50 placeholder:text-slate-600 transition-all font-sans"
+              className="h-11 w-full rounded-xl bg-slate-800 py-2 pl-11 pr-4 font-sans text-[13px] font-semibold text-white outline-none transition-all placeholder:text-slate-500 focus-visible:ring-2 focus-visible:ring-indigo-500"
             />
           </div>
-          <div className="md:col-span-4 relative group">
-            <div className="absolute left-6 top-1/2 -translate-y-1/2">
+          <div className="group relative min-w-0">
+            <label htmlFor="service-category-filter" className="sr-only">Filter services by category</label>
+            <div className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2">
               <Briefcase className="h-4 w-4 text-primary-500" />
             </div>
             <select
+              id="service-category-filter"
               value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)}
-              className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-2xl pl-16 pr-10 py-4 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer font-sans"
+              className="h-11 w-full cursor-pointer appearance-none rounded-xl border-none bg-slate-800 py-2 pl-11 pr-10 font-sans text-[12px] font-bold text-white outline-none transition-all focus-visible:ring-2 focus-visible:ring-indigo-500"
             >
               <option value="" className="bg-slate-900 text-white font-black">ALL SERVICES: VIEW ALL</option>
               {categories.map(c => (
                 <option key={c.id} value={c.id} className="bg-slate-900 text-white font-black">{c.label.toUpperCase()}</option>
               ))}
             </select>
-            <ChevronDown className="absolute right-6 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500 pointer-events-none" />
+            <ChevronDown className="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
           </div>
         </div>
       </div>
 
       {/* Services Grid */}
-      <div className="responsive-card-grid [--card-min:18rem] xl:[--card-min:19rem] [--card-gap:1.25rem]">
+      <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {services
           .filter(s => {
             const matchSearch = !searchTerm || s.name.toLowerCase().includes(searchTerm.toLowerCase()) || s.description.toLowerCase().includes(searchTerm.toLowerCase());
@@ -479,11 +485,11 @@ const ServiceManagement = () => {
             return matchSearch && matchCat;
           })
           .map((service) => (
-          <div key={service._id} className="group bg-white border border-slate-100 rounded-2xl overflow-hidden shadow-sm hover:shadow-xl hover:-translate-y-0.5 transition-all relative flex flex-col">
+          <article key={service._id} className="group relative flex min-w-0 flex-col overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg">
             {/* Card Image / Icon Header */}
-            <div className="relative h-40 bg-gradient-to-br from-indigo-500 to-primary-600 flex items-center justify-center overflow-hidden">
+            <div className="relative flex aspect-[16/10] w-full items-center justify-center overflow-hidden bg-gradient-to-br from-indigo-500 to-primary-600">
               {service.images?.[0] ? (
-                <img src={getImageUrl(service.images[0])} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
+                <img src={getImageUrl(service.images[0])} alt={service.name} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]" />
               ) : (
                 <span className="text-5xl opacity-25">{getCategoryIcon(service.category)}</span>
               )}
@@ -507,17 +513,17 @@ const ServiceManagement = () => {
                     <span className="px-2 py-0.5 rounded text-[8px] font-black uppercase bg-indigo-500/90 text-white">HOME</span>
                   )}
                 </div>
-                <h3 className="text-base font-black uppercase leading-tight tracking-tight text-white line-clamp-2 break-words">{service.name}</h3>
+                <div role="heading" aria-level="3" className="text-base font-black uppercase leading-tight tracking-tight text-white line-clamp-2 break-words">{service.name}</div>
               </div>
             </div>
 
             {/* Card Body */}
-            <div className="p-4 flex-1 flex flex-col">
+            <div className="flex flex-1 flex-col p-4">
               <p className="text-[9px] font-black text-indigo-500 uppercase tracking-widest mb-1.5 italic">{service.category?.replace('_', ' ')}</p>
               <p className="text-[11px] font-medium text-slate-500 leading-relaxed line-clamp-2 mb-3">{service.description}</p>
 
               {/* Stats row */}
-              <div className="grid grid-cols-3 gap-1 py-3.5 border-t border-slate-50 mt-auto">
+              <div className="mt-auto grid grid-cols-3 gap-1 border-t border-slate-100 py-2.5">
                 <div className="text-center">
                   <p className="text-[8px] font-black text-slate-400 uppercase tracking-wider mb-0.5">Base Price</p>
                   <p className="text-[13px] font-black text-slate-900 tracking-tight truncate">₱{(service.price || 0).toLocaleString()}</p>
@@ -533,22 +539,22 @@ const ServiceManagement = () => {
               </div>
 
               {/* Action buttons */}
-              <div className="flex gap-2 mt-3">
+              <div className="mt-2.5 flex gap-2">
                 {canUpdate && (
                   <button onClick={() => handleEdit(service)}
-                    className="flex-1 py-2.5 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all hover:bg-indigo-600 flex items-center justify-center gap-1.5">
+                    className="flex h-10 flex-1 items-center justify-center gap-1.5 rounded-xl bg-slate-900 px-3 text-[11px] font-black uppercase tracking-wide text-white transition-colors hover:bg-indigo-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500">
                     <Edit2 className="h-3.5 w-3.5" /> Edit
                   </button>
                 )}
                 {canDelete && (
-                  <button onClick={() => handleDelete(service._id)}
-                    className="px-3 py-2.5 bg-rose-50 text-rose-500 rounded-2xl hover:bg-rose-500 hover:text-white transition-all">
+                  <button aria-label={`Delete ${service.name}`} onClick={() => handleDelete(service._id)}
+                    className="flex h-10 w-10 items-center justify-center rounded-xl bg-rose-50 text-rose-500 transition-colors hover:bg-rose-500 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500">
                     <Trash2 className="h-4 w-4" />
                   </button>
                 )}
               </div>
             </div>
-          </div>
+          </article>
         ))}
       </div>
 
