@@ -118,7 +118,7 @@ test('primary marketplace and management card titles receive a practical content
     ['client/src/pages/customer/Stores.js', /\[--card-min:17rem\][\s\S]*line-clamp-2 break-words/],
     ['client/src/pages/customer/Search.js', /\[--card-min:17rem\][\s\S]*line-clamp-2 break-words/],
     ['client/src/pages/customer/StoreDetail.js', /\[--card-min:17rem\][\s\S]*line-clamp-2 break-words/],
-    ['client/src/pages/admin/ProductInventory.js', /\[--card-min:17rem\][\s\S]*line-clamp-2 break-words/],
+    ['client/src/pages/admin/ProductInventory.js', /grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5[\s\S]*line-clamp-2 break-words/],
     ['client/src/pages/admin/ServiceManagement.js', /\[--card-min:18rem\][\s\S]*line-clamp-2 break-words/],
     ['client/src/pages/supplier/SupplierDashboard.js', /\[--card-min:17rem\][\s\S]*line-clamp-2 break-words/]
   ]);

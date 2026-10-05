@@ -408,103 +408,112 @@ const ProductInventory = () => {
   }[inventoryForm.operation];
 
   return (
-    <div className="min-h-screen bg-slate-50/50 p-4 sm:p-8 space-y-8">
+    <div className="min-h-screen min-w-0 bg-slate-50/50 p-4 sm:p-6 lg:p-7 space-y-5 sm:space-y-6">
       {/* Header */}
-      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-4 bg-white p-4 sm:p-6 rounded-2xl border border-slate-100 shadow-sm relative overflow-hidden">
+      <div className="relative flex flex-col items-start justify-between gap-4 overflow-hidden rounded-2xl border border-slate-100 bg-white p-5 shadow-sm sm:p-6 lg:flex-row lg:items-center">
         <div className="absolute top-0 right-0 w-64 h-64 bg-primary-600/5 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl pointer-events-none" />
         <div className="relative z-10 w-full lg:w-auto">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="p-2 bg-primary-600 text-white rounded-2xl shadow-lg shadow-primary-200">
+          <div className="mb-3 flex items-center gap-2.5">
+            <div className="rounded-xl bg-primary-600 p-2 text-white shadow-md shadow-primary-200">
               <Shield className="h-4 w-4" />
             </div>
-            <span className="text-[10px] font-black text-primary-600 uppercase tracking-[0.4em]">ADMIN PANEL : PRODUCTS</span>
+            <span className="text-[10px] font-black uppercase tracking-[0.28em] text-primary-600">ADMIN PANEL : PRODUCTS</span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 uppercase tracking-tight leading-none mb-2">
+          <div role="heading" aria-level="1" className="mb-1.5 text-[1.75rem] font-black uppercase leading-none tracking-tight text-slate-900 sm:text-[2rem]">
             Product <span className="text-primary-600">Inventory</span>
-          </h1>
-          <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+          </div>
+          <p className="flex items-center gap-2 text-[12px] font-semibold text-slate-500">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" /> Track and manage your store products
           </p>
         </div>
 
-        <div className="flex flex-wrap gap-3 w-full lg:w-auto relative z-10">
+        <div className="relative z-10 flex w-full flex-wrap gap-2.5 sm:w-auto">
           {canCreate && (
-            <button onClick={() => handleOpenProductModal()} className="flex-1 lg:flex-none px-8 py-3.5 bg-slate-900 text-white rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] hover:bg-primary-600 transition-all shadow-xl shadow-slate-200 flex items-center justify-center gap-3 group">
-              <Plus className="h-4 w-4 group-hover:rotate-90 transition-transform" /> Add Product
+            <button type="button" onClick={() => handleOpenProductModal()} className="group flex h-11 flex-1 items-center justify-center gap-2 rounded-xl bg-slate-900 px-5 text-[13px] font-bold text-white shadow-md shadow-slate-200 transition-all hover:bg-primary-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 sm:flex-none">
+              <Plus className="h-4 w-4 transition-transform group-hover:rotate-90" /> Add Product
             </button>
           )}
           {canAdjustStock && (
-            <button onClick={() => handleOpenInventoryModal()} className="flex-1 lg:flex-none px-8 py-3.5 bg-white border-2 border-slate-100 text-slate-600 rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] hover:bg-slate-50 transition-all flex items-center justify-center gap-3">
-              <Zap className="h-4 w-4 text-primary-600 shadow-glow" /> Update Stock
+            <button type="button" onClick={() => handleOpenInventoryModal()} className="flex h-11 flex-1 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-5 text-[13px] font-bold text-slate-600 transition-all hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 sm:flex-none">
+              <Zap className="h-4 w-4 text-primary-600" /> Update Stock
             </button>
           )}
         </div>
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-4 p-1.5 bg-white border border-slate-100 rounded-2xl w-fit shadow-sm overflow-hidden">
+      <div role="tablist" aria-label="Product inventory views" className="flex w-full gap-1 overflow-hidden rounded-xl border border-slate-100 bg-white p-1 shadow-sm sm:w-fit">
         {[
           { id: 'products', label: 'Product Catalog', icon: Layers },
           { id: 'inventory', label: 'Inventory Status', icon: Activity }
         ].map(tab => (
           <button
             key={tab.id}
+            type="button"
+            role="tab"
+            id={`${tab.id}-tab`}
+            aria-selected={activeTab === tab.id}
+            aria-controls={`${tab.id}-panel`}
             onClick={() => { setActiveTab(tab.id); setPagination(prev => ({ ...prev, currentPage: 1 })); }}
-            className={`px-6 py-3.5 rounded-2xl flex items-center gap-2 text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === tab.id ? 'bg-slate-900 text-white shadow-lg' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'}`}
+            className={`flex min-h-10 flex-1 items-center justify-center gap-2 rounded-lg px-4 py-2 text-[13px] font-bold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 sm:flex-none ${activeTab === tab.id ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'}`}
           >
-            <tab.icon className="h-3.5 w-3.5" />
+            <tab.icon className="h-4 w-4" />
             {tab.label}
           </button>
         ))}
       </div>
 
       {/* Main Content Viewport */}
-      <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <div id={`${activeTab}-panel`} role="tabpanel" aria-labelledby={`${activeTab}-tab`} className="min-w-0 animate-in fade-in slide-in-from-bottom-4 duration-500">
         {activeTab === 'products' ? (
-          <div className="space-y-8">
-            <div className="bg-slate-900 p-2 rounded-[2rem] shadow-xl border border-slate-800">
-                <div className="grid grid-cols-1 md:grid-cols-12 gap-2">
-                    <div className="md:col-span-6 relative group">
-                        <div className="absolute left-6 top-1/2 -translate-y-1/2 flex items-center justify-center pointer-events-none">
+          <div className="min-w-0 space-y-5 sm:space-y-6">
+            <div className="rounded-2xl border border-slate-800 bg-slate-900 p-2 shadow-lg">
+                <div className="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(14rem,20rem)]">
+                    <div className="group relative min-w-0">
+                        <label htmlFor="product-catalog-search" className="sr-only">Search products</label>
+                        <div className="pointer-events-none absolute left-3.5 top-1/2 flex -translate-y-1/2 items-center justify-center">
                             <Search className="h-4 w-4 text-slate-500 group-focus-within:text-primary-500 transition-colors" />
                         </div>
                         <input
+                            id="product-catalog-search"
                             type="text" 
                             value={productSearchInput} 
                             onChange={(e) => setProductSearchInput(e.target.value)}
                             placeholder="SEARCH CATALOG ASSETS..."
-                            className="w-full pl-16 pr-4 py-4 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl outline-none focus:ring-2 focus:ring-primary-500/20 transition-all placeholder:text-slate-600 font-sans"
+                            className="h-11 w-full rounded-xl bg-slate-800 py-2 pl-11 pr-4 font-sans text-[13px] font-semibold text-white outline-none transition-all placeholder:text-slate-500 focus-visible:ring-2 focus-visible:ring-primary-500"
                         />
                     </div>
-                    <div className="md:col-span-4 relative group">
-                        <div className="absolute left-6 top-1/2 -translate-y-1/2">
+                    <div className="group relative min-w-0">
+                        <label htmlFor="product-category-filter" className="sr-only">Filter products by category</label>
+                        <div className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2">
                             <Layers className="h-3.5 w-3.5 text-primary-500" />
                         </div>
                         <select
+                            id="product-category-filter"
                             value={productFilters.category} 
                             onChange={(e) => setProductFilters(prev => ({ ...prev, category: e.target.value }))}
-                            className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-2xl pl-16 pr-10 py-4 outline-none focus:ring-2 focus:ring-primary-500/20 appearance-none transition-all cursor-pointer font-sans"
+                            className="h-11 w-full cursor-pointer appearance-none rounded-xl border-none bg-slate-800 py-2 pl-11 pr-10 font-sans text-[12px] font-bold text-white outline-none transition-all focus-visible:ring-2 focus-visible:ring-primary-500"
                         >
                             <option value="" className="bg-slate-900 text-white font-black">ALL CATEGORIES: VIEW ALL</option>
                             {PRODUCT_CATEGORIES.map(category => (
                               <option key={category.value} value={category.value} className="bg-slate-900 text-white font-black">{category.label.toUpperCase()}</option>
                             ))}
                         </select>
-                        <ChevronDown className="absolute right-6 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500 pointer-events-none" />
+                        <ChevronDown className="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
                     </div>
                 </div>
             </div>
 
             {/* Products Grid */}
-            <div className="responsive-card-grid [--card-min:17rem] sm:[--card-min:18rem] [--card-gap:1rem]">
+            <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
               {products.map((product) => (
-                <div key={product._id} className="group bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-xl hover:-translate-y-0.5 transition-all overflow-hidden flex flex-col">
+                <article key={product._id} className="group flex min-w-0 flex-col overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg">
                   {/* Image */}
-                  <div className="relative w-full aspect-square bg-slate-50 flex items-center justify-center overflow-hidden">
+                  <div className="relative flex aspect-[4/3] w-full items-center justify-center overflow-hidden bg-slate-50 p-3">
                     {product.images?.[0] ? (
-                      <img src={getImageUrl(product.images[0])} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
+                      <img src={getImageUrl(product.images[0])} alt={product.name} className="h-full w-full object-contain transition-transform duration-500 group-hover:scale-[1.03]" />
                     ) : (
-                      <Package className="h-10 w-10 text-slate-200" />
+                      <Package className="h-9 w-9 text-slate-200" />
                     )}
 
                     {/* Brand Overlay on Hover */}
@@ -516,7 +525,7 @@ const ProductInventory = () => {
 
                     {/* Top Badges */}
                     <div className="absolute top-2 right-2">
-                      <span className={`px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-wider ${product.stockQuantity > 0 ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white'}`}>
+                      <span className={`rounded-lg px-2 py-1 text-[10px] font-black uppercase tracking-wide ${product.stockQuantity > 0 ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white'}`}>
                         {product.stockQuantity || 0} UNITS
                       </span>
                     </div>
@@ -528,99 +537,101 @@ const ProductInventory = () => {
                   </div>
 
                   {/* Card Body */}
-                  <div className="p-5 flex-1 flex flex-col gap-3">
+                  <div className="flex flex-1 flex-col gap-2.5 p-4">
                     <div>
-                      <p className="text-[10px] font-black text-primary-600 uppercase tracking-widest leading-none mb-1.5 opacity-80">{product.category}</p>
-                      <h3 className="mb-1.5 min-h-[2.5rem] text-[15px] font-black uppercase leading-tight text-slate-900 line-clamp-2 break-words">
+                      <p className="mb-1.5 text-[11px] font-bold uppercase leading-none tracking-wide text-primary-600">{product.category}</p>
+                      <div role="heading" aria-level="3" className="mb-1 min-h-[2.5rem] text-base font-black uppercase leading-tight text-slate-900 line-clamp-2 break-words">
                         {product.name}
-                      </h3>
-                      <p className="text-[11px] font-bold text-slate-400 uppercase truncate tracking-tight">{product.brand || 'No Brand'}</p>
+                      </div>
+                      <p className="truncate text-[11px] font-semibold uppercase tracking-tight text-slate-500">{product.brand || 'No Brand'}</p>
                     </div>
 
                     {/* Price + Action Row */}
-                    <div className="mt-auto pt-4 border-t border-slate-50 flex items-center justify-between">
-                      <span className="text-xl font-black text-slate-900 tracking-tighter">
+                    <div className="mt-auto flex items-center justify-between gap-2 border-t border-slate-100 pt-3">
+                      <span className="text-lg font-black tracking-tight text-slate-900">
                         ₱{(product.price || 0).toLocaleString()}
                       </span>
                       <div className="flex gap-2">
                         {canUpdate && (
                           <button aria-label={`Edit ${product.name}`} title="Edit Product" onClick={() => handleOpenProductModal(product)}
-                            className="p-2.5 bg-slate-50 text-slate-400 rounded-2xl hover:bg-primary-600 hover:text-white transition-all shadow-sm">
+                            className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-50 text-slate-500 shadow-sm transition-all hover:bg-primary-600 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500">
                             <Edit className="h-4 w-4" />
                           </button>
                         )}
                         {canDelete && (
                           <button aria-label={`Delete ${product.name}`} title="Delete Product" onClick={() => { if (window.confirm(`Delete “${product.name}”?\n\nThis product will be removed from the store's active product list.`)) adminProductService.deleteProduct(product._id).then(() => { toast.success('Product deleted successfully.'); fetchProducts(); }).catch(() => toast.error('Unable to delete this product. Please try again.')); }}
-                            className="p-2.5 bg-slate-50 text-slate-400 rounded-2xl hover:bg-rose-500 hover:text-white transition-all shadow-sm">
+                            className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-50 text-slate-500 shadow-sm transition-all hover:bg-rose-500 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500">
                             <Trash2 className="h-4 w-4" />
                           </button>
                         )}
                       </div>
                     </div>
                   </div>
-                </div>
+                </article>
               ))}
             </div>
           </div>
         ) : (
           /* Inventory Dashboard */
-          <div className="space-y-8">
+          <div className="min-w-0 space-y-5 sm:space-y-6">
             {/* Inventory Summary */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
               {[
                 { label: 'Total Products', value: summary.totalItems, icon: Box, color: 'primary' },
                 { label: 'Low Stock Items', value: summary.lowStockItems, icon: AlertTriangle, color: 'amber' },
                 { label: 'Out of Stock', value: summary.outOfStockItems, icon: TrendingDown, color: 'rose' },
                 { label: 'Total Inventory Value', value: `₱${summary.totalValue?.toLocaleString()}`, icon: PhilippinePeso, color: 'emerald' }
               ].map((stat, idx) => (
-                <div key={idx} className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm group hover:shadow-lg hover:border-primary-100 transition-all">
-                  <div className={`w-10 h-10 rounded-2xl bg-${stat.color}-50 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}>
-                    <stat.icon className={`h-5 w-5 text-${stat.color}-600`} />
+                <div key={idx} className="group rounded-2xl border border-slate-100 bg-white p-4 shadow-sm transition-all hover:border-primary-100 hover:shadow-md">
+                  <div className={`mb-2.5 flex h-9 w-9 items-center justify-center rounded-xl bg-${stat.color}-50 transition-transform group-hover:scale-105`}>
+                    <stat.icon className={`h-4 w-4 text-${stat.color}-600`} />
                   </div>
                   <div>
-                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1 leading-tight">{stat.label}</p>
-                    <p className="text-xl font-black text-slate-900 tracking-tighter">{stat.value}</p>
+                    <p className="mb-1 text-[10px] font-black uppercase leading-tight tracking-wide text-slate-500">{stat.label}</p>
+                    <p className="text-lg font-black tracking-tight text-slate-900">{stat.value}</p>
                   </div>
                 </div>
               ))}
             </div>
 
             {/* Stock List */}
-            <div className="bg-white rounded-[3rem] border border-slate-100 shadow-xl overflow-hidden">
-            <div className="bg-slate-900 p-2 rounded-[2rem] shadow-xl border border-slate-800">
-                <div className="grid grid-cols-1 md:grid-cols-12 gap-2">
-                    <div className="md:col-span-12 relative group">
-                        <div className="absolute left-6 top-1/2 -translate-y-1/2 flex items-center justify-center pointer-events-none">
+            <div className="min-w-0 max-w-full overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-lg">
+            <div className="border-b border-slate-800 bg-slate-900 p-2">
+                <div className="grid grid-cols-1">
+                    <div className="group relative min-w-0">
+                        <label htmlFor="inventory-search" className="sr-only">Search inventory</label>
+                        <div className="pointer-events-none absolute left-3.5 top-1/2 flex -translate-y-1/2 items-center justify-center">
                             <Search className="h-4 w-4 text-slate-500 group-focus-within:text-primary-500 transition-colors" />
                         </div>
                         <input
+                            id="inventory-search"
                             type="text" 
                             value={inventorySearchInput} 
                             onChange={(e) => setInventorySearchInput(e.target.value)}
                             placeholder="SEARCH INVENTORY..."
-                            className="w-full pl-16 pr-4 py-4 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl outline-none focus:ring-2 focus:ring-primary-500/20 transition-all placeholder:text-slate-600 font-sans"
+                            className="h-11 w-full rounded-xl bg-slate-800 py-2 pl-11 pr-4 font-sans text-[13px] font-semibold text-white outline-none transition-all placeholder:text-slate-500 focus-visible:ring-2 focus-visible:ring-primary-500"
                         />
                     </div>
                 </div>
             </div>
 
-              <div className="overflow-x-auto no-scrollbar">
-                <table className="min-w-full divide-y divide-slate-100">
+              <div className="max-w-full overflow-x-auto no-scrollbar">
+                <table className="min-w-[720px] divide-y divide-slate-100">
                   <thead className="bg-slate-50/50">
                     <tr>
-                      <th className="px-10 py-6 text-left text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">Product</th>
-                      <th className="px-6 py-6 text-left text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">Supplier</th>
-                      <th className="px-10 py-6 text-center text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">Stock Quantity</th>
-                      <th className="px-10 py-6 text-center text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">Status</th>
-                      <th className="px-10 py-6 text-right text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">Actions</th>
+                      <th className="px-5 py-3.5 text-left text-[10px] font-black uppercase tracking-wider text-slate-500">Product</th>
+                      <th className="px-4 py-3.5 text-left text-[10px] font-black uppercase tracking-wider text-slate-500">Supplier</th>
+                      <th className="px-5 py-3.5 text-center text-[10px] font-black uppercase tracking-wider text-slate-500">Stock Quantity</th>
+                      <th className="px-5 py-3.5 text-center text-[10px] font-black uppercase tracking-wider text-slate-500">Status</th>
+                      <th className="px-5 py-3.5 text-right text-[10px] font-black uppercase tracking-wider text-slate-500">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-50">
                     {inventory.map((item) => (
                       <tr key={item.inventoryId} className="hover:bg-slate-50 transition-colors group">
-                        <td className="px-10 py-6">
-                          <div className="flex items-center gap-5">
-                            <div className="w-14 h-14 bg-slate-50 rounded-2xl flex items-center justify-center border border-slate-100 text-slate-300 group-hover:bg-primary-600 group-hover:text-white transition-all shadow-inner relative overflow-hidden">
+                        <td className="px-5 py-3.5">
+                          <div className="flex items-center gap-3">
+                            <div className="relative flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-slate-100 bg-slate-50 text-slate-300 shadow-inner transition-all group-hover:bg-primary-600 group-hover:text-white">
                               {item.images?.[0] ? (
                                 <img src={getImageUrl(item.images[0])} className="w-full h-full object-cover" alt="" />
                               ) : <Package className="h-6 w-6" />}
@@ -635,30 +646,30 @@ const ProductInventory = () => {
                             </div>
                           </div>
                         </td>
-                        <td className="px-6 py-6">
+                        <td className="px-4 py-3.5">
                           {item.supplierName ? (
                             <span className="text-[10px] font-bold text-indigo-600 uppercase tracking-wide">{item.supplierName}</span>
                           ) : (
                             <span className="text-[9px] font-bold text-slate-300 uppercase">Not linked</span>
                           )}
                         </td>
-                        <td className="px-10 py-6 text-center">
+                        <td className="px-5 py-3.5 text-center">
                           <div className="flex flex-col items-center">
                             <span className="text-[16px] font-black text-slate-900 tracking-tighter">{item.currentStock}</span>
                             <span className="text-[8px] font-bold text-slate-400 uppercase tracking-[0.2em] opacity-60">THRESHOLD: {item.reorderLevel}</span>
                           </div>
                         </td>
-                        <td className="px-10 py-6 text-center">
-                          <span className={`inline-flex px-4 py-2 rounded-2xl text-[9px] font-black uppercase tracking-widest border-2 ${item.currentStock === 0 ? 'bg-rose-50 text-rose-600 border-rose-100' :
+                        <td className="px-5 py-3.5 text-center">
+                          <span className={`inline-flex rounded-xl border px-3 py-1.5 text-[9px] font-black uppercase tracking-wide ${item.currentStock === 0 ? 'bg-rose-50 text-rose-600 border-rose-100' :
                             item.currentStock <= item.reorderLevel ? 'bg-secondary-50 text-primary-600 border-secondary-100' :
                               'bg-emerald-50 text-emerald-600 border-emerald-100'
                             }`}>
                             {item.currentStock === 0 ? 'OUT OF STOCK' : item.currentStock <= item.reorderLevel ? 'LOW STOCK' : 'IN STOCK'}
                           </span>
                         </td>
-                        <td className="px-10 py-6 text-right">
+                        <td className="px-5 py-3.5 text-right">
                           {canAdjustStock && (
-                            <button onClick={() => handleOpenInventoryModal(item)} className="px-6 py-3.5 bg-white border-2 border-slate-100 hover:bg-slate-900 hover:border-slate-900 hover:text-white rounded-2xl transition-all text-slate-500 text-[10px] font-black uppercase tracking-widest group-hover:shadow-lg">
+                            <button onClick={() => handleOpenInventoryModal(item)} className="h-10 rounded-xl border border-slate-200 bg-white px-4 text-[11px] font-black uppercase tracking-wide text-slate-600 transition-all hover:border-slate-900 hover:bg-slate-900 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 group-hover:shadow-sm">
                               Adjust Stock
                             </button>
                           )}
