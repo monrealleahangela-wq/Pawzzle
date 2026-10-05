@@ -31,6 +31,7 @@ const OrderDetail = () => {
   const [isTimelineCollapsed, setIsTimelineCollapsed] = useState(user?.role !== 'customer');
   const [isGeneratingInvoice, setIsGeneratingInvoice] = useState(false);
   const [eligibleRiders, setEligibleRiders] = useState([]);
+  const [assignmentReadiness, setAssignmentReadiness] = useState(null);
   const [deliveryParcel, setDeliveryParcel] = useState({ weightKg: '', parcelCount: 1 });
   const [deliveryAssignment, setDeliveryAssignment] = useState(null);
   const [riderReviewOpen, setRiderReviewOpen] = useState(false);
@@ -44,6 +45,10 @@ const OrderDetail = () => {
     deliveryService.getTrackingForOrder(order._id).then(response => {
       const delivery = response.data.delivery || null;
       setDeliveryAssignment(delivery);
+      if (delivery?.parcel) setDeliveryParcel({
+        weightKg: delivery.parcel.weightKg || '',
+        parcelCount: delivery.parcel.parcelCount || 1
+      });
       if (user?.role === 'customer') {
         if (delivery?._id && delivery.assignmentType === 'internal') {
           reviewService.checkReviewEligibility('Delivery', delivery._id)
@@ -58,9 +63,24 @@ const OrderDetail = () => {
   }, [order?._id, order?.delivery, user?.role]);
 
   useEffect(() => {
-    if (!['admin', 'super_admin', 'store_owner'].includes(user?.role)) return;
-    staffService.getEligibleRiders().then(response => setEligibleRiders(response.data.riders || [])).catch(() => setEligibleRiders([]));
-  }, [user?.role]);
+    if (!['admin', 'super_admin', 'platform_admin', 'store_owner'].includes(user?.role) || !order) return undefined;
+    const timer = setTimeout(() => {
+      const params = {
+        ...(order.store?._id || order.store ? { storeId: order.store?._id || order.store } : {})
+      };
+      if (Number(deliveryParcel.weightKg) > 0 && Number(deliveryParcel.parcelCount) > 0) {
+        Object.assign(params, { weightKg: Number(deliveryParcel.weightKg), parcelCount: Number(deliveryParcel.parcelCount) });
+      }
+      staffService.getEligibleRiders(params).then(response => {
+        setEligibleRiders(response.data.riders || []);
+        setAssignmentReadiness(response.data.assignmentReadiness || null);
+      }).catch(error => {
+        setEligibleRiders([]);
+        setAssignmentReadiness({ message: error.response?.data?.message || 'Unable to check Rider eligibility.' });
+      });
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [user?.role, order, deliveryParcel.weightKg, deliveryParcel.parcelCount]);
 
   useEffect(() => {
     if (order && !hasAutoReviewed && new URLSearchParams(location.search).get('review') === 'true') {
@@ -110,6 +130,10 @@ const OrderDetail = () => {
       const response = await orderService.getOrderById(id);
       const orderData = response.data.order;
       setOrder(orderData);
+      setDeliveryParcel(current => ({
+        weightKg: current.weightKg,
+        parcelCount: orderData.items?.reduce((total, item) => total + Number(item.quantity || 0), 0) || current.parcelCount || 1
+      }));
       
       // Fetch reviews if user is a seller and order is delivered/completed/finalized
       if (user?.role !== 'customer' && ['delivered', 'completed', 'finalized'].includes(orderData.status)) {
@@ -949,7 +973,7 @@ const OrderDetail = () => {
                 <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest leading-relaxed">
                   Pawzzle assigns an active internal rider. Navigation and proof tools stay inside the rider's authenticated workspace.
                 </p>
-                <DeliveryAssignmentFields riders={eligibleRiders} parcel={deliveryParcel} onParcelChange={setDeliveryParcel}/>
+                <DeliveryAssignmentFields riders={eligibleRiders} assignmentReadiness={assignmentReadiness} parcel={deliveryParcel} onParcelChange={setDeliveryParcel}/>
                 {deliveryAssignment?.assignmentType === 'internal' && <div className="p-3 rounded-xl bg-white border text-xs"><p className="text-[9px] font-black uppercase text-slate-400">Current Delivery Method</p><p className="font-black text-slate-800">Pawzzle Rider</p><p className="text-slate-500">{deliveryAssignment.assignedRider?.firstName} {deliveryAssignment.assignedRider?.lastName} · {deliveryAssignment.assignedRider?.riderProfile?.staffId}</p></div>}
                 <button
                   onClick={handleAssignRider}

@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
+const { RIDER_VEHICLE_TYPES } = require('../config/riderVehicles');
 
 const userSchema = new mongoose.Schema({
   username: {
@@ -166,7 +167,7 @@ const userSchema = new mongoose.Schema({
   riderProfile: {
     staffId: { type: String, trim: true, uppercase: true },
     accountStatus: { type: String, enum: ['active', 'inactive', 'suspended'], default: 'active' },
-    vehicleType: { type: String, enum: ['motorcycle', 'bicycle', 'car', 'van', 'other', ''], default: '' },
+    vehicleType: { type: String, enum: [...RIDER_VEHICLE_TYPES, ''], default: '' },
     plateNumber: { type: String, trim: true, uppercase: true, default: '' },
     licenseId: { type: String, trim: true, default: '' },
     deliveryZone: { type: String, trim: true, default: '' },

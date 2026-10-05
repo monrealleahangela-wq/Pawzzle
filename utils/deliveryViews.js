@@ -1,3 +1,5 @@
+const { getRiderCapacitySummary } = require('./riderCapacity');
+
 const plain = value => (value?.toObject ? value.toObject() : value);
 
 const compact = value => Object.fromEntries(
@@ -34,7 +36,8 @@ const riderView = rider => {
       vehicleType: source.riderProfile.vehicleType,
       plateNumber: source.riderProfile.plateNumber,
       deliveryZone: source.riderProfile.deliveryZone,
-      vehicleCapacity: source.riderProfile.vehicleCapacity
+      vehicleCapacity: source.riderProfile.vehicleCapacity,
+      capacity: getRiderCapacitySummary(source.riderProfile)
     } : undefined
   });
 };

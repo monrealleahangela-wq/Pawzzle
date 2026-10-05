@@ -9,6 +9,11 @@ const Voucher = require('../models/Voucher');
 const StockSyncService = require('./stockSyncService');
 const RevenueService = require('./revenueService');
 const { finalizePetReservation, releasePetReservation } = require('./petAvailabilityService');
+const {
+  getRiderCapacitySummary,
+  capacitySupportsParcel,
+  capacityHasRoomForParcel
+} = require('../utils/riderCapacity');
 
 const ACTIVE_ASSIGNMENT_STATUSES = ['pending', 'unassigned', 'assigned', 'accepted'];
 const ASSIGNABLE_ORDER_STATUSES = ['ready_for_pickup', 'rider_assigned'];
@@ -75,6 +80,38 @@ const riderSort = (left, right) => {
     || Number(left.activeDeliveryCount || 0) - Number(right.activeDeliveryCount || 0)
     || new Date(left.riderProfile?.lastAssignedAt || 0) - new Date(right.riderProfile?.lastAssignedAt || 0)
     || String(left._id).localeCompare(String(right._id));
+};
+
+const evaluateRiderEligibility = (rider, parcel, now = new Date()) => {
+  const capacity = getRiderCapacitySummary(rider?.riderProfile);
+  if (!capacity.configured) return { eligible: false, reason: 'vehicle_setup_required', capacity };
+  if (!isAvailableNow(rider, now)) return { eligible: false, reason: 'off_duty_or_unavailable', capacity };
+  if (!capacitySupportsParcel(capacity, parcel)) return { eligible: false, reason: 'vehicle_capacity_too_small', capacity };
+  if (!capacityHasRoomForParcel(capacity, parcel)) return { eligible: false, reason: 'insufficient_remaining_capacity', capacity };
+  return { eligible: true, reason: 'eligible', capacity };
+};
+
+const ASSIGNMENT_MESSAGES = {
+  eligible: 'An eligible internal Delivery Rider is available for automatic assignment.',
+  no_active_riders: 'No active internal Delivery Riders are available for this Store.',
+  vehicle_setup_required: 'Active Delivery Riders require vehicle and capacity setup before assignment.',
+  off_duty_or_unavailable: 'Configured Delivery Riders are currently off duty or unavailable.',
+  vehicle_capacity_too_small: 'No configured Rider vehicle can carry this parcel.',
+  insufficient_remaining_capacity: 'Available Riders do not have enough remaining capacity for this parcel.',
+  no_eligible_rider: 'No eligible internal Delivery Rider is available for this parcel.'
+};
+
+const summarizeRiderEligibility = evaluations => {
+  const rows = evaluations || [];
+  const eligibleCount = rows.filter(row => row.eligible).length;
+  let reason = 'no_eligible_rider';
+  if (eligibleCount) reason = 'eligible';
+  else if (!rows.length) reason = 'no_active_riders';
+  else if (rows.every(row => row.reason === 'vehicle_setup_required')) reason = 'vehicle_setup_required';
+  else if (!rows.some(row => !['vehicle_setup_required', 'off_duty_or_unavailable'].includes(row.reason))) reason = 'off_duty_or_unavailable';
+  else if (rows.some(row => row.reason === 'insufficient_remaining_capacity')) reason = 'insufficient_remaining_capacity';
+  else if (rows.some(row => row.reason === 'vehicle_capacity_too_small')) reason = 'vehicle_capacity_too_small';
+  return { reason, message: ASSIGNMENT_MESSAGES[reason], eligibleCount };
 };
 
 const releaseRiderCapacity = async (delivery, session) => {
@@ -350,11 +387,10 @@ const assignDelivery = async ({ orderId, bookingId, parcel: parcelInput, actorId
         isDeleted: false,
         staffStatus: 'active',
         'riderProfile.accountStatus': 'active',
-        'riderProfile.vehicleCapacity.maxWeightKg': { $gte: parcel.weightKg },
-        'riderProfile.vehicleCapacity.maxParcelCount': { $gte: parcel.parcelCount },
         ...(reassign && previousRider ? { _id: { $ne: previousRider } } : {})
       }).session(session).lean();
-      const available = riders.filter(rider => isAvailableNow(rider)).sort(riderSort);
+      const evaluations = riders.map(rider => ({ rider, ...evaluateRiderEligibility(rider, parcel) }));
+      const available = evaluations.filter(row => row.eligible).map(row => row.rider).sort(riderSort);
       let selected;
       for (const candidate of available) {
         selected = await User.findOneAndUpdate({
@@ -374,7 +410,12 @@ const assignDelivery = async ({ orderId, bookingId, parcel: parcelInput, actorId
         }, { session, new: true });
         if (selected) break;
       }
-      if (!selected) throw fail('No available Delivery Rider has enough remaining vehicle capacity for this parcel.', 409);
+      if (!selected) {
+        const readiness = summarizeRiderEligibility(evaluations);
+        throw fail(readiness.reason === 'eligible'
+          ? ASSIGNMENT_MESSAGES.insufficient_remaining_capacity
+          : readiness.message, 409);
+      }
 
       const now = new Date();
       if (!delivery) {
@@ -439,6 +480,8 @@ module.exports = {
   completePickupOrder,
   releaseRiderCapacity,
   isAvailableNow,
+  evaluateRiderEligibility,
+  summarizeRiderEligibility,
   normalizeParcel,
   validateAssignmentSource,
   validatePickupEligibility,

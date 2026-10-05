@@ -28,6 +28,7 @@ export default function LogisticsDetail() {
   const navigate = useNavigate();
   const [data, setData] = useState(null);
   const [riders, setRiders] = useState([]);
+  const [assignmentReadiness, setAssignmentReadiness] = useState(null);
   const [loading, setLoading] = useState(true);
   const [parcel, setParcel] = useState({ weightKg: '', parcelCount: 1 });
   const [showAssignment, setShowAssignment] = useState(false);
@@ -40,15 +41,42 @@ export default function LogisticsDetail() {
       const deliveryStoreId = deliveryResponse.data.delivery.store
         || deliveryResponse.data.delivery.order?.store?._id
         || deliveryResponse.data.delivery.booking?.store?._id;
-      const riderResponse = await staffService.getEligibleRiders(deliveryStoreId ? { storeId: deliveryStoreId } : undefined);
+      const delivery = deliveryResponse.data.delivery;
+      const parcelFacts = {
+        weightKg: delivery.parcel?.weightKg || '',
+        parcelCount: delivery.parcel?.parcelCount || delivery.order?.items?.reduce((total,item)=>total+Number(item.quantity||0),0) || 1
+      };
+      const eligibilityParams = deliveryStoreId ? { storeId: deliveryStoreId } : {};
+      if (Number(parcelFacts.weightKg) > 0) Object.assign(eligibilityParams, parcelFacts);
+      const riderResponse = await staffService.getEligibleRiders(eligibilityParams);
       setData(deliveryResponse.data);
       setRiders(riderResponse.data.riders || []);
-      const delivery = deliveryResponse.data.delivery;
-      setParcel({ weightKg: delivery.parcel?.weightKg || '', parcelCount: delivery.parcel?.parcelCount || delivery.order?.items?.reduce((total,item)=>total+Number(item.quantity||0),0) || 1 });
+      setAssignmentReadiness(riderResponse.data.assignmentReadiness || null);
+      setParcel(parcelFacts);
     } catch (error) { toast.error(error.response?.data?.message || 'Unable to load delivery.'); }
     finally { setLoading(false); }
   }, [id]);
   useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    if (!showAssignment || !data?.delivery || !(Number(parcel.weightKg) > 0) || !(Number(parcel.parcelCount) > 0)) return undefined;
+    const timer = setTimeout(async () => {
+      const deliveryStoreId = data.delivery.store
+        || data.delivery.order?.store?._id
+        || data.delivery.booking?.store?._id;
+      try {
+        const response = await staffService.getEligibleRiders({
+          ...(deliveryStoreId ? { storeId: deliveryStoreId } : {}),
+          weightKg: Number(parcel.weightKg),
+          parcelCount: Number(parcel.parcelCount)
+        });
+        setRiders(response.data.riders || []);
+        setAssignmentReadiness(response.data.assignmentReadiness || null);
+      } catch (error) {
+        setAssignmentReadiness({ message: error.response?.data?.message || 'Unable to check Rider eligibility.' });
+      }
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [showAssignment, data, parcel.weightKg, parcel.parcelCount]);
   useRealTimeUpdates({ onDeliveryUpdate: load });
 
   if (loading && !data) return <div className="min-h-[60vh] flex items-center justify-center"><RefreshCw className="animate-spin text-orange-600"/></div>;
@@ -89,7 +117,7 @@ export default function LogisticsDetail() {
   return <div className="min-h-screen bg-slate-50 p-3 sm:p-5 space-y-4 pb-24">
     <header className="bg-white border rounded-2xl p-4 flex flex-wrap items-center justify-between gap-3"><div className="flex items-start gap-3"><button onClick={()=>navigate('/admin/logistics')} className="w-9 h-9 rounded-lg border flex items-center justify-center"><ArrowLeft size={15}/></button><div><p className="text-[9px] font-black text-orange-600 uppercase tracking-widest">Delivery Details</p><h1 className="text-xl font-black text-slate-900">{delivery.deliveryNumber}</h1><p className="text-[10px] text-slate-500">{delivery.order?.orderNumber || `Booking ${String(delivery.booking?._id || '').slice(-8).toUpperCase()}`} · Created {new Date(delivery.createdAt).toLocaleString()}</p></div></div><div className="flex gap-2"><button onClick={load} className="h-9 px-3 border rounded-lg text-xs font-bold"><RefreshCw size={13} className="inline mr-2"/>Refresh</button>{!isClosed&&<button onClick={()=>setShowAssignment(!showAssignment)} className="h-9 px-3 rounded-lg bg-slate-900 text-white text-[10px] font-black uppercase">{delivery.assignmentType==='unassigned'?'Assign Rider':'Reassign Rider'}</button>}</div></header>
 
-    {showAssignment && <section className="bg-white border rounded-2xl p-4 space-y-4"><DeliveryAssignmentFields riders={riders} parcel={parcel} onParcelChange={setParcel}/><div className="flex justify-end gap-2"><button onClick={()=>setShowAssignment(false)} className="h-9 px-4 text-xs font-bold">Cancel</button><button onClick={assign} disabled={saving || !Number(parcel.weightKg)} className="h-9 px-4 rounded-lg bg-orange-600 text-white text-[10px] font-black uppercase disabled:opacity-50">{saving?'Saving…':delivery.assignmentType==='unassigned'?'Assign Automatically':'Reassign Automatically'}</button></div></section>}
+    {showAssignment && <section className="bg-white border rounded-2xl p-4 space-y-4"><DeliveryAssignmentFields riders={riders} assignmentReadiness={assignmentReadiness} parcel={parcel} onParcelChange={setParcel}/><div className="flex justify-end gap-2"><button onClick={()=>setShowAssignment(false)} className="h-9 px-4 text-xs font-bold">Cancel</button><button onClick={assign} disabled={saving || !Number(parcel.weightKg)} className="h-9 px-4 rounded-lg bg-orange-600 text-white text-[10px] font-black uppercase disabled:opacity-50">{saving?'Saving…':delivery.assignmentType==='unassigned'?'Assign Automatically':'Reassign Automatically'}</button></div></section>}
 
     <section className="grid grid-cols-2 md:grid-cols-4 gap-2.5">{[[Truck,'Status',delivery.statusLabel],[User,'Rider',fullName(currentRider)],[Package,'Parcel',delivery.parcel?.weightKg?`${delivery.parcel.weightKg} kg · ${delivery.parcel.parcelCount} parcel(s)`:'Not measured'],[Wallet,cod?'COD Amount':'Payment',cod?money(source?.totalAmount||source?.totalPrice):(source?.paymentStatus||'pending')]].map(([Icon,label,value])=><div key={label} className="bg-white border rounded-xl p-3"><Icon size={15} className="text-orange-600 mb-2"/><p className="text-[8px] text-slate-400 font-black uppercase">{label}</p><p className="text-xs font-black text-slate-900 mt-1 capitalize">{value}</p></div>)}</section>
 

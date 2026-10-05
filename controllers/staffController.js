@@ -4,7 +4,11 @@ const Store = require('../models/Store');
 const crypto = require('crypto');
 const { sendStaffInvitation } = require('../utils/emailService');
 const Delivery = require('../models/Delivery');
-const { isAvailableNow } = require('../services/deliveryAssignmentService');
+const {
+    isAvailableNow,
+    evaluateRiderEligibility,
+    summarizeRiderEligibility
+} = require('../services/deliveryAssignmentService');
 const RiderEarning = require('../models/RiderEarning');
 const RiderPayout = require('../models/RiderPayout');
 const Service = require('../models/Service');
@@ -15,6 +19,8 @@ const { createNotification } = require('./notificationController');
 const { normalizeRole, getEffectivePermissions } = require('../config/permissions');
 const { riderDeliveryView, riderFeedbackView } = require('../utils/deliveryViews');
 const { policyForRole } = require('../services/rolePermissionService');
+const { getRiderCapacitySummary, capacityCanContainReservedLoad } = require('../utils/riderCapacity');
+const { RIDER_VEHICLE_TYPES } = require('../config/riderVehicles');
 const {
     SPECIALIZED_STAFF_ROLES,
     getEnabledSpecializedRoles,
@@ -186,7 +192,7 @@ const cleanRiderProfile = (profile = {}, existing = {}) => ({
 const validateRider = (profile, phone) => {
     if (!profile.staffId) return 'Staff ID is required for a Delivery Rider.';
     if (!PHONE_PATTERN.test(String(phone || '').replace(/[\s-]/g, ''))) return 'Enter a valid Philippine mobile number.';
-    if (!profile.vehicleType) return 'Vehicle type is required for a Delivery Rider.';
+    if (!RIDER_VEHICLE_TYPES.includes(profile.vehicleType)) return 'Select a supported vehicle type for the Delivery Rider.';
     if (profile.vehicleType !== 'bicycle' && !profile.plateNumber) return 'Vehicle plate number is required.';
     if (!RIDER_STATUSES.includes(profile.accountStatus)) return 'Invalid rider account status.';
     if (!Number.isFinite(profile.vehicleCapacity.maxWeightKg) || profile.vehicleCapacity.maxWeightKg <= 0) return 'Vehicle weight capacity must be greater than zero.';
@@ -524,6 +530,11 @@ const updateStaff = async (req, res) => {
             const normalized = cleanRiderProfile(riderProfile, staff.riderProfile || {});
             const riderError = validateRider(normalized, phone !== undefined ? phone : staff.phone);
             if (riderError) return res.status(400).json({ message: riderError });
+            if (!capacityCanContainReservedLoad(normalized)) {
+                return res.status(409).json({
+                    message: 'The Rider vehicle capacity cannot be reduced below the currently reserved delivery load.'
+                });
+            }
             const duplicate = await User.findOne({ _id: { $ne: staff._id }, 'riderProfile.staffId': normalized.staffId, isDeleted: false });
             if (duplicate) return res.status(409).json({ message: 'Staff ID is already registered.' });
             staff.riderProfile = normalized;
@@ -714,7 +725,8 @@ const getStaffConfiguration = async (req, res) => {
             services,
             enabledSpecializedRoles: getEnabledSpecializedRoles(services),
             nextStaffId: `STF-${String(Number(store.staffSequence || 0) + 1).padStart(4, '0')}`,
-            availableRoles: ['manager', 'service_staff', 'cashier', 'inventory_staff', 'procurement_officer', 'finance_staff', 'veterinarian', 'groomer', 'trainer', 'boarding_staff', 'delivery_rider']
+            availableRoles: ['manager', 'service_staff', 'cashier', 'inventory_staff', 'procurement_officer', 'finance_staff', 'veterinarian', 'groomer', 'trainer', 'boarding_staff', 'delivery_rider'],
+            riderVehicleTypes: RIDER_VEHICLE_TYPES
         });
     } catch (error) {
         console.error('getStaffConfiguration error:', error);
@@ -1028,7 +1040,19 @@ const getEligibleRiders = async (req, res) => {
         const storeIds = platformScope
             ? (req.query.storeId ? [req.query.storeId] : [])
             : await getOwnedStoreIds(req.user);
-        if (!platformScope && !storeIds.length) return res.json({ riders: [] });
+        if (!platformScope && !storeIds.length) return res.json({
+            riders: [],
+            assignmentReadiness: summarizeRiderEligibility([])
+        });
+        let parcel;
+        if (req.query.weightKg !== undefined || req.query.parcelCount !== undefined) {
+            const weightKg = Number(req.query.weightKg);
+            const parcelCount = Number(req.query.parcelCount);
+            if (!Number.isFinite(weightKg) || weightKg <= 0 || !Number.isInteger(parcelCount) || parcelCount <= 0) {
+                return res.status(400).json({ message: 'Valid parcel weight and parcel count are required for Rider eligibility.' });
+            }
+            parcel = { weightKg, parcelCount };
+        }
         const query = {
             $or: [{ role: 'delivery_rider' }, { role: 'staff', staffType: 'delivery_rider' }],
             isDeleted: false, isActive: true, staffStatus: 'active',
@@ -1045,15 +1069,18 @@ const getEligibleRiders = async (req, res) => {
         ])]);
         const byRider = Object.fromEntries(counts.map(row => [row._id.toString(), row.count]));
         const ratingsByRider = Object.fromEntries(ratings.map(row => [row._id.toString(), row]));
-        res.json({ riders: riders.map(rider => {
+        const riderRows = riders.map(rider => {
             const activeDeliveryCount = byRider[rider._id.toString()] || 0;
             const rating = ratingsByRider[rider._id.toString()];
             const scheduleAvailable = isAvailableNow(rider);
-            const capacity = rider.riderProfile?.vehicleCapacity || {};
-            const load = rider.riderProfile?.currentLoad || {};
-            const configured = Number(capacity.maxWeightKg) > 0 && Number(capacity.maxParcelCount) > 0;
-            return { ...rider, activeDeliveryCount, averageRating: rating ? Number(rating.averageRating.toFixed(2)) : 0, totalRatings: rating?.totalRatings || 0, availability: !scheduleAvailable ? 'unavailable' : configured ? (activeDeliveryCount ? 'on_delivery' : 'available') : 'capacity_not_configured', remainingCapacity: { weightKg: Math.max(0, Number(capacity.maxWeightKg || 0) - Number(load.weightKg || 0)), parcelCount: Math.max(0, Number(capacity.maxParcelCount || 0) - Number(load.parcelCount || 0)) } };
-        }) });
+            const capacity = getRiderCapacitySummary(rider.riderProfile);
+            const eligibility = parcel ? evaluateRiderEligibility(rider, parcel) : undefined;
+            return { ...rider, activeDeliveryCount, averageRating: rating ? Number(rating.averageRating.toFixed(2)) : 0, totalRatings: rating?.totalRatings || 0, availability: !scheduleAvailable ? 'unavailable' : capacity.configured ? (activeDeliveryCount ? 'on_delivery' : 'available') : 'capacity_not_configured', capacity, remainingCapacity: { weightKg: capacity.remainingWeightKg, parcelCount: capacity.remainingParcelCount }, eligibility: eligibility ? { eligible: eligibility.eligible, reason: eligibility.reason } : undefined };
+        });
+        const assignmentReadiness = parcel
+            ? summarizeRiderEligibility(riders.map(rider => evaluateRiderEligibility(rider, parcel)))
+            : { reason: 'requirements_needed', message: 'Enter parcel requirements to check Rider eligibility.', eligibleCount: 0 };
+        res.json({ riders: riderRows, assignmentReadiness });
     } catch (error) {
         console.error('getEligibleRiders error:', error);
         res.status(500).json({ message: 'Unable to load eligible riders.' });
@@ -1084,6 +1111,7 @@ const getRiderDetails = async (req, res) => {
         const sum = (items, predicate = () => true) => items.filter(predicate).reduce((total, item) => total + item.amount, 0);
         res.json({
             rider,
+            capacity: getRiderCapacitySummary(rider.riderProfile),
             stats: { totalAssigned: deliveries.length, completed, failed, successRate: totalFinished ? Math.round(completed / totalFinished * 100) : 0, averageRating: ratingRows[0] ? Number(ratingRows[0].averageRating.toFixed(2)) : 0, totalRatings: ratingRows[0]?.totalRatings || 0 },
             recentFeedback: recentFeedback.map(riderFeedbackView),
             earnings: {

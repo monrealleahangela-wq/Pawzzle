@@ -102,4 +102,39 @@ test('real MongoDB keeps assignment eligibility, capacity, Delivery, and Order c
   assert.equal(concurrent.filter(result => result.status === 'rejected').length, 1);
   assert.equal((await User.findById(rider).lean()).riderProfile.currentLoad.weightKg, 4);
   assert.equal(await Delivery.countDocuments({ order: { $in: [first._id, second._id] } }), 1);
+
+  const replacementRider = new mongoose.Types.ObjectId();
+  await User.collection.insertOne({
+    _id: replacementRider,
+    username: `replacement-${nonce}`,
+    email: `replacement-${nonce}@example.test`,
+    password: 'test-only-not-a-live-credential',
+    firstName: 'Replacement',
+    lastName: 'Rider',
+    role: 'delivery_rider',
+    store,
+    isActive: true,
+    isDeleted: false,
+    staffStatus: 'active',
+    professionalProfile: { availability: {} },
+    riderProfile: {
+      accountStatus: 'active',
+      vehicleType: 'motorcycle',
+      vehicleCapacity: { maxWeightKg: 5, maxParcelCount: 5 },
+      currentLoad: { weightKg: 0, parcelCount: 0 }
+    },
+    createdAt: new Date(),
+    updatedAt: new Date()
+  });
+  const assignedOrderId = concurrent.find(result => result.status === 'fulfilled').value.sourceId;
+  const reassigned = await assignDelivery({
+    orderId: assignedOrderId,
+    parcel: { weightKg: 4 },
+    actorId: actor,
+    reassign: true
+  });
+  assert.equal(String(reassigned.previousRiderId), String(rider));
+  assert.equal(String(reassigned.riderId), String(replacementRider));
+  assert.deepEqual((await User.findById(rider).lean()).riderProfile.currentLoad, { weightKg: 0, parcelCount: 0 });
+  assert.deepEqual((await User.findById(replacementRider).lean()).riderProfile.currentLoad, { weightKg: 4, parcelCount: 1 });
 });
