@@ -8,6 +8,7 @@ import { useRealTimeUpdates } from '../../hooks/useRealTimeUpdates';
 import { formatPeso } from '../../utils/paymentSummary';
 import { useAuth } from '../../contexts/AuthContext';
 import { hasUiActionPermission } from '../../utils/authorization';
+import ConfirmationDialog from '../../components/ui/ConfirmationDialog';
 
 const AdminOrders = () => {
   const { user } = useAuth();
@@ -30,6 +31,8 @@ const AdminOrders = () => {
 
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [pendingStatusUpdate, setPendingStatusUpdate] = useState(null);
+  const [updatingStatus, setUpdatingStatus] = useState(false);
 
   const [filters, setFilters] = useState({
     status: '',
@@ -69,15 +72,24 @@ const AdminOrders = () => {
     setPagination(prev => ({ ...prev, currentPage: 1 }));
   };
 
-  const handleStatusUpdate = async (orderId, newStatus) => {
+  const handleStatusUpdate = (orderId, newStatus) => {
     const readableStatus = newStatus.replace(/_/g, ' ').replace(/\b\w/g, char => char.toUpperCase());
-    if (!window.confirm(`Update this order to “${readableStatus}”?\n\nThe customer will see the new order status.`)) return;
+    setPendingStatusUpdate({ orderId, newStatus, readableStatus });
+  };
+
+  const confirmStatusUpdate = async () => {
+    if (!pendingStatusUpdate) return;
+    const { orderId, newStatus, readableStatus } = pendingStatusUpdate;
+    setUpdatingStatus(true);
     try {
       await adminOrderService.updateOrderStatus(orderId, { status: newStatus });
+      setPendingStatusUpdate(null);
       toast.success(`Order updated to ${readableStatus}.`);
       fetchOrders();
     } catch (error) {
       toast.error('Unable to update this order. Please try again.');
+    } finally {
+      setUpdatingStatus(false);
     }
   };
 
@@ -294,6 +306,15 @@ const AdminOrders = () => {
           </button>
         </div>
       )}
+      <ConfirmationDialog
+        isOpen={Boolean(pendingStatusUpdate)}
+        title="Update order status?"
+        description={pendingStatusUpdate ? `The customer will see this order as “${pendingStatusUpdate.readableStatus}”.` : ''}
+        confirmLabel="Update status"
+        busy={updatingStatus}
+        onCancel={() => setPendingStatusUpdate(null)}
+        onConfirm={confirmStatusUpdate}
+      />
     </div>
   );
 };

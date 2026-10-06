@@ -6,6 +6,8 @@ import 'leaflet/dist/leaflet.css';
 import { AlertTriangle, ArrowLeft, CheckCircle2, Clipboard, FileImage, MapPin, Package, RefreshCw, ShieldCheck, Truck, User, Wallet } from 'lucide-react';
 import { deliveryService, getImageUrl, logisticsService, staffService } from '../../services/apiService';
 import DeliveryAssignmentFields from '../../components/delivery/DeliveryAssignmentFields';
+import DeliveryConcernForm from '../../components/delivery/DeliveryConcernForm';
+import ConfirmationDialog from '../../components/ui/ConfirmationDialog';
 import { toast } from 'react-toastify';
 import { useRealTimeUpdates } from '../../hooks/useRealTimeUpdates';
 
@@ -33,6 +35,9 @@ export default function LogisticsDetail() {
   const [parcel, setParcel] = useState({ weightKg: '', parcelCount: 1 });
   const [showAssignment, setShowAssignment] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [reassignConfirmationOpen, setReassignConfirmationOpen] = useState(false);
+  const [concernOpen, setConcernOpen] = useState(false);
+  const [concernSubmitting, setConcernSubmitting] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -96,9 +101,7 @@ export default function LogisticsDetail() {
     .filter(([, value]) => Number.isFinite(Number(value)))
     .map(([key, value]) => [key, feeValue(key, value)]);
 
-  const assign = async () => {
-    if (!Number(parcel.weightKg)) return toast.error('Enter the measured parcel weight.');
-    if (delivery.assignmentType !== 'unassigned' && !window.confirm('Reassign Delivery?\n\nPawzzle will select another available rider and preserve assignment history.')) return;
+  const performAssignment = async () => {
     setSaving(true);
     try {
       await deliveryService.assignRider({
@@ -108,9 +111,29 @@ export default function LogisticsDetail() {
         reassign: delivery.assignmentType !== 'unassigned'
       });
       toast.success(delivery.assignmentType === 'unassigned' ? 'Rider assigned.' : 'Delivery reassigned.');
-      setShowAssignment(false); await load();
+      setShowAssignment(false); setReassignConfirmationOpen(false); await load();
     } catch (error) { toast.error(error.response?.data?.message || 'Unable to assign rider.'); }
     finally { setSaving(false); }
+  };
+
+  const assign = () => {
+    if (!Number(parcel.weightKg)) return toast.error('Enter the measured parcel weight.');
+    if (delivery.assignmentType !== 'unassigned') return setReassignConfirmationOpen(true);
+    return performAssignment();
+  };
+
+  const submitConcern = async concern => {
+    setConcernSubmitting(true);
+    try {
+      await deliveryService.submitStoreConcern(delivery._id, concern);
+      setConcernOpen(false);
+      toast.success('Delivery concern submitted.');
+      await load();
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Unable to submit the delivery concern.');
+    } finally {
+      setConcernSubmitting(false);
+    }
   };
 
   const sortedTimeline = [...(delivery.statusHistory || [])].sort((a,b)=>new Date(a.timestamp)-new Date(b.timestamp));
@@ -130,11 +153,21 @@ export default function LogisticsDetail() {
       </div>
 
       <aside className="space-y-3">
+        {delivery.concernReporting?.allowed===true&&<section className="min-w-0 rounded-2xl border bg-white p-4 dark:border-slate-700 dark:bg-slate-900"><h2 className="text-xs font-black uppercase tracking-widest">Delivery concern</h2>{!concernOpen?<><p className="mt-2 text-[10px] leading-4 text-slate-500 dark:text-slate-400">Report an issue that occurred after Rider pickup.</p><button onClick={()=>setConcernOpen(true)} className="mt-3 min-h-11 rounded-xl border border-rose-200 px-3 text-[10px] font-black uppercase text-rose-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 dark:border-rose-900 dark:text-rose-300">Report concern</button></>:<div className="mt-3"><DeliveryConcernForm onSubmit={submitConcern} onCancel={()=>setConcernOpen(false)} submitting={concernSubmitting}/></div>}</section>}
         {delivery.assignmentType === 'internal' && <section className="bg-white border rounded-2xl p-4"><h2 className="text-xs font-black uppercase tracking-widest mb-4">Pawzzle Rider Assignment</h2><div className="space-y-4"><DataBlock label="Rider">{fullName(currentRider)}</DataBlock><DataBlock label="Contact">{delivery.assignedRider?.phone}</DataBlock><DataBlock label="Staff ID">{delivery.assignedRider?.riderProfile?.staffId}</DataBlock><DataBlock label="Store">{store?.name}</DataBlock><DataBlock label="Vehicle">{delivery.assignedRider?.riderProfile?.vehicleType} {delivery.assignedRider?.riderProfile?.plateNumber}</DataBlock><DataBlock label="Assigned at">{delivery.assignedAt && new Date(delivery.assignedAt).toLocaleString()}</DataBlock></div><p className="mt-4 rounded-lg bg-emerald-50 p-2 text-[10px] font-semibold text-emerald-700">The rider receives this assignment in their authenticated Rider Dashboard.</p>{delivery.assignmentHistory?.filter(entry=>entry.assignmentType==='internal').length>1&&<div className="mt-4 pt-4 border-t"><p className="text-[8px] font-black uppercase tracking-widest text-slate-400 mb-2">Assignment history</p>{delivery.assignmentHistory.filter(entry=>entry.assignmentType==='internal').map(entry=><div key={entry._id} className="text-[9px] text-slate-600 mb-2"><b>{fullName(entry.rider)}</b> · {new Date(entry.assignedAt).toLocaleString()}{entry.endedAt&&` → ${new Date(entry.endedAt).toLocaleString()}`}</div>)}</div>}</section>}
         <section className="bg-white border rounded-2xl p-4"><h2 className="text-xs font-black uppercase tracking-widest mb-4">Delivery Timeline</h2><div className="space-y-0">{sortedTimeline.length ? sortedTimeline.map((event,index)=><div key={`${event.status}-${event.timestamp}-${index}`} className="flex gap-3"><div className="flex flex-col items-center"><CheckCircle2 size={15} className="text-emerald-600"/>{index<sortedTimeline.length-1&&<div className="w-px flex-1 min-h-9 bg-slate-200"/>}</div><div className="pb-4"><p className="text-[10px] font-black capitalize">{eventLabel(event.status)}</p><p className="text-[9px] text-slate-400">{new Date(event.timestamp).toLocaleString()}</p>{event.notes&&<p className="text-[9px] text-slate-500 mt-1">{event.notes}</p>}</div></div>) : <p className="text-xs text-slate-400">No timeline entries.</p>}</div></section>
         <section className="bg-white border rounded-2xl p-4"><h2 className="text-xs font-black uppercase tracking-widest mb-4">Rider Earnings & Finance</h2>{earning ? <div className="space-y-3"><DataBlock label="Base rate">{money(earning.baseRate)}</DataBlock><DataBlock label="Incentive / bonus">{money((earning.incentive||0)+(earning.bonus||0))}</DataBlock><DataBlock label="Deduction">{money(earning.deduction)}</DataBlock><DataBlock label="Rider earning">{money(earning.amount)}</DataBlock><DataBlock label="Payout status">{earning.payout?.status || earning.status}</DataBlock><DataBlock label="Payout reference">{earning.payout?.payoutId || earning.payout?.referenceNumber}</DataBlock></div> : <p className="text-xs text-slate-400">Internal rider earnings are calculated from the rider configuration after successful delivery.</p>}</section>
         {(delivery.deliveryAttempts?.length>0||delivery.complaints?.length>0)&&<section className="bg-rose-50 border border-rose-100 rounded-2xl p-4"><h2 className="text-xs font-black text-rose-800 uppercase tracking-widest flex gap-2"><AlertTriangle size={14}/>Recorded Issues</h2><p className="text-[10px] text-rose-700 mt-2">{delivery.deliveryAttempts?.length||0} delivery attempts · {delivery.complaints?.length||0} complaints</p><button onClick={()=>navigate('/admin/logistics?tab=issues')} className="mt-3 h-8 px-3 bg-white border border-rose-200 rounded-lg text-[9px] font-black uppercase text-rose-700">Open Issue Center</button></section>}
       </aside>
     </div>
+    <ConfirmationDialog
+      isOpen={reassignConfirmationOpen}
+      title="Reassign delivery?"
+      description="Pawzzle will automatically select another eligible Rider and preserve assignment history."
+      confirmLabel="Reassign automatically"
+      busy={saving}
+      onCancel={() => setReassignConfirmationOpen(false)}
+      onConfirm={performAssignment}
+    />
   </div>;
 }

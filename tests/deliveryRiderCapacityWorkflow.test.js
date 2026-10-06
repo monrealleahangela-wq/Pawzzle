@@ -114,7 +114,7 @@ test('assignment keeps Store scope and atomic weight and parcel-count capacity g
 test('staff capacity mutation is Store-scoped, allowlisted, and cannot forge reserved load', () => {
   const controller = source('controllers/staffController.js');
   const routes = source('routes/staff.js');
-  assert.match(routes, /router\.use\(authenticate, adminOnly\)/);
+  assert.match(routes, /router\.put\('\/:id', authenticate, adminOrStaff, requirePermission\('staff\.manage'\), updateStaff\)/);
   assert.match(controller, /canAccessStore\(req\.user, staff\.store\)/);
   assert.match(controller, /currentLoad:\s*\{[\s\S]*existing\.currentLoad/);
   assert.doesNotMatch(controller, /currentLoad:\s*\{[\s\S]*profile\.currentLoad/);

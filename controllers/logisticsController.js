@@ -6,6 +6,7 @@ const User = require('../models/User');
 const RiderEarning = require('../models/RiderEarning');
 const resolveStore = require('../utils/resolveStore');
 const { getDeliveryStatusLabel, getDeliveryLinkStatus } = require('../utils/logistics');
+const { isDeliveryConcernReportable } = require('../utils/deliveryConcerns');
 
 const PLATFORM_ROLES = new Set(['super_admin', 'platform_admin']);
 const escapeRegex = value => String(value || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -45,6 +46,10 @@ const serializeDelivery = delivery => {
     assignmentHistory: (row.assignmentHistory || []).filter(entry => entry.assignmentType === 'internal'),
     deliveryNumber: `DLV-${String(row._id).slice(-8).toUpperCase()}`,
     statusLabel: getDeliveryStatusLabel(row.status),
+    concernReporting: {
+      allowed: isDeliveryConcernReportable(row.status),
+      reason: isDeliveryConcernReportable(row.status) ? null : 'rider_pickup_required'
+    },
     linkStatus: getDeliveryLinkStatus({ ...row, assignmentType })
   };
   delete payload.riderToken;

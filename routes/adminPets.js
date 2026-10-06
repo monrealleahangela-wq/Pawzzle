@@ -128,8 +128,8 @@ router.get('/debug/all', authenticate, platformAdminOnly, async (req, res) => {
 });
 
 // Admin routes (filtered by user's store)
-router.get('/', authenticate, adminOrStaff, requirePermission('pets.view', 'pets.manage', 'inventory.view'), getAllAdminPets);
-router.get('/:id', authenticate, adminOrStaff, requirePermission('pets.view', 'pets.manage', 'inventory.view'), getPetById);
+router.get('/', authenticate, adminOrStaff, requirePermission('pets.manage', 'inventory.view'), getAllAdminPets);
+router.get('/:id', authenticate, adminOrStaff, requirePermission('pets.manage', 'inventory.view'), getPetById);
 router.post('/', authenticate, adminOrStaff, requirePermission('pets.manage', 'inventory.adjust'), createPetValidation, createPet);
 router.put('/:id', authenticate, adminOrStaff, requirePermission('pets.manage', 'inventory.adjust'), updatePetValidation, updatePet);
 router.delete('/:id', authenticate, adminOrStaff, requirePermission('pets.manage', 'inventory.adjust'), deletePet);

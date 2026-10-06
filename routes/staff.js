@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { authenticate, adminOnly, superAdminOnly, requirePermission } = require('../middleware/auth');
+const { authenticate, adminOrStaff, superAdminOnly, requirePermission } = require('../middleware/auth');
 const {
     getMyStaff,
     getStaffConfiguration,
@@ -40,25 +40,24 @@ router.get('/platform/verifications', authenticate, superAdminOnly, getProfessio
 router.patch('/platform/verifications/:id', authenticate, superAdminOnly, updateProfessionalVerificationStatus);
 router.patch('/:id/credentials/:documentId/verification', authenticate, superAdminOnly, updateCredentialVerification);
 
-// Remaining routes require authentication and admin/super_admin role
-router.use(authenticate, adminOnly);
-
-router.get('/configuration', getStaffConfiguration);
-router.get('/roles', getRolePermissions);
-router.put('/roles/:role', updateRolePermissions);
-router.get('/:id/profile', getStaffProfile);
-router.post('/:id/credentials', authorizeCredentialManagement, uploadDoc.single('document'), handleUploadError, uploadCredentialDocument);
-router.put('/:id/availability', updateStaffAvailability);
-router.get('/', getMyStaff);
-router.post('/riders/:id/payouts', createRiderPayout);
-router.patch('/rider-payouts/:payoutId', updateRiderPayout);
-router.post('/', createStaff);
-router.put('/:id', updateStaff);
-router.patch('/:id/toggle-status', toggleStaffStatus);
-router.patch('/:id/reset-password', resetStaffPassword);
-router.patch('/:id/archive', deleteStaff);
-router.patch('/:id/restore', restoreStaff);
-router.delete('/:id/permanent', permanentlyDeleteStaff);
-router.delete('/:id', deleteStaff);
+// Store-scoped staff directory reads support Manager's authoritative
+// staff.view permission. Every mutation remains staff.manage only.
+router.get('/configuration', authenticate, adminOrStaff, requirePermission('staff.view', 'staff.manage'), getStaffConfiguration);
+router.get('/roles', authenticate, adminOrStaff, requirePermission('staff.manage'), getRolePermissions);
+router.put('/roles/:role', authenticate, adminOrStaff, requirePermission('staff.manage'), updateRolePermissions);
+router.get('/:id/profile', authenticate, adminOrStaff, requirePermission('staff.view', 'staff.manage'), getStaffProfile);
+router.post('/:id/credentials', authenticate, adminOrStaff, requirePermission('staff.manage'), authorizeCredentialManagement, uploadDoc.single('document'), handleUploadError, uploadCredentialDocument);
+router.put('/:id/availability', authenticate, adminOrStaff, requirePermission('staff.manage'), updateStaffAvailability);
+router.get('/', authenticate, adminOrStaff, requirePermission('staff.view', 'staff.manage'), getMyStaff);
+router.post('/riders/:id/payouts', authenticate, adminOrStaff, requirePermission('staff.manage'), createRiderPayout);
+router.patch('/rider-payouts/:payoutId', authenticate, adminOrStaff, requirePermission('staff.manage'), updateRiderPayout);
+router.post('/', authenticate, adminOrStaff, requirePermission('staff.manage'), createStaff);
+router.put('/:id', authenticate, adminOrStaff, requirePermission('staff.manage'), updateStaff);
+router.patch('/:id/toggle-status', authenticate, adminOrStaff, requirePermission('staff.manage'), toggleStaffStatus);
+router.patch('/:id/reset-password', authenticate, adminOrStaff, requirePermission('staff.manage'), resetStaffPassword);
+router.patch('/:id/archive', authenticate, adminOrStaff, requirePermission('staff.manage'), deleteStaff);
+router.patch('/:id/restore', authenticate, adminOrStaff, requirePermission('staff.manage'), restoreStaff);
+router.delete('/:id/permanent', authenticate, adminOrStaff, requirePermission('staff.manage'), permanentlyDeleteStaff);
+router.delete('/:id', authenticate, adminOrStaff, requirePermission('staff.manage'), deleteStaff);
 
 module.exports = router;

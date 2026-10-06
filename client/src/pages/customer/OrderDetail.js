@@ -7,6 +7,8 @@ import { Heart, Package, ArrowLeft, Truck, CreditCard, MapPin, Store, Star, Chec
 import OrderReviewModal from '../../components/OrderReviewModal';
 import ReviewModal from '../../components/ReviewModal';
 import DeliveryAssignmentFields from '../../components/delivery/DeliveryAssignmentFields';
+import DeliveryConcernForm from '../../components/delivery/DeliveryConcernForm';
+import ConfirmationDialog from '../../components/ui/ConfirmationDialog';
 import { normalizeRefundPolicy, refundPolicyLabel } from '../../utils/refundPolicy';
 import PaymentBreakdown from '../../components/payments/PaymentBreakdown';
 import { formatPeso, orderLineItemRows, orderPaymentSummary, paymentSummaryRows } from '../../utils/paymentSummary';
@@ -35,10 +37,15 @@ const OrderDetail = () => {
   const [deliveryParcel, setDeliveryParcel] = useState({ weightKg: '', parcelCount: 1 });
   const [deliveryAssignment, setDeliveryAssignment] = useState(null);
   const [riderReviewOpen, setRiderReviewOpen] = useState(false);
+  const [cancelConfirmationOpen, setCancelConfirmationOpen] = useState(false);
+  const [cancellingOrder, setCancellingOrder] = useState(false);
+  const [concernOpen, setConcernOpen] = useState(false);
+  const [concernSubmitting, setConcernSubmitting] = useState(false);
   const [riderReviewEligibility, setRiderReviewEligibility] = useState({ checked: false, isEligible: false, reason: null });
   const orderRefundPolicy = normalizeRefundPolicy(order?.refundPolicySnapshot || order?.store?.refundPolicy);
   const authoritativePaymentSummary = order ? orderPaymentSummary(order) : null;
   const orderLineItems = orderLineItemRows(order?.items);
+  const canReportDeliveryConcern = canManageOrders && deliveryAssignment?.concernReporting?.allowed === true;
 
   useEffect(() => {
     if (!order?._id || !order.delivery) return;
@@ -214,15 +221,35 @@ const OrderDetail = () => {
     }
   };
 
-  const handleCancelOrder = async () => {
-    if (window.confirm('Are you sure you want to cancel this order?')) {
-      try {
-        await orderService.cancelOrder(id);
-        toast.success('Order cancelled successfully');
-        fetchOrder(); // Refresh order details
-      } catch (error) {
-        toast.error('We could not cancel this order. Please try again.');
-      }
+  const handleCancelOrder = () => setCancelConfirmationOpen(true);
+
+  const confirmCancelOrder = async () => {
+    setCancellingOrder(true);
+    try {
+      await orderService.cancelOrder(id);
+      setCancelConfirmationOpen(false);
+      toast.success('Order cancelled successfully');
+      fetchOrder();
+    } catch (error) {
+      toast.error('We could not cancel this order. Please try again.');
+    } finally {
+      setCancellingOrder(false);
+    }
+  };
+
+  const handleSubmitStoreConcern = async concern => {
+    const deliveryId = deliveryAssignment?._id || order?.delivery?._id;
+    if (!deliveryId) return toast.error('Delivery details are unavailable.');
+    setConcernSubmitting(true);
+    try {
+      await deliveryService.submitStoreConcern(deliveryId, concern);
+      setConcernOpen(false);
+      toast.success('Delivery concern submitted.');
+      await fetchOrder();
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Unable to submit the delivery concern.');
+    } finally {
+      setConcernSubmitting(false);
     }
   };
 
@@ -251,8 +278,8 @@ const OrderDetail = () => {
   const handleViewLiveTracking = async () => {
     try {
       const response = await deliveryService.getTrackingForOrder(id);
-      if (response.data.delivery?.trackingToken) {
-        navigate(`/track/${response.data.delivery.trackingToken}`);
+      if (response.data.delivery?._id) {
+        navigate(`/admin/logistics/${response.data.delivery._id}`);
       }
     } catch (error) {
       toast.error('No active tracking found for this order');
@@ -851,12 +878,16 @@ const OrderDetail = () => {
                     </div>
                   )}
 
-                  {user?.role !== 'customer' && (
+                  {canReportDeliveryConcern && (
                     <div className="pt-2">
-                      <button className="w-full py-4 bg-rose-50 text-rose-600 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-rose-600 hover:text-white transition-all border-2 border-rose-100 active:scale-95 flex items-center justify-center gap-2">
-                        <AlertCircle className="h-4 w-4" />
-                        Report Delivery Issue
-                      </button>
+                      {!concernOpen ? (
+                        <button onClick={() => setConcernOpen(true)} className="flex min-h-11 w-full items-center justify-center gap-2 rounded-2xl border-2 border-rose-100 bg-rose-50 px-4 text-[10px] font-black uppercase tracking-widest text-rose-600 transition-all hover:bg-rose-600 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500">
+                          <AlertCircle className="h-4 w-4" />
+                          Report Delivery Issue
+                        </button>
+                      ) : (
+                        <DeliveryConcernForm onSubmit={handleSubmitStoreConcern} onCancel={() => setConcernOpen(false)} submitting={concernSubmitting} />
+                      )}
                     </div>
                   )}
                 </div>
@@ -1051,6 +1082,16 @@ const OrderDetail = () => {
           <p className="text-gray-700">{order.notes}</p>
         </div>
       )}
+      <ConfirmationDialog
+        isOpen={cancelConfirmationOpen}
+        title="Cancel order?"
+        description="This will cancel the order and stop its current fulfillment flow."
+        confirmLabel="Cancel order"
+        tone="danger"
+        busy={cancellingOrder}
+        onCancel={() => setCancelConfirmationOpen(false)}
+        onConfirm={confirmCancelOrder}
+      />
       <OrderReviewModal
         isOpen={isReviewModalOpen}
         onClose={() => setIsReviewModalOpen(false)}

@@ -193,8 +193,8 @@ function App() {
                   <Route path="rider/deliveries/:deliveryId" element={<ProtectedRoute roles={['delivery_rider', 'staff']} staffTypes={['delivery_rider']}><RiderDeliveryPage /></ProtectedRoute>} />
 
                   {/* Catalog - inventory access */}
-                  <Route path="admin/pets" element={<ProtectedRoute roles={['admin', 'super_admin', 'staff']} staffTypes={['inventory_staff']} requiredPermission="inventory"><AdminPets /></ProtectedRoute>} />
-                  <Route path="admin/products" element={<ProtectedRoute roles={['admin', 'super_admin', 'staff']} staffTypes={['inventory_staff']} requiredPermission="inventory"><ProductInventory /></ProtectedRoute>} />
+                  <Route path="admin/pets" element={<ProtectedRoute roles={['admin', 'super_admin', 'staff']} staffTypes={['inventory_staff']} requiredPermission={['pets.manage', 'inventory.view', 'inventory.manage']}><AdminPets /></ProtectedRoute>} />
+                  <Route path="admin/products" element={<ProtectedRoute roles={['admin', 'super_admin', 'staff']} staffTypes={['inventory_staff']} requiredPermission={['products.manage', 'inventory.view', 'inventory.manage']}><ProductInventory /></ProtectedRoute>} />
                   <Route path="admin/inventory" element={<ProtectedRoute roles={['admin', 'super_admin', 'staff']} staffTypes={['inventory_staff']} requiredPermission={['inventory.view', 'inventory.manage']}><ProductInventory /></ProtectedRoute>} />
 
                   {/* Orders - orders access */}
@@ -202,13 +202,13 @@ function App() {
                   <Route path="admin/orders/:id" element={<ProtectedRoute roles={['admin', 'super_admin', 'staff']} staffTypes={['order_staff']} requiredPermission={['sales.view', 'sales.manage', 'orders.view']}><OrderDetail /></ProtectedRoute>} />
 
                   {/* Bookings - bookings access */}
-                  <Route path="admin/bookings" element={<ProtectedRoute roles={['admin', 'super_admin', 'staff']} staffTypes={['service_staff', 'service_management_staff', 'veterinarian', 'veterinary_technician', 'veterinary_assistant', 'veterinary_nurse', 'veterinary_laboratory_technician', 'groomer', 'trainer', 'boarding_specialist']} requiredPermission="bookings"><BookingsManagement /></ProtectedRoute>} />
+                  <Route path="admin/bookings" element={<ProtectedRoute roles={['admin', 'super_admin', 'staff']} staffTypes={['service_staff', 'service_management_staff', 'veterinarian', 'veterinary_technician', 'veterinary_assistant', 'veterinary_nurse', 'veterinary_laboratory_technician', 'groomer', 'trainer', 'boarding_specialist']} requiredPermission={['bookings.view', 'bookings.manage', 'bookings.assigned']}><BookingsManagement /></ProtectedRoute>} />
 
                   {/* Services - services access */}
-                  <Route path="admin/services" element={<ProtectedRoute roles={['admin', 'super_admin', 'staff']} staffTypes={['service_staff', 'service_management_staff']} requiredPermission="services"><ServiceManagement /></ProtectedRoute>} />
+                  <Route path="admin/services" element={<ProtectedRoute roles={['admin', 'super_admin', 'staff']} staffTypes={['service_management_staff']} requiredPermission="services.manage"><ServiceManagement /></ProtectedRoute>} />
 
                   {/* Customers - customers access */}
-                  <Route path="admin/customers" element={<ProtectedRoute roles={['admin', 'super_admin', 'staff']} staffTypes={['order_staff']} requiredPermission="customers"><Customers /></ProtectedRoute>} />
+                  <Route path="admin/customers" element={<ProtectedRoute roles={['admin', 'super_admin', 'staff']} requiredPermission="customers.manage"><Customers /></ProtectedRoute>} />
 
                   {/* Admin-only routes (no staff access) */}
                   <Route path="admin/chat" element={<ProtectedRoute roles={['admin', 'super_admin', 'staff']} requiredPermission="admin_chat"><AdminChat /></ProtectedRoute>} />
@@ -219,14 +219,14 @@ function App() {
                   <Route path="admin/settings" element={<ProtectedRoute roles={['admin']}><AdminSettings /></ProtectedRoute>} />
                   <Route path="admin/insights" element={<ProtectedRoute roles={['admin', 'super_admin', 'staff']} requiredPermission="dss"><AdminDSS /></ProtectedRoute>} />
                   <Route path="admin/payouts" element={<ProtectedRoute roles={['admin', 'super_admin']}><StorePayout /></ProtectedRoute>} />
-                  <Route path="admin/staff" element={<ProtectedRoute roles={['admin', 'super_admin']}><StaffManagement /></ProtectedRoute>} />
+                  <Route path="admin/staff" element={<ProtectedRoute roles={['admin', 'super_admin', 'staff']} requiredPermission={['staff.view', 'staff.manage']}><StaffManagement /></ProtectedRoute>} />
                   <Route path="admin/roles" element={<ProtectedRoute roles={['admin', 'super_admin']}><RoleManagement /></ProtectedRoute>} />
                   <Route path="admin/purchase-orders" element={<ProtectedRoute roles={['admin', 'super_admin', 'staff']} requiredPermission="procurement"><PurchaseOrders /></ProtectedRoute>} />
                   <Route path="admin/supplies" element={<ProtectedRoute roles={['admin', 'super_admin', 'staff']} requiredPermission="inventory"><SupplyManagement /></ProtectedRoute>} />
                   <Route path="admin/finance" element={<ProtectedRoute roles={['admin', 'super_admin', 'staff']} requiredPermission="finance"><FinanceManagement /></ProtectedRoute>} />
                   <Route path="admin/hr" element={<ProtectedRoute roles={['admin', 'super_admin', 'staff']} requiredPermission={['attendance', 'leave', 'payroll', 'compensation']}><HRManagement /></ProtectedRoute>} />
-                  <Route path="admin/logistics" element={<ProtectedRoute roles={['admin', 'super_admin', 'staff']} staffTypes={['logistics_staff']} requiredPermission="logistics" excludedRoles={['delivery_rider']}><Logistics /></ProtectedRoute>} />
-                  <Route path="admin/logistics/:id" element={<ProtectedRoute roles={['admin', 'super_admin', 'staff']} staffTypes={['logistics_staff']} requiredPermission="logistics" excludedRoles={['delivery_rider']}><LogisticsDetail /></ProtectedRoute>} />
+                  <Route path="admin/logistics" element={<ProtectedRoute roles={['admin', 'super_admin', 'staff']} staffTypes={['logistics_staff']} requiredPermission="logistics.manage" excludedRoles={['delivery_rider']}><Logistics /></ProtectedRoute>} />
+                  <Route path="admin/logistics/:id" element={<ProtectedRoute roles={['admin', 'super_admin', 'staff']} staffTypes={['logistics_staff']} requiredPermission="logistics.manage" excludedRoles={['delivery_rider']}><LogisticsDetail /></ProtectedRoute>} />
                   <Route path="superadmin/payouts" element={<ProtectedRoute roles={['super_admin']}><AdminPayouts /></ProtectedRoute>} />
 
                   {/* Super Admin Routes */}

@@ -4,7 +4,7 @@ const { authenticate, adminOrStaff, requirePermission } = require('../middleware
 const { getStoreCustomers, getStoreCustomerDetails } = require('../controllers/customerController');
 
 // All routes require authentication and admin/staff role
-router.use(authenticate, adminOrStaff, requirePermission('customers.view', 'customers.manage'));
+router.use(authenticate, adminOrStaff, requirePermission('customers.manage'));
 
 router.get('/', getStoreCustomers);
 router.get('/:customerId', getStoreCustomerDetails);

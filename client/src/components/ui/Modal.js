@@ -15,6 +15,7 @@ const Modal = React.forwardRef(({
   ...props
 }, ref) => {
   const titleId = React.useId();
+  const descriptionId = React.useId();
   if (!isOpen) return null;
 
   const sizes = {
@@ -40,6 +41,7 @@ const Modal = React.forwardRef(({
         role="dialog"
         aria-modal="true"
         aria-labelledby={title ? titleId : undefined}
+        aria-describedby={description ? descriptionId : undefined}
         className={cn(
           "relative w-full min-w-0 max-w-full bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm rounded-xl sm:rounded-2xl shadow-strong border border-neutral-200/50 dark:border-slate-700 animate-scale-in z-10 flex flex-col max-h-[calc(100dvh-1rem)] sm:max-h-[calc(100dvh-2rem)] overflow-hidden",
           sizes[size],
@@ -57,7 +59,7 @@ const Modal = React.forwardRef(({
                 </h3>
               )}
               {description && (
-                <p className="text-sm text-secondary mt-1 break-words">
+                <p id={descriptionId} className="text-sm text-secondary mt-1 break-words">
                   {description}
                 </p>
               )}

@@ -533,6 +533,7 @@ export const deliveryService = {
   sendRiderMessage: (deliveryId, messageData) => api.post(`/deliveries/rider/${deliveryId}/chat`, messageData),
   sendMessage: (token, messageData) => api.post(`/deliveries/chat/${token}`, messageData),
   submitComplaint: (token, data) => api.post(`/deliveries/complaint/${token}`, data),
+  submitStoreConcern: (deliveryId, data) => api.post(`/deliveries/${deliveryId}/concerns`, data),
   completeDelivery: (deliveryId, data) => api.post(`/deliveries/rider/${deliveryId}/complete`, data),
   reportFailedDelivery: (deliveryId, data) => api.post(`/deliveries/rider/${deliveryId}/failed`, data),
   uploadDeliveryProof: (deliveryId, formData) => api.post(`/deliveries/rider/${deliveryId}/proof-upload`, formData, { headers: { 'Content-Type': 'multipart/form-data' } }),

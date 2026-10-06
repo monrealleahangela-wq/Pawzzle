@@ -12,6 +12,11 @@ const { canOperateStore } = require('../utils/authorizationPolicy');
 const { assignDelivery, releaseRiderCapacity } = require('../services/deliveryAssignmentService');
 const { riderDeliveryView } = require('../utils/deliveryViews');
 const { emitAuthorizedDeliveryEvent, revokeDeliveryRoomForUser } = require('../services/socketAuthorization');
+const {
+  REPORTABLE_DELIVERY_STATUSES,
+  isDeliveryConcernReportable,
+  validateDeliveryConcern
+} = require('../utils/deliveryConcerns');
 const mongoose = require('mongoose');
 
 const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER;
@@ -25,6 +30,10 @@ const COD_PAYMENT_STATUSES = new Set(['cash_received', 'digital_received', 'not_
 
 const activeDeliveryView = delivery => {
   const payload = delivery?.toObject ? delivery.toObject() : { ...delivery };
+  payload.concernReporting = {
+    allowed: isDeliveryConcernReportable(payload.status),
+    reason: isDeliveryConcernReportable(payload.status) ? null : 'rider_pickup_required'
+  };
   delete payload.riderToken;
   delete payload.isRiderVerified;
   delete payload.thirdPartyRider;
@@ -330,6 +339,10 @@ const getDeliveryByOrder = async (req, res) => {
     const delivery = await Delivery.findOne({ order: orderId }).select('trackingToken status isLive assignmentType assignedRider assignedAt assignmentHistory reviewStatus parcel capacityReservation').populate('assignedRider', 'firstName lastName riderProfile.staffId riderProfile.deliveryZone riderProfile.vehicleType riderProfile.plateNumber');
     if (!delivery) return res.status(404).json({ message: 'No delivery active' });
     const payload = delivery.toObject();
+    payload.concernReporting = {
+      allowed: isDeliveryConcernReportable(payload.status),
+      reason: isDeliveryConcernReportable(payload.status) ? null : 'rider_pickup_required'
+    };
     if (req.user.role === 'customer') {
       delete payload.assignmentHistory;
       delete payload.capacityReservation;
@@ -353,6 +366,10 @@ const getDeliveryByBooking = async (req, res) => {
     const delivery = await Delivery.findOne({ booking: bookingId }).select('trackingToken status isLive assignmentType assignedRider assignedAt assignmentHistory reviewStatus parcel capacityReservation').populate('assignedRider', 'firstName lastName riderProfile.staffId riderProfile.deliveryZone riderProfile.vehicleType riderProfile.plateNumber');
     if (!delivery) return res.status(404).json({ message: 'No delivery active' });
     const payload = delivery.toObject();
+    payload.concernReporting = {
+      allowed: isDeliveryConcernReportable(payload.status),
+      reason: isDeliveryConcernReportable(payload.status) ? null : 'rider_pickup_required'
+    };
     if (req.user.role === 'customer') {
       delete payload.assignmentHistory;
       delete payload.capacityReservation;
@@ -656,23 +673,73 @@ const sendRiderDeliveryMessage = async (req, res) => {
   }
 };
 
-// Customer: Submit Complaint
+const concernMutation = concern => ({
+  $push: {
+    complaints: {
+      ...concern,
+      status: 'pending',
+      createdAt: new Date()
+    }
+  }
+});
+
+// Authenticated customer tracking capability: submit a concern for the
+// customer's own delivery only after the Rider has started delivery work.
 const submitComplaint = async (req, res) => {
   try {
     const { token } = req.params;
-    const content = String(req.body.content || '').trim();
-    const type = String(req.body.type || 'other');
-    if (!content || content.length > 1000) return res.status(400).json({ message: 'Describe the concern in up to 1000 characters.' });
-    if (!['suspicious_location', 'damaged_items', 'other'].includes(type)) return res.status(400).json({ message: 'Select a valid concern type.' });
+    const validation = validateDeliveryConcern(req.body);
+    if (validation.error) return res.status(400).json({ message: validation.error });
+    const existing = await Delivery.findOne({ trackingToken: token }).select('status order booking');
+    if (!existing) return res.status(404).json({ message: 'Delivery not found.' });
+    const source = existing.order
+      ? await Order.findById(existing.order).select('customer')
+      : await Booking.findById(existing.booking).select('customer');
+    if (!source?.customer || source.customer.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: 'You cannot report a concern for this delivery.' });
+    }
+    if (!isDeliveryConcernReportable(existing.status)) {
+      return res.status(409).json({ message: 'A concern can be reported after the Rider has picked up the delivery.' });
+    }
     const delivery = await Delivery.findOneAndUpdate(
-      { trackingToken: token, isLive: true },
-      { $push: { complaints: { content, type, status: 'pending', createdAt: new Date() } } },
+      { trackingToken: token, status: { $in: REPORTABLE_DELIVERY_STATUSES } },
+      concernMutation(validation.value),
       { new: true }
     );
-    if (!delivery) return res.status(404).json({ message: 'Active delivery not found.' });
-    res.status(201).json({ success: true, message: 'Complaint submitted' });
+    if (!delivery) return res.status(409).json({ message: 'Delivery status changed. Refresh before reporting a concern.' });
+    res.status(201).json({ success: true, message: 'Concern submitted.' });
   } catch (error) {
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ message: 'Unable to submit the delivery concern.' });
+  }
+};
+
+// Store-scoped Seller workflow. The caller's logistics permission is checked
+// by the route and again against the Delivery's authoritative Store here.
+const submitStoreConcern = async (req, res) => {
+  try {
+    const validation = validateDeliveryConcern(req.body);
+    if (validation.error) return res.status(400).json({ message: validation.error });
+    const existing = await Delivery.findById(req.params.deliveryId).select('status store order booking');
+    if (!existing) return res.status(404).json({ message: 'Delivery not found.' });
+    const source = existing.order
+      ? await Order.findById(existing.order).select('store')
+      : await Booking.findById(existing.booking).select('store');
+    const storeId = existing.store || source?.store;
+    if (!storeId || (!isPlatformAdmin(req.user) && !(await canOperateStore(req.user, storeId, ['logistics.manage'])))) {
+      return res.status(403).json({ message: 'You cannot report a concern for this Store delivery.' });
+    }
+    if (!isDeliveryConcernReportable(existing.status)) {
+      return res.status(409).json({ message: 'A concern can be reported after the Rider has picked up the delivery.' });
+    }
+    const delivery = await Delivery.findOneAndUpdate(
+      { _id: existing._id, status: { $in: REPORTABLE_DELIVERY_STATUSES } },
+      concernMutation(validation.value),
+      { new: true }
+    );
+    if (!delivery) return res.status(409).json({ message: 'Delivery status changed. Refresh before reporting a concern.' });
+    res.status(201).json({ success: true, message: 'Concern submitted.' });
+  } catch (error) {
+    res.status(500).json({ message: 'Unable to submit the delivery concern.' });
   }
 };
 
@@ -734,10 +801,11 @@ module.exports = {
   sendDeliveryMessage,
   sendRiderDeliveryMessage,
   submitComplaint,
+  submitStoreConcern,
   resolveComplaint,
   calculateDeliveryFee,
   internalCreateDelivery,
   completeDelivery,
   reportFailedDelivery,
-  __test: { buildProofOfDelivery }
+  __test: { buildProofOfDelivery, concernMutation }
 };

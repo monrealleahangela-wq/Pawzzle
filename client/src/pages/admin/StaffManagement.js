@@ -9,6 +9,8 @@ import {
 import SpecializedStaffProfileModal from '../../components/admin/SpecializedStaffProfileModal';
 import { getImageUrl, staffService, uploadService } from '../../services/apiService';
 import { getUserFacingError } from '../../utils/userFacingError';
+import { useAuth } from '../../contexts/AuthContext';
+import { hasUiActionPermission } from '../../utils/authorization';
 
 const ROLE_GROUPS = [
   ['Store Administration', [['manager', 'Manager']]],
@@ -54,6 +56,9 @@ const Field = ({ label, children, hint }) => <label className="block"><span clas
 const input = 'h-9 w-full rounded-lg border border-slate-200 bg-white px-2.5 text-xs outline-none transition focus:border-primary';
 
 export default function StaffManagement() {
+  const { user } = useAuth();
+  const canManageStaff = ['admin', 'store_owner', 'super_admin', 'platform_admin'].includes(user?.role)
+    || hasUiActionPermission(user, 'staff', 'manage', false);
   const [staff, setStaff] = useState([]);
   const [archived, setArchived] = useState([]);
   const [configuration, setConfiguration] = useState({ services: [], branches: [], availableRoles: [], riderVehicleTypes: [], nextStaffId: '' });
@@ -193,6 +198,7 @@ export default function StaffManagement() {
     if (!value) return;
     if (value === 'view') return viewProfile(member);
     if (value === 'activity') return viewProfile(member);
+    if (!canManageStaff) return;
     if (value === 'edit') return openEdit(member);
     if (value === 'reset') return setConfirm({ kind: 'reset', member, title: 'Reset password', prompt: 'New temporary password', value: '', success: 'Temporary password updated.' });
     if (value === 'archive') return setConfirm({ kind: 'archive', member, title: 'Archive staff member?', message: 'The account will leave Active Staff while bookings and audit history remain intact.', success: 'Staff account archived.' });
@@ -202,7 +208,7 @@ export default function StaffManagement() {
   };
 
   return <div className="ui-page-stack mx-auto max-w-[1500px] p-3 sm:p-5">
-    <header className="ui-page-header"><div><p className="text-[10px] font-bold uppercase tracking-[.18em] text-primary">Workforce operations</p><h1 className="text-xl font-black text-slate-900">Staff Management</h1><p className="mt-1 text-xs text-slate-500">Accounts, schedules, qualifications, assignments, and role-inherited access.</p></div><div className="flex flex-wrap gap-2"><Link to="/admin/roles" className="inline-flex min-h-9 shrink-0 items-center gap-2 rounded-lg border px-3 text-xs font-bold text-slate-700"><ShieldCheck size={14}/>Role Management</Link><button onClick={openCreate} className="inline-flex min-h-9 shrink-0 items-center gap-2 rounded-lg bg-primary px-3 text-xs font-bold text-white"><Plus size={14}/>Add Staff</button></div></header>
+    <header className="ui-page-header"><div><p className="text-[10px] font-bold uppercase tracking-[.18em] text-primary">Workforce operations</p><h1 className="text-xl font-black text-slate-900">Staff Management</h1><p className="mt-1 text-xs text-slate-500">Accounts, schedules, qualifications, assignments, and role-inherited access.</p></div>{canManageStaff&&<div className="flex flex-wrap gap-2"><Link to="/admin/roles" className="inline-flex min-h-9 shrink-0 items-center gap-2 rounded-lg border px-3 text-xs font-bold text-slate-700"><ShieldCheck size={14}/>Role Management</Link><button onClick={openCreate} className="inline-flex min-h-9 shrink-0 items-center gap-2 rounded-lg bg-primary px-3 text-xs font-bold text-white"><Plus size={14}/>Add Staff</button></div>}</header>
     <section className="grid grid-cols-2 gap-2 md:grid-cols-5">{[[Users,'Total Staff',totals.total],[CheckCircle2,'Active',totals.active],[RefreshCw,'Busy',totals.busy],[CalendarDays,'On Leave',totals.leave],[ShieldCheck,'Pending Verification',totals.pending]].map(([Icon,label,value])=><article key={label} className="rounded-xl border bg-white p-3"><div className="flex items-center justify-between"><span className="text-[10px] font-bold uppercase text-slate-500">{label}</span><Icon size={14} className="text-primary"/></div><strong className="mt-2 block text-xl text-slate-900">{value}</strong></article>)}</section>
     <section className="min-w-0 max-w-full overflow-hidden rounded-xl border bg-white">
       <div className="space-y-3 border-b p-3">
@@ -218,7 +224,7 @@ export default function StaffManagement() {
           <button onClick={load} aria-label="Refresh staff" className="h-9 w-full shrink-0 rounded-lg border text-slate-500 sm:w-9"><RefreshCw size={13} className="mx-auto"/></button>
         </div>
       </div>
-      {tab === 'matrix' ? <AssignmentMatrix rows={staff}/>:<StaffTable loading={loading} rows={paged} archived={tab==='archived'} onAction={chooseAction}/>}
+      {tab === 'matrix' ? <AssignmentMatrix rows={staff}/>:canManageStaff?<StaffTable loading={loading} rows={paged} archived={tab==='archived'} onAction={chooseAction}/>:<ReadOnlyStaffTable loading={loading} rows={paged} onView={viewProfile}/>}
       {tab !== 'matrix' && <footer className="flex items-center justify-between border-t px-3 py-2 text-[11px] text-slate-500"><span>{rows.length ? `${(page-1)*pageSize+1}–${Math.min(page*pageSize,rows.length)} of ${rows.length}` : '0 staff'}</span><div className="flex gap-1"><button disabled={page===1} onClick={()=>setPage(value=>value-1)} className="h-8 w-8 rounded-lg border disabled:opacity-30"><ChevronLeft size={13} className="mx-auto"/></button><button disabled={page*pageSize>=rows.length} onClick={()=>setPage(value=>value+1)} className="h-8 w-8 rounded-lg border disabled:opacity-30"><ChevronRight size={13} className="mx-auto"/></button></div></footer>}
     </section>
     {wizard && <StaffWizard state={wizard} setState={setWizard} setForm={setForm} setProfessional={setProfessional} config={configuration} next={next} submit={submit} submitting={submitting}/>}
@@ -226,6 +232,12 @@ export default function StaffManagement() {
     {profile && <SpecializedStaffProfileModal data={profile} onClose={()=>setProfile(null)}/>}
     {confirm && <ConfirmDialog action={confirm} setAction={setConfirm} submit={runAction} submitting={submitting}/>}
   </div>;
+}
+
+function ReadOnlyStaffTable({ loading, rows, onView }) {
+  if (loading) return <div className="space-y-2 p-3">{[1,2,3,4].map(value=><div key={value} className="h-14 animate-pulse rounded-lg bg-slate-100"/>)}</div>;
+  if (!rows.length) return <div className="ui-empty-state"><Users size={24} className="text-slate-300"/><p className="text-xs font-bold text-slate-600">No staff match these filters.</p></div>;
+  return <div className="grid gap-2 p-3 sm:grid-cols-2 xl:grid-cols-3">{rows.map(member=><article key={member._id} className="min-w-0 rounded-xl border bg-white p-3"><div className="flex min-w-0 items-center gap-3">{member.avatar?<img src={getImageUrl(member.avatar)} alt="" className="h-10 w-10 shrink-0 rounded-lg object-cover"/>:<div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-slate-100"><UserRound size={14}/></div>}<div className="min-w-0 flex-1"><b className="block truncate text-xs text-slate-900">{member.firstName} {member.lastName}</b><p className="truncate text-[10px] text-slate-500">{roleLabel(member.staffType)} · {scheduleSummary(member)}</p></div><button onClick={()=>onView(member)} className="min-h-9 shrink-0 rounded-lg border px-3 text-[10px] font-bold text-slate-700">View</button></div></article>)}</div>;
 }
 
 function StaffTable({ loading, rows, archived, onAction }) {

@@ -208,6 +208,7 @@ const publicMenu = [
 ];
 
 const getStaffMenu = (user) => {
+  const can = (resource, action) => hasUiActionPermission(user, resource, action, false);
   if (isCareProfessional(user)) {
     const config = getStaffWorkspaceConfig(effectiveStaffType(user));
     const menu = [
@@ -219,8 +220,6 @@ const getStaffMenu = (user) => {
       { path: '/profile', label: 'My Professional Profile', icon: User }
     ];
     const additional = [];
-    const can = (resource, action) => hasUiActionPermission(user, resource, action, false);
-
     // Professional defaults such as inventory.vaccine and services.view do not
     // represent permission to administer the store catalog. Only an explicit
     // general module grant adds one of these management destinations.
@@ -254,24 +253,25 @@ const getStaffMenu = (user) => {
       { path: '/staff/payslips', label: 'Payslips', icon: ReceiptText }
     ] }
   );
-  if (hasUiPermission(user, 'dss')) menu.push({ path: '/admin/insights', label: 'Business Insights', icon: Brain });
+  if (can('dss', 'view') || can('dss', 'manage') || can('dss', 'inventory') || can('dss', 'suppliers')) menu.push({ path: '/admin/insights', label: 'Business Insights', icon: Brain });
 
   const catalogChildren = [];
-  if (hasUiPermission(user, 'inventory') || hasUiPermission(user, 'pets')) catalogChildren.push({ path: '/admin/pets', label: 'Pets', icon: Heart });
-  if (hasUiPermission(user, 'inventory') || hasUiPermission(user, 'products')) catalogChildren.push({ path: '/admin/products', label: 'Products', icon: Package });
-  if (hasUiPermission(user, 'services')) catalogChildren.push({ path: '/admin/services', label: 'Services', icon: Calendar });
+  const inventoryCatalogAccess = effectiveStaffType(user) === 'inventory_staff' && can('inventory', 'view');
+  if (can('pets', 'manage') || can('inventory', 'manage') || inventoryCatalogAccess) catalogChildren.push({ path: '/admin/pets', label: 'Pets', icon: Heart });
+  if (can('products', 'manage') || can('inventory', 'manage') || inventoryCatalogAccess) catalogChildren.push({ path: '/admin/products', label: 'Products', icon: Package });
+  if (can('services', 'manage')) catalogChildren.push({ path: '/admin/services', label: 'Services', icon: Calendar });
   if (catalogChildren.length > 0) menu.push({ label: 'Products & Services', icon: Package, children: catalogChildren });
 
   const opsChildren = [];
-  if (hasUiPermission(user, 'orders')) opsChildren.push({ path: '/admin/orders', label: 'Orders', icon: ShoppingCart });
-  if (hasUiPermission(user, 'bookings')) opsChildren.push({ path: '/admin/bookings', label: 'Bookings', icon: Calendar });
-  if (hasUiPermission(user, 'customers')) opsChildren.push({ path: '/admin/customers', label: 'Customers', icon: Users });
+  if (can('sales', 'view') || can('sales', 'manage') || can('orders', 'view')) opsChildren.push({ path: '/admin/orders', label: 'Orders', icon: ShoppingCart });
+  if (can('bookings', 'view') || can('bookings', 'manage') || can('bookings', 'assigned')) opsChildren.push({ path: '/admin/bookings', label: 'Bookings', icon: Calendar });
+  if (can('customers', 'manage')) opsChildren.push({ path: '/admin/customers', label: 'Customers', icon: Users });
   if (hasUiPermission(user, 'admin_chat')) opsChildren.push({ path: '/admin/chat', label: 'Chat', icon: MessageSquare });
   if (hasUiPermission(user, 'reviews')) opsChildren.push({ path: '/admin/reviews', label: 'Reviews', icon: Star });
   if (opsChildren.length > 0) menu.push({ label: 'Operations', icon: ShoppingBag, children: opsChildren });
 
   const supplyChildren = [];
-  if (['inventory_staff', 'procurement_officer'].includes(effectiveStaffType(user))) {
+  if (can('procurement', 'view') || can('procurement', 'manage')) {
     supplyChildren.push({ path: '/admin/purchase-orders', label: 'Purchase Orders', icon: Truck });
   }
   if (supplyChildren.length > 0) menu.push({ label: 'Supply Chain', icon: Truck, children: supplyChildren });
@@ -287,7 +287,7 @@ const getStaffMenu = (user) => {
   const mgmtChildren = [];
   if (['manager'].includes(effectiveStaffType(user))) mgmtChildren.push({ path: '/admin/hr', label: 'Attendance & Leave', icon: Clock });
   if (hasUiPermission(user, 'analytics')) mgmtChildren.push({ path: '/admin/stats', label: 'Stats', icon: TrendingUp });
-  if (hasUiPermission(user, 'staff')) mgmtChildren.push({ path: '/admin/staff', label: 'Staff', icon: Users });
+  if (can('staff', 'view') || can('staff', 'manage')) mgmtChildren.push({ path: '/admin/staff', label: 'Staff', icon: Users });
   if (['admin', 'store_owner', 'super_admin', 'platform_admin'].includes(user?.role)) {
     mgmtChildren.push({ path: '/admin/roles', label: 'Role Management', icon: ShieldCheck });
   }
@@ -717,3 +717,4 @@ const Layout = () => {
 };
 
 export default Layout;
+export { getStaffMenu };

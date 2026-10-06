@@ -75,8 +75,8 @@ const updateProductValidation = [
 ];
 
 // Admin routes (filtered by user's store)
-router.get('/', authenticate, adminOrStaff, requirePermission('products.view', 'inventory.view'), getAllProducts);
-router.get('/:id', authenticate, adminOrStaff, requirePermission('products.view', 'inventory.view'), getProductById);
+router.get('/', authenticate, adminOrStaff, requirePermission('products.manage', 'inventory.view'), getAllProducts);
+router.get('/:id', authenticate, adminOrStaff, requirePermission('products.manage', 'inventory.view'), getProductById);
 router.post('/', authenticate, adminOrStaff, requirePermission('products.manage', 'inventory.adjust'), createProductValidation, createProduct);
 router.put('/:id', authenticate, adminOrStaff, requirePermission('products.manage', 'inventory.adjust'), updateProductValidation, updateProduct);
 router.delete('/:id', authenticate, adminOrStaff, requirePermission('products.manage', 'inventory.adjust'), deleteProduct);
