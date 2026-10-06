@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { normalizePetType } = require('../utils/serviceAdvisorPetContract');
 
 const petProfileSchema = new mongoose.Schema({
   owner: {
@@ -14,7 +15,12 @@ const petProfileSchema = new mongoose.Schema({
     index: true
   },
   name: { type: String, required: true, trim: true },
-  type: { type: String, required: true, trim: true },   // Dog, Cat, etc.
+  type: {
+    type: String,
+    required: true,
+    trim: true,
+    set: value => normalizePetType(value) || value
+  },
   breed: { type: String, trim: true, default: '' },
   isMixedBreed: { type: Boolean, default: false },
   breedStatus: { type: String, enum: ['purebred', 'mixed_breed', 'unknown'], default: 'unknown' },

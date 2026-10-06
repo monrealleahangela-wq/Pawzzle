@@ -1,4 +1,11 @@
 const mongoose = require('mongoose');
+const {
+  PET_TYPES,
+  PET_SIZES,
+  COAT_LENGTHS,
+  COAT_TYPES,
+  SERVICE_NEEDS
+} = require('../utils/serviceAdvisorPetContract');
 
 // ── Pricing Rule Sub-Schemas ──────────────────────────────────────────────
 
@@ -166,11 +173,11 @@ const serviceSchema = new mongoose.Schema({
 
   recommendationCriteria: {
     enabled: { type: Boolean, default: false },
-    applicablePetTypes: [{ type: String, enum: ['any', 'dog', 'cat', 'bird', 'rabbit', 'hamster', 'other'] }],
-    applicableSizes: [{ type: String, enum: ['any', 'small', 'medium', 'large', 'extra_large'] }],
-    coatLengths: [{ type: String, enum: ['any', 'short', 'medium', 'long'] }],
-    coatTypes: [{ type: String, enum: ['any', 'straight', 'wavy', 'curly', 'double_coat', 'other'] }],
-    relevantNeeds: [{ type: String, enum: ['general_grooming', 'bathing', 'haircut', 'nail_trimming', 'coat_brushing', 'dematting', 'basic_cleaning', 'not_sure'] }],
+    applicablePetTypes: [{ type: String, enum: ['any', ...PET_TYPES] }],
+    applicableSizes: [{ type: String, enum: ['any', ...PET_SIZES.filter(value => value !== 'unknown')] }],
+    coatLengths: [{ type: String, enum: ['any', ...COAT_LENGTHS.filter(value => value !== 'unknown')] }],
+    coatTypes: [{ type: String, enum: ['any', ...COAT_TYPES.filter(value => value !== 'unknown')] }],
+    relevantNeeds: [{ type: String, enum: SERVICE_NEEDS }],
     preferenceTags: [{ type: String, trim: true, lowercase: true }],
     useCompletedHistory: { type: Boolean, default: false }
   },

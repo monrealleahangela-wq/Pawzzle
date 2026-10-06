@@ -7,6 +7,7 @@ const { calculateServicePrice } = require('../utils/pricingEngine');
 const { calculateTransactionTax, resolveTransactionTaxConfiguration } = require('../utils/taxCalculator');
 const { canOperateStore } = require('../utils/authorizationPolicy');
 const { getCustomerVisibleOwnerIds, buildCustomerVisibleStoreFilter, withCustomerComplianceFilter } = require('../utils/storeVisibility');
+const { normalizeRecommendationCriteria } = require('../utils/serviceAdvisorPetContract');
 
 const DEFAULT_REQUIREMENTS = [
   "Valid ID and contact details",
@@ -14,6 +15,12 @@ const DEFAULT_REQUIREMENTS = [
   "Pet information (breed, age, health status)",
   "Signed service consent or waiver",
   "Appointment confirmation (if required)"
+];
+
+const SERVICE_MUTABLE_FIELDS = [
+  'name', 'description', 'category', 'subCategory', 'duration', 'bufferTime', 'price',
+  'homeServiceAvailable', 'homeServicePrice', 'maxPetsPerSession', 'requirements', 'images',
+  'pricingRules', 'addOns', 'bookingRules', 'assignedStaff', 'schedule', 'recommendationCriteria', 'isActive'
 ];
 
 const PUBLIC_SERVICE_FIELDS = 'name description store category subCategory duration bufferTime price pricingRules addOns bookingRules assignedStaff schedule homeServiceAvailable homeServicePrice maxPetsPerSession requirements images ratings isActive isDeleted';
@@ -118,6 +125,7 @@ const createService = async (req, res) => {
     }
 
     const validatedAssignedStaff = await validateAssignedStaff(assignedStaff, req.params.storeId, { name, description, category, subCategory });
+    const validatedRecommendationCriteria = normalizeRecommendationCriteria(recommendationCriteria) || {};
     const service = new Service({
       name,
       description,
@@ -138,7 +146,7 @@ const createService = async (req, res) => {
       bookingRules: bookingRules || {},
       assignedStaff: validatedAssignedStaff,
       schedule: schedule || {},
-      recommendationCriteria: recommendationCriteria || {}
+      recommendationCriteria: validatedRecommendationCriteria
     });
 
     await service.save();
@@ -246,6 +254,7 @@ const createAdminService = async (req, res) => {
     }
 
     const validatedAssignedStaff = await validateAssignedStaff(assignedStaff, serviceStore, { name, description, category, subCategory });
+    const validatedRecommendationCriteria = normalizeRecommendationCriteria(recommendationCriteria) || {};
     const service = new Service({
       name,
       description,
@@ -267,7 +276,7 @@ const createAdminService = async (req, res) => {
       bookingRules: bookingRules || {},
       assignedStaff: validatedAssignedStaff,
       schedule: schedule || {},
-      recommendationCriteria: recommendationCriteria || {}
+      recommendationCriteria: validatedRecommendationCriteria
     });
 
     await service.save();
@@ -310,7 +319,11 @@ const updateService = async (req, res) => {
       return res.status(403).json({ message: 'You can only update services for your own or assigned store' });
     }
 
-    const updates = req.body; if (req.body.requirements && Array.isArray(req.body.requirements)) { updates.requirements = req.body.requirements.join(', '); }
+    const updates = Object.fromEntries(SERVICE_MUTABLE_FIELDS.filter(field => req.body[field] !== undefined).map(field => [field, req.body[field]]));
+    if (req.body.requirements && Array.isArray(req.body.requirements)) { updates.requirements = req.body.requirements.join(', '); }
+    if (req.body.recommendationCriteria !== undefined) {
+      updates.recommendationCriteria = normalizeRecommendationCriteria(req.body.recommendationCriteria);
+    }
     if (req.body.assignedStaff !== undefined) {
       updates.assignedStaff = await validateAssignedStaff(req.body.assignedStaff, service.store._id, {
         name: req.body.name ?? service.name,

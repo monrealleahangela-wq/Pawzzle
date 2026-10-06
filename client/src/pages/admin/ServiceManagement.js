@@ -7,6 +7,13 @@ import { adminServiceService, uploadService, getImageUrl, staffService, dssServi
 import { useAuth } from '../../contexts/AuthContext';
 import { useRealTimeUpdates } from '../../hooks/useRealTimeUpdates';
 import { SERVICE_CATEGORIES } from '../../constants/serviceCategories';
+import {
+  PET_TYPE_OPTIONS,
+  PET_SIZE_OPTIONS,
+  PET_COAT_LENGTH_OPTIONS,
+  PET_COAT_TYPE_OPTIONS,
+  PET_SERVICE_NEED_OPTIONS
+} from '../../constants/serviceAdvisorPetContract';
 import { PLATFORM_ADMIN_ROLES, STORE_ADMIN_ROLES, OPERATIONAL_ROLES, effectiveStaffType, hasUiActionPermission } from '../../utils/authorization';
 import ServiceFormModal from '../../components/forms/ServiceFormModal';
 
@@ -730,11 +737,11 @@ const ServiceManagement = () => {
                     </div>
                     {formData.recommendationCriteria.enabled && <div className="grid md:grid-cols-2 gap-4">
                       {[
-                        ['applicablePetTypes', 'Pet types', ['any','dog','cat','bird','rabbit','hamster','other']],
-                        ['applicableSizes', 'Pet sizes', ['any','small','medium','large','extra_large']],
-                        ['coatLengths', 'Coat lengths', ['any','short','medium','long']],
-                        ['coatTypes', 'Coat types', ['any','straight','wavy','curly','double_coat','other']],
-                        ['relevantNeeds', 'Relevant needs', ['general_grooming','bathing','haircut','nail_trimming','coat_brushing','dematting','basic_cleaning','not_sure']]
+                        ['applicablePetTypes', 'Pet types', ['any', ...PET_TYPE_OPTIONS.map(option => option.value)]],
+                        ['applicableSizes', 'Pet sizes', ['any', ...PET_SIZE_OPTIONS.filter(option => option.value !== 'unknown').map(option => option.value)]],
+                        ['coatLengths', 'Coat lengths', ['any', ...PET_COAT_LENGTH_OPTIONS.filter(option => option.value !== 'unknown').map(option => option.value)]],
+                        ['coatTypes', 'Coat types', ['any', ...PET_COAT_TYPE_OPTIONS.filter(option => option.value !== 'unknown').map(option => option.value)]],
+                        ['relevantNeeds', 'Relevant needs', PET_SERVICE_NEED_OPTIONS.map(option => option.value)]
                       ].map(([field, label, options]) => <fieldset key={field} className="rounded-xl bg-slate-50 p-3"><legend className="px-1 text-[10px] font-bold uppercase tracking-wide text-slate-500">{label}</legend><div className="flex flex-wrap gap-1.5 mt-1">{options.map(option => <button key={option} type="button" onClick={() => toggleCriterion(field, option)} className={`px-2.5 py-1.5 rounded-lg border text-[10px] font-bold capitalize ${formData.recommendationCriteria[field]?.includes(option) ? 'bg-indigo-600 border-indigo-600 text-white' : 'bg-white border-slate-200 text-slate-600'}`}>{option.replace('_',' ')}</button>)}</div></fieldset>)}
                       <label className="rounded-xl bg-slate-50 p-3 flex items-center justify-between text-xs font-bold text-slate-700">Use completed booking history <ToggleSwitch size="sm" enabled={formData.recommendationCriteria.useCompletedHistory} onToggle={() => setFormData(p => ({ ...p, recommendationCriteria: { ...p.recommendationCriteria, useCompletedHistory: !p.recommendationCriteria.useCompletedHistory } }))} /></label>
                       <label className="rounded-xl bg-slate-50 p-3 text-[10px] font-bold uppercase tracking-wide text-slate-500">Preference tags<input value={(formData.recommendationCriteria.preferenceTags || []).join(', ')} onChange={e => setFormData(p => ({ ...p, recommendationCriteria: { ...p.recommendationCriteria, preferenceTags: e.target.value.split(',').map(v => v.trim()).filter(Boolean) } }))} className="mt-2 w-full h-9 rounded-lg border border-slate-200 bg-white px-3 text-xs normal-case tracking-normal" placeholder="e.g. short duration, special handling" /></label>

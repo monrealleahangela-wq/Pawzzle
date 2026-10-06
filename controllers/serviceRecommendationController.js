@@ -6,10 +6,16 @@ const ServiceDSSConfig = require('../models/ServiceDSSConfig');
 const VaccinationRecord = require('../models/VaccinationRecord');
 const { isPlatformAdmin } = require('../config/permissions');
 const { canAccessStore } = require('../utils/authorizationPolicy');
+const { getCustomerVisibleOwnerIds, buildCustomerVisibleStoreFilter, withCustomerComplianceFilter } = require('../utils/storeVisibility');
+const {
+  configured,
+  evaluateHardEligibility,
+  profileCompleteness
+} = require('../utils/serviceAdvisorPetContract');
+const { ageInYears } = require('../utils/bookingPetSnapshot');
 
 const DEFAULTS = { enabled: true, weights: { petType: 25, customerNeed: 30, coat: 15, size: 10, history: 10, preference: 10 }, thresholds: { high: 75, good: 50 } };
 const normalized = value => String(value || '').trim().toLowerCase().replace(/\s+/g, '_');
-const configured = values => Array.isArray(values) && values.length > 0 && !values.includes('any');
 const includesValue = (values, value) => values.includes(normalized(value));
 
 const addCriterion = (parts, key, weight, evaluated, matched, explanation) => {
@@ -28,13 +34,22 @@ const getServiceRecommendations = async (req, res) => {
   try {
     const pet = await PetProfile.findOne({ _id: req.query.petId, owner: req.user._id }).lean();
     if (!pet) return res.status(404).json({ message: 'Pet profile not found.' });
-    const serviceFilter = { isActive: true, isDeleted: { $ne: true }, 'recommendationCriteria.enabled': true };
-    if (req.query.storeId) serviceFilter.store = req.query.storeId;
+    const ownerIds = await getCustomerVisibleOwnerIds();
+    const visibleStoreFilter = req.query.storeId ? { _id: req.query.storeId } : {};
+    const visibleStores = await Store.find(withCustomerComplianceFilter(buildCustomerVisibleStoreFilter(ownerIds, visibleStoreFilter))).select('_id').lean();
+    const serviceFilter = {
+      isActive: true,
+      isDeleted: { $ne: true },
+      'recommendationCriteria.enabled': true,
+      store: { $in: visibleStores.map(store => store._id) }
+    };
     const services = await Service.find(serviceFilter).populate('store', 'name isActive').lean();
-    const activeServices = services.filter(service => service.store?.isActive !== false);
+    const activeServices = services.filter(service => service.store && service.store.isActive !== false);
     const storeIds = [...new Set(activeServices.map(service => service.store?._id?.toString()).filter(Boolean))];
     const configs = await ServiceDSSConfig.find({ store: { $in: storeIds } }).lean();
     const configByStore = Object.fromEntries(configs.map(config => [config.store.toString(), config]));
+    const evaluatedServices = activeServices.filter(service => (configByStore[service.store._id.toString()] || DEFAULTS).enabled !== false);
+    const completeness = profileCompleteness(pet, evaluatedServices);
     const [completed, vaccinationRecords] = await Promise.all([
       Booking.find({ customer: req.user._id, status: 'completed', isDeleted: { $ne: true }, 'pet.name': new RegExp(`^${String(pet.name).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i'), 'pet.type': new RegExp(`^${String(pet.type).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') }).select('service bookingDate store notes').sort({ bookingDate: -1 }).lean(),
       VaccinationRecord.find({ pet: pet._id }).select('vaccineName administeredAt nextDueAt store').sort({ nextDueAt: 1 }).lean()
@@ -47,12 +62,9 @@ const getServiceRecommendations = async (req, res) => {
       const criteria = service.recommendationCriteria || {};
       const config = configByStore[service.store._id.toString()] || DEFAULTS;
       if (config.enabled === false) continue;
-      const petType = normalized(pet.type), size = normalized(pet.size).replace('extra_large', 'extra_large');
-      const coatLength = normalized(pet.coat?.length), coatType = normalized(pet.coat?.type);
-      if (configured(criteria.applicablePetTypes) && petType && !includesValue(criteria.applicablePetTypes, petType)) continue;
-      if (configured(criteria.applicableSizes) && size && size !== 'unknown' && !includesValue(criteria.applicableSizes, size)) continue;
-      if (configured(criteria.coatLengths) && coatLength && coatLength !== 'unknown' && !includesValue(criteria.coatLengths, coatLength)) continue;
-      if (configured(criteria.coatTypes) && coatType && coatType !== 'unknown' && !includesValue(criteria.coatTypes, coatType)) continue;
+      const eligibility = evaluateHardEligibility(pet, criteria);
+      if (!eligibility.eligible) continue;
+      const { petType, size, coatLength, coatType } = eligibility.normalized;
 
       const weights = { ...DEFAULTS.weights, ...(config.weights || {}) };
       const parts = [];
@@ -77,10 +89,8 @@ const getServiceRecommendations = async (req, res) => {
       const contextualReasons = [];
       const evidence = parts.filter(part => part.matched).map(part => part.explanation);
       const now = new Date();
-      const ageInYears = pet.birthday
-        ? Math.max(0, (now - new Date(pet.birthday)) / (365.25 * 86400000))
-        : pet.approximateAge?.unit === 'years' ? Number(pet.approximateAge.value) : pet.approximateAge?.unit === 'months' ? Number(pet.approximateAge.value) / 12 : null;
-      if (ageInYears !== null && Number.isFinite(ageInYears)) evidence.push(`Customer pet profile records an age of approximately ${ageInYears < 1 ? `${Math.round(ageInYears * 12)} months` : `${Number(ageInYears.toFixed(1))} years`}`);
+      const petAgeInYears = ageInYears(pet, now);
+      if (petAgeInYears !== null && Number.isFinite(petAgeInYears)) evidence.push(`Customer pet profile records an age of approximately ${petAgeInYears < 1 ? `${Math.round(petAgeInYears * 12)} months` : `${Number(petAgeInYears.toFixed(1))} years`}`);
       const serviceHistory = completed.filter(booking => String(booking.service) === String(service._id));
       if (serviceHistory.length) {
         const lastDate = new Date(serviceHistory[0].bookingDate);
@@ -122,7 +132,7 @@ const getServiceRecommendations = async (req, res) => {
       });
     }
     results.sort((a, b) => b.score - a.score || a.service.name.localeCompare(b.service.name));
-    res.json({ pet, recommendations: results, completedServiceHistory: completed, vaccinationEvidenceCount: vaccinationRecords.length, methodology: 'Deterministic weighted scoring using customer-provided pet data, recorded care history, and store-configured service criteria.', disclaimer: 'This system provides service recommendations only and does not diagnose conditions or verify that a medical service is required. For health concerns or medical advice, please consult a qualified veterinarian.' });
+    res.json({ pet, recommendations: results, profileCompleteness: completeness, completedServiceHistory: completed, vaccinationEvidenceCount: vaccinationRecords.length, methodology: 'Deterministic weighted scoring using customer-provided pet data, recorded care history, and store-configured service criteria.', disclaimer: 'This system provides service recommendations only and does not diagnose conditions or verify that a medical service is required. For health concerns or medical advice, please consult a qualified veterinarian.' });
   } catch (error) {
     console.error('Service recommendation error:', error);
     res.status(500).json({ message: 'Unable to calculate service recommendations.' });
@@ -164,4 +174,4 @@ const updateDSSConfig = async (req, res) => {
   } catch (error) { res.status(500).json({ message: 'Unable to update DSS configuration.' }); }
 };
 
-module.exports = { getServiceRecommendations, getDSSConfig, updateDSSConfig, _test: { addCriterion, calculateScore, configured, includesValue } };
+module.exports = { getServiceRecommendations, getDSSConfig, updateDSSConfig, _test: { addCriterion, calculateScore, configured, includesValue, evaluateHardEligibility, profileCompleteness } };

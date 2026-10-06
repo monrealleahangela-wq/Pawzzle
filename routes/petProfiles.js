@@ -3,10 +3,19 @@ const router = express.Router();
 const { authenticate } = require('../middleware/auth');
 const PetProfile = require('../models/PetProfile');
 const { body, validationResult } = require('express-validator');
+const {
+  PET_TYPES,
+  PET_PROFILE_SIZES,
+  COAT_LENGTHS,
+  COAT_TYPES,
+  SERVICE_NEEDS,
+  normalizePetType,
+  toProfileSize
+} = require('../utils/serviceAdvisorPetContract');
 
 const petValidation = [
   body('name').trim().notEmpty().withMessage('Pet name is required'),
-  body('type').trim().notEmpty().withMessage('Pet type is required'),
+  body('type').customSanitizer(value => normalizePetType(value) || value).isIn(PET_TYPES).withMessage('Invalid pet species'),
   body('breed').trim().notEmpty().withMessage('Breed is required'),
   body('breedStatus').optional().isIn(['purebred', 'mixed_breed', 'unknown']).withMessage('Invalid breed status'),
   body('pcciRegistration.status').optional().isIn(['yes', 'no', 'not_sure']).withMessage('Invalid PCCI registration status'),
@@ -18,7 +27,7 @@ const petValidation = [
   body('supportingDocuments').optional().isArray({ max: 10 }).withMessage('Supporting documents must be a list'),
   body('supportingDocuments.*.url').optional({ checkFalsy: true }).isURL({ protocols: ['http', 'https'], require_protocol: true }).withMessage('Invalid supporting document URL'),
   body('supportingDocuments.*.name').optional({ checkFalsy: true }).isLength({ max: 255 }).withMessage('Supporting document name is too long'),
-  body('size').optional().isIn(['Unknown', 'Small', 'Medium', 'Large', 'Extra Large']).withMessage('Invalid size'),
+  body('size').optional().customSanitizer(value => toProfileSize(value) || value).isIn(PET_PROFILE_SIZES).withMessage('Invalid size'),
   body('birthday').optional({ checkFalsy: true }).isISO8601().toDate().withMessage('Enter a valid birth date')
     .custom((value) => {
       const today = new Date();
@@ -29,8 +38,23 @@ const petValidation = [
     }),
   body('gender').isIn(['Male', 'Female']).withMessage('Invalid gender'),
   body('approximateAge.value').optional({ checkFalsy: true }).isFloat({ min: 0 }).withMessage('Approximate age cannot be negative'),
-  body('weight').optional({ checkFalsy: true }).isFloat({ min: 0, max: 200 }).withMessage('Weight must be between 0 and 200'),
+  body('approximateAge.unit').optional({ checkFalsy: true }).isIn(['months', 'years']).withMessage('Invalid age unit'),
+  body('weight').optional({ checkFalsy: true }).isFloat({ gt: 0, max: 200 }).withMessage('Weight must be greater than zero and no more than 200'),
+  body('weightUnit').optional().isIn(['kg', 'lb']).withMessage('Invalid weight unit'),
+  body('coat.length').optional().isIn(COAT_LENGTHS).withMessage('Invalid coat length'),
+  body('coat.type').optional().isIn(COAT_TYPES).withMessage('Invalid coat type'),
+  body('coat.condition').optional().isIn(['unknown', 'normal', 'tangled', 'matted', 'heavy_shedding', 'dry_looking', 'other']).withMessage('Invalid coat condition'),
+  body('serviceNeeds').optional().isArray({ max: SERVICE_NEEDS.length }).withMessage('Service needs must be a list'),
+  body('serviceNeeds.*').optional().isIn(SERVICE_NEEDS).withMessage('Invalid service need'),
+  body('servicePreferences.preferredServiceType').optional({ checkFalsy: true }).trim().isLength({ max: 100 }).withMessage('Preferred service type is too long'),
+  body('servicePreferences.preferredDuration').optional({ checkFalsy: true }).isIn(['short', 'standard', 'extended']).withMessage('Invalid preferred duration'),
+  body('servicePreferences.preferredFrequency').optional({ checkFalsy: true }).trim().isLength({ max: 100 }).withMessage('Preferred frequency is too long'),
+  body('servicePreferences.specialHandling').optional({ checkFalsy: true }).trim().isLength({ max: 500 }).withMessage('Special handling notes are too long'),
   body().custom(value => {
+    if (value.weight !== '' && value.weight !== null && value.weight !== undefined) {
+      const weight = Number(value.weight);
+      if (!Number.isFinite(weight) || weight <= 0 || weight > 200) throw new Error('Weight must be greater than zero and no more than 200');
+    }
     if (!value.birthday && (value.approximateAge?.value === '' || value.approximateAge?.value === undefined || value.approximateAge?.value === null)) {
       throw new Error('Enter either a birth date or an approximate age.');
     }
@@ -41,6 +65,8 @@ const petValidation = [
 const profileFields = ['name', 'type', 'breed', 'isMixedBreed', 'breedStatus', 'pcciRegistration', 'size', 'birthday', 'approximateAge', 'gender', 'weight', 'weightUnit', 'color', 'photo', 'vaccinationCards', 'supportingDocuments', 'vaccinationStatus', 'specialNotes', 'allergies', 'medicalConditions', 'groomingPreferences', 'behaviorNotes', 'emergencyContact', 'coat', 'groomingHistory', 'serviceNeeds', 'servicePreferences'];
 const profilePayload = body => {
   const payload = Object.fromEntries(profileFields.filter(key => body[key] !== undefined).map(key => [key, body[key]]));
+  payload.type = normalizePetType(body.type);
+  if (body.size !== undefined) payload.size = toProfileSize(body.size);
   payload.breedStatus = body.breedStatus || (body.isMixedBreed ? 'mixed_breed' : 'unknown');
   payload.isMixedBreed = payload.breedStatus === 'mixed_breed';
   const pcciApplicable = String(body.type).toLowerCase() === 'dog';

@@ -64,15 +64,23 @@ const ServiceAdvisor = ({ insights }) => {
   }, [pets, selectedPet]);
 
   useEffect(() => {
-    if (!selectedPet) return;
+    if (!selectedPet) {
+      setResult(null);
+      return undefined;
+    }
+    let currentRequest = true;
     setMatching(true);
+    setResult(null);
     dssService.getServiceRecommendations({ petId: selectedPet })
-      .then(({ data }) => setResult(data))
+      .then(({ data }) => { if (currentRequest) setResult(data); })
       .catch(error => {
-        setResult(null);
-        toast.error(error.response?.data?.message || 'Unable to calculate service recommendations.');
+        if (currentRequest) {
+          setResult(null);
+          toast.error(error.response?.data?.message || 'Unable to calculate service recommendations.');
+        }
       })
-      .finally(() => setMatching(false));
+      .finally(() => { if (currentRequest) setMatching(false); });
+    return () => { currentRequest = false; };
   }, [selectedPet]);
 
   if (!pets.length) return <section className="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center dark:border-slate-700 dark:bg-slate-900"><Heart className="mx-auto text-slate-300" size={28} /><h2 className="mt-3 font-bold text-slate-900 dark:text-white">Add a pet profile first</h2><p className="mt-1 text-sm text-slate-500 dark:text-slate-400">The service advisor needs an owned pet profile to compare configured service criteria.</p><Link to="/profile" className="mt-4 inline-flex rounded-lg bg-slate-900 px-4 py-2 text-xs font-bold text-white dark:bg-primary-700">Manage pet profiles</Link></section>;
@@ -83,8 +91,9 @@ const ServiceAdvisor = ({ insights }) => {
       <div className="relative mt-2 max-w-sm"><select id="advisor-pet" value={selectedPet} onChange={event => setSelectedPet(event.target.value)} className="h-10 w-full appearance-none rounded-lg border border-slate-300 bg-white px-3 pr-9 text-sm font-semibold dark:border-slate-700 dark:bg-slate-950 dark:text-white">{pets.map(pet => <option key={pet._id} value={pet._id}>{pet.name} · {pet.type}{pet.breed ? ` · ${pet.breed}` : ''}</option>)}</select><ChevronDown size={15} className="pointer-events-none absolute right-3 top-3 text-slate-400" /></div>
     </section>
     {matching ? <div className="py-10 text-center text-sm text-slate-500">Calculating service matches…</div> : <section className="space-y-3">
+      {result?.profileCompleteness?.complete === false && <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-amber-900 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-100" role="status"><div className="flex gap-3"><Info className="mt-0.5 h-4 w-4 shrink-0" /><div><p className="text-sm font-bold">Complete {result.pet?.name || 'this pet'}'s profile for more accurate recommendations.</p><p className="mt-1 text-xs">Add {result.profileCompleteness.missingFields.map(item => item.label).join(', ')}. Services with requirements that cannot be verified are not shown.</p><Link to="/profile" className="mt-2 inline-flex text-xs font-bold underline underline-offset-2">Update pet profile</Link></div></div></div>}
       <div className="flex flex-wrap items-end justify-between gap-3"><div><h2 className="text-base font-black text-slate-900 dark:text-white">Recommended services</h2><p className="text-xs text-slate-500 dark:text-slate-400">The existing deterministic service scoring workflow remains unchanged.</p></div><Link to="/services" className="text-xs font-bold text-primary-700 dark:text-primary-300">Browse all services</Link></div>
-      {!result?.recommendations?.length ? <div className="rounded-2xl border border-slate-200 bg-white p-6 text-center text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-900">No active service currently has compatible recommendation criteria.</div> : result.recommendations.map(item => <article key={item.service._id} className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900">
+      {!result?.recommendations?.length ? <div className="rounded-2xl border border-slate-200 bg-white p-6 text-center text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-900">{result?.profileCompleteness?.complete === false ? 'No recommendation can be confirmed from the currently recorded profile details.' : 'No active service currently matches this pet’s recorded attributes and the configured service criteria.'}</div> : result.recommendations.map(item => <article key={item.service._id} className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900">
         <div className="flex gap-4">{item.service.images?.[0] && <img src={getImageUrl(item.service.images[0])} alt="" className="h-16 w-16 shrink-0 rounded-xl object-cover" />}<div className="min-w-0 flex-1"><div className="flex flex-wrap justify-between gap-2"><div><h3 className="text-sm font-black text-slate-900 dark:text-white">{item.service.name}</h3><p className="text-xs text-slate-500">{item.service.store?.name || 'Service provider'} · {formatPeso(item.service.price)}</p></div><div className="text-right"><p className="text-lg font-black text-primary-700 dark:text-primary-300">{item.score}%</p><p className="text-[10px] font-bold uppercase tracking-wide text-slate-500">{item.matchLevel} match</p></div></div><ul className="mt-3 grid gap-1.5 sm:grid-cols-2">{item.explanations.map(text => <li key={text} className="flex gap-1.5 text-xs text-slate-600 dark:text-slate-300"><CheckCircle2 size={13} className="mt-0.5 shrink-0 text-emerald-600" />{text}</li>)}</ul><Link to={`/bookings?service=${item.service._id}`} className="mt-3 inline-flex h-9 items-center gap-1.5 rounded-lg bg-slate-900 px-3 text-xs font-bold text-white dark:bg-primary-700">Book this service <ArrowRight size={13} /></Link></div></div>
       </article>)}
     </section>}

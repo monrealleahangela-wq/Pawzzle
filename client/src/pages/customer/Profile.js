@@ -16,6 +16,7 @@ import { FavoritesPanel, FollowingPanel } from '../../components/profile/SavedPr
 import { formatPeso } from '../../utils/paymentSummary';
 import { isCareProfessional } from '../../utils/authorization';
 import ProfessionalProfileWorkspace from '../../components/staff/ProfessionalProfileWorkspace';
+import { normalizePetProfileType } from '../../constants/serviceAdvisorPetContract';
 
 import { useTheme } from '../../contexts/ThemeContext';
 
@@ -167,7 +168,7 @@ const Profile = () => {
   const [editingPet, setEditingPet] = useState(null);
   const [petForm, setPetForm] = useState({
     name: '',
-    type: 'Dog',
+    type: 'dog',
     breed: '',
     isMixedBreed: false,
     breedStatus: 'unknown',
@@ -703,7 +704,7 @@ const Profile = () => {
   const resetPetForm = () => {
     setPetForm({
       name: '',
-      type: 'Dog',
+      type: 'dog',
       breed: '',
       isMixedBreed: false,
       breedStatus: 'unknown',
@@ -741,7 +742,7 @@ const Profile = () => {
     setEditingPet(pet);
     setPetForm({
       name: pet.name,
-      type: pet.type,
+      type: normalizePetProfileType(pet.type) || 'other',
       breed: pet.breed || '',
       isMixedBreed: pet.isMixedBreed || false,
       breedStatus: pet.breedStatus || (pet.isMixedBreed ? 'mixed_breed' : 'unknown'),

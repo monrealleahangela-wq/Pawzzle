@@ -1,6 +1,13 @@
 import React from 'react';
-import { Camera, Check, HeartPulse, PawPrint, Upload } from 'lucide-react';
+import { Camera, Check, HeartPulse, PawPrint, Sparkles, Upload } from 'lucide-react';
 import { CompactFormModal, CompactFormSection, CompactUploadCard, RequiredMark, compactInputClass } from '../forms/CompactEntityForm';
+import {
+  PET_TYPE_OPTIONS,
+  PET_SIZE_OPTIONS,
+  PET_COAT_LENGTH_OPTIONS,
+  PET_COAT_TYPE_OPTIONS,
+  PET_SERVICE_NEED_OPTIONS
+} from '../../constants/serviceAdvisorPetContract';
 
 const inputClass = compactInputClass;
 const Required = RequiredMark;
@@ -93,6 +100,18 @@ const PetProfileFormModal = ({
     breed: ''
   }));
 
+  const toggleServiceNeed = value => setPetForm(current => {
+    const selected = current.serviceNeeds || [];
+    if (value === 'not_sure') return { ...current, serviceNeeds: selected.includes(value) ? [] : [value] };
+    const withoutUnknown = selected.filter(item => item !== 'not_sure');
+    return {
+      ...current,
+      serviceNeeds: withoutUnknown.includes(value)
+        ? withoutUnknown.filter(item => item !== value)
+        : [...withoutUnknown, value]
+    };
+  });
+
   return (
     <CompactFormModal
       title={editingPet ? 'Edit Pet' : 'Add Pet'}
@@ -113,7 +132,7 @@ const PetProfileFormModal = ({
           <Section step="2" icon={PawPrint} title="Basic Information" description="Tell us the essentials used for pet care and identification.">
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <label className="text-[11px] font-bold text-slate-700">Pet Name<Required /><input value={petForm.name} onChange={event => setPetForm(current => ({ ...current, name: event.target.value }))} className={inputClass} placeholder="Pet name" /></label>
-              <label className="text-[11px] font-bold text-slate-700">Species<Required /><select value={petForm.type} onChange={event => setType(event.target.value)} className={inputClass}><option value="Dog">Dog</option><option value="Cat">Cat</option><option value="Other">Other</option></select></label>
+              <label className="text-[11px] font-bold text-slate-700">Species<Required /><select value={petForm.type} onChange={event => setType(event.target.value)} className={inputClass}>{PET_TYPE_OPTIONS.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>
               <label className="text-[11px] font-bold text-slate-700">Breed<Required /><input list="pet-breed-options" value={petForm.breed} onChange={event => setPetForm(current => ({ ...current, breed: event.target.value }))} className={inputClass} placeholder="Breed or best description" /><datalist id="pet-breed-options">{breeds.map(breed => <option key={breed} value={breed} />)}</datalist></label>
               <div><p className="text-[11px] font-bold text-slate-700">Sex<Required /></p><div className="mt-1 grid h-10 grid-cols-2 rounded-xl bg-slate-100 p-1">{['Male', 'Female'].map(value => <button key={value} type="button" onClick={() => setPetForm(current => ({ ...current, gender: value }))} className={`rounded-lg text-[11px] font-black ${petForm.gender === value ? 'bg-white text-primary-700 shadow-sm' : 'text-slate-500'}`}>{value}</button>)}</div></div>
               <label className="text-[11px] font-bold text-slate-700">Birth Date<Required /><input type="date" max={new Date().toISOString().split('T')[0]} value={petForm.birthday} onChange={event => setPetForm(current => ({ ...current, birthday: event.target.value }))} className={inputClass} /></label>
@@ -134,6 +153,24 @@ const PetProfileFormModal = ({
               <label className="text-[11px] font-bold text-slate-700">Allergies <span className="font-normal text-slate-400">(optional)</span><input value={petForm.allergies || ''} onChange={event => setPetForm(current => ({ ...current, allergies: event.target.value }))} className={inputClass} placeholder="None known" /></label>
               <label className="text-[11px] font-bold text-slate-700 sm:col-span-2">Medical Notes <span className="font-normal text-slate-400">(optional)</span><textarea rows="3" value={petForm.medicalConditions || ''} onChange={event => setPetForm(current => ({ ...current, medicalConditions: event.target.value }))} className="mt-1 w-full resize-none rounded-xl border border-slate-200 bg-white p-3 text-sm outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10" placeholder="Conditions, medication, or handling notes" /></label>
             </div>
+          </Section>
+
+          <Section step="4" icon={Sparkles} title="Service Advisor Profile" description="Optional details improve matching; restricted services require the relevant details before they can be recommended.">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <label className="text-[11px] font-bold text-slate-700">Size <span className="font-normal text-slate-400">(optional)</span><select value={petForm.size || 'Unknown'} onChange={event => setPetForm(current => ({ ...current, size: event.target.value }))} className={inputClass}>{PET_SIZE_OPTIONS.map(option => <option key={option.value} value={option.profileValue}>{option.label}</option>)}</select></label>
+              <label className="text-[11px] font-bold text-slate-700">Preferred Service <span className="font-normal text-slate-400">(optional)</span><input value={petForm.servicePreferences?.preferredServiceType || ''} onChange={event => setPetForm(current => ({ ...current, servicePreferences: { ...current.servicePreferences, preferredServiceType: event.target.value } }))} className={inputClass} maxLength="100" placeholder="e.g. grooming or training" /></label>
+              <label className="text-[11px] font-bold text-slate-700">Coat Length <span className="font-normal text-slate-400">(optional)</span><select value={petForm.coat?.length || 'unknown'} onChange={event => setPetForm(current => ({ ...current, coat: { ...current.coat, length: event.target.value } }))} className={inputClass}>{PET_COAT_LENGTH_OPTIONS.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>
+              <label className="text-[11px] font-bold text-slate-700">Coat Type <span className="font-normal text-slate-400">(optional)</span><select value={petForm.coat?.type || 'unknown'} onChange={event => setPetForm(current => ({ ...current, coat: { ...current.coat, type: event.target.value } }))} className={inputClass}>{PET_COAT_TYPE_OPTIONS.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>
+            </div>
+            <fieldset className="mt-4">
+              <legend className="text-[11px] font-bold text-slate-700">Current Service Needs <span className="font-normal text-slate-400">(optional)</span></legend>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {PET_SERVICE_NEED_OPTIONS.map(option => {
+                  const selected = (petForm.serviceNeeds || []).includes(option.value);
+                  return <button key={option.value} type="button" aria-pressed={selected} onClick={() => toggleServiceNeed(option.value)} className={`min-h-10 rounded-lg border px-3 py-2 text-[10px] font-bold ${selected ? 'border-primary-600 bg-primary-600 text-white' : 'border-slate-200 bg-white text-slate-600 hover:border-primary-300'}`}>{option.label}</button>;
+                })}
+              </div>
+            </fieldset>
           </Section>
     </CompactFormModal>
   );

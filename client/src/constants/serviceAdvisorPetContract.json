@@ -1,0 +1,41 @@
+{
+  "petTypes": [
+    { "value": "dog", "label": "Dog", "aliases": ["dog", "dogs", "canine"] },
+    { "value": "cat", "label": "Cat", "aliases": ["cat", "cats", "feline"] },
+    { "value": "bird", "label": "Bird", "aliases": ["bird", "birds", "avian"] },
+    { "value": "rabbit", "label": "Rabbit", "aliases": ["rabbit", "rabbits", "bunny", "bunnies"] },
+    { "value": "hamster", "label": "Hamster", "aliases": ["hamster", "hamsters"] },
+    { "value": "other", "label": "Other", "aliases": ["other"] }
+  ],
+  "sizes": [
+    { "value": "unknown", "label": "Unknown", "profileValue": "Unknown" },
+    { "value": "small", "label": "Small", "profileValue": "Small" },
+    { "value": "medium", "label": "Medium", "profileValue": "Medium" },
+    { "value": "large", "label": "Large", "profileValue": "Large" },
+    { "value": "extra_large", "label": "Extra Large", "profileValue": "Extra Large" }
+  ],
+  "coatLengths": [
+    { "value": "unknown", "label": "Unknown" },
+    { "value": "short", "label": "Short" },
+    { "value": "medium", "label": "Medium" },
+    { "value": "long", "label": "Long" }
+  ],
+  "coatTypes": [
+    { "value": "unknown", "label": "Unknown" },
+    { "value": "straight", "label": "Straight" },
+    { "value": "wavy", "label": "Wavy" },
+    { "value": "curly", "label": "Curly" },
+    { "value": "double_coat", "label": "Double Coat" },
+    { "value": "other", "label": "Other" }
+  ],
+  "serviceNeeds": [
+    { "value": "general_grooming", "label": "General Grooming" },
+    { "value": "bathing", "label": "Bathing" },
+    { "value": "haircut", "label": "Haircut" },
+    { "value": "nail_trimming", "label": "Nail Trimming" },
+    { "value": "coat_brushing", "label": "Coat Brushing" },
+    { "value": "dematting", "label": "Dematting" },
+    { "value": "basic_cleaning", "label": "Basic Cleaning" },
+    { "value": "not_sure", "label": "Not Sure" }
+  ]
+}
