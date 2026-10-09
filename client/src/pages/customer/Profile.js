@@ -787,8 +787,9 @@ const Profile = () => {
   const catBreeds = ['Abyssinian', 'American Shorthair', 'Bengal', 'Birman', 'British Shorthair', 'Burmese', 'Maine Coon', 'Persian', 'Ragdoll', 'Russian Blue', 'Siamese', 'Sphynx', 'Other'];
   
   const getBreedsByType = (type) => {
-    if (type === 'Dog') return dogBreeds;
-    if (type === 'Cat') return catBreeds;
+    const normalizedType = normalizePetProfileType(type);
+    if (normalizedType === 'dog') return dogBreeds;
+    if (normalizedType === 'cat') return catBreeds;
     return ['Mixed', 'Other'];
   };
 
@@ -1580,10 +1581,10 @@ const Profile = () => {
                         <div key={pet._id} className="shrink-0 w-[220px] sm:w-[240px] snap-start group bg-white rounded-2xl p-4 shadow-sm hover:shadow-lg transition-all duration-300 border border-slate-100 relative overflow-hidden flex flex-col items-center text-center">
                           <div className="absolute top-0 right-0 p-3 opacity-100 transition-opacity z-20">
                             <div className="flex gap-2">
-                                <button onClick={(e) => { e.stopPropagation(); handleEditPet(pet); }} className="w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center hover:bg-blue-100 transition-colors shadow-sm">
+                                <button aria-label={`Edit ${pet.name}`} onClick={(e) => { e.stopPropagation(); handleEditPet(pet); }} className="w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center hover:bg-blue-100 transition-colors shadow-sm">
                                     <Edit2 className="h-3.5 w-3.5" />
                                 </button>
-                                <button onClick={(e) => { e.stopPropagation(); handleDeletePet(pet._id); }} className="w-8 h-8 rounded-full bg-red-50 text-red-600 flex items-center justify-center hover:bg-red-100 transition-colors shadow-sm">
+                                <button aria-label={`Delete ${pet.name}`} onClick={(e) => { e.stopPropagation(); handleDeletePet(pet._id); }} className="w-8 h-8 rounded-full bg-red-50 text-red-600 flex items-center justify-center hover:bg-red-100 transition-colors shadow-sm">
                                     <Trash2 className="h-3.5 w-3.5" />
                                 </button>
                             </div>
@@ -1600,7 +1601,7 @@ const Profile = () => {
                               )}
                             </div>
                             <div className="absolute -bottom-2 -right-2 bg-white p-2.5 rounded-2xl shadow-xl border border-slate-50">
-                                <p className="text-xs font-black text-slate-800 leading-none">{pet.type === 'Dog' ? '🐶' : pet.type === 'Cat' ? '🐱' : '🐾'}</p>
+                                <p className="text-xs font-black text-slate-800 leading-none">{normalizePetProfileType(pet.type) === 'dog' ? '🐶' : normalizePetProfileType(pet.type) === 'cat' ? '🐱' : '🐾'}</p>
                             </div>
                           </div>
 

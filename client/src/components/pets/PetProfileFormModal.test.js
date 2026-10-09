@@ -27,8 +27,15 @@ const Harness = () => {
   />;
 };
 
-test('Pet Add/Edit exposes the shared Service Advisor attributes and preserves canonical values', () => {
+test('Pet Add/Edit keeps the compact three-section profile workflow and canonical pet facts', () => {
   render(<Harness />);
+
+  expect(screen.getAllByText('Pet Photo')).toHaveLength(2);
+  expect(screen.getByText('Basic Information')).toBeInTheDocument();
+  expect(screen.getByText('Health Information')).toBeInTheDocument();
+  expect(screen.queryByText('Service Advisor Profile')).not.toBeInTheDocument();
+  expect(screen.queryByLabelText(/Preferred Service/)).not.toBeInTheDocument();
+  expect(screen.queryByText('Current Service Needs')).not.toBeInTheDocument();
 
   const species = screen.getByLabelText(/Species/);
   expect(within(species).getAllByRole('option').map(option => option.value)).toEqual(['dog', 'cat', 'bird', 'rabbit', 'hamster', 'other']);
@@ -37,13 +44,7 @@ test('Pet Add/Edit exposes the shared Service Advisor attributes and preserves c
   expect(screen.getByLabelText(/Size/)).toHaveValue('Small');
   fireEvent.change(screen.getByLabelText(/Coat Length/), { target: { value: 'short' } });
   fireEvent.change(screen.getByLabelText(/Coat Type/), { target: { value: 'straight' } });
-  fireEvent.change(screen.getByLabelText(/Preferred Service/), { target: { value: 'grooming' } });
 
   expect(screen.getByLabelText(/Coat Length/)).toHaveValue('short');
   expect(screen.getByLabelText(/Coat Type/)).toHaveValue('straight');
-  expect(screen.getByLabelText(/Preferred Service/)).toHaveValue('grooming');
-
-  const bathing = screen.getByRole('button', { name: 'Bathing' });
-  fireEvent.click(bathing);
-  expect(bathing).toHaveAttribute('aria-pressed', 'true');
 });

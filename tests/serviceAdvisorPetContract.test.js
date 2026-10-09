@@ -101,7 +101,7 @@ test('owned profile, public Store scope, mutation validation, and incomplete-pro
   const routes = read('routes/petProfiles.js');
   const profileForm = read('client/src/components/pets/PetProfileFormModal.js');
   const serviceEditor = read('client/src/pages/admin/ServiceManagement.js');
-  const advisor = read('client/src/pages/customer/DSS.js');
+  const advisor = read('client/src/components/ServiceAdvisorQuestionnaire.js');
 
   assert.match(controller, /PetProfile\.findOne\(\{ _id: req\.query\.petId, owner: req\.user\._id \}\)/);
   assert.match(controller, /withCustomerComplianceFilter\(buildCustomerVisibleStoreFilter/);
@@ -111,8 +111,10 @@ test('owned profile, public Store scope, mutation validation, and incomplete-pro
   assert.match(routes, /const profileFields = \[/);
   assert.match(routes, /body\('serviceNeeds\.\*'\).*isIn\(SERVICE_NEEDS\)/);
   assert.match(routes, /body\('approximateAge\.unit'\).*isIn\(\['months', 'years'\]\)/);
-  assert.match(profileForm, /Service Advisor Profile/);
+  assert.match(profileForm, /PET_TYPE_OPTIONS\.map/);
+  assert.match(profileForm, /PET_SIZE_OPTIONS\.map/);
+  assert.doesNotMatch(profileForm, /Service Advisor Profile|Preferred Service|Current Service Needs/);
   assert.match(serviceEditor, /PET_TYPE_OPTIONS\.map/);
-  assert.match(advisor, /profileCompleteness\.missingFields/);
-  assert.match(advisor, /currentRequest = false/);
+  assert.match(advisor, /result\.missingFields/);
+  assert.match(advisor, /requestId === recommendationRequest\.current/);
 });

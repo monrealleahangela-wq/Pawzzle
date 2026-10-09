@@ -4,6 +4,7 @@ const Booking = require('../models/Booking');
 const Store = require('../models/Store');
 const ServiceDSSConfig = require('../models/ServiceDSSConfig');
 const VaccinationRecord = require('../models/VaccinationRecord');
+const mongoose = require('mongoose');
 const { isPlatformAdmin } = require('../config/permissions');
 const { canAccessStore } = require('../utils/authorizationPolicy');
 const { getCustomerVisibleOwnerIds, buildCustomerVisibleStoreFilter, withCustomerComplianceFilter } = require('../utils/storeVisibility');
@@ -13,6 +14,15 @@ const {
   profileCompleteness
 } = require('../utils/serviceAdvisorPetContract');
 const { ageInYears } = require('../utils/bookingPetSnapshot');
+const {
+  budgetLabel,
+  evaluateQuestionnaireServices,
+  normalizeQuestionnaire,
+  normalizeRequirementsInput,
+  requirementFieldsForServices,
+  serviceCategoriesForNeed,
+  serviceNeedLabel
+} = require('../utils/serviceAdvisorQuestionnaire');
 
 const DEFAULTS = { enabled: true, weights: { petType: 25, customerNeed: 30, coat: 15, size: 10, history: 10, preference: 10 }, thresholds: { high: 75, good: 50 } };
 const normalized = value => String(value || '').trim().toLowerCase().replace(/\s+/g, '_');
@@ -139,6 +149,108 @@ const getServiceRecommendations = async (req, res) => {
   }
 };
 
+const loadQuestionnaireServices = async serviceNeed => {
+  const ownerIds = await getCustomerVisibleOwnerIds();
+  const visibleStores = await Store.find(withCustomerComplianceFilter(buildCustomerVisibleStoreFilter(ownerIds)))
+    .select('_id')
+    .lean();
+  const storeIds = visibleStores.map(store => store._id);
+  const categories = serviceCategoriesForNeed(serviceNeed);
+  const filter = {
+    isActive: true,
+    isDeleted: { $ne: true },
+    'recommendationCriteria.enabled': true,
+    store: { $in: storeIds },
+    ...(categories.length ? { category: { $in: categories } } : {})
+  };
+  const services = await Service.find(filter)
+    .populate('store', '_id name slug logo isActive')
+    .lean();
+  const populatedStoreIds = [...new Set(services.map(service => String(service.store?._id || '')).filter(Boolean))];
+  const configs = populatedStoreIds.length
+    ? await ServiceDSSConfig.find({ store: { $in: populatedStoreIds } }).select('store enabled').lean()
+    : [];
+  const enabledByStore = new Map(configs.map(config => [String(config.store), config.enabled !== false]));
+  return services.filter(service => service.store?.isActive !== false && enabledByStore.get(String(service.store?._id)) !== false);
+};
+
+const buildQuestionnairePet = (questionnaire, profile) => ({
+  type: questionnaire.petType,
+  size: questionnaire.details.size || profile?.size || 'unknown',
+  coat: {
+    length: questionnaire.details.coatLength || profile?.coat?.length || 'unknown',
+    type: questionnaire.details.coatType || profile?.coat?.type || 'unknown'
+  },
+  breed: profile?.breed || '',
+  weight: profile?.weight,
+  weightUnit: profile?.weightUnit || 'kg'
+});
+
+const getServiceAdvisorRequirements = async (req, res) => {
+  try {
+    const input = normalizeRequirementsInput(req.body);
+    const services = await loadQuestionnaireServices(input.serviceNeed);
+    res.json({
+      fields: requirementFieldsForServices(services, input.petType),
+      serviceNeed: input.serviceNeed,
+      petType: input.petType
+    });
+  } catch (error) {
+    if (error.statusCode) return res.status(error.statusCode).json({ message: error.message });
+    console.error('Service Advisor requirements error:', error);
+    res.status(500).json({ message: 'Unable to load Service Advisor requirements.' });
+  }
+};
+
+const createServiceAdvisorRecommendations = async (req, res) => {
+  try {
+    const questionnaire = normalizeQuestionnaire(req.body);
+    let profile = null;
+    if (questionnaire.petProfileId) {
+      if (!mongoose.isValidObjectId(questionnaire.petProfileId)) {
+        return res.status(400).json({ message: 'Invalid pet profile identifier.' });
+      }
+      profile = await PetProfile.findOne({ _id: questionnaire.petProfileId, owner: req.user._id }).lean();
+      if (!profile) return res.status(404).json({ message: 'Pet profile not found.' });
+    }
+
+    const services = await loadQuestionnaireServices(questionnaire.serviceNeed);
+    if (!services.length) {
+      return res.json({
+        status: questionnaire.serviceNeed === 'explore' ? 'no_eligible_services' : 'no_service_type',
+        recommendations: [],
+        budgetAlternatives: [],
+        pricingUnknown: [],
+        missingFields: [],
+        questionnaire: {
+          ...questionnaire,
+          budgetLabel: budgetLabel(questionnaire.budget),
+          serviceNeedLabel: serviceNeedLabel(questionnaire.serviceNeed)
+        },
+        selectedPet: profile ? { _id: profile._id, name: profile.name } : null
+      });
+    }
+
+    const pet = buildQuestionnairePet(questionnaire, profile);
+    const result = evaluateQuestionnaireServices({ services, questionnaire, pet });
+    res.json({
+      ...result,
+      questionnaire: {
+        ...questionnaire,
+        budgetLabel: budgetLabel(questionnaire.budget),
+        serviceNeedLabel: serviceNeedLabel(questionnaire.serviceNeed)
+      },
+      selectedPet: profile ? { _id: profile._id, name: profile.name } : null,
+      methodology: 'Deterministic matching of customer answers against real active seller Services, Store visibility, configured hard pet restrictions, and persisted Service pricing.',
+      disclaimer: 'Service Advisor supports service discovery only. It does not diagnose a pet or determine that medical care is required.'
+    });
+  } catch (error) {
+    if (error.statusCode) return res.status(error.statusCode).json({ message: error.message });
+    console.error('Service Advisor questionnaire error:', error);
+    res.status(500).json({ message: 'Unable to calculate service recommendations.' });
+  }
+};
+
 const resolveAdminStore = async req => {
   if (req.query.storeId) {
     const store = await Store.findById(req.query.storeId);
@@ -174,4 +286,11 @@ const updateDSSConfig = async (req, res) => {
   } catch (error) { res.status(500).json({ message: 'Unable to update DSS configuration.' }); }
 };
 
-module.exports = { getServiceRecommendations, getDSSConfig, updateDSSConfig, _test: { addCriterion, calculateScore, configured, includesValue, evaluateHardEligibility, profileCompleteness } };
+module.exports = {
+  getServiceRecommendations,
+  getServiceAdvisorRequirements,
+  createServiceAdvisorRecommendations,
+  getDSSConfig,
+  updateDSSConfig,
+  _test: { addCriterion, buildQuestionnairePet, calculateScore, configured, includesValue, evaluateHardEligibility, profileCompleteness }
+};

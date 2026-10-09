@@ -5,12 +5,20 @@ const {
   productForecast, replenishment, supplierScorecard, decideRecommendation
 } = require('../controllers/decisionSupportController');
 const { getCustomerInsights, getCustomerPetRecommendations, getAdminInsights, getStaffInsights, getSuperAdminInsights } = require('../controllers/dssController');
-const { getServiceRecommendations, getDSSConfig, updateDSSConfig } = require('../controllers/serviceRecommendationController');
+const {
+  getServiceRecommendations,
+  getServiceAdvisorRequirements,
+  createServiceAdvisorRecommendations,
+  getDSSConfig,
+  updateDSSConfig
+} = require('../controllers/serviceRecommendationController');
 
 // Customer DSS - any authenticated user
 router.get('/customer', authenticate, getCustomerInsights);
 router.post('/customer/pet-recommendations', authenticate, customerOnly, getCustomerPetRecommendations);
 router.get('/service-recommendations', authenticate, getServiceRecommendations);
+router.post('/service-recommendations', authenticate, customerOnly, createServiceAdvisorRecommendations);
+router.post('/service-advisor/requirements', authenticate, customerOnly, getServiceAdvisorRequirements);
 router.get('/service-config', authenticate, adminOnly, getDSSConfig);
 router.put('/service-config', authenticate, adminOnly, updateDSSConfig);
 

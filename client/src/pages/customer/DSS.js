@@ -1,9 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import { ArrowLeft, ArrowRight, CheckCircle2, ChevronDown, Heart, Home, Info, PawPrint, RefreshCw, Scale, ShieldCheck, Sparkles } from 'lucide-react';
+import { ArrowLeft, ArrowRight, CheckCircle2, Home, Info, PawPrint, RefreshCw, Scale, ShieldCheck, Sparkles } from 'lucide-react';
 import { dssService, getImageUrl } from '../../services/apiService';
 import { formatPeso } from '../../utils/paymentSummary';
+import ServiceAdvisorQuestionnaire from '../../components/ServiceAdvisorQuestionnaire';
 
 const steps = ['Your Budget', 'Your Space', 'Your Home', 'Your Lifestyle', 'Pet Preferences'];
 const options = {
@@ -52,53 +53,6 @@ const MultiGrid = ({ name, values, selected, onChange }) => (
 );
 
 const SelectField = ({ label, name, value, onChange, values }) => <label className="text-xs font-bold text-slate-700 dark:text-slate-200">{label}<select value={value} onChange={event => onChange(name, event.target.value)} className="mt-1.5 h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-medium text-slate-800 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"><option value="">Select an option</option>{values.map(([key, text]) => <option key={key} value={key}>{text}</option>)}</select></label>;
-
-const ServiceAdvisor = ({ insights }) => {
-  const pets = useMemo(() => insights?.myPets || [], [insights]);
-  const [selectedPet, setSelectedPet] = useState(pets[0]?._id || '');
-  const [result, setResult] = useState(null);
-  const [matching, setMatching] = useState(false);
-
-  useEffect(() => {
-    if (!selectedPet && pets[0]?._id) setSelectedPet(pets[0]._id);
-  }, [pets, selectedPet]);
-
-  useEffect(() => {
-    if (!selectedPet) {
-      setResult(null);
-      return undefined;
-    }
-    let currentRequest = true;
-    setMatching(true);
-    setResult(null);
-    dssService.getServiceRecommendations({ petId: selectedPet })
-      .then(({ data }) => { if (currentRequest) setResult(data); })
-      .catch(error => {
-        if (currentRequest) {
-          setResult(null);
-          toast.error(error.response?.data?.message || 'Unable to calculate service recommendations.');
-        }
-      })
-      .finally(() => { if (currentRequest) setMatching(false); });
-    return () => { currentRequest = false; };
-  }, [selectedPet]);
-
-  if (!pets.length) return <section className="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center dark:border-slate-700 dark:bg-slate-900"><Heart className="mx-auto text-slate-300" size={28} /><h2 className="mt-3 font-bold text-slate-900 dark:text-white">Add a pet profile first</h2><p className="mt-1 text-sm text-slate-500 dark:text-slate-400">The service advisor needs an owned pet profile to compare configured service criteria.</p><Link to="/profile" className="mt-4 inline-flex rounded-lg bg-slate-900 px-4 py-2 text-xs font-bold text-white dark:bg-primary-700">Manage pet profiles</Link></section>;
-
-  return <div className="space-y-4">
-    <section className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900">
-      <label className="text-xs font-bold text-slate-700 dark:text-slate-200" htmlFor="advisor-pet">Pet to match</label>
-      <div className="relative mt-2 max-w-sm"><select id="advisor-pet" value={selectedPet} onChange={event => setSelectedPet(event.target.value)} className="h-10 w-full appearance-none rounded-lg border border-slate-300 bg-white px-3 pr-9 text-sm font-semibold dark:border-slate-700 dark:bg-slate-950 dark:text-white">{pets.map(pet => <option key={pet._id} value={pet._id}>{pet.name} · {pet.type}{pet.breed ? ` · ${pet.breed}` : ''}</option>)}</select><ChevronDown size={15} className="pointer-events-none absolute right-3 top-3 text-slate-400" /></div>
-    </section>
-    {matching ? <div className="py-10 text-center text-sm text-slate-500">Calculating service matches…</div> : <section className="space-y-3">
-      {result?.profileCompleteness?.complete === false && <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-amber-900 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-100" role="status"><div className="flex gap-3"><Info className="mt-0.5 h-4 w-4 shrink-0" /><div><p className="text-sm font-bold">Complete {result.pet?.name || 'this pet'}'s profile for more accurate recommendations.</p><p className="mt-1 text-xs">Add {result.profileCompleteness.missingFields.map(item => item.label).join(', ')}. Services with requirements that cannot be verified are not shown.</p><Link to="/profile" className="mt-2 inline-flex text-xs font-bold underline underline-offset-2">Update pet profile</Link></div></div></div>}
-      <div className="flex flex-wrap items-end justify-between gap-3"><div><h2 className="text-base font-black text-slate-900 dark:text-white">Recommended services</h2><p className="text-xs text-slate-500 dark:text-slate-400">The existing deterministic service scoring workflow remains unchanged.</p></div><Link to="/services" className="text-xs font-bold text-primary-700 dark:text-primary-300">Browse all services</Link></div>
-      {!result?.recommendations?.length ? <div className="rounded-2xl border border-slate-200 bg-white p-6 text-center text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-900">{result?.profileCompleteness?.complete === false ? 'No recommendation can be confirmed from the currently recorded profile details.' : 'No active service currently matches this pet’s recorded attributes and the configured service criteria.'}</div> : result.recommendations.map(item => <article key={item.service._id} className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900">
-        <div className="flex gap-4">{item.service.images?.[0] && <img src={getImageUrl(item.service.images[0])} alt="" className="h-16 w-16 shrink-0 rounded-xl object-cover" />}<div className="min-w-0 flex-1"><div className="flex flex-wrap justify-between gap-2"><div><h3 className="text-sm font-black text-slate-900 dark:text-white">{item.service.name}</h3><p className="text-xs text-slate-500">{item.service.store?.name || 'Service provider'} · {formatPeso(item.service.price)}</p></div><div className="text-right"><p className="text-lg font-black text-primary-700 dark:text-primary-300">{item.score}%</p><p className="text-[10px] font-bold uppercase tracking-wide text-slate-500">{item.matchLevel} match</p></div></div><ul className="mt-3 grid gap-1.5 sm:grid-cols-2">{item.explanations.map(text => <li key={text} className="flex gap-1.5 text-xs text-slate-600 dark:text-slate-300"><CheckCircle2 size={13} className="mt-0.5 shrink-0 text-emerald-600" />{text}</li>)}</ul><Link to={`/bookings?service=${item.service._id}`} className="mt-3 inline-flex h-9 items-center gap-1.5 rounded-lg bg-slate-900 px-3 text-xs font-bold text-white dark:bg-primary-700">Book this service <ArrowRight size={13} /></Link></div></div>
-      </article>)}
-    </section>}
-  </div>;
-};
 
 const CustomerDSS = () => {
   const [mode, setMode] = useState('pet');
@@ -155,11 +109,11 @@ const CustomerDSS = () => {
   ][step];
 
   return <div className="mx-auto max-w-6xl space-y-5 pb-20">
-    <section className="rounded-2xl border border-slate-800 bg-slate-900 p-5 text-white md:p-7"><div className="flex items-start gap-3"><div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-white/10"><Scale size={18} /></div><div><p className="text-[10px] font-bold uppercase tracking-[0.18em] text-emerald-300">Decision support system</p><h1 className="mt-1 text-xl font-black md:text-2xl">Pet Compatibility Assessment</h1><p className="mt-2 max-w-3xl text-xs leading-relaxed text-slate-300 md:text-sm">Transparent, deterministic recommendations from your selections and actual available Pawzzle listing data. No AI, diagnosis, or guaranteed match.</p></div></div></section>
+    <section className="rounded-2xl border border-slate-800 bg-slate-900 p-5 text-white md:p-7"><div className="flex items-start gap-3"><div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-white/10"><Scale size={18} /></div><div><p className="text-[10px] font-bold uppercase tracking-[0.18em] text-emerald-300">Decision support system</p><h1 className="mt-1 text-xl font-black md:text-2xl">{mode === 'service' ? 'Service Advisor' : 'Pet Compatibility Assessment'}</h1><p className="mt-2 max-w-3xl text-xs leading-relaxed text-slate-300 md:text-sm">{mode === 'service' ? 'Answer five short steps to compare real eligible seller Services, pet restrictions, and persisted prices. A saved Pet Profile is optional.' : 'Transparent, deterministic recommendations from your selections and actual available Pawzzle listing data. No AI, diagnosis, or guaranteed match.'}</p></div></div></section>
 
     <div className="flex w-fit max-w-full gap-1 overflow-x-auto rounded-xl border border-slate-200 bg-white p-1 dark:border-slate-700 dark:bg-slate-900" role="tablist" aria-label="Customer DSS tools"><button role="tab" aria-selected={mode === 'pet'} onClick={() => setMode('pet')} className={`whitespace-nowrap rounded-lg px-4 py-2 text-xs font-bold ${mode === 'pet' ? 'bg-primary-700 text-white' : 'text-slate-600 dark:text-slate-300'}`}><PawPrint className="mr-1.5 inline h-4 w-4" />Pet Matching</button><button role="tab" aria-selected={mode === 'service'} onClick={() => setMode('service')} className={`whitespace-nowrap rounded-lg px-4 py-2 text-xs font-bold ${mode === 'service' ? 'bg-primary-700 text-white' : 'text-slate-600 dark:text-slate-300'}`}><Sparkles className="mr-1.5 inline h-4 w-4" />Service Advisor</button></div>
 
-    {mode === 'service' ? <ServiceAdvisor insights={insights} /> : result ? <section className="space-y-4">
+    {mode === 'service' ? <ServiceAdvisorQuestionnaire insights={insights} /> : result ? <section className="space-y-4">
       <div className="flex flex-wrap items-end justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-wide text-primary-700 dark:text-primary-300">Your Pet Matches</p><h2 className="text-xl font-black text-slate-900 dark:text-white">Recommended pets</h2><p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Ranked by compatibility among eligible current listings. Scores apply only to evaluated factors.</p></div><button onClick={adjustPreferences} className="inline-flex h-10 items-center gap-2 rounded-xl border border-slate-200 px-4 text-xs font-bold text-slate-700 dark:border-slate-700 dark:text-slate-200"><RefreshCw size={14} />Adjust Preferences</button></div>
       {!result.recommendations?.length ? <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center dark:border-slate-700 dark:bg-slate-900"><PawPrint className="mx-auto text-slate-300" size={30} /><h3 className="mt-3 font-black text-slate-900 dark:text-white">No suitable matches were found</h3><p className="mx-auto mt-2 max-w-xl text-sm text-slate-500 dark:text-slate-400">Based on your current preferences and available listings. Budget, species preference, availability, and Store visibility may have limited the result.</p><button onClick={adjustPreferences} className="mt-4 rounded-xl bg-primary-700 px-4 py-2 text-xs font-bold text-white">Adjust Preferences</button></div> : result.recommendations.map((item, index) => <article key={item.pet._id} className="overflow-hidden rounded-2xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900"><div className="grid md:grid-cols-[190px_minmax(0,1fr)]">{item.pet.images?.[0] ? <img src={getImageUrl(item.pet.images[0])} alt={item.pet.name} className="h-48 w-full object-cover md:h-full" /> : <div className="grid h-44 place-items-center bg-slate-100 text-slate-400 dark:bg-slate-800"><PawPrint size={32} /></div>}<div className="min-w-0 p-4 md:p-5"><div className="flex flex-wrap justify-between gap-3"><div><p className="text-[10px] font-bold uppercase tracking-wide text-primary-700 dark:text-primary-300">{index === 0 ? item.matchLevel : `Rank ${index + 1} · ${item.matchLevel}`}</p><h3 className="mt-1 text-lg font-black text-slate-900 dark:text-white">{item.pet.name}</h3><p className="text-xs text-slate-500 dark:text-slate-400">{item.pet.species} · {item.pet.breed || 'Breed not specified'} · {item.pet.age} {item.pet.ageUnit} · {item.pet.store?.name}</p><p className="mt-1 text-sm font-black text-slate-900 dark:text-white">{formatPeso(item.pet.price)} <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-300">· Available</span></p></div><div className="rounded-xl bg-primary-50 px-4 py-2 text-right dark:bg-primary-950/40"><p className="text-xl font-black text-primary-800 dark:text-primary-200">{item.score}%</p><p className="text-[10px] font-bold uppercase text-primary-700 dark:text-primary-300">Compatibility Score</p><p className="mt-1 text-[10px] text-slate-500 dark:text-slate-400">{item.evidenceCoverage}% evidence coverage</p></div></div>
         <div className="mt-4 grid gap-3 lg:grid-cols-2"><div><h4 className="text-xs font-black text-slate-800 dark:text-slate-100">Why This Matches</h4>{item.reasons.length ? <ul className="mt-2 space-y-1.5">{item.reasons.map(reason => <li key={reason} className="flex gap-2 text-xs text-slate-600 dark:text-slate-300"><CheckCircle2 size={13} className="mt-0.5 shrink-0 text-emerald-600" />{reason}</li>)}</ul> : <p className="mt-2 text-xs text-slate-500">No strong positive factor could be confirmed from the available fields.</p>}</div><div><h4 className="text-xs font-black text-slate-800 dark:text-slate-100">Important Considerations</h4><ul className="mt-2 space-y-1.5">{[...item.considerations, ...item.unknowns].map(text => <li key={text} className="flex gap-2 text-xs text-slate-600 dark:text-slate-300"><Info size={13} className="mt-0.5 shrink-0 text-amber-600" />{text}</li>)}</ul></div></div>

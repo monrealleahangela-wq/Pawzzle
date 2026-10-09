@@ -1,12 +1,11 @@
 import React from 'react';
-import { Camera, Check, HeartPulse, PawPrint, Sparkles, Upload } from 'lucide-react';
+import { Camera, Check, HeartPulse, PawPrint, Upload } from 'lucide-react';
 import { CompactFormModal, CompactFormSection, CompactUploadCard, RequiredMark, compactInputClass } from '../forms/CompactEntityForm';
 import {
   PET_TYPE_OPTIONS,
   PET_SIZE_OPTIONS,
   PET_COAT_LENGTH_OPTIONS,
-  PET_COAT_TYPE_OPTIONS,
-  PET_SERVICE_NEED_OPTIONS
+  PET_COAT_TYPE_OPTIONS
 } from '../../constants/serviceAdvisorPetContract';
 
 const inputClass = compactInputClass;
@@ -100,18 +99,6 @@ const PetProfileFormModal = ({
     breed: ''
   }));
 
-  const toggleServiceNeed = value => setPetForm(current => {
-    const selected = current.serviceNeeds || [];
-    if (value === 'not_sure') return { ...current, serviceNeeds: selected.includes(value) ? [] : [value] };
-    const withoutUnknown = selected.filter(item => item !== 'not_sure');
-    return {
-      ...current,
-      serviceNeeds: withoutUnknown.includes(value)
-        ? withoutUnknown.filter(item => item !== value)
-        : [...withoutUnknown, value]
-    };
-  });
-
   return (
     <CompactFormModal
       title={editingPet ? 'Edit Pet' : 'Add Pet'}
@@ -138,6 +125,7 @@ const PetProfileFormModal = ({
               <label className="text-[11px] font-bold text-slate-700">Birth Date<Required /><input type="date" max={new Date().toISOString().split('T')[0]} value={petForm.birthday} onChange={event => setPetForm(current => ({ ...current, birthday: event.target.value }))} className={inputClass} /></label>
               <label className="text-[11px] font-bold text-slate-700">Estimated Age <span className="font-normal text-slate-400">(if birth date is unknown)</span><div className="mt-1 flex gap-2"><input type="number" min="0" value={petForm.approximateAge?.value || ''} onChange={event => setPetForm(current => ({ ...current, approximateAge: { ...current.approximateAge, value: event.target.value } }))} className={`${inputClass} mt-0`} placeholder="Age" /><select value={petForm.approximateAge?.unit || 'years'} onChange={event => setPetForm(current => ({ ...current, approximateAge: { ...current.approximateAge, unit: event.target.value } }))} className={`${inputClass} mt-0 w-28`}><option value="months">Months</option><option value="years">Years</option></select></div></label>
               {!hasAge && <p className="text-[11px] font-semibold text-rose-600 sm:col-span-2">Enter either a birth date or an estimated age.</p>}
+              <label className="text-[11px] font-bold text-slate-700">Size <span className="font-normal text-slate-400">(optional)</span><select value={petForm.size || 'Unknown'} onChange={event => setPetForm(current => ({ ...current, size: event.target.value }))} className={inputClass}>{PET_SIZE_OPTIONS.map(option => <option key={option.value} value={option.profileValue}>{option.label}</option>)}</select></label>
               <label className="text-[11px] font-bold text-slate-700 sm:col-span-2">Color / Markings <span className="font-normal text-slate-400">(optional)</span><input value={petForm.color || ''} onChange={event => setPetForm(current => ({ ...current, color: event.target.value }))} className={inputClass} placeholder="e.g. Brown with white paws" /></label>
             </div>
           </Section>
@@ -151,26 +139,10 @@ const PetProfileFormModal = ({
             <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
               <label className="text-[11px] font-bold text-slate-700">Weight <span className="font-normal text-slate-400">(optional)</span><div className="mt-1 flex gap-2"><input type="number" min="0" max="200" value={petForm.weight ?? ''} onChange={event => setPetForm(current => ({ ...current, weight: event.target.value }))} className={`${inputClass} mt-0`} /><select value={petForm.weightUnit || 'kg'} onChange={event => setPetForm(current => ({ ...current, weightUnit: event.target.value }))} className={`${inputClass} mt-0 w-20`}><option value="kg">kg</option><option value="lb">lb</option></select></div></label>
               <label className="text-[11px] font-bold text-slate-700">Allergies <span className="font-normal text-slate-400">(optional)</span><input value={petForm.allergies || ''} onChange={event => setPetForm(current => ({ ...current, allergies: event.target.value }))} className={inputClass} placeholder="None known" /></label>
-              <label className="text-[11px] font-bold text-slate-700 sm:col-span-2">Medical Notes <span className="font-normal text-slate-400">(optional)</span><textarea rows="3" value={petForm.medicalConditions || ''} onChange={event => setPetForm(current => ({ ...current, medicalConditions: event.target.value }))} className="mt-1 w-full resize-none rounded-xl border border-slate-200 bg-white p-3 text-sm outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10" placeholder="Conditions, medication, or handling notes" /></label>
-            </div>
-          </Section>
-
-          <Section step="4" icon={Sparkles} title="Service Advisor Profile" description="Optional details improve matching; restricted services require the relevant details before they can be recommended.">
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <label className="text-[11px] font-bold text-slate-700">Size <span className="font-normal text-slate-400">(optional)</span><select value={petForm.size || 'Unknown'} onChange={event => setPetForm(current => ({ ...current, size: event.target.value }))} className={inputClass}>{PET_SIZE_OPTIONS.map(option => <option key={option.value} value={option.profileValue}>{option.label}</option>)}</select></label>
-              <label className="text-[11px] font-bold text-slate-700">Preferred Service <span className="font-normal text-slate-400">(optional)</span><input value={petForm.servicePreferences?.preferredServiceType || ''} onChange={event => setPetForm(current => ({ ...current, servicePreferences: { ...current.servicePreferences, preferredServiceType: event.target.value } }))} className={inputClass} maxLength="100" placeholder="e.g. grooming or training" /></label>
               <label className="text-[11px] font-bold text-slate-700">Coat Length <span className="font-normal text-slate-400">(optional)</span><select value={petForm.coat?.length || 'unknown'} onChange={event => setPetForm(current => ({ ...current, coat: { ...current.coat, length: event.target.value } }))} className={inputClass}>{PET_COAT_LENGTH_OPTIONS.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>
               <label className="text-[11px] font-bold text-slate-700">Coat Type <span className="font-normal text-slate-400">(optional)</span><select value={petForm.coat?.type || 'unknown'} onChange={event => setPetForm(current => ({ ...current, coat: { ...current.coat, type: event.target.value } }))} className={inputClass}>{PET_COAT_TYPE_OPTIONS.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>
+              <label className="text-[11px] font-bold text-slate-700 sm:col-span-2">Medical Notes <span className="font-normal text-slate-400">(optional)</span><textarea rows="3" value={petForm.medicalConditions || ''} onChange={event => setPetForm(current => ({ ...current, medicalConditions: event.target.value }))} className="mt-1 w-full resize-none rounded-xl border border-slate-200 bg-white p-3 text-sm outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10" placeholder="Conditions, medication, or handling notes" /></label>
             </div>
-            <fieldset className="mt-4">
-              <legend className="text-[11px] font-bold text-slate-700">Current Service Needs <span className="font-normal text-slate-400">(optional)</span></legend>
-              <div className="mt-2 flex flex-wrap gap-2">
-                {PET_SERVICE_NEED_OPTIONS.map(option => {
-                  const selected = (petForm.serviceNeeds || []).includes(option.value);
-                  return <button key={option.value} type="button" aria-pressed={selected} onClick={() => toggleServiceNeed(option.value)} className={`min-h-10 rounded-lg border px-3 py-2 text-[10px] font-bold ${selected ? 'border-primary-600 bg-primary-600 text-white' : 'border-slate-200 bg-white text-slate-600 hover:border-primary-300'}`}>{option.label}</button>;
-                })}
-              </div>
-            </fieldset>
           </Section>
     </CompactFormModal>
   );
