@@ -666,7 +666,7 @@ const Layout = () => {
           </header>
         )}
 
-        <main className={`app-content-main w-full max-w-full min-w-0 flex-1 ${isCompactShell ? 'p-3 sm:p-4 lg:p-5' : 'p-4 sm:p-5 lg:p-8'} animate-fade-up ${isLandingPage ? 'p-0' : ''}`}>
+        <main className={`app-content-main w-full max-w-full min-w-0 flex-1 ${isCompactShell ? 'p-3 sm:p-4 lg:p-5' : 'p-4 sm:p-5 lg:p-8'} ${isLandingPage ? 'p-0' : ''}`}>
           <div className={`app-page relative z-10 w-full max-w-full min-w-0 ${isCustomerUI ? 'customer-interface' : ''} ${isCustomerMarketplaceRoute ? 'customer-marketplace-interface' : ''} ${isStaffUI ? 'staff-interface' : ''} ${isStoreOwnerUI ? 'store-owner-interface' : ''} ${isSupplierUI ? 'supplier-interface' : ''} ${isPlatformAdminUI ? 'super-admin-interface' : ''}`}>
             <Outlet />
           </div>

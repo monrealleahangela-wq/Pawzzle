@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Check, Save, Upload, X } from 'lucide-react';
+import ModalViewport from '../ui/ModalViewport';
 
 export const compactInputClass = 'mt-1 h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-default outline-none transition placeholder:text-neutral-500 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400';
 export const compactTextareaClass = 'mt-1 w-full resize-none rounded-xl border border-slate-200 bg-white p-3 text-sm text-default outline-none transition placeholder:text-neutral-500 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10';
@@ -97,18 +98,20 @@ export const CompactFormModal = ({
   saveLabel,
   secondaryAction,
   children
-}) => (
-  <div className="fixed inset-0 z-[110] flex items-end justify-center bg-slate-950/45 p-0 backdrop-blur-sm sm:items-center sm:p-4" role="dialog" aria-modal="true" aria-label={title}>
-    <div className="flex max-h-[96vh] w-full max-w-3xl flex-col overflow-hidden rounded-t-3xl bg-slate-50 shadow-2xl sm:max-h-[92vh] sm:rounded-3xl">
+}) => {
+  const titleId = React.useId();
+  return (
+  <ModalViewport onClose={onClose} className="z-[1100] items-end p-0 sm:items-center sm:p-4">
+    <section role="dialog" aria-modal="true" aria-labelledby={titleId} tabIndex={-1} className="flex max-h-[100dvh] w-full max-w-3xl flex-col overflow-hidden rounded-t-3xl bg-slate-50 shadow-2xl sm:max-h-[calc(100dvh-2rem)] sm:rounded-3xl">
       <header className="flex shrink-0 items-center justify-between border-b border-slate-200 bg-white px-4 py-3 sm:px-5">
         <div className="flex min-w-0 items-center gap-3">
           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary-600 text-white">{Icon && <Icon className="h-4 w-4" />}</span>
-          <div className="min-w-0"><h2 className="truncate text-base font-black text-default">{title}</h2><p className="truncate text-[10px] text-muted">{subtitle}</p></div>
+          <div className="min-w-0"><h2 id={titleId} className="truncate text-base font-black text-default">{title}</h2><p className="truncate text-[10px] text-muted">{subtitle}</p></div>
         </div>
         <button type="button" onClick={onClose} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100" aria-label={`Close ${title}`}><X className="h-4 w-4" /></button>
       </header>
 
-      <form id={formId} onSubmit={onSubmit} className="flex-1 space-y-4 overflow-y-auto p-3 sm:p-5">
+      <form id={formId} onSubmit={onSubmit} className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain p-3 sm:p-5">
         {children}
       </form>
 
@@ -121,6 +124,7 @@ export const CompactFormModal = ({
           </button>
         </div>
       </footer>
-    </div>
-  </div>
-);
+    </section>
+  </ModalViewport>
+  );
+};

@@ -2,6 +2,7 @@ import React from 'react';
 import { cn } from '../../utils';
 import { Button } from './Button';
 import { X } from 'lucide-react';
+import ModalViewport from './ModalViewport';
 
 const Modal = React.forwardRef(({
   isOpen,
@@ -28,17 +29,12 @@ const Modal = React.forwardRef(({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4">
-      {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-black/50 backdrop-blur-sm animate-fade-in"
-        onClick={onClose}
-      />
-
+    <ModalViewport onClose={onClose} className="z-[1000] p-2 sm:p-4">
       {/* Modal */}
       <div
         ref={ref}
         role="dialog"
+        tabIndex={-1}
         aria-modal="true"
         aria-labelledby={title ? titleId : undefined}
         aria-describedby={description ? descriptionId : undefined}
@@ -83,7 +79,7 @@ const Modal = React.forwardRef(({
           {children}
         </div>
       </div>
-    </div>
+    </ModalViewport>
   );
 });
 

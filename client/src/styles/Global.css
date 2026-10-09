@@ -103,6 +103,15 @@ body {
   transition: background-color 220ms ease, color 220ms ease;
 }
 
+/* Full-screen dialogs must lock the document rather than allowing wheel or
+   touch events to move the page behind them. Portaled shared dialogs also set
+   an inline lock for older engines; this rule covers legacy page-local
+   overlays while they are being migrated to the shared viewport primitive. */
+html:has(.fixed.inset-0:not(.invisible):not(.pointer-events-none)),
+body:has(.fixed.inset-0:not(.invisible):not(.pointer-events-none)) {
+  overflow: hidden;
+}
+
 /* The fixed desktop sidebar is offset by Layout's content padding. Every
    content layer must therefore size itself from that remaining space instead
    of assuming it owns the complete viewport. */

@@ -19,6 +19,8 @@ describe('ConfirmationDialog', () => {
     );
 
     expect(screen.getByRole('dialog', { name: 'Update order status?' })).toHaveAccessibleDescription('The customer will see the new status.');
+    expect(screen.getByRole('dialog').closest('[data-modal-viewport="true"]').parentElement).toBe(document.body);
+    expect(document.body.style.overflow).toBe('hidden');
     const confirm = screen.getByRole('button', { name: 'Update status' });
     await waitFor(() => expect(confirm).toHaveFocus());
     fireEvent.click(confirm);
