@@ -9,7 +9,8 @@ const {
 } = require('../utils/riderCapacity');
 const {
   evaluateRiderEligibility,
-  summarizeRiderEligibility
+  summarizeRiderEligibility,
+  isAvailableNow
 } = require('../services/deliveryAssignmentService');
 const { riderDeliveryView } = require('../utils/deliveryViews');
 
@@ -59,6 +60,20 @@ test('schedule and availability remain authoritative eligibility requirements', 
   assert.equal(evaluateRiderEligibility(offDuty, { weightKg: 1, parcelCount: 1 }, monday).reason, 'off_duty_or_unavailable');
   const emergency = rider({ professionalProfile: { availability: {}, emergencyUnavailable: { active: true } } });
   assert.equal(evaluateRiderEligibility(emergency, { weightKg: 1, parcelCount: 1 }, monday).reason, 'off_duty_or_unavailable');
+});
+
+test('Rider on-duty schedule uses the Store timezone instead of the server host timezone', () => {
+  const timezoneBoundary = new Date('2026-10-05T16:30:00.000Z'); // Tuesday 00:30 in Manila.
+  const scheduled = rider({
+    professionalProfile: {
+      availability: {
+        monday: { available: false },
+        tuesday: { available: true, start: '00:00', end: '01:00', breaks: [] }
+      }
+    }
+  });
+  assert.equal(isAvailableNow(scheduled, timezoneBoundary, 'Asia/Manila'), true);
+  assert.equal(isAvailableNow(scheduled, timezoneBoundary, 'UTC'), false);
 });
 
 test('safe aggregate feedback reports capacity classes without Rider identities', () => {

@@ -13,11 +13,11 @@ import {
 
 const roleByCategory = {
   grooming: ['groomer'],
-  health_wellness: ['veterinarian', 'veterinary_technician', 'veterinary_assistant'],
+  health_wellness: ['veterinarian', 'veterinary_technician', 'veterinary_assistant', 'veterinary_nurse', 'veterinary_laboratory_technician'],
   training: ['trainer'],
   boarding_hotel: ['boarding_staff'],
   pet_services: ['service_staff'],
-  home_services: ['veterinarian', 'groomer', 'trainer', 'boarding_staff', 'service_staff'],
+  home_services: ['veterinarian', 'veterinary_technician', 'veterinary_assistant', 'veterinary_nurse', 'groomer', 'trainer', 'boarding_staff', 'service_staff'],
   other: ['service_staff']
 };
 
@@ -25,6 +25,8 @@ const roleLabel = role => ({
   veterinarian: 'Veterinarian',
   veterinary_technician: 'Veterinary Technician',
   veterinary_assistant: 'Veterinary Assistant',
+  veterinary_nurse: 'Veterinary Nurse',
+  veterinary_laboratory_technician: 'Veterinary Laboratory Technician',
   groomer: 'Groomer',
   trainer: 'Trainer',
   boarding_staff: 'Boarding Staff',
@@ -32,6 +34,9 @@ const roleLabel = role => ({
 }[role] || role?.replaceAll('_', ' '));
 
 const staffRole = staff => String(staff.role === 'staff' ? staff.staffType : (staff.role || staff.staffType || '')).toLowerCase();
+const roleEligibleForForm = (role, form, qualifiedRoles) => qualifiedRoles.includes(role)
+  && (role !== 'veterinary_laboratory_technician'
+    || /\b(lab|laboratory|diagnostic|pathology|testing|test)\b/i.test(`${form.name || ''} ${form.subCategory || ''} ${form.description || ''}`));
 
 const ServiceFormModal = ({ editingService, form, setForm, categories, staff, staffLoading, staffError, onClose, onSubmit, onImageUpload, loading, onAdvanced }) => {
   const image = form.images?.[0];
@@ -39,7 +44,7 @@ const ServiceFormModal = ({ editingService, form, setForm, categories, staff, st
   const durationValid = Number(form.duration) >= 15;
   const complete = Boolean(form.name?.trim() && form.category && form.subCategory && priceValid && durationValid && form.description?.trim() && image);
   const qualifiedRoles = roleByCategory[form.category] || ['service_staff'];
-  const qualifiedStaff = (staff || []).filter(member => member.isActive !== false && qualifiedRoles.includes(staffRole(member)));
+  const qualifiedStaff = (staff || []).filter(member => member.isActive !== false && roleEligibleForForm(staffRole(member), form, qualifiedRoles));
   const assigned = form.assignedStaff || [];
   const set = (field, value) => setForm(current => ({ ...current, [field]: value }));
   const selectedCategory = categories.find(category => category.id === form.category);

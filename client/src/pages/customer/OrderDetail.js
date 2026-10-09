@@ -83,7 +83,7 @@ const OrderDetail = () => {
         setAssignmentReadiness(response.data.assignmentReadiness || null);
       }).catch(error => {
         setEligibleRiders([]);
-        setAssignmentReadiness({ message: error.response?.data?.message || 'Unable to check Rider eligibility.' });
+        setAssignmentReadiness({ error: true, message: error.response?.data?.message || 'Unable to check Rider eligibility.' });
       });
     }, 250);
     return () => clearTimeout(timer);

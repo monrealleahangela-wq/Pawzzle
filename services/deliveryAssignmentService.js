@@ -54,19 +54,29 @@ const validateAssignmentSource = ({ source, orderId, bookingId }) => {
   throw fail('Order ID or Booking ID is required.');
 };
 
-const isAvailableNow = (rider, now = new Date()) => {
+const localScheduleParts = (now, timezone = 'Asia/Manila') => {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: timezone,
+    weekday: 'long',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23'
+  }).formatToParts(now).reduce((result, part) => ({ ...result, [part.type]: part.value }), {});
+  return { day: String(parts.weekday || '').toLowerCase(), time: `${parts.hour}:${parts.minute}` };
+};
+
+const isAvailableNow = (rider, now = new Date(), timezone = rider?.store?.hrSettings?.timezone || 'Asia/Manila') => {
   const profile = rider.professionalProfile || {};
   if (profile.emergencyUnavailable?.active) return false;
   if (profile.temporaryUnavailable?.active
     && (!profile.temporaryUnavailable.until || new Date(profile.temporaryUnavailable.until) >= now)) return false;
   if ((profile.leaveSchedule || []).some(leave => new Date(leave.startDate) <= now
     && new Date(leave.endDate).setHours(23, 59, 59, 999) >= now)) return false;
-  const day = now.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
+  const { day, time } = localScheduleParts(now, timezone);
   const schedule = profile.availability?.[day];
   const configured = Object.values(profile.availability || {}).some(value => value?.available);
   if (!configured) return true;
   if (!schedule?.available) return false;
-  const time = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
   if (schedule.start && time < schedule.start) return false;
   if (schedule.end && time >= schedule.end) return false;
   return !(schedule.breaks || []).some(item => item.start <= time && time < item.end);
@@ -96,10 +106,10 @@ const riderSort = (left, right) => {
     || String(left._id).localeCompare(String(right._id));
 };
 
-const evaluateRiderEligibility = (rider, parcel, now = new Date()) => {
+const evaluateRiderEligibility = (rider, parcel, now = new Date(), timezone = rider?.store?.hrSettings?.timezone || 'Asia/Manila') => {
   const capacity = getRiderCapacitySummary(rider?.riderProfile);
   if (!capacity.configured) return { eligible: false, reason: 'vehicle_setup_required', capacity };
-  if (!isAvailableNow(rider, now)) return { eligible: false, reason: 'off_duty_or_unavailable', capacity };
+  if (!isAvailableNow(rider, now, timezone)) return { eligible: false, reason: 'off_duty_or_unavailable', capacity };
   if (!capacitySupportsParcel(capacity, parcel)) return { eligible: false, reason: 'vehicle_capacity_too_small', capacity };
   if (!capacityHasRoomForParcel(capacity, parcel)) return { eligible: false, reason: 'insufficient_remaining_capacity', capacity };
   return { eligible: true, reason: 'eligible', capacity };
@@ -108,7 +118,7 @@ const evaluateRiderEligibility = (rider, parcel, now = new Date()) => {
 const ASSIGNMENT_MESSAGES = {
   eligible: 'An eligible internal Delivery Rider is available for automatic assignment.',
   no_active_riders: 'No active internal Delivery Riders are available for this Store.',
-  vehicle_setup_required: 'Active Delivery Riders require vehicle and capacity setup before assignment.',
+  vehicle_setup_required: 'Active Delivery Riders require a supported vehicle type, maximum weight, and maximum parcel count before assignment.',
   off_duty_or_unavailable: 'Configured Delivery Riders are currently off duty or unavailable.',
   vehicle_capacity_too_small: 'No configured Rider vehicle can carry this parcel.',
   insufficient_remaining_capacity: 'Available Riders do not have enough remaining capacity for this parcel.',
@@ -391,6 +401,8 @@ const assignDelivery = async ({ orderId, bookingId, parcel: parcelInput, actorId
         throw fail('An in-progress delivery cannot be reassigned.', 409);
       }
       const parcel = normalizeParcel(source, parcelInput);
+      const storeSettings = await Store.findById(source.store).select('hrSettings.timezone').session(session).lean();
+      const storeTimezone = storeSettings?.hrSettings?.timezone || 'Asia/Manila';
       const previousRider = delivery?.assignedRider || null;
       if (delivery && previousRider) await releaseRiderCapacity(delivery, session);
 
@@ -398,12 +410,12 @@ const assignDelivery = async ({ orderId, bookingId, parcel: parcelInput, actorId
         store: source.store,
         ...(reassign && previousRider ? { _id: { $ne: previousRider } } : {})
       })).session(session).lean();
-      const evaluations = riders.map(rider => ({ rider, ...evaluateRiderEligibility(rider, parcel) }));
+      const evaluations = riders.map(rider => ({ rider, ...evaluateRiderEligibility(rider, parcel, new Date(), storeTimezone) }));
       const available = evaluations.filter(row => row.eligible).map(row => row.rider).sort(riderSort);
       let selected;
       for (const candidate of available) {
         selected = await User.findOneAndUpdate({
-          _id: candidate._id,
+          ...buildActiveRiderAccountFilter({ _id: candidate._id, store: source.store }),
           $expr: {
             $and: [
               { $lte: [{ $add: [{ $ifNull: ['$riderProfile.currentLoad.weightKg', 0] }, parcel.weightKg] }, '$riderProfile.vehicleCapacity.maxWeightKg'] },
@@ -490,6 +502,7 @@ module.exports = {
   releaseRiderCapacity,
   buildActiveRiderAccountFilter,
   isAvailableNow,
+  localScheduleParts,
   evaluateRiderEligibility,
   summarizeRiderEligibility,
   normalizeParcel,

@@ -16,6 +16,7 @@ const {
   loadContext,
   getConfirmationExpiry,
   getEligibleForBooking,
+  getBookingStaffReadiness,
   prepareForPayment,
   recalculateBooking
 } = require('../services/bookingLifecycleService');
@@ -660,11 +661,15 @@ const getEligibleBookingStaff = async (req, res) => {
     if (ownsBooking && booking.status !== 'awaiting_customer_confirmation') {
       return res.status(409).json({ message: 'Staff can only be changed while the booking awaits your confirmation.' });
     }
-    const candidates = await getEligibleForBooking(booking, service);
+    const [candidates, assignmentReadiness] = await Promise.all([
+      getEligibleForBooking(booking, service),
+      getBookingStaffReadiness(booking, service)
+    ]);
     const staffIds = candidates.map(item => item.staff._id);
     const ratings = await ratingMapForStaff(staffIds);
     res.json({
       store: { _id: store._id, name: store.name },
+      assignmentReadiness,
       staff: candidates.map(item => ({
         ...toPublicStaff(item.staff, ratings.get(String(item.staff._id))),
         isCurrent: String(item.staff._id) === String(booking.staff),
@@ -674,7 +679,10 @@ const getEligibleBookingStaff = async (req, res) => {
       }))
     });
   } catch (error) {
-    res.status(error.statusCode || 500).json({ message: error.message || 'Unable to load eligible staff.' });
+    const status = error.statusCode || 500;
+    res.status(status).json({
+      message: status < 500 ? error.message : 'Unable to load eligible staff.'
+    });
   }
 };
 

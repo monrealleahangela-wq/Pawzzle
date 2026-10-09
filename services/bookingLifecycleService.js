@@ -3,7 +3,7 @@ const Service = require('../models/Service');
 const Store = require('../models/Store');
 const User = require('../models/User');
 const Voucher = require('../models/Voucher');
-const { calculateServicePrice, getEligibleStaff, validateBookingRules } = require('../utils/pricingEngine');
+const { calculateServicePrice, getEligibleStaff, getStaffAssignmentReadiness, validateBookingRules } = require('../utils/pricingEngine');
 const { calculateTransactionTax, resolveTransactionTaxConfiguration } = require('../utils/taxCalculator');
 const { assertStoreTransactionEligible } = require('./storeComplianceService');
 
@@ -101,6 +101,14 @@ const getEligibleForBooking = async (booking, service) => getEligibleStaff(
   booking._id
 );
 
+const getBookingStaffReadiness = async (booking, service) => getStaffAssignmentReadiness(
+  service,
+  booking.bookingDate,
+  booking.startTime,
+  booking.endTime,
+  booking._id
+);
+
 const assertBookingIsCurrent = booking => {
   if (inactiveStatuses.includes(booking.status)) {
     throw Object.assign(new Error('This booking is no longer eligible for confirmation or payment.'), { statusCode: 409 });
@@ -146,6 +154,7 @@ module.exports = {
   loadContext,
   getConfirmationExpiry,
   getEligibleForBooking,
+  getBookingStaffReadiness,
   validateAssignedStaff,
   prepareForPayment,
   recalculateBooking,

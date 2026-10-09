@@ -10,7 +10,7 @@ const DeliveryAssignmentFields = ({ parcel, onParcelChange, riders = [], assignm
       <label className="block"><span className="mb-1 block text-[10px] font-bold uppercase text-slate-500">Measured parcel weight (kg)</span><input required type="number" min="0.001" max="10000" step="0.001" value={parcel.weightKg} onChange={event=>onParcelChange({...parcel,weightKg:event.target.value})} className="h-11 w-full rounded-xl border border-slate-200 px-3 text-xs font-bold"/></label>
       <label className="block"><span className="mb-1 block text-[10px] font-bold uppercase text-slate-500">Parcel count</span><input required type="number" min="1" max="10000" step="1" value={parcel.parcelCount} onChange={event=>onParcelChange({...parcel,parcelCount:event.target.value})} className="h-11 w-full rounded-xl border border-slate-200 px-3 text-xs font-bold"/></label>
     </div>
-    <p className="rounded-lg bg-slate-50 p-2 text-[10px] text-slate-500" role="status">{assignmentReadiness?.message || `${riders.filter(rider=>['available','on_delivery'].includes(rider.availability)).length} active Rider account(s) are available for server-side eligibility checks.`} The backend assigns an eligible Rider atomically.</p>
+    <p className={`rounded-lg p-2 text-[10px] ${assignmentReadiness?.error ? 'border border-rose-200 bg-rose-50 text-rose-700' : 'bg-slate-50 text-slate-500'}`} role={assignmentReadiness?.error ? 'alert' : 'status'}>{assignmentReadiness?.message || `${riders.filter(rider=>['available','on_delivery'].includes(rider.availability)).length} active Rider account(s) are available for server-side eligibility checks.`}{!assignmentReadiness?.error && ' The backend assigns an eligible Rider atomically.'}</p>
   </div>
 );
 

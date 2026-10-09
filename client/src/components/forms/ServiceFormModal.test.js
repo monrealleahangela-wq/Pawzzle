@@ -37,6 +37,17 @@ test('shows an active direct-role Veterinarian in the Health & Wellness selector
   expect(screen.queryByText(/No active qualified specialist/i)).not.toBeInTheDocument();
 });
 
+test('shows supported veterinary staffType specialists for compatible Health & Wellness services', () => {
+  render(<ServiceFormModal {...props} form={{ ...form, name: 'Diagnostic Laboratory Test', subCategory: 'Laboratory Testing' }} staff={[{
+    _id: 'nurse-1', firstName: 'Mia', lastName: 'Santos', role: 'staff', staffType: 'veterinary_nurse', isActive: true
+  }, {
+    _id: 'lab-1', firstName: 'Leo', lastName: 'Cruz', role: 'staff', staffType: 'veterinary_laboratory_technician', isActive: true
+  }]} />);
+
+  expect(screen.getByRole('button', { name: /Mia Santos Veterinary Nurse/i })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: /Leo Cruz Veterinary Laboratory Technician/i })).toBeInTheDocument();
+});
+
 test('distinguishes loading, API error, and a genuine empty specialist result', () => {
   const { rerender } = render(<ServiceFormModal {...props} staff={[]} staffLoading />);
   expect(screen.getByRole('status')).toHaveTextContent('Loading qualified staff');

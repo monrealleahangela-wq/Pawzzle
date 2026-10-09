@@ -99,7 +99,7 @@ test('discovery UIs distinguish API errors and preserve automatic Rider assignme
   const bookings = source('client/src/pages/admin/BookingsManagement.js');
   assert.match(services, /staffError/);
   assert.match(services, /role="alert"/);
-  assert.match(bookings, /setAssignmentReadiness\(\{ message:/);
+  assert.match(bookings, /setAssignmentReadiness\(\{ error: true, message:/);
   assert.match(bookings, /assignmentReadiness=\{assignmentReadiness\}/);
   assert.match(bookings, /Assign Rider Automatically|Reassign Automatically/);
   assert.doesNotMatch(bookings, /selectedRiderId|riderId:\s*selected/);

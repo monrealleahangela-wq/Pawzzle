@@ -169,10 +169,10 @@ const calculateServicePrice = (service, petData = {}, bookingData = {}, selected
 const checkStaffAvailability = async (staffId, bookingDate, startTime, endTime, bufferTime = 0, excludeBookingId = null) => {
   const Booking = require('../models/Booking');
   const User = require('../models/User');
-  const { isWithinStaffSchedule, isProfessionallyAssignable } = require('./staffSpecialization');
+  const { isActiveStaffAccount, isWithinStaffSchedule, isProfessionallyAssignable } = require('./staffSpecialization');
 
-  const staff = await User.findById(staffId).select('isActive isDeleted staffStatus professionalProfile');
-  if (!staff || !staff.isActive || staff.isDeleted || ['inactive', 'suspended'].includes(staff.staffStatus)) return false;
+  const staff = await User.findById(staffId).select('role staffType isActive isDeleted staffStatus professionalProfile');
+  if (!isActiveStaffAccount(staff)) return false;
   if (!isProfessionallyAssignable(staff, new Date(bookingDate))) return false;
   if (!isWithinStaffSchedule(staff, bookingDate, startTime, endTime)) return false;
 
@@ -223,6 +223,7 @@ const getEligibleStaff = async (service, bookingDate, startTime, endTime, exclud
   const {
     getStaffSpecializationRole,
     getProfessionalVerificationStatus,
+    isActiveStaffAccount,
     isRoleEligibleForService,
     isWithinStaffSchedule,
     isProfessionallyAssignable
@@ -232,8 +233,8 @@ const getEligibleStaff = async (service, bookingDate, startTime, endTime, exclud
 
   for (const staffId of service.assignedStaff || []) {
     const staff = await User.findById(staffId)
-      .select('firstName lastName avatar role store staffType staffStatus isActive isDeleted professionalProfile');
-    if (!staff || !staff.isActive || staff.isDeleted || ['inactive', 'suspended'].includes(staff.staffStatus)) continue;
+      .select('firstName lastName avatar role store staffType staffStatus isActive isDeleted permissions professionalProfile');
+    if (!isActiveStaffAccount(staff)) continue;
     if (String(staff.store) !== String(service.store?._id || service.store)) continue;
     if (!isRoleEligibleForService(getStaffSpecializationRole(staff), service)) continue;
     if (!hasPermission(staff, 'bookings.assigned')) continue;
@@ -298,6 +299,64 @@ const getEligibleStaff = async (service, bookingDate, startTime, endTime, exclud
       performance: { completedServices: metrics.completed || 0, totalBookings: metrics.total || 0, cancellationRate: Number((cancellationRate * 100).toFixed(1)), rating }
     };
   }).sort((a, b) => b.matchScore - a.matchScore || a.bookingCount - b.bookingCount || Number(b.staff.professionalProfile?.rating || 0) - Number(a.staff.professionalProfile?.rating || 0));
+};
+
+const STAFF_ASSIGNMENT_MESSAGES = {
+  eligible: 'Qualified staff are available for this service and schedule.',
+  no_assigned_staff: 'Assign at least one compatible specialist to this Service before preparing a Booking proposal.',
+  inactive_staff: 'The specialists assigned to this Service are inactive, suspended, archived, or deleted.',
+  wrong_store: 'Assigned specialists must belong to the same Store branch as the Service.',
+  incompatible_role: 'Assigned staff roles are not compatible with this Service category.',
+  missing_permission: 'Assigned specialists do not have Booking assignment permission for their role.',
+  professional_verification_required: 'Assigned specialists require current approved professional credentials before Booking assignment.',
+  outside_schedule: 'Qualified specialists are outside their configured schedule or unavailable for this Booking time.',
+  schedule_conflict: 'Qualified specialists already have a conflicting Booking at this time.',
+  no_eligible_staff: 'No qualified specialist is available for this Service and schedule.'
+};
+
+/**
+ * Server-authoritative discovery diagnostics for the Booking UI. This mirrors
+ * getEligibleStaff without exposing staff identities or private availability
+ * details in rejection explanations.
+ */
+const getStaffAssignmentReadiness = async (service, bookingDate, startTime, endTime, excludeBookingId = null) => {
+  const User = require('../models/User');
+  const { hasPermission } = require('../config/permissions');
+  const {
+    getStaffSpecializationRole,
+    isActiveStaffAccount,
+    isRoleEligibleForService,
+    isWithinStaffSchedule,
+    isProfessionallyAssignable
+  } = require('./staffSpecialization');
+  const counts = {};
+  const reject = reason => { counts[reason] = (counts[reason] || 0) + 1; };
+  const staffIds = service.assignedStaff || [];
+  if (!staffIds.length) return { reason: 'no_assigned_staff', message: STAFF_ASSIGNMENT_MESSAGES.no_assigned_staff, eligibleCount: 0 };
+
+  let eligibleCount = 0;
+  for (const staffId of staffIds) {
+    const staff = await User.findById(staffId)
+      .select('role store staffType staffStatus isActive isDeleted permissions professionalProfile');
+    if (!isActiveStaffAccount(staff)) { reject('inactive_staff'); continue; }
+    if (String(staff.store) !== String(service.store?._id || service.store)) { reject('wrong_store'); continue; }
+    if (!isRoleEligibleForService(getStaffSpecializationRole(staff), service)) { reject('incompatible_role'); continue; }
+    if (!hasPermission(staff, 'bookings.assigned')) { reject('missing_permission'); continue; }
+    if (!isProfessionallyAssignable(staff, new Date(bookingDate))) { reject('professional_verification_required'); continue; }
+    if (!isWithinStaffSchedule(staff, bookingDate, startTime, endTime)) { reject('outside_schedule'); continue; }
+    if (!(await checkStaffAvailability(staff._id, bookingDate, startTime, endTime, service.bufferTime || 0, excludeBookingId))) {
+      reject('schedule_conflict'); continue;
+    }
+    eligibleCount += 1;
+  }
+
+  if (eligibleCount) return { reason: 'eligible', message: STAFF_ASSIGNMENT_MESSAGES.eligible, eligibleCount };
+  const priority = [
+    'professional_verification_required', 'schedule_conflict', 'outside_schedule',
+    'wrong_store', 'incompatible_role', 'missing_permission', 'inactive_staff'
+  ];
+  const reason = priority.find(key => counts[key]) || 'no_eligible_staff';
+  return { reason, message: STAFF_ASSIGNMENT_MESSAGES[reason], eligibleCount: 0, rejectionCounts: counts };
 };
 
 /**
@@ -407,6 +466,7 @@ module.exports = {
   calculateServicePrice,
   checkStaffAvailability,
   getEligibleStaff,
+  getStaffAssignmentReadiness,
   autoAssignStaff,
   validateBookingRules
 };

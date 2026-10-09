@@ -35,6 +35,11 @@ const {
 } = require('../utils/staffSpecialization');
 
 const RIDER_STATUSES = ['active', 'inactive', 'suspended'];
+const STAFF_MANAGEMENT_ROLES = [
+    'manager', 'service_staff', 'cashier', 'inventory_staff', 'procurement_officer', 'finance_staff',
+    'veterinarian', 'veterinary_technician', 'veterinary_assistant', 'veterinary_nurse',
+    'veterinary_laboratory_technician', 'groomer', 'trainer', 'boarding_staff', 'delivery_rider'
+];
 const PHONE_PATTERN = /^(?:\+?63|0)9\d{9}$/;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
@@ -72,6 +77,7 @@ const cleanProfessionalProfile = (profile = {}, existing = {}) => ({
     }),
     training: cleanList(profile.training ?? existing.training),
     areasOfExpertise: cleanList(profile.areasOfExpertise ?? existing.areasOfExpertise),
+    specializations: cleanList(profile.specializations ?? existing.specializations),
     languages: cleanList(profile.languages ?? existing.languages),
     experienceYears: Math.max(0, Number(profile.experienceYears ?? existing.experienceYears ?? 0)),
     registration: {
@@ -92,7 +98,11 @@ const cleanProfessionalProfile = (profile = {}, existing = {}) => ({
     reviewCount: Number(existing.reviewCount || 0)
 });
 const isSpecializedAccount = user => SPECIALIZED_STAFF_ROLES.includes(getStaffSpecializationRole(user));
-const DIRECT_STAFF_ROLES = ['manager', 'service_staff', 'cashier', 'inventory_staff', 'procurement_officer', 'finance_staff', 'veterinarian', 'groomer', 'trainer', 'boarding_staff', 'delivery_rider'];
+const DIRECT_STAFF_ROLES = [
+    'manager', 'service_staff', 'cashier', 'inventory_staff', 'procurement_officer', 'finance_staff',
+    ...SPECIALIZED_STAFF_ROLES,
+    'delivery_rider'
+];
 const staffAccountFilter = (extra = {}, options = {}) => ({
     ...extra,
     isDeleted: { $ne: true },
@@ -193,6 +203,7 @@ const cleanRiderProfile = (profile = {}, existing = {}) => ({
 const validateRider = (profile, phone) => {
     if (!profile.staffId) return 'Staff ID is required for a Delivery Rider.';
     if (!PHONE_PATTERN.test(String(phone || '').replace(/[\s-]/g, ''))) return 'Enter a valid Philippine mobile number.';
+    if (!profile.licenseId) return 'Driver license information is required for a Delivery Rider.';
     if (!RIDER_VEHICLE_TYPES.includes(profile.vehicleType)) return 'Select a supported vehicle type for the Delivery Rider.';
     if (profile.vehicleType !== 'bicycle' && !profile.plateNumber) return 'Vehicle plate number is required.';
     if (!RIDER_STATUSES.includes(profile.accountStatus)) return 'Invalid rider account status.';
@@ -203,6 +214,14 @@ const validateRider = (profile, phone) => {
     if (profile.payoutMethod.type && (!profile.payoutMethod.accountName || !profile.payoutMethod.accountNumber)) return 'Complete the selected payout account details.';
     return null;
 };
+const cleanStaffAddress = (address = {}, existing = {}) => ({
+    street: String(address.street || existing.street || 'N/A').trim().slice(0, 200),
+    city: String(address.city || existing.city || 'N/A').trim().slice(0, 100),
+    province: String(address.province || address.state || existing.province || existing.state || 'N/A').trim().slice(0, 100),
+    barangay: String(address.barangay || existing.barangay || 'N/A').trim().slice(0, 100),
+    zipCode: String(address.zipCode || existing.zipCode || '').trim().slice(0, 20),
+    country: String(address.country || existing.country || 'PH').trim().slice(0, 100)
+});
 
 /**
  * Get all staff under the current admin's store
@@ -496,25 +515,7 @@ const updateStaff = async (req, res) => {
             };
         }
         if (address && typeof address === 'object') {
-            staffAddress = {
-                street: String(address.street || staffAddress.street).trim().slice(0, 200),
-                city: String(address.city || staffAddress.city).trim().slice(0, 100),
-                province: String(address.province || address.state || staffAddress.province).trim().slice(0, 100),
-                barangay: String(address.barangay || staffAddress.barangay).trim().slice(0, 100),
-                zipCode: String(address.zipCode || staffAddress.zipCode || '').trim().slice(0, 20),
-                country: String(address.country || staffAddress.country || 'PH').trim().slice(0, 100)
-            };
-        }
-        if (address && typeof address === 'object') {
-            const currentAddress = staff.address || {};
-            staff.address = {
-                street: String(address.street || currentAddress.street || 'N/A').trim().slice(0, 200),
-                city: String(address.city || currentAddress.city || 'N/A').trim().slice(0, 100),
-                province: String(address.province || address.state || currentAddress.province || 'N/A').trim().slice(0, 100),
-                barangay: String(address.barangay || currentAddress.barangay || 'N/A').trim().slice(0, 100),
-                zipCode: String(address.zipCode || currentAddress.zipCode || '').trim().slice(0, 20),
-                country: String(address.country || currentAddress.country || 'PH').trim().slice(0, 100)
-            };
+            staff.address = cleanStaffAddress(address, staff.address || {});
         }
         if (staff.role === 'staff' && staffType && staffType !== existingType) {
             await Booking.updateMany(
@@ -726,7 +727,7 @@ const getStaffConfiguration = async (req, res) => {
             services,
             enabledSpecializedRoles: getEnabledSpecializedRoles(services),
             nextStaffId: `STF-${String(Number(store.staffSequence || 0) + 1).padStart(4, '0')}`,
-            availableRoles: ['manager', 'service_staff', 'cashier', 'inventory_staff', 'procurement_officer', 'finance_staff', 'veterinarian', 'groomer', 'trainer', 'boarding_staff', 'delivery_rider'],
+            availableRoles: STAFF_MANAGEMENT_ROLES,
             riderVehicleTypes: RIDER_VEHICLE_TYPES
         });
     } catch (error) {
@@ -1038,9 +1039,16 @@ const updateStaffAvailability = async (req, res) => {
 const getEligibleRiders = async (req, res) => {
     try {
         const platformScope = ['super_admin', 'platform_admin'].includes(req.user.role);
-        const storeIds = platformScope
+        let storeIds = platformScope
             ? (req.query.storeId ? [req.query.storeId] : [])
             : await getOwnedStoreIds(req.user);
+        if (!platformScope && req.query.storeId) {
+            const requestedStoreId = String(req.query.storeId);
+            if (!storeIds.some(id => String(id) === requestedStoreId)) {
+                return res.status(403).json({ message: 'Store access denied.' });
+            }
+            storeIds = [req.query.storeId];
+        }
         if (!platformScope && !storeIds.length) return res.json({
             riders: [],
             assignmentReadiness: summarizeRiderEligibility([])
@@ -1056,7 +1064,7 @@ const getEligibleRiders = async (req, res) => {
         }
         const query = buildActiveRiderAccountFilter();
         if (storeIds?.length) query.store = { $in: storeIds };
-        const riders = await User.find(query).select('-password').populate('store', 'name').lean();
+        const riders = await User.find(query).select('-password').populate('store', 'name hrSettings.timezone').lean();
         const [counts, ratings] = await Promise.all([Delivery.aggregate([
             { $match: { assignedRider: { $in: riders.map(r => r._id) }, status: { $nin: ['delivered', 'cancelled', 'returned_to_store'] } } },
             { $group: { _id: '$assignedRider', count: { $sum: 1 } } }
@@ -1194,5 +1202,6 @@ module.exports = {
     getRiderDetails,
     getMyRiderDetails,
     createRiderPayout,
-    updateRiderPayout
+    updateRiderPayout,
+    __test: { cleanRiderProfile, cleanStaffAddress, validateRider, DIRECT_STAFF_ROLES, STAFF_MANAGEMENT_ROLES }
 };

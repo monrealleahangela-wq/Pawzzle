@@ -54,6 +54,9 @@ const BookingsManagement = () => {
   const [deliveryParcel, setDeliveryParcel] = useState({ weightKg: '', parcelCount: 1 });
   const [deliveryAssignment, setDeliveryAssignment] = useState(null);
   const [eligibleServiceStaff, setEligibleServiceStaff] = useState([]);
+  const [eligibleServiceStaffLoading, setEligibleServiceStaffLoading] = useState(false);
+  const [eligibleServiceStaffError, setEligibleServiceStaffError] = useState('');
+  const [staffAssignmentReadiness, setStaffAssignmentReadiness] = useState(null);
   const [selectedServiceStaffId, setSelectedServiceStaffId] = useState('');
   const [assigningStaff, setAssigningStaff] = useState(false);
   const [proposalDuration, setProposalDuration] = useState('');
@@ -62,21 +65,37 @@ const BookingsManagement = () => {
   useEffect(() => {
     if (!selectedBooking?._id || !['pending', 'awaiting_customer_confirmation'].includes(selectedBooking.status)) {
       setEligibleServiceStaff([]);
+      setEligibleServiceStaffLoading(false);
+      setEligibleServiceStaffError('');
+      setStaffAssignmentReadiness(null);
       setProposalDuration('');
       setProposalInstructions('');
       return;
     }
+    setEligibleServiceStaffLoading(true);
+    setEligibleServiceStaffError('');
     adminBookingService.getEligibleStaff(selectedBooking._id).then(response => {
       const options = response.data.staff || [];
       setEligibleServiceStaff(options);
+      setStaffAssignmentReadiness(response.data.assignmentReadiness || null);
       setSelectedServiceStaffId(selectedBooking.staff?._id || selectedBooking.staff || options[0]?._id || '');
       setProposalDuration(String(selectedBooking.proposal?.estimatedDurationMinutes || selectedBooking.service?.duration || ''));
       setProposalInstructions(selectedBooking.proposal?.specialInstructions || '');
     }).catch(error => {
       setEligibleServiceStaff([]);
-      toast.error(getUserFacingError(error, 'Unable to load qualified staff for this schedule.'));
-    });
-  }, [selectedBooking?._id, selectedBooking?.status, selectedBooking?.staff]);
+      setStaffAssignmentReadiness(null);
+      const message = getUserFacingError(error, 'Unable to load qualified staff for this schedule.');
+      setEligibleServiceStaffError(message);
+      toast.error(message);
+    }).finally(() => setEligibleServiceStaffLoading(false));
+  }, [
+    selectedBooking?._id,
+    selectedBooking?.status,
+    selectedBooking?.staff,
+    selectedBooking?.proposal?.estimatedDurationMinutes,
+    selectedBooking?.proposal?.specialInstructions,
+    selectedBooking?.service?.duration
+  ]);
 
   useEffect(() => {
     if (!selectedBooking?._id) { setDeliveryAssignment(null); return; }
@@ -93,24 +112,48 @@ const BookingsManagement = () => {
   const canUpdate = hasUiActionPermission(user, 'bookings', 'update', isStoreAdmin || serviceUpdateRoles.has(staffType));
   const canDelete = hasUiActionPermission(user, 'bookings', 'update', isStoreAdmin);
   const canAssign = hasUiActionPermission(user, 'bookings', 'update', isStoreAdmin || staffType === 'manager');
+  const selectedStoreId = selectedBooking?.store?._id || selectedBooking?.store;
   const selectedPaymentSummary = useMemo(
     () => selectedBooking ? bookingPaymentSummary(selectedBooking) : null,
     [selectedBooking]
   );
 
   useEffect(() => {
-    const userData = JSON.parse(localStorage.getItem('user') || '{}');
-    setUser(userData);
-    fetchBookings();
-    if (STORE_ADMIN_ROLES.has(userData.role) || effectiveStaffType(userData) === 'manager') {
-      staffService.getEligibleRiders().then(response => {
+    if ((!isStoreAdmin && staffType !== 'manager') || !selectedBooking?._id || !selectedStoreId) {
+      setEligibleRiders([]);
+      setAssignmentReadiness(null);
+      return undefined;
+    }
+    const timer = setTimeout(() => {
+      const params = { storeId: selectedStoreId };
+      if (Number(deliveryParcel.weightKg) > 0 && Number(deliveryParcel.parcelCount) > 0) {
+        Object.assign(params, {
+          weightKg: Number(deliveryParcel.weightKg),
+          parcelCount: Number(deliveryParcel.parcelCount)
+        });
+      }
+      staffService.getEligibleRiders(params).then(response => {
         setEligibleRiders(response.data.riders || []);
         setAssignmentReadiness(response.data.assignmentReadiness || null);
       }).catch(error => {
         setEligibleRiders([]);
-        setAssignmentReadiness({ message: getUserFacingError(error, 'Unable to load Rider availability.') });
+        setAssignmentReadiness({ error: true, message: getUserFacingError(error, 'Unable to load Rider availability.') });
       });
-    }
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [
+    isStoreAdmin,
+    staffType,
+    selectedBooking?._id,
+    selectedStoreId,
+    deliveryParcel.weightKg,
+    deliveryParcel.parcelCount
+  ]);
+
+  useEffect(() => {
+    const userData = JSON.parse(localStorage.getItem('user') || '{}');
+    setUser(userData);
+    fetchBookings();
 
     // Check for ID in query params to auto-open
     const queryParams = new URLSearchParams(window.location.search);
@@ -779,7 +822,7 @@ const BookingsManagement = () => {
                     onChange={event => setSelectedServiceStaffId(event.target.value)}
                     className="h-10 px-3 rounded-xl border border-slate-200 bg-white text-xs font-bold text-slate-700 outline-none focus:border-primary-500"
                   >
-                    <option value="">{eligibleServiceStaff.length ? 'Select qualified staff' : 'No qualified staff available'}</option>
+                    <option value="">{eligibleServiceStaffLoading ? 'Loading qualified staff…' : eligibleServiceStaffError ? 'Qualified staff request failed' : eligibleServiceStaff.length ? 'Select qualified staff' : 'No qualified staff available'}</option>
                     {eligibleServiceStaff.map(member => (
                       <option key={member._id} value={member._id}>
                         {member.firstName} {member.lastName} — {member.professionalTitle || member.staffType?.replaceAll('_', ' ')} ({member.reviewCount ? `${member.averageRating}/5, ${member.reviewCount} reviews` : 'No reviews yet'})
@@ -796,6 +839,7 @@ const BookingsManagement = () => {
                     className="h-10 px-3 rounded-xl border border-slate-200 bg-white text-xs font-bold text-slate-700 outline-none focus:border-primary-500"
                   />
                   </div>
+                  {eligibleServiceStaffError ? <p className="rounded-lg border border-rose-200 bg-rose-50 p-2 text-[11px] font-semibold text-rose-700" role="alert">{eligibleServiceStaffError}</p> : !eligibleServiceStaffLoading && !eligibleServiceStaff.length && staffAssignmentReadiness?.message ? <p className="rounded-lg border border-amber-200 bg-amber-50 p-2 text-[11px] font-semibold text-amber-800" role="status">{staffAssignmentReadiness.message}</p> : null}
                   <textarea
                     rows={2}
                     maxLength={2000}

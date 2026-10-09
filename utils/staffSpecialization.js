@@ -41,6 +41,14 @@ const getStaffSpecializationRole = staff => {
   return staff.role || (staff.staffType === 'boarding_specialist' ? 'boarding_staff' : staff.staffType);
 };
 
+// Historical staff records can predate the lifecycle fields introduced by
+// Staff Management. Missing values retain the old active default, while every
+// explicit inactive state remains authoritative.
+const isActiveStaffAccount = staff => Boolean(staff)
+  && staff.isDeleted !== true
+  && staff.isActive !== false
+  && !['inactive', 'suspended', 'archived'].includes(staff.staffStatus);
+
 const requiresPlatformVerification = staff => PLATFORM_VERIFIED_SPECIALIST_ROLES.has(getStaffSpecializationRole(staff));
 
 const hasTrustedLegacyProfessionalVerification = staff => Boolean(
@@ -180,6 +188,7 @@ module.exports = {
   getEnabledSpecializedRoles,
   isLaboratoryService,
   getStaffSpecializationRole,
+  isActiveStaffAccount,
   isRoleEligibleForService,
   isWithinStaffSchedule,
   getProfessionalVerificationStatus,

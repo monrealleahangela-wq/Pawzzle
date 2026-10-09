@@ -107,6 +107,9 @@ const Bookings = ({ isSubcomponent = false }) => {
   const selectedAcknowledgmentRequired = requiresRefundAcknowledgment(selectedRefundPolicy);
   const serviceBookingKind = resolveServiceBookingKind(selectedService);
   const [eligibleStaff, setEligibleStaff] = useState([]);
+  const [eligibleStaffLoading, setEligibleStaffLoading] = useState(false);
+  const [eligibleStaffError, setEligibleStaffError] = useState('');
+  const [staffAssignmentReadiness, setStaffAssignmentReadiness] = useState(null);
   const [staffProfileId, setStaffProfileId] = useState(null);
   const [bookingActionLoading, setBookingActionLoading] = useState(false);
 
@@ -348,11 +351,24 @@ const Bookings = ({ isSubcomponent = false }) => {
   useEffect(() => {
     if (!selectedBooking?._id || selectedBooking.status !== 'awaiting_customer_confirmation') {
       setEligibleStaff([]);
+      setEligibleStaffLoading(false);
+      setEligibleStaffError('');
+      setStaffAssignmentReadiness(null);
       return;
     }
+    setEligibleStaffLoading(true);
+    setEligibleStaffError('');
     bookingService.getEligibleStaff(selectedBooking._id)
-      .then(response => setEligibleStaff(response.data.staff || []))
-      .catch(() => setEligibleStaff([]));
+      .then(response => {
+        setEligibleStaff(response.data.staff || []);
+        setStaffAssignmentReadiness(response.data.assignmentReadiness || null);
+      })
+      .catch(error => {
+        setEligibleStaff([]);
+        setStaffAssignmentReadiness(null);
+        setEligibleStaffError(error.response?.data?.message || 'Unable to load qualified staff for this schedule.');
+      })
+      .finally(() => setEligibleStaffLoading(false));
   }, [selectedBooking?._id, selectedBooking?.status, selectedBooking?.staff]);
 
   useEffect(() => {
@@ -2263,7 +2279,10 @@ const Bookings = ({ isSubcomponent = false }) => {
                       ))}</div>
                     </div>
                   )}
-                  {selectedBooking.status === 'awaiting_customer_confirmation' && eligibleStaff.length === 1 && <p className="rounded-lg bg-slate-50 p-2 text-[11px] text-slate-500">No other qualified staff member is available for this schedule.</p>}
+                  {selectedBooking.status === 'awaiting_customer_confirmation' && eligibleStaffError && <p className="rounded-lg border border-rose-200 bg-rose-50 p-2 text-[11px] font-semibold text-rose-700" role="alert">{eligibleStaffError}</p>}
+                  {selectedBooking.status === 'awaiting_customer_confirmation' && eligibleStaffLoading && <p className="rounded-lg bg-slate-50 p-2 text-[11px] text-slate-500" role="status">Loading qualified staff…</p>}
+                  {selectedBooking.status === 'awaiting_customer_confirmation' && !eligibleStaffLoading && !eligibleStaffError && eligibleStaff.length === 1 && <p className="rounded-lg bg-slate-50 p-2 text-[11px] text-slate-500">No other qualified staff member is available for this schedule.</p>}
+                  {selectedBooking.status === 'awaiting_customer_confirmation' && !eligibleStaffLoading && !eligibleStaffError && eligibleStaff.length === 0 && staffAssignmentReadiness?.message && <p className="rounded-lg border border-amber-200 bg-amber-50 p-2 text-[11px] font-semibold text-amber-800" role="status">{staffAssignmentReadiness.message}</p>}
                 </section>
               )}
 
