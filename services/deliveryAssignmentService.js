@@ -19,6 +19,20 @@ const ACTIVE_ASSIGNMENT_STATUSES = ['pending', 'unassigned', 'assigned', 'accept
 const ASSIGNABLE_ORDER_STATUSES = ['ready_for_pickup', 'rider_assigned'];
 const ASSIGNABLE_BOOKING_STATUSES = ['confirmed', 'approved', 'processing'];
 
+// Older Rider accounts predate one or more of these lifecycle fields. Missing
+// values retain the model's historical active default, while every explicit
+// inactive/suspended/deleted value remains authoritative.
+const buildActiveRiderAccountFilter = (extra = {}) => ({
+  ...extra,
+  isDeleted: { $ne: true },
+  $and: [
+    { $or: [{ role: 'delivery_rider' }, { role: 'staff', staffType: 'delivery_rider' }] },
+    { $or: [{ isActive: true }, { isActive: { $exists: false } }] },
+    { $or: [{ staffStatus: 'active' }, { staffStatus: null }, { staffStatus: { $exists: false } }] },
+    { $or: [{ 'riderProfile.accountStatus': 'active' }, { 'riderProfile.accountStatus': null }, { 'riderProfile.accountStatus': { $exists: false } }] }
+  ]
+});
+
 const fail = (message, statusCode = 400) => Object.assign(new Error(message), { statusCode });
 
 const validateAssignmentSource = ({ source, orderId, bookingId }) => {
@@ -380,15 +394,10 @@ const assignDelivery = async ({ orderId, bookingId, parcel: parcelInput, actorId
       const previousRider = delivery?.assignedRider || null;
       if (delivery && previousRider) await releaseRiderCapacity(delivery, session);
 
-      const riders = await User.find({
+      const riders = await User.find(buildActiveRiderAccountFilter({
         store: source.store,
-        $or: [{ role: 'delivery_rider' }, { role: 'staff', staffType: 'delivery_rider' }],
-        isActive: true,
-        isDeleted: false,
-        staffStatus: 'active',
-        'riderProfile.accountStatus': 'active',
         ...(reassign && previousRider ? { _id: { $ne: previousRider } } : {})
-      }).session(session).lean();
+      })).session(session).lean();
       const evaluations = riders.map(rider => ({ rider, ...evaluateRiderEligibility(rider, parcel) }));
       const available = evaluations.filter(row => row.eligible).map(row => row.rider).sort(riderSort);
       let selected;
@@ -479,6 +488,7 @@ module.exports = {
   cancelOrderDelivery,
   completePickupOrder,
   releaseRiderCapacity,
+  buildActiveRiderAccountFilter,
   isAvailableNow,
   evaluateRiderEligibility,
   summarizeRiderEligibility,

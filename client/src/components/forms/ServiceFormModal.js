@@ -33,7 +33,7 @@ const roleLabel = role => ({
 
 const staffRole = staff => String(staff.role === 'staff' ? staff.staffType : (staff.role || staff.staffType || '')).toLowerCase();
 
-const ServiceFormModal = ({ editingService, form, setForm, categories, staff, onClose, onSubmit, onImageUpload, loading, onAdvanced }) => {
+const ServiceFormModal = ({ editingService, form, setForm, categories, staff, staffLoading, staffError, onClose, onSubmit, onImageUpload, loading, onAdvanced }) => {
   const image = form.images?.[0];
   const priceValid = form.price !== '' && Number(form.price) >= 0;
   const durationValid = Number(form.duration) >= 15;
@@ -88,7 +88,7 @@ const ServiceFormModal = ({ editingService, form, setForm, categories, staff, on
       </CompactFormSection>
 
       <CompactFormSection step="3" icon={Users} title="Specialist Requirements" description={`Only relevant ${qualifiedRoles.map(roleLabel).join(', ')} staff are shown for this service.`}>
-        {qualifiedStaff.length ? <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">{qualifiedStaff.map(member => {
+        {staffLoading ? <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-[11px] text-slate-600" role="status">Loading qualified staff...</div> : staffError ? <div className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-[11px] text-rose-700" role="alert">{staffError}</div> : qualifiedStaff.length ? <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">{qualifiedStaff.map(member => {
           const id = member._id || member.id;
           const selected = assigned.includes(id);
           return <button key={id} type="button" onClick={() => toggleStaff(id)} className={`flex items-center gap-3 rounded-xl border p-3 text-left transition ${selected ? 'border-primary-300 bg-primary-50' : 'border-slate-200 bg-slate-50 hover:border-primary-200'}`}><span className={`flex h-8 w-8 items-center justify-center rounded-full text-[10px] font-black ${selected ? 'bg-primary-600 text-white' : 'bg-slate-200 text-slate-600'}`}>{member.firstName?.[0]}{member.lastName?.[0]}</span><span className="min-w-0"><span className="block truncate text-[11px] font-black text-slate-800">{member.firstName} {member.lastName}</span><span className="block text-[9px] font-bold text-slate-500">{roleLabel(staffRole(member))}</span></span></button>;

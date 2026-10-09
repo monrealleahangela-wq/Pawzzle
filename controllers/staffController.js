@@ -7,7 +7,8 @@ const Delivery = require('../models/Delivery');
 const {
     isAvailableNow,
     evaluateRiderEligibility,
-    summarizeRiderEligibility
+    summarizeRiderEligibility,
+    buildActiveRiderAccountFilter
 } = require('../services/deliveryAssignmentService');
 const RiderEarning = require('../models/RiderEarning');
 const RiderPayout = require('../models/RiderPayout');
@@ -94,7 +95,7 @@ const isSpecializedAccount = user => SPECIALIZED_STAFF_ROLES.includes(getStaffSp
 const DIRECT_STAFF_ROLES = ['manager', 'service_staff', 'cashier', 'inventory_staff', 'procurement_officer', 'finance_staff', 'veterinarian', 'groomer', 'trainer', 'boarding_staff', 'delivery_rider'];
 const staffAccountFilter = (extra = {}, options = {}) => ({
     ...extra,
-    isDeleted: false,
+    isDeleted: { $ne: true },
     ...(options.onlyArchived ? { staffStatus: 'archived' } : options.includeArchived ? {} : { staffStatus: { $ne: 'archived' } }),
     $or: [{ role: 'staff' }, { role: { $in: DIRECT_STAFF_ROLES } }]
 });
@@ -1053,11 +1054,7 @@ const getEligibleRiders = async (req, res) => {
             }
             parcel = { weightKg, parcelCount };
         }
-        const query = {
-            $or: [{ role: 'delivery_rider' }, { role: 'staff', staffType: 'delivery_rider' }],
-            isDeleted: false, isActive: true, staffStatus: 'active',
-            'riderProfile.accountStatus': 'active'
-        };
+        const query = buildActiveRiderAccountFilter();
         if (storeIds?.length) query.store = { $in: storeIds };
         const riders = await User.find(query).select('-password').populate('store', 'name').lean();
         const [counts, ratings] = await Promise.all([Delivery.aggregate([

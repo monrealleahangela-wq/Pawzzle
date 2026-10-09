@@ -2,7 +2,7 @@ const { validationResult } = require('express-validator');
 const Service = require('../models/Service');
 const Store = require('../models/Store');
 const User = require('../models/User');
-const { isRoleEligibleForService } = require('../utils/staffSpecialization');
+const { SPECIALIZED_STAFF_ROLES, getStaffSpecializationRole, isRoleEligibleForService } = require('../utils/staffSpecialization');
 const { calculateServicePrice } = require('../utils/pricingEngine');
 const { calculateTransactionTax, resolveTransactionTaxConfiguration } = require('../utils/taxCalculator');
 const { canOperateStore } = require('../utils/authorizationPolicy');
@@ -25,16 +25,21 @@ const SERVICE_MUTABLE_FIELDS = [
 
 const PUBLIC_SERVICE_FIELDS = 'name description store category subCategory duration bufferTime price pricingRules addOns bookingRules assignedStaff schedule homeServiceAvailable homeServicePrice maxPetsPerSession requirements images ratings isActive isDeleted';
 const PUBLIC_SERVICE_STORE_FIELDS = 'name logo contactInfo.address businessHours bookingSettings taxConfiguration refundPolicy verificationStatus';
+const DIRECT_SERVICE_STAFF_ROLES = ['service_staff', ...SPECIALIZED_STAFF_ROLES];
 
 const validateAssignedStaff = async (assignedStaff = [], storeId, serviceData) => {
   const ids = [...new Set((assignedStaff || []).map(String).filter(Boolean))];
   if (!ids.length) return [];
   const staff = await User.find({
-    _id: { $in: ids }, role: 'staff', store: storeId, isActive: true,
-    staffStatus: { $ne: 'suspended' }, isDeleted: false
+    _id: { $in: ids },
+    $or: [{ role: 'staff' }, { role: { $in: DIRECT_SERVICE_STAFF_ROLES } }],
+    store: storeId,
+    isActive: { $ne: false },
+    staffStatus: { $nin: ['inactive', 'suspended', 'archived'] },
+    isDeleted: { $ne: true }
   });
   if (staff.length !== ids.length) throw Object.assign(new Error('Assigned staff must be active and belong to this store branch.'), { statusCode: 400 });
-  const incompatible = staff.find(member => !isRoleEligibleForService(member.staffType, serviceData));
+  const incompatible = staff.find(member => !isRoleEligibleForService(getStaffSpecializationRole(member), serviceData));
   if (incompatible) throw Object.assign(new Error(`${incompatible.firstName} ${incompatible.lastName} is not eligible for this service based on their role.`), { statusCode: 400 });
   return ids;
 };
@@ -530,5 +535,6 @@ module.exports = {
   updateService,
   deleteService,
   getAllServices,
-  calculatePrice
+  calculatePrice,
+  __test: { validateAssignedStaff }
 };

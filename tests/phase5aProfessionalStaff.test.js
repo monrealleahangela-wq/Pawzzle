@@ -93,9 +93,10 @@ test('customer staff profiles expose verified credential facts but never interna
 
 test('staff routes keep self-service narrow and verification administration protected', () => {
   const routes = source('routes/staff.js');
-  assert.ok(routes.indexOf("router.get('/me/professional-profile'") < routes.indexOf('router.use(authenticate, adminOnly)'));
-  assert.ok(routes.indexOf("router.patch('/me/professional-profile'") < routes.indexOf('router.use(authenticate, adminOnly)'));
-  assert.ok(routes.indexOf("router.post('/:id/credentials'") > routes.indexOf('router.use(authenticate, adminOnly)'));
+  assert.ok(routes.indexOf("router.get('/me/professional-profile'") < routes.indexOf("router.get('/:id/profile'"));
+  assert.ok(routes.indexOf("router.patch('/me/professional-profile'") < routes.indexOf("router.get('/:id/profile'"));
+  assert.match(routes, /router\.get\('\/platform\/verifications', authenticate, superAdminOnly/);
+  assert.match(routes, /router\.patch\('\/platform\/verifications\/:id', authenticate, superAdminOnly/);
   assert.match(routes, /authorizeCredentialManagement, uploadDoc\.single\('document'\)/);
   const controller = source('controllers/staffController.js');
   assert.match(controller, /req\.body\.bio !== undefined/);

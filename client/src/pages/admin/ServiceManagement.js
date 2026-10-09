@@ -76,6 +76,8 @@ const ServiceManagement = () => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [serviceToDelete, setServiceToDelete] = useState(null);
   const [storeStaff, setStoreStaff] = useState([]);
+  const [staffLoading, setStaffLoading] = useState(true);
+  const [staffError, setStaffError] = useState('');
   const [showDSSConfig, setShowDSSConfig] = useState(false);
   const [dssConfig, setDssConfig] = useState({ enabled: true, weights: { petType: 25, customerNeed: 30, coat: 15, size: 10, history: 10, preference: 10 }, thresholds: { high: 75, good: 50 } });
 
@@ -181,11 +183,16 @@ const ServiceManagement = () => {
   };
 
   const fetchStaff = async () => {
+    setStaffLoading(true);
+    setStaffError('');
     try {
       const res = await staffService.getAll();
       setStoreStaff(res.data.staff || []);
     } catch (e) {
-      console.log('Staff fetch optional:', e.message);
+      setStoreStaff([]);
+      setStaffError(e.response?.data?.message || 'Unable to load the Store staff directory. Try again before assigning specialists.');
+    } finally {
+      setStaffLoading(false);
     }
   };
 
@@ -573,6 +580,8 @@ const ServiceManagement = () => {
         setForm={setFormData}
         categories={categories}
         staff={storeStaff}
+        staffLoading={staffLoading}
+        staffError={staffError}
         onClose={() => setShowModal(false)}
         onSubmit={handleSubmit}
         onImageUpload={handleImageUpload}
@@ -1049,7 +1058,16 @@ const ServiceManagement = () => {
                   <div className="bg-white border border-slate-100 rounded-2xl p-6 shadow-sm">
                     <SectionHeader icon={Users} title="Staff Assignment" subtitle="Assign staff members to handle this service" color="indigo" />
 
-                    {storeStaff.length === 0 ? (
+                    {staffLoading ? (
+                      <div className="bg-slate-50 rounded-xl p-8 text-center" role="status">
+                        <Users className="h-10 w-10 text-slate-300 mx-auto mb-3" />
+                        <p className="text-[11px] font-bold text-slate-500">Loading Store staff...</p>
+                      </div>
+                    ) : staffError ? (
+                      <div className="bg-rose-50 border border-rose-200 rounded-xl p-5 text-center" role="alert">
+                        <p className="text-[11px] font-bold text-rose-700">{staffError}</p>
+                      </div>
+                    ) : storeStaff.length === 0 ? (
                       <div className="bg-slate-50 rounded-xl p-8 text-center">
                         <Users className="h-10 w-10 text-slate-300 mx-auto mb-3" />
                         <p className="text-[11px] font-bold text-slate-400">No staff members found. Add staff first in Staff Management.</p>

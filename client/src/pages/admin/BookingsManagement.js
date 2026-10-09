@@ -50,6 +50,7 @@ const BookingsManagement = () => {
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [user, setUser] = useState(null);
   const [eligibleRiders, setEligibleRiders] = useState([]);
+  const [assignmentReadiness, setAssignmentReadiness] = useState(null);
   const [deliveryParcel, setDeliveryParcel] = useState({ weightKg: '', parcelCount: 1 });
   const [deliveryAssignment, setDeliveryAssignment] = useState(null);
   const [eligibleServiceStaff, setEligibleServiceStaff] = useState([]);
@@ -101,8 +102,14 @@ const BookingsManagement = () => {
     const userData = JSON.parse(localStorage.getItem('user') || '{}');
     setUser(userData);
     fetchBookings();
-    if (STORE_ADMIN_ROLES.has(userData.role)) {
-      staffService.getEligibleRiders().then(response => setEligibleRiders(response.data.riders || [])).catch(() => setEligibleRiders([]));
+    if (STORE_ADMIN_ROLES.has(userData.role) || effectiveStaffType(userData) === 'manager') {
+      staffService.getEligibleRiders().then(response => {
+        setEligibleRiders(response.data.riders || []);
+        setAssignmentReadiness(response.data.assignmentReadiness || null);
+      }).catch(error => {
+        setEligibleRiders([]);
+        setAssignmentReadiness({ message: getUserFacingError(error, 'Unable to load Rider availability.') });
+      });
     }
 
     // Check for ID in query params to auto-open
@@ -737,7 +744,7 @@ const BookingsManagement = () => {
                   <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest leading-relaxed">
                     Pawzzle assigns an active internal rider. The rider opens navigation and proof tools from their authenticated workspace.
                   </p>
-                  <DeliveryAssignmentFields riders={eligibleRiders} parcel={deliveryParcel} onParcelChange={setDeliveryParcel}/>
+                  <DeliveryAssignmentFields riders={eligibleRiders} assignmentReadiness={assignmentReadiness} parcel={deliveryParcel} onParcelChange={setDeliveryParcel}/>
                   {deliveryAssignment?.assignmentType === 'internal' && <div className="p-3 rounded-xl bg-white border text-xs"><p className="text-[9px] font-black uppercase text-slate-400">Current Delivery Method</p><p className="font-black text-slate-800">Pawzzle Rider</p><p className="text-slate-500">{deliveryAssignment.assignedRider?.firstName} {deliveryAssignment.assignedRider?.lastName} · {deliveryAssignment.assignedRider?.riderProfile?.staffId}</p></div>}
                   <button
                     onClick={() => handleAssignRider(selectedBooking._id)}
