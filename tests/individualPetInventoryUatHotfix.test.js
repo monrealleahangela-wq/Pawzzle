@@ -7,6 +7,7 @@ const {
   finalizePetReservation,
   getPetAvailabilityIssue,
   isIndividualPetRecord,
+  releasePetReservation,
   reservePetForOrder
 } = require('../services/petAvailabilityService');
 
@@ -47,20 +48,27 @@ test('server create and update paths cannot turn pet listings into quantity inve
   const listingFields = controller.match(/const PET_LISTING_FIELDS = \[([\s\S]*?)\];/)?.[1] || '';
   assert.doesNotMatch(listingFields, /'quantity'/);
   assert.doesNotMatch(listingFields, /'reservation'/);
+  assert.doesNotMatch(listingFields, /'status'/);
   assert.match(controller, /quantity: 1/);
+  assert.match(controller, /status: 'available'/);
+  assert.match(controller, /isAvailable: true/);
   assert.match(controller, /const updateData = pickPetListingFields\(req\.body\)/);
-  assert.match(controller, /\['sold', 'adopted'\]\.includes\(pet\.status\)/);
+  assert.doesNotMatch(petRoutes, /body\('status'\)/);
+  assert.doesNotMatch(adminPetRoutes, /body\('status'\)/);
   assert.match(petRoutes, /Each pet listing must represent exactly one pet/);
   assert.match(adminPetRoutes, /Each pet listing must represent exactly one pet/);
 });
 
-test('seller pet forms use availability and preserve product stock quantity', () => {
+test('seller pet forms keep lifecycle availability read-only and preserve product stock quantity', () => {
   const compactPetForm = read('client/src/components/pets/PetListingFormModal.js');
   const sellerPets = read('client/src/pages/admin/Pets.js');
   const productForm = read('client/src/components/forms/ProductFormModal.js');
 
   assert.match(compactPetForm, /one sale listing for one individual pet/i);
-  assert.match(compactPetForm, />Availability</);
+  assert.doesNotMatch(compactPetForm, />Availability</);
+  assert.match(compactPetForm, /Pet lifecycle status/);
+  assert.match(sellerPets, /delete individualPetForm\.status/);
+  assert.match(sellerPets, /delete individualPetForm\.isAvailable/);
   assert.doesNotMatch(compactPetForm, /quantity|Stock Quantity/i);
   assert.doesNotMatch(sellerPets, /value=\{petForm\.quantity\}|Stock Quantity/);
   assert.match(sellerPets, /Duplicate shared listing details/);
@@ -111,6 +119,28 @@ test('terminal pet disposition stays tied to the completing transaction for safe
     assert.ok(captured.update.$set['reservation.completedAt'] instanceof Date);
     assert.equal(captured.update.$unset['reservation.adoptionRequest'], 1);
     assert.equal(captured.update.$unset.reservation, undefined);
+  } finally {
+    Pet.findOneAndUpdate = originalFindOneAndUpdate;
+  }
+});
+
+test('cancellation releases only the reservation owned by that transaction', async () => {
+  const originalFindOneAndUpdate = Pet.findOneAndUpdate;
+  let captured;
+  Pet.findOneAndUpdate = async (filter, update, options) => {
+    captured = { filter, update, options };
+    return { _id: 'pet-1', status: 'available', isAvailable: true };
+  };
+
+  try {
+    const released = await releasePetReservation({ petId: 'pet-1', source: 'order', referenceId: 'order-1' });
+    assert.equal(released.status, 'available');
+    assert.equal(captured.filter.status, 'reserved');
+    assert.equal(captured.filter['reservation.order'], 'order-1');
+    assert.equal(captured.update.$set.status, 'available');
+    assert.equal(captured.update.$set.isAvailable, true);
+    assert.equal(captured.update.$unset.reservation, 1);
+    assert.equal(captured.options.runValidators, true);
   } finally {
     Pet.findOneAndUpdate = originalFindOneAndUpdate;
   }

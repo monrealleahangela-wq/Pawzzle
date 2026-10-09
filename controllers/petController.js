@@ -23,7 +23,7 @@ const PET_LISTING_FIELDS = [
   'name', 'species', 'breed', 'birthday', 'age', 'ageUnit', 'gender', 'size',
   'color', 'description', 'price', 'images', 'weight', 'isNegotiable', 'dewormed',
   'spayedNeutered', 'healthCondition', 'vetRecords', 'proofOfOwnership', 'permits',
-  'pickupAvailability', 'fulfillmentType', 'paymentConfig', 'depositAmount', 'status',
+  'pickupAvailability', 'fulfillmentType', 'paymentConfig', 'depositAmount',
   'vaccinationStatus', 'pedigreePapers', 'pcciRegistration', 'supportingDocuments',
   'healthNotes', 'availabilityNotes', 'temperament', 'temperamentTraits',
   'activityLevel', 'careNeeds', 'petCompatibility', 'videos', 'location',
@@ -203,17 +203,14 @@ const createPet = async (req, res) => {
     } else {
       listingData.weight = Number(listingData.weight);
     }
-    const status = ['available', 'unavailable'].includes(listingData.status)
-      ? listingData.status
-      : 'available';
     const petData = {
       ...listingData,
       age: derivedAge.age,
       ageUnit: derivedAge.ageUnit,
       listingType: 'sale',
       quantity: 1,
-      status,
-      isAvailable: status === 'available',
+      status: 'available',
+      isAvailable: true,
       paymentType: 'online_only',
       allowedPaymentMethods: ['paymongo'],
       paymentConfig: req.body.paymentConfig === 'deposit_first' ? 'deposit_first' : 'full_payment',
@@ -303,17 +300,6 @@ const updatePet = async (req, res) => {
       return res.status(400).json({ message: 'Seller pet listings must be for sale.' });
     }
 
-    const targetStatus = updateData.status || pet.status;
-    if (['sold', 'adopted'].includes(pet.status) && targetStatus !== pet.status) {
-      return res.status(409).json({ message: `A ${pet.status} pet listing cannot be made purchasable again.` });
-    }
-    const hasOwnedReservation = Boolean(pet.reservation?.order || pet.reservation?.adoptionRequest);
-    if (pet.status === 'reserved' && targetStatus !== 'reserved' && hasOwnedReservation) {
-      return res.status(409).json({ message: 'This pet is reserved by an active transaction. Cancel or complete that transaction to change availability.' });
-    }
-    updateData.status = targetStatus;
-    updateData.isAvailable = targetStatus === 'available';
-    
     // Validate Birthday (Cannot be in the future)
     if (updateData.birthday) {
       const derivedAge = derivePetAge(updateData.birthday);
@@ -341,7 +327,6 @@ const updatePet = async (req, res) => {
     console.log('📝 updatePet EXECUTING UPDATE');
     const updateOperation = { $set: updateData };
     const unset = {};
-    if (!['reserved', 'sold', 'adopted'].includes(targetStatus)) unset.reservation = 1;
     if (clearWeight) unset.weight = 1;
     if (Object.keys(unset).length) updateOperation.$unset = unset;
     const updatedPet = await Pet.findByIdAndUpdate(

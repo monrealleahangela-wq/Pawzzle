@@ -48,7 +48,7 @@ const AdminPets = () => {
     dewormed: false,
     spayedNeutered: false,
     listingType: 'sale',
-    images: [], isAvailable: true,
+    images: [],
     pedigreePapers: false,
     pcciRegistration: { status: 'not_sure', registrationNumber: '', certificateUrl: '', informationStatus: 'not_provided' },
     supportingDocuments: [],
@@ -77,8 +77,7 @@ const AdminPets = () => {
       requirements: '', trialPeriod: '', homeCheck: false,
       rescuePartner: '', transportAvailable: false,
       isKidFriendly: true, isPetFriendly: true
-    },
-    status: 'available'
+    }
   };
 
   const [petForm, setPetForm] = useState(initialPetState);
@@ -226,8 +225,7 @@ const AdminPets = () => {
       paymentConfig: pet.paymentConfig || initialPetState.paymentConfig,
       depositAmount: pet.depositAmount || 0,
       paymentType: pet.paymentType || initialPetState.paymentType,
-      adoptionDetails: { ...initialPetState.adoptionDetails },
-      status: 'available'
+      adoptionDetails: { ...initialPetState.adoptionDetails }
     });
     setShowAddForm(true);
     toast.info('Shared listing details copied. Add this pet\'s unique identity, photo, and records.');
@@ -298,6 +296,8 @@ const AdminPets = () => {
       delete individualPetForm.reservation;
       delete individualPetForm.approvalStatus;
       delete individualPetForm.healthStatus;
+      delete individualPetForm.status;
+      delete individualPetForm.isAvailable;
       const payload = {
         ...individualPetForm,
         listingType: editingPet?.listingType === 'adoption' ? 'adoption' : 'sale',
@@ -1083,21 +1083,14 @@ const AdminPets = () => {
                       <div className="p-8 bg-emerald-50 rounded-[2.5rem] border border-emerald-100">
                          <div className="flex items-center gap-3 mb-4">
                             <CheckCircle className="h-4 w-4 text-emerald-500" />
-                            <h4 className="text-[10px] font-black uppercase tracking-widest text-emerald-600">Pet Availability</h4>
+                            <h4 className="text-[10px] font-black uppercase tracking-widest text-emerald-600">Marketplace Status</h4>
                          </div>
                          <div className="space-y-3">
-                            <div className="space-y-1.5">
-                               <label className="text-[9px] font-black text-emerald-900/40 uppercase tracking-widest">Current Status</label>
-                               <select disabled={Boolean(editingPet && (['sold', 'adopted'].includes(editingPet.status) || (editingPet.status === 'reserved' && (editingPet.reservation?.order || editingPet.reservation?.adoptionRequest))))} value={petForm.status} onChange={e => setPetForm(p => ({ ...p, status: e.target.value }))}
-                                 className="w-full px-4 py-3 bg-white border border-emerald-200 text-slate-900 rounded-xl text-[11px] font-black uppercase outline-none">
-                                  <option value="available">Available</option>
-                                  {editingPet && petForm.status === 'reserved' && <option value="reserved">Reserved</option>}
-                                  <option value="unavailable">Unavailable</option>
-                                  {editingPet && petForm.status === 'sold' && <option value="sold">Sold</option>}
-                                  {editingPet && petForm.status === 'adopted' && <option value="adopted">Adopted (legacy)</option>}
-                               </select>
+                            <div className="space-y-1.5 rounded-xl border border-emerald-200 bg-white px-4 py-3" role="status" aria-label="Pet lifecycle status">
+                               <p className="text-[9px] font-black text-emerald-900/40 uppercase tracking-widest">Current Status</p>
+                               <p className="text-[11px] font-black uppercase text-slate-900">{editingPet ? (petForm.status || 'Unavailable') : 'Available on publication'}</p>
                             </div>
-                            <p className="text-[9px] font-bold leading-4 text-emerald-800/70">Each listing is one actual pet. Use Duplicate Listing Details to start another individual record.</p>
+                            <p className="text-[9px] font-bold leading-4 text-emerald-800/70">Availability is updated automatically by reservation, purchase, and release events. Each listing represents one actual pet.</p>
                          </div>
                       </div>
                     </div>

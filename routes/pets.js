@@ -63,7 +63,6 @@ const createPetValidation = [
   body('temperamentTraits').isArray({ min: 1, max: PET_TEMPERAMENT_TRAITS.length }).withMessage('Select at least one observed temperament trait'),
   body('activityLevel').isIn(PET_ACTIVITY_LEVELS.filter(value => value !== 'unknown')).withMessage('Select a valid observed activity level'),
   body('listingType').optional().equals('sale').withMessage('Seller pet listings must be for sale'),
-  body('status').optional().isIn(['available', 'unavailable']).withMessage('New pet listings must be available or unavailable'),
   body('quantity').optional().equals('1').withMessage('Each pet listing must represent exactly one pet'),
   body('fulfillmentType').optional().isIn(['pickup_only', 'shipping', 'both']).withMessage('Invalid fulfillment type'),
   body('paymentType').optional().equals('online_only').withMessage('PayMongo online payment is required'),
@@ -93,7 +92,6 @@ const updatePetValidation = [
   body('price').optional().isFloat({ min: 0 }).withMessage('Price must be a positive number'),
   body('vaccinationStatus').optional().isIn(['complete', 'partial', 'none']).withMessage('Invalid vaccination status'),
   body('healthCondition').optional().isIn(['healthy', 'needs_monitoring', 'condition_present']).withMessage('Invalid health condition'),
-  body('status').optional().isIn(['available', 'reserved', 'sold', 'adopted', 'unavailable']).withMessage('Invalid pet availability status'),
   ...dssAttributeValidation,
   ...listingDocumentValidation
 ];
