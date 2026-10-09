@@ -3,7 +3,7 @@ import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { adminPetService, uploadService, adoptionService, getImageUrl } from '../../services/apiService';
 import { useAuth } from '../../contexts/AuthContext';
-import { Heart, Plus, Edit, Trash2, Filter, X, Search, ChevronLeft, ChevronRight, Activity, Shield, Image as ImageIcon, Zap, ArrowUpRight, Info, CheckCircle, PawPrint, Home, History, ClipboardList, Clock, CheckCircle2, XCircle, MessageSquare, UserCheck, Copy } from 'lucide-react';
+import { Heart, Plus, Edit, Trash2, Filter, X, Search, ChevronLeft, ChevronRight, Activity, Shield, Image as ImageIcon, Zap, ArrowUpRight, Info, CheckCircle, PawPrint, Home, History, ClipboardList, Clock, CheckCircle2, XCircle, MessageSquare, UserCheck } from 'lucide-react';
 import { formatTime12h } from '../../utils/timeFormatters';
 import { PLATFORM_ADMIN_ROLES, STORE_ADMIN_ROLES, hasUiActionPermission } from '../../utils/authorization';
 import PetListingFormModal from '../../components/pets/PetListingFormModal';
@@ -197,38 +197,6 @@ const AdminPets = () => {
     setEditingPet(null);
     setPetForm(initialPetState);
     setShowAddForm(true);
-  };
-
-  const handleDuplicateListingDetails = (pet) => {
-    setEditingPet(null);
-    setPetForm({
-      ...initialPetState,
-      species: pet.species || initialPetState.species,
-      breed: pet.breed || '',
-      age: pet.age || '',
-      ageUnit: pet.ageUnit || 'years',
-      ageYears: pet.ageUnit === 'years' ? (pet.age || '') : '',
-      ageMonths: pet.ageUnit === 'months' ? (pet.age || '') : '',
-      birthday: pet.birthday ? new Date(pet.birthday).toISOString().split('T')[0] : '',
-      size: pet.size || initialPetState.size,
-      temperament: pet.temperament || '',
-      temperamentTraits: pet.temperamentTraits || [],
-      activityLevel: pet.activityLevel || '',
-      careNeeds: { ...initialPetState.careNeeds, ...(pet.careNeeds || {}) },
-      petCompatibility: { ...initialPetState.petCompatibility, ...(pet.petCompatibility || {}) },
-      description: pet.description || '',
-      price: pet.price ?? '',
-      listingType: 'sale',
-      isNegotiable: Boolean(pet.isNegotiable),
-      fulfillmentType: pet.fulfillmentType || initialPetState.fulfillmentType,
-      allowedPaymentMethods: pet.allowedPaymentMethods || initialPetState.allowedPaymentMethods,
-      paymentConfig: pet.paymentConfig || initialPetState.paymentConfig,
-      depositAmount: pet.depositAmount || 0,
-      paymentType: pet.paymentType || initialPetState.paymentType,
-      adoptionDetails: { ...initialPetState.adoptionDetails }
-    });
-    setShowAddForm(true);
-    toast.info('Shared listing details copied. Add this pet\'s unique identity, photo, and records.');
   };
 
   const handleSubmit = async (e) => {
@@ -473,46 +441,50 @@ const AdminPets = () => {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50/50 p-4 sm:p-8 space-y-8">
+    <div className="mx-auto min-h-screen w-full max-w-[1600px] space-y-4 bg-slate-50/50 p-3 sm:space-y-5 sm:p-5 lg:p-6">
       {/* Header */}
-      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-4 bg-white p-4 sm:p-6 rounded-2xl border border-slate-100 shadow-sm relative overflow-hidden">
+      <div data-testid="pet-management-header" className="relative flex flex-col items-start justify-between gap-4 overflow-hidden rounded-2xl border border-slate-100 bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:px-5 sm:py-4">
         <div className="absolute top-0 right-0 w-64 h-64 bg-rose-500/5 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl pointer-events-none" />
         <div className="relative z-10">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="p-2 bg-rose-500 text-white rounded-2xl shadow-lg shadow-rose-200">
-              <Heart className="h-4 w-4" />
+          <div className="mb-2 flex items-center gap-2.5">
+            <div className="rounded-xl bg-rose-500 p-1.5 text-white shadow-md shadow-rose-200">
+              <Heart className="h-3.5 w-3.5" />
             </div>
-            <span className="text-[10px] font-black text-rose-500 uppercase tracking-[0.4em]">{isPlatformReviewer ? 'PLATFORM ADMIN : PET LISTINGS' : 'ADMIN PANEL : PETS'}</span>
+            <span className="text-[9px] font-black uppercase tracking-[0.3em] text-rose-500">{isPlatformReviewer ? 'PLATFORM ADMIN : PET LISTINGS' : 'ADMIN PANEL : PETS'}</span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 uppercase tracking-tight leading-none mb-2">
+          <h1 className="mb-1.5 text-2xl font-black uppercase leading-none tracking-tight text-slate-900 sm:text-[1.75rem]">
             Manage <span className="text-rose-500">Pets</span>
           </h1>
-          <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+          <p className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
             {isPlatformReviewer
               ? 'View marketplace Pet listings across Stores'
               : 'Manage individual Pet listings and availability'}
           </p>
         </div>
         {canCreate && (
-          <button onClick={handleOpenModal} className="px-8 py-3.5 bg-slate-900 text-white rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] hover:bg-rose-500 transition-all shadow-xl shadow-slate-200 flex items-center gap-3 group">
+          <button onClick={handleOpenModal} className="group flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-5 text-[10px] font-black uppercase tracking-[0.16em] text-white shadow-md shadow-slate-200 transition-all hover:bg-rose-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 focus-visible:ring-offset-2 sm:w-auto">
             <Plus className="h-4 w-4 group-hover:rotate-90 transition-transform" /> Add New Pet
           </button>
         )}
       </div>
 
       {/* View Switcher */}
-      <div className="flex gap-4 p-1.5 bg-white rounded-2xl border border-slate-100 shadow-sm w-fit">
+      <div className="flex w-full gap-1 rounded-xl border border-slate-100 bg-white p-1 shadow-sm sm:w-fit" role="tablist" aria-label="Pet management views">
         <button
           onClick={() => setActiveTab('inventory')}
-          className={`px-8 py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all flex items-center gap-3 ${activeTab === 'inventory' ? 'bg-slate-900 text-white shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}
+          role="tab"
+          aria-selected={activeTab === 'inventory'}
+          className={`flex h-10 flex-1 items-center justify-center gap-2 rounded-lg px-3 text-[10px] font-black uppercase tracking-[0.14em] transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600 sm:flex-none sm:px-4 ${activeTab === 'inventory' ? 'bg-slate-900 text-white shadow-md' : 'text-slate-400 hover:text-slate-600'}`}
         >
           <PawPrint className="h-4 w-4" /> Pet Listings
         </button>
         {!isPlatformReviewer && (
           <button
             onClick={() => setActiveTab('sales')}
-            className={`px-8 py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all flex items-center gap-3 ${activeTab === 'sales' ? 'bg-slate-900 text-white shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}
+            role="tab"
+            aria-selected={activeTab === 'sales'}
+            className={`flex h-10 flex-1 items-center justify-center gap-2 rounded-lg px-3 text-[10px] font-black uppercase tracking-[0.14em] transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600 sm:flex-none sm:px-4 ${activeTab === 'sales' ? 'bg-slate-900 text-white shadow-md' : 'text-slate-400 hover:text-slate-600'}`}
           >
             <History className="h-4 w-4" /> Sale History
           </button>
@@ -520,93 +492,101 @@ const AdminPets = () => {
       </div>
 
       {activeTab === 'inventory' ? (
-        <div className="flex flex-col lg:flex-row gap-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <div className="min-w-0 space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
           {/* Filters */}
-          <aside className="lg:w-72 shrink-0 space-y-4">
-            <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm space-y-5">
-              <div className="flex items-center gap-3 pb-4 border-b border-slate-50">
-                <div className="p-2 bg-slate-900 text-white rounded-2xl"><Filter className="h-4 w-4" /></div>
+          <aside className="min-w-0">
+            <div data-testid="pet-filter-panel" className="space-y-3 rounded-2xl border border-slate-100 bg-white p-3 shadow-sm sm:p-4">
+              <div className="flex items-center gap-2.5">
+                <div className="rounded-xl bg-slate-900 p-1.5 text-white"><Filter className="h-3.5 w-3.5" /></div>
                 <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-900">Filters</span>
               </div>
 
-              <div className="relative group">
-                <div className="absolute left-6 top-1/2 -translate-y-1/2 flex items-center justify-center pointer-events-none">
-                   <Search className="h-4 w-4 text-slate-400 group-focus-within:text-primary-600 transition-colors" />
+              <div className="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-[minmax(14rem,2fr)_repeat(4,minmax(7.5rem,1fr))_auto]">
+                <div className="group relative min-w-0 sm:col-span-2 lg:col-span-3 xl:col-span-1">
+                  <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 transition-colors group-focus-within:text-primary-600" />
+                  <input
+                    type="text"
+                    aria-label="Search pets"
+                    placeholder="SEARCH PETS..."
+                    value={filters.search}
+                    onChange={e => handleFilterChange('search', e.target.value)}
+                    className="h-11 w-full min-w-0 rounded-xl border border-slate-100 bg-slate-50 pl-10 pr-3 text-[10px] font-black uppercase tracking-wider outline-none transition-all placeholder:text-slate-300 focus:ring-2 focus:ring-primary-600/10"
+                  />
                 </div>
-                <input
-                  type="text" 
-                  placeholder="SEARCH PETS..." 
-                  value={filters.search} 
-                  onChange={e => handleFilterChange('search', e.target.value)}
-                  className="w-full pl-16 pr-4 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl text-[10px] font-black uppercase tracking-widest outline-none focus:ring-2 focus:ring-primary-600/10 placeholder:text-slate-300 transition-all font-sans"
-                />
+
+                {[
+                  { field: 'species', label: 'Species', options: ['dog', 'cat', 'bird', 'fish', 'rabbit', 'hamster', 'reptile'] },
+                  { field: 'size', label: 'Size', options: ['small', 'medium', 'large', 'extra_large'] },
+                  { field: 'gender', label: 'Gender', options: ['male', 'female'] },
+                  { field: 'isAvailable', label: 'Availability', options: [{ v: 'true', l: 'AVAILABLE' }, { v: 'false', l: 'NOT AVAILABLE' }] }
+                ].map(({ field, label, options }) => (
+                  <div key={field} className="min-w-0">
+                    <label className="sr-only" htmlFor={`pet-filter-${field}`}>{label}</label>
+                    <select
+                      id={`pet-filter-${field}`}
+                      aria-label={label}
+                      value={filters[field]}
+                      onChange={e => handleFilterChange(field, e.target.value)}
+                      className="h-11 w-full min-w-0 appearance-none rounded-xl border border-slate-100 bg-slate-50 px-3 text-[10px] font-black uppercase tracking-wider outline-none focus:ring-2 focus:ring-primary-600/10"
+                    >
+                      <option value="">{label}: All</option>
+                      {options.map(o => typeof o === 'string'
+                        ? <option key={o} value={o}>{o.toUpperCase()}</option>
+                        : <option key={o.v} value={o.v}>{o.l}</option>
+                      )}
+                    </select>
+                  </div>
+                ))}
+
+                <button
+                  onClick={() => setFilters({ species: '', size: '', gender: '', isAvailable: '', search: '' })}
+                  className="h-11 rounded-xl border border-slate-100 bg-slate-50 px-4 text-[10px] font-black uppercase tracking-wider text-slate-400 transition-colors hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600 sm:col-span-2 lg:col-span-1 xl:col-span-1"
+                >
+                  Reset
+                </button>
               </div>
-
-              {[
-                { field: 'species', label: 'Species', options: ['dog', 'cat', 'bird', 'fish', 'rabbit', 'hamster', 'reptile'] },
-                { field: 'size', label: 'Size', options: ['small', 'medium', 'large', 'extra_large'] },
-                { field: 'gender', label: 'Gender', options: ['male', 'female'] },
-                { field: 'isAvailable', label: 'Availability', options: [{ v: 'true', l: 'AVAILABLE' }, { v: 'false', l: 'NOT AVAILABLE' }] }
-              ].map(({ field, label, options }) => (
-                <div key={field} className="space-y-2">
-                  <label className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] px-1">{label}</label>
-                  <select value={filters[field]} onChange={e => handleFilterChange(field, e.target.value)}
-                    className="w-full px-4 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl text-[10px] font-black uppercase tracking-widest outline-none appearance-none focus:ring-2 focus:ring-primary-600/10">
-                    <option value="">ALL</option>
-                    {options.map(o => typeof o === 'string'
-                      ? <option key={o} value={o}>{o.toUpperCase()}</option>
-                      : <option key={o.v} value={o.v}>{o.l}</option>
-                    )}
-                  </select>
-                </div>
-              ))}
-
-              <button onClick={() => setFilters({ species: '', size: '', gender: '', isAvailable: '', search: '' })}
-                className="w-full py-3.5 bg-slate-50 hover:bg-slate-100 text-slate-400 text-[10px] font-black uppercase tracking-widest rounded-2xl transition-colors border border-slate-100">
-                Reset Filters
-              </button>
             </div>
           </aside>
 
           {/* Pets List */}
-          <div className="flex-1 space-y-6">
+          <div className="min-w-0 space-y-4">
             {pets.length === 0 ? (
-              <div className="py-20 text-center bg-white rounded-[3rem] border border-dashed border-slate-200">
-                <Heart className="h-12 w-12 text-slate-200 mx-auto mb-4" />
+              <div className="rounded-2xl border border-dashed border-slate-200 bg-white py-12 text-center">
+                <Heart className="mx-auto mb-3 h-10 w-10 text-slate-200" />
                 <p className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">No pets found</p>
               </div>
             ) : (
-              <div className="responsive-card-grid [--card-min:17rem] sm:[--card-min:18rem] [--card-gap:1rem]">
+              <div data-testid="pet-grid" className="responsive-card-grid [--card-min:13.5rem] [--card-gap:0.875rem]">
                 {pets.map((pet) => (
-                  <div key={pet._id} className="group bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-xl hover:-translate-y-0.5 transition-all overflow-hidden flex flex-col">
+                  <article data-testid="pet-card" key={pet._id} className="group flex min-w-0 flex-col overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg">
                     {/* Image */}
-                    <div className="relative w-full aspect-square bg-slate-50 flex items-center justify-center overflow-hidden">
+                    <div data-testid="pet-card-media" className="relative flex aspect-[4/3] w-full items-center justify-center overflow-hidden bg-slate-50">
                       {pet.images?.[0] ? (
-                        <img src={getImageUrl(pet.images[0])} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
+                        <img src={getImageUrl(pet.images[0])} alt={pet.name} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
                       ) : (
                         <Heart className="h-10 w-10 text-slate-200" />
                       )}
-                      <div className="absolute top-2 right-2 flex flex-col gap-1.5">
-                        <span className={`px-2.5 py-1 rounded-2xl text-[9px] font-black uppercase tracking-wider shadow-sm ${pet.status === 'available' ? 'bg-emerald-500 text-white' :
+                      <div className="absolute right-2 top-2 flex flex-col gap-1">
+                        <span className={`rounded-full px-2 py-1 text-[8px] font-black uppercase tracking-wider shadow-sm ${pet.status === 'available' ? 'bg-emerald-500 text-white' :
                           pet.status === 'reserved' ? 'bg-secondary-500 text-white' :
                             'bg-rose-500 text-white'
                           }`}>
                           {pet.status?.toUpperCase() || (pet.isAvailable ? 'AVAILABLE' : 'UNAVAILABLE')}
                         </span>
-                        <span className={`px-2.5 py-1 rounded-2xl text-[9px] font-black uppercase tracking-wider shadow-sm bg-${getVaccColor(pet.vaccinationStatus)}-500 text-white`}>
+                        <span className={`rounded-full px-2 py-1 text-[8px] font-black uppercase tracking-wider shadow-sm bg-${getVaccColor(pet.vaccinationStatus)}-500 text-white`}>
                           {pet.vaccinationStatus === 'complete' ? 'VACCINATED' : pet.vaccinationStatus === 'partial' ? 'PARTIAL VAX' : 'NO VAX'}
                         </span>
                       </div>
                     </div>
 
                     {/* Card Body */}
-                    <div className="p-5 flex-1 flex flex-col gap-3">
+                    <div className="flex flex-1 flex-col gap-2.5 p-3.5">
                       <div className="flex justify-between items-start">
                         <div className="min-w-0">
-                          <p className="text-[10px] font-black text-rose-500 uppercase tracking-widest leading-none mb-1.5">{pet.species} · {pet.gender}</p>
-                          <h3 className="mb-2 min-h-[2.5rem] text-base font-black uppercase leading-tight text-slate-900 line-clamp-2 break-words">{pet.name}</h3>
-                          <p className="text-[11px] font-bold uppercase leading-tight tracking-tight text-slate-400 line-clamp-2 break-words">{pet.breed} · {pet.age} {pet.ageUnit}</p>
-                          <p className="mt-1 text-[9px] font-black uppercase tracking-wider text-slate-400">ID {String(pet._id).slice(-8).toUpperCase()} · PCCI {pet.pcciRegistration?.status === 'yes' ? 'provided' : 'not provided'}</p>
+                          <p className="mb-1 text-[9px] font-black uppercase leading-none tracking-wider text-rose-500">{pet.species} · {pet.gender}</p>
+                          <h3 className="mb-1.5 line-clamp-2 min-h-[2.25rem] break-words text-[15px] font-black uppercase leading-tight text-slate-900">{pet.name}</h3>
+                          <p className="line-clamp-2 break-words text-[10px] font-bold uppercase leading-tight tracking-tight text-slate-400">{pet.breed} · {pet.age} {pet.ageUnit}</p>
+                          <p className="mt-1 text-[8px] font-black uppercase tracking-wider text-slate-400">ID {String(pet._id).slice(-8).toUpperCase()} · PCCI {pet.pcciRegistration?.status === 'yes' ? 'provided' : 'not provided'}</p>
                         </div>
                       </div>
 
@@ -617,100 +597,92 @@ const AdminPets = () => {
                       )}
 
                       {/* Price + Action row */}
-                      <div className="mt-auto pt-4 border-t border-slate-50 flex items-center justify-between gap-2">
-                        <span className="min-w-0 text-lg font-black leading-tight tracking-tighter text-slate-900 break-words sm:text-xl">
+                      <div className="mt-auto flex items-center justify-between gap-2 border-t border-slate-50 pt-2.5">
+                        <span className="min-w-0 break-words text-base font-black leading-tight tracking-tighter text-slate-900">
                           ₱{(pet.price || 0).toLocaleString()}
                         </span>
                         <div className="flex gap-1.5 shrink-0">
-                          {canCreate && (
-                            <button
-                              onClick={() => handleDuplicateListingDetails(pet)}
-                              className="p-2 sm:p-3 bg-primary-50 text-primary-600 rounded-2xl hover:bg-primary-600 hover:text-white transition-all border border-primary-100 active:scale-95"
-                              title="Duplicate shared listing details"
-                            >
-                              <Copy className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                            </button>
-                          )}
                           {canUpdate && (
                             <button 
                               onClick={() => handleEditPet(pet._id)}
-                              className="p-2 sm:p-3 bg-slate-900 text-white rounded-2xl hover:bg-rose-500 transition-all shadow-lg active:scale-95"
+                              className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-900 text-white shadow-md transition-all hover:bg-rose-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 focus-visible:ring-offset-2 active:scale-95"
                               title="Edit Pet"
                             >
-                              <Edit className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                              <Edit className="h-4 w-4" />
                             </button>
                           )}
                           {canDelete && (
                             <button 
                               onClick={() => handleDeletePet(pet._id)}
-                              className="p-2 sm:p-3 bg-rose-50 text-rose-500 rounded-2xl hover:bg-rose-500 hover:text-white transition-all border border-rose-100 active:scale-95"
+                              className="flex h-10 w-10 items-center justify-center rounded-xl border border-rose-100 bg-rose-50 text-rose-500 transition-all hover:bg-rose-500 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 focus-visible:ring-offset-2 active:scale-95"
                               title="Delete Pet"
                             >
-                              <Trash2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                              <Trash2 className="h-4 w-4" />
                             </button>
                           )}
                         </div>
                       </div>
                     </div>
-                  </div>
+                  </article>
                 ))}
               </div>
             )}
 
             {pagination.totalPages > 1 && (
-              <div className="flex justify-center items-center gap-6 bg-white border border-slate-100 p-4 rounded-2xl w-fit mx-auto shadow-sm">
-                <button onClick={() => setPagination(p => ({ ...p, currentPage: p.currentPage - 1 }))} disabled={!pagination.hasPrev} className="px-5 py-3.5 bg-slate-50 text-slate-500 rounded-2xl disabled:opacity-20 text-[10px] font-black uppercase tracking-widest hover:bg-slate-100 transition-all"><ChevronLeft className="h-4 w-4" /></button>
+              <div className="mx-auto flex w-fit items-center justify-center gap-4 rounded-xl border border-slate-100 bg-white p-2 shadow-sm">
+                <button onClick={() => setPagination(p => ({ ...p, currentPage: p.currentPage - 1 }))} disabled={!pagination.hasPrev} className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-50 text-slate-500 transition-all hover:bg-slate-100 disabled:opacity-20"><ChevronLeft className="h-4 w-4" /></button>
                 <span className="text-[10px] font-black text-slate-900 uppercase tracking-widest">Page <span className="text-primary-600 italic px-1">{pagination.currentPage}</span> / {pagination.totalPages}</span>
-                <button onClick={() => setPagination(p => ({ ...p, currentPage: p.currentPage + 1 }))} disabled={!pagination.hasNext} className="px-5 py-3.5 bg-slate-900 text-white rounded-2xl disabled:opacity-20 text-[10px] font-black uppercase tracking-widest hover:bg-primary-600 transition-all"><ChevronRight className="h-4 w-4" /></button>
+                <button onClick={() => setPagination(p => ({ ...p, currentPage: p.currentPage + 1 }))} disabled={!pagination.hasNext} className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-900 text-white transition-all hover:bg-primary-600 disabled:opacity-20"><ChevronRight className="h-4 w-4" /></button>
               </div>
             )}
           </div>
         </div>
       ) : (
-        <div className="bg-white rounded-[3rem] border border-slate-100 shadow-sm overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500">
-          <div className="p-8 border-b border-slate-50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <div className="flex flex-col justify-between gap-3 border-b border-slate-50 p-4 sm:flex-row sm:items-center sm:px-5">
             <div>
-              <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight mb-1">Transaction History</h2>
+              <h2 className="mb-1 text-lg font-black uppercase tracking-tight text-slate-900">Transaction History</h2>
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Monitor and manage all pet sales transactions</p>
             </div>
-            <div className="flex items-center gap-3">
-              <div className="relative group">
-                <div className="absolute left-6 top-1/2 -translate-y-1/2 flex items-center justify-center pointer-events-none">
+            <div className="flex min-w-0 items-center gap-3">
+              <div className="group relative w-full sm:w-auto">
+                <div className="pointer-events-none absolute left-3.5 top-1/2 flex -translate-y-1/2 items-center justify-center">
                     <Search className="h-4 w-4 text-slate-400 group-focus-within:text-primary-600 transition-colors" />
                 </div>
                 <input
                   type="text"
+                  aria-label="Search sales"
                   placeholder="SEARCH SALES..."
                   value={saleSearch}
                   onChange={(e) => setSaleSearch(e.target.value)}
-                  className="w-64 pl-16 pr-4 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl text-[10px] font-black uppercase outline-none focus:ring-2 focus:ring-primary-600/10 placeholder:text-slate-300 transition-all font-sans"
+                  className="h-11 w-full rounded-xl border border-slate-100 bg-slate-50 pl-10 pr-3 text-[10px] font-black uppercase outline-none transition-all placeholder:text-slate-300 focus:ring-2 focus:ring-primary-600/10 sm:w-64"
                 />
               </div>
             </div>
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full">
+            <table className="w-full min-w-[760px]">
               <thead>
                 <tr className="bg-slate-50/50">
-                  <th className="px-8 py-3.5 text-left text-[9px] font-black text-slate-400 uppercase tracking-widest">Pet</th>
-                  <th className="px-8 py-3.5 text-left text-[9px] font-black text-slate-400 uppercase tracking-widest">Customer Profile</th>
-                  <th className="px-8 py-3.5 text-left text-[9px] font-black text-slate-400 uppercase tracking-widest">Status / Lifecycle</th>
-                  <th className="px-8 py-3.5 text-left text-[9px] font-black text-slate-400 uppercase tracking-widest">Timestamp</th>
-                  <th className="px-8 py-3.5 text-right text-[9px] font-black text-slate-400 uppercase tracking-widest">Actions</th>
+                  <th className="px-5 py-3 text-left text-[9px] font-black text-slate-400 uppercase tracking-widest">Pet</th>
+                  <th className="px-5 py-3 text-left text-[9px] font-black text-slate-400 uppercase tracking-widest">Customer Profile</th>
+                  <th className="px-5 py-3 text-left text-[9px] font-black text-slate-400 uppercase tracking-widest">Status / Lifecycle</th>
+                  <th className="px-5 py-3 text-left text-[9px] font-black text-slate-400 uppercase tracking-widest">Timestamp</th>
+                  <th className="px-5 py-3 text-right text-[9px] font-black text-slate-400 uppercase tracking-widest">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
                 {fetchingSales ? (
                   Array(5).fill(0).map((_, i) => (
                     <tr key={i} className="animate-pulse">
-                      <td colSpan={5} className="px-8 py-6"><div className="h-12 bg-slate-50 rounded-2xl w-full" /></td>
+                      <td colSpan={5} className="px-5 py-3.5"><div className="h-10 w-full rounded-xl bg-slate-50" /></td>
                     </tr>
                   ))
                 ) : salesHistory.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="px-8 py-20 text-center">
-                      <ClipboardList className="h-12 w-12 text-slate-200 mx-auto mb-4" />
+                    <td colSpan={5} className="px-5 py-12 text-center">
+                      <ClipboardList className="mx-auto mb-3 h-10 w-10 text-slate-200" />
                       <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">No sales records found</p>
                     </td>
                   </tr>
@@ -721,9 +693,9 @@ const AdminPets = () => {
                     req.customer?.lastName?.toLowerCase().includes(saleSearch.toLowerCase())
                   ).map((req) => (
                     <tr key={req._id} className="hover:bg-slate-50/50 transition-colors">
-                      <td className="px-8 py-6">
-                        <div className="flex items-center gap-4">
-                          <div className="w-12 h-12 bg-slate-100 rounded-2xl overflow-hidden shrink-0">
+                      <td className="px-5 py-3.5">
+                        <div className="flex items-center gap-3">
+                          <div className="h-10 w-10 shrink-0 overflow-hidden rounded-xl bg-slate-100">
                             {req.pet?.images?.[0] ? (
                               <img src={getImageUrl(req.pet.images[0])} alt="" className="w-full h-full object-cover" />
                             ) : (
@@ -736,7 +708,7 @@ const AdminPets = () => {
                           </div>
                         </div>
                       </td>
-                      <td className="px-8 py-6">
+                      <td className="px-5 py-3.5">
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 bg-rose-50 rounded-full flex items-center justify-center">
                             <UserCheck className="h-4 w-4 text-rose-500" />
@@ -747,7 +719,7 @@ const AdminPets = () => {
                           </div>
                         </div>
                       </td>
-                      <td className="px-8 py-6">
+                      <td className="px-5 py-3.5">
                         <div className="flex flex-col gap-1.5">
                           <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest w-fit border ${req.status === 'approved' ? 'bg-emerald-50 border-emerald-100 text-emerald-600' :
                             req.status === 'rejected' ? 'bg-rose-50 border-rose-100 text-rose-600' :
@@ -758,11 +730,11 @@ const AdminPets = () => {
                           </span>
                         </div>
                       </td>
-                      <td className="px-8 py-6 text-[10px] font-bold text-slate-400 uppercase tracking-tighter">
+                      <td className="px-5 py-3.5 text-[10px] font-bold text-slate-400 uppercase tracking-tighter">
                         {new Date(req.createdAt).toLocaleDateString()} <br />
                         <span className="opacity-50 italic">{formatTime12h(new Date(req.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }))}</span>
                       </td>
-                      <td className="px-8 py-6">
+                      <td className="px-5 py-3.5">
                         <div className="flex items-center justify-end gap-2">
                           <Link to={`/admin/chat?conversation=${req.conversation}`} className="p-2.5 bg-slate-50 text-slate-400 rounded-2xl hover:bg-slate-900 hover:text-white transition-all">
                             <MessageSquare className="h-4 w-4" />

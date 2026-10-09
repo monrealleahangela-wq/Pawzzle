@@ -110,6 +110,22 @@ test('Business Hours keeps compact non-overlapping controls from phone to deskto
   assert.doesNotMatch(store, /activeTab === 'hours'[\s\S]*?<div className="flex-1 grid grid-cols-2 gap-6">/);
 });
 
+test('seller Pet Management uses compact controls and an intrinsic responsive card grid', () => {
+  const pets = read('client/src/pages/admin/Pets.js');
+
+  assert.match(pets, /max-w-\[1600px\][^"\n]*space-y-4[^"\n]*p-3[^"\n]*sm:p-5[^"\n]*lg:p-6/);
+  assert.match(pets, /data-testid="pet-management-header"[^>]*p-4[^>]*sm:px-5 sm:py-4/);
+  assert.match(pets, /role="tablist"[\s\S]*role="tab"[\s\S]*h-10 flex-1/);
+  assert.match(pets, /xl:grid-cols-\[minmax\(14rem,2fr\)_repeat\(4,minmax\(7\.5rem,1fr\)\)_auto\]/);
+  assert.match(pets, /aria-label="Search pets"[\s\S]*h-11 w-full min-w-0/);
+  assert.match(pets, /responsive-card-grid \[--card-min:13\.5rem\] \[--card-gap:0\.875rem\]/);
+  assert.match(pets, /data-testid="pet-card-media"[^>]*aspect-\[4\/3\][\s\S]*object-cover/);
+  assert.match(pets, /onClick=\{\(\) => handleEditPet[\s\S]*?h-10 w-10[\s\S]*?title="Edit Pet"/);
+  assert.match(pets, /onClick=\{\(\) => handleDeletePet[\s\S]*?h-10 w-10[\s\S]*?title="Delete Pet"/);
+  assert.match(pets, /overflow-x-auto[\s\S]*min-w-\[760px\]/);
+  assert.doesNotMatch(pets, /handleDuplicateListingDetails|Duplicate shared listing details/);
+});
+
 test('primary marketplace and management card titles receive a practical content width', () => {
   const expectations = new Map([
     ['client/src/pages/customer/Pets.js', /\[--card-min:17rem\][\s\S]*line-clamp-2 break-words/],
