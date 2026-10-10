@@ -509,6 +509,11 @@ const Layout = () => {
     : (isCustomerUI || isSupplierUI)
     ? (isSidebarPinned ? 'lg:pl-[240px]' : 'lg:pl-[72px]')
     : (isSidebarPinned ? 'lg:pl-[280px]' : 'lg:pl-[84px]');
+  const contentOffset = isPlatformAdminUI
+    ? (isSidebarPinned ? '248px' : '68px')
+    : (isCustomerUI || isSupplierUI)
+    ? (isSidebarPinned ? '240px' : '72px')
+    : (isSidebarPinned ? '280px' : '84px');
   const headerOffset = isPlatformAdminUI
     ? (sidebarCollapsed ? 'lg:left-[68px]' : 'lg:left-[248px]')
     : (isCustomerUI || isSupplierUI)
@@ -610,7 +615,10 @@ const Layout = () => {
         </aside>
       )}
 
-      <div className={`app-content-shell w-full max-w-full flex-1 flex flex-col min-w-0 ${isLandingPage ? '' : `${contentPadding} ${isCompactShell ? 'pt-14 lg:pt-16' : 'pt-16 lg:pt-20'}`} transition-all duration-500`}>
+      <div
+        className={`app-content-shell w-full max-w-full flex-1 flex flex-col min-w-0 ${isLandingPage ? '' : `${contentPadding} ${isCompactShell ? 'pt-14 lg:pt-16' : 'pt-16 lg:pt-20'}`} transition-all duration-500`}
+        style={{ '--app-content-offset': isLandingPage ? '0px' : contentOffset }}
+      >
         {!isLandingPage && (
           <header className={`shell-topbar fixed top-0 left-0 ${headerOffset} right-0 z-50 glass-effect dark:border-b dark:border-slate-800 ${isCompactShell ? 'h-14 lg:h-16' : 'h-16 lg:h-20'} flex items-center px-4 sm:px-6 lg:px-8 justify-between transition-all duration-500 shadow-soft`}>
             <div className="flex items-center gap-6">
