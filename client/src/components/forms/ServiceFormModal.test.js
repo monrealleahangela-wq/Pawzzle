@@ -1,6 +1,6 @@
 import React from 'react';
 import '@testing-library/jest-dom';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import ServiceFormModal from './ServiceFormModal';
 
 jest.mock('../../services/apiService', () => ({ getImageUrl: value => value }));
@@ -15,7 +15,8 @@ const form = {
   price: 500,
   images: ['/service.jpg'],
   assignedStaff: [],
-  isActive: true
+  isActive: true,
+  recommendationCriteria: { enabled: false, applicablePetTypes: ['any'] }
 };
 const props = {
   form,
@@ -57,4 +58,16 @@ test('distinguishes loading, API error, and a genuine empty specialist result', 
 
   rerender(<ServiceFormModal {...props} staff={[]} />);
   expect(screen.getByText(/No active qualified specialist is currently available/i)).toBeInTheDocument();
+});
+
+test('keeps Service Advisor participation an explicit seller opt-in in the compact form', () => {
+  const setForm = jest.fn();
+  render(<ServiceFormModal {...props} setForm={setForm} staff={[]} />);
+
+  const optIn = screen.getByRole('switch', { name: /Include in Service Advisor recommendations/i });
+  expect(optIn).toHaveAttribute('aria-checked', 'false');
+  fireEvent.click(optIn);
+
+  const update = setForm.mock.calls.at(-1)[0];
+  expect(update(form).recommendationCriteria).toEqual({ enabled: true, applicablePetTypes: ['any'] });
 });

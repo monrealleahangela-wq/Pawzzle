@@ -12,6 +12,7 @@ const {
   serviceCategoriesForNeed,
   valueInBudgetBand
 } = require('../utils/serviceAdvisorQuestionnaire');
+const { _test: { classifyQuestionnaireAvailability } } = require('../controllers/serviceRecommendationController');
 
 const root = path.resolve(__dirname, '..');
 const read = relativePath => fs.readFileSync(path.join(root, relativePath), 'utf8');
@@ -194,6 +195,22 @@ test('inactive, deleted, and seller-opt-out services cannot become questionnaire
   assert.equal(result.recommendations.length, 0);
 });
 
+test('discovery reports the first server-authoritative availability gate without weakening eligibility', () => {
+  const counts = {
+    activeServiceCount: 4,
+    categoryServiceCount: 3,
+    visibleCategoryServiceCount: 2,
+    optedInServiceCount: 1,
+    enabledServiceCount: 1
+  };
+  assert.equal(classifyQuestionnaireAvailability({ ...counts, activeServiceCount: 0 }), 'no_seller_services');
+  assert.equal(classifyQuestionnaireAvailability({ ...counts, categoryServiceCount: 0 }), 'no_service_category');
+  assert.equal(classifyQuestionnaireAvailability({ ...counts, visibleCategoryServiceCount: 0 }), 'store_visibility_unavailable');
+  assert.equal(classifyQuestionnaireAvailability({ ...counts, optedInServiceCount: 0 }), 'seller_opt_in_unavailable');
+  assert.equal(classifyQuestionnaireAvailability({ ...counts, enabledServiceCount: 0 }), 'seller_recommendations_disabled');
+  assert.equal(classifyQuestionnaireAvailability(counts), null);
+});
+
 test('controller preserves public Store scope, explicit opt-in, owner-scoped profiles, customer authorization, and read-only requests', () => {
   const controller = read('controllers/serviceRecommendationController.js');
   const routes = read('routes/dss.js');
@@ -205,6 +222,8 @@ test('controller preserves public Store scope, explicit opt-in, owner-scoped pro
   assert.match(controller, /isActive: true/);
   assert.match(controller, /isDeleted: \{ \$ne: true \}/);
   assert.match(controller, /'recommendationCriteria\.enabled': true/);
+  assert.match(controller, /Service\.countDocuments\(activeFilter\)/);
+  assert.match(controller, /classifyQuestionnaireAvailability/);
   assert.match(controller, /PetProfile\.findOne\(\{ _id: questionnaire\.petProfileId, owner: req\.user\._id \}\)/);
   assert.doesNotMatch(questionnaireHandler, /\.(save|create|updateOne|findOneAndUpdate)\(/);
   assert.match(routes, /router\.post\('\/service-recommendations', authenticate, customerOnly, createServiceAdvisorRecommendations\)/);

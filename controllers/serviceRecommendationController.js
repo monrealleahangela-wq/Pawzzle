@@ -149,6 +149,21 @@ const getServiceRecommendations = async (req, res) => {
   }
 };
 
+const classifyQuestionnaireAvailability = ({
+  activeServiceCount,
+  categoryServiceCount,
+  visibleCategoryServiceCount,
+  optedInServiceCount,
+  enabledServiceCount
+}) => {
+  if (!activeServiceCount) return 'no_seller_services';
+  if (!categoryServiceCount) return 'no_service_category';
+  if (!visibleCategoryServiceCount) return 'store_visibility_unavailable';
+  if (!optedInServiceCount) return 'seller_opt_in_unavailable';
+  if (!enabledServiceCount) return 'seller_recommendations_disabled';
+  return null;
+};
+
 const loadQuestionnaireServices = async serviceNeed => {
   const ownerIds = await getCustomerVisibleOwnerIds();
   const visibleStores = await Store.find(withCustomerComplianceFilter(buildCustomerVisibleStoreFilter(ownerIds)))
@@ -156,22 +171,42 @@ const loadQuestionnaireServices = async serviceNeed => {
     .lean();
   const storeIds = visibleStores.map(store => store._id);
   const categories = serviceCategoriesForNeed(serviceNeed);
-  const filter = {
+  const activeFilter = {
     isActive: true,
-    isDeleted: { $ne: true },
-    'recommendationCriteria.enabled': true,
-    store: { $in: storeIds },
-    ...(categories.length ? { category: { $in: categories } } : {})
+    isDeleted: { $ne: true }
   };
-  const services = await Service.find(filter)
+  const categoryFilter = categories.length ? { category: { $in: categories } } : {};
+  const visibleCategoryFilter = {
+    ...activeFilter,
+    ...categoryFilter,
+    store: { $in: storeIds }
+  };
+  const [activeServiceCount, categoryServiceCount, visibleCategoryServiceCount, optedInServices] = await Promise.all([
+    Service.countDocuments(activeFilter),
+    Service.countDocuments({ ...activeFilter, ...categoryFilter }),
+    Service.countDocuments(visibleCategoryFilter),
+    Service.find({ ...visibleCategoryFilter, 'recommendationCriteria.enabled': true })
     .populate('store', '_id name slug logo isActive')
-    .lean();
-  const populatedStoreIds = [...new Set(services.map(service => String(service.store?._id || '')).filter(Boolean))];
+    .lean()
+  ]);
+  const populatedStoreIds = [...new Set(optedInServices.map(service => String(service.store?._id || '')).filter(Boolean))];
   const configs = populatedStoreIds.length
     ? await ServiceDSSConfig.find({ store: { $in: populatedStoreIds } }).select('store enabled').lean()
     : [];
   const enabledByStore = new Map(configs.map(config => [String(config.store), config.enabled !== false]));
-  return services.filter(service => service.store?.isActive !== false && enabledByStore.get(String(service.store?._id)) !== false);
+  const services = optedInServices.filter(service => (
+    service.store?.isActive !== false && enabledByStore.get(String(service.store?._id)) !== false
+  ));
+  return {
+    services,
+    availabilityStatus: classifyQuestionnaireAvailability({
+      activeServiceCount,
+      categoryServiceCount,
+      visibleCategoryServiceCount,
+      optedInServiceCount: optedInServices.length,
+      enabledServiceCount: services.length
+    })
+  };
 };
 
 const buildQuestionnairePet = (questionnaire, profile) => ({
@@ -189,7 +224,7 @@ const buildQuestionnairePet = (questionnaire, profile) => ({
 const getServiceAdvisorRequirements = async (req, res) => {
   try {
     const input = normalizeRequirementsInput(req.body);
-    const services = await loadQuestionnaireServices(input.serviceNeed);
+    const { services } = await loadQuestionnaireServices(input.serviceNeed);
     res.json({
       fields: requirementFieldsForServices(services, input.petType),
       serviceNeed: input.serviceNeed,
@@ -214,10 +249,10 @@ const createServiceAdvisorRecommendations = async (req, res) => {
       if (!profile) return res.status(404).json({ message: 'Pet profile not found.' });
     }
 
-    const services = await loadQuestionnaireServices(questionnaire.serviceNeed);
+    const { services, availabilityStatus } = await loadQuestionnaireServices(questionnaire.serviceNeed);
     if (!services.length) {
       return res.json({
-        status: questionnaire.serviceNeed === 'explore' ? 'no_eligible_services' : 'no_service_type',
+        status: availabilityStatus || 'no_eligible_services',
         recommendations: [],
         budgetAlternatives: [],
         pricingUnknown: [],
@@ -292,5 +327,14 @@ module.exports = {
   createServiceAdvisorRecommendations,
   getDSSConfig,
   updateDSSConfig,
-  _test: { addCriterion, buildQuestionnairePet, calculateScore, configured, includesValue, evaluateHardEligibility, profileCompleteness }
+  _test: {
+    addCriterion,
+    buildQuestionnairePet,
+    calculateScore,
+    classifyQuestionnaireAvailability,
+    configured,
+    includesValue,
+    evaluateHardEligibility,
+    profileCompleteness
+  }
 };

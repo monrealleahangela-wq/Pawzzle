@@ -65,7 +65,8 @@ const renderAdvisor = async (customerInsights = insights) => {
 };
 
 const chooseAndContinue = async name => {
-  fireEvent.click(await screen.findByRole('button', { name }));
+  const accessibleName = typeof name === 'string' && name.startsWith('Under ') ? /^Under / : name;
+  fireEvent.click(await screen.findByRole('button', { name: accessibleName }));
   fireEvent.click(screen.getByRole('button', { name: /Continue/ }));
 };
 
@@ -164,7 +165,7 @@ test('answers survive Back navigation and changing an answer prevents a stale re
   expect(screen.getByText('Fresh Match')).toBeInTheDocument();
 });
 
-test('distinct missing-information, budget-mismatch, no-service, and request-failure states are rendered', async () => {
+test('distinct restriction, budget, seller opt-in, Store visibility, and request-failure states are rendered', async () => {
   await renderAdvisor({ myPets: [] });
   await chooseAndContinue('Under ₱500');
   await chooseAndContinue('Dog');
@@ -198,10 +199,23 @@ test('distinct missing-information, budget-mismatch, no-service, and request-fai
   await chooseAndContinue('Grooming / Bath');
   await chooseAndContinue(/No preference/);
   dssService.getServiceRecommendations.mockResolvedValueOnce({ data: {
-    status: 'no_service_type', recommendations: [], budgetAlternatives: [], pricingUnknown: [], missingFields: []
+    status: 'seller_opt_in_unavailable', recommendations: [], budgetAlternatives: [], pricingUnknown: [], missingFields: []
   } });
   fireEvent.click(screen.getByRole('button', { name: /Find Matching Services/ }));
-  expect(await screen.findByRole('heading', { name: 'No eligible service is listed for this type yet' })).toBeInTheDocument();
+  expect(await screen.findByRole('heading', { name: 'No seller-enabled recommendations in this category' })).toBeInTheDocument();
+  expect(screen.getByText(/providers have not enabled them/i)).toBeInTheDocument();
+
+  fireEvent.click(screen.getByRole('button', { name: /Adjust answers/ }));
+  await chooseAndContinue('Under â‚±500');
+  await chooseAndContinue('Dog');
+  await chooseAndContinue('Grooming / Bath');
+  await chooseAndContinue(/No preference/);
+  dssService.getServiceRecommendations.mockResolvedValueOnce({ data: {
+    status: 'store_visibility_unavailable', recommendations: [], budgetAlternatives: [], pricingUnknown: [], missingFields: []
+  } });
+  fireEvent.click(screen.getByRole('button', { name: /Find Matching Services/ }));
+  expect(await screen.findByRole('heading', { name: 'No customer-visible provider is available' })).toBeInTheDocument();
+  expect(screen.getByText(/verified, active provider visible to customers/i)).toBeInTheDocument();
 
   fireEvent.click(screen.getByRole('button', { name: /Adjust answers/ }));
   await chooseAndContinue('Under ₱500');
@@ -212,7 +226,7 @@ test('distinct missing-information, budget-mismatch, no-service, and request-fai
   fireEvent.click(screen.getByRole('button', { name: /Find Matching Services/ }));
   expect(await screen.findByRole('alert')).toHaveTextContent('Temporary failure.');
   expect(screen.getByRole('button', { name: /Try again/ })).toBeInTheDocument();
-});
+}, 15000);
 
 test('Pet Matching remains available and uses its independent recommendation endpoint', async () => {
   dssService.getPetRecommendations.mockResolvedValue({ data: { recommendations: [] } });

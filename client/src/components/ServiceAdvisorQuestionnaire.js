@@ -46,6 +46,59 @@ const INITIAL_ANSWERS = {
 
 const normalizeProfileValue = value => String(value || '').trim().toLowerCase().replace(/\s+/g, '_');
 const optionLabel = (options, value) => options.find(([key]) => key === value)?.[1] || value;
+const EMPTY_RESULT_COPY = {
+  no_seller_services: {
+    title: 'No seller services are currently available',
+    message: 'There are no active seller-created Services available through Service Advisor right now.'
+  },
+  no_service_category: {
+    title: 'No services are listed in this category yet',
+    message: 'Try another service type, or check again after providers add an active Service in this category.'
+  },
+  store_visibility_unavailable: {
+    title: 'No customer-visible provider is available',
+    message: 'Services in this category are not currently available from a verified, active provider visible to customers.'
+  },
+  seller_opt_in_unavailable: {
+    title: 'No seller-enabled recommendations in this category',
+    message: 'Active Services exist, but providers have not enabled them for Service Advisor recommendations.'
+  },
+  seller_recommendations_disabled: {
+    title: 'Service recommendations are unavailable for this category',
+    message: 'Providers currently have Service Advisor recommendations disabled for otherwise eligible Services.'
+  },
+  no_compatible_services: {
+    title: 'No service matches this pet yet',
+    message: 'Current seller-configured pet restrictions exclude the selected pet. Adjust the pet details or service type to try again.'
+  },
+  no_eligible_services: {
+    title: 'No eligible service is currently available',
+    message: 'No active Service currently satisfies customer visibility, seller participation, and configured pet restrictions.'
+  },
+  no_service_type: {
+    title: 'No eligible service is listed for this type yet',
+    message: 'No active Service currently satisfies category, customer visibility, seller participation, and configured pet restrictions.'
+  }
+};
+
+const emptyResultCopy = result => {
+  if (result.status === 'missing_information') return {
+    title: 'More pet information is required',
+    message: `Pawzzle needs ${(result.missingFields || []).map(field => field.label).join(', ')} to verify seller restrictions without guessing.`
+  };
+  if (result.status === 'budget_mismatch') return {
+    title: 'No compatible service fits this budget',
+    message: 'Compatible real services exist, but their comparable persisted prices fall outside your selected band.'
+  };
+  if (result.status === 'pricing_unavailable') return {
+    title: 'Compatible service pricing needs confirmation',
+    message: 'Pawzzle found compatible real services, but cannot truthfully compare their current pricing with your selected budget.'
+  };
+  return EMPTY_RESULT_COPY[result.status] || {
+    title: 'No compatible service was found',
+    message: 'Adjust your answers and try another search.'
+  };
+};
 
 const ChoiceGrid = ({ label, options, value, onChange, columns = 'sm:grid-cols-2' }) => (
   <fieldset>
@@ -256,11 +309,12 @@ const ServiceAdvisorQuestionnaire = ({ insights }) => {
 
   if (result || requestError) {
     const noMatches = result && result.status !== 'matches';
+    const emptyState = noMatches ? emptyResultCopy(result) : null;
     return (
       <section className="space-y-4" aria-live="polite">
         <div className="flex flex-wrap items-end justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-wide text-primary-700 dark:text-primary-300">Service Advisor results</p><h2 className="text-xl font-black text-slate-900 dark:text-white">{result?.recommendations?.length ? 'Recommended services' : 'Your service matches'}</h2></div><button type="button" onClick={adjustAnswers} className="inline-flex h-10 items-center gap-2 rounded-xl border border-slate-200 px-4 text-xs font-bold text-slate-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:border-slate-700 dark:text-slate-200"><RefreshCw size={14} />Adjust answers</button></div>
         {requestError && <div className="rounded-2xl border border-rose-200 bg-rose-50 p-5 text-rose-900 dark:border-rose-800 dark:bg-rose-950/30 dark:text-rose-100" role="alert"><h3 className="font-black">Service Advisor could not load results</h3><p className="mt-1 text-sm">{requestError}</p><button type="button" onClick={findServices} className="mt-3 inline-flex h-10 items-center gap-2 rounded-xl bg-slate-900 px-4 text-xs font-bold text-white dark:bg-primary-700"><RefreshCw size={14} />Try again</button></div>}
-        {noMatches && <div className="rounded-2xl border border-slate-200 bg-white p-6 text-center dark:border-slate-700 dark:bg-slate-900"><Search className="mx-auto text-slate-300" size={30} /><h3 className="mt-3 font-black text-slate-900 dark:text-white">{result.status === 'missing_information' ? 'More pet information is required' : result.status === 'budget_mismatch' ? 'No compatible service fits this budget' : result.status === 'pricing_unavailable' ? 'Compatible service pricing needs confirmation' : result.status === 'no_service_type' ? 'No eligible service is listed for this type yet' : result.status === 'no_eligible_services' ? 'No eligible service is currently available' : 'No compatible service was found'}</h3><p className="mx-auto mt-2 max-w-xl text-sm text-slate-500 dark:text-slate-400">{result.status === 'missing_information' ? `Pawzzle needs ${result.missingFields.map(field => field.label).join(', ')} to verify seller restrictions without guessing.` : result.status === 'budget_mismatch' ? 'Compatible real services exist, but their comparable persisted prices fall outside your selected band.' : result.status === 'pricing_unavailable' ? 'Pawzzle found compatible real services, but cannot truthfully compare their current pricing with your selected budget.' : 'This result reflects current active Services, Store visibility, category, and configured pet restrictions.'}</p>{result.status === 'missing_information' && <button type="button" onClick={() => { setResult(null); setStep(3); }} className="mt-4 rounded-xl bg-primary-700 px-4 py-2.5 text-xs font-bold text-white">Add pet details</button>}</div>}
+        {noMatches && <div className="rounded-2xl border border-slate-200 bg-white p-6 text-center dark:border-slate-700 dark:bg-slate-900"><Search className="mx-auto text-slate-300" size={30} /><h3 className="mt-3 font-black text-slate-900 dark:text-white">{emptyState.title}</h3><p className="mx-auto mt-2 max-w-xl text-sm text-slate-500 dark:text-slate-400">{emptyState.message}</p>{result.status === 'missing_information' && <button type="button" onClick={() => { setResult(null); setStep(3); }} className="mt-4 rounded-xl bg-primary-700 px-4 py-2.5 text-xs font-bold text-white">Add pet details</button>}</div>}
         {result?.recommendations?.map(item => <ResultCard key={item.service._id} item={item} />)}
         {result?.pricingUnknown?.length > 0 && <section className="space-y-3"><div><h3 className="text-base font-black text-slate-900 dark:text-white">Pricing requires confirmation</h3><p className="text-xs text-slate-500 dark:text-slate-400">These compatible services do not have a fully comparable persisted price.</p></div>{result.pricingUnknown.map(item => <ResultCard key={item.service._id} item={item} alternative />)}</section>}
         {result?.budgetAlternatives?.length > 0 && <section className="space-y-3"><div><h3 className="text-base font-black text-slate-900 dark:text-white">Compatible alternatives outside your budget</h3><p className="text-xs text-slate-500 dark:text-slate-400">Shown separately so they are not misrepresented as budget matches.</p></div>{result.budgetAlternatives.map(item => <ResultCard key={item.service._id} item={item} alternative />)}</section>}

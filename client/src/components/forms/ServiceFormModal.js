@@ -112,6 +112,18 @@ const ServiceFormModal = ({ editingService, form, setForm, categories, staff, st
 
       <CompactFormSection step="5" icon={Calendar} title="Availability" description="Active services remain visible and bookable under existing booking rules.">
         <CompactToggle checked={Boolean(form.isActive)} onChange={checked => set('isActive', checked)} label={form.isActive ? 'Active and accepting bookings' : 'Inactive and unavailable for booking'} description="Detailed schedules and capacity remain available under Advanced options." />
+        <CompactToggle
+          checked={form.recommendationCriteria?.enabled === true}
+          onChange={checked => setForm(current => ({
+            ...current,
+            recommendationCriteria: {
+              ...(current.recommendationCriteria || {}),
+              enabled: checked
+            }
+          }))}
+          label="Include in Service Advisor recommendations"
+          description="Explicitly allow eligible customers to discover this service. Pet restrictions remain configurable under Advanced options."
+        />
       </CompactFormSection>
     </CompactFormModal>
   );
