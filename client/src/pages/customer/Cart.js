@@ -123,7 +123,7 @@ const Cart = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] pb-36 lg:pb-12">
+    <div className="min-h-screen bg-[#F8FAFC] pb-8 lg:pb-10" data-testid="customer-cart-page">
       {/* Warning for sold pets - Tightened */}
       {hasSoldItems() && (
         <div className="bg-rose-50 border border-rose-100 rounded-xl p-2.5 mb-2 mx-2 animate-pulse">
@@ -137,65 +137,67 @@ const Cart = () => {
       )}
 
       {/* Header - Optimized for Compactness */}
-      <div className="max-w-7xl mx-auto px-2 sm:px-8 py-4 sm:py-8 flex flex-col md:flex-row justify-between items-start md:items-end gap-3 mb-2 px-2">
-        <div className="space-y-0.5">
-          <h1 className="text-2xl font-black uppercase leading-tight tracking-tight text-slate-900 sm:text-3xl">
-            Your Shopping <br />
-            <span className="text-primary-600 italic">Cart</span>
+      <div className="mx-auto mb-3 flex max-w-7xl flex-col items-start justify-between gap-3 px-3 py-4 sm:px-6 sm:py-5 md:flex-row md:items-end lg:px-8">
+        <div className="space-y-1">
+          <h1 className="!text-2xl font-black leading-tight tracking-tight text-slate-900 sm:!text-3xl">
+            Shopping <span className="text-primary-600">Cart</span>
           </h1>
-          <p className="text-[9px] sm:text-lg text-slate-400 font-bold uppercase tracking-tight opacity-70">Review items before checkout</p>
+          <p className="text-sm font-medium leading-relaxed text-slate-500">Review your selected items before checkout.</p>
         </div>
-        <div className="flex gap-1.5 w-full md:w-auto">
-          <button onClick={handleSelectAll} className="flex-1 md:flex-none px-4 py-2.5 bg-white border border-slate-100 rounded-xl text-[9px] font-black uppercase tracking-widest text-slate-500 shadow-sm transition-all active:scale-95">
+        <div className="flex w-full gap-2 md:w-auto">
+          <button onClick={handleSelectAll} className="min-h-11 flex-1 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-slate-600 shadow-sm transition hover:border-primary-200 hover:text-primary-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 active:scale-95 md:flex-none">
             Select All
           </button>
-          <button onClick={clearCart} className="flex-1 md:flex-none px-4 py-2.5 bg-rose-50 rounded-xl text-[9px] font-black uppercase tracking-widest text-rose-600 transition-all active:scale-95">
+          <button onClick={clearCart} className="min-h-11 flex-1 rounded-xl bg-rose-50 px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-rose-600 transition hover:bg-rose-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 active:scale-95 md:flex-none">
             Clear Cart
           </button>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-2 md:px-8 grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-10">
+      <div className="mx-auto grid max-w-7xl grid-cols-1 items-start gap-4 px-3 sm:px-6 lg:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)] lg:gap-6 lg:px-8" data-testid="cart-layout">
         {/* Cart Items - High Density 'Thin' Rows */}
-        <div className="lg:col-span-2 space-y-1.5 sm:space-y-3">
+        <div className="min-w-0 space-y-3" data-testid="cart-items-list">
           {items.map((item, idx) => (
-            <div key={`${item.itemType}-${item.itemId}`} className="group bg-white rounded-xl sm:rounded-[2rem] p-2 sm:p-5 border border-white shadow-xl shadow-slate-200/40 transition-all hover:shadow-2xl animate-slide-up" style={{ animationDelay: `${idx * 0.03}s` }}>
-              <div className="flex items-center gap-2 sm:gap-6">
-                <input
-                  type="checkbox"
-                  checked={item.selected || false}
-                  onChange={() => toggleItemSelection(item.itemId, item.itemType)}
-                  className="w-4 h-4 sm:w-6 sm:h-6 text-primary-600 rounded-lg border-slate-200 cursor-pointer"
-                />
+            <article key={`${item.itemType}-${item.itemId}`} className="group rounded-2xl border border-slate-100 bg-white p-3 shadow-sm transition hover:border-primary-100 hover:shadow-md sm:p-4 animate-slide-up" style={{ animationDelay: `${idx * 0.03}s` }} data-testid={`cart-item-${item.itemType}`}>
+              <div className="flex min-w-0 items-center gap-2.5 sm:gap-4">
+                <label className="flex h-11 w-9 shrink-0 cursor-pointer items-center justify-center rounded-lg focus-within:ring-2 focus-within:ring-primary-500 sm:w-10">
+                  <input
+                    type="checkbox"
+                    aria-label={`Select ${item.name}`}
+                    checked={item.selected || false}
+                    onChange={() => toggleItemSelection(item.itemId, item.itemType)}
+                    className="h-4 w-4 cursor-pointer rounded border-slate-300 text-primary-600 focus:ring-primary-500 sm:h-5 sm:w-5"
+                  />
+                </label>
 
-                <div className="w-12 h-12 sm:w-24 sm:h-24 bg-slate-50 rounded-lg sm:rounded-[1.5rem] border border-slate-100 flex-shrink-0 overflow-hidden relative">
+                <div className="relative h-16 w-16 flex-shrink-0 overflow-hidden rounded-xl border border-slate-100 bg-slate-50 sm:h-20 sm:w-20">
                   {item.image ? (
                     <img src={getImageUrl(item.image)} alt={item.name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center">
-                      {item.itemType === 'pet' ? <Heart className="h-4 w-4 sm:h-8 sm:w-8 text-primary-200" /> : <Package className="h-4 w-4 sm:h-8 sm:w-8 text-secondary-200" />}
+                      {item.itemType === 'pet' ? <Heart className="h-6 w-6 text-primary-200" /> : <Package className="h-6 w-6 text-secondary-200" />}
                     </div>
                   )}
                   {isPetSold(item) && <div className="absolute inset-0 bg-white/60 flex items-center justify-center font-black text-[7px] text-rose-600 uppercase">OFF</div>}
                 </div>
 
-                <div className="flex-1 min-w-0 flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-6">
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-1.5 mb-0.5">
-                      <h3 className={`text-[11px] sm:text-xl font-black uppercase tracking-tight truncate ${isPetSold(item) ? 'text-rose-300 line-through' : 'text-slate-900'}`}>
+                <div className="flex min-w-0 flex-1 flex-col justify-between gap-2 sm:flex-row sm:items-center sm:gap-4">
+                  <div className="min-w-0 flex-1">
+                    <div className="mb-1 flex min-w-0 items-center gap-2">
+                      <h3 className={`truncate !text-sm font-black leading-tight tracking-tight sm:!text-base ${isPetSold(item) ? 'text-rose-300 line-through' : 'text-slate-900'}`}>
                         {item.name}
                       </h3>
-                      <span className={`px-1 rounded text-[6px] sm:text-[9px] font-black uppercase ${item.itemType === 'pet' ? 'bg-primary-50 text-primary-600' : 'bg-secondary-50 text-secondary-600'}`}>
+                      <span className={`shrink-0 rounded-md px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wide ${item.itemType === 'pet' ? 'bg-primary-50 text-primary-700' : 'bg-secondary-50 text-secondary-700'}`}>
                         {item.itemType}
                       </span>
                     </div>
-                    <div className="flex flex-wrap items-center gap-1 text-[8px] font-bold uppercase tracking-widest text-slate-400 opacity-60 sm:text-xs">
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] font-semibold leading-relaxed text-slate-500">
                       <span>{formatPeso(item.price)}</span>
                       <span aria-hidden="true">•</span>
                       {item.storeId && item.storeName ? (
                         <Link
                           to={`/stores/${item.storeId}`}
-                          className="transition-colors hover:text-primary-600 hover:underline"
+                          className="truncate transition-colors hover:text-primary-600 hover:underline focus-visible:rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
                           aria-label={`View ${item.storeName} store`}
                         >
                           {item.storeName}
@@ -206,64 +208,48 @@ const Cart = () => {
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between sm:justify-end gap-3 sm:gap-10">
+                  <div className="flex min-w-0 flex-wrap items-center justify-between gap-2 sm:shrink-0 sm:justify-end sm:gap-4">
                     {item.itemType === 'pet' ? (
-                      <span className="rounded-lg border border-primary-100 bg-primary-50 px-2 py-1 text-[8px] font-black uppercase text-primary-700 sm:text-[10px]">1 individual pet</span>
+                      <span className="rounded-lg border border-primary-100 bg-primary-50 px-2.5 py-1.5 text-[9px] font-black uppercase text-primary-700">1 individual pet</span>
                     ) : (
-                      <div className="flex items-center bg-slate-50 rounded-lg sm:rounded-xl border border-slate-100 p-0.5 shadow-inner">
-                        <button onClick={() => handleQuantityChange(item.itemId, item.itemType, item.quantity - 1)} className="w-5 h-5 sm:w-8 sm:h-8 rounded-md hover:bg-white flex items-center justify-center transition-all disabled:opacity-20"><Minus className="h-2 w-2 sm:h-3 sm:w-3" /></button>
-                        <span className="w-6 sm:w-10 text-center text-[10px] sm:text-xs font-black text-slate-900">{item.quantity}</span>
-                        <button onClick={() => handleQuantityChange(item.itemId, item.itemType, item.quantity + 1)} className="w-5 h-5 sm:w-8 sm:h-8 rounded-md hover:bg-white flex items-center justify-center transition-all"><Plus className="h-2 w-2 sm:h-3 sm:w-3" /></button>
+                      <div className="flex items-center rounded-xl border border-slate-200 bg-slate-50 p-0.5 shadow-inner" aria-label={`Quantity for ${item.name}`}>
+                        <button aria-label={`Decrease ${item.name} quantity`} onClick={() => handleQuantityChange(item.itemId, item.itemType, item.quantity - 1)} className="flex h-9 w-9 items-center justify-center rounded-lg transition hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 disabled:opacity-20"><Minus className="h-3.5 w-3.5" /></button>
+                        <span className="w-8 text-center text-xs font-black text-slate-900" aria-label={`${item.quantity} items`}>{item.quantity}</span>
+                        <button aria-label={`Increase ${item.name} quantity`} onClick={() => handleQuantityChange(item.itemId, item.itemType, item.quantity + 1)} className="flex h-9 w-9 items-center justify-center rounded-lg transition hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"><Plus className="h-3.5 w-3.5" /></button>
                       </div>
                     )}
-                    <div className="flex items-center gap-2 sm:gap-6">
-                      <span className="text-[11px] font-black tracking-tighter text-slate-900 sm:text-xl">{formatPeso(item.price * item.quantity)}</span>
-                      <button onClick={() => removeFromCart(item.itemId, item.itemType)} className="text-slate-300 hover:text-rose-600 p-1.5 sm:p-2.5 transition-all"><Trash2 className="h-3 w-3 sm:h-5 sm:w-5" /></button>
+                    <div className="flex shrink-0 items-center gap-1 sm:gap-2">
+                      <span className="text-sm font-black tracking-tight text-slate-900 sm:text-base">{formatPeso(item.price * item.quantity)}</span>
+                      <button aria-label={`Remove ${item.name} from cart`} onClick={() => removeFromCart(item.itemId, item.itemType)} className="flex h-10 w-10 items-center justify-center rounded-xl text-slate-400 transition hover:bg-rose-50 hover:text-rose-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500"><Trash2 className="h-4 w-4" /></button>
                     </div>
                   </div>
                 </div>
               </div>
-            </div>
+            </article>
           ))}
         </div>
 
-        {/* Sidebar - Final Tally Desktop */}
-        <div className="hidden lg:block">
-          <div className="bg-slate-900 rounded-[3rem] p-10 sticky top-10 shadow-2xl relative overflow-hidden text-white">
-            <div className="absolute top-0 right-0 w-64 h-64 bg-primary-600/10 rounded-full blur-[100px] -mr-32 -mt-32"></div>
-            <h2 className="text-3xl font-black uppercase tracking-tighter mb-10 italic border-b border-white/10 pb-4 relative z-10">Order Summary</h2>
-            <div className="space-y-6 mb-12 relative z-10">
-              <div className="flex justify-between items-center"><span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Items Subtotal</span><span className="text-xl font-black text-white">{formatPeso(totalPrice)}</span></div>
-              <div className="flex justify-between items-center"><span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Selected items</span><span className="text-xl font-black text-primary-400">{selectedItems.length} items</span></div>
-              <div className="border-t border-white/10 pt-8">
-                <div className="flex items-end justify-between gap-3"><span className="text-[10px] font-black uppercase tracking-wide text-white">Cart Subtotal</span><span className="text-2xl font-black tracking-tighter text-primary-500 sm:text-3xl">{formatPeso(totalPrice)}</span></div>
-                <p className="mt-3 text-[9px] font-semibold leading-relaxed text-slate-400">VAT, delivery fees, and eligible discounts are calculated from current store data during checkout.</p>
+        {/* Content-driven summary stacks below items on mobile. */}
+        <aside className="min-w-0 lg:sticky lg:top-24" data-testid="order-summary">
+          <div className="relative overflow-hidden rounded-2xl bg-slate-900 p-5 text-white shadow-xl sm:p-6">
+            <div className="absolute right-0 top-0 h-40 w-40 -translate-y-1/2 translate-x-1/2 rounded-full bg-primary-600/15 blur-3xl" />
+            <h2 className="relative z-10 mb-4 border-b border-white/10 pb-3 !text-xl font-black tracking-tight">Order Summary</h2>
+            <div className="relative z-10 mb-5 space-y-3">
+              <div className="flex items-center justify-between gap-4"><span className="text-[10px] font-black uppercase tracking-wider text-slate-400">Items subtotal</span><span className="text-sm font-black text-white">{formatPeso(totalPrice)}</span></div>
+              <div className="flex items-center justify-between gap-4"><span className="text-[10px] font-black uppercase tracking-wider text-slate-400">Selected items</span><span className="text-sm font-black text-primary-300">{selectedItems.length} items</span></div>
+              <div className="border-t border-white/10 pt-4">
+                <div className="flex items-end justify-between gap-4"><span className="text-[10px] font-black uppercase tracking-wide text-white">Total</span><span className="text-2xl font-black tracking-tight text-primary-400">{formatPeso(totalPrice)}</span></div>
+                <p className="mt-2 text-[10px] font-medium leading-relaxed text-slate-400">VAT, delivery fees, and eligible discounts are calculated from current store data during checkout.</p>
               </div>
             </div>
             <button
               onClick={handleCheckout}
-              className="w-full py-5 bg-white text-slate-900 rounded-[2rem] text-sm font-black uppercase tracking-[0.2em] block text-center shadow-2xl hover:bg-primary-50 transition-all active:scale-95 relative z-10"
+              className="relative z-10 min-h-12 w-full rounded-xl bg-white px-4 py-3 text-xs font-black uppercase tracking-[0.16em] text-slate-900 shadow-lg transition hover:bg-primary-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900 active:scale-[0.98]"
             >
-              Checkout Now
+              Checkout ({selectedItems.length})
             </button>
           </div>
-        </div>
-      </div>
-
-      {/* Mobile Fixed Checkout Bar - Adjusted for Bottom Nav HUD */}
-      <div className="lg:hidden fixed bottom-[96px] left-1/2 -translate-x-1/2 w-[94%] max-w-lg z-50 bg-white/95 backdrop-blur-2xl border border-white/20 px-4 py-3.5 rounded-[2rem] shadow-[0_20px_60px_rgba(0,0,0,0.2)]">
-        <div className="flex items-center justify-between gap-3 max-w-lg mx-auto">
-          <div className="pl-1">
-            <p className="text-[7px] font-black text-slate-400 uppercase tracking-widest leading-none mb-0.5">Selected total</p>
-            <p className="text-[17px] font-black text-slate-900 tracking-tighter leading-none">{formatPeso(totalPrice)}</p>
-          </div>
-          <button
-            onClick={handleCheckout}
-            className="flex-1 py-3 bg-slate-900 text-white rounded-xl text-[9px] font-black uppercase tracking-[0.2em] shadow-xl text-center active:scale-95 transition-all"
-          >
-            Checkout ({selectedItems.length})
-          </button>
-        </div>
+        </aside>
       </div>
     </div>
   );
