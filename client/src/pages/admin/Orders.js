@@ -9,6 +9,7 @@ import { formatPeso } from '../../utils/paymentSummary';
 import { useAuth } from '../../contexts/AuthContext';
 import { hasUiActionPermission } from '../../utils/authorization';
 import ConfirmationDialog from '../../components/ui/ConfirmationDialog';
+import { getEffectiveOrderStatus } from '../../utils/orderLifecycle';
 
 const AdminOrders = () => {
   const { user } = useAuth();
@@ -103,6 +104,8 @@ const AdminOrders = () => {
       case 'rider_assigned': return 'bg-sky-50 text-sky-700 border-sky-100';
       case 'in_transit': return 'bg-orange-50 text-orange-700 border-orange-100';
       case 'delivered': return 'bg-emerald-100 text-emerald-800 border-emerald-200';
+      case 'completed': return 'bg-emerald-100 text-emerald-900 border-emerald-300';
+      case 'returned': return 'bg-orange-50 text-orange-800 border-orange-200';
       case 'cancelled': return 'bg-rose-50 text-rose-700 border-rose-100';
       default: return 'bg-slate-50 text-slate-600 border-slate-100';
     }
@@ -112,7 +115,7 @@ const AdminOrders = () => {
   const hasFilters = Boolean(filters.status || filters.search);
 
   const getActionButton = (order) => {
-    switch (order.status) {
+    switch (getEffectiveOrderStatus(order)) {
       case 'paid': return { label: 'CONFIRM ORDER', next: 'awaiting_confirmation', color: 'bg-emerald-500 hover:bg-emerald-600' };
       case 'awaiting_confirmation': return { label: 'START PREPARING', next: 'confirmed', color: 'bg-blue-500 hover:bg-blue-600' };
       case 'confirmed': return { label: 'START PACKING', next: 'preparing', color: 'bg-indigo-500 hover:bg-indigo-600' };
@@ -226,8 +229,8 @@ const AdminOrders = () => {
                         <p className="text-xs text-slate-500 uppercase">{order.paymentMethod ? order.paymentMethod.replace('_', ' ') : 'PENDING'}</p>
                       </td>
                       <td className="px-6 py-4">
-                        <span className={`px-2 py-1 rounded-md text-xs font-medium border ${getStatusStyle(order.status)}`}>
-                          {formatStatus(order.status)}
+                        <span className={`px-2 py-1 rounded-md text-xs font-medium border ${getStatusStyle(getEffectiveOrderStatus(order))}`}>
+                          {formatStatus(getEffectiveOrderStatus(order))}
                         </span>
                       </td>
                       <td className="px-6 py-4 text-right">
@@ -271,8 +274,8 @@ const AdminOrders = () => {
                     <p className="text-xs font-medium text-slate-500">#{order.orderNumber.slice(-8).toUpperCase()}</p>
                     <h3 className="font-bold text-slate-900">{order.customer?.firstName || 'Unknown'}</h3>
                   </div>
-                  <span className={`px-2 py-1 rounded-md text-[10px] font-medium border ${getStatusStyle(order.status)}`}>
-                    {formatStatus(order.status)}
+                  <span className={`px-2 py-1 rounded-md text-[10px] font-medium border ${getStatusStyle(getEffectiveOrderStatus(order))}`}>
+                    {formatStatus(getEffectiveOrderStatus(order))}
                   </span>
                 </div>
                 <div className="flex justify-between items-center py-2 border-t border-slate-100">

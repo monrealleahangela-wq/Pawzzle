@@ -64,7 +64,7 @@ test('booking UI keeps the existing proposal submission and adds dynamic steps',
   assert.match(bookings, /<ServiceIntakeSummary/);
 
   assert.match(form, /Veterinary visit/);
-  assert.match(form, /Grooming package/);
+  assert.match(form, /Selected grooming package/);
   assert.match(form, /Training goal/);
   assert.match(form, /Check-out date/);
   assert.match(form, /Adoption consultation/);

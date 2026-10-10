@@ -28,7 +28,7 @@ const createOrderValidation = [
 ];
 
 const updateOrderStatusValidation = [
-  body('status').isIn(['pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled']).withMessage('Invalid status'),
+  body('status').isIn(['pending_payment', 'paid', 'awaiting_confirmation', 'confirmed', 'preparing', 'ready_for_pickup', 'rider_assigned', 'picked_up', 'in_transit', 'delivered', 'completed', 'cancelled', 'payment_failed', 'delivery_failed', 'returned', 'pending', 'processing', 'shipped', 'finalized']).withMessage('Invalid status'),
   body('trackingNumber').optional().trim()
 ];
 

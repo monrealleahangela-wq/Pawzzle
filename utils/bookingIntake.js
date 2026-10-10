@@ -9,7 +9,7 @@ const SERVICE_INTAKE_FIELDS = Object.freeze({
 
 const REQUIRED_FIELDS = Object.freeze({
   veterinary: ['reasonForVisit', 'symptoms', 'symptomDuration', 'emergency'],
-  grooming: ['groomingPackage', 'coatCondition', 'nailTrimming', 'earCleaning', 'behaviorConcern'],
+  grooming: ['coatCondition', 'behaviorConcern'],
   training: ['trainingGoal', 'behavioralConcerns', 'previousTraining', 'trainingType', 'ownerAttendance'],
   boarding: ['checkInDate', 'checkOutDate', 'feedingSchedule', 'foodProvided', 'takesMedication', 'specialCareInstructions', 'emergencyContact'],
   adoption_consultation: ['consultationTopic', 'householdDetails'],
@@ -45,6 +45,9 @@ const prepareServiceIntake = (service, rawIntake, { allowLegacyMissing = true } 
   for (const key of SERVICE_INTAKE_FIELDS[kind]) {
     const value = String(rawDetails[key] ?? '').trim().slice(0, 2000);
     if (value) details[key] = value;
+  }
+  if (kind === 'grooming' && String(service.name || '').trim()) {
+    details.groomingPackage = String(service.name).trim().slice(0, 2000);
   }
 
   for (const key of REQUIRED_FIELDS[kind]) {

@@ -12,11 +12,11 @@ const Field = ({ label, required, error, children, className = '' }) => (
   </label>
 );
 
-const Choice = ({ label, value, onChange, error }) => (
-  <Field label={label} required error={error}>
-    <div className="mt-1.5 grid grid-cols-2 gap-2">
-      {[['yes', 'Yes'], ['no', 'No']].map(([option, text]) => (
-        <button key={option} type="button" onClick={() => onChange(option)} className={`h-10 rounded-xl border text-[10px] font-black transition ${value === option ? 'border-primary-500 bg-primary-50 text-primary-700 dark:bg-primary-950/50 dark:text-primary-200' : 'border-slate-200 bg-white text-slate-500 hover:border-primary-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300'}`}>
+const Choice = ({ label, value, onChange, error, required = true, allowPackageDefault = false }) => (
+  <Field label={`${label}${required ? '' : ' (optional)'}`} required={required} error={error}>
+    <div className={`mt-1.5 grid gap-2 ${allowPackageDefault ? 'grid-cols-1 sm:grid-cols-3' : 'grid-cols-2'}`}>
+      {(allowPackageDefault ? [['', 'Package standard'], ['yes', 'Yes'], ['no', 'No']] : [['yes', 'Yes'], ['no', 'No']]).map(([option, text]) => (
+        <button key={option} type="button" aria-label={`${label}: ${text}`} aria-pressed={value === option} onClick={() => onChange(option)} className={`h-10 rounded-xl border text-[10px] font-black transition ${value === option ? 'border-primary-500 bg-primary-50 text-primary-700 dark:bg-primary-950/50 dark:text-primary-200' : 'border-slate-200 bg-white text-slate-500 hover:border-primary-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300'}`}>
           {value === option && <CheckCircle2 className="mr-1 inline h-3.5 w-3.5" />}{text}
         </button>
       ))}
@@ -76,12 +76,12 @@ const ServiceSpecificBookingFields = ({ service, details, onChange, errors = {},
       {kind === SERVICE_BOOKING_KINDS.GROOMING && <>
         <SectionHeader icon={Scissors} eyebrow="Grooming" title="Choose grooming preferences" />
         <div className="grid gap-4 sm:grid-cols-2">
-          <SelectInput label="Grooming package" name="groomingPackage" value={details.groomingPackage} onChange={onChange} error={errors.groomingPackage} required options={['Bath and brush', 'Full grooming', 'Haircut and styling', 'Nail and hygiene care']} />
+          <div className="rounded-xl border border-primary-200 bg-primary-50 p-3 text-xs text-primary-900 dark:border-primary-800 dark:bg-primary-950/40 dark:text-primary-100 sm:col-span-2"><span className="block text-[9px] font-black uppercase tracking-wider text-primary-600 dark:text-primary-300">Selected grooming package</span><strong className="mt-1 block text-sm">{service?.name}</strong><span className="mt-1 block text-[10px]">The selected seller Service defines the package. Optional preferences below do not change pricing unless you select a priced add-on.</span></div>
           <SelectInput label="Coat condition" name="coatCondition" value={details.coatCondition} onChange={onChange} error={errors.coatCondition} required options={['Healthy', 'Tangled', 'Matted', 'Dry or flaky', 'Not sure']} />
           <TextInput label="Preferred haircut or style (optional)" name="preferredStyle" value={details.preferredStyle} onChange={onChange} placeholder="Example: puppy cut" />
           <TextInput label="Sensitive areas to avoid (optional)" name="sensitiveAreas" value={details.sensitiveAreas} onChange={onChange} placeholder="Example: left ear" />
-          <Choice label="Include nail trimming?" value={details.nailTrimming} onChange={value => onChange('nailTrimming', value)} error={errors.nailTrimming} />
-          <Choice label="Include ear cleaning?" value={details.earCleaning} onChange={value => onChange('earCleaning', value)} error={errors.earCleaning} />
+          <Choice label="Nail trimming preference" value={details.nailTrimming} onChange={value => onChange('nailTrimming', value)} error={errors.nailTrimming} required={false} allowPackageDefault />
+          <Choice label="Ear cleaning preference" value={details.earCleaning} onChange={value => onChange('earCleaning', value)} error={errors.earCleaning} required={false} allowPackageDefault />
           <Choice label="Can your pet become aggressive or anxious?" value={details.behaviorConcern} onChange={value => onChange('behaviorConcern', value)} error={errors.behaviorConcern} />
         </div>
       </>}

@@ -16,6 +16,7 @@ const { calculateOrderPricing } = require('../services/orderPricingService');
 const { isPlatformAdmin, isStoreAdmin, isOperationalStaff, hasPermission } = require('../config/permissions');
 const { getAuthorizedStoreIds, canOperateStore, idsEqual } = require('../utils/authorizationPolicy');
 const { normalizeRefundPolicy, snapshotRefundPolicy, requiresAcknowledgment } = require('../utils/refundPolicy');
+const { evaluateOrderTransition } = require('../utils/orderLifecycle');
 const {
   getPetAvailabilityIssue,
   reservePetForOrder
@@ -466,7 +467,9 @@ const quoteOrder = async (req, res) => {
 // Update order status (State Machine Logic)
 const updateOrderStatus = async (req, res) => {
   try {
-    const { status, trackingNumber, description } = req.body;
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+    const { status: requestedStatus, trackingNumber, description } = req.body;
     const order = await Order.findById(req.params.id);
 
     if (!order) return res.status(404).json({ message: 'Order not found' });
@@ -474,59 +477,40 @@ const updateOrderStatus = async (req, res) => {
         || !(await canOperateStore(req.user, order.store, ['sales.manage', 'orders.update']))) {
       return res.status(403).json({ message: 'You cannot update orders for this store.' });
     }
-    if (status === 'cancelled' && order.paymentStatus === 'paid') {
-      return res.status(409).json({ message: 'A paid order cannot be cancelled until its PayMongo refund is processed.' });
-    }
-
-    const VALID_NEXT_STATES = {
-      'pending_payment': ['paid', 'cancelled', 'payment_failed'],
-      'paid': ['awaiting_confirmation', 'cancelled'],
-      'awaiting_confirmation': ['confirmed', 'cancelled'],
-      'confirmed': ['preparing', 'cancelled'],
-      'preparing': ['ready_for_pickup', 'cancelled'],
-      'ready_for_pickup': ['rider_assigned', 'cancelled'],
-      'rider_assigned': ['picked_up', 'delivery_failed'],
-      'picked_up': ['in_transit', 'delivery_failed'],
-      'in_transit': ['delivered', 'delivery_failed'],
-      'delivered': ['completed', 'returned'],
-      'completed': [],
-      'cancelled': [],
-      'payment_failed': ['paid', 'pending_payment'],
-    };
-
-    // If setting same status, just update tracking/description
-    if (status === order.status) {
-       if (trackingNumber) order.trackingNumber = trackingNumber;
-       await order.save();
-       return res.json({ message: 'Order metadata updated', order });
-    }
-
     const linkedDelivery = order.deliveryMethod === 'delivery'
       ? await Delivery.findOne({ order: order._id }).select('_id status isLive')
       : null;
+    const transition = evaluateOrderTransition({
+      currentStatus: order.status,
+      nextStatus: requestedStatus,
+      deliveryStatus: linkedDelivery?.status,
+      allowRecovery: isPlatformAdmin(req.user)
+    });
+    if (!transition.valid) {
+      return res.status(transition.statusCode).json({ message: transition.message, allowed: transition.allowed });
+    }
+    const status = transition.next;
+    if (status === 'cancelled' && order.paymentStatus === 'paid') {
+      return res.status(409).json({ message: 'A paid order cannot be cancelled until its PayMongo refund is processed.' });
+    }
+    if (transition.same) {
+      order.status = status;
+      if (trackingNumber) order.trackingNumber = trackingNumber;
+      await order.save();
+      return res.json({ message: 'Order metadata updated', order });
+    }
     if (linkedDelivery && status === 'cancelled') {
       return res.status(409).json({ message: 'Use the Order cancellation action so the linked Delivery and rider capacity are closed together.' });
     }
     if (order.deliveryMethod === 'delivery' && DELIVERY_CONTROLLED_ORDER_STATUSES.has(status)) {
       return res.status(409).json({ message: 'This status is controlled by the authenticated Delivery Rider workflow.' });
     }
-    if (order.deliveryMethod === 'delivery' && DELIVERY_CONTROLLED_ORDER_STATUSES.has(order.status)
-        && !(order.status === 'delivered' && status === 'completed')) {
+    if (order.deliveryMethod === 'delivery' && DELIVERY_CONTROLLED_ORDER_STATUSES.has(transition.current)
+        && !(transition.current === 'delivered' && status === 'completed')) {
       return res.status(409).json({ message: 'The linked Delivery must complete its authoritative lifecycle before this Order can change state.' });
     }
 
-    // Validate Transition (Bypass for super_admin for recovery)
-    if (!isPlatformAdmin(req.user)) {
-      const allowedNext = VALID_NEXT_STATES[order.status] || [];
-      if (!allowedNext.includes(status)) {
-        return res.status(400).json({ 
-          message: `Illegal transition from ${order.status} to ${status}`,
-          allowed: allowedNext
-        });
-      }
-    }
-
-    const oldStatus = order.status;
+    const oldStatus = transition.current;
     order.status = status;
     if (trackingNumber) order.trackingNumber = trackingNumber;
 

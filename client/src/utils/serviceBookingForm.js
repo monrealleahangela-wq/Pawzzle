@@ -71,10 +71,7 @@ export const validateServiceDetails = (kind, details = {}) => {
     required('symptomDuration', 'Please tell us how long the symptoms have been present.');
     required('emergency', 'Please tell us if this is an emergency.');
   } else if (kind === SERVICE_BOOKING_KINDS.GROOMING) {
-    required('groomingPackage', 'Please choose a grooming package.');
     required('coatCondition', "Please choose your pet's coat condition.");
-    required('nailTrimming', 'Please choose whether nail trimming is needed.');
-    required('earCleaning', 'Please choose whether ear cleaning is needed.');
     required('behaviorConcern', 'Please tell us if your pet may be anxious or aggressive.');
   } else if (kind === SERVICE_BOOKING_KINDS.TRAINING) {
     required('trainingGoal', 'Please enter your training goal.');
@@ -114,6 +111,9 @@ export const buildServiceIntake = (kind, details = {}, service = {}) => {
   }
   if (kind === SERVICE_BOOKING_KINDS.BOARDING) {
     normalized.boardingNights = String(calculateBoardingNights(details.checkInDate, details.checkOutDate));
+  }
+  if (kind === SERVICE_BOOKING_KINDS.GROOMING && String(service.name || '').trim()) {
+    normalized.groomingPackage = String(service.name).trim();
   }
   if (normalized.preferredSpecialistId) {
     const specialist = (service.assignedStaff || []).find(member => String(member._id) === normalized.preferredSpecialistId);

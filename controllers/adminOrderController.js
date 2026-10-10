@@ -64,6 +64,7 @@ const getAllAdminOrders = async (req, res) => {
 
     const orders = await Order.find(filter)
       .populate('customer', 'username firstName lastName email')
+      .populate('delivery', 'status isLive deliveredAt')
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(l);
