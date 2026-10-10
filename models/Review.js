@@ -94,6 +94,10 @@ reviewSchema.pre('save', function (next) {
 // Compound index to prevent multiple reviews from same user on same target
 reviewSchema.index({ user: 1, targetId: 1, targetType: 1 }, { unique: true });
 reviewSchema.index(
+    { user: 1, orderId: 1 },
+    { unique: true, partialFilterExpression: { orderId: { $type: 'objectId' } } }
+);
+reviewSchema.index(
     { bookingId: 1, staffId: 1 },
     { unique: true, partialFilterExpression: { targetType: 'Booking' } }
 );

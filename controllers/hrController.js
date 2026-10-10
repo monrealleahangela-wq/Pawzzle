@@ -726,8 +726,16 @@ const payPeriod = statusHandler('paid');
 
 const myPayslips = async (req, res) => {
   try {
-    const payslips = await Payslip.find({ employee: req.user._id, store: req.user.store, paymentStatus: 'recorded_paid' }).populate('payrollPeriod', 'periodStart periodEnd payDate frequency status').populate('store', 'name logo').sort({ finalizedAt: -1 });
-    res.json({ payslips });
+    const [payslips, pending] = await Promise.all([
+      Payslip.find({ employee: req.user._id, store: req.user.store, paymentStatus: 'recorded_paid' }).populate('payrollPeriod', 'periodStart periodEnd payDate frequency status').populate('store', 'name logo').sort({ finalizedAt: -1 }),
+      Payslip.findOne({ employee: req.user._id, store: req.user.store, paymentStatus: 'unpaid' }).populate('payrollPeriod', 'periodStart periodEnd payDate frequency status').sort({ createdAt: -1 }).lean()
+    ]);
+    const availability = payslips.length
+      ? { reason: 'published' }
+      : pending
+        ? { reason: 'awaiting_payment_record', payrollStatus: pending.payrollPeriod?.status || 'computed' }
+        : { reason: 'no_payroll_record' };
+    res.json({ payslips, availability });
   } catch (error) { safeError(res, error); }
 };
 const myPayslip = async (req, res) => {

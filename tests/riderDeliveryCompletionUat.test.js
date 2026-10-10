@@ -75,3 +75,17 @@ test('completion controller derives COD requirements from the persisted order', 
   assert.match(controller, /delivery\.proofOfDelivery = proofOfDelivery/);
   assert.match(controller, /error\.name === 'ValidationError'/);
 });
+
+test('recipient-name acknowledgment is not mislabeled or persisted as a signature', () => {
+  const delivery = makeArrivedDelivery();
+  const proof = __test.buildProofOfDelivery({ recipientName: 'Alex Customer' }, delivery, false);
+  assert.equal(proof.recipientName, 'Alex Customer');
+  assert.equal(proof.method, 'recipient_acknowledgment');
+  assert.equal(proof.signature, undefined);
+
+  const workspace = source('client/src/components/delivery/RiderDeliveryWorkspace.js');
+  assert.match(workspace, /Recipient name acknowledgment/);
+  assert.match(workspace, /not a captured handwritten signature/);
+  assert.doesNotMatch(workspace, /proof\.signature|Recipient signature\/name/);
+  assert.doesNotMatch(workspace, /window\.confirm/);
+});

@@ -85,14 +85,18 @@ const isAvailableNow = (rider, now = new Date(), timezone = rider?.store?.hrSett
 const normalizeParcel = (source, input = {}) => {
   const weightKg = Number(input.weightKg);
   const sourceCount = source.items?.reduce((total, item) => total + Number(item.quantity || 0), 0);
-  const parcelCount = sourceCount || Number(input.parcelCount || 1);
+  const parcelCount = Number(input.parcelCount || sourceCount || 1);
   if (!Number.isFinite(weightKg) || weightKg <= 0 || weightKg > 10000) {
     throw fail('Enter the measured parcel weight in kilograms before assigning a rider.');
   }
   if (!Number.isInteger(parcelCount) || parcelCount < 1 || parcelCount > 10000) {
     throw fail('Parcel count must be a whole number greater than zero.');
   }
-  return { weightKg: Math.round(weightKg * 1000) / 1000, parcelCount };
+  return {
+    weightKg: Math.round(weightKg * 1000) / 1000,
+    parcelCount,
+    measurementSource: input.estimated === true ? 'seller_confirmed_estimate' : 'seller_confirmed'
+  };
 };
 
 const riderSort = (left, right) => {
@@ -401,6 +405,12 @@ const assignDelivery = async ({ orderId, bookingId, parcel: parcelInput, actorId
         throw fail('An in-progress delivery cannot be reassigned.', 409);
       }
       const parcel = normalizeParcel(source, parcelInput);
+      if (delivery?.parcel?.weightKg && (
+        Number(delivery.parcel.weightKg) !== parcel.weightKg
+        || Number(delivery.parcel.parcelCount) !== parcel.parcelCount
+      )) {
+        throw fail('Confirmed parcel measurements cannot be changed during Rider reassignment. Keep the recorded measurements or restart the packing workflow.', 409);
+      }
       const storeSettings = await Store.findById(source.store).select('hrSettings.timezone').session(session).lean();
       const storeTimezone = storeSettings?.hrSettings?.timezone || 'Asia/Manila';
       const previousRider = delivery?.assignedRider || null;

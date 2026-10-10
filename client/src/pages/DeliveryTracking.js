@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useLocation, useParams } from 'react-router-dom';
 import { MapContainer, Marker, Popup, TileLayer } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -9,6 +9,7 @@ import { deliveryService } from '../services/apiService';
 import socket, { clearDeliveryCapability, setDeliveryCapability } from '../utils/socket';
 import DeliveryConcernForm from '../components/delivery/DeliveryConcernForm';
 import { useAuth } from '../contexts/AuthContext';
+import ModalViewport from '../components/ui/ModalViewport';
 
 const validCoords = value => Number.isFinite(Number(value?.lat)) && Number.isFinite(Number(value?.lng))
   && Number(value.lat) >= -90 && Number(value.lat) <= 90 && Number(value.lng) >= -180 && Number(value.lng) <= 180;
@@ -25,6 +26,7 @@ const statusLabel = value => ({ pending:'Preparing delivery', unassigned:'Awaiti
 
 export default function DeliveryTracking() {
   const { token } = useParams();
+  const location = useLocation();
   const { user } = useAuth();
   const [delivery, setDelivery] = useState(null);
   const [error, setError] = useState('');
@@ -42,6 +44,9 @@ export default function DeliveryTracking() {
     load(); setDeliveryCapability(token); if (!socket.connected) socket.connect();
     return () => { socket.disconnect(); clearDeliveryCapability(); };
   }, [load, token]);
+  useEffect(() => {
+    if (new URLSearchParams(location.search).get('messages') === 'open') setChatOpen(true);
+  }, [location.search]);
   useEffect(() => {
     if (!delivery?._id) return undefined;
     socket.emit('joinDelivery', delivery._id);
@@ -85,6 +90,6 @@ export default function DeliveryTracking() {
       <section className="rounded-2xl border bg-white p-4"><p className="text-[10px] font-black uppercase text-slate-400">Assigned rider</p>{rider?<><h2 className="mt-1 font-black">{rider.firstName} {rider.lastName}</h2><p className="text-xs text-slate-500">{rider.riderProfile?.vehicleType} {rider.riderProfile?.plateNumber}</p><div className="mt-3 grid grid-cols-2 gap-2"><a href={rider.phone?`tel:${rider.phone}`:undefined} className="flex h-10 items-center justify-center gap-2 rounded-xl bg-emerald-600 text-xs font-black text-white"><Phone size={15}/>Call</a><button onClick={()=>setChatOpen(true)} className="flex h-10 items-center justify-center gap-2 rounded-xl bg-slate-900 text-xs font-black text-white"><MessageSquare size={15}/>Message</button></div></>:<p className="mt-2 text-sm text-slate-500">Awaiting rider assignment.</p>}</section>
       <section className="min-w-0 rounded-2xl border bg-white p-4 dark:border-slate-700 dark:bg-slate-900"><p className="text-[10px] font-black uppercase text-slate-400">Parcel</p><p className="mt-1 break-words text-sm font-bold"><Package className="mr-1 inline h-4 w-4"/>{delivery.parcel?.weightKg?`${delivery.parcel.weightKg} kg · ${delivery.parcel.parcelCount} parcel(s)`:'Parcel details pending'}</p>{canReportConcern&&!complaintOpen&&<button onClick={()=>setComplaintOpen(true)} className="mt-3 min-h-11 rounded-xl px-2 text-xs font-black text-rose-600 outline-none focus-visible:ring-2 focus-visible:ring-rose-500">Report a delivery concern</button>}{canReportConcern&&complaintOpen&&<div className="mt-3"><DeliveryConcernForm onSubmit={submitComplaint} onCancel={()=>setComplaintOpen(false)} submitting={complaintSubmitting}/></div>}</section></aside>
     </main>
-    {chatOpen&&<div className="fixed inset-0 z-[100] flex items-end justify-center bg-slate-900/60 sm:items-center"><div className="w-full max-w-lg overflow-hidden rounded-t-2xl bg-white sm:rounded-2xl"><div className="flex justify-between border-b p-4"><b>Delivery messages</b><button onClick={()=>setChatOpen(false)}><X/></button></div><div className="max-h-[50vh] space-y-2 overflow-y-auto bg-slate-50 p-4">{(delivery.chat||[]).map((item,index)=><div key={`${item.timestamp}-${index}`} className={`max-w-[85%] rounded-xl p-3 text-xs ${item.sender==='customer'?'ml-auto bg-rose-600 text-white':'border bg-white'}`}>{item.content}<p className="mt-1 text-[9px] opacity-60">{item.sender}</p></div>)}<div ref={chatEnd}/></div><form onSubmit={send} className="flex gap-2 border-t p-3"><input value={message} onChange={event=>setMessage(event.target.value)} maxLength={1000} className="h-11 flex-1 rounded-xl border px-3 text-sm" placeholder="Message your rider"/><button className="flex h-11 w-11 items-center justify-center rounded-xl bg-slate-900 text-white"><Send size={16}/></button></form></div></div>}
+    {chatOpen&&<ModalViewport onClose={()=>setChatOpen(false)} className="z-[1000] items-end p-0 sm:items-center sm:p-4"><section role="dialog" aria-modal="true" aria-labelledby="customer-delivery-chat-title" className="flex h-[min(42rem,100dvh)] w-full max-w-lg flex-col overflow-hidden rounded-t-2xl bg-white shadow-2xl sm:h-[min(42rem,calc(100dvh-2rem))] sm:rounded-2xl"><div className="flex shrink-0 items-center justify-between border-b p-4"><b id="customer-delivery-chat-title">Delivery messages</b><button aria-label="Close delivery messages" className="flex h-11 w-11 items-center justify-center rounded-xl" onClick={()=>setChatOpen(false)}><X/></button></div><div className="min-h-0 flex-1 space-y-2 overflow-y-auto overscroll-contain bg-slate-50 p-4">{(delivery.chat||[]).map((item,index)=><div key={`${item.timestamp}-${index}`} className={`max-w-[85%] rounded-xl p-3 text-xs ${item.sender==='customer'?'ml-auto bg-rose-600 text-white':'border bg-white'}`}><p className="break-words">{item.content}</p><p className="mt-1 text-[9px] opacity-60">{item.sender}</p></div>)}{!delivery.chat?.length&&<p className="py-8 text-center text-xs text-slate-500">No delivery messages yet.</p>}<div ref={chatEnd}/></div><form onSubmit={send} className="flex shrink-0 gap-2 border-t bg-white p-3"><input aria-label="Message Rider" value={message} onChange={event=>setMessage(event.target.value)} maxLength={1000} className="h-11 min-w-0 flex-1 rounded-xl border px-3 text-sm" placeholder="Message your Rider"/><button aria-label="Send message" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-slate-900 text-white"><Send size={16}/></button></form></section></ModalViewport>}
   </div>;
 }

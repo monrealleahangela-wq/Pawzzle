@@ -369,6 +369,7 @@ const createOrder = async (req, res) => {
       addedBy: pricing.ownerId,
       store: pricing.storeId,
       items: pricing.processedItems,
+      parcelEstimate: pricing.parcelEstimate,
       totalAmount: breakdown.finalTotal,
       voucher: pricing.voucher?._id || null,
       discountAmount: breakdown.discountAmount,

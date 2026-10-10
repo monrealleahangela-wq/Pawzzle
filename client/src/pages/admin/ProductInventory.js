@@ -233,8 +233,8 @@ const ProductInventory = () => {
     if (productForm.images.length > 10) {
       return toast.warn('Media Error: Maximum 10 images allowed.');
     }
-    if (productForm.weight !== '' && (!Number.isFinite(Number(productForm.weight)) || Number(productForm.weight) <= 0 || Number(productForm.weight) > 10000)) {
-      return toast.warn('Package weight must be greater than zero and no more than 10,000 in the selected unit.');
+    if (!Number.isFinite(Number(productForm.weight)) || Number(productForm.weight) <= 0 || Number(productForm.weight) > 10000) {
+      return toast.warn('Package weight is required and must be no more than 10,000 in the selected unit.');
     }
 
     setSubmitting(true);
@@ -248,9 +248,8 @@ const ProductInventory = () => {
         shortDescription: productForm.shortDescription?.trim() || productForm.description.trim().slice(0, 160),
         price: Number(productForm.price),
         stockQuantity: Number(productForm.stockQuantity || 0),
-        ...(productForm.weight === '' || productForm.weight === null
-          ? { weight: null, weightUnit: productForm.weightUnit || 'kg' }
-          : { weight: Number(productForm.weight), weightUnit: productForm.weightUnit || 'kg' })
+        weight: Number(productForm.weight),
+        weightUnit: productForm.weightUnit || 'kg'
       };
 
       if (editingProduct) {
@@ -905,13 +904,13 @@ const ProductInventory = () => {
                              />
                           </div>
                           <div className="space-y-2 lg:col-span-2">
-                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Package Weight (Optional)</label>
+                            <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest px-1">Package Weight (Required)</label>
                             <div className="grid grid-cols-[1fr_auto] gap-2">
                               <input
                                 type="number" min="0.001" max="10000" step="0.001" value={productForm.weight}
                                 onChange={e => setProductForm(p => ({ ...p, weight: e.target.value }))}
                                 className="w-full px-5 py-3.5 bg-slate-50 border-2 border-slate-50 rounded-xl text-[12px] font-black outline-none focus:border-primary-500 transition-all"
-                                placeholder="Not specified"
+                                placeholder="Weight per sellable unit"
                               />
                               <select
                                 value={productForm.weightUnit || 'kg'}
@@ -922,7 +921,7 @@ const ProductInventory = () => {
                                 <option value="kg">kg</option>
                               </select>
                             </div>
-                            <p className="px-1 text-[9px] font-semibold text-slate-400">Seller-declared package weight; delivery capacity uses the measured parcel weight.</p>
+                            <p className="px-1 text-[10px] font-semibold text-slate-500">Used to estimate delivery weight. Confirm the packaged parcel measurement before Rider assignment.</p>
                           </div>
                         </div>
                       )}

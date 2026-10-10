@@ -301,6 +301,12 @@ body:has(.fixed.inset-0:not(.invisible):not(.pointer-events-none)) {
 .text-muted { color: var(--text-muted); }
 .text-disabled { color: var(--text-disabled); }
 
+/* Customer profile historically used 8px, slate-300 metadata throughout its
+   light cards. Keep the hierarchy compact while meeting readable light-mode
+   contrast and a practical minimum label size. */
+.customer-profile-page [class~="text-slate-300"] { color: #64748b; }
+.customer-profile-page [class~="text-[8px]"] { font-size: 0.625rem; }
+
 .dark [class~="bg-white"],
 .dark [class~="bg-white/95"],
 .dark [class~="bg-white/90"],

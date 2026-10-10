@@ -51,7 +51,7 @@ const BookingsManagement = () => {
   const [user, setUser] = useState(null);
   const [eligibleRiders, setEligibleRiders] = useState([]);
   const [assignmentReadiness, setAssignmentReadiness] = useState(null);
-  const [deliveryParcel, setDeliveryParcel] = useState({ weightKg: '', parcelCount: 1 });
+  const [deliveryParcel, setDeliveryParcel] = useState({ weightKg: '', parcelCount: 1, confirmed: false, estimated: false });
   const [deliveryAssignment, setDeliveryAssignment] = useState(null);
   const [eligibleServiceStaff, setEligibleServiceStaff] = useState([]);
   const [eligibleServiceStaffLoading, setEligibleServiceStaffLoading] = useState(false);
@@ -99,7 +99,16 @@ const BookingsManagement = () => {
 
   useEffect(() => {
     if (!selectedBooking?._id) { setDeliveryAssignment(null); return; }
-    deliveryService.getTrackingForBooking(selectedBooking._id).then(response=>setDeliveryAssignment(response.data.delivery||null)).catch(()=>setDeliveryAssignment(null));
+    deliveryService.getTrackingForBooking(selectedBooking._id).then(response=>{
+      const delivery = response.data.delivery || null;
+      setDeliveryAssignment(delivery);
+      if (delivery?.parcel) setDeliveryParcel({
+        weightKg: delivery.parcel.weightKg || '',
+        parcelCount: delivery.parcel.parcelCount || 1,
+        confirmed: true,
+        estimated: delivery.parcel.measurementSource === 'seller_confirmed_estimate'
+      });
+    }).catch(()=>setDeliveryAssignment(null));
   }, [selectedBooking?._id]);
 
   // Permission Checks
@@ -238,6 +247,7 @@ const BookingsManagement = () => {
   const handleAssignRider = async (bookingId) => {
     try {
       if (!Number(deliveryParcel.weightKg)) return toast.error('Enter the measured parcel weight first.');
+      if (!deliveryParcel.confirmed) return toast.error('Confirm the packaged weight and parcel count first.');
       const response = await deliveryService.assignRider({ bookingId, parcel: deliveryParcel, reassign: Boolean(deliveryAssignment) });
       setDeliveryAssignment(response.data.delivery || null);
       toast.success('Delivery Rider assigned automatically.');

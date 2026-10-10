@@ -5,6 +5,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { Mail, Lock, Eye, EyeOff, AlertCircle, Send, MessageSquare, X } from 'lucide-react';
 import { supportService } from '../../services/apiService';
 import { portalHomeForUser, professionalVerificationStatus, requiresProfessionalVerification } from '../../utils/authorization';
+import ModalViewport from '../../components/ui/ModalViewport';
 
 const BACKEND = process.env.REACT_APP_API_URL?.replace('/api', '') || 'http://localhost:5000';
 
@@ -146,7 +147,7 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen relative flex items-center justify-center p-6 overflow-hidden">
+    <div className="relative flex min-h-[100dvh] items-center justify-center overflow-hidden p-3 sm:p-6">
       {/* Decorative Blobs */}
       <div className="fixed inset-0 z-[-1] pointer-events-none">
         <div className="absolute top-[-10%] right-[-10%] w-[600px] h-[600px] bg-primary-50 rounded-full blur-[120px] animate-blob" />
@@ -154,7 +155,7 @@ const Login = () => {
       </div>
 
       <div className="max-w-md w-full animate-fade-in">
-        <div className="glass-morphism rounded-[40px] p-10 md:p-12 border border-white/40 shadow-2xl relative">
+        <div className="glass-morphism relative rounded-[2rem] border border-white/40 p-6 shadow-2xl sm:rounded-[40px] sm:p-10 md:p-12">
           <div className="absolute -top-12 left-1/2 -translate-x-1/2 w-24 h-24 bg-gradient-to-br from-primary-500 to-secondary-500 rounded-3xl flex items-center justify-center shadow-xl shadow-primary-200 rotate-6 group hover:rotate-12 transition-transform duration-500 overflow-hidden p-4">
             <img src="/images/logo.png" alt="Logo" className="w-full h-full object-contain" />
           </div>
@@ -314,19 +315,20 @@ const Login = () => {
 
       {/* Support Modal */}
       {showSupportModal && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-2 z-[100] animate-fade-in">
-          <div className="bg-white rounded-[2rem] max-w-sm w-full shadow-2xl relative overflow-hidden font-sans border border-slate-200">
+        <ModalViewport onClose={() => !sendingSupport && setShowSupportModal(false)} className="z-[1000] p-3 sm:p-4">
+          <div role="dialog" aria-modal="true" aria-labelledby="account-recovery-title" className="relative max-h-[calc(100dvh-1.5rem)] w-full max-w-sm overflow-y-auto rounded-[2rem] border border-slate-200 bg-white font-sans shadow-2xl">
             <div className="p-5 border-b border-slate-100 flex items-center justify-between">
               <div>
                 <div className="flex items-center gap-2 mb-0.5">
                   <MessageSquare className="h-2.5 w-2.5 text-primary-600" />
                   <span className="text-[8px] font-black text-primary-600 uppercase tracking-[0.4em] leading-none">CUSTOMER SUPPORT</span>
                 </div>
-                <h2 className="text-lg font-black text-slate-900 uppercase tracking-tighter leading-none">Account <span className="text-primary-600 italic">Recovery</span></h2>
+                <h2 id="account-recovery-title" className="text-lg font-black text-slate-900 uppercase tracking-tighter leading-none">Account <span className="text-primary-600 italic">Recovery</span></h2>
               </div>
               <button 
                 onClick={() => setShowSupportModal(false)}
-                className="p-2 w-9 h-9 bg-slate-50 text-slate-400 rounded-xl hover:bg-rose-50 hover:text-rose-600 transition-all active:scale-95 flex items-center justify-center"
+                aria-label="Close account recovery"
+                className="flex h-11 w-11 items-center justify-center rounded-xl bg-slate-50 p-2 text-slate-600 transition-all hover:bg-rose-50 hover:text-rose-600 active:scale-95"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -336,7 +338,7 @@ const Login = () => {
               <form onSubmit={handleSupportSubmit} className="space-y-5">
                 <div className="space-y-4">
                   <div className="space-y-1.5">
-                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Your Email</label>
+                    <label className="ml-1 text-[10px] font-black uppercase tracking-widest text-slate-600">Your Email</label>
                     <div className="relative group">
                       <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 group-focus-within:text-primary-500 transition-colors" />
                       <input 
@@ -350,7 +352,7 @@ const Login = () => {
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">How can we help?</label>
+                    <label className="ml-1 text-[10px] font-black uppercase tracking-widest text-slate-600">How can we help?</label>
                     <textarea 
                       required rows="4"
                       className="w-full p-4 bg-slate-50 border border-slate-100 rounded-xl focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 outline-none transition-all font-medium text-slate-700 resize-none text-xs"
@@ -376,7 +378,7 @@ const Login = () => {
               </form>
             </div>
           </div>
-        </div>
+        </ModalViewport>
       )}
     </div>
   );

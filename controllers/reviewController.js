@@ -248,6 +248,9 @@ const createReview = async (req, res) => {
                 && (targetType === 'Store'
                     || (targetType === 'Product' && sourceOrder.items?.some(item => String(item.itemId) === String(targetId))));
             if (!matchesTarget) return res.status(403).json({ message: 'The supplied order does not qualify this review.' });
+            if (sourceOrder.reviewStatus?.isRated || await Review.exists({ user: userId, orderId: sourceOrder._id })) {
+                return res.status(409).json({ message: 'A review has already been submitted for this order.' });
+            }
         }
         if (bookingId && targetType !== 'Booking') {
             const sourceBooking = await Booking.findOne({ _id: bookingId, customer: userId, status: 'completed' });
@@ -329,7 +332,7 @@ const createReview = async (req, res) => {
         res.status(201).json({ message: 'Review submitted successfully', review: reviewResponse });
     } catch (error) {
         if (error.code === 11000) {
-            return res.status(400).json({ message: 'You have already reviewed this item' });
+            return res.status(409).json({ message: 'Feedback has already been submitted for this transaction.' });
         }
         console.error('Create review error:', error);
         res.status(500).json({ message: 'Server error' });
@@ -386,11 +389,13 @@ const getShopReviews = async (req, res) => {
 const getTargetReviews = async (req, res) => {
     try {
         const { targetId, targetType } = req.params;
-        const { page = 1, limit = 10 } = req.query;
+        const { page = 1, limit = 10, orderId } = req.query;
 
         const skip = (parseInt(page) - 1) * parseInt(limit);
 
-        const rawReviews = await Review.find({ targetId, targetType, isApproved: true })
+        const reviewFilter = { targetId, targetType, isApproved: true, isDeleted: { $ne: true } };
+        if (orderId) reviewFilter.orderId = orderId;
+        const rawReviews = await Review.find(reviewFilter)
             .populate('user', 'firstName lastName avatar username')
             .sort({ createdAt: -1 })
             .skip(skip)
@@ -404,7 +409,7 @@ const getTargetReviews = async (req, res) => {
             return r;
         });
 
-        const total = await Review.countDocuments({ targetId, targetType, isApproved: true });
+        const total = await Review.countDocuments(reviewFilter);
 
         res.json({
             reviews,

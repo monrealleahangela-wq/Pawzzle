@@ -195,7 +195,7 @@ const createProduct = async (req, res) => {
     const listingData = pickProductListingFields(req.body);
     listingData.category = requireProductCategory(listingData.category);
     const images = normalizeCatalogImages(listingData.images, { required: true });
-    const normalizedWeight = normalizeProductWeight(listingData.weight, listingData.weightUnit);
+    const normalizedWeight = normalizeProductWeight(listingData.weight, listingData.weightUnit, { required: true });
     const productData = {
       ...listingData,
       ...normalizedWeight,
@@ -260,9 +260,11 @@ const updateProduct = async (req, res) => {
       updateData.coverImage = updateData.images[0];
     }
     if (Object.prototype.hasOwnProperty.call(updateData, 'weight')) {
-      Object.assign(updateData, normalizeProductWeight(updateData.weight, updateData.weightUnit));
+      Object.assign(updateData, normalizeProductWeight(updateData.weight, updateData.weightUnit, { required: true }));
     } else if (Object.prototype.hasOwnProperty.call(updateData, 'weightUnit')) {
-      Object.assign(updateData, normalizeProductWeight(product.weight, updateData.weightUnit));
+      Object.assign(updateData, normalizeProductWeight(product.weight, updateData.weightUnit, { required: true }));
+    } else if (!product.weight) {
+      return res.status(400).json({ message: 'Add the missing package weight before saving this legacy product.' });
     }
     
     // Explicitly update only mutable fields

@@ -26,6 +26,14 @@ const orderItemSchema = new mongoose.Schema({
   },
   image: {
     type: String
+  },
+  unitWeightKg: {
+    type: Number,
+    min: 0.001
+  },
+  weightSource: {
+    type: String,
+    enum: ['product_snapshot']
   }
 });
 
@@ -49,6 +57,12 @@ const orderSchema = new mongoose.Schema({
     ref: 'Store'
   },
   items: [orderItemSchema],
+  parcelEstimate: {
+    weightKg: { type: Number, min: 0.001 },
+    parcelCount: { type: Number, min: 1 },
+    source: { type: String, enum: ['product_weight_snapshot'] },
+    calculatedAt: Date
+  },
   totalAmount: {
     type: Number,
     required: true,

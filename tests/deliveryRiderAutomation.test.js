@@ -17,9 +17,9 @@ test('retired dispatcher identities are schema-readable but have no active permi
   assert.doesNotMatch(source('client/src/pages/admin/StaffManagement.js'), /Delivery Dispatcher/);
 });
 
-test('parcel facts are validated and order quantities remain server-derived', () => {
-  assert.deepEqual(normalizeParcel({ items: [{ quantity: 2 }, { quantity: 3 }] }, { weightKg: '7.125', parcelCount: 99 }), { weightKg: 7.125, parcelCount: 5 });
-  assert.deepEqual(normalizeParcel({}, { weightKg: 1.2, parcelCount: 2 }), { weightKg: 1.2, parcelCount: 2 });
+test('parcel facts are validated and explicitly confirmed package counts are honored', () => {
+  assert.deepEqual(normalizeParcel({ items: [{ quantity: 2 }, { quantity: 3 }] }, { weightKg: '7.125', parcelCount: 2, estimated: true }), { weightKg: 7.125, parcelCount: 2, measurementSource: 'seller_confirmed_estimate' });
+  assert.deepEqual(normalizeParcel({}, { weightKg: 1.2, parcelCount: 2 }), { weightKg: 1.2, parcelCount: 2, measurementSource: 'seller_confirmed' });
   assert.throws(() => normalizeParcel({}, { weightKg: 0, parcelCount: 1 }), /measured parcel weight/);
   assert.throws(() => normalizeParcel({}, { weightKg: 2, parcelCount: 1.5 }), /whole number/);
 });

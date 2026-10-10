@@ -30,8 +30,9 @@ const normalizeCatalogImages = (images, { required = false } = {}) => {
   return normalized;
 };
 
-const normalizeProductWeight = (weight, weightUnit) => {
+const normalizeProductWeight = (weight, weightUnit, { required = false } = {}) => {
   if (weight === undefined || weight === null || weight === '') {
+    if (required) throw invalid('Package weight is required before a product can be offered for delivery.');
     return { weight: undefined, weightUnit: undefined };
   }
   const parsed = Number(weight);

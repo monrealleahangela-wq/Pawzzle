@@ -138,6 +138,7 @@ const deliverySchema = new mongoose.Schema({
   parcel: {
     weightKg: { type: Number, min: 0 },
     parcelCount: { type: Number, min: 1 },
+    measurementSource: { type: String, enum: ['seller_confirmed', 'seller_confirmed_estimate'] },
     recordedAt: Date,
     recordedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
   },
@@ -224,8 +225,10 @@ const deliverySchema = new mongoose.Schema({
     }],
   proofOfDelivery: {
     photo: { type: String },
+    recipientName: { type: String, trim: true },
+    // Legacy captured-signature reference retained for historical deliveries.
     signature: { type: String },
-    method: { type: String, enum: ['photo', 'qr', 'otp', 'signature', 'notes'] },
+    method: { type: String, enum: ['photo', 'qr', 'otp', 'signature', 'recipient_acknowledgment', 'notes'] },
     otpVerified: { type: Boolean, default: false },
     notes: String,
     location: { lat: Number, lng: Number },

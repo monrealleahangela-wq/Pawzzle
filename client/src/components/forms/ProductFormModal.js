@@ -16,7 +16,8 @@ const ProductFormModal = ({ editingProduct, form, setForm, onClose, onSubmit, on
   const image = form.images?.[0];
   const priceValid = Number(form.price) > 0;
   const stockValid = form.stockQuantity !== '' && Number(form.stockQuantity) >= 0;
-  const complete = Boolean(form.name?.trim() && form.category && priceValid && stockValid && form.description?.trim() && image);
+  const weightValid = Number(form.weight) > 0;
+  const complete = Boolean(form.name?.trim() && form.category && priceValid && stockValid && weightValid && form.description?.trim() && image);
 
   const set = (field, value) => setForm(current => ({ ...current, [field]: value }));
 
@@ -78,7 +79,7 @@ const ProductFormModal = ({ editingProduct, form, setForm, onClose, onSubmit, on
           <label className="text-[11px] font-bold text-slate-700">Stock Quantity<RequiredMark /><input type="number" min="0" step="1" value={form.stockQuantity} onChange={event => set('stockQuantity', event.target.value)} className={compactInputClass} placeholder="0" />{!stockValid && <span className="mt-1 block text-[10px] text-rose-600">Stock quantity must be zero or greater.</span>}</label>
           <label className="text-[11px] font-bold text-slate-700">Low Stock Threshold <span className="font-normal text-slate-400">(optional)</span><input type="number" min="0" value={form.lowStockThreshold ?? ''} onChange={event => set('lowStockThreshold', event.target.value)} className={compactInputClass} /></label>
           <label className="text-[11px] font-bold text-slate-700">Unit <span className="font-normal text-slate-400">(optional)</span><select value={form.unit || 'piece'} onChange={event => set('unit', event.target.value)} className={compactInputClass}><option value="piece">Piece</option><option value="pack">Pack</option><option value="box">Box</option><option value="bottle">Bottle</option><option value="bag">Bag</option><option value="kg">Kilogram</option></select></label>
-          <label className="text-[11px] font-bold text-slate-700 sm:col-span-2">Package Weight <span className="font-normal text-slate-400">(optional)</span><span className="grid grid-cols-[1fr_auto] gap-2"><input type="number" min="0.001" max="10000" step="0.001" value={form.weight ?? ''} onChange={event => set('weight', event.target.value)} className={compactInputClass} placeholder="Not specified" /><select value={form.weightUnit || 'kg'} onChange={event => set('weightUnit', event.target.value)} className={`${compactInputClass} w-24`}><option value="g">g</option><option value="kg">kg</option></select></span><span className="mt-1 block text-[9px] font-normal text-slate-400">Used as listing information; measured parcel weight remains authoritative for delivery capacity.</span></label>
+          <label className="text-[11px] font-bold text-slate-700 sm:col-span-2">Package Weight<RequiredMark /><span className="grid grid-cols-[1fr_auto] gap-2"><input required type="number" min="0.001" max="10000" step="0.001" value={form.weight ?? ''} onChange={event => set('weight', event.target.value)} className={compactInputClass} placeholder="Weight per sellable unit" /><select value={form.weightUnit || 'kg'} onChange={event => set('weightUnit', event.target.value)} className={`${compactInputClass} w-24`}><option value="g">g</option><option value="kg">kg</option></select></span><span className="mt-1 block text-[10px] font-normal text-slate-500">Required for delivery estimates. Store staff must still confirm the packaged parcel weight and parcel count before Rider assignment.</span>{!weightValid && <span className="mt-1 block text-[10px] text-rose-600">Package weight is required.</span>}</label>
         </div>
       </CompactFormSection>
 

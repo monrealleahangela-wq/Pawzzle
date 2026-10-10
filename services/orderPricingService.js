@@ -9,6 +9,24 @@ const { assertStoreTransactionEligible } = require('./storeComplianceService');
 
 const idsEqual = (a, b) => a && b && a.toString() === b.toString();
 
+const productWeightKg = product => {
+  const weight = Number(product?.weight);
+  if (!Number.isFinite(weight) || weight <= 0) return null;
+  return product.weightUnit === 'g' ? weight / 1000 : weight;
+};
+
+const buildParcelEstimate = items => {
+  if (!items.length || items.some(item => item.itemType !== 'product' || !Number.isFinite(Number(item.unitWeightKg)))) return null;
+  const weightKg = items.reduce((total, item) => total + Number(item.unitWeightKg) * Number(item.quantity), 0);
+  if (!Number.isFinite(weightKg) || weightKg <= 0) return null;
+  return {
+    weightKg: Math.round(weightKg * 1000) / 1000,
+    parcelCount: 1,
+    source: 'product_weight_snapshot',
+    calculatedAt: new Date()
+  };
+};
+
 const pricingError = (code, message) => {
   const error = new Error(message);
   error.code = code;
@@ -99,13 +117,15 @@ const calculateOrderPricing = async ({ items, requestedDeliveryMethod, shippingA
 
     const price = roundMoney(itemDoc.price);
     subtotal = roundMoney(subtotal + price * quantity);
+    const unitWeightKg = item.itemType === 'product' ? productWeightKg(itemDoc) : null;
     processedItems.push({
       itemType: item.itemType,
       itemId: itemDoc._id,
       name: itemDoc.name,
       price,
       quantity,
-      image: itemDoc.images?.[0] || itemDoc.image || null
+      image: itemDoc.images?.[0] || itemDoc.image || null,
+      ...(unitWeightKg ? { unitWeightKg, weightSource: 'product_snapshot' } : {})
     });
   }
 
@@ -114,6 +134,13 @@ const calculateOrderPricing = async ({ items, requestedDeliveryMethod, shippingA
   assertStoreTransactionEligible(store, { requireTax: true });
   const deliveryMethod = hasPet ? 'pickup' : requestedDeliveryMethod;
   if (!['delivery', 'pickup'].includes(deliveryMethod)) throw new Error('Invalid delivery method.');
+  const missingDeliveryWeight = deliveryMethod === 'delivery'
+    ? processedItems.find(item => item.itemType === 'product' && !item.unitWeightKg)
+    : null;
+  if (missingDeliveryWeight) {
+    throw new Error(`Product "${missingDeliveryWeight.name}" needs a package weight before it can be ordered for delivery. Ask the Store to update the product or choose pickup.`);
+  }
+  const parcelEstimate = deliveryMethod === 'delivery' ? buildParcelEstimate(processedItems) : null;
 
   const totalItemQuantity = processedItems.reduce((total, item) => total + item.quantity, 0);
   const [{ voucher, discountAmount }, delivery] = await Promise.all([
@@ -135,10 +162,11 @@ const calculateOrderPricing = async ({ items, requestedDeliveryMethod, shippingA
     ownerId: store.owner,
     deliveryMethod,
     processedItems,
+    parcelEstimate,
     voucher,
     pricingBreakdown,
     deliveryFeeCalculation: delivery.calculation
   };
 };
 
-module.exports = { calculateOrderPricing };
+module.exports = { calculateOrderPricing, buildParcelEstimate, productWeightKg };

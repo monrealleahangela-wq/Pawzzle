@@ -34,7 +34,7 @@ const OrderDetail = () => {
   const [isGeneratingInvoice, setIsGeneratingInvoice] = useState(false);
   const [eligibleRiders, setEligibleRiders] = useState([]);
   const [assignmentReadiness, setAssignmentReadiness] = useState(null);
-  const [deliveryParcel, setDeliveryParcel] = useState({ weightKg: '', parcelCount: 1 });
+  const [deliveryParcel, setDeliveryParcel] = useState({ weightKg: '', parcelCount: 1, confirmed: false, estimated: false });
   const [deliveryAssignment, setDeliveryAssignment] = useState(null);
   const [riderReviewOpen, setRiderReviewOpen] = useState(false);
   const [cancelConfirmationOpen, setCancelConfirmationOpen] = useState(false);
@@ -54,7 +54,9 @@ const OrderDetail = () => {
       setDeliveryAssignment(delivery);
       if (delivery?.parcel) setDeliveryParcel({
         weightKg: delivery.parcel.weightKg || '',
-        parcelCount: delivery.parcel.parcelCount || 1
+        parcelCount: delivery.parcel.parcelCount || 1,
+        confirmed: true,
+        estimated: delivery.parcel.measurementSource === 'seller_confirmed_estimate'
       });
       if (user?.role === 'customer') {
         if (delivery?._id && delivery.assignmentType === 'internal') {
@@ -90,7 +92,7 @@ const OrderDetail = () => {
   }, [user?.role, order, deliveryParcel.weightKg, deliveryParcel.parcelCount]);
 
   useEffect(() => {
-    if (order && !hasAutoReviewed && new URLSearchParams(location.search).get('review') === 'true') {
+    if (order && !order.reviewStatus?.isRated && !hasAutoReviewed && new URLSearchParams(location.search).get('review') === 'true') {
       if (order?.items?.length === 1) {
         setReviewItem(order.items[0]);
         setIsReviewModalOpen(true);
@@ -138,8 +140,10 @@ const OrderDetail = () => {
       const orderData = response.data.order;
       setOrder(orderData);
       setDeliveryParcel(current => ({
-        weightKg: current.weightKg,
-        parcelCount: orderData.items?.reduce((total, item) => total + Number(item.quantity || 0), 0) || current.parcelCount || 1
+        weightKg: current.weightKg || orderData.parcelEstimate?.weightKg || '',
+        parcelCount: current.parcelCount || orderData.parcelEstimate?.parcelCount || 1,
+        confirmed: current.confirmed,
+        estimated: current.weightKg ? current.estimated : Boolean(orderData.parcelEstimate?.weightKg)
       }));
       
       // Fetch reviews if user is a seller and order is delivered/completed/finalized
@@ -159,11 +163,11 @@ const OrderDetail = () => {
     try {
       const reviewsData = [];
       for (const item of orderData.items) {
-        const response = await reviewService.getTargetReviews(item.itemType, item.itemId);
-        const itemReviews = response.data.reviews.filter(r => r.orderId === orderData._id || r.customer?._id === orderData.customer?._id);
+        const response = await reviewService.getTargetReviews(item.itemType === 'pet' ? 'Pet' : 'Product', item.itemId, { orderId: orderData._id });
+        const itemReviews = response.data.reviews.filter(review => String(review.orderId) === String(orderData._id));
         reviewsData.push(...itemReviews);
       }
-      setReviews(reviewsData);
+      setReviews([...new Map(reviewsData.map(review => [String(review._id), review])).values()]);
     } catch (error) {
       console.error('Failed to fetch reviews:', error);
     }
@@ -256,6 +260,7 @@ const OrderDetail = () => {
   const handleAssignRider = async () => {
     try {
       if (!Number(deliveryParcel.weightKg)) return toast.error('Enter the measured parcel weight first.');
+      if (!deliveryParcel.confirmed) return toast.error('Confirm the packaged weight and parcel count first.');
       const response = await deliveryService.assignRider({ orderId: id, parcel: deliveryParcel });
       setDeliveryAssignment(response.data.delivery || null);
       toast.success('Delivery Rider assigned automatically.');
@@ -436,7 +441,7 @@ const OrderDetail = () => {
                     {item.itemType} • {formatPeso(item.unitPrice)} × {item.quantity}
                   </p>
 
-                  {user?.role === 'customer' && order.status === 'delivered' && (
+                  {user?.role === 'customer' && order.status === 'delivered' && !order.reviewStatus?.isRated && (
                     <button
                       onClick={() => openReviewModal(item)}
                       className="mt-3 flex items-center gap-1.5 px-3 py-1 bg-primary-100 text-primary-700 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-primary-600 hover:text-white transition-all shadow-sm"
@@ -777,8 +782,10 @@ const OrderDetail = () => {
                 This order has been successfully delivered. Please take a moment to review the items to help our community improve.
               </p>
               
-              <button 
+              <button
+                disabled={order.reviewStatus?.isRated}
                 onClick={() => {
+                    if (order.reviewStatus?.isRated) return;
                     if (order.items.length === 1) {
                         openReviewModal(order.items[0]);
                     } else {
@@ -790,10 +797,10 @@ const OrderDetail = () => {
                         }
                     }
                 }}
-                className="w-full py-4 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-primary-600 transition-all shadow-xl flex items-center justify-center gap-2"
+                className="w-full py-4 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-primary-600 transition-all shadow-xl flex items-center justify-center gap-2 disabled:bg-emerald-700 disabled:cursor-default"
               >
                 <Star className="h-4 w-4" />
-                Write a Review
+                {order.reviewStatus?.isRated ? 'Review Submitted' : 'Write a Review'}
               </button>
             </div>
           )}
@@ -1053,7 +1060,7 @@ const OrderDetail = () => {
                       </div>
                       <p className="text-xs text-slate-700 font-medium italic mb-2">"{review.comment}"</p>
                       <div className="flex justify-between items-center">
-                        <span className="text-[9px] font-black text-slate-900 uppercase tracking-widest">By: {review.customer?.firstName}</span>
+                        <span className="text-[9px] font-black text-slate-900 uppercase tracking-widest">By: {review.user?.firstName || (review.isAnonymous ? 'Anonymous customer' : 'Customer')}</span>
                         <button 
                           onClick={() => navigate(`/admin/chat?userId=${order.customer?._id}`)}
                           className="text-[9px] font-black text-primary-600 uppercase tracking-widest hover:underline"

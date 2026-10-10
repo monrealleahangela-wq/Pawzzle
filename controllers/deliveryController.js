@@ -25,7 +25,7 @@ if (!CLIENT_URL || CLIENT_URL.includes('localhost')) {
     CLIENT_URL = isProduction ? 'https://pawzzle.io' : 'http://localhost:3000';
 }
 
-const PROOF_METHODS = new Set(['photo', 'qr', 'otp', 'signature', 'notes']);
+const PROOF_METHODS = new Set(['photo', 'qr', 'otp', 'signature', 'recipient_acknowledgment', 'notes']);
 const COD_PAYMENT_STATUSES = new Set(['cash_received', 'digital_received', 'not_received']);
 
 const activeDeliveryView = delivery => {
@@ -46,11 +46,11 @@ const activeDeliveryView = delivery => {
 
 const buildProofOfDelivery = (input = {}, delivery, isCod = false) => {
   const photo = String(input.photo || '').trim();
-  const signature = String(input.signature || '').trim();
+  const recipientName = String(input.recipientName || '').trim();
   const otp = String(input.otp || '').trim();
   const notes = String(input.notes || '').trim();
-  if (!photo && !signature && !notes && !otp) {
-    throw Object.assign(new Error('Add a photo, signature, OTP, or delivery notes as proof.'), { statusCode: 400 });
+  if (!photo && !recipientName && !notes && !otp) {
+    throw Object.assign(new Error('Add a photo, recipient-name acknowledgment, OTP, or delivery notes as proof.'), { statusCode: 400 });
   }
 
   const codPaymentStatus = String(input.codPaymentStatus || '').trim();
@@ -61,14 +61,14 @@ const buildProofOfDelivery = (input = {}, delivery, isCod = false) => {
     throw Object.assign(new Error('Record the COD payment status before completing delivery.'), { statusCode: 400 });
   }
 
-  const method = otp ? 'otp' : (input.method || (photo ? 'photo' : signature ? 'signature' : 'notes'));
+  const method = otp ? 'otp' : (input.method || (photo ? 'photo' : recipientName ? 'recipient_acknowledgment' : 'notes'));
   if (!PROOF_METHODS.has(method)) {
     throw Object.assign(new Error('Select a valid proof-of-delivery method.'), { statusCode: 400 });
   }
 
   return {
     photo: photo || undefined,
-    signature: signature || undefined,
+    recipientName: recipientName || undefined,
     method,
     otpVerified: false,
     notes: notes || undefined,
@@ -144,6 +144,7 @@ const assignDeliveryAutomatically = async (req, res) => {
   try {
     const { orderId, bookingId, parcel, reassign } = req.body;
     if (!orderId && !bookingId) return res.status(400).json({ message: 'Order ID or Booking ID is required.' });
+    if (parcel?.confirmed !== true) return res.status(400).json({ message: 'Confirm the packaged parcel weight and parcel count before Rider assignment.' });
     const source = orderId
       ? await Order.findById(orderId).select('store customer orderNumber')
       : await Booking.findById(bookingId).select('store customer');
@@ -663,7 +664,7 @@ const sendRiderDeliveryMessage = async (req, res) => {
       message: `Rider message: "${content.substring(0, 50)}${content.length > 50 ? '...' : ''}"`,
       relatedId: delivery.order?._id || delivery.booking?._id,
       relatedModel: delivery.order ? 'Order' : 'Booking',
-      targetUrl: recipient.toString() === customerId?.toString() ? `/track/${delivery.trackingToken}` : `/admin/logistics/${delivery._id}`
+      targetUrl: recipient.toString() === customerId?.toString() ? `/track/${delivery.trackingToken}?messages=open` : `/admin/logistics/${delivery._id}`
     }).then(notification => io?.to(`user_${recipient}`).emit('newNotification', notification)));
     const outcomes = await Promise.allSettled(notifications);
     outcomes.filter(item => item.status === 'rejected').forEach(item => console.error('Delivery message notification error:', item.reason?.message));

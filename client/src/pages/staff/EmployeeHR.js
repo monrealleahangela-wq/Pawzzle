@@ -24,6 +24,7 @@ const EmployeeHR = ({ initialTab = 'attendance' }) => {
   const [attendance, setAttendance] = useState({ today: null, schedule: null, records: [] });
   const [leaveData, setLeaveData] = useState({ leaves: [], leaveTypes: [] });
   const [payslips, setPayslips] = useState([]);
+  const [payslipAvailability, setPayslipAvailability] = useState(null);
   const [offsiteReason, setOffsiteReason] = useState('');
   const [leaveForm, setLeaveForm] = useState({ leaveTypeKey: '', startDate: '', endDate: '', reason: '', attachmentUrl: '' });
 
@@ -32,7 +33,11 @@ const EmployeeHR = ({ initialTab = 'attendance' }) => {
     try {
       if (initialTab === 'attendance') setAttendance((await hrService.getMyAttendance()).data);
       if (initialTab === 'leave') setLeaveData((await hrService.getMyLeaves()).data);
-      if (initialTab === 'payslips') setPayslips((await hrService.getMyPayslips()).data.payslips || []);
+      if (initialTab === 'payslips') {
+        const response = await hrService.getMyPayslips();
+        setPayslips(response.data.payslips || []);
+        setPayslipAvailability(response.data.availability || null);
+      }
     } catch (error) { toast.error(error.response?.data?.message || 'Unable to load your employment records.'); }
     finally { setLoading(false); }
   }, [initialTab]);
@@ -124,7 +129,7 @@ const EmployeeHR = ({ initialTab = 'attendance' }) => {
       {!loading && initialTab === 'payslips' && <section className="space-y-3">
         <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 text-sm"><AlertCircle className="mr-2 inline text-primary" size={17} />Payslips appear after payroll is finalized and recorded as paid. Pawzzle does not claim an external bank transfer occurred.</div>
         {payslips.map(slip => <article key={slip._id} className="rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900"><div className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="font-bold">{slip.store?.name}</h2><p className="text-sm text-slate-500">{formatDate(slip.payrollPeriod?.periodStart)} – {formatDate(slip.payrollPeriod?.periodEnd)} · Pay date {formatDate(slip.payrollPeriod?.payDate)}</p></div><div className="text-right"><p className="text-xs text-slate-500">Net Pay</p><p className="text-xl font-bold text-primary">{money(slip.netPay)}</p></div></div><div className="mt-4 grid grid-cols-2 gap-3 text-sm sm:grid-cols-4"><div><p className="text-slate-500">Base Pay</p><p className="font-semibold">{money(slip.basePay)}</p></div><div><p className="text-slate-500">Gross Pay</p><p className="font-semibold">{money(slip.grossPay)}</p></div><div><p className="text-slate-500">Days Present</p><p className="font-semibold">{slip.attendanceSummary?.daysPresent || 0}</p></div><div><p className="text-slate-500">Paid / Unpaid Leave</p><p className="font-semibold">{slip.attendanceSummary?.paidLeaveDays || 0} / {slip.attendanceSummary?.unpaidLeaveDays || 0}</p></div></div></article>)}
-        {!payslips.length && <div className="rounded-2xl border border-dashed border-slate-300 p-10 text-center dark:border-slate-700"><ReceiptText className="mx-auto text-slate-400" /><p className="mt-3 font-semibold">No finalized payslips yet</p><p className="text-sm text-slate-500">Your Store will publish a payslip after payroll is approved and recorded as paid.</p></div>}
+        {!payslips.length && <div className="rounded-2xl border border-dashed border-slate-300 p-10 text-center dark:border-slate-700"><ReceiptText className="mx-auto text-slate-400" /><p className="mt-3 font-semibold">No finalized payslips yet</p><p className="text-sm text-slate-500">{payslipAvailability?.reason === 'awaiting_payment_record' ? `A payroll snapshot exists and is currently ${String(payslipAvailability.payrollStatus || 'being processed').replaceAll('_', ' ')}. It will appear here only after the Store records the external salary payment.` : 'No payroll snapshot has been generated for this account yet. Ask your Store payroll administrator to confirm your compensation and payroll period.'}</p></div>}
       </section>}
     </main>
   );

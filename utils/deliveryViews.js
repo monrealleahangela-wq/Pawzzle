@@ -89,6 +89,7 @@ const proofView = proof => {
   if (!source || typeof source !== 'object') return undefined;
   return compact({
     photo: source.photo,
+    recipientName: source.recipientName,
     signature: source.signature,
     method: source.method,
     otpVerified: source.otpVerified,
@@ -101,7 +102,7 @@ const proofView = proof => {
 const parcelView = parcel => {
   const source = plain(parcel);
   if (!source || typeof source !== 'object') return undefined;
-  return compact({ weightKg: source.weightKg, parcelCount: source.parcelCount });
+  return compact({ weightKg: source.weightKg, parcelCount: source.parcelCount, measurementSource: source.measurementSource });
 };
 
 const riderDeliveryView = delivery => {
