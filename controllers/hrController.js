@@ -15,17 +15,11 @@ const {
   isValidCoordinates, distanceMeters, dateKeyInTimezone, getScheduleForDate,
   getTimeInWindow, calculateAttendance, generatePayrollPeriod, computePay, roundMoney, addDays
 } = require('../utils/hrPolicy');
-
-const STAFF_ROLES = [
-  'manager', 'service_staff', 'cashier', 'inventory_staff', 'procurement_officer',
-  'finance_staff', 'veterinarian', 'groomer', 'trainer', 'boarding_staff',
-  'delivery_rider', 'auditor'
-];
-const activeStaffFilter = () => ({
-  isDeleted: false, isActive: true, staffStatus: { $nin: ['archived', 'suspended', 'inactive'] },
-  'employmentProfile.employmentStatus': { $nin: ['inactive', 'terminated'] },
-  $or: [{ role: 'staff' }, { role: { $in: STAFF_ROLES } }]
-});
+const {
+  PAYROLL_EMPLOYMENT_STATUSES, activePayrollEmployeeFilter, employeeName,
+  payrollEligibility, payrollEmployeeQuery, payrollRosterFilter
+} = require('../utils/payrollEligibility');
+const activeStaffFilter = activePayrollEmployeeFilter;
 const fail = (message, statusCode = 400) => Object.assign(new Error(message), { statusCode });
 const safeError = (res, error) => {
   console.error('[HR]', error);
@@ -48,7 +42,8 @@ const storeFor = async req => {
 };
 const employeeFor = async (storeId, employeeId, compensation = false) => {
   if (!mongoose.isValidObjectId(employeeId)) throw fail('Employee not found.', 404);
-  let query = User.findOne({ _id: employeeId, store: storeId, ...activeStaffFilter() });
+  const eligibilityFilter = compensation ? payrollRosterFilter() : activeStaffFilter();
+  let query = User.findOne({ _id: employeeId, store: storeId, ...eligibilityFilter });
   if (compensation) query = query.select('+employmentProfile.compensation');
   const employee = await query;
   if (!employee) throw fail('Employee not found in this Store.', 404);
@@ -106,9 +101,27 @@ const updateSettings = async (req, res) => {
 const listEmployees = async (req, res) => {
   try {
     const store = await storeFor(req);
-    const employees = await User.find({ store: store._id, ...activeStaffFilter() })
-      .select('firstName lastName role staffType professionalProfile.staffId riderProfile.staffId employmentProfile.staffId employmentProfile.employmentStatus')
-      .sort({ firstName: 1 });
+    const records = await User.find(payrollEmployeeQuery(store._id, { includeInactive: true }))
+      .select('firstName lastName role staffType isActive staffStatus professionalProfile.staffId riderProfile.staffId employmentProfile.staffId employmentProfile.employmentStatus employmentProfile.dateHired employmentProfile.branchName +employmentProfile.compensation')
+      .sort({ firstName: 1 }).lean();
+    const employees = records.map(employee => ({
+      _id: employee._id,
+      firstName: employee.firstName,
+      lastName: employee.lastName,
+      role: employee.role,
+      staffType: employee.staffType,
+      isActive: employee.isActive,
+      staffStatus: employee.staffStatus,
+      professionalProfile: employee.professionalProfile,
+      riderProfile: employee.riderProfile,
+      employmentProfile: {
+        staffId: employee.employmentProfile?.staffId,
+        employmentStatus: employee.employmentProfile?.employmentStatus,
+        dateHired: employee.employmentProfile?.dateHired,
+        branchName: employee.employmentProfile?.branchName
+      },
+      payrollEligibility: payrollEligibility(employee)
+    }));
     res.json({ employees });
   } catch (error) { safeError(res, error); }
 };
@@ -126,6 +139,10 @@ const updateCompensation = async (req, res) => {
     const store = await storeFor(req);
     const employee = await employeeFor(store._id, req.params.employeeId, true);
     const input = req.body || {};
+    if (input.employmentStatus !== undefined && !PAYROLL_EMPLOYMENT_STATUSES.has(input.employmentStatus)
+      && !['inactive', 'terminated'].includes(input.employmentStatus)) {
+      throw fail('Select a valid employment status.');
+    }
     ['staffId', 'employmentStatus', 'dateHired', 'branchName'].forEach(key => { if (input[key] !== undefined) employee.set(`employmentProfile.${key}`, input[key]); });
     if (input.compensation) {
       const compensationType = input.compensation.compensationType;
@@ -601,16 +618,21 @@ const computePeriod = async (req, res) => {
     if (!period) throw fail('Payroll period not found.', 404);
     if (!['draft', 'computed'].includes(period.status)) throw fail('Only Draft or Computed payroll can be recomputed.', 409);
     if (period.periodEnd > dateEnd(new Date())) throw fail('Payroll cannot be computed before the attendance period has ended.', 409);
-    const employees = await User.find({ store: store._id, ...activeStaffFilter() }).select('+employmentProfile.compensation');
+    const employees = await User.find(payrollEmployeeQuery(store._id)).select('+employmentProfile.compensation');
     const issues = [];
     for (const employee of employees) {
+      const name = employeeName(employee);
       const compensation = employee.employmentProfile?.compensation;
-      if (!compensation || Number(compensation.baseRate) <= 0) { await Payslip.deleteOne({ payrollPeriod: period._id, employee: employee._id }); issues.push({ employeeId: employee._id, reason: 'Compensation is not configured.' }); continue; }
-      if (compensation.effectiveDate && compensation.effectiveDate > period.periodEnd) { await Payslip.deleteOne({ payrollPeriod: period._id, employee: employee._id }); issues.push({ employeeId: employee._id, reason: 'Compensation is not effective in this payroll period.' }); continue; }
+      const eligibility = payrollEligibility(employee, period.periodEnd);
+      if (!eligibility.eligible) {
+        await Payslip.deleteOne({ payrollPeriod: period._id, employee: employee._id });
+        issues.push({ employeeId: employee._id, employeeName: name, code: eligibility.code, reason: `${name}: ${eligibility.message}` });
+        continue;
+      }
       const attendanceSummary = await summarizeAttendance(employee, store, period.periodStart, period.periodEnd);
-      if (attendanceSummary.legacyUnclassifiedLeaveDays) issues.push({ employeeId: employee._id, reason: `${attendanceSummary.legacyUnclassifiedLeaveDays} legacy leave day(s) need paid/unpaid classification; no automatic deduction was made.`, blocking: false });
-      if (attendanceSummary.flaggedAttendanceDays) issues.push({ employeeId: employee._id, reason: `${attendanceSummary.flaggedAttendanceDays} location-flagged attendance day(s) require a final approval before payroll review.`, blocking: true });
-      if (attendanceSummary.autoClockOutReviewDays) issues.push({ employeeId: employee._id, reason: `${attendanceSummary.autoClockOutReviewDays} auto clock-out attendance day(s) require approval or correction before payroll review.`, blocking: true });
+      if (attendanceSummary.legacyUnclassifiedLeaveDays) issues.push({ employeeId: employee._id, employeeName: name, code: 'legacy_leave_unclassified', reason: `${name}: ${attendanceSummary.legacyUnclassifiedLeaveDays} legacy leave day(s) need paid/unpaid classification; no automatic deduction was made.`, blocking: false });
+      if (attendanceSummary.flaggedAttendanceDays) issues.push({ employeeId: employee._id, employeeName: name, code: 'attendance_location_review', reason: `${name}: ${attendanceSummary.flaggedAttendanceDays} location-flagged attendance day(s) require a final approval before payroll review.`, blocking: true });
+      if (attendanceSummary.autoClockOutReviewDays) issues.push({ employeeId: employee._id, employeeName: name, code: 'attendance_auto_clock_out_review', reason: `${name}: ${attendanceSummary.autoClockOutReviewDays} auto clock-out attendance day(s) require approval or correction before payroll review.`, blocking: true });
       const pay = computePay({ compensation, summary: attendanceSummary, settings: period.policySnapshot });
       const existing = await Payslip.findOne({ payrollPeriod: period._id, employee: employee._id });
       const manualAdditions = (existing?.additions || []).filter(item => item.source === 'manual').map(item => item.toObject());
