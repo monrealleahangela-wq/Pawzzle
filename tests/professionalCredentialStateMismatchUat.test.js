@@ -28,15 +28,15 @@ test('account authentication remains separate from professional credential eligi
   assert.equal(isProfessionallyAssignable(staff), false);
 });
 
-test('a current approved credential is authoritative over an older expired document', () => {
+test('a current approved credential does not silently override an expired portal-access decision', () => {
   const staff = profile({ status: 'expired', documents: [
     { status: 'verified', documentType: 'professional_license', expiresAt: '2026-01-01T00:00:00.000Z' },
     { status: 'verified', documentType: 'professional_license', expiresAt: '2028-01-01T00:00:00.000Z' }
   ] });
   const now = at('2026-09-19T00:00:00.000Z');
   assert.equal(hasCurrentVerifiedProfessionalCredential(staff, now), true);
-  assert.equal(getProfessionalVerificationStatus(staff, now), 'verified');
-  assert.equal(isProfessionallyAssignable(staff, now), true);
+  assert.equal(getProfessionalVerificationStatus(staff, now), 'expired');
+  assert.equal(isProfessionallyAssignable(staff, now), false);
 });
 
 test('an expired credential cannot become current through generic account approval', () => {

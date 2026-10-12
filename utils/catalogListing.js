@@ -84,6 +84,8 @@ const buildPublicPetFilter = (query = {}, storeIds = [], options = {}) => {
     conditions.push({ isAvailable: true }, { status: 'available' });
   } else if (query.isAvailable === false || query.isAvailable === 'false') {
     conditions.push({ $or: [{ isAvailable: false }, { status: { $ne: 'available' } }] });
+  } else if (query.includeUnavailable === true || query.includeUnavailable === 'true') {
+    conditions.push({ status: { $in: ['available', 'unavailable'] } });
   }
 
   if (query.species) {

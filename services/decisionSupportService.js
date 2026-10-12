@@ -79,6 +79,8 @@ const PET_MATCH_OPTIONS = Object.freeze({
   housingType: ['house', 'apartment', 'other'],
   petRestrictions: ['allowed', 'restricted', 'not_sure', 'not_allowed'],
   existingPets: ['none', 'dogs', 'cats', 'other', 'multiple'],
+  householdChildren: ['none', 'children', 'not_sure'],
+  careCapacity: ['limited', 'moderate', 'high', 'not_sure'],
   lifestyle: ['calm', 'energetic', 'affectionate', 'independent', 'social', 'outdoor', 'low_maintenance', 'grooming', 'training', 'interactive'],
   species: ['dog', 'cat', 'bird', 'fish', 'rabbit', 'hamster', 'reptile', 'other'],
   sizes: ['small', 'medium', 'large', 'extra_large']
@@ -118,12 +120,14 @@ const validatePetMatchPreferences = input => {
     housingType: normalizeChoice(source.housingType),
     petRestrictions: normalizeChoice(source.petRestrictions),
     existingPets: normalizeChoice(source.existingPets),
+    householdChildren: normalizeChoice(source.householdChildren) || 'not_sure',
+    careCapacity: normalizeChoice(source.careCapacity) || 'not_sure',
     lifestyle: uniqueAllowed(source.lifestyle, PET_MATCH_OPTIONS.lifestyle),
     preferredSpecies: uniqueAllowed(source.preferredSpecies, PET_MATCH_OPTIONS.species),
     preferredSizes: uniqueAllowed(source.preferredSizes, PET_MATCH_OPTIONS.sizes)
   };
   const errors = [];
-  for (const key of ['monthlyBudget', 'purchaseBudget', 'space', 'homeOwnership', 'livingArrangement', 'housingType', 'petRestrictions', 'existingPets']) {
+  for (const key of ['monthlyBudget', 'purchaseBudget', 'space', 'homeOwnership', 'livingArrangement', 'housingType', 'petRestrictions', 'existingPets', 'householdChildren', 'careCapacity']) {
     if (!PET_MATCH_OPTIONS[key].includes(value[key])) errors.push(`${key} is invalid.`);
   }
   for (const [key, allowed] of [['lifestyle', PET_MATCH_OPTIONS.lifestyle], ['preferredSpecies', PET_MATCH_OPTIONS.species], ['preferredSizes', PET_MATCH_OPTIONS.sizes]]) {
@@ -234,15 +238,24 @@ const listingCompatibility = (pet, preferences, householdPets = []) => {
     if (key === 'low_maintenance') return [level === 'low' ? 1 : level === 'moderate' ? 0.5 : 0];
     return [1];
   });
+  const careCapacityRank = { limited: 1, moderate: 2, high: 3 };
+  const careNeedRank = { low: 1, moderate: 2, high: 3 };
+  const knownCareNeeds = ['maintenance', 'grooming', 'training']
+    .map(field => normalizeChoice(careNeeds[field]))
+    .filter(level => careNeedRank[level]);
+  if (careCapacityRank[preferences.careCapacity] && knownCareNeeds.length) {
+    careScores.push(...knownCareNeeds.map(level => careNeedRank[level] <= careCapacityRank[preferences.careCapacity] ? 1 : 0));
+  }
   const careEvaluated = careScores.length > 0;
   const careRatio = careEvaluated ? careScores.reduce((sum, value) => sum + value, 0) / careScores.length : 0;
   parts.push(petMatchPart('care', 'Care and grooming preference', PET_MATCH_WEIGHTS.care, careEvaluated, careRatio,
     careEvaluated
       ? 'Compared the listing’s structured maintenance, grooming, and training needs with your selected care preferences.'
-      : careKeys.length ? 'Care compatibility could not be evaluated because the relevant listing needs are unknown.' : 'No care or grooming preference was selected.'));
+      : careKeys.length || preferences.careCapacity !== 'not_sure' ? 'Care compatibility could not be evaluated because the relevant listing needs are unknown.' : 'Care capacity was not specified.'));
   if (careEvaluated && careRatio === 1) reasons.push('Recorded care needs fit the care preferences you selected.');
   if (careEvaluated && careRatio < 0.5) considerations.push('The recorded maintenance needs may exceed your selected preference.');
   if (careKeys.length && !careEvaluated) unknowns.push('Care, grooming, or training compatibility has limited evidence because the relevant listing fields are unknown.');
+  if (preferences.careCapacity !== 'not_sure' && !knownCareNeeds.length) unknowns.push('Time and maintenance fit is unknown because the listing does not record care needs.');
 
   const householdKinds = new Set();
   const addHouseholdKind = value => {
@@ -253,6 +266,7 @@ const listingCompatibility = (pet, preferences, householdPets = []) => {
   };
   if (preferences.existingPets !== 'multiple') addHouseholdKind(preferences.existingPets);
   householdPets.forEach(existingPet => addHouseholdKind(existingPet.type || existingPet.species));
+  if (preferences.householdChildren === 'children') householdKinds.add('children');
   const householdEvidence = [...householdKinds].flatMap(kind => {
     const value = normalizeChoice(pet.petCompatibility?.[kind]);
     return ['compatible', 'not_compatible'].includes(value) ? [{ kind, value }] : [];
@@ -264,12 +278,12 @@ const listingCompatibility = (pet, preferences, householdPets = []) => {
   parts.push(petMatchPart('household', 'Existing-pet compatibility', PET_MATCH_WEIGHTS.household, householdEvaluated, householdRatio,
     householdEvaluated
       ? 'Compared the listing’s recorded compatibility with the pet types in your household.'
-      : preferences.existingPets === 'none' && !householdPets.length
-        ? 'You reported no existing pets, so this factor is not needed.'
+      : preferences.existingPets === 'none' && !householdPets.length && preferences.householdChildren === 'none'
+        ? 'You reported no existing pets or children, so this factor is not needed.'
         : 'The listing has no known compatibility evidence for the pet types in your household.'));
   if (householdEvaluated && householdRatio === 1) reasons.push('Recorded compatibility supports the existing pets in your household.');
   if (householdEvaluated && householdRatio < 1) considerations.push('The listing reports a possible conflict with one or more existing pet types.');
-  if ((preferences.existingPets !== 'none' || householdPets.length) && !householdEvaluated) unknowns.push('Compatibility with existing pets is unknown for the relevant pet type.');
+  if ((preferences.existingPets !== 'none' || householdPets.length || preferences.householdChildren === 'children') && !householdEvaluated) unknowns.push('Compatibility with relevant household members or pets is unknown.');
 
   const speciesEvaluated = preferences.preferredSpecies.length > 0;
   const sizePreferenceEvaluated = preferences.preferredSizes.length > 0 && Boolean(size);

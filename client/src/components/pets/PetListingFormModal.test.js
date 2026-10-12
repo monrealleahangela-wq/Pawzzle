@@ -12,7 +12,7 @@ const basePetForm = {
   price: '5000', images: ['/milo.jpg'], status: 'available', vaccinationStatus: 'none',
   vetRecords: [], temperament: '', temperamentTraits: ['calm'], activityLevel: 'low',
   careNeeds: { maintenance: 'unknown', grooming: 'unknown', training: 'unknown' },
-  petCompatibility: { dogs: 'unknown', cats: 'unknown', otherPets: 'unknown' },
+  petCompatibility: { dogs: 'unknown', cats: 'unknown', otherPets: 'unknown', children: 'unknown' },
   dewormed: false, spayedNeutered: false, healthCondition: 'healthy', healthNotes: '',
   availabilityNotes: '', isNegotiable: false, paymentConfig: 'full_payment',
   depositAmount: 0, pickupAvailability: 'scheduled', pickupInstructions: '',
@@ -34,16 +34,14 @@ const Harness = ({ editingPet = null }) => {
   />;
 };
 
-test('Add Pet omits manual availability while Edit Pet shows lifecycle status read-only', () => {
+test('Add Pet offers manual availability while committed lifecycle states lock the control', () => {
   const { unmount } = render(<Harness />);
 
-  expect(screen.queryByRole('combobox', { name: /^Availability/i })).not.toBeInTheDocument();
-  expect(screen.queryByRole('status', { name: 'Pet lifecycle status' })).not.toBeInTheDocument();
+  expect(screen.getByRole('combobox', { name: /^Availability/i })).toBeEnabled();
 
   unmount();
   render(<Harness editingPet={{ _id: 'pet-1', status: 'reserved', listingType: 'sale' }} />);
 
-  expect(screen.queryByRole('combobox', { name: /^Availability/i })).not.toBeInTheDocument();
-  expect(screen.getByRole('status', { name: 'Pet lifecycle status' })).toHaveTextContent('reserved');
-  expect(screen.getByText(/Updated automatically by reservation, purchase, and release events/i)).toBeInTheDocument();
+  expect(screen.getByRole('combobox', { name: /^Availability/i })).toBeDisabled();
+  expect(screen.getByText(/Reserved, sold, and adopted states are controlled by transaction history/i)).toBeInTheDocument();
 });

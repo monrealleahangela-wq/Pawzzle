@@ -44,6 +44,7 @@ const AdminPets = () => {
     gender: 'male', size: '', weight: '', color: '', description: '', price: '',
     vaccinationStatus: 'none',
     healthCondition: 'healthy',
+    status: 'available',
     isNegotiable: false,
     dewormed: false,
     spayedNeutered: false,
@@ -63,7 +64,7 @@ const AdminPets = () => {
     temperamentTraits: [],
     activityLevel: '',
     careNeeds: { maintenance: 'unknown', grooming: 'unknown', training: 'unknown' },
-    petCompatibility: { dogs: 'unknown', cats: 'unknown', otherPets: 'unknown' },
+    petCompatibility: { dogs: 'unknown', cats: 'unknown', otherPets: 'unknown', children: 'unknown' },
     videos: [],
     location: '',
     pickupAvailability: 'scheduled',
@@ -76,7 +77,7 @@ const AdminPets = () => {
     adoptionDetails: {
       requirements: '', trialPeriod: '', homeCheck: false,
       rescuePartner: '', transportAvailable: false,
-      isKidFriendly: true, isPetFriendly: true
+      isKidFriendly: undefined, isPetFriendly: undefined
     }
   };
 
@@ -264,7 +265,6 @@ const AdminPets = () => {
       delete individualPetForm.reservation;
       delete individualPetForm.approvalStatus;
       delete individualPetForm.healthStatus;
-      delete individualPetForm.status;
       delete individualPetForm.isAvailable;
       const payload = {
         ...individualPetForm,

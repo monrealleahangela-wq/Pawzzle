@@ -172,6 +172,9 @@ const getEffectivePermissions = (user) => {
   const role = normalizeRole(user);
   if (role === 'retired_delivery_dispatcher') return [];
   const defaults = ROLE_PERMISSIONS[role] || [];
+  // Customer, supplier, and administrative authority is role-defined. Legacy
+  // per-account maps must never turn an ordinary account into an administrator.
+  if (['customer', 'supplier', 'admin', 'super_admin'].includes(role)) return [...defaults];
   const scopedPolicy = user?.$locals && Object.prototype.hasOwnProperty.call(user.$locals, 'rolePolicyPermissions')
     ? user.$locals.rolePolicyPermissions
     : user?.rolePolicyPermissions;
@@ -198,6 +201,7 @@ const getEffectivePermissions = (user) => {
 // Explicit action settings have precedence over inherited role permissions.
 // Exact action -> resource fullAccess/manage -> role defaults is the stable order.
 const getExplicitPermissionState = (user, required) => {
+  if (['customer', 'supplier', 'admin', 'super_admin'].includes(normalizeRole(user))) return undefined;
   const scopedPolicy = user?.$locals && Object.prototype.hasOwnProperty.call(user.$locals, 'rolePolicyPermissions')
     ? user.$locals.rolePolicyPermissions
     : user?.rolePolicyPermissions;

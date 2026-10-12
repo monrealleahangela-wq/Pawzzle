@@ -244,7 +244,8 @@ const petSchema = new mongoose.Schema({
   petCompatibility: {
     dogs: { type: String, enum: PET_COMPATIBILITY_LEVELS, default: 'unknown' },
     cats: { type: String, enum: PET_COMPATIBILITY_LEVELS, default: 'unknown' },
-    otherPets: { type: String, enum: PET_COMPATIBILITY_LEVELS, default: 'unknown' }
+    otherPets: { type: String, enum: PET_COMPATIBILITY_LEVELS, default: 'unknown' },
+    children: { type: String, enum: PET_COMPATIBILITY_LEVELS, default: 'unknown' }
   },
   videos: [{
     type: String
@@ -263,8 +264,10 @@ const petSchema = new mongoose.Schema({
     homeCheck: { type: Boolean, default: false },
     rescuePartner: { type: String, trim: true },
     transportAvailable: { type: Boolean, default: false },
-    isKidFriendly: { type: Boolean, default: true },
-    isPetFriendly: { type: Boolean, default: true }
+    // Legacy fields are retained without defaults so old, explicitly supplied
+    // data is preserved without fabricating compatibility for new listings.
+    isKidFriendly: { type: Boolean, default: undefined },
+    isPetFriendly: { type: Boolean, default: undefined }
   },
   ratings: {
     average: { type: Number, default: 0 },

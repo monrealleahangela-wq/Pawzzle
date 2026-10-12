@@ -5,6 +5,7 @@ const router = express.Router();
 const {
   getAllPets,
   getPetById,
+  getPcciCertificate,
   createPet,
   updatePet,
   deletePet
@@ -16,14 +17,15 @@ const {
   PET_TEMPERAMENT_TRAITS,
   PET_ACTIVITY_LEVELS,
   PET_CARE_LEVELS,
-  PET_COMPATIBILITY_LEVELS
+  PET_COMPATIBILITY_LEVELS,
+  isSafePcciCertificateReference
 } = require('../utils/petListingAttributes');
 const { MAX_CATALOG_IMAGES, isCatalogImageReference } = require('../utils/catalogListing');
 
 const listingDocumentValidation = [
   body('pcciRegistration.status').optional().isIn(['yes', 'no', 'not_sure']).withMessage('Invalid PCCI registration status'),
   body('pcciRegistration.registrationNumber').optional({ checkFalsy: true }).isLength({ max: 100 }).withMessage('PCCI registration number is too long'),
-  body('pcciRegistration.certificateUrl').optional({ checkFalsy: true }).isURL().withMessage('PCCI certificate must be a valid URL'),
+  body('pcciRegistration.certificateUrl').optional({ checkFalsy: true }).custom(isSafePcciCertificateReference).withMessage('PCCI certificate must be an uploaded Pawzzle document'),
   body('supportingDocuments.*.url').optional({ checkFalsy: true }).isURL().withMessage('Supporting document must be a valid URL'),
   body('supportingDocuments.*.name').optional({ checkFalsy: true }).isLength({ max: 200 }).withMessage('Supporting document name is too long'),
   body('healthNotes').optional({ checkFalsy: true }).isLength({ max: 2000 }).withMessage('Health notes are too long'),
@@ -38,7 +40,7 @@ const dssAttributeValidation = [
   ...['maintenance', 'grooming', 'training'].map(field =>
     body(`careNeeds.${field}`).optional().isIn(PET_CARE_LEVELS).withMessage(`Invalid ${field} care level`)
   ),
-  ...['dogs', 'cats', 'otherPets'].map(field =>
+  ...['dogs', 'cats', 'otherPets', 'children'].map(field =>
     body(`petCompatibility.${field}`).optional().isIn(PET_COMPATIBILITY_LEVELS).withMessage(`Invalid ${field} compatibility`)
   )
 ];
@@ -60,6 +62,7 @@ const createPetValidation = [
   body('price').isFloat({ gt: 0 }).withMessage('Selling price must be greater than zero'),
   body('vaccinationStatus').optional().isIn(['complete', 'partial', 'none']).withMessage('Invalid vaccination status'),
   body('healthCondition').optional().isIn(['healthy', 'needs_monitoring', 'condition_present']).withMessage('Invalid health condition'),
+  body('status').optional().isIn(['available', 'unavailable']).withMessage('Availability must be available or unavailable'),
   body('temperamentTraits').isArray({ min: 1, max: PET_TEMPERAMENT_TRAITS.length }).withMessage('Select at least one observed temperament trait'),
   body('activityLevel').isIn(PET_ACTIVITY_LEVELS.filter(value => value !== 'unknown')).withMessage('Select a valid observed activity level'),
   body('listingType').optional().equals('sale').withMessage('Seller pet listings must be for sale'),
@@ -92,6 +95,7 @@ const updatePetValidation = [
   body('price').optional().isFloat({ min: 0 }).withMessage('Price must be a positive number'),
   body('vaccinationStatus').optional().isIn(['complete', 'partial', 'none']).withMessage('Invalid vaccination status'),
   body('healthCondition').optional().isIn(['healthy', 'needs_monitoring', 'condition_present']).withMessage('Invalid health condition'),
+  body('status').optional().isIn(['available', 'unavailable']).withMessage('Availability must be available or unavailable'),
   ...dssAttributeValidation,
   ...listingDocumentValidation
 ];
@@ -105,6 +109,7 @@ router.get('/', (req, res, next) => {
   }
   next();
 }, getAllPets);
+router.get('/:id/pcci-certificate', getPcciCertificate);
 router.get('/:id', getPetById);
 
 // Protected routes (Admin/Staff)

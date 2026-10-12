@@ -924,21 +924,15 @@ const updateCredentialVerification = async (req, res) => {
             return res.status(409).json({ message: 'This credential is expired. Review a current replacement credential instead.' });
         }
         document.status = status;
+        document.reviewedAt = new Date();
+        document.reviewedBy = req.user._id;
+        document.reviewNotes = String(req.body.notes || '').trim().slice(0, 1000);
         if (status === 'verified') {
-            document.verifiedAt = new Date();
+            document.verifiedAt = document.reviewedAt;
             document.verifiedBy = req.user._id;
-            staff.professionalProfile.verification.verifiedAt = document.verifiedAt;
-            staff.professionalProfile.verification.verifiedBy = req.user._id;
         }
         if (req.body.isRequired !== undefined) staff.professionalProfile.verification.isRequired = Boolean(req.body.isRequired);
         if (requiresPlatformVerification(staff)) staff.professionalProfile.verification.isRequired = true;
-        const credentialSufficient = hasCurrentVerifiedProfessionalCredential(staff);
-        staff.professionalProfile.verification.status = ['suspended', 'rejected', 'expired'].includes(status)
-            ? status
-            : status === 'verified'
-                ? (credentialSufficient ? 'verified' : 'pending_verification')
-                : (staff.professionalProfile.verification.isRequired && !credentialSufficient ? status : (credentialSufficient ? 'verified' : 'pending_verification'));
-        staff.professionalProfile.verification.notes = String(req.body.notes || '').trim().slice(0, 1000);
         await staff.save();
         await createNotification({
             recipient: staff._id,
@@ -951,7 +945,13 @@ const updateCredentialVerification = async (req, res) => {
             targetUrl: '/profile'
         }, req.app.get('socketio'));
         await logStaffActivity(staff._id, 'Verification Updated', `${document.name} marked ${status.replaceAll('_', ' ')}.`, req);
-        res.json({ message: 'Credential verification updated.', professionalProfile: staff.professionalProfile });
+        res.json({
+            message: status === 'verified'
+                ? 'Credential verified. Professional portal access still requires separate approval.'
+                : 'Credential review updated.',
+            professionalProfile: staff.professionalProfile,
+            professionalVerificationStatus: getProfessionalVerificationStatus(staff)
+        });
     } catch (error) {
         console.error('updateCredentialVerification error:', error);
         res.status(error.name === 'CastError' ? 404 : 500).json({ message: error.name === 'CastError' ? 'Credential not found.' : 'Unable to update credential verification.' });

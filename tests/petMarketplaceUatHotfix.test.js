@@ -35,14 +35,15 @@ test('public pet responses redact private marketplace documents', () => {
   for (const field of ['vetRecords', 'proofOfOwnership', 'permits', 'supportingDocuments', 'pickupInstructions']) {
     assert.match(controller, new RegExp(`delete publicPet\\.${field}`));
   }
-  assert.match(controller, /certificateAvailable: Boolean\(pcci\.certificateUrl\)/);
+  assert.match(controller, /isSafePcciCertificateReference\(pcci\.certificateUrl\)/);
+  assert.match(controller, /informationStatus === 'customer_provided'/);
   assert.doesNotMatch(controller, /certificateUrl: pcci\.certificateUrl/);
   assert.match(storeController, /-pcciRegistration\.certificateUrl -supportingDocuments -vetRecords -proofOfOwnership -permits/);
 });
 
 test('customer marketplace pet details provide safe listing, store, and action sections', () => {
   const detail = read('client/src/pages/customer/PetDetail.js');
-  for (const label of ['Quick Facts', 'Health Information', 'Temperament & Personality', 'PCCI Registration Information Provided', 'Chat Store', 'View Store', 'More from this store']) {
+  for (const label of ['Quick Facts', 'Health Information', 'Temperament & Personality', 'Seller-provided PCCI Registration Information', 'View Certificate', 'Chat Store', 'View Store', 'More from this store']) {
     assert.ok(detail.includes(label), `missing pet details section: ${label}`);
   }
   assert.match(detail, /certificateAvailable/);

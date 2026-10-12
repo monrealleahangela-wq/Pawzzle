@@ -68,6 +68,21 @@ const hasCompetingReservation = async ({ petId, source, referenceId, session }) 
   return Boolean(order || adoption);
 };
 
+const hasActivePetCommitment = async (petId, session) => {
+  const id = petIdOf(petId);
+  const [order, adoption] = await Promise.all([
+    withSession(Order.exists({
+      status: { $in: ACTIVE_ORDER_STATUSES },
+      items: { $elemMatch: { itemType: 'pet', itemId: id } }
+    }), session),
+    withSession(AdoptionRequest.exists({
+      pet: id,
+      status: { $in: ACTIVE_ADOPTION_STATUSES }
+    }), session)
+  ]);
+  return Boolean(order || adoption);
+};
+
 const reservePet = async ({ petId, source, referenceId, session }) => {
   const id = petIdOf(petId);
   const { own, other } = reservationFields(source);
@@ -171,6 +186,7 @@ module.exports = {
   ACTIVE_ORDER_STATUSES,
   finalizePetReservation,
   getPetAvailabilityIssue,
+  hasActivePetCommitment,
   isIndividualPetRecord,
   releasePetReservation,
   reservePetForAdoption: (petId, requestId, options = {}) => reservePet({ petId, source: 'adoption', referenceId: requestId, ...options }),

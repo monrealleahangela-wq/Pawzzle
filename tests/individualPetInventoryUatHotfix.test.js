@@ -50,28 +50,27 @@ test('server create and update paths cannot turn pet listings into quantity inve
   assert.doesNotMatch(listingFields, /'reservation'/);
   assert.doesNotMatch(listingFields, /'status'/);
   assert.match(controller, /quantity: 1/);
-  assert.match(controller, /status: 'available'/);
-  assert.match(controller, /isAvailable: true/);
+  assert.match(controller, /req\.body\.status === 'unavailable'/);
+  assert.match(controller, /hasActivePetCommitment/);
   assert.match(controller, /const updateData = pickPetListingFields\(req\.body\)/);
-  assert.doesNotMatch(petRoutes, /body\('status'\)/);
-  assert.doesNotMatch(adminPetRoutes, /body\('status'\)/);
+  assert.match(petRoutes, /body\('status'\).*available.*unavailable/);
+  assert.match(adminPetRoutes, /body\('status'\).*available.*unavailable/);
   assert.match(petRoutes, /Each pet listing must represent exactly one pet/);
   assert.match(adminPetRoutes, /Each pet listing must represent exactly one pet/);
 });
 
-test('seller pet forms keep lifecycle availability read-only and preserve product stock quantity', () => {
+test('seller pet forms expose only manual available/unavailable states and preserve product stock quantity', () => {
   const compactPetForm = read('client/src/components/pets/PetListingFormModal.js');
   const sellerPets = read('client/src/pages/admin/Pets.js');
   const productForm = read('client/src/components/forms/ProductFormModal.js');
 
   assert.match(compactPetForm, /one sale listing for one individual pet/i);
-  assert.doesNotMatch(compactPetForm, />Availability</);
-  assert.match(compactPetForm, /Pet lifecycle status/);
-  assert.match(sellerPets, /delete individualPetForm\.status/);
+  assert.match(compactPetForm, />Availability</);
+  assert.match(compactPetForm, /Reserved, sold, and adopted states are controlled by transaction history/);
+  assert.doesNotMatch(sellerPets, /delete individualPetForm\.status/);
   assert.match(sellerPets, /delete individualPetForm\.isAvailable/);
   assert.doesNotMatch(compactPetForm, /quantity|Stock Quantity/i);
   assert.doesNotMatch(sellerPets, /value=\{petForm\.quantity\}|Stock Quantity/);
-  assert.match(sellerPets, /Duplicate shared listing details/);
   assert.match(sellerPets, /Legacy quantity record/);
   assert.match(productForm, /Stock Quantity/);
   assert.match(productForm, /stockQuantity/);

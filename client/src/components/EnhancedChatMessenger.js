@@ -674,8 +674,8 @@ const EnhancedChatMessenger = ({
               <h3 className="text-sm font-black text-slate-800 uppercase tracking-tight">Serious Inquiry?</h3>
               <p className="text-[10px] text-slate-500 font-medium">Ask the store about this pet.</p>
             </div>
-            <button onClick={handlePurchaseRequest} className="btn btn-primary w-full py-2.5 text-[9px] font-black uppercase tracking-[0.2em] shadow-lg shadow-primary-100">
-              Buy this Pet
+            <button disabled={pet.status !== 'available' || pet.isAvailable !== true} onClick={handlePurchaseRequest} className="btn btn-primary w-full py-2.5 text-[9px] font-black uppercase tracking-[0.2em] shadow-lg shadow-primary-100 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:shadow-none">
+              {pet.status === 'available' && pet.isAvailable === true ? 'Buy this Pet' : 'Pet Unavailable'}
             </button>
           </div>
         )}

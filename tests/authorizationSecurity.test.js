@@ -70,6 +70,32 @@ test('supplier retains supplier permissions but not store administration', () =>
   assert.equal(res.statusCode, 403);
 });
 
+test('ordinary customer cannot gain administrative CRUD through a stored per-account permission map', () => {
+  const customer = {
+    role: 'customer',
+    permissions: {
+      inventory: { view: true, create: true, update: true, delete: true, fullAccess: true },
+      staff: { manage: true }
+    }
+  };
+  assert.equal(hasPermission(customer, 'inventory.manage'), false);
+  assert.equal(hasPermission(customer, 'staff.manage'), false);
+  const res = response();
+  let called = false;
+  adminOrStaff({ user: customer }, res, () => { called = true; });
+  assert.equal(called, false);
+  assert.equal(res.statusCode, 403);
+});
+
+test('per-account permission mutation is rejected in favor of store-scoped role policy', () => {
+  const controller = source('controllers/userController.js');
+  const page = source('client/src/pages/superadmin/AccountManagement.js');
+  assert.match(controller, /Per-account administrative permissions are not supported/);
+  assert.match(controller, /You cannot change your own administrative role/);
+  assert.match(page, /Customer accounts cannot receive administrative resource permissions/);
+  assert.doesNotMatch(page, /<PermissionsManager/);
+});
+
 test('platform operation denies store owner and allows both platform aliases', () => {
   for (const role of ['admin', 'store_owner']) {
     const res = response();

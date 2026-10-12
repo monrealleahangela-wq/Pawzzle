@@ -13,11 +13,26 @@ const PET_ACTIVITY_LEVELS = Object.freeze(['low', 'moderate', 'high', 'unknown']
 const PET_CARE_LEVELS = Object.freeze(['low', 'moderate', 'high', 'unknown']);
 const PET_COMPATIBILITY_LEVELS = Object.freeze(['compatible', 'not_compatible', 'unknown']);
 
+const isSafePcciCertificateReference = value => {
+  if (typeof value !== 'string' || value.length > 2048) return false;
+  try {
+    const url = new URL(value);
+    return url.protocol === 'https:'
+      && !url.username
+      && !url.password
+      && url.hostname.toLowerCase() === 'res.cloudinary.com'
+      && /\/upload\/(?:[^/]+\/)*pawzzle\/documents\//i.test(url.pathname);
+  } catch {
+    return false;
+  }
+};
+
 module.exports = {
   PET_SPECIES,
   PET_SIZES,
   PET_TEMPERAMENT_TRAITS,
   PET_ACTIVITY_LEVELS,
   PET_CARE_LEVELS,
-  PET_COMPATIBILITY_LEVELS
+  PET_COMPATIBILITY_LEVELS,
+  isSafePcciCertificateReference
 };

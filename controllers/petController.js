@@ -5,7 +5,8 @@ const Store = require('../models/Store');
 const { isPlatformAdmin, isStoreAdmin, isOperationalStaff } = require('../config/permissions');
 const { canOperateStore } = require('../utils/authorizationPolicy');
 const { derivePetAge } = require('../utils/petAge');
-const { isIndividualPetRecord } = require('../services/petAvailabilityService');
+const { hasActivePetCommitment, isIndividualPetRecord } = require('../services/petAvailabilityService');
+const { isSafePcciCertificateReference } = require('../utils/petListingAttributes');
 const {
   getCustomerVisibleOwnerIds,
   buildCustomerVisibleStoreFilter,
@@ -78,14 +79,42 @@ const toPublicPet = (pet) => {
 
   const pcci = publicPet.pcciRegistration;
   if (pcci) {
+    const certificateAvailable = pcci.status === 'yes'
+      && pcci.informationStatus === 'customer_provided'
+      && isSafePcciCertificateReference(pcci.certificateUrl);
     publicPet.pcciRegistration = {
       status: pcci.status,
       registrationNumber: pcci.registrationNumber || '',
       informationStatus: pcci.informationStatus,
-      certificateAvailable: Boolean(pcci.certificateUrl)
+      certificateAvailable
     };
   }
   return publicPet;
+};
+
+const getPcciCertificate = async (req, res) => {
+  try {
+    if (!mongoose.isValidObjectId(req.params.id)) return res.status(400).json({ message: 'Invalid pet identifier' });
+    const pet = await Pet.findById(req.params.id);
+    if (!pet || !isMarketplacePet(pet)) return res.status(404).json({ message: 'Certificate not available.' });
+
+    const ownerIds = await getCustomerVisibleOwnerIds();
+    const publicStore = await Store.exists(withCustomerComplianceFilter(buildCustomerVisibleStoreFilter(ownerIds, {
+      _id: pet.store
+    })));
+    const pcci = pet.pcciRegistration;
+    if (!publicStore || pcci?.status !== 'yes' || pcci?.informationStatus !== 'customer_provided'
+        || !isSafePcciCertificateReference(pcci?.certificateUrl)) {
+      return res.status(404).json({ message: 'Certificate not available.' });
+    }
+
+    res.set('Cache-Control', 'private, no-store');
+    res.set('Referrer-Policy', 'no-referrer');
+    return res.redirect(302, pcci.certificateUrl);
+  } catch (error) {
+    console.error('Get PCCI certificate error:', error);
+    return res.status(500).json({ message: 'Unable to open this certificate.' });
+  }
 };
 
 // Get all pets with filtering
@@ -209,8 +238,8 @@ const createPet = async (req, res) => {
       ageUnit: derivedAge.ageUnit,
       listingType: 'sale',
       quantity: 1,
-      status: 'available',
-      isAvailable: true,
+      status: req.body.status === 'unavailable' ? 'unavailable' : 'available',
+      isAvailable: req.body.status !== 'unavailable',
       paymentType: 'online_only',
       allowedPaymentMethods: ['paymongo'],
       paymentConfig: req.body.paymentConfig === 'deposit_first' ? 'deposit_first' : 'full_payment',
@@ -295,6 +324,18 @@ const updatePet = async (req, res) => {
     updateData.paymentType = 'online_only';
     updateData.allowedPaymentMethods = ['paymongo'];
     updateData.paymentConfig = updateData.paymentConfig === 'deposit_first' ? 'deposit_first' : 'full_payment';
+
+    if (Object.prototype.hasOwnProperty.call(req.body, 'status')) {
+      const requestedStatus = req.body.status;
+      if (!['available', 'unavailable'].includes(pet.status)) {
+        return res.status(409).json({ message: `A ${pet.status} pet cannot be manually changed through listing availability.` });
+      }
+      if (requestedStatus === 'available' && await hasActivePetCommitment(pet._id)) {
+        return res.status(409).json({ message: 'This pet has an active transaction or inquiry and cannot be made available.' });
+      }
+      updateData.status = requestedStatus;
+      updateData.isAvailable = requestedStatus === 'available';
+    }
 
     if (updateData.listingType === 'adoption' && pet.listingType !== 'adoption') {
       return res.status(400).json({ message: 'Seller pet listings must be for sale.' });
@@ -395,6 +436,7 @@ const deletePet = async (req, res) => {
 module.exports = {
   getAllPets,
   getPetById,
+  getPcciCertificate,
   createPet,
   updatePet,
   deletePet

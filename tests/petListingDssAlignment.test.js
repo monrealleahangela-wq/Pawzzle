@@ -184,8 +184,8 @@ test('a valid aligned Add Pet payload is saved with authoritative Store and igno
     assert.equal(String(saved.store), storeId);
     assert.equal(String(saved.addedBy), ownerId);
     assert.equal(saved.approvalStatus, undefined);
-    assert.equal(saved.status, 'available');
-    assert.equal(saved.isAvailable, true);
+    assert.equal(saved.status, 'unavailable');
+    assert.equal(saved.isAvailable, false);
     assert.deepEqual(saved.temperamentTraits, ['calm', 'affectionate']);
     assert.equal(saved.activityLevel, 'low');
 
@@ -289,8 +289,8 @@ test('seller edits ignore deprecated approval input and never re-enter a moderat
     const availabilityOnly = respond();
     await updatePet(request({ status: 'unavailable', approvalStatus: 'rejected' }), availabilityOnly);
     assert.equal(Object.prototype.hasOwnProperty.call(operations.at(-1).$set, 'approvalStatus'), false);
-    assert.equal(Object.prototype.hasOwnProperty.call(operations.at(-1).$set, 'status'), false);
-    assert.equal(Object.prototype.hasOwnProperty.call(operations.at(-1).$set, 'isAvailable'), false);
+    assert.equal(operations.at(-1).$set.status, 'unavailable');
+    assert.equal(operations.at(-1).$set.isAvailable, false);
     assert.equal(Object.prototype.hasOwnProperty.call(operations.at(-1).$unset || {}, 'reservation'), false);
 
     currentPet = {
@@ -300,9 +300,10 @@ test('seller edits ignore deprecated approval input and never re-enter a moderat
       reservation: { order: '507f1f77bcf86cd799439013' }
     };
     const committed = respond();
+    const operationCountBeforeCommitted = operations.length;
     await updatePet(request({ name: 'Mochi Reserved', status: 'available', isAvailable: true }), committed);
-    assert.equal(Object.prototype.hasOwnProperty.call(operations.at(-1).$set, 'status'), false);
-    assert.equal(Object.prototype.hasOwnProperty.call(operations.at(-1).$set, 'isAvailable'), false);
+    assert.equal(committed.result.statusCode, 409);
+    assert.equal(operations.length, operationCountBeforeCommitted);
     assert.equal(Object.prototype.hasOwnProperty.call(operations.at(-1).$unset || {}, 'reservation'), false);
 
     currentPet = { ...currentPet, store: '507f1f77bcf86cd799439099' };
@@ -318,7 +319,7 @@ test('seller edits ignore deprecated approval input and never re-enter a moderat
   }
 });
 
-test('status audit helper is read-only and the management UI uses operational statuses only', () => {
+test('status audit helper is read-only and the management UI limits manual availability states', () => {
   const audit = read('test_pets_status.js');
   const page = read('client/src/pages/admin/Pets.js');
   const form = read('client/src/components/pets/PetListingFormModal.js');
@@ -327,6 +328,6 @@ test('status audit helper is read-only and the management UI uses operational st
   assert.doesNotMatch(audit, /approvalStatus/);
   assert.doesNotMatch(page, /PENDING APPROVAL/);
   assert.match(page, /delete individualPetForm\.approvalStatus/);
-  assert.match(form, /Pet lifecycle status/);
-  assert.doesNotMatch(form, />Availability</);
+  assert.match(form, />Availability</);
+  assert.match(form, /\['available', 'unavailable'\]\.includes/);
 });

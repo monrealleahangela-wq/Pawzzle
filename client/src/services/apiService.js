@@ -85,6 +85,7 @@ api.interceptors.response.use(
 export const petService = {
   getAllPets: (params) => api.get('/pets', { params }),
   getPetById: (id) => api.get(`/pets/${id}`),
+  getPcciCertificateUrl: (id) => `${API_BASE_URL}/pets/${id}/pcci-certificate`,
   createPet: (petData) => api.post('/pets', petData),
   updatePet: (id, petData) => api.put(`/pets/${id}`, petData),
   deletePet: (id) => api.delete(`/pets/${id}`)

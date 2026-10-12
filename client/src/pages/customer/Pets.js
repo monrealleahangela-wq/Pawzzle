@@ -43,7 +43,7 @@ const Pets = () => {
       setLoadError('');
       const params = {
         ...filters,
-        isAvailable: true,
+        includeUnavailable: true,
         page: pagination.currentPage,
         limit: 12
       };
@@ -137,7 +137,7 @@ const Pets = () => {
       <div className="flex flex-col space-y-4">
         <div className="marketplace-page-header flex min-w-0 flex-col md:flex-row justify-between items-start md:items-end gap-3 sm:gap-6 bg-white dark:bg-slate-900 p-4 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm">
           <div className="min-w-0 space-y-0.5">
-            <h1 className="text-2xl font-black uppercase leading-tight tracking-tight text-slate-900 sm:text-3xl">Available <span className="text-primary-600">Pets</span></h1>
+            <h1 className="text-2xl font-black uppercase leading-tight tracking-tight text-slate-900 sm:text-3xl">Pet <span className="text-primary-600">Marketplace</span></h1>
             <p className="text-[10px] sm:text-lg text-slate-400 font-bold uppercase tracking-widest hidden sm:block">Find your new best friend today</p>
           </div>
 
@@ -346,7 +346,7 @@ const Pets = () => {
                           'bg-rose-500/90 text-white'
                         }`}>
                         {['reserved', 'approved', 'pickup_scheduling', 'pickup_confirmed'].includes(pet.status) ? 'RESERVED' :
-                          ['delivered', 'completed', 'sold', 'adopted'].includes(pet.status) ? 'SOLD' : 'AVAILABLE'}
+                          ['delivered', 'completed', 'sold', 'adopted'].includes(pet.status) ? 'SOLD' : pet.status === 'unavailable' || pet.isAvailable !== true ? 'UNAVAILABLE' : 'AVAILABLE'}
                       </span>
                       {pet.store?.verificationStatus === 'verified' && (
                         <span className="px-2.5 py-1 bg-slate-900/90 backdrop-blur-md rounded-xl text-[8px] font-black uppercase tracking-widest text-white border border-white/10 shadow-sm flex items-center gap-1">

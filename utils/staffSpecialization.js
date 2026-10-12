@@ -119,11 +119,6 @@ const getProfessionalVerificationStatus = (staff, now = new Date()) => {
   }
   if (verification.status === 'suspended') return 'suspended';
   if (verification.status === 'rejected') return 'rejected';
-  // Credential validity is derived from the current approved evidence. This
-  // also repairs stale profile badges left as pending/expired after a newer
-  // credential was approved, without bypassing an explicit suspension or
-  // rejection decision.
-  if (hasCurrentCredential) return 'verified';
   if (verification.status === 'pending_verification' && !currentDocuments.length && !hasExpiredRequiredCredential && hasTrustedLegacyProfessionalVerification(staff)) {
     return 'verified';
   }
@@ -131,7 +126,7 @@ const getProfessionalVerificationStatus = (staff, now = new Date()) => {
     // Preserve pre-document-workflow accounts that were already explicitly
     // approved, unless their stored registration itself is expired. New
     // approvals are guarded by the controller and require current evidence.
-    if (!requiresVerification || (!currentDocuments.length && !hasExpiredRequiredCredential)) {
+    if (hasCurrentCredential || !requiresVerification || (!currentDocuments.length && !hasExpiredRequiredCredential)) {
       return 'verified';
     }
     return hasExpiredRequiredCredential ? 'expired' : 'pending_verification';

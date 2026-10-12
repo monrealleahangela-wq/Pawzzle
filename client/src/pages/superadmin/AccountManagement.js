@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
 import { userService } from '../../services/apiService';
 import { Users, Search, Download, Key, Mail, Calendar, X, Shield, Zap, Target, Globe, ChevronDown, Lock } from 'lucide-react';
-import PermissionsManager from '../../components/admin/PermissionsManager';
 
 const AccountManagement = () => {
   const [accounts, setAccounts] = useState([]);
@@ -23,8 +22,6 @@ const AccountManagement = () => {
   const [showCredentialsModal, setShowCredentialsModal] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [editingPermissions, setEditingPermissions] = useState({});
-  const [savingPermissions, setSavingPermissions] = useState(false);
 
   useEffect(() => {
     // Initialize search from URL if present
@@ -154,30 +151,12 @@ const AccountManagement = () => {
       const userData = response.data?.user || response.user || response.data;
       if (userData) {
         setSelectedAccount(userData);
-        setEditingPermissions(userData.permissions || {});
         setShowCredentialsModal(true);
       } else {
         toast.error('Failed to load user info');
       }
     } catch (error) {
       toast.error('Access denied');
-    }
-  };
-
-  const handleUpdatePermissions = async () => {
-    try {
-      setSavingPermissions(true);
-      await userService.updateUser(selectedAccount.id || selectedAccount._id, {
-        permissions: editingPermissions
-      });
-      toast.success('Permissions updated successfully');
-      // Update local state
-      setSelectedAccount(prev => ({ ...prev, permissions: editingPermissions }));
-      fetchAccounts();
-    } catch (error) {
-      toast.error('Failed to update permissions');
-    } finally {
-      setSavingPermissions(false);
     }
   };
 
@@ -454,21 +433,10 @@ const AccountManagement = () => {
                       <h3 className="text-[11px] font-black text-slate-900 uppercase tracking-widest flex items-center gap-2">
                         <Lock className="h-4 w-4 text-primary-600" /> Account Access
                       </h3>
-                      <button
-                        type="button"
-                        onClick={handleUpdatePermissions}
-                        disabled={savingPermissions}
-                        className="px-4 py-2 bg-slate-900 text-white rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-primary-600 transition-all disabled:opacity-50"
-                      >
-                        {savingPermissions ? 'Saving...' : 'Commit Changes'}
-                      </button>
                     </div>
-                    <div className="scale-90 origin-top-left -ml-2 -mb-10 lg:-mb-16">
-                      <PermissionsManager 
-                        roleName={`${selectedAccount.username}'s Node`}
-                        permissions={editingPermissions}
-                        onChange={setEditingPermissions}
-                      />
+                    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+                      <p className="text-sm font-black text-slate-900">{getRoleProps(selectedAccount.role).label}</p>
+                      <p className="mt-2 text-xs leading-5 text-slate-600">Access is defined by the account role. Customer accounts cannot receive administrative resource permissions. Store staff access is managed by role and Store scope from Role Permissions.</p>
                     </div>
                   </div>
 

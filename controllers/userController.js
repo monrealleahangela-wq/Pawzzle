@@ -167,6 +167,15 @@ const updateUser = async (req, res) => {
 
     const { role, isActive, permissions } = req.body;
 
+    if (permissions !== undefined) {
+      if (!isPlatformAdmin(req.user)) return res.status(403).json({ message: 'Only a Platform Admin can manage access policy.' });
+      return res.status(400).json({ message: 'Per-account administrative permissions are not supported. Manage store staff access through the store-scoped Role Permissions page.' });
+    }
+
+    if (role !== undefined && String(user._id) === String(req.user._id)) {
+      return res.status(400).json({ message: 'You cannot change your own administrative role.' });
+    }
+
     // Only super admin can change user roles or status
     if (req.body.role && !isPlatformAdmin(req.user)) {
       return res.status(403).json({ message: 'Only super admin can change user roles' });
@@ -180,10 +189,6 @@ const updateUser = async (req, res) => {
 
     if (role !== undefined && isPlatformAdmin(req.user)) {
       user.role = role;
-    }
-
-    if (permissions !== undefined && isPlatformAdmin(req.user)) {
-      user.permissions = permissions;
     }
 
     if (isActive !== undefined && isPlatformAdmin(req.user)) {
