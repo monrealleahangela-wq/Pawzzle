@@ -138,6 +138,10 @@ const updateCompensation = async (req, res) => {
   try {
     const store = await storeFor(req);
     const employee = await employeeFor(store._id, req.params.employeeId, true);
+    const identityEligibility = payrollEligibility(employee, new Date('9999-12-31T23:59:59.999Z'));
+    if (['role_retired', 'not_store_staff'].includes(identityEligibility.code)) {
+      throw fail(identityEligibility.message, 409);
+    }
     const input = req.body || {};
     if (input.employmentStatus !== undefined && !PAYROLL_EMPLOYMENT_STATUSES.has(input.employmentStatus)
       && !['inactive', 'terminated'].includes(input.employmentStatus)) {
@@ -618,8 +622,9 @@ const computePeriod = async (req, res) => {
     if (!period) throw fail('Payroll period not found.', 404);
     if (!['draft', 'computed'].includes(period.status)) throw fail('Only Draft or Computed payroll can be recomputed.', 409);
     if (period.periodEnd > dateEnd(new Date())) throw fail('Payroll cannot be computed before the attendance period has ended.', 409);
-    const employees = await User.find(payrollEmployeeQuery(store._id)).select('+employmentProfile.compensation');
+    const employees = await User.find(payrollEmployeeQuery(store._id, { includeInactive: true })).select('+employmentProfile.compensation');
     const issues = [];
+    const includedEmployeeIds = [];
     for (const employee of employees) {
       const name = employeeName(employee);
       const compensation = employee.employmentProfile?.compensation;
@@ -629,6 +634,7 @@ const computePeriod = async (req, res) => {
         issues.push({ employeeId: employee._id, employeeName: name, code: eligibility.code, reason: `${name}: ${eligibility.message}` });
         continue;
       }
+      includedEmployeeIds.push(employee._id);
       const attendanceSummary = await summarizeAttendance(employee, store, period.periodStart, period.periodEnd);
       if (attendanceSummary.legacyUnclassifiedLeaveDays) issues.push({ employeeId: employee._id, employeeName: name, code: 'legacy_leave_unclassified', reason: `${name}: ${attendanceSummary.legacyUnclassifiedLeaveDays} legacy leave day(s) need paid/unpaid classification; no automatic deduction was made.`, blocking: false });
       if (attendanceSummary.flaggedAttendanceDays) issues.push({ employeeId: employee._id, employeeName: name, code: 'attendance_location_review', reason: `${name}: ${attendanceSummary.flaggedAttendanceDays} location-flagged attendance day(s) require a final approval before payroll review.`, blocking: true });
@@ -667,7 +673,7 @@ const computePeriod = async (req, res) => {
         paymentStatus: existing?.paymentStatus || 'unpaid'
       }, { upsert: true, new: true, runValidators: true, setDefaultsOnInsert: true });
     }
-    await Payslip.deleteMany({ payrollPeriod: period._id, employee: { $nin: employees.map(item => item._id) } });
+    await Payslip.deleteMany({ payrollPeriod: period._id, employee: { $nin: includedEmployeeIds } });
     const [totals] = await Payslip.aggregate([{ $match: { payrollPeriod: period._id } }, { $group: { _id: null, employeeCount: { $sum: 1 }, grossPay: { $sum: '$grossPay' }, netPay: { $sum: '$netPay' }, deductions: { $sum: { $sum: '$deductions.amount' } } } }]);
     period.status = 'computed'; period.computedBy = req.user._id; period.computedAt = new Date(); period.totals = totals || {}; period.reviewIssues = issues;
     await period.save(); await audit(req, 'Payroll Computed', `Payroll ${period._id} computed from attendance; ${issues.length} employee(s) need compensation setup.`);

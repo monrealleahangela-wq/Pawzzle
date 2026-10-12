@@ -1,14 +1,25 @@
-const PAYROLL_STAFF_ROLES = [
-  'manager', 'service_staff', 'cashier', 'inventory_staff', 'procurement_officer',
-  'finance_staff', 'veterinarian', 'groomer', 'trainer', 'boarding_staff',
-  'delivery_rider', 'auditor'
-];
+const {
+  LEGACY_STAFF_ROLE_MAP,
+  SPECIALIZED_OPERATIONAL_ROLES,
+  normalizeRole
+} = require('../config/permissions');
+
+// Payroll follows the same active operational-role policy as authorization.
+// Schema-readable retired aliases remain available for historical records but
+// must not enter a newly computed payroll snapshot.
+const PAYROLL_STAFF_ROLES = [...SPECIALIZED_OPERATIONAL_ROLES];
+const PAYROLL_STAFF_TYPES = Object.entries(LEGACY_STAFF_ROLE_MAP)
+  .filter(([, canonicalRole]) => SPECIALIZED_OPERATIONAL_ROLES.has(canonicalRole))
+  .map(([staffType]) => staffType);
 
 const PAYROLL_EMPLOYMENT_STATUSES = new Set(['active', 'probationary', 'part_time', 'contract']);
 const INACTIVE_ACCOUNT_STATUSES = new Set(['archived', 'suspended', 'inactive']);
 
 const staffIdentityFilter = () => ({
-  $or: [{ role: 'staff' }, { role: { $in: PAYROLL_STAFF_ROLES } }]
+  $or: [
+    { role: { $in: PAYROLL_STAFF_ROLES } },
+    { role: 'staff', staffType: { $in: PAYROLL_STAFF_TYPES } }
+  ]
 });
 
 // Keep inactive employment records visible to authorized HR users so they can
@@ -16,7 +27,10 @@ const staffIdentityFilter = () => ({
 const payrollRosterFilter = () => ({
   isDeleted: { $ne: true },
   staffStatus: { $ne: 'archived' },
-  ...staffIdentityFilter()
+  $or: [
+    { role: 'staff' },
+    { role: { $in: [...PAYROLL_STAFF_ROLES, 'delivery_dispatcher'] } }
+  ]
 });
 
 // Missing lifecycle fields retain the repository's established legacy-active
@@ -42,20 +56,31 @@ const payrollEligibility = (employee, periodEnd = new Date()) => {
   if (!employee || employee.isDeleted === true || employee.staffStatus === 'archived') {
     return { eligible: false, code: 'account_archived', message: 'This staff account is archived and cannot be included in payroll.' };
   }
-  const directRole = PAYROLL_STAFF_ROLES.includes(employee.role);
-  if (employee.role !== 'staff' && !directRole) {
+  const canonicalRole = normalizeRole(employee);
+  if (canonicalRole === 'retired_delivery_dispatcher') {
+    return { eligible: false, code: 'role_retired', message: 'Dispatcher is a retired role and is excluded from new payroll. Reassign an active staff role if this person is still employed.' };
+  }
+  if (!SPECIALIZED_OPERATIONAL_ROLES.has(canonicalRole)) {
     return { eligible: false, code: 'not_store_staff', message: 'This account is not an eligible Store staff identity.' };
   }
   if (employee.isActive === false || INACTIVE_ACCOUNT_STATUSES.has(employee.staffStatus)) {
     return { eligible: false, code: 'account_inactive', message: 'Activate this account in Staff Management before including it in payroll.' };
   }
 
-  const employmentStatus = employee.employmentProfile?.employmentStatus;
+  if (!employee.employmentProfile) {
+    return { eligible: false, code: 'employment_missing', message: 'Create an employment record in Compensation before including this employee in payroll.' };
+  }
+
+  const employmentStatus = employee.employmentProfile.employmentStatus;
   if (employmentStatus && !PAYROLL_EMPLOYMENT_STATUSES.has(employmentStatus)) {
     return { eligible: false, code: 'employment_inactive', message: 'Set an active employment status in Compensation before including this employee in payroll.' };
   }
 
-  const compensation = employee.employmentProfile?.compensation;
+  if (employee.employmentProfile.dateHired && new Date(employee.employmentProfile.dateHired) > new Date(periodEnd)) {
+    return { eligible: false, code: 'employment_not_started', message: 'This employee was hired after the selected payroll period ended.' };
+  }
+
+  const compensation = employee.employmentProfile.compensation;
   const baseRate = Number(compensation?.baseRate);
   if (!compensation || !['salary', 'daily', 'hourly'].includes(compensation.compensationType) || !Number.isFinite(baseRate) || baseRate <= 0) {
     return { eligible: false, code: 'compensation_missing', message: 'Configure a positive salary, daily, or hourly base rate in Compensation before computing payroll.' };
@@ -70,6 +95,7 @@ const payrollEligibility = (employee, periodEnd = new Date()) => {
 
 module.exports = {
   PAYROLL_STAFF_ROLES,
+  PAYROLL_STAFF_TYPES,
   PAYROLL_EMPLOYMENT_STATUSES,
   activePayrollEmployeeFilter,
   employeeName,

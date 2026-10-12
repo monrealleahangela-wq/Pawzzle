@@ -4,13 +4,14 @@ const path = require('node:path');
 const test = require('node:test');
 const {
   activePayrollEmployeeFilter,
+  PAYROLL_STAFF_TYPES,
   payrollEligibility,
   payrollEmployeeQuery,
   payrollRosterFilter
 } = require('../utils/payrollEligibility');
 const User = require('../models/User');
 const Store = require('../models/Store');
-const { listEmployees } = require('../controllers/hrController');
+const { listEmployees, updateCompensation } = require('../controllers/hrController');
 
 const root = path.resolve(__dirname, '..');
 const read = file => fs.readFileSync(path.join(root, file), 'utf8');
@@ -31,11 +32,13 @@ const rider = overrides => ({
 test('payroll-eligible Rider is included through the canonical same-Store query', () => {
   const query = payrollEmployeeQuery('store-a');
   assert.equal(query.store, 'store-a');
-  assert.ok(query.$or.some(item => item.role === 'staff'));
+  assert.ok(query.$or.some(item => item.role === 'staff' && item.staffType?.$in?.includes('delivery_rider')));
   assert.ok(query.$or.some(item => item.role?.$in?.includes('delivery_rider')));
+  assert.ok(PAYROLL_STAFF_TYPES.includes('delivery_rider'));
   assert.deepEqual(payrollEligibility(rider(), new Date('2026-10-01')), {
     eligible: true, code: 'eligible', message: 'Payroll setup is complete.'
   });
+  assert.equal(payrollEligibility(rider({ role: 'delivery_rider', staffType: undefined }), new Date('2026-10-01')).eligible, true);
 });
 
 test('HR roster returns an eligible same-Store Rider with server-authoritative readiness', async () => {
@@ -75,6 +78,25 @@ test('legacy Rider lifecycle omissions retain active defaults but explicit inact
   assert.equal(payrollEligibility(rider({ isActive: undefined, isDeleted: undefined, staffStatus: undefined }), new Date('2026-10-01')).eligible, true);
   assert.equal(payrollEligibility(rider({ isActive: false }), new Date('2026-10-01')).code, 'account_inactive');
   assert.equal(payrollEligibility(rider({ staffStatus: 'suspended' }), new Date('2026-10-01')).code, 'account_inactive');
+  assert.equal(payrollEligibility(rider({ isDeleted: true }), new Date('2026-10-01')).code, 'account_archived');
+  assert.equal(payrollEligibility(rider({ staffStatus: 'archived' }), new Date('2026-10-01')).code, 'account_archived');
+});
+
+test('legacy Rider with compensation but optional employment lifecycle fields missing remains eligible', () => {
+  const legacy = rider({
+    isActive: undefined,
+    isDeleted: undefined,
+    staffStatus: undefined,
+    employmentProfile: { compensation }
+  });
+  assert.equal(payrollEligibility(legacy, new Date('2026-10-01')).eligible, true);
+});
+
+test('Rider without an employment record is distinguished from missing compensation', () => {
+  const missingEmployment = payrollEligibility(rider({ employmentProfile: undefined }), new Date('2026-10-01'));
+  const missingCompensation = payrollEligibility(rider({ employmentProfile: { employmentStatus: 'active' } }), new Date('2026-10-01'));
+  assert.equal(missingEmployment.code, 'employment_missing');
+  assert.equal(missingCompensation.code, 'compensation_missing');
 });
 
 test('Rider without employment compensation receives an actionable setup requirement', () => {
@@ -91,10 +113,59 @@ test('inactive employment stays in the HR setup roster but is excluded from payr
   assert.equal(result.code, 'employment_inactive');
 });
 
+test('retired Dispatcher identities remain explainable in HR but are excluded from new payroll', () => {
+  for (const dispatcher of [
+    rider({ role: 'delivery_dispatcher', staffType: undefined }),
+    rider({ role: 'staff', staffType: 'delivery_dispatcher' }),
+    rider({ role: 'staff', staffType: 'logistics_staff' })
+  ]) {
+    const result = payrollEligibility(dispatcher, new Date('2026-10-01'));
+    assert.equal(result.eligible, false);
+    assert.equal(result.code, 'role_retired');
+    assert.match(result.message, /excluded from new payroll/);
+  }
+  const generationFilter = activePayrollEmployeeFilter();
+  assert.ok(!generationFilter.$or.some(item => item.staffType?.$in?.includes('delivery_dispatcher')));
+  assert.ok(payrollRosterFilter().$or.some(item => item.role === 'staff'));
+});
+
+test('server rejects compensation enrollment for a retired Dispatcher identity', async () => {
+  const originalFindOne = User.findOne;
+  const originalFindStore = Store.findById;
+  const originalError = console.error;
+  try {
+    Store.findById = async id => ({ _id: id });
+    User.findOne = () => ({
+      select: async () => rider({ role: 'staff', staffType: 'delivery_dispatcher' })
+    });
+    console.error = () => {};
+    const response = {};
+    await updateCompensation(
+      {
+        params: { employeeId: '507f1f77bcf86cd799439011' },
+        body: { employmentStatus: 'active', compensation },
+        user: { _id: 'owner-a', role: 'store_owner', store: '507f1f77bcf86cd799439012' }
+      },
+      { json: body => { response.body = body; }, status: code => ({ json: body => { response.status = code; response.body = body; } }) }
+    );
+    assert.equal(response.status, 409);
+    assert.match(response.body.message, /retired role/);
+  } finally {
+    User.findOne = originalFindOne;
+    Store.findById = originalFindStore;
+    console.error = originalError;
+  }
+});
+
+test('employment and compensation effective dates prevent post-period inclusion', () => {
+  assert.equal(payrollEligibility(rider({ employmentProfile: { dateHired: new Date('2026-10-02'), compensation } }), new Date('2026-10-01')).code, 'employment_not_started');
+  assert.equal(payrollEligibility(rider({ employmentProfile: { dateHired: new Date('2026-01-01'), compensation: { ...compensation, effectiveDate: new Date('2026-10-02') } } }), new Date('2026-10-01')).code, 'compensation_not_effective');
+});
+
 test('cross-Store payroll selection remains impossible', () => {
   assert.equal(payrollEmployeeQuery('store-a').store, 'store-a');
   assert.notEqual(payrollEmployeeQuery('store-a').store, rider({ store: 'store-b' }).store);
-  assert.match(read('controllers/hrController.js'), /payrollEmployeeQuery\(store\._id\)/);
+  assert.match(read('controllers/hrController.js'), /payrollEmployeeQuery\(store\._id, \{ includeInactive: true \}\)/);
 });
 
 test('existing non-Rider Staff follows the same explicit compensation contract', () => {

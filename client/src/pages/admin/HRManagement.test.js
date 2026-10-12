@@ -34,12 +34,24 @@ const rider = {
     message: 'Configure a positive salary, daily, or hourly base rate in Compensation before computing payroll.'
   }
 };
+const dispatcher = {
+  _id: 'dispatcher-a',
+  firstName: 'Dex',
+  lastName: 'Dispatcher',
+  role: 'staff',
+  staffType: 'delivery_dispatcher',
+  payrollEligibility: {
+    eligible: false,
+    code: 'role_retired',
+    message: 'Dispatcher is a retired role and is excluded from new payroll. Reassign an active staff role if this person is still employed.'
+  }
+};
 
 describe('HRManagement Rider payroll setup', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     hrService.getSettings.mockResolvedValue({ data: { settings: {}, workplace: {} } });
-    hrService.getEmployees.mockResolvedValue({ data: { employees: [rider] } });
+    hrService.getEmployees.mockResolvedValue({ data: { employees: [rider, dispatcher] } });
     hrService.getCompensation.mockResolvedValue({
       data: {
         employee: {
@@ -86,5 +98,16 @@ describe('HRManagement Rider payroll setup', () => {
       compensation: expect.objectContaining({ compensationType: 'salary', baseRate: '850' })
     })));
     await waitFor(() => expect(hrService.getEmployees).toHaveBeenCalledTimes(2));
+  });
+
+  test('shows legacy Dispatcher as retired and prevents new compensation enrollment', async () => {
+    render(<MemoryRouter initialEntries={['/admin/hr?tab=employees']}><HRManagement /></MemoryRouter>);
+
+    const employeeSelect = await screen.findByRole('combobox', { name: 'Employee' });
+    expect(await screen.findByRole('option', { name: /Dex Dispatcher.*retired role - excluded from new payroll/i })).toBeInTheDocument();
+    fireEvent.change(employeeSelect, { target: { value: 'dispatcher-a' } });
+
+    expect(await screen.findByRole('status')).toHaveTextContent('Dispatcher is a retired role');
+    expect(screen.getByRole('button', { name: 'Save Employment & Compensation' })).toBeDisabled();
   });
 });
