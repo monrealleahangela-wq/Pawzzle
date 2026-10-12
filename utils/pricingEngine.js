@@ -309,7 +309,7 @@ const STAFF_ASSIGNMENT_MESSAGES = {
   incompatible_role: 'Assigned staff roles are not compatible with this Service category.',
   missing_permission: 'Assigned specialists do not have Booking assignment permission for their role.',
   professional_verification_required: 'Assigned specialists require current approved professional credentials before Booking assignment.',
-  outside_schedule: 'Qualified specialists are outside their configured schedule or unavailable for this Booking time.',
+  outside_schedule: 'Assigned specialists are outside their working hours, on leave, or marked unavailable for this Booking time.',
   schedule_conflict: 'Qualified specialists already have a conflicting Booking at this time.',
   no_eligible_staff: 'No qualified specialist is available for this Service and schedule.'
 };
@@ -332,7 +332,13 @@ const getStaffAssignmentReadiness = async (service, bookingDate, startTime, endT
   const counts = {};
   const reject = reason => { counts[reason] = (counts[reason] || 0) + 1; };
   const staffIds = service.assignedStaff || [];
-  if (!staffIds.length) return { reason: 'no_assigned_staff', message: STAFF_ASSIGNMENT_MESSAGES.no_assigned_staff, eligibleCount: 0 };
+  if (!staffIds.length) return {
+    reason: 'no_assigned_staff',
+    message: STAFF_ASSIGNMENT_MESSAGES.no_assigned_staff,
+    eligibleCount: 0,
+    assignedCount: 0,
+    rejectionCounts: {}
+  };
 
   let eligibleCount = 0;
   for (const staffId of staffIds) {
@@ -350,13 +356,25 @@ const getStaffAssignmentReadiness = async (service, bookingDate, startTime, endT
     eligibleCount += 1;
   }
 
-  if (eligibleCount) return { reason: 'eligible', message: STAFF_ASSIGNMENT_MESSAGES.eligible, eligibleCount };
+  if (eligibleCount) return {
+    reason: 'eligible',
+    message: STAFF_ASSIGNMENT_MESSAGES.eligible,
+    eligibleCount,
+    assignedCount: staffIds.length,
+    rejectionCounts: counts
+  };
   const priority = [
     'professional_verification_required', 'schedule_conflict', 'outside_schedule',
     'wrong_store', 'incompatible_role', 'missing_permission', 'inactive_staff'
   ];
   const reason = priority.find(key => counts[key]) || 'no_eligible_staff';
-  return { reason, message: STAFF_ASSIGNMENT_MESSAGES[reason], eligibleCount: 0, rejectionCounts: counts };
+  return {
+    reason,
+    message: STAFF_ASSIGNMENT_MESSAGES[reason],
+    eligibleCount: 0,
+    assignedCount: staffIds.length,
+    rejectionCounts: counts
+  };
 };
 
 /**

@@ -6,10 +6,11 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useCart } from '../../contexts/CartContext';
 import { chatService } from '../../services/chatService';
 import { formatTime12h } from '../../utils/timeFormatters';
-import { Phone, Mail, Clock, Package, Scissors, ChevronLeft, ShoppingBag, Heart, Plus, Star, MessageCircle, Building, ShoppingCart, Zap, Shield, Check, Users, AlertTriangle } from 'lucide-react';
+import { Clock, Package, Scissors, ChevronLeft, ShoppingBag, Heart, Plus, Star, MessageCircle, Building, ShoppingCart, Zap, Shield, Check, Users, AlertTriangle } from 'lucide-react';
 import GoogleMap from '../../components/GoogleMap';
 import ReviewSection from '../../components/ReviewSection';
 import UserReportModal from '../../components/UserReportModal';
+import StoreContactIntel from '../../components/profile/StoreContactIntel';
 import { formatPeso } from '../../utils/paymentSummary';
 
 const StoreDetail = () => {
@@ -645,18 +646,10 @@ const StoreDetail = () => {
             <div className="bg-slate-900 rounded-2xl sm:rounded-[3rem] p-5 sm:p-10 text-white relative overflow-hidden shadow-2xl">
               <div className="relative z-10 space-y-4 sm:space-y-8">
                 <h4 className="text-sm sm:text-2xl font-black tracking-tighter uppercase border-b border-white/10 pb-3">Base Intel</h4>
-                <div className="space-y-3 sm:space-y-6">
-                  {[
-                    { icon: Phone, text: store.contactInfo?.phone, href: `tel:${store.contactInfo?.phone}` },
-                    { icon: Mail, text: store.contactInfo?.email, href: `mailto:${store.contactInfo?.email}` }
-                  ].map((link, i) => (
-                    <a key={i} href={link.href} className="flex items-center gap-3 sm:gap-4 text-slate-400 hover:text-white transition-colors group">
-                      <div className="w-8 h-8 sm:w-12 sm:h-12 bg-white/10 rounded-lg sm:rounded-xl flex items-center justify-center text-white ring-1 ring-white/5 group-hover:bg-primary-600 transition-all"><link.icon className="h-3 w-3 sm:h-5 sm:w-5" /></div>
-                      <p className="text-[8px] sm:text-sm font-bold truncate tracking-widest uppercase flex-1">{link.text}</p>
-                    </a>
-                  ))}
+                <div className="space-y-3 sm:space-y-5">
+                  <StoreContactIntel contactInfo={store.contactInfo} />
                   <div 
-                    className="pt-4 sm:pt-6 cursor-pointer group"
+                    className="pt-2 sm:pt-4 cursor-pointer group"
                     onClick={() => navigate(`/find-shops?store=${store._id}`)}
                   >
                     <div className="relative">

@@ -1074,13 +1074,13 @@ const Profile = () => {
         <div className="absolute bottom-0 left-0 right-0 h-16 sm:h-32 bg-gradient-to-t from-[#F8FAFC] to-transparent"></div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8 -mt-12 sm:-mt-24 relative z-10 w-full overflow-hidden">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 sm:gap-8 w-full">
+      <div className="mx-auto -mt-12 w-full max-w-[90rem] px-2 sm:-mt-24 sm:px-6 lg:px-8 relative z-10">
+        <div data-testid="customer-profile-layout" className="grid w-full min-w-0 grid-cols-1 items-start gap-4 sm:gap-6 lg:grid-cols-[minmax(18rem,22rem)_minmax(0,1fr)] lg:gap-8">
 
           {/* Sidebar / Stats - High Density */}
-          <div className="lg:col-span-4 space-y-3 sm:space-y-6 min-w-0 w-full overflow-hidden">
+          <aside data-testid="customer-profile-sidebar" className="min-w-0 w-full space-y-3 sm:space-y-6">
             {/* User Card - Slimmed */}
-            <div className="bg-white/90 backdrop-blur-xl rounded-[3rem] shadow-xl shadow-slate-200/40 border border-white p-8 group overflow-hidden relative">
+            <div className="bg-white/90 backdrop-blur-xl rounded-2xl sm:rounded-[3rem] shadow-xl shadow-slate-200/40 border border-white p-5 sm:p-8 group overflow-hidden relative">
               <div className="absolute top-0 right-0 w-32 h-32 bg-primary-100/30 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
               
               <div className="relative z-10 text-center">
@@ -1127,12 +1127,12 @@ const Profile = () => {
                   </div>
                 )}
                 
-                <div className="flex flex-col items-center gap-3 pt-2">
-                  <div className="flex items-center justify-center gap-3">
-                    <span className="px-4 py-1.5 bg-neutral-50 border border-slate-100 rounded-xl text-[10px] font-black text-neutral-400 uppercase tracking-widest">@{user.username}</span>
+                <div className="flex min-w-0 flex-col items-center gap-3 pt-2">
+                  <div className="flex w-full min-w-0 items-center justify-center gap-2">
+                    <span className="max-w-full truncate px-3 py-1.5 bg-neutral-50 border border-slate-100 rounded-xl text-[10px] font-black text-neutral-400 uppercase tracking-widest">@{user.username}</span>
                     <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
                   </div>
-                  <div className="flex items-center justify-center gap-2">
+                  <div className="flex flex-wrap items-center justify-center gap-2">
                     <span className="px-4 py-1.5 bg-neutral-900 text-white rounded-xl text-[9px] font-black uppercase tracking-widest shadow-strong">
                       {user.role?.replace('_', ' ')}
                     </span>
@@ -1145,12 +1145,12 @@ const Profile = () => {
                 </div>
 
                 {!isSpecializedStaff && !['super_admin', 'platform_admin'].includes(user.role) && (
-                  <div className="grid grid-cols-3 gap-6 pt-10 border-t border-slate-50">
+                  <div className="grid grid-cols-3 gap-2 pt-6 border-t border-slate-50 sm:gap-4 sm:pt-10">
                     <div className="text-center group/stat cursor-pointer">
                       <p className="text-[9px] font-black text-neutral-300 uppercase tracking-widest mb-2 group-hover/stat:text-primary transition-colors">Followers</p>
                       <p className="text-2xl font-black text-neutral-900 leading-none">{followers.length}</p>
                     </div>
-                    <button type="button" onClick={() => setActiveTab('followers')} className="text-center border-x border-slate-100 px-4 group/stat cursor-pointer">
+                    <button type="button" onClick={() => setActiveTab('followers')} className="min-w-0 text-center border-x border-slate-100 px-2 sm:px-4 group/stat cursor-pointer">
                       <p className="text-[9px] font-black text-neutral-300 uppercase tracking-widest mb-2 group-hover/stat:text-primary transition-colors">Following</p>
                       <p className="text-2xl font-black text-neutral-900 leading-none">{following.length}</p>
                     </button>
@@ -1203,7 +1203,7 @@ const Profile = () => {
                 Logout
               </button>
             </div>
-          </div>
+          </aside>
 
           <LogoutModal 
             isOpen={showLogoutConfirm}
@@ -1212,8 +1212,8 @@ const Profile = () => {
           />
 
           {/* Main Content Area - High Density */}
-          <div className="lg:col-span-8 min-w-0 w-full">
-            <div className="bg-white/90 backdrop-blur-2xl rounded-2xl sm:rounded-[2.5rem] shadow-xl shadow-slate-200/40 border border-white min-h-[400px] sm:min-h-[600px] p-3 sm:p-10 overflow-hidden relative">
+          <main data-testid="customer-profile-content" className="min-w-0 w-full">
+            <div className="bg-white/90 backdrop-blur-2xl rounded-2xl sm:rounded-[2.5rem] shadow-xl shadow-slate-200/40 border border-white p-3 sm:p-8 xl:p-10 overflow-hidden relative">
 
               {/* Decorative gradient corner */}
               <div className="absolute -top-12 -right-12 w-32 h-32 bg-primary-100 rounded-full blur-3xl opacity-30"></div>
@@ -1230,7 +1230,7 @@ const Profile = () => {
                     </p>
                   </header>
 
-                  <div className="grid grid-cols-2 gap-2 sm:gap-6">
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-6">
                     <div className="p-4 sm:p-8 bg-slate-50 rounded-xl sm:rounded-[2rem] border border-slate-100 relative overflow-hidden group">
                       <div className="relative z-10">
                         <Package className="h-5 w-5 sm:h-8 sm:w-8 text-primary-600 mb-2 sm:mb-4" />
@@ -2312,7 +2312,7 @@ const Profile = () => {
                 </div>
               )}
             </div>
-          </div>
+          </main>
         </div>
       </div>
 

@@ -699,7 +699,13 @@ const assignBookingStaff = async (req, res) => {
     }
     const candidates = await getEligibleForBooking(booking, service);
     const selected = candidates.find(item => String(item.staff._id) === String(req.body.staffId));
-    if (!selected) return res.status(409).json({ message: 'The selected staff member is not qualified or available for this booking.' });
+    if (!selected) {
+      const readiness = await getBookingStaffReadiness(booking, service);
+      return res.status(409).json({
+        message: readiness.message || 'The selected staff member is not qualified or available for this booking.',
+        reason: readiness.reason || 'no_eligible_staff'
+      });
+    }
 
     const proposalInstructions = String(req.body.specialInstructions || '').trim();
     if (proposalInstructions.length > 2000) return res.status(400).json({ message: 'Special instructions must be 2,000 characters or fewer.' });

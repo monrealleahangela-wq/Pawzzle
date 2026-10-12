@@ -9,7 +9,7 @@ const User = require('../models/User');
 const Notification = require('../models/Notification');
 const { assignBookingStaff } = require('../controllers/bookingController');
 
-const runProposalRequest = async ({ bookingStatus = 'pending', authorized = true } = {}) => {
+const runProposalRequest = async ({ bookingStatus = 'pending', authorized = true, staffOverrides = {}, serviceStoreOverride } = {}) => {
   const ids = {
     booking: new mongoose.Types.ObjectId(),
     customer: new mongoose.Types.ObjectId(),
@@ -44,7 +44,7 @@ const runProposalRequest = async ({ bookingStatus = 'pending', authorized = true
   };
   const service = {
     _id: ids.service,
-    store: ids.store,
+    store: serviceStoreOverride || ids.store,
     name: 'General Pet Vaccination',
     category: 'health_wellness',
     price: 300,
@@ -79,7 +79,8 @@ const runProposalRequest = async ({ bookingStatus = 'pending', authorized = true
       verification: { status: 'verified', isRequired: true },
       credentialDocuments: [],
       availability: {}
-    }
+    },
+    ...staffOverrides
   };
 
   const originals = {
@@ -177,6 +178,35 @@ test('proposal confirmation rejects a different store owner before writing or no
 
   assert.equal(response.statusCode, 403);
   assert.equal(response.body.message, 'Only the store owner or authorized booking staff can assign service staff.');
+  assert.equal(booking.saveCount, 0);
+  assert.equal(notificationsSaved, 0);
+});
+
+test('proposal confirmation returns the server eligibility reason when selected staff is unavailable', async () => {
+  const { response, booking, notificationsSaved } = await runProposalRequest({
+    staffOverrides: {
+      professionalProfile: {
+        professionalTitle: 'Veterinarian',
+        specialty: 'General Care',
+        verification: { status: 'verified', isRequired: true },
+        credentialDocuments: [],
+        availability: { saturday: { available: true, start: '13:00', end: '17:00', breaks: [] } }
+      }
+    }
+  });
+
+  assert.equal(response.statusCode, 409);
+  assert.equal(response.body.reason, 'outside_schedule');
+  assert.match(response.body.message, /outside their working hours/i);
+  assert.equal(booking.saveCount, 0);
+  assert.equal(notificationsSaved, 0);
+});
+
+test('proposal confirmation rejects a Booking whose Service belongs to another Store', async () => {
+  const { response, booking, notificationsSaved } = await runProposalRequest({ serviceStoreOverride: new mongoose.Types.ObjectId() });
+
+  assert.equal(response.statusCode, 409);
+  assert.equal(response.body.message, 'The booking service does not belong to this Store branch.');
   assert.equal(booking.saveCount, 0);
   assert.equal(notificationsSaved, 0);
 });

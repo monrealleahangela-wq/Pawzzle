@@ -19,7 +19,9 @@ import {
   Briefcase,
   ExternalLink,
   Truck,
-  Navigation
+  Navigation,
+  ArrowLeft,
+  ArrowRight
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { formatTime12h, formatDateTime12h } from '../../utils/timeFormatters';
@@ -61,6 +63,20 @@ const BookingsManagement = () => {
   const [assigningStaff, setAssigningStaff] = useState(false);
   const [proposalDuration, setProposalDuration] = useState('');
   const [proposalInstructions, setProposalInstructions] = useState('');
+  const [bookingModalStep, setBookingModalStep] = useState('details');
+
+  useEffect(() => {
+    setBookingModalStep('details');
+  }, [selectedBooking?._id]);
+
+  useEffect(() => {
+    if (!selectedBooking) return undefined;
+    const closeOnEscape = event => {
+      if (event.key === 'Escape' && !assigningStaff) setSelectedBooking(null);
+    };
+    window.addEventListener('keydown', closeOnEscape);
+    return () => window.removeEventListener('keydown', closeOnEscape);
+  }, [selectedBooking, assigningStaff]);
 
   useEffect(() => {
     if (!selectedBooking?._id || !['pending', 'awaiting_customer_confirmation'].includes(selectedBooking.status)) {
@@ -121,6 +137,7 @@ const BookingsManagement = () => {
   const canUpdate = hasUiActionPermission(user, 'bookings', 'update', isStoreAdmin || serviceUpdateRoles.has(staffType));
   const canDelete = hasUiActionPermission(user, 'bookings', 'update', isStoreAdmin);
   const canAssign = hasUiActionPermission(user, 'bookings', 'update', isStoreAdmin || staffType === 'manager');
+  const bookingCanPrepareProposal = canAssign && ['pending', 'awaiting_customer_confirmation'].includes(selectedBooking?.status);
   const selectedStoreId = selectedBooking?.store?._id || selectedBooking?.store;
   const selectedPaymentSummary = useMemo(
     () => selectedBooking ? bookingPaymentSummary(selectedBooking) : null,
@@ -235,6 +252,7 @@ const BookingsManagement = () => {
         specialInstructions: proposalInstructions.trim()
       });
       setSelectedBooking(response.data.booking);
+      setBookingModalStep('details');
       toast.success('Booking proposal sent. The customer can review, confirm, or choose another qualified specialist.');
       fetchBookings();
     } catch (error) {
@@ -523,7 +541,12 @@ const BookingsManagement = () => {
       {/* Booking Details Modal */}
       {selectedBooking && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-2 animate-in fade-in duration-300">
-          <div className="bg-white w-full max-w-xl rounded-[2rem] overflow-hidden shadow-2xl animate-in slide-in-from-bottom-4 duration-500 border border-slate-200 flex flex-col max-h-[95vh]">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="booking-details-title"
+            className="bg-white w-full max-w-xl rounded-[2rem] overflow-hidden shadow-2xl animate-in slide-in-from-bottom-4 duration-500 border border-slate-200 flex flex-col max-h-[95vh]"
+          >
             <header className="shrink-0 bg-slate-900 px-4 py-3 text-white flex justify-between items-center relative overflow-hidden">
               <div className="absolute top-0 right-0 p-6 opacity-10 blur-3xl pointer-events-none">
                 <ShieldCheck className="w-24 h-24 text-primary-500" />
@@ -535,14 +558,17 @@ const BookingsManagement = () => {
                     <span className="text-[6px] font-black uppercase tracking-[0.3em]">Booking Details</span>
                   </div>
                 </div>
-                <h3 className="text-sm font-black uppercase tracking-tighter leading-none mb-1">#{selectedBooking._id.slice(-12).toUpperCase()}</h3>
+                <h3 id="booking-details-title" className="text-sm font-black uppercase tracking-tighter leading-none mb-1">#{selectedBooking._id.slice(-12).toUpperCase()}</h3>
                 <div className="flex items-center gap-1.5 text-slate-400">
                   <Activity className="h-2.5 w-2.5 text-emerald-500" />
-                  <p className="text-[7px] font-black uppercase tracking-[0.2em]">Tracking Active</p>
+                  <p className="text-[7px] font-black uppercase tracking-[0.2em]">
+                    {bookingCanPrepareProposal ? (bookingModalStep === 'details' ? 'Step 1 of 2 · Review details' : 'Step 2 of 2 · Staff assignment') : 'Tracking Active'}
+                  </p>
                 </div>
               </div>
               <button
                 onClick={() => setSelectedBooking(null)}
+                aria-label="Close booking details"
                 className="relative z-10 w-7 h-7 bg-white/10 hover:bg-white/20 border border-white/10 rounded-lg flex items-center justify-center transition-all active:scale-95 duration-300 group"
               >
                 <X className="h-3.5 w-3.5 text-white" />
@@ -824,10 +850,32 @@ const BookingsManagement = () => {
 
             {/* Actions */}
             <footer className="shrink-0 p-6 sm:p-8 bg-slate-50 border-t border-slate-100 flex flex-wrap gap-4 relative z-10">
-              {canAssign && ['pending', 'awaiting_customer_confirmation'].includes(selectedBooking.status) && (
-                <div className="w-full space-y-2">
+              {bookingCanPrepareProposal && bookingModalStep === 'details' && (
+                <button
+                  type="button"
+                  onClick={() => setBookingModalStep('assignment')}
+                  className="flex-1 min-w-[220px] px-6 py-3.5 bg-primary-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] shadow-lg hover:bg-primary-700 transition-all active:scale-[0.98] flex items-center justify-center gap-3"
+                >
+                  Continue to Staff Assignment
+                  <ArrowRight className="h-4 w-4" />
+                </button>
+              )}
+              {bookingCanPrepareProposal && bookingModalStep === 'assignment' && (
+                <div className="w-full space-y-3" aria-label="Staff assignment step">
+                  <div className="flex items-center justify-between gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setBookingModalStep('details')}
+                      className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 text-[10px] font-black uppercase tracking-widest text-slate-700 hover:bg-slate-100"
+                    >
+                      <ArrowLeft className="h-4 w-4" />
+                      Back to Details
+                    </button>
+                    <p className="text-right text-[10px] font-semibold text-slate-500">Your selections are preserved when you go back.</p>
+                  </div>
                   <div className="grid grid-cols-1 sm:grid-cols-[1fr_150px] gap-2">
                   <select
+                    aria-label="Qualified staff"
                     value={selectedServiceStaffId}
                     onChange={event => setSelectedServiceStaffId(event.target.value)}
                     className="h-10 px-3 rounded-xl border border-slate-200 bg-white text-xs font-bold text-slate-700 outline-none focus:border-primary-500"
@@ -840,6 +888,7 @@ const BookingsManagement = () => {
                     ))}
                   </select>
                   <input
+                    aria-label="Estimated duration in minutes"
                     type="number"
                     min="1"
                     max="1440"
@@ -849,8 +898,20 @@ const BookingsManagement = () => {
                     className="h-10 px-3 rounded-xl border border-slate-200 bg-white text-xs font-bold text-slate-700 outline-none focus:border-primary-500"
                   />
                   </div>
-                  {eligibleServiceStaffError ? <p className="rounded-lg border border-rose-200 bg-rose-50 p-2 text-[11px] font-semibold text-rose-700" role="alert">{eligibleServiceStaffError}</p> : !eligibleServiceStaffLoading && !eligibleServiceStaff.length && staffAssignmentReadiness?.message ? <p className="rounded-lg border border-amber-200 bg-amber-50 p-2 text-[11px] font-semibold text-amber-800" role="status">{staffAssignmentReadiness.message}</p> : null}
+                  {eligibleServiceStaffError ? <p className="rounded-lg border border-rose-200 bg-rose-50 p-2 text-[11px] font-semibold text-rose-700" role="alert">{eligibleServiceStaffError}</p> : !eligibleServiceStaffLoading && !eligibleServiceStaff.length && staffAssignmentReadiness?.message ? (
+                    <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-[11px] font-semibold text-amber-900" role="status">
+                      <p>{staffAssignmentReadiness.message}</p>
+                      <p className="mt-1 text-[10px] font-medium text-amber-800">
+                        Existing staff appear here only when they are assigned to this Service, belong to this Store, have the required approval, and are available for the full Booking schedule.
+                      </p>
+                      <div className="mt-2 flex flex-wrap gap-3">
+                        <Link to="/admin/services" className="font-black underline underline-offset-2">Review Service staff</Link>
+                        <Link to="/admin/staff" className="font-black underline underline-offset-2">Review staff readiness</Link>
+                      </div>
+                    </div>
+                  ) : null}
                   <textarea
+                    aria-label="Customer-visible proposal instructions"
                     rows={2}
                     maxLength={2000}
                     value={proposalInstructions}
@@ -868,7 +929,7 @@ const BookingsManagement = () => {
                   </button>
                 </div>
               )}
-              {canUpdate &&
+              {bookingModalStep === 'details' && canUpdate &&
                selectedBooking.status !== 'completed' &&
                selectedBooking.status !== 'cancelled' &&
                statusNextMap[selectedBooking.status] && (
@@ -882,7 +943,7 @@ const BookingsManagement = () => {
                   Update Status to {(statusNextMap[selectedBooking.status] || '').replace('_', ' ')}
                 </button>
               )}
-              {canDelete && ['pending', 'awaiting_customer_confirmation', 'awaiting_payment', 'confirmed'].includes(selectedBooking.status) && (
+              {bookingModalStep === 'details' && canDelete && ['pending', 'awaiting_customer_confirmation', 'awaiting_payment', 'confirmed'].includes(selectedBooking.status) && (
                 <button
                   onClick={() => {
                     if (window.confirm('Are you sure you want to cancel this booking?')) {

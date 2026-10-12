@@ -100,7 +100,9 @@ test('Booking discovery accepts a same-Store legacy-active direct-role Veterinar
     assert.deepEqual(readiness, {
       reason: 'eligible',
       message: 'Qualified staff are available for this service and schedule.',
-      eligibleCount: 1
+      eligibleCount: 1,
+      assignedCount: 1,
+      rejectionCounts: {}
     });
   });
 });
@@ -119,8 +121,41 @@ test('Booking readiness gives a safe server-authoritative qualification reason',
     const readiness = await getStaffAssignmentReadiness(service, bookingDate, '10:00', '11:00', 'booking-1');
     assert.equal(readiness.reason, 'professional_verification_required');
     assert.equal(readiness.eligibleCount, 0);
+    assert.equal(readiness.assignedCount, 1);
+    assert.deepEqual(readiness.rejectionCounts, { professional_verification_required: 1 });
     assert.match(readiness.message, /current approved professional credentials/i);
     assert.doesNotMatch(JSON.stringify(readiness), /vet-1|firstName|lastName/);
+  });
+});
+
+test('Booking readiness distinguishes service setup, Store scope, and schedule exclusions', async () => {
+  const noAssignedStaff = await getStaffAssignmentReadiness({ ...service, assignedStaff: [] }, bookingDate, '10:00', '11:00', 'booking-1');
+  assert.deepEqual(noAssignedStaff, {
+    reason: 'no_assigned_staff',
+    message: 'Assign at least one compatible specialist to this Service before preparing a Booking proposal.',
+    eligibleCount: 0,
+    assignedCount: 0,
+    rejectionCounts: {}
+  });
+
+  await withEligibilityModels({ ...legacyVeterinarian, store: 'store-2' }, async () => {
+    const wrongStore = await getStaffAssignmentReadiness(service, bookingDate, '10:00', '11:00', 'booking-1');
+    assert.equal(wrongStore.reason, 'wrong_store');
+    assert.deepEqual(wrongStore.rejectionCounts, { wrong_store: 1 });
+  });
+
+  const outsideSchedule = {
+    ...legacyVeterinarian,
+    professionalProfile: {
+      ...legacyVeterinarian.professionalProfile,
+      availability: { monday: { available: true, start: '13:00', end: '17:00', breaks: [] } }
+    }
+  };
+  await withEligibilityModels(outsideSchedule, async () => {
+    const readiness = await getStaffAssignmentReadiness(service, bookingDate, '10:00', '11:00', 'booking-1');
+    assert.equal(readiness.reason, 'outside_schedule');
+    assert.match(readiness.message, /outside their working hours/i);
+    assert.deepEqual(readiness.rejectionCounts, { outside_schedule: 1 });
   });
 });
 

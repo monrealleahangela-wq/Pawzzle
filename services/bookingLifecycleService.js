@@ -21,6 +21,9 @@ const loadContext = async bookingOrId => {
   if (!service || !service.isActive || service.isDeleted) {
     throw Object.assign(new Error('The selected service is no longer available.'), { statusCode: 409 });
   }
+  if (String(service.store?._id || service.store) !== String(booking.store?._id || booking.store)) {
+    throw Object.assign(new Error('The booking service does not belong to this Store branch.'), { statusCode: 409 });
+  }
   if (!store || store.isActive === false || store.isDeleted
       || (store.verificationStatus && store.verificationStatus !== 'verified')) {
     throw Object.assign(new Error('The selected store or branch is no longer available.'), { statusCode: 409 });
