@@ -44,7 +44,7 @@ const quickCareUpdates = [
   ['Preparing for Pickup', 'in_progress']
 ];
 
-const ServiceCommunicationPanel = ({ booking, staffMode = false, onBookingUpdated }) => {
+const ServiceCommunicationPanel = ({ booking, staffMode = false, onBookingUpdated, compact = false }) => {
   const [timeline, setTimeline] = useState([]);
   const [summary, setSummary] = useState(null);
   const [permissions, setPermissions] = useState({});
@@ -244,8 +244,8 @@ const ServiceCommunicationPanel = ({ booking, staffMode = false, onBookingUpdate
   const messageAvailable = ['confirmed', 'approved', 'processing', 'finished', 'completed'].includes(booking.status);
 
   return (
-    <section className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 shadow-sm dark:border-slate-700 dark:bg-slate-900">
-      <div className="flex items-start justify-between gap-3 mb-4">
+    <section data-testid="service-communication-panel" className={`rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900 ${compact ? 'p-3 sm:p-4' : 'p-4 sm:p-5'}`}>
+      <div className={`flex items-start justify-between gap-3 ${compact ? 'mb-3' : 'mb-4'}`}>
         <div>
           <p className="text-[10px] font-black uppercase tracking-widest text-primary-600">Service communication</p>
           <h3 className="text-base font-black text-slate-900 dark:text-white">{booking.pet?.name || 'Pet'}'s service timeline</h3>
@@ -257,12 +257,12 @@ const ServiceCommunicationPanel = ({ booking, staffMode = false, onBookingUpdate
       </div>
 
       {summary && ['completed', 'ready_for_pickup'].includes(summary.status) && (
-        <div className="mb-4 rounded-xl border border-emerald-100 bg-emerald-50 p-3 text-xs text-emerald-900">
+        <div className={`${compact ? 'mb-3' : 'mb-4'} rounded-xl border border-emerald-100 bg-emerald-50 p-3 text-xs text-emerald-900`}>
           <div className="flex gap-2"><CheckCircle2 size={16} className="mt-0.5 shrink-0" /><div><p className="font-black">{summary.status === 'completed' ? 'Service completed' : 'Ready for pickup'}</p><p>{summary.service?.name}{summary.staff ? ` · ${senderName(summary.staff)}` : ''}{summary.completedAt ? ` · ${formatDateTime(summary.completedAt)}` : ''}</p></div></div>
         </div>
       )}
 
-      <div className="max-h-80 overflow-y-auto pr-1 space-y-0" aria-live="polite">
+      <div data-testid="service-timeline" className={`space-y-0 ${compact ? 'min-w-0' : 'max-h-80 overflow-y-auto pr-1'}`} aria-live="polite">
         {loading ? (
           <div className="py-8 flex items-center justify-center gap-2 text-xs text-slate-500"><Loader2 size={16} className="animate-spin" /> Loading service timeline…</div>
         ) : timeline.length === 0 ? (
@@ -290,8 +290,8 @@ const ServiceCommunicationPanel = ({ booking, staffMode = false, onBookingUpdate
                 {item.sender && !isMessage && <p className="text-[9px] text-slate-400">By {senderName(item.sender)}</p>}
                 {item.message && <p className="mt-1 whitespace-pre-wrap break-words text-xs leading-relaxed text-slate-600 dark:text-slate-300">{item.message}</p>}
                 {(item.media?.length > 0 || item.mediaUrls?.length > 0) && (
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    {(item.media?.map(media => media.url) || item.mediaUrls || []).map((url, photoIndex) => <a key={`${url}-${photoIndex}`} href={getImageUrl(url)} target="_blank" rel="noreferrer" className="block h-20 w-20 overflow-hidden rounded-lg border border-slate-200"><img src={getImageUrl(url)} alt={`${stageLabels[item.stage] || 'Service'} update`} className="h-full w-full object-cover" /></a>)}
+                  <div className={`mt-2 flex gap-2 ${compact ? 'overflow-x-auto pb-1' : 'flex-wrap'}`}>
+                    {(item.media?.map(media => media.url) || item.mediaUrls || []).map((url, photoIndex) => <a key={`${url}-${photoIndex}`} href={getImageUrl(url)} target="_blank" rel="noreferrer" className={`block shrink-0 overflow-hidden rounded-lg border border-slate-200 ${compact ? 'h-16 w-16' : 'h-20 w-20'}`}><img src={getImageUrl(url)} alt={`${stageLabels[item.stage] || 'Service'} update`} className="h-full w-full object-cover" /></a>)}
                   </div>
                 )}
               </div>
@@ -371,7 +371,7 @@ const ServiceCommunicationPanel = ({ booking, staffMode = false, onBookingUpdate
       )}
 
       {permissions.canMessage && messageAvailable && (
-        <form onSubmit={submitMessage} className="mt-4 flex gap-2 border-t border-slate-100 pt-4 dark:border-slate-700">
+        <form onSubmit={submitMessage} className={`flex gap-2 border-t border-slate-100 dark:border-slate-700 ${compact ? 'mt-3 pt-3' : 'mt-4 pt-4'}`}>
           <div className="relative min-w-0 flex-1"><MessageCircle size={14} className="absolute left-3 top-3 text-slate-400" /><input value={message} onChange={event => setMessage(event.target.value)} maxLength={2000} placeholder={staffMode ? 'Message the pet owner' : 'Message the service team'} className="h-10 w-full rounded-lg border border-slate-200 pl-9 pr-3 text-xs outline-none focus:border-primary-400" /></div>
           <button type="submit" disabled={sending || !message.trim()} className="h-10 w-10 shrink-0 rounded-lg bg-slate-900 text-white grid place-items-center disabled:opacity-40" aria-label="Send service message">{sending ? <Loader2 size={15} className="animate-spin" /> : <Send size={15} />}</button>
         </form>

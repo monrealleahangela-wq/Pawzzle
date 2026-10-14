@@ -15,6 +15,7 @@ import { bookingPaymentSummary, formatPeso } from '../../utils/paymentSummary';
 import ServiceSpecificBookingFields, { ServiceIntakeSummary } from '../../components/booking/ServiceSpecificBookingFields';
 import { buildServiceIntake, createEmptyServiceDetails, resolveServiceBookingKind, validateServiceDetails } from '../../utils/serviceBookingForm';
 import { formatRecordId, formatSafeDate, normalizeBookingCollection, normalizeBookingRecord, normalizeServiceDetail } from '../../utils/customerServiceData';
+import ModalViewport from '../../components/ui/ModalViewport';
 
 const createInitialBookingForm = () => ({
   bookingDate: '',
@@ -2098,9 +2099,16 @@ const Bookings = ({ isSubcomponent = false }) => {
       }
       {/* Booking Details Modal */}
       {selectedBooking && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[100] flex items-center justify-center p-2 sm:p-4 animate-fade-in">
-          <div className="bg-white w-full max-w-3xl rounded-2xl overflow-hidden shadow-2xl animate-slide-up border border-white/20 flex flex-col max-h-[94vh]">
-            <header className="shrink-0 bg-slate-900 p-4 sm:p-5 text-white flex justify-between items-start relative overflow-hidden">
+        <ModalViewport onClose={() => setSelectedBooking(null)} closeOnBackdrop={false} className="z-[1000] items-center p-2 sm:p-4">
+          <div
+            role="dialog"
+            tabIndex={-1}
+            aria-modal="true"
+            aria-labelledby="customer-booking-details-title"
+            data-testid="customer-booking-modal"
+            className="flex min-h-0 max-h-[calc(100dvh-1rem)] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-white/20 bg-white shadow-2xl animate-slide-up sm:max-h-[calc(100dvh-2rem)]"
+          >
+            <header data-testid="customer-booking-modal-header" className="relative flex shrink-0 items-start justify-between overflow-hidden bg-slate-900 p-4 text-white sm:px-5 sm:py-4">
               <div className="absolute top-0 right-0 p-12 opacity-10 blur-3xl pointer-events-none">
                 <ShieldCheck className="w-64 h-64 text-primary-500" />
               </div>
@@ -2111,23 +2119,26 @@ const Bookings = ({ isSubcomponent = false }) => {
                     <span className="text-[9px] font-black uppercase tracking-wider">Booking Information</span>
                   </div>
                 </div>
-                <h3 className="text-lg sm:text-xl font-black uppercase tracking-tight leading-none mb-2">#{formatRecordId(selectedBooking._id)}</h3>
+                <h3 id="customer-booking-details-title" className="mb-2 text-lg font-black uppercase leading-none tracking-tight sm:text-xl">Booking #{formatRecordId(selectedBooking._id)}</h3>
                 <div className="flex items-center gap-2 text-slate-400">
                   <Activity className="h-3.5 w-3.5 text-emerald-500" />
                   <p className="text-[10px] font-bold">{getStatusLabel(selectedBooking.status)}</p>
                 </div>
               </div>
               <button
+                type="button"
                 onClick={() => setSelectedBooking(null)}
-                className="relative z-10 w-8 h-8 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg flex items-center justify-center transition-all active:scale-90 group"
+                aria-label="Close booking details"
+                data-autofocus="true"
+                className="relative z-10 flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/5 transition-all hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white active:scale-90"
               >
                 <X className="h-4 w-4 text-white" />
               </button>
             </header>
 
-            <div className="flex-1 p-4 sm:p-6 space-y-6 overflow-y-auto no-scrollbar scroll-smooth">
+            <div data-testid="customer-booking-modal-content" className="min-h-0 min-w-0 flex-1 space-y-4 overflow-y-auto overscroll-contain p-4 scroll-smooth sm:p-5">
               {/* Status Tracker */}
-              <div className="relative pt-4 pb-12">
+              <div className="relative pb-10 pt-2">
                 <div className="absolute left-[5%] right-[5%] top-1/2 -translate-y-1/2 h-1 bg-slate-100 rounded-full" />
                 <div
                   className="absolute left-[5%] top-1/2 -translate-y-1/2 h-1 bg-primary-600 rounded-full transition-all duration-1000 ease-in-out shadow-[0_0_20px_rgba(217,119,6,0.5)]"
@@ -2294,26 +2305,26 @@ const Bookings = ({ isSubcomponent = false }) => {
               </section>}
 
               {/* Operations Notes & Payload */}
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch pt-4">
+              <div className="grid grid-cols-1 items-stretch gap-4 lg:grid-cols-12">
                 <div className="lg:col-span-7 space-y-4">
                   <label className="text-[10px] font-black text-slate-900 uppercase tracking-[0.4em] block pl-2">Notes</label>
-                  <div className="p-8 bg-slate-50 rounded-[2.5rem] border border-slate-100 relative group min-h-[160px]">
+                  <div className="group relative min-h-24 rounded-2xl border border-slate-100 bg-slate-50 p-4">
                     <div className="absolute top-0 left-0 w-1.5 h-full bg-primary-600 opacity-30" />
                     <p className="text-[13px] font-bold text-slate-600 leading-relaxed italic">
                       {selectedBooking.notes || "No additional notes provided for this booking."}
                     </p>
                   </div>
                 </div>
-                <div className="lg:col-span-5 bg-primary-600 rounded-[3rem] p-10 text-white shadow-2xl shadow-primary-200 flex flex-col justify-between group overflow-hidden relative">
+                <div className="group relative flex flex-col justify-between overflow-hidden rounded-2xl bg-primary-600 p-4 text-white shadow-lg shadow-primary-200 sm:p-5 lg:col-span-5">
                   <div className="absolute top-[-20%] right-[-20%] w-64 h-64 bg-white/10 rounded-full blur-3xl group-hover:scale-125 transition-transform duration-1000" />
                   <div className="relative z-10">
-                    <div className="flex justify-between items-start mb-10">
-                      <div className="px-5 py-2 bg-white/20 rounded-2xl text-[10px] font-black uppercase tracking-widest border border-white/20">
+                    <div className="mb-4 flex items-start justify-between">
+                      <div className="rounded-xl border border-white/20 bg-white/20 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest">
                         Price Breakdown
                       </div>
                       <TrendingUp className="h-6 w-6 text-white/50" />
                     </div>
-                    <label className="text-[10px] font-black text-primary-100 uppercase tracking-[0.4em] block mb-4 opacity-70">
+                    <label className="mb-2 block text-[10px] font-black uppercase tracking-[0.3em] text-primary-100 opacity-70">
                       {selectedHasAuthoritativePricing ? 'Payment Summary' : selectedBooking.status === 'awaiting_customer_confirmation' ? 'Proposal Estimate' : 'Request Estimate'}
                     </label>
                     <div className="rounded-2xl bg-white p-4 text-left shadow-inner dark:bg-slate-900">
@@ -2337,8 +2348,8 @@ const Bookings = ({ isSubcomponent = false }) => {
 
               {/* ── Digital Receipt ── */}
               {selectedIsPaymentStage && selectedHasAuthoritativePricing && !['cancelled', 'no_show'].includes(selectedBooking.status) && (
-                <div className="rounded-[2.5rem] overflow-hidden border border-slate-100 shadow-xl">
-                  <div className={`p-8 flex items-center justify-between ${
+                <div className="overflow-hidden rounded-2xl border border-slate-100 shadow-lg">
+                  <div className={`flex items-center justify-between p-4 sm:p-5 ${
                     selectedBooking.status === 'approved' || selectedBooking.paymentStatus === 'paid'
                       ? 'bg-emerald-600 text-white' : 'bg-slate-900 text-white'
                   }`}>
@@ -2358,7 +2369,7 @@ const Bookings = ({ isSubcomponent = false }) => {
                     <Receipt className="h-10 w-10 opacity-30" />
                   </div>
 
-                  <div className="bg-white p-8 space-y-5">
+                  <div className="space-y-3 bg-white p-4 sm:p-5">
                     <div className="flex items-center justify-between pb-4 border-b border-dashed border-slate-100">
                       <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Booking ID</span>
                       <span className="text-[11px] font-black text-slate-900 uppercase font-mono">#{formatRecordId(selectedBooking._id)}</span>
@@ -2411,7 +2422,7 @@ const Bookings = ({ isSubcomponent = false }) => {
                     <Link
                       to={`/find-shops?store=${selectedBooking.store?._id || selectedBooking.store}`}
                       onClick={() => setSelectedBooking(null)}
-                      className="mt-2 w-full flex items-center justify-center gap-3 py-4 bg-primary-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-primary-700 transition-all active:scale-[0.98] shadow-lg shadow-primary-200"
+                      className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl bg-primary-600 py-3 text-[10px] font-black uppercase tracking-widest text-white shadow-md shadow-primary-200 transition-all hover:bg-primary-700 active:scale-[0.98]"
                     >
                       <Navigation className="h-4 w-4" />
                       Navigate to Store
@@ -2423,11 +2434,11 @@ const Bookings = ({ isSubcomponent = false }) => {
                 </div>
               )}
 
-              <ServiceCommunicationPanel booking={selectedBooking} />
+              <ServiceCommunicationPanel booking={selectedBooking} compact />
             </div>
 
               {/* Actions */}
-              <footer className="shrink-0 p-4 sm:p-6 bg-slate-50 border-t border-slate-100 flex flex-wrap gap-3 relative z-10">
+              <footer data-testid="customer-booking-modal-footer" className="relative z-10 flex shrink-0 flex-wrap gap-2 border-t border-slate-100 bg-slate-50 p-3 sm:px-4 sm:py-3">
                 {selectedBooking.status === 'completed' && selectedBooking.paymentStatus === 'paid' && !selectedBooking.reviewStatus?.isRated && (selectedBooking.serviceProvider || selectedBooking.staff) && (
                   <button onClick={() => setRatingBooking(selectedBooking)} className="flex-1 min-w-[180px] h-11 px-4 bg-emerald-600 text-white rounded-xl text-[10px] font-black uppercase tracking-wider hover:bg-emerald-700 transition-all flex items-center justify-center gap-2">
                     <Star className="h-4 w-4" /> Rate Staff
@@ -2460,23 +2471,24 @@ const Bookings = ({ isSubcomponent = false }) => {
                   </button>
                 )}
                 <button
+                  type="button"
                   onClick={() => setSelectedBooking(null)}
-                  className="h-11 px-4 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-wider hover:bg-primary-600 transition-all"
+                  className="h-10 min-w-24 flex-1 rounded-xl bg-slate-900 px-4 text-[10px] font-black uppercase tracking-wider text-white transition-all hover:bg-primary-600 sm:flex-none"
                 >
                   Close
                 </button>
               </footer>
           </div>
-        </div>
-      )}
-      {staffProfileId && selectedBooking && (
-        <StaffProfileModal
-          bookingId={selectedBooking._id}
-          staffId={staffProfileId}
-          isCurrent={String(selectedBooking.staff?._id || selectedBooking.staff) === String(staffProfileId)}
-          onClose={() => setStaffProfileId(null)}
-          onSelect={selectedBooking.status === 'awaiting_customer_confirmation' ? handleSelectStaff : null}
-        />
+          {staffProfileId && (
+            <StaffProfileModal
+              bookingId={selectedBooking._id}
+              staffId={staffProfileId}
+              isCurrent={String(selectedBooking.staff?._id || selectedBooking.staff) === String(staffProfileId)}
+              onClose={() => setStaffProfileId(null)}
+              onSelect={selectedBooking.status === 'awaiting_customer_confirmation' ? handleSelectStaff : null}
+            />
+          )}
+        </ModalViewport>
       )}
       {/* Voucher Selection Modal */}
       {showVoucherModal && (
