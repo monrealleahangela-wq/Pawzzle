@@ -98,6 +98,7 @@ const getAllProducts = async (req, res) => {
       }
       // super_admin sees everything (no extra filter)
     } else {
+      filter.visibility = { $nin: ['draft', 'hidden'] };
       const ownerIds = await getCustomerVisibleOwnerIds();
       const extra = city ? { 'contactInfo.address.city': { $regex: new RegExp(city, 'i') } } : {};
       const visibleStores = await Store.find(withCustomerComplianceFilter(buildCustomerVisibleStoreFilter(ownerIds, extra))).select('_id');
@@ -171,7 +172,9 @@ const getProductById = async (req, res) => {
     if (!req.baseUrl?.includes('/admin')) {
       const ownerIds = await getCustomerVisibleOwnerIds();
       const visibleStore = await Store.exists(withCustomerComplianceFilter(buildCustomerVisibleStoreFilter(ownerIds, { _id: product.store?._id || product.store })));
-      if (!visibleStore || !product.isActive) return res.status(404).json({ message: 'Product not found or unavailable' });
+      if (!visibleStore || !product.isActive || ['draft', 'hidden'].includes(product.visibility)) {
+        return res.status(404).json({ message: 'Product not found or unavailable' });
+      }
     }
 
     res.json({ product });

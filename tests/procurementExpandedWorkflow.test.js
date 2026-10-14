@@ -160,10 +160,12 @@ test('active payments and receiving issues cannot be bypassed through cancellati
 
 test('procurement UI exposes item types, payment timing, inspection, evidence, and supplier issue visibility', () => {
   const procurement = read('client/src/pages/admin/PurchaseOrders.js');
+  const inspection = read('client/src/components/procurement/ReceivingInspectionModal.js');
   const supplier = read('client/src/pages/supplier/SupplierDashboard.js');
   assert.match(procurement, /Live pet · unique animal/);
   assert.match(procurement, /Pay after inspection/);
-  assert.match(procurement, /Submit Inspection Report/);
+  assert.match(procurement, /ReceivingInspectionModal/);
+  assert.match(inspection, /Submit Inspection Report/);
   assert.match(procurement, /body\.append\('images', file\)/);
   assert.match(supplier, /Awaiting verified payment/);
   assert.match(supplier, /Receiving inspection/);

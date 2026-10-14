@@ -40,7 +40,7 @@ const getLandingPageData = async (req, res) => {
         .select('name breed price images gender age description'),
       
       // 2. Featured Products
-      Product.find({ isActive: true, isDeleted: { $ne: true } })
+      Product.find({ store: { $in: visibleStores.map(store => store._id) }, visibility: { $nin: ['draft', 'hidden'] }, isActive: true, isDeleted: { $ne: true } })
         .sort({ featured: -1, createdAt: -1 })
         .limit(8)
         .select('name price images category stockQuantity store')
@@ -67,7 +67,7 @@ const getLandingPageData = async (req, res) => {
         Store.countDocuments(withCustomerComplianceFilter(buildCustomerVisibleStoreFilter(visibleOwnerIds))),
         Pet.countDocuments(publicPetFilter),
         User.countDocuments({ role: 'staff', isActive: true, isDeleted: { $ne: true } }),
-        Product.countDocuments({ isActive: true, isDeleted: { $ne: true } }),
+        Product.countDocuments({ store: { $in: visibleStores.map(store => store._id) }, visibility: { $nin: ['draft', 'hidden'] }, isActive: true, isDeleted: { $ne: true } }),
         Service.countDocuments({ isActive: true, isDeleted: { $ne: true } })
       ])
     ]);

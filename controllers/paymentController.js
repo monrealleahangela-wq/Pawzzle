@@ -328,7 +328,7 @@ const createCheckoutSession = async (req, res) => {
 
     for (const item of order.items) {
       const current = item.itemType === 'product'
-        ? await Product.findById(item.itemId).select('price stockQuantity isActive')
+        ? await Product.findById(item.itemId).select('price stockQuantity isActive visibility')
         : await Pet.findById(item.itemId).select('price isAvailable status quantity reservation isDeleted name');
       const reservedForThisOrder = item.itemType === 'pet'
         && String(current?.reservation?.order || '') === String(order._id);
@@ -337,7 +337,7 @@ const createCheckoutSession = async (req, res) => {
         : null;
       const unavailable = !current
         || Number(current.price) !== Number(item.price)
-        || (item.itemType === 'product' && (!current.isActive || current.stockQuantity < item.quantity))
+        || (item.itemType === 'product' && (!current.isActive || ['draft', 'hidden'].includes(current.visibility) || current.stockQuantity < item.quantity))
         || Boolean(petIssue);
       if (unavailable) return res.status(409).json({ message: 'An item price or availability changed. Please recreate checkout.' });
     }

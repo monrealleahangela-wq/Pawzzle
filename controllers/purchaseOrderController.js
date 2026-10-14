@@ -28,6 +28,12 @@ const {
   determineInspectionOutcome
 } = require('../utils/procurementCart');
 const { getResolutionQuantities, hasUnresolvedQuantities } = require('../utils/procurementResolution');
+const {
+  getStoreProductCompatibilityIssue,
+  assertStoreProductCompatible,
+  buildDraftStoreProduct,
+  getDraftProductSuggestions
+} = require('../utils/procurementProductLinking');
 const { cloudinary } = require('../middleware/upload');
 const {
   evidenceFromUploadedFile,
@@ -50,7 +56,7 @@ const populateProcurementCart = cart => cart.populate([
     populate: { path: 'pet', select: 'name species breed age ageUnit gender size color healthCondition vaccinationStatus healthNotes images listingContext' }
   },
   { path: 'items.supplier', select: 'businessName supplierType status isActive isDeleted storeAssociations' },
-  { path: 'items.storeProduct', select: 'name sku stockQuantity store isDeleted' }
+  { path: 'items.storeProduct', select: 'name sku category stockQuantity store supplierProductRef visibility isActive isDeleted' }
 ]);
 
 const getOrCreateProcurementCart = async (userId, storeId) => {
@@ -237,8 +243,10 @@ const updateProcurementCartItem = async (req, res) => {
     }
     if (Object.prototype.hasOwnProperty.call(req.body, 'storeProductId')) {
       if (req.body.storeProductId) {
-        const storeProduct = await Product.exists({ _id: req.body.storeProductId, store, isDeleted: { $ne: true } });
+        const storeProduct = await Product.findOne({ _id: req.body.storeProductId, store, isDeleted: { $ne: true } });
         if (!storeProduct) return res.status(400).json({ message: 'The selected inventory product does not belong to this store.' });
+        const compatibilityIssue = getStoreProductCompatibilityIssue({ storeProduct, supplierProduct: product, storeId: store });
+        if (compatibilityIssue) return res.status(409).json({ message: compatibilityIssue });
         item.storeProduct = req.body.storeProductId;
       } else {
         item.storeProduct = null;
@@ -315,7 +323,7 @@ const submitProcurementCart = async (req, res) => {
       const mappedProducts = mappedProductIds.length
         ? await Product.find({ _id: { $in: mappedProductIds }, store, isDeleted: { $ne: true } }).session(session)
         : [];
-      const mappedProductSet = new Set(mappedProducts.map(product => String(product._id)));
+      const mappedProductMap = new Map(mappedProducts.map(product => [String(product._id), product]));
       const issues = [];
       const priceChanges = [];
       const transactionOrders = [];
@@ -358,9 +366,17 @@ const submitProcurementCart = async (req, res) => {
           issues.push({ supplierProductId: product._id, message: `Quantity for "${product.name}" must be ${product.minimumOrderQuantity}-${product.availableStock}.` });
           continue;
         }
-        if (item.storeProduct && !mappedProductSet.has(String(item.storeProduct))) {
-          issues.push({ supplierProductId: product._id, message: `Inventory mapping for "${product.name}" does not belong to this store.` });
-          continue;
+        if (item.storeProduct) {
+          const mappedProduct = mappedProductMap.get(String(item.storeProduct));
+          if (!mappedProduct) {
+            issues.push({ supplierProductId: product._id, message: `Inventory mapping for "${product.name}" does not belong to this store.` });
+            continue;
+          }
+          const compatibilityIssue = getStoreProductCompatibilityIssue({ storeProduct: mappedProduct, supplierProduct: product, storeId: store });
+          if (compatibilityIssue) {
+            issues.push({ supplierProductId: product._id, message: compatibilityIssue });
+            continue;
+          }
         }
         if (Number(item.addedUnitPrice) !== Number(product.wholesalePrice)) {
           priceChanges.push({
@@ -723,7 +739,8 @@ const getSellerOrders = async (req, res) => {
     const orders = await PurchaseOrder.find(filter)
       .populate('supplier', 'businessName logo')
       .populate('store', 'name')
-      .populate('items.supplierProduct', 'name sku images itemType pet')
+      .populate('items.supplierProduct', 'name sku category description images brand retailPrice unitOfMeasure itemType pet')
+      .populate('items.storeProduct', 'name sku category stockQuantity visibility isActive store supplierProductRef')
       .populate('items.pet', 'name species breed age ageUnit gender size images healthCondition vaccinationStatus')
       .populate('receivingReport')
       .sort({ createdAt: -1 }).skip(skip).limit(parseInt(limit));
@@ -746,7 +763,8 @@ const getOrderById = async (req, res) => {
       .populate('seller', 'firstName lastName email')
       .populate('supplier', 'businessName email phone')
       .populate('store', 'name')
-      .populate('items.supplierProduct', 'name sku images wholesalePrice itemType pet')
+      .populate('items.supplierProduct', 'name sku category description images brand wholesalePrice retailPrice unitOfMeasure itemType pet')
+      .populate('items.storeProduct', 'name sku category stockQuantity visibility isActive store supplierProductRef')
       .populate('items.pet', 'name species breed age ageUnit gender size images healthCondition vaccinationStatus')
       .populate('statusHistory.changedBy', 'firstName lastName');
 
@@ -818,6 +836,193 @@ const cancelOrder = async (req, res) => {
     console.error('Cancel order error:', error);
     res.status(error.statusCode || (error.name === 'CastError' ? 400 : 500)).json({
       message: error.message || 'Unable to cancel this purchase order.'
+    });
+  }
+};
+
+const RECEIVING_LINKABLE_STATUSES = ['delivered', 'issue_reported', 'reinspection'];
+
+const assertReceivingProductLinkIsMutable = async ({ order, orderItem, session }) => {
+  const query = ProcurementReceivingReport.findOne({ purchaseOrder: order._id });
+  const report = await (session ? query.session(session) : query);
+  const received = report?.items?.find(item => String(item.purchaseOrderItem) === String(orderItem._id));
+  if (received?.inventoryApplied && Number(received.acceptedQuantity) > 0) {
+    throw Object.assign(new Error('This purchase-order item already updated inventory and can no longer be relinked.'), { statusCode: 409 });
+  }
+};
+
+const getReceivingProductLinks = async (req, res) => {
+  try {
+    const order = await PurchaseOrder.findById(req.params.id).populate('items.supplierProduct');
+    if (!order) return res.status(404).json({ message: 'Purchase order not found.' });
+    if (!(await canOperateStore(req.user, order.store, ['procurement.view', 'procurement.manage', 'inventory.receive']))) {
+      return res.status(403).json({ message: 'Purchase order belongs to another store.' });
+    }
+    if (!RECEIVING_LINKABLE_STATUSES.includes(order.status)) {
+      return res.status(409).json({ message: 'Store product links can only be changed while a delivery is awaiting receiving.' });
+    }
+
+    const storeProducts = await Product.find({
+      store: order.store,
+      isActive: true,
+      isDeleted: { $ne: true }
+    }).select('name sku category stockQuantity store supplierProductRef visibility isActive isDeleted').sort({ name: 1 }).limit(500);
+    const report = await ProcurementReceivingReport.findOne({ purchaseOrder: order._id }).select('items');
+
+    const items = order.items.filter(item => item.itemType !== 'live_pet').map(orderItem => {
+      const supplierProduct = orderItem.supplierProduct;
+      const eligibleProducts = supplierProduct ? storeProducts.filter(storeProduct => !getStoreProductCompatibilityIssue({
+        storeProduct,
+        supplierProduct,
+        storeId: order.store
+      })) : [];
+      let linkedProduct = orderItem.storeProduct
+        ? eligibleProducts.find(product => String(product._id) === String(orderItem.storeProduct)) || null
+        : null;
+      let linkSource = linkedProduct ? 'explicit' : null;
+      if (!linkedProduct && orderItem.sku) {
+        linkedProduct = eligibleProducts.find(product => product.sku === orderItem.sku) || null;
+        if (linkedProduct) linkSource = 'sku_match';
+      }
+      const received = report?.items?.find(item => String(item.purchaseOrderItem) === String(orderItem._id));
+      return {
+        purchaseOrderItem: orderItem._id,
+        productName: orderItem.productName,
+        supplierProduct: supplierProduct ? {
+          _id: supplierProduct._id,
+          name: supplierProduct.name,
+          sku: supplierProduct.sku,
+          category: supplierProduct.category,
+          description: supplierProduct.description,
+          images: supplierProduct.images,
+          brand: supplierProduct.brand,
+          retailPrice: supplierProduct.retailPrice,
+          unitOfMeasure: supplierProduct.unitOfMeasure
+        } : null,
+        linkedProduct,
+        linkSource,
+        linkLocked: Boolean(received?.inventoryApplied && Number(received.acceptedQuantity) > 0),
+        eligibleProducts,
+        suggestions: getDraftProductSuggestions(supplierProduct)
+      };
+    });
+    return res.json({ orderId: order._id, storeId: order.store, items });
+  } catch (error) {
+    return res.status(error.statusCode || (error.name === 'CastError' ? 400 : 500)).json({
+      message: error.name === 'CastError' ? 'Invalid purchase order.' : (error.message || 'Unable to load receiving product links.')
+    });
+  }
+};
+
+const linkReceivingStoreProduct = async (req, res) => {
+  try {
+    const inspectedOrder = await PurchaseOrder.findById(req.params.id).select('store status items');
+    if (!inspectedOrder) return res.status(404).json({ message: 'Purchase order not found.' });
+    if (!(await canOperateStore(req.user, inspectedOrder.store, ['procurement.manage', 'inventory.receive']))) {
+      return res.status(403).json({ message: 'Purchase order belongs to another store.' });
+    }
+    if (!req.body.storeProductId) return res.status(400).json({ message: 'Select a Store product to link.' });
+
+    let linkedProduct;
+    await mongoose.connection.transaction(async session => {
+      const order = await PurchaseOrder.findOne({
+        _id: inspectedOrder._id,
+        status: { $in: RECEIVING_LINKABLE_STATUSES }
+      }).populate('items.supplierProduct').session(session);
+      if (!order) throw Object.assign(new Error('This delivery is no longer available for product linking.'), { statusCode: 409 });
+      const orderItem = order.items.id(req.params.itemId);
+      if (!orderItem || orderItem.itemType === 'live_pet') {
+        throw Object.assign(new Error('Purchase-order item is not eligible for Store product linking.'), { statusCode: 404 });
+      }
+      if (!orderItem.supplierProduct) {
+        throw Object.assign(new Error('Supplier product identity is unavailable; this item cannot be linked safely.'), { statusCode: 409 });
+      }
+      await assertReceivingProductLinkIsMutable({ order, orderItem, session });
+      linkedProduct = await Product.findOne({
+        _id: req.body.storeProductId,
+        store: order.store,
+        isDeleted: { $ne: true }
+      }).session(session);
+      if (!linkedProduct) {
+        throw Object.assign(new Error('The selected Store product is unavailable or belongs to another Store.'), { statusCode: 403 });
+      }
+      assertStoreProductCompatible({ storeProduct: linkedProduct, supplierProduct: orderItem.supplierProduct, storeId: order.store });
+      linkedProduct.supplierRef = order.supplier;
+      linkedProduct.supplierProductRef = orderItem.supplierProduct._id;
+      orderItem.storeProduct = linkedProduct._id;
+      await linkedProduct.save({ session });
+      await order.save({ session });
+    });
+    return res.json({ message: 'Store product linked for receiving.', product: linkedProduct });
+  } catch (error) {
+    return res.status(error.statusCode || (error.name === 'CastError' ? 400 : 500)).json({
+      message: error.name === 'CastError' ? 'Invalid product link request.' : (error.message || 'Unable to link this Store product.')
+    });
+  }
+};
+
+const createReceivingStoreProduct = async (req, res) => {
+  try {
+    const inspectedOrder = await PurchaseOrder.findById(req.params.id).select('store status items supplier');
+    if (!inspectedOrder) return res.status(404).json({ message: 'Purchase order not found.' });
+    if (!(await canOperateStore(req.user, inspectedOrder.store, ['procurement.manage', 'inventory.receive']))) {
+      return res.status(403).json({ message: 'Purchase order belongs to another store.' });
+    }
+
+    let product;
+    let created = false;
+    await mongoose.connection.transaction(async session => {
+      const order = await PurchaseOrder.findOne({
+        _id: inspectedOrder._id,
+        status: { $in: RECEIVING_LINKABLE_STATUSES }
+      }).populate('items.supplierProduct').session(session);
+      if (!order) throw Object.assign(new Error('This delivery is no longer available for product creation.'), { statusCode: 409 });
+      const orderItem = order.items.id(req.params.itemId);
+      if (!orderItem || orderItem.itemType === 'live_pet') {
+        throw Object.assign(new Error('Purchase-order item is not eligible for Store product creation.'), { statusCode: 404 });
+      }
+      if (!orderItem.supplierProduct) {
+        throw Object.assign(new Error('Supplier product identity is unavailable; a Store product cannot be created safely.'), { statusCode: 409 });
+      }
+      await assertReceivingProductLinkIsMutable({ order, orderItem, session });
+
+      if (orderItem.storeProduct) {
+        product = await Product.findOne({ _id: orderItem.storeProduct, store: order.store, isDeleted: { $ne: true } }).session(session);
+        if (!product) throw Object.assign(new Error('The existing Store product link is no longer valid.'), { statusCode: 409 });
+        assertStoreProductCompatible({ storeProduct: product, supplierProduct: orderItem.supplierProduct, storeId: order.store });
+        return;
+      }
+
+      product = await Product.findOne({
+        store: order.store,
+        supplierProductRef: orderItem.supplierProduct._id,
+        isDeleted: { $ne: true }
+      }).session(session);
+      if (product) {
+        assertStoreProductCompatible({ storeProduct: product, supplierProduct: orderItem.supplierProduct, storeId: order.store });
+      } else {
+        const productData = buildDraftStoreProduct({
+          supplierProduct: orderItem.supplierProduct,
+          supplierId: order.supplier,
+          storeId: order.store,
+          userId: req.user._id,
+          input: req.body
+        });
+        [product] = await Product.create([productData], { session });
+        created = true;
+      }
+      orderItem.storeProduct = product._id;
+      await order.save({ session });
+    });
+    return res.status(created ? 201 : 200).json({
+      message: created ? 'Draft Store product created and linked for receiving.' : 'Existing Store product link reused for receiving.',
+      created,
+      product
+    });
+  } catch (error) {
+    const duplicateSku = error.code === 11000 && (error.keyPattern?.sku || error.keyValue?.sku);
+    return res.status(duplicateSku ? 409 : (error.statusCode || (error.name === 'ValidationError' || error.name === 'CastError' ? 400 : 500))).json({
+      message: duplicateSku ? 'That Store SKU is already in use. Enter a different SKU.' : (error.message || 'Unable to create a Store product for receiving.')
     });
   }
 };
@@ -925,19 +1130,33 @@ const applyReceivingItem = async ({
     pet.procurementReservation.completedAt = new Date();
     await pet.save({ session });
   } else {
+    if (!orderItem.supplierProduct) {
+      throw Object.assign(new Error(`Supplier product identity for "${orderItem.productName}" is unavailable.`), { statusCode: 409 });
+    }
     await recordReceivedSupplierQuantity({
       orderItem,
       acceptedQuantity: receivedQuantityTarget,
       session
     });
     let storeProduct = orderItem.storeProduct
-      ? await Product.findOne({ _id: orderItem.storeProduct, store: order.store, isDeleted: { $ne: true } }).session(session)
+      ? await Product.findOne({ _id: orderItem.storeProduct, store: order.store, isActive: true, isDeleted: { $ne: true } }).session(session)
       : null;
     if (!storeProduct && orderItem.sku) {
-      storeProduct = await Product.findOne({ store: order.store, sku: orderItem.sku, isDeleted: { $ne: true } }).session(session);
+      storeProduct = await Product.findOne({ store: order.store, sku: orderItem.sku, isActive: true, isDeleted: { $ne: true } }).session(session);
     }
     if (!storeProduct) {
       throw Object.assign(new Error(`Link "${orderItem.productName}" to a store product before accepting it into inventory.`), { statusCode: 409 });
+    }
+    assertStoreProductCompatible({ storeProduct, supplierProduct: orderItem.supplierProduct, storeId: order.store });
+    orderItem.storeProduct = storeProduct._id;
+
+    const currentInventory = await Inventory.findOne({ store: order.store, product: storeProduct._id }).session(session);
+    const currentQuantity = Number(currentInventory?.quantity ?? storeProduct.stockQuantity ?? 0);
+    const maximumQuantity = Number(currentInventory?.maxStock ?? 1000);
+    if (currentQuantity + Number(reportItem.acceptedQuantity) > maximumQuantity) {
+      throw Object.assign(new Error(
+        `Receiving ${reportItem.acceptedQuantity} unit(s) of "${storeProduct.name}" would exceed its inventory capacity of ${maximumQuantity}.`
+      ), { statusCode: 409 });
     }
 
     const existingLotCount = await InventoryLot.countDocuments({ store: order.store, product: storeProduct._id }).session(session);
@@ -1044,8 +1263,35 @@ const submitReceivingInspection = async (req, res) => {
 
     for (const row of normalizedItems) {
       const orderItem = inspectedOrder.items.id(row.purchaseOrderItem);
-      if (row.acceptedQuantity > 0 && orderItem.itemType !== 'live_pet' && !orderItem.storeProduct && !orderItem.sku) {
-        return res.status(409).json({ message: `Link "${orderItem.productName}" to a store product before accepting it.` });
+      if (row.acceptedQuantity > 0 && orderItem.itemType !== 'live_pet') {
+        if (!orderItem.supplierProduct) {
+          return res.status(409).json({ message: `Supplier product identity for "${orderItem.productName}" is unavailable.` });
+        }
+        let linkedProduct = orderItem.storeProduct
+          ? await Product.findOne({ _id: orderItem.storeProduct, store: inspectedOrder.store, isActive: true, isDeleted: { $ne: true } })
+          : null;
+        if (!linkedProduct && orderItem.sku) {
+          linkedProduct = await Product.findOne({ store: inspectedOrder.store, sku: orderItem.sku, isActive: true, isDeleted: { $ne: true } });
+        }
+        if (!linkedProduct) {
+          return res.status(409).json({
+            code: 'RECEIVING_PRODUCT_LINK_REQUIRED',
+            purchaseOrderItem: orderItem._id,
+            message: `Link "${orderItem.productName}" to a Store product or create a new draft product before accepting it.`
+          });
+        }
+        const compatibilityIssue = getStoreProductCompatibilityIssue({
+          storeProduct: linkedProduct,
+          supplierProduct: orderItem.supplierProduct,
+          storeId: inspectedOrder.store
+        });
+        if (compatibilityIssue) {
+          return res.status(409).json({
+            code: 'RECEIVING_PRODUCT_LINK_INVALID',
+            purchaseOrderItem: orderItem._id,
+            message: compatibilityIssue
+          });
+        }
       }
     }
 
@@ -1681,6 +1927,9 @@ module.exports = {
   getOrderById,
   cancelOrder,
   confirmDelivery: submitReceivingInspection,
+  getReceivingProductLinks,
+  linkReceivingStoreProduct,
+  createReceivingStoreProduct,
   authorizeReceivingInspectionUpload,
   authorizeResolutionReinspectionUpload,
   submitReceivingInspection,

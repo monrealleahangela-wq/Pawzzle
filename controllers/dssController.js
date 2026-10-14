@@ -185,6 +185,7 @@ const getLegacyCustomerInsights = async (req, res) => {
                     { name: { $regex: new RegExp(species, 'i') } },
                     { description: { $regex: new RegExp(foodSearch, 'i') } }
                 ],
+                visibility: { $nin: ['draft', 'hidden'] },
                 isActive: true,
                 isDeleted: { $ne: true }
             }).limit(2);

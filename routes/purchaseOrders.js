@@ -8,6 +8,7 @@ const {
   removeProcurementCartItem, clearProcurementCart, submitProcurementCart,
   createPurchaseOrder, getSellerOrders, getOrderById,
   cancelOrder, confirmDelivery, authorizeReceivingInspectionUpload, authorizeResolutionReinspectionUpload,
+  getReceivingProductLinks, linkReceivingStoreProduct, createReceivingStoreProduct,
   submitReceivingInspection, reviewSupplierResolution, submitResolutionReinspection,
   getReceivingInspection, getReceivingEvidenceAccess, adminGetAllOrders
 } = require('../controllers/purchaseOrderController');
@@ -22,6 +23,9 @@ router.patch('/cart/items/:itemId', authenticate, requirePermission('procurement
 router.delete('/cart/items/:itemId', authenticate, requirePermission('procurement.manage'), removeProcurementCartItem);
 router.delete('/cart', authenticate, requirePermission('procurement.manage'), clearProcurementCart);
 router.post('/cart/submit', authenticate, requirePermission('procurement.manage'), submitProcurementCart);
+router.get('/:id/receiving-product-links', authenticate, requirePermission('procurement.view', 'procurement.manage', 'inventory.receive'), getReceivingProductLinks);
+router.patch('/:id/items/:itemId/store-product', authenticate, requirePermission('procurement.manage', 'inventory.receive'), linkReceivingStoreProduct);
+router.post('/:id/items/:itemId/store-product', authenticate, requirePermission('procurement.manage', 'inventory.receive'), requirePermission('products.manage', 'inventory.adjust'), createReceivingStoreProduct);
 router.get('/:id/inspection', authenticate, requirePermission('procurement.view', 'procurement.manage', 'inventory.receive', 'purchase_orders.own'), getReceivingInspection);
 router.get('/:id/inspection/evidence/:evidenceId/access', authenticate, getReceivingEvidenceAccess);
 router.post('/:id/inspection', authenticate, requirePermission('procurement.manage', 'inventory.receive'), authorizeReceivingInspectionUpload, uploadProcurementEvidence, handleUploadError, submitReceivingInspection);

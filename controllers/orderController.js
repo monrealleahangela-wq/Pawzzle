@@ -207,7 +207,7 @@ const createOrderLegacy = async (req, res) => {
         }
       } else if (item.itemType === 'product') {
         itemDoc = await Product.findById(item.itemId);
-        if (!itemDoc || !itemDoc.isActive || itemDoc.stockQuantity < item.quantity) {
+        if (!itemDoc || !itemDoc.isActive || ['draft', 'hidden'].includes(itemDoc.visibility) || itemDoc.stockQuantity < item.quantity) {
           return res.status(400).json({ message: `Product "${itemDoc?.name || item.itemId}" is not available or has insufficient stock` });
         }
 

@@ -110,6 +110,7 @@ const getStoreById = async (req, res) => {
           { store: store._id },
           { addedBy: store.owner._id || store.owner }
         ],
+        visibility: { $nin: ['draft', 'hidden'] },
         isActive: true,
         isDeleted: { $ne: true }
       }).limit(6)
@@ -141,6 +142,7 @@ const getStoreDetails = async (req, res) => {
           { store: store._id },
           { addedBy: store.owner._id || store.owner }
         ],
+        visibility: { $nin: ['draft', 'hidden'] },
         isActive: true,
         isDeleted: { $ne: true }
       }).select('name description price images stockQuantity category'),

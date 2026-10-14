@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import { Truck, Package, Plus, ShoppingCart, X, Eye, Minus, TrendingDown, Layers, Star, Mail, Power, Camera, CreditCard } from 'lucide-react';
+import { Truck, Package, Plus, ShoppingCart, X, Eye, Minus, TrendingDown, Layers, Star, Mail, Power, CreditCard } from 'lucide-react';
 import { supplierService, purchaseOrderService, paymentService, getImageUrl, adminProductService } from '../../services/apiService';
 import PaymentBreakdown from '../../components/payments/PaymentBreakdown';
 import ProcurementEvidenceGallery, { ProcurementReinspectionEvidenceGallery } from '../../components/procurement/ProcurementEvidenceGallery';
+import ReceivingInspectionModal from '../../components/procurement/ReceivingInspectionModal';
 import { formatPeso, purchaseOrderPaymentSummary } from '../../utils/paymentSummary';
 
 const PurchaseOrders = () => {
@@ -243,10 +244,14 @@ const PurchaseOrders = () => {
     });
   };
 
-  const updateInspectionItem = (itemId, key, value) => setInspectionForm(previous => ({
-    ...previous,
-    items: { ...previous.items, [itemId]: { ...previous.items[itemId], [key]: value } }
-  }));
+  const handleInspectionProductLinked = (itemId, product) => {
+    const applyLink = order => order && ({
+      ...order,
+      items: (order.items || []).map(item => String(item._id) === String(itemId) ? { ...item, storeProduct: product } : item)
+    });
+    setInspectionOrder(previous => applyLink(previous));
+    setOrders(previous => previous.map(order => String(order._id) === String(inspectionOrder?._id) ? applyLink(order) : order));
+  };
 
   const submitInspection = async () => {
     if (!inspectionOrder || submittingInspection) return;
@@ -518,7 +523,16 @@ const PurchaseOrders = () => {
 
       {selectedOrder && <div className="fixed inset-0 bg-slate-900/60 z-[105] flex items-center justify-center p-3"><div className="bg-white w-full max-w-xl rounded-2xl p-5 max-h-[90vh] overflow-y-auto"><div className="flex justify-between mb-4"><div><h3 className="text-base font-black">{selectedOrder.orderNumber}</h3><p className="text-[10px] text-slate-500">{selectedOrder.supplier?.businessName} · {selectedOrder.status}</p></div><button onClick={()=>setSelectedOrder(null)}><X className="h-4 w-4"/></button></div><div className="space-y-2">{selectedOrder.items?.map(item=><div key={item._id} className="p-3 bg-slate-50 rounded-xl flex justify-between text-xs"><div><p className="font-bold">{item.productName}</p><p className="text-[10px] text-slate-500">{item.quantity} × {formatPeso(item.unitPrice)} · Received {item.receivedQuantity || 0}</p></div><p className="font-black">{formatPeso(item.totalPrice)}</p></div>)}</div><div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3"><PaymentBreakdown summary={purchaseOrderPaymentSummary(selectedOrder)} compact /><p className="mt-3 border-t border-slate-200 pt-2 text-[10px] text-slate-500">Payment: <b>{selectedOrder.paymentStatus}</b> · Paid {formatPeso(selectedOrder.paidAmount || 0)}</p></div></div></div>}
 
-      {inspectionOrder && <div className="fixed inset-0 z-[115] flex items-center justify-center bg-slate-900/70 p-2"><div className="flex max-h-[95vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl"><header className="flex items-start justify-between border-b p-5"><div><h3 className="text-base font-black">Receiving inspection</h3><p className="mt-1 text-[10px] text-slate-500">{inspectionOrder.orderNumber} · {inspectionOrder.supplier?.businessName}</p></div><button onClick={() => setInspectionOrder(null)}><X className="h-5 w-5" /></button></header><div className="flex-1 space-y-3 overflow-y-auto p-5">{inspectionOrder.items?.map(item => { const row = inspectionForm.items[item._id] || {}; return <section key={item._id} className="rounded-xl border border-slate-200 p-3"><div className="mb-3 flex items-center justify-between"><div><p className="text-xs font-black">{item.productName}</p><p className="text-[9px] text-slate-500">Expected: {item.quantity} {item.itemType === 'live_pet' ? 'specific animal' : 'units'}</p></div>{item.itemType === 'live_pet' && <span className="rounded-full bg-amber-100 px-2 py-1 text-[8px] font-black uppercase text-amber-800">Live pet · max 1</span>}</div><div className="grid grid-cols-3 gap-2">{[['receivedQuantity','Received'],['damagedQuantity','Damaged'],['incorrectQuantity','Incorrect']].map(([key,label]) => <label key={key} className="text-[8px] font-black uppercase text-slate-500">{label}<input type="number" min="0" max={item.itemType === 'live_pet' ? 1 : item.quantity} value={row[key] ?? 0} onChange={e => updateInspectionItem(item._id, key, Number(e.target.value))} className="mt-1 w-full rounded-lg border border-slate-200 px-2 py-2 text-sm" /></label>)}</div><textarea placeholder="Item notes (optional)" value={row.notes || ''} onChange={e => updateInspectionItem(item._id, 'notes', e.target.value)} className="mt-3 min-h-16 w-full rounded-lg border border-slate-200 p-2 text-xs" /></section>; })}<label className="block text-[9px] font-black uppercase text-slate-500">Overall notes<textarea value={inspectionForm.notes} onChange={e => setInspectionForm(previous => ({ ...previous, notes: e.target.value }))} className="mt-1 min-h-20 w-full rounded-xl border border-slate-200 p-3 text-xs" /></label><label className="flex cursor-pointer items-center gap-2 rounded-xl border border-dashed border-slate-300 p-4 text-xs font-bold text-slate-600"><Camera className="h-4 w-4" /> Attach receiving photos<input type="file" multiple accept="image/*" className="hidden" onChange={e => setInspectionForm(previous => ({ ...previous, photos: Array.from(e.target.files || []) }))} /></label>{inspectionForm.photos.length > 0 && <p className="text-[9px] text-slate-500">{inspectionForm.photos.length} photo{inspectionForm.photos.length === 1 ? '' : 's'} selected</p>}</div><footer className="flex gap-2 border-t p-4"><button onClick={() => setInspectionOrder(null)} className="rounded-xl px-4 py-2 text-xs font-bold text-slate-500">Cancel</button><button disabled={submittingInspection} onClick={submitInspection} className="flex-1 rounded-xl bg-emerald-600 px-4 py-3 text-[10px] font-black uppercase text-white disabled:opacity-50">{submittingInspection ? 'Recording...' : 'Submit Inspection Report'}</button></footer></div></div>}
+      {inspectionOrder && <ReceivingInspectionModal
+        order={inspectionOrder}
+        form={inspectionForm}
+        setForm={setInspectionForm}
+        submitting={submittingInspection}
+        resolution={inspectionResolution}
+        onClose={() => { setInspectionOrder(null); setInspectionResolution(null); }}
+        onSubmit={submitInspection}
+        onProductLinked={handleInspectionProductLinked}
+      />}
 
       {/* ── CHECKOUT MODAL ── */}
       {showCheckout && (
