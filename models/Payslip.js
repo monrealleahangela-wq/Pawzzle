@@ -48,7 +48,7 @@ const payslipSchema = new mongoose.Schema({
   deductions: [adjustmentSchema],
   grossPay: { type: Number, min: 0, required: true },
   netPay: { type: Number, min: 0, required: true },
-  paymentStatus: { type: String, enum: ['unpaid', 'recorded_paid'], default: 'unpaid' },
+  paymentStatus: { type: String, enum: ['unpaid', 'pending', 'processing', 'for_confirmation', 'failed', 'on_hold', 'recorded_paid'], default: 'unpaid', index: true },
   paymentRecord: {
     method: { type: String, trim: true },
     referenceNumber: { type: String, trim: true },

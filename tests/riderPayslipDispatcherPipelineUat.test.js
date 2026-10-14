@@ -123,6 +123,11 @@ test('paid Rider and historical Dispatcher snapshots remain employee-owned and r
   try {
     Payslip.find = query => {
       captured.push(query);
+      if (query.paymentStatus?.$ne === 'recorded_paid') return {
+        populate() { return this; },
+        sort() { return this; },
+        lean: async () => []
+      };
       return {
         populate() { return this; },
         sort: async () => [{ _id: `slip-${query.employee}`, employee: query.employee, paymentStatus: 'recorded_paid' }]
@@ -144,7 +149,9 @@ test('paid Rider and historical Dispatcher snapshots remain employee-owned and r
       assert.equal(result.body.payslips.length, 1);
       assert.equal(result.body.payslips[0].employee, user._id);
     }
-    assert.ok(captured.every(query => query.store === 'store-a' && query.paymentStatus === 'recorded_paid'));
+    assert.ok(captured.every(query => query.store === 'store-a'));
+    assert.equal(captured[0].paymentStatus, 'recorded_paid');
+    assert.ok(captured.some(query => query.paymentStatus?.$ne === 'recorded_paid'));
   } finally {
     Payslip.find = originalFind;
     Payslip.findOne = originalFindOne;

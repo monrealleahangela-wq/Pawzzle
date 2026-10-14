@@ -6,14 +6,14 @@ const ROLE_PERMISSIONS = {
     'pets.manage', 'clinical.manage', 'services.manage', 'bookings.manage', 'sales.manage',
     'inventory.manage', 'procurement.manage', 'finance.manage',
     'logistics.manage', 'reports.view', 'dss.manage',
-    'attendance.manage', 'leave.approve', 'payroll.manage', 'compensation.manage'
+    'attendance.manage', 'leave.approve', 'payroll.manage', 'payroll_payment.view', 'payroll_payment.prepare', 'payroll_payment.confirm', 'compensation.manage'
   ],
   store_owner: [
     'dashboard.view', 'users.manage', 'staff.manage', 'customers.manage',
     'pets.manage', 'clinical.manage', 'services.manage', 'bookings.manage', 'sales.manage',
     'inventory.manage', 'procurement.manage', 'finance.manage',
     'logistics.manage', 'reports.view', 'dss.manage',
-    'attendance.manage', 'leave.approve', 'payroll.manage', 'compensation.manage'
+    'attendance.manage', 'leave.approve', 'payroll.manage', 'payroll_payment.view', 'payroll_payment.prepare', 'payroll_payment.confirm', 'compensation.manage'
   ],
   manager: [
     'dashboard.view', 'staff.view', 'customers.manage', 'pets.manage',
@@ -43,7 +43,8 @@ const ROLE_PERMISSIONS = {
   finance_staff: [
     'sales.view', 'procurement.view', 'finance.manage',
     'reports.finance', 'payments.manage', 'payroll.view', 'payroll.prepare',
-    'payroll.review', 'payroll.pay', 'compensation.manage', 'attendance.view', 'leave.view'
+    'payroll.review', 'payroll_payment.view', 'payroll_payment.prepare',
+    'compensation.manage', 'attendance.view', 'leave.view'
   ],
   veterinarian: [
     'customers.view', 'pets.view', 'clinical.manage',

@@ -23,7 +23,10 @@ const {
   COMPENSATION_BASES, compensationBasis, compensationRevisions,
   compensationSegmentsForPeriod, compensationTypeForBasis, currentCompensationSummary
 } = require('../utils/payrollCompensation');
-const { finalizePayrollPayment } = require('../services/payrollFinalizationService');
+const {
+  confirmPaymentAttempt, createPaymentAttempt, findPaymentObligations,
+  findEmployeePaymentStatuses, getProtectedProof, retryFailedAttempt, transitionPaymentAttempt
+} = require('../services/payrollPaymentWorkflowService');
 const activeStaffFilter = activePayrollEmployeeFilter;
 const fail = (message, statusCode = 400) => Object.assign(new Error(message), { statusCode });
 const safeError = (res, error) => {
@@ -853,41 +856,70 @@ const approvePeriod = async (req, res) => {
   return statusHandler('approved')(req, res);
 };
 const payPeriod = async (req, res) => {
+  return res.status(409).json({ message: 'Period-wide payment recording is disabled. Record and independently confirm each employee payment separately.' });
+};
+
+const paymentObligations = async (req, res) => {
   try {
     const store = await storeFor(req);
-    const method = String(req.body.method || '').trim();
-    const referenceNumber = String(req.body.referenceNumber || '').trim();
-    if (!method || !referenceNumber) throw fail('Payment method and reference number are required when recording payroll as paid.');
-    const paymentDate = req.body.paymentDate ? parseDate(req.body.paymentDate) : new Date();
-    const result = await finalizePayrollPayment({
-      periodId: req.params.id,
-      storeId: store._id,
-      actor: req.user,
-      payment: { method, referenceNumber, paymentDate, notes: String(req.body.notes || '').trim() },
-      ipAddress: req.ip
-    });
-    res.json({
-      message: result.idempotent
-        ? 'This external payroll payment was already recorded. No duplicate changes were made.'
-        : 'Payroll recorded as paid. No bank transfer was initiated by Pawzzle.',
-      period: result.period,
-      idempotent: result.idempotent
-    });
+    const result = await findPaymentObligations(req.params.id, store._id);
+    res.json(result);
+  } catch (error) { safeError(res, error); }
+};
+const createEmployeePaymentAttempt = async (req, res) => {
+  try {
+    const store = await storeFor(req);
+    const result = await createPaymentAttempt({ periodId: req.params.id, payslipId: req.params.payslipId, storeId: store._id, actor: req.user, input: req.body, ipAddress: req.ip });
+    res.status(result.idempotent ? 200 : 201).json({ message: result.idempotent ? 'This payment request was already recorded; no duplicate was created.' : 'External payment attempt recorded. Pawzzle did not initiate a transfer.', ...result });
+  } catch (error) { safeError(res, error); }
+};
+const retryEmployeePaymentAttempt = async (req, res) => {
+  try {
+    const store = await storeFor(req);
+    const result = await retryFailedAttempt({ priorAttemptId: req.params.attemptId, storeId: store._id, actor: req.user, input: req.body, ipAddress: req.ip });
+    res.status(result.idempotent ? 200 : 201).json({ message: 'A new linked external payment attempt was recorded.', ...result });
+  } catch (error) { safeError(res, error); }
+};
+const updateEmployeePaymentAttempt = async (req, res) => {
+  try {
+    const store = await storeFor(req);
+    const result = await transitionPaymentAttempt({ attemptId: req.params.attemptId, storeId: store._id, actor: req.user, input: req.body, ipAddress: req.ip });
+    res.json({ message: result.idempotent ? 'The payment attempt already has this status.' : 'Payment attempt status updated.', ...result });
+  } catch (error) { safeError(res, error); }
+};
+const confirmEmployeePaymentAttempt = async (req, res) => {
+  try {
+    const store = await storeFor(req);
+    const result = await confirmPaymentAttempt({ attemptId: req.params.attemptId, storeId: store._id, actor: req.user, reason: req.body.reason, ipAddress: req.ip });
+    res.json({ message: result.idempotent ? 'This employee payment was already confirmed.' : result.periodComplete ? 'Employee payment confirmed; all payroll obligations are now confirmed.' : 'Employee payment confirmed. Other employees remain outstanding.', ...result });
+  } catch (error) { safeError(res, error); }
+};
+const getEmployeePaymentProof = async (req, res) => {
+  try {
+    const store = await storeFor(req);
+    const proof = await getProtectedProof({ attemptId: req.params.attemptId, storeId: store._id });
+    const safeName = proof.originalName.replace(/[^A-Za-z0-9._-]/g, '_').slice(0, 120) || 'payment-proof';
+    const content = Buffer.from(proof.base64, 'base64');
+    res.set('Cache-Control', 'no-store');
+    res.set('X-Content-Type-Options', 'nosniff');
+    res.set('Content-Disposition', `attachment; filename="${safeName}"`);
+    res.type(proof.mimeType).send(content);
   } catch (error) { safeError(res, error); }
 };
 
 const myPayslips = async (req, res) => {
   try {
-    const [payslips, pending] = await Promise.all([
+    const [payslips, paymentStatuses, pending] = await Promise.all([
       Payslip.find({ employee: req.user._id, store: req.user.store, paymentStatus: 'recorded_paid' }).populate('payrollPeriod', 'periodStart periodEnd payDate frequency status').populate('store', 'name logo').sort({ finalizedAt: -1 }),
-      Payslip.findOne({ employee: req.user._id, store: req.user.store, paymentStatus: 'unpaid' }).populate('payrollPeriod', 'periodStart periodEnd payDate frequency status').sort({ createdAt: -1 }).lean()
+      findEmployeePaymentStatuses(req.user._id, req.user.store),
+      Payslip.findOne({ employee: req.user._id, store: req.user.store, paymentStatus: { $in: ['unpaid', 'processing', 'for_confirmation', 'on_hold', 'failed'] } }).populate({ path: 'payrollPeriod', match: { status: { $in: ['approved', 'paid'] } }, select: 'periodStart periodEnd payDate frequency status' }).sort({ createdAt: -1 }).lean()
     ]);
     const availability = payslips.length
       ? { reason: 'published' }
       : pending
         ? { reason: 'awaiting_payment_record', payrollStatus: pending.payrollPeriod?.status || 'computed' }
         : { reason: 'no_payroll_record' };
-    res.json({ payslips, availability });
+    res.json({ payslips, paymentStatuses, availability });
   } catch (error) { safeError(res, error); }
 };
 const myPayslip = async (req, res) => {
@@ -903,5 +935,7 @@ module.exports = {
   reviewLocationAttendance, reviewAutoClockOut,
   createLeave, myLeaves, cancelLeave, listLeaves, reviewLeave,
   generatePeriod, listPeriods, periodDetails, computePeriod, addAdjustment,
-  reviewPeriod, approvePeriod, payPeriod, myPayslips, myPayslip, summarizeAttendance
+  reviewPeriod, approvePeriod, payPeriod, paymentObligations, createEmployeePaymentAttempt,
+  retryEmployeePaymentAttempt, updateEmployeePaymentAttempt, confirmEmployeePaymentAttempt,
+  getEmployeePaymentProof, myPayslips, myPayslip, summarizeAttendance
 };

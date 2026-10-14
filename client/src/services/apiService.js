@@ -520,7 +520,13 @@ export const hrService = {
   addAdjustment: (payslipId, data) => api.post(`/hr/payslips/${payslipId}/adjustments`, data),
   reviewPayroll: (id, data = {}) => api.patch(`/hr/payroll/${id}/review`, data),
   approvePayroll: (id) => api.patch(`/hr/payroll/${id}/approve`),
-  payPayroll: (id, data) => api.patch(`/hr/payroll/${id}/pay`, data)
+  payPayroll: (id, data) => api.patch(`/hr/payroll/${id}/pay`, data),
+  getPayrollPayments: id => api.get(`/hr/payroll/${id}/payments`),
+  createPayrollPayment: (periodId, payslipId, data) => api.post(`/hr/payroll/${periodId}/payslips/${payslipId}/payments`, data),
+  retryPayrollPayment: (attemptId, data) => api.post(`/hr/payroll/payments/${attemptId}/retry`, data),
+  updatePayrollPayment: (attemptId, data) => api.patch(`/hr/payroll/payments/${attemptId}`, data),
+  confirmPayrollPayment: (attemptId, data) => api.post(`/hr/payroll/payments/${attemptId}/confirm`, data),
+  getPayrollPaymentProof: attemptId => api.get(`/hr/payroll/payments/${attemptId}/proof`, { responseType: 'blob' })
 };
 
 // Delivery services

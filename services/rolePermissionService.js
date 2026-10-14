@@ -15,6 +15,7 @@ const PERMISSION_CATALOG = {
   inventory: ['view', 'manage'],
   procurement: ['view', 'manage'],
   finance: ['view', 'manage'],
+  payroll_payment: ['view', 'prepare', 'confirm'],
   logistics: ['view', 'manage'],
   customers: ['view', 'manage'],
   staff: ['view', 'manage'],

@@ -41,6 +41,12 @@ const payrollPeriodSchema = new mongoose.Schema({
     paymentDate: Date,
     processedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     notes: { type: String, trim: true, maxlength: 1000 }
+  },
+  paymentSummary: {
+    confirmedEmployeeCount: { type: Number, min: 0, default: 0 },
+    requiredEmployeeCount: { type: Number, min: 0, default: 0 },
+    confirmedAmount: { type: Number, min: 0, default: 0 },
+    completedAt: Date
   }
 }, { timestamps: true });
 

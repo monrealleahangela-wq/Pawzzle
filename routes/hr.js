@@ -38,5 +38,11 @@ router.post('/payslips/:payslipId/adjustments', requirePermission('payroll.prepa
 router.patch('/payroll/:id/review', requirePermission('payroll.review', 'payroll.manage'), hr.reviewPeriod);
 router.patch('/payroll/:id/approve', requirePermission('payroll.approve', 'payroll.manage'), hr.approvePeriod);
 router.patch('/payroll/:id/pay', requirePermission('payroll.pay', 'payroll.manage'), hr.payPeriod);
+router.get('/payroll/:id/payments', requirePermission('payroll_payment.view'), hr.paymentObligations);
+router.post('/payroll/:id/payslips/:payslipId/payments', requirePermission('payroll_payment.prepare'), hr.createEmployeePaymentAttempt);
+router.post('/payroll/payments/:attemptId/retry', requirePermission('payroll_payment.prepare'), hr.retryEmployeePaymentAttempt);
+router.patch('/payroll/payments/:attemptId', requirePermission('payroll_payment.prepare'), hr.updateEmployeePaymentAttempt);
+router.post('/payroll/payments/:attemptId/confirm', requirePermission('payroll_payment.confirm'), hr.confirmEmployeePaymentAttempt);
+router.get('/payroll/payments/:attemptId/proof', requirePermission('payroll_payment.view', 'payroll_payment.prepare', 'payroll_payment.confirm'), hr.getEmployeePaymentProof);
 
 module.exports = router;

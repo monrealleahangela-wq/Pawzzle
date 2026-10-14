@@ -6,9 +6,9 @@ Pawzzle's Store HR module is deliberately scoped to Store employees. It adds att
 
 - The backend resolves the Store from the authenticated user. Non-platform users cannot select another Store by changing a request value.
 - Staff self-service routes derive the employee ID from the authenticated account.
-- Store Owners can configure policy, manage compensation, prepare, approve, and record payroll payment.
-- Finance Staff can view compensation and same-Store attendance, prepare/review payroll, and record an approved payroll as paid. They do not receive final approval by default.
-- Finance Staff cannot change their own employment/compensation, adjust their own payslip, review a period containing their salary, or record that period's external payment. A Store Owner or another authorized non-beneficiary must perform those period-wide actions.
+- Store Owners/Admins can configure policy, manage compensation, approve payroll, prepare external payment records, and independently confirm payments for other employees.
+- Finance Staff can view compensation and same-Store attendance, prepare/review payroll, and record external payment attempts for another employee. `payroll_payment.confirm` is not part of the Finance default; a Store Owner may delegate it through the Store role-permissions matrix.
+- Finance Staff cannot change their own employment/compensation, adjust their own payslip, review a period containing their salary, prepare or modify their own payment, or confirm their own payment. Store Owner/Admin retains the existing authority to record payroll that includes their own salary; this is audited and does not extend to Finance Staff.
 - Managers receive attendance visibility, attendance-exception review, and leave approval, but no salary access by default.
 - Employees see only their own finalized payslips.
 
@@ -44,7 +44,11 @@ Employment start and end dates bound payroll participation. Prior compensation a
 
 Pending/rejected location reviews and pending/rejected auto clock-outs do not contribute approved worked time. They create blocking payroll issues; payroll must be recomputed after the attendance exception is resolved before it can move to Reviewed.
 
-`Recorded as Paid` means an authorized person recorded a salary payment completed outside Pawzzle. Pawzzle does not initiate a bank transfer. Finalization atomically claims the Approved period, finalizes every payslip, settles linked Rider earnings, and creates payslip notifications. Repeating the same reference is idempotent; a conflicting reference is rejected.
+Approved payroll is paid per employee, not as one all-or-nothing Store transfer. Finance records an external payment as Processing or submits it For Confirmation after the transfer is reported complete; Pawzzle never initiates a transfer. An authorized Store Owner/Admin confirms the protected evidence before that employee's payslip becomes finalized and visible. Store Owners/Admins retain the established payroll authority, including recording their own salary; Finance users remain unable to prepare, alter, review, or confirm their own salary. Failed transfers can be retried as a new linked attempt; On Hold attempts must be deliberately resumed or failed. The Store payroll period becomes Paid only when every employee payslip in that period is confirmed.
+
+Payment state changes, the payslip state, Rider earning settlement, period completion summary, audit entry, and employee notification are committed in one MongoDB transaction. State claims and unique active-attempt/idempotency/reference indexes prevent concurrent duplicate processing. Legacy approved/paid snapshots remain unchanged; the old period-wide “record Paid” endpoint now returns a conflict rather than falsely marking every employee paid from one reference.
+
+External transfer references, payment destinations, and uploaded proofs are encrypted with AES-256-GCM before storage. The backend must have `PAYROLL_DATA_ENCRYPTION_KEY` configured as a managed 32-byte key (64 hexadecimal characters or base64 encoding of 32 bytes) in its secret manager before staff may record payment details. Do not put the key in source control, browser configuration, logs, or ordinary environment files. Payment references and destination accounts are masked in the HR view. Protected proof downloads require a same-Store payroll payment permission and are returned with no-store headers. No migration is performed on historical payment data.
 
 ## Explicitly outside scope
 

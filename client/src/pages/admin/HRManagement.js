@@ -7,6 +7,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { effectiveStaffType, hasUiActionPermission } from '../../utils/authorization';
 import { formatPeso } from '../../utils/paymentSummary';
 import { formatDurationMinutes } from '../../utils/durationFormat';
+import PayrollPaymentWorkflow from '../../components/hr/PayrollPaymentWorkflow';
 
 const money = formatPeso;
 const date = value => value ? new Date(value).toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: 'numeric' }) : '—';
@@ -145,8 +146,7 @@ const HRManagement = () => {
   };
   const recordPaid = async event => {
     event.preventDefault();
-    try { const response = await hrService.payPayroll(selectedPeriod._id, payRecord); toast.success(response.data.message); await loadTab(); await openPeriod(selectedPeriod._id); }
-    catch (error) { toast.error(error.response?.data?.message || 'Unable to record payroll payment.'); }
+    toast.error('Payroll is finalized per employee now. Use the independent employee payment panel above; no period-wide Paid action is available.');
   };
   const submitAdjustment = async event => {
     event.preventDefault();
@@ -190,10 +190,13 @@ const HRManagement = () => {
   const ownId = String(user?._id || user?.id || '');
   const financeOwnEmployee = finance && String(selectedEmployee || '') === ownId;
   const financeOwnPayslip = finance && payslips.some(slip => String(slip.employee?._id || slip.employee || '') === ownId);
+  const canPreparePayment = owner || finance || hasUiActionPermission(user, 'payroll_payment', 'prepare', false);
+  const canConfirmPayment = owner || hasUiActionPermission(user, 'payroll_payment', 'confirm', false);
 
   return <main className="mx-auto w-full max-w-7xl p-4 sm:p-6 text-slate-900 dark:text-slate-100">
     <div className="mb-5"><h1 className="text-2xl font-bold">Employees & Payroll</h1><p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Store-scoped attendance, leave, compensation, and payroll records.</p></div>
     <nav className="content-scroll-row mb-5 gap-2 border-b border-slate-200 dark:border-slate-800">{tabs.map(item => <button key={item.id} onClick={() => setSearchParams({ tab: item.id })} className={`flex shrink-0 items-center gap-2 whitespace-nowrap border-b-2 px-3 py-2 text-sm font-semibold ${tab === item.id ? 'border-primary text-primary' : 'border-transparent text-slate-500'}`}><item.icon size={16} />{item.label}</button>)}</nav>
+    {!loading && tab === 'payroll' && selectedPeriod && ['approved', 'paid'].includes(selectedPeriod.status) && <PayrollPaymentWorkflow period={selectedPeriod} actorId={ownId} canPrepare={canPreparePayment} canConfirm={canConfirmPayment} allowSelfProcessing={owner} onChanged={() => { loadTab(); openPeriod(selectedPeriod._id); }} />}
     {loading && <div className="flex min-h-48 items-center justify-center"><Loader2 className="animate-spin text-primary" /></div>}
 
     {!loading && tab === 'settings' && settings && <section className="mx-auto mb-5 max-w-4xl space-y-4 rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900"><div><h2 className="font-bold">Attendance timing controls</h2><p className="text-sm text-slate-500">Configure the schedule admission window and optional maximum-shift safeguard for this Store.</p></div><div className="grid gap-4 sm:grid-cols-2"><NumberField label="Time in before shift (minutes)" min={0} max={720} value={settings.timeInWindow?.earlyMinutes ?? settings.gracePeriodMinutes ?? 0} onChange={earlyMinutes => setSettings({ ...settings, timeInWindow: { ...settings.timeInWindow, earlyMinutes, lateMinutes: settings.timeInWindow?.lateMinutes ?? settings.gracePeriodMinutes ?? 0 } })} /><NumberField label="Time in after shift start (minutes)" min={0} max={720} value={settings.timeInWindow?.lateMinutes ?? settings.gracePeriodMinutes ?? 0} onChange={lateMinutes => setSettings({ ...settings, timeInWindow: { ...settings.timeInWindow, earlyMinutes: settings.timeInWindow?.earlyMinutes ?? settings.gracePeriodMinutes ?? 0, lateMinutes } })} /></div><label className="flex items-center gap-3 rounded-xl border border-slate-200 p-3 text-sm font-semibold dark:border-slate-800"><input type="checkbox" checked={!!settings.autoClockOut?.enabled} onChange={event => setSettings({ ...settings, autoClockOut: { ...settings.autoClockOut, enabled: event.target.checked } })} />Enable automatic clock-out after a configured maximum shift</label>{settings.autoClockOut?.enabled && <NumberField label="Maximum shift duration (minutes)" min={60} max={1440} value={settings.autoClockOut?.maximumShiftMinutes} onChange={maximumShiftMinutes => setSettings({ ...settings, autoClockOut: { ...settings.autoClockOut, maximumShiftMinutes } })} />}<p className="text-xs text-slate-500">Auto clock-outs remain pending until an authorized reviewer approves or corrects them; unresolved records block payroll review.</p><Button onClick={saveSettings}>Save Attendance Timing</Button></section>}
