@@ -96,20 +96,22 @@ const recalculateBooking = async (booking, service, store, { includeAuthoritativ
   return { breakdown, resolvedAddOns, discountAmount };
 };
 
-const getEligibleForBooking = async (booking, service) => getEligibleStaff(
+const getEligibleForBooking = async (booking, service, store) => getEligibleStaff(
   service,
   booking.bookingDate,
   booking.startTime,
   booking.endTime,
-  booking._id
+  booking._id,
+  store
 );
 
-const getBookingStaffReadiness = async (booking, service) => getStaffAssignmentReadiness(
+const getBookingStaffReadiness = async (booking, service, store) => getStaffAssignmentReadiness(
   service,
   booking.bookingDate,
   booking.startTime,
   booking.endTime,
-  booking._id
+  booking._id,
+  store
 );
 
 const assertBookingIsCurrent = booking => {
@@ -127,9 +129,9 @@ const assertBookingIsCurrent = booking => {
   }
 };
 
-const validateAssignedStaff = async (booking, service) => {
+const validateAssignedStaff = async (booking, service, store) => {
   if (!booking.staff) throw Object.assign(new Error('A qualified staff member must be assigned first.'), { statusCode: 409 });
-  const candidates = await getEligibleForBooking(booking, service);
+  const candidates = await getEligibleForBooking(booking, service, store);
   const match = candidates.find(item => String(item.staff._id) === String(booking.staff));
   if (!match) throw Object.assign(new Error('The assigned staff member is no longer qualified or available for this schedule.'), { statusCode: 409 });
   return { staff: match.staff, candidates };
@@ -141,7 +143,7 @@ const prepareForPayment = async bookingOrId => {
   assertBookingIsCurrent(booking);
   const bookingRules = await validateBookingRules(service, booking.bookingDate, booking.startTime, booking._id);
   if (!bookingRules.valid) throw Object.assign(new Error(bookingRules.reason), { statusCode: 409 });
-  const { staff } = await validateAssignedStaff(booking, service);
+  const { staff } = await validateAssignedStaff(booking, service, store);
   const pricing = await recalculateBooking(booking, service, store);
   booking.selectedAddOns = pricing.resolvedAddOns;
   booking.pricingBreakdown = pricing.breakdown;

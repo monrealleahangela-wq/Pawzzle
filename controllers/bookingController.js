@@ -662,8 +662,8 @@ const getEligibleBookingStaff = async (req, res) => {
       return res.status(409).json({ message: 'Staff can only be changed while the booking awaits your confirmation.' });
     }
     const [candidates, assignmentReadiness] = await Promise.all([
-      getEligibleForBooking(booking, service),
-      getBookingStaffReadiness(booking, service)
+      getEligibleForBooking(booking, service, store),
+      getBookingStaffReadiness(booking, service, store)
     ]);
     const staffIds = candidates.map(item => item.staff._id);
     const ratings = await ratingMapForStaff(staffIds);
@@ -697,13 +697,14 @@ const assignBookingStaff = async (req, res) => {
     if (!['pending', 'awaiting_customer_confirmation'].includes(booking.status)) {
       return res.status(409).json({ message: 'Staff assignment is closed for this booking.' });
     }
-    const candidates = await getEligibleForBooking(booking, service);
+    const candidates = await getEligibleForBooking(booking, service, store);
     const selected = candidates.find(item => String(item.staff._id) === String(req.body.staffId));
     if (!selected) {
-      const readiness = await getBookingStaffReadiness(booking, service);
+      const readiness = await getBookingStaffReadiness(booking, service, store);
       return res.status(409).json({
         message: readiness.message || 'The selected staff member is not qualified or available for this booking.',
-        reason: readiness.reason || 'no_eligible_staff'
+        reason: readiness.reason || 'no_eligible_staff',
+        ...(readiness.scheduleReason ? { scheduleReason: readiness.scheduleReason } : {})
       });
     }
 
@@ -765,10 +766,10 @@ const assignBookingStaff = async (req, res) => {
 const selectBookingStaff = async (req, res) => {
   try {
     if (!mongoose.Types.ObjectId.isValid(req.body.staffId)) return res.status(400).json({ message: 'Valid staff ID is required.' });
-    const { booking, service } = await loadContext(req.params.id);
+    const { booking, service, store } = await loadContext(req.params.id);
     if (String(booking.customer) !== String(req.user._id)) return res.status(403).json({ message: 'Access denied.' });
     if (booking.status !== 'awaiting_customer_confirmation') return res.status(409).json({ message: 'Staff can no longer be changed for this booking.' });
-    const candidates = await getEligibleForBooking(booking, service);
+    const candidates = await getEligibleForBooking(booking, service, store);
     const selected = candidates.find(item => String(item.staff._id) === String(req.body.staffId));
     if (!selected) return res.status(409).json({ message: 'The selected staff member is no longer available or qualified.' });
     booking.staff = selected.staff._id;
@@ -868,11 +869,11 @@ const confirmBookingForPayment = async (req, res) => {
 
 const getBookingStaffProfile = async (req, res) => {
   try {
-    const { booking, service } = await loadContext(req.params.id);
+    const { booking, service, store } = await loadContext(req.params.id);
     await booking.populate('store', 'owner');
     const ownsBooking = String(booking.customer) === String(req.user._id);
     if (!ownsBooking && !isBookingManager(req.user, booking)) return res.status(403).json({ message: 'Access denied.' });
-    const candidates = await getEligibleForBooking(booking, service);
+    const candidates = await getEligibleForBooking(booking, service, store);
     const allowed = String(booking.staff) === String(req.params.staffId)
       || candidates.some(item => String(item.staff._id) === String(req.params.staffId));
     if (!allowed) return res.status(404).json({ message: 'Staff profile is not available for this booking.' });

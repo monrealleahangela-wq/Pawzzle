@@ -166,41 +166,59 @@ const calculateServicePrice = (service, petData = {}, bookingData = {}, selected
  * @param {Number} bufferTime  - Buffer minutes between bookings
  * @returns {Boolean} true if available
  */
-const checkStaffAvailability = async (staffId, bookingDate, startTime, endTime, bufferTime = 0, excludeBookingId = null) => {
+const NON_BLOCKING_BOOKING_STATUSES = ['cancelled', 'confirmation_expired', 'rejected', 'no_show', 'completed', 'finished'];
+
+const bookingDateRange = bookingDate => {
+  const { bookingDateKey } = require('./staffSpecialization');
+  const key = bookingDateKey(bookingDate);
+  if (!key) return null;
+  const start = new Date(`${key}T00:00:00.000Z`);
+  return { start, end: new Date(start.getTime() + 86400000 - 1) };
+};
+
+const checkStaffAvailability = async (staffId, bookingDate, startTime, endTime, bufferTime = 0, excludeBookingId = null, storeOrTimezone) => {
   const Booking = require('../models/Booking');
   const User = require('../models/User');
-  const { isActiveStaffAccount, isWithinStaffSchedule, isProfessionallyAssignable } = require('./staffSpecialization');
+  const { isActiveStaffAccount, evaluateStaffSchedule, isProfessionallyAssignable } = require('./staffSpecialization');
 
   const staff = await User.findById(staffId).select('role staffType isActive isDeleted staffStatus professionalProfile');
   if (!isActiveStaffAccount(staff)) return false;
   if (!isProfessionallyAssignable(staff, new Date(bookingDate))) return false;
-  if (!isWithinStaffSchedule(staff, bookingDate, startTime, endTime)) return false;
+  if (!evaluateStaffSchedule(staff, bookingDate, startTime, endTime, storeOrTimezone).eligible) return false;
 
   const toMinutes = (timeStr) => {
-    const [h, m] = timeStr.split(':').map(Number);
-    return h * 60 + m;
+    const match = String(timeStr || '').match(/^([01]?\d|2[0-3]):([0-5]\d)$/);
+    return match ? Number(match[1]) * 60 + Number(match[2]) : null;
   };
 
-  const requestedStart = toMinutes(startTime) - bufferTime;
-  const requestedEnd = toMinutes(endTime) + bufferTime;
+  const baseStart = toMinutes(startTime);
+  const baseEnd = toMinutes(endTime);
+  const resolvedBuffer = Number(bufferTime);
+  if (baseStart === null || baseEnd === null || baseStart >= baseEnd ||
+      !Number.isFinite(resolvedBuffer) || resolvedBuffer < 0) return false;
+  const requestedStart = baseStart - resolvedBuffer;
+  const requestedEnd = baseEnd + resolvedBuffer;
 
-  // Find all non-cancelled bookings for this staff on this date
-  const dateStart = new Date(bookingDate);
-  dateStart.setHours(0, 0, 0, 0);
-  const dateEnd = new Date(bookingDate);
-  dateEnd.setHours(23, 59, 59, 999);
+  const range = bookingDateRange(bookingDate);
+  if (!range) return false;
 
   const bookingQuery = {
     staff: staffId,
-    bookingDate: { $gte: dateStart, $lte: dateEnd },
-    status: { $nin: ['cancelled', 'confirmation_expired', 'rejected', 'no_show'] }
+    bookingDate: { $gte: range.start, $lte: range.end },
+    status: { $nin: NON_BLOCKING_BOOKING_STATUSES },
+    isDeleted: { $ne: true }
   };
   if (excludeBookingId) bookingQuery._id = { $ne: excludeBookingId };
   const existingBookings = await Booking.find(bookingQuery);
 
   for (const booking of existingBookings) {
+    if (NON_BLOCKING_BOOKING_STATUSES.includes(booking.status) || booking.isDeleted === true) continue;
+    if (excludeBookingId && String(booking._id) === String(excludeBookingId)) continue;
     const existingStart = toMinutes(booking.startTime);
     const existingEnd = toMinutes(booking.endTime);
+    // A malformed active interval must fail closed instead of silently
+    // weakening double-booking protection for legacy data.
+    if (existingStart === null || existingEnd === null || existingStart >= existingEnd) return false;
 
     // Check overlap (with buffer)
     if (requestedStart < existingEnd && requestedEnd > existingStart) {
@@ -216,7 +234,7 @@ const checkStaffAvailability = async (staffId, bookingDate, startTime, endTime, 
  * staff member for a booking slot. This is the single eligibility source used
  * by automatic assignment, administrator assignment, and customer reassignment.
  */
-const getEligibleStaff = async (service, bookingDate, startTime, endTime, excludeBookingId = null) => {
+const getEligibleStaff = async (service, bookingDate, startTime, endTime, excludeBookingId = null, storeOrTimezone) => {
   const Booking = require('../models/Booking');
   const User = require('../models/User');
   const { hasPermission } = require('../config/permissions');
@@ -225,7 +243,7 @@ const getEligibleStaff = async (service, bookingDate, startTime, endTime, exclud
     getProfessionalVerificationStatus,
     isActiveStaffAccount,
     isRoleEligibleForService,
-    isWithinStaffSchedule,
+    evaluateStaffSchedule,
     isProfessionallyAssignable
   } = require('./staffSpecialization');
   const candidates = [];
@@ -239,15 +257,16 @@ const getEligibleStaff = async (service, bookingDate, startTime, endTime, exclud
     if (!isRoleEligibleForService(getStaffSpecializationRole(staff), service)) continue;
     if (!hasPermission(staff, 'bookings.assigned')) continue;
     if (!isProfessionallyAssignable(staff, new Date(bookingDate))) continue;
-    if (!isWithinStaffSchedule(staff, bookingDate, startTime, endTime)) continue;
-    if (!(await checkStaffAvailability(staff._id, bookingDate, startTime, endTime, bufferTime, excludeBookingId))) continue;
+    if (!evaluateStaffSchedule(staff, bookingDate, startTime, endTime, storeOrTimezone).eligible) continue;
+    if (!(await checkStaffAvailability(staff._id, bookingDate, startTime, endTime, bufferTime, excludeBookingId, storeOrTimezone))) continue;
 
-    const dateStart = new Date(bookingDate); dateStart.setHours(0, 0, 0, 0);
-    const dateEnd = new Date(bookingDate); dateEnd.setHours(23, 59, 59, 999);
+    const range = bookingDateRange(bookingDate);
+    if (!range) continue;
     const countQuery = {
       staff: staff._id,
-      bookingDate: { $gte: dateStart, $lte: dateEnd },
-      status: { $nin: ['cancelled', 'confirmation_expired', 'rejected', 'no_show'] }
+      bookingDate: { $gte: range.start, $lte: range.end },
+      status: { $nin: NON_BLOCKING_BOOKING_STATUSES },
+      isDeleted: { $ne: true }
     };
     if (excludeBookingId) countQuery._id = { $ne: excludeBookingId };
     const bookingCount = await Booking.countDocuments(countQuery);
@@ -314,30 +333,45 @@ const STAFF_ASSIGNMENT_MESSAGES = {
   no_eligible_staff: 'No qualified specialist is available for this Service and schedule.'
 };
 
+const STAFF_SCHEDULE_MESSAGES = {
+  outside_working_hours: 'Assigned specialists are not scheduled for the full Booking time.',
+  overlapping_break: 'Assigned specialists have a configured break that overlaps this Booking time.',
+  approved_leave: 'Assigned specialists are on approved leave for this Booking date.',
+  temporary_unavailable: 'Assigned specialists are temporarily unavailable during this Booking time.',
+  emergency_unavailable: 'Assigned specialists are currently marked unavailable for assignment.',
+  invalid_schedule_configuration: 'A specialist schedule or Store timezone needs correction before assignment.'
+};
+
 /**
  * Server-authoritative discovery diagnostics for the Booking UI. This mirrors
  * getEligibleStaff without exposing staff identities or private availability
  * details in rejection explanations.
  */
-const getStaffAssignmentReadiness = async (service, bookingDate, startTime, endTime, excludeBookingId = null) => {
+const getStaffAssignmentReadiness = async (service, bookingDate, startTime, endTime, excludeBookingId = null, storeOrTimezone) => {
   const User = require('../models/User');
   const { hasPermission } = require('../config/permissions');
   const {
     getStaffSpecializationRole,
     isActiveStaffAccount,
     isRoleEligibleForService,
-    isWithinStaffSchedule,
+    evaluateStaffSchedule,
     isProfessionallyAssignable
   } = require('./staffSpecialization');
   const counts = {};
+  const scheduleRejectionCounts = {};
   const reject = reason => { counts[reason] = (counts[reason] || 0) + 1; };
+  const rejectSchedule = reason => {
+    reject('outside_schedule');
+    scheduleRejectionCounts[reason] = (scheduleRejectionCounts[reason] || 0) + 1;
+  };
   const staffIds = service.assignedStaff || [];
   if (!staffIds.length) return {
     reason: 'no_assigned_staff',
     message: STAFF_ASSIGNMENT_MESSAGES.no_assigned_staff,
     eligibleCount: 0,
     assignedCount: 0,
-    rejectionCounts: {}
+    rejectionCounts: {},
+    scheduleRejectionCounts: {}
   };
 
   let eligibleCount = 0;
@@ -349,8 +383,9 @@ const getStaffAssignmentReadiness = async (service, bookingDate, startTime, endT
     if (!isRoleEligibleForService(getStaffSpecializationRole(staff), service)) { reject('incompatible_role'); continue; }
     if (!hasPermission(staff, 'bookings.assigned')) { reject('missing_permission'); continue; }
     if (!isProfessionallyAssignable(staff, new Date(bookingDate))) { reject('professional_verification_required'); continue; }
-    if (!isWithinStaffSchedule(staff, bookingDate, startTime, endTime)) { reject('outside_schedule'); continue; }
-    if (!(await checkStaffAvailability(staff._id, bookingDate, startTime, endTime, service.bufferTime || 0, excludeBookingId))) {
+    const schedule = evaluateStaffSchedule(staff, bookingDate, startTime, endTime, storeOrTimezone);
+    if (!schedule.eligible) { rejectSchedule(schedule.reason); continue; }
+    if (!(await checkStaffAvailability(staff._id, bookingDate, startTime, endTime, service.bufferTime || 0, excludeBookingId, storeOrTimezone))) {
       reject('schedule_conflict'); continue;
     }
     eligibleCount += 1;
@@ -361,19 +396,29 @@ const getStaffAssignmentReadiness = async (service, bookingDate, startTime, endT
     message: STAFF_ASSIGNMENT_MESSAGES.eligible,
     eligibleCount,
     assignedCount: staffIds.length,
-    rejectionCounts: counts
+    rejectionCounts: counts,
+    scheduleRejectionCounts
   };
   const priority = [
     'professional_verification_required', 'schedule_conflict', 'outside_schedule',
     'wrong_store', 'incompatible_role', 'missing_permission', 'inactive_staff'
   ];
   const reason = priority.find(key => counts[key]) || 'no_eligible_staff';
+  const schedulePriority = [
+    'invalid_schedule_configuration', 'emergency_unavailable', 'approved_leave',
+    'temporary_unavailable', 'overlapping_break', 'outside_working_hours'
+  ];
+  const scheduleReason = reason === 'outside_schedule'
+    ? schedulePriority.find(key => scheduleRejectionCounts[key]) || null
+    : null;
   return {
     reason,
-    message: STAFF_ASSIGNMENT_MESSAGES[reason],
+    ...(scheduleReason ? { scheduleReason } : {}),
+    message: scheduleReason ? STAFF_SCHEDULE_MESSAGES[scheduleReason] : STAFF_ASSIGNMENT_MESSAGES[reason],
     eligibleCount: 0,
     assignedCount: staffIds.length,
-    rejectionCounts: counts
+    rejectionCounts: counts,
+    scheduleRejectionCounts
   };
 };
 
@@ -387,11 +432,11 @@ const getStaffAssignmentReadiness = async (service, bookingDate, startTime, endT
  * @param {String} endTime      - HH:MM
  * @returns {String|null} Staff user ID or null
  */
-const autoAssignStaff = async (service, bookingDate, startTime, endTime) => {
+const autoAssignStaff = async (service, bookingDate, startTime, endTime, storeOrTimezone) => {
   if (!service.assignedStaff || service.assignedStaff.length === 0) {
     return null;
   }
-  const candidates = await getEligibleStaff(service, bookingDate, startTime, endTime);
+  const candidates = await getEligibleStaff(service, bookingDate, startTime, endTime, null, storeOrTimezone);
 
   if (candidates.length === 0) return null;
 

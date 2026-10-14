@@ -102,7 +102,8 @@ test('Booking discovery accepts a same-Store legacy-active direct-role Veterinar
       message: 'Qualified staff are available for this service and schedule.',
       eligibleCount: 1,
       assignedCount: 1,
-      rejectionCounts: {}
+      rejectionCounts: {},
+      scheduleRejectionCounts: {}
     });
   });
 });
@@ -135,7 +136,8 @@ test('Booking readiness distinguishes service setup, Store scope, and schedule e
     message: 'Assign at least one compatible specialist to this Service before preparing a Booking proposal.',
     eligibleCount: 0,
     assignedCount: 0,
-    rejectionCounts: {}
+    rejectionCounts: {},
+    scheduleRejectionCounts: {}
   });
 
   await withEligibilityModels({ ...legacyVeterinarian, store: 'store-2' }, async () => {
@@ -154,8 +156,10 @@ test('Booking readiness distinguishes service setup, Store scope, and schedule e
   await withEligibilityModels(outsideSchedule, async () => {
     const readiness = await getStaffAssignmentReadiness(service, bookingDate, '10:00', '11:00', 'booking-1');
     assert.equal(readiness.reason, 'outside_schedule');
-    assert.match(readiness.message, /outside their working hours/i);
+    assert.equal(readiness.scheduleReason, 'outside_working_hours');
+    assert.match(readiness.message, /not scheduled for the full Booking time/i);
     assert.deepEqual(readiness.rejectionCounts, { outside_schedule: 1 });
+    assert.deepEqual(readiness.scheduleRejectionCounts, { outside_working_hours: 1 });
   });
 });
 

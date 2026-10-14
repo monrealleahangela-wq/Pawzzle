@@ -197,7 +197,8 @@ test('proposal confirmation returns the server eligibility reason when selected 
 
   assert.equal(response.statusCode, 409);
   assert.equal(response.body.reason, 'outside_schedule');
-  assert.match(response.body.message, /outside their working hours/i);
+  assert.equal(response.body.scheduleReason, 'outside_working_hours');
+  assert.match(response.body.message, /not scheduled for the full Booking time/i);
   assert.equal(booking.saveCount, 0);
   assert.equal(notificationsSaved, 0);
 });
