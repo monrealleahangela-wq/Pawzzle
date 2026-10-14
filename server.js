@@ -220,7 +220,8 @@ if (isProduction && buildPath) {
 }
 
 const PORT = process.env.PORT || 5000;
-server.listen(PORT, () => {
+const HOST = require('./utils/serverBinding').resolveServerHost();
+server.listen(PORT, HOST, () => {
     console.log(`\n🚀 [MASTER V3] SERVER STARTUP`);
     console.log(`✅ PORT: ${PORT}\n`);
 });

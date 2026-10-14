@@ -3,7 +3,11 @@ const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const User = require('../models/User');
 
 // ─── Google OAuth ─────────────────────────────────────────────────────────────
-passport.use(new GoogleStrategy({
+// Google OAuth is optional for password-login deployments and local development.
+// Register only when both provider credentials are present.
+const googleOAuthConfigured = Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
+
+if (googleOAuthConfigured) passport.use(new GoogleStrategy({
     clientID: process.env.GOOGLE_CLIENT_ID,
     clientSecret: process.env.GOOGLE_CLIENT_SECRET,
     callbackURL: process.env.GOOGLE_CALLBACK_URL || '/api/auth/google/callback',

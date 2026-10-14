@@ -184,14 +184,26 @@ const issueTokenAndRedirect = async (req, res) => {
 };
 
 // ─── Google OAuth Routes ──────────────────────────────────────────────────────
-router.get('/google',
-  passport.authenticate('google', { scope: ['profile', 'email'], session: false })
-);
+// Google OAuth is optional. Do not mount Passport handlers for a strategy that
+// was intentionally not registered when credentials are absent.
+const googleOAuthConfigured = Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
+const googleOAuthUnavailable = (_req, res) => res.status(503).json({
+  message: 'Google sign-in is not configured in this environment.'
+});
 
-router.get('/google/callback',
-  passport.authenticate('google', { session: false, failureRedirect: '/login?error=google_failed' }),
-  issueTokenAndRedirect
-);
+if (googleOAuthConfigured) {
+  router.get('/google',
+    passport.authenticate('google', { scope: ['profile', 'email'], session: false })
+  );
+
+  router.get('/google/callback',
+    passport.authenticate('google', { session: false, failureRedirect: '/login?error=google_failed' }),
+    issueTokenAndRedirect
+  );
+} else {
+  router.get('/google', googleOAuthUnavailable);
+  router.get('/google/callback', googleOAuthUnavailable);
+}
 
 
 module.exports = router;

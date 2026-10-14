@@ -136,7 +136,7 @@ const processStoreComplianceExpirations = async io => {
   const stores = await Store.find({
     isDeleted: { $ne: true },
     'businessCompliance.documents.versions': { $elemMatch: { verificationStatus: 'verified', hasExpiration: true, expirationDate: { $lte: horizon } } }
-  }).select('+businessCompliance.documents.versions.documentUrl owner name businessCompliance taxProfile');
+  }).select('owner name businessCompliance taxProfile');
   let notificationsCreated = 0;
   for (const store of stores) {
     const compliance = store.businessCompliance || (store.businessCompliance = {});
