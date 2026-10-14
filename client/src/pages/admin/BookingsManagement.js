@@ -33,6 +33,7 @@ import { PLATFORM_ADMIN_ROLES, STORE_ADMIN_ROLES, OPERATIONAL_ROLES, effectiveSt
 import { getUserFacingError } from '../../utils/userFacingError';
 import { ServiceIntakeSummary } from '../../components/booking/ServiceSpecificBookingFields';
 import { getStaffWorkspaceConfig } from '../../utils/staffWorkspace';
+import ModalViewport from '../../components/ui/ModalViewport';
 
 
 // Simple linear state transition mapping for manual progressing
@@ -68,15 +69,6 @@ const BookingsManagement = () => {
   useEffect(() => {
     setBookingModalStep('details');
   }, [selectedBooking?._id]);
-
-  useEffect(() => {
-    if (!selectedBooking) return undefined;
-    const closeOnEscape = event => {
-      if (event.key === 'Escape' && !assigningStaff) setSelectedBooking(null);
-    };
-    window.addEventListener('keydown', closeOnEscape);
-    return () => window.removeEventListener('keydown', closeOnEscape);
-  }, [selectedBooking, assigningStaff]);
 
   useEffect(() => {
     if (!selectedBooking?._id || !['pending', 'awaiting_customer_confirmation'].includes(selectedBooking.status)) {
@@ -540,14 +532,22 @@ const BookingsManagement = () => {
 
       {/* Booking Details Modal */}
       {selectedBooking && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-2 animate-in fade-in duration-300">
+        <ModalViewport
+          onClose={() => !assigningStaff && setSelectedBooking(null)}
+          closeOnBackdrop={false}
+          closeOnEscape={!assigningStaff}
+          className="z-[1000] items-center p-2 sm:p-4"
+        >
           <div
             role="dialog"
+            tabIndex={-1}
             aria-modal="true"
             aria-labelledby="booking-details-title"
-            className="bg-white w-full max-w-xl rounded-[2rem] overflow-hidden shadow-2xl animate-in slide-in-from-bottom-4 duration-500 border border-slate-200 flex flex-col max-h-[95vh]"
+            aria-busy={eligibleServiceStaffLoading}
+            data-testid="booking-details-modal"
+            className="flex min-h-0 max-h-[calc(100dvh-1rem)] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl animate-in slide-in-from-bottom-4 duration-500 sm:max-h-[calc(100dvh-2rem)] sm:rounded-[2rem]"
           >
-            <header className="shrink-0 bg-slate-900 px-4 py-3 text-white flex justify-between items-center relative overflow-hidden">
+            <header data-testid="booking-modal-header" className="relative flex shrink-0 items-center justify-between overflow-hidden bg-slate-900 px-4 py-3 text-white sm:px-5">
               <div className="absolute top-0 right-0 p-6 opacity-10 blur-3xl pointer-events-none">
                 <ShieldCheck className="w-24 h-24 text-primary-500" />
               </div>
@@ -567,15 +567,17 @@ const BookingsManagement = () => {
                 </div>
               </div>
               <button
+                type="button"
                 onClick={() => setSelectedBooking(null)}
                 aria-label="Close booking details"
-                className="relative z-10 w-7 h-7 bg-white/10 hover:bg-white/20 border border-white/10 rounded-lg flex items-center justify-center transition-all active:scale-95 duration-300 group"
+                data-autofocus="true"
+                className="relative z-10 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/10 transition-all duration-300 hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white active:scale-95"
               >
                 <X className="h-3.5 w-3.5 text-white" />
               </button>
             </header>
 
-            <div className="flex-1 p-4 sm:p-6 space-y-6 overflow-y-auto no-scrollbar scroll-smooth">
+            <div data-testid="booking-modal-content" className="min-h-0 min-w-0 flex-1 space-y-5 overflow-y-auto overscroll-contain p-4 scroll-smooth sm:p-5">
               {/* Status Tracker */}
               <div className="relative pt-4 pb-12">
                 <div className="absolute left-[5%] right-[5%] top-1/2 -translate-y-1/2 h-1 bg-slate-100 rounded-full" />
@@ -607,47 +609,44 @@ const BookingsManagement = () => {
               </div>
 
               {/* Customer & Service Info */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
-                <div className="space-y-8">
-                  <div className="flex items-start gap-6">
-                    <div className="w-16 h-16 bg-slate-50 rounded-2xl border border-slate-100 flex items-center justify-center text-slate-300">
-                      <User className="h-8 w-8" />
-                    </div>
-                    <div>
-                      <label className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] block mb-1.5">Customer Info</label>
-                      <h4 className="text-xl font-black text-slate-900 uppercase tracking-tight leading-none mb-2">{selectedBooking.customer?.firstName} {selectedBooking.customer?.lastName}</h4>
-                      <p className="text-[10px] font-bold text-primary-600 tracking-tight mb-1.5">{selectedBooking.customer?.email}</p>
-                      <div className="px-3 py-1 bg-slate-50 rounded-lg border border-slate-100 text-[10px] font-bold text-slate-600 w-fit">
-                        {selectedBooking.customer?.phone || 'No phone provided'}
-                      </div>
+              <div data-testid="booking-summary-grid" className="grid min-w-0 grid-cols-1 gap-3 md:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)]">
+                <section className="flex min-w-0 items-start gap-4 rounded-2xl border border-slate-100 bg-white p-4">
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-slate-100 bg-slate-50 text-slate-300">
+                    <User className="h-6 w-6" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="mb-1.5 text-[9px] font-black uppercase tracking-[0.2em] text-slate-400">Customer Info</p>
+                    <h4 className="mb-2 break-words text-lg font-black uppercase leading-tight tracking-tight text-slate-900">{selectedBooking.customer?.firstName} {selectedBooking.customer?.lastName}</h4>
+                    <p className="mb-1.5 break-words text-[10px] font-bold tracking-tight text-primary-600">{selectedBooking.customer?.email}</p>
+                    <div className="w-fit max-w-full break-words rounded-lg border border-slate-100 bg-slate-50 px-3 py-1 text-[10px] font-bold text-slate-600">
+                      {selectedBooking.customer?.phone || 'No phone provided'}
                     </div>
                   </div>
-                </div>
+                </section>
 
-                <div className="grid grid-cols-2 gap-6">
-                  <div className="p-6 bg-slate-50/50 rounded-[2rem] border border-slate-100 hover:border-primary-200 transition-all group">
-                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-[0.4em] block mb-3 group-hover:text-primary-600 transition-colors">Service</label>
-                    <p className="text-[13px] font-black text-slate-900 uppercase leading-none mb-1.5">{selectedBooking.service?.name}</p>
-                    <div className="flex items-center gap-2">
-                        <span className="text-[10px] font-black text-primary-600 bg-primary-50 px-2 py-0.5 rounded-md border border-primary-100">{selectedBooking.service?.duration} Min</span>
-                        <Link 
-                            to={`/services?service=${selectedBooking.service?._id}`}
-                            className="text-[9px] font-black text-slate-400 hover:text-primary-600 uppercase tracking-widest flex items-center gap-1 transition-colors"
-                        >
-                            <ExternalLink className="h-3 w-3" /> View Page
-                        </Link>
-                    </div>
+                <section className="group min-w-0 rounded-2xl border border-slate-100 bg-slate-50/50 p-4 transition-all hover:border-primary-200">
+                  <p className="mb-2 text-[9px] font-black uppercase tracking-[0.25em] text-slate-400 transition-colors group-hover:text-primary-600">Service</p>
+                  <p data-testid="booking-service-name" className="mb-2 break-words text-[13px] font-black uppercase leading-snug text-slate-900">{selectedBooking.service?.name}</p>
+                  <div className="flex min-w-0 flex-wrap items-center gap-2">
+                    <span className="rounded-md border border-primary-100 bg-primary-50 px-2 py-0.5 text-[10px] font-black text-primary-600">{selectedBooking.service?.duration} Min</span>
+                    <Link
+                      to={`/services?service=${selectedBooking.service?._id}`}
+                      className="flex items-center gap-1 text-[9px] font-black uppercase tracking-widest text-slate-400 transition-colors hover:text-primary-600"
+                    >
+                      <ExternalLink className="h-3 w-3 shrink-0" /> View Page
+                    </Link>
                   </div>
-                  <div className="p-6 bg-slate-50/50 rounded-[2rem] border border-slate-100 hover:border-emerald-200 transition-all group">
-                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-[0.4em] block mb-3 group-hover:text-emerald-600 transition-colors">Venue</label>
-                    <p className="text-[13px] font-black text-slate-900 uppercase leading-none mb-1.5">
-                      {selectedBooking.isHomeService ? 'HOME SERVICE' : 'IN-STORE'}
-                    </p>
-                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-tight flex items-center gap-1.5">
-                      <MapPin className="h-3.5 w-3.5" /> {selectedBooking.address?.city || 'In-Store'}
-                    </p>
-                  </div>
-                </div>
+                </section>
+
+                <section className="group min-w-0 rounded-2xl border border-slate-100 bg-slate-50/50 p-4 transition-all hover:border-emerald-200">
+                  <p className="mb-2 text-[9px] font-black uppercase tracking-[0.25em] text-slate-400 transition-colors group-hover:text-emerald-600">Venue</p>
+                  <p className="mb-2 break-words text-[13px] font-black uppercase leading-snug text-slate-900">
+                    {selectedBooking.isHomeService ? 'HOME SERVICE' : 'IN-STORE'}
+                  </p>
+                  <p className="flex min-w-0 items-start gap-1.5 break-words text-[10px] font-bold uppercase leading-snug tracking-tight text-slate-500">
+                    <MapPin className="h-3.5 w-3.5 shrink-0" /> <span className="min-w-0 break-words">{selectedBooking.address?.city || 'In-Store'}</span>
+                  </p>
+                </section>
               </div>
 
               {/* Pet Profile Information - NEW SECTION */}
@@ -849,20 +848,20 @@ const BookingsManagement = () => {
             </div>
 
             {/* Actions */}
-            <footer className="shrink-0 p-6 sm:p-8 bg-slate-50 border-t border-slate-100 flex flex-wrap gap-4 relative z-10">
+            <footer data-testid="booking-modal-footer" className="relative z-10 flex shrink-0 flex-col gap-2 border-t border-slate-100 bg-slate-50 p-3 sm:flex-row sm:flex-wrap sm:items-center sm:px-4 sm:py-3">
               {bookingCanPrepareProposal && bookingModalStep === 'details' && (
                 <button
                   type="button"
                   onClick={() => setBookingModalStep('assignment')}
-                  className="flex-1 min-w-[220px] px-6 py-3.5 bg-primary-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] shadow-lg hover:bg-primary-700 transition-all active:scale-[0.98] flex items-center justify-center gap-3"
+                  className="flex min-h-10 min-w-0 flex-1 items-center justify-center gap-2 rounded-xl bg-primary-600 px-4 py-2.5 text-[10px] font-black uppercase tracking-[0.16em] text-white shadow-md transition-all hover:bg-primary-700 active:scale-[0.98]"
                 >
                   Continue to Staff Assignment
                   <ArrowRight className="h-4 w-4" />
                 </button>
               )}
               {bookingCanPrepareProposal && bookingModalStep === 'assignment' && (
-                <div className="w-full space-y-3" aria-label="Staff assignment step">
-                  <div className="flex items-center justify-between gap-3">
+                <div className="w-full space-y-2" aria-label="Staff assignment step">
+                  <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                     <button
                       type="button"
                       onClick={() => setBookingModalStep('details')}
@@ -871,7 +870,14 @@ const BookingsManagement = () => {
                       <ArrowLeft className="h-4 w-4" />
                       Back to Details
                     </button>
-                    <p className="text-right text-[10px] font-semibold text-slate-500">Your selections are preserved when you go back.</p>
+                    <p className="order-3 w-full text-[10px] font-semibold text-slate-500 sm:order-none sm:min-w-0 sm:flex-1 sm:text-right">Your selections are preserved when you go back.</p>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedBooking(null)}
+                      className="ml-auto inline-flex h-10 items-center justify-center rounded-xl bg-slate-200 px-4 text-[10px] font-black uppercase tracking-widest text-slate-600 transition-all hover:bg-slate-300 active:scale-[0.98] sm:ml-0"
+                    >
+                      Close
+                    </button>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-[1fr_150px] gap-2">
                   <select
@@ -910,23 +916,25 @@ const BookingsManagement = () => {
                       </div>
                     </div>
                   ) : null}
-                  <textarea
-                    aria-label="Customer-visible proposal instructions"
-                    rows={2}
-                    maxLength={2000}
-                    value={proposalInstructions}
-                    onChange={event => setProposalInstructions(event.target.value)}
-                    placeholder="Customer-visible preparation or service instructions (optional)"
-                    className="w-full p-3 rounded-xl border border-slate-200 bg-white text-xs text-slate-700 resize-none outline-none focus:border-primary-500"
-                  />
-                  <button
-                    type="button"
-                    disabled={!selectedServiceStaffId || !proposalDuration || assigningStaff}
-                    onClick={handleAssignServiceStaff}
-                    className="h-10 px-4 rounded-xl bg-primary-600 text-white text-[10px] font-black uppercase tracking-widest disabled:opacity-50"
-                  >
-                    {assigningStaff ? 'Sending proposal...' : selectedBooking.status === 'pending' ? 'Prepare & Send Proposal' : 'Update Proposal'}
-                  </button>
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
+                    <textarea
+                      aria-label="Customer-visible proposal instructions"
+                      rows={2}
+                      maxLength={2000}
+                      value={proposalInstructions}
+                      onChange={event => setProposalInstructions(event.target.value)}
+                      placeholder="Customer-visible preparation or service instructions (optional)"
+                      className="min-h-10 w-full resize-none rounded-xl border border-slate-200 bg-white p-2.5 text-xs text-slate-700 outline-none focus:border-primary-500"
+                    />
+                    <button
+                      type="button"
+                      disabled={!selectedServiceStaffId || !proposalDuration || assigningStaff}
+                      onClick={handleAssignServiceStaff}
+                      className="min-h-10 rounded-xl bg-primary-600 px-4 text-[10px] font-black uppercase tracking-widest text-white disabled:opacity-50 sm:self-stretch"
+                    >
+                      {assigningStaff ? 'Sending proposal...' : selectedBooking.status === 'pending' ? 'Prepare & Send Proposal' : 'Update Proposal'}
+                    </button>
+                  </div>
                 </div>
               )}
               {bookingModalStep === 'details' && canUpdate &&
@@ -937,7 +945,7 @@ const BookingsManagement = () => {
                   onClick={() => {
                     updateBookingStatus(selectedBooking._id, statusNextMap[selectedBooking.status]);
                   }}
-                  className="flex-1 min-w-[200px] px-6 py-3.5 bg-[#8B4513] text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] shadow-lg hover:bg-primary-600 transition-all active:scale-[0.98] group flex items-center justify-center gap-3"
+                  className="group flex min-h-10 min-w-0 flex-1 items-center justify-center gap-2 rounded-xl bg-[#8B4513] px-4 py-2.5 text-[10px] font-black uppercase tracking-[0.16em] text-white shadow-md transition-all hover:bg-primary-600 active:scale-[0.98]"
                 >
                   <TrendingUp className="h-4 w-4 opacity-50 text-secondary-400" />
                   Update Status to {(statusNextMap[selectedBooking.status] || '').replace('_', ' ')}
@@ -950,20 +958,23 @@ const BookingsManagement = () => {
                       updateBookingStatus(selectedBooking._id, 'cancelled');
                     }
                   }}
-                  className="px-6 py-3.5 bg-white border border-rose-200 text-rose-600 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-rose-500 hover:text-white transition-all active:scale-[0.98]"
+                  className="min-h-10 rounded-xl border border-rose-200 bg-white px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-rose-600 transition-all hover:bg-rose-500 hover:text-white active:scale-[0.98]"
                 >
                   Cancel Booking
                 </button>
               )}
-              <button
-                onClick={() => setSelectedBooking(null)}
-                className="flex-1 px-6 py-3.5 bg-slate-200 text-slate-500 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-300 transition-all active:scale-[0.98]"
-              >
-                Close
-              </button>
+              {bookingModalStep === 'details' && (
+                <button
+                  type="button"
+                  onClick={() => setSelectedBooking(null)}
+                  className="min-h-10 min-w-0 flex-1 rounded-xl bg-slate-200 px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-slate-500 transition-all hover:bg-slate-300 active:scale-[0.98]"
+                >
+                  Close
+                </button>
+              )}
             </footer>
           </div>
-        </div>
+        </ModalViewport>
       )}
 
       
