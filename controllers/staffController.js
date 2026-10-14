@@ -22,6 +22,7 @@ const { riderDeliveryView, riderFeedbackView } = require('../utils/deliveryViews
 const { policyForRole } = require('../services/rolePermissionService');
 const { getRiderCapacitySummary, capacityCanContainReservedLoad } = require('../utils/riderCapacity');
 const { RIDER_VEHICLE_TYPES } = require('../config/riderVehicles');
+const { currentCompensationSummary } = require('../utils/payrollCompensation');
 const {
     SPECIALIZED_STAFF_ROLES,
     getEnabledSpecializedRoles,
@@ -248,7 +249,7 @@ const getMyStaff = async (req, res) => {
 
         const staff = await User.find(query)
             .populate('store', 'name')
-            .select('-password')
+            .select('-password +employmentProfile.compensation')
             .sort({ createdAt: -1 }).lean();
 
         const staffIds = staff.map(member => member._id);
@@ -261,13 +262,22 @@ const getMyStaff = async (req, res) => {
             ]) : []
         ]);
         const workloadMap = new Map(workloads.map(row => [String(row._id), row.count]));
-        const withServices = staff.map(member => ({
-            ...member,
-            staffType: getStaffSpecializationRole(member),
-            assignedServices: services.filter(service => service.assignedStaff.some(id => id.toString() === member._id.toString())),
-            activeWorkload: workloadMap.get(String(member._id)) || 0,
-            availabilityStatus: currentAvailabilityStatus(member, workloadMap.get(String(member._id)) || 0)
-        }));
+        const withServices = staff.map(member => {
+            const payrollProfile = currentCompensationSummary(member.employmentProfile);
+            const employmentProfile = { ...(member.employmentProfile || {}) };
+            delete employmentProfile.compensation;
+            delete employmentProfile.compensationHistory;
+            delete employmentProfile.employmentHistory;
+            return {
+                ...member,
+                employmentProfile,
+                payrollProfile,
+                staffType: getStaffSpecializationRole(member),
+                assignedServices: services.filter(service => service.assignedStaff.some(id => id.toString() === member._id.toString())),
+                activeWorkload: workloadMap.get(String(member._id)) || 0,
+                availabilityStatus: currentAvailabilityStatus(member, workloadMap.get(String(member._id)) || 0)
+            };
+        });
 
         res.json({ staff: withServices });
     } catch (error) {

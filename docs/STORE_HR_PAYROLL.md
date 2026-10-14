@@ -8,6 +8,7 @@ Pawzzle's Store HR module is deliberately scoped to Store employees. It adds att
 - Staff self-service routes derive the employee ID from the authenticated account.
 - Store Owners can configure policy, manage compensation, prepare, approve, and record payroll payment.
 - Finance Staff can view compensation and same-Store attendance, prepare/review payroll, and record an approved payroll as paid. They do not receive final approval by default.
+- Finance Staff cannot change their own employment/compensation, adjust their own payslip, review a period containing their salary, or record that period's external payment. A Store Owner or another authorized non-beneficiary must perform those period-wide actions.
 - Managers receive attendance visibility, attendance-exception review, and leave approval, but no salary access by default.
 - Employees see only their own finalized payslips.
 
@@ -37,9 +38,13 @@ The Store configures weekly, fixed semi-monthly, or monthly cutoffs. A payroll p
 
 Each payslip snapshots compensation, attendance totals, additions, deductions, and the Store policy. Approved/finalized periods cannot be recomputed, so later rate or policy changes do not rewrite history. Internal rider earnings can be claimed once either by payroll or the existing rider-payout process.
 
+Compensation revisions are effective-dated. A payroll period uses each revision only for the employment dates it covers. Monthly salary is normalized to one monthly amount for monthly payroll, one half for each semi-monthly period, or twelve fifty-seconds for a weekly period. Salary is prorated by eligible scheduled workdays when employment starts or ends inside the period. Daily rates pay present plus approved paid-leave days; hourly rates pay approved worked minutes plus the Store default-shift minutes for approved paid leave. Existing `salary` records without an explicit basis retain their prior one-amount-per-payroll-period meaning as `legacy_period` and create a review notice; Pawzzle never guesses that they are monthly.
+
+Employment start and end dates bound payroll participation. Prior compensation and closed employment intervals remain in history for unfinalized historical recomputation, while a finalized payslip remains the immutable record of what was approved and paid.
+
 Pending/rejected location reviews and pending/rejected auto clock-outs do not contribute approved worked time. They create blocking payroll issues; payroll must be recomputed after the attendance exception is resolved before it can move to Reviewed.
 
-`Recorded as Paid` means an authorized person recorded a salary payment completed outside Pawzzle. Pawzzle does not initiate a bank transfer.
+`Recorded as Paid` means an authorized person recorded a salary payment completed outside Pawzzle. Pawzzle does not initiate a bank transfer. Finalization atomically claims the Approved period, finalizes every payslip, settles linked Rider earnings, and creates payslip notifications. Repeating the same reference is idempotent; a conflicting reference is rejected.
 
 ## Explicitly outside scope
 

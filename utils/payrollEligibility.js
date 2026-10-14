@@ -3,6 +3,11 @@ const {
   SPECIALIZED_OPERATIONAL_ROLES,
   normalizeRole
 } = require('../config/permissions');
+const {
+  compensationRevisions,
+  compensationSegmentsForPeriod,
+  employmentRanges
+} = require('./payrollCompensation');
 
 // Payroll follows the same active operational-role policy as authorization.
 // Schema-readable retired aliases remain available for historical records but
@@ -52,7 +57,7 @@ const employeeName = employee => `${employee?.firstName || ''} ${employee?.lastN
   || employee?.username
   || 'Employee';
 
-const payrollEligibility = (employee, periodEnd = new Date()) => {
+const payrollEligibility = (employee, periodEnd = new Date(), periodStart = periodEnd) => {
   if (!employee || employee.isDeleted === true || employee.staffStatus === 'archived') {
     return { eligible: false, code: 'account_archived', message: 'This staff account is archived and cannot be included in payroll.' };
   }
@@ -63,7 +68,13 @@ const payrollEligibility = (employee, periodEnd = new Date()) => {
   if (!SPECIALIZED_OPERATIONAL_ROLES.has(canonicalRole)) {
     return { eligible: false, code: 'not_store_staff', message: 'This account is not an eligible Store staff identity.' };
   }
-  if (employee.isActive === false || INACTIVE_ACCOUNT_STATUSES.has(employee.staffStatus)) {
+  const historicalEmployment = employee.employmentProfile
+    ? employmentRanges(employee.employmentProfile, periodStart, periodEnd)
+    : [];
+  const hasClosedEmploymentHistory = Boolean(employee.employmentProfile?.employmentEndDate)
+    || Boolean(employee.employmentProfile?.employmentHistory?.length);
+  if ((employee.isActive === false || INACTIVE_ACCOUNT_STATUSES.has(employee.staffStatus))
+    && (!hasClosedEmploymentHistory || !historicalEmployment.length)) {
     return { eligible: false, code: 'account_inactive', message: 'Activate this account in Staff Management before including it in payroll.' };
   }
 
@@ -72,25 +83,37 @@ const payrollEligibility = (employee, periodEnd = new Date()) => {
   }
 
   const employmentStatus = employee.employmentProfile.employmentStatus;
-  if (employmentStatus && !PAYROLL_EMPLOYMENT_STATUSES.has(employmentStatus)) {
+  if (employmentStatus && !PAYROLL_EMPLOYMENT_STATUSES.has(employmentStatus) && !historicalEmployment.length) {
     return { eligible: false, code: 'employment_inactive', message: 'Set an active employment status in Compensation before including this employee in payroll.' };
   }
 
-  if (employee.employmentProfile.dateHired && new Date(employee.employmentProfile.dateHired) > new Date(periodEnd)) {
+  if (!historicalEmployment.length && employee.employmentProfile.dateHired && new Date(employee.employmentProfile.dateHired) > new Date(periodEnd)) {
     return { eligible: false, code: 'employment_not_started', message: 'This employee was hired after the selected payroll period ended.' };
   }
 
-  const compensation = employee.employmentProfile.compensation;
-  const baseRate = Number(compensation?.baseRate);
-  if (!compensation || !['salary', 'daily', 'hourly'].includes(compensation.compensationType) || !Number.isFinite(baseRate) || baseRate <= 0) {
+  if (!historicalEmployment.length) {
+    return { eligible: false, code: 'employment_inactive', message: 'This employee was not actively employed during the selected payroll period.' };
+  }
+
+  const revisions = compensationRevisions(employee.employmentProfile);
+  if (!revisions.length) {
     return { eligible: false, code: 'compensation_missing', message: 'Configure a positive salary, daily, or hourly base rate in Compensation before computing payroll.' };
   }
 
-  if (compensation.effectiveDate && new Date(compensation.effectiveDate) > new Date(periodEnd)) {
+  const coverage = compensationSegmentsForPeriod(employee.employmentProfile, periodStart, periodEnd);
+  if (!coverage.segments.length) {
     return { eligible: false, code: 'compensation_not_effective', message: 'Compensation is configured but is not effective in this payroll period.' };
   }
 
-  return { eligible: true, code: 'eligible', message: 'Payroll setup is complete.' };
+  return {
+    eligible: true,
+    code: 'eligible',
+    message: coverage.legacyReviewRequired
+      ? 'Payroll setup uses a legacy per-period salary. Its existing meaning is preserved; authorized HR should classify future compensation explicitly.'
+      : 'Payroll setup is complete.',
+    reviewRequired: coverage.legacyReviewRequired || coverage.coverageGap,
+    compensationBasis: coverage.segments.at(-1).compensation.compensationBasis
+  };
 };
 
 module.exports = {

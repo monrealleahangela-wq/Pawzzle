@@ -70,7 +70,7 @@ test('new payroll computation snapshots both Rider identity forms and excludes r
     PayrollPeriod.findOne = async () => period;
     User.find = query => ({
       select(selection) {
-        if (selection === '+employmentProfile.compensation') {
+        if (selection.includes('+employmentProfile.compensation')) {
           employeeQuery = query;
           return Promise.resolve([directRider, staffRider, dispatcher]);
         }

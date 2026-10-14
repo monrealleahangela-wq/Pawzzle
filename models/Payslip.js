@@ -19,8 +19,16 @@ const payslipSchema = new mongoose.Schema({
     staffId: String,
     role: String,
     compensationType: { type: String, enum: ['salary', 'daily', 'hourly'], required: true },
+    compensationBasis: { type: String, enum: ['monthly', 'daily', 'hourly', 'legacy_period'], default: 'legacy_period' },
     baseRate: { type: Number, min: 0, required: true },
-    effectiveDate: Date
+    effectiveDate: Date,
+    compensationSegments: [{
+      compensationBasis: { type: String, enum: ['monthly', 'daily', 'hourly', 'legacy_period'], required: true },
+      baseRate: { type: Number, min: 0, required: true },
+      effectiveDate: Date,
+      segmentStart: Date,
+      segmentEnd: Date
+    }]
   },
   attendanceSummary: {
     scheduledWorkDays: { type: Number, min: 0, default: 0 },

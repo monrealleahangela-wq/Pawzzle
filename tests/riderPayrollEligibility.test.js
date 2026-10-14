@@ -35,9 +35,11 @@ test('payroll-eligible Rider is included through the canonical same-Store query'
   assert.ok(query.$or.some(item => item.role === 'staff' && item.staffType?.$in?.includes('delivery_rider')));
   assert.ok(query.$or.some(item => item.role?.$in?.includes('delivery_rider')));
   assert.ok(PAYROLL_STAFF_TYPES.includes('delivery_rider'));
-  assert.deepEqual(payrollEligibility(rider(), new Date('2026-10-01')), {
-    eligible: true, code: 'eligible', message: 'Payroll setup is complete.'
-  });
+  const eligibility = payrollEligibility(rider(), new Date('2026-10-01'));
+  assert.equal(eligibility.eligible, true);
+  assert.equal(eligibility.code, 'eligible');
+  assert.equal(eligibility.compensationBasis, 'legacy_period');
+  assert.equal(eligibility.reviewRequired, true);
   assert.equal(payrollEligibility(rider({ role: 'delivery_rider', staffType: undefined }), new Date('2026-10-01')).eligible, true);
 });
 
@@ -176,7 +178,7 @@ test('existing non-Rider Staff follows the same explicit compensation contract',
 
 test('payroll generation and Rider payslip visibility preserve finalized-paid policy', () => {
   const controller = read('controllers/hrController.js');
-  assert.match(controller, /payrollEligibility\(employee, period\.periodEnd\)/);
+  assert.match(controller, /payrollEligibility\(employee, period\.periodEnd, period\.periodStart\)/);
   assert.match(controller, /employee: req\.user\._id, store: req\.user\.store, paymentStatus: 'recorded_paid'/);
   assert.match(controller, /employeeName: name, code: eligibility\.code/);
   assert.match(read('models/PayrollPeriod.js'), /employeeName:/);

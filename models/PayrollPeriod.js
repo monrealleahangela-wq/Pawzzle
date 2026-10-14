@@ -34,7 +34,14 @@ const payrollPeriodSchema = new mongoose.Schema({
   approvedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   approvedAt: Date,
   paidBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-  paidAt: Date
+  paidAt: Date,
+  paymentRecord: {
+    method: { type: String, trim: true },
+    referenceNumber: { type: String, trim: true },
+    paymentDate: Date,
+    processedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    notes: { type: String, trim: true, maxlength: 1000 }
+  }
 }, { timestamps: true });
 
 payrollPeriodSchema.index({ store: 1, periodStart: 1, periodEnd: 1 }, { unique: true });

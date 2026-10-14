@@ -1,5 +1,6 @@
 const DAY_NAMES = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
 const MANILA_OFFSET = '+08:00';
+const { compensationBasis } = require('./payrollCompensation');
 
 const roundMoney = value => Math.round((Number(value) + Number.EPSILON) * 100) / 100;
 
@@ -178,18 +179,24 @@ const generatePayrollPeriod = (referenceDate, settings = {}) => {
   return { frequency, periodStart, periodEnd, payDate };
 };
 
-const computePay = ({ compensation, summary, settings }) => {
-  const type = compensation.compensationType || 'salary';
+const computePay = ({ compensation, summary, settings, frequency, periodScheduledWorkDays }) => {
+  const basis = compensationBasis(compensation) || 'legacy_period';
+  const type = ['daily', 'hourly'].includes(basis) ? basis : 'salary';
   const rate = Number(compensation.baseRate || 0);
-  const scheduledDays = Math.max(1, Number(summary.scheduledWorkDays || 0));
+  const eligibleScheduledDays = Math.max(0, Number(summary.scheduledWorkDays || 0));
+  const configuredPeriodScheduledDays = Math.max(0, Number(periodScheduledWorkDays ?? summary.scheduledWorkDays ?? 0));
+  const fullPeriodScheduledDays = Math.max(1, configuredPeriodScheduledDays);
   const scheduledHours = Math.max(1, minutesBetween(
     dateAtTime('2020-01-01', settings.defaultShift?.start || '09:00'),
     dateAtTime('2020-01-01', settings.defaultShift?.end || '17:00')
   ) / 60 - Number(settings.defaultShift?.breakMinutes || 0) / 60);
+  const normalizedPeriodRate = basis === 'monthly'
+    ? rate / ((frequency || settings.payrollFrequency) === 'semi_monthly' ? 2 : (frequency || settings.payrollFrequency) === 'weekly' ? 52 / 12 : 1)
+    : rate;
   const minuteRate = type === 'hourly' ? rate / 60
     : type === 'daily' ? rate / (scheduledHours * 60)
-      : rate / (scheduledDays * scheduledHours * 60);
-  let basePay = rate;
+      : normalizedPeriodRate / (fullPeriodScheduledDays * scheduledHours * 60);
+  let basePay = normalizedPeriodRate * (configuredPeriodScheduledDays > 0 ? eligibleScheduledDays / fullPeriodScheduledDays : 1);
   let absenceDeduction = 0;
   let unpaidLeaveDeduction = 0;
   if (type === 'hourly') {
@@ -197,7 +204,7 @@ const computePay = ({ compensation, summary, settings }) => {
   } else if (type === 'daily') {
     basePay = rate * (Number(summary.daysPresent || 0) + Number(summary.paidLeaveDays || 0));
   } else {
-    const dailyRate = rate / scheduledDays;
+    const dailyRate = normalizedPeriodRate / fullPeriodScheduledDays;
     absenceDeduction = dailyRate * Number(summary.absences || 0);
     unpaidLeaveDeduction = dailyRate * Number(summary.unpaidLeaveDays || 0);
   }
@@ -209,6 +216,7 @@ const computePay = ({ compensation, summary, settings }) => {
     ? minuteRate * Number(summary.overtimeMinutes || 0) * Number(settings.overtime.multiplier || 1)
     : 0;
   return {
+    compensationBasis: basis,
     basePay: roundMoney(basePay),
     overtimePay: roundMoney(overtimePay),
     absenceDeduction: roundMoney(absenceDeduction),

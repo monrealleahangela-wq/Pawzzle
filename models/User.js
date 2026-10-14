@@ -2,6 +2,29 @@ const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const { RIDER_VEHICLE_TYPES } = require('../config/riderVehicles');
 
+const compensationRevisionSchema = new mongoose.Schema({
+  compensationType: { type: String, enum: ['salary', 'daily', 'hourly'], required: true },
+  compensationBasis: { type: String, enum: ['monthly', 'daily', 'hourly', 'legacy_period'], required: true },
+  baseRate: { type: Number, min: 0, required: true },
+  effectiveDate: { type: Date, required: true },
+  recordedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  recordedAt: { type: Date, default: Date.now },
+  reason: { type: String, trim: true, maxlength: 500, default: '' }
+}, { _id: true });
+
+const employmentHistorySchema = new mongoose.Schema({
+  employmentStatus: {
+    type: String,
+    enum: ['active', 'probationary', 'part_time', 'contract', 'inactive', 'terminated'],
+    required: true
+  },
+  startDate: { type: Date, required: true },
+  endDate: Date,
+  recordedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  recordedAt: { type: Date, default: Date.now },
+  reason: { type: String, trim: true, maxlength: 500, default: '' }
+}, { _id: true });
+
 const userSchema = new mongoose.Schema({
   username: {
     type: String,
@@ -201,15 +224,22 @@ const userSchema = new mongoose.Schema({
       default: 'active'
     },
     dateHired: Date,
+    employmentEndDate: Date,
     branchName: { type: String, trim: true, maxlength: 160, default: '' },
     compensation: {
       type: {
         compensationType: { type: String, enum: ['salary', 'daily', 'hourly'], default: 'salary' },
+        compensationBasis: { type: String, enum: ['monthly', 'daily', 'hourly', 'legacy_period'] },
         baseRate: { type: Number, min: 0, default: 0 },
-        effectiveDate: Date
+        effectiveDate: Date,
+        recordedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+        recordedAt: Date,
+        reason: { type: String, trim: true, maxlength: 500, default: '' }
       },
       select: false
-    }
+    },
+    compensationHistory: { type: [compensationRevisionSchema], select: false, default: undefined },
+    employmentHistory: { type: [employmentHistorySchema], select: false, default: undefined }
   },
   // Trust & Reputation Layer
   isVerified: { type: Boolean, default: false },
