@@ -15,10 +15,12 @@ const {
   getEligibleBookingStaff,
   selectBookingStaff,
   confirmBookingForPayment,
-  getBookingStaffProfile
+  getBookingStaffProfile,
+  getReservationCredential
 } = require('../controllers/bookingController');
 const { authenticate, adminOrStaff, requirePermission } = require('../middleware/auth');
 const { storeAdminOnly } = require('../middleware/storeAuth');
+const { authRateLimits } = require('../middleware/authRateLimit');
 
 // Validation rules
 const createBookingValidation = [
@@ -51,6 +53,7 @@ router.get('/:id/eligible-staff', authenticate, getEligibleBookingStaff);
 router.get('/:id/staff/:staffId', authenticate, getBookingStaffProfile);
 router.put('/:id/select-staff', authenticate, body('staffId').isMongoId().withMessage('Valid staff ID is required'), selectBookingStaff);
 router.post('/:id/confirm', authenticate, confirmBookingForPayment);
+router.get('/:id/verification-credential', authenticate, getReservationCredential);
 router.put('/:id/cancel', authenticate, cancelBooking);
 router.delete('/:bookingId', authenticate, cancelBooking);
 
@@ -60,7 +63,7 @@ router.get('/all', authenticate, getAllBookings);
 // Store admin routes
 router.get('/store/:storeId', authenticate, requirePermission('bookings.assigned', 'bookings.view', 'bookings.manage'), storeAdminOnly, getStoreBookings);
 router.put('/:bookingId/status', authenticate, requirePermission('bookings.update', 'bookings.manage'), storeAdminOnly, updateStatusValidation, updateBookingStatus);
-router.post('/validate-qr', authenticate, adminOrStaff, requirePermission('bookings.update', 'bookings.manage'), validateBookingQR);
+router.post('/validate-qr', authenticate, adminOrStaff, requirePermission('bookings.update', 'bookings.manage'), authRateLimits.bookingVerification, validateBookingQR);
 router.get('/:id', authenticate, getBookingById);
 
 module.exports = router;

@@ -193,7 +193,8 @@ export const adminBookingService = {
   getEligibleStaff: (id) => api.get(`/admin/bookings/${id}/eligible-staff`),
   prepareProposal: (id, proposal) => api.put(`/admin/bookings/${id}/proposal`, proposal),
   assignStaff: (id, staffId) => api.put(`/admin/bookings/${id}/assign-staff`, { staffId }),
-  checkIn: (id) => api.post(`/admin/bookings/${id}/check-in`),
+  verifyReservation: (credential, method = 'qr') => api.post('/bookings/validate-qr', { credential, method }),
+  checkIn: (id, credential, method = 'qr') => api.post(`/admin/bookings/${id}/check-in`, { credential, method }),
   updateBookingStatus: (bookingId, status) => api.put(`/admin/bookings/${bookingId}/status`, { status }),
   cancelBooking: (bookingId) => api.put(`/admin/bookings/${bookingId}/cancel`)
 };
@@ -258,6 +259,7 @@ export const bookingService = {
   createBooking: (bookingData) => api.post('/bookings', bookingData),
   getCustomerBookings: (params) => api.get('/bookings/my-bookings', { params }),
   getBookingById: (id) => api.get(`/bookings/${id}`),
+  getVerificationCredential: (id) => api.get(`/bookings/${id}/verification-credential`, { headers: { 'Cache-Control': 'no-store' } }),
   getEligibleStaff: (id) => api.get(`/bookings/${id}/eligible-staff`),
   getStaffProfile: (bookingId, staffId) => api.get(`/bookings/${bookingId}/staff/${staffId}`),
   selectStaff: (id, staffId) => api.put(`/bookings/${id}/select-staff`, { staffId }),

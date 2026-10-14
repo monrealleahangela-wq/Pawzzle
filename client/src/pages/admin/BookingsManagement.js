@@ -505,7 +505,7 @@ const BookingsManagement = () => {
                         </span>
                         {booking.isScanned && (
                           <span className="text-[7px] font-black text-emerald-600 uppercase tracking-widest flex items-center gap-1">
-                            <ShieldCheck className="h-2.5 w-2.5" /> QR VERIFIED
+                            <ShieldCheck className="h-2.5 w-2.5" /> CHECKED IN
                           </span>
                         )}
                       </div>

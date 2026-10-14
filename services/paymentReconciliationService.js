@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 const Order = require('../models/Order');
 const Booking = require('../models/Booking');
+const reservationCheckInService = require('./reservationCheckInService');
 const AdoptionRequest = require('../models/AdoptionRequest');
 const PurchaseOrder = require('../models/PurchaseOrder');
 const ProcurementPayment = require('../models/ProcurementPayment');
@@ -255,7 +256,17 @@ const finalizeBooking = async (booking, payment) => {
       })] : [])
     ]);
   }
-  return Booking.findById(booking._id);
+  const finalizedBooking = await Booking.findById(booking._id);
+  if (!bookingClosed && finalizedBooking?.paymentStatus === 'paid' && ['confirmed', 'approved'].includes(finalizedBooking.status)) {
+    try {
+      await reservationCheckInService.issueForBooking(finalizedBooking._id);
+    } catch (credentialError) {
+      // Payment reconciliation remains authoritative and successful. The owner
+      // can safely retrieve/retry issuance after the encryption key is configured.
+      console.warn('Reservation verification credential issuance deferred.');
+    }
+  }
+  return finalizedBooking;
 };
 
 const fulfillOrderOnce = async (orderId) => {

@@ -5,6 +5,7 @@ import { adminBookingService, getImageUrl, petCareService } from '../../services
 import socket from '../../utils/socket';
 import PaymentBreakdown from '../payments/PaymentBreakdown';
 import { bookingPaymentSummary } from '../../utils/paymentSummary';
+import QRScannerModal from '../QRScannerModal';
 
 const stageLabels = {
   proposal_received: 'Proposal received',
@@ -61,6 +62,7 @@ const ServiceCommunicationPanel = ({ booking, staffMode = false, onBookingUpdate
   const [uploadProgress, setUploadProgress] = useState(0);
   const [aftercareInstructions, setAftercareInstructions] = useState('');
   const [serviceNotes, setServiceNotes] = useState('');
+  const [checkInScannerOpen, setCheckInScannerOpen] = useState(false);
   const fileRef = useRef(null);
 
   const loadTimeline = useCallback(async (quiet = false) => {
@@ -212,11 +214,10 @@ const ServiceCommunicationPanel = ({ booking, staffMode = false, onBookingUpdate
   const runLifecycleAction = async action => {
     setSending(true);
     try {
-      if (action === 'check_in') await adminBookingService.checkIn(booking._id);
-      else await adminBookingService.updateBookingStatus(booking._id, action);
+      await adminBookingService.updateBookingStatus(booking._id, action);
       const refreshed = await adminBookingService.getBookingById(booking._id);
       onBookingUpdated?.(refreshed.data.booking);
-      toast.success(action === 'processing' ? 'Service started.' : action === 'finished' ? 'Pet marked ready for pickup.' : action === 'completed' ? 'Service completed.' : 'Pet checked in.');
+      toast.success(action === 'processing' ? 'Service started.' : action === 'finished' ? 'Pet marked ready for pickup.' : 'Service completed.');
       await loadTimeline(true);
     } catch (error) {
       toast.error(error.response?.data?.message || 'Unable to update the booking lifecycle.');
@@ -306,7 +307,7 @@ const ServiceCommunicationPanel = ({ booking, staffMode = false, onBookingUpdate
         <div className="mb-4 rounded-xl border border-primary-100 bg-primary-50/40 p-3">
           <div className="mb-2 flex items-center gap-2"><Sparkles size={14} className="text-primary-600" /><p className="text-[10px] font-black uppercase tracking-widest text-primary-700">Quick Update</p></div>
           <div className="flex flex-wrap gap-2">
-            {['confirmed', 'approved'].includes(booking.status) && booking.serviceProgress?.status !== 'pet_arrived' && <button type="button" disabled={sending} onClick={() => runLifecycleAction('check_in')} className="h-8 rounded-lg bg-white px-3 text-[10px] font-bold text-slate-700 border">Check In</button>}
+            {['confirmed', 'approved'].includes(booking.status) && booking.serviceProgress?.status !== 'pet_arrived' && <button type="button" disabled={sending} onClick={() => setCheckInScannerOpen(true)} className="h-8 rounded-lg bg-white px-3 text-[10px] font-bold text-slate-700 border">Verify QR / Check In</button>}
             {['confirmed', 'approved'].includes(booking.status) && booking.serviceProgress?.status === 'pet_arrived' && <button type="button" disabled={sending} onClick={() => runLifecycleAction('processing')} className="h-8 rounded-lg bg-emerald-600 px-3 text-[10px] font-bold text-white">Start Service</button>}
             {activeForUpdates && <button type="button" onClick={() => setEntryType('photo')} className="h-8 rounded-lg bg-white px-3 text-[10px] font-bold text-slate-700 border">Upload Photo</button>}
             {activeForUpdates && <button type="button" onClick={() => setEntryType('update')} className="h-8 rounded-lg bg-white px-3 text-[10px] font-bold text-slate-700 border">Send Update</button>}
@@ -379,6 +380,18 @@ const ServiceCommunicationPanel = ({ booking, staffMode = false, onBookingUpdate
 
       {!messageAvailable && <div className="mt-3 flex items-center gap-2 rounded-lg bg-slate-50 p-2.5 text-[11px] text-slate-500"><Clock3 size={14} /> Communication opens after the paid booking is confirmed.</div>}
       {staffMode && !permissions.canPostStaffUpdate && <div className="mt-3 flex items-center gap-2 rounded-lg bg-amber-50 p-2.5 text-[11px] text-amber-800"><AlertCircle size={14} /> Only the assigned service team or store owner can post updates.</div>}
+      {staffMode && <QRScannerModal
+        isOpen={checkInScannerOpen}
+        onClose={() => setCheckInScannerOpen(false)}
+        onScanSuccess={async () => {
+          try {
+            const refreshed = await adminBookingService.getBookingById(booking._id);
+            onBookingUpdated?.(refreshed.data.booking);
+          } catch (refreshError) {
+            await loadTimeline(true);
+          }
+        }}
+      />}
     </section>
   );
 };

@@ -32,6 +32,12 @@ const authRateLimits = {
   login: createRateLimiter({ windowMs: 15 * 60 * 1000, max: 10, prefix: 'login', keyGenerator: accountKey }),
   otpSend: createRateLimiter({ windowMs: 15 * 60 * 1000, max: 5, prefix: 'otp-send', keyGenerator: accountKey }),
   otpVerify: createRateLimiter({ windowMs: 15 * 60 * 1000, max: 10, prefix: 'otp-verify', keyGenerator: accountKey }),
+  bookingVerification: createRateLimiter({
+    windowMs: 15 * 60 * 1000,
+    max: 20,
+    prefix: 'booking-verification',
+    keyGenerator: req => `${req.ip || req.socket?.remoteAddress || 'unknown'}:${String(req.user?._id || 'anonymous')}`
+  }),
   authIp: createRateLimiter({ windowMs: 15 * 60 * 1000, max: 30, prefix: 'auth-ip', keyGenerator: ipKey })
 };
 

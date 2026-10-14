@@ -131,6 +131,9 @@ const bookingSchema = new mongoose.Schema({
     type: Date,
     required: true
   },
+  // Calendar date entered in the Store's timezone. Older records fall back to
+  // the Store timezone when computing check-in instants.
+  bookingLocalDate: { type: String, match: /^\d{4}-\d{2}-\d{2}$/ },
   startTime: {
     type: String, // HH:MM format
     required: true
@@ -209,7 +212,8 @@ const bookingSchema = new mongoose.Schema({
   },
   qrCode: {
     type: String, // Stringified unique ID or secure hash
-    default: null
+    default: null,
+    select: false
   },
   isScanned: {
     type: Boolean,
@@ -224,6 +228,9 @@ const bookingSchema = new mongoose.Schema({
     ref: 'User',
     default: null
   },
+  checkedInAt: { type: Date, default: null },
+  checkedInBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+  checkInMethod: { type: String, enum: ['qr', 'backup_code'], default: null },
   servicePhotos: [{
     type: String // URLs of photos uploaded by staff/groomers after service
   }],

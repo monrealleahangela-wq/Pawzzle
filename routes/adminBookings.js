@@ -12,9 +12,11 @@ const {
   cancelBooking,
   getEligibleBookingStaff,
   assignBookingStaff,
-  checkInBooking
+  checkInBooking,
+  getCheckInHistory
 } = require('../controllers/bookingController');
 const { authenticate, adminOrStaff, requirePermission } = require('../middleware/auth');
+const { authRateLimits } = require('../middleware/authRateLimit');
 const canViewBookings = requirePermission('bookings.assigned', 'bookings.view', 'bookings.manage');
 const canUpdateBookings = requirePermission('bookings.update', 'bookings.manage');
 
@@ -34,7 +36,8 @@ const proposalValidation = [
 ];
 router.put('/:id/proposal', authenticate, adminOrStaff, canUpdateBookings, proposalValidation, assignBookingStaff);
 router.put('/:id/assign-staff', authenticate, adminOrStaff, canUpdateBookings, proposalValidation, assignBookingStaff);
-router.post('/:id/check-in', authenticate, adminOrStaff, canUpdateBookings, checkInBooking);
+router.get('/:id/check-in-events', authenticate, adminOrStaff, canViewBookings, getCheckInHistory);
+router.post('/:id/check-in', authenticate, adminOrStaff, canUpdateBookings, authRateLimits.bookingVerification, checkInBooking);
 router.put('/:id/status', authenticate, adminOrStaff, canUpdateBookings, updateBookingStatusValidation, updateBookingStatus);
 router.put('/:id/cancel', authenticate, adminOrStaff, canUpdateBookings, cancelBooking);
 

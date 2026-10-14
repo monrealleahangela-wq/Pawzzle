@@ -33,6 +33,7 @@ jest.mock('../../services/apiService', () => ({
     getCustomerBookings: jest.fn(),
     getEligibleStaff: jest.fn(),
     getBookingById: jest.fn(),
+    getVerificationCredential: jest.fn().mockResolvedValue({ data: { state: 'unconfirmed', credential: null } }),
     getAllBookings: jest.fn()
   },
   serviceService: { getServiceById: jest.fn() },
@@ -65,6 +66,27 @@ describe('customer booking history', () => {
     renderBookings();
     expect(await screen.findByRole('heading', { name: 'No Appointments' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Browse Services' })).toHaveAttribute('href', '/services');
+  });
+
+  test('customer reopens an authorized paid reservation and sees the same private QR and backup code', async () => {
+    const bookingId = 'booking-secure-credential';
+    bookingService.getCustomerBookings.mockResolvedValue({ data: { bookings: [{
+      _id: bookingId, bookingDate: '2026-10-20', startTime: '14:00', endTime: '15:00',
+      status: 'confirmed', paymentStatus: 'paid', totalPrice: 500,
+      pet: { name: 'Milo', type: 'Dog' }, service: { name: 'General Checkup', duration: 60 },
+      store: { _id: 'store-1', name: 'Pawzzle Clinic' }, staff: { firstName: 'Ari', lastName: 'Santos' }
+    }] } });
+    bookingService.getVerificationCredential.mockResolvedValue({ data: {
+      state: 'available', rotated: false,
+      credential: { qrToken: 'PZQ1.abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMN0123456', backupCode: 'ABCD-EFGH-JKLM-NPQR' }
+    } });
+    renderBookings();
+    fireEvent.click(await screen.findByText('View Details'));
+    expect(await screen.findByRole('img', { name: 'Reservation verification QR code' })).toBeInTheDocument();
+    expect(screen.getByLabelText('Reservation backup code')).toHaveTextContent('ABCD-EFGH-JKLM-NPQR');
+    expect(screen.getAllByText('General Checkup').length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Pawzzle Clinic/).length).toBeGreaterThan(0);
+    expect(bookingService.getVerificationCredential).toHaveBeenCalledWith(bookingId);
   });
 
   test('renders active, completed, cancelled, and legacy records without optional references', async () => {

@@ -1,7 +1,8 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { amountCentavos, markSessionFailed } = require('../services/paymentReconciliationService');
+const { amountCentavos, markSessionFailed, finalizeBooking } = require('../services/paymentReconciliationService');
 const RevenueService = require('../services/revenueService');
+const reservationCheckInService = require('../services/reservationCheckInService');
 const PayMongo = require('../services/paymongoService');
 const axios = require('axios');
 const Pet = require('../models/Pet');
@@ -135,5 +136,37 @@ test('failed booking reconciliation never records paid revenue', async () => {
   } finally {
     Booking.findOne = originals.findOne;
     Booking.findOneAndUpdate = originals.update;
+  }
+});
+
+test('successful PayMongo reconciliation retries credential issuance for the finalized eligible booking', async () => {
+  const originalFindOneAndUpdate = Booking.findOneAndUpdate;
+  const originalFindById = Booking.findById;
+  const originalRecordPayment = RevenueService.recordPayment;
+  const originalIssueForBooking = reservationCheckInService.issueForBooking;
+  const finalized = { _id: 'booking-paid', status: 'confirmed', paymentStatus: 'paid' };
+  const issued = [];
+  Booking.findOneAndUpdate = async filter => {
+    assert.equal(filter.paymentStatus.$ne, 'paid');
+    return null; // another reconciliation worker already claimed this payment
+  };
+  Booking.findById = async () => finalized;
+  RevenueService.recordPayment = async () => {};
+  reservationCheckInService.issueForBooking = async id => { issued.push(String(id)); };
+  try {
+    const result = await finalizeBooking({
+      _id: finalized._id,
+      totalPrice: 125,
+      status: 'awaiting_payment',
+      paymentStatus: 'pending',
+      paymentDetails: {}
+    }, { id: 'synthetic-paymongo-payment', attributes: { amount: 12500 } });
+    assert.equal(result.paymentStatus, 'paid');
+    assert.deepEqual(issued, [finalized._id]);
+  } finally {
+    Booking.findOneAndUpdate = originalFindOneAndUpdate;
+    Booking.findById = originalFindById;
+    RevenueService.recordPayment = originalRecordPayment;
+    reservationCheckInService.issueForBooking = originalIssueForBooking;
   }
 });

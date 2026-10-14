@@ -26,6 +26,8 @@ const { prepareServiceIntake } = require('../utils/bookingIntake');
 const { buildBookingPetSnapshot } = require('../utils/bookingPetSnapshot');
 const { validateServiceSchedule } = require('../utils/serviceAvailability');
 const { getCustomerVisibleOwnerIds, buildCustomerVisibleStoreFilter, withCustomerComplianceFilter } = require('../utils/storeVisibility');
+const reservationCheckInService = require('../services/reservationCheckInService');
+const ReservationCheckInEvent = require('../models/ReservationCheckInEvent');
 
 const canStaffManageBooking = (user, booking) => {
   if (!isOperationalStaff(user) || isStoreAdmin(user) || isPlatformAdmin(user)) return false;
@@ -361,6 +363,7 @@ const createBooking = async (req, res) => {
       selectedConditions: resolvedConditions,
       pricingBreakdown: breakdown,
       bookingDate,
+      bookingLocalDate: bookingDate,
       startTime,
       endTime: scheduleCheck.endTime,
       isHomeService,
@@ -961,6 +964,9 @@ const updateBookingStatus = async (req, res) => {
     if (['confirmed', 'processing', 'finished', 'completed'].includes(status) && booking.paymentStatus !== 'paid') {
       return res.status(409).json({ message: 'A booking cannot progress until PayMongo confirms payment.' });
     }
+    if (status === 'processing' && !booking.checkedInAt && !booking.isScanned) {
+      return res.status(409).json({ message: 'Verify the reservation credential and confirm check-in before starting service.' });
+    }
     if (status === 'cancelled' && booking.paymentStatus === 'paid') {
       return res.status(409).json({ message: 'A paid booking cannot be marked cancelled until its PayMongo refund is processed.' });
     }
@@ -1001,6 +1007,7 @@ const updateBookingStatus = async (req, res) => {
     }
 
     await booking.save();
+    if (status === 'cancelled' || status === 'no_show') await reservationCheckInService.revokeForBooking(booking._id);
     await booking.populate([
       { path: 'customer', select: 'firstName lastName email phone' },
       { path: 'service', select: 'name category' }
@@ -1092,6 +1099,7 @@ const cancelBooking = async (req, res) => {
     booking.serviceProgress.cancelledAt = booking.lifecycle.cancelledAt;
     if (booking.voucher) await Voucher.findByIdAndUpdate(booking.voucher, { $inc: { usedCount: -1 } });
     await booking.save();
+    await reservationCheckInService.revokeForBooking(booking._id);
 
     res.json({ message: 'Booking cancelled successfully' });
 
@@ -1245,170 +1253,92 @@ const getCalendarBookings = async (req, res) => {
   }
 };
 
-// Validate booking via QR scan (Staff/Admin)
-const markBookingCheckedIn = async (booking, req) => {
-  if (booking.isScanned || booking.serviceProgress?.status === 'pet_arrived') return false;
-  booking.isScanned = true;
-  booking.scannedAt = new Date();
-  booking.scannedBy = req.user._id;
-  booking.serviceProvider = booking.staff || req.user._id;
-  if (!booking.serviceProgress) booking.serviceProgress = {};
-  booking.serviceProgress.status = 'pet_arrived';
-  booking.serviceProgress.arrivedAt = booking.scannedAt;
-  await booking.save();
-  const specialist = booking.staff
-    ? `${booking.staff.firstName || ''} ${booking.staff.lastName || ''}`.trim()
-    : 'the assigned specialist';
-  const branch = booking.store?.name || 'the selected branch';
-  await createNotification({
-    recipient: booking.customer?._id || booking.customer,
-    sender: req.user._id,
-    type: 'service_update',
-    title: 'Pet Checked In',
-    message: `${booking.pet.name} checked in with ${specialist} at ${branch}.`,
-    relatedId: booking._id,
-    relatedModel: 'Booking',
-    targetUrl: `/bookings?id=${booking._id}`
-  }, req.app.get('socketio'));
-  const io = req.app.get('socketio');
-  if (io) {
-    io.to(`user_${String(booking.customer?._id || booking.customer)}`).emit('serviceUpdate', {
-      bookingId: String(booking._id), eventType: 'pet_arrived', timestamp: booking.scannedAt
-    });
-    io.to(`store_${String(booking.store?._id || booking.store)}`).emit('dashboardUpdate', {
-      type: 'booking', id: String(booking._id), status: 'pet_arrived', timestamp: booking.scannedAt
-    });
-    io.to('admin_global').emit('dashboardUpdate', {
-      type: 'booking', id: String(booking._id), status: 'pet_arrived', timestamp: booking.scannedAt
-    });
-  }
-  return true;
-};
-
 const checkInBooking = async (req, res) => {
   try {
-    const booking = await Booking.findById(req.params.id)
-      .populate('customer', 'firstName lastName')
-      .populate('staff', 'firstName lastName')
-      .populate('store', 'name owner')
-      .populate('service', 'name');
-    if (!booking) return res.status(404).json({ message: 'Booking not found.' });
-    if (!['confirmed', 'approved'].includes(booking.status) || booking.paymentStatus !== 'paid') {
-      return res.status(409).json({ message: 'Only a paid, confirmed booking can be checked in.' });
+    if (typeof req.body?.credential !== 'string' || req.body.credential.length > 80
+        || !['qr', 'backup_code'].includes(req.body?.method)) {
+      return res.status(400).json({ message: 'A valid reservation credential and verification method are required.' });
     }
-    const owner = isStoreAdmin(req.user) && String(booking.store?.owner) === String(req.user._id);
-    if (!owner && !canStaffManageBooking(req.user, booking)) return res.status(403).json({ message: 'Only the assigned service team or store owner can check in this pet.' });
-    const changed = await markBookingCheckedIn(booking, req);
-    res.json({ message: changed ? 'Pet checked in successfully.' : 'This pet is already checked in.', booking });
+    const booking = await reservationCheckInService.confirmCheckIn({
+      secret: req.body?.credential,
+      method: req.body?.method,
+      actor: req.user,
+      expectedBookingId: req.params.id
+    });
+    const io = req.app.get('socketio');
+    if (io) {
+      io.to(`user_${String(booking.customer)}`).emit('serviceUpdate', { bookingId: String(booking._id), eventType: 'pet_arrived', timestamp: booking.checkedInAt });
+      io.to(`store_${String(booking.store)}`).emit('dashboardUpdate', { type: 'booking', id: String(booking._id), status: 'pet_arrived', timestamp: booking.checkedInAt });
+    }
+    try {
+      await createNotification({
+        recipient: booking.customer, sender: req.user._id, type: 'service_update', title: 'Pet Checked In',
+        message: `${booking.pet?.name || 'Your pet'} has been checked in at the service location.`,
+        relatedId: booking._id, relatedModel: 'Booking', targetUrl: `/bookings?id=${booking._id}`
+      }, io);
+    } catch (notificationError) {
+      // Check-in is committed; delivery can be retried independently.
+      console.warn('Check-in notification delivery failed.');
+    }
+    res.json({ message: 'Reservation verified and check-in recorded.', checkedInAt: booking.checkedInAt, bookingId: String(booking._id) });
   } catch (error) {
-    res.status(error.name === 'CastError' ? 404 : 500).json({ message: error.name === 'CastError' ? 'Booking not found.' : 'Unable to check in this pet.' });
+    res.status(error.statusCode || (error.name === 'CastError' ? 404 : 500)).json({ message: error.statusCode ? error.message : 'Unable to complete check-in.' });
   }
 };
 
 const validateBookingQR = async (req, res) => {
   try {
-    const { qrCode } = req.body;
-    
-    if (!qrCode) {
-      return res.status(400).json({ message: 'QR Code is required' });
+    const credential = req.body?.credential || req.body?.qrCode;
+    const method = req.body?.method || 'qr';
+    if (typeof credential !== 'string' || credential.length > 80 || !['qr', 'backup_code'].includes(method)) {
+      return res.status(400).json({ message: 'A valid reservation credential and verification method are required.' });
     }
-
-    const booking = await Booking.findOne({ qrCode })
-      .populate('customer', 'firstName lastName email')
-      .populate('service', 'name')
-      .populate('staff', 'firstName lastName')
-      .populate('store', 'name owner');
-
-    if (!booking) {
-      return res.status(404).json({ message: 'Invalid QR Code: Booking not found' });
-    }
-
-    // NEW: Multi-vendor safety check (Ensure staff scans only their store's bookings)
-    const scanner = req.user;
-    const isStoreOwner = isStoreAdmin(scanner) && await canAccessStore(scanner, booking.store?._id || booking.store);
-    const isStoreStaff = canStaffManageBooking(scanner, booking);
-    const isSuperAdmin = isPlatformAdmin(scanner);
-
-    if (!isSuperAdmin && !isStoreOwner && !isStoreStaff) {
-      return res.status(403).json({ message: 'Access Denied: You can only scan bookings for your own store.' });
-    }
-
-    // 1. Check if already used
-    if (booking.isScanned) {
-      return res.status(400).json({ 
-        message: 'QR Code Already Used', 
-        details: `This booking was already scanned on ${new Date(booking.scannedAt).toLocaleString()} by staff.`
-      });
-    }
-
-    // 2. Check if cancelled
-    if (booking.status === 'cancelled') {
-      return res.status(400).json({ message: 'QR Code Rejected: Booking has been cancelled.' });
-    }
-
-    // 3. Check if confirmed (Active)
-    // Requirement: "The QR code should only become active after the owner or service staff confirms the booking."
-    if (booking.status !== 'confirmed' && booking.status !== 'approved') {
-      return res.status(400).json({ 
-        message: 'QR Code Inactive', 
-        details: `This booking is currently ${booking.status}. It must be 'confirmed' to be active.`
-      });
-    }
-
-    // 4. Check payment status
-    if (booking.paymentStatus !== 'paid') {
-      return res.status(400).json({ 
-        message: 'Payment Required', 
-        details: 'This booking has not been paid for yet. QR codes are only valid for paid bookings.'
-      });
-    }
-
-    // 5. Check if too early or expired (Strict time restriction)
-    const now = new Date();
-    const serviceDate = new Date(booking.bookingDate);
-    
-    const [startH, startM] = booking.startTime.split(':');
-    const serviceStart = new Date(serviceDate);
-    serviceStart.setHours(parseInt(startH), parseInt(startM), 0, 0);
-
-    const [endH, endM] = booking.endTime.split(':');
-    const serviceEnd = new Date(serviceDate);
-    serviceEnd.setHours(parseInt(endH), parseInt(endM), 0, 0);
-
-    // If scanned before or after the booking time
-    if (now < serviceStart || now > serviceEnd) {
-      if (now > serviceEnd) {
-        booking.status = 'no_show';
-        booking.adminNotes = `Marked as no_show: QR scanned after end time (${booking.endTime}).`;
-        await booking.save();
-      }
-      
-      return res.status(400).json({ 
-        message: 'QR Code Inactive', 
-        details: 'QR is currently not active. It will be active during your booking time.'
-      });
-    }
-
-    // 6. Valid Scan - Success!
-    await markBookingCheckedIn(booking, req);
-
+    const validation = await reservationCheckInService.verifyCredential({
+      secret: credential,
+      method,
+      actor: req.user
+    });
+    res.set('Cache-Control', 'private, no-store');
     res.json({
-      message: 'Booking Validated Successfully!',
-      booking: {
-        _id: booking._id,
-        customerName: `${booking.customer.firstName} ${booking.customer.lastName}`,
-        serviceName: booking.service.name,
-        petName: booking.pet.name,
-        time: `${booking.startTime} - ${booking.endTime}`,
-        scannedAt: booking.scannedAt,
-        status: booking.status,
-        serviceProgressStatus: booking.serviceProgress.status
+      message: 'Reservation credential verified. Confirm check-in to continue.',
+      verification: {
+        bookingId: String(validation.booking._id),
+        reference: String(validation.booking._id).slice(-8).toUpperCase(),
+        service: validation.booking.service?.name,
+        pet: validation.booking.pet?.name,
+        date: validation.booking.bookingLocalDate || validation.booking.bookingDate,
+        startTime: validation.booking.startTime,
+        endTime: validation.booking.endTime,
+        store: validation.booking.store?.name,
+        assignedStaff: validation.booking.staff ? `${validation.booking.staff.firstName || ''} ${validation.booking.staff.lastName || ''}`.trim() : null,
+        status: validation.booking.status
       }
     });
-
   } catch (error) {
-    console.error('QR Validation error:', error);
-    res.status(500).json({ message: 'Server error' });
+    res.status(error.statusCode || 500).json({ message: error.statusCode ? error.message : 'Unable to verify this reservation.' });
+  }
+};
+
+const getReservationCredential = async (req, res) => {
+  try {
+    res.set('Cache-Control', 'private, no-store, max-age=0');
+    res.set('Pragma', 'no-cache');
+    const result = await reservationCheckInService.getCustomerCredential(req.params.id, req.user._id);
+    return res.json(result);
+  } catch (error) {
+    return res.status(error.statusCode || 500).json({ message: error.statusCode ? error.message : 'Reservation verification is temporarily unavailable.' });
+  }
+};
+
+const getCheckInHistory = async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.id).populate('store', 'owner');
+    if (!booking || !reservationCheckInService.mayManageBooking(req.user, booking)) return res.status(404).json({ message: 'Booking not found.' });
+    const events = await ReservationCheckInEvent.find({ booking: booking._id, store: booking.store._id })
+      .sort({ occurredAt: -1 }).limit(100).populate('actor', 'firstName lastName');
+    return res.json({ events });
+  } catch (error) {
+    return res.status(500).json({ message: 'Unable to load reservation verification history.' });
   }
 };
 
@@ -1427,6 +1357,8 @@ module.exports = {
   selectBookingStaff,
   confirmBookingForPayment,
   getBookingStaffProfile,
+  getReservationCredential,
+  getCheckInHistory,
   expireBookingProposals,
   checkInBooking,
   __test: { toPublicStaff }

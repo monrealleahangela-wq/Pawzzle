@@ -1,350 +1,178 @@
-import React, { useEffect, useState, useRef, useCallback } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Html5Qrcode } from 'html5-qrcode';
-import { api } from '../services/apiService';
-import { X, QrCode, User, CheckCircle, RefreshCcw, Lock, ShieldAlert } from 'lucide-react';
+import { X, QrCode, ShieldCheck, Camera, Loader2 } from 'lucide-react';
 import { toast } from 'react-toastify';
+import { adminBookingService, api } from '../services/apiService';
+
+const BACKUP_CODE_PATTERN = /^(?:[A-HJ-NP-Z2-9]{4}-?){3}[A-HJ-NP-Z2-9]{4}$/i;
 
 const QRScannerModal = ({ isOpen, onClose, onScanSuccess }) => {
-  const [scanResult, setScanResult] = useState(null);
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [error, setError] = useState(null);
-  const [isScannerStarted, setIsScannerStarted] = useState(false);
-  const [status, setStatus] = useState('Standby');
-  const [debugInfo, setDebugInfo] = useState('');
-  
-  const videoRef = useRef(null);
-  const canvasRef = useRef(null);
-  const scannerEngineRef = useRef(null);
-  const streamRef = useRef(null);
-  const scanTimerRef = useRef(null);
-  const isProcessingRef = useRef(false);
+  const [credential, setCredential] = useState('');
+  const [method, setMethod] = useState('qr');
+  const [backupInput, setBackupInput] = useState('');
+  const [verification, setVerification] = useState(null);
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [cameraState, setCameraState] = useState('idle');
+  const scannerRef = useRef(null);
+  const mountedRef = useRef(false);
+  const scanLockRef = useRef(false);
 
-  const stopScanner = useCallback(async () => {
-    isProcessingRef.current = false;
-    if (scanTimerRef.current) {
-      clearInterval(scanTimerRef.current);
-      scanTimerRef.current = null;
-    }
-
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop());
-      streamRef.current = null;
-    }
-
-    if (scannerEngineRef.current) {
-      try {
-        await scannerEngineRef.current.clear();
-      } catch (e) {}
-      scannerEngineRef.current = null;
-    }
-
-    if (videoRef.current) {
-      videoRef.current.srcObject = null;
-    }
-
-    setIsScannerStarted(false);
+  const stopCamera = useCallback(async () => {
+    const scanner = scannerRef.current;
+    scannerRef.current = null;
+    if (!scanner) return;
+    try {
+      if (scanner.isScanning) await scanner.stop();
+    } catch (stopError) { /* stream may already have stopped */ }
+    try { scanner.clear(); } catch (clearError) { /* detached DOM is already clear */ }
   }, []);
 
-  const handleDecodedText = useCallback(async (decodedText) => {
-    if (isProcessingRef.current) return;
-    
-    try {
-      isProcessingRef.current = true;
-      setIsProcessing(true);
-      setError(null);
-      setStatus('Checking code...');
-      setDebugInfo('Please wait while we check this QR code.');
-      
-      await stopScanner();
-
-      // Determine validation endpoint based on protocol or context
-      const isOrder = decodedText.startsWith('ORD-');
-      const isBooking = decodedText.startsWith('BK-');
-      
-      let endpoint = isOrder ? '/orders/validate-qr' : '/bookings/validate-qr';
-      const payload = { 
-        orderId: decodedText, 
-        bookingId: decodedText,
-        qrCode: decodedText // Universal field for new logic
-      };
-
-      let response;
-      try {
-        response = await api.post(endpoint, payload);
-      } catch (err) {
-        // Fallback: If it's a 24-char ID and order validation failed with 404, try booking
-        if (err.response?.status === 404 && isOrder) {
-          endpoint = '/bookings/validate-qr';
-          response = await api.post(endpoint, payload);
-        } else {
-          throw err;
-        }
-      }
-      setScanResult(response.data.order || response.data.booking);
-      toast.success('QR code verified.');
-    } catch (err) {
-      setError(err.response?.data?.message || 'This QR code is invalid or not registered.');
-      setStatus('Code not verified');
-      setDebugInfo('Check the QR code and try again.');
-    } finally {
-      setIsProcessing(false);
-      isProcessingRef.current = false;
-    }
-  }, [stopScanner]);
-
-  const startScanner = useCallback(async () => {
-    setError(null);
-    setStatus('Starting camera...');
-    setDebugInfo('Allow camera access to scan the QR code.');
-    
-    try {
-      await stopScanner();
-
-      const constraints = {
-        video: { 
-          facingMode: { exact: "environment" }, // Prioritize rear camera
-          width: { ideal: 1920 },
-          height: { ideal: 1080 }
-        }
-      };
-
-      let stream;
-      try {
-        stream = await navigator.mediaDevices.getUserMedia(constraints);
-      } catch (e) {
-        // Fallback for desktop or non-standard hardware
-        stream = await navigator.mediaDevices.getUserMedia({ video: true });
-      }
-
-      streamRef.current = stream;
-
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        videoRef.current.setAttribute('autoplay', '');
-        videoRef.current.setAttribute('muted', '');
-        videoRef.current.setAttribute('playsinline', '');
-        
-        // Force play and ensure it's not hidden
-        await videoRef.current.play();
-        
-        setIsScannerStarted(true);
-        setStatus('Camera ready');
-        setDebugInfo('Place the QR code inside the frame.');
-      }
-
-      const engine = new Html5Qrcode('qr-decoder-engine'); 
-      scannerEngineRef.current = engine;
-
-      scanTimerRef.current = setInterval(async () => {
-        if (!videoRef.current || !canvasRef.current || !scannerEngineRef.current || isProcessing) return;
-
-        try {
-          const video = videoRef.current;
-          const canvas = canvasRef.current;
-          const context = canvas.getContext('2d', { alpha: false });
-          
-          if (video.readyState < 2) return; // Wait for metadata
-
-          if (canvas.width !== video.videoWidth) canvas.width = video.videoWidth;
-          if (canvas.height !== video.videoHeight) canvas.height = video.videoHeight;
-          
-          context.drawImage(video, 0, 0, canvas.width, canvas.height);
-          
-          canvas.toBlob(async (blob) => {
-            if (!blob || !scannerEngineRef.current || isProcessing) return;
-            try {
-              const file = new File([blob], "frame.jpg", { type: "image/jpeg" });
-              const result = await scannerEngineRef.current.scanFile(file, true);
-              if (result && !isProcessing) handleDecodedText(result);
-            } catch (ignore) {}
-          }, 'image/jpeg', 0.5); // Lower quality for speed
-
-        } catch (e) {}
-      }, 300);
-
-    } catch (err) {
-      console.error('Critical Hardware Failure:', err);
-      let errMsg = 'We could not start the camera. Check camera permissions and try again.';
-      if (err.name === 'NotAllowedError') errMsg = 'Camera access was denied. Allow camera access and try again.';
-      if (err.name === 'NotFoundError') errMsg = 'We could not find a camera on this device.';
-      
-      setError(errMsg);
-      setStatus('Camera unavailable');
-      setDebugInfo(err.message);
-    }
-  }, [handleDecodedText, stopScanner]);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; stopCamera(); };
+  }, [stopCamera]);
 
   useEffect(() => {
-    if (isOpen && !scanResult && !error) {
-      const wait = setTimeout(startScanner, 800);
-      return () => {
-        clearTimeout(wait);
-        stopScanner();
-      };
-    } else if (!isOpen) {
-        stopScanner();
+    if (!isOpen) {
+      stopCamera();
+      setVerification(null);
+      setCredential('');
+      setBackupInput('');
+      setError('');
+      setCameraState('idle');
+      scanLockRef.current = false;
     }
-  }, [isOpen, scanResult, error, startScanner, stopScanner]);
+  }, [isOpen, stopCamera]);
+
+  const verify = useCallback(async (value, credentialMethod) => {
+    if (busy || scanLockRef.current) return;
+    const normalized = credentialMethod === 'backup_code'
+      ? value.toUpperCase().replace(/[^A-Z0-9]/g, '')
+      : value.trim();
+    if (credentialMethod === 'backup_code' && !BACKUP_CODE_PATTERN.test(value.trim())) {
+      setError('Enter the 16-character backup code shown on the customer reservation.');
+      return;
+    }
+    scanLockRef.current = true;
+    setBusy(true);
+    setError('');
+    setVerification(null);
+    await stopCamera();
+    try {
+      let response;
+      if (credentialMethod === 'order') {
+        response = await api.post('/orders/validate-qr', { orderId: normalized });
+        if (mountedRef.current) {
+          setMethod('order');
+          setCredential(normalized);
+          setVerification({ order: response.data.order, legacyOrderFlow: true });
+        }
+      } else {
+        response = await adminBookingService.verifyReservation(normalized, credentialMethod);
+        if (mountedRef.current) {
+          setMethod(credentialMethod);
+          setCredential(normalized);
+          setVerification(response.data.verification);
+        }
+      }
+    } catch (requestError) {
+      if (mountedRef.current) {
+        setError(requestError.response?.data?.message || 'The code could not be verified. Try again.');
+        setCameraState('idle');
+      }
+      scanLockRef.current = false;
+    } finally {
+      if (mountedRef.current) setBusy(false);
+    }
+  }, [busy, stopCamera]);
+
+  const startCamera = useCallback(async () => {
+    setError('');
+    setCameraState('starting');
+    try {
+      await stopCamera();
+      const scanner = new Html5Qrcode('reservation-qr-reader', { verbose: false });
+      scannerRef.current = scanner;
+      await scanner.start(
+        { facingMode: 'environment' },
+        { fps: 10, qrbox: { width: 240, height: 240 }, aspectRatio: 1 },
+        decoded => {
+          if (scanLockRef.current) return;
+          const order = decoded.startsWith('ORD-');
+          verify(decoded, order ? 'order' : 'qr');
+        },
+        () => {}
+      );
+      setCameraState('ready');
+    } catch (cameraError) {
+      await stopCamera();
+      setCameraState('error');
+      if (cameraError?.name === 'NotAllowedError') setError('Camera access was denied. Allow camera access or enter the backup code.');
+      else if (cameraError?.name === 'NotFoundError') setError('No camera is available on this device. Enter the backup code instead.');
+      else setError('Could not start the camera. Use HTTPS or localhost, check permission, or enter the backup code.');
+    }
+  }, [stopCamera, verify]);
+
+  const confirm = async () => {
+    if (verification?.legacyOrderFlow) {
+      onScanSuccess?.(verification.order);
+      onClose();
+      return;
+    }
+    setBusy(true);
+    setError('');
+    try {
+      const response = await adminBookingService.checkIn(verification.bookingId, credential, method);
+      toast.success(response.data.message || 'Pet checked in.');
+      onScanSuccess?.(response.data);
+      onClose();
+    } catch (requestError) {
+      setError(requestError.response?.data?.message || 'Check-in could not be recorded. Verify the code again.');
+      setVerification(null);
+      setCredential('');
+      setCameraState('idle');
+      scanLockRef.current = false;
+    } finally {
+      setBusy(false);
+    }
+  };
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-0 sm:p-4 bg-slate-950/95 backdrop-blur-xl animate-fade-in font-['Outfit']">
-      <div className="bg-black w-full max-w-lg sm:rounded-[3rem] h-[100dvh] sm:h-auto shadow-2xl flex flex-col overflow-hidden animate-scale-in border border-white/10">
-        
-        <div className="px-8 py-6 bg-black border-b border-white/5 flex items-center justify-between shrink-0">
-          <div className="flex items-center gap-4">
-            <div className="p-2.5 bg-rose-600 rounded-2xl shadow-lg shadow-rose-500/20">
-               <QrCode className="h-6 w-6 text-white" />
-            </div>
-            <div>
-                <h3 className="text-[14px] font-black text-white uppercase tracking-tighter leading-none mb-1.5 text-rose-500">QR code scanner</h3>
-               <div className="flex items-center gap-2.5">
-                  <div className={`w-2 h-2 rounded-full ${isScannerStarted ? 'bg-emerald-500 animate-pulse shadow-[0_0_12px_#10b981]' : 'bg-rose-500 shadow-[0_0_12px_#f43f5e]'}`} />
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{status}</p>
-               </div>
-            </div>
-          </div>
-          <button onClick={onClose} className="p-4 hover:bg-white/10 rounded-2xl transition-all group">
-            <X className="h-6 w-6 text-white group-hover:rotate-90 transition-transform" />
-          </button>
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-950/80 p-3" role="presentation">
+      <section role="dialog" aria-modal="true" aria-labelledby="reservation-scanner-title" className="flex max-h-[calc(100dvh-1.5rem)] w-full max-w-lg flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
+        <header className="flex shrink-0 items-center justify-between border-b p-4">
+          <div className="flex items-center gap-3"><QrCode className="h-6 w-6 text-primary-700" /><div><h2 id="reservation-scanner-title" className="font-black text-slate-900">Reservation check-in</h2><p className="text-xs text-slate-500">Verification does not check in the pet until confirmed.</p></div></div>
+          <button type="button" aria-label="Close reservation scanner" onClick={onClose} className="grid h-10 w-10 place-items-center rounded-lg hover:bg-slate-100"><X /></button>
+        </header>
+        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4">
+          {!verification && <>
+            <div id="reservation-qr-reader" className="mx-auto min-h-20 w-full max-w-sm overflow-hidden rounded-xl bg-slate-950" aria-label="QR camera preview" />
+            {cameraState !== 'ready' && <button type="button" onClick={startCamera} disabled={busy || cameraState === 'starting'} className="flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-3 font-bold text-white disabled:opacity-60"><Camera className="h-4 w-4" />{cameraState === 'starting' ? 'Starting camera…' : 'Start camera'}</button>}
+            {busy && <p role="status" className="flex items-center justify-center gap-2 text-sm text-slate-600"><Loader2 className="h-4 w-4 animate-spin" />Verifying credential…</p>}
+            <form onSubmit={event => { event.preventDefault(); verify(backupInput, 'backup_code'); }} className="space-y-2 border-t pt-4">
+              <label htmlFor="reservation-backup-code" className="text-sm font-bold text-slate-800">Or enter the customer’s backup code</label>
+              <input id="reservation-backup-code" autoComplete="off" inputMode="text" maxLength={19} value={backupInput} onChange={event => setBackupInput(event.target.value.toUpperCase())} placeholder="ABCD-EFGH-JKLM-NPQR" className="w-full rounded-xl border border-slate-300 px-3 py-3 font-mono tracking-widest" />
+              <button type="submit" disabled={busy} className="w-full rounded-xl border border-slate-300 px-4 py-3 font-bold text-slate-800 disabled:opacity-50">Verify backup code</button>
+            </form>
+          </>}
+          {verification && <div className="space-y-4 rounded-xl border border-emerald-200 bg-emerald-50 p-4">
+            <div className="flex items-center gap-2 font-black text-emerald-800"><ShieldCheck className="h-5 w-5" />Credential verified</div>
+            {verification.legacyOrderFlow ? <p className="text-sm text-emerald-900">Order QR validated using the existing workflow.</p> : <dl className="grid grid-cols-2 gap-3 text-sm">
+              <div><dt className="text-xs text-slate-500">Booking</dt><dd className="font-bold">#{verification.reference}</dd></div>
+              <div><dt className="text-xs text-slate-500">Pet</dt><dd className="font-bold">{verification.pet}</dd></div>
+              <div><dt className="text-xs text-slate-500">Service</dt><dd className="font-bold">{verification.service}</dd></div>
+              <div><dt className="text-xs text-slate-500">Time</dt><dd className="font-bold">{verification.startTime}–{verification.endTime}</dd></div>
+              <div className="col-span-2"><dt className="text-xs text-slate-500">Store</dt><dd className="font-bold">{verification.store}</dd></div>
+            </dl>}
+            <button type="button" disabled={busy} onClick={confirm} className="w-full rounded-xl bg-emerald-700 px-4 py-3 font-black text-white disabled:opacity-50">{busy ? 'Confirming…' : verification.legacyOrderFlow ? 'Continue' : 'Confirm check-in'}</button>
+            <button type="button" disabled={busy} onClick={() => { setVerification(null); setCredential(''); setBackupInput(''); scanLockRef.current = false; }} className="w-full rounded-xl border border-emerald-300 px-4 py-2 text-sm font-bold text-emerald-900">Scan another reservation</button>
+          </div>}
+          {error && <p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800">{error}</p>}
         </div>
-
-        <div className="flex-1 p-8 flex flex-col items-center justify-center">
-          
-          <div className={`relative w-full aspect-square mx-auto max-w-[340px] mb-10 ${(scanResult || error || isProcessing) ? 'hidden' : 'block'}`}>
-            <div className="w-full h-full rounded-[3rem] border-[8px] border-white/5 bg-black overflow-hidden shadow-2xl relative flex items-center justify-center ring-2 ring-white/10">
-               
-               <video
-                 ref={videoRef}
-                 autoPlay
-                 playsInline
-                 muted
-                 className="w-full h-full object-cover rounded-[2.5rem]"
-                 style={{ minHeight: '100%', minWidth: '100%' }}
-               />
-
-               {!isScannerStarted && !error && (
-                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-8 bg-slate-950 z-30">
-                     <div className="w-24 h-24 border-b-4 border-rose-600 animate-spin rounded-full" />
-                     <p className="text-[11px] font-black text-white uppercase tracking-[0.4em] animate-pulse">{status}</p>
-                  </div>
-               )}
-               
-               {isScannerStarted && (
-                  <div className="absolute inset-0 pointer-events-none z-20 flex items-center justify-center">
-                    <div className="w-full h-full border-[60px] border-black/70" />
-                    <div className="absolute inset-[60px] border-2 border-white/20 rounded-3xl" />
-                    <div className="absolute w-full h-[3px] bg-gradient-to-r from-transparent via-rose-500 to-transparent animate-scan-line shadow-[0_0_20px_#f43f5e]" />
-                    
-                    <div className="absolute top-[68px] left-[68px] w-10 h-10 border-t-4 border-l-4 border-rose-500 rounded-tl-2xl shadow-[-4px_-4px_10px_rgba(244,63,94,0.3)]" />
-                    <div className="absolute top-[68px] right-[68px] w-10 h-10 border-t-4 border-r-4 border-rose-500 rounded-tr-2xl shadow-[4px_-4px_10px_rgba(244,63,94,0.3)]" />
-                    <div className="absolute bottom-[68px] left-[68px] w-10 h-10 border-b-4 border-l-4 border-rose-500 rounded-bl-2xl shadow-[-4px_4px_10px_rgba(244,63,94,0.3)]" />
-                    <div className="absolute bottom-[68px] right-[68px] w-10 h-10 border-b-4 border-r-4 border-rose-500 rounded-br-2xl shadow-[4px_4px_10px_rgba(244,63,94,0.3)]" />
-                  </div>
-               )}
-            </div>
-          </div>
-
-          {!scanResult && !error && !isProcessing && (
-            <div className="text-center space-y-2 max-w-xs transition-opacity duration-1000">
-               <p className="text-[11px] font-black text-white uppercase tracking-[0.4em]">Scan QR code</p>
-               <p className="text-[9px] font-bold text-slate-600 uppercase tracking-widest underline decoration-primary-500/30">Hold the camera steady</p>
-            </div>
-          )}
-
-          {isProcessing && (
-            <div className="flex flex-col items-center justify-center py-10 gap-10 text-center w-full min-h-[300px]">
-               <div className="relative">
-                  <div className="w-28 h-28 border-[12px] border-white/5 border-t-primary-600 rounded-full animate-spin" />
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <Lock className="h-10 w-10 text-primary-600 animate-pulse" />
-                  </div>
-               </div>
-               <div className="space-y-4">
-                   <h4 className="text-3xl font-black text-white uppercase tracking-tighter mb-2">Checking…</h4>
-                  <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.4em] max-w-xs leading-relaxed">{debugInfo}</p>
-               </div>
-            </div>
-          )}
-
-          {scanResult && (
-            <div className="bg-emerald-600 rounded-[3rem] p-10 w-full animate-fade-in shadow-2xl relative overflow-hidden group border border-emerald-500">
-               <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity" />
-               <div className="flex flex-col items-center text-center space-y-10 relative z-10">
-                  <div className="w-28 h-28 bg-white rounded-full flex items-center justify-center shadow-2xl shrink-0 border-[8px] border-white/10">
-                    <CheckCircle className="h-14 w-14 text-emerald-600" />
-                  </div>
-                  <div className="space-y-8 w-full">
-                    <div>
-                      <h4 className="text-4xl font-black text-white uppercase tracking-tight leading-none mb-2">Verified</h4>
-                       <p className="text-[12px] font-black text-emerald-100 uppercase tracking-[0.5em]">QR code verified</p>
-                    </div>
-
-                    <div className="bg-black/20 p-6 rounded-[2rem] border border-white/10 flex items-center gap-5">
-                       <div className="w-12 h-12 bg-black/40 rounded-2xl flex items-center justify-center text-white">
-                          <User className="h-6 w-6" />
-                       </div>
-                       <div className="text-left">
-                          <p className="text-[14px] font-black text-white uppercase leading-none mb-1">{scanResult.customer?.firstName} {scanResult.customer?.lastName}</p>
-                           <p className="text-[10px] font-bold text-white/50 uppercase tracking-widest leading-none">Customer</p>
-                       </div>
-                    </div>
-
-                    <button 
-                      onClick={() => { setScanResult(null); startScanner(); }}
-                      className="flex-1 w-full flex items-center justify-center gap-3 px-8 py-5 bg-white text-emerald-600 rounded-[2rem] font-black text-[12px] uppercase tracking-widest hover:bg-emerald-50 active:scale-95 transition-all shadow-xl shadow-emerald-900/10"
-                    >
-                      <RefreshCcw className="h-5 w-5" /> RE-ENGAGE OPTICS
-                    </button>
-                    <button 
-                      onClick={() => { onScanSuccess(); onClose(); }}
-                      className="flex-1 w-full flex items-center justify-center gap-3 px-8 py-5 bg-emerald-900 text-white rounded-[2rem] font-black text-[12px] uppercase tracking-widest hover:bg-emerald-800 active:scale-95 transition-all shadow-xl shadow-emerald-900/20"
-                    >
-                      <Lock className="h-5 w-5" /> Continue
-                    </button>
-                  </div>
-               </div>
-            </div>
-          )}
-
-          {error && (
-            <div className="bg-rose-600 rounded-[3rem] p-10 w-full animate-fade-in shadow-2xl relative group border border-rose-500">
-               <div className="flex flex-col items-center text-center space-y-10 relative z-10">
-                  <div className="w-28 h-28 bg-white rounded-full flex items-center justify-center shadow-2xl shrink-0">
-                    <ShieldAlert className="h-14 w-14 text-rose-600 text-3xl" />
-                  </div>
-                  <div className="space-y-8 w-full">
-                    <div>
-                       <h4 className="text-3xl font-black text-white uppercase tracking-tight leading-none mb-2">Camera error</h4>
-                       <p className="text-[12px] font-black text-rose-200 uppercase tracking-[0.5em]">We could not scan the code</p>
-                    </div>
-                    <p className="text-[11px] font-bold text-white bg-black/10 py-5 px-6 rounded-2xl uppercase tracking-wide leading-relaxed border border-white/5">
-                      {error}
-                    </p>
-                    <div className="grid grid-cols-1 gap-4">
-                       <button onClick={startScanner} className="py-6 bg-white text-rose-600 rounded-3xl text-[11px] font-black uppercase tracking-widest active:scale-95 transition-all flex items-center justify-center gap-3 shadow-xl">
-                          <RefreshCcw className="h-5 w-5" /> RE-ENGAGE OPTICS
-                       </button>
-                       <button onClick={onClose} className="py-4 text-white/60 text-[10px] font-black uppercase tracking-widest">Close</button>
-                    </div>
-                  </div>
-               </div>
-            </div>
-          )}
-        </div>
-
-        <div id="qr-decoder-engine" className="hidden" />
-        <canvas ref={canvasRef} className="hidden" />
-
-        <div className="px-8 py-5 bg-black border-t border-white/5 flex items-center justify-between">
-           <div className="flex items-center gap-3">
-              <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-               <p className="text-[9px] font-black text-slate-700 uppercase tracking-[0.5em]">Scanner ready</p>
-           </div>
-            <p className="text-[9px] font-black text-slate-800 uppercase tracking-widest underline underline-offset-4 decoration-slate-800">Keep the QR code inside the frame</p>
-        </div>
-      </div>
+      </section>
     </div>
   );
 };
