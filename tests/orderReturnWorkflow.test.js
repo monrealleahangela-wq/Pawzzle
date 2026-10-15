@@ -299,3 +299,256 @@ test('transport milestone notifies the customer and Store owner, not the acting 
     Store.findById = originals.store; Notification.prototype.save = originals.notification;
   }
 });
+
+const returnTransactionUri = process.env.MONGODB_TRANSACTION_TEST_URI;
+test('isolated MongoDB enforces unique requests, one transition, Store scope, and seller receipt', {
+  skip: !returnTransactionUri && 'MONGODB_TRANSACTION_TEST_URI is unset'
+}, async () => {
+  const mongoose = require('mongoose');
+  const parsed = new URL(returnTransactionUri);
+  const databaseName = parsed.pathname.slice(1);
+  assert.equal(parsed.hostname, '127.0.0.1');
+  assert.equal(parsed.port, '27018');
+  assert.equal(parsed.searchParams.get('replicaSet'), 'pawzzleTestRS');
+  assert.equal(parsed.username, '');
+  assert.equal(parsed.password, '');
+  assert.match(databaseName, /^pawzzle_return_gate_test_[a-z0-9]+$/i);
+  const preflight = new mongoose.mongo.MongoClient(returnTransactionUri, { serverSelectionTimeoutMS: 5000 });
+  try {
+    await preflight.connect();
+    const hello = await preflight.db('admin').command({ hello: 1 });
+    assert.equal(hello.setName, 'pawzzleTestRS');
+    assert.equal(hello.isWritablePrimary, true);
+    assert.equal(hello.me || hello.primary, '127.0.0.1:27018');
+    const databases = await preflight.db('admin').admin().listDatabases({ nameOnly: true });
+    assert.equal(databases.databases.some(entry => entry.name === databaseName), false,
+      'test database must be fresh before cleanup can be authorized');
+  } finally { await preflight.close(); }
+
+  let safeTargetVerified = false;
+  try {
+    await mongoose.connect(returnTransactionUri, { serverSelectionTimeoutMS: 5000, autoIndex: false });
+    safeTargetVerified = true;
+    await OrderReturn.syncIndexes();
+    const indexes = await OrderReturn.collection.indexes();
+    assert.ok(indexes.some(index => index.unique === true
+      && index.key.order === 1 && index.key.orderItem === 1));
+
+    const id = () => new mongoose.Types.ObjectId();
+    const fixture = { customer: id(), otherCustomer: id(), owner: id(), otherOwner: id(),
+      rider: id(), otherRider: id(), store: id(), otherStore: id(), order: id(), item: id() };
+    await Store.collection.insertMany([
+      { _id: fixture.store, owner: fixture.owner, name: 'Synthetic Return Store' },
+      { _id: fixture.otherStore, owner: fixture.otherOwner, name: 'Other Synthetic Store' }
+    ]);
+    await User.collection.insertMany([
+      { _id: fixture.customer, role: 'customer', isActive: true, isDeleted: false },
+      { _id: fixture.otherCustomer, role: 'customer', isActive: true, isDeleted: false },
+      { _id: fixture.owner, role: 'store_owner', store: fixture.store, isActive: true, isDeleted: false },
+      { _id: fixture.otherOwner, role: 'store_owner', store: fixture.otherStore, isActive: true, isDeleted: false },
+      { _id: fixture.rider, role: 'delivery_rider', store: fixture.store, isActive: true, isDeleted: false },
+      { _id: fixture.otherRider, role: 'delivery_rider', store: fixture.otherStore, isActive: true, isDeleted: false }
+    ]);
+    await Order.collection.insertOne({
+      _id: fixture.order, customer: fixture.customer, addedBy: fixture.owner, store: fixture.store,
+      items: [{ _id: fixture.item, itemType: 'product', itemId: id(), name: 'Synthetic supply', price: 100, quantity: 1 }],
+      totalAmount: 100, status: 'delivered', paymentStatus: 'paid',
+      paymentMethod: 'paymongo', deliveryMethod: 'delivery', phoneNumber: '000', isDeleted: false
+    });
+    const purchasingCustomer = { _id: fixture.customer, role: 'customer' };
+    const storeOwner = { _id: fixture.owner, role: 'store_owner', store: fixture.store };
+    const foreignOwner = { _id: fixture.otherOwner, role: 'store_owner', store: fixture.otherStore };
+    const assignedRider = { _id: fixture.rider, role: 'delivery_rider', store: fixture.store };
+    const request = () => requestReturn({ user: purchasingCustomer, orderId: fixture.order,
+      itemId: fixture.item, reason: 'Synthetic item needs review' });
+    const requests = await Promise.allSettled([request(), request()]);
+    assert.equal(requests.filter(result => result.status === 'fulfilled').length, 2);
+    assert.deepEqual(requests.map(result => result.value.created).sort(), [false, true]);
+    assert.equal(await OrderReturn.countDocuments({ order: fixture.order }), 1);
+    const returnRecord = requests[0].value.record;
+    assert.equal((await request()).created, false);
+    await assert.rejects(() => requestReturn({ user: { _id: fixture.otherCustomer, role: 'customer' },
+      orderId: fixture.order, itemId: fixture.item, reason: 'Unauthorized' }), { code: 'ORDER_NOT_FOUND' });
+    await assert.rejects(() => transitionReturn({ user: foreignOwner, returnId: returnRecord._id,
+      action: 'approve' }), { code: 'RETURN_FORBIDDEN' });
+    await assert.rejects(() => transitionReturn({ user: assignedRider, returnId: returnRecord._id,
+      action: 'approve' }), { code: 'RETURN_FORBIDDEN' });
+
+    const approve = () => transitionReturn({ user: storeOwner, returnId: returnRecord._id, action: 'approve' });
+    const approvals = await Promise.allSettled([approve(), approve()]);
+    assert.equal(approvals.filter(result => result.status === 'fulfilled').length, 1);
+    assert.equal((await OrderReturn.findById(returnRecord._id)).history.filter(event => event.action === 'approve').length, 1);
+    await transitionReturn({ user: storeOwner, returnId: returnRecord._id, action: 'prepare' });
+    await transitionReturn({ user: storeOwner, returnId: returnRecord._id, action: 'ready' });
+    await transitionReturn({ user: storeOwner, returnId: returnRecord._id,
+      action: 'assign_rider', riderId: fixture.rider });
+
+    const express = require('express');
+    const jwt = require('jsonwebtoken');
+    const previousJwtSecret = process.env.JWT_SECRET;
+    process.env.JWT_SECRET = require('crypto').randomBytes(32).toString('hex');
+    const app = express();
+    app.use(express.json());
+    app.use('/api/returns', require('../routes/orderReturns'));
+    const listener = await new Promise(resolve => {
+      const server = app.listen(0, '127.0.0.1', () => resolve(server));
+    });
+    try {
+      const url = `http://127.0.0.1:${listener.address().port}/api/returns/order/${fixture.order}`;
+      const readAs = async identity => {
+        const token = identity && jwt.sign({ id: String(identity) }, process.env.JWT_SECRET, { expiresIn: '5m' });
+        return fetch(url, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+      };
+      assert.equal((await readAs(null)).status, 401);
+      assert.equal((await readAs(fixture.otherCustomer)).status, 403);
+      assert.equal((await readAs(fixture.otherOwner)).status, 403);
+      assert.equal((await readAs(fixture.otherRider)).status, 403);
+      assert.equal((await readAs(fixture.customer)).status, 200);
+      assert.equal((await readAs(fixture.owner)).status, 200);
+      assert.equal((await readAs(fixture.rider)).status, 200);
+    } finally {
+      await new Promise(resolve => listener.close(resolve));
+      if (previousJwtSecret === undefined) delete process.env.JWT_SECRET;
+      else process.env.JWT_SECRET = previousJwtSecret;
+    }
+
+    await assert.rejects(() => transitionReturn({ user: { _id: fixture.otherRider,
+      role: 'delivery_rider', store: fixture.otherStore }, returnId: returnRecord._id, action: 'pickup' }),
+    { code: 'RETURN_FORBIDDEN' });
+    await transitionReturn({ user: assignedRider, returnId: returnRecord._id, action: 'pickup' });
+    await transitionReturn({ user: assignedRider, returnId: returnRecord._id, action: 'arrive' });
+    await assert.rejects(() => transitionReturn({ user: storeOwner, returnId: returnRecord._id,
+      action: 'complete' }), { code: 'SELLER_RECEIPT_REQUIRED' });
+    await transitionReturn({ user: storeOwner, returnId: returnRecord._id, action: 'confirm_receipt' });
+    await assert.rejects(() => transitionReturn({ user: foreignOwner, returnId: returnRecord._id,
+      action: 'complete' }), { code: 'RETURN_FORBIDDEN' });
+    await transitionReturn({ user: storeOwner, returnId: returnRecord._id, action: 'complete' });
+    const completed = await OrderReturn.findById(returnRecord._id);
+    assert.equal(completed.status, 'completed');
+    assert.ok(completed.sellerReceipt.confirmedAt);
+    assert.equal(completed.refund.status, 'unlinked');
+    assert.equal(completed.history.filter(event => event.action === 'complete').length, 1);
+  } finally {
+    if (safeTargetVerified) await mongoose.connection.db.dropDatabase();
+    await mongoose.disconnect();
+  }
+});
+
+test('mocked Cloudinary upload enforces private delivery, image types, and 5 MB limit', async () => {
+  const express = require('express');
+  const { Writable } = require('stream');
+  const { uploadReturnEvidence: returnUploadMiddleware } = require('../middleware/upload');
+  const originalStream = cloudinary.uploader.upload_stream;
+  const originalDestroy = cloudinary.uploader.destroy;
+  const uploads = [];
+  const removed = [];
+  cloudinary.uploader.upload_stream = (options, callback) => {
+    uploads.push(options);
+    let bytes = 0;
+    return new Writable({
+      write(chunk, _encoding, done) { bytes += chunk.length; done(); },
+      final(done) {
+        callback(null, { public_id: 'pawzzle/return-evidence/synthetic',
+          secure_url: 'https://example.invalid/permanent-upload-response', bytes });
+        done();
+      }
+    });
+  };
+  cloudinary.uploader.destroy = (publicId, options, callback) => {
+    removed.push({ publicId, options });
+    callback(null, { result: 'ok' });
+  };
+  const app = express();
+  app.post('/evidence/:id', (req, _res, next) => {
+    req.user = customer;
+    next();
+  }, returnUploadMiddleware, (req, res) => res.json({ saved: Boolean(req.file) }),
+  (error, _req, res, _next) => res.status(error.code === 'LIMIT_FILE_SIZE' ? 413 : 400)
+    .json({ code: error.code || error.message }));
+  const listener = await new Promise(resolve => {
+    const server = app.listen(0, '127.0.0.1', () => resolve(server));
+  });
+  const send = async (type, size) => {
+    const form = new FormData();
+    form.append('image', new Blob([Buffer.alloc(size)], { type }), 'synthetic.jpg');
+    const response = await fetch(`http://127.0.0.1:${listener.address().port}/evidence/${returnId}`,
+      { method: 'POST', body: form });
+    return { status: response.status, body: await response.json() };
+  };
+  try {
+    const invalid = await send('text/plain', 12);
+    assert.equal(invalid.status, 400);
+    assert.match(invalid.body.code, /Only image files/);
+    assert.equal(uploads.length, 0);
+    const valid = await send('image/jpeg', 12);
+    assert.equal(valid.status, 200);
+    assert.equal(valid.body.saved, true);
+    assert.equal(uploads[0].type, 'authenticated');
+    assert.equal(uploads[0].folder, 'pawzzle/return-evidence');
+    assert.equal(uploads[0].context.owner, customerId);
+    assert.equal(uploads[0].context.orderReturn, returnId);
+    const oversized = await send('image/jpeg', 5 * 1024 * 1024 + 1);
+    assert.equal(oversized.status, 413);
+    assert.equal(oversized.body.code, 'LIMIT_FILE_SIZE');
+    assert.ok(removed.some(entry => entry.options.type === 'authenticated'));
+  } finally {
+    await new Promise(resolve => listener.close(resolve));
+    cloudinary.uploader.upload_stream = originalStream;
+    cloudinary.uploader.destroy = originalDestroy;
+  }
+});
+
+test('mocked signed evidence links are short-lived and limited to return participants', async () => {
+  const originalFind = OrderReturn.findById;
+  const originalStoreFind = Store.find;
+  const originalSigner = cloudinary.utils.private_download_url;
+  const evidence = { _id: itemId, publicId: 'pawzzle/return-evidence/private',
+    format: 'jpg', deliveryType: 'authenticated', originalName: 'condition.jpg' };
+  const record = row('ready_for_pickup', { assignedRider: riderId, evidence: [evidence] });
+  const signings = [];
+  OrderReturn.findById = async () => record;
+  Store.find = () => ({ select: () => ({ lean: async () => [] }) });
+  cloudinary.utils.private_download_url = (publicId, format, options) => {
+    signings.push({ publicId, format, options });
+    return 'https://example.invalid/short-lived-signed-access';
+  };
+  const response = () => ({
+    statusCode: 200, headers: {},
+    set(name, value) { this.headers[name] = value; return this; },
+    status(code) { this.statusCode = code; return this; },
+    json(value) { this.body = value; return this; }
+  });
+  const access = async user => {
+    const res = response();
+    await getReturnEvidenceAccess({ params: { id: returnId, evidenceId: itemId }, user }, res);
+    return res;
+  };
+  try {
+    for (const outsider of [
+      { _id: '507f1f77bcf86cd799439099', role: 'customer' },
+      { _id: '507f1f77bcf86cd799439098', role: 'store_owner', store: '507f1f77bcf86cd799439099' },
+      { _id: '507f1f77bcf86cd799439097', role: 'delivery_rider', store: storeId }
+    ]) {
+      const denied = await access(outsider);
+      assert.equal(denied.statusCode, 403);
+      assert.equal(denied.body.code, 'RETURN_FORBIDDEN');
+    }
+    assert.equal(signings.length, 0);
+    for (const participant of [customer, { _id: sellerId, role: 'store_owner', store: storeId }, rider]) {
+      const allowed = await access(participant);
+      assert.equal(allowed.statusCode, 200);
+      assert.equal(allowed.headers['Cache-Control'], 'no-store, private');
+      assert.equal(allowed.body.url, 'https://example.invalid/short-lived-signed-access');
+      assert.ok(Date.parse(allowed.body.expiresAt) > Date.now());
+      assert.ok(Date.parse(allowed.body.expiresAt) <= Date.now() + 5 * 60 * 1000);
+    }
+    assert.equal(signings.length, 3);
+    assert.ok(signings.every(entry => entry.options.type === 'authenticated'));
+    assert.equal(presentReturn(record).evidence[0].publicId, undefined);
+    assert.equal(presentReturn(record).evidence[0].url, undefined);
+  } finally {
+    OrderReturn.findById = originalFind;
+    Store.find = originalStoreFind;
+    cloudinary.utils.private_download_url = originalSigner;
+  }
+});
