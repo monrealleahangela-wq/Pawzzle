@@ -23,6 +23,7 @@ const { isPlatformAdmin, isStoreAdmin, isOperationalStaff, hasPermission } = req
 const { canAccessStore, canOperateStore } = require('../utils/authorizationPolicy');
 const { requiresAcknowledgment } = require('../utils/refundPolicy');
 const { assertStoreTransactionEligible } = require('../services/storeComplianceService');
+const { revalidatePendingOrderDelivery } = require('../services/orderPricingService');
 const {
   getPetAvailabilityIssue,
   releasePetReservation,
@@ -321,6 +322,7 @@ const createCheckoutSession = async (req, res) => {
       return res.status(403).json({ message: 'Access denied.' });
     }
     assertStoreTransactionEligible(order.store, { requireTax: true });
+    await revalidatePendingOrderDelivery(order);
     if (requiresAcknowledgment(order.refundPolicySnapshot || order.store?.refundPolicy)
         && !order.refundPolicyAcknowledgment?.acknowledged) {
       return res.status(409).json({ message: 'Acknowledge the store No Refund policy before starting PayMongo.' });
@@ -398,6 +400,14 @@ const createCheckoutSession = async (req, res) => {
     res.json({ checkoutUrl: session.attributes.checkout_url });
   } catch (error) {
     console.error('PayMongo order checkout error:', error.response?.data || error.message);
+    const deliveryCodes = new Set([
+      'INVALID_DELIVERY_ADDRESS', 'CUSTOMER_LOCATION_REQUIRED', 'STORE_LOCATION_REQUIRED',
+      'DELIVERY_RULE_REQUIRED', 'HOME_DELIVERY_DISABLED', 'OUTSIDE_DELIVERY_RANGE',
+      'DELIVERY_PRICING_UNAVAILABLE', 'DELIVERY_SERVICE_UNAVAILABLE', 'DELIVERY_QUOTE_CHANGED'
+    ]);
+    if (deliveryCodes.has(error.code)) {
+      return res.status(error.statusCode || 400).json({ code: error.code, message: error.message });
+    }
     res.status(error.statusCode || 500).json({ message: error.message || 'Failed to create payment session.' });
   }
 };

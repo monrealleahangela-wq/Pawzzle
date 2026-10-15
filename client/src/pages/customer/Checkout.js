@@ -15,6 +15,7 @@ import {
   formatDeliveryAddress,
   getAddressCoordinates,
   hasValidAddressCoordinates,
+  isUsableCheckoutQuote,
   normalizeDeliveryAddress,
   shippingQuoteErrorMessage
 } from '../../utils/deliveryAddress';
@@ -56,12 +57,12 @@ const Checkout = () => {
   const [showVoucherModal, setShowVoucherModal] = useState(false);
   const [agreedToPolicy, setAgreedToPolicy] = useState(false);
   const [pricingQuote, setPricingQuote] = useState(null);
+  const [quotedInputKey, setQuotedInputKey] = useState(null);
   const [pricingQuoteError, setPricingQuoteError] = useState('');
   const [isPricingQuoteLoading, setIsPricingQuoteLoading] = useState(false);
+  const [quoteRetry, setQuoteRetry] = useState(0);
   const [destinationConfirmed, setDestinationConfirmed] = useState(false);
   const quoteRequestIdRef = React.useRef(0);
-  const refundPolicy = normalizeRefundPolicy(pricingQuote?.refundPolicy);
-  const refundAcknowledgmentRequired = requiresRefundAcknowledgment(refundPolicy);
 
   // Payment options - Online Only consistent with minimalist design
   const getPaymentOptions = () => {
@@ -121,10 +122,20 @@ const Checkout = () => {
     [deliveryMethod, destinationConfirmed, shippingAddress]
   );
   const appliedVoucherCode = appliedVoucher ? voucherCode : '';
+  const quoteInputKey = JSON.stringify([
+    quoteItemsSignature, deliveryMethod, destinationConfirmed,
+    quoteShippingAddress, appliedVoucherCode
+  ]);
+  const currentPricingQuote = quotedInputKey === quoteInputKey ? pricingQuote : null;
+  const hasPetInCart = checkoutItems.some(item => item.itemType === 'pet');
+  const refundPolicy = normalizeRefundPolicy(currentPricingQuote?.refundPolicy);
+  const refundAcknowledgmentRequired = requiresRefundAcknowledgment(refundPolicy);
 
   useEffect(() => {
     if (!quoteItemsSignature) {
+      quoteRequestIdRef.current += 1;
       setPricingQuote(null);
+      setQuotedInputKey(null);
       setPricingQuoteError('Unable to calculate your total because no checkout items are selected.');
       setIsPricingQuoteLoading(false);
       return undefined;
@@ -133,6 +144,7 @@ const Checkout = () => {
     if (deliveryMethod === 'delivery' && (!destinationConfirmed || !hasValidAddressCoordinates(shippingAddress))) {
       quoteRequestIdRef.current += 1;
       setPricingQuote(null);
+      setQuotedInputKey(null);
       setPricingQuoteError(
         hasValidAddressCoordinates(normalizedProfileAddress)
           ? 'Use your saved address or choose another location to calculate shipping.'
@@ -145,6 +157,7 @@ const Checkout = () => {
     let active = true;
     const requestId = ++quoteRequestIdRef.current;
     setPricingQuote(null);
+    setQuotedInputKey(null);
     setPricingQuoteError('');
     setIsPricingQuoteLoading(true);
     const timer = setTimeout(async () => {
@@ -156,16 +169,21 @@ const Checkout = () => {
           voucherCode: appliedVoucherCode || null
         });
         if (active && quoteRequestIdRef.current === requestId) {
-          setPricingQuote(response.data);
-          setPricingQuoteError('');
+          if (isUsableCheckoutQuote(response.data, deliveryMethod, hasPetInCart)) {
+            setPricingQuote(response.data);
+            setQuotedInputKey(quoteInputKey);
+            setPricingQuoteError('');
+          } else {
+            setPricingQuote(null);
+            setQuotedInputKey(null);
+            setPricingQuoteError(shippingQuoteErrorMessage('DELIVERY_SERVICE_UNAVAILABLE'));
+          }
         }
       } catch (error) {
         if (active && quoteRequestIdRef.current === requestId) {
           setPricingQuote(null);
-          setPricingQuoteError(shippingQuoteErrorMessage(
-            error.response?.data?.code,
-            error.response?.data?.message
-          ));
+          setQuotedInputKey(null);
+          setPricingQuoteError(shippingQuoteErrorMessage(error.response?.data?.code));
         }
       } finally {
         if (active && quoteRequestIdRef.current === requestId) setIsPricingQuoteLoading(false);
@@ -183,7 +201,10 @@ const Checkout = () => {
     quoteShippingAddress,
     shippingAddress,
     normalizedProfileAddress,
-    appliedVoucherCode
+    appliedVoucherCode,
+    quoteInputKey,
+    quoteRetry,
+    hasPetInCart
   ]);
 
   // Fetch claimed vouchers
@@ -348,6 +369,10 @@ const Checkout = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!currentPricingQuote || pricingQuoteError || isPricingQuoteLoading) {
+      toast.error('Wait for a valid order and delivery quote before paying.');
+      return;
+    }
     if (deliveryMethod === 'delivery'
         && (!destinationConfirmed || !hasValidAddressCoordinates(shippingAddress))) {
       toast.error('Select or confirm your delivery location before paying.');
@@ -393,7 +418,7 @@ const Checkout = () => {
 
       if (response.data && response.data.order) {
         const orderId = response.data.order._id;
-        const quotedTotal = Number(pricingQuote?.pricingBreakdown?.finalTotal);
+        const quotedTotal = Number(currentPricingQuote.pricingBreakdown.finalTotal);
         const savedTotal = Number(response.data.order.totalAmount);
         if (Number.isFinite(quotedTotal) && Math.abs(quotedTotal - savedTotal) > 0.009) {
           toast.warning('The price changed during checkout. Review the updated order total before paying.');
@@ -420,7 +445,9 @@ const Checkout = () => {
             }
           } catch (paymentError) {
             console.error('Payment Error:', paymentError);
-            toast.error('Your order was created, but payment could not start. Try again from the order page.');
+            toast.error(paymentError.response?.data?.code === 'DELIVERY_QUOTE_CHANGED'
+              ? shippingQuoteErrorMessage('DELIVERY_QUOTE_CHANGED')
+              : 'Your order was created, but payment could not start. Try again from the order page.');
             navigate(`/orders/${orderId}`);
             return;
           }
@@ -459,8 +486,8 @@ const Checkout = () => {
       return;
     }
 
-    const quotedStoreId = pricingQuote?.store?._id;
-    const quotedSubtotal = Number(pricingQuote?.pricingBreakdown?.subtotal);
+    const quotedStoreId = currentPricingQuote?.store?._id;
+    const quotedSubtotal = Number(currentPricingQuote?.pricingBreakdown?.subtotal);
     if (!quotedStoreId || !Number.isFinite(quotedSubtotal)) {
       toast.error('Wait for the current order total before applying a voucher.');
       return;
@@ -490,8 +517,8 @@ const Checkout = () => {
     
     const voucher = mv.voucher;
     const now = new Date();
-    const currentStoreId = pricingQuote?.store?._id;
-    const currentSubtotal = Number(pricingQuote?.pricingBreakdown?.subtotal);
+    const currentStoreId = currentPricingQuote?.store?._id;
+    const currentSubtotal = Number(currentPricingQuote?.pricingBreakdown?.subtotal);
 
     if (!currentStoreId || !Number.isFinite(currentSubtotal)) {
       return { isValid: false, reason: 'Total unavailable' };
@@ -530,14 +557,14 @@ const Checkout = () => {
     return { isValid: true, reason: 'Applicable' };
   };
 
-  const quoteBreakdown = pricingQuote?.pricingBreakdown;
+  const quoteBreakdown = currentPricingQuote?.pricingBreakdown;
   const quoteSummary = quoteBreakdown ? orderPaymentSummary({
     pricingBreakdown: quoteBreakdown,
-    deliveryFeeCalculation: pricingQuote?.deliveryFeeCalculation,
-    deliveryMethod,
-    items: pricingQuote?.items || checkoutItems
+    deliveryFeeCalculation: currentPricingQuote?.deliveryFeeCalculation,
+    deliveryMethod: currentPricingQuote?.deliveryMethod,
+    items: currentPricingQuote?.items || checkoutItems
   }) : null;
-  const checkoutLineItems = orderLineItemRows(pricingQuote?.items?.length ? pricingQuote.items : checkoutItems);
+  const checkoutLineItems = orderLineItemRows(currentPricingQuote?.items?.length ? currentPricingQuote.items : checkoutItems);
 
   if (checkoutItems.length === 0) {
     const hasItemsInCart = items && items.length > 0;
@@ -1156,6 +1183,16 @@ const Checkout = () => {
                 loading={isPricingQuoteLoading}
                 error={pricingQuoteError}
               />
+              {pricingQuoteError && quoteItemsSignature
+                && (deliveryMethod === 'pickup' || (destinationConfirmed && hasValidAddressCoordinates(shippingAddress))) && (
+                <button
+                  type="button"
+                  onClick={() => setQuoteRetry(value => value + 1)}
+                  className="text-sm font-semibold text-primary-700 underline underline-offset-2 hover:text-primary-900"
+                >
+                  Retry delivery quote
+                </button>
+              )}
             </div>
 
             {/* Store refund policy */}
@@ -1184,12 +1221,12 @@ const Checkout = () => {
                 type="submit"
                 disabled={isLoading
                   || isPricingQuoteLoading
-                  || !pricingQuote
+                  || !currentPricingQuote
                   || Boolean(pricingQuoteError)
                   || (deliveryMethod === 'delivery' && (!destinationConfirmed || !hasValidAddressCoordinates(shippingAddress)))
                   || (refundAcknowledgmentRequired && !agreedToPolicy)}
                 className={`btn btn-primary w-full flex items-center justify-center gap-3 py-5 text-[10px] font-black uppercase tracking-[0.3em] shadow-2xl transition-all active:scale-95 ${
-                  ((refundAcknowledgmentRequired && !agreedToPolicy) || !pricingQuote || pricingQuoteError) ? 'opacity-50 cursor-not-allowed grayscale' : 'shadow-primary-200 hover:-translate-y-0.5'
+                  ((refundAcknowledgmentRequired && !agreedToPolicy) || !currentPricingQuote || pricingQuoteError) ? 'opacity-50 cursor-not-allowed grayscale' : 'shadow-primary-200 hover:-translate-y-0.5'
                 }`}
               >
                 {isLoading ? (

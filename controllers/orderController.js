@@ -420,11 +420,15 @@ const createOrder = async (req, res) => {
       return res.status(409).json({ code: error.code, message: error.message });
     }
     const deliveryErrorCodes = new Set([
+      'INVALID_DELIVERY_ADDRESS',
       'CUSTOMER_LOCATION_REQUIRED',
       'STORE_LOCATION_REQUIRED',
       'DELIVERY_RULE_REQUIRED',
       'HOME_DELIVERY_DISABLED',
-      'OUTSIDE_DELIVERY_RANGE'
+      'OUTSIDE_DELIVERY_RANGE',
+      'DELIVERY_PRICING_UNAVAILABLE',
+      'DELIVERY_SERVICE_UNAVAILABLE',
+      'MULTI_STORE_DELIVERY_UNSUPPORTED'
     ]);
     if (deliveryErrorCodes.has(error.code)) {
       return res.status(error.statusCode || 400).json({ code: error.code, message: error.message });
@@ -457,10 +461,24 @@ const quoteOrder = async (req, res) => {
       refundPolicy: normalizeRefundPolicy(pricing.store.refundPolicy)
     });
   } catch (error) {
-    const status = error.code === 'STORE_TAX_VERIFICATION_REQUIRED'
-      ? 409
-      : (error.statusCode || 400);
-    res.status(status).json({ code: error.code || 'QUOTE_FAILED', message: error.message });
+    const safeCodes = new Set([
+      'INVALID_DELIVERY_ADDRESS', 'CUSTOMER_LOCATION_REQUIRED', 'STORE_LOCATION_REQUIRED',
+      'DELIVERY_RULE_REQUIRED', 'HOME_DELIVERY_DISABLED', 'OUTSIDE_DELIVERY_RANGE',
+      'DELIVERY_PRICING_UNAVAILABLE', 'DELIVERY_SERVICE_UNAVAILABLE',
+      'MULTI_STORE_DELIVERY_UNSUPPORTED', 'STORE_UNAVAILABLE',
+      'STORE_COMPLIANCE_RESTRICTED', 'STORE_COMPLIANCE_DOCUMENT_EXPIRED',
+      'STORE_TAX_VERIFICATION_REQUIRED'
+    ]);
+    if (safeCodes.has(error.code)) {
+      return res.status(error.statusCode || 400).json({ code: error.code, message: error.message });
+    }
+    const invalidCart = /^(Order must|Item quantity|Each individual pet|Pet "|Product "|Invalid item type|The store for|Store is unavailable|Voucher|A minimum purchase)/.test(error.message || '');
+    if (invalidCart) return res.status(400).json({ code: 'INVALID_CHECKOUT_ITEMS', message: 'Please review your cart items and try again.' });
+    console.error('Order quote failed:', error.code || error.name || 'unknown');
+    return res.status(503).json({
+      code: 'QUOTE_FAILED',
+      message: 'We could not calculate your order total right now. Please try again shortly.'
+    });
   }
 };
 

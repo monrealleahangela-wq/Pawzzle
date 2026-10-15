@@ -101,7 +101,8 @@ test('backend distinguishes customer, store, rule, and range delivery failures',
 
 test('quote API returns machine-readable error codes while preserving tax verification', () => {
   const controller = read('controllers/orderController.js');
-  assert.match(controller, /code: error\.code \|\| 'QUOTE_FAILED'/);
+  assert.match(controller, /safeCodes\.has\(error\.code\)/);
+  assert.match(controller, /code: 'QUOTE_FAILED'/);
   assert.match(controller, /error\.code === 'STORE_TAX_VERIFICATION_REQUIRED'/);
   assert.match(controller, /deliveryErrorCodes/);
 });
@@ -137,7 +138,7 @@ test('checkout displays selected destination and disables payment until quote is
   const source = checkout();
   assert.match(source, />Delivering to</);
   assert.match(source, /formatDeliveryAddress\(shippingAddress\)/);
-  assert.match(source, /!pricingQuote/);
+  assert.match(source, /!currentPricingQuote/);
   assert.match(source, /deliveryMethod === 'delivery'[\s\S]*!destinationConfirmed/);
 });
 

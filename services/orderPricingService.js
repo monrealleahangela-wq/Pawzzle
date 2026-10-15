@@ -61,6 +61,12 @@ const calculateDelivery = async ({ store, deliveryMethod, shippingAddress, itemQ
   if (!DeliveryFeeService.isValidCoordinates(origin)) {
     throw pricingError('STORE_LOCATION_REQUIRED', 'This store has not configured its delivery location.');
   }
+  if (!shippingAddress || typeof shippingAddress !== 'object' || Array.isArray(shippingAddress)) {
+    throw pricingError('INVALID_DELIVERY_ADDRESS', 'Please check your delivery address and try again.');
+  }
+  if (destination !== undefined && destination !== null && !DeliveryFeeService.isValidCoordinates(destination)) {
+    throw pricingError('INVALID_DELIVERY_ADDRESS', 'Please check your delivery location and try again.');
+  }
   if (!DeliveryFeeService.isValidCoordinates(destination)) {
     throw pricingError('CUSTOMER_LOCATION_REQUIRED', 'Select or confirm your delivery location.');
   }
@@ -111,7 +117,7 @@ const calculateOrderPricing = async ({ items, requestedDeliveryMethod, shippingA
     }
     if (!itemStoreId) throw new Error(`The store for "${itemDoc.name}" could not be resolved.`);
     if (storeId && !idsEqual(storeId, itemStoreId)) {
-      throw new Error('Items from different stores must be checked out separately.');
+      throw pricingError('MULTI_STORE_DELIVERY_UNSUPPORTED', 'Items from different stores must be checked out separately.');
     }
     storeId = itemStoreId;
 
@@ -134,12 +140,8 @@ const calculateOrderPricing = async ({ items, requestedDeliveryMethod, shippingA
   assertStoreTransactionEligible(store, { requireTax: true });
   const deliveryMethod = hasPet ? 'pickup' : requestedDeliveryMethod;
   if (!['delivery', 'pickup'].includes(deliveryMethod)) throw new Error('Invalid delivery method.');
-  const missingDeliveryWeight = deliveryMethod === 'delivery'
-    ? processedItems.find(item => item.itemType === 'product' && !item.unitWeightKg)
-    : null;
-  if (missingDeliveryWeight) {
-    throw new Error(`Product "${missingDeliveryWeight.name}" needs a package weight before it can be ordered for delivery. Ask the Store to update the product or choose pickup.`);
-  }
+  // Catalog weight is optional. Rider dispatch independently requires Store
+  // staff to confirm the measured parcel weight before assignment.
   const parcelEstimate = deliveryMethod === 'delivery' ? buildParcelEstimate(processedItems) : null;
 
   const totalItemQuantity = processedItems.reduce((total, item) => total + item.quantity, 0);
@@ -169,4 +171,22 @@ const calculateOrderPricing = async ({ items, requestedDeliveryMethod, shippingA
   };
 };
 
-module.exports = { calculateOrderPricing, buildParcelEstimate, productWeightKg };
+const revalidatePendingOrderDelivery = async order => {
+  if (order.deliveryMethod !== 'delivery') return;
+  const itemQuantity = (order.items || []).reduce((total, item) => total + Number(item.quantity), 0);
+  const current = await calculateDelivery({
+    store: order.store,
+    deliveryMethod: 'delivery',
+    shippingAddress: order.shippingAddress,
+    itemQuantity
+  });
+  const storedFee = order.pricingBreakdown?.deliveryFee ?? order.shippingFee;
+  if (storedFee == null || !Number.isFinite(Number(storedFee))
+      || Math.abs(current.fee - Number(storedFee)) > 0.009) {
+    const error = pricingError('DELIVERY_QUOTE_CHANGED', 'Delivery pricing changed. Please recreate checkout before paying.');
+    error.statusCode = 409;
+    throw error;
+  }
+};
+
+module.exports = { calculateOrderPricing, revalidatePendingOrderDelivery, buildParcelEstimate, productWeightKg };

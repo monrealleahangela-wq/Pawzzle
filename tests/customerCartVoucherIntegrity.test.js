@@ -122,8 +122,8 @@ test('product voucher totals stay authoritative when the voucher is removed or q
 
 test('checkout verifies product vouchers against the authoritative quote', () => {
   const checkout = read('client/src/pages/customer/Checkout.js');
-  assert.match(checkout, /const quotedStoreId = pricingQuote\?\.store\?\._id/);
-  assert.match(checkout, /const quotedSubtotal = Number\(pricingQuote\?\.pricingBreakdown\?\.subtotal\)/);
+  assert.match(checkout, /const quotedStoreId = currentPricingQuote\?\.store\?\._id/);
+  assert.match(checkout, /const quotedSubtotal = Number\(currentPricingQuote\?\.pricingBreakdown\?\.subtotal\)/);
   assert.match(checkout, /storeId: quotedStoreId,[\s\S]*purchaseAmount: quotedSubtotal/);
   assert.doesNotMatch(checkout, /checkoutItems\[0\]\?\.storeId/);
 });

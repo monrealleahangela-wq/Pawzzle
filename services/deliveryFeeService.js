@@ -14,17 +14,37 @@ const haversineKm = (origin, destination) => {
   return earthRadiusKm * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 };
 
-const validateCoordinates = ({ lat, lng } = {}) =>
-  lat !== null && lat !== undefined && lat !== ''
+const validateCoordinates = coordinates => {
+  if (!coordinates || typeof coordinates !== 'object') return false;
+  const { lat, lng } = coordinates;
+  return lat !== null && lat !== undefined && lat !== ''
   && lng !== null && lng !== undefined && lng !== ''
   && Number.isFinite(Number(lat)) && Number(lat) >= -90 && Number(lat) <= 90
   && Number.isFinite(Number(lng)) && Number(lng) >= -180 && Number(lng) <= 180;
+};
 
-const deliveryPricingError = (code, message) => {
+const deliveryPricingError = (code, message, statusCode = 400) => {
   const error = new Error(message);
   error.code = code;
-  error.statusCode = 400;
+  error.statusCode = statusCode;
   return error;
+};
+
+const validateActiveRule = rule => {
+  for (const field of ['baseFee', 'includedKilometers', 'ratePerKilometer', 'additionalItemFee', 'minimumFee']) {
+    if (rule[field] == null || !Number.isFinite(Number(rule[field])) || Number(rule[field]) < 0) {
+      throw deliveryPricingError('DELIVERY_PRICING_UNAVAILABLE', 'Delivery pricing is temporarily unavailable for this store.', 503);
+    }
+  }
+  for (const field of ['maximumFee', 'maximumDistanceKm']) {
+    if (rule[field] != null && (!Number.isFinite(Number(rule[field]))
+        || Number(rule[field]) < 0 || (field === 'maximumDistanceKm' && Number(rule[field]) === 0))) {
+      throw deliveryPricingError('DELIVERY_PRICING_UNAVAILABLE', 'Delivery pricing is temporarily unavailable for this store.', 503);
+    }
+  }
+  if (rule.maximumFee != null && Number(rule.maximumFee) < Number(rule.minimumFee)) {
+    throw deliveryPricingError('DELIVERY_PRICING_UNAVAILABLE', 'Delivery pricing is temporarily unavailable for this store.', 503);
+  }
 };
 
 const calculateBreakdown = ({ rule, distanceKm, itemQuantity = 1, surcharge = 0, discount = 0 }) => {
@@ -65,17 +85,28 @@ class DeliveryFeeService {
       throw deliveryPricingError('CUSTOMER_LOCATION_REQUIRED', 'Select or confirm your delivery location.');
     }
     const now = new Date();
-    const rule = await DeliveryFeeRule.findOne({
-      store, isActive: true, effectiveFrom: { $lte: now },
-      $or: [{ effectiveUntil: null }, { effectiveUntil: { $gte: now } }]
-    }).sort({ effectiveFrom: -1, version: -1 });
+    let rule;
+    try {
+      rule = await DeliveryFeeRule.findOne({
+        store, isActive: true, effectiveFrom: { $lte: now },
+        $or: [{ effectiveUntil: null }, { effectiveUntil: { $gte: now } }]
+      }).sort({ effectiveFrom: -1, version: -1 });
+    } catch (error) {
+      throw deliveryPricingError('DELIVERY_SERVICE_UNAVAILABLE', 'Delivery pricing is temporarily unavailable. Please try again shortly.', 503);
+    }
     if (!rule) {
-      const hasConfiguredRule = await DeliveryFeeRule.exists({ store });
+      let hasConfiguredRule;
+      try {
+        hasConfiguredRule = await DeliveryFeeRule.exists({ store });
+      } catch (error) {
+        throw deliveryPricingError('DELIVERY_SERVICE_UNAVAILABLE', 'Delivery pricing is temporarily unavailable. Please try again shortly.', 503);
+      }
       if (hasConfiguredRule) {
         throw deliveryPricingError('HOME_DELIVERY_DISABLED', 'Home delivery is currently unavailable for this store.');
       }
       throw deliveryPricingError('DELIVERY_RULE_REQUIRED', 'Delivery pricing is not configured for this store.');
     }
+    validateActiveRule(rule);
 
     // Haversine is an explicit fallback. A routing provider can replace distanceKm later.
     const distanceKm = haversineKm(

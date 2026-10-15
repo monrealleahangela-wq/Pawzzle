@@ -77,7 +77,7 @@ test('checkout distinguishes no rule, intentionally inactive delivery, active ca
       error => error.code === 'HOME_DELIVERY_DISABLED'
     );
 
-    const rule = { _id: 'rule-a', name: 'Current rule', version: 4, ...validRule };
+    const rule = { _id: 'rule-a', name: 'Current rule', version: 4, ...validRule, maximumFee: null };
     DeliveryFeeRule.findOne = query => {
       capturedQuery = query;
       return { sort: async () => rule };
@@ -153,7 +153,7 @@ test('checkout error semantics, pickup behavior, server authority, and historica
   assert.match(pricing, /calculateTransactionTax\(\{/);
   assert.match(orderController, /deliveryFeeCalculation: pricing\.deliveryFeeCalculation/);
   assert.match(orderModel, /rule:[\s\S]*id: \{ type: mongoose\.Schema\.Types\.ObjectId, ref: 'DeliveryFeeRule' \}/);
-  assert.match(checkout, /!pricingQuote/);
+  assert.match(checkout, /!currentPricingQuote/);
   assert.doesNotMatch(checkout.slice(checkout.indexOf('const orderData = {'), checkout.indexOf('const response = await orderService.createOrder')), /shippingFee|finalTotal|distanceCharge/);
 });
 
