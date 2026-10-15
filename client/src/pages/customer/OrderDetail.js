@@ -11,9 +11,10 @@ import DeliveryConcernForm from '../../components/delivery/DeliveryConcernForm';
 import ConfirmationDialog from '../../components/ui/ConfirmationDialog';
 import { normalizeRefundPolicy, refundPolicyLabel } from '../../utils/refundPolicy';
 import PaymentBreakdown from '../../components/payments/PaymentBreakdown';
+import ReturnTracker from '../../components/returns/ReturnTracker';
 import { formatPeso, orderLineItemRows, orderPaymentSummary, paymentSummaryRows } from '../../utils/paymentSummary';
 import { useRealTimeUpdates } from '../../hooks/useRealTimeUpdates';
-import { hasUiActionPermission } from '../../utils/authorization';
+import { effectiveStaffType, hasUiActionPermission } from '../../utils/authorization';
 
 const OrderDetail = () => {
   const { id } = useParams();
@@ -403,6 +404,9 @@ const OrderDetail = () => {
           </div>
         </div>
       </div>
+
+      {(user?.role === 'customer' || ['admin', 'store_owner', 'manager'].includes(effectiveStaffType(user)))
+        && <ReturnTracker order={order} />}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Order Items & Revenue Breakdown */}

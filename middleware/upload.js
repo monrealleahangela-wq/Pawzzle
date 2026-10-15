@@ -124,6 +124,28 @@ const attendanceEvidenceUpload = multer({
   }
 });
 
+const returnEvidenceStorage = new CloudinaryStorage({
+  cloudinary,
+  params: req => ({
+    folder: 'pawzzle/return-evidence',
+    type: 'authenticated',
+    resource_type: 'image',
+    allowed_formats: ['jpeg', 'jpg', 'png', 'webp'],
+    context: { owner: String(req.user?._id || ''), orderReturn: String(req.params.id || '') }
+  })
+});
+returnEvidenceStorage._removeFile = (req, file, callback) => cloudinary.uploader.destroy(file.filename, {
+  resource_type: 'image', type: 'authenticated', invalidate: true
+}, callback);
+const returnEvidenceUpload = multer({
+  storage: returnEvidenceStorage,
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (req, file, callback) => {
+    if (['image/jpeg', 'image/png', 'image/webp'].includes(file.mimetype)) return callback(null, true);
+    return callback(new Error('Only image files are allowed for returns'));
+  }
+});
+
 // Cloudinary storage for documents (PDF, Doc)
 const documentStorage = new CloudinaryStorage({
   cloudinary,
@@ -156,6 +178,7 @@ const uploadSingle = upload.single('image');
 const uploadMultiple = uploadMulti.array('images', 10);
 const uploadProcurementEvidence = procurementEvidenceUpload.array('images', 10);
 const uploadAttendanceEvidence = attendanceEvidenceUpload.single('evidence');
+const uploadReturnEvidence = returnEvidenceUpload.single('image');
 const uploadServicePhotos = uploadMulti.fields([
   { name: 'images', maxCount: 5 },
   { name: 'image', maxCount: 1 }
@@ -180,6 +203,7 @@ module.exports = {
   uploadMultiple,
   uploadProcurementEvidence,
   uploadAttendanceEvidence,
+  uploadReturnEvidence,
   uploadServicePhotos,
   uploadDoc,
   handleUploadError

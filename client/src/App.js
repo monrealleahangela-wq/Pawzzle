@@ -14,6 +14,8 @@ import RoleBasedRedirect from './components/RoleBasedRedirect';
 import Notifications from './pages/Notifications';
 import DeliveryTracking from './pages/DeliveryTracking';
 import RiderDeliveryPage from './pages/RiderDeliveryPage';
+import RiderReturnsPage from './pages/RiderReturnsPage';
+import StoreReturnsPage from './pages/admin/StoreReturnsPage';
 import PawCursor from './components/PawCursor';
 import { useTheme } from './contexts/ThemeContext';
 import ChatManagement from './pages/shared/ChatManagement';
@@ -196,6 +198,8 @@ function App() {
                   {/* Store overview for authorized managers/owners; assigned-work hubs for specialists and riders. */}
                   <Route path="admin/dashboard" element={<ProtectedRoute roles={['admin', 'super_admin', 'staff', 'delivery_rider']} requireDashboardAccess><AdminDashboard /></ProtectedRoute>} />
                   <Route path="rider/deliveries/:deliveryId" element={<ProtectedRoute roles={['delivery_rider', 'staff']} staffTypes={['delivery_rider']}><RiderDeliveryPage /></ProtectedRoute>} />
+                  <Route path="rider/returns" element={<ProtectedRoute roles={['delivery_rider', 'staff']} staffTypes={['delivery_rider']}><RiderReturnsPage /></ProtectedRoute>} />
+                  <Route path="admin/returns" element={<ProtectedRoute roles={['admin', 'staff']} staffTypes={['manager']}><StoreReturnsPage /></ProtectedRoute>} />
 
                   {/* Catalog - inventory access */}
                   <Route path="admin/pets" element={<ProtectedRoute roles={['admin', 'super_admin', 'staff']} staffTypes={['inventory_staff']} requiredPermission={['pets.manage', 'inventory.view', 'inventory.manage']}><AdminPets /></ProtectedRoute>} />

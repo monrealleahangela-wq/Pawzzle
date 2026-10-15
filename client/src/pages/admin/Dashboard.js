@@ -192,6 +192,7 @@ const Dashboard = () => {
     { to: '/admin/roles', label: 'Role Management', icon: ShieldCheck, show: isOwner },
     { to: '/admin/bookings', label: 'Bookings', icon: Calendar, show: isOwner || hasPerm('bookings') || hasPerm('services') },
     { to: '/admin/orders', label: 'Orders', icon: ShoppingBag, show: isOwner || hasPerm('orders') },
+    { to: '/admin/returns', label: 'Customer returns', icon: Truck, show: STORE_ADMIN_ROLES.has(user?.role) || effectiveStaffType(user) === 'manager' },
     { to: '/admin/inventory', label: 'Inventory', icon: Package, show: isOwner || hasPerm('inventory') },
     { to: '/admin/purchase-orders', label: 'Procurement', icon: Zap, show: isOwner || hasPerm('procurement') },
     { to: '/admin/finance', label: 'Finance', icon: Wallet, show: isOwner || hasPerm('finance') },
