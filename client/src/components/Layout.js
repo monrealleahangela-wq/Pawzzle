@@ -29,6 +29,7 @@ const customerMenu = [
   {
     label: 'Marketplace', icon: ShoppingBag, children: [
       { path: '/pets', label: 'Pets', icon: Heart },
+      { path: '/pet-inquiries', label: 'My Pet Inquiries', icon: MessageSquare },
       { path: '/products', label: 'Products', icon: Package },
       { path: '/find-shops', label: 'Find Shops', icon: MapPin },
       { path: '/orders', label: 'My Orders', icon: ShoppingCart },
@@ -83,6 +84,7 @@ const getAdminMenu = (user) => {
   if ((hasPets || isStoreOwner) && hasAccess(['inventory_staff'])) {
     catalogChildren.push({ path: '/admin/pets', label: 'Manage Pets', icon: Heart });
   }
+  if (hasPets || isStoreOwner) catalogChildren.push({ path: '/admin/pet-inquiries', label: 'Pet Inquiries', icon: MessageSquare });
   if ((hasProducts || isStoreOwner) && hasAccess(['inventory_staff'])) {
     catalogChildren.push({ path: '/admin/products', label: 'Manage Products', icon: Package });
   }
@@ -258,6 +260,7 @@ const getStaffMenu = (user) => {
   const catalogChildren = [];
   const inventoryCatalogAccess = effectiveStaffType(user) === 'inventory_staff' && can('inventory', 'view');
   if (can('pets', 'manage') || can('inventory', 'manage') || inventoryCatalogAccess) catalogChildren.push({ path: '/admin/pets', label: 'Pets', icon: Heart });
+  if (can('pets', 'manage')) catalogChildren.push({ path: '/admin/pet-inquiries', label: 'Pet Inquiries', icon: MessageSquare });
   if (can('products', 'manage') || can('inventory', 'manage') || inventoryCatalogAccess) catalogChildren.push({ path: '/admin/products', label: 'Products', icon: Package });
   if (can('services', 'manage')) catalogChildren.push({ path: '/admin/services', label: 'Services', icon: Calendar });
   if (catalogChildren.length > 0) menu.push({ label: 'Products & Services', icon: Package, children: catalogChildren });

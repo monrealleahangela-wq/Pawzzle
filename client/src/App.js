@@ -33,6 +33,7 @@ import Home from './pages/customer/Home';
 import Pets from './pages/customer/Pets';
 import Products from './pages/customer/Products';
 import PetDetail from './pages/customer/PetDetail';
+import PetInquiries from './pages/customer/PetInquiries';
 import ProductDetail from './pages/customer/ProductDetail';
 import Services from './pages/customer/Services';
 import ServiceDetail from './pages/customer/ServiceDetail';
@@ -55,6 +56,7 @@ import FindShops from './pages/customer/FindShops';
 // Admin Pages
 import AdminDashboard from './pages/admin/Dashboard';
 import AdminPets from './pages/admin/Pets';
+import StorePetInquiries from './pages/admin/PetInquiries';
 import ProductInventory from './pages/admin/ProductInventory';
 import AdminOrders from './pages/admin/Orders';
 import AdminChat from './pages/admin/AdminChat';
@@ -153,6 +155,7 @@ function App() {
                   <Route path="home" element={<Home />} />
                   <Route path="pets" element={<Pets />} />
                   <Route path="pets/:id" element={<PetDetail />} />
+                  <Route path="pet-inquiries" element={<ProtectedRoute roles={['customer']}><PetInquiries /></ProtectedRoute>} />
                   <Route path="products" element={<Products />} />
                   <Route path="products/:id" element={<ProductDetail />} />
                   <Route path="services" element={<Services />} />
@@ -196,6 +199,7 @@ function App() {
 
                   {/* Catalog - inventory access */}
                   <Route path="admin/pets" element={<ProtectedRoute roles={['admin', 'super_admin', 'staff']} staffTypes={['inventory_staff']} requiredPermission={['pets.manage', 'inventory.view', 'inventory.manage']}><AdminPets /></ProtectedRoute>} />
+                  <Route path="admin/pet-inquiries" element={<ProtectedRoute roles={['admin', 'staff']} requiredPermission="pets.manage"><StorePetInquiries /></ProtectedRoute>} />
                   <Route path="admin/products" element={<ProtectedRoute roles={['admin', 'super_admin', 'staff']} staffTypes={['inventory_staff']} requiredPermission={['products.manage', 'inventory.view', 'inventory.manage']}><ProductInventory /></ProtectedRoute>} />
                   <Route path="admin/inventory" element={<ProtectedRoute roles={['admin', 'super_admin', 'staff']} staffTypes={['inventory_staff']} requiredPermission={['inventory.view', 'inventory.manage']}><ProductInventory /></ProtectedRoute>} />
 

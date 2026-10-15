@@ -9,6 +9,7 @@ import EnhancedChatMessenger from '../../components/EnhancedChatMessenger';
 import { useAuth } from '../../contexts/AuthContext';
 import ReviewSection from '../../components/ReviewSection';
 import InquiryModal from '../../components/InquiryModal';
+import PetInquiryBoard from '../../components/pets/PetInquiryBoard';
 import { formatPeso } from '../../utils/paymentSummary';
 
 const statusStyles = {
@@ -265,6 +266,8 @@ const PetDetail = () => {
       {relatedPets.length > 0 && <section><div className="mb-3 flex items-end justify-between"><div><h2 className="text-base font-black text-slate-900">More from this store</h2><p className="text-[10px] text-slate-500">Similar available pets</p></div><Link to={`/stores/${storeId}`} className="text-[10px] font-black uppercase text-primary-700">View store</Link></div><div className="grid grid-cols-2 gap-3 sm:grid-cols-4">{relatedPets.map(item => <Link key={item._id} to={`/pets/${item._id}`} className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"><div className="aspect-square bg-slate-50">{item.images?.[0] ? <img src={getImageUrl(item.images[0])} alt={item.name} className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center"><PawPrint className="h-8 w-8 text-slate-200" /></div>}</div><div className="p-3"><p className="line-clamp-2 text-xs font-black text-slate-900">{item.name}</p><p className="truncate text-[9px] font-semibold text-slate-500">{item.breed}</p><p className="mt-2 text-xs font-black text-primary-700">{formatPeso(item.price)}</p></div></Link>)}</div></section>}
 
       <ReviewSection targetType="Pet" targetId={id} />
+      {user?.role === 'customer' ? <PetInquiryBoard petId={id} petAvailable={isPurchasable} petName={pet.name} />
+        : !isAuthenticated && isPurchasable ? <section className="rounded-2xl border bg-white p-4"><button type="button" onClick={() => setShowLoginModal(true)} className="font-semibold text-primary-700">Ask About This Pet</button><p className="text-xs text-slate-500">Sign in to ask the Store a question.</p></section> : null}
       <div className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-2 gap-2 border-t border-slate-200 bg-white/95 p-3 pb-[calc(.75rem+env(safe-area-inset-bottom))] shadow-[0_-8px_30px_rgba(15,23,42,.12)] backdrop-blur sm:hidden"><button type="button" onClick={handleChatSeller} className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 text-[10px] font-black uppercase text-slate-700"><MessageSquare className="h-4 w-4" />Chat</button><button type="button" disabled={!isPurchasable} onClick={openInquiry} className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-primary-600 text-[10px] font-black uppercase text-white disabled:bg-slate-300"><Package className="h-4 w-4" />{isPurchasable ? (pet.listingType === 'adoption' ? 'Adopt' : 'Inquire') : 'Unavailable'}</button></div>
 
       <LoginModal isOpen={showLoginModal} onClose={() => setShowLoginModal(false)} onLogin={() => navigate('/login')} />

@@ -115,6 +115,7 @@ app.use('/api/admin/bookings', require('./routes/adminBookings'));
 app.use('/api/admin/vouchers', require('./routes/adminVouchers'));
 app.use('/api/admin/reports', require('./routes/adminReports'));
 app.use('/api/pets', require('./routes/pets'));
+app.use('/api/pet-inquiries', require('./routes/petInquiries'));
 app.use('/api/products', require('./routes/products'));
 app.use('/api/orders', require('./routes/orders'));
 app.use('/api/store-applications', require('./routes/storeApplications'));

@@ -5,6 +5,12 @@ export const notificationDestination = (notification, user) => {
     const internalPath = typeof target === 'string' && target.startsWith('/') && !target.startsWith('//')
         && !target.includes('..') && !target.includes('\\')
         && !Array.from(target).some(character => character.charCodeAt(0) < 32);
+    if (notification?.relatedModel === 'PetInquiry') {
+        if (!internalPath) return null;
+        if (target.startsWith('/admin/pet-inquiries')) return ['admin', 'store_owner', 'staff', 'manager'].includes(user?.role) ? target : null;
+        if (target.startsWith('/pet-inquiries')) return user?.role === 'customer' ? target : null;
+        return null;
+    }
     if (internalPath) {
         if (target.startsWith('/superadmin/') && !['super_admin', 'platform_admin'].includes(user?.role)) return null;
         if (target.startsWith('/admin/') && !['admin', 'store_owner', 'super_admin', 'platform_admin', 'staff', 'manager'].includes(user?.role)) return null;
