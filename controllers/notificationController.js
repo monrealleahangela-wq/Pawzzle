@@ -1,13 +1,24 @@
 const Notification = require('../models/Notification');
 
+const notificationQuery = userId => ({ recipient: userId, isDeleted: { $ne: true } });
+const unreadQuery = userId => ({ ...notificationQuery(userId), isRead: { $ne: true } });
+
 // Get all notifications for the logged-in user
 const getNotifications = async (req, res) => {
     try {
-        const notifications = await Notification.find({ recipient: req.user.id, isDeleted: { $ne: true } })
+        const page = Math.max(1, Math.min(10000, Number.parseInt(req.query.page, 10) || 1));
+        const limit = Math.max(1, Math.min(50, Number.parseInt(req.query.limit, 10) || 10));
+        const query = notificationQuery(req.user.id);
+        const notifications = await Notification.find(query)
             .sort({ createdAt: -1 })
-            .limit(50);
+            .skip((page - 1) * limit)
+            .limit(limit);
+        const [total, unreadCount] = await Promise.all([
+            Notification.countDocuments(query),
+            Notification.countDocuments(unreadQuery(req.user.id))
+        ]);
 
-        res.json({ notifications });
+        res.json({ notifications, unreadCount, pagination: { page, limit, total, totalPages: Math.ceil(total / limit) } });
     } catch (error) {
         console.error('Error fetching notifications:', error);
         res.status(500).json({ message: 'Server error while fetching notifications' });
@@ -17,8 +28,9 @@ const getNotifications = async (req, res) => {
 // Mark a single notification as read
 const markAsRead = async (req, res) => {
     try {
+        if (!/^[a-f\d]{24}$/i.test(req.params.id)) return res.status(400).json({ message: 'Invalid notification ID' });
         const notification = await Notification.findOneAndUpdate(
-            { _id: req.params.id, recipient: req.user.id },
+            { _id: req.params.id, ...notificationQuery(req.user.id) },
             { isRead: true },
             { new: true }
         );
@@ -38,7 +50,7 @@ const markAsRead = async (req, res) => {
 const markAllAsRead = async (req, res) => {
     try {
         await Notification.updateMany(
-            { recipient: req.user.id, isRead: false },
+            unreadQuery(req.user.id),
             { isRead: true }
         );
 
@@ -52,8 +64,9 @@ const markAllAsRead = async (req, res) => {
 // Delete a notification
 const deleteNotification = async (req, res) => {
     try {
+        if (!/^[a-f\d]{24}$/i.test(req.params.id)) return res.status(400).json({ message: 'Invalid notification ID' });
         const notification = await Notification.findOneAndUpdate(
-            { _id: req.params.id, recipient: req.user.id },
+            { _id: req.params.id, ...notificationQuery(req.user.id) },
             { isDeleted: true },
             { new: true }
         );

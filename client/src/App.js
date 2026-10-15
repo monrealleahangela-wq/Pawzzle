@@ -11,6 +11,7 @@ import { NotificationProvider } from './contexts/NotificationContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Layout from './components/Layout';
 import RoleBasedRedirect from './components/RoleBasedRedirect';
+import Notifications from './pages/Notifications';
 import DeliveryTracking from './pages/DeliveryTracking';
 import RiderDeliveryPage from './pages/RiderDeliveryPage';
 import PawCursor from './components/PawCursor';
@@ -165,6 +166,7 @@ function App() {
                   <Route path="find-shops" element={<FindShops />} />
                   <Route path="search" element={<Search />} />
                   <Route path="profile" element={<ProtectedRoute roles={['customer', 'admin', 'super_admin', 'staff', 'supplier']}><Profile /></ProtectedRoute>} />
+                  <Route path="notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
                   <Route path="professional-verification" element={<ProtectedRoute roles={['staff']} allowPendingProfessional><ProfessionalVerificationStatus /></ProtectedRoute>} />
                   <Route path="staff/attendance" element={<ProtectedRoute roles={['staff']}><EmployeeHR initialTab="attendance" /></ProtectedRoute>} />
                   <Route path="staff/leave" element={<ProtectedRoute roles={['staff']}><EmployeeHR initialTab="leave" /></ProtectedRoute>} />

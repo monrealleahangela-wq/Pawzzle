@@ -21,7 +21,7 @@ api.interceptors.request.use(
 );
 
 const notificationService = {
-    getNotifications: () => api.get('/notifications'),
+    getNotifications: (params = {}) => api.get('/notifications', { params }),
     markAsRead: (id) => api.put(`/notifications/${id}/read`),
     markAllAsRead: () => api.put('/notifications/mark-all-read'),
     deleteNotification: (id) => api.delete(`/notifications/${id}`)
