@@ -95,6 +95,10 @@ const supplierProductSchema = new mongoose.Schema({
   isDeleted: { type: Boolean, default: false },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now }
+}, {
+  // Production index changes are performed only by an approved migration.
+  autoIndex: String(process.env.NODE_ENV || '').toLowerCase() !== 'production',
+  autoCreate: String(process.env.NODE_ENV || '').toLowerCase() !== 'production'
 });
 
 supplierProductSchema.pre('save', function (next) {

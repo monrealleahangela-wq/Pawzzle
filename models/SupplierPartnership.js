@@ -34,7 +34,13 @@ const partnershipSchema = new mongoose.Schema({
   }],
   terminatedAt: Date,
   expiredAt: Date
-}, { timestamps: true, optimisticConcurrency: true });
+}, {
+  timestamps: true,
+  optimisticConcurrency: true,
+  // The new agreement indexes must also exist before production accepts traffic.
+  autoIndex: String(process.env.NODE_ENV || '').toLowerCase() !== 'production',
+  autoCreate: String(process.env.NODE_ENV || '').toLowerCase() !== 'production'
+});
 
 partnershipSchema.index({ store: 1, supplier: 1 }, { unique: true });
 partnershipSchema.index({ supplier: 1, status: 1 });

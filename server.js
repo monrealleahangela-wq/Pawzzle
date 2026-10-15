@@ -21,6 +21,12 @@ const { isPlatformAdmin, isStoreAdmin, isOperationalStaff, hasPermission } = req
 
 const app = express();
 const server = http.createServer(app);
+const isProduction = process.env.NODE_ENV?.toLowerCase() === 'production';
+const PORT = process.env.PORT || 5000;
+const HOST = require('./utils/serverBinding').resolveServerHost();
+const startListening = () => server.listen(PORT, HOST, () => {
+  console.log(`Pawzzle server listening on ${HOST}:${PORT}`);
+});
 const io = socketIo(server, {
   cors: {
     origin: "*",
@@ -57,7 +63,13 @@ app.use(passport.initialize());
 
 // Database Connection
 mongoose.connect(process.env.MONGODB_URI)
-  .then(() => {
+  .then(async () => {
+    if (isProduction) {
+      // Refuse production traffic and scheduled writes until the separately
+      // authorized Supplier index migration is verified without any writes.
+      const { assertSupplierIndexesReady } = require('./services/supplierIndexReadinessService');
+      await assertSupplierIndexesReady(mongoose.connection.db);
+    }
     console.log('✅ MongoDB connected successfully');
     const { expireBookingProposals } = require('./controllers/bookingController');
     const proposalExpiryTimer = setInterval(() => {
@@ -94,8 +106,14 @@ mongoose.connect(process.env.MONGODB_URI)
       reconcileSupplierPartnershipExpiry().catch(error => console.error('Supplier partnership expiry sweep failed:', error.message));
     }, 24 * 60 * 60000);
     partnershipExpiryTimer.unref();
+    if (isProduction) startListening();
   })
-  .catch((error) => console.error('❌ MongoDB connection error:', error));
+  .catch(async error => {
+    if (!isProduction) return console.error('MongoDB connection error:', error);
+    console.error('Production database/index readiness failed:', error.code || 'DATABASE_STARTUP_FAILED');
+    await mongoose.disconnect().catch(() => {});
+    process.exitCode = 1;
+  });
 
 // Final health check
 app.get('/api/health', (req, res) => res.status(200).json({ status: 'OK', version: 'v3-stable' }));
@@ -212,7 +230,6 @@ io.on('connection', (socket) => {
 // Serve static files
 const buildPaths = [path.join(__dirname, 'client/build'), path.join(__dirname, 'client/dist'), path.join(__dirname, 'build'), path.join(__dirname, 'dist')];
 let buildPath = buildPaths.find(p => require('fs').existsSync(p));
-const isProduction = process.env.NODE_ENV && process.env.NODE_ENV.toLowerCase() === 'production';
 
 if (isProduction && buildPath) {
   app.use(express.static(buildPath));
@@ -221,9 +238,4 @@ if (isProduction && buildPath) {
   app.get('/', (req, res) => res.send('PAWZZLE API is ACTIVE. Sockets ready. Real-time enabled.'));
 }
 
-const PORT = process.env.PORT || 5000;
-const HOST = require('./utils/serverBinding').resolveServerHost();
-server.listen(PORT, HOST, () => {
-    console.log(`\n🚀 [MASTER V3] SERVER STARTUP`);
-    console.log(`✅ PORT: ${PORT}\n`);
-});
+if (!isProduction) startListening();
