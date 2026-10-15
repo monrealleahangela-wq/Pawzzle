@@ -9,6 +9,7 @@ import { supplierService, uploadService, getImageUrl } from '../../services/apiS
 import PaymentBreakdown from '../../components/payments/PaymentBreakdown';
 import ProcurementEvidenceGallery, { ProcurementReinspectionEvidenceGallery } from '../../components/procurement/ProcurementEvidenceGallery';
 import { formatPeso, purchaseOrderPaymentSummary } from '../../utils/paymentSummary';
+import SupplierPartnershipPanel from '../../components/procurement/SupplierPartnershipPanel';
 
 const SupplierDashboard = () => {
   const [loading, setLoading] = useState(true);
@@ -20,13 +21,14 @@ const SupplierDashboard = () => {
   const [editingProduct, setEditingProduct] = useState(null);
   const [showRegister, setShowRegister] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [updatingRequirement, setUpdatingRequirement] = useState(false);
   const [applicationFiles, setApplicationFiles] = useState({ businessRegistration: null, birCertificate: null });
   const [resolutionDrafts, setResolutionDrafts] = useState({});
 
   const initialProduct = {
     itemType: 'pet_supply', name: '', sku: '', description: '', category: 'pet_food',
     wholesalePrice: 0, retailPrice: 0, availableStock: 0, minimumOrderQuantity: 1,
-    unitOfMeasure: 'piece', deliveryLeadTimeDays: 3, brand: '', images: [],
+    unitOfMeasure: 'piece', deliveryLeadTimeDays: 3, partnershipRequired: false, brand: '', images: [],
     pet: { name: '', species: 'dog', breed: '', age: 0, ageUnit: 'years', gender: 'male', size: 'medium', color: '', description: '', vaccinationStatus: 'none', healthCondition: 'healthy', healthNotes: '', dewormed: false, spayedNeutered: false }
   };
   const [productForm, setProductForm] = useState(initialProduct);
@@ -120,6 +122,20 @@ const SupplierDashboard = () => {
       setProducts(res.data.products || []);
     } catch (e) { toast.error(e.response?.data?.message || 'Failed'); }
     finally { setSubmitting(false); }
+  };
+
+  const changeSupplierPartnershipRequirement = async event => {
+    const required = event.target.checked;
+    if (!window.confirm(required
+      ? 'Require an active Store partnership for every new purchase order from your catalog?'
+      : 'Remove the Supplier-wide requirement for future orders? Individual offer requirements remain in force.')) return;
+    setUpdatingRequirement(true);
+    try {
+      await supplierService.updateProfile({ partnershipRequired: required });
+      setDashboard(previous => ({ ...previous, supplier: { ...previous.supplier, partnershipRequired: required } }));
+      toast.success('Supplier partnership requirement updated.');
+    } catch (failure) { toast.error(failure.response?.data?.message || 'Unable to update the partnership requirement.'); }
+    finally { setUpdatingRequirement(false); }
   };
 
   const handleDeleteProduct = async (id) => {
@@ -379,7 +395,8 @@ const SupplierDashboard = () => {
         {[
           { id: 'overview', label: 'Overview', icon: BarChart3 },
           { id: 'products', label: 'Products', icon: Package },
-          { id: 'orders', label: 'Orders', icon: ShoppingCart }
+          { id: 'orders', label: 'Orders', icon: ShoppingCart },
+          { id: 'partnerships', label: 'Partnerships', icon: CheckCircle }
         ].map(tab => (
           <button key={tab.id} onClick={() => setActiveTab(tab.id)}
             className={`flex shrink-0 items-center gap-2 whitespace-nowrap rounded-xl px-5 py-3 text-[10px] font-black uppercase tracking-wide transition-all ${activeTab === tab.id ? 'bg-white text-slate-900 shadow' : 'text-white/60 hover:text-white'}`}>
@@ -391,6 +408,11 @@ const SupplierDashboard = () => {
       {/* ── TAB: OVERVIEW ── */}
       {activeTab === 'overview' && (
         <div className="space-y-6">
+          <label className="flex items-start gap-3 rounded-2xl border border-indigo-100 bg-white p-4 text-xs text-slate-700">
+            <input type="checkbox" checked={supplier?.partnershipRequired === true} disabled={updatingRequirement}
+              onChange={changeSupplierPartnershipRequirement} aria-label="Require partnership for all Supplier offers" />
+            Require an active, mutually accepted partnership for all new Store orders from this Supplier. Existing orders are unchanged.
+          </label>
           <div className="bg-white border border-slate-100 rounded-2xl p-6 shadow-sm">
             <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-4">Recent Orders</h3>
             {dashboard?.recentOrders?.length === 0 ? (
@@ -434,6 +456,7 @@ const SupplierDashboard = () => {
                 <div className="p-4">
                   <p className="text-[9px] font-black text-primary-600 uppercase tracking-widest">{p.itemType === 'live_pet' ? 'Live pet · unique animal' : `${p.itemType === 'product' ? 'Product' : 'Pet supply'} · ${p.category?.replace('_', ' ')}`}</p>
                   <h4 className="mt-1 min-h-[2.5rem] text-sm font-black uppercase leading-tight text-slate-900 line-clamp-2 break-words">{p.name}</h4>
+                  {p.partnershipRequired && <p className="mt-1 text-[9px] font-bold text-indigo-700">Active partnership required for new Store orders</p>}
                   <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-50">
                     <div>
                       <p className="text-[8px] font-black text-slate-400 uppercase">Wholesale</p>
@@ -462,6 +485,8 @@ const SupplierDashboard = () => {
       )}
 
       {/* ── TAB: ORDERS ── */}
+      {activeTab === 'partnerships' && <SupplierPartnershipPanel side="supplier" />}
+
       {activeTab === 'orders' && (
         <div className="space-y-4">
           {orders.length === 0 ? (
@@ -597,6 +622,12 @@ const SupplierDashboard = () => {
                     className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold outline-none" />
                 </div>
               </div>
+              <label className="flex items-start gap-3 rounded-xl border border-indigo-100 bg-indigo-50 p-3 text-xs text-indigo-900">
+                <input type="checkbox" checked={productForm.partnershipRequired === true}
+                  onChange={event => setProductForm(previous => ({ ...previous, partnershipRequired: event.target.checked }))}
+                  aria-label="Require an active Store partnership for this offer" />
+                Require an active, mutually accepted Store partnership before this offer may be ordered.
+              </label>
               {productForm.itemType === 'live_pet' && <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 space-y-3">
                 <div><h4 className="text-xs font-black uppercase text-amber-900">Exact animal information</h4><p className="mt-1 text-[10px] text-amber-800">Each catalog entry represents one unique animal. Quantity is permanently limited to one.</p></div>
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">

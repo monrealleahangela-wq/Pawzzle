@@ -88,6 +88,12 @@ mongoose.connect(process.env.MONGODB_URI)
       processDssAlerts(io).catch(error => console.error('DSS alert sweep failed:', error.message));
     }, 6 * 60 * 60000);
     dssAlertTimer.unref();
+    const { reconcileExpiry: reconcileSupplierPartnershipExpiry } = require('./services/supplierPartnershipService');
+    reconcileSupplierPartnershipExpiry().catch(error => console.error('Supplier partnership expiry sweep failed:', error.message));
+    const partnershipExpiryTimer = setInterval(() => {
+      reconcileSupplierPartnershipExpiry().catch(error => console.error('Supplier partnership expiry sweep failed:', error.message));
+    }, 24 * 60 * 60000);
+    partnershipExpiryTimer.unref();
   })
   .catch((error) => console.error('❌ MongoDB connection error:', error));
 

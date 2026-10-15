@@ -16,6 +16,7 @@ const InventoryLot = require('../models/InventoryLot');
 const SupplyChainLog = require('../models/SupplyChainLog');
 const InventoryLedgerService = require('../services/inventoryLedgerService');
 const { applyServiceSupplyReceipt } = require('../services/serviceSupplyReceivingService');
+const { partnershipSnapshotForOrder } = require('../services/supplierPartnershipService');
 const {
   commitPurchaseOrderStock,
   releasePurchaseOrderStock
@@ -711,6 +712,7 @@ const submitProcurementCart = async (req, res) => {
         item.itemType = product.itemType;
         resolvedCartItems.push({
           supplier,
+          partnershipRequired: product.partnershipRequired === true || supplier.partnershipRequired === true,
           orderItem: {
             supplierProduct: product._id,
             itemType: product.itemType || 'pet_supply',
@@ -782,6 +784,17 @@ const submitProcurementCart = async (req, res) => {
       let sequence = 0;
       for (const { supplier, items } of groups.values()) {
         sequence += 1;
+        const requiredItems = resolvedCartItems.filter(entry =>
+          String(entry.supplier._id) === String(supplier._id) && entry.partnershipRequired);
+        const partnershipSnapshot = await partnershipSnapshotForOrder({
+          store, supplier: supplier._id,
+          requiredProducts: requiredItems.map(entry => entry.orderItem.supplierProduct), session
+        });
+        if (partnershipSnapshot && requiredItems.some(entry => entry.orderItem.quantity < partnershipSnapshot.terms.minimumOrderQuantity)) {
+          throw Object.assign(new Error('Agreement minimum order quantity has not been met.'), {
+            statusCode: 409, code: 'PARTNERSHIP_MINIMUM_NOT_MET'
+          });
+        }
         const subtotal = items.reduce((total, item) => total + item.totalPrice, 0);
         const order = new PurchaseOrder({
           orderNumber: `PO-${Date.now()}-${batchId}-${String(sequence).padStart(2, '0')}`,
@@ -789,6 +802,7 @@ const submitProcurementCart = async (req, res) => {
           store,
           supplier: supplier._id,
           items,
+          partnershipSnapshot: partnershipSnapshot || undefined,
           subtotal,
           shippingCost: 0,
           tax: 0,
@@ -849,7 +863,7 @@ const submitProcurementCart = async (req, res) => {
       supplierCount: orderDocuments.length
     });
   } catch (error) {
-    console.error('Submit procurement cart error:', error);
+    if (!error.statusCode) console.error('Submit procurement cart error:', error);
     if (committed && !res.headersSent) {
       return res.status(201).json({
         message: `${createdOrders.length} supplier-specific purchase order${createdOrders.length === 1 ? '' : 's'} submitted. A non-critical response step could not be completed.`,
@@ -859,7 +873,8 @@ const submitProcurementCart = async (req, res) => {
     }
     if (res.headersSent) return undefined;
     res.status(error.statusCode || 500).json({
-      message: error.message || 'No purchase orders were created. Your procurement cart was preserved.'
+      code: error.statusCode ? error.code : 'PROCUREMENT_SUBMISSION_FAILED',
+      message: error.statusCode ? error.message : 'No purchase orders were created. Your procurement cart was preserved.'
     });
   }
 };

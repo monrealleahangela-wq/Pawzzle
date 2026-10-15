@@ -20,7 +20,9 @@ test('one Supplier model represents platform and store-added pathways without a 
   const model = read('models/Supplier.js');
   const user = read('models/User.js');
   const supplierModels = fs.readdirSync(path.join(__dirname, '..', 'models')).filter(name => /^Supplier.*\.js$/.test(name));
-  assert.deepEqual(supplierModels.sort(), ['Supplier.js', 'SupplierProduct.js']);
+  // Partnership agreements are Store–Supplier records, not another supplier account.
+  assert.deepEqual(supplierModels.sort(), ['Supplier.js', 'SupplierPartnership.js', 'SupplierProduct.js']);
+  assert.match(read('models/SupplierPartnership.js'), /store:[\s\S]*supplier:[\s\S]*versions:/);
   assert.match(model, /supplierType:[\s\S]*\['platform', 'store_added'\]/);
   assert.match(model, /storeAssociations:[\s\S]*pending_activation[\s\S]*active[\s\S]*inactive/);
   assert.match(model, /applicationDocuments:[\s\S]*business_registration[\s\S]*bir_certificate/);

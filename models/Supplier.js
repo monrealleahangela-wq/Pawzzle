@@ -78,6 +78,8 @@ const supplierSchema = new mongoose.Schema({
     enum: ['platform', 'store_added'],
     default: 'platform'
   },
+  // Optional procurement gate; legacy Suppliers remain usable without an agreement.
+  partnershipRequired: { type: Boolean, default: false },
   originStore: { type: mongoose.Schema.Types.ObjectId, ref: 'Store', default: null },
   storeAssociations: [{
     store: { type: mongoose.Schema.Types.ObjectId, ref: 'Store', required: true },

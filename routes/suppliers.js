@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { authenticate, superAdminOnly, requirePermission, requirePasswordChangeCompleted } = require('../middleware/auth');
 const { uploadDoc, handleUploadError } = require('../middleware/upload');
+const partnership = require('../controllers/supplierPartnershipController');
 
 const {
   registerSupplier, resubmitSupplierApplication,
@@ -27,6 +28,12 @@ router.post('/application/resubmit', authenticate, supplierDocumentUpload, handl
 router.get('/me', authenticate, requirePasswordChangeCompleted, getMySupplierProfile);
 router.put('/me', authenticate, requirePasswordChangeCompleted, updateSupplierProfile);
 router.get('/dashboard', authenticate, requirePasswordChangeCompleted, getSupplierDashboard);
+
+// Explicit party paths; the service derives Store/Supplier identity from the session.
+router.get('/partnerships/:side(seller|supplier)', authenticate, requirePasswordChangeCompleted, partnership.list);
+router.get('/partnerships/:side(seller|supplier)/:id', authenticate, requirePasswordChangeCompleted, partnership.get);
+router.post('/partnerships/seller', authenticate, requirePasswordChangeCompleted, partnership.create);
+router.post('/partnerships/:side(seller|supplier)/:id/actions', authenticate, requirePasswordChangeCompleted, partnership.act);
 
 // ── Supplier product management ───────────────────────────
 router.post('/products', authenticate, requirePasswordChangeCompleted, addProduct);

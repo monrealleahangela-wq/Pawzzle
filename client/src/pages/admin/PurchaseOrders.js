@@ -7,9 +7,12 @@ import PaymentBreakdown from '../../components/payments/PaymentBreakdown';
 import ProcurementEvidenceGallery, { ProcurementReinspectionEvidenceGallery } from '../../components/procurement/ProcurementEvidenceGallery';
 import ReceivingInspectionModal from '../../components/procurement/ReceivingInspectionModal';
 import SupplierOfferComparison from '../../components/procurement/SupplierOfferComparison';
+import SupplierPartnershipPanel from '../../components/procurement/SupplierPartnershipPanel';
+import { useAuth } from '../../contexts/AuthContext';
 import { formatPeso, purchaseOrderPaymentSummary } from '../../utils/paymentSummary';
 
 const PurchaseOrders = () => {
+  const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const requestedTab = searchParams.get('tab') === 'suppliers' ? 'suppliers' : 'orders';
   const [activeTab, setActiveTab] = useState(requestedTab);
@@ -398,6 +401,7 @@ const PurchaseOrders = () => {
       {/* ── SUPPLIERS TAB ── */}
       {activeTab === 'suppliers' && (
         <div className="space-y-4">
+          {['admin', 'store_owner'].includes(user?.role) && <SupplierPartnershipPanel side="seller" suppliers={suppliers} />}
           <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
             <div><h2 className="text-sm font-black text-slate-900">Supplier Management</h2><p className="mt-1 text-xs text-slate-500">Invite a trusted store supplier or order from an approved platform supplier.</p></div>
             <div className="flex flex-wrap gap-2"><button type="button" onClick={() => setComparisonStoreProductId('')} className="rounded-xl border border-indigo-300 px-4 py-3 text-[10px] font-black uppercase text-indigo-700">Compare product or service supply offers</button><button onClick={() => setShowSupplierForm(true)} className="inline-flex items-center gap-2 rounded-xl bg-primary-600 px-4 py-3 text-[10px] font-black uppercase text-white hover:bg-primary-700"><Plus className="h-4 w-4" /> Add Supplier</button></div>
@@ -413,6 +417,7 @@ const PurchaseOrders = () => {
                   <h3 className="text-sm font-black text-slate-900 uppercase">{s.businessName}</h3>
                   <p className="text-[9px] text-slate-400">{s.address?.city}, {s.address?.province}</p>
                   <div className="mt-1 flex flex-wrap gap-1"><span className="rounded-full bg-primary-50 px-2 py-0.5 text-[8px] font-black uppercase text-primary-700">{s.supplierType === 'store_added' ? 'Store-added' : 'Platform supplier'}</span><span className={`rounded-full px-2 py-0.5 text-[8px] font-black uppercase ${s.selectable ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>{String(s.storeAssociationStatus || s.status).replaceAll('_', ' ')}</span></div>
+                  {s.partnershipRequired && <p className="mt-1 text-[9px] font-bold text-indigo-700">Partnership required for new orders</p>}
                 </div>
               </div>
               <div className="flex items-center gap-4 mb-3">
@@ -498,6 +503,7 @@ const PurchaseOrders = () => {
                       <div className="p-4">
                         <p className="text-[8px] font-black text-indigo-500 uppercase">{p.itemType === 'live_pet' ? 'Live pet · unique animal' : `${p.itemType === 'product' ? 'Product' : 'Pet supply'} · ${p.category?.replace('_', ' ')}`}</p>
                         <h4 className="text-xs font-black text-slate-900 uppercase mt-0.5 line-clamp-1">{p.name}</h4>
+                        {(p.partnershipRequired || catalog.supplier?.partnershipRequired) && <p className="mt-1 text-[9px] font-bold text-indigo-700">Active Store partnership required at order submission</p>}
                         <div className="flex justify-between items-end mt-2">
                           <div>
                             <p className="text-[8px] text-slate-400">Wholesale</p>

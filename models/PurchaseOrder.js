@@ -70,6 +70,14 @@ const purchaseOrderSchema = new mongoose.Schema({
 
   // ── Items ─────────────────────────────────────────────
   items: [purchaseOrderItemSchema],
+  // Immutable terms used at submission; later expiry/termination never rewrites this order.
+  partnershipSnapshot: {
+    agreement: { type: mongoose.Schema.Types.ObjectId, ref: 'SupplierPartnership' },
+    version: Number,
+    hash: String,
+    acceptedAt: { seller: Date, supplier: Date },
+    terms: mongoose.Schema.Types.Mixed
+  },
 
   // ── Pricing ───────────────────────────────────────────
   subtotal: { type: Number, required: true, min: 0 },

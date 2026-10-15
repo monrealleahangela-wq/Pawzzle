@@ -15,7 +15,6 @@ const supplierProductSchema = new mongoose.Schema({
   pet: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Pet',
-    default: null,
     index: true
   },
   name: {
@@ -82,6 +81,7 @@ const supplierProductSchema = new mongoose.Schema({
     default: 3,
     min: 0
   },
+  partnershipRequired: { type: Boolean, default: false },
 
   // ── Product Details ───────────────────────────────────
   brand: { type: String, trim: true },
@@ -110,6 +110,11 @@ supplierProductSchema.pre('save', function (next) {
 supplierProductSchema.index({ supplier: 1, sku: 1 }, { unique: true });
 supplierProductSchema.index({ category: 1 });
 supplierProductSchema.index({ supplier: 1, isActive: 1 });
-supplierProductSchema.index({ supplier: 1, pet: 1 }, { unique: true, sparse: true });
+// Only actual live-pet references are unique. A sparse index still indexes an
+// explicitly stored null, preventing multiple ordinary offers per Supplier.
+supplierProductSchema.index({ supplier: 1, pet: 1 }, {
+  unique: true, name: 'supplier_live_pet_unique',
+  partialFilterExpression: { pet: { $type: 'objectId' } }
+});
 
 module.exports = mongoose.model('SupplierProduct', supplierProductSchema);

@@ -377,7 +377,7 @@ const getStoreManagedSuppliers = async (req, res) => {
       ]
     };
     const records = await Supplier.find(filter)
-      .select('businessName contactPerson email phone address description logo productCategories ratings performance supplierType originStore storeAssociations status isActive invitation.acceptedAt invitation.expiresAt')
+      .select('businessName contactPerson email phone address description logo productCategories ratings performance supplierType partnershipRequired originStore storeAssociations status isActive invitation.acceptedAt invitation.expiresAt')
       .sort({ createdAt: -1 }).lean();
     const suppliers = records.map(record => {
       const association = record.storeAssociations?.find(item => String(item.store) === String(store._id));
@@ -528,12 +528,25 @@ const updateSupplierProfile = async (req, res) => {
   try {
     const supplier = await Supplier.findOne({ user: req.user._id });
     if (!supplier) return res.status(404).json({ message: 'Supplier profile not found.' });
+    if (req.body.partnershipRequired !== undefined && typeof req.body.partnershipRequired !== 'boolean') {
+      return res.status(400).json({ message: 'Partnership requirement must be true or false.' });
+    }
+    const previousPartnershipRequirement = supplier.partnershipRequired === true;
 
     const allowed = ['businessName', 'contactPerson', 'email', 'phone', 'address',
-      'description', 'logo', 'productCategories', 'goodsTypes', 'payoutAccount'];
+      'description', 'logo', 'productCategories', 'goodsTypes', 'payoutAccount', 'partnershipRequired'];
     allowed.forEach(key => { if (req.body[key] !== undefined) supplier[key] = req.body[key]; });
 
     await supplier.save();
+    if (previousPartnershipRequirement !== (supplier.partnershipRequired === true)) {
+      await settleSupplierSecondaryEffects('Update Supplier partnership requirement', [
+        () => SupplyChainLog.create({ action: 'supplier_updated', performedBy: req.user._id,
+          userRole: 'supplier', relatedEntity: { type: 'Supplier', id: supplier._id },
+          description: 'Supplier partnership requirement changed', supplier: supplier._id,
+          previousValue: { partnershipRequired: previousPartnershipRequirement },
+          newValue: { partnershipRequired: supplier.partnershipRequired === true } })
+      ]);
+    }
     res.json(supplier);
   } catch (error) {
     console.error('Update supplier error:', error);
@@ -592,7 +605,10 @@ const addProduct = async (req, res) => {
 
     const { name, sku, description, category, images, wholesalePrice, retailPrice,
       availableStock, minimumOrderQuantity, unitOfMeasure, deliveryLeadTimeDays,
-      brand, specifications, weight, dimensions, expirationDate } = req.body;
+      brand, specifications, weight, dimensions, expirationDate, partnershipRequired } = req.body;
+    if (partnershipRequired !== undefined && typeof partnershipRequired !== 'boolean') {
+      return res.status(400).json({ message: 'Partnership requirement must be true or false.' });
+    }
     const itemType = ['pet_supply', 'product', 'live_pet'].includes(req.body.itemType)
       ? req.body.itemType : 'pet_supply';
 
@@ -621,14 +637,15 @@ const addProduct = async (req, res) => {
       product = new SupplierProduct({
         supplier: supplier._id,
         itemType,
-        pet: pet?._id || null,
+        pet: pet?._id,
         name, sku, description, category: authoritativeCategory, images: images || [],
         wholesalePrice, retailPrice: retailPrice || 0,
         availableStock: itemType === 'live_pet' ? 1 : (availableStock || 0),
         minimumOrderQuantity: itemType === 'live_pet' ? 1 : (minimumOrderQuantity || 1),
         unitOfMeasure: itemType === 'live_pet' ? 'piece' : (unitOfMeasure || 'piece'),
         deliveryLeadTimeDays: deliveryLeadTimeDays || 3,
-        brand, specifications, weight, dimensions, expirationDate
+        brand, specifications, weight, dimensions, expirationDate,
+        partnershipRequired: partnershipRequired === true
       });
       await product.save({ session });
       await Supplier.updateOne({ _id: supplier._id }, {
@@ -707,9 +724,12 @@ const updateProduct = async (req, res) => {
       'name', 'sku', 'description', 'category', 'images', 'wholesalePrice',
       'retailPrice', 'availableStock', 'minimumOrderQuantity', 'unitOfMeasure',
       'deliveryLeadTimeDays', 'brand', 'specifications', 'weight', 'dimensions',
-      'expirationDate', 'isActive'
+      'expirationDate', 'isActive', 'partnershipRequired'
     ];
     const updates = {};
+    if (req.body.partnershipRequired !== undefined && typeof req.body.partnershipRequired !== 'boolean') {
+      return res.status(400).json({ message: 'Partnership requirement must be true or false.' });
+    }
     mutableFields.forEach(field => {
       if (req.body[field] !== undefined) updates[field] = req.body[field];
     });
@@ -1255,7 +1275,7 @@ const browseSuppliers = async (req, res) => {
 
     const skip = (page - 1) * limit;
     const suppliers = await Supplier.find(filter)
-      .select('businessName contactPerson email phone address description logo productCategories ratings performance.averageDeliveryDays performance.reliabilityScore performance.completedOrders supplierType originStore storeAssociations invitation.acceptedAt')
+      .select('businessName contactPerson email phone address description logo productCategories ratings performance.averageDeliveryDays performance.reliabilityScore performance.completedOrders supplierType partnershipRequired originStore storeAssociations invitation.acceptedAt')
       .sort({ 'ratings.average': -1 }).skip(skip).limit(parseInt(limit));
     const total = await Supplier.countDocuments(filter);
 
@@ -1283,7 +1303,7 @@ const getSupplierCatalog = async (req, res) => {
     const products = await SupplierProduct.find(filter).populate('pet').sort({ createdAt: -1 }).skip(skip).limit(parseInt(limit));
     const total = await SupplierProduct.countDocuments(filter);
 
-    res.json({ supplier: { _id: supplier._id, businessName: supplier.businessName, logo: supplier.logo, ratings: supplier.ratings, supplierType: supplier.supplierType || 'platform' }, products, pagination: { page: parseInt(page), totalPages: Math.ceil(total / limit), total } });
+    res.json({ supplier: { _id: supplier._id, businessName: supplier.businessName, logo: supplier.logo, ratings: supplier.ratings, supplierType: supplier.supplierType || 'platform', partnershipRequired: supplier.partnershipRequired === true }, products, pagination: { page: parseInt(page), totalPages: Math.ceil(total / limit), total } });
   } catch (error) {
     console.error('Get supplier catalog error:', error);
     res.status(500).json({ message: 'Server error' });

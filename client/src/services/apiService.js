@@ -590,6 +590,10 @@ export const supplierService = {
   getStoreManagedSuppliers: (params) => api.get('/suppliers/store-managed', { params }),
   resendStoreInvitation: (id) => api.post(`/suppliers/store-managed/${id}/resend-invitation`),
   updateStoreSupplierStatus: (id, action) => api.patch(`/suppliers/store-managed/${id}/status`, { action }),
+  getPartnerships: (side) => api.get(`/suppliers/partnerships/${side}`),
+  getPartnership: (side, id) => api.get(`/suppliers/partnerships/${side}/${id}`),
+  requestPartnership: (supplierId, terms) => api.post('/suppliers/partnerships/seller', { supplierId, terms }),
+  actOnPartnership: (side, id, data) => api.post(`/suppliers/partnerships/${side}/${id}/actions`, data),
   // Admin
   adminGetAll: (params) => api.get('/suppliers/admin/all', { params }),
   adminGetDetails: (id) => api.get(`/suppliers/admin/${id}`),
