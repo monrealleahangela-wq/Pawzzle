@@ -86,6 +86,12 @@ const serviceSupplySchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'SupplierProduct'
   },
+  supplierOffers: [{
+    supplierProduct: { type: mongoose.Schema.Types.ObjectId, ref: 'SupplierProduct', required: true },
+    matchType: { type: String, enum: ['exact', 'equivalent'], required: true },
+    confirmedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    confirmedAt: { type: Date, required: true }
+  }],
 
   // ── Tracking ──────────────────────────────────────────
   expirationDate: { type: Date },

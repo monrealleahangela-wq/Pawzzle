@@ -5,6 +5,8 @@ const { uploadProcurementEvidence, handleUploadError } = require('../middleware/
 
 const {
   getProcurementCart, addProcurementCartItem, updateProcurementCartItem,
+  getComparableSupplierOffers, confirmSupplierOfferMatch,
+  getProcurementStoreProducts,
   removeProcurementCartItem, clearProcurementCart, submitProcurementCart,
   createPurchaseOrder, getSellerOrders, getOrderById,
   cancelOrder, confirmDelivery, authorizeReceivingInspectionUpload, authorizeResolutionReinspectionUpload,
@@ -18,6 +20,9 @@ router.post('/', authenticate, requirePermission('procurement.manage'), createPu
 router.get('/', authenticate, requirePermission('procurement.view', 'procurement.manage', 'purchase_orders.own'), getSellerOrders);
 router.get('/admin/all', authenticate, superAdminOnly, adminGetAllOrders);
 router.get('/cart/current', authenticate, requirePermission('procurement.manage'), getProcurementCart);
+router.get('/store-products', authenticate, requirePermission('procurement.manage'), getProcurementStoreProducts);
+router.get('/offers/:storeProductId', authenticate, requirePermission('procurement.manage'), getComparableSupplierOffers);
+router.post('/offers', authenticate, requirePermission('procurement.manage'), confirmSupplierOfferMatch);
 router.post('/cart/items', authenticate, requirePermission('procurement.manage'), addProcurementCartItem);
 router.patch('/cart/items/:itemId', authenticate, requirePermission('procurement.manage'), updateProcurementCartItem);
 router.delete('/cart/items/:itemId', authenticate, requirePermission('procurement.manage'), removeProcurementCartItem);

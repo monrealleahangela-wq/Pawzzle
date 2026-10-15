@@ -59,6 +59,7 @@ const notificationSchema = new mongoose.Schema({
     targetUrl: {
         type: String // Optional: Pre-calculated dynamic URL for convenience
     },
+    dedupeKey: { type: String, default: undefined },
     isRead: {
         type: Boolean,
         default: false
@@ -74,5 +75,7 @@ const notificationSchema = new mongoose.Schema({
 }, {
     timestamps: true
 });
+
+notificationSchema.index({ dedupeKey: 1 }, { unique: true, sparse: true });
 
 module.exports = mongoose.model('Notification', notificationSchema);

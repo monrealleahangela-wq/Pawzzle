@@ -55,6 +55,9 @@ const supplyChainLogSchema = new mongoose.Schema({
   // ── Details ───────────────────────────────────────────
   description: { type: String, required: true },
   metadata: { type: mongoose.Schema.Types.Mixed },
+  // Set only for transactional service-supply receipts. Other historical logs
+  // have no key and retain their existing behavior.
+  idempotencyKey: { type: String, trim: true },
 
   // ── Change Tracking ───────────────────────────────────
   previousValue: { type: mongoose.Schema.Types.Mixed },
@@ -73,6 +76,7 @@ supplyChainLogSchema.index({ action: 1, createdAt: -1 });
 supplyChainLogSchema.index({ performedBy: 1 });
 supplyChainLogSchema.index({ store: 1, createdAt: -1 });
 supplyChainLogSchema.index({ supplier: 1, createdAt: -1 });
+supplyChainLogSchema.index({ idempotencyKey: 1 }, { unique: true, sparse: true });
 supplyChainLogSchema.index({ 'relatedEntity.type': 1, 'relatedEntity.id': 1 });
 
 module.exports = mongoose.model('SupplyChainLog', supplyChainLogSchema);

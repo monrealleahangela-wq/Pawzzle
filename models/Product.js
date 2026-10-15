@@ -155,6 +155,14 @@ const productSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'SupplierProduct'
   },
+  // Store-reviewed alternatives. A supplier catalog entry never changes the
+  // Store's primary supplier link merely because it is selected for a PO.
+  procurementOffers: [{
+    supplierProduct: { type: mongoose.Schema.Types.ObjectId, ref: 'SupplierProduct', required: true },
+    matchType: { type: String, enum: ['exact', 'equivalent'], required: true },
+    confirmedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    confirmedAt: { type: Date, required: true }
+  }],
   ratings: {
     average: {
       type: Number,

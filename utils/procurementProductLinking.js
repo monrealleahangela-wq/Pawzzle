@@ -32,7 +32,9 @@ const getStoreProductCompatibilityIssue = ({ storeProduct, supplierProduct, stor
   if (storeProduct.isDeleted || storeProduct.isActive === false) return 'The selected Store product is archived or inactive.';
 
   const linkedSupplierProduct = idOf(storeProduct.supplierProductRef);
-  if (linkedSupplierProduct && linkedSupplierProduct !== idOf(supplierProduct)) {
+  const reviewedOffer = (storeProduct.procurementOffers || []).find(offer =>
+    idOf(offer.supplierProduct) === idOf(supplierProduct));
+  if (linkedSupplierProduct && linkedSupplierProduct !== idOf(supplierProduct) && !reviewedOffer) {
     return 'The selected Store product is already linked to a different supplier item.';
   }
 
@@ -40,6 +42,30 @@ const getStoreProductCompatibilityIssue = ({ storeProduct, supplierProduct, stor
   const actualCategory = normalizeProductCategory(storeProduct.category);
   if (expectedCategory && actualCategory && expectedCategory !== actualCategory) {
     return `The selected Store product category is incompatible with supplier category "${supplierProduct.category}".`;
+  }
+  if (reviewedOffer && storeProduct.unit !== supplierProduct.unitOfMeasure) {
+    return 'The reviewed offer unit no longer matches the Store product unit.';
+  }
+  return null;
+};
+
+const getOfferMatchType = ({ storeProduct, supplierProduct }) => {
+  const reviewedOffer = (storeProduct?.procurementOffers || []).find(offer =>
+    idOf(offer.supplierProduct) === idOf(supplierProduct));
+  if (reviewedOffer) return reviewedOffer.matchType;
+  return idOf(storeProduct?.supplierProductRef) === idOf(supplierProduct) ? 'exact' : null;
+};
+
+const getOfferReviewIssue = ({ storeProduct, supplierProduct, storeId, matchType }) => {
+  if (!['exact', 'equivalent'].includes(matchType)) return 'Select exact or equivalent match.';
+  if (supplierProduct?.itemType === 'live_pet') return 'Individual live pets cannot be treated as interchangeable supplier offers.';
+  if (!storeProduct || idOf(storeProduct.store) !== idOf(storeId) || storeProduct.isDeleted || storeProduct.isActive === false) {
+    return 'The Store product is unavailable or belongs to another Store.';
+  }
+  if (storeProduct.unit !== supplierProduct?.unitOfMeasure) return 'Supplier and Store product units must match before comparison.';
+  const expectedCategory = mapSupplierCategoryToStoreCategory(supplierProduct?.category);
+  if (expectedCategory && expectedCategory !== normalizeProductCategory(storeProduct.category)) {
+    return 'Supplier and Store product categories are incompatible.';
   }
   return null;
 };
@@ -118,6 +144,8 @@ module.exports = {
   STORE_PRODUCT_UNITS,
   mapSupplierCategoryToStoreCategory,
   getStoreProductCompatibilityIssue,
+  getOfferMatchType,
+  getOfferReviewIssue,
   assertStoreProductCompatible,
   buildDraftStoreProduct,
   getDraftProductSuggestions

@@ -595,8 +595,11 @@ export const supplierService = {
 // Purchase Order services
 export const purchaseOrderService = {
   create: (data) => api.post('/purchase-orders', data),
+  getProcurementStoreProducts: (params) => api.get('/purchase-orders/store-products', { params }),
+  compareOffers: (storeProductId, params) => api.get(`/purchase-orders/offers/${storeProductId}`, { params }),
+  confirmOfferMatch: (data) => api.post('/purchase-orders/offers', data),
   getCart: () => api.get('/purchase-orders/cart/current'),
-  addCartItem: (supplierProductId, quantity) => api.post('/purchase-orders/cart/items', { supplierProductId, quantity }),
+  addCartItem: (supplierProductId, quantity, selection = {}) => api.post('/purchase-orders/cart/items', { supplierProductId, quantity, ...selection }),
   updateCartItem: (supplierProductId, data) => api.patch(`/purchase-orders/cart/items/${supplierProductId}`, data),
   removeCartItem: (supplierProductId) => api.delete(`/purchase-orders/cart/items/${supplierProductId}`),
   clearCart: () => api.delete('/purchase-orders/cart'),

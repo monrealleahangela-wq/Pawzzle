@@ -6,6 +6,7 @@ import { supplierService, purchaseOrderService, paymentService, getImageUrl, adm
 import PaymentBreakdown from '../../components/payments/PaymentBreakdown';
 import ProcurementEvidenceGallery, { ProcurementReinspectionEvidenceGallery } from '../../components/procurement/ProcurementEvidenceGallery';
 import ReceivingInspectionModal from '../../components/procurement/ReceivingInspectionModal';
+import SupplierOfferComparison from '../../components/procurement/SupplierOfferComparison';
 import { formatPeso, purchaseOrderPaymentSummary } from '../../utils/paymentSummary';
 
 const PurchaseOrders = () => {
@@ -23,6 +24,7 @@ const PurchaseOrders = () => {
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [storeProducts, setStoreProducts] = useState([]);
   const [productMapping, setProductMapping] = useState({});
+  const [comparisonStoreProductId, setComparisonStoreProductId] = useState(null);
   const [showSupplierForm, setShowSupplierForm] = useState(false);
   const emptySupplierForm = { businessName: '', contactPerson: '', email: '', phone: '', address: { street: '', city: '', province: '', zipCode: '' }, description: '' };
   const [supplierForm, setSupplierForm] = useState(emptySupplierForm);
@@ -178,9 +180,17 @@ const PurchaseOrders = () => {
 
   const submitOrder = async () => {
     if (!procurementCart.items.length || submittingCart) return;
+    const mappedCounts = cart.reduce((counts, item) => {
+      const id = item.serviceSupply?._id ? `supply:${item.serviceSupply._id}`
+        : item.storeProduct?._id ? `product:${item.storeProduct._id}` : null;
+      if (id) counts[id] = (counts[id] || 0) + 1;
+      return counts;
+    }, {});
+    const split = Object.values(mappedCounts).some(count => count > 1);
+    if (split && !window.confirm('This purchase request splits a Store product or service supply across multiple suppliers. Confirm the quantities, prices, and separate supplier orders?')) return;
     setSubmittingCart(true);
     try {
-      const response = await purchaseOrderService.submitCart({ paymentTiming, paymentMethod: 'paymongo' });
+      const response = await purchaseOrderService.submitCart({ paymentTiming, paymentMethod: 'paymongo', confirmSplit: split });
       toast.success(response.data.message);
       setShowCheckout(false);
       setProcurementCart({ items: [], itemCount: 0, totalQuantity: 0, subtotal: 0, supplierCount: 0 });
@@ -390,7 +400,7 @@ const PurchaseOrders = () => {
         <div className="space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
             <div><h2 className="text-sm font-black text-slate-900">Supplier Management</h2><p className="mt-1 text-xs text-slate-500">Invite a trusted store supplier or order from an approved platform supplier.</p></div>
-            <button onClick={() => setShowSupplierForm(true)} className="inline-flex items-center gap-2 rounded-xl bg-primary-600 px-4 py-3 text-[10px] font-black uppercase text-white hover:bg-primary-700"><Plus className="h-4 w-4" /> Add Supplier</button>
+            <div className="flex flex-wrap gap-2"><button type="button" onClick={() => setComparisonStoreProductId('')} className="rounded-xl border border-indigo-300 px-4 py-3 text-[10px] font-black uppercase text-indigo-700">Compare product or service supply offers</button><button onClick={() => setShowSupplierForm(true)} className="inline-flex items-center gap-2 rounded-xl bg-primary-600 px-4 py-3 text-[10px] font-black uppercase text-white hover:bg-primary-700"><Plus className="h-4 w-4" /> Add Supplier</button></div>
           </div>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
           {suppliers.map(s => (
@@ -511,6 +521,7 @@ const PurchaseOrders = () => {
                             {p.availableStock <= 0 ? 'Out of Stock' : 'Add to Order'}
                           </button>
                         )}
+                        {p.itemType !== 'live_pet' && <button type="button" onClick={() => setComparisonStoreProductId(storeProducts.find(sp => String(sp.supplierProductRef) === String(p._id))?._id || '')} className="mt-2 w-full rounded-xl border border-indigo-200 px-3 py-2 text-[9px] font-black uppercase text-indigo-700">Compare suppliers and alternatives</button>}
                       </div>
                     </div>
                   );
@@ -520,6 +531,13 @@ const PurchaseOrders = () => {
           </div>
         </div>
       )}
+
+      {comparisonStoreProductId !== null && <SupplierOfferComparison
+        storeProducts={storeProducts}
+        initialStoreProductId={comparisonStoreProductId}
+        onCartUpdated={setProcurementCart}
+        onClose={() => setComparisonStoreProductId(null)}
+      />}
 
       {selectedOrder && <div className="fixed inset-0 bg-slate-900/60 z-[105] flex items-center justify-center p-3"><div className="bg-white w-full max-w-xl rounded-2xl p-5 max-h-[90vh] overflow-y-auto"><div className="flex justify-between mb-4"><div><h3 className="text-base font-black">{selectedOrder.orderNumber}</h3><p className="text-[10px] text-slate-500">{selectedOrder.supplier?.businessName} · {selectedOrder.status}</p></div><button onClick={()=>setSelectedOrder(null)}><X className="h-4 w-4"/></button></div><div className="space-y-2">{selectedOrder.items?.map(item=><div key={item._id} className="p-3 bg-slate-50 rounded-xl flex justify-between text-xs"><div><p className="font-bold">{item.productName}</p><p className="text-[10px] text-slate-500">{item.quantity} × {formatPeso(item.unitPrice)} · Received {item.receivedQuantity || 0}</p></div><p className="font-black">{formatPeso(item.totalPrice)}</p></div>)}</div><div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3"><PaymentBreakdown summary={purchaseOrderPaymentSummary(selectedOrder)} compact /><p className="mt-3 border-t border-slate-200 pt-2 text-[10px] text-slate-500">Payment: <b>{selectedOrder.paymentStatus}</b> · Paid {formatPeso(selectedOrder.paidAmount || 0)}</p></div></div></div>}
 
@@ -553,11 +571,11 @@ const PurchaseOrders = () => {
                     {group.items.map(item => (
                       <div key={item.supplierProductId} className={`rounded-xl border p-3 ${item.available ? 'border-slate-100 bg-slate-50' : 'border-rose-200 bg-rose-50'}`}>
                         <div className="flex items-start justify-between gap-3">
-                          <div className="min-w-0"><p className="truncate text-xs font-black text-slate-900">{item.product?.name || 'Unavailable supply'}</p><p className="mt-1 text-[9px] text-slate-500">{item.itemType === 'live_pet' ? 'Specific live pet · quantity fixed at 1' : `${item.quantity} × ${formatPeso(item.product?.wholesalePrice || 0)} · ${item.product?.unitOfMeasure}`}</p>{item.pet && <p className="mt-1 text-[9px] text-slate-500">{item.pet.species} · {item.pet.breed} · {item.pet.age} {item.pet.ageUnit}</p>}{item.priceChanged && <p className="mt-1 text-[9px] font-bold text-amber-700">Price changed from {formatPeso(item.addedUnitPrice)}.</p>}{!item.available && <p className="mt-1 text-[9px] font-bold text-rose-700">This item or supplier is no longer available.</p>}</div>
+                          <div className="min-w-0"><p className="truncate text-xs font-black text-slate-900">{item.product?.name || 'Unavailable supply'}</p><p className="mt-1 text-[9px] text-slate-500">{item.itemType === 'live_pet' ? 'Specific live pet · quantity fixed at 1' : `${item.quantity} × ${formatPeso(item.product?.wholesalePrice || 0)} · ${item.product?.unitOfMeasure}`}</p>{item.serviceSupply && <p className="mt-1 text-[9px] font-bold text-indigo-700">Service supply: {item.serviceSupply.name} · {item.selectionMatchType} match</p>}{item.pet && <p className="mt-1 text-[9px] text-slate-500">{item.pet.species} · {item.pet.breed} · {item.pet.age} {item.pet.ageUnit}</p>}{item.priceChanged && <p className="mt-1 text-[9px] font-bold text-amber-700">Price changed from {formatPeso(item.addedUnitPrice)}.</p>}{!item.available && <p className="mt-1 text-[9px] font-bold text-rose-700">This item or supplier is no longer available.</p>}</div>
                           <div className="text-right"><p className="text-sm font-black text-slate-900">{formatPeso(item.lineTotal)}</p><button onClick={() => removeCartItem(item)} className="mt-1 text-[8px] font-black uppercase text-rose-600">Remove</button></div>
                         </div>
                         {item.product && item.itemType !== 'live_pet' && <div className="mt-3 flex items-center gap-2"><button onClick={() => updateCartQty(item, -1)} className="rounded-lg border bg-white p-1.5"><Minus className="h-3 w-3" /></button><span className="min-w-8 text-center text-xs font-black">{item.quantity}</span><button onClick={() => updateCartQty(item, 1)} disabled={item.quantity >= item.product.availableStock} className="rounded-lg border bg-white p-1.5 disabled:opacity-30"><Plus className="h-3 w-3" /></button><span className="ml-1 text-[9px] text-slate-400">Available: {item.product.availableStock}</span></div>}
-                        {item.itemType !== 'live_pet' && <div className="mt-3 space-y-1">
+                        {item.itemType !== 'live_pet' && !item.serviceSupply && <div className="mt-3 space-y-1">
                           <label className="text-[8px] font-black uppercase tracking-widest text-orange-500">Link to Store Product (optional)</label>
                           <select value={productMapping[item.supplierProductId] || ''} onChange={e => updateProductMapping(item, e.target.value)} className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-[10px] font-bold outline-none">
                             <option value="">— No link (manual update later) —</option>

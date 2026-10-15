@@ -18,6 +18,10 @@ const procurementCartItemSchema = new mongoose.Schema({
   },
   quantity: { type: Number, required: true, min: 1 },
   storeProduct: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', default: null },
+  serviceSupply: { type: mongoose.Schema.Types.ObjectId, ref: 'ServiceSupply', default: null },
+  selectionMatchType: { type: String, enum: ['exact', 'equivalent'], default: undefined },
+  selectionConfirmedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+  selectionConfirmedAt: { type: Date },
   addedUnitPrice: { type: Number, required: true, min: 0 },
   addedAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now }

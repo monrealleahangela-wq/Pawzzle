@@ -10,16 +10,18 @@ const SupplierProduct = require('../models/SupplierProduct');
 const Store = require('../models/Store');
 const Inventory = require('../models/Inventory');
 const Product = require('../models/Product');
+const ServiceSupply = require('../models/ServiceSupply');
 const Pet = require('../models/Pet');
 const InventoryLot = require('../models/InventoryLot');
 const SupplyChainLog = require('../models/SupplyChainLog');
 const InventoryLedgerService = require('../services/inventoryLedgerService');
+const { applyServiceSupplyReceipt } = require('../services/serviceSupplyReceivingService');
 const {
   commitPurchaseOrderStock,
   releasePurchaseOrderStock
 } = require('../services/procurementStockCommitmentService');
 const { createNotification } = require('./notificationController');
-const { isSupplierSelectableForStore } = require('../utils/supplierLifecycle');
+const { isSupplierSelectableForStore, getSelectableSupplierFilterForStore } = require('../utils/supplierLifecycle');
 const {
   getReceivingProcessingCutoff,
   validateProcurementQuantity,
@@ -30,10 +32,14 @@ const {
 const { getResolutionQuantities, hasUnresolvedQuantities } = require('../utils/procurementResolution');
 const {
   getStoreProductCompatibilityIssue,
+  getOfferMatchType,
+  getOfferReviewIssue,
+  mapSupplierCategoryToStoreCategory,
   assertStoreProductCompatible,
   buildDraftStoreProduct,
   getDraftProductSuggestions
 } = require('../utils/procurementProductLinking');
+const { SUPPLY_CATEGORIES, getSupplyOfferMatchType, getSupplyOfferIssue } = require('../utils/procurementSupplyLinking');
 const { cloudinary } = require('../middleware/upload');
 const {
   evidenceFromUploadedFile,
@@ -49,6 +55,44 @@ const resolveUserStore = async user => {
   return ownedStore?._id || null;
 };
 
+const notifySupplierStockShortage = async ({ userId, storeId, product }) => {
+  try {
+  const day = new Date().toISOString().slice(0, 10);
+  const linkedProducts = await Product.find({ store: storeId, isDeleted: { $ne: true },
+    $or: [{ supplierProductRef: product._id }, { 'procurementOffers.supplierProduct': product._id }] })
+    .select('supplierProductRef procurementOffers');
+  const linkedSupplies = await ServiceSupply.find({ store: storeId, isDeleted: { $ne: true },
+    $or: [{ supplierProduct: product._id }, { 'supplierOffers.supplierProduct': product._id }] })
+    .select('supplierProduct supplierOffers');
+  const alternativeIds = [...new Set([...linkedProducts.flatMap(storeProduct => [
+    storeProduct.supplierProductRef,
+    ...(storeProduct.procurementOffers || []).map(offer => offer.supplierProduct)
+  ]), ...linkedSupplies.flatMap(supply => [supply.supplierProduct,
+    ...(supply.supplierOffers || []).map(offer => offer.supplierProduct)])]
+    .filter(id => id && String(id) !== String(product._id)).map(String))];
+  const alternativeProducts = alternativeIds.length ? await SupplierProduct.find({
+    _id: { $in: alternativeIds }, isActive: true, isDeleted: false,
+    $expr: { $gte: ['$availableStock', '$minimumOrderQuantity'] }
+  }).select('supplier') : [];
+  const alternativeSuppliers = alternativeProducts.length ? await Supplier.find({
+    _id: { $in: alternativeProducts.map(item => item.supplier) }
+  }) : [];
+  const hasAlternative = alternativeSuppliers.some(supplier => isSupplierSelectableForStore(supplier, storeId));
+  await createNotification({
+    recipient: userId,
+    type: 'supply_alert',
+    title: 'Supplier stock is insufficient',
+    message: `The requested quantity of ${product.name} exceeds this supplier's available stock.${hasAlternative ? ' Another eligible supplier offer is available for review.' : ' Reduce the quantity or check later.'}`,
+    relatedId: storeId,
+    relatedModel: 'Store',
+    targetUrl: '/admin/purchase-orders?tab=suppliers',
+    dedupeKey: `procurement-shortage:${userId}:${product._id}:${day}`
+  });
+  } catch (error) {
+    console.error('Procurement shortage notification failed:', error);
+  }
+};
+
 const populateProcurementCart = cart => cart.populate([
   {
     path: 'items.supplierProduct',
@@ -56,7 +100,8 @@ const populateProcurementCart = cart => cart.populate([
     populate: { path: 'pet', select: 'name species breed age ageUnit gender size color healthCondition vaccinationStatus healthNotes images listingContext' }
   },
   { path: 'items.supplier', select: 'businessName supplierType status isActive isDeleted storeAssociations' },
-  { path: 'items.storeProduct', select: 'name sku category stockQuantity store supplierProductRef visibility isActive isDeleted' }
+  { path: 'items.storeProduct', select: 'name sku category unit stockQuantity store supplierProductRef procurementOffers visibility isActive isDeleted' },
+  { path: 'items.serviceSupply', select: 'name sku category unitOfMeasure currentStock store supplierProduct supplierOffers isActive isDeleted' }
 ]);
 
 const getOrCreateProcurementCart = async (userId, storeId) => {
@@ -101,6 +146,12 @@ const serializeProcurementCart = (cart, storeId) => {
       } : null,
       pet: product?.pet || null,
       storeProduct: item.storeProduct || null,
+      serviceSupply: item.serviceSupply || null,
+      selectionMatchType: item.selectionMatchType || (item.storeProduct && product
+        ? getOfferMatchType({ storeProduct: item.storeProduct, supplierProduct: product })
+        : item.serviceSupply && product
+          ? getSupplyOfferMatchType({ serviceSupply: item.serviceSupply, supplierProduct: product })
+          : 'unmapped'),
       quantity,
       addedUnitPrice: Number(item.addedUnitPrice),
       priceChanged: Boolean(product && Number(item.addedUnitPrice) !== currentUnitPrice),
@@ -142,6 +193,165 @@ const getProcurementCart = async (req, res) => {
   }
 };
 
+const getProcurementStoreProducts = async (req, res) => {
+  try {
+    const store = await resolveUserStore(req.user);
+    if (!store || !(await canOperateStore(req.user, store, ['procurement.manage']))) {
+      return res.status(403).json({ message: 'Authorized Store procurement access is required.' });
+    }
+    const search = String(req.query.search || '').trim().slice(0, 80);
+    const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const page = Math.max(1, Math.min(10000, Number.parseInt(req.query.page, 10) || 1));
+    const limit = 30;
+    const supplyTarget = req.query.targetType === 'service_supply';
+    const Target = supplyTarget ? ServiceSupply : Product;
+    const filter = { store, isActive: true, isDeleted: { $ne: true } };
+    if (search) filter.$or = [
+      { name: { $regex: escapedSearch, $options: 'i' } },
+      { sku: { $regex: escapedSearch, $options: 'i' } }
+    ];
+    const [products, total] = await Promise.all([
+      Target.find(filter).select(supplyTarget ? 'name sku unitOfMeasure supplierProduct' : 'name sku unit supplierProductRef').sort({ name: 1, _id: 1 })
+        .skip((page - 1) * limit).limit(limit),
+      Target.countDocuments(filter)
+    ]);
+    return res.json({ products: products.map(product => ({
+      _id: product._id, name: product.name, sku: product.sku,
+      unit: supplyTarget ? product.unitOfMeasure : product.unit,
+      supplierProductRef: supplyTarget ? product.supplierProduct : product.supplierProductRef
+    })), pagination: { page, limit, total, totalPages: Math.ceil(total / limit) } });
+  } catch (error) {
+    console.error('Get procurement Store products error:', error);
+    return res.status(500).json({ message: 'Unable to load Store products.' });
+  }
+};
+
+const getComparableSupplierOffers = async (req, res) => {
+  try {
+    const store = await resolveUserStore(req.user);
+    if (!store || !(await canOperateStore(req.user, store, ['procurement.manage']))) {
+      return res.status(403).json({ message: 'Authorized Store procurement access is required.' });
+    }
+    if (!mongoose.isValidObjectId(req.params.storeProductId)) return res.status(400).json({ message: 'Invalid Store product.' });
+    const supplyTarget = req.query.targetType === 'service_supply';
+    const storeProduct = supplyTarget
+      ? await ServiceSupply.findOne({ _id: req.params.storeProductId, store, isActive: true, isDeleted: { $ne: true } })
+        .select('name sku category unitOfMeasure store supplierProduct supplierOffers isActive isDeleted')
+      : await Product.findOne({ _id: req.params.storeProductId, store, isActive: true, isDeleted: { $ne: true } })
+        .select('name sku category unit store supplierProductRef procurementOffers isActive isDeleted');
+    if (!storeProduct) return res.status(404).json({ message: 'Store product not found.' });
+    const suppliers = await Supplier.find(getSelectableSupplierFilterForStore(store))
+      .select('businessName supplierType status isActive isDeleted storeAssociations');
+    const supplierMap = new Map(suppliers.map(supplier => [String(supplier._id), supplier]));
+    const search = String(req.query.search || '').trim().slice(0, 80);
+    const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const page = Math.max(1, Math.min(10000, Number.parseInt(req.query.page, 10) || 1));
+    const limit = 30;
+    const categories = supplyTarget
+      ? (SUPPLY_CATEGORIES.includes(storeProduct.category) ? [storeProduct.category] : [])
+      : SupplierProduct.schema.path('category').enumValues
+        .filter(category => mapSupplierCategoryToStoreCategory(category) === storeProduct.category);
+    const filter = {
+      supplier: { $in: suppliers.map(supplier => supplier._id) },
+      itemType: { $ne: 'live_pet' },
+      category: { $in: categories },
+      unitOfMeasure: supplyTarget ? storeProduct.unitOfMeasure : storeProduct.unit,
+      isDeleted: false
+    };
+    if (search) filter.name = { $regex: escapedSearch, $options: 'i' };
+    const [products, total] = await Promise.all([SupplierProduct.find(filter)
+      .select('supplier name sku category brand wholesalePrice availableStock minimumOrderQuantity unitOfMeasure deliveryLeadTimeDays isActive isDeleted')
+      .sort({ wholesalePrice: 1, _id: 1 }).skip((page - 1) * limit).limit(limit),
+    SupplierProduct.countDocuments(filter)]);
+    const offers = products.map(product => ({
+        supplierProductId: product._id,
+        supplier: { _id: product.supplier, businessName: supplierMap.get(String(product.supplier))?.businessName },
+        name: product.name,
+        sku: product.sku,
+        brand: product.brand,
+        category: product.category,
+        unitOfMeasure: product.unitOfMeasure,
+        unitPrice: product.wholesalePrice,
+        availableStock: product.availableStock,
+        minimumOrderQuantity: product.minimumOrderQuantity,
+        deliveryLeadTimeDays: product.deliveryLeadTimeDays,
+        available: product.isActive && product.availableStock >= product.minimumOrderQuantity,
+        matchType: supplyTarget
+          ? getSupplyOfferMatchType({ serviceSupply: storeProduct, supplierProduct: product }) || 'unverified_candidate'
+          : getOfferMatchType({ storeProduct, supplierProduct: product }) || 'unverified_candidate'
+      }));
+    return res.json({ storeProduct: { _id: storeProduct._id, name: storeProduct.name, sku: storeProduct.sku,
+      unit: supplyTarget ? storeProduct.unitOfMeasure : storeProduct.unit },
+      offers, pagination: { page, limit, total, totalPages: Math.ceil(total / limit) } });
+  } catch (error) {
+    console.error('Compare supplier offers error:', error);
+    return res.status(500).json({ message: 'Unable to compare supplier offers.' });
+  }
+};
+
+const confirmSupplierOfferMatch = async (req, res) => {
+  try {
+    const store = await resolveUserStore(req.user);
+    if (!store || !(await canOperateStore(req.user, store, ['procurement.manage']))) {
+      return res.status(403).json({ message: 'Authorized Store procurement access is required.' });
+    }
+    const supplyTarget = req.body.targetType === 'service_supply';
+    const storeProductId = supplyTarget ? req.body.serviceSupplyId : req.body.storeProductId;
+    const { supplierProductId, matchType, confirmMatch } = req.body;
+    if (!confirmMatch || !mongoose.isValidObjectId(storeProductId) || !mongoose.isValidObjectId(supplierProductId)) {
+      return res.status(400).json({ message: 'Explicit confirmation and valid product identifiers are required.' });
+    }
+    const [storeProduct, supplierProduct] = await Promise.all([
+      (supplyTarget ? ServiceSupply : Product).findOne({ _id: storeProductId, store, isDeleted: { $ne: true } }),
+      SupplierProduct.findOne({ _id: supplierProductId, isActive: true, isDeleted: false })
+    ]);
+    if (!supplierProduct) return res.status(404).json({ message: 'Supplier offer is unavailable.' });
+    const supplier = await Supplier.findById(supplierProduct.supplier);
+    if (!isSupplierSelectableForStore(supplier, store)) return res.status(403).json({ message: 'Supplier is not eligible for this Store.' });
+    const issue = supplyTarget
+      ? getSupplyOfferIssue({ serviceSupply: storeProduct, supplierProduct, storeId: store, matchType })
+      : getOfferReviewIssue({ storeProduct, supplierProduct, storeId: store, matchType });
+    if (issue) return res.status(409).json({ message: issue });
+    let alreadyConfirmed = false;
+    await mongoose.connection.transaction(async session => {
+      const currentProduct = await (supplyTarget ? ServiceSupply : Product)
+        .findOne({ _id: storeProduct._id, store, isDeleted: { $ne: true } }).session(session);
+      const currentIssue = supplyTarget
+        ? getSupplyOfferIssue({ serviceSupply: currentProduct, supplierProduct, storeId: store, matchType })
+        : getOfferReviewIssue({ storeProduct: currentProduct, supplierProduct, storeId: store, matchType });
+      if (currentIssue) throw Object.assign(new Error(currentIssue), { statusCode: 409 });
+      if (!supplyTarget && String(currentProduct.supplierProductRef || '') === String(supplierProduct._id)) {
+        if (matchType !== 'exact') throw Object.assign(new Error('The primary supplier item is already an exact match.'), { statusCode: 409 });
+        alreadyConfirmed = true;
+        return;
+      }
+      const offerList = supplyTarget ? currentProduct.supplierOffers : currentProduct.procurementOffers;
+      const current = (offerList || []).find(offer =>
+        String(offer.supplierProduct) === String(supplierProduct._id));
+      if (current) {
+        if (current.matchType !== matchType) throw Object.assign(new Error('This offer has a different reviewed match classification.'), { statusCode: 409 });
+        alreadyConfirmed = true;
+        return;
+      }
+      offerList.push({
+        supplierProduct: supplierProduct._id, matchType, confirmedBy: req.user._id, confirmedAt: new Date()
+      });
+      await currentProduct.save({ session });
+      await SupplyChainLog.create([{
+        action: 'admin_action', performedBy: req.user._id, userRole: req.user.role,
+        relatedEntity: { type: supplyTarget ? 'ServiceSupply' : 'Product', id: currentProduct._id },
+        description: `Supplier offer classified as ${matchType} for Store procurement`,
+        store, supplier: supplier._id,
+        metadata: { supplierProduct: supplierProduct._id, matchType }
+      }], { session });
+    });
+    return res.status(alreadyConfirmed ? 200 : 201).json({ matchType, alreadyConfirmed });
+  } catch (error) {
+    console.error('Confirm supplier offer error:', error);
+    return res.status(error.statusCode || 500).json({ message: error.statusCode ? error.message : 'Unable to confirm supplier offer.' });
+  }
+};
+
 const addProcurementCartItem = async (req, res) => {
   try {
     const store = await resolveUserStore(req.user);
@@ -166,6 +376,33 @@ const addProcurementCartItem = async (req, res) => {
     if (!isSupplierSelectableForStore(supplier, store)) {
       return res.status(403).json({ message: 'This supplier is not eligible for your store.' });
     }
+    if (req.body.storeProductId && req.body.serviceSupplyId) {
+      return res.status(400).json({ message: 'Select one Store inventory target per supplier offer.' });
+    }
+    let selectedStoreProduct = null;
+    let selectedServiceSupply = null;
+    let matchType = null;
+    if (req.body.storeProductId) {
+      if (req.body.confirmSelection !== true || !mongoose.isValidObjectId(req.body.storeProductId)) {
+        return res.status(400).json({ message: 'Confirm the supplier offer and Store product before adding it.' });
+      }
+      selectedStoreProduct = await Product.findOne({ _id: req.body.storeProductId, store, isDeleted: { $ne: true } });
+      if (!selectedStoreProduct) return res.status(404).json({ message: 'Store product not found.' });
+      matchType = getOfferMatchType({ storeProduct: selectedStoreProduct, supplierProduct: product });
+      if (!matchType) return res.status(409).json({ message: 'Review this supplier offer as an exact or equivalent match first.' });
+      const issue = getStoreProductCompatibilityIssue({ storeProduct: selectedStoreProduct, supplierProduct: product, storeId: store });
+      if (issue) return res.status(409).json({ message: issue });
+    }
+    if (req.body.serviceSupplyId) {
+      if (req.body.confirmSelection !== true || !mongoose.isValidObjectId(req.body.serviceSupplyId)) {
+        return res.status(400).json({ message: 'Explicitly confirm the supplier offer and service supply.' });
+      }
+      selectedServiceSupply = await ServiceSupply.findOne({ _id: req.body.serviceSupplyId, store, isDeleted: { $ne: true } });
+      if (!selectedServiceSupply) return res.status(404).json({ message: 'Service supply not found.' });
+      matchType = getSupplyOfferMatchType({ serviceSupply: selectedServiceSupply, supplierProduct: product });
+      const issue = getSupplyOfferIssue({ serviceSupply: selectedServiceSupply, supplierProduct: product, storeId: store });
+      if (issue) return res.status(409).json({ message: issue });
+    }
     const requested = req.body.quantity === undefined
       ? Number(product.minimumOrderQuantity)
       : Number(req.body.quantity);
@@ -177,6 +414,7 @@ const addProcurementCartItem = async (req, res) => {
     });
     if (!requestedQuantity.valid) {
       if (requestedQuantity.reason === 'insufficient_stock') {
+        await notifySupplierStockShortage({ userId: req.user._id, storeId: store, product });
         return res.status(409).json({ message: `Only ${product.availableStock} ${product.unitOfMeasure}(s) of "${product.name}" are available.` });
       }
       return res.status(400).json({ message: `Minimum order for "${product.name}" is ${product.minimumOrderQuantity} ${product.unitOfMeasure}(s).` });
@@ -185,6 +423,7 @@ const addProcurementCartItem = async (req, res) => {
     const existing = cart.items.find(item => String(item.supplierProduct) === String(product._id));
     const nextQuantity = existing ? existing.quantity + requested : requested;
     if (nextQuantity > product.availableStock) {
+      await notifySupplierStockShortage({ userId: req.user._id, storeId: store, product });
       return res.status(409).json({ message: `Only ${product.availableStock} ${product.unitOfMeasure}(s) of "${product.name}" are available.` });
     }
     if (existing) {
@@ -193,13 +432,31 @@ const addProcurementCartItem = async (req, res) => {
       existing.itemType = product.itemType;
       existing.addedUnitPrice = product.wholesalePrice;
       existing.updatedAt = new Date();
+      if (selectedStoreProduct) {
+        existing.storeProduct = selectedStoreProduct._id;
+        existing.serviceSupply = null;
+        existing.selectionMatchType = matchType;
+        existing.selectionConfirmedBy = req.user._id;
+        existing.selectionConfirmedAt = new Date();
+      } else if (selectedServiceSupply) {
+        existing.storeProduct = null;
+        existing.serviceSupply = selectedServiceSupply._id;
+        existing.selectionMatchType = matchType;
+        existing.selectionConfirmedBy = req.user._id;
+        existing.selectionConfirmedAt = new Date();
+      }
     } else {
       cart.items.push({
         supplierProduct: product._id,
         supplier: product.supplier,
         itemType: product.itemType,
         quantity: requested,
-        addedUnitPrice: product.wholesalePrice
+        addedUnitPrice: product.wholesalePrice,
+        storeProduct: selectedStoreProduct?._id || null,
+        serviceSupply: selectedServiceSupply?._id || null,
+        selectionMatchType: matchType || undefined,
+        selectionConfirmedBy: selectedStoreProduct || selectedServiceSupply ? req.user._id : null,
+        selectionConfirmedAt: selectedStoreProduct || selectedServiceSupply ? new Date() : undefined
       });
     }
     await cart.save();
@@ -235,11 +492,16 @@ const updateProcurementCartItem = async (req, res) => {
       });
       if (!quantityValidation.valid) {
         if (quantityValidation.reason === 'insufficient_stock') {
+          await notifySupplierStockShortage({ userId: req.user._id, storeId: store, product });
           return res.status(409).json({ message: `Only ${product.availableStock} ${product.unitOfMeasure}(s) are available.` });
         }
         return res.status(400).json({ message: `Minimum order for "${product.name}" is ${product.minimumOrderQuantity} ${product.unitOfMeasure}(s).` });
       }
       item.quantity = quantity;
+    }
+    if (Object.prototype.hasOwnProperty.call(req.body, 'storeProductId')
+        && Object.prototype.hasOwnProperty.call(req.body, 'serviceSupplyId')) {
+      return res.status(400).json({ message: 'Select one Store inventory target per supplier offer.' });
     }
     if (Object.prototype.hasOwnProperty.call(req.body, 'storeProductId')) {
       if (req.body.storeProductId) {
@@ -247,9 +509,42 @@ const updateProcurementCartItem = async (req, res) => {
         if (!storeProduct) return res.status(400).json({ message: 'The selected inventory product does not belong to this store.' });
         const compatibilityIssue = getStoreProductCompatibilityIssue({ storeProduct, supplierProduct: product, storeId: store });
         if (compatibilityIssue) return res.status(409).json({ message: compatibilityIssue });
+        const selectedMatchType = getOfferMatchType({ storeProduct, supplierProduct: product });
+        if (selectedMatchType && req.body.confirmSelection !== true
+            && String(storeProduct.supplierProductRef || '') !== String(product._id)) {
+          return res.status(400).json({ message: 'Explicitly confirm the alternative supplier selection.' });
+        }
         item.storeProduct = req.body.storeProductId;
+        item.serviceSupply = null;
+        item.selectionMatchType = selectedMatchType || undefined;
+        item.selectionConfirmedBy = item.selectionMatchType && req.body.confirmSelection === true ? req.user._id : null;
+        item.selectionConfirmedAt = item.selectionConfirmedBy ? new Date() : undefined;
       } else {
         item.storeProduct = null;
+        item.selectionMatchType = undefined;
+        item.selectionConfirmedBy = null;
+        item.selectionConfirmedAt = undefined;
+      }
+    }
+    if (Object.prototype.hasOwnProperty.call(req.body, 'serviceSupplyId')) {
+      if (req.body.serviceSupplyId) {
+        if (req.body.confirmSelection !== true || !mongoose.isValidObjectId(req.body.serviceSupplyId)) {
+          return res.status(400).json({ message: 'Explicitly confirm the service supply selection.' });
+        }
+        const serviceSupply = await ServiceSupply.findOne({ _id: req.body.serviceSupplyId, store, isDeleted: { $ne: true } });
+        if (!serviceSupply) return res.status(404).json({ message: 'Service supply not found.' });
+        const issue = getSupplyOfferIssue({ serviceSupply, supplierProduct: product, storeId: store });
+        if (issue) return res.status(409).json({ message: issue });
+        item.serviceSupply = serviceSupply._id;
+        item.storeProduct = null;
+        item.selectionMatchType = getSupplyOfferMatchType({ serviceSupply, supplierProduct: product });
+        item.selectionConfirmedBy = req.user._id;
+        item.selectionConfirmedAt = new Date();
+      } else {
+        item.serviceSupply = null;
+        item.selectionMatchType = undefined;
+        item.selectionConfirmedBy = null;
+        item.selectionConfirmedAt = undefined;
       }
     }
     if (req.body.acceptCurrentPrice === true) item.addedUnitPrice = product.wholesalePrice;
@@ -324,6 +619,11 @@ const submitProcurementCart = async (req, res) => {
         ? await Product.find({ _id: { $in: mappedProductIds }, store, isDeleted: { $ne: true } }).session(session)
         : [];
       const mappedProductMap = new Map(mappedProducts.map(product => [String(product._id), product]));
+      const mappedSupplyIds = cart.items.filter(item => item.serviceSupply).map(item => item.serviceSupply);
+      const mappedSupplies = mappedSupplyIds.length
+        ? await ServiceSupply.find({ _id: { $in: mappedSupplyIds }, store, isDeleted: { $ne: true } }).session(session)
+        : [];
+      const mappedSupplyMap = new Map(mappedSupplies.map(supply => [String(supply._id), supply]));
       const issues = [];
       const priceChanges = [];
       const transactionOrders = [];
@@ -377,6 +677,25 @@ const submitProcurementCart = async (req, res) => {
             issues.push({ supplierProductId: product._id, message: compatibilityIssue });
             continue;
           }
+          const currentMatchType = getOfferMatchType({ storeProduct: mappedProduct, supplierProduct: product });
+          if ((item.selectionMatchType && (currentMatchType !== item.selectionMatchType || !item.selectionConfirmedBy))
+              || (currentMatchType && String(mappedProduct.supplierProductRef || '') !== String(product._id)
+                && !item.selectionConfirmedBy)) {
+            issues.push({ supplierProductId: product._id, message: 'Supplier offer selection changed. Review the Store product match again.' });
+            continue;
+          }
+        }
+        if (item.storeProduct && item.serviceSupply) {
+          issues.push({ supplierProductId: product._id, message: 'One supplier offer cannot target both product and service supply inventory.' });
+          continue;
+        }
+        if (item.serviceSupply) {
+          const mappedSupply = mappedSupplyMap.get(String(item.serviceSupply));
+          const supplyIssue = getSupplyOfferIssue({ serviceSupply: mappedSupply, supplierProduct: product, storeId: store });
+          if (supplyIssue || !item.selectionConfirmedBy || getSupplyOfferMatchType({ serviceSupply: mappedSupply, supplierProduct: product }) !== item.selectionMatchType) {
+            issues.push({ supplierProductId: product._id, message: supplyIssue || 'Service supply selection changed. Review the supplier offer again.' });
+            continue;
+          }
         }
         if (Number(item.addedUnitPrice) !== Number(product.wholesalePrice)) {
           priceChanges.push({
@@ -411,8 +730,16 @@ const submitProcurementCart = async (req, res) => {
               images: exactPet.images
             } : undefined,
             storeProduct: item.storeProduct || null,
+            serviceSupply: item.serviceSupply || null,
             productName: product.name,
             sku: product.sku,
+            supplierNameSnapshot: supplier.businessName,
+            unitOfMeasureSnapshot: product.unitOfMeasure,
+            selectionMatchType: item.selectionMatchType || (item.storeProduct
+              ? getOfferMatchType({ storeProduct: mappedProductMap.get(String(item.storeProduct)), supplierProduct: product }) || 'unmapped'
+              : 'unmapped'),
+            selectionConfirmedBy: item.selectionConfirmedBy || null,
+            selectionConfirmedAt: item.selectionConfirmedAt || undefined,
             quantity,
             unitPrice: product.wholesalePrice,
             totalPrice: product.wholesalePrice * quantity
@@ -434,6 +761,19 @@ const submitProcurementCart = async (req, res) => {
             priceChanges
           }
         };
+        return;
+      }
+
+      const allocations = new Map();
+      for (const item of cart.items.filter(entry => entry.storeProduct || entry.serviceSupply)) {
+        const key = item.serviceSupply ? `supply:${item.serviceSupply}` : `product:${item.storeProduct}`;
+        allocations.set(key, (allocations.get(key) || 0) + 1);
+      }
+      if ([...allocations.values()].some(count => count > 1) && req.body.confirmSplit !== true) {
+        submissionIssue = { status: 409, body: {
+          code: 'PROCUREMENT_SPLIT_CONFIRMATION_REQUIRED',
+          message: 'Quantities for one Store product or service supply are split across suppliers. Review and explicitly confirm the split.'
+        } };
         return;
       }
 
@@ -740,7 +1080,8 @@ const getSellerOrders = async (req, res) => {
       .populate('supplier', 'businessName logo')
       .populate('store', 'name')
       .populate('items.supplierProduct', 'name sku category description images brand retailPrice unitOfMeasure itemType pet')
-      .populate('items.storeProduct', 'name sku category stockQuantity visibility isActive store supplierProductRef')
+      .populate('items.storeProduct', 'name sku category unit stockQuantity visibility isActive store supplierProductRef procurementOffers')
+      .populate('items.serviceSupply', 'name sku category unitOfMeasure currentStock store supplierProduct supplierOffers')
       .populate('items.pet', 'name species breed age ageUnit gender size images healthCondition vaccinationStatus')
       .populate('receivingReport')
       .sort({ createdAt: -1 }).skip(skip).limit(parseInt(limit));
@@ -764,7 +1105,8 @@ const getOrderById = async (req, res) => {
       .populate('supplier', 'businessName email phone')
       .populate('store', 'name')
       .populate('items.supplierProduct', 'name sku category description images brand wholesalePrice retailPrice unitOfMeasure itemType pet')
-      .populate('items.storeProduct', 'name sku category stockQuantity visibility isActive store supplierProductRef')
+      .populate('items.storeProduct', 'name sku category unit stockQuantity visibility isActive store supplierProductRef procurementOffers')
+      .populate('items.serviceSupply', 'name sku category unitOfMeasure currentStock store supplierProduct supplierOffers')
       .populate('items.pet', 'name species breed age ageUnit gender size images healthCondition vaccinationStatus')
       .populate('statusHistory.changedBy', 'firstName lastName');
 
@@ -853,7 +1195,8 @@ const assertReceivingProductLinkIsMutable = async ({ order, orderItem, session }
 
 const getReceivingProductLinks = async (req, res) => {
   try {
-    const order = await PurchaseOrder.findById(req.params.id).populate('items.supplierProduct');
+    const order = await PurchaseOrder.findById(req.params.id)
+      .populate('items.supplierProduct').populate('items.serviceSupply', 'name sku category unitOfMeasure currentStock store');
     if (!order) return res.status(404).json({ message: 'Purchase order not found.' });
     if (!(await canOperateStore(req.user, order.store, ['procurement.view', 'procurement.manage', 'inventory.receive']))) {
       return res.status(403).json({ message: 'Purchase order belongs to another store.' });
@@ -866,11 +1209,21 @@ const getReceivingProductLinks = async (req, res) => {
       store: order.store,
       isActive: true,
       isDeleted: { $ne: true }
-    }).select('name sku category stockQuantity store supplierProductRef visibility isActive isDeleted').sort({ name: 1 }).limit(500);
+    }).select('name sku category unit stockQuantity store supplierProductRef procurementOffers visibility isActive isDeleted').sort({ name: 1 }).limit(500);
     const report = await ProcurementReceivingReport.findOne({ purchaseOrder: order._id }).select('items');
 
     const items = order.items.filter(item => item.itemType !== 'live_pet').map(orderItem => {
       const supplierProduct = orderItem.supplierProduct;
+      if (orderItem.serviceSupply) {
+        const received = report?.items?.find(item => String(item.purchaseOrderItem) === String(orderItem._id));
+        return {
+          purchaseOrderItem: orderItem._id, productName: orderItem.productName,
+          serviceSupply: orderItem.serviceSupply, supplierProduct,
+          linkedProduct: null, eligibleProducts: [], suggestions: null,
+          linkSource: 'service_supply',
+          linkLocked: Boolean(received?.inventoryApplied && Number(received.acceptedQuantity) > 0)
+        };
+      }
       const eligibleProducts = supplierProduct ? storeProducts.filter(storeProduct => !getStoreProductCompatibilityIssue({
         storeProduct,
         supplierProduct,
@@ -931,7 +1284,7 @@ const linkReceivingStoreProduct = async (req, res) => {
       }).populate('items.supplierProduct').session(session);
       if (!order) throw Object.assign(new Error('This delivery is no longer available for product linking.'), { statusCode: 409 });
       const orderItem = order.items.id(req.params.itemId);
-      if (!orderItem || orderItem.itemType === 'live_pet') {
+      if (!orderItem || orderItem.itemType === 'live_pet' || orderItem.serviceSupply) {
         throw Object.assign(new Error('Purchase-order item is not eligible for Store product linking.'), { statusCode: 404 });
       }
       if (!orderItem.supplierProduct) {
@@ -947,8 +1300,10 @@ const linkReceivingStoreProduct = async (req, res) => {
         throw Object.assign(new Error('The selected Store product is unavailable or belongs to another Store.'), { statusCode: 403 });
       }
       assertStoreProductCompatible({ storeProduct: linkedProduct, supplierProduct: orderItem.supplierProduct, storeId: order.store });
-      linkedProduct.supplierRef = order.supplier;
-      linkedProduct.supplierProductRef = orderItem.supplierProduct._id;
+      if (!linkedProduct.supplierProductRef) {
+        linkedProduct.supplierRef = order.supplier;
+        linkedProduct.supplierProductRef = orderItem.supplierProduct._id;
+      }
       orderItem.storeProduct = linkedProduct._id;
       await linkedProduct.save({ session });
       await order.save({ session });
@@ -978,7 +1333,7 @@ const createReceivingStoreProduct = async (req, res) => {
       }).populate('items.supplierProduct').session(session);
       if (!order) throw Object.assign(new Error('This delivery is no longer available for product creation.'), { statusCode: 409 });
       const orderItem = order.items.id(req.params.itemId);
-      if (!orderItem || orderItem.itemType === 'live_pet') {
+      if (!orderItem || orderItem.itemType === 'live_pet' || orderItem.serviceSupply) {
         throw Object.assign(new Error('Purchase-order item is not eligible for Store product creation.'), { statusCode: 404 });
       }
       if (!orderItem.supplierProduct) {
@@ -1099,6 +1454,7 @@ const applyReceivingItem = async ({
   reportItem,
   supplier,
   userId,
+  userRole,
   session,
   receivedQuantityTarget = reportItem.acceptedQuantity,
   idempotencyKey = `po-inspection-receipt:${order._id}:${orderItem._id}`
@@ -1133,11 +1489,22 @@ const applyReceivingItem = async ({
     if (!orderItem.supplierProduct) {
       throw Object.assign(new Error(`Supplier product identity for "${orderItem.productName}" is unavailable.`), { statusCode: 409 });
     }
+    const previouslyReceived = Number(orderItem.receivedQuantity || 0);
     await recordReceivedSupplierQuantity({
       orderItem,
       acceptedQuantity: receivedQuantityTarget,
       session
     });
+    if (orderItem.serviceSupply) {
+      await applyServiceSupplyReceipt({
+        order, orderItem, supplierProduct: orderItem.supplierProduct,
+        acceptedQuantity: reportItem.acceptedQuantity,
+        previousQuantity: previouslyReceived, receivedQuantityTarget,
+        userId, userRole, session, idempotencyKey
+      });
+      reportItem.inventoryApplied = true;
+      return;
+    }
     let storeProduct = orderItem.storeProduct
       ? await Product.findOne({ _id: orderItem.storeProduct, store: order.store, isActive: true, isDeleted: { $ne: true } }).session(session)
       : null;
@@ -1189,9 +1556,13 @@ const applyReceivingItem = async ({
       performedBy: userId,
       idempotencyKey
     }, { session });
-    await Product.updateOne({ _id: storeProduct._id, store: order.store }, {
-      $set: { supplierRef: supplier?._id, supplierProductRef: orderItem.supplierProduct?._id || orderItem.supplierProduct }
-    }, { session });
+    // Inventory records the latest receiving source; the Store product keeps
+    // its primary supplier identity when a reviewed alternative fulfills it.
+    if (!storeProduct.supplierProductRef) {
+      await Product.updateOne({ _id: storeProduct._id, store: order.store }, {
+        $set: { supplierRef: supplier?._id, supplierProductRef: orderItem.supplierProduct?._id || orderItem.supplierProduct }
+      }, { session });
+    }
     await Inventory.updateOne({ store: order.store, product: storeProduct._id }, {
       $set: {
         supplierRef: supplier?._id,
@@ -1266,6 +1637,15 @@ const submitReceivingInspection = async (req, res) => {
       if (row.acceptedQuantity > 0 && orderItem.itemType !== 'live_pet') {
         if (!orderItem.supplierProduct) {
           return res.status(409).json({ message: `Supplier product identity for "${orderItem.productName}" is unavailable.` });
+        }
+        if (orderItem.serviceSupply) {
+          const linkedSupply = await ServiceSupply.findOne({
+            _id: orderItem.serviceSupply, store: inspectedOrder.store, isActive: true, isDeleted: { $ne: true }
+          });
+          const issue = getSupplyOfferIssue({ serviceSupply: linkedSupply,
+            supplierProduct: orderItem.supplierProduct, storeId: inspectedOrder.store });
+          if (issue) return res.status(409).json({ code: 'RECEIVING_SUPPLY_LINK_INVALID', purchaseOrderItem: orderItem._id, message: issue });
+          continue;
         }
         let linkedProduct = orderItem.storeProduct
           ? await Product.findOne({ _id: orderItem.storeProduct, store: inspectedOrder.store, isActive: true, isDeleted: { $ne: true } })
@@ -1373,6 +1753,7 @@ const submitReceivingInspection = async (req, res) => {
           reportItem,
           supplier,
           userId: req.user._id,
+          userRole: req.user.role,
           session
         });
         reportItem.processingError = undefined;
@@ -1731,6 +2112,7 @@ const submitResolutionReinspection = async (req, res) => {
           reportItem,
           supplier,
           userId: req.user._id,
+          userRole: req.user.role,
           session,
           receivedQuantityTarget: reportItem.receivedQuantityTarget,
           idempotencyKey: `po-resolution-receipt:${committedOrder._id}:${transactionSubmission._id}:${orderItem._id}`
@@ -1916,6 +2298,9 @@ const adminGetAllOrders = async (req, res) => {
 };
 
 module.exports = {
+  getProcurementStoreProducts,
+  getComparableSupplierOffers,
+  confirmSupplierOfferMatch,
   getProcurementCart,
   addProcurementCartItem,
   updateProcurementCartItem,

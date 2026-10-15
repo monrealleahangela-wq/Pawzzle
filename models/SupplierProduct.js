@@ -37,7 +37,8 @@ const supplierProductSchema = new mongoose.Schema({
     enum: [
       'pet_food', 'pet_treats', 'grooming_supplies', 'medical_supplies',
       'accessories', 'toys', 'cleaning_products', 'cages_habitats',
-      'leashes_collars', 'health_supplements', 'raw_materials', 'live_pets', 'general_product', 'other'
+      'leashes_collars', 'health_supplements', 'raw_materials', 'live_pets', 'general_product',
+      'consumables', 'equipment', 'other'
     ],
     required: true
   },
@@ -73,7 +74,7 @@ const supplierProductSchema = new mongoose.Schema({
   },
   unitOfMeasure: {
     type: String,
-    enum: ['piece', 'pack', 'box', 'kg', 'liter', 'bag', 'bottle', 'set'],
+    enum: ['piece', 'pack', 'box', 'kg', 'liter', 'bag', 'bottle', 'set', 'ml', 'gram', 'tube'],
     default: 'piece'
   },
   deliveryLeadTimeDays: {

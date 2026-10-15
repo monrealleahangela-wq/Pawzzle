@@ -33,6 +33,8 @@ const SupplierDashboard = () => {
   const [registerForm, setRegisterForm] = useState({ businessName: '', contactPerson: '', email: '', phone: '', taxId: '', address: { street: '', city: '', province: '', zipCode: '' }, description: '', productCategories: [] });
 
   const categories = [
+    { id: 'consumables', label: 'Service Consumables', icon: '📦' },
+    { id: 'equipment', label: 'Service Equipment', icon: '📦' },
     { id: 'pet_food', label: 'Pet Food', icon: '🍖' },
     { id: 'pet_treats', label: 'Pet Treats', icon: '🦴' },
     { id: 'grooming_supplies', label: 'Grooming', icon: '✂️' },
@@ -584,6 +586,11 @@ const SupplierDashboard = () => {
                   <input type="number" disabled={productForm.itemType === 'live_pet'} value={productForm.itemType === 'live_pet' ? 1 : productForm.minimumOrderQuantity} onChange={e => setProductForm(p => ({ ...p, minimumOrderQuantity: parseInt(e.target.value) || 1 }))}
                     className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold outline-none disabled:opacity-60" />
                 </div>
+                <label className="space-y-1 text-[9px] font-black uppercase tracking-widest text-slate-400">Unit of measure
+                  <select value={productForm.itemType === 'live_pet' ? 'piece' : productForm.unitOfMeasure} disabled={productForm.itemType === 'live_pet'} onChange={e => setProductForm(p => ({ ...p, unitOfMeasure: e.target.value }))} className="w-full rounded-xl border border-slate-100 bg-slate-50 px-4 py-3 text-sm font-bold normal-case text-slate-900 disabled:opacity-60">
+                    {['piece', 'pack', 'box', 'kg', 'liter', 'bag', 'bottle', 'set', 'ml', 'gram', 'tube'].map(unit => <option key={unit} value={unit}>{unit}</option>)}
+                  </select>
+                </label>
                 <div className="space-y-1">
                   <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Lead Time (days)</label>
                   <input type="number" value={productForm.deliveryLeadTimeDays} onChange={e => setProductForm(p => ({ ...p, deliveryLeadTimeDays: parseInt(e.target.value) || 1 }))}

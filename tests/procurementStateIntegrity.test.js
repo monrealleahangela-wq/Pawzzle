@@ -5,6 +5,8 @@ const path = require('node:path');
 const mongoose = require('mongoose');
 const Supplier = require('../models/Supplier');
 const SupplierProduct = require('../models/SupplierProduct');
+const Product = require('../models/Product');
+const ServiceSupply = require('../models/ServiceSupply');
 const PurchaseOrder = require('../models/PurchaseOrder');
 const SupplyChainLog = require('../models/SupplyChainLog');
 const { createPurchaseOrder } = require('../controllers/purchaseOrderController');
@@ -46,6 +48,8 @@ test('catalog audit failures do not turn successful add, update, or delete mutat
     supplierUpdateOne: Supplier.updateOne,
     productSave: SupplierProduct.prototype.save,
     productFindOne: SupplierProduct.findOne,
+    storeProductsFind: Product.find,
+    serviceSuppliesFind: ServiceSupply.find,
     orderExists: PurchaseOrder.exists,
     logCreate: SupplyChainLog.create,
     transaction: mongoose.connection.transaction,
@@ -76,6 +80,8 @@ test('catalog audit failures do not turn successful add, update, or delete mutat
   Supplier.updateOne = async () => ({ acknowledged: true, modifiedCount: 1 });
   SupplierProduct.prototype.save = async function saveProduct() { return this; };
   SupplierProduct.findOne = () => ({ session: async () => product });
+  Product.find = () => ({ select: async () => [] });
+  ServiceSupply.find = () => ({ select: async () => [] });
   PurchaseOrder.exists = () => ({ session: async () => null });
   mongoose.connection.transaction = async callback => callback({ id: 'mock-session' });
   SupplyChainLog.create = async () => { throw new Error('forced secondary log failure'); };
@@ -120,6 +126,8 @@ test('catalog audit failures do not turn successful add, update, or delete mutat
     Supplier.updateOne = originals.supplierUpdateOne;
     SupplierProduct.prototype.save = originals.productSave;
     SupplierProduct.findOne = originals.productFindOne;
+    Product.find = originals.storeProductsFind;
+    ServiceSupply.find = originals.serviceSuppliesFind;
     PurchaseOrder.exists = originals.orderExists;
     SupplyChainLog.create = originals.logCreate;
     mongoose.connection.transaction = originals.transaction;

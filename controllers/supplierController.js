@@ -2,6 +2,8 @@ const crypto = require('crypto');
 const mongoose = require('mongoose');
 const Supplier = require('../models/Supplier');
 const SupplierProduct = require('../models/SupplierProduct');
+const Product = require('../models/Product');
+const ServiceSupply = require('../models/ServiceSupply');
 const Pet = require('../models/Pet');
 const PurchaseOrder = require('../models/PurchaseOrder');
 const ProcurementReceivingReport = require('../models/ProcurementReceivingReport');
@@ -34,6 +36,51 @@ const settleSupplierSecondaryEffects = async (context, effects) => {
       console.error(`${context} secondary operation failed:`, result.reason);
     }
   });
+};
+
+const notifyStoresOfUnavailableOffer = async product => {
+  const linkedProducts = await Product.find({
+    isDeleted: { $ne: true },
+    $or: [
+      { supplierProductRef: product._id },
+      { 'procurementOffers.supplierProduct': product._id }
+    ]
+  }).select('name store supplierProductRef procurementOffers');
+  const linkedSupplies = await ServiceSupply.find({
+    isDeleted: { $ne: true },
+    $or: [
+      { supplierProduct: product._id },
+      { 'supplierOffers.supplierProduct': product._id }
+    ]
+  }).select('name store supplierProduct supplierOffers');
+  const targets = [
+    ...linkedProducts.map(target => ({ target, primary: target.supplierProductRef, offers: target.procurementOffers || [] })),
+    ...linkedSupplies.map(target => ({ target, primary: target.supplierProduct, offers: target.supplierOffers || [] }))
+  ];
+  await Promise.all(targets.map(async ({ target, primary, offers }) => {
+    const store = await Store.findById(target.store).select('owner');
+    if (!store?.owner) return;
+    const alternativeIds = offers.map(offer => offer.supplierProduct)
+      .filter(id => String(id) !== String(product._id));
+    if (primary && String(primary) !== String(product._id)) {
+      alternativeIds.push(primary);
+    }
+    const candidates = alternativeIds.length
+      ? await SupplierProduct.find({ _id: { $in: alternativeIds }, isActive: true, isDeleted: false,
+        $expr: { $gte: ['$availableStock', '$minimumOrderQuantity'] } }).select('supplier') : [];
+    const suppliers = candidates.length ? await Supplier.find({ _id: { $in: candidates.map(item => item.supplier) } }) : [];
+    const hasAlternative = suppliers.some(candidate => isSupplierSelectableForStore(candidate, store._id));
+    await createNotification({
+      recipient: store.owner,
+      type: 'supply_alert',
+      title: 'Supplier offer unavailable',
+      message: `${product.name} is no longer available from one supplier for ${target.name}.${hasAlternative ? ' An eligible alternative offer is available for review.' : ''}`,
+      relatedId: store._id,
+      relatedModel: 'Store',
+      targetUrl: '/admin/purchase-orders?tab=suppliers',
+      dedupeKey: `offer-unavailable:${store._id}:${target._id}:${product._id}:${product.updatedAt.getTime()}`
+    });
+  }));
 };
 
 const inferSupplierGoodsType = itemType => itemType === 'live_pet'
@@ -670,7 +717,8 @@ const updateProduct = async (req, res) => {
     await mongoose.connection.transaction(async session => {
       product = await SupplierProduct.findOne({ _id: req.params.id, supplier: supplier._id }).session(session);
       if (!product) throw createHttpError('Product not found.', 404);
-      previousValue = { price: product.wholesalePrice, stock: product.availableStock };
+      previousValue = { price: product.wholesalePrice, stock: product.availableStock,
+        minimumOrderQuantity: product.minimumOrderQuantity, isActive: product.isActive };
       Object.assign(product, updates);
 
       if (product.itemType === 'live_pet') {
@@ -723,7 +771,10 @@ const updateProduct = async (req, res) => {
         supplier: supplier._id,
         previousValue,
         newValue: { price: product.wholesalePrice, stock: product.availableStock }
-      })
+      }),
+      previousValue.stock >= previousValue.minimumOrderQuantity && previousValue.isActive !== false
+        && (product.availableStock < product.minimumOrderQuantity || product.isActive === false)
+        ? () => notifyStoresOfUnavailableOffer(product) : null
     ]);
 
     res.json(product);
@@ -742,6 +793,7 @@ const deleteProduct = async (req, res) => {
     await mongoose.connection.transaction(async session => {
       product = await SupplierProduct.findOne({ _id: req.params.id, supplier: supplier._id }).session(session);
       if (!product) throw createHttpError('Product not found.', 404);
+      if (product.isDeleted) throw createHttpError('Product was already removed.', 409);
 
       const activeCommitment = await hasUnreleasedProductCommitment({
         product: product._id,
@@ -782,7 +834,8 @@ const deleteProduct = async (req, res) => {
         relatedEntity: { type: 'SupplierProduct', id: product._id },
         description: `Product "${product.name}" removed from catalog`,
         supplier: supplier._id
-      })
+      }),
+      () => notifyStoresOfUnavailableOffer(product)
     ]);
 
     res.json({ message: 'Product removed.' });

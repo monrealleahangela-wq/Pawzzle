@@ -111,3 +111,24 @@ test('existing product selection links through the receiving endpoint without ch
   expect(screen.getByLabelText('Received')).toHaveValue(3);
   await waitFor(() => expect(screen.getByRole('button', { name: 'Submit Inspection Report' })).toBeEnabled());
 });
+
+test('a service-supply receiving line retains its destination without a Store product link', async () => {
+  purchaseOrderService.getReceivingProductLinks.mockResolvedValue({ data: { items: [{
+    purchaseOrderItem: 'line-1', serviceSupply: { _id: 'supply-1', name: 'Shampoo' },
+    linkSource: 'service_supply', eligibleProducts: []
+  }] } });
+  const onSubmit = jest.fn();
+  render(<ReceivingInspectionModal
+    order={{ _id: 'po-1', orderNumber: 'PO-1', supplier: { businessName: 'Supplier A' },
+      items: [{ _id: 'line-1', productName: 'Shampoo', quantity: 3,
+        itemType: 'pet_supply', serviceSupply: { _id: 'supply-1', name: 'Shampoo' } }] }}
+    form={{ items: { 'line-1': { receivedQuantity: 2, damagedQuantity: 0, incorrectQuantity: 0 } },
+      notes: '', photos: [] }}
+    setForm={jest.fn()} submitting={false} onClose={jest.fn()} onSubmit={onSubmit}
+  />);
+  expect(await screen.findByText(/Accepted units will be added to service supply/)).toBeInTheDocument();
+  expect(screen.queryByRole('combobox', { name: /Store product for/ })).not.toBeInTheDocument();
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Submit Inspection Report' })).not.toBeDisabled());
+  fireEvent.click(screen.getByRole('button', { name: 'Submit Inspection Report' }));
+  expect(onSubmit).toHaveBeenCalledTimes(1);
+});

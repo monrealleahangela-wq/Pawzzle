@@ -95,6 +95,7 @@ const createNotification = async (data, io = notificationSocket) => {
         }
         return notification;
     } catch (error) {
+        if (error.code === 11000 && data.dedupeKey) return null;
         console.error('Error creating notification:', error);
         return null;
     }

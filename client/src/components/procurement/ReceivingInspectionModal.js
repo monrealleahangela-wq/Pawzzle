@@ -110,7 +110,7 @@ const ReceivingInspectionModal = ({
   };
 
   const missingLinkItems = visibleItems.filter(item => {
-    if (item.itemType === 'live_pet') return false;
+    if (item.itemType === 'live_pet' || item.serviceSupply) return false;
     const row = form.items[item._id] || {};
     const accepted = Number(row.receivedQuantity || 0) - Number(row.damagedQuantity || 0) - Number(row.incorrectQuantity || 0);
     const link = linksByItem[String(item._id)];
@@ -137,7 +137,8 @@ const ReceivingInspectionModal = ({
                   <div><p className="text-xs font-black">{item.productName}</p><p className="text-[9px] text-slate-500">Expected: {item.quantity} {item.itemType === 'live_pet' ? 'specific animal' : 'units'}</p></div>
                   {item.itemType === 'live_pet' && <span className="rounded-full bg-amber-100 px-2 py-1 text-[8px] font-black uppercase text-amber-800">Live pet · max 1</span>}
                 </div>
-                {item.itemType !== 'live_pet' && <div className="mb-3 rounded-xl border border-indigo-100 bg-indigo-50 p-3">
+                {item.serviceSupply && <p className="mb-3 rounded-xl border border-emerald-100 bg-emerald-50 p-3 text-xs text-emerald-800">Accepted units will be added to service supply <strong>{link.serviceSupply?.name || item.serviceSupply?.name || 'selected supply'}</strong> in this Store.</p>}
+                {item.itemType !== 'live_pet' && !item.serviceSupply && <div className="mb-3 rounded-xl border border-indigo-100 bg-indigo-50 p-3">
                   <div className="flex items-start gap-2"><Link2 className="mt-0.5 h-4 w-4 shrink-0 text-indigo-600" /><div><p className="text-[10px] font-black uppercase text-indigo-900">Inventory destination required</p><p className="mt-1 text-[10px] text-indigo-700">Accepted units need a compatible product in this Store. Link an existing product or create an unpublished draft without losing this inspection.</p></div></div>
                   <div className="mt-3 grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
                     <select aria-label={`Store product for ${item.productName}`} value={linkedId} disabled={loadingLinks || link.linkLocked || savingLink === String(item._id)} onChange={event => linkExistingProduct(item._id, event.target.value)} className="w-full rounded-lg border border-indigo-200 bg-white px-3 py-2 text-xs font-bold disabled:opacity-60">
