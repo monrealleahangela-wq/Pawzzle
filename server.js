@@ -160,6 +160,7 @@ app.use('/api/customers', require('./routes/customers'));
 app.use('/api/social', require('./routes/social'));
 app.use('/api/pet-profiles', require('./routes/petProfiles'));
 app.use('/api/suppliers', require('./routes/suppliers'));
+app.use('/api/supplier-chats', require('./routes/supplierChats'));
 app.use('/api/purchase-orders', require('./routes/purchaseOrders'));
 app.use('/api/service-supplies', require('./routes/serviceSupplies'));
 app.use('/api/finance', require('./routes/finance'));
@@ -186,6 +187,8 @@ io.on('connection', (socket) => {
     socket.join(`conversation_${conversationId}`);
     console.log(`📡 Client joined conversation room: conversation_${conversationId}`);
   });
+
+  require('./services/supplierChatService').registerSupplierChatSocketHandlers(socket);
 
   socket.on('joinStore', async (storeId) => {
     const authorized = socket.user

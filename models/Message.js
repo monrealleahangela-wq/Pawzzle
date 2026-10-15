@@ -24,6 +24,9 @@ const messageSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
+  // Supplier chat has per-account read state; legacy customer chat retains read.
+  readBy: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+  clientMessageId: { type: String, default: undefined },
   isDeleted: {
     type: Boolean,
     default: false
@@ -33,9 +36,14 @@ const messageSchema = new mongoose.Schema({
 });
 
 messageSchema.index({ conversation: 1, createdAt: 1 });
+messageSchema.index({ conversation: 1, sender: 1, clientMessageId: 1 }, {
+  unique: true, partialFilterExpression: { clientMessageId: { $type: 'string' } }
+});
 
 // Automatically update conversation's lastMessage when a new message is saved
 messageSchema.post('save', async function (doc) {
+  // Supplier messages update lastMessage with an ordered conditional write.
+  if (doc.clientMessageId) return;
   try {
     const Conversation = mongoose.model('Conversation');
     await Conversation.findByIdAndUpdate(doc.conversation, {

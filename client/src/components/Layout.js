@@ -199,6 +199,7 @@ const superAdminMenu = [
 
 const supplierMenu = [
   { path: '/supplier/dashboard', label: 'Dashboard', icon: Activity },
+  { path: '/supplier/messages', label: 'Supplier Messages', icon: MessageSquare },
 ];
 
 const publicMenu = [
@@ -276,6 +277,7 @@ const getStaffMenu = (user) => {
   const supplyChildren = [];
   if (can('procurement', 'view') || can('procurement', 'manage')) {
     supplyChildren.push({ path: '/admin/purchase-orders', label: 'Purchase Orders', icon: Truck });
+    if (['admin', 'store_owner'].includes(user?.role)) supplyChildren.push({ path: '/admin/supplier-messages', label: 'Supplier Messages', icon: MessageSquare });
   }
   if (supplyChildren.length > 0) menu.push({ label: 'Supply Chain', icon: Truck, children: supplyChildren });
 

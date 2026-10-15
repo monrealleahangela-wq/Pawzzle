@@ -9,7 +9,7 @@ const conversationSchema = new mongoose.Schema({
     },
     role: {
       type: String,
-      enum: ['customer', 'admin', 'staff', 'store_owner', 'super_admin', 'platform_admin'],
+      enum: ['customer', 'admin', 'staff', 'store_owner', 'super_admin', 'platform_admin', 'supplier'],
       required: true
     }
   }],
@@ -25,9 +25,13 @@ const conversationSchema = new mongoose.Schema({
   service: { type: mongoose.Schema.Types.ObjectId, ref: 'Service', default: null },
   petProfile: { type: mongoose.Schema.Types.ObjectId, ref: 'PetProfile', default: null },
   store: { type: mongoose.Schema.Types.ObjectId, ref: 'Store', default: null, index: true },
+  supplier: { type: mongoose.Schema.Types.ObjectId, ref: 'Supplier', default: null },
+  purchaseOrder: { type: mongoose.Schema.Types.ObjectId, ref: 'PurchaseOrder', default: null },
+  supplierProduct: { type: mongoose.Schema.Types.ObjectId, ref: 'SupplierProduct', default: null },
+  supplierContextKey: { type: String, default: undefined },
   type: {
     type: String,
-    enum: ['adoption', 'inquiry', 'support', 'general', 'service'],
+    enum: ['adoption', 'inquiry', 'support', 'general', 'service', 'supplier'],
     default: 'general'
   },
   status: {
@@ -46,6 +50,7 @@ const conversationSchema = new mongoose.Schema({
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User'
     },
+    messageId: { type: mongoose.Schema.Types.ObjectId, ref: 'Message' },
     timestamp: {
       type: Date,
       default: Date.now
@@ -63,5 +68,8 @@ const conversationSchema = new mongoose.Schema({
 conversationSchema.index({ 'participants.user': 1 });
 conversationSchema.index({ pet: 1, 'participants.user': 1 });
 conversationSchema.index({ booking: 1, type: 1 }, { unique: true, partialFilterExpression: { type: 'service' } });
+conversationSchema.index({ supplierContextKey: 1 }, { unique: true, partialFilterExpression: { type: 'supplier' } });
+conversationSchema.index({ type: 1, store: 1, updatedAt: -1 });
+conversationSchema.index({ type: 1, supplier: 1, updatedAt: -1 });
 
 module.exports = mongoose.model('Conversation', conversationSchema);

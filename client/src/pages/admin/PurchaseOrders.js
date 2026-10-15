@@ -364,6 +364,7 @@ const PurchaseOrders = () => {
               </div>
               <div className="text-[10px] text-slate-500 mb-2">{order.items?.length} items • Payment: {order.paymentStatus?.replaceAll('_', ' ')} • Inspection: {order.inspectionStatus?.replaceAll('_', ' ')}</div>
               {order.trackingNumber && <p className="text-[10px] text-indigo-600 font-bold mb-2">📦 Tracking: {order.trackingNumber}</p>}
+              <Link to={`/admin/supplier-messages?supplier=${order.supplier?._id || order.supplier}&purchaseOrder=${order._id}`} className="mb-2 inline-block rounded-lg border border-indigo-200 px-3 py-2 text-[10px] font-bold text-indigo-700">Discuss this order with Supplier</Link>
               {order.receivingReport && typeof order.receivingReport === 'object' && order.receivingReport.outcome !== 'accepted' && <section className="mb-3 rounded-xl border border-amber-200 bg-amber-50 p-3">
                 <div className="flex flex-wrap items-center justify-between gap-2"><p className="text-[9px] font-black uppercase text-amber-900">Delivery discrepancy</p><span className="rounded-full bg-white px-2 py-1 text-[8px] font-black uppercase text-amber-800">{order.receivingReport.resolutionStatus?.replaceAll('_', ' ')}</span></div>
                 <div className="mt-2 space-y-1">{order.receivingReport.items?.filter(item => item.missingQuantity || item.damagedQuantity || item.incorrectQuantity).map(item => {
@@ -431,6 +432,7 @@ const PurchaseOrders = () => {
               </div>
               <div className="flex flex-wrap gap-2">
                 <button disabled={!s.selectable} onClick={() => browseCatalog(s._id)} className="min-w-[8rem] flex-1 rounded-xl bg-slate-900 py-3 text-[10px] font-black uppercase tracking-widest text-white hover:bg-indigo-600 disabled:cursor-not-allowed disabled:opacity-40">View Catalog</button>
+                {s.selectable && <Link to={`/admin/supplier-messages?supplier=${s._id}`} className="rounded-xl border border-indigo-200 px-3 py-3 text-[10px] font-black uppercase text-indigo-700">Message Supplier</Link>}
                 {s.supplierType === 'store_added' && s.storeAssociationStatus === 'pending_activation' && <button title="Resend invitation" onClick={() => resendInvitation(s)} className="rounded-xl border border-slate-200 p-3 text-slate-600 hover:text-primary-600"><Mail className="h-4 w-4" /></button>}
                 {s.supplierType === 'store_added' && s.storeAssociationStatus === 'active' && <button title="Deactivate for this store" onClick={() => changeSupplierStatus(s, 'deactivate')} className="rounded-xl border border-rose-200 p-3 text-rose-600"><Power className="h-4 w-4" /></button>}
                 {s.supplierType === 'store_added' && s.storeAssociationStatus === 'inactive' && <button onClick={() => changeSupplierStatus(s, 'reactivate')} className="rounded-xl border border-emerald-200 px-3 py-2 text-[9px] font-black uppercase text-emerald-700">Reactivate</button>}
@@ -528,6 +530,7 @@ const PurchaseOrders = () => {
                           </button>
                         )}
                         {p.itemType !== 'live_pet' && <button type="button" onClick={() => setComparisonStoreProductId(storeProducts.find(sp => String(sp.supplierProductRef) === String(p._id))?._id || '')} className="mt-2 w-full rounded-xl border border-indigo-200 px-3 py-2 text-[9px] font-black uppercase text-indigo-700">Compare suppliers and alternatives</button>}
+                        <Link to={`/admin/supplier-messages?supplier=${catalog.supplier?._id}&offer=${p._id}`} className="mt-2 block rounded-xl border border-indigo-200 px-3 py-2 text-center text-[9px] font-black uppercase text-indigo-700">Ask Supplier about this offer</Link>
                       </div>
                     </div>
                   );

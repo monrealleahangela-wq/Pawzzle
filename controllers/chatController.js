@@ -39,6 +39,7 @@ const getConversations = async (req, res) => {
 
     // Filter to only show conversations with at least one message and NOT archived or deleted
     let filter = {
+      type: { $ne: 'supplier' },
       'participants.user': req.user._id,
       'lastMessage.content': { $exists: true, $ne: null },
       status: 'active',
@@ -120,6 +121,7 @@ const getAdminChats = async (req, res) => {
 
     // Filter to only show conversations with at least one message and NOT deleted
     let filter = { 
+      type: { $ne: 'supplier' },
       'lastMessage.content': { $exists: true, $ne: null },
       isDeleted: false
     };
@@ -313,7 +315,7 @@ const sendMessage = async (req, res) => {
 const createConversation = async (req, res) => {
   try {
     const { participantIds, petId, type } = req.body;
-    if (type === 'service') return res.status(400).json({ message: 'Service conversations must be opened from an authorized booking.' });
+    if (type === 'service' || type === 'supplier') return res.status(400).json({ message: 'This conversation must be opened through its authorized workflow.' });
 
     // participantIds should be an array of user IDs to chat with
     // The current user is always added as a participant
@@ -438,6 +440,7 @@ const getUnreadCount = async (req, res) => {
   try {
     // Get all conversations the user is part of
     const conversations = await Conversation.find({
+      type: { $ne: 'supplier' },
       'participants.user': req.user._id,
       'lastMessage.content': { $exists: true, $ne: null }
     }).select('_id');
@@ -543,6 +546,7 @@ const restoreConversation = async (req, res) => {
 const getArchivedConversations = async (req, res) => {
   try {
     let filter = {
+      type: { $ne: 'supplier' },
       'participants.user': req.user._id,
       status: 'archived',
       isDeleted: false

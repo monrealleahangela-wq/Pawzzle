@@ -25,6 +25,8 @@ const loadRelationship = async conversation => {
 
 const canAccessConversation = async (user, conversation) => {
   if (!user || !conversation || conversation.isDeleted) return false;
+  // Supplier procurement conversations use their own Store/Supplier policy.
+  if (conversation.type === 'supplier') return false;
   if (isPlatformAdmin(user)) return true;
 
   const participant = isParticipant(user, conversation);

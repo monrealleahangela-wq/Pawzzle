@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import {
   Package, Plus, Edit2, Trash2, X,
@@ -507,6 +508,7 @@ const SupplierDashboard = () => {
                 </div>
               </div>
               <div className="text-[10px] text-slate-500 mb-3">{order.items?.length} item(s)</div>
+              <Link to={`/supplier/messages?purchaseOrder=${order._id}`} className="mb-3 inline-block rounded-lg border border-indigo-200 px-3 py-2 text-[10px] font-bold text-indigo-700">Message Store about this order</Link>
               <div className="mb-4 rounded-xl border border-slate-200 bg-slate-50 p-3">
                 <PaymentBreakdown summary={purchaseOrderPaymentSummary(order)} compact />
               </div>

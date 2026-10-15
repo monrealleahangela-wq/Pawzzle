@@ -11,6 +11,13 @@ export const notificationDestination = (notification, user) => {
         if (target.startsWith('/pet-inquiries')) return user?.role === 'customer' ? target : null;
         return null;
     }
+    if (notification?.relatedModel === 'Conversation' && typeof target === 'string'
+        && (target.startsWith('/admin/supplier-messages?conversation=')
+            || target.startsWith('/supplier/messages?conversation='))) {
+        if (!internalPath) return null;
+        if (target.startsWith('/supplier/')) return user?.role === 'supplier' ? target : null;
+        return ['admin', 'store_owner'].includes(user?.role) ? target : null;
+    }
     if (internalPath) {
         if (target.startsWith('/superadmin/') && !['super_admin', 'platform_admin'].includes(user?.role)) return null;
         if (target.startsWith('/admin/') && !['admin', 'store_owner', 'super_admin', 'platform_admin', 'staff', 'manager'].includes(user?.role)) return null;

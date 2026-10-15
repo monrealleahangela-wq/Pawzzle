@@ -105,6 +105,7 @@ import CustomerPageErrorBoundary from './components/CustomerPageErrorBoundary';
 // Supplier Pages
 import SupplierDashboard from './pages/supplier/SupplierDashboard';
 import SupplierActivation from './pages/supplier/SupplierActivation';
+import SupplierMessages from './pages/shared/SupplierMessages';
 
 // Not Found
 import NotFound from './pages/NotFound';
@@ -232,6 +233,7 @@ function App() {
                   <Route path="admin/staff" element={<ProtectedRoute roles={['admin', 'super_admin', 'staff']} requiredPermission={['staff.view', 'staff.manage']}><StaffManagement /></ProtectedRoute>} />
                   <Route path="admin/roles" element={<ProtectedRoute roles={['admin', 'super_admin']}><RoleManagement /></ProtectedRoute>} />
                   <Route path="admin/purchase-orders" element={<ProtectedRoute roles={['admin', 'super_admin', 'staff']} requiredPermission="procurement"><PurchaseOrders /></ProtectedRoute>} />
+                  <Route path="admin/supplier-messages" element={<ProtectedRoute roles={['admin', 'store_owner']}><SupplierMessages /></ProtectedRoute>} />
                   <Route path="admin/supplies" element={<ProtectedRoute roles={['admin', 'super_admin', 'staff']} requiredPermission="inventory"><SupplyManagement /></ProtectedRoute>} />
                   <Route path="admin/finance" element={<ProtectedRoute roles={['admin', 'super_admin', 'staff']} requiredPermission="finance"><FinanceManagement /></ProtectedRoute>} />
                   <Route path="admin/hr" element={<ProtectedRoute roles={['admin', 'super_admin', 'staff']} requiredPermission={['attendance', 'leave', 'payroll', 'compensation']}><HRManagement /></ProtectedRoute>} />
@@ -258,6 +260,7 @@ function App() {
 
                   {/* Supplier Routes - customers can access to register as supplier */}
                   <Route path="supplier/dashboard" element={<ProtectedRoute roles={['supplier', 'customer']}><SupplierDashboard /></ProtectedRoute>} />
+                  <Route path="supplier/messages" element={<ProtectedRoute roles={['supplier']}><SupplierMessages /></ProtectedRoute>} />
                 </Route>
 
                 {/* 404 Route */}
