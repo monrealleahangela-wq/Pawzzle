@@ -32,6 +32,10 @@ const listingDocumentValidation = [
   body('availabilityNotes').optional({ checkFalsy: true }).isLength({ max: 1000 }).withMessage('Availability notes are too long')
 ];
 
+const homeDetailsValidation = [
+  body('homeDetails').optional().isObject().withMessage('Home Details must be an object')
+];
+
 const dssAttributeValidation = [
   body('temperament').optional({ checkFalsy: true }).trim().isLength({ max: 500 }).withMessage('Temperament notes are too long'),
   body('temperamentTraits').optional().isArray({ max: PET_TEMPERAMENT_TRAITS.length }).withMessage('Temperament traits must be a list'),
@@ -76,6 +80,7 @@ const createPetValidation = [
       return true;
     }),
   ...dssAttributeValidation,
+  ...homeDetailsValidation,
   ...listingDocumentValidation
 ];
 
@@ -97,6 +102,7 @@ const updatePetValidation = [
   body('healthCondition').optional().isIn(['healthy', 'needs_monitoring', 'condition_present']).withMessage('Invalid health condition'),
   body('status').optional().isIn(['available', 'unavailable']).withMessage('Availability must be available or unavailable'),
   ...dssAttributeValidation,
+  ...homeDetailsValidation,
   ...listingDocumentValidation
 ];
 

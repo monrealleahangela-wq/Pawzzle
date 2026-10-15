@@ -7,6 +7,7 @@ const { canOperateStore } = require('../utils/authorizationPolicy');
 const { derivePetAge } = require('../utils/petAge');
 const { hasActivePetCommitment, isIndividualPetRecord } = require('../services/petAvailabilityService');
 const { isSafePcciCertificateReference } = require('../utils/petListingAttributes');
+const { normalizePetHomeDetails, keepCommonHomeDetails } = require('../utils/petHomeDetails');
 const {
   getCustomerVisibleOwnerIds,
   buildCustomerVisibleStoreFilter,
@@ -28,7 +29,7 @@ const PET_LISTING_FIELDS = [
   'vaccinationStatus', 'pedigreePapers', 'pcciRegistration', 'supportingDocuments',
   'healthNotes', 'availabilityNotes', 'temperament', 'temperamentTraits',
   'activityLevel', 'careNeeds', 'petCompatibility', 'videos', 'location',
-  'pickupInstructions', 'adoptionDetails', 'listingType'
+  'pickupInstructions', 'adoptionDetails', 'listingType', 'homeDetails'
 ];
 
 const pickPetListingFields = input => Object.fromEntries(
@@ -225,6 +226,9 @@ const createPet = async (req, res) => {
     if (!derivedAge.valid) return res.status(400).json({ message: derivedAge.message });
 
     const listingData = pickPetListingFields(req.body);
+    if (Object.prototype.hasOwnProperty.call(listingData, 'homeDetails')) {
+      listingData.homeDetails = normalizePetHomeDetails(listingData.homeDetails, listingData.species);
+    }
     delete listingData.adoptionDetails;
     listingData.images = normalizeCatalogImages(listingData.images, { required: true });
     if (listingData.weight === '' || listingData.weight === null || listingData.weight === undefined) {
@@ -314,6 +318,11 @@ const updatePet = async (req, res) => {
     console.log('📝 updatePet PERMISSION GRANTED');
 
     const updateData = pickPetListingFields(req.body);
+    if (Object.prototype.hasOwnProperty.call(updateData, 'homeDetails')) {
+      updateData.homeDetails = normalizePetHomeDetails(updateData.homeDetails, updateData.species || pet.species);
+    } else if (updateData.species && updateData.species !== pet.species && pet.homeDetails) {
+      updateData.homeDetails = keepCommonHomeDetails(pet.homeDetails);
+    }
     if (Object.prototype.hasOwnProperty.call(updateData, 'images')) {
       updateData.images = normalizeCatalogImages(updateData.images, { required: true });
     }

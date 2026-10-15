@@ -7,6 +7,20 @@ const {
   PET_CARE_LEVELS,
   PET_COMPATIBILITY_LEVELS
 } = require('../utils/petListingAttributes');
+const {
+  SUITABILITY_VALUES, LIVING_SPACE_VALUES, SUITABILITY_FIELDS, NUMBER_FIELDS, TEXT_FIELDS
+} = require('../utils/petHomeDetails');
+
+const homeDetailsSchema = new mongoose.Schema({
+  minimumLivingSpace: { type: String, enum: LIVING_SPACE_VALUES },
+  ...Object.fromEntries(SUITABILITY_FIELDS.map(field => [field, { type: String, enum: SUITABILITY_VALUES }])),
+  ...Object.fromEntries(TEXT_FIELDS.map(field => [field, { type: String, trim: true, maxlength: 1000 }])),
+  ...Object.fromEntries(NUMBER_FIELDS.map(field => [field, {
+    type: Number,
+    min: field.startsWith('temperature') ? -50 : field.startsWith('humidity') ? 0 : 0.01,
+    max: field.startsWith('temperature') ? 80 : field.startsWith('humidity') ? 100 : 100000
+  }]))
+}, { _id: false });
 
 const petSchema = new mongoose.Schema({
   name: {
@@ -56,6 +70,8 @@ const petSchema = new mongoose.Schema({
     type: String,
     required: true
   },
+  // Optional seller-provided care requirements; legacy listings remain valid.
+  homeDetails: { type: homeDetailsSchema, default: undefined },
   price: {
     type: Number,
     required: true,

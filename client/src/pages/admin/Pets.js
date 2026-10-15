@@ -65,6 +65,7 @@ const AdminPets = () => {
     activityLevel: '',
     careNeeds: { maintenance: 'unknown', grooming: 'unknown', training: 'unknown' },
     petCompatibility: { dogs: 'unknown', cats: 'unknown', otherPets: 'unknown', children: 'unknown' },
+    homeDetails: {},
     videos: [],
     location: '',
     pickupAvailability: 'scheduled',
@@ -186,6 +187,7 @@ const AdminPets = () => {
         activityLevel: pet.activityLevel || '',
         careNeeds: { ...initialPetState.careNeeds, ...(pet.careNeeds || {}) },
         petCompatibility: { ...initialPetState.petCompatibility, ...(pet.petCompatibility || {}) },
+        homeDetails: { ...(pet.homeDetails || {}) },
         supportingDocuments: pet.supportingDocuments || []
       });
       setShowAddForm(true);

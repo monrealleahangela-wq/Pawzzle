@@ -19,6 +19,27 @@ const statusStyles = {
   unavailable: 'bg-slate-100 text-slate-700 border-slate-200'
 };
 
+const HOME_DETAIL_LABELS = {
+  minimumLivingSpace: 'Minimum recommended living space', indoor: 'Indoor living', outdoor: 'Outdoor living',
+  apartment: 'Apartment', smallHome: 'Small home', largeHome: 'Large home',
+  enclosureLengthCm: 'Enclosure length', enclosureWidthCm: 'Enclosure width', enclosureHeightCm: 'Enclosure height',
+  aquariumVolumeLiters: 'Minimum aquarium volume', temperatureMinC: 'Minimum temperature',
+  temperatureMaxC: 'Maximum temperature', humidityMinPercent: 'Minimum humidity',
+  humidityMaxPercent: 'Maximum humidity', ventilationNotes: 'Ventilation',
+  environmentNotes: 'Environmental conditions', climateNotes: 'Climate considerations',
+  exerciseSpaceNotes: 'Exercise or activity space', verticalSpaceNotes: 'Vertical space',
+  safeOutdoorAccessNotes: 'Safe outdoor access', flightSpaceNotes: 'Flight or exercise space',
+  filtrationNotes: 'Filtration', waterNotes: 'Water and environment', activitySpaceNotes: 'Activity space',
+  lightingNotes: 'Lighting', speciesCareNotes: 'Species-specific care', additionalRequirements: 'Additional requirements'
+};
+const formatHomeDetail = (field, value) => {
+  if (field.startsWith('enclosure')) return `${value} cm`;
+  if (field === 'aquariumVolumeLiters') return `${value} litres`;
+  if (field.startsWith('temperature')) return `${value} °C`;
+  if (field.startsWith('humidity')) return `${value}%`;
+  return String(value).replaceAll('_', ' ');
+};
+
 const formatAge = pet => {
   if (pet.age === undefined || pet.age === null) return 'Not specified';
   const unit = pet.ageUnit === 'months' ? 'month' : 'year';
@@ -189,6 +210,9 @@ const PetDetail = () => {
     { icon: Syringe, label: 'Vaccination', value: pet.vaccinationStatus === 'complete' ? 'Vaccinated' : pet.vaccinationStatus === 'partial' ? 'Partially vaccinated' : 'Not yet vaccinated' },
     pcciProvided ? { icon: ShieldCheck, label: 'PCCI', value: 'Information provided' } : null
   ].filter(Boolean);
+  const homeDetailRows = Object.entries(pet.homeDetails || {})
+    .filter(([field, value]) => HOME_DETAIL_LABELS[field] && value !== null && value !== undefined && value !== '')
+    .map(([field, value]) => ({ label: HOME_DETAIL_LABELS[field], value: formatHomeDetail(field, value) }));
 
   return (
     <div className="mx-auto max-w-6xl space-y-5 px-2 pb-28 sm:px-5 lg:pb-12">
@@ -223,6 +247,8 @@ const PetDetail = () => {
       <div className="grid gap-5 lg:grid-cols-[1fr_.8fr]">
         <div className="space-y-5">
           <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm"><h2 className="text-sm font-black text-slate-900">Description</h2><p className={`mt-3 whitespace-pre-line text-sm leading-6 text-slate-600 ${descriptionExpanded ? '' : 'line-clamp-5'}`}>{pet.description}</p>{pet.description?.length > 280 && <button type="button" onClick={() => setDescriptionExpanded(value => !value)} className="mt-3 inline-flex items-center gap-1 text-[10px] font-black uppercase text-primary-700">{descriptionExpanded ? 'Show less' : 'Read more'}<ChevronDown className={`h-3 w-3 transition ${descriptionExpanded ? 'rotate-180' : ''}`} /></button>}</section>
+
+          {homeDetailRows.length > 0 && <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm"><h2 className="text-sm font-black text-slate-900">Home Details</h2><p className="mt-1 text-[10px] text-slate-500">Seller-provided requirements for this pet; not independently verified by Pawzzle.</p><dl className="mt-3 grid gap-2 sm:grid-cols-2">{homeDetailRows.map(({ label, value }) => <div key={label} className="min-w-0 rounded-xl bg-slate-50 p-3"><dt className="text-[9px] font-black uppercase text-slate-500">{label}</dt><dd className="mt-1 whitespace-pre-wrap break-words text-xs font-semibold text-slate-800">{value}</dd></div>)}</dl></section>}
 
           <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm"><h2 className="text-sm font-black text-slate-900">Health Information</h2><div className="mt-3 grid gap-2 sm:grid-cols-2"><div className="rounded-xl bg-slate-50 p-3"><p className="text-[9px] font-black uppercase text-slate-400">Vaccination</p><p className="mt-1 text-xs font-bold text-slate-800">{pet.vaccinationStatus === 'complete' ? 'Vaccinated' : pet.vaccinationStatus === 'partial' ? 'Partially vaccinated' : 'Not yet vaccinated'}</p></div><div className="rounded-xl bg-slate-50 p-3"><p className="text-[9px] font-black uppercase text-slate-400">Deworming</p><p className="mt-1 text-xs font-bold text-slate-800">{pet.dewormed ? 'Dewormed' : 'Not specified'}</p></div>{pet.healthCondition && pet.healthCondition !== 'healthy' && <div className="rounded-xl bg-amber-50 p-3 sm:col-span-2"><p className="text-[9px] font-black uppercase text-amber-700">Health condition disclosure</p><p className="mt-1 text-xs font-bold capitalize text-slate-800">{pet.healthCondition.replaceAll('_', ' ')}</p></div>}{pet.healthNotes && <div className="rounded-xl bg-slate-50 p-3 sm:col-span-2"><p className="text-[9px] font-black uppercase text-slate-400">Health notes</p><p className="mt-1 whitespace-pre-line text-xs leading-5 text-slate-700">{pet.healthNotes}</p></div>}</div></section>
 

@@ -21,6 +21,30 @@ const TEMPERAMENT_OPTIONS = [
 ];
 const LEVEL_OPTIONS = [['unknown', 'Not known'], ['low', 'Low'], ['moderate', 'Moderate'], ['high', 'High']];
 const COMPATIBILITY_OPTIONS = [['unknown', 'Not known'], ['compatible', 'Compatible'], ['not_compatible', 'Not compatible']];
+const HOME_SUITABILITY = [['', 'Not specified'], ['suitable', 'Suitable'], ['conditional', 'Conditional'], ['not_suitable', 'Not suitable']];
+const HOME_SUITABILITY_FIELDS = [
+  ['indoor', 'Indoor living'], ['outdoor', 'Outdoor living'], ['apartment', 'Apartment'],
+  ['smallHome', 'Small home'], ['largeHome', 'Large home']
+];
+const HOME_SPECIES_FIELDS = {
+  cat: [['verticalSpaceNotes', 'Vertical space'], ['safeOutdoorAccessNotes', 'Safe outdoor access']],
+  bird: [['enclosureLengthCm', 'Enclosure length (cm)', 'number'], ['enclosureWidthCm', 'Enclosure width (cm)', 'number'],
+    ['enclosureHeightCm', 'Enclosure height (cm)', 'number'], ['flightSpaceNotes', 'Flight or exercise space']],
+  fish: [['aquariumVolumeLiters', 'Minimum aquarium volume (litres)', 'number'], ['filtrationNotes', 'Filtration'], ['waterNotes', 'Water and environment']],
+  rabbit: [['enclosureLengthCm', 'Enclosure length (cm)', 'number'], ['enclosureWidthCm', 'Enclosure width (cm)', 'number'],
+    ['enclosureHeightCm', 'Enclosure height (cm)', 'number'], ['activitySpaceNotes', 'Activity space']],
+  hamster: [['enclosureLengthCm', 'Enclosure length (cm)', 'number'], ['enclosureWidthCm', 'Enclosure width (cm)', 'number'],
+    ['enclosureHeightCm', 'Enclosure height (cm)', 'number'], ['activitySpaceNotes', 'Activity space']],
+  reptile: [['enclosureLengthCm', 'Enclosure length (cm)', 'number'], ['enclosureWidthCm', 'Enclosure width (cm)', 'number'],
+    ['enclosureHeightCm', 'Enclosure height (cm)', 'number'], ['temperatureMinC', 'Minimum temperature (°C)', 'number'],
+    ['temperatureMaxC', 'Maximum temperature (°C)', 'number'], ['humidityMinPercent', 'Minimum humidity (%)', 'number'],
+    ['humidityMaxPercent', 'Maximum humidity (%)', 'number'], ['lightingNotes', 'Lighting']]
+};
+const HOME_COMMON_NOTES = [
+  ['ventilationNotes', 'Ventilation'], ['environmentNotes', 'Environmental conditions'],
+  ['climateNotes', 'Climate considerations'], ['exerciseSpaceNotes', 'Exercise or activity space'],
+  ['speciesCareNotes', 'Species-specific care'], ['additionalRequirements', 'Additional seller requirements']
+];
 
 const filenameFromUrl = (value, fallback = 'Uploaded document') => {
   if (!value) return fallback;
@@ -57,7 +81,11 @@ const PetListingFormModal = ({
   );
   const pcci = petForm.pcciRegistration || {};
   const supportingDocuments = petForm.supportingDocuments || [];
+  const homeDetails = petForm.homeDetails || {};
   const update = (field, value) => setPetForm(current => ({ ...current, [field]: value }));
+  const updateHome = (field, value) => setPetForm(current => ({
+    ...current, homeDetails: { ...(current.homeDetails || {}), [field]: value }
+  }));
   const updateNested = (group, field, value) => setPetForm(current => ({
     ...current,
     [group]: { ...current[group], [field]: value }
@@ -128,7 +156,7 @@ const PetListingFormModal = ({
       <CompactFormSection step="2" icon={PawPrint} title="Basic Information" description="The individual pet details customers see in the marketplace.">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <label className="text-[11px] font-bold text-slate-700">Pet Name<RequiredMark /><input className={compactInputClass} value={petForm.name} onChange={event => update('name', event.target.value)} placeholder="Pet name" /></label>
-          <label className="text-[11px] font-bold text-slate-700">Species<RequiredMark /><select className={compactInputClass} value={petForm.species} onChange={event => setPetForm(current => ({ ...current, species: event.target.value, ...(event.target.value === 'dog' ? {} : { pedigreePapers: false, pcciRegistration: { status: 'not_sure', registrationNumber: '', certificateUrl: '', informationStatus: 'not_provided' } }) }))}><option value="dog">Dog</option><option value="cat">Cat</option><option value="bird">Bird</option><option value="rabbit">Rabbit</option><option value="hamster">Hamster</option><option value="fish">Fish</option><option value="reptile">Reptile</option><option value="other">Other</option></select></label>
+          <label className="text-[11px] font-bold text-slate-700">Species<RequiredMark /><select className={compactInputClass} value={petForm.species} onChange={event => setPetForm(current => ({ ...current, species: event.target.value, homeDetails: Object.fromEntries(Object.entries(current.homeDetails || {}).filter(([field]) => ['minimumLivingSpace', 'indoor', 'outdoor', 'apartment', 'smallHome', 'largeHome', ...HOME_COMMON_NOTES.map(([name]) => name)].includes(field))), ...(event.target.value === 'dog' ? {} : { pedigreePapers: false, pcciRegistration: { status: 'not_sure', registrationNumber: '', certificateUrl: '', informationStatus: 'not_provided' } }) }))}><option value="dog">Dog</option><option value="cat">Cat</option><option value="bird">Bird</option><option value="rabbit">Rabbit</option><option value="hamster">Hamster</option><option value="fish">Fish</option><option value="reptile">Reptile</option><option value="other">Other</option></select></label>
           <label className="text-[11px] font-bold text-slate-700">Breed<RequiredMark /><input className={compactInputClass} value={petForm.breed} onChange={event => update('breed', event.target.value)} placeholder="Breed or best description" /></label>
           <label className="text-[11px] font-bold text-slate-700">Adult / Expected Size<RequiredMark /><select className={compactInputClass} value={petForm.size || ''} onChange={event => update('size', event.target.value)}><option value="">Select size</option><option value="small">Small</option><option value="medium">Medium</option><option value="large">Large</option><option value="extra_large">Extra large</option></select><span className="mt-1 block text-[10px] font-normal text-slate-400">Used with recorded activity—not breed assumptions—for space matching.</span></label>
           <label className="text-[11px] font-bold text-slate-700">Activity Level<RequiredMark /><select className={compactInputClass} value={petForm.activityLevel || ''} onChange={event => update('activityLevel', event.target.value)}><option value="">Select activity level</option><option value="low">Low</option><option value="moderate">Moderate</option><option value="high">High</option></select><span className="mt-1 block text-[10px] font-normal text-slate-400">Choose from this pet’s observed behavior.</span></label>
@@ -172,7 +200,17 @@ const PetListingFormModal = ({
         </div>
       </CompactFormSection>
 
-      <CompactFormSection step="4" icon={Check} title="Sale & Pickup" description="Keep transaction and pickup details with the core listing.">
+      <CompactFormSection step="4" icon={PawPrint} title="Home Details" description="Optional, seller-provided requirements for this individual pet—not independently verified care guidance.">
+        <p className="mb-3 text-[10px] text-slate-500">Describe the needs you know for {petForm.breed?.trim() || 'this pet'} ({petForm.size?.replaceAll('_', ' ') || 'size not selected'}). Leave unknown requirements blank.</p>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <label className="text-[11px] font-bold text-slate-700">Minimum recommended living space<select className={compactInputClass} value={homeDetails.minimumLivingSpace || ''} onChange={event => updateHome('minimumLivingSpace', event.target.value)}><option value="">Not specified</option><option value="small_home">Small home</option><option value="medium_home">Medium home</option><option value="large_home">Large home</option></select></label>
+          {HOME_SUITABILITY_FIELDS.map(([field, label]) => <label key={field} className="text-[11px] font-bold text-slate-700">{label} suitability<select className={compactInputClass} value={homeDetails[field] || ''} onChange={event => updateHome(field, event.target.value)}>{HOME_SUITABILITY.map(([value, text]) => <option key={value} value={value}>{text}</option>)}</select></label>)}
+          {(HOME_SPECIES_FIELDS[petForm.species] || []).map(([field, label, type]) => <label key={field} className="text-[11px] font-bold text-slate-700">{label}<input type={type || 'text'} min={type === 'number' && !field.startsWith('temperature') ? '0' : undefined} maxLength={type ? undefined : 1000} step={type === 'number' ? 'any' : undefined} className={compactInputClass} value={homeDetails[field] ?? ''} onChange={event => updateHome(field, event.target.value)} /></label>)}
+          {HOME_COMMON_NOTES.map(([field, label]) => <label key={field} className="text-[11px] font-bold text-slate-700 sm:col-span-2">{label}<textarea maxLength="1000" rows="2" className={compactTextareaClass} value={homeDetails[field] || ''} onChange={event => updateHome(field, event.target.value)} /></label>)}
+        </div>
+      </CompactFormSection>
+
+      <CompactFormSection step="5" icon={Check} title="Sale & Pickup" description="Keep transaction and pickup details with the core listing.">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <label className="text-[11px] font-bold text-slate-700">Price Negotiable?<select className={compactInputClass} value={petForm.isNegotiable ? 'yes' : 'no'} onChange={event => update('isNegotiable', event.target.value === 'yes')}><option value="no">No</option><option value="yes">Yes</option></select></label>
           <label className="text-[11px] font-bold text-slate-700">Payment Strategy<select className={compactInputClass} value={petForm.paymentConfig || 'full_payment'} onChange={event => update('paymentConfig', event.target.value)}><option value="full_payment">Full PayMongo payment</option><option value="deposit_first">Reservation deposit, then balance</option></select></label>
@@ -182,7 +220,7 @@ const PetListingFormModal = ({
         </div>
       </CompactFormSection>
 
-      <CompactFormSection step="5" icon={FileBadge} title="Listing Documents" description="PCCI applies to dogs only. PCCI attachments can be viewed by customers; ownership and permit documents remain private.">
+      <CompactFormSection step="6" icon={FileBadge} title="Listing Documents" description="PCCI applies to dogs only. PCCI attachments can be viewed by customers; ownership and permit documents remain private.">
         {petForm.species === 'dog' && <div className="space-y-3 rounded-xl border border-amber-100 bg-amber-50/50 p-3">
           <label className="text-[11px] font-bold text-slate-700">PCCI Registration Number <span className="font-normal text-slate-400">(optional)</span><input maxLength="100" className={compactInputClass} value={pcci.registrationNumber || ''} onChange={event => updatePcci('registrationNumber', event.target.value)} placeholder="Exactly as shown on the certificate" /></label>
           <CompactUploadCard title="PCCI Registration Document" value={pcci.certificateUrl} loading={loading} accept="image/*,.pdf,.doc,.docx" onFiles={files => onDocumentUpload(files, 'pcci')} onRemove={() => updatePcci('certificateUrl', '')} helper="Optional PCCI certificate" />
