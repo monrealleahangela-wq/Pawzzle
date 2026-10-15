@@ -15,6 +15,7 @@ const customerId = '507f1f77bcf86cd799439013';
 const ownerId = '507f1f77bcf86cd799439014';
 const inquiryId = '507f1f77bcf86cd799439015';
 const otherStoreId = '507f1f77bcf86cd799439016';
+const appendedEvent = changes => changes[0].$set.events.$concatArrays[1][0].$mergeObjects[0].$literal;
 const response = () => ({ statusCode: 200, status(code) { this.statusCode = code; return this; }, json(body) { this.body = body; return this; } });
 const customer = { _id: customerId, role: 'customer' };
 const seller = { _id: ownerId, role: 'manager', store: storeId };
@@ -102,7 +103,7 @@ test('seller action atomically appends history and notifies only the customer', 
   let update;
   await withMocks([
     [PetInquiry, 'findById', async () => inquiry()],
-    [PetInquiry, 'findOneAndUpdate', async (filter, changes) => { update = { filter, changes }; return { ...inquiry('seller_responded'), events: [...inquiry().events, changes.$push.events] }; }],
+    [PetInquiry, 'findOneAndUpdate', async (filter, changes) => { update = { filter, changes }; return { ...inquiry('seller_responded'), events: [...inquiry().events, appendedEvent(changes)] }; }],
     [Notification.prototype, 'save', async function () { notices.push(this.toObject()); return this; }]
   ], async () => {
     const res = response();
@@ -110,7 +111,8 @@ test('seller action atomically appends history and notifies only the customer', 
     assert.equal(res.statusCode, 200);
     assert.equal(update.filter['events.requestKey'].$ne, 'reply-key-01');
     assert(update.filter.status.$in.includes('submitted'));
-    assert.equal(update.changes.$push.events.actor, ownerId);
+    assert.equal(String(appendedEvent(update.changes).actor), ownerId);
+    assert.equal(update.changes[0].$set.lastActivityAt.$max[0], '$$NOW');
     assert.equal(notices.length, 1);
     assert.equal(String(notices[0].recipient), customerId);
     assert.equal(notices[0].targetUrl, `/pet-inquiries?id=${inquiryId}`);
@@ -122,7 +124,7 @@ test('customer follow-up returns to the seller queue and notifies the Store owne
   const notices = [];
   await withMocks([
     [PetInquiry, 'findById', async () => inquiry('seller_responded')],
-    [PetInquiry, 'findOneAndUpdate', async (_filter, changes) => ({ ...inquiry(changes.$set.status), events: [...inquiry().events, changes.$push.events] })],
+    [PetInquiry, 'findOneAndUpdate', async (_filter, changes) => ({ ...inquiry(changes[0].$set.status.$literal), events: [...inquiry().events, appendedEvent(changes)] })],
     [Store, 'findById', () => ({ select: () => ({ lean: async () => ({ owner: ownerId }) }) })],
     [Notification.prototype, 'save', async function () { notices.push(this.toObject()); return this; }]
   ], async () => {

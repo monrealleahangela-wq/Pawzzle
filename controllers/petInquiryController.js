@@ -146,13 +146,26 @@ const act = async (req, res) => {
     const rule = validateAction(req.body.action, actor, inquiry.status);
     const body = rule.body ? cleanText(req.body.body, 2, 2000, 'Message')
       : req.body.body ? cleanText(req.body.body, 2, 2000, 'Note') : undefined;
-    const now = new Date();
+    // Assign the event and activity timestamps inside the atomic update. A
+    // request can wait behind another writer after it has passed validation;
+    // a timestamp captured before that wait would backdate persisted history.
+    const eventTime = { $max: ['$$NOW', { $ifNull: ['$lastActivityAt', '$$NOW'] }] };
+    const event = {
+      _id: new mongoose.Types.ObjectId(), kind: req.body.action, status: rule.to,
+      actor: new mongoose.Types.ObjectId(String(req.user._id)), requestKey,
+      ...(body ? { body } : {})
+    };
     const updated = await PetInquiry.findOneAndUpdate({
       _id: inquiry._id, status: { $in: rule.from }, 'events.requestKey': { $ne: requestKey }
-    }, {
-      $set: { status: rule.to, lastActivityAt: now },
-      $push: { events: { kind: req.body.action, status: rule.to, body, actor: req.user._id, requestKey, createdAt: now } }
-    }, { new: true, runValidators: true });
+    }, [{
+      $set: {
+        status: { $literal: rule.to }, lastActivityAt: eventTime,
+        events: { $concatArrays: [
+          { $ifNull: ['$events', []] },
+          [{ $mergeObjects: [{ $literal: event }, { createdAt: eventTime }] }]
+        ] }
+      }
+    }], { new: true });
     if (!updated) {
       const latest = await PetInquiry.findById(inquiry._id);
       if (latest?.events.some(event => event.requestKey === requestKey)) return res.json({ inquiry: toClientInquiry(latest), replayed: true });
