@@ -7,6 +7,23 @@
  * never loaded implicitly.
  */
 const mongoose = require('mongoose');
+const dns = require('node:dns');
+const net = require('node:net');
+
+// Keep the Atlas SRV workaround scoped to this maintenance process. This does
+// not change the application's normal MongoDB connection or Windows settings.
+const configureMaintenanceDns = () => {
+  const configured = process.env.MONGODB_MAINTENANCE_DNS_SERVERS || '1.1.1.1,8.8.8.8';
+  const servers = configured.split(',').map(value => value.trim()).filter(Boolean);
+  if (!servers.length || servers.some(server => net.isIP(server) === 0)) {
+    throw new Error('MONGODB_MAINTENANCE_DNS_SERVERS must contain comma-separated DNS server IP addresses.');
+  }
+  dns.setServers(servers);
+  dns.setDefaultResultOrder('ipv4first');
+};
+
+const safeErrorMessage = error => String(error?.message || error || 'Unknown error')
+  .replace(/mongodb(?:\+srv)?:\/\/[^@\s]+@/gi, 'mongodb://<credentials>@');
 
 const LEGACY_INDEX_NAME = 'supplier_1_pet_1';
 const REPLACEMENT_INDEX_NAME = 'supplier_live_pet_unique';
@@ -109,6 +126,7 @@ if (require.main === module) {
     if (!uri) throw new Error('An explicit SUPPLIER_INDEX_MIGRATION_URI is required.');
     if (!expectedDatabase) throw new Error('SUPPLIER_INDEX_MIGRATION_EXPECTED_DB is required.');
 
+    configureMaintenanceDns();
     await mongoose.connect(uri, { autoIndex: false, serverSelectionTimeoutMS: 5000 });
     try {
       if (mongoose.connection.name !== expectedDatabase) {
@@ -122,7 +140,7 @@ if (require.main === module) {
       await mongoose.disconnect();
     }
   })().catch(error => {
-    console.error(error.message);
+    console.error(safeErrorMessage(error));
     process.exitCode = 1;
   });
 }
@@ -132,6 +150,7 @@ module.exports = {
   REPLACEMENT_INDEX_NAME,
   REPLACEMENT_KEYS,
   REPLACEMENT_OPTIONS,
+  configureMaintenanceDns,
   inspectSupplierProductLivePetIndex,
   migrateSupplierProductLivePetIndex
 };
