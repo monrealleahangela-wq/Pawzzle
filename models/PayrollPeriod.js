@@ -12,6 +12,8 @@ const payrollPeriodSchema = new mongoose.Schema({
     default: 'draft',
     index: true
   },
+  payrollInputRevision: { type: Number, min: 0, default: 0 },
+  computedInputRevision: { type: Number, min: 0, default: 0 },
   policySnapshot: { type: mongoose.Schema.Types.Mixed, required: true },
   totals: {
     employeeCount: { type: Number, min: 0, default: 0 },
@@ -47,6 +49,15 @@ const payrollPeriodSchema = new mongoose.Schema({
     requiredEmployeeCount: { type: Number, min: 0, default: 0 },
     confirmedAmount: { type: Number, min: 0, default: 0 },
     completedAt: Date
+  },
+  attendanceRecalculation: {
+    required: { type: Boolean, default: false },
+    invalidatedAt: Date,
+    invalidatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    attendance: { type: mongoose.Schema.Types.ObjectId, ref: 'Attendance' },
+    employee: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    workDate: { type: String, match: /^\d{4}-\d{2}-\d{2}$/ },
+    reason: { type: String, trim: true, maxlength: 500 }
   }
 }, { timestamps: true });
 

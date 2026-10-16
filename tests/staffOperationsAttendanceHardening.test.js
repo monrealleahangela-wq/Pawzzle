@@ -25,24 +25,23 @@ test('managers may review attendance exceptions but finance remains read-only', 
   assert.equal(hasPermission({ role: 'finance_staff' }, 'attendance.view'), true);
 });
 
-test('attendance automation is Store-configured, atomic, reviewable, and started after database connection', () => {
+test('attendance automation is disabled and is not started after database connection', () => {
   const service = source('services/attendanceAutomationService.js');
-  assert.match(service, /autoClockOut\.enabled/);
-  assert.match(service, /'timeOut\.at': \{ \$exists: false \}/);
-  assert.match(service, /status: 'pending'/);
-  assert.doesNotMatch(service, /12 \* 60|720/);
-  assert.match(source('server.js'), /processAttendanceAutoClockOuts/);
+  assert.match(service, /never generates a clock-out/);
+  assert.match(service, /processStoreAutoClockOuts = async \(\) => 0/);
+  assert.doesNotMatch(source('server.js'), /processAttendanceAutoClockOuts/);
 });
 
-test('attendance UI exposes schedule window, employee exception reason, and reviewer actions', () => {
+test('attendance UI exposes schedule window, correction requests, evidence and reviewer actions', () => {
   const employee = source('client/src/pages/staff/EmployeeHR.js');
   const management = source('client/src/pages/admin/HRManagement.js');
   assert.match(employee, /timeInWindow/);
   assert.match(employee, /offsiteReason/);
-  assert.match(management, /Attendance exception review/);
+  assert.match(employee, /AttendanceCorrectionRequestPanel/);
+  assert.match(management, /AttendanceCorrectionReviewPanel/);
   assert.match(management, /GPS accuracy/);
   assert.match(management, /reviewAttendanceLocation/);
-  assert.match(management, /reviewAutoClockOut/);
+  assert.doesNotMatch(management, /reviewAutoClockOut/);
 });
 
 test('attendance review evidence is projected only to authorized reviewers', () => {

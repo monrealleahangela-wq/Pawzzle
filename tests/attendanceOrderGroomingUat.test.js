@@ -42,11 +42,12 @@ test('grooming intake derives the package from the persisted Service and retains
   assert.match(invalid.error, /coat condition/i);
 });
 
-test('attendance displays use the shared formatter while exact minutes remain the submitted contract', () => {
+test('attendance displays use the shared formatter while direct corrections use timestamps', () => {
   const admin = read('client/src/pages/admin/HRManagement.js');
   const staff = read('client/src/pages/staff/EmployeeHR.js');
   assert.match(admin, /formatDurationMinutes\(row\.workedMinutes\)/);
-  assert.match(admin, /Number\(correction\[field\]\)/);
+  assert.match(admin, /Number\(correction\.workedMinutes \|\| 0\)/);
+  assert.match(admin, /new Date\(correction\.timeOut\)\.toISOString\(\)/);
   assert.match(staff, /formatDurationMinutes\(attendance\.today\?\.workedMinutes \|\| 0\)/);
   assert.match(staff, /formatDurationMinutes\(slip\.attendanceSummary\?\.workedMinutes\)/);
 });

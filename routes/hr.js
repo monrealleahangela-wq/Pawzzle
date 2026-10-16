@@ -1,6 +1,8 @@
 const express = require('express');
 const { authenticate, requirePermission } = require('../middleware/auth');
+const { uploadAttendanceEvidence, handleUploadError } = require('../middleware/upload');
 const hr = require('../controllers/hrController');
+const attendanceCorrections = require('../controllers/attendanceCorrectionController');
 
 const router = express.Router();
 router.use(authenticate);
@@ -10,6 +12,9 @@ router.use(authenticate);
 router.get('/me/attendance', hr.myAttendance);
 router.post('/me/attendance/time-in', hr.timeIn);
 router.post('/me/attendance/time-out', hr.timeOut);
+router.get('/me/attendance/corrections', attendanceCorrections.own);
+router.post('/me/attendance/corrections', uploadAttendanceEvidence, handleUploadError, attendanceCorrections.submit);
+router.get('/attendance/corrections/:id/evidence', attendanceCorrections.evidence);
 router.get('/me/leaves', hr.myLeaves);
 router.post('/me/leaves', hr.createLeave);
 router.patch('/me/leaves/:id/cancel', hr.cancelLeave);
@@ -23,10 +28,11 @@ router.get('/employees/:employeeId/compensation', requirePermission('compensatio
 router.put('/employees/:employeeId/compensation', requirePermission('compensation.manage'), hr.updateCompensation);
 
 router.get('/attendance', requirePermission('attendance.view', 'attendance.manage'), hr.managementAttendance);
+router.get('/attendance/corrections', requirePermission('attendance.review', 'attendance.manage'), attendanceCorrections.storeList);
+router.patch('/attendance/corrections/:id/review', requirePermission('attendance.review', 'attendance.manage'), attendanceCorrections.review);
 router.post('/attendance/manual', requirePermission('attendance.manage'), hr.createManualAttendance);
-router.patch('/attendance/:id/correct', requirePermission('attendance.manage'), hr.correctAttendance);
+router.patch('/attendance/:id/correct', requirePermission('attendance.review', 'attendance.manage'), attendanceCorrections.directCorrection);
 router.patch('/attendance/:id/location-review', requirePermission('attendance.review', 'attendance.manage'), hr.reviewLocationAttendance);
-router.patch('/attendance/:id/auto-clock-out-review', requirePermission('attendance.review', 'attendance.manage'), hr.reviewAutoClockOut);
 router.get('/leaves', requirePermission('leave.view', 'leave.approve'), hr.listLeaves);
 router.patch('/leaves/:id/review', requirePermission('leave.approve'), hr.reviewLeave);
 

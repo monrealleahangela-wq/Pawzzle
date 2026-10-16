@@ -4,6 +4,7 @@ import { Clock, CalendarOff, ReceiptText, MapPin, Loader2, AlertCircle } from 'l
 import { toast } from 'react-toastify';
 import { hrService } from '../../services/apiService';
 import { formatDurationMinutes } from '../../utils/durationFormat';
+import AttendanceCorrectionRequestPanel from '../../components/hr/AttendanceCorrectionRequestPanel';
 
 const tabs = [
   { id: 'attendance', label: 'Attendance', path: '/staff/attendance', icon: Clock },
@@ -23,6 +24,7 @@ const EmployeeHR = ({ initialTab = 'attendance' }) => {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [attendance, setAttendance] = useState({ today: null, schedule: null, records: [] });
+  const [attendanceCorrections, setAttendanceCorrections] = useState([]);
   const [leaveData, setLeaveData] = useState({ leaves: [], leaveTypes: [] });
   const [payslips, setPayslips] = useState([]);
   const [paymentStatuses, setPaymentStatuses] = useState([]);
@@ -33,7 +35,13 @@ const EmployeeHR = ({ initialTab = 'attendance' }) => {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      if (initialTab === 'attendance') setAttendance((await hrService.getMyAttendance()).data);
+      if (initialTab === 'attendance') {
+        const [attendanceResponse, correctionResponse] = await Promise.all([
+          hrService.getMyAttendance(), hrService.getMyAttendanceCorrections()
+        ]);
+        setAttendance(attendanceResponse.data);
+        setAttendanceCorrections(correctionResponse.data.requests || []);
+      }
       if (initialTab === 'leave') setLeaveData((await hrService.getMyLeaves()).data);
       if (initialTab === 'payslips') {
         const response = await hrService.getMyPayslips();
@@ -110,6 +118,7 @@ const EmployeeHR = ({ initialTab = 'attendance' }) => {
             {attendance.locationPolicy?.outsideGeofencePolicy === 'flag' && <label className="mt-4 block text-xs font-semibold text-slate-700 dark:text-slate-200">Off-site reason <span className="font-normal text-slate-500">(required if GPS is flagged)</span><textarea value={offsiteReason} onChange={event => setOffsiteReason(event.target.value)} rows={2} maxLength={1000} placeholder="Explain the remote or off-site work reason" className="mt-1 w-full rounded-xl border border-primary/20 bg-white px-3 py-2 text-sm dark:bg-slate-900" /></label>}
           </div>
         </section>
+        <AttendanceCorrectionRequestPanel records={attendance.records} requests={attendanceCorrections} onSubmitted={load} />
         <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
           <div className="border-b border-slate-200 px-4 py-3 dark:border-slate-800"><h2 className="font-bold">Attendance History</h2></div>
           <div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead className="bg-slate-50 text-xs uppercase text-slate-500 dark:bg-slate-800/60"><tr>{['Date','Shift','Time In','Time Out','Worked','Late','Undertime','Status'].map(label => <th key={label} className="px-4 py-3">{label}</th>)}</tr></thead><tbody>{attendance.records.map(row => <tr key={row._id} className="border-t border-slate-100 dark:border-slate-800"><td className="px-4 py-3">{row.workDate}</td><td className="px-4 py-3">{row.schedule?.start || '—'}–{row.schedule?.end || '—'}</td><td className="px-4 py-3">{formatTime(row.timeIn?.at)}</td><td className="px-4 py-3">{formatTime(row.timeOut?.at)}</td><td className="px-4 py-3">{formatDurationMinutes(row.workedMinutes)}</td><td className="px-4 py-3">{formatDurationMinutes(row.lateMinutes)}</td><td className="px-4 py-3">{formatDurationMinutes(row.undertimeMinutes)}</td><td className="px-4 py-3"><span className={`rounded-full px-2 py-1 text-xs font-semibold ${statusClass(row.status)}`}>{row.status.replaceAll('_', ' ')}</span></td></tr>)}</tbody></table></div>
