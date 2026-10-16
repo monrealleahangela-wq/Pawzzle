@@ -408,7 +408,7 @@ export const reviewService = {
   getShopReviews: (params) => api.get('/reviews/shop', { params }),
   replyToReview: (reviewId, data) => api.post(`/reviews/${reviewId}/reply`, data),
   toggleReviewStatus: (reviewId) => api.patch(`/reviews/${reviewId}/status`),
-  checkReviewEligibility: (targetType, targetId) => api.get(`/reviews/eligibility/${targetType}/${targetId}`)
+  checkReviewEligibility: (targetType, targetId, params) => api.get(`/reviews/eligibility/${targetType}/${targetId}`, { params })
 };
 
 

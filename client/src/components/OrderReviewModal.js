@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Modal from './ui/Modal';
 import { Star, Send } from 'lucide-react';
 import { toast } from 'react-toastify';
-import { reviewService } from '../services/apiService';
+import { getImageUrl, reviewService } from '../services/apiService';
 import ImageUpload from './ImageUpload';
 
 const OrderReviewModal = ({ isOpen, onClose, item, orderId, onReviewSubmitted }) => {
@@ -11,6 +11,14 @@ const OrderReviewModal = ({ isOpen, onClose, item, orderId, onReviewSubmitted })
     const [images, setImages] = useState([]);
     const [isAnonymous, setIsAnonymous] = useState(false);
     const [submitting, setSubmitting] = useState(false);
+
+    useEffect(() => {
+        setRating(5);
+        setComment('');
+        setImages([]);
+        setIsAnonymous(false);
+        setSubmitting(false);
+    }, [orderId, item?._id, item?.orderItemId, item?.itemId]);
 
     if (!item) return null;
 
@@ -30,6 +38,7 @@ const OrderReviewModal = ({ isOpen, onClose, item, orderId, onReviewSubmitted })
                 targetType,
                 targetId: item.itemId,
                 orderId,
+                orderItemId: item.orderItemId || item._id,
                 rating,
                 comment,
                 images,
@@ -50,29 +59,16 @@ const OrderReviewModal = ({ isOpen, onClose, item, orderId, onReviewSubmitted })
         }
     };
 
-    const renderStars = () => {
-        return (
-            <div className="flex gap-2 mb-4">
-                {[1, 2, 3, 4, 5].map((star) => (
-                    <button
-                        key={star}
-                        type="button"
-                        onClick={() => setRating(star)}
-                        className="focus:outline-none transition-transform hover:scale-110"
-                    >
-                        <Star
-                            className={`h-8 w-8 ${star <= rating ? 'fill-secondary-400 text-secondary-400' : 'text-slate-200'
-                                }`}
-                        />
-                    </button>
-                ))}
-            </div>
-        );
-    };
-
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title={`Review ${item.name}`} size="sm">
+        <Modal isOpen={isOpen} onClose={onClose} title="REVIEW PRODUCT" size="sm">
             <form onSubmit={handleSubmit} className="p-1 space-y-4">
+                <div className="flex items-center gap-3 rounded-xl border border-slate-100 bg-white p-3">
+                    {item.image && <img src={getImageUrl(item.image)} alt="" className="h-14 w-14 rounded-lg object-cover" />}
+                    <div>
+                        <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Purchased product</p>
+                        <p className="font-bold text-slate-900">{item.name}</p>
+                    </div>
+                </div>
                 <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100 flex flex-col items-center">
                     <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Rate this item</label>
                     <div className="flex gap-1.5 mb-1.5">
@@ -81,6 +77,7 @@ const OrderReviewModal = ({ isOpen, onClose, item, orderId, onReviewSubmitted })
                                 key={star}
                                 type="button"
                                 onClick={() => setRating(star)}
+                                aria-label={`Rate ${star} out of 5 stars`}
                                 className="focus:outline-none transition-transform hover:scale-110"
                             >
                                 <Star
@@ -119,7 +116,13 @@ const OrderReviewModal = ({ isOpen, onClose, item, orderId, onReviewSubmitted })
                         />
                     </div>
 
-                    <div className="flex items-center gap-2 bg-slate-50 p-2.5 rounded-xl border border-slate-100 group cursor-pointer" onClick={() => setIsAnonymous(!isAnonymous)}>
+                    <label className="flex items-center gap-2 bg-slate-50 p-2.5 rounded-xl border border-slate-100 group cursor-pointer">
+                        <input
+                            type="checkbox"
+                            checked={isAnonymous}
+                            onChange={event => setIsAnonymous(event.target.checked)}
+                            className="sr-only"
+                        />
                         <div className={`w-4 h-4 rounded border-2 transition-all flex items-center justify-center ${isAnonymous ? 'bg-primary-600 border-primary-600' : 'border-slate-200 bg-white'}`}>
                             {isAnonymous && <div className="w-1.5 h-1.5 bg-white rounded-full" />}
                         </div>
@@ -127,7 +130,7 @@ const OrderReviewModal = ({ isOpen, onClose, item, orderId, onReviewSubmitted })
                             <p className="text-[9px] font-black text-slate-900 uppercase tracking-widest leading-none mb-1">Post Anonymously</p>
                             <p className="text-[7px] font-bold text-slate-400 uppercase tracking-tighter opacity-60">Your name will be hidden</p>
                         </div>
-                    </div>
+                    </label>
                 </div>
 
                 <div className="flex flex-col sm:flex-row gap-2 pt-2">
