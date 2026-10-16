@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { orderService, getImageUrl } from '../../services/apiService';
 import { ShoppingBag, Clock, Package, Truck, CheckCircle, XCircle, ChevronLeft, ChevronRight, Star, Heart, Calendar, Receipt, MapPin } from 'lucide-react';
 import ReviewModal from '../../components/ReviewModal';
+import OrderReviewModal from '../../components/OrderReviewModal';
 import Adoptions from './Adoptions';
 import Bookings from './Bookings';
 import { normalizeRefundPolicy, refundPolicyLabel } from '../../utils/refundPolicy';
@@ -28,17 +29,20 @@ const Orders = () => {
   const [activeTab, setActiveTab] = useState('orders'); // 'orders' | 'pets' | 'bookings'
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [ratingOrder, setRatingOrder] = useState(null);
+  const [ratingProduct, setRatingProduct] = useState(null);
   const [ratingDelivery, setRatingDelivery] = useState(null);
+  const [ordersError, setOrdersError] = useState('');
   const [pagination, setPagination] = useState({ currentPage: 1, totalPages: 1, hasNext: false, hasPrev: false });
 
   const fetchOrders = useCallback(async () => {
     try {
+      setOrdersError('');
       const response = await orderService.getAllOrders({ page: pagination.currentPage, limit: 10 });
       setOrders(response.data.orders || []);
       setPagination(response.data.pagination || pagination);
     } catch (e) {
       console.error('Error fetching orders:', e);
+      setOrdersError('We could not refresh your orders. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -79,6 +83,12 @@ const Orders = () => {
 
       {activeTab === 'orders' ? (
         <div className="marketplace-order-list space-y-6">
+          {ordersError && (
+            <div role="alert" className="flex items-center justify-between gap-3 rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">
+              <span>{ordersError}</span>
+              <button type="button" onClick={fetchOrders} className="font-bold underline">Retry</button>
+            </div>
+          )}
           {orders.length === 0 ? (
             <div className="marketplace-empty-state text-center py-20 bg-white rounded-xl border border-dashed border-slate-200">
               <ShoppingBag className="h-12 w-12 text-slate-200 mx-auto mb-4" />
@@ -122,7 +132,7 @@ const Orders = () => {
 
                     <div className="p-4 space-y-3">
                       {order.items.map((item, i) => (
-                        <div key={i} className="flex gap-4 items-center">
+                        <div key={item._id || i} className="flex gap-4 items-center">
                           <img 
                             src={getImageUrl(item.image)} 
                             alt="" 
@@ -133,6 +143,21 @@ const Orders = () => {
                             <p className="text-sm font-bold text-slate-900 truncate">{item.name}</p>
                             <p className="text-xs text-slate-500">Qty: {item.quantity} · {formatPeso(item.price)}</p>
                           </div>
+                          {['delivered', 'completed'].includes(effectiveStatus) && item.itemType === 'product' && (
+                            item.reviewStatus?.isRated ? (
+                              <span className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-[10px] font-bold uppercase text-emerald-700">
+                                Already Reviewed
+                              </span>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => setRatingProduct({ order, item })}
+                                className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-[10px] font-bold uppercase text-slate-700 hover:bg-slate-50"
+                              >
+                                <Star className="h-3.5 w-3.5 text-secondary-500" /> Review Product
+                              </button>
+                            )
+                          )}
                         </div>
                       ))}
                     </div>
@@ -158,14 +183,6 @@ const Orders = () => {
                         <Link to={`/orders/${order._id}`} className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-lg text-xs font-bold shadow-sm hover:bg-slate-800 transition-colors">
                           <Receipt className="h-4 w-4" /> Receipt & Details
                         </Link>
-                        {order.status === 'delivered' && !order.reviewStatus?.isRated && (
-                          <button 
-                            onClick={() => setRatingOrder(order)}
-                            className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-lg text-sm font-bold hover:bg-slate-50 transition-colors"
-                          >
-                            <Star className="h-4 w-4 text-secondary-500" /> Review
-                          </button>
-                        )}
                         {order.status === 'delivered' && order.delivery?.assignmentType === 'internal' && order.delivery?.assignedRider && !order.delivery?.reviewStatus?.isRated && (
                           <button
                             onClick={() => setRatingDelivery({ order, delivery: order.delivery })}
@@ -214,17 +231,15 @@ const Orders = () => {
         <Bookings isSubcomponent={true} />
       )}
 
-      {ratingOrder && (
-        <ReviewModal
-            isOpen={!!ratingOrder}
-            onClose={() => setRatingOrder(null)}
-            targetType="Store"
-            targetId={ratingOrder.store?._id || ratingOrder.store}
-            targetName={ratingOrder.store?.name || 'Shop'}
-            orderId={ratingOrder._id}
+      {ratingProduct && (
+        <OrderReviewModal
+            isOpen
+            onClose={() => setRatingProduct(null)}
+            item={ratingProduct.item}
+            orderId={ratingProduct.order._id}
             onReviewSubmitted={() => {
-                fetchOrders();
-                setRatingOrder(null);
+              fetchOrders();
+              setRatingProduct(null);
             }}
         />
       )}

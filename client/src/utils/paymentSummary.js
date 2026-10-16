@@ -49,10 +49,12 @@ export const orderLineItemRows = (items = []) => (Array.isArray(items) ? items :
     if (unitPrice === null || quantity === null) return null;
     return {
       key: String(item?._id || item?.itemId?._id || item?.itemId || `${item?.name || 'item'}-${index}`),
+      orderItemId: item?._id || null,
       itemId: item?.itemId?._id || item?.itemId || item?._id,
       name: item?.name || item?.productName || 'Item',
       itemType: item?.itemType || 'product',
       image: item?.image || item?.images?.[0] || null,
+      reviewStatus: item?.reviewStatus || { isRated: false },
       unitPrice,
       quantity,
       lineTotal: recordedTotal === null ? unitPrice * quantity : recordedTotal

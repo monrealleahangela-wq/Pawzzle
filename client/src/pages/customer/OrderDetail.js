@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useParams, Link, useLocation } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { orderService, adminOrderService, paymentService, deliveryService, reviewService, staffService, getImageUrl } from '../../services/apiService';
@@ -45,7 +45,11 @@ const OrderDetail = () => {
   const [riderReviewEligibility, setRiderReviewEligibility] = useState({ checked: false, isEligible: false, reason: null });
   const orderRefundPolicy = normalizeRefundPolicy(order?.refundPolicySnapshot || order?.store?.refundPolicy);
   const authoritativePaymentSummary = order ? orderPaymentSummary(order) : null;
-  const orderLineItems = orderLineItemRows(order?.items);
+  const orderLineItems = useMemo(() => orderLineItemRows(order?.items), [order?.items]);
+  const unreviewedProductItems = useMemo(
+    () => orderLineItems.filter(item => item.itemType === 'product' && !item.reviewStatus?.isRated),
+    [orderLineItems]
+  );
   const canReportDeliveryConcern = canManageOrders && deliveryAssignment?.concernReporting?.allowed === true;
 
   useEffect(() => {
@@ -94,11 +98,11 @@ const OrderDetail = () => {
   }, [canManageOrders, order, deliveryParcel.weightKg, deliveryParcel.parcelCount]);
 
   useEffect(() => {
-    if (order && !order.reviewStatus?.isRated && !hasAutoReviewed && new URLSearchParams(location.search).get('review') === 'true') {
-      if (order?.items?.length === 1) {
-        setReviewItem(order.items[0]);
+    if (order && !hasAutoReviewed && new URLSearchParams(location.search).get('review') === 'true') {
+      if (unreviewedProductItems.length === 1) {
+        setReviewItem(unreviewedProductItems[0]);
         setIsReviewModalOpen(true);
-      } else if (order?.items?.length > 1) {
+      } else if (unreviewedProductItems.length > 1) {
         const headings = Array.from(document.querySelectorAll('h2'));
         const itemHeading = headings.find(h => h.textContent.includes('Order Items'));
         if (itemHeading) {
@@ -111,7 +115,7 @@ const OrderDetail = () => {
       const newPath = window.location.pathname;
       window.history.replaceState(null, '', newPath);
     }
-  }, [order, location.search, hasAutoReviewed]);
+  }, [order, location.search, hasAutoReviewed, unreviewedProductItems]);
 
   useEffect(() => {
     const queryParams = new URLSearchParams(location.search);
@@ -463,14 +467,19 @@ const OrderDetail = () => {
                     {item.itemType} • {formatPeso(item.unitPrice)} × {item.quantity}
                   </p>
 
-                  {user?.role === 'customer' && order.status === 'delivered' && !order.reviewStatus?.isRated && (
-                    <button
-                      onClick={() => openReviewModal(item)}
-                      className="mt-3 flex items-center gap-1.5 px-3 py-1 bg-primary-100 text-primary-700 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-primary-600 hover:text-white transition-all shadow-sm"
-                    >
-                      <Star className="h-3 w-3 fill-current" />
-                      Review
-                    </button>
+                  {user?.role === 'customer' && ['delivered', 'completed'].includes(order.status) && item.itemType === 'product' && (
+                    item.reviewStatus?.isRated ? (
+                      <span className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-emerald-700">
+                        <CheckCircle className="h-3 w-3" /> Already Reviewed
+                      </span>
+                    ) : (
+                      <button
+                        onClick={() => openReviewModal(item)}
+                        className="mt-3 flex items-center gap-1.5 px-3 py-1 bg-primary-100 text-primary-700 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-primary-600 hover:text-white transition-all shadow-sm"
+                      >
+                        <Star className="h-3 w-3 fill-current" /> Review Product
+                      </button>
+                    )
                   )}
 
                   <div className="mt-2 block sm:hidden">
@@ -805,11 +814,11 @@ const OrderDetail = () => {
               </p>
               
               <button
-                disabled={order.reviewStatus?.isRated}
+                disabled={unreviewedProductItems.length === 0}
                 onClick={() => {
-                    if (order.reviewStatus?.isRated) return;
-                    if (order.items.length === 1) {
-                        openReviewModal(order.items[0]);
+                    if (unreviewedProductItems.length === 0) return;
+                    if (unreviewedProductItems.length === 1) {
+                        openReviewModal(unreviewedProductItems[0]);
                     } else {
                         const headings = Array.from(document.querySelectorAll('h2'));
                         const itemHeading = headings.find(h => h.textContent.includes('Order Items'));
@@ -822,7 +831,7 @@ const OrderDetail = () => {
                 className="w-full py-4 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-primary-600 transition-all shadow-xl flex items-center justify-center gap-2 disabled:bg-emerald-700 disabled:cursor-default"
               >
                 <Star className="h-4 w-4" />
-                {order.reviewStatus?.isRated ? 'Review Submitted' : 'Write a Review'}
+                {unreviewedProductItems.length === 0 ? 'All Products Reviewed' : 'Review a Product'}
               </button>
             </div>
           )}
