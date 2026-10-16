@@ -1,7 +1,45 @@
 const mongoose = require('mongoose');
 const PayrollPeriod = require('../models/PayrollPeriod');
+const Payslip = require('../models/Payslip');
 
-const fail = (message, statusCode = 400) => Object.assign(new Error(message), { statusCode });
+const fail = (message, statusCode = 400, code) => Object.assign(new Error(message), { statusCode, code });
+
+const dateOnly = value => {
+  const key = value instanceof Date ? value.toISOString().slice(0, 10) : String(value || '').slice(0, 10);
+  return new Date(`${key}T00:00:00.000Z`);
+};
+const endOfDate = value => new Date(dateOnly(value).getTime() + 86399999);
+
+const invalidatePayrollInputForEmployeeDates = async ({ storeId, employeeId, startDate, endDate, session, issueCode, reason }) => {
+  const periods = await PayrollPeriod.find({
+    store: storeId,
+    status: { $in: ['draft', 'computed', 'reviewed'] },
+    periodStart: { $lte: endOfDate(endDate) },
+    periodEnd: { $gte: dateOnly(startDate) }
+  }).session(session);
+
+  for (const period of periods) {
+    const hasSlip = await Payslip.exists({
+      store: storeId, employee: employeeId, payrollPeriod: period._id
+    }).session(session);
+    if (period.status !== 'draft' && !hasSlip) continue;
+    period.payrollInputRevision = Number(period.payrollInputRevision || 0) + 1;
+    if (hasSlip) {
+      if (period.status === 'reviewed') {
+        period.status = 'computed';
+        period.reviewedBy = undefined;
+        period.reviewedAt = undefined;
+      }
+      if (issueCode) {
+        period.reviewIssues ||= [];
+        if (!period.reviewIssues.some(issue => issue.code === issueCode)) {
+          period.reviewIssues.push({ employeeId, code: issueCode, reason, blocking: true });
+        }
+      }
+    }
+    await period.save({ session });
+  }
+};
 
 // Payroll computation and attendance invalidation write the same period
 // document. A computation that read stale inputs is retried before publish.
@@ -23,4 +61,4 @@ const computePayrollPeriodAtomically = async ({ periodId, storeId, calculate }) 
   return outcome;
 };
 
-module.exports = { computePayrollPeriodAtomically };
+module.exports = { computePayrollPeriodAtomically, invalidatePayrollInputForEmployeeDates };

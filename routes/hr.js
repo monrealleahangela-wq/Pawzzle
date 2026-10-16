@@ -26,6 +26,9 @@ router.put('/settings', requirePermission('payroll.configure', 'payroll.manage')
 router.get('/employees', requirePermission('attendance.view', 'attendance.manage', 'leave.view', 'leave.approve', 'payroll.view', 'payroll.prepare', 'payroll.manage', 'compensation.manage'), hr.listEmployees);
 router.get('/employees/:employeeId/compensation', requirePermission('compensation.manage'), hr.getCompensation);
 router.put('/employees/:employeeId/compensation', requirePermission('compensation.manage'), hr.updateCompensation);
+router.get('/employees/:employeeId/statutory-classifications', requirePermission('payroll.manage'), hr.getStatutoryClassifications);
+router.post('/employees/:employeeId/statutory-classifications', requirePermission('payroll.manage'), hr.updateStatutoryClassification);
+router.post('/employees/:employeeId/compensation-tax-classifications', requirePermission('payroll.manage'), hr.updateCompensationTaxClassification);
 
 router.get('/attendance', requirePermission('attendance.view', 'attendance.manage'), hr.managementAttendance);
 router.get('/attendance/corrections', requirePermission('attendance.review', 'attendance.manage'), attendanceCorrections.storeList);

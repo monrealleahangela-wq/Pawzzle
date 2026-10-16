@@ -25,6 +25,31 @@ const employmentHistorySchema = new mongoose.Schema({
   reason: { type: String, trim: true, maxlength: 500, default: '' }
 }, { _id: true });
 
+const statutoryClassificationSchema = new mongoose.Schema({
+  agency: { type: String, enum: ['SSS', 'PhilHealth', 'Pag-IBIG', 'BIR'], required: true },
+  employeeCategory: { type: String, required: true, trim: true, maxlength: 80 },
+  coverageStatus: { type: String, enum: ['covered', 'not_covered', 'exempt'], required: true },
+  minimumWageEarnerStatus: { type: String, enum: ['verified_yes', 'verified_no'] },
+  effectiveFrom: { type: Date, required: true },
+  effectiveThrough: { type: Date, default: null },
+  sourceReference: { type: String, required: true, trim: true, maxlength: 1000 },
+  reason: { type: String, required: true, trim: true, maxlength: 500 },
+  verifiedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  verifiedAt: { type: Date, required: true }
+}, { _id: true });
+
+const compensationTaxClassificationSchema = new mongoose.Schema({
+  componentCode: { type: String, required: true, trim: true, lowercase: true, maxlength: 60 },
+  compensationType: { type: String, enum: ['regular', 'supplementary'], required: true },
+  taxTreatment: { type: String, enum: ['taxable', 'exempt', 'mwe_exemptible'], required: true },
+  effectiveFrom: { type: Date, required: true },
+  effectiveThrough: { type: Date, default: null },
+  sourceReference: { type: String, required: true, trim: true, maxlength: 1000 },
+  reason: { type: String, required: true, trim: true, maxlength: 500 },
+  verifiedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  verifiedAt: { type: Date, required: true }
+}, { _id: true });
+
 const userSchema = new mongoose.Schema({
   username: {
     type: String,
@@ -239,7 +264,9 @@ const userSchema = new mongoose.Schema({
       select: false
     },
     compensationHistory: { type: [compensationRevisionSchema], select: false, default: undefined },
-    employmentHistory: { type: [employmentHistorySchema], select: false, default: undefined }
+    employmentHistory: { type: [employmentHistorySchema], select: false, default: undefined },
+    statutoryClassifications: { type: [statutoryClassificationSchema], select: false, default: undefined },
+    compensationTaxClassifications: { type: [compensationTaxClassificationSchema], select: false, default: undefined }
   },
   // Trust & Reputation Layer
   isVerified: { type: Boolean, default: false },

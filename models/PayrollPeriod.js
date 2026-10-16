@@ -15,9 +15,29 @@ const payrollPeriodSchema = new mongoose.Schema({
   payrollInputRevision: { type: Number, min: 0, default: 0 },
   computedInputRevision: { type: Number, min: 0, default: 0 },
   policySnapshot: { type: mongoose.Schema.Types.Mixed, required: true },
-  // Shared payroll input revision serializes leave/attendance changes with computations.
-  payrollInputRevision: { type: Number, min: 0, default: 0 },
-  computedInputRevision: { type: Number, min: 0, default: 0 },
+  statutoryReadiness: {
+    status: { type: String, enum: ['unassessed', 'blocked_missing_rules', 'blocked_missing_employee_data', 'blocked_calculation_error', 'ready'], default: 'unassessed', index: true },
+    reviewedOn: { type: String, trim: true },
+    blockingReasons: [{
+      agency: { type: String, trim: true, maxlength: 40 },
+      category: { type: String, enum: ['rules', 'employee_data', 'calculation', 'calculation_error'], trim: true },
+      code: { type: String, trim: true, maxlength: 100 },
+      reason: { type: String, trim: true, maxlength: 1000 }
+    }],
+    verifiedSnapshot: {
+      checksum: { type: String, trim: true },
+      employeeCount: { type: Number, min: 0 },
+      reconciledEmployeeCount: { type: Number, min: 0 },
+      employeeChecksums: [{ type: String, trim: true }],
+      ruleVersions: [{
+        agency: { type: String, trim: true, maxlength: 40 },
+        version: { type: String, trim: true, maxlength: 100 },
+        checksum: { type: String, trim: true, maxlength: 200 },
+        effectiveFrom: { type: Date },
+        effectiveThrough: { type: Date }
+      }]
+    }
+  },
   totals: {
     employeeCount: { type: Number, min: 0, default: 0 },
     grossPay: { type: Number, min: 0, default: 0 },

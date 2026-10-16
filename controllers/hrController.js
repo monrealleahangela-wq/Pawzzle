@@ -26,7 +26,13 @@ const {
   confirmPaymentAttempt, createPaymentAttempt, findPaymentObligations,
   findEmployeePaymentStatuses, getProtectedProof, retryFailedAttempt, transitionPaymentAttempt
 } = require('../services/payrollPaymentWorkflowService');
-const { computePayrollPeriodAtomically } = require('../services/payrollComputationService');
+const { assessStatutoryPayrollReadiness, isStatutoryPayrollReady, statutoryReadinessMessage } = require('../utils/statutoryPayrollReadiness');
+const { buildStatutoryClassification, buildCompensationTaxClassification } = require('../utils/statutoryEmployeeClassification');
+const {
+  createLeaveRequest, decideLeaveRequest, requestLeaveCancellation, reviewLeaveCancellation
+} = require('../services/leaveWorkflowService');
+const { computePayrollPeriodAtomically, invalidatePayrollInputForEmployeeDates } = require('../services/payrollComputationService');
+const { financeSelfReviewDenied, canReadSensitiveLeave, projectLeaveForStore } = require('../utils/leaveAccess');
 const activeStaffFilter = activePayrollEmployeeFilter;
 const fail = (message, statusCode = 400) => Object.assign(new Error(message), { statusCode });
 const safeError = (res, error) => {
@@ -139,6 +145,57 @@ const getCompensation = async (req, res) => {
     const profile = employee.employmentProfile?.toObject ? employee.employmentProfile.toObject() : snapshot(employee.employmentProfile);
     if (profile?.compensation) profile.compensation.compensationBasis = compensationBasis(profile.compensation);
     res.json({ employee: { _id: employee._id, firstName: employee.firstName, lastName: employee.lastName, staffType: employee.staffType || employee.role, employmentProfile: profile } });
+  } catch (error) { safeError(res, error); }
+};
+
+const statutoryClassificationsForAdmin = async (req, storeId, employeeId) => {
+  if (!isStoreAdmin(req.user)) throw fail('Only this Store\'s Owner or Admin may verify statutory payroll classifications.', 403);
+  if (!mongoose.isValidObjectId(employeeId)) throw fail('Employee not found.', 404);
+  const employee = await User.findOne({ _id: employeeId, store: storeId, ...payrollRosterFilter() })
+    .select('+employmentProfile.statutoryClassifications +employmentProfile.compensationTaxClassifications');
+  if (!employee) throw fail('Employee not found in this Store.', 404);
+  return employee;
+};
+
+const getStatutoryClassifications = async (req, res) => {
+  try {
+    const store = await storeFor(req);
+    const employee = await statutoryClassificationsForAdmin(req, store._id, req.params.employeeId);
+    res.json({ employeeId: employee._id, statutoryClassifications: employee.employmentProfile?.statutoryClassifications || [], compensationTaxClassifications: employee.employmentProfile?.compensationTaxClassifications || [] });
+  } catch (error) { safeError(res, error); }
+};
+
+const updateStatutoryClassification = async (req, res) => {
+  try {
+    const store = await storeFor(req);
+    const employee = await statutoryClassificationsForAdmin(req, store._id, req.params.employeeId);
+    if (req.body?.verificationAttestation !== true) throw fail('Confirm that the classification and cited evidence were reviewed before saving.', 400);
+    const entries = employee.employmentProfile?.statutoryClassifications || [];
+    const entry = buildStatutoryClassification(req.body || {}, req.user._id, entries);
+    employee.set('employmentProfile.statutoryClassifications', [...entries, entry]);
+    await employee.save();
+    await audit(req, 'Statutory Employee Classification Verified', `A statutory classification was recorded for employee ${employee._id} in Store ${store._id}.`, {
+      store: store._id, subject: employee._id, category: 'employment',
+      changes: { after: { agency: entry.agency, employeeCategory: entry.employeeCategory, coverageStatus: entry.coverageStatus, minimumWageEarnerStatus: entry.minimumWageEarnerStatus, effectiveFrom: entry.effectiveFrom, effectiveThrough: entry.effectiveThrough, sourceReference: entry.sourceReference }, effectiveDate: entry.effectiveFrom, reason: entry.reason }
+    });
+    res.status(201).json({ message: 'Verified statutory classification recorded.', classification: entry });
+  } catch (error) { safeError(res, error); }
+};
+
+const updateCompensationTaxClassification = async (req, res) => {
+  try {
+    const store = await storeFor(req);
+    const employee = await statutoryClassificationsForAdmin(req, store._id, req.params.employeeId);
+    if (req.body?.verificationAttestation !== true) throw fail('Confirm that the compensation classification and cited evidence were reviewed before saving.', 400);
+    const entries = employee.employmentProfile?.compensationTaxClassifications || [];
+    const entry = buildCompensationTaxClassification(req.body || {}, req.user._id, entries);
+    employee.set('employmentProfile.compensationTaxClassifications', [...entries, entry]);
+    await employee.save();
+    await audit(req, 'Compensation Tax Classification Verified', `A compensation tax classification was recorded for employee ${employee._id} in Store ${store._id}.`, {
+      store: store._id, subject: employee._id, category: 'employment',
+      changes: { after: { componentCode: entry.componentCode, compensationType: entry.compensationType, taxTreatment: entry.taxTreatment, effectiveFrom: entry.effectiveFrom, effectiveThrough: entry.effectiveThrough, sourceReference: entry.sourceReference }, effectiveDate: entry.effectiveFrom, reason: entry.reason }
+    });
+    res.status(201).json({ message: 'Verified compensation tax classification recorded.', classification: entry });
   } catch (error) { safeError(res, error); }
 };
 
@@ -370,6 +427,11 @@ const timeOut = async (req, res) => {
           { new: true, runValidators: true, session }
         );
         if (!updated) throw fail('This attendance session was already updated. Refresh to see the recorded clock-out.', 409);
+        await invalidatePayrollInputForEmployeeDates({
+          storeId: store._id, employeeId: req.user._id, startDate: record.workDate, endDate: record.workDate, session,
+          issueCode: 'attendance_changed_recompute',
+          reason: `Attendance for ${record.workDate} changed after payroll computation; recompute the affected draft payroll before review.`
+        });
         await ActivityLog.create([{
           user: req.user._id,
           action: 'Attendance Time Out',
@@ -770,14 +832,22 @@ const computePeriod = async (req, res) => {
         }
         await Payslip.deleteMany({ payrollPeriod: period._id, employee: { $nin: includedEmployeeIds } }, { session });
         const [totals] = await Payslip.aggregate([{ $match: { payrollPeriod: period._id } }, { $group: { _id: null, employeeCount: { $sum: 1 }, grossPay: { $sum: '$grossPay' }, netPay: { $sum: '$netPay' }, deductions: { $sum: { $sum: '$deductions.amount' } } } }]).session(session);
-        period.computedBy = req.user._id; period.computedAt = new Date(); period.totals = totals || {}; period.reviewIssues = issues;
-        return { issues };
+        const statutoryReadiness = assessStatutoryPayrollReadiness();
+        period.computedBy = req.user._id;
+        period.computedAt = new Date();
+        period.totals = totals || {};
+        period.statutoryReadiness = statutoryReadiness;
+        period.reviewIssues = [
+          ...issues,
+          ...statutoryReadiness.blockingReasons.map(item => ({ code: item.code, reason: `${item.agency}: ${item.reason}`, blocking: true }))
+        ];
+        return { issues, statutoryReadiness };
       }
     });
-    const { issues } = result;
-    await audit(req, 'Payroll Computed', `Payroll ${period._id} computed from attendance; ${issues.length} employee(s) need compensation setup.`);
-    await notifyStoreRoles(req, store._id, ['admin', 'store_owner'], [], 'payroll_update', 'Payroll ready for review', `Payroll for ${period.periodStart.toISOString().slice(0, 10)} to ${period.periodEnd.toISOString().slice(0, 10)} was computed.`, period._id, 'PayrollPeriod', '/admin/hr?tab=payroll');
-    res.json({ message: 'Payroll computed from attendance.', period, issues });
+    const { issues, statutoryReadiness } = result;
+    await audit(req, 'Payroll Computed', `Payroll ${period._id} computed from attendance; ${issues.length} employee issue(s) and ${statutoryReadiness.blockingReasons.length} statutory blocker(s) recorded.`);
+    await notifyStoreRoles(req, store._id, ['admin', 'store_owner'], [], 'payroll_update', 'Payroll computed; statutory setup required', `Payroll for ${period.periodStart.toISOString().slice(0, 10)} to ${period.periodEnd.toISOString().slice(0, 10)} was computed but cannot be reviewed or approved until statutory calculation blockers are resolved.`, period._id, 'PayrollPeriod', '/admin/hr?tab=payroll');
+    res.json({ message: 'Payroll computed with statutory calculation blockers; it cannot be reviewed or approved.', period, issues: period.reviewIssues });
   } catch (error) { safeError(res, error); }
 };
 
@@ -820,6 +890,9 @@ const statusHandler = nextStatus => async (req, res) => {
       if (nextStatus === 'reviewed' && normalizeRole(req.user) === 'finance_staff'
         && await Payslip.exists({ payrollPeriod: period._id, store: store._id, employee: req.user._id }).session(session)) {
         throw fail('Finance staff cannot review a payroll that includes their own salary. A Store Owner or other authorized non-beneficiary must review this period.', 403);
+      }
+      if (['reviewed', 'approved'].includes(nextStatus) && !isStatutoryPayrollReady(period.statutoryReadiness, period)) {
+        throw fail(statutoryReadinessMessage(period.statutoryReadiness), 409);
       }
       if (nextStatus === 'reviewed' && await Payslip.countDocuments({ payrollPeriod: period._id, store: store._id }).session(session) === 0) throw fail('Payroll has no employee payslips to review. Configure compensation and recompute it first.', 409);
       if (nextStatus === 'reviewed' && period.reviewIssues?.some(issue => issue.blocking)) throw fail('Resolve all attendance exceptions and recompute payroll before continuing.', 409);
@@ -929,6 +1002,7 @@ const myPayslip = async (req, res) => {
 
 module.exports = {
   getSettings, updateSettings, listEmployees, getCompensation, updateCompensation,
+  getStatutoryClassifications, updateStatutoryClassification, updateCompensationTaxClassification,
   timeIn, timeOut, myAttendance, managementAttendance, createManualAttendance,
   reviewLocationAttendance,
   createLeave, myLeaves, cancelLeave, listLeaves, reviewLeave,

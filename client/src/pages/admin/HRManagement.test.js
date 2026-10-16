@@ -169,7 +169,7 @@ describe('HRManagement Rider payroll setup', () => {
     expect(screen.getByRole('button', { name: 'Keep Approved' })).toBeInTheDocument();
   });
 
-  test('payroll settings do not claim the excluded statutory gate is active', async () => {
+  test('payroll settings clearly show the fail-closed statutory gate', async () => {
     hrService.getSettings.mockResolvedValue({ data: { settings: {
       payrollFrequency: 'weekly', attendanceRadiusMeters: 100, gracePeriodMinutes: 10,
       outsideGeofencePolicy: 'reject', defaultShift: { start: '09:00', end: '17:00' }
@@ -178,8 +178,8 @@ describe('HRManagement Rider payroll setup', () => {
 
     expect(await screen.findByRole('heading', { name: 'Payroll & Attendance Settings' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Save Settings' })).toBeInTheDocument();
-    expect(screen.queryByText(/Statutory calculators are being developed separately/i)).not.toBeInTheDocument();
-    expect(screen.queryByText(/Newly computed payroll remains blocked from review and approval/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/Statutory calculators are isolated and not active in payroll/i)).toBeInTheDocument();
+    expect(screen.getByText(/Newly computed payroll remains blocked from review and approval/i)).toBeInTheDocument();
   });
 
 });
