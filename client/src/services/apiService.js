@@ -538,6 +538,7 @@ export const hrService = {
 // Delivery services
 export const deliveryService = {
   assignRider: (params) => api.post('/deliveries/assign', typeof params === 'string' ? { orderId: params } : params),
+  recalculateOrderWeight: (orderId) => api.post(`/deliveries/order/${orderId}/recalculate-weight`),
   getTracking: (token) => api.get(`/deliveries/track/${token}`),
   getTrackingForOrder: (orderId) => api.get(`/deliveries/order/${orderId}`),
   getTrackingForBooking: (bookingId) => api.get(`/deliveries/booking/${bookingId}`),
