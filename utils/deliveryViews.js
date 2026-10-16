@@ -105,12 +105,27 @@ const parcelView = parcel => {
   return compact({ weightKg: source.weightKg, parcelCount: source.parcelCount, measurementSource: source.measurementSource });
 };
 
+const manualDeliveryView = manual => {
+  const source = plain(manual);
+  if (!source || typeof source !== 'object') return undefined;
+  return compact({
+    recipientName: source.recipientName,
+    recipientPhone: source.recipientPhone,
+    pickupAddress: source.pickupAddress,
+    dropoffAddress: source.dropoffAddress,
+    notes: source.notes
+  });
+};
+
 const riderDeliveryView = delivery => {
   const source = plain(delivery) || {};
   return compact({
     _id: source._id,
+    store: storeView(source.store),
     order: orderView(source.order),
     booking: bookingView(source.booking),
+    sourceType: source.sourceType,
+    manualDelivery: manualDeliveryView(source.manualDelivery),
     status: source.status,
     isLive: source.isLive,
     assignmentType: source.assignmentType,

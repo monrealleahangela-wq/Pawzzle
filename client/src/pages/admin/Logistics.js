@@ -1,10 +1,11 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Activity, AlertTriangle, Bike, CheckCircle2, Clock3, MapPin, PackageCheck, RefreshCw, Search, Truck, Users, XCircle } from 'lucide-react';
+import { Activity, AlertTriangle, Bike, CheckCircle2, Clock3, MapPin, PackageCheck, Pencil, Plus, RefreshCw, Search, Truck, Users, XCircle } from 'lucide-react';
 import { getImageUrl, logisticsService, staffService } from '../../services/apiService';
 import { toast } from 'react-toastify';
 import { formatPeso } from '../../utils/paymentSummary';
 import { useRealTimeUpdates } from '../../hooks/useRealTimeUpdates';
+import ManualDeliveryForm from '../../components/delivery/ManualDeliveryForm';
 
 const statusStyle = status => ({
   delivered: 'bg-emerald-50 text-emerald-700 border-emerald-100',
@@ -44,16 +45,30 @@ export default function Logistics() {
   const [appliedFilters, setAppliedFilters] = useState({});
   const [page, setPage] = useState(1);
   const [pagination, setPagination] = useState({ page: 1, pages: 1, total: 0 });
+  const [manualEditor, setManualEditor] = useState(false);
+  const loadRequestRef = useRef(0);
+  const addressSuggestions = useMemo(() => {
+    const unique = new Map();
+    deliveries.forEach(delivery => {
+      [delivery.manualDelivery?.pickupAddress, delivery.manualDelivery?.dropoffAddress].forEach(address => {
+        const label = String(address?.formattedAddress || '').trim();
+        if (label) unique.set(label.toLowerCase(), address);
+      });
+    });
+    return [...unique.values()];
+  }, [deliveries]);
 
   const load = useCallback(async () => {
+    const requestId = ++loadRequestRef.current;
     setLoading(true);
     try {
       const [summary, deliveryRows, issueRows, riderRows] = await Promise.all([
-        logisticsService.getDashboard(),
+        logisticsService.getDashboard(appliedFilters),
         logisticsService.getDeliveries({ ...appliedFilters, page, limit: 25 }),
         logisticsService.getIssues(),
         staffService.getEligibleRiders()
       ]);
+      if (loadRequestRef.current !== requestId) return;
       setDashboard(summary.data);
       setDeliveries(deliveryRows.data.deliveries || []);
       setPagination(deliveryRows.data.pagination || { page: 1, pages: 1, total: 0 });
@@ -63,21 +78,22 @@ export default function Logistics() {
       })));
       setRiders(riderRows.data.riders || []);
     } catch (error) {
+      if (loadRequestRef.current !== requestId) return;
       toast.error(error.response?.data?.message || 'Unable to load Logistics.');
-    } finally { setLoading(false); }
+    } finally { if (loadRequestRef.current === requestId) setLoading(false); }
   }, [appliedFilters, page]);
   useEffect(() => { load(); }, [load]);
   useRealTimeUpdates({ onDeliveryUpdate: load, onDashboardUpdate: load });
 
   const cards = [
-    ['Total Deliveries', dashboard?.summary?.total, Truck, 'text-slate-700'],
+    ['Filtered Deliveries', dashboard?.summary?.total, Truck, 'text-slate-700'],
     ['Pending Assignment', dashboard?.summary?.pendingAssignment, Clock3, 'text-amber-600'],
     ['Assigned', dashboard?.summary?.assigned, Users, 'text-indigo-600'],
     ['Out for Delivery', dashboard?.summary?.outForDelivery, Bike, 'text-blue-600'],
     ['Arrived', dashboard?.summary?.arrived, MapPin, 'text-violet-600'],
     ['Delivered', dashboard?.summary?.delivered, CheckCircle2, 'text-emerald-600'],
     ['Failed', dashboard?.summary?.failed, AlertTriangle, 'text-rose-600'],
-    ['Active Riders', dashboard?.summary?.activeInternalRiders, Activity, 'text-orange-600']
+    ['Active Riders (Store)', dashboard?.summary?.activeInternalRiders, Activity, 'text-orange-600']
   ];
 
   const clearFilters = () => { const empty = { search: '', status: '', riderType: '', rider: '', from: '', to: '' }; setFilters(empty); setPage(1); setAppliedFilters({}); };
@@ -93,7 +109,7 @@ export default function Logistics() {
   return <div className="min-h-screen bg-slate-50 p-3 sm:p-5 space-y-4 pb-24">
     <header className="bg-white border border-slate-100 rounded-2xl p-4 sm:p-5 flex flex-wrap items-center justify-between gap-3">
       <div><p className="text-[9px] font-black uppercase tracking-[.25em] text-orange-600">Operations</p><h1 className="text-xl sm:text-2xl font-black text-slate-900">Logistics</h1><p className="text-xs text-slate-500">Central delivery assignment, tracking, proof, issues, and rider coordination.</p></div>
-      <button onClick={load} disabled={loading} className="h-9 px-3 border rounded-lg bg-white text-xs font-bold flex items-center gap-2"><RefreshCw size={14} className={loading ? 'animate-spin' : ''}/> Refresh</button>
+      <div className="flex gap-2"><button onClick={()=>setManualEditor(true)} className="flex h-9 items-center gap-2 rounded-lg bg-orange-600 px-3 text-xs font-bold text-white"><Plus size={14}/> Manual delivery</button><button onClick={load} disabled={loading} className="h-9 px-3 border rounded-lg bg-white text-xs font-bold flex items-center gap-2"><RefreshCw size={14} className={loading ? 'animate-spin' : ''}/> Refresh</button></div>
     </header>
 
     <section className="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-8 gap-2.5">{cards.map(([label, value, Icon, color]) => <div key={label} className="bg-white border border-slate-100 rounded-xl p-3"><Icon size={15} className={`${color} mb-2`}/><p className="text-[8px] font-black uppercase text-slate-400 leading-tight">{label}</p><p className="text-lg font-black text-slate-900 mt-0.5">{value ?? '—'}</p></div>)}</section>
@@ -112,6 +128,7 @@ export default function Logistics() {
 
     {tab === 'deliveries' ? <>
       <section className="bg-white border rounded-2xl p-3 space-y-3">
+        <p className="text-[10px] text-slate-500">Summary cards and the table total use the same Store, status, Rider, search, and date filters. Active Riders remains a Store-wide availability count.</p>
         <form onSubmit={event => { event.preventDefault(); setPage(1); setAppliedFilters(Object.fromEntries(Object.entries(filters).filter(([,value]) => value))); }} className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-7 gap-2">
           <label className="col-span-2 relative"><Search size={14} className="absolute left-3 top-3 text-slate-400"/><input value={filters.search} onChange={e=>setFilters({...filters,search:e.target.value})} placeholder="Tracking, order, customer, rider" className="w-full h-9 pl-9 pr-3 rounded-lg border text-xs"/></label>
           <select value={filters.status} onChange={e=>setFilters({...filters,status:e.target.value})} className="h-9 px-2 rounded-lg border text-xs"><option value="">All statuses</option>{['pending','unassigned','assigned','accepted','declined','picked_up','in_transit','arrived','delivered','failed_attempt','returned_to_store','cancelled'].map(value=><option key={value} value={value}>{value.replace(/_/g,' ')}</option>)}</select>
@@ -122,10 +139,12 @@ export default function Logistics() {
         </form>
       </section>
       <section className="bg-white border rounded-2xl overflow-x-auto"><table className="w-full text-left text-xs min-w-[1080px]"><thead className="bg-slate-50 text-[9px] uppercase text-slate-400"><tr>{['Tracking / Order','Customer','Address','Delivery Type','Rider','Rider Type','COD / Fee','Status','Created / Expected',''].map(label=><th key={label} className="p-3">{label}</th>)}</tr></thead><tbody>{deliveries.map(delivery => {
-        const source = delivery.order || delivery.booking; const customer = source?.customer; const address = delivery.order?.shippingAddress || delivery.booking?.serviceAddress; const riderPerson = delivery.assignedRider; const cod = ['cod','cash_on_delivery'].includes(source?.paymentMethod);
-        return <tr key={delivery._id} className="border-t hover:bg-slate-50"><td className="p-3"><b>{delivery.deliveryNumber}</b><p className="text-[9px] text-slate-400">{delivery.order?.orderNumber || `Booking ${String(delivery.booking?._id || '').slice(-8).toUpperCase()}`}</p></td><td className="p-3 font-bold">{personName(customer)}</td><td className="p-3 max-w-56"><p className="truncate">{[address?.street,address?.barangay,address?.city].filter(Boolean).join(', ') || 'Pickup / not provided'}</p></td><td className="p-3 capitalize">{delivery.order ? (delivery.order.deliveryMethod || 'delivery') : 'service booking'}</td><td className="p-3"><b>{personName(riderPerson)}</b>{delivery.assignmentType==='internal'&&<p className="text-[9px] text-slate-400">{delivery.assignedRider?.riderProfile?.staffId}</p>}</td><td className="p-3 capitalize">{delivery.assignmentType?.replace('_',' ')}</td><td className="p-3"><b>{cod ? money(source?.totalAmount || source?.totalPrice) : 'Prepaid'}</b><p className="text-[9px] text-slate-400">Fee {money(delivery.order?.shippingFee || delivery.feeCalculation?.totalFee)}</p></td><td className="p-3"><span className={`px-2 py-1 rounded-lg border text-[8px] font-black uppercase ${statusStyle(delivery.status)}`}>{delivery.statusLabel}</span><p className="text-[8px] text-slate-400 mt-1 capitalize">Link: {delivery.linkStatus.replace('_',' ')}</p></td><td className="p-3 text-[10px]">{new Date(delivery.createdAt).toLocaleDateString()}{delivery.estimatedDelivery&&<p className="text-[9px] text-slate-400 mt-1">Expected {new Date(delivery.estimatedDelivery).toLocaleDateString()}</p>}</td><td className="p-3"><button onClick={()=>navigate(`/admin/logistics/${delivery._id}`)} className="h-8 px-3 rounded-lg bg-slate-900 text-white text-[9px] font-black uppercase">View Delivery</button></td></tr>;
+        const source = delivery.order || delivery.booking; const manual = delivery.manualDelivery; const customer = source?.customer; const address = manual?.dropoffAddress || delivery.order?.shippingAddress || delivery.booking?.serviceAddress; const riderPerson = delivery.assignedRider; const cod = ['cod','cash_on_delivery'].includes(source?.paymentMethod);
+        const addressText = address?.formattedAddress || [address?.street,address?.barangay,address?.city].filter(Boolean).join(', ');
+        return <tr key={delivery._id} className="border-t hover:bg-slate-50"><td className="p-3"><b>{delivery.deliveryNumber}</b><p className="text-[9px] text-slate-400">{delivery.order?.orderNumber || (delivery.booking ? `Booking ${String(delivery.booking._id || '').slice(-8).toUpperCase()}` : 'Manual delivery')}</p></td><td className="p-3 font-bold">{manual?.recipientName || personName(customer)}</td><td className="p-3 max-w-56"><p className="truncate" title={addressText}>{addressText || 'Address not provided'}</p>{manual?.pickupAddress?.formattedAddress&&<p className="truncate text-[9px] text-slate-400" title={manual.pickupAddress.formattedAddress}>From: {manual.pickupAddress.formattedAddress}</p>}</td><td className="p-3 capitalize">{manual ? 'manual delivery' : delivery.order ? (delivery.order.deliveryMethod || 'delivery') : 'service booking'}</td><td className="p-3"><b>{personName(riderPerson)}</b>{delivery.assignmentType==='internal'&&<p className="text-[9px] text-slate-400">{delivery.assignedRider?.riderProfile?.staffId}</p>}</td><td className="p-3 capitalize">{delivery.assignmentType?.replace('_',' ')}</td><td className="p-3"><b>{manual ? 'Not recorded' : cod ? money(source?.totalAmount || source?.totalPrice) : 'Prepaid'}</b><p className="text-[9px] text-slate-400">Fee {delivery.order?.shippingFee != null || delivery.feeCalculation?.totalFee != null ? money(delivery.order?.shippingFee || delivery.feeCalculation?.totalFee) : '—'}</p></td><td className="p-3"><span className={`px-2 py-1 rounded-lg border text-[8px] font-black uppercase ${statusStyle(delivery.status)}`}>{delivery.statusLabel}</span><p className="text-[8px] text-slate-400 mt-1 capitalize">Link: {delivery.linkStatus.replace('_',' ')}</p></td><td className="p-3 text-[10px]">{new Date(delivery.createdAt).toLocaleDateString()}{delivery.estimatedDelivery&&<p className="text-[9px] text-slate-400 mt-1">Expected {new Date(delivery.estimatedDelivery).toLocaleDateString()}</p>}</td><td className="p-3"><div className="flex gap-1">{manual&&['pending','unassigned','assigned','accepted'].includes(delivery.status)&&<button aria-label={`Edit ${delivery.deliveryNumber}`} onClick={()=>setManualEditor(delivery)} className="flex h-8 w-8 items-center justify-center rounded-lg border text-slate-600"><Pencil size={13}/></button>}<button onClick={()=>navigate(`/admin/logistics/${delivery._id}`)} className="h-8 px-3 rounded-lg bg-slate-900 text-white text-[9px] font-black uppercase">View Delivery</button></div></td></tr>;
       })}</tbody></table>{!loading && !deliveries.length && <p className="p-10 text-center text-xs text-slate-400">No deliveries match these filters.</p>}</section>
       <div className="flex items-center justify-between gap-3 px-1"><p className="text-[10px] text-slate-500">{pagination.total} delivery record{pagination.total === 1 ? '' : 's'}</p><div className="flex items-center gap-2"><button disabled={page <= 1 || loading} onClick={()=>setPage(value=>Math.max(1,value-1))} className="h-8 px-3 border rounded-lg text-[9px] font-black uppercase disabled:opacity-40">Previous</button><span className="text-[10px] font-bold">Page {pagination.page} of {Math.max(1,pagination.pages)}</span><button disabled={page >= pagination.pages || loading} onClick={()=>setPage(value=>value+1)} className="h-8 px-3 border rounded-lg text-[9px] font-black uppercase disabled:opacity-40">Next</button></div></div>
     </> : <section className="space-y-2">{issues.map(issue=><div key={`${issue.type}-${issue._id}`} className="bg-white border rounded-xl p-4 flex flex-wrap items-start justify-between gap-3"><div><div className="flex items-center gap-2"><AlertTriangle size={15} className="text-rose-600"/><b className="text-xs">{issue.deliveryNumber} · {issue.orderNumber}</b></div><p className="text-[10px] text-slate-500 mt-1">{personName(issue.customer)} · {personName(issue.rider)} · {new Date(issue.date).toLocaleString()}</p><p className="text-xs font-bold text-rose-700 mt-2 capitalize">{String(issue.reason || 'delivery issue').replace(/_/g,' ')}</p><p className="text-xs text-slate-600 mt-1">{issue.notes || 'No additional notes.'}</p>{issue.photo&&<a href={issue.photo} target="_blank" rel="noreferrer" className="inline-block text-[10px] font-bold text-orange-600 mt-2">View supporting evidence</a>}{issue.resolutionNotes&&<p className="text-[10px] text-emerald-700 mt-2">Resolution: {issue.resolutionNotes}</p>}</div><div className="flex gap-2"><button onClick={()=>navigate(`/admin/logistics/${issue.deliveryId}`)} className="h-8 px-3 border rounded-lg text-[9px] font-black uppercase">View Delivery</button>{issue.resolutionStatus!=='resolved'&&<button onClick={()=>resolveIssue(issue)} className="h-8 px-3 rounded-lg bg-emerald-600 text-white text-[9px] font-black uppercase">Resolve</button>}</div></div>)}{!issues.length&&<p className="bg-white border rounded-xl p-10 text-center text-xs text-slate-400">No delivery issues have been recorded.</p>}</section>}
-  </div>;
+    {manualEditor&&<ManualDeliveryForm delivery={manualEditor===true?null:manualEditor} addressSuggestions={addressSuggestions} onClose={()=>setManualEditor(false)} onSaved={async()=>{setManualEditor(false);setPage(1);await load();}}/>}
+    </div>;
 }

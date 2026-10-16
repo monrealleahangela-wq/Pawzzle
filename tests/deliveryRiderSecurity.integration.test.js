@@ -9,20 +9,24 @@ const { assignDelivery, cancelOrderDelivery } = require('../services/deliveryAss
 const transactionTestUri = process.env.MONGODB_TRANSACTION_TEST_URI;
 const isolatedTransactionTestUri = transactionTestUri ? (() => {
   const uri = new URL(transactionTestUri);
-  const baseDatabase = uri.pathname.replace(/^\//, '') || 'pawzzle_transaction_test';
-  uri.pathname = `/${baseDatabase}_delivery_security_${process.pid}`;
+  const localHost = uri.hostname === '127.0.0.1' || uri.hostname === 'localhost';
+  if (uri.protocol !== 'mongodb:' || !localHost || uri.port !== '27018'
+    || uri.searchParams.get('replicaSet') !== 'pawzzleTestRS') return null;
+  uri.pathname = `/pawzzle_delivery_security_${process.pid}_${Date.now()}`;
   return uri.toString();
 })() : null;
 
 test('real MongoDB keeps assignment eligibility, capacity, Delivery, and Order cancellation atomic', {
-  skip: !transactionTestUri
+  skip: !isolatedTransactionTestUri
 }, async t => {
   await mongoose.connect(isolatedTransactionTestUri, { autoIndex: false });
   await mongoose.connection.dropDatabase();
   await Promise.all([Delivery.init(), Order.init(), User.init()]);
 
   t.after(async () => {
-    await mongoose.connection.dropDatabase();
+    if (mongoose.connection.name.startsWith('pawzzle_delivery_security_')) {
+      await mongoose.connection.dropDatabase();
+    }
     await mongoose.disconnect();
   });
 
@@ -48,6 +52,7 @@ test('real MongoDB keeps assignment eligibility, capacity, Delivery, and Order c
     professionalProfile: { availability: {} },
     riderProfile: {
       accountStatus: 'active',
+      vehicleType: 'motorcycle',
       vehicleCapacity: { maxWeightKg: 5, maxParcelCount: 5 },
       currentLoad: { weightKg: 0, parcelCount: 0 }
     },

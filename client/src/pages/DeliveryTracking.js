@@ -21,7 +21,7 @@ const marker = (label, color) => L.divIcon({
 const riderMarker = marker('Rider', '#8B4513');
 const storeMarker = marker('Store', '#f97316');
 const customerMarker = marker('Customer', '#0f766e');
-const addressText = value => [value?.street, value?.barangay, value?.city, value?.province || value?.state, value?.zipCode].filter(Boolean).join(', ');
+const addressText = value => value?.formattedAddress || [value?.street, value?.barangay, value?.city, value?.province || value?.state, value?.zipCode].filter(Boolean).join(', ');
 const statusLabel = value => ({ pending:'Preparing delivery', unassigned:'Awaiting rider', assigned:'Rider assigned', accepted:'Rider assigned', picked_up:'Picked up', in_transit:'Out for delivery', arrived:'Rider arrived', delivered:'Delivered', failed_attempt:'Delivery attempt issue', returned_to_store:'Returned to store', cancelled:'Cancelled' }[value] || String(value || '').replace(/_/g,' '));
 
 export default function DeliveryTracking() {
@@ -61,9 +61,10 @@ export default function DeliveryTracking() {
 
   const order = delivery?.order;
   const booking = delivery?.booking;
-  const store = order?.store || booking?.store;
-  const destination = order?.shippingAddress || booking?.serviceAddress;
-  const storeCoords = store?.contactInfo?.address?.coordinates || store?.address?.coordinates;
+  const manual = delivery?.manualDelivery;
+  const store = order?.store || booking?.store || delivery?.store;
+  const destination = manual?.dropoffAddress || order?.shippingAddress || booking?.serviceAddress;
+  const storeCoords = manual?.pickupAddress?.coordinates || store?.contactInfo?.address?.coordinates || store?.address?.coordinates;
   const center = validCoords(delivery?.riderLocation) ? delivery.riderLocation : validCoords(destination?.coordinates) ? destination.coordinates : validCoords(storeCoords) ? storeCoords : { lat:14.5995,lng:120.9842 };
   const rider = delivery?.assignedRider;
   const canReportConcern = user?.role === 'customer' && delivery?.concernReporting?.allowed === true;

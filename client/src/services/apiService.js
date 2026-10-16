@@ -555,6 +555,8 @@ export const logisticsService = {
   getDashboard: (params) => api.get('/logistics/dashboard', { params }),
   getDeliveries: (params) => api.get('/logistics/deliveries', { params }),
   getDelivery: (id) => api.get(`/logistics/deliveries/${id}`),
+  createManualDelivery: (data) => api.post('/logistics/deliveries/manual', data),
+  updateManualDelivery: (id, data) => api.patch(`/logistics/deliveries/${id}/manual`, data),
   getIssues: (params) => api.get('/logistics/issues', { params }),
   resolveIssue: (deliveryId, issueType, issueId, data) => api.patch(`/logistics/issues/${deliveryId}/${issueType}/${issueId}/resolve`, data)
 };

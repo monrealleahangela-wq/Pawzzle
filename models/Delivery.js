@@ -51,6 +51,32 @@ const legacyProviderDeliverySchema = new mongoose.Schema({
   }]
 }, { _id: false });
 
+const manualAddressSchema = new mongoose.Schema({
+  formattedAddress: { type: String, required: true, trim: true, maxlength: 500 },
+  street: { type: String, trim: true, maxlength: 200 },
+  barangay: { type: String, trim: true, maxlength: 120 },
+  city: { type: String, trim: true, maxlength: 120 },
+  province: { type: String, trim: true, maxlength: 120 },
+  zipCode: { type: String, trim: true, maxlength: 20 },
+  country: { type: String, trim: true, maxlength: 80 },
+  placeId: { type: String, trim: true, maxlength: 200 },
+  coordinates: {
+    lat: { type: Number, min: -90, max: 90 },
+    lng: { type: Number, min: -180, max: 180 }
+  }
+}, { _id: false });
+
+const manualDeliverySchema = new mongoose.Schema({
+  recipientName: { type: String, required: true, trim: true, maxlength: 160 },
+  recipientPhone: { type: String, required: true, trim: true, maxlength: 40 },
+  pickupAddress: { type: manualAddressSchema, required: true },
+  dropoffAddress: { type: manualAddressSchema, required: true },
+  notes: { type: String, trim: true, maxlength: 1000 },
+  idempotencyKey: { type: String, trim: true, maxlength: 100 },
+  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }
+}, { _id: false });
+
 const deliverySchema = new mongoose.Schema({
   store: {
     type: mongoose.Schema.Types.ObjectId,
@@ -67,6 +93,16 @@ const deliverySchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Booking',
     default: null
+  },
+  sourceType: {
+    type: String,
+    enum: ['order', 'booking', 'manual'],
+    default: undefined,
+    index: true
+  },
+  manualDelivery: {
+    type: manualDeliverySchema,
+    default: undefined
   },
   riderToken: {
     type: String,
@@ -249,7 +285,12 @@ const deliverySchema = new mongoose.Schema({
     resolvedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
   }]
 }, {
-  timestamps: true
+  timestamps: true,
+  // Production index changes are maintenance operations. In particular, the
+  // manual-delivery idempotency index must be preflighted for duplicates before
+  // it is created. Tests and local development retain normal Mongoose index
+  // creation; production uses the guarded maintenance script instead.
+  autoIndex: process.env.NODE_ENV !== 'production'
 });
 
 // Middleware to disable link after delivery
@@ -264,5 +305,16 @@ deliverySchema.pre('save', function(next) {
 
 deliverySchema.index({ order: 1 }, { unique: true, partialFilterExpression: { order: { $type: 'objectId' } } });
 deliverySchema.index({ booking: 1 }, { unique: true, partialFilterExpression: { booking: { $type: 'objectId' } } });
+deliverySchema.index(
+  { store: 1, 'manualDelivery.idempotencyKey': 1 },
+  {
+    name: 'manual_delivery_store_idempotency_unique',
+    unique: true,
+    partialFilterExpression: {
+      sourceType: 'manual',
+      'manualDelivery.idempotencyKey': { $type: 'string' }
+    }
+  }
+);
 
 module.exports = mongoose.model('Delivery', deliverySchema);
