@@ -5,12 +5,18 @@ const { isStoreAdmin, isOperationalStaff } = require('../config/permissions');
 const { canOperateStore } = require('../utils/authorizationPolicy');
 const Store = require('../models/Store');
 const { getCustomerVisibleOwnerIds, buildCustomerVisibleStoreFilter, withCustomerComplianceFilter } = require('../utils/storeVisibility');
-const { normalizeCatalogImages, normalizeProductWeight } = require('../utils/catalogListing');
+const {
+  normalizeCatalogImages,
+  normalizeProductPackaging,
+  normalizeProductVariants,
+  normalizeProductWeight
+} = require('../utils/catalogListing');
 const { buildProductCategoryFilter, requireProductCategory } = require('../utils/productCategories');
 
 const PRODUCT_LISTING_FIELDS = [
   'name', 'category', 'description', 'shortDescription', 'price', 'sku', 'barcode',
-  'unit', 'weight', 'weightUnit', 'images', 'video', 'brand', 'tags', 'stockStatus',
+  'unit', 'weight', 'weightUnit', 'weightIncludesPackaging', 'packagingWeight',
+  'packagingWeightUnit', 'images', 'video', 'brand', 'tags', 'stockStatus',
   'collectionGroup', 'visibility', 'fulfillmentType', 'pickupInstructions',
   'warrantyInfo', 'returnPolicy', 'expiryDate', 'ingredients', 'usageInstructions',
   'variants', 'suitableFor', 'isActive', 'lowStockThreshold', 'maxOrderQuantity'
@@ -199,9 +205,17 @@ const createProduct = async (req, res) => {
     listingData.category = requireProductCategory(listingData.category);
     const images = normalizeCatalogImages(listingData.images, { required: true });
     const normalizedWeight = normalizeProductWeight(listingData.weight, listingData.weightUnit, { required: true });
+    const normalizedPackaging = normalizeProductPackaging(
+      listingData.packagingWeight,
+      listingData.packagingWeightUnit,
+      listingData.weightIncludesPackaging
+    );
     const productData = {
       ...listingData,
       ...normalizedWeight,
+      ...normalizedPackaging,
+      weightStatus: 'seller_provided',
+      variants: normalizeProductVariants(listingData.variants) || [],
       images,
       coverImage: images[0],
       addedBy: req.user.id || req.user._id,
@@ -264,11 +278,18 @@ const updateProduct = async (req, res) => {
     }
     if (Object.prototype.hasOwnProperty.call(updateData, 'weight')) {
       Object.assign(updateData, normalizeProductWeight(updateData.weight, updateData.weightUnit, { required: true }));
+      updateData.weightStatus = 'seller_provided';
     } else if (Object.prototype.hasOwnProperty.call(updateData, 'weightUnit')) {
       Object.assign(updateData, normalizeProductWeight(product.weight, updateData.weightUnit, { required: true }));
-    } else if (!product.weight) {
-      return res.status(400).json({ message: 'Add the missing package weight before saving this legacy product.' });
     }
+    if (['weightIncludesPackaging', 'packagingWeight', 'packagingWeightUnit'].some(field => Object.prototype.hasOwnProperty.call(updateData, field))) {
+      Object.assign(updateData, normalizeProductPackaging(
+        Object.prototype.hasOwnProperty.call(updateData, 'packagingWeight') ? updateData.packagingWeight : product.packagingWeight,
+        Object.prototype.hasOwnProperty.call(updateData, 'packagingWeightUnit') ? updateData.packagingWeightUnit : product.packagingWeightUnit,
+        Object.prototype.hasOwnProperty.call(updateData, 'weightIncludesPackaging') ? updateData.weightIncludesPackaging : product.weightIncludesPackaging
+      ));
+    }
+    if (Object.prototype.hasOwnProperty.call(updateData, 'variants')) updateData.variants = normalizeProductVariants(updateData.variants);
     
     // Explicitly update only mutable fields
     Object.assign(product, updateData);

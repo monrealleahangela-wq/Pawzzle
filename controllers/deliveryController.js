@@ -18,6 +18,7 @@ const {
   validateDeliveryConcern
 } = require('../utils/deliveryConcerns');
 const mongoose = require('mongoose');
+const { refreshOrderWeightSnapshots } = require('../services/parcelWeightService');
 
 const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER;
 let CLIENT_URL = process.env.CLIENT_URL;
@@ -46,6 +47,7 @@ const activeDeliveryView = delivery => {
   if (payload.assignmentHistory) {
     payload.assignmentHistory = payload.assignmentHistory.filter(entry => entry.assignmentType === 'internal');
   }
+  if (payload.parcel) delete payload.parcel.manualExceptionReason;
   return payload;
 };
 
@@ -150,7 +152,10 @@ const assignDeliveryAutomatically = async (req, res) => {
     const { orderId, bookingId, deliveryId, parcel, reassign } = req.body;
     if (![orderId, bookingId, deliveryId].filter(Boolean).length) return res.status(400).json({ message: 'Order, Booking, or manual Delivery ID is required.' });
     if ([orderId, bookingId, deliveryId].filter(Boolean).length > 1) return res.status(400).json({ message: 'Select only one delivery source.' });
-    if (parcel?.confirmed !== true) return res.status(400).json({ message: 'Confirm the packaged parcel weight and parcel count before Rider assignment.' });
+    if (!orderId && parcel?.confirmed !== true) return res.status(400).json({ message: 'Confirm the packaged parcel weight and parcel count before Rider assignment.' });
+    if (orderId && parcel?.manualException === true && parcel?.confirmed !== true) {
+      return res.status(400).json({ message: 'Confirm the documented parcel-weight exception before Rider assignment.' });
+    }
     const source = orderId
       ? await Order.findById(orderId).select('store customer orderNumber')
       : bookingId
@@ -196,6 +201,40 @@ const assignDeliveryAutomatically = async (req, res) => {
   } catch (error) {
     console.error('Automatic rider assignment error:', error);
     res.status(error.statusCode || 500).json({ message: error.message || 'Unable to assign a Delivery Rider.' });
+  }
+};
+
+const recalculateOrderParcelWeight = async (req, res) => {
+  let session;
+  try {
+    const order = await Order.findById(req.params.orderId).select('store status delivery');
+    if (!order) return res.status(404).json({ message: 'Order not found.' });
+    if (!isPlatformAdmin(req.user) && !(await canOperateStore(req.user, order.store, ['logistics.manage']))) {
+      return res.status(403).json({ message: 'You cannot recalculate parcel weight for this Store.' });
+    }
+
+    session = await mongoose.startSession();
+    let parcelEstimate;
+    await session.withTransaction(async () => {
+      const current = await Order.findById(order._id).session(session);
+      if (!current) throw Object.assign(new Error('Order not found.'), { statusCode: 404 });
+      const frozen = await Delivery.exists({
+        order: current._id,
+        'parcel.weightKg': { $gt: 0 }
+      }).session(session);
+      if (frozen || ['rider_assigned', 'picked_up', 'in_transit', 'delivered', 'completed', 'delivery_failed', 'returned'].includes(current.status)) {
+        throw Object.assign(new Error('Fulfillment weight is already frozen. Use an authorized delivery-correction workflow.'), { statusCode: 409 });
+      }
+      parcelEstimate = await refreshOrderWeightSnapshots(current, { session });
+      current.markModified('items');
+      current.markModified('parcelEstimate');
+      await current.save({ session });
+    });
+    res.json({ message: 'Order parcel-weight estimate refreshed.', parcelEstimate });
+  } catch (error) {
+    res.status(error.statusCode || 500).json({ message: error.statusCode ? error.message : 'Unable to recalculate order parcel weight.' });
+  } finally {
+    if (session) await session.endSession();
   }
 };
 
@@ -357,6 +396,7 @@ const getDeliveryByOrder = async (req, res) => {
     if (req.user.role === 'customer') {
       delete payload.assignmentHistory;
       delete payload.capacityReservation;
+      if (payload.parcel) delete payload.parcel.manualExceptionReason;
     }
     res.json({ delivery: payload });
   } catch (err) {
@@ -384,6 +424,7 @@ const getDeliveryByBooking = async (req, res) => {
     if (req.user.role === 'customer') {
       delete payload.assignmentHistory;
       delete payload.capacityReservation;
+      if (payload.parcel) delete payload.parcel.manualExceptionReason;
     }
     res.json({ delivery: payload });
   } catch (err) {
@@ -803,6 +844,7 @@ const calculateDeliveryFee = async (req, res) => {
 
 module.exports = {
   assignDeliveryAutomatically,
+  recalculateOrderParcelWeight,
   getAssignedRiderDelivery,
   getDeliveryByToken,
   getDeliveryByOrder,

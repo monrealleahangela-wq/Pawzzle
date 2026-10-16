@@ -61,14 +61,16 @@ const withPricingFixtures = async (run, { item = product, seller = store, active
   }
 };
 
-test('delivery quote uses configured distance and item pricing without requiring optional catalog weight', async () => {
+test('delivery quote remains available but explicitly flags missing catalog weight', async () => {
   await withPricingFixtures(async () => {
     const result = await calculateOrderPricing(request);
     const distance = DeliveryFeeService.__test.haversineKm(origin, destination);
     const expectedFee = DeliveryFeeService.__test.calculateBreakdown({ rule, distanceKm: distance, itemQuantity: 2 }).finalShippingFee;
     assert.equal(result.deliveryFeeCalculation.totalFee, expectedFee);
     assert.equal(result.pricingBreakdown.deliveryFee, expectedFee);
-    assert.equal(result.parcelEstimate, null, 'Rider assignment still needs a separately measured parcel weight');
+    assert.equal(result.parcelEstimate.status, 'missing_product_weight');
+    assert.equal(result.parcelEstimate.weightKg, undefined);
+    assert.equal(result.parcelEstimate.missingItems[0].name, 'Synthetic Supply');
   });
 });
 

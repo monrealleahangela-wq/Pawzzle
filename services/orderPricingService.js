@@ -6,26 +6,23 @@ const DeliveryFeeService = require('./deliveryFeeService');
 const { calculateTransactionTax, resolveTransactionTaxConfiguration, roundMoney } = require('../utils/taxCalculator');
 const { getPetAvailabilityIssue } = require('./petAvailabilityService');
 const { assertStoreTransactionEligible } = require('./storeComplianceService');
+const {
+  calculateParcelWeight,
+  milligramsToKg,
+  snapshotProductWeight
+} = require('./parcelWeightService');
 
 const idsEqual = (a, b) => a && b && a.toString() === b.toString();
 
 const productWeightKg = product => {
-  const weight = Number(product?.weight);
-  if (!Number.isFinite(weight) || weight <= 0) return null;
-  return product.weightUnit === 'g' ? weight / 1000 : weight;
+  const snapshot = snapshotProductWeight(product);
+  return snapshot ? milligramsToKg(snapshot.productWeightMilligrams) : null;
 };
 
-const buildParcelEstimate = items => {
-  if (!items.length || items.some(item => item.itemType !== 'product' || !Number.isFinite(Number(item.unitWeightKg)))) return null;
-  const weightKg = items.reduce((total, item) => total + Number(item.unitWeightKg) * Number(item.quantity), 0);
-  if (!Number.isFinite(weightKg) || weightKg <= 0) return null;
-  return {
-    weightKg: Math.round(weightKg * 1000) / 1000,
-    parcelCount: 1,
-    source: 'product_weight_snapshot',
-    calculatedAt: new Date()
-  };
-};
+const buildParcelEstimate = items => ({
+  ...calculateParcelWeight(items, { parcelCount: 1 }),
+  source: 'product_weight_snapshot'
+});
 
 const pricingError = (code, message) => {
   const error = new Error(message);
@@ -123,7 +120,12 @@ const calculateOrderPricing = async ({ items, requestedDeliveryMethod, shippingA
 
     const price = roundMoney(itemDoc.price);
     subtotal = roundMoney(subtotal + price * quantity);
-    const unitWeightKg = item.itemType === 'product' ? productWeightKg(itemDoc) : null;
+    const variant = item.itemType === 'product' && item.variantId ? itemDoc.variants?.id?.(item.variantId) : null;
+    if (item.variantId && !variant) throw new Error(`The selected variant for "${itemDoc.name}" is unavailable.`);
+    const weightSnapshot = item.itemType === 'product'
+      ? snapshotProductWeight(itemDoc, { variantId: item.variantId })
+      : null;
+    const unitWeightKg = weightSnapshot ? milligramsToKg(weightSnapshot.productWeightMilligrams) : null;
     processedItems.push({
       itemType: item.itemType,
       itemId: itemDoc._id,
@@ -131,7 +133,8 @@ const calculateOrderPricing = async ({ items, requestedDeliveryMethod, shippingA
       price,
       quantity,
       image: itemDoc.images?.[0] || itemDoc.image || null,
-      ...(unitWeightKg ? { unitWeightKg, weightSource: 'product_snapshot' } : {})
+      ...(variant ? { variantId: variant._id, variantName: variant.combination } : {}),
+      ...(unitWeightKg ? { unitWeightKg, weightSource: 'product_snapshot', weightSnapshot } : {})
     });
   }
 
@@ -140,8 +143,6 @@ const calculateOrderPricing = async ({ items, requestedDeliveryMethod, shippingA
   assertStoreTransactionEligible(store, { requireTax: true });
   const deliveryMethod = hasPet ? 'pickup' : requestedDeliveryMethod;
   if (!['delivery', 'pickup'].includes(deliveryMethod)) throw new Error('Invalid delivery method.');
-  // Catalog weight is optional. Rider dispatch independently requires Store
-  // staff to confirm the measured parcel weight before assignment.
   const parcelEstimate = deliveryMethod === 'delivery' ? buildParcelEstimate(processedItems) : null;
 
   const totalItemQuantity = processedItems.reduce((total, item) => total + item.quantity, 0);

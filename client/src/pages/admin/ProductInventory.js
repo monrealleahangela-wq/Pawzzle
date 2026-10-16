@@ -69,6 +69,9 @@ const ProductInventory = () => {
     unit: 'piece',
     weight: '',
     weightUnit: 'kg',
+    weightIncludesPackaging: true,
+    packagingWeight: '',
+    packagingWeightUnit: 'g',
     description: '',
     shortDescription: '',
     price: '',
@@ -233,7 +236,9 @@ const ProductInventory = () => {
     if (productForm.images.length > 10) {
       return toast.warn('Media Error: Maximum 10 images allowed.');
     }
-    if (!Number.isFinite(Number(productForm.weight)) || Number(productForm.weight) <= 0 || Number(productForm.weight) > 10000) {
+    const hasProductWeight = productForm.weight !== '' && productForm.weight !== undefined && productForm.weight !== null;
+    if ((!editingProduct || hasProductWeight)
+      && (!Number.isFinite(Number(productForm.weight)) || Number(productForm.weight) <= 0 || Number(productForm.weight) > 10000)) {
       return toast.warn('Package weight is required and must be no more than 10,000 in the selected unit.');
     }
 
@@ -248,8 +253,13 @@ const ProductInventory = () => {
         shortDescription: productForm.shortDescription?.trim() || productForm.description.trim().slice(0, 160),
         price: Number(productForm.price),
         stockQuantity: Number(productForm.stockQuantity || 0),
-        weight: Number(productForm.weight),
-        weightUnit: productForm.weightUnit || 'kg'
+        weight: hasProductWeight ? Number(productForm.weight) : undefined,
+        weightUnit: hasProductWeight ? (productForm.weightUnit || 'kg') : undefined,
+        weightIncludesPackaging: productForm.weightIncludesPackaging !== false,
+        packagingWeight: productForm.weightIncludesPackaging || productForm.packagingWeight === ''
+          ? undefined
+          : Number(productForm.packagingWeight),
+        packagingWeightUnit: productForm.packagingWeightUnit || 'g'
       };
 
       if (editingProduct) {
@@ -904,7 +914,7 @@ const ProductInventory = () => {
                              />
                           </div>
                           <div className="space-y-2 lg:col-span-2">
-                            <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest px-1">Package Weight (Required)</label>
+                            <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest px-1">Unit Product / Shipping Weight (Required)</label>
                             <div className="grid grid-cols-[1fr_auto] gap-2">
                               <input
                                 type="number" min="0.001" max="10000" step="0.001" value={productForm.weight}
@@ -921,7 +931,9 @@ const ProductInventory = () => {
                                 <option value="kg">kg</option>
                               </select>
                             </div>
-                            <p className="px-1 text-[10px] font-semibold text-slate-500">Used to estimate delivery weight. Confirm the packaged parcel measurement before Rider assignment.</p>
+                            <label className="mt-2 flex items-center gap-2 rounded-xl border border-slate-100 p-3 text-[10px] font-bold text-slate-600"><input type="checkbox" checked={productForm.weightIncludesPackaging !== false} onChange={e => setProductForm(p => ({ ...p, weightIncludesPackaging: e.target.checked }))}/>This unit weight already includes ordinary product packaging.</label>
+                            {productForm.weightIncludesPackaging === false && <div className="mt-2 grid grid-cols-[1fr_auto] gap-2"><input type="number" min="0.001" max="10000" step="0.001" value={productForm.packagingWeight ?? ''} onChange={e => setProductForm(p => ({ ...p, packagingWeight: e.target.value }))} className="w-full px-5 py-3.5 bg-slate-50 border-2 border-slate-50 rounded-xl text-[12px] font-black outline-none focus:border-primary-500" placeholder="Optional additional packaging weight"/><select value={productForm.packagingWeightUnit || 'g'} onChange={e => setProductForm(p => ({ ...p, packagingWeightUnit: e.target.value }))} className="px-4 py-3.5 bg-slate-50 border-2 border-slate-50 rounded-xl text-[10px] font-black uppercase"><option value="g">g</option><option value="kg">kg</option></select></div>}
+                            <p className="px-1 text-[10px] font-semibold text-slate-500">Used by the server to estimate parcel weight and Rider capacity. Leave additional packaging blank only when it is not known.</p>
                           </div>
                         </div>
                       )}
@@ -946,7 +958,7 @@ const ProductInventory = () => {
                         <div className="p-6 border-t border-slate-50 space-y-6 animate-in slide-in-from-top-2 duration-300">
                            <div className="flex justify-end">
                               <button 
-                                onClick={() => setProductForm(p => ({ ...p, variants: [...p.variants, { combination: '', price: '', stock: '', sku: '', type: 'Size' }] }))}
+                                onClick={() => setProductForm(p => ({ ...p, variants: [...p.variants, { combination: '', price: '', stock: '', sku: '', type: 'Size', weight: '', weightUnit: 'kg', weightIncludesPackaging: true, packagingWeight: '', packagingWeightUnit: 'g' }] }))}
                                 className="px-4 py-2 bg-slate-900 text-white rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-primary-600 transition-all"
                               >
                                 + Add Variant
@@ -963,6 +975,7 @@ const ProductInventory = () => {
                                      <th className="px-4 py-3 text-left text-[8px] font-black text-slate-400 uppercase tracking-widest border-b">Price</th>
                                      <th className="px-4 py-3 text-left text-[8px] font-black text-slate-400 uppercase tracking-widest border-b">Stock</th>
                                      <th className="px-4 py-3 text-left text-[8px] font-black text-slate-400 uppercase tracking-widest border-b">SKU</th>
+                                     <th className="px-4 py-3 text-left text-[8px] font-black text-slate-400 uppercase tracking-widest border-b">Weight override</th>
                                      <th className="px-4 py-3 text-center text-[8px] font-black text-slate-400 uppercase tracking-widest border-b">Action</th>
                                    </tr>
                                  </thead>
@@ -1004,6 +1017,7 @@ const ProductInventory = () => {
                                             className="w-full px-2 py-2 bg-slate-50 border-none rounded text-[10px] font-bold outline-none" placeholder="SKU-..."
                                           />
                                        </td>
+                                       <td className="min-w-56 p-2"><div className="grid grid-cols-[1fr_auto] gap-1"><input aria-label={`Variant ${i + 1} weight`} type="number" min="0.001" step="0.001" value={v.weight || ''} onChange={e => { const vn = [...productForm.variants]; vn[i] = { ...vn[i], weight: e.target.value }; setProductForm(p => ({ ...p, variants: vn })); }} className="w-full rounded bg-slate-50 px-2 py-2 text-[10px]" placeholder="Uses base weight"/><select value={v.weightUnit || 'kg'} onChange={e => { const vn = [...productForm.variants]; vn[i] = { ...vn[i], weightUnit: e.target.value }; setProductForm(p => ({ ...p, variants: vn })); }} className="rounded bg-slate-50 px-2 text-[9px]"><option value="g">g</option><option value="kg">kg</option></select></div><label className="mt-1 flex items-center gap-1 text-[8px] text-slate-500"><input type="checkbox" checked={v.weightIncludesPackaging !== false} onChange={e => { const vn = [...productForm.variants]; vn[i] = { ...vn[i], weightIncludesPackaging: e.target.checked }; setProductForm(p => ({ ...p, variants: vn })); }}/>Includes packaging</label>{v.weight && v.weightIncludesPackaging === false && <div className="mt-1 grid grid-cols-[1fr_auto] gap-1"><input aria-label={`Variant ${i + 1} packaging weight`} type="number" min="0.001" step="0.001" value={v.packagingWeight || ''} onChange={e => { const vn = [...productForm.variants]; vn[i] = { ...vn[i], packagingWeight: e.target.value }; setProductForm(p => ({ ...p, variants: vn })); }} className="w-full rounded bg-slate-50 px-2 py-2 text-[9px]" placeholder="Optional packaging"/><select value={v.packagingWeightUnit || 'g'} onChange={e => { const vn = [...productForm.variants]; vn[i] = { ...vn[i], packagingWeightUnit: e.target.value }; setProductForm(p => ({ ...p, variants: vn })); }} className="rounded bg-slate-50 px-2 text-[9px]"><option value="g">g</option><option value="kg">kg</option></select></div>}</td>
                                        <td className="p-2 text-center">
                                           <button onClick={() => setProductForm(p => ({ ...p, variants: p.variants.filter((_, idx) => idx !== i) }))} className="text-rose-500 hover:scale-110 transition-transform"><Trash2 className="h-3.5 w-3.5"/></button>
                                        </td>

@@ -27,6 +27,8 @@ const orderItemSchema = new mongoose.Schema({
   image: {
     type: String
   },
+  variantId: mongoose.Schema.Types.ObjectId,
+  variantName: String,
   unitWeightKg: {
     type: Number,
     min: 0.001
@@ -34,6 +36,16 @@ const orderItemSchema = new mongoose.Schema({
   weightSource: {
     type: String,
     enum: ['product_snapshot']
+  },
+  weightSnapshot: {
+    productWeightMilligrams: { type: Number, min: 1 },
+    packagingWeightMilligrams: { type: Number, min: 0 },
+    includesPackaging: Boolean,
+    packagingKnown: Boolean,
+    source: { type: String, enum: ['product', 'variant', 'legacy_product_snapshot'] },
+    status: { type: String, enum: ['seller_provided', 'verified'] },
+    capturedAt: Date,
+    catalogUpdatedAt: Date
   }
 });
 
@@ -58,9 +70,19 @@ const orderSchema = new mongoose.Schema({
   },
   items: [orderItemSchema],
   parcelEstimate: {
+    calculationVersion: Number,
+    totalProductWeightMilligrams: { type: Number, min: 0 },
+    additionalPackagingWeightMilligrams: { type: Number, min: 0 },
+    estimatedParcelWeightMilligrams: { type: Number, min: 1 },
     weightKg: { type: Number, min: 0.001 },
     parcelCount: { type: Number, min: 1 },
-    source: { type: String, enum: ['product_weight_snapshot'] },
+    status: { type: String, enum: ['complete', 'product_weight_only', 'missing_product_weight'] },
+    source: { type: String, enum: ['product_weight_snapshot', 'order_item_weight_snapshots'] },
+    missingItems: [{
+      itemId: mongoose.Schema.Types.ObjectId,
+      variantId: mongoose.Schema.Types.ObjectId,
+      name: String
+    }],
     calculatedAt: Date
   },
   totalAmount: {

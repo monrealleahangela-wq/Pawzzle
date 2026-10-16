@@ -173,8 +173,13 @@ const deliverySchema = new mongoose.Schema({
   assignedAt: Date,
   parcel: {
     weightKg: { type: Number, min: 0 },
+    weightMilligrams: { type: Number, min: 1 },
+    productWeightMilligrams: { type: Number, min: 0 },
+    packagingWeightMilligrams: { type: Number, min: 0 },
     parcelCount: { type: Number, min: 1 },
-    measurementSource: { type: String, enum: ['seller_confirmed', 'seller_confirmed_estimate'] },
+    measurementSource: { type: String, enum: ['seller_confirmed', 'seller_confirmed_estimate', 'catalog_estimate', 'product_weight_only_estimate', 'documented_manual_estimate'] },
+    weightStatus: { type: String, enum: ['complete', 'product_weight_only', 'manual_exception'] },
+    manualExceptionReason: { type: String, maxlength: 500 },
     recordedAt: Date,
     recordedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
   },

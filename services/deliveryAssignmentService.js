@@ -14,6 +14,10 @@ const {
   capacitySupportsParcel,
   capacityHasRoomForParcel
 } = require('../utils/riderCapacity');
+const {
+  parcelFromEstimate,
+  refreshOrderWeightSnapshots
+} = require('./parcelWeightService');
 
 const ACTIVE_ASSIGNMENT_STATUSES = ['pending', 'unassigned', 'assigned', 'accepted'];
 const ASSIGNABLE_ORDER_STATUSES = ['ready_for_pickup', 'rider_assigned'];
@@ -411,7 +415,25 @@ const assignDelivery = async ({ orderId, bookingId, deliveryId, parcel: parcelIn
       if (delivery && !ACTIVE_ASSIGNMENT_STATUSES.includes(delivery.status)) {
         throw fail('An in-progress delivery cannot be reassigned.', 409);
       }
-      const parcel = normalizeParcel(source, parcelInput);
+      let parcel;
+      if (orderId) {
+        // An existing reservation is a frozen fulfillment snapshot. Catalog
+        // changes must never silently alter an assigned/packed delivery.
+        if (delivery?.parcel?.weightKg) {
+          parcel = delivery.parcel.toObject ? delivery.parcel.toObject() : { ...delivery.parcel };
+        } else {
+          const estimate = await refreshOrderWeightSnapshots(source, {
+            session,
+            parcelCount: parcelInput?.parcelCount || source.parcelEstimate?.parcelCount || 1
+          });
+          parcel = parcelFromEstimate(estimate, parcelInput);
+          source.markModified('items');
+          source.markModified('parcelEstimate');
+          await source.save({ session });
+        }
+      } else {
+        parcel = normalizeParcel(source, parcelInput);
+      }
       if (delivery?.parcel?.weightKg && (
         Number(delivery.parcel.weightKg) !== parcel.weightKg
         || Number(delivery.parcel.parcelCount) !== parcel.parcelCount

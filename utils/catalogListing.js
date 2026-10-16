@@ -44,6 +44,50 @@ const normalizeProductWeight = (weight, weightUnit, { required = false } = {}) =
   return { weight: parsed, weightUnit: unit };
 };
 
+const normalizeProductPackaging = (packagingWeight, packagingWeightUnit, weightIncludesPackaging = true) => {
+  const includesPackaging = weightIncludesPackaging !== false && weightIncludesPackaging !== 'false';
+  if (includesPackaging) {
+    return {
+      weightIncludesPackaging: true,
+      packagingWeight: undefined,
+      packagingWeightUnit: undefined
+    };
+  }
+  if (packagingWeight === undefined || packagingWeight === null || packagingWeight === '') {
+    return {
+      weightIncludesPackaging: false,
+      packagingWeight: undefined,
+      packagingWeightUnit: undefined
+    };
+  }
+  const parsed = Number(packagingWeight);
+  const unit = packagingWeightUnit || 'g';
+  if (!Number.isFinite(parsed) || parsed <= 0 || parsed > 10000) {
+    throw invalid('Additional packaging weight must be greater than zero and no more than 10,000 kg/g.');
+  }
+  if (!PRODUCT_WEIGHT_UNITS.includes(unit)) throw invalid('Packaging weight unit must be g or kg.');
+  return { weightIncludesPackaging: false, packagingWeight: parsed, packagingWeightUnit: unit };
+};
+
+const normalizeProductVariants = variants => {
+  if (variants === undefined) return undefined;
+  if (!Array.isArray(variants)) throw invalid('Product variants must be provided as a list.');
+  return variants.map(variant => {
+    if (!variant || typeof variant !== 'object' || Array.isArray(variant)) throw invalid('Each product variant must be an object.');
+    if (variant.weight === undefined || variant.weight === null || variant.weight === '') return { ...variant };
+    return {
+      ...variant,
+      ...normalizeProductWeight(variant.weight, variant.weightUnit, { required: true }),
+      ...normalizeProductPackaging(
+        variant.packagingWeight,
+        variant.packagingWeightUnit,
+        variant.weightIncludesPackaging
+      ),
+      weightStatus: 'seller_provided'
+    };
+  });
+};
+
 const parseOptionalNumber = (value, label, { min = 0 } = {}) => {
   if (value === undefined || value === null || value === '') return undefined;
   const parsed = Number(value);
@@ -177,6 +221,8 @@ module.exports = {
   isCatalogImageReference,
   isMarketplacePet,
   normalizeCatalogImages,
+  normalizeProductPackaging,
+  normalizeProductVariants,
   normalizeProductWeight,
   publicPetContextClause,
   publicPetSaleClause

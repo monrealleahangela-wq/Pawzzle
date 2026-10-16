@@ -34,7 +34,8 @@ const OrderDetail = () => {
   const [isGeneratingInvoice, setIsGeneratingInvoice] = useState(false);
   const [eligibleRiders, setEligibleRiders] = useState([]);
   const [assignmentReadiness, setAssignmentReadiness] = useState(null);
-  const [deliveryParcel, setDeliveryParcel] = useState({ weightKg: '', parcelCount: 1, confirmed: false, estimated: false });
+  const [deliveryParcel, setDeliveryParcel] = useState({ weightKg: '', parcelCount: 1, confirmed: false, estimated: false, manualException: false, manualExceptionReason: '' });
+  const [recalculatingWeight, setRecalculatingWeight] = useState(false);
   const [deliveryAssignment, setDeliveryAssignment] = useState(null);
   const [riderReviewOpen, setRiderReviewOpen] = useState(false);
   const [cancelConfirmationOpen, setCancelConfirmationOpen] = useState(false);
@@ -56,7 +57,9 @@ const OrderDetail = () => {
         weightKg: delivery.parcel.weightKg || '',
         parcelCount: delivery.parcel.parcelCount || 1,
         confirmed: true,
-        estimated: delivery.parcel.measurementSource === 'seller_confirmed_estimate'
+        estimated: delivery.parcel.measurementSource !== 'seller_confirmed',
+        manualException: delivery.parcel.measurementSource === 'documented_manual_estimate',
+        manualExceptionReason: delivery.parcel.manualExceptionReason || ''
       });
       if (user?.role === 'customer') {
         if (delivery?._id && delivery.assignmentType === 'internal') {
@@ -72,14 +75,13 @@ const OrderDetail = () => {
   }, [order?._id, order?.delivery, user?.role]);
 
   useEffect(() => {
-    if (!['admin', 'super_admin', 'platform_admin', 'store_owner'].includes(user?.role) || !order) return undefined;
+    if (!canManageOrders || !order) return undefined;
     const timer = setTimeout(() => {
       const params = {
-        ...(order.store?._id || order.store ? { storeId: order.store?._id || order.store } : {})
+        ...(order.store?._id || order.store ? { storeId: order.store?._id || order.store } : {}),
+        orderId: order._id,
+        parcelCount: Number(deliveryParcel.parcelCount || 1)
       };
-      if (Number(deliveryParcel.weightKg) > 0 && Number(deliveryParcel.parcelCount) > 0) {
-        Object.assign(params, { weightKg: Number(deliveryParcel.weightKg), parcelCount: Number(deliveryParcel.parcelCount) });
-      }
       staffService.getEligibleRiders(params).then(response => {
         setEligibleRiders(response.data.riders || []);
         setAssignmentReadiness(response.data.assignmentReadiness || null);
@@ -89,7 +91,7 @@ const OrderDetail = () => {
       });
     }, 250);
     return () => clearTimeout(timer);
-  }, [user?.role, order, deliveryParcel.weightKg, deliveryParcel.parcelCount]);
+  }, [canManageOrders, order, deliveryParcel.weightKg, deliveryParcel.parcelCount]);
 
   useEffect(() => {
     if (order && !order.reviewStatus?.isRated && !hasAutoReviewed && new URLSearchParams(location.search).get('review') === 'true') {
@@ -138,12 +140,19 @@ const OrderDetail = () => {
     try {
       const response = await orderService.getOrderById(id);
       const orderData = response.data.order;
+      const weightMissing = orderData.parcelEstimate?.status === 'missing_product_weight';
       setOrder(orderData);
       setDeliveryParcel(current => ({
-        weightKg: current.weightKg || orderData.parcelEstimate?.weightKg || '',
+        weightKg: weightMissing
+          ? (current.manualException ? current.weightKg : '')
+          : (orderData.parcelEstimate?.weightKg || current.weightKg || ''),
         parcelCount: current.parcelCount || orderData.parcelEstimate?.parcelCount || 1,
-        confirmed: current.confirmed,
-        estimated: current.weightKg ? current.estimated : Boolean(orderData.parcelEstimate?.weightKg)
+        confirmed: weightMissing
+          ? Boolean(current.manualException && current.confirmed)
+          : (Boolean(orderData.parcelEstimate?.weightKg) || current.confirmed),
+        estimated: Boolean(orderData.parcelEstimate?.weightKg),
+        manualException: weightMissing ? current.manualException : false,
+        manualExceptionReason: weightMissing ? current.manualExceptionReason : ''
       }));
       
       // Fetch reviews if user is a seller and order is delivered/completed/finalized
@@ -259,14 +268,27 @@ const OrderDetail = () => {
 
   const handleAssignRider = async () => {
     try {
-      if (!Number(deliveryParcel.weightKg)) return toast.error('Enter the measured parcel weight first.');
-      if (!deliveryParcel.confirmed) return toast.error('Confirm the packaged weight and parcel count first.');
+      if (!Number(deliveryParcel.weightKg)) return toast.error(order?.parcelEstimate?.status === 'missing_product_weight' ? 'Correct missing product weights or enter a documented estimate.' : 'Parcel weight is unavailable.');
+      if (order?.parcelEstimate?.status === 'missing_product_weight' && !deliveryParcel.confirmed) return toast.error('Confirm the documented parcel-weight exception first.');
       const response = await deliveryService.assignRider({ orderId: id, parcel: deliveryParcel });
       setDeliveryAssignment(response.data.delivery || null);
       toast.success('Delivery Rider assigned automatically.');
       fetchOrder(); // Refresh to show delivery status if needed
     } catch (error) {
       toast.error(error.response?.data?.message || 'We could not prepare this delivery. Please try again.');
+    }
+  };
+
+  const handleRecalculateWeight = async () => {
+    setRecalculatingWeight(true);
+    try {
+      await deliveryService.recalculateOrderWeight(id);
+      toast.success('Product weight snapshots refreshed.');
+      await fetchOrder();
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Unable to refresh product weights.');
+    } finally {
+      setRecalculatingWeight(false);
     }
   };
 
@@ -1011,7 +1033,7 @@ const OrderDetail = () => {
                 <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest leading-relaxed">
                   Pawzzle assigns an active internal rider. Navigation and proof tools stay inside the rider's authenticated workspace.
                 </p>
-                <DeliveryAssignmentFields riders={eligibleRiders} assignmentReadiness={assignmentReadiness} parcel={deliveryParcel} onParcelChange={setDeliveryParcel}/>
+                <DeliveryAssignmentFields riders={eligibleRiders} assignmentReadiness={assignmentReadiness} parcel={deliveryParcel} onParcelChange={setDeliveryParcel} weightSummary={order.parcelEstimate} onRecalculate={handleRecalculateWeight} recalculating={recalculatingWeight}/>
                 {deliveryAssignment?.assignmentType === 'internal' && <div className="p-3 rounded-xl bg-white border text-xs"><p className="text-[9px] font-black uppercase text-slate-400">Current Delivery Method</p><p className="font-black text-slate-800">Pawzzle Rider</p><p className="text-slate-500">{deliveryAssignment.assignedRider?.firstName} {deliveryAssignment.assignedRider?.lastName} · {deliveryAssignment.assignedRider?.riderProfile?.staffId}</p></div>}
                 <button
                   onClick={handleAssignRider}

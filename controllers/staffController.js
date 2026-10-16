@@ -4,6 +4,7 @@ const Store = require('../models/Store');
 const crypto = require('crypto');
 const { sendStaffInvitation } = require('../utils/emailService');
 const Delivery = require('../models/Delivery');
+const Order = require('../models/Order');
 const {
     isAvailableNow,
     evaluateRiderEligibility,
@@ -22,6 +23,7 @@ const { riderDeliveryView, riderFeedbackView } = require('../utils/deliveryViews
 const { policyForRole } = require('../services/rolePermissionService');
 const { getRiderCapacitySummary, capacityCanContainReservedLoad } = require('../utils/riderCapacity');
 const { RIDER_VEHICLE_TYPES } = require('../config/riderVehicles');
+const { calculateParcelWeight } = require('../services/parcelWeightService');
 const { currentCompensationSummary } = require('../utils/payrollCompensation');
 const {
     SPECIALIZED_STAFF_ROLES,
@@ -1049,7 +1051,22 @@ const updateStaffAvailability = async (req, res) => {
 const getEligibleRiders = async (req, res) => {
     try {
         const platformScope = ['super_admin', 'platform_admin'].includes(req.user.role);
-        const requestedStoreId = req.query.storeId;
+        let requestedStoreId = req.query.storeId;
+        let orderWeight;
+        if (req.query.orderId !== undefined) {
+            if (typeof req.query.orderId !== 'string' || !mongoose.Types.ObjectId.isValid(req.query.orderId)) {
+                return res.status(400).json({ message: 'A valid Order identifier is required for Rider eligibility.' });
+            }
+            const order = await Order.findById(req.query.orderId).select('store deliveryMethod items parcelEstimate').lean();
+            if (!order || order.deliveryMethod !== 'delivery') return res.status(404).json({ message: 'Delivery Order not found.' });
+            if (requestedStoreId && String(requestedStoreId) !== String(order.store)) {
+                return res.status(400).json({ message: 'Order and Store identifiers do not match.' });
+            }
+            requestedStoreId = String(order.store);
+            orderWeight = order.parcelEstimate?.status
+                ? order.parcelEstimate
+                : calculateParcelWeight(order.items || [], { parcelCount: req.query.parcelCount || order.parcelEstimate?.parcelCount || 1 });
+        }
         if (requestedStoreId !== undefined && (
             typeof requestedStoreId !== 'string'
             || !mongoose.Types.ObjectId.isValid(requestedStoreId)
@@ -1070,13 +1087,27 @@ const getEligibleRiders = async (req, res) => {
             assignmentReadiness: summarizeRiderEligibility([])
         });
         let parcel;
-        if (req.query.weightKg !== undefined || req.query.parcelCount !== undefined) {
-            const weightKg = Number(req.query.weightKg);
+        if (orderWeight || req.query.weightKg !== undefined || req.query.parcelCount !== undefined) {
+            const weightKg = Number(orderWeight?.weightKg ?? req.query.weightKg);
             const parcelCount = Number(req.query.parcelCount);
-            if (!Number.isFinite(weightKg) || weightKg <= 0 || !Number.isInteger(parcelCount) || parcelCount <= 0) {
+            const resolvedParcelCount = Number.isInteger(parcelCount) && parcelCount > 0
+                ? parcelCount
+                : Number(orderWeight?.parcelCount || 0);
+            if (!Number.isFinite(weightKg) || weightKg <= 0 || !Number.isInteger(resolvedParcelCount) || resolvedParcelCount <= 0) {
+                if (orderWeight?.status === 'missing_product_weight') {
+                    return res.json({
+                        riders: [],
+                        assignmentReadiness: {
+                            reason: 'missing_product_weight',
+                            message: 'Automatic Rider assignment is blocked until the listed product weights are corrected or a documented estimate is approved.',
+                            eligibleCount: 0,
+                            missingItems: orderWeight.missingItems || []
+                        }
+                    });
+                }
                 return res.status(400).json({ message: 'Valid parcel weight and parcel count are required for Rider eligibility.' });
             }
-            parcel = { weightKg, parcelCount };
+            parcel = { weightKg, parcelCount: resolvedParcelCount };
         }
         const query = buildActiveRiderAccountFilter();
         if (storeIds?.length) query.store = { $in: storeIds };

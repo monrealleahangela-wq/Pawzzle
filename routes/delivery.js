@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const {
   assignDeliveryAutomatically,
+  recalculateOrderParcelWeight,
   getAssignedRiderDelivery,
   getDeliveryByToken,
   getDeliveryByOrder,
@@ -30,6 +31,7 @@ const validateAssignedRider = async (req, res, next) => {
 
 // Private routes: store assignment and authenticated rider workspaces.
 router.post('/assign', authenticate, requirePermission('logistics.manage'), assignDeliveryAutomatically);
+router.post('/order/:orderId/recalculate-weight', authenticate, requirePermission('logistics.manage'), recalculateOrderParcelWeight);
 router.post('/calculate-fee', authenticate, calculateDeliveryFee);
 router.get('/order/:orderId', authenticate, getDeliveryByOrder);
 router.get('/booking/:bookingId', authenticate, getDeliveryByBooking);

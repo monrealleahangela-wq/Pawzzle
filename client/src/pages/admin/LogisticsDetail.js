@@ -37,7 +37,8 @@ export default function LogisticsDetail() {
   const [riders, setRiders] = useState([]);
   const [assignmentReadiness, setAssignmentReadiness] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [parcel, setParcel] = useState({ weightKg: '', parcelCount: 1 });
+  const [parcel, setParcel] = useState({ weightKg: '', parcelCount: 1, confirmed: false, manualException: false, manualExceptionReason: '' });
+  const [recalculatingWeight, setRecalculatingWeight] = useState(false);
   const [showAssignment, setShowAssignment] = useState(false);
   const [saving, setSaving] = useState(false);
   const [reassignConfirmationOpen, setReassignConfirmationOpen] = useState(false);
@@ -51,14 +52,18 @@ export default function LogisticsDetail() {
       const deliveryResponse = await logisticsService.getDelivery(id);
       const delivery = deliveryResponse.data.delivery;
       const parcelFacts = {
-        weightKg: delivery.parcel?.weightKg || '',
-        parcelCount: delivery.parcel?.parcelCount || delivery.order?.items?.reduce((total,item)=>total+Number(item.quantity||0),0) || 1
+        weightKg: delivery.parcel?.weightKg || delivery.order?.parcelEstimate?.weightKg || '',
+        parcelCount: delivery.parcel?.parcelCount || delivery.order?.parcelEstimate?.parcelCount || 1,
+        confirmed: Boolean(delivery.parcel?.weightKg || delivery.order?.parcelEstimate?.weightKg),
+        manualException: delivery.parcel?.measurementSource === 'documented_manual_estimate',
+        manualExceptionReason: delivery.parcel?.manualExceptionReason || ''
       };
       setData(deliveryResponse.data);
       setParcel(parcelFacts);
       const storeId = getDeliveryStoreId(delivery);
       const eligibilityParams = storeId ? { storeId } : {};
-      if (Number(parcelFacts.weightKg) > 0) Object.assign(eligibilityParams, parcelFacts);
+      if (delivery.order?._id && !delivery.parcel?.weightKg) Object.assign(eligibilityParams, { orderId: delivery.order._id, parcelCount: parcelFacts.parcelCount });
+      else if (Number(parcelFacts.weightKg) > 0) Object.assign(eligibilityParams, { weightKg: parcelFacts.weightKg, parcelCount: parcelFacts.parcelCount });
       try {
         const riderResponse = await staffService.getEligibleRiders(eligibilityParams);
         setRiders(riderResponse.data.riders || []);
@@ -80,15 +85,19 @@ export default function LogisticsDetail() {
   }, [id]);
   useEffect(() => { load(); }, [load]);
   useEffect(() => {
-    if (!showAssignment || !data?.delivery || !(Number(parcel.weightKg) > 0) || !(Number(parcel.parcelCount) > 0)) return undefined;
+    const usesOrderWeight = data?.delivery?.order?._id && !data?.delivery?.parcel?.weightKg;
+    if (!showAssignment || !data?.delivery || !(Number(parcel.parcelCount) > 0) || (!usesOrderWeight && !(Number(parcel.weightKg) > 0))) return undefined;
     const timer = setTimeout(async () => {
       const storeId = getDeliveryStoreId(data.delivery);
       try {
-        const response = await staffService.getEligibleRiders({
+        const delivery = data.delivery;
+        const params = {
           ...(storeId ? { storeId } : {}),
-          weightKg: Number(parcel.weightKg),
           parcelCount: Number(parcel.parcelCount)
-        });
+        };
+        if (delivery.order?._id && !delivery.parcel?.weightKg) params.orderId = delivery.order._id;
+        else if (Number(parcel.weightKg) > 0) params.weightKg = Number(parcel.weightKg);
+        const response = await staffService.getEligibleRiders(params);
         setRiders(response.data.riders || []);
         setAssignmentReadiness(response.data.assignmentReadiness || null);
       } catch (error) {
@@ -135,9 +144,24 @@ export default function LogisticsDetail() {
   };
 
   const assign = () => {
-    if (!Number(parcel.weightKg)) return toast.error('Enter the measured parcel weight.');
+    if (!Number(parcel.weightKg)) return toast.error(delivery.order?.parcelEstimate?.status === 'missing_product_weight' ? 'Correct missing product weights or enter a documented estimate.' : 'Enter the parcel weight.');
+    if (delivery.order?.parcelEstimate?.status === 'missing_product_weight' && !parcel.confirmed) return toast.error('Confirm the documented parcel-weight exception.');
     if (delivery.assignmentType !== 'unassigned') return setReassignConfirmationOpen(true);
     return performAssignment();
+  };
+
+  const recalculateWeight = async () => {
+    if (!delivery.order?._id || delivery.parcel?.weightKg) return;
+    setRecalculatingWeight(true);
+    try {
+      await deliveryService.recalculateOrderWeight(delivery.order._id);
+      toast.success('Product weight snapshots refreshed.');
+      await load();
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Unable to refresh product weights.');
+    } finally {
+      setRecalculatingWeight(false);
+    }
   };
 
   const submitConcern = async concern => {
@@ -160,9 +184,9 @@ export default function LogisticsDetail() {
 
     {assignmentReadiness?.loadError&&<div role="alert" className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs font-semibold text-amber-900">Delivery details loaded, but Rider eligibility could not be refreshed: {assignmentReadiness.message}</div>}
 
-    {showAssignment && <section className="bg-white border rounded-2xl p-4 space-y-4"><DeliveryAssignmentFields riders={riders} assignmentReadiness={assignmentReadiness} parcel={parcel} onParcelChange={setParcel}/><div className="flex justify-end gap-2"><button onClick={()=>setShowAssignment(false)} className="h-9 px-4 text-xs font-bold">Cancel</button><button onClick={assign} disabled={saving || !Number(parcel.weightKg)} className="h-9 px-4 rounded-lg bg-orange-600 text-white text-[10px] font-black uppercase disabled:opacity-50">{saving?'Saving…':delivery.assignmentType==='unassigned'?'Assign Automatically':'Reassign Automatically'}</button></div></section>}
+    {showAssignment && <section className="bg-white border rounded-2xl p-4 space-y-4"><DeliveryAssignmentFields riders={riders} assignmentReadiness={assignmentReadiness} parcel={parcel} onParcelChange={setParcel} weightSummary={delivery.order?.parcelEstimate} onRecalculate={delivery.order?._id && !delivery.parcel?.weightKg ? recalculateWeight : undefined} recalculating={recalculatingWeight}/><div className="flex justify-end gap-2"><button onClick={()=>setShowAssignment(false)} className="h-9 px-4 text-xs font-bold">Cancel</button><button onClick={assign} disabled={saving || !Number(parcel.weightKg)} className="h-9 px-4 rounded-lg bg-orange-600 text-white text-[10px] font-black uppercase disabled:opacity-50">{saving?'Saving…':delivery.assignmentType==='unassigned'?'Assign Automatically':'Reassign Automatically'}</button></div></section>}
 
-    <section className="grid grid-cols-2 md:grid-cols-4 gap-2.5">{[[Truck,'Status',delivery.statusLabel],[User,'Rider',fullName(currentRider)],[Package,'Parcel',delivery.parcel?.weightKg?`${delivery.parcel.weightKg} kg · ${delivery.parcel.parcelCount} parcel(s)`:'Not measured'],[Wallet,cod?'COD Amount':'Payment',manual?'Not recorded':cod?money(source?.totalAmount||source?.totalPrice):(source?.paymentStatus||'pending')]].map(([Icon,label,value])=><div key={label} className="bg-white border rounded-xl p-3"><Icon size={15} className="text-orange-600 mb-2"/><p className="text-[8px] text-slate-400 font-black uppercase">{label}</p><p className="text-xs font-black text-slate-900 mt-1 capitalize">{value}</p></div>)}</section>
+    <section className="grid grid-cols-2 md:grid-cols-4 gap-2.5">{[[Truck,'Status',delivery.statusLabel],[User,'Rider',fullName(currentRider)],[Package,'Parcel',delivery.parcel?.weightKg?`${delivery.parcel.weightKg} kg · ${delivery.parcel.parcelCount} parcel(s)`:delivery.order?.parcelEstimate?.weightKg?`${delivery.order.parcelEstimate.weightKg} kg estimated`:'Weight unavailable'],[Wallet,cod?'COD Amount':'Payment',manual?'Not recorded':cod?money(source?.totalAmount||source?.totalPrice):(source?.paymentStatus||'pending')]].map(([Icon,label,value])=><div key={label} className="bg-white border rounded-xl p-3"><Icon size={15} className="text-orange-600 mb-2"/><p className="text-[8px] text-slate-400 font-black uppercase">{label}</p><p className="text-xs font-black text-slate-900 mt-1 capitalize">{value}</p></div>)}</section>
 
     <div className="grid lg:grid-cols-3 gap-3">
       <div className="lg:col-span-2 space-y-3">
