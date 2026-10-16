@@ -1,5 +1,6 @@
 const assert = require('node:assert/strict');
 const test = require('node:test');
+const mongoose = require('mongoose');
 const Attendance = require('../models/Attendance');
 const LeaveRequest = require('../models/LeaveRequest');
 const PayrollPeriod = require('../models/PayrollPeriod');
@@ -37,6 +38,7 @@ const responseRecorder = () => {
 
 test('new payroll computation snapshots both Rider identity forms and excludes retired Dispatcher', async () => {
   const originals = {
+    transaction: mongoose.connection.transaction,
     attendanceFind: Attendance.find,
     leaveFind: LeaveRequest.find,
     periodFindOne: PayrollPeriod.findOne,
@@ -66,25 +68,26 @@ test('new payroll computation snapshots both Rider identity forms and excludes r
   let cleanupFilter;
   let employeeQuery;
   try {
+    mongoose.connection.transaction = callback => callback({ id: 'compute-session' });
     Store.findById = async () => ({ _id: 'store-a', hrSettings: period.policySnapshot });
-    PayrollPeriod.findOne = async () => period;
+    PayrollPeriod.findOne = () => ({ session: async () => period });
     User.find = query => ({
       select(selection) {
         if (selection.includes('+employmentProfile.compensation')) {
           employeeQuery = query;
-          return Promise.resolve([directRider, staffRider, dispatcher]);
+          return { session: async () => [directRider, staffRider, dispatcher] };
         }
         return { lean: async () => [] };
       }
     });
-    Attendance.find = () => ({ lean: async () => [] });
-    LeaveRequest.find = () => ({ lean: async () => [] });
-    Payslip.findOne = async () => null;
+    Attendance.find = () => ({ session() { return this; }, lean: async () => [] });
+    LeaveRequest.find = () => ({ session() { return this; }, lean: async () => [] });
+    Payslip.findOne = () => ({ session: async () => null });
     Payslip.findOneAndUpdate = async (filter, update) => { upserts.push({ filter, update }); return update; };
     Payslip.deleteOne = async filter => { deletedIndividuals.push(filter); };
     Payslip.deleteMany = async filter => { cleanupFilter = filter; };
-    Payslip.aggregate = async () => [{ employeeCount: 2, grossPay: 36000, deductions: 0, netPay: 36000 }];
-    RiderEarning.find = () => ({ lean: async () => [] });
+    Payslip.aggregate = () => ({ session: async () => [{ employeeCount: 2, grossPay: 36000, deductions: 0, netPay: 36000 }] });
+    RiderEarning.find = () => ({ session: () => ({ lean: async () => [] }) });
     ActivityLog.create = async () => ({});
 
     const result = responseRecorder();
@@ -101,6 +104,7 @@ test('new payroll computation snapshots both Rider identity forms and excludes r
     assert.equal(employeeQuery.store, 'store-a');
     assert.ok(employeeQuery.$or.some(row => row.role === 'staff'));
   } finally {
+    mongoose.connection.transaction = originals.transaction;
     Attendance.find = originals.attendanceFind;
     LeaveRequest.find = originals.leaveFind;
     PayrollPeriod.findOne = originals.periodFindOne;
@@ -159,17 +163,19 @@ test('paid Rider and historical Dispatcher snapshots remain employee-owned and r
 });
 
 test('approved and paid historical payroll periods cannot be recomputed or mutated', async () => {
+  const originalTransaction = mongoose.connection.transaction;
   const originalStoreFindById = Store.findById;
   const originalPeriodFindOne = PayrollPeriod.findOne;
   const originalUpsert = Payslip.findOneAndUpdate;
   const originalError = console.error;
   let writes = 0;
   try {
+    mongoose.connection.transaction = callback => callback({ id: 'historical-session' });
     Store.findById = async () => ({ _id: 'store-a', hrSettings: {} });
     Payslip.findOneAndUpdate = async () => { writes += 1; };
     console.error = () => {};
     for (const status of ['approved', 'paid']) {
-      PayrollPeriod.findOne = async () => ({ _id: 'period-a', status, periodEnd: new Date('2026-09-01') });
+      PayrollPeriod.findOne = () => ({ session: async () => ({ _id: 'period-a', status, periodEnd: new Date('2026-09-01') }) });
       const result = responseRecorder();
       await computePeriod({ params: { id: 'period-a' }, user: { _id: 'owner-a', role: 'store_owner', store: 'store-a' } }, result.res);
       assert.equal(result.status, 409);
@@ -177,6 +183,7 @@ test('approved and paid historical payroll periods cannot be recomputed or mutat
     }
     assert.equal(writes, 0);
   } finally {
+    mongoose.connection.transaction = originalTransaction;
     Store.findById = originalStoreFindById;
     PayrollPeriod.findOne = originalPeriodFindOne;
     Payslip.findOneAndUpdate = originalUpsert;

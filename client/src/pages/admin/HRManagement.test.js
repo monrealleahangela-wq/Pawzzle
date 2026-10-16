@@ -15,6 +15,8 @@ jest.mock('../../services/apiService', () => ({
   hrService: {
     getSettings: jest.fn(),
     getEmployees: jest.fn(),
+    getLeaves: jest.fn(),
+    reviewLeave: jest.fn(),
     getCompensation: jest.fn(),
     updateCompensation: jest.fn(),
     getPayrollPeriods: jest.fn(),
@@ -152,4 +154,32 @@ describe('HRManagement Rider payroll setup', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('includes your salary');
     expect(screen.queryByRole('button', { name: 'Record as Paid' })).not.toBeInTheDocument();
   });
+
+  test('authorized Store reviewer can confirm or decline an approved-leave cancellation request', async () => {
+    hrService.getLeaves.mockResolvedValue({ data: { leaves: [{
+      _id: 'leave-a', status: 'cancellation_requested', leaveTypeName: 'Vacation Leave', isPaid: true,
+      startDate: '2026-10-19T00:00:00.000Z', endDate: '2026-10-19T23:59:59.999Z',
+      employee: { firstName: 'Ari', lastName: 'Employee' }
+    }] } });
+    hrService.reviewLeave.mockResolvedValue({ data: { message: 'Approved leave cancelled and reversed.' } });
+    render(<MemoryRouter initialEntries={['/admin/hr?tab=leave']}><HRManagement /></MemoryRouter>);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Confirm Cancellation' }));
+    await waitFor(() => expect(hrService.reviewLeave).toHaveBeenCalledWith('leave-a', { status: 'cancelled' }));
+    expect(screen.getByRole('button', { name: 'Keep Approved' })).toBeInTheDocument();
+  });
+
+  test('payroll settings do not claim the excluded statutory gate is active', async () => {
+    hrService.getSettings.mockResolvedValue({ data: { settings: {
+      payrollFrequency: 'weekly', attendanceRadiusMeters: 100, gracePeriodMinutes: 10,
+      outsideGeofencePolicy: 'reject', defaultShift: { start: '09:00', end: '17:00' }
+    }, workplace: { coordinates: { lat: 14.3, lng: 121 } } } });
+    render(<MemoryRouter initialEntries={['/admin/hr?tab=settings']}><HRManagement /></MemoryRouter>);
+
+    expect(await screen.findByRole('heading', { name: 'Payroll & Attendance Settings' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Save Settings' })).toBeInTheDocument();
+    expect(screen.queryByText(/Statutory calculators are being developed separately/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Newly computed payroll remains blocked from review and approval/i)).not.toBeInTheDocument();
+  });
+
 });

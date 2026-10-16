@@ -77,6 +77,10 @@ const attendanceSchema = new mongoose.Schema({
   },
   suspiciousReasons: [{ type: String, maxlength: 300 }],
   leaveRequest: { type: mongoose.Schema.Types.ObjectId, ref: 'LeaveRequest', default: null },
+  // Reversible leave overlay metadata. Legacy records without this evidence are
+  // treated as ambiguous and are never silently rewritten during cancellation.
+  leaveOriginalStatus: { type: String, enum: ['present', 'late', 'undertime', 'absent', 'on_leave', 'rest_day', 'incomplete'] },
+  leaveCreatedRecord: { type: Boolean, default: false },
   corrections: [{
     field: { type: String, required: true },
     originalValue: mongoose.Schema.Types.Mixed,

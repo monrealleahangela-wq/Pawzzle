@@ -15,6 +15,9 @@ const payrollPeriodSchema = new mongoose.Schema({
   payrollInputRevision: { type: Number, min: 0, default: 0 },
   computedInputRevision: { type: Number, min: 0, default: 0 },
   policySnapshot: { type: mongoose.Schema.Types.Mixed, required: true },
+  // Shared payroll input revision serializes leave/attendance changes with computations.
+  payrollInputRevision: { type: Number, min: 0, default: 0 },
+  computedInputRevision: { type: Number, min: 0, default: 0 },
   totals: {
     employeeCount: { type: Number, min: 0, default: 0 },
     grossPay: { type: Number, min: 0, default: 0 },

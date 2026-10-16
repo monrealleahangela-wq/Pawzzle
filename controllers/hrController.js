@@ -312,8 +312,6 @@ const timeIn = async (req, res) => {
     const eligibility = resolveTimeInEligibility(employee, store, now);
     const { workDate } = eligibility;
     if (!eligibility.window.allowed) throw fail(eligibility.window.message, 409);
-    if (await Attendance.exists({ store: store._id, employee: req.user._id, workDate, 'timeIn.at': { $exists: true } })) throw fail('You have already timed in today.', 409);
-    if (await LeaveRequest.exists({ store: store._id, employee: req.user._id, status: 'approved', startDate: { $lte: dateEnd(workDate) }, endDate: { $gte: parseDate(workDate) } })) throw fail('You are on approved leave today. Attendance is not required.', 409);
     const location = validateLocation(req.body, store);
     const review = locationReview(req.body, location, 'time_in');
     const update = {
@@ -322,11 +320,21 @@ const timeIn = async (req, res) => {
       $addToSet: { suspiciousReasons: { $each: location.reasons } }
     };
     if (review) update.$push = { locationReviews: review };
-    const record = await Attendance.findOneAndUpdate(
-      { store: store._id, employee: req.user._id, workDate, 'timeIn.at': { $exists: false } },
-      update,
-      { upsert: true, new: true, runValidators: true }
-    );
+    let record;
+    await mongoose.connection.transaction(async session => {
+      if (await Attendance.exists({ store: store._id, employee: req.user._id, workDate, 'timeIn.at': { $exists: true } }).session(session)) throw fail('You have already timed in today.', 409);
+      if (await LeaveRequest.exists({ store: store._id, employee: req.user._id, status: 'approved', startDate: { $lte: dateEnd(workDate) }, endDate: { $gte: parseDate(workDate) } }).session(session)) throw fail('You are on approved leave today. Attendance is not required.', 409);
+      record = await Attendance.findOneAndUpdate(
+        { store: store._id, employee: req.user._id, workDate, 'timeIn.at': { $exists: false } },
+        update,
+        { upsert: true, new: true, runValidators: true, session }
+      );
+      await invalidatePayrollInputForEmployeeDates({
+        storeId: store._id, employeeId: req.user._id, startDate: workDate, endDate: workDate, session,
+        issueCode: 'attendance_changed_recompute',
+        reason: `Attendance for ${workDate} changed after payroll computation; recompute the affected draft payroll before review.`
+      });
+    });
     await audit(req, 'Attendance Time In', `Employee ${req.user._id} timed in for ${workDate}; server time recorded.`);
     if (location.reasons.length) await notifyStoreRoles(req, store._id, ['admin', 'store_owner', 'manager'], ['manager'], 'attendance_update', 'Attendance exception', `${req.user.firstName || 'An employee'} recorded flagged attendance for ${workDate}.`, record._id, 'Attendance', '/admin/hr?tab=attendance');
     res.status(201).json({ message: location.reasons.length ? 'Time in recorded and flagged for review.' : 'Time in recorded.', attendance: record });
@@ -422,34 +430,43 @@ const managementAttendance = async (req, res) => {
 
 const reviewLocationAttendance = async (req, res) => {
   try {
-    const store = await storeFor(req); const record = await Attendance.findOne({ _id: req.params.id, store: store._id });
-    if (!record) throw fail('Attendance record not found.', 404);
-    if (String(record.employee) === String(req.user._id) && !isPlatformAdmin(req.user)) throw fail('You cannot review your own attendance exception.', 403);
+    const store = await storeFor(req);
     const status = String(req.body.status || '');
     const punchType = String(req.body.punchType || '');
     const reviewerNote = String(req.body.reviewerNote || '').trim();
     if (!['approved', 'rejected'].includes(status)) throw fail('Choose Approved or Rejected.');
     if (!['time_in', 'time_out'].includes(punchType)) throw fail('Select the attendance punch to review.');
     if (reviewerNote.length < 5) throw fail('A reviewer note of at least 5 characters is required.');
-    let review = record.locationReviews?.find(item => item.punchType === punchType && ['pending', 'rejected'].includes(item.status));
-    if (!review && record.locationFlagged && !(record.locationReviews || []).length) {
-      const evidence = punchType === 'time_in' ? record.timeIn : record.timeOut;
-      if (!evidence?.at) throw fail('The selected attendance punch has no evidence to review.', 409);
-      record.locationReviews.push({
-        punchType,
-        status: 'pending',
-        employeeReason: 'Legacy flagged punch; employee reason was not captured.',
-        evidenceReasons: record.suspiciousReasons || []
+    let record;
+    await mongoose.connection.transaction(async session => {
+      record = await Attendance.findOne({ _id: req.params.id, store: store._id }).session(session);
+      if (!record) throw fail('Attendance record not found.', 404);
+      if (String(record.employee) === String(req.user._id) && !isPlatformAdmin(req.user)) throw fail('You cannot review your own attendance exception.', 403);
+      let review = record.locationReviews?.find(item => item.punchType === punchType && ['pending', 'rejected'].includes(item.status));
+      if (!review && record.locationFlagged && !(record.locationReviews || []).length) {
+        const evidence = punchType === 'time_in' ? record.timeIn : record.timeOut;
+        if (!evidence?.at) throw fail('The selected attendance punch has no evidence to review.', 409);
+        record.locationReviews.push({
+          punchType,
+          status: 'pending',
+          employeeReason: 'Legacy flagged punch; employee reason was not captured.',
+          evidenceReasons: record.suspiciousReasons || []
+        });
+        review = record.locationReviews[record.locationReviews.length - 1];
+      }
+      if (!review) throw fail('That attendance punch has no pending location review.', 409);
+      const reviewedAt = new Date();
+      review.history.push({ status, reviewedBy: req.user._id, reviewedAt, reviewerNote });
+      review.status = status; review.reviewedBy = req.user._id; review.reviewedAt = reviewedAt; review.reviewerNote = reviewerNote;
+      record.locationFlagged = record.locationReviews.some(item => item.status !== 'approved');
+      record.locationReview = { reviewedBy: req.user._id, reviewedAt, reason: reviewerNote };
+      await record.save({ session });
+      await invalidatePayrollInputForEmployeeDates({
+        storeId: store._id, employeeId: record.employee, startDate: record.workDate, endDate: record.workDate, session,
+        issueCode: 'attendance_changed_recompute',
+        reason: `Attendance review for ${record.workDate} changed after payroll computation; recompute the affected draft payroll before review.`
       });
-      review = record.locationReviews[record.locationReviews.length - 1];
-    }
-    if (!review) throw fail('That attendance punch has no pending location review.', 409);
-    const reviewedAt = new Date();
-    review.history.push({ status, reviewedBy: req.user._id, reviewedAt, reviewerNote });
-    review.status = status; review.reviewedBy = req.user._id; review.reviewedAt = reviewedAt; review.reviewerNote = reviewerNote;
-    record.locationFlagged = record.locationReviews.some(item => item.status !== 'approved');
-    record.locationReview = { reviewedBy: req.user._id, reviewedAt, reason: reviewerNote };
-    await record.save();
+    });
     await audit(req, `Attendance Location ${status === 'approved' ? 'Approved' : 'Rejected'}`, `Attendance ${record._id} ${punchType} location review: ${reviewerNote}`);
     await notify(req, record.employee, 'attendance_update', `Attendance location ${status}`, `Your ${record.workDate} ${punchType.replace('_', ' ')} location was ${status}: ${reviewerNote}`, record._id, 'Attendance', '/staff/attendance');
     res.json({ message: `Attendance location ${status}.`, attendance: record });
@@ -468,13 +485,21 @@ const createManualAttendance = async (req, res) => {
       if (!Number.isFinite(value) || value < 0) throw fail(`${field.replace('Minutes', ' minutes')} must be a non-negative number.`);
       return value;
     };
-    const record = await Attendance.create({
-      store: store._id, employee: employee._id, workDate,
-      schedule: getScheduleForDate(employee, store, workDate), status: req.body.status,
-      workedMinutes: numeric('workedMinutes'), lateMinutes: numeric('lateMinutes'),
-      undertimeMinutes: numeric('undertimeMinutes'), overtimeMinutes: numeric('overtimeMinutes'),
-      suspiciousReasons: ['Manual attendance record'],
-      corrections: [{ field: 'record', originalValue: null, correctedValue: { status: req.body.status, workedMinutes: numeric('workedMinutes'), lateMinutes: numeric('lateMinutes'), undertimeMinutes: numeric('undertimeMinutes'), overtimeMinutes: numeric('overtimeMinutes') }, reason, changedBy: req.user._id }]
+    let record;
+    await mongoose.connection.transaction(async session => {
+      [record] = await Attendance.create([{
+        store: store._id, employee: employee._id, workDate,
+        schedule: getScheduleForDate(employee, store, workDate), status: req.body.status,
+        workedMinutes: numeric('workedMinutes'), lateMinutes: numeric('lateMinutes'),
+        undertimeMinutes: numeric('undertimeMinutes'), overtimeMinutes: numeric('overtimeMinutes'),
+        suspiciousReasons: ['Manual attendance record'],
+        corrections: [{ field: 'record', originalValue: null, correctedValue: { status: req.body.status, workedMinutes: numeric('workedMinutes'), lateMinutes: numeric('lateMinutes'), undertimeMinutes: numeric('undertimeMinutes'), overtimeMinutes: numeric('overtimeMinutes') }, reason, changedBy: req.user._id }]
+      }], { session });
+      await invalidatePayrollInputForEmployeeDates({
+        storeId: store._id, employeeId: employee._id, startDate: workDate, endDate: workDate, session,
+        issueCode: 'attendance_changed_recompute',
+        reason: `Attendance for ${workDate} was recorded after payroll computation; recompute the affected draft payroll before review.`
+      });
     });
     await audit(req, 'Attendance Created Manually', `Attendance ${record._id} created for employee ${employee._id}: ${reason}`);
     await notify(req, employee._id, 'attendance_update', 'Attendance updated', `Your ${workDate} attendance was manually corrected: ${reason}`, record._id, 'Attendance', '/staff/attendance');
@@ -493,20 +518,24 @@ const createLeave = async (req, res) => {
     const reason = String(req.body.reason || '').trim(); if (reason.length < 5) throw fail('Please provide a brief leave reason.');
     const policy = (store.hrSettings?.leaveTypes || []).find(type => type.active && type.key === req.body.leaveTypeKey);
     if (!policy) throw fail('Select an active Store leave type.');
-    const overlap = await LeaveRequest.exists({ store: store._id, employee: req.user._id, status: { $in: ['pending', 'approved'] }, startDate: { $lte: endDate }, endDate: { $gte: startDate } });
-    if (overlap) throw fail('A pending or approved leave request already covers these dates.', 409);
-    const leave = await LeaveRequest.create({
-      store: store._id, employee: req.user._id, leaveTypeKey: policy.key, leaveTypeName: policy.name,
-      isPaid: policy.isPaid, startDate, endDate, reason,
-      attachmentUrl: String(req.body.attachmentUrl || '').trim(), history: [{ action: 'submitted', actor: req.user._id }]
+    if (typeof policy.isPaid !== 'boolean') throw fail('This Store leave type has no explicit paid/unpaid policy. Ask an authorized Store administrator to configure it before submitting a request.', 409);
+    const result = await createLeaveRequest({
+      storeId: store._id, employeeId: req.user._id, actorId: req.user._id,
+      startDate, endDate, leaveTypeKey: policy.key, policy, reason,
+      attachmentUrl: req.body.attachmentUrl, ipAddress: req.ip
     });
-    const recipients = await User.find({ store: store._id, isActive: true, isDeleted: false, $or: [
-      { role: { $in: ['admin', 'store_owner', 'manager'] } },
-      { role: 'staff', staffType: { $in: ['manager', 'administrative_support'] } }
-    ] }).select('_id').lean();
-    await Promise.all(recipients.map(item => notify(req, item._id, 'leave_update', 'New leave request', `${req.user.firstName || 'An employee'} submitted a leave request.`, leave._id, 'LeaveRequest', '/admin/hr?tab=leave')));
-    await audit(req, 'Leave Requested', `Leave ${leave._id} submitted for ${startDate.toISOString().slice(0, 10)} to ${endDate.toISOString().slice(0, 10)}.`);
-    res.status(201).json({ message: 'Leave request submitted.', leave });
+    if (!result.idempotent) {
+      // Notifications are deliberately post-commit and best-effort. The API
+      // must not report a failed submission after the leave transaction commits.
+      try {
+        const recipients = await User.find({ store: store._id, isActive: true, isDeleted: false, $or: [
+          { role: { $in: ['admin', 'store_owner', 'manager'] } },
+          { role: 'staff', staffType: { $in: ['manager', 'administrative_support'] } }
+        ] }).select('_id').lean();
+        await Promise.all(recipients.map(item => notify(req, item._id, 'leave_update', 'New leave request', `${req.user.firstName || 'An employee'} submitted a leave request.`, result.leave._id, 'LeaveRequest', '/admin/hr?tab=leave')));
+      } catch (notificationError) { console.error('[HR] Post-commit leave request notification failed:', notificationError.message); }
+    }
+    res.status(result.idempotent ? 200 : 201).json({ message: result.idempotent ? 'This leave request was already submitted.' : 'Leave request submitted.', leave: result.leave, idempotent: result.idempotent });
   } catch (error) { safeError(res, error); }
 };
 
@@ -523,12 +552,16 @@ const myLeaves = async (req, res) => {
 
 const cancelLeave = async (req, res) => {
   try {
-    const leave = await LeaveRequest.findOne({ _id: req.params.id, store: req.user.store, employee: req.user._id });
-    if (!leave) throw fail('Leave request not found.', 404);
-    if (leave.status !== 'pending') throw fail('Only a pending leave request can be cancelled.', 409);
-    leave.status = 'cancelled'; leave.cancelledAt = new Date(); leave.history.push({ action: 'cancelled', actor: req.user._id, comment: String(req.body.reason || '') });
-    await leave.save(); await audit(req, 'Leave Cancelled', `Leave ${leave._id} cancelled by employee.`);
-    res.json({ message: 'Leave request cancelled.', leave });
+    if (!req.user.store) throw fail('A Store assignment is required.', 403);
+    const result = await requestLeaveCancellation({
+      storeId: req.user.store, employeeId: req.user._id, leaveId: req.params.id,
+      actorId: req.user._id, reason: req.body.reason, ipAddress: req.ip
+    });
+    if (!result.idempotent && result.leave.status === 'cancellation_requested') {
+      try { await notifyStoreRoles(req, req.user.store, ['admin', 'store_owner', 'manager'], ['manager', 'administrative_support'], 'leave_update', 'Leave cancellation requested', 'An employee requested cancellation of approved leave.', result.leave._id, 'LeaveRequest', '/admin/hr?tab=leave'); }
+      catch (notificationError) { console.error('[HR] Post-commit leave cancellation notification failed:', notificationError.message); }
+    }
+    res.json({ message: result.leave.status === 'cancellation_requested' ? 'Cancellation request submitted for Store review.' : 'Pending leave request cancelled.', leave: result.leave, idempotent: result.idempotent });
   } catch (error) { safeError(res, error); }
 };
 
@@ -536,8 +569,13 @@ const listLeaves = async (req, res) => {
   try {
     const store = await storeFor(req); const filter = { store: store._id };
     if (req.query.status) filter.status = req.query.status;
-    if (req.query.employeeId) filter.employee = req.query.employeeId;
-    const leaves = await LeaveRequest.find(filter).populate('employee reviewedBy', 'firstName lastName role staffType').sort({ createdAt: -1 });
+    if (req.query.employeeId) {
+      if (!mongoose.isValidObjectId(req.query.employeeId)) throw fail('Employee not found.', 404);
+      filter.employee = req.query.employeeId;
+    }
+    const canReviewSensitive = canReadSensitiveLeave(req.user);
+    const leaves = (await LeaveRequest.find(filter).populate('employee reviewedBy cancellationReviewedBy', 'firstName lastName role staffType').sort({ createdAt: -1 }).lean())
+      .map(item => projectLeaveForStore(item, canReviewSensitive));
     res.json({ leaves });
   } catch (error) { safeError(res, error); }
 };
@@ -546,35 +584,24 @@ const reviewLeave = async (req, res) => {
   try {
     const store = await storeFor(req); const leave = await LeaveRequest.findOne({ _id: req.params.id, store: store._id });
     if (!leave) throw fail('Leave request not found.', 404);
-    if (leave.status !== 'pending') throw fail('This leave request has already been reviewed.', 409);
-    if (!['approved', 'rejected'].includes(req.body.status)) throw fail('Leave status must be approved or rejected.');
-    if (req.body.status === 'approved') {
-      const recordedAttendance = await Attendance.exists({ store: store._id, employee: leave.employee, workDate: { $gte: leave.startDate.toISOString().slice(0, 10), $lte: leave.endDate.toISOString().slice(0, 10) }, 'timeIn.at': { $exists: true } });
-      if (recordedAttendance) throw fail('This leave overlaps recorded attendance. Correct the attendance first or reject the leave request.', 409);
+    if (financeSelfReviewDenied(req.user, leave.employee)) {
+      throw fail('Finance cannot approve, reject, or confirm cancellation of its own leave request.', 403);
     }
-    leave.status = req.body.status; leave.reviewedBy = req.user._id; leave.reviewedAt = new Date(); leave.reviewComment = String(req.body.comment || '').trim();
-    leave.history.push({ action: leave.status, actor: req.user._id, comment: leave.reviewComment }); await leave.save();
-    if (leave.status === 'approved') {
-      await User.updateOne({ _id: leave.employee, store: store._id }, { $addToSet: { 'professionalProfile.leaveSchedule': { startDate: leave.startDate, endDate: leave.endDate, reason: leave.reason, leaveRequest: leave._id } } });
-      const employee = await employeeFor(store._id, leave.employee);
-      const leaveDays = [];
-      dateLoop(leave.startDate, leave.endDate, day => leaveDays.push(day));
-      for (const day of leaveDays) {
-        const workDate = day.toISOString().slice(0, 10); const schedule = getScheduleForDate(employee, store, workDate);
-        if (!schedule.isWorkDay) continue;
-        const existing = await Attendance.findOne({ store: store._id, employee: leave.employee, workDate });
-        if (existing?.timeIn?.at) continue;
-        if (existing) {
-          existing.status = 'on_leave'; existing.leaveRequest = leave._id; await existing.save();
-        } else {
-          try { await Attendance.create({ store: store._id, employee: leave.employee, workDate, schedule, status: 'on_leave', leaveRequest: leave._id }); }
-          catch (error) { if (error.code !== 11000) throw error; }
-        }
-      }
+    let result;
+    let message;
+    if (leave.status === 'cancellation_requested') {
+      if (!['cancelled', 'approved'].includes(req.body.status)) throw fail('Confirm cancellation with cancelled or retain the approved leave with approved.');
+      result = await reviewLeaveCancellation({ storeId: store._id, leaveId: leave._id, actorId: req.user._id, decision: req.body.status, comment: req.body.comment, ipAddress: req.ip });
+      message = result.leave.status === 'cancelled' ? 'Approved leave cancelled and reversed.' : 'Cancellation declined; leave remains approved.';
+    } else {
+      if (leave.status !== 'pending') throw fail('This leave request has already been reviewed.', 409);
+      if (!['approved', 'rejected'].includes(req.body.status)) throw fail('Leave status must be approved or rejected.');
+      result = await decideLeaveRequest({ storeId: store._id, leaveId: leave._id, actorId: req.user._id, decision: req.body.status, comment: req.body.comment, ipAddress: req.ip });
+      message = `Leave request ${result.leave.status}.`;
     }
-    await notify(req, leave.employee, 'leave_update', `Leave ${leave.status}`, `Your ${leave.leaveTypeName} request was ${leave.status}.`, leave._id, 'LeaveRequest', '/staff/leave');
-    await audit(req, 'Leave Reviewed', `Leave ${leave._id} ${leave.status} by ${req.user._id}.`);
-    res.json({ message: `Leave request ${leave.status}.`, leave });
+    try { await notify(req, result.leave.employee, 'leave_update', 'Leave request updated', message, result.leave._id, 'LeaveRequest', '/staff/leave'); }
+    catch (notificationError) { console.error('[HR] Post-commit leave review notification failed:', notificationError.message); }
+    res.json({ message, leave: projectLeaveForStore(result.leave, canReadSensitiveLeave(req.user)), idempotent: result.idempotent });
   } catch (error) { safeError(res, error); }
 };
 

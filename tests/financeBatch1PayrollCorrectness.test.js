@@ -145,12 +145,13 @@ test('compensation updates cannot target an employee from another Store', async 
 });
 
 test('Finance cannot adjust or review a payroll containing its own salary', async () => {
-  const originals = { store: Store.findById, slip: Payslip.findOne, period: PayrollPeriod.findOne, exists: Payslip.exists, error: console.error };
+  const originals = { transaction: mongoose.connection.transaction, store: Store.findById, slip: Payslip.findOne, period: PayrollPeriod.findOne, exists: Payslip.exists, error: console.error };
   try {
+    mongoose.connection.transaction = async callback => callback({ id: 'session-review' });
     Store.findById = async id => ({ _id: id });
     Payslip.findOne = async () => ({ _id: 'slip-a', employee: 'finance-a' });
-    PayrollPeriod.findOne = async () => ({ _id: 'period-a', status: 'computed' });
-    Payslip.exists = async () => ({ _id: 'slip-a' });
+    PayrollPeriod.findOne = () => ({ session: async () => ({ _id: 'period-a', status: 'computed', payrollInputRevision: 0, computedInputRevision: 0 }) });
+    Payslip.exists = () => ({ session: async () => ({ _id: 'slip-a' }) });
     console.error = () => {};
     const adjustment = responseRecorder();
     await addAdjustment({ params: { payslipId: 'slip-a' }, body: { amount: 100, reason: 'Self adjustment' }, user: { _id: 'finance-a', role: 'finance_staff', store: 'store-a' } }, adjustment.res);
@@ -161,6 +162,7 @@ test('Finance cannot adjust or review a payroll containing its own salary', asyn
     assert.equal(review.status, 403);
     assert.match(review.body.message, /includes their own salary/);
   } finally {
+    mongoose.connection.transaction = originals.transaction;
     Store.findById = originals.store; Payslip.findOne = originals.slip; PayrollPeriod.findOne = originals.period; Payslip.exists = originals.exists; console.error = originals.error;
   }
 });

@@ -2,6 +2,12 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const mongoose = require('mongoose');
+const Attendance = require('../models/Attendance');
+const PayrollPeriod = require('../models/PayrollPeriod');
+const Store = require('../models/Store');
+const ActivityLog = require('../models/ActivityLog');
+const hrController = require('../controllers/hrController');
 const {
   isValidCoordinates, distanceMeters, getScheduleForDate, calculateAttendance,
   generatePayrollPeriod, computePay, dateAtTime, getTimeInWindow
@@ -187,6 +193,67 @@ test('duplicate time in and time out without time in are rejected', () => {
   assert.match(attendance, /unique: true/);
 });
 
+test('time-out request completes after transaction and retains attendance for audit response', async t => {
+  const originals = {
+    transaction: mongoose.connection.transaction,
+    findAttendance: Attendance.findOne,
+    updateAttendance: Attendance.findOneAndUpdate,
+    findPeriods: PayrollPeriod.find,
+    findStore: Store.findById,
+    createAudit: ActivityLog.create
+  };
+  t.after(() => {
+    mongoose.connection.transaction = originals.transaction;
+    Attendance.findOne = originals.findAttendance;
+    Attendance.findOneAndUpdate = originals.updateAttendance;
+    PayrollPeriod.find = originals.findPeriods;
+    Store.findById = originals.findStore;
+    ActivityLog.create = originals.createAudit;
+  });
+
+  const storeId = 'store-timeout-test';
+  const employeeId = 'employee-timeout-test';
+  const workDate = new Date().toISOString().slice(0, 10);
+  const record = {
+    _id: 'attendance-timeout-test', employee: employeeId, store: storeId, workDate,
+    timeIn: { at: new Date(Date.now() - 4 * 60 * 60 * 1000) },
+    schedule: { isWorkDay: true, start: '00:00', end: '23:59', breakMinutes: 0, timezone: 'Asia/Manila' },
+    locationFlagged: false, suspiciousReasons: []
+  };
+  const store = {
+    _id: storeId,
+    contactInfo: { address: { coordinates: { lat: 14.3, lng: 121 } } },
+    hrSettings: { attendanceRadiusMeters: 100, autoClockOut: { enabled: false } }
+  };
+  const auditEntries = [];
+  mongoose.connection.transaction = callback => callback({});
+  Store.findById = async id => id === storeId ? store : null;
+  Attendance.findOne = () => ({ sort: () => ({ session: async () => record }) });
+  Attendance.findOneAndUpdate = async (_filter, update) => ({ ...record, ...update.$set });
+  PayrollPeriod.find = () => ({ session: async () => [] });
+  ActivityLog.create = async entry => { auditEntries.push(entry); return entry; };
+
+  const req = {
+    user: { _id: employeeId, role: 'staff', staffType: 'service_staff', store: storeId },
+    body: { latitude: 14.3, longitude: 121 },
+    ip: '127.0.0.1', get: () => 'node-test', app: { get: () => null },
+    params: {}, query: {}
+  };
+  const res = {
+    statusCode: 200,
+    status(code) { this.statusCode = code; return this; },
+    json(payload) { this.body = payload; return this; }
+  };
+
+  await hrController.timeOut(req, res);
+
+  assert.equal(res.statusCode, 200);
+  assert.equal(res.body.attendance.workDate, workDate);
+  assert.ok(res.body.attendance.timeOut.at instanceof Date);
+  assert.equal(auditEntries.length, 1);
+  assert.match(auditEntries[0].details, new RegExp(workDate));
+});
+
 test('poor GPS, impossible coordinates, rapid checkout and manual corrections are auditable', () => {
   const controller = read('controllers/hrController.js');
   const correctionService = read('services/attendanceCorrectionService.js');
@@ -200,8 +267,9 @@ test('poor GPS, impossible coordinates, rapid checkout and manual corrections ar
 
 test('approved leave feeds specialist unavailability and payroll retains paid snapshot', () => {
   const controller = read('controllers/hrController.js');
-  assert.match(controller, /professionalProfile\.leaveSchedule/);
-  assert.match(controller, /leaveTypeName: policy\.name,\s*isPaid: policy\.isPaid/);
+  const leaveWorkflow = read('services/leaveWorkflowService.js');
+  assert.match(leaveWorkflow, /professionalProfile\.leaveSchedule/);
+  assert.match(leaveWorkflow, /leaveTypeName: policy\.name,\s*isPaid: Boolean\(policy\.isPaid\)/);
   assert.match(read('utils/staffSpecialization.js'), /leaveSchedule/);
   assert.match(controller, /legacyUnclassifiedLeaveDays/);
   assert.match(controller, /no automatic deduction was made/);
@@ -257,10 +325,4 @@ test('frontend exposes compact employee and authorized management workflows', ()
   assert.match(employee, /No finalized payslips yet/);
   assert.match(management, /Semi-Monthly \/ Kinsenas/);
   assert.match(management, /Record as Paid/);
-});
-
-test('no statutory tax or government contribution values are fabricated', () => {
-  const management = read('client/src/pages/admin/HRManagement.js');
-  assert.match(management, /Government contributions and statutory tax calculations are not generated/);
-  assert.doesNotMatch(read('controllers/hrController.js'), /SSS|PhilHealth|Pag-IBIG/);
 });

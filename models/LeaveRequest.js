@@ -12,7 +12,7 @@ const leaveRequestSchema = new mongoose.Schema({
   attachmentUrl: { type: String, trim: true, default: '' },
   status: {
     type: String,
-    enum: ['pending', 'approved', 'rejected', 'cancelled'],
+    enum: ['pending', 'approved', 'rejected', 'cancellation_requested', 'cancelled'],
     default: 'pending',
     index: true
   },
@@ -20,8 +20,12 @@ const leaveRequestSchema = new mongoose.Schema({
   reviewedAt: Date,
   reviewComment: { type: String, trim: true, maxlength: 1000, default: '' },
   cancelledAt: Date,
+  cancellationRequestedAt: Date,
+  cancellationReviewedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  cancellationReviewedAt: Date,
+  cancellationComment: { type: String, trim: true, maxlength: 1000, default: '' },
   history: [{
-    action: { type: String, enum: ['submitted', 'approved', 'rejected', 'cancelled'], required: true },
+    action: { type: String, enum: ['submitted', 'approved', 'rejected', 'cancellation_requested', 'cancellation_rejected', 'cancelled'], required: true },
     actor: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     at: { type: Date, default: Date.now },
     comment: { type: String, maxlength: 1000, default: '' }
