@@ -64,8 +64,9 @@ const productSchema = new mongoose.Schema({
     enum: ['piece', 'pack', 'box', 'bottle', 'bag', 'kg'],
     default: 'piece'
   },
-  // Optional seller-declared package weight. Delivery assignment continues to
-  // use the separately measured parcel weight recorded by Store staff.
+  // Seller-declared weight for one sellable unit. Existing records were
+  // labelled as package weight, so an absent weightIncludesPackaging flag is
+  // intentionally treated as true by the parcel-weight service.
   weight: {
     type: Number,
     min: 0.001,
@@ -75,6 +76,24 @@ const productSchema = new mongoose.Schema({
     type: String,
     enum: ['g', 'kg'],
     default: 'kg'
+  },
+  weightIncludesPackaging: {
+    type: Boolean,
+    default: true
+  },
+  packagingWeight: {
+    type: Number,
+    min: 0.001,
+    max: 10000
+  },
+  packagingWeightUnit: {
+    type: String,
+    enum: ['g', 'kg'],
+    default: 'g'
+  },
+  weightStatus: {
+    type: String,
+    enum: ['seller_provided', 'verified']
   },
   images: [{
     type: String,
@@ -127,7 +146,13 @@ const productSchema = new mongoose.Schema({
     type: {
       type: String,
       enum: ['Size', 'Color', 'Weight', 'Volume', 'Other']
-    }
+    },
+    weight: { type: Number, min: 0.001, max: 10000 },
+    weightUnit: { type: String, enum: ['g', 'kg'] },
+    weightIncludesPackaging: Boolean,
+    packagingWeight: { type: Number, min: 0.001, max: 10000 },
+    packagingWeightUnit: { type: String, enum: ['g', 'kg'] },
+    weightStatus: { type: String, enum: ['seller_provided', 'verified'] }
   }],
   suitableFor: [{
     type: String,

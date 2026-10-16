@@ -19,6 +19,7 @@ const createOrderValidation = [
   body('items').isArray({ min: 1 }).withMessage('Order must contain at least one item'),
   body('items.*.itemType').isIn(['pet', 'product']).withMessage('Invalid item type'),
   body('items.*.itemId').notEmpty().withMessage('Item ID is required'),
+  body('items.*.variantId').optional().isMongoId().withMessage('Variant ID is invalid'),
   body('items.*.quantity').isInt({ min: 1 }).withMessage('Quantity must be at least 1'),
   body('deliveryMethod').isIn(['delivery', 'pickup']).withMessage('Invalid delivery method'),
   body('phoneNumber').notEmpty().withMessage('Phone number is required'),
