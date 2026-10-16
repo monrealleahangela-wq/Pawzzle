@@ -15,7 +15,7 @@ const supplierProductSchema = new mongoose.Schema({
   pet: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Pet',
-    default: null,
+    default: undefined,
     index: true
   },
   name: {
@@ -95,6 +95,11 @@ const supplierProductSchema = new mongoose.Schema({
   isDeleted: { type: Boolean, default: false },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now }
+}, {
+  // SupplierProduct has a guarded, explicit production index migration. Do
+  // not let application startup create only part of that migration.
+  autoIndex: String(process.env.NODE_ENV || '').toLowerCase() !== 'production',
+  autoCreate: String(process.env.NODE_ENV || '').toLowerCase() !== 'production'
 });
 
 supplierProductSchema.pre('save', function (next) {
@@ -102,6 +107,10 @@ supplierProductSchema.pre('save', function (next) {
     this.availableStock = Math.min(1, Number(this.availableStock));
     this.minimumOrderQuantity = 1;
     this.unitOfMeasure = 'piece';
+  } else {
+    // Ordinary offers are not Pet records. Keeping this path absent also
+    // prevents misleading null references in new catalog documents.
+    this.pet = undefined;
   }
   this.updatedAt = Date.now();
   next();
@@ -110,6 +119,13 @@ supplierProductSchema.pre('save', function (next) {
 supplierProductSchema.index({ supplier: 1, sku: 1 }, { unique: true });
 supplierProductSchema.index({ category: 1 });
 supplierProductSchema.index({ supplier: 1, isActive: 1 });
-supplierProductSchema.index({ supplier: 1, pet: 1 }, { unique: true, sparse: true });
+// A compound sparse index still indexes ordinary offers because `supplier`
+// always exists, causing a false duplicate on `{ supplier, pet: null }`.
+// Only actual live-pet ObjectId references belong in this unique index.
+supplierProductSchema.index({ supplier: 1, pet: 1 }, {
+  unique: true,
+  name: 'supplier_live_pet_unique',
+  partialFilterExpression: { pet: { $type: 'objectId' } }
+});
 
 module.exports = mongoose.model('SupplierProduct', supplierProductSchema);

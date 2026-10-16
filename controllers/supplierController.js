@@ -15,6 +15,7 @@ const { releasePurchaseOrderStock } = require('../services/procurementStockCommi
 const { getResolutionQuantities } = require('../utils/procurementResolution');
 const { sanitizeReceivingReport, sanitizeOrderReceivingReport } = require('../utils/procurementEvidence');
 const { sendSupplierInvitation, sendSupplierApplicationUpdate } = require('../utils/emailService');
+const { supplierProductDuplicateResponse } = require('../utils/supplierProductDuplicate');
 const {
   getSelectableSupplierFilterForStore,
   isSupplierAvailable,
@@ -585,6 +586,7 @@ const getSupplierDashboard = async (req, res) => {
 // ═══════════════════════════════════════════════════════════════
 
 const addProduct = async (req, res) => {
+  let requestedItemType = 'pet_supply';
   try {
     const supplier = await Supplier.findOne({ user: req.user._id });
     if (!supplier) return res.status(404).json({ message: 'Supplier not found.' });
@@ -595,6 +597,7 @@ const addProduct = async (req, res) => {
       brand, specifications, weight, dimensions, expirationDate } = req.body;
     const itemType = ['pet_supply', 'product', 'live_pet'].includes(req.body.itemType)
       ? req.body.itemType : 'pet_supply';
+    requestedItemType = itemType;
 
     if (!name || !sku || !category || wholesalePrice === undefined) {
       return res.status(400).json({ message: 'Name, SKU, category, and wholesale price are required.' });
@@ -621,7 +624,7 @@ const addProduct = async (req, res) => {
       product = new SupplierProduct({
         supplier: supplier._id,
         itemType,
-        pet: pet?._id || null,
+        pet: pet?._id,
         name, sku, description, category: authoritativeCategory, images: images || [],
         wholesalePrice, retailPrice: retailPrice || 0,
         availableStock: itemType === 'live_pet' ? 1 : (availableStock || 0),
@@ -655,7 +658,8 @@ const addProduct = async (req, res) => {
 
     res.status(201).json(product);
   } catch (error) {
-    if (error.code === 11000) return res.status(400).json({ message: 'A product with this SKU already exists.' });
+    const duplicate = supplierProductDuplicateResponse(error, { itemType: requestedItemType });
+    if (duplicate) return res.status(duplicate.status).json({ code: duplicate.code, message: duplicate.message });
     console.error('Add supplier product error:', error);
     res.status(error.statusCode || (error.name === 'ValidationError' ? 400 : 500)).json({
       message: error.message || 'Server error'
@@ -779,6 +783,8 @@ const updateProduct = async (req, res) => {
 
     res.json(product);
   } catch (error) {
+    const duplicate = supplierProductDuplicateResponse(error, { itemType: product?.itemType });
+    if (duplicate) return res.status(duplicate.status).json({ code: duplicate.code, message: duplicate.message });
     console.error('Update supplier product error:', error);
     res.status(error.statusCode || (error.name === 'CastError' ? 400 : 500)).json({ message: error.message || 'Server error' });
   }
