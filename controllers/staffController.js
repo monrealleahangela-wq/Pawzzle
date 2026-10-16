@@ -1049,15 +1049,21 @@ const updateStaffAvailability = async (req, res) => {
 const getEligibleRiders = async (req, res) => {
     try {
         const platformScope = ['super_admin', 'platform_admin'].includes(req.user.role);
+        const requestedStoreId = req.query.storeId;
+        if (requestedStoreId !== undefined && (
+            typeof requestedStoreId !== 'string'
+            || !mongoose.Types.ObjectId.isValid(requestedStoreId)
+        )) {
+            return res.status(400).json({ message: 'A valid Store identifier is required for Rider eligibility.' });
+        }
         let storeIds = platformScope
-            ? (req.query.storeId ? [req.query.storeId] : [])
+            ? (requestedStoreId ? [requestedStoreId] : [])
             : await getOwnedStoreIds(req.user);
-        if (!platformScope && req.query.storeId) {
-            const requestedStoreId = String(req.query.storeId);
+        if (!platformScope && requestedStoreId) {
             if (!storeIds.some(id => String(id) === requestedStoreId)) {
                 return res.status(403).json({ message: 'Store access denied.' });
             }
-            storeIds = [req.query.storeId];
+            storeIds = [requestedStoreId];
         }
         if (!platformScope && !storeIds.length) return res.json({
             riders: [],
