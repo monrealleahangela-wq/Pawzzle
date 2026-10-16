@@ -22,6 +22,10 @@ const addressText = address => address?.formattedAddress || [address?.street, ad
 const eventLabel = status => ({ pending:'Order Ready', unassigned:'Pending Assignment', assigned:'Rider Assigned', picked_up:'Picked Up', in_transit:'Out for Delivery', arrived:'Arrived', delivered:'Delivered', failed_attempt:'Delivery Attempted', returned_to_store:'Returned to Store', cancelled:'Cancelled' }[status] || String(status || '').replace(/_/g,' '));
 const validCoords = value => Number.isFinite(Number(value?.lat)) && Number.isFinite(Number(value?.lng)) && Number(value.lat)>=-90 && Number(value.lat)<=90 && Number(value.lng)>=-180 && Number(value.lng)<=180;
 const mapIcon = color => L.divIcon({ className:'', html:`<div style="width:24px;height:24px;border-radius:50%;background:${color};border:3px solid white;box-shadow:0 2px 8px #33415566"></div>`, iconSize:[24,24], iconAnchor:[12,12] });
+const entityId = value => value?._id || value || '';
+const getDeliveryStoreId = delivery => entityId(delivery?.store)
+  || entityId(delivery?.order?.store)
+  || entityId(delivery?.booking?.store);
 
 const DataBlock = ({ label, children }) => <div><p className="text-[8px] font-black uppercase tracking-widest text-slate-400 mb-1">{label}</p><div className="text-xs font-bold text-slate-800 break-words">{children || 'Not available'}</div></div>;
 
@@ -29,6 +33,7 @@ export default function LogisticsDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [data, setData] = useState(null);
+  const [loadError, setLoadError] = useState('');
   const [riders, setRiders] = useState([]);
   const [assignmentReadiness, setAssignmentReadiness] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -41,43 +46,53 @@ export default function LogisticsDetail() {
 
   const load = useCallback(async () => {
     setLoading(true);
+    setLoadError('');
     try {
       const deliveryResponse = await logisticsService.getDelivery(id);
-      const deliveryStoreId = deliveryResponse.data.delivery.store
-        || deliveryResponse.data.delivery.order?.store?._id
-        || deliveryResponse.data.delivery.booking?.store?._id;
       const delivery = deliveryResponse.data.delivery;
       const parcelFacts = {
         weightKg: delivery.parcel?.weightKg || '',
         parcelCount: delivery.parcel?.parcelCount || delivery.order?.items?.reduce((total,item)=>total+Number(item.quantity||0),0) || 1
       };
-      const eligibilityParams = deliveryStoreId ? { storeId: deliveryStoreId } : {};
-      if (Number(parcelFacts.weightKg) > 0) Object.assign(eligibilityParams, parcelFacts);
-      const riderResponse = await staffService.getEligibleRiders(eligibilityParams);
       setData(deliveryResponse.data);
-      setRiders(riderResponse.data.riders || []);
-      setAssignmentReadiness(riderResponse.data.assignmentReadiness || null);
       setParcel(parcelFacts);
-    } catch (error) { toast.error(error.response?.data?.message || 'Unable to load delivery.'); }
+      const storeId = getDeliveryStoreId(delivery);
+      const eligibilityParams = storeId ? { storeId } : {};
+      if (Number(parcelFacts.weightKg) > 0) Object.assign(eligibilityParams, parcelFacts);
+      try {
+        const riderResponse = await staffService.getEligibleRiders(eligibilityParams);
+        setRiders(riderResponse.data.riders || []);
+        setAssignmentReadiness(riderResponse.data.assignmentReadiness || null);
+      } catch (error) {
+        setRiders([]);
+        setAssignmentReadiness({ loadError: true, message: error.response?.data?.message || 'Rider eligibility is temporarily unavailable.' });
+      }
+    } catch (error) {
+      setData(null);
+      const status = error.response?.status;
+      const message = status === 403 || status === 404
+        ? 'This delivery was not found or is not available to your Store.'
+        : (error.response?.data?.message || 'Unable to load delivery.');
+      setLoadError(message);
+      toast.error(message);
+    }
     finally { setLoading(false); }
   }, [id]);
   useEffect(() => { load(); }, [load]);
   useEffect(() => {
     if (!showAssignment || !data?.delivery || !(Number(parcel.weightKg) > 0) || !(Number(parcel.parcelCount) > 0)) return undefined;
     const timer = setTimeout(async () => {
-      const deliveryStoreId = data.delivery.store
-        || data.delivery.order?.store?._id
-        || data.delivery.booking?.store?._id;
+      const storeId = getDeliveryStoreId(data.delivery);
       try {
         const response = await staffService.getEligibleRiders({
-          ...(deliveryStoreId ? { storeId: deliveryStoreId } : {}),
+          ...(storeId ? { storeId } : {}),
           weightKg: Number(parcel.weightKg),
           parcelCount: Number(parcel.parcelCount)
         });
         setRiders(response.data.riders || []);
         setAssignmentReadiness(response.data.assignmentReadiness || null);
       } catch (error) {
-        setAssignmentReadiness({ message: error.response?.data?.message || 'Unable to check Rider eligibility.' });
+        setAssignmentReadiness({ loadError: true, message: error.response?.data?.message || 'Unable to check Rider eligibility.' });
       }
     }, 250);
     return () => clearTimeout(timer);
@@ -85,7 +100,7 @@ export default function LogisticsDetail() {
   useRealTimeUpdates({ onDeliveryUpdate: load });
 
   if (loading && !data) return <div className="min-h-[60vh] flex items-center justify-center"><RefreshCw className="animate-spin text-orange-600"/></div>;
-  if (!data) return <div className="p-5"><button onClick={()=>navigate('/admin/logistics')} className="text-xs font-bold">← Back to Logistics</button></div>;
+  if (!data) return <div className="mx-auto max-w-xl p-5"><section role="alert" className="rounded-2xl border border-rose-200 bg-white p-5 text-center shadow-sm"><AlertTriangle className="mx-auto text-rose-600"/><h1 className="mt-3 text-lg font-black text-slate-900">Unable to open delivery</h1><p className="mt-2 text-sm text-slate-600">{loadError || 'The delivery details are unavailable.'}</p><div className="mt-4 flex justify-center gap-2"><button onClick={()=>navigate('/admin/logistics')} className="rounded-lg border px-3 py-2 text-xs font-bold">Back to Logistics</button><button onClick={load} className="rounded-lg bg-slate-900 px-3 py-2 text-xs font-bold text-white">Retry</button></div></section></div>;
 
   const { delivery, earning } = data;
   const source = delivery.order || delivery.booking;
@@ -142,6 +157,8 @@ export default function LogisticsDetail() {
   const sortedTimeline = [...(delivery.statusHistory || [])].sort((a,b)=>new Date(a.timestamp)-new Date(b.timestamp));
   return <div className="min-h-screen bg-slate-50 p-3 sm:p-5 space-y-4 pb-24">
     <header className="bg-white border rounded-2xl p-4 flex flex-wrap items-center justify-between gap-3"><div className="flex items-start gap-3"><button onClick={()=>navigate('/admin/logistics')} className="w-9 h-9 rounded-lg border flex items-center justify-center"><ArrowLeft size={15}/></button><div><p className="text-[9px] font-black text-orange-600 uppercase tracking-widest">Delivery Details</p><h1 className="text-xl font-black text-slate-900">{delivery.deliveryNumber}</h1><p className="text-[10px] text-slate-500">{delivery.order?.orderNumber || (delivery.booking ? `Booking ${String(delivery.booking._id || '').slice(-8).toUpperCase()}` : 'Manual delivery')} · Created {new Date(delivery.createdAt).toLocaleString()}</p></div></div><div className="flex gap-2"><button onClick={load} className="h-9 px-3 border rounded-lg text-xs font-bold"><RefreshCw size={13} className="inline mr-2"/>Refresh</button>{!isClosed&&<button onClick={()=>setShowAssignment(!showAssignment)} className="h-9 px-3 rounded-lg bg-slate-900 text-white text-[10px] font-black uppercase">{delivery.assignmentType==='unassigned'?'Assign Rider':'Reassign Rider'}</button>}</div></header>
+
+    {assignmentReadiness?.loadError&&<div role="alert" className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs font-semibold text-amber-900">Delivery details loaded, but Rider eligibility could not be refreshed: {assignmentReadiness.message}</div>}
 
     {showAssignment && <section className="bg-white border rounded-2xl p-4 space-y-4"><DeliveryAssignmentFields riders={riders} assignmentReadiness={assignmentReadiness} parcel={parcel} onParcelChange={setParcel}/><div className="flex justify-end gap-2"><button onClick={()=>setShowAssignment(false)} className="h-9 px-4 text-xs font-bold">Cancel</button><button onClick={assign} disabled={saving || !Number(parcel.weightKg)} className="h-9 px-4 rounded-lg bg-orange-600 text-white text-[10px] font-black uppercase disabled:opacity-50">{saving?'Saving…':delivery.assignmentType==='unassigned'?'Assign Automatically':'Reassign Automatically'}</button></div></section>}
 
