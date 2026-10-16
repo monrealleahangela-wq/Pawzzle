@@ -10,7 +10,7 @@ const attendancePointSchema = new mongoose.Schema({
   distanceMeters: { type: Number, min: 0 },
   validationStatus: {
     type: String,
-    enum: ['valid', 'outside_geofence', 'poor_accuracy', 'system_generated'],
+    enum: ['valid', 'outside_geofence', 'poor_accuracy', 'system_generated', 'employee_correction', 'manager_corrected'],
     required: true
   },
   userAgent: { type: String, maxlength: 500 },

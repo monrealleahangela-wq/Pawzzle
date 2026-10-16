@@ -59,32 +59,26 @@ test('overnight shifts compute against the following-day end boundary', () => {
   assert.deepEqual(result, { status: 'present', workedMinutes: 420, lateMinutes: 0, undertimeMinutes: 0, overtimeMinutes: 0 });
 });
 
-test('auto clock-out requires explicit Store enablement and duration', () => {
+test('automatic clock-out stays disabled even when a legacy Store setting is enabled', () => {
   assert.equal(configuredMaximum({ hrSettings: { autoClockOut: { enabled: false, maximumShiftMinutes: 480 } } }), null);
   assert.equal(configuredMaximum({ hrSettings: { autoClockOut: { enabled: true } } }), null);
   assert.equal(configuredMaximum({ hrSettings: { autoClockOut: { enabled: true, maximumShiftMinutes: 1441 } } }), null);
-  assert.equal(configuredMaximum({ hrSettings: { autoClockOut: { enabled: true, maximumShiftMinutes: 480 } } }), 480);
+  assert.equal(configuredMaximum({ hrSettings: { autoClockOut: { enabled: true, maximumShiftMinutes: 480 } } }), null);
 });
 
-test('auto clock-out is atomic, idempotent, notified, and left pending for review', async () => {
-  const timeIn = dateAtTime('2026-09-14', '09:00');
+test('legacy attendance automation entry point is a no-op and never writes a clock-out', async () => {
   const storeWithAutomation = { _id: 'store-a', hrSettings: { gracePeriodMinutes: 10, overtime: { enabled: false }, autoClockOut: { enabled: true, maximumShiftMinutes: 480 } } };
-  const record = { _id: 'attendance-a', employee: 'employee-a', workDate: '2026-09-14', timeIn: { at: timeIn }, schedule: { isWorkDay: true, start: '09:00', end: '17:00', breakMinutes: 60, timezone: 'Asia/Manila' } };
-  let open = true; let savedUpdate = null; const notifications = [];
+  let writes = 0; let notifications = 0;
   const dependencies = {
     Attendance: {
-      find: async () => open ? [record] : [],
-      findOneAndUpdate: async (_filter, update) => { if (!open) return null; open = false; savedUpdate = update; return { ...record, ...update.$set }; }
+      find: async () => { writes += 1; return []; },
+      findOneAndUpdate: async () => { writes += 1; }
     },
-    User: { find: () => ({ select: () => ({ lean: async () => [{ _id: 'employee-a' }, { _id: 'manager-a' }] }) }) },
-    createNotification: async data => { notifications.push(data); }
+    createNotification: async () => { notifications += 1; }
   };
-  assert.equal(await processStoreAutoClockOuts(storeWithAutomation, dateAtTime('2026-09-14', '18:00'), null, dependencies), 1);
-  assert.equal(savedUpdate.$set.autoClockOutReview.status, 'pending');
-  assert.equal(savedUpdate.$set.timeOut.validationStatus, 'system_generated');
-  assert.equal(notifications.length, 2);
-  assert.deepEqual(notifications.map(item => item.recipient), ['employee-a', 'manager-a']);
-  assert.equal(await processStoreAutoClockOuts(storeWithAutomation, dateAtTime('2026-09-14', '18:05'), null, dependencies), 0);
+  assert.equal(await processStoreAutoClockOuts(storeWithAutomation, dateAtTime('2026-09-14', '18:00'), null, dependencies), 0);
+  assert.equal(writes, 0);
+  assert.equal(notifications, 0);
 });
 
 test('rest-day attendance does not use missing shift boundaries and can become overtime', () => {
@@ -154,14 +148,14 @@ test('attendance routes are self-only and management operations are explicitly p
   assert.match(routes, /requirePermission\('leave\.approve'\)/);
 });
 
-test('location and auto-clock exceptions have explicit review and payroll blockers', () => {
+test('location exceptions and legacy system clock-outs remain payroll blockers', () => {
   const controller = read('controllers/hrController.js');
   const attendance = read('models/Attendance.js');
   const payroll = read('models/PayrollPeriod.js');
   assert.match(attendance, /locationReviews/);
   assert.match(attendance, /autoClockOutReview/);
   assert.match(controller, /employeeReason/);
-  assert.match(controller, /Resolve all attendance exceptions and recompute payroll/);
+  assert.match(controller, /legacy system-generated clock-out/);
   assert.match(payroll, /blocking:/);
 });
 
@@ -188,16 +182,18 @@ test('server is authoritative for attendance time and tenant scope', () => {
 test('duplicate time in and time out without time in are rejected', () => {
   const controller = read('controllers/hrController.js');
   assert.match(controller, /already timed in today/);
-  assert.match(controller, /must time in before timing out/);
+  assert.match(controller, /No active attendance session was found/);
   const attendance = read('models/Attendance.js');
   assert.match(attendance, /unique: true/);
 });
 
 test('poor GPS, impossible coordinates, rapid checkout and manual corrections are auditable', () => {
   const controller = read('controllers/hrController.js');
+  const correctionService = read('services/attendanceCorrectionService.js');
   assert.match(controller, /GPS accuracy is too low/);
   assert.match(controller, /Time out is too soon/);
-  assert.match(controller, /corrections\.push/);
+  assert.match(correctionService, /\$push: \{ corrections:/);
+  assert.match(correctionService, /ActivityLog\.create/);
   const model = read('models/Attendance.js');
   for (const field of ['originalValue', 'correctedValue', 'changedBy', 'reason']) assert.match(model, new RegExp(`${field}:`));
 });
@@ -230,7 +226,7 @@ test('payslips are employee-owned, finalized snapshots', () => {
 test('payroll cannot be paid twice and records external payment rather than claiming transfer', () => {
   const controller = read('controllers/hrController.js');
   assert.match(controller, /prior = \{ reviewed: 'computed', approved: 'reviewed', paid: 'approved' \}/);
-  assert.match(controller, /No bank transfer was initiated by Pawzzle/);
+  assert.match(controller, /Pawzzle did not initiate a transfer/);
   assert.match(controller, /paymentStatus: 'recorded_paid'/);
 });
 

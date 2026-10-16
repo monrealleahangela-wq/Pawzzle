@@ -35,7 +35,7 @@ const buildActiveRiderAccountFilter = (extra = {}) => ({
 
 const fail = (message, statusCode = 400) => Object.assign(new Error(message), { statusCode });
 
-const validateAssignmentSource = ({ source, orderId, bookingId }) => {
+const validateAssignmentSource = ({ source, orderId, bookingId, deliveryId }) => {
   if (orderId) {
     if (source.deliveryMethod !== 'delivery') throw fail('Only delivery orders can be assigned to a rider.', 409);
     if (!ASSIGNABLE_ORDER_STATUSES.includes(source.status)) {
@@ -51,7 +51,12 @@ const validateAssignmentSource = ({ source, orderId, bookingId }) => {
     }
     return true;
   }
-  throw fail('Order ID or Booking ID is required.');
+  if (deliveryId) {
+    if (source.sourceType !== 'manual' || !source.manualDelivery) throw fail('Only a manual delivery can use a Delivery ID.', 409);
+    if (!ACTIVE_ASSIGNMENT_STATUSES.includes(source.status)) throw fail('This manual delivery is no longer eligible for Rider assignment.', 409);
+    return true;
+  }
+  throw fail('Order, Booking, or manual Delivery ID is required.');
 };
 
 const localScheduleParts = (now, timezone = 'Asia/Manila') => {
@@ -376,18 +381,20 @@ const completePickupOrder = async ({ orderId, customerId, session: callerSession
   return { ...outcome, order: await Order.findById(outcome.orderId) };
 };
 
-const assignDelivery = async ({ orderId, bookingId, parcel: parcelInput, actorId, reassign = false }) => {
+const assignDelivery = async ({ orderId, bookingId, deliveryId, parcel: parcelInput, actorId, reassign = false }) => {
   const session = await mongoose.startSession();
   let result;
   try {
     await session.withTransaction(async () => {
       const source = orderId
         ? await Order.findById(orderId).session(session)
-        : await Booking.findById(bookingId).session(session);
-      if (!source) throw fail('Order or Booking not found.', 404);
-      const query = orderId ? { order: source._id } : { booking: source._id };
-      let delivery = await Delivery.findOne(query).session(session);
-      validateAssignmentSource({ source, orderId, bookingId });
+        : bookingId
+          ? await Booking.findById(bookingId).session(session)
+          : await Delivery.findOne({ _id: deliveryId, sourceType: 'manual' }).session(session);
+      if (!source) throw fail('Delivery source not found.', 404);
+      const query = orderId ? { order: source._id } : bookingId ? { booking: source._id } : { _id: source._id, sourceType: 'manual' };
+      let delivery = deliveryId ? source : await Delivery.findOne(query).session(session);
+      validateAssignmentSource({ source, orderId, bookingId, deliveryId });
       if (delivery?.assignmentType === 'internal' && delivery.assignedRider && !reassign) {
         if (bookingId && String(source.delivery || '') !== String(delivery._id)) {
           const linked = await Booking.updateOne({
@@ -484,7 +491,7 @@ const assignDelivery = async ({ orderId, bookingId, parcel: parcelInput, actorId
           $push: { fulfillmentTimeline: { status: 'rider_assigned', timestamp: now, actor: actorId, description: 'An internal Delivery Rider was assigned automatically.' } }
         }, { session });
         if (!linked.matchedCount) throw fail('Order state changed. Refresh and try again.', 409);
-      } else {
+      } else if (bookingId) {
         const linked = await Booking.updateOne({
           _id: source._id,
           status: source.status,

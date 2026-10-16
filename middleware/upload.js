@@ -61,6 +61,20 @@ const procurementEvidenceStorage = new CloudinaryStorage({
   })
 });
 
+// Attendance evidence contains employee information and is never stored as a
+// public Cloudinary asset. Access is granted later through short-lived signed
+// URLs after a fresh authorization check.
+const attendanceEvidenceStorage = new CloudinaryStorage({
+  cloudinary,
+  params: (req) => ({
+    folder: 'pawzzle/attendance-evidence',
+    type: 'authenticated',
+    resource_type: 'image',
+    allowed_formats: ['jpeg', 'jpg', 'png', 'webp'],
+    context: { owner: String(req.user?._id || '') }
+  })
+});
+
 // multer-storage-cloudinary removes files using the default `upload` type.
 // Override cleanup for this isolated authenticated storage so failed multipart
 // requests do not leave an authenticated asset behind.
@@ -71,6 +85,8 @@ procurementEvidenceStorage._removeFile = (req, file, callback) => {
     invalidate: true
   }, callback);
 };
+
+attendanceEvidenceStorage._removeFile = procurementEvidenceStorage._removeFile;
 
 // Configure multer upload (single)
 const upload = multer({
@@ -90,6 +106,22 @@ const procurementEvidenceUpload = multer({
   storage: procurementEvidenceStorage,
   limits: { fileSize: 5 * 1024 * 1024 },
   fileFilter
+});
+
+const attendanceEvidenceUpload = multer({
+  storage: attendanceEvidenceStorage,
+  limits: { fileSize: 5 * 1024 * 1024, files: 1 },
+  fileFilter: (req, file, cb) => {
+    const extension = path.extname(file.originalname || '').toLowerCase();
+    const allowedExtensions = new Set(['.jpg', '.jpeg', '.png', '.webp']);
+    const allowedMimeTypes = new Set(['image/jpeg', 'image/png', 'image/webp']);
+    if (!allowedExtensions.has(extension) || !allowedMimeTypes.has(String(file.mimetype || '').toLowerCase())) {
+      const error = new Error('Evidence must be a JPG, PNG, or WEBP image.');
+      error.statusCode = 400;
+      return cb(error);
+    }
+    return cb(null, true);
+  }
 });
 
 // Cloudinary storage for documents (PDF, Doc)
@@ -123,6 +155,7 @@ const uploadDoc = multer({
 const uploadSingle = upload.single('image');
 const uploadMultiple = uploadMulti.array('images', 10);
 const uploadProcurementEvidence = procurementEvidenceUpload.array('images', 10);
+const uploadAttendanceEvidence = attendanceEvidenceUpload.single('evidence');
 const uploadServicePhotos = uploadMulti.fields([
   { name: 'images', maxCount: 5 },
   { name: 'image', maxCount: 1 }
@@ -136,7 +169,7 @@ const handleUploadError = (err, req, res, next) => {
     }
     return res.status(400).json({ message: err.message });
   } else if (err) {
-    return res.status(500).json({ message: err.message });
+    return res.status(err.statusCode || 500).json({ message: err.message });
   }
   next();
 };
@@ -146,6 +179,7 @@ module.exports = {
   uploadSingle,
   uploadMultiple,
   uploadProcurementEvidence,
+  uploadAttendanceEvidence,
   uploadServicePhotos,
   uploadDoc,
   handleUploadError

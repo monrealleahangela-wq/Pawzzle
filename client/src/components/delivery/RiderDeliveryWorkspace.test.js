@@ -128,4 +128,31 @@ describe('RiderDeliveryWorkspace responsive action layout', () => {
     expect(screen.getByRole('button', { name: 'Report delivery issue' })).toHaveTextContent('Report issue');
     expect(screen.getByRole('button', { name: 'Confirm delivery' })).toHaveClass('min-h-12', 'min-w-0');
   });
+
+  test('shows a manual delivery recipient, persisted destination and notes to the assigned rider', () => {
+    const delivery = {
+      ...makeDelivery('assigned'),
+      order: undefined,
+      sourceType: 'manual',
+      manualDelivery: {
+        recipientName: 'Manual Recipient',
+        recipientPhone: '09179998888',
+        dropoffAddress: { formattedAddress: 'Complete saved manual destination' },
+        notes: 'Use the side entrance.'
+      }
+    };
+
+    render(<RiderDeliveryWorkspace
+      delivery={delivery}
+      token="test-token"
+      onStatusUpdate={jest.fn()}
+      onSendMessage={jest.fn()}
+      onRefresh={jest.fn()}
+    />);
+
+    expect(screen.getByText('Manual Recipient')).toBeInTheDocument();
+    expect(screen.getAllByText('Complete saved manual destination')).toHaveLength(2);
+    expect(screen.getByText('“Use the side entrance.”')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Call customer' })).toHaveAttribute('href', 'tel:09179998888');
+  });
 });

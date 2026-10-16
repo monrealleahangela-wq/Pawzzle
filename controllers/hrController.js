@@ -9,7 +9,6 @@ const User = require('../models/User');
 const ActivityLog = require('../models/ActivityLog');
 const resolveStore = require('../utils/resolveStore');
 const { createNotification } = require('./notificationController');
-const { processStoreAutoClockOuts } = require('../services/attendanceAutomationService');
 const { hasPermission, isOperationalStaff, isStoreAdmin, isPlatformAdmin, normalizeRole } = require('../config/permissions');
 const {
   isValidCoordinates, distanceMeters, dateKeyInTimezone, getScheduleForDate,
@@ -27,11 +26,12 @@ const {
   confirmPaymentAttempt, createPaymentAttempt, findPaymentObligations,
   findEmployeePaymentStatuses, getProtectedProof, retryFailedAttempt, transitionPaymentAttempt
 } = require('../services/payrollPaymentWorkflowService');
+const { computePayrollPeriodAtomically } = require('../services/payrollComputationService');
 const activeStaffFilter = activePayrollEmployeeFilter;
 const fail = (message, statusCode = 400) => Object.assign(new Error(message), { statusCode });
 const safeError = (res, error) => {
-  console.error('[HR]', error);
   const status = error.statusCode || (error.name === 'ValidationError' ? 400 : 500);
+  if (status === 500) console.error('[HR]', error);
   return res.status(status).json({ message: status === 500 ? 'Unable to complete the HR request. Please try again.' : error.message });
 };
 const parseDate = value => {
@@ -93,11 +93,7 @@ const updateSettings = async (req, res) => {
         if (!Number.isFinite(value) || value < 0 || value > 720) throw fail('Time-in window values must be between 0 and 720 minutes.');
       }
     }
-    if (req.body.autoClockOut?.enabled) {
-      const maximum = Number(req.body.autoClockOut.maximumShiftMinutes);
-      if (!Number.isFinite(maximum) || maximum < 60 || maximum > 1440) throw fail('Configure a maximum shift duration between 60 and 1440 minutes before enabling auto clock-out.');
-    }
-    const editable = ['payrollFrequency', 'weekly', 'semiMonthly', 'monthly', 'defaultWorkDays', 'defaultShift', 'gracePeriodMinutes', 'timeInWindow', 'autoClockOut', 'lateDeductionEnabled', 'undertimeDeductionEnabled', 'overtime', 'attendanceRadiusMeters', 'maximumLocationAccuracyMeters', 'outsideGeofencePolicy', 'payrollApprovalRequired', 'leaveTypes'];
+    const editable = ['payrollFrequency', 'weekly', 'semiMonthly', 'monthly', 'defaultWorkDays', 'defaultShift', 'gracePeriodMinutes', 'timeInWindow', 'lateDeductionEnabled', 'undertimeDeductionEnabled', 'overtime', 'attendanceRadiusMeters', 'maximumLocationAccuracyMeters', 'outsideGeofencePolicy', 'payrollApprovalRequired', 'leaveTypes'];
     editable.forEach(key => { if (req.body[key] !== undefined) store.hrSettings[key] = req.body[key]; });
     store.hrSettings.updatedAt = new Date(); store.hrSettings.updatedBy = req.user._id;
     await store.save();
@@ -344,31 +340,43 @@ const timeOut = async (req, res) => {
   try {
     if (!isOperationalStaff(req.user) || !req.user.store) throw fail('Attendance is available only to assigned Store employees.', 403);
     const store = await storeFor(req); const now = new Date();
-    await processStoreAutoClockOuts(store, now, req.app.get('socketio'));
-    const record = await Attendance.findOne({ store: store._id, employee: req.user._id, 'timeIn.at': { $exists: true }, 'timeOut.at': { $exists: false } }).sort({ 'timeIn.at': -1 });
-    if (!record?.timeIn?.at) {
-      const automated = await Attendance.findOne({ store: store._id, employee: req.user._id, 'autoClockOutReview.status': { $in: ['pending', 'rejected'] } }).sort({ 'timeIn.at': -1 });
-      if (automated) throw fail('This shift was automatically clocked out at the Store maximum and is awaiting review.', 409);
-      throw fail('You must time in before timing out.', 409);
-    }
-    if (record.timeOut?.at) throw fail('You have already timed out today.', 409);
-    if (now - record.timeIn.at < 60000) throw fail('Time out is too soon after time in. Please wait and try again.', 429);
     const location = validateLocation(req.body, store);
     const review = locationReview(req.body, location, 'time_out');
-    const computed = calculateAttendance({ timeIn: record.timeIn.at, timeOut: now, schedule: record.schedule, graceMinutes: store.hrSettings?.gracePeriodMinutes, overtimeEnabled: store.hrSettings?.overtime?.enabled });
-    const update = {
-      $set: { timeOut: point(req, location, now), ...computed, locationFlagged: record.locationFlagged || Boolean(review) },
-      $addToSet: { suspiciousReasons: { $each: location.reasons } }
-    };
-    if (review) update.$push = { locationReviews: review };
-    const updated = await Attendance.findOneAndUpdate(
-      { _id: record._id, store: store._id, employee: req.user._id, 'timeOut.at': { $exists: false } },
-      update,
-      { new: true, runValidators: true }
-    );
-    if (!updated) throw fail('You have already timed out today.', 409);
-    await audit(req, 'Attendance Time Out', `Employee ${req.user._id} timed out for ${record.workDate}; server time recorded.`);
-    if (location.reasons.length) await notifyStoreRoles(req, store._id, ['admin', 'store_owner', 'manager'], ['manager'], 'attendance_update', 'Attendance exception', `${req.user.firstName || 'An employee'} recorded flagged attendance for ${record.workDate}.`, updated._id, 'Attendance', '/admin/hr?tab=attendance');
+    const session = await mongoose.startSession();
+    let updated;
+    try {
+      await session.withTransaction(async () => {
+        const record = await Attendance.findOne({ store: store._id, employee: req.user._id, 'timeIn.at': { $exists: true }, 'timeOut.at': { $exists: false } }).sort({ 'timeIn.at': -1 }).session(session);
+        if (!record?.timeIn?.at) throw fail('No active attendance session was found. If you forgot to clock out, submit a correction request from your attendance history.', 409);
+        if (now - record.timeIn.at < 60000) throw fail('Time out is too soon after time in. Please wait and try again.', 429);
+        const computed = calculateAttendance({ timeIn: record.timeIn.at, timeOut: now, schedule: record.schedule, graceMinutes: store.hrSettings?.gracePeriodMinutes, overtimeEnabled: store.hrSettings?.overtime?.enabled });
+        const update = {
+          $set: { timeOut: point(req, location, now), ...computed, locationFlagged: record.locationFlagged || Boolean(review) },
+          $addToSet: { suspiciousReasons: { $each: location.reasons } },
+          $inc: { __v: 1 }
+        };
+        if (review) update.$push = { locationReviews: review };
+        updated = await Attendance.findOneAndUpdate(
+          { _id: record._id, store: store._id, employee: req.user._id, __v: record.__v, 'timeOut.at': { $exists: false } },
+          update,
+          { new: true, runValidators: true, session }
+        );
+        if (!updated) throw fail('This attendance session was already updated. Refresh to see the recorded clock-out.', 409);
+        await ActivityLog.create([{
+          user: req.user._id,
+          action: 'Attendance Time Out',
+          details: `Employee ${req.user._id} timed out for ${record.workDate}; server time recorded.`,
+          store: store._id,
+          subject: req.user._id,
+          category: 'attendance',
+          changes: { before: { timeOut: null }, after: { timeOut: now }, effectiveDate: now, reason: 'Employee manual clock-out' },
+          ipAddress: req.ip
+        }], { session });
+      });
+    } finally {
+      await session.endSession();
+    }
+    if (location.reasons.length) await notifyStoreRoles(req, store._id, ['admin', 'store_owner', 'manager'], ['manager'], 'attendance_update', 'Attendance exception', `${req.user.firstName || 'An employee'} recorded flagged attendance for ${updated.workDate}.`, updated._id, 'Attendance', '/admin/hr?tab=attendance');
     res.json({ message: location.reasons.length ? 'Time out recorded and flagged for review.' : 'Time out recorded.', attendance: updated });
   } catch (error) { safeError(res, error); }
 };
@@ -412,26 +420,6 @@ const managementAttendance = async (req, res) => {
   } catch (error) { safeError(res, error); }
 };
 
-const correctAttendance = async (req, res) => {
-  try {
-    const store = await storeFor(req); const record = await Attendance.findOne({ _id: req.params.id, store: store._id });
-    if (!record) throw fail('Attendance record not found.', 404);
-    const reason = String(req.body.reason || '').trim(); if (reason.length < 5) throw fail('A correction reason of at least 5 characters is required.');
-    const changes = [];
-    ['status', 'workedMinutes', 'lateMinutes', 'undertimeMinutes', 'overtimeMinutes'].forEach(field => {
-      if (req.body[field] !== undefined && String(record[field]) !== String(req.body[field])) {
-        changes.push({ field, originalValue: record[field], correctedValue: req.body[field], reason, changedBy: req.user._id });
-        record[field] = req.body[field];
-      }
-    });
-    if (!changes.length) throw fail('No valid attendance correction was provided.');
-    record.corrections.push(...changes); record.suspiciousReasons = [...new Set([...(record.suspiciousReasons || []), 'Manual attendance correction'])];
-    await record.save(); await audit(req, 'Attendance Corrected', `Attendance ${record._id} corrected: ${reason}`);
-    await notify(req, record.employee, 'attendance_update', 'Attendance updated', `Your ${record.workDate} attendance was corrected: ${reason}`, record._id, 'Attendance', '/staff/attendance');
-    res.json({ message: 'Attendance corrected with an audit record.', attendance: record });
-  } catch (error) { safeError(res, error); }
-};
-
 const reviewLocationAttendance = async (req, res) => {
   try {
     const store = await storeFor(req); const record = await Attendance.findOne({ _id: req.params.id, store: store._id });
@@ -465,39 +453,6 @@ const reviewLocationAttendance = async (req, res) => {
     await audit(req, `Attendance Location ${status === 'approved' ? 'Approved' : 'Rejected'}`, `Attendance ${record._id} ${punchType} location review: ${reviewerNote}`);
     await notify(req, record.employee, 'attendance_update', `Attendance location ${status}`, `Your ${record.workDate} ${punchType.replace('_', ' ')} location was ${status}: ${reviewerNote}`, record._id, 'Attendance', '/staff/attendance');
     res.json({ message: `Attendance location ${status}.`, attendance: record });
-  } catch (error) { safeError(res, error); }
-};
-
-const reviewAutoClockOut = async (req, res) => {
-  try {
-    const store = await storeFor(req); const record = await Attendance.findOne({ _id: req.params.id, store: store._id });
-    if (!record) throw fail('Attendance record not found.', 404);
-    if (String(record.employee) === String(req.user._id) && !isPlatformAdmin(req.user)) throw fail('You cannot review your own auto clock-out.', 403);
-    if (!['pending', 'rejected'].includes(record.autoClockOutReview?.status)) throw fail('This attendance record does not require auto clock-out review.', 409);
-    const action = String(req.body.action || '');
-    const reviewerNote = String(req.body.reviewerNote || '').trim();
-    if (!['approve', 'reject', 'correct'].includes(action)) throw fail('Choose Approve, Reject, or Correct.');
-    if (reviewerNote.length < 5) throw fail('A reviewer note of at least 5 characters is required.');
-    const reviewedAt = new Date();
-    if (action === 'correct') {
-      const correctedTimeOut = new Date(req.body.correctedTimeOut);
-      const durationMinutes = Math.round((correctedTimeOut - record.timeIn.at) / 60000);
-      if (Number.isNaN(correctedTimeOut.getTime()) || durationMinutes < 1 || durationMinutes > 1440 || correctedTimeOut > reviewedAt) throw fail('Enter a valid corrected time out after time in and no later than now.');
-      const originalTimeOut = record.timeOut?.at;
-      const computed = calculateAttendance({ timeIn: record.timeIn.at, timeOut: correctedTimeOut, schedule: record.schedule, graceMinutes: store.hrSettings?.gracePeriodMinutes, overtimeEnabled: store.hrSettings?.overtime?.enabled });
-      record.timeOut.at = correctedTimeOut;
-      Object.assign(record, computed);
-      record.corrections.push({ field: 'timeOut.at', originalValue: originalTimeOut, correctedValue: correctedTimeOut, reason: reviewerNote, changedBy: req.user._id });
-      record.autoClockOutReview.status = 'corrected';
-    } else record.autoClockOutReview.status = action === 'approve' ? 'approved' : 'rejected';
-    record.autoClockOutReview.reviewedBy = req.user._id;
-    record.autoClockOutReview.reviewedAt = reviewedAt;
-    record.autoClockOutReview.reviewerNote = reviewerNote;
-    record.autoClockOutReview.history.push({ status: record.autoClockOutReview.status, reviewedBy: req.user._id, reviewedAt, reviewerNote });
-    await record.save();
-    await audit(req, `Auto Clock-Out ${action === 'correct' ? 'Corrected' : action === 'approve' ? 'Approved' : 'Rejected'}`, `Attendance ${record._id}: ${reviewerNote}`);
-    await notify(req, record.employee, 'attendance_update', `Auto clock-out ${record.autoClockOutReview.status}`, `Your ${record.workDate} auto clock-out was ${record.autoClockOutReview.status}: ${reviewerNote}`, record._id, 'Attendance', '/staff/attendance');
-    res.json({ message: `Auto clock-out ${record.autoClockOutReview.status}.`, attendance: record });
   } catch (error) { safeError(res, error); }
 };
 
@@ -626,11 +581,13 @@ const reviewLeave = async (req, res) => {
 const dateLoop = (start, end, callback) => {
   for (let cursor = parseDate(start); cursor <= dateEnd(end); cursor = addDays(cursor, 1)) callback(cursor);
 };
-const summarizeAttendance = async (employee, store, start, end) => {
+const summarizeAttendance = async (employee, store, start, end, session = null) => {
   const fromKey = start.toISOString().slice(0, 10); const toKey = end.toISOString().slice(0, 10);
+  const attendanceQuery = Attendance.find({ store: store._id, employee: employee._id, workDate: { $gte: fromKey, $lte: toKey } });
+  const leaveQuery = LeaveRequest.find({ store: store._id, employee: employee._id, status: 'approved', startDate: { $lte: end }, endDate: { $gte: start } });
+  if (session) { attendanceQuery.session(session); leaveQuery.session(session); }
   const [records, leaves] = await Promise.all([
-    Attendance.find({ store: store._id, employee: employee._id, workDate: { $gte: fromKey, $lte: toKey } }).lean(),
-    LeaveRequest.find({ store: store._id, employee: employee._id, status: 'approved', startDate: { $lte: end }, endDate: { $gte: start } }).lean()
+    attendanceQuery.lean(), leaveQuery.lean()
   ]);
   const recordMap = new Map(records.map(row => [row.workDate, row]));
   const summary = { scheduledWorkDays: 0, daysPresent: 0, paidLeaveDays: 0, unpaidLeaveDays: 0, legacyUnclassifiedLeaveDays: 0, flaggedAttendanceDays: 0, autoClockOutReviewDays: 0, absences: 0, restDays: 0, incompleteDays: 0, lateMinutes: 0, undertimeMinutes: 0, overtimeMinutes: 0, workedMinutes: 0 };
@@ -646,7 +603,7 @@ const summarizeAttendance = async (employee, store, start, end) => {
     if (!attendance) { summary.absences += 1; return; }
     const unresolvedLocation = attendance.locationFlagged
       || (attendance.locationReviews || []).some(review => review.status !== 'approved');
-    const unresolvedAutoClockOut = ['pending', 'rejected'].includes(attendance.autoClockOutReview?.status);
+    const unresolvedAutoClockOut = attendance.timeOut?.validationStatus === 'system_generated';
     if (unresolvedLocation) summary.flaggedAttendanceDays += 1;
     if (unresolvedAutoClockOut) summary.autoClockOutReviewDays += 1;
     if (unresolvedLocation || unresolvedAutoClockOut) { summary.incompleteDays += 1; return; }
@@ -701,19 +658,22 @@ const periodDetails = async (req, res) => {
 
 const computePeriod = async (req, res) => {
   try {
-    const store = await storeFor(req); const period = await PayrollPeriod.findOne({ _id: req.params.id, store: store._id });
-    if (!period) throw fail('Payroll period not found.', 404);
-    if (!['draft', 'computed'].includes(period.status)) throw fail('Only Draft or Computed payroll can be recomputed.', 409);
-    if (period.periodEnd > dateEnd(new Date())) throw fail('Payroll cannot be computed before the attendance period has ended.', 409);
-    const employees = await User.find(payrollEmployeeQuery(store._id, { includeInactive: true }))
-      .select('+employmentProfile.compensation +employmentProfile.compensationHistory +employmentProfile.employmentHistory');
-    const issues = [];
-    const includedEmployeeIds = [];
-    for (const employee of employees) {
+    const store = await storeFor(req);
+    const { period, result } = await computePayrollPeriodAtomically({
+      periodId: req.params.id,
+      storeId: store._id,
+      calculate: async ({ period, session }) => {
+        if (period.periodEnd > dateEnd(new Date())) throw fail('Payroll cannot be computed before the attendance period has ended.', 409);
+        const employees = await User.find(payrollEmployeeQuery(store._id, { includeInactive: true }))
+          .select('+employmentProfile.compensation +employmentProfile.compensationHistory +employmentProfile.employmentHistory')
+          .session(session);
+        const issues = [];
+        const includedEmployeeIds = [];
+        for (const employee of employees) {
       const name = employeeName(employee);
       const eligibility = payrollEligibility(employee, period.periodEnd, period.periodStart);
       if (!eligibility.eligible) {
-        await Payslip.deleteOne({ payrollPeriod: period._id, employee: employee._id });
+        await Payslip.deleteOne({ payrollPeriod: period._id, employee: employee._id }, { session });
         issues.push({ employeeId: employee._id, employeeName: name, code: eligibility.code, reason: `${name}: ${eligibility.message}` });
         continue;
       }
@@ -725,7 +685,7 @@ const computePeriod = async (req, res) => {
       const attendanceSummary = {};
       const pay = { basePay: 0, overtimePay: 0, absenceDeduction: 0, unpaidLeaveDeduction: 0, lateDeduction: 0, undertimeDeduction: 0 };
       for (const segment of compensationCoverage.segments) {
-        const segmentSummary = await summarizeAttendance(employee, store, segment.start, segment.end);
+        const segmentSummary = await summarizeAttendance(employee, store, segment.start, segment.end, session);
         addNumericSummary(attendanceSummary, segmentSummary);
         const segmentPay = computePay({
           compensation: segment.compensation,
@@ -738,12 +698,12 @@ const computePeriod = async (req, res) => {
       }
       if (attendanceSummary.legacyUnclassifiedLeaveDays) issues.push({ employeeId: employee._id, employeeName: name, code: 'legacy_leave_unclassified', reason: `${name}: ${attendanceSummary.legacyUnclassifiedLeaveDays} legacy leave day(s) need paid/unpaid classification; no automatic deduction was made.`, blocking: false });
       if (attendanceSummary.flaggedAttendanceDays) issues.push({ employeeId: employee._id, employeeName: name, code: 'attendance_location_review', reason: `${name}: ${attendanceSummary.flaggedAttendanceDays} location-flagged attendance day(s) require a final approval before payroll review.`, blocking: true });
-      if (attendanceSummary.autoClockOutReviewDays) issues.push({ employeeId: employee._id, employeeName: name, code: 'attendance_auto_clock_out_review', reason: `${name}: ${attendanceSummary.autoClockOutReviewDays} auto clock-out attendance day(s) require approval or correction before payroll review.`, blocking: true });
-      const existing = await Payslip.findOne({ payrollPeriod: period._id, employee: employee._id });
+      if (attendanceSummary.autoClockOutReviewDays) issues.push({ employeeId: employee._id, employeeName: name, code: 'legacy_system_clock_out', reason: `${name}: ${attendanceSummary.autoClockOutReviewDays} legacy system-generated clock-out day(s) require an authorized manual correction before payroll review.`, blocking: true });
+      const existing = await Payslip.findOne({ payrollPeriod: period._id, employee: employee._id }).session(session);
       const manualAdditions = (existing?.additions || []).filter(item => item.source === 'manual').map(item => item.toObject());
       const manualDeductions = (existing?.deductions || []).filter(item => item.source === 'manual').map(item => item.toObject());
       const riderEarnings = (employee.staffType === 'delivery_rider' || employee.role === 'delivery_rider')
-        ? await RiderEarning.find({ rider: employee._id, store: store._id, status: 'available', payout: null, payrollPayslip: null, earnedAt: { $gte: period.periodStart, $lte: dateEnd(period.periodEnd) } }).lean() : [];
+        ? await RiderEarning.find({ rider: employee._id, store: store._id, status: 'available', payout: null, payrollPayslip: null, earnedAt: { $gte: period.periodStart, $lte: dateEnd(period.periodEnd) } }).session(session).lean() : [];
       const additions = [
         ...manualAdditions,
         ...(pay.overtimePay > 0 ? [{ type: 'Overtime Pay', amount: pay.overtimePay, reason: 'Computed from attendance under the Store overtime policy.', source: 'attendance', createdBy: req.user._id }] : []),
@@ -779,12 +739,16 @@ const computePeriod = async (req, res) => {
         },
         attendanceSummary, additions, deductions, basePay: pay.basePay, grossPay, netPay,
         paymentStatus: existing?.paymentStatus || 'unpaid'
-      }, { upsert: true, new: true, runValidators: true, setDefaultsOnInsert: true });
-    }
-    await Payslip.deleteMany({ payrollPeriod: period._id, employee: { $nin: includedEmployeeIds } });
-    const [totals] = await Payslip.aggregate([{ $match: { payrollPeriod: period._id } }, { $group: { _id: null, employeeCount: { $sum: 1 }, grossPay: { $sum: '$grossPay' }, netPay: { $sum: '$netPay' }, deductions: { $sum: { $sum: '$deductions.amount' } } } }]);
-    period.status = 'computed'; period.computedBy = req.user._id; period.computedAt = new Date(); period.totals = totals || {}; period.reviewIssues = issues;
-    await period.save(); await audit(req, 'Payroll Computed', `Payroll ${period._id} computed from attendance; ${issues.length} employee(s) need compensation setup.`);
+      }, { upsert: true, new: true, runValidators: true, setDefaultsOnInsert: true, session });
+        }
+        await Payslip.deleteMany({ payrollPeriod: period._id, employee: { $nin: includedEmployeeIds } }, { session });
+        const [totals] = await Payslip.aggregate([{ $match: { payrollPeriod: period._id } }, { $group: { _id: null, employeeCount: { $sum: 1 }, grossPay: { $sum: '$grossPay' }, netPay: { $sum: '$netPay' }, deductions: { $sum: { $sum: '$deductions.amount' } } } }]).session(session);
+        period.computedBy = req.user._id; period.computedAt = new Date(); period.totals = totals || {}; period.reviewIssues = issues;
+        return { issues };
+      }
+    });
+    const { issues } = result;
+    await audit(req, 'Payroll Computed', `Payroll ${period._id} computed from attendance; ${issues.length} employee(s) need compensation setup.`);
     await notifyStoreRoles(req, store._id, ['admin', 'store_owner'], [], 'payroll_update', 'Payroll ready for review', `Payroll for ${period.periodStart.toISOString().slice(0, 10)} to ${period.periodEnd.toISOString().slice(0, 10)} was computed.`, period._id, 'PayrollPeriod', '/admin/hr?tab=payroll');
     res.json({ message: 'Payroll computed from attendance.', period, issues });
   } catch (error) { safeError(res, error); }
@@ -815,35 +779,42 @@ const addAdjustment = async (req, res) => {
 
 const statusHandler = nextStatus => async (req, res) => {
   try {
-    const store = await storeFor(req); const period = await PayrollPeriod.findOne({ _id: req.params.id, store: store._id });
-    if (!period) throw fail('Payroll period not found.', 404);
+    const store = await storeFor(req);
     const prior = { reviewed: 'computed', approved: 'reviewed', paid: 'approved' }[nextStatus];
-    if (period.status !== prior) throw fail(`Payroll must be ${prior} before it can be ${nextStatus}.`, 409);
-    if (nextStatus === 'reviewed' && normalizeRole(req.user) === 'finance_staff'
-      && await Payslip.exists({ payrollPeriod: period._id, store: store._id, employee: req.user._id })) {
-      throw fail('Finance staff cannot review a payroll that includes their own salary. A Store Owner or other authorized non-beneficiary must review this period.', 403);
-    }
-    if (nextStatus === 'reviewed' && await Payslip.countDocuments({ payrollPeriod: period._id, store: store._id }) === 0) throw fail('Payroll has no employee payslips to review. Configure compensation and recompute it first.', 409);
-    if (nextStatus === 'reviewed' && period.reviewIssues?.some(issue => issue.blocking)) throw fail('Resolve all attendance exceptions and recompute payroll before continuing.', 409);
-    if (nextStatus === 'reviewed' && period.reviewIssues?.length && req.body.acknowledgeIssues !== true) throw fail('Review the listed payroll issues and explicitly acknowledge them before continuing.', 409);
-    if (nextStatus === 'approved') {
-      const slips = await Payslip.find({ payrollPeriod: period._id, store: store._id });
-      const claimedEarningIds = [];
-      for (const slip of slips) {
-        for (const addition of slip.additions.filter(item => item.source === 'rider_earning')) {
-          const claimed = await RiderEarning.findOneAndUpdate({ _id: addition.sourceId, store: store._id, status: 'available', payout: null, payrollPayslip: null }, { status: 'processing', payrollPayslip: slip._id }, { new: true });
-          if (!claimed) {
-            await RiderEarning.updateMany({ _id: { $in: claimedEarningIds }, store: store._id, status: 'processing' }, { $set: { status: 'available', payrollPayslip: null } });
-            throw fail('A rider earning was already included in another payout. Recompute payroll before approval.', 409);
+    let period;
+    await mongoose.connection.transaction(async session => {
+      period = await PayrollPeriod.findOne({ _id: req.params.id, store: store._id }).session(session);
+      if (!period) throw fail('Payroll period not found.', 404);
+      if (period.status !== prior) throw fail(`Payroll must be ${prior} before it can be ${nextStatus}.`, 409);
+      if (['reviewed', 'approved'].includes(nextStatus)
+        && Number(period.computedInputRevision || 0) !== Number(period.payrollInputRevision || 0)) {
+        throw fail('Payroll inputs changed after the current computation. Recompute this period before review or approval.', 409);
+      }
+      if (nextStatus === 'reviewed' && normalizeRole(req.user) === 'finance_staff'
+        && await Payslip.exists({ payrollPeriod: period._id, store: store._id, employee: req.user._id }).session(session)) {
+        throw fail('Finance staff cannot review a payroll that includes their own salary. A Store Owner or other authorized non-beneficiary must review this period.', 403);
+      }
+      if (nextStatus === 'reviewed' && await Payslip.countDocuments({ payrollPeriod: period._id, store: store._id }).session(session) === 0) throw fail('Payroll has no employee payslips to review. Configure compensation and recompute it first.', 409);
+      if (nextStatus === 'reviewed' && period.reviewIssues?.some(issue => issue.blocking)) throw fail('Resolve all attendance exceptions and recompute payroll before continuing.', 409);
+      if (nextStatus === 'reviewed' && period.reviewIssues?.length && req.body.acknowledgeIssues !== true) throw fail('Review the listed payroll issues and explicitly acknowledge them before continuing.', 409);
+      if (nextStatus === 'approved') {
+        const slips = await Payslip.find({ payrollPeriod: period._id, store: store._id }).session(session);
+        for (const slip of slips) {
+          for (const addition of slip.additions.filter(item => item.source === 'rider_earning')) {
+            const claimed = await RiderEarning.findOneAndUpdate(
+              { _id: addition.sourceId, store: store._id, status: 'available', payout: null, payrollPayslip: null },
+              { status: 'processing', payrollPayslip: slip._id },
+              { new: true, session }
+            );
+            if (!claimed) throw fail('A rider earning was already included in another payout. Recompute payroll before approval.', 409);
           }
-          claimedEarningIds.push(claimed._id);
         }
       }
-    }
-    const now = new Date(); period.status = nextStatus;
-    if (nextStatus === 'reviewed') { period.reviewedBy = req.user._id; period.reviewedAt = now; }
-    if (nextStatus === 'approved') { period.approvedBy = req.user._id; period.approvedAt = now; }
-    await period.save();
+      const now = new Date(); period.status = nextStatus;
+      if (nextStatus === 'reviewed') { period.reviewedBy = req.user._id; period.reviewedAt = now; }
+      if (nextStatus === 'approved') { period.approvedBy = req.user._id; period.approvedAt = now; }
+      await period.save({ session });
+    });
     if (nextStatus === 'approved') await notifyStoreRoles(req, store._id, ['finance_staff'], ['finance_staff'], 'payroll_update', 'Payroll approved for processing', 'An approved payroll period is ready to be recorded as paid.', period._id, 'PayrollPeriod', '/admin/hr?tab=payroll');
     await audit(req, `Payroll ${nextStatus}`, `Payroll ${period._id} changed to ${nextStatus} by ${req.user._id}.`);
     res.json({ message: `Payroll ${nextStatus}.`, period });
@@ -931,8 +902,8 @@ const myPayslip = async (req, res) => {
 
 module.exports = {
   getSettings, updateSettings, listEmployees, getCompensation, updateCompensation,
-  timeIn, timeOut, myAttendance, managementAttendance, correctAttendance, createManualAttendance,
-  reviewLocationAttendance, reviewAutoClockOut,
+  timeIn, timeOut, myAttendance, managementAttendance, createManualAttendance,
+  reviewLocationAttendance,
   createLeave, myLeaves, cancelLeave, listLeaves, reviewLeave,
   generatePeriod, listPeriods, periodDetails, computePeriod, addAdjustment,
   reviewPeriod, approvePeriod, payPeriod, paymentObligations, createEmployeePaymentAttempt,

@@ -1,4 +1,3 @@
-const mongoose = require('mongoose');
 const Delivery = require('../models/Delivery');
 const Order = require('../models/Order');
 const Booking = require('../models/Booking');
@@ -7,6 +6,7 @@ const RiderEarning = require('../models/RiderEarning');
 const resolveStore = require('../utils/resolveStore');
 const { getDeliveryStatusLabel, getDeliveryLinkStatus } = require('../utils/logistics');
 const { isDeliveryConcernReportable } = require('../utils/deliveryConcerns');
+const { buildDeliveryQueryFilters, normalizeManualDelivery } = require('../utils/manualDelivery');
 
 const PLATFORM_ROLES = new Set(['super_admin', 'platform_admin']);
 const escapeRegex = value => String(value || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -40,8 +40,10 @@ const resolveScope = async req => {
 const serializeDelivery = delivery => {
   const row = delivery.toObject ? delivery.toObject() : delivery;
   const assignmentType = row.assignedRider ? 'internal' : 'unassigned';
+  const sourceType = row.sourceType || (row.order ? 'order' : row.booking ? 'booking' : row.manualDelivery ? 'manual' : 'legacy');
   const payload = {
     ...row,
+    sourceType,
     assignmentType,
     assignmentHistory: (row.assignmentHistory || []).filter(entry => entry.assignmentType === 'internal'),
     deliveryNumber: `DLV-${String(row._id).slice(-8).toUpperCase()}`,
@@ -56,19 +58,123 @@ const serializeDelivery = delivery => {
   delete payload.isRiderVerified;
   delete payload.thirdPartyRider;
   delete payload.providerDelivery;
+  if (payload.manualDelivery) {
+    delete payload.manualDelivery.idempotencyKey;
+    delete payload.manualDelivery.createdBy;
+    delete payload.manualDelivery.updatedBy;
+  }
   return payload;
+};
+
+const emitLogisticsRefresh = (req, delivery, action) => {
+  const io = req.app.get('socketio');
+  if (!io) return;
+  const payload = { type: 'delivery', action, id: String(delivery._id), status: delivery.status };
+  if (delivery.store) io.to(`store_${String(delivery.store)}`).emit('deliveryUpdate', payload);
+  io.to('admin_global').emit('dashboardUpdate', payload);
+};
+
+const manualPayloadMatches = (existing, next) => {
+  const address = value => ({
+    formattedAddress: value?.formattedAddress || '', street: value?.street || '',
+    barangay: value?.barangay || '', city: value?.city || '', province: value?.province || '',
+    zipCode: value?.zipCode || '', country: value?.country || '', placeId: value?.placeId || '',
+    coordinates: value?.coordinates?.lat != null && value?.coordinates?.lng != null
+      ? { lat: Number(value.coordinates.lat), lng: Number(value.coordinates.lng) }
+      : null
+  });
+  const comparable = value => ({
+    recipientName: value?.recipientName || '', recipientPhone: value?.recipientPhone || '',
+    pickupAddress: address(value?.pickupAddress), dropoffAddress: address(value?.dropoffAddress), notes: value?.notes || ''
+  });
+  return JSON.stringify(comparable(existing)) === JSON.stringify(comparable(next));
+};
+
+const createManualDelivery = async (req, res) => {
+  try {
+    const store = await resolveStore(req);
+    if (!store) return res.status(403).json({ message: 'A Store assignment is required to create a manual delivery.' });
+    const manualDelivery = normalizeManualDelivery(req.body, req.user._id);
+    if (!manualDelivery.idempotencyKey) {
+      return res.status(400).json({ message: 'A request identifier is required. Refresh the form and try again.' });
+    }
+    const existing = await Delivery.findOne({
+      store, sourceType: 'manual', 'manualDelivery.idempotencyKey': manualDelivery.idempotencyKey
+    });
+    if (existing) {
+      if (!manualPayloadMatches(existing.manualDelivery?.toObject?.() || existing.manualDelivery, manualDelivery)) {
+        return res.status(409).json({ message: 'This request identifier was already used for different delivery details.' });
+      }
+      return res.json({ delivery: serializeDelivery(existing), replayed: true });
+    }
+
+    let delivery;
+    try {
+      delivery = await Delivery.create({
+        store,
+        sourceType: 'manual',
+        manualDelivery,
+        status: 'pending',
+        assignmentType: 'unassigned',
+        statusHistory: [{ status: 'pending', timestamp: new Date(), notes: 'Manual delivery created.' }]
+      });
+    } catch (error) {
+      if (error.code !== 11000) throw error;
+      delivery = await Delivery.findOne({
+        store, sourceType: 'manual', 'manualDelivery.idempotencyKey': manualDelivery.idempotencyKey
+      });
+      if (!delivery || !manualPayloadMatches(delivery.manualDelivery?.toObject?.() || delivery.manualDelivery, manualDelivery)) throw error;
+      return res.json({ delivery: serializeDelivery(delivery), replayed: true });
+    }
+    emitLogisticsRefresh(req, delivery, 'created');
+    return res.status(201).json({ delivery: serializeDelivery(delivery), replayed: false });
+  } catch (error) {
+    console.error('Create manual delivery error:', error);
+    return res.status(error.statusCode || 500).json({ message: error.statusCode ? error.message : 'Unable to create the manual delivery.' });
+  }
+};
+
+const updateManualDelivery = async (req, res) => {
+  try {
+    const scope = await resolveScope(req);
+    const existing = await Delivery.findOne({
+      $and: [scope.match, { _id: req.params.id, sourceType: 'manual' }]
+    });
+    if (!existing) return res.status(404).json({ message: 'Manual delivery not found.' });
+    if (!['pending', 'unassigned', 'assigned', 'accepted'].includes(existing.status)) {
+      return res.status(409).json({ message: 'An in-progress or completed delivery address cannot be edited.' });
+    }
+    const manualDelivery = normalizeManualDelivery(req.body, req.user._id, existing.manualDelivery || {});
+    const delivery = await Delivery.findOneAndUpdate({
+      _id: existing._id,
+      store: existing.store,
+      sourceType: 'manual',
+      status: existing.status,
+      updatedAt: existing.updatedAt
+    }, { $set: { manualDelivery } }, { new: true, runValidators: true });
+    if (!delivery) return res.status(409).json({ message: 'Delivery details changed. Refresh and try again.' });
+    emitLogisticsRefresh(req, delivery, 'updated');
+    return res.json({ delivery: serializeDelivery(delivery) });
+  } catch (error) {
+    console.error('Update manual delivery error:', error);
+    if (error.name === 'CastError') return res.status(404).json({ message: 'Manual delivery not found.' });
+    return res.status(error.statusCode || 500).json({ message: error.statusCode ? error.message : 'Unable to update the manual delivery.' });
+  }
 };
 
 const getLogisticsDashboard = async (req, res) => {
   try {
     const scope = await resolveScope(req);
-    const rows = await Delivery.find(scope.match)
+    const match = await buildDeliveryQueryFilters({
+      query: req.query, scope, models: { Order, Booking, User }, escapeRegex
+    });
+    const rows = await Delivery.find(match)
       .select('_id status assignmentType assignedRider createdAt deliveredAt deliveryAttempts complaints')
       .lean();
     const count = predicate => rows.filter(predicate).length;
     const summary = {
       total: rows.length,
-      pendingAssignment: count(row => ['pending', 'unassigned'].includes(row.status) || row.assignmentType === 'unassigned'),
+      pendingAssignment: count(row => ['pending', 'unassigned'].includes(row.status)),
       assigned: count(row => ['assigned', 'accepted'].includes(row.status)),
       outForDelivery: count(row => ['picked_up', 'in_transit'].includes(row.status)),
       arrived: count(row => row.status === 'arrived'),
@@ -133,46 +239,10 @@ const getLogisticsDashboard = async (req, res) => {
 const getDeliveries = async (req, res) => {
   try {
     const scope = await resolveScope(req);
-    const { status, riderType, rider, search, from, to, page = 1, limit = 20 } = req.query;
-    const filters = [];
-    if (status) filters.push({ status });
-    if (riderType) {
-      if (!['internal', 'unassigned'].includes(riderType)) return res.status(400).json({ message: 'Invalid rider type filter.' });
-      filters.push(riderType === 'internal' ? { assignedRider: { $ne: null } } : { assignedRider: null });
-    }
-    if (rider && mongoose.Types.ObjectId.isValid(rider)) filters.push({ assignedRider: rider });
-    if (from || to) {
-      const createdAt = {};
-      if (from) createdAt.$gte = new Date(from);
-      if (to) { const end = new Date(to); end.setHours(23, 59, 59, 999); createdAt.$lte = end; }
-      filters.push({ createdAt });
-    }
-
-    if (search?.trim()) {
-      const pattern = new RegExp(escapeRegex(search.trim()), 'i');
-      const customerIds = await User.find({
-        $or: [{ firstName: pattern }, { lastName: pattern }, { username: pattern }]
-      }).distinct('_id');
-      const orderQuery = { $or: [{ orderNumber: pattern }, { trackingNumber: pattern }, { customer: { $in: customerIds } }] };
-      const bookingQuery = { customer: { $in: customerIds } };
-      if (scope.store) { orderQuery.store = scope.store; bookingQuery.store = scope.store; }
-      const [orderIds, bookingIds, riderIds] = await Promise.all([
-        Order.find(orderQuery).distinct('_id'),
-        Booking.find(bookingQuery).distinct('_id'),
-        User.find({ $and: [
-          { $or: [{ role: 'delivery_rider' }, { role: 'staff', staffType: 'delivery_rider' }] },
-          { $or: [{ firstName: pattern }, { lastName: pattern }, { 'riderProfile.staffId': pattern }] }
-        ] }).distinct('_id')
-      ]);
-      filters.push({
-        $or: [
-          { trackingToken: pattern }, { order: { $in: orderIds } },
-          { booking: { $in: bookingIds } }, { assignedRider: { $in: riderIds } }
-        ]
-      });
-    }
-
-    const match = filters.length ? { $and: [scope.match, ...filters] } : scope.match;
+    const { page = 1, limit = 20 } = req.query;
+    const match = await buildDeliveryQueryFilters({
+      query: req.query, scope, models: { Order, Booking, User }, escapeRegex
+    });
     const safeLimit = Math.min(100, Math.max(1, Number(limit) || 20));
     const safePage = Math.max(1, Number(page) || 1);
     const [deliveries, total] = await Promise.all([
@@ -198,6 +268,7 @@ const getDeliveryDetails = async (req, res) => {
   try {
     const scope = await resolveScope(req);
     const delivery = await Delivery.findOne({ $and: [scope.match, { _id: req.params.id }] })
+      .populate('store', 'name contactInfo address')
       .populate({ path: 'order', populate: [{ path: 'customer', select: 'firstName lastName email phone' }, { path: 'store', select: 'name contactInfo' }] })
       .populate({ path: 'booking', populate: [{ path: 'customer', select: 'firstName lastName email phone' }, { path: 'store', select: 'name contactInfo' }, { path: 'service', select: 'name duration category' }] })
       .populate('assignedRider', 'firstName lastName phone isActive staffType riderProfile')
@@ -231,7 +302,7 @@ const getDeliveryIssues = async (req, res) => {
     const deliveries = await Delivery.find({
       $and: [scope.match, { $or: [{ 'deliveryAttempts.0': { $exists: true } }, { 'complaints.0': { $exists: true } }, { status: { $in: ['failed_attempt', 'returned_to_store'] } }] }]
     })
-      .select('order booking status assignedRider assignmentType deliveryAttempts complaints createdAt')
+      .select('order booking manualDelivery.recipientName status assignedRider assignmentType deliveryAttempts complaints createdAt')
       .populate({ path: 'order', select: 'orderNumber customer', populate: { path: 'customer', select: 'firstName lastName' } })
       .populate({ path: 'booking', select: 'customer', populate: { path: 'customer', select: 'firstName lastName' } })
       .populate('assignedRider', 'firstName lastName riderProfile.staffId')
@@ -242,8 +313,8 @@ const getDeliveryIssues = async (req, res) => {
         issues.push({
           _id: attempt._id, type: 'attempt', deliveryId: delivery._id,
           deliveryNumber: `DLV-${String(delivery._id).slice(-8).toUpperCase()}`,
-          orderNumber: delivery.order?.orderNumber || `Booking ${String(delivery.booking?._id || '').slice(-8).toUpperCase()}`,
-          customer: delivery.order?.customer || delivery.booking?.customer,
+          orderNumber: delivery.order?.orderNumber || (delivery.booking ? `Booking ${String(delivery.booking._id).slice(-8).toUpperCase()}` : 'Manual delivery'),
+          customer: delivery.order?.customer || delivery.booking?.customer || (delivery.manualDelivery ? { name: delivery.manualDelivery.recipientName } : undefined),
           rider: delivery.assignedRider,
           riderType: delivery.assignedRider ? 'internal' : 'unassigned', reason: attempt.reason, notes: attempt.notes,
           photo: attempt.photo, date: attempt.timestamp,
@@ -254,8 +325,8 @@ const getDeliveryIssues = async (req, res) => {
         issues.push({
           _id: complaint._id, type: 'complaint', deliveryId: delivery._id,
           deliveryNumber: `DLV-${String(delivery._id).slice(-8).toUpperCase()}`,
-          orderNumber: delivery.order?.orderNumber || `Booking ${String(delivery.booking?._id || '').slice(-8).toUpperCase()}`,
-          customer: delivery.order?.customer || delivery.booking?.customer,
+          orderNumber: delivery.order?.orderNumber || (delivery.booking ? `Booking ${String(delivery.booking._id).slice(-8).toUpperCase()}` : 'Manual delivery'),
+          customer: delivery.order?.customer || delivery.booking?.customer || (delivery.manualDelivery ? { name: delivery.manualDelivery.recipientName } : undefined),
           rider: delivery.assignedRider,
           riderType: delivery.assignedRider ? 'internal' : 'unassigned', reason: complaint.type, notes: complaint.content,
           date: complaint.createdAt, resolutionStatus: complaint.status, resolvedAt: complaint.resolvedAt,
@@ -298,6 +369,8 @@ const resolveDeliveryIssue = async (req, res) => {
 };
 
 module.exports = {
+  createManualDelivery,
+  updateManualDelivery,
   getLogisticsDashboard,
   getDeliveries,
   getDeliveryDetails,

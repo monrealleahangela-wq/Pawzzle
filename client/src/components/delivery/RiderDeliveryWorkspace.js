@@ -26,7 +26,9 @@ const FAILURE_REASONS = [
 ];
 const WORKSPACE_CONTAINER = 'mx-auto w-full max-w-5xl px-4 sm:px-6 lg:px-8';
 
-const formatAddress = address => address ? [address.street, address.barangay, address.city, address.province, address.zipCode].filter(Boolean).join(', ') : 'Address unavailable';
+const formatAddress = address => address
+  ? address.formattedAddress || [address.street, address.barangay, address.city, address.province, address.zipCode].filter(Boolean).join(', ')
+  : 'Address unavailable';
 const formatTime = value => value ? new Date(value).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : null;
 const validCoords = value => Number.isFinite(Number(value?.lat)) && Number.isFinite(Number(value?.lng))
   && Number(value.lat) >= -90 && Number(value.lat) <= 90 && Number(value.lng) >= -180 && Number(value.lng) <= 180;
@@ -47,11 +49,12 @@ export default function RiderDeliveryWorkspace({ delivery, token, eta, distanceK
   const [failure, setFailure] = useState({ reason: 'customer_unavailable', notes: '', photo: '' });
   const order = delivery.order;
   const booking = delivery.booking;
-  const recipient = order?.customer || booking?.customer;
-  const address = order?.shippingAddress || booking?.serviceAddress;
+  const manual = delivery.manualDelivery;
+  const recipient = manual ? { firstName: manual.recipientName, phone: manual.recipientPhone } : order?.customer || booking?.customer;
+  const address = manual?.dropoffAddress || order?.shippingAddress || booking?.serviceAddress;
   const coords = address?.coordinates;
   const phone = order?.phoneNumber || recipient?.phone || recipient?.phoneNumber;
-  const instructions = order?.notes || booking?.notes;
+  const instructions = manual?.notes || order?.notes || booking?.notes;
   const tracking = order?.trackingNumber || order?.orderNumber || `DLV-${String(delivery._id).slice(-8).toUpperCase()}`;
   const isCod = ['cod', 'cash_on_delivery'].includes(order?.paymentMethod);
   const completed = delivery.status === 'delivered';

@@ -38,6 +38,11 @@ const activeDeliveryView = delivery => {
   delete payload.isRiderVerified;
   delete payload.thirdPartyRider;
   delete payload.providerDelivery;
+  if (payload.manualDelivery) {
+    delete payload.manualDelivery.idempotencyKey;
+    delete payload.manualDelivery.createdBy;
+    delete payload.manualDelivery.updatedBy;
+  }
   if (payload.assignmentHistory) {
     payload.assignmentHistory = payload.assignmentHistory.filter(entry => entry.assignmentType === 'internal');
   }
@@ -142,17 +147,20 @@ const assignedRiderQuery = req => ({
 
 const assignDeliveryAutomatically = async (req, res) => {
   try {
-    const { orderId, bookingId, parcel, reassign } = req.body;
-    if (!orderId && !bookingId) return res.status(400).json({ message: 'Order ID or Booking ID is required.' });
+    const { orderId, bookingId, deliveryId, parcel, reassign } = req.body;
+    if (![orderId, bookingId, deliveryId].filter(Boolean).length) return res.status(400).json({ message: 'Order, Booking, or manual Delivery ID is required.' });
+    if ([orderId, bookingId, deliveryId].filter(Boolean).length > 1) return res.status(400).json({ message: 'Select only one delivery source.' });
     if (parcel?.confirmed !== true) return res.status(400).json({ message: 'Confirm the packaged parcel weight and parcel count before Rider assignment.' });
     const source = orderId
       ? await Order.findById(orderId).select('store customer orderNumber')
-      : await Booking.findById(bookingId).select('store customer');
-    if (!source) return res.status(404).json({ message: 'Order or Booking not found.' });
+      : bookingId
+        ? await Booking.findById(bookingId).select('store customer')
+        : await Delivery.findOne({ _id: deliveryId, sourceType: 'manual' }).select('store manualDelivery.recipientName');
+    if (!source) return res.status(404).json({ message: 'Delivery source not found.' });
     if (!isPlatformAdmin(req.user) && !(await canOperateStore(req.user, source.store, ['logistics.manage']))) {
       return res.status(403).json({ message: 'You cannot assign deliveries for this store.' });
     }
-    const result = await assignDelivery({ orderId, bookingId, parcel, actorId: req.user._id, reassign: Boolean(reassign) });
+    const result = await assignDelivery({ orderId, bookingId, deliveryId, parcel, actorId: req.user._id, reassign: Boolean(reassign) });
     const { delivery, rider } = result;
     const io = req.app.get('socketio');
     if (result.previousRiderId && String(result.previousRiderId) !== String(rider._id)) {
@@ -195,6 +203,7 @@ const getAssignedRiderDelivery = async (req, res) => {
   try {
     if (!isDeliveryRider(req.user)) return res.status(403).json({ message: 'Delivery Rider access only.' });
     const delivery = await Delivery.findOne(assignedRiderQuery(req))
+      .populate('store', 'name contactInfo address')
       .populate({ path: 'order', populate: [{ path: 'customer', select: 'firstName lastName phone' }, { path: 'store', select: 'name contactInfo address' }] })
       .populate({ path: 'booking', populate: [{ path: 'customer', select: 'firstName lastName phone' }, { path: 'store', select: 'name contactInfo address' }, { path: 'service', select: 'name duration' }] })
       .populate('assignedRider', 'firstName lastName phone riderProfile');
@@ -289,6 +298,7 @@ const getDeliveryByToken = async (req, res) => {
     const { token } = req.params;
     
     const delivery = await Delivery.findOne({ trackingToken: token })
+        .populate('store', 'name contactInfo address')
         .populate({
           path: 'order',
           select: 'orderNumber trackingNumber customer store shippingAddress paymentMethod totalAmount items notes status paymentStatus',
