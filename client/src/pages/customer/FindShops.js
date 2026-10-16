@@ -1,14 +1,15 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { MapPin, Search, Navigation, Phone, Mail, ChevronRight, Clock, Store as StoreIcon, Filter, X, Target, Navigation2, Flag, ArrowRight } from 'lucide-react';
 import { MapContainer, TileLayer, Marker, Popup, useMap, Polyline } from 'react-leaflet';
 import L from 'leaflet';
 import axios from 'axios';
 import { storeService, getImageUrl } from '../../services/apiService';
-import { formatTime12h } from '../../utils/timeFormatters';
+import { formatDateTime12h } from '../../utils/timeFormatters';
 import { toast } from 'react-toastify';
 import 'leaflet/dist/leaflet.css';
 import { hasMapCoordinates } from '../../utils/storeLocation';
+import { calculateRouteProgress, distanceBetweenMeters, parseOsrmRoute } from '../../utils/shopNavigation';
 
 // Fix for Leaflet default icon issues in React
 import markerIcon from 'leaflet/dist/images/marker-icon.png';
@@ -89,35 +90,30 @@ const FindShops = () => {
   const [directions, setDirections] = useState([]);
   const [eta, setEta] = useState(null);
   const [distance, setDistance] = useState(null);
-  const [activeInstruction, setActiveInstruction] = useState(0);
+  const [routeProgress, setRouteProgress] = useState(0);
+  const [routeLoading, setRouteLoading] = useState(false);
+  const [routeError, setRouteError] = useState('');
+  const initialRouteDistanceRef = useRef(null);
+  const routeRequestRef = useRef({ id: 0, controller: null });
+  const lastRoutedLocationRef = useRef(null);
 
-  const searchParams = new URLSearchParams(useLocation().search);
-  const shopIdFromQuery = searchParams.get('shop');
+  const storeIdFromQuery = useMemo(() => {
+    const params = new URLSearchParams(location.search);
+    return params.get('store') || params.get('shop');
+  }, [location.search]);
 
-  // Handle shop from query params
-  useEffect(() => {
-    if (shopIdFromQuery && stores.length > 0) {
-        const store = stores.find(s => s._id === shopIdFromQuery);
-        if (store) {
-            handleStoreSelect(store);
-            // Auto start directions if shop is from query
-            if (hasMapCoordinates(store)) setTimeout(() => getDirections(store), 500);
-        }
-    }
-  }, [shopIdFromQuery, stores]);
-
-  const handleStoreSelect = (store) => {
+  const handleStoreSelect = useCallback((store) => {
     setSelectedStore(store);
     // Don't interrupt navigation if already active
-    if (!isNavigating && store.contactInfo?.address?.coordinates?.lat) {
-      setMapCenter([store.contactInfo.address.coordinates.lat, store.contactInfo.address.coordinates.lng]);
+    if (!isNavigating && hasMapCoordinates(store)) {
+      setMapCenter([Number(store.contactInfo.address.coordinates.lat), Number(store.contactInfo.address.coordinates.lng)]);
       setMapZoom(15);
     }
     // On mobile, close sidebar when selecting a store
     if (window.innerWidth < 1024) {
       setIsSidebarOpen(false);
     }
-  };
+  }, [isNavigating]);
 
   const selectedStoreHasCoordinates = hasMapCoordinates(selectedStore);
 
@@ -129,15 +125,6 @@ const FindShops = () => {
         const fetchedStores = response.data.stores || [];
         setStores(fetchedStores);
 
-        // Check for ?store=ID in URL
-        const queryParams = new URLSearchParams(location.search);
-        const storeId = queryParams.get('store');
-        if (storeId) {
-          const targetStore = fetchedStores.find(s => s._id === storeId);
-          if (targetStore) {
-            handleStoreSelect(targetStore);
-          }
-        }
       } catch (error) {
         console.error('Error fetching store locations:', error);
         toast.error('We could not load store locations. Please try again.');
@@ -146,7 +133,13 @@ const FindShops = () => {
       }
     };
     fetchStores();
-  }, [location.search]);
+  }, []);
+
+  useEffect(() => {
+    if (!storeIdFromQuery || !stores.length || selectedStore?._id === storeIdFromQuery) return;
+    const targetStore = stores.find(store => store._id === storeIdFromQuery);
+    if (targetStore) handleStoreSelect(targetStore);
+  }, [handleStoreSelect, selectedStore?._id, storeIdFromQuery, stores]);
 
   const filteredStores = useMemo(() => {
     return stores.filter(store => {
@@ -165,33 +158,25 @@ const FindShops = () => {
     });
   }, [stores, searchTerm, selectedMunicipality]);
 
-  useEffect(() => {
-    let watchId;
-    if (isNavigating && selectedStore) {
-      watchId = navigator.geolocation.watchPosition(
-        (position) => {
-          const coords = {
-            lat: position.coords.latitude,
-            lng: position.coords.longitude
-          };
-          setUserLocation(coords);
-          
-          // Re-fetch route periodically or based on distance
-          const dest = selectedStore.contactInfo.address.coordinates;
-          fetchRoute(coords, { lat: dest.lat, lng: dest.lng });
-        },
-        (error) => console.error('WatchPosition error:', error),
-        { enableHighAccuracy: true, distanceFilter: 10 }
-      );
-    }
-    return () => {
-      if (watchId) navigator.geolocation.clearWatch(watchId);
-    };
-  }, [isNavigating, selectedStore]);
+  const stopNavigation = useCallback(() => {
+    routeRequestRef.current.controller?.abort();
+    routeRequestRef.current = { id: routeRequestRef.current.id + 1, controller: null };
+    initialRouteDistanceRef.current = null;
+    lastRoutedLocationRef.current = null;
+    setIsNavigating(false);
+    setRouteData(null);
+    setDirections([]);
+    setEta(null);
+    setDistance(null);
+    setRouteProgress(0);
+    setRouteLoading(false);
+    setRouteError('');
+  }, []);
 
-  const getUserLocation = () => {
+  const requestUserLocation = useCallback(() => new Promise(resolve => {
     if (!navigator.geolocation) {
-      toast.error('Geolocation is not supported by your browser');
+      toast.error('Location is not supported by this browser.');
+      resolve(null);
       return;
     }
 
@@ -199,79 +184,132 @@ const FindShops = () => {
       (position) => {
         const coords = {
           lat: position.coords.latitude,
-          lng: position.coords.longitude
+          lng: position.coords.longitude,
+          accuracy: position.coords.accuracy
         };
         setUserLocation(coords);
-        setMapCenter([coords.lat, coords.lng]);
-        setMapZoom(13);
-        toast.success('Current location detected');
+        resolve(coords);
       },
-      () => {
-        toast.error('Could not get your location');
-      }
+      (error) => {
+        const denied = error?.code === error?.PERMISSION_DENIED;
+        toast.error(denied
+          ? 'Location permission is required for live navigation.'
+          : 'We could not determine your current location. Please try again.');
+        resolve(null);
+      },
+      { enableHighAccuracy: true, timeout: 12000, maximumAge: 5000 }
     );
-  };
+  }), []);
 
-  const fetchRoute = async (start, end) => {
+  const getUserLocation = useCallback(async () => {
+    const coords = await requestUserLocation();
+    if (coords) {
+      setMapCenter([coords.lat, coords.lng]);
+      setMapZoom(14);
+      toast.success('Current location detected.');
+    }
+    return coords;
+  }, [requestUserLocation]);
+
+  const fetchRoute = useCallback(async (start, end, { resetProgress = false, quiet = false } = {}) => {
+    if (!isWithinCavite(start.lat, start.lng) || !isWithinCavite(end.lat, end.lng)) {
+      const message = 'Navigation is currently available only within Cavite.';
+      setRouteError(message);
+      if (!quiet) toast.warning(message);
+      return false;
+    }
+
+    routeRequestRef.current.controller?.abort();
+    const controller = new AbortController();
+    const requestId = routeRequestRef.current.id + 1;
+    routeRequestRef.current = { id: requestId, controller };
+    setRouteLoading(true);
+    setRouteError('');
+
     try {
-      // Check if both points are in Cavite
-      if (!isWithinCavite(start.lat, start.lng) || !isWithinCavite(end.lat, end.lng)) {
-        toast.warning('Navigation is currently restricted to Cavite region only.');
-        stopNavigation();
-        return;
-      }
-
       const url = `https://router.project-osrm.org/route/v1/driving/${start.lng},${start.lat};${end.lng},${end.lat}?overview=full&geometries=geojson&steps=true`;
-      const res = await axios.get(url);
-      
-      if (res.data.routes && res.data.routes[0]) {
-        const route = res.data.routes[0];
-        setRouteData(route.geometry.coordinates.map(c => [c[1], c[0]]));
-        setEta(Math.ceil(route.duration / 60));
-        setDistance((route.distance / 1000).toFixed(1));
-        setDirections(route.legs[0].steps.map(s => ({
-          instruction: s.maneuver.instruction,
-          distance: s.distance,
-          name: s.name
-        })));
+      const response = await axios.get(url, { signal: controller.signal, timeout: 12000 });
+      if (routeRequestRef.current.id !== requestId) return false;
+
+      const route = parseOsrmRoute(response.data);
+      if (resetProgress || initialRouteDistanceRef.current === null) {
+        initialRouteDistanceRef.current = route.distanceMeters;
       }
-    } catch (err) {
-      console.error('Routing failed:', err);
-      toast.error('We could not find a route. Please try again.');
+      setRouteData(route.coordinates);
+      setEta(route.etaMinutes);
+      setDistance(route.distanceKm);
+      setDirections(route.directions);
+      setRouteProgress(calculateRouteProgress(initialRouteDistanceRef.current, route.distanceMeters));
+      return true;
+    } catch (error) {
+      if (error?.code === 'ERR_CANCELED' || error?.name === 'CanceledError') return false;
+      console.error('Routing failed:', error);
+      const message = 'Live directions are temporarily unavailable. Please retry navigation.';
+      setRouteError(message);
+      if (!quiet) toast.error(message);
+      return false;
+    } finally {
+      if (routeRequestRef.current.id === requestId) setRouteLoading(false);
     }
-  };
+  }, []);
 
-  const getDirections = (store) => {
+  const getDirections = useCallback(async (store) => {
     if (!hasMapCoordinates(store)) {
-        toast.info('This shop has not added a map location yet.');
-        return;
+      toast.info('This shop has not added a map location yet.');
+      return;
     }
 
-    if (!userLocation) {
-        toast.info('Please enable your location to start navigation', {
-            onClick: () => getUserLocation()
-        });
-        getUserLocation();
-        return;
-    }
+    const currentLocation = userLocation || await requestUserLocation();
+    if (!currentLocation) return;
 
-    const { lat, lng } = store.contactInfo.address.coordinates;
-    
-    // Start Internal Navigation
+    const destination = {
+      lat: Number(store.contactInfo.address.coordinates.lat),
+      lng: Number(store.contactInfo.address.coordinates.lng)
+    };
+    setSelectedStore(store);
     setIsNavigating(true);
-    setIsSidebarOpen(false); // Close sidebar to see map
+    setIsSidebarOpen(false);
+    setMapCenter([currentLocation.lat, currentLocation.lng]);
     setMapZoom(16);
-    fetchRoute(userLocation, { lat, lng });
-  };
+    initialRouteDistanceRef.current = null;
+    lastRoutedLocationRef.current = { ...currentLocation, routedAt: Date.now() };
+    const routeFound = await fetchRoute(currentLocation, destination, { resetProgress: true });
+    if (!routeFound && routeRequestRef.current.controller) setIsNavigating(false);
+  }, [fetchRoute, requestUserLocation, userLocation]);
 
-  const stopNavigation = () => {
-    setIsNavigating(false);
-    setRouteData(null);
-    setDirections([]);
-    setEta(null);
-    setDistance(null);
-    setActiveInstruction(0);
-  };
+  useEffect(() => {
+    let watchId;
+    if (isNavigating && selectedStoreHasCoordinates && navigator.geolocation) {
+      watchId = navigator.geolocation.watchPosition(
+        (position) => {
+          const coords = {
+            lat: position.coords.latitude,
+            lng: position.coords.longitude,
+            accuracy: position.coords.accuracy
+          };
+          setUserLocation(coords);
+          const previous = lastRoutedLocationRef.current;
+          const movedMeters = previous ? distanceBetweenMeters(previous, coords) : Infinity;
+          const routeAge = previous ? Date.now() - previous.routedAt : Infinity;
+          if (movedMeters < 25 && routeAge < 15000) return;
+
+          lastRoutedLocationRef.current = { ...coords, routedAt: Date.now() };
+          const destination = selectedStore.contactInfo.address.coordinates;
+          fetchRoute(coords, { lat: Number(destination.lat), lng: Number(destination.lng) }, { quiet: true });
+        },
+        (error) => {
+          console.error('Live navigation location error:', error);
+          setRouteError('Live location updates paused. Check your location permission.');
+        },
+        { enableHighAccuracy: true, timeout: 15000, maximumAge: 5000 }
+      );
+    }
+    return () => {
+      if (watchId !== undefined) navigator.geolocation.clearWatch(watchId);
+    };
+  }, [fetchRoute, isNavigating, selectedStore, selectedStoreHasCoordinates]);
+
+  useEffect(() => () => routeRequestRef.current.controller?.abort(), []);
 
   if (loading) {
     return (
@@ -301,14 +339,14 @@ const FindShops = () => {
       )}
 
       {/* Sidebar List */}
-      <aside className={`marketplace-shops-panel
-        absolute lg:relative inset-y-0 left-0 w-full lg:w-[min(24rem,38%)] lg:shrink-0 bg-white dark:bg-slate-900 z-[1002] lg:z-10
+      <aside data-testid="shop-gps-sidebar" className={`marketplace-shops-panel
+        absolute lg:relative inset-y-0 left-0 w-full lg:w-[min(20rem,34%)] lg:shrink-0 bg-white dark:bg-slate-900 z-[1002] lg:z-10
         transition-transform duration-500 ease-in-out border-r border-slate-100 dark:border-slate-800 flex flex-col
         shadow-2xl lg:shadow-none
         ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
       `}>
         {/* Sidebar Header */}
-        <div className="marketplace-shops-header p-4 sm:p-6 space-y-4 border-b border-slate-50 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md sticky top-0 z-10">
+        <div className="marketplace-shops-header p-4 sm:p-5 space-y-3 border-b border-slate-50 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md sticky top-0 z-10">
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">Shop GPS</h2>
@@ -366,21 +404,22 @@ const FindShops = () => {
         </div>
 
         {/* Results List */}
-        <div className="marketplace-shop-list flex-1 overflow-y-auto px-4 py-6 space-y-4 no-scrollbar">
+        <div className="marketplace-shop-list flex-1 overflow-y-auto px-3 py-4 space-y-3 no-scrollbar">
           {filteredStores.length > 0 ? (
             filteredStores.map(store => (
               <div
                 key={store._id}
+                data-testid={`shop-card-${store._id}`}
                 onClick={() => handleStoreSelect(store)}
                 className={`marketplace-shop-card
-                  group p-4 rounded-2xl border transition-all cursor-pointer h-full
+                  group p-3 rounded-xl border transition-all cursor-pointer
                   ${selectedStore?._id === store._id
                     ? 'bg-primary-50 dark:bg-primary-900/10 border-primary-200 dark:border-primary-800 shadow-lg'
                     : 'bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800 hover:border-primary-100 dark:hover:border-primary-900 shadow-sm'}
                 `}
               >
-                <div className="flex gap-4">
-                  <div className="w-16 h-16 rounded-2xl overflow-hidden bg-slate-50 dark:bg-slate-800 shrink-0 border border-slate-100 dark:border-slate-700">
+                <div className="flex gap-3">
+                  <div className="w-14 h-14 rounded-xl overflow-hidden bg-slate-50 dark:bg-slate-800 shrink-0 border border-slate-100 dark:border-slate-700">
                     {store.logo ? (
                       <img src={getImageUrl(store.logo)} alt={store.name} className="w-full h-full object-cover" />
                     ) : (
@@ -404,7 +443,7 @@ const FindShops = () => {
                       <MapPin className="mt-0.5 h-3 w-3 shrink-0 text-primary-500" />
                       <span>{store.contactInfo.address.city}, Cavite</span>
                     </p>
-                    <div className="flex flex-wrap gap-1.5 mt-3">
+                    <div className="flex flex-wrap gap-1.5 mt-2">
                       <span className="px-2 py-0.5 bg-slate-50 dark:bg-slate-800 text-[8px] font-black uppercase text-slate-400 tracking-widest rounded-md">
                         {store.businessType?.replace('_', ' ')}
                       </span>
@@ -413,7 +452,7 @@ const FindShops = () => {
                 </div>
 
                 {selectedStore?._id === store._id && (
-                  <div className="mt-4 pt-4 border-t border-primary-100 dark:border-primary-900 animate-slide-up space-y-3">
+                  <div className="mt-3 pt-3 border-t border-primary-100 dark:border-primary-900 animate-slide-up space-y-2.5">
                     <div className="space-y-2">
                       <p className="text-[9px] font-bold text-slate-500 dark:text-slate-400 uppercase leading-relaxed">
                         {store.contactInfo.address.street}, {store.contactInfo.address.barangay}, {store.contactInfo.address.city}
@@ -437,7 +476,7 @@ const FindShops = () => {
                       <button
                         onClick={() => isNavigating ? stopNavigation() : getDirections(store)}
                         disabled={!hasMapCoordinates(store)}
-                        className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all disabled:cursor-not-allowed disabled:opacity-60 ${isNavigating ? 'bg-rose-50 text-rose-600 border border-rose-100 hover:bg-rose-600 hover:text-white' : 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 enabled:hover:scale-105'}`}
+                        className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all disabled:cursor-not-allowed disabled:opacity-60 ${isNavigating ? 'bg-rose-50 text-rose-600 border border-rose-100 hover:bg-rose-600 hover:text-white' : 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 enabled:hover:scale-[1.01]'}`}
                       >
                         {isNavigating ? (
                             <>
@@ -568,18 +607,21 @@ const FindShops = () => {
 
         {/* Navigation HUD (Waze-like) */}
           {isNavigating && selectedStore && selectedStoreHasCoordinates && (
-          <div className="absolute top-4 left-4 right-4 lg:left-auto lg:right-4 lg:w-[350px] z-[1000] animate-slide-up">
+          <div className="absolute top-4 left-4 right-4 lg:left-auto lg:right-4 lg:w-[330px] z-[1000] animate-slide-up">
             <div className="bg-white dark:bg-slate-900 rounded-[2rem] shadow-2xl border border-slate-100 dark:border-slate-800 overflow-hidden">
                 {/* Instruction Header */}
-                <div className="bg-primary-600 p-5 text-white flex items-center gap-4">
-                    <div className="p-3 bg-white/20 rounded-2xl">
-                        <Navigation2 className="h-6 w-6 rotate-45" />
+                <div className="bg-primary-600 p-4 text-white flex items-center gap-3">
+                    <div className="p-2.5 bg-white/20 rounded-2xl">
+                        <Navigation2 className={`h-5 w-5 rotate-45 ${routeLoading ? 'animate-pulse' : ''}`} />
                     </div>
-                    <div className="flex-1">
+                    <div className="flex-1 min-w-0">
                         <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-80">Next Direction</p>
-                        <h3 className="text-sm font-black uppercase leading-tight">
-                            {directions[activeInstruction]?.instruction || 'Initializing Guidance...'}
+                        <h3 className="text-sm font-black uppercase leading-tight break-words">
+                            {routeLoading && !directions.length
+                              ? 'Calculating best route…'
+                              : directions[0]?.instruction || routeError || 'Continue to destination'}
                         </h3>
+                        {directions[0] && <p className="mt-1 text-[9px] font-bold uppercase tracking-wider opacity-80">{directions[0].distanceLabel}</p>}
                     </div>
                     <button 
                         onClick={stopNavigation}
@@ -599,26 +641,29 @@ const FindShops = () => {
                             </h4>
                         </div>
                         <div className="text-right">
-                            <p className="text-2xl font-black text-slate-900 dark:text-white tracking-tighter leading-none">{eta || '--'} MIN</p>
-                            <p className="text-[9px] font-black uppercase text-primary-600 tracking-widest mt-1">{distance || '--'} KM REMAINING</p>
+                            <p className="text-2xl font-black text-slate-900 dark:text-white tracking-tighter leading-none">{eta !== null ? eta : '--'} MIN</p>
+                            <p className="text-[9px] font-black uppercase text-primary-600 tracking-widest mt-1">{distance !== null ? distance.toFixed(1) : '--'} KM REMAINING</p>
                         </div>
                     </div>
 
                     <div className="relative h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                        <div className="absolute left-0 top-0 h-full bg-primary-600 transition-all duration-1000" style={{ width: '15%' }}></div>
+                        <div className="absolute left-0 top-0 h-full bg-primary-600 transition-all duration-1000" style={{ width: `${routeProgress}%` }}></div>
                     </div>
 
                     {/* Quick Info */}
                     <div className="flex items-center justify-between text-[9px] font-black uppercase tracking-[0.1em] text-slate-400">
                         <div className="flex items-center gap-2">
                             <Clock className="h-3 w-3" />
-                            <span>Arrival {formatTime12h(new Date(Date.now() + (eta || 0) * 60000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }))}</span>
+                            <span>Arrival {eta !== null ? formatDateTime12h(Date.now() + eta * 60000) : '--'}</span>
                         </div>
                         <div className="flex items-center gap-2">
                             <Flag className="h-3 w-3" />
                             <span>Service area</span>
                         </div>
                     </div>
+                    {routeError && directions.length > 0 && (
+                      <p role="status" className="rounded-lg bg-amber-50 px-3 py-2 text-[9px] font-bold text-amber-800 dark:bg-amber-950/40 dark:text-amber-200">{routeError}</p>
+                    )}
                 </div>
 
                 {/* Secondary Directions (Expandable) */}
@@ -628,16 +673,20 @@ const FindShops = () => {
                         <ArrowRight className="h-3 w-3" />
                     </div>
                     <div className="mt-3 space-y-3 max-h-[120px] overflow-y-auto no-scrollbar pr-2">
-                        {directions.slice(activeInstruction + 1, activeInstruction + 4).map((step, i) => (
-                            <div key={i} className="flex items-center gap-3 animate-fade-in">
+                        {directions.slice(1, 4).map(step => (
+                            <div key={step.id} className="flex items-center gap-3 animate-fade-in">
                                 <div className="w-6 h-6 rounded-lg bg-white dark:bg-slate-700 flex items-center justify-center shadow-sm shrink-0">
                                     <div className="w-1 h-1 bg-slate-300 dark:bg-slate-500 rounded-full"></div>
                                 </div>
-                                <p className="text-[10px] font-bold text-slate-600 dark:text-slate-400 leading-tight">
-                                    {step.instruction}
-                                </p>
+                                <div className="min-w-0">
+                                  <p className="text-[10px] font-bold text-slate-600 dark:text-slate-400 leading-tight">{step.instruction}</p>
+                                  <p className="mt-0.5 text-[8px] font-bold uppercase tracking-wider text-slate-400">{step.distanceLabel}</p>
+                                </div>
                             </div>
                         ))}
+                        {!routeLoading && directions.length <= 1 && (
+                          <p className="px-2 text-[9px] font-bold text-slate-400">No additional turns before the destination.</p>
+                        )}
                     </div>
                 </div>
             </div>
