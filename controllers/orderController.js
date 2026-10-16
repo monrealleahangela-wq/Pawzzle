@@ -17,6 +17,7 @@ const { isPlatformAdmin, isStoreAdmin, isOperationalStaff, hasPermission } = req
 const { getAuthorizedStoreIds, canOperateStore, idsEqual } = require('../utils/authorizationPolicy');
 const { normalizeRefundPolicy, snapshotRefundPolicy, requiresAcknowledgment } = require('../utils/refundPolicy');
 const { evaluateOrderTransition } = require('../utils/orderLifecycle');
+const { decorateOrdersWithProductReviewStatus } = require('../services/productOrderReviewService');
 const {
   getPetAvailabilityIssue,
   reservePetForOrder
@@ -116,8 +117,12 @@ const getAllOrders = async (req, res) => {
 
     const total = await Order.countDocuments(filter);
 
+    const responseOrders = req.user.role === 'customer'
+      ? await decorateOrdersWithProductReviewStatus(orders, req.user._id)
+      : orders;
+
     res.json({
-      orders,
+      orders: responseOrders,
       pagination: {
         currentPage: parseInt(page),
         totalPages: Math.ceil(total / limit),
@@ -148,19 +153,19 @@ const getOrderById = async (req, res) => {
     const storeOperator = await canOperateStore(req.user, order.store?._id || order.store, ['sales.view', 'sales.manage', 'orders.view']);
     if (!ownsOrder && !isPlatformAdmin(req.user) && !storeOperator) return res.status(403).json({ message: 'Access denied' });
 
+    let responseOrder = order;
     if (!order.store) {
       const fallbackStore = await Store.findOne({ owner: order.addedBy });
       if (fallbackStore) {
-        return res.json({
-          order: {
-            ...order.toObject(),
-            store: fallbackStore
-          }
-        });
+        responseOrder = { ...order.toObject(), store: fallbackStore.toObject() };
       }
     }
 
-    res.json({ order });
+    if (ownsOrder) {
+      [responseOrder] = await decorateOrdersWithProductReviewStatus([responseOrder], req.user._id);
+    }
+
+    res.json({ order: responseOrder });
   } catch (error) {
     console.error('Get order error:', error);
     res.status(500).json({ message: 'Server error' });

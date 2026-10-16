@@ -20,6 +20,9 @@ const reviewSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Order'
     },
+    orderItemId: {
+        type: mongoose.Schema.Types.ObjectId
+    },
     bookingId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Booking'
@@ -84,6 +87,10 @@ const reviewSchema = new mongoose.Schema({
         type: Boolean,
         default: false
     }
+}, {
+    // Production review-index changes are performed by the guarded maintenance
+    // script. Tests and local development still create indexes normally.
+    autoIndex: process.env.NODE_ENV !== 'production'
 });
 
 reviewSchema.pre('save', function (next) {
@@ -91,11 +98,41 @@ reviewSchema.pre('save', function (next) {
     next();
 });
 
-// Compound index to prevent multiple reviews from same user on same target
-reviewSchema.index({ user: 1, targetId: 1, targetType: 1 }, { unique: true });
+// Product reviews are purchase-line scoped. A customer may review distinct
+// products in one order and the same product again after a later purchase.
 reviewSchema.index(
-    { user: 1, orderId: 1 },
-    { unique: true, partialFilterExpression: { orderId: { $type: 'objectId' } } }
+    { user: 1, targetType: 1, orderId: 1, orderItemId: 1 },
+    {
+        name: 'review_product_order_item_unique',
+        unique: true,
+        partialFilterExpression: {
+            targetType: 'Product',
+            orderId: { $type: 'objectId' },
+            orderItemId: { $type: 'objectId' }
+        }
+    }
+);
+// Existing lifetime policies for non-product targets remain independent from
+// product-order reviews.
+reviewSchema.index(
+    { user: 1, targetId: 1, targetType: 1 },
+    {
+        name: 'review_non_product_user_target_unique',
+        unique: true,
+        partialFilterExpression: {
+            targetType: { $in: ['Store', 'Pet', 'Service', 'PetProfile'] }
+        }
+    }
+);
+reviewSchema.index(
+    { user: 1, orderId: 1, targetId: 1 },
+    {
+        name: 'review_product_legacy_lookup',
+        partialFilterExpression: {
+            targetType: 'Product',
+            orderId: { $type: 'objectId' }
+        }
+    }
 );
 reviewSchema.index(
     { bookingId: 1, staffId: 1 },

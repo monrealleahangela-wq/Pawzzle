@@ -58,16 +58,17 @@ test('Rider notification deep-links and both message panels use the shared viewp
   assert.doesNotMatch(workspace, /window\.confirm/);
 });
 
-test('order feedback is exact-order scoped and duplicate order review protection is indexed', () => {
+test('product feedback is exact-order-item scoped and duplicate protection is indexed', () => {
   const controller = source('controllers/reviewController.js');
   const detail = source('client/src/pages/customer/OrderDetail.js');
   const indexes = Review.schema.indexes();
   assert.match(controller, /if \(orderId\) reviewFilter\.orderId = orderId/);
-  assert.match(controller, /Review\.exists\(\{ user: userId, orderId: sourceOrder\._id \}\)/);
-  assert.ok(indexes.some(([fields, options]) => fields.user === 1 && fields.orderId === 1 && options.unique));
+  assert.match(controller, /createProductOrderReview\(\{/);
+  assert.ok(indexes.some(([fields, options]) => fields.user === 1 && fields.orderId === 1 && fields.orderItemId === 1 && options.unique));
+  assert.equal(indexes.some(([fields, options]) => fields.user === 1 && fields.orderId === 1 && !fields.orderItemId && options.unique), false);
   assert.match(detail, /String\(review\.orderId\) === String\(orderData\._id\)/);
   assert.doesNotMatch(detail, /review\.customer\?\._id === orderData\.customer/);
-  assert.match(detail, /Review Submitted/);
+  assert.match(detail, /Already Reviewed/);
 });
 
 test('empty payslip UI distinguishes pending external payment recording from no payroll record', () => {

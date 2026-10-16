@@ -14,9 +14,10 @@ test('store review eligibility is shared by the preflight endpoint and review cr
   assert.match(controller, /Review\.exists\(\{[\s\S]{0,200}targetType: 'Store'/);
 });
 
-test('only completed same-store orders or bookings that have not been reviewed qualify a store review', () => {
-  assert.match(controller, /Order\.findOne\(\{ customer: userId, store: storeId, status: \{ \$in: \['delivered', 'completed'\] \}, 'reviewStatus\.isRated': \{ \$ne: true \} \}/);
-  assert.match(controller, /Booking\.findOne\(\{ customer: userId, store: storeId, status: 'completed', 'reviewStatus\.isRated': \{ \$ne: true \} \}/);
+test('completed same-store transactions qualify independently from product or staff review state', () => {
+  assert.match(controller, /Order\.findOne\(\{ customer: userId, store: storeId, status: \{ \$in: \['delivered', 'completed'\] \} \}/);
+  assert.match(controller, /Booking\.findOne\(\{ customer: userId, store: storeId, status: 'completed' \}/);
+  assert.doesNotMatch(controller, /Order\.findOne\(\{ customer: userId, store: storeId,[^\n]+reviewStatus\.isRated/);
   assert.match(controller, /reason: order \|\| booking \|\| adoption \? null : 'no_completed_transaction'/);
 });
 

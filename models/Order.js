@@ -46,6 +46,10 @@ const orderItemSchema = new mongoose.Schema({
     status: { type: String, enum: ['seller_provided', 'verified'] },
     capturedAt: Date,
     catalogUpdatedAt: Date
+  },
+  reviewStatus: {
+    isRated: { type: Boolean, default: false },
+    reviewId: { type: mongoose.Schema.Types.ObjectId, ref: 'Review' }
   }
 });
 

@@ -1,7 +1,6 @@
 const Review = require('../models/Review');
 const PlatformFeedback = require('../models/PlatformFeedback');
 const Order = require('../models/Order');
-const Product = require('../models/Product');
 const Pet = require('../models/Pet');
 const Store = require('../models/Store');
 const Service = require('../models/Service');
@@ -12,6 +11,13 @@ const User = require('../models/User');
 const { canOperateStore } = require('../utils/authorizationPolicy');
 const resolveStore = require('../utils/resolveStore');
 const { isOperationalStaff } = require('../config/permissions');
+const {
+    ProductReviewError,
+    productReviewMessage,
+    resolveProductOrderReviewEligibility,
+    createProductOrderReview,
+    refreshProductRating
+} = require('../services/productOrderReviewService');
 
 const STAFF_COMPLIMENT_TAGS = new Set(['friendly', 'professional', 'gentle_with_pets', 'fast_service', 'clean_facility']);
 
@@ -31,8 +37,8 @@ const getStoreReviewEligibility = async (userId, storeId) => {
     if (existingReview) return { isEligible: false, reason: 'already_reviewed' };
 
     const [order, booking, adoption] = await Promise.all([
-        Order.findOne({ customer: userId, store: storeId, status: { $in: ['delivered', 'completed'] }, 'reviewStatus.isRated': { $ne: true } }).select('_id'),
-        Booking.findOne({ customer: userId, store: storeId, status: 'completed', 'reviewStatus.isRated': { $ne: true } }).select('_id'),
+        Order.findOne({ customer: userId, store: storeId, status: { $in: ['delivered', 'completed'] } }).select('_id'),
+        Booking.findOne({ customer: userId, store: storeId, status: 'completed' }).select('_id'),
         AdoptionRequest.findOne({ customer: userId, seller: storeId, status: 'delivered' }).select('_id')
     ]);
 
@@ -115,7 +121,7 @@ const staffReviewError = reason => {
 // Create a review for product/pet/store/service
 const createReview = async (req, res) => {
     try {
-        const { targetType, targetId, rating, comment, images, orderId, bookingId, deliveryId, isAnonymous, complimentTags } = req.body;
+        const { targetType, targetId, rating, comment, images, orderId, orderItemId, bookingId, deliveryId, isAnonymous, complimentTags } = req.body;
         const userId = req.user._id;
         const numericRating = Number(rating);
         if (!Number.isInteger(numericRating) || numericRating < 1 || numericRating > 5) {
@@ -130,31 +136,34 @@ const createReview = async (req, res) => {
             return res.status(400).json({ message: 'Compliment tags are only available for completed staff services.' });
         }
 
+        if (targetType === 'Product') {
+            if (!orderId || !orderItemId) {
+                return res.status(400).json({
+                    message: 'The purchased order and order item are required for a product review.'
+                });
+            }
+            const review = await createProductOrderReview({
+                userId,
+                orderId,
+                orderItemId,
+                productId: targetId,
+                rating: numericRating,
+                comment: String(comment || '').trim(),
+                images,
+                isAnonymous
+            });
+            const reviewResponse = review.toObject();
+            if (reviewResponse.isAnonymous) delete reviewResponse.user;
+            return res.status(201).json({ message: 'Product review submitted successfully.', review: reviewResponse });
+        }
+
         // TRUSTED REVIEW LOGIC: Verify if user has completed the relevant interaction
         let isTrusted = false;
         let storeId;
         let staffId;
         let serviceId;
 
-        if (targetType === 'Product') {
-            const product = await Product.findById(targetId).populate('store');
-            if (!product) return res.status(404).json({ message: 'Product not found' });
-            
-            // PREVENT SELF-REVIEW: Check if user is the store owner
-            if (product.store?.owner?.toString() === userId.toString()) {
-                return res.status(403).json({ message: 'Unauthorized: You cannot review your own products.' });
-            }
-            storeId = product.store?._id || product.store;
-
-            // Check if user has a DELIVERED order with this product
-            const deliveredOrder = await Order.findOne({
-                customer: userId,
-                status: 'delivered',
-                'items.itemId': targetId
-            });
-            if (deliveredOrder) isTrusted = true;
-        }
-        else if (targetType === 'Pet') {
+        if (targetType === 'Pet') {
             const pet = await Pet.findById(targetId).populate('store');
             if (!pet) return res.status(404).json({ message: 'Pet not found' });
 
@@ -245,12 +254,8 @@ const createReview = async (req, res) => {
             const sourceOrder = await Order.findOne({ _id: orderId, customer: userId, status: 'delivered' });
             const matchesTarget = sourceOrder
                 && String(sourceOrder.store) === String(storeId)
-                && (targetType === 'Store'
-                    || (targetType === 'Product' && sourceOrder.items?.some(item => String(item.itemId) === String(targetId))));
+                && targetType === 'Store';
             if (!matchesTarget) return res.status(403).json({ message: 'The supplied order does not qualify this review.' });
-            if (sourceOrder.reviewStatus?.isRated || await Review.exists({ user: userId, orderId: sourceOrder._id })) {
-                return res.status(409).json({ message: 'A review has already been submitted for this order.' });
-            }
         }
         if (bookingId && targetType !== 'Booking') {
             const sourceBooking = await Booking.findOne({ _id: bookingId, customer: userId, status: 'completed' });
@@ -280,13 +285,8 @@ const createReview = async (req, res) => {
 
         await review.save();
 
-        // Mark the source transaction as rated if provided
-        if (orderId && targetType !== 'Delivery') {
-            await Order.findByIdAndUpdate(orderId, {
-                'reviewStatus.isRated': true,
-                'reviewStatus.reviewId': review._id
-            });
-        }
+        // Store reviews are intentionally independent from purchased-product
+        // reviews, so an order-wide rated flag is not changed here.
         if (bookingId) {
             await Booking.findByIdAndUpdate(bookingId, {
                 'reviewStatus.isRated': true,
@@ -296,8 +296,7 @@ const createReview = async (req, res) => {
 
         // Update target rating
         let Model;
-        if (targetType === 'Product') Model = Product;
-        else if (targetType === 'Pet') Model = Pet;
+        if (targetType === 'Pet') Model = Pet;
         else if (targetType === 'Service') Model = Service;
         else if (targetType === 'Store') Model = Store;
 
@@ -331,6 +330,9 @@ const createReview = async (req, res) => {
 
         res.status(201).json({ message: 'Review submitted successfully', review: reviewResponse });
     } catch (error) {
+        if (error instanceof ProductReviewError) {
+            return res.status(error.statusCode).json({ message: error.message, code: error.code });
+        }
         if (error.code === 11000) {
             return res.status(409).json({ message: 'Feedback has already been submitted for this transaction.' });
         }
@@ -520,18 +522,25 @@ const checkReviewEligibility = async (req, res) => {
             return res.json({ isEligible: eligibility.isEligible, reason: eligibility.reason || null });
         }
         else if (targetType === 'Product') {
-            const product = await Product.findById(targetId).populate('store');
-            // If user is owner, they are NOT eligible regardless of orders
-            if (product?.store?.owner?.toString() === userId.toString()) {
-                return res.json({ isEligible: false });
+            const { orderId, orderItemId } = req.query;
+            if (!orderId || !orderItemId) {
+                return res.status(400).json({
+                    isEligible: false,
+                    reason: 'purchase_context_required',
+                    message: 'The purchased order and order item are required.'
+                });
             }
-
-            const deliveredOrder = await Order.findOne({
-                customer: userId,
-                status: 'delivered',
-                'items.itemId': targetId
+            const eligibility = await resolveProductOrderReviewEligibility({
+                userId,
+                orderId,
+                productId: targetId,
+                orderItemId
             });
-            if (deliveredOrder) isEligible = true;
+            return res.json({
+                isEligible: eligibility.isEligible,
+                reason: eligibility.reason || null,
+                message: eligibility.reason ? productReviewMessage(eligibility.reason) : null
+            });
         }
         else if (targetType === 'Pet') {
             const pet = await Pet.findById(targetId).populate('store');
@@ -567,6 +576,9 @@ const checkReviewEligibility = async (req, res) => {
         res.json({ isEligible });
     } catch (error) {
         console.error('Check eligibility error:', error);
+        if (error instanceof ProductReviewError) {
+            return res.status(error.statusCode).json({ message: error.message, code: error.code });
+        }
         res.status(500).json({ message: 'Server error' });
     }
 };
@@ -611,6 +623,7 @@ const toggleReviewStatus = async (req, res) => {
         review.isApproved = !review.isApproved;
         await review.save();
         if (review.targetType === 'Booking') await refreshStaffRating(review.staffId);
+        if (review.targetType === 'Product') await refreshProductRating(review.targetId);
 
         res.json({ message: `Review ${review.isApproved ? 'approved' : 'rejected'} successfully`, review });
     } catch (error) {
@@ -667,6 +680,7 @@ module.exports = {
     __testing: {
         refreshStaffRating,
         resolveBookingStaffReview,
-        resolveDeliveryRiderReview
+        resolveDeliveryRiderReview,
+        resolveProductOrderReviewEligibility
     }
 };
