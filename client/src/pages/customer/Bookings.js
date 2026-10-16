@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { bookingService, serviceService, voucherService, getImageUrl, petProfileService, paymentService } from '../../services/apiService';
 import { calculateServicePrice } from '../../utils/pricingEngine';
@@ -86,6 +86,7 @@ const Bookings = ({ isSubcomponent = false }) => {
   const [bookingForm, setBookingForm] = useState(createInitialBookingForm);
   const [serviceDetailErrors, setServiceDetailErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
+  const bookingSubmissionInFlight = useRef(false);
   const [existingBookings, setExistingBookings] = useState([]);
   const [calendarMonth, setCalendarMonth] = useState(new Date());
   const [voucherCode, setVoucherCode] = useState('');
@@ -789,6 +790,10 @@ const Bookings = ({ isSubcomponent = false }) => {
   const handleBookingSubmit = async (e) => {
     e.preventDefault();
 
+    // React state updates are asynchronous, so a ref closes the small window
+    // where two rapid clicks could otherwise send the same request twice.
+    if (bookingSubmissionInFlight.current) return;
+
     if (!selectedService) {
       toast.error('No service selected');
       return;
@@ -813,6 +818,7 @@ const Bookings = ({ isSubcomponent = false }) => {
       return;
     }
 
+    bookingSubmissionInFlight.current = true;
     setSubmitting(true);
 
     try {
@@ -896,6 +902,7 @@ const Bookings = ({ isSubcomponent = false }) => {
       console.error('Error creating booking:', error);
       toast.error(error.response?.data?.message || 'We could not create your booking. Please try again.');
     } finally {
+      bookingSubmissionInFlight.current = false;
       setSubmitting(false);
     }
   };

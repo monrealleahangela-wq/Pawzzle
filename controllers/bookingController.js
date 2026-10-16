@@ -28,6 +28,7 @@ const { validateServiceSchedule } = require('../utils/serviceAvailability');
 const { getCustomerVisibleOwnerIds, buildCustomerVisibleStoreFilter, withCustomerComplianceFilter } = require('../utils/storeVisibility');
 const reservationCheckInService = require('../services/reservationCheckInService');
 const ReservationCheckInEvent = require('../models/ReservationCheckInEvent');
+const { isBookingCheckInMethod } = require('../utils/bookingCheckInMethod');
 
 const canStaffManageBooking = (user, booking) => {
   if (!isOperationalStaff(user) || isStoreAdmin(user) || isPlatformAdmin(user)) return false;
@@ -1290,7 +1291,7 @@ const validateBookingQR = async (req, res) => {
   try {
     const credential = req.body?.credential || req.body?.qrCode;
     const method = req.body?.method || 'qr';
-    if (typeof credential !== 'string' || credential.length > 80 || !['qr', 'backup_code'].includes(method)) {
+    if (typeof credential !== 'string' || credential.length > 80 || !isBookingCheckInMethod(method)) {
       return res.status(400).json({ message: 'A valid reservation credential and verification method are required.' });
     }
     const validation = await reservationCheckInService.verifyCredential({

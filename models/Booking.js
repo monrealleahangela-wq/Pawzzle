@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { BOOKING_CHECK_IN_METHODS } = require('../utils/bookingCheckInMethod');
 
 const bookingSchema = new mongoose.Schema({
   customer: {
@@ -230,7 +231,16 @@ const bookingSchema = new mongoose.Schema({
   },
   checkedInAt: { type: Date, default: null },
   checkedInBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
-  checkInMethod: { type: String, enum: ['qr', 'backup_code'], default: null },
+  // Unassigned until authorized staff verifies a paid reservation. `null` is
+  // the legitimate pre-check-in/legacy state, not a customer-selected method.
+  checkInMethod: {
+    type: String,
+    enum: {
+      values: [null, ...BOOKING_CHECK_IN_METHODS],
+      message: 'Unsupported reservation check-in method.'
+    },
+    default: null
+  },
   servicePhotos: [{
     type: String // URLs of photos uploaded by staff/groomers after service
   }],

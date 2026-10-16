@@ -13,6 +13,7 @@ const {
   QR_PREFIX, getMasterKey, digestSecret, encryptSecret, decryptSecret,
   generateCredentials, normalizeBackupCode, bookingFingerprint, getWindowState
 } = require('../utils/reservationCheckIn');
+const { isBookingCheckInMethod } = require('../utils/bookingCheckInMethod');
 
 const genericInvalid = () => Object.assign(new Error('The verification code is invalid or unavailable.'), { statusCode: 404, code: 'CREDENTIAL_INVALID' });
 const unavailable = () => Object.assign(new Error('Reservation verification is temporarily unavailable.'), { statusCode: 503, code: 'RESERVATION_UNAVAILABLE' });
@@ -137,7 +138,7 @@ const readCredentialRecord = async (secret, method, master) => {
 };
 
 const validateCredential = async ({ secret, method, actor, now = new Date(), writeAudit = true, expectedBookingId }) => {
-  if (!['qr', 'backup_code'].includes(method)) throw Object.assign(new Error('Choose QR or backup-code verification.'), { statusCode: 400 });
+  if (!isBookingCheckInMethod(method)) throw Object.assign(new Error('Choose QR or backup-code verification.'), { statusCode: 400 });
   let master;
   try { master = getMasterKey(); } catch (error) { throw unavailable(); }
   const match = await readCredentialRecord(secret, method, master);
