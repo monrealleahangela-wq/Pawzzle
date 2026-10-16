@@ -25,6 +25,10 @@ const base = () => ({
     address: { street: 'Main St', barangay: 'San Jose', city: 'Dasmarinas', province: 'Cavite', zipCode: '4114', coordinates: { lat: 14.3, lng: 120.9 } }
   },
   representative: { fullName: 'Owner Name', role: 'Owner', phone: '09171234567', email: 'owner@example.com', isAuthorizedRepresentative: false },
+  references: [
+    { name: 'Reference One', business: 'One Corp', phone: '09170000001', email: 'one@example.com' },
+    { name: 'Reference Two', business: 'Two Corp', phone: '09170000002', email: 'two@example.com' }
+  ],
   businessRegistration: { authority: 'dti', certificateNumber: 'DTI-123', registeredName: 'Pawzzle Pet Store', documentUrl: 'secure://registration' },
   taxProfile: {
     birRegistrationStatus: 'registered', tin: '123-456-789', branchCode: '000', registeredName: 'Pawzzle Pet Store', lineOfBusiness: 'Pet supplies',

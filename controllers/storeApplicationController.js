@@ -15,6 +15,18 @@ const BUSINESS_STRUCTURES = [
 ];
 const REGISTRATION_AUTHORITIES = ['dti', 'sec', 'cda', 'other'];
 const DECLARED_TAX_STATUSES = ['vat_registered', 'non_vat_registered'];
+const BUSINESS_TYPES = ['pet_store', 'breeder', 'shelter', 'veterinary', 'grooming', 'training', 'other'];
+
+const optionalInteger = (value, fallback) => {
+  if (value === undefined || value === null || value === '') return fallback;
+  const parsed = Number.parseInt(value, 10);
+  return Number.isFinite(parsed) ? parsed : fallback;
+};
+
+const booleanValue = (value, fallback = false) => {
+  if (value === undefined || value === null || value === '') return fallback;
+  return value === true || value === 'true';
+};
 
 const maskTin = value => value ? `${String(value).replace(/\D/g, '').slice(0, 3)}-***-***` : null;
 
@@ -30,17 +42,20 @@ const applicationValidationErrors = (data, files = {}) => {
 
   required(data.businessName, 'businessName', 'Store / trade name is required.');
   required(data.registeredBusinessName, 'registeredBusinessName', 'Registered business name is required.');
-  if (!['pet_store', 'breeder', 'shelter', 'veterinary', 'grooming', 'training', 'other'].includes(data.businessType)) errors.push({ field: 'businessType', msg: 'Select a valid store category.' });
+  if (!BUSINESS_TYPES.includes(data.businessType)) errors.push({ field: 'businessType', msg: 'Select a valid store category.' });
   if (!BUSINESS_STRUCTURES.includes(data.legalStructure)) errors.push({ field: 'legalStructure', msg: 'Select a valid business structure.' });
   required(data.natureOfBusiness, 'natureOfBusiness', 'Nature or line of business is required.');
   required(data.businessDescription, 'businessDescription', 'Store description is required.');
   if (!Array.isArray(data.operationalModules) || data.operationalModules.length === 0) errors.push({ field: 'operationalModules', msg: 'Select at least one store operation.' });
   required(data.contactInfo?.phone, 'contactInfo.phone', 'Primary contact number is required.');
   required(data.contactInfo?.email, 'contactInfo.email', 'Business email is required.');
+  if (data.contactInfo?.email && !/^\S+@\S+\.\S+$/.test(String(data.contactInfo.email).trim())) errors.push({ field: 'contactInfo.email', msg: 'Enter a valid business email.' });
   for (const [key, label] of [['street', 'Street'], ['barangay', 'Barangay'], ['city', 'City / municipality'], ['province', 'Province'], ['zipCode', 'Postal code']]) {
     required(address[key] || (key === 'province' ? address.state : ''), `contactInfo.address.${key}`, `${label} is required.`);
   }
-  if (!Number.isFinite(Number(coordinates.lat)) || !Number.isFinite(Number(coordinates.lng))
+  if (coordinates.lat === '' || coordinates.lat === undefined || coordinates.lat === null
+      || coordinates.lng === '' || coordinates.lng === undefined || coordinates.lng === null
+      || !Number.isFinite(Number(coordinates.lat)) || !Number.isFinite(Number(coordinates.lng))
       || Number(coordinates.lat) < -90 || Number(coordinates.lat) > 90
       || Number(coordinates.lng) < -180 || Number(coordinates.lng) > 180) {
     errors.push({ field: 'contactInfo.address.coordinates', msg: 'Select a valid store location on the map.' });
@@ -49,6 +64,7 @@ const applicationValidationErrors = (data, files = {}) => {
   required(data.representative?.role, 'representative.role', 'Owner or representative role is required.');
   required(data.representative?.phone, 'representative.phone', 'Representative contact number is required.');
   required(data.representative?.email, 'representative.email', 'Representative email is required.');
+  if (data.representative?.email && !/^\S+@\S+\.\S+$/.test(String(data.representative.email).trim())) errors.push({ field: 'representative.email', msg: 'Enter a valid representative email.' });
   if (!REGISTRATION_AUTHORITIES.includes(registration.authority)) errors.push({ field: 'businessRegistration.authority', msg: 'Select a valid registration authority.' });
   const expectedAuthority = ['single_proprietorship', 'sole_proprietorship'].includes(data.legalStructure)
     ? 'dti'
@@ -82,6 +98,18 @@ const applicationValidationErrors = (data, files = {}) => {
   if (data.representative?.isAuthorizedRepresentative && !data.representative?.authorityDocumentUrl && !files.authorityDocument) {
     errors.push({ field: 'authorityDocument', msg: 'Proof of authority is required for an authorized representative.' });
   }
+  if (!Array.isArray(data.references) || data.references.length < 2) {
+    errors.push({ field: 'references', msg: 'Provide at least two business references.' });
+  } else {
+    data.references.slice(0, 2).forEach((reference, index) => {
+      for (const [key, label] of [['name', 'name'], ['business', 'business or organization'], ['phone', 'phone number'], ['email', 'email']]) {
+        required(reference?.[key], `references.${index}.${key}`, `Reference ${index + 1} ${label} is required.`);
+      }
+      if (reference?.email && !/^\S+@\S+\.\S+$/.test(String(reference.email).trim())) {
+        errors.push({ field: `references.${index}.email`, msg: `Enter a valid email for reference ${index + 1}.` });
+      }
+    });
+  }
   if (data.declaration?.accepted !== true) errors.push({ field: 'declaration.accepted', msg: 'Accept the declaration before submitting.' });
   return errors;
 };
@@ -91,19 +119,36 @@ const applicationQueryWithPrivateFields = query => query.select([
   '+businessRegistration.documentUrl', '+representative.authorityDocumentUrl'
 ].join(' '));
 
-const toApplicationResponse = (application, { includeDocuments = false } = {}) => {
+const toApplicationResponse = (application, { includeDocuments = false, includeSensitiveFields = false } = {}) => {
   const object = application?.toObject ? application.toObject({ virtuals: true }) : { ...application };
+  object.documentAvailability = {
+    licenseDocument: Boolean(object.businessLicense?.documentUrl),
+    insuranceDocument: Boolean(object.insurance?.documentUrl),
+    certificationDocuments: Array.isArray(object.certifications) && object.certifications.some(certification => certification?.documentUrl),
+    governmentId: Boolean(object.governmentIdUrl),
+    authorityDocument: Boolean(object.representative?.authorityDocumentUrl),
+    businessRegistration: Boolean(object.businessRegistration?.documentUrl || object.businessRegistrationUrl),
+    birRegistration: Boolean(object.taxProfile?.corDocumentUrl || object.birRegistrationUrl),
+    barangayClearance: Boolean(object.barangayClearanceUrl),
+    storeLogo: Boolean(object.storeLogoUrl),
+    mayorsPermit: Boolean(object.mayorsPermitUrl)
+  };
   if (object.taxProfile) {
     object.taxProfile.tinMasked = maskTin(object.taxProfile.tin);
-    if (!includeDocuments) {
+    if (!includeSensitiveFields) {
       delete object.taxProfile.tin;
       delete object.taxProfile.branchCode;
+    }
+    if (!includeDocuments) {
       delete object.taxProfile.corDocumentUrl;
     }
   }
   if (!includeDocuments) {
     if (object.businessRegistration) delete object.businessRegistration.documentUrl;
     if (object.representative) delete object.representative.authorityDocumentUrl;
+    if (object.businessLicense) delete object.businessLicense.documentUrl;
+    if (object.insurance) delete object.insurance.documentUrl;
+    if (Array.isArray(object.certifications)) object.certifications.forEach(certification => delete certification.documentUrl);
     delete object.governmentIdUrl;
     delete object.businessRegistrationUrl;
     delete object.birRegistrationUrl;
@@ -111,6 +156,80 @@ const toApplicationResponse = (application, { includeDocuments = false } = {}) =
     delete object.mayorsPermitUrl;
   }
   return object;
+};
+
+// Multipart submissions arrive as strings. Build an explicit allow-list so
+// workflow state, ownership, review data, and stored document URLs can never
+// be changed by a browser payload.
+const buildApplicationData = (body, applicantId) => {
+  const parsed = {
+    businessLicense: safeParse(body.businessLicense),
+    contactInfo: safeParse(body.contactInfo),
+    representative: safeParse(body.representative),
+    businessRegistration: safeParse(body.businessRegistration),
+    taxProfile: safeParse(body.taxProfile),
+    declaration: safeParse(body.declaration),
+    staffingConfiguration: safeParse(body.staffingConfiguration),
+    socialMedia: safeParse(body.socialMedia),
+    references: safeParse(body.references),
+    certifications: safeParse(body.certifications),
+    insurance: safeParse(body.insurance),
+    emergencyContact: safeParse(body.emergencyContact),
+    operationalModules: safeParse(body.operationalModules),
+    staffTypes: safeParse(body.staffTypes),
+    productCategories: safeParse(body.productCategories),
+    paymentInfo: safeParse(body.paymentInfo),
+    productsOffered: safeParse(body.productsOffered)
+  };
+  const data = {
+    applicant: applicantId,
+    applicationType: 'new_store',
+    businessName: body.businessName,
+    registeredBusinessName: body.registeredBusinessName,
+    tradeName: body.tradeName,
+    natureOfBusiness: body.natureOfBusiness,
+    yearBusinessStarted: optionalInteger(body.yearBusinessStarted, undefined),
+    businessType: body.businessType,
+    operationalModules: Array.isArray(parsed.operationalModules) ? parsed.operationalModules : [],
+    hiringStaff: booleanValue(body.hiringStaff),
+    staffTypes: Array.isArray(parsed.staffTypes) ? parsed.staffTypes : [],
+    supplierNeeds: booleanValue(body.supplierNeeds),
+    inventoryPlans: body.inventoryPlans || '',
+    productCategories: Array.isArray(parsed.productCategories) ? parsed.productCategories : [],
+    businessLicense: parsed.businessLicense || {},
+    taxId: body.taxId,
+    contactInfo: parsed.contactInfo || {},
+    representative: parsed.representative || {},
+    businessRegistration: parsed.businessRegistration || {},
+    taxProfile: parsed.taxProfile || {},
+    declaration: parsed.declaration || {},
+    businessDescription: body.businessDescription,
+    legalStructure: body.legalStructure,
+    yearsInBusiness: optionalInteger(body.yearsInBusiness, 0),
+    numberOfEmployees: optionalInteger(body.numberOfEmployees, 1),
+    hasPhysicalStore: booleanValue(body.hasPhysicalStore, true)
+  };
+  for (const key of ['staffingConfiguration', 'socialMedia', 'references', 'certifications', 'insurance', 'emergencyContact', 'paymentInfo', 'productsOffered']) {
+    if (parsed[key] !== undefined) data[key] = parsed[key];
+  }
+  for (const key of ['website']) {
+    if (body[key] !== undefined) data[key] = body[key];
+  }
+  data.registeredBusinessName = data.registeredBusinessName || data.businessRegistration?.registeredName;
+  if (data.businessRegistration) {
+    data.businessRegistration.registeredName = data.businessRegistration.registeredName || data.registeredBusinessName;
+  }
+  if (data.contactInfo?.address) {
+    data.contactInfo.address.province = data.contactInfo.address.province || data.contactInfo.address.state;
+    data.contactInfo.address.state = data.contactInfo.address.state || data.contactInfo.address.province;
+  }
+  if (data.businessRegistration) delete data.businessRegistration.documentUrl;
+  if (data.taxProfile) delete data.taxProfile.corDocumentUrl;
+  if (data.representative) delete data.representative.authorityDocumentUrl;
+  if (data.businessLicense) delete data.businessLicense.documentUrl;
+  if (data.insurance) delete data.insurance.documentUrl;
+  if (Array.isArray(data.certifications)) data.certifications.forEach(certification => delete certification.documentUrl);
+  return data;
 };
 
 const taxProfileObject = profile => profile?.toObject ? profile.toObject() : { ...(profile || {}) };
@@ -254,37 +373,11 @@ const submitApplication = async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
 
-    const applicationData = {
-      ...req.body,
-      applicant: req.user.id,
-      businessLicense: safeParse(req.body.businessLicense) || {},
-      contactInfo: safeParse(req.body.contactInfo) || {},
-      representative: safeParse(req.body.representative) || {},
-      businessRegistration: safeParse(req.body.businessRegistration) || {},
-      taxProfile: safeParse(req.body.taxProfile) || {},
-      declaration: safeParse(req.body.declaration) || {},
-      socialMedia: safeParse(req.body.socialMedia),
-      references: safeParse(req.body.references),
-      certifications: safeParse(req.body.certifications),
-      insurance: safeParse(req.body.insurance),
-      emergencyContact: safeParse(req.body.emergencyContact),
-      operationalModules: safeParse(req.body.operationalModules) || [],
-      staffTypes: safeParse(req.body.staffTypes) || [],
-      productCategories: safeParse(req.body.productCategories) || [],
-      paymentInfo: safeParse(req.body.paymentInfo),
-      productsOffered: safeParse(req.body.productsOffered),
-      hiringStaff: req.body.hiringStaff === 'true' || req.body.hiringStaff === true,
-      supplierNeeds: req.body.supplierNeeds === 'true' || req.body.supplierNeeds === true,
-      inventoryPlans: req.body.inventoryPlans || '',
-      yearsInBusiness: Number.parseInt(req.body.yearsInBusiness, 10) || 0,
-      yearBusinessStarted: Number.parseInt(req.body.yearBusinessStarted, 10) || undefined,
-      numberOfEmployees: Number.parseInt(req.body.numberOfEmployees, 10) || 1,
-      hasPhysicalStore: req.body.hasPhysicalStore === 'true' || req.body.hasPhysicalStore === true
-    };
+    const applicationData = buildApplicationData(req.body, req.user.id);
 
     const existingApplication = await applicationQueryWithPrivateFields(StoreApplication.findOne({
       applicant: req.user.id,
-      applicationType: 'new_store',
+      $or: [{ applicationType: 'new_store' }, { applicationType: { $exists: false } }],
       isDeleted: { $ne: true }
     }).sort({ createdAt: -1 }));
     // Never trust document URLs posted by the browser. Reuse the already-owned
@@ -298,6 +391,26 @@ const submitApplication = async (req, res) => {
     applicationData.representative.authorityDocumentUrl = req.files?.authorityDocument
       ? undefined
       : existingApplication?.representative?.authorityDocumentUrl;
+    applicationData.businessLicense.documentUrl = req.files?.licenseDocument
+      ? undefined
+      : existingApplication?.businessLicense?.documentUrl;
+    if (applicationData.insurance || existingApplication?.insurance) {
+      const savedInsurance = existingApplication?.insurance?.toObject
+        ? existingApplication.insurance.toObject()
+        : (existingApplication?.insurance || {});
+      applicationData.insurance = { ...savedInsurance, ...(applicationData.insurance || {}) };
+      applicationData.insurance.documentUrl = req.files?.insuranceDocument
+        ? undefined
+        : existingApplication?.insurance?.documentUrl;
+    }
+    if (Array.isArray(applicationData.certifications)) {
+      applicationData.certifications = applicationData.certifications.map((certification, index) => ({
+        ...certification,
+        documentUrl: req.files?.certificationDocuments?.[index]
+          ? undefined
+          : existingApplication?.certifications?.[index]?.documentUrl
+      }));
+    }
 
     const structuredErrors = applicationValidationErrors(applicationData, req.files || {});
     if (structuredErrors.length) {
@@ -393,15 +506,9 @@ const submitApplication = async (req, res) => {
 
     await application.save();
 
-    res.status(201).json({
+    res.status(isResubmission ? 200 : 201).json({
       message: 'Application submitted successfully',
-      application: {
-        id: application._id,
-        status: application.status,
-        taxVerificationStatus: application.taxProfile?.verificationStatus,
-        verificationScore: application.verificationScore,
-        reviewNotes: application.reviewNotes
-      }
+      application: toApplicationResponse(application, { includeSensitiveFields: true })
     });
 
     // Notify applicant
@@ -967,15 +1074,19 @@ const getApplicationDocument = async (req, res) => {
 // Get user's application status
 const getUserApplication = async (req, res) => {
   try {
-    const application = await applicationQueryWithPrivateFields(StoreApplication.findOne({ applicant: req.user.id }))
-      .sort({ createdAt: -1 })
+    const application = await applicationQueryWithPrivateFields(StoreApplication.findOne({
+      applicant: req.user.id,
+      $or: [{ applicationType: 'new_store' }, { applicationType: { $exists: false } }],
+      isDeleted: { $ne: true }
+    }))
+      .sort({ updatedAt: -1, createdAt: -1 })
       .populate('reviewedBy', 'username firstName lastName');
 
     if (!application) {
       return res.json({ application: null });
     }
 
-    res.json({ application: toApplicationResponse(application, { includeDocuments: true }) });
+    res.json({ application: toApplicationResponse(application, { includeSensitiveFields: true }) });
   } catch (error) {
     console.error('Get user application error:', error);
     res.status(500).json({ message: 'Server error' });
@@ -1105,6 +1216,7 @@ module.exports = {
   verifyTaxProfile,
   getApplicationDocument,
   applicationValidationErrors,
+  buildApplicationData,
   maskTin,
   toApplicationResponse,
   submitExpansionRequest,

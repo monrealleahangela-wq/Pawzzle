@@ -5,6 +5,14 @@ import storeApplicationService from '../../services/storeApplicationService';
 import { FileText, AlertCircle, Building, Mail, MapPin, Check, Shield, Users, ArrowRight, Briefcase, Info, Camera, Truck, Heart, Calendar, TrendingUp } from 'lucide-react';
 import { getCitiesByProvince, getBarangaysByCity } from '../../constants/locationConstants';
 import MapPicker from '../../components/MapPicker';
+import StoreApplicationProfileDetails from '../../components/stores/StoreApplicationProfileDetails';
+import {
+  createStoreApplicationForm,
+  firstInvalidStep,
+  hydrateStoreApplicationForm,
+  STORE_APPLICATION_FIELD_STEPS,
+  validateStoreApplicationForm
+} from '../../utils/storeApplicationForm';
 
 const StoreApplication = () => {
   const { user, updateUser } = useAuth();
@@ -13,99 +21,9 @@ const StoreApplication = () => {
   const [currentStep, setCurrentStep] = useState(0); // Start at 0 for Prerequisites
   const [cities, setCities] = useState([]);
   const [barangays, setBarangays] = useState([]);
-  const [formData, setFormData] = useState({
-    operationalModules: [],
-    staffingConfiguration: {
-      hasStaff: 'no',
-      staffQuantityRange: '1-5',
-      isStaffVisibleToCustomers: false,
-      requiresProfessionalVerification: false
-    },
-    staffTypes: [], 
-    supplierNeeds: false,
-    inventoryPlans: '',
-    productCategories: [],
-    businessName: '',
-    tradeName: '',
-    registeredBusinessName: '',
-    natureOfBusiness: '',
-    yearBusinessStarted: new Date().getFullYear(),
-    businessType: '',
-    legalStructure: 'sole_proprietorship',
-    yearsInBusiness: 0,
-    numberOfEmployees: 1,
-    hasPhysicalStore: true,
-    businessLicense: {
-      number: '',
-      issuingAuthority: '',
-      issueDate: '',
-      expiryDate: ''
-    },
-    representative: {
-      fullName: [user?.firstName, user?.lastName].filter(Boolean).join(' '),
-      role: 'Owner',
-      phone: user?.phone || '',
-      email: user?.email || '',
-      isAuthorizedRepresentative: false
-    },
-    businessRegistration: {
-      authority: 'dti',
-      certificateNumber: '',
-      registeredName: '',
-      registrationDate: '',
-      expirationDate: ''
-    },
-    taxProfile: {
-      birRegistrationStatus: 'registered',
-      taxpayerClassification: '',
-      tin: '',
-      branchCode: '000',
-      registeredName: '',
-      registeredAddress: { unitBuilding: '', street: '', barangay: '', city: '', province: 'Cavite', postalCode: '', country: 'PH' },
-      lineOfBusiness: '',
-      declaredTaxStatus: ''
-    },
-    declaration: { accepted: false, applicantName: '' },
-    contactInfo: {
-      phone: '',
-      email: user?.email || '',
-      address: {
-        unitBuilding: '',
-        street: '',
-        city: '',
-        barangay: '',
-        state: 'cavite',
-        province: 'Cavite',
-        zipCode: '',
-        country: 'PH',
-        landmark: '',
-        coordinates: {
-          lat: '',
-          lng: ''
-        }
-      }
-    },
-    paymentInfo: {
-      bankName: '',
-      bankAccountName: '',
-      bankAccountNumber: '',
-      alternativePaymentMethod: {
-        provider: 'GCash',
-        accountNumber: ''
-      }
-    },
-    productsOffered: [],
-    businessDescription: '',
-    emergencyContact: {
-      name: '',
-      phone: '',
-      relationship: ''
-    },
-    references: [
-      { name: '', business: '', phone: '', email: '' },
-      { name: '', business: '', phone: '', email: '' }
-    ]
-  });
+  const [formData, setFormData] = useState(() => createStoreApplicationForm(user));
+  const [fieldErrors, setFieldErrors] = useState({});
+  const [documentAvailability, setDocumentAvailability] = useState({});
   const [addressInputType, setAddressInputType] = useState('map'); // 'map' or 'manual'
   const [files, setFiles] = useState({
     licenseDocument: null,
@@ -134,6 +52,7 @@ const StoreApplication = () => {
       const currentApplication = response.data?.application;
       if (currentApplication) {
         setApplication(currentApplication);
+        setDocumentAvailability(currentApplication.documentAvailability || {});
         if (currentApplication.status === 'approved' && user.role === 'customer') {
           try {
             const response = await fetch('/api/auth/me', {
@@ -167,6 +86,15 @@ const StoreApplication = () => {
         }
       });
       if (field === 'contactInfo.address.city') next.contactInfo.address.barangay = '';
+      if (field.startsWith('contactInfo.address.') && field !== 'contactInfo.address.coordinates') {
+        next.contactInfo.address.coordinates = { lat: '', lng: '' };
+      }
+      return next;
+    });
+    setFieldErrors(prev => {
+      if (!prev[field]) return prev;
+      const next = { ...prev };
+      delete next[field];
       return next;
     });
   };
@@ -175,10 +103,50 @@ const StoreApplication = () => {
     const newReferences = [...formData.references];
     newReferences[index][field] = value;
     setFormData(prev => ({ ...prev, references: newReferences }));
+    setFieldErrors(prev => {
+      const key = `references.${index}.${field}`;
+      if (!prev[key] && !prev.references) return prev;
+      const next = { ...prev };
+      delete next[key];
+      delete next.references;
+      return next;
+    });
   };
 
   const handleFileChange = (fileType, file) => {
     setFiles(prev => ({ ...prev, [fileType]: file }));
+    if (file) setFieldErrors(prev => {
+      if (!prev[fileType]) return prev;
+      const next = { ...prev };
+      delete next[fileType];
+      return next;
+    });
+  };
+
+  const focusFirstError = (errors) => {
+    const step = firstInvalidStep(errors);
+    if (step !== null) setCurrentStep(step);
+    window.requestAnimationFrame(() => {
+      const field = Object.keys(errors).find(key => (STORE_APPLICATION_FIELD_STEPS[key] ?? (key.startsWith('references.') ? 5 : 1)) === step);
+      const target = (field ? document.querySelector(`[data-field="${field}"]`) : null)
+        || document.querySelector(`[data-step="${step}"]`);
+      target?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      target?.focus?.({ preventScroll: true });
+    });
+  };
+
+  const validateAndShowErrors = (step = null) => {
+    const allErrors = validateStoreApplicationForm(formData, { files, documentAvailability });
+    const errors = step === null
+      ? allErrors
+      : Object.fromEntries(Object.entries(allErrors).filter(([field]) => (
+        (STORE_APPLICATION_FIELD_STEPS[field] ?? (field.startsWith('references.') ? 5 : 1)) === step
+      )));
+    if (!Object.keys(errors).length) return true;
+    setFieldErrors(prev => ({ ...prev, ...errors }));
+    focusFirstError(errors);
+    toast.error(Object.values(errors)[0]);
+    return false;
   };
 
   const [locating, setLocating] = useState(false);
@@ -225,6 +193,7 @@ const StoreApplication = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!validateAndShowErrors()) return;
     setLoading(true);
     try {
       const formDataToSend = new FormData();
@@ -244,12 +213,19 @@ const StoreApplication = () => {
       if (files.storeLogo) formDataToSend.append('storeLogo', files.storeLogo);
       if (files.authorityDocument) formDataToSend.append('authorityDocument', files.authorityDocument);
 
-      await storeApplicationService.submitApplication(formDataToSend);
-      const response = await storeApplicationService.getUserApplication();
+      const response = await storeApplicationService.submitApplication(formDataToSend);
       toast.success('Application submitted successfully!');
       setApplication(response.data?.application || null);
+      setDocumentAvailability(response.data?.application?.documentAvailability || documentAvailability);
+      setFieldErrors({});
     } catch (error) {
-      toast.error(error.response?.data?.errors?.[0]?.msg || error.response?.data?.message || 'Error submitting application');
+      const backendErrors = error.response?.data?.errors || [];
+      if (backendErrors.length) {
+        const mappedErrors = Object.fromEntries(backendErrors.map(item => [item.field || item.path || 'businessName', item.msg || 'Check this field.']));
+        setFieldErrors(mappedErrors);
+        focusFirstError(mappedErrors);
+      }
+      toast.error(backendErrors[0]?.msg || error.response?.data?.message || 'Error submitting application');
     } finally {
       setLoading(false);
     }
@@ -271,70 +247,9 @@ const StoreApplication = () => {
     if (!application) return;
 
     // Pre-fill form from existing application
-    setFormData({
-      operationalModules: application.operationalModules || [],
-      hiringStaff: application.hiringStaff || false,
-      staffTypes: application.staffTypes || [],
-      supplierNeeds: application.supplierNeeds || false,
-      inventoryPlans: application.inventoryPlans || '',
-      productCategories: application.productCategories || [],
-      businessName: application.businessName || '',
-      tradeName: application.tradeName || application.businessName || '',
-      registeredBusinessName: application.registeredBusinessName || application.businessRegistration?.registeredName || '',
-      natureOfBusiness: application.natureOfBusiness || '',
-      yearBusinessStarted: application.yearBusinessStarted || new Date().getFullYear(),
-      businessType: application.businessType || '',
-      legalStructure: application.legalStructure || 'sole_proprietorship',
-      yearsInBusiness: application.yearsInBusiness || 0,
-      numberOfEmployees: application.numberOfEmployees || 1,
-      hasPhysicalStore: application.hasPhysicalStore ?? true,
-      businessLicense: application.businessLicense || {
-        number: '',
-        issuingAuthority: '',
-        issueDate: '',
-        expiryDate: ''
-      },
-      representative: application.representative || { fullName: '', role: 'Owner', phone: '', email: user?.email || '', isAuthorizedRepresentative: false },
-      businessRegistration: application.businessRegistration || { authority: 'dti', certificateNumber: '', registeredName: '', registrationDate: '', expirationDate: '' },
-      taxProfile: application.taxProfile || { birRegistrationStatus: 'registered', taxpayerClassification: '', tin: '', branchCode: '000', registeredName: '', registeredAddress: { unitBuilding: '', street: '', barangay: '', city: '', province: 'Cavite', postalCode: '', country: 'PH' }, lineOfBusiness: '', declaredTaxStatus: '' },
-      declaration: { accepted: false, applicantName: application.declaration?.applicantName || '' },
-      contactInfo: {
-        phone: application.contactInfo?.phone || '',
-        email: application.contactInfo?.email || user?.email || '',
-        address: {
-          unitBuilding: application.contactInfo?.address?.unitBuilding || '',
-          street: application.contactInfo?.address?.street || '',
-          city: application.contactInfo?.address?.city || '',
-          barangay: application.contactInfo?.address?.barangay || '',
-          state: application.contactInfo?.address?.state || 'cavite',
-          province: application.contactInfo?.address?.province || application.contactInfo?.address?.state || 'Cavite',
-          zipCode: application.contactInfo?.address?.zipCode || '',
-          country: application.contactInfo?.address?.country || 'PH',
-          landmark: application.contactInfo?.address?.landmark || '',
-          coordinates: application.contactInfo?.address?.coordinates || { lat: '', lng: '' }
-        }
-      },
-      paymentInfo: application.paymentInfo || {
-        bankName: '',
-        bankAccountName: '',
-        bankAccountNumber: '',
-        alternativePaymentMethod: {
-          provider: 'GCash',
-          accountNumber: ''
-        }
-      },
-      productsOffered: application.productsOffered || [],
-      businessDescription: application.businessDescription || '',
-      emergencyContact: application.emergencyContact || {
-        name: '',
-        phone: '',
-        relationship: ''
-      },
-      references: application.references?.length >= 2 ? application.references : [
-        { name: '', business: '', phone: '', email: '' },
-        { name: '', business: '', phone: '', email: '' }
-      ]
-    });
+    setFormData(hydrateStoreApplicationForm(application, user));
+    setDocumentAvailability(application.documentAvailability || {});
+    setFieldErrors({});
 
     // Store the old application for correction highlighting but go to form
     const oldApp = { ...application };
@@ -367,6 +282,7 @@ const StoreApplication = () => {
         </div>
 
         <div className="bg-white rounded-[2rem] p-6 space-y-6 shadow-xl border border-slate-100">
+          <StoreApplicationProfileDetails application={application} />
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-4">
               <div className="flex items-center gap-3">
@@ -402,14 +318,14 @@ const StoreApplication = () => {
             </div>
           </div>
 
-          {(application.status === 'rejected' || application.status === 'requires_more_info') && (
+          {(['draft', 'rejected', 'requires_more_info'].includes(application.status)) && (
             <div className={`p-8 rounded-[2rem] border animate-slide-up ${application.status === 'rejected' ? 'bg-rose-50 border-rose-100' : 'bg-secondary-50 border-secondary-100'}`}>
                <div className="flex items-center gap-3 mb-4">
                  <div className={`p-2 rounded-lg ${application.status === 'rejected' ? 'bg-rose-600 text-white' : 'bg-primary-600 text-white'}`}>
                    <AlertCircle className="h-5 w-5" />
                  </div>
                  <h4 className={`text-sm font-black uppercase tracking-widest ${application.status === 'rejected' ? 'text-rose-900' : 'text-orange-900'}`}>
-                   {application.status === 'rejected' ? 'Application Rejected' : 'Additional Information Required'}
+                    {application.status === 'rejected' ? 'Application Rejected' : application.status === 'draft' ? 'Application Draft' : 'Additional Information Required'}
                  </h4>
                </div>
                
@@ -427,12 +343,12 @@ const StoreApplication = () => {
                  </div>
                )}
 
-               {(application.status === 'rejected' || application.status === 'requires_more_info') && (
+               {(['draft', 'rejected', 'requires_more_info'].includes(application.status)) && (
                  <button 
                    onClick={handleReapply}
                    className={`mt-6 px-8 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest text-white transition-all shadow-lg ${application.status === 'rejected' ? 'bg-rose-600 hover:bg-slate-900' : 'bg-primary-600 hover:bg-slate-900'}`}
                  >
-                   {application.status === 'rejected' ? 'Re-apply with Corrected Documents' : 'Submit Required Corrections'}
+                    {application.status === 'rejected' ? 'Re-apply with Corrected Documents' : application.status === 'draft' ? 'Continue Application' : 'Submit Required Corrections'}
                  </button>
                )}
 
@@ -540,14 +456,14 @@ const StoreApplication = () => {
           { icon: FileText, label: 'Documents' },
           { icon: Shield, label: 'Review' }
         ].map((step, idx) => (
-          <div key={idx} className={`flex items-center justify-center gap-3 py-4 rounded-[1.5rem] transition-all duration-500 ${currentStep === idx ? 'bg-neutral-900 text-white shadow-strong scale-[1.05]' : 'opacity-40'}`}>
+          <button type="button" key={idx} onClick={() => setCurrentStep(idx)} aria-current={currentStep === idx ? 'step' : undefined} className={`flex items-center justify-center gap-3 py-4 rounded-[1.5rem] transition-all duration-500 ${currentStep === idx ? 'bg-neutral-900 text-white shadow-strong scale-[1.05]' : 'opacity-60 hover:opacity-100'}`}>
             <step.icon className="h-4 w-4" />
             <span className="text-[10px] font-black uppercase tracking-[0.2em]">{step.label}</span>
-          </div>
+          </button>
         ))}
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-8 animate-fade-in">
+      <form onSubmit={handleSubmit} className="space-y-8 animate-fade-in" noValidate>
         <div className="bg-primary-50 border border-primary-200 rounded-2xl p-4 mb-6 flex items-start gap-3">
           <div className="w-9 h-9 bg-white rounded-xl flex items-center justify-center shadow-sm shrink-0">
             <Info className="h-4 w-4 text-primary-600" />
@@ -555,13 +471,28 @@ const StoreApplication = () => {
           <div>
             <p className="text-[10px] font-black text-primary-900 uppercase tracking-widest mb-0.5">Requirements</p>
             <p className="text-[9px] text-primary-800 font-bold leading-none uppercase opacity-60">
-              Business Permit · TIN · 2 References.
+              Registration document · confirmed store location · tax details when applicable · 2 references.
             </p>
           </div>
         </div>
 
+        {Object.keys(fieldErrors).length > 0 && (
+          <div role="alert" aria-live="assertive" className="rounded-2xl border border-rose-200 bg-rose-50 p-5 text-rose-900">
+            <p className="text-sm font-black">Please complete the highlighted application details.</p>
+            <ul className="mt-2 space-y-1 text-xs font-semibold">
+              {Object.entries(fieldErrors).map(([field, message]) => (
+                <li key={field}>
+                  <button type="button" className="text-left underline decoration-rose-300 underline-offset-2" onClick={() => focusFirstError({ [field]: message })}>
+                    {message}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
         {currentStep === 0 && (
-          <div className="card !rounded-[4rem] p-12 lg:p-20 space-y-16 animate-fade-up border-none shadow-strong bg-white/50 backdrop-blur-3xl">
+          <div data-step="0" className="card !rounded-[2rem] sm:!rounded-[4rem] p-6 sm:p-12 lg:p-20 space-y-10 sm:space-y-16 animate-fade-up border-none shadow-strong bg-white/50 backdrop-blur-3xl">
             <div className="flex flex-col lg:flex-row items-start gap-16">
               <div className="lg:w-1/2 space-y-10">
                 <div className="w-24 h-24 bg-neutral-900 text-white rounded-[2rem] flex items-center justify-center shadow-premium ring-8 ring-primary/5">
@@ -624,21 +555,21 @@ const StoreApplication = () => {
         )}
 
         {currentStep === 1 && (
-          <div className="card p-10 space-y-8 animate-slide-up">
+          <div data-step="1" tabIndex="-1" className="card p-5 sm:p-10 space-y-8 animate-slide-up">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-1.5">
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 flex items-center gap-2">
+                <label htmlFor="store-application-business-name" className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 flex items-center gap-2">
                   Store Name * {isFieldBroken('businessName') && <span className="px-2 py-0.5 bg-rose-100 text-rose-600 rounded-md text-[7px] animate-pulse">ACTION REQUIRED</span>}
                 </label>
-                <input type="text" className={`input-premium ${isFieldBroken('businessName') ? 'border-rose-500 ring-2 ring-rose-100' : ''}`} placeholder="Official Business Title" value={formData.businessName} onChange={(e) => handleChange('businessName', e.target.value)} required />
+                <input id="store-application-business-name" data-field="businessName" aria-invalid={Boolean(fieldErrors.businessName)} type="text" className={`input-premium ${fieldErrors.businessName || isFieldBroken('businessName') ? 'border-rose-500 ring-2 ring-rose-100' : ''}`} placeholder="Official Business Title" value={formData.businessName} onChange={(e) => handleChange('businessName', e.target.value)} required />
               </div>
               <div className="space-y-1.5">
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Registered Business Name *</label>
-                <input type="text" className="input-premium" value={formData.registeredBusinessName} onChange={(e) => { handleChange('registeredBusinessName', e.target.value); handleChange('businessRegistration.registeredName', e.target.value); }} required />
+                <label htmlFor="store-application-registered-name" className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Registered Business Name *</label>
+                <input id="store-application-registered-name" data-field="registeredBusinessName" aria-invalid={Boolean(fieldErrors.registeredBusinessName)} type="text" className={`input-premium ${fieldErrors.registeredBusinessName ? 'border-rose-500 ring-2 ring-rose-100' : ''}`} value={formData.registeredBusinessName} onChange={(e) => { handleChange('registeredBusinessName', e.target.value); handleChange('businessRegistration.registeredName', e.target.value); }} required />
               </div>
               <div className="space-y-1.5">
                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 flex items-center gap-2">
-                  Store Logo * {isFieldBroken('storeLogo') && <span className="px-2 py-0.5 bg-rose-100 text-rose-600 rounded-md text-[7px] animate-pulse">RESUBMIT REQUIRED</span>}
+                  Store Logo (optional) {isFieldBroken('storeLogo') && <span className="px-2 py-0.5 bg-rose-100 text-rose-600 rounded-md text-[7px] animate-pulse">RESUBMIT REQUIRED</span>}
                 </label>
                 <div className="flex items-center gap-4">
                   <div className={`w-16 h-16 rounded-2xl border-2 border-dashed flex items-center justify-center relative overflow-hidden group transition-all ${isFieldBroken('storeLogo') ? 'border-rose-500 bg-rose-50' : 'border-slate-200 bg-slate-50'}`}>
@@ -657,8 +588,8 @@ const StoreApplication = () => {
               </div>
             </div>
 
-            <div className="space-y-4">
-              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 flex items-center gap-2">
+            <div data-field="operationalModules" tabIndex="-1" className={`space-y-4 rounded-2xl ${fieldErrors.operationalModules ? 'ring-2 ring-rose-200 p-3' : ''}`}>
+              <label htmlFor="store-application-description" className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 flex items-center gap-2">
                 What do you sell? (Select all that apply) *
               </label>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -796,15 +727,15 @@ const StoreApplication = () => {
               <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 flex items-center gap-2">
                 Business Description * {isFieldBroken('businessDescription') && <span className="px-2 py-0.5 bg-rose-100 text-rose-600 rounded-md text-[7px] animate-pulse">NEEDS CLARIFICATION</span>}
               </label>
-              <textarea className={`input-premium min-h-[120px] ${isFieldBroken('businessDescription') ? 'border-rose-500 ring-2 ring-rose-100' : ''}`} value={formData.businessDescription} onChange={(e) => handleChange('businessDescription', e.target.value)} placeholder="Experience, specialties, and vision..." required />
+               <textarea id="store-application-description" data-field="businessDescription" aria-invalid={Boolean(fieldErrors.businessDescription)} className={`input-premium min-h-[120px] ${fieldErrors.businessDescription || isFieldBroken('businessDescription') ? 'border-rose-500 ring-2 ring-rose-100' : ''}`} value={formData.businessDescription} onChange={(e) => handleChange('businessDescription', e.target.value)} placeholder="Experience, specialties, and vision..." required />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-1.5">
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 flex items-center gap-2">
+                <label htmlFor="store-application-business-type" className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 flex items-center gap-2">
                   Business Classification * {isFieldBroken('businessType') && <span className="px-2 py-0.5 bg-rose-100 text-rose-600 rounded-md text-[7px] animate-pulse">INVALID SELECTION</span>}
                 </label>
-                <select className={`input-premium ${isFieldBroken('businessType') ? 'border-rose-500 ring-2 ring-rose-100' : ''}`} value={formData.businessType} onChange={(e) => handleChange('businessType', e.target.value)} required>
+                <select id="store-application-business-type" data-field="businessType" aria-invalid={Boolean(fieldErrors.businessType)} className={`input-premium ${fieldErrors.businessType || isFieldBroken('businessType') ? 'border-rose-500 ring-2 ring-rose-100' : ''}`} value={formData.businessType} onChange={(e) => handleChange('businessType', e.target.value)} required>
                   <option value="">Select Primary Classification</option>
                   <option value="pet_store">Pet Store</option>
                   <option value="breeder">Independent Breeder</option>
@@ -828,7 +759,7 @@ const StoreApplication = () => {
               </div>
               <div className="space-y-1.5">
                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Nature / Line of Business *</label>
-                <input className="input-premium" value={formData.natureOfBusiness} onChange={(e) => handleChange('natureOfBusiness', e.target.value)} placeholder="e.g. Pet supplies and grooming" required />
+                <input data-field="natureOfBusiness" aria-invalid={Boolean(fieldErrors.natureOfBusiness)} className={`input-premium ${fieldErrors.natureOfBusiness ? 'border-rose-500 ring-2 ring-rose-100' : ''}`} value={formData.natureOfBusiness} onChange={(e) => handleChange('natureOfBusiness', e.target.value)} placeholder="e.g. Pet supplies and grooming" required />
               </div>
               <div className="space-y-1.5">
                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Year Business Started *</label>
@@ -839,17 +770,17 @@ const StoreApplication = () => {
         )}
 
         {currentStep === 2 && (
-          <div className="card p-10 space-y-8 animate-slide-up">
+          <div data-step="2" tabIndex="-1" className="card p-5 sm:p-10 space-y-8 animate-slide-up">
             <section className="space-y-4">
               <div><h3 className="text-sm font-black text-slate-900">Owner / Authorized Representative</h3><p className="text-[10px] text-slate-500">Use the legal name and current contact details of the person responsible for this application.</p></div>
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <input className="input-premium" placeholder="Full legal name *" value={formData.representative.fullName} onChange={(e) => handleChange('representative.fullName', e.target.value)} required />
-                <input className="input-premium" placeholder="Role / position *" value={formData.representative.role} onChange={(e) => handleChange('representative.role', e.target.value)} required />
-                <input className="input-premium" placeholder="Contact number *" value={formData.representative.phone} onChange={(e) => handleChange('representative.phone', e.target.value)} required />
-                <input type="email" className="input-premium" placeholder="Email address *" value={formData.representative.email} onChange={(e) => handleChange('representative.email', e.target.value)} required />
+                <label className="text-xs font-bold text-slate-600">Full legal name *<input data-field="representative.fullName" aria-invalid={Boolean(fieldErrors['representative.fullName'])} className="input-premium mt-1" value={formData.representative.fullName} onChange={(e) => handleChange('representative.fullName', e.target.value)} required /></label>
+                <label className="text-xs font-bold text-slate-600">Role / position *<input data-field="representative.role" aria-invalid={Boolean(fieldErrors['representative.role'])} className="input-premium mt-1" value={formData.representative.role} onChange={(e) => handleChange('representative.role', e.target.value)} required /></label>
+                <label className="text-xs font-bold text-slate-600">Contact number *<input data-field="representative.phone" aria-invalid={Boolean(fieldErrors['representative.phone'])} className="input-premium mt-1" value={formData.representative.phone} onChange={(e) => handleChange('representative.phone', e.target.value)} required /></label>
+                <label className="text-xs font-bold text-slate-600">Email address *<input data-field="representative.email" aria-invalid={Boolean(fieldErrors['representative.email'])} type="email" className="input-premium mt-1" value={formData.representative.email} onChange={(e) => handleChange('representative.email', e.target.value)} required /></label>
               </div>
               <label className="flex items-center gap-3 rounded-xl border border-slate-200 p-3 text-xs text-slate-700"><input type="checkbox" checked={formData.representative.isAuthorizedRepresentative} onChange={(e) => handleChange('representative.isAuthorizedRepresentative', e.target.checked)} /> I am an authorized representative, not the registered owner.</label>
-              {formData.representative.isAuthorizedRepresentative && <label className="block rounded-xl border border-dashed border-slate-300 p-3 text-xs"><span className="mb-2 block font-bold">Proof of authority *</span><input type="file" accept=".pdf,.jpg,.jpeg,.png" onChange={(e) => handleFileChange('authorityDocument', e.target.files[0])} required /></label>}
+              {formData.representative.isAuthorizedRepresentative && <label className="block rounded-xl border border-dashed border-slate-300 p-3 text-xs"><span className="mb-2 block font-bold">Proof of authority *</span><input data-field="authorityDocument" type="file" accept=".pdf,.jpg,.jpeg,.png" onChange={(e) => handleFileChange('authorityDocument', e.target.files[0])} required={!documentAvailability.authorityDocument} />{documentAvailability.authorityDocument && !files.authorityDocument && <span className="mt-2 block text-emerald-700">Saved document will be retained.</span>}</label>}
             </section>
             <div className="border-t border-slate-100" />
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -998,7 +929,7 @@ const StoreApplication = () => {
         )}
 
         {currentStep === 3 && (
-          <div className="card p-10 space-y-8 animate-slide-up">
+          <div data-step="3" tabIndex="-1" className="card p-5 sm:p-10 space-y-8 animate-slide-up">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <div className="space-y-6">
                 <h3 className="text-[10px] font-black text-slate-900 uppercase tracking-[0.2em] flex items-center gap-2">
@@ -1006,15 +937,15 @@ const StoreApplication = () => {
                 </h3>
                 <div className="space-y-4">
                   <div className="space-y-1.5">
-                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 flex items-center gap-2">
+                    <label htmlFor="store-application-registration-authority" className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 flex items-center gap-2">
                       Registration Authority *
                     </label>
-                    <select className="input-premium" value={formData.businessRegistration.authority} onChange={(e) => handleChange('businessRegistration.authority', e.target.value)} required><option value="dti">DTI</option><option value="sec">SEC</option><option value="cda">CDA</option><option value="other">Other</option></select>
+                    <select id="store-application-registration-authority" className="input-premium" value={formData.businessRegistration.authority} onChange={(e) => handleChange('businessRegistration.authority', e.target.value)} required><option value="dti">DTI</option><option value="sec">SEC</option><option value="cda">CDA</option><option value="other">Other</option></select>
                   </div>
-                  <input className="input-premium" placeholder="Registration / certificate number *" value={formData.businessRegistration.certificateNumber} onChange={(e) => handleChange('businessRegistration.certificateNumber', e.target.value)} required />
+                  <label className="text-xs font-bold text-slate-600">Registration / certificate number *<input data-field="businessRegistration.certificateNumber" aria-invalid={Boolean(fieldErrors['businessRegistration.certificateNumber'])} className="input-premium mt-1" value={formData.businessRegistration.certificateNumber} onChange={(e) => handleChange('businessRegistration.certificateNumber', e.target.value)} required /></label>
                   <div className="grid grid-cols-2 gap-3"><label className="text-[9px] font-bold text-slate-500">Registration date<input type="date" className="input-premium mt-1" value={formData.businessRegistration.registrationDate} onChange={(e) => handleChange('businessRegistration.registrationDate', e.target.value)} /></label><label className="text-[9px] font-bold text-slate-500">Expiration (if shown)<input type="date" className="input-premium mt-1" value={formData.businessRegistration.expirationDate} onChange={(e) => handleChange('businessRegistration.expirationDate', e.target.value)} /></label></div>
-                  <input className="input-premium" placeholder="Primary contact number *" value={formData.contactInfo.phone} onChange={(e) => handleChange('contactInfo.phone', e.target.value)} required />
-                  <input type="email" className="input-premium" placeholder="Business email *" value={formData.contactInfo.email} onChange={(e) => handleChange('contactInfo.email', e.target.value)} required />
+                  <label className="text-xs font-bold text-slate-600">Primary contact number *<input data-field="contactInfo.phone" aria-invalid={Boolean(fieldErrors['contactInfo.phone'])} className="input-premium mt-1" value={formData.contactInfo.phone} onChange={(e) => handleChange('contactInfo.phone', e.target.value)} required /></label>
+                  <label className="text-xs font-bold text-slate-600">Business email *<input data-field="contactInfo.email" aria-invalid={Boolean(fieldErrors['contactInfo.email'])} type="email" className="input-premium mt-1" value={formData.contactInfo.email} onChange={(e) => handleChange('contactInfo.email', e.target.value)} required /></label>
                   <div className={`p-6 rounded-2xl border border-dashed transition-all ${isFieldBroken('governmentId') ? 'bg-rose-50 border-rose-500 ring-2 ring-rose-100' : 'bg-slate-50 border-slate-200'}`}>
                     <input type="file" onChange={(e) => handleFileChange('governmentId', e.target.files[0])} className="hidden" id="govIdFile" />
                     <label htmlFor="govIdFile" className="cursor-pointer flex flex-col items-center gap-2">
@@ -1058,8 +989,8 @@ const StoreApplication = () => {
                           address: {
                             ...prev.contactInfo.address,
                             street: location.street || location.full,
-                            city: location.city.toLowerCase().replace(/\s+/g, '_').replace('municipality_of_', ''),
-                            barangay: location.barangay.toLowerCase().replace(/\s+/g, '_'),
+                            city: (location.city || '').toLowerCase().replace(/\s+/g, '_').replace('municipality_of_', ''),
+                            barangay: (location.barangay || '').toLowerCase().replace(/\s+/g, '_'),
                             zipCode: location.zipCode || prev.contactInfo.address.zipCode,
                             coordinates: {
                               lat: location.lat,
@@ -1068,32 +999,38 @@ const StoreApplication = () => {
                           }
                         }
                       }));
+                      setFieldErrors(prev => {
+                        const next = { ...prev };
+                        for (const field of ['contactInfo.address.street', 'contactInfo.address.city', 'contactInfo.address.barangay', 'contactInfo.address.coordinates']) delete next[field];
+                        return next;
+                      });
                     }}
                     initialAddress={formData.contactInfo.address.street}
+                    initialCoordinates={formData.contactInfo.address.coordinates}
                   />
                 ) : (
                   <div className="grid grid-cols-2 gap-4 animate-fade-in">
                     <div className="space-y-1.5">
-                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">City *</label>
-                      <select className={`input-premium ${isFieldBroken('address') ? 'border-rose-500 ring-2 ring-rose-100' : ''}`} value={formData.contactInfo.address.city} onChange={(e) => handleChange('contactInfo.address.city', e.target.value)} required>
+                      <label htmlFor="store-application-city" className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">City *</label>
+                      <select id="store-application-city" data-field="contactInfo.address.city" aria-invalid={Boolean(fieldErrors['contactInfo.address.city'])} className={`input-premium ${fieldErrors['contactInfo.address.city'] || isFieldBroken('address') ? 'border-rose-500 ring-2 ring-rose-100' : ''}`} value={formData.contactInfo.address.city} onChange={(e) => handleChange('contactInfo.address.city', e.target.value)} required>
                         <option value="">Select City</option>
                         {cities.map(city => <option key={city.value} value={city.value}>{city.label}</option>)}
                       </select>
                     </div>
                     <div className="space-y-1.5">
-                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Barangay *</label>
-                      <select className={`input-premium ${isFieldBroken('address') ? 'border-rose-500 ring-2 ring-rose-100' : ''}`} value={formData.contactInfo.address.barangay} onChange={(e) => handleChange('contactInfo.address.barangay', e.target.value)} disabled={!formData.contactInfo.address.city} required>
+                      <label htmlFor="store-application-barangay" className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Barangay *</label>
+                      <select id="store-application-barangay" data-field="contactInfo.address.barangay" aria-invalid={Boolean(fieldErrors['contactInfo.address.barangay'])} className={`input-premium ${fieldErrors['contactInfo.address.barangay'] || isFieldBroken('address') ? 'border-rose-500 ring-2 ring-rose-100' : ''}`} value={formData.contactInfo.address.barangay} onChange={(e) => handleChange('contactInfo.address.barangay', e.target.value)} disabled={!formData.contactInfo.address.city} required>
                         <option value="">Select Barangay</option>
                         {barangays.map(bg => <option key={bg.value} value={bg.value}>{bg.label}</option>)}
                       </select>
                     </div>
                     <div className="col-span-2 space-y-1.5">
-                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Unit / Building / House No.</label>
-                      <input type="text" className="input-premium" value={formData.contactInfo.address.unitBuilding || ''} onChange={(e) => handleChange('contactInfo.address.unitBuilding', e.target.value)} />
+                      <label htmlFor="store-application-unit-building" className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Unit / Building / House No.</label>
+                      <input id="store-application-unit-building" type="text" className="input-premium" value={formData.contactInfo.address.unitBuilding || ''} onChange={(e) => handleChange('contactInfo.address.unitBuilding', e.target.value)} />
                     </div>
                     <div className="col-span-2 space-y-1.5">
                       <div className="flex items-center justify-between ml-1">
-                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Street Address *</label>
+                        <label htmlFor="store-application-street" className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Street Address *</label>
                         <button 
                           type="button"
                           onClick={handleGetCurrentLocation}
@@ -1104,23 +1041,24 @@ const StoreApplication = () => {
                           {locating ? 'Detecting...' : 'Use Current Location'}
                         </button>
                       </div>
-                      <input type="text" className={`input-premium ${isFieldBroken('address') ? 'border-rose-500 ring-2 ring-rose-100' : ''}`} value={formData.contactInfo.address.street} onChange={(e) => handleChange('contactInfo.address.street', e.target.value)} required />
+                      <input id="store-application-street" data-field="contactInfo.address.street" aria-invalid={Boolean(fieldErrors['contactInfo.address.street'])} type="text" className={`input-premium ${fieldErrors['contactInfo.address.street'] || isFieldBroken('address') ? 'border-rose-500 ring-2 ring-rose-100' : ''}`} value={formData.contactInfo.address.street} onChange={(e) => handleChange('contactInfo.address.street', e.target.value)} required />
                     </div>
-                    <input className="input-premium" placeholder="Province *" value={formData.contactInfo.address.province} onChange={(e) => handleChange('contactInfo.address.province', e.target.value)} required />
-                    <input className="input-premium" placeholder="Postal code *" value={formData.contactInfo.address.zipCode} onChange={(e) => handleChange('contactInfo.address.zipCode', e.target.value)} required />
+                    <label className="text-xs font-bold text-slate-600">Province *<input data-field="contactInfo.address.province" aria-invalid={Boolean(fieldErrors['contactInfo.address.province'])} className="input-premium mt-1" value={formData.contactInfo.address.province} onChange={(e) => handleChange('contactInfo.address.province', e.target.value)} required /></label>
+                    <label className="text-xs font-bold text-slate-600">Postal code *<input data-field="contactInfo.address.zipCode" aria-invalid={Boolean(fieldErrors['contactInfo.address.zipCode'])} className="input-premium mt-1" value={formData.contactInfo.address.zipCode} onChange={(e) => handleChange('contactInfo.address.zipCode', e.target.value)} required /></label>
                     <input className="input-premium col-span-2" placeholder="Landmark (optional)" value={formData.contactInfo.address.landmark || ''} onChange={(e) => handleChange('contactInfo.address.landmark', e.target.value)} />
                   </div>
                 )}
+                {fieldErrors['contactInfo.address.coordinates'] && <p data-field="contactInfo.address.coordinates" tabIndex="-1" className="md:col-span-2 text-xs font-bold text-rose-700">{fieldErrors['contactInfo.address.coordinates']}</p>}
             </div>
             <section className="rounded-2xl border border-primary-100 bg-primary-50 p-5 space-y-4">
               <div><h3 className="text-sm font-black text-slate-900">BIR / Tax Information</h3><p className="text-[10px] text-slate-600">Your selection is a declaration only. Platform Admin verifies the final status from Form 2303.</p></div>
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <label className="text-[9px] font-black uppercase text-slate-500">BIR registration status<select className="input-premium mt-1" value={formData.taxProfile.birRegistrationStatus} onChange={(e) => handleChange('taxProfile.birRegistrationStatus', e.target.value)}><option value="registered">Registered</option><option value="pending_registration">Registration pending</option><option value="not_registered">Not registered</option></select></label>
                 {formData.taxProfile.birRegistrationStatus === 'registered' && <>
-                  <input className="input-premium" placeholder="TIN (000-000-000) *" value={formData.taxProfile.tin} onChange={(e) => handleChange('taxProfile.tin', e.target.value)} required />
-                  <input className="input-premium" placeholder="Branch code *" value={formData.taxProfile.branchCode} onChange={(e) => handleChange('taxProfile.branchCode', e.target.value)} required />
-                  <input className="input-premium" placeholder="BIR registered name *" value={formData.taxProfile.registeredName} onChange={(e) => handleChange('taxProfile.registeredName', e.target.value)} required />
-                  <input className="input-premium" placeholder="BIR line of business *" value={formData.taxProfile.lineOfBusiness} onChange={(e) => handleChange('taxProfile.lineOfBusiness', e.target.value)} required />
+                  <label className="text-[9px] font-black uppercase text-slate-500">TIN *<input className="input-premium mt-1" placeholder="000-000-000" value={formData.taxProfile.tin} onChange={(e) => handleChange('taxProfile.tin', e.target.value)} required /></label>
+                  <label className="text-[9px] font-black uppercase text-slate-500">Branch code *<input className="input-premium mt-1" value={formData.taxProfile.branchCode} onChange={(e) => handleChange('taxProfile.branchCode', e.target.value)} required /></label>
+                  <label className="text-[9px] font-black uppercase text-slate-500">BIR registered name *<input className="input-premium mt-1" value={formData.taxProfile.registeredName} onChange={(e) => handleChange('taxProfile.registeredName', e.target.value)} required /></label>
+                  <label className="text-[9px] font-black uppercase text-slate-500">BIR line of business *<input className="input-premium mt-1" value={formData.taxProfile.lineOfBusiness} onChange={(e) => handleChange('taxProfile.lineOfBusiness', e.target.value)} required /></label>
                   <label className="text-[9px] font-black uppercase text-slate-500 md:col-span-2">Declared tax registration status<select className="input-premium mt-1" value={formData.taxProfile.declaredTaxStatus} onChange={(e) => handleChange('taxProfile.declaredTaxStatus', e.target.value)} required><option value="">Select the status shown on BIR registration</option><option value="vat_registered">VAT Registered</option><option value="non_vat_registered">Non-VAT Registered</option></select></label>
                   <div className="md:col-span-2 flex items-center justify-between"><strong className="text-[10px] text-slate-700">BIR registered business address</strong><button type="button" className="text-[9px] font-black uppercase text-primary-700" onClick={() => handleChange('taxProfile.registeredAddress', { unitBuilding: formData.contactInfo.address.unitBuilding || '', street: formData.contactInfo.address.street, barangay: formData.contactInfo.address.barangay, city: formData.contactInfo.address.city, province: formData.contactInfo.address.province, postalCode: formData.contactInfo.address.zipCode, country: 'PH' })}>Use store address</button></div>
                   <input className="input-premium md:col-span-2" placeholder="Registered street address *" value={formData.taxProfile.registeredAddress.street} onChange={(e) => handleChange('taxProfile.registeredAddress.street', e.target.value)} required />
@@ -1135,16 +1073,16 @@ const StoreApplication = () => {
         )}
 
         {currentStep === 4 && (
-          <div className="card p-10 space-y-10 animate-slide-up">
+          <div data-step="4" tabIndex="-1" className="card p-5 sm:p-10 space-y-10 animate-slide-up">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
               <div className="space-y-6">
                 <h3 className="text-[10px] font-black text-slate-900 uppercase tracking-[0.2em]">Compliance Vault</h3>
                 <div className="space-y-4">
                     { [
-                      { id: 'businessRegistration', label: 'DTI / SEC Certificate' },
-                      { id: 'mayorsPermit', label: 'Mayor\'s / Business Permit' },
-                      { id: 'birRegistration', label: 'BIR Form 2303' },
-                      { id: 'barangayClearance', label: 'Barangay Clearance' }
+                      { id: 'businessRegistration', label: 'DTI / SEC Certificate', required: true },
+                      { id: 'mayorsPermit', label: 'Mayor\'s / Business Permit', required: false },
+                      { id: 'birRegistration', label: 'BIR Form 2303', required: formData.taxProfile.birRegistrationStatus === 'registered' },
+                      { id: 'barangayClearance', label: 'Barangay Clearance', required: false }
                     ].map((doc) => (
                       <div key={doc.id} className={`p-4 rounded-2xl border flex items-center justify-between group transition-all ${isFieldBroken(doc.id) ? 'bg-rose-50 border-rose-500 ring-2 ring-rose-100 shadow-lg' : 'bg-slate-50 border-slate-100 hover:border-primary-200'}`}>
                         <div className="flex items-center gap-3">
@@ -1152,11 +1090,12 @@ const StoreApplication = () => {
                             {isFieldBroken(doc.id) ? <AlertCircle className="h-4 w-4" /> : files[doc.id] ? <Check className="h-4 w-4" /> : <FileText className="h-4 w-4" />}
                           </div>
                           <div>
-                            <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest">{doc.label}</p>
+                            <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest">{doc.label} {doc.required ? '*' : '(optional)'}</p>
+                            {documentAvailability[doc.id] && !files[doc.id] && <p className="text-[8px] font-bold text-emerald-700">Saved document retained</p>}
                             {isFieldBroken(doc.id) && <p className="text-[7px] text-rose-600 font-black uppercase mt-0.5">RESUBMISSION REQUIRED</p>}
                           </div>
                         </div>
-                        <input type="file" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" className="hidden" id={doc.id} onChange={(e) => handleFileChange(doc.id, e.target.files[0])} required={doc.id === 'businessRegistration' || (doc.id === 'birRegistration' && formData.taxProfile.birRegistrationStatus === 'registered')} />
+                        <input data-field={doc.id} type="file" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" className="hidden" id={doc.id} onChange={(e) => handleFileChange(doc.id, e.target.files[0])} required={doc.required && !documentAvailability[doc.id]} />
                         <label htmlFor={doc.id} className={`cursor-pointer px-4 py-2 rounded-lg text-[9px] font-black uppercase transition-all shadow-sm ${isFieldBroken(doc.id) ? 'bg-rose-600 text-white hover:bg-rose-700' : 'bg-white text-primary-600 border border-slate-100 hover:bg-primary-600 hover:text-white'}`}>
                           {isFieldBroken(doc.id) ? 'Redo Upload' : files[doc.id] ? 'Replace' : 'Upload'}
                         </label>
@@ -1201,19 +1140,19 @@ const StoreApplication = () => {
         )}
 
         {currentStep === 5 && (
-          <div className="card p-10 space-y-8 animate-slide-up">
+          <div data-step="5" tabIndex="-1" className="card p-5 sm:p-10 space-y-8 animate-slide-up">
             <div className="space-y-6">
               <h3 className="text-[10px] font-black text-slate-900 uppercase tracking-[0.2em] flex items-center gap-2">
                 <Users className="h-4 w-4 text-primary-500" /> Professional Network {isFieldBroken('references') && <span className="px-2 py-0.5 bg-rose-100 text-rose-600 rounded-md text-[7px] animate-pulse ml-2">UNVERIFIED CONTACTS</span>}
               </h3>
               <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mb-4">Verification requires two commercial character references.</p>
               {formData.references.map((ref, idx) => (
-                <div key={idx} className={`p-6 rounded-2xl border grid grid-cols-2 gap-4 relative mt-4 transition-all ${isFieldBroken('references') ? 'bg-rose-50 border-rose-500 ring-2 ring-rose-100' : 'bg-slate-50 border-slate-100'}`}>
+                <div key={idx} data-field={idx === 0 ? 'references' : undefined} className={`p-4 sm:p-6 rounded-2xl border grid grid-cols-1 sm:grid-cols-2 gap-4 relative mt-4 transition-all ${fieldErrors.references || Object.keys(fieldErrors).some(key => key.startsWith(`references.${idx}.`)) || isFieldBroken('references') ? 'bg-rose-50 border-rose-500 ring-2 ring-rose-100' : 'bg-slate-50 border-slate-100'}`}>
                   <span className={`absolute -top-3 left-4 px-2 py-0.5 border rounded text-[7px] font-black uppercase ${isFieldBroken('references') ? 'bg-rose-600 border-rose-600 text-white' : 'bg-white border-slate-100 text-slate-400'}`}>Reference Protocol {idx + 1}</span>
-                  <input type="text" className="input-premium bg-white" placeholder="Contact Name" value={ref.name} onChange={(e) => handleReferenceChange(idx, 'name', e.target.value)} required />
-                  <input type="text" className="input-premium bg-white" placeholder="Business / Organization" value={ref.business} onChange={(e) => handleReferenceChange(idx, 'business', e.target.value)} required />
-                  <input type="tel" className="input-premium bg-white" placeholder="Secure Line" value={ref.phone} onChange={(e) => handleReferenceChange(idx, 'phone', e.target.value)} required />
-                  <input type="email" className="input-premium bg-white" placeholder="Email Communication" value={ref.email} onChange={(e) => handleReferenceChange(idx, 'email', e.target.value)} required />
+                  <input aria-label={`Reference ${idx + 1} contact name`} type="text" className="input-premium bg-white" placeholder="Contact Name" value={ref.name} onChange={(e) => handleReferenceChange(idx, 'name', e.target.value)} required />
+                  <input aria-label={`Reference ${idx + 1} business or organization`} type="text" className="input-premium bg-white" placeholder="Business / Organization" value={ref.business} onChange={(e) => handleReferenceChange(idx, 'business', e.target.value)} required />
+                  <input aria-label={`Reference ${idx + 1} phone`} type="tel" className="input-premium bg-white" placeholder="Secure Line" value={ref.phone} onChange={(e) => handleReferenceChange(idx, 'phone', e.target.value)} required />
+                  <input aria-label={`Reference ${idx + 1} email`} type="email" className="input-premium bg-white" placeholder="Email Communication" value={ref.email} onChange={(e) => handleReferenceChange(idx, 'email', e.target.value)} required />
                 </div>
               ))}
             </div>
@@ -1221,8 +1160,8 @@ const StoreApplication = () => {
             <div className="rounded-2xl border border-primary-100 bg-primary-50 p-5 space-y-3">
               <h3 className="text-sm font-black text-slate-900">Review & Declaration</h3>
               <p className="text-xs leading-relaxed text-slate-600">I confirm that the business, location, registration, and tax information provided is accurate and matches the submitted documents. I understand that my declared VAT status is not authoritative until Platform Admin verifies it.</p>
-              <input className="input-premium bg-white" placeholder="Applicant full name *" value={formData.declaration.applicantName} onChange={(e) => handleChange('declaration.applicantName', e.target.value)} required />
-              <label className="flex items-start gap-3 text-xs font-bold text-slate-700"><input type="checkbox" className="mt-0.5" checked={formData.declaration.accepted} onChange={(e) => handleChange('declaration.accepted', e.target.checked)} required /> I accept this declaration and submit the application for manual review.</label>
+              <label className="text-xs font-bold text-slate-600">Applicant full name *<input data-field="declaration.applicantName" aria-invalid={Boolean(fieldErrors['declaration.applicantName'])} className="input-premium mt-1 bg-white" value={formData.declaration.applicantName} onChange={(e) => handleChange('declaration.applicantName', e.target.value)} required /></label>
+              <label className="flex items-start gap-3 text-xs font-bold text-slate-700"><input data-field="declaration.accepted" aria-invalid={Boolean(fieldErrors['declaration.accepted'])} type="checkbox" className="mt-0.5" checked={formData.declaration.accepted} onChange={(e) => handleChange('declaration.accepted', e.target.checked)} required /> I accept this declaration and submit the application for manual review. *</label>
             </div>
 
             <button 
@@ -1243,7 +1182,7 @@ const StoreApplication = () => {
               {[0, 1, 2, 3, 4, 5].map(s => <div key={s} className={`w-2 h-2 rounded-full transition-all duration-300 ${currentStep === s ? 'bg-primary-600 w-6' : 'bg-slate-200'}`} />)}
             </div>
             {currentStep < 5 ? (
-              <button type="button" onClick={() => setCurrentStep(prev => prev + 1)} className="h-12 px-8 bg-slate-900 text-white rounded-full text-[9px] font-black uppercase tracking-widest shadow-xl hover:bg-primary-700 active:scale-95 transition-all flex items-center gap-2">
+              <button type="button" onClick={() => validateAndShowErrors(currentStep) && setCurrentStep(prev => prev + 1)} className="h-12 px-8 bg-slate-900 text-white rounded-full text-[9px] font-black uppercase tracking-widest shadow-xl hover:bg-primary-700 active:scale-95 transition-all flex items-center gap-2">
                 Next Module <ArrowRight className="h-3 w-3" />
               </button>
             ) : <div className="w-32" />}
