@@ -203,23 +203,24 @@
   background: var(--market-paper) !important;
   box-shadow: 0 10px 30px rgba(74, 45, 29, 0.07);
 }
-.customer-marketplace-shell .marketplace-shops-panel { width: min(21rem, 36%) !important; border-color: var(--market-line) !important; background: var(--market-paper) !important; }
+.customer-marketplace-shell .marketplace-shops-panel { width: min(20rem, 34%) !important; border-color: var(--market-line) !important; background: var(--market-paper) !important; }
 .customer-marketplace-shell .marketplace-shops-header { padding: 1rem !important; border-color: var(--market-line) !important; background: rgba(255, 250, 242, 0.92) !important; }
 .customer-marketplace-interface .marketplace-shops-header h2 { color: var(--market-deep) !important; font-size: 1.35rem !important; letter-spacing: -0.035em !important; text-transform: none !important; }
 .customer-marketplace-shell .marketplace-shops-header input { min-height: 2.65rem !important; border-color: var(--market-line) !important; border-radius: 0.8rem !important; background: var(--market-cream) !important; color: var(--market-ink) !important; }
 .customer-marketplace-shell .marketplace-shops-header button { border-color: var(--market-line) !important; background: var(--market-paper) !important; color: var(--market-muted) !important; }
 .customer-marketplace-shell .marketplace-shops-header button[class*="bg-slate-900"],
 .customer-marketplace-shell .marketplace-shops-header button[class*="bg-primary"] { border-color: var(--market-brown) !important; background: var(--market-brown) !important; color: white !important; }
-.customer-marketplace-shell .marketplace-shop-list { padding: 0.75rem !important; gap: 0.55rem !important; background: var(--market-cream); }
+.customer-marketplace-shell .marketplace-shop-list { padding: 0.65rem !important; gap: 0.5rem !important; background: var(--market-cream); }
 .customer-marketplace-shell .marketplace-shop-card {
-  padding: 0.75rem !important;
+  height: auto !important;
+  padding: 0.65rem !important;
   border-color: var(--market-line) !important;
   border-radius: 0.9rem !important;
   background: var(--market-paper) !important;
   box-shadow: none !important;
 }
 .customer-marketplace-shell .marketplace-shop-card:hover { border-color: rgba(111, 59, 31, 0.32) !important; }
-.customer-marketplace-shell .marketplace-shop-card > div:first-child > div:first-child { width: 3.25rem !important; height: 3.25rem !important; border-radius: 0.8rem !important; }
+.customer-marketplace-shell .marketplace-shop-card > div:first-child > div:first-child { width: 3rem !important; height: 3rem !important; border-radius: 0.75rem !important; }
 .customer-marketplace-shell .marketplace-shop-map { background: var(--market-tan); }
 
 /* Orders */
@@ -298,7 +299,7 @@
 @media (max-width: 900px) {
   .customer-marketplace-shell .app-content-main { padding-inline: 0.75rem !important; }
   .customer-marketplace-shell .marketplace-shops { height: calc(100vh - 5.5rem) !important; border-radius: 1rem; }
-  .customer-marketplace-shell .marketplace-shops-panel { width: min(22rem, 90vw) !important; }
+  .customer-marketplace-shell .marketplace-shops-panel { width: min(20rem, 90vw) !important; }
   .customer-marketplace-shell .marketplace-orders-header { align-items: stretch !important; }
   .customer-marketplace-shell .marketplace-orders-tabs { width: 100%; overflow-x: auto; }
   .customer-marketplace-shell .marketplace-orders-tabs button { flex: 1 0 max-content; }
