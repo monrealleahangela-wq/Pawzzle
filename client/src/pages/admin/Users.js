@@ -3,6 +3,7 @@ import { toast } from 'react-toastify';
 import { userService } from '../../services/apiService';
 import { Users, Trash2, Shield, User, Globe, Activity, Filter, ChevronLeft, ChevronRight, CheckCircle, XCircle, ShieldAlert } from 'lucide-react';
 import ReportModal from '../../components/ReportModal';
+import { pawzzleConfirm } from '../../utils/pawzzleDialog';
 
 const AdminUsers = () => {
   const [users, setUsers] = useState([]);
@@ -60,7 +61,7 @@ const AdminUsers = () => {
   };
 
   const handleDeleteUser = async (userId, userName) => {
-    if (window.confirm(`Delete user "${userName}"? This cannot be undone.`)) {
+    if (await pawzzleConfirm(`Delete user "${userName}"? This cannot be undone.`, { title: 'Delete user account?', confirmLabel: 'Delete account', tone: 'danger' })) {
       try {
         await userService.deleteUser(userId);
         toast.success('User deleted successfully');

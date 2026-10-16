@@ -3,6 +3,7 @@ import '@testing-library/jest-dom';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import SupplierOfferComparison from './SupplierOfferComparison';
 import { purchaseOrderService } from '../../services/apiService';
+import PawzzleDialogHost from '../ui/PawzzleDialogHost';
 
 jest.mock('../../services/apiService', () => ({ purchaseOrderService: {
   compareOffers: jest.fn(), confirmOfferMatch: jest.fn(), addCartItem: jest.fn(),
@@ -21,25 +22,26 @@ beforeEach(() => {
   purchaseOrderService.confirmOfferMatch.mockResolvedValue({ data: { matchType: 'equivalent' } });
   purchaseOrderService.addCartItem.mockResolvedValue({ data: { items: [{ supplierProductId: 'offer-2' }] } });
   purchaseOrderService.getProcurementStoreProducts.mockResolvedValue({ data: { products: props.storeProducts, pagination: { page: 1, totalPages: 1 } } });
-  jest.spyOn(window, 'confirm').mockReturnValue(true);
 });
 
-afterEach(() => { window.confirm.mockRestore(); });
+const renderComparison = () => render(<><PawzzleDialogHost /><SupplierOfferComparison {...props} /></>);
 
 test('requires explicit reviewed match and seller selection before adding an alternative', async () => {
   purchaseOrderService.compareOffers
     .mockResolvedValueOnce(response(candidate))
     .mockResolvedValueOnce(response({ ...candidate, matchType: 'equivalent' }));
-  render(<SupplierOfferComparison {...props} />);
+  renderComparison();
   expect(await screen.findByText('Unverified candidate')).toBeInTheDocument();
   expect(screen.queryByRole('button', { name: 'Add this supplier' })).not.toBeInTheDocument();
   fireEvent.click(screen.getByRole('button', { name: 'Review match' }));
+  fireEvent.click(await screen.findByRole('button', { name: 'Confirm match' }));
   await waitFor(() => expect(purchaseOrderService.confirmOfferMatch).toHaveBeenCalledWith({
     storeProductId: 'product-1', targetType: 'product', supplierProductId: 'offer-2', matchType: 'equivalent', confirmMatch: true
   }));
   expect(await screen.findByText('equivalent match')).toBeInTheDocument();
   fireEvent.change(screen.getByRole('spinbutton', { name: 'Quantity from Supplier B' }), { target: { value: '2' } });
   fireEvent.click(screen.getByRole('button', { name: 'Add this supplier' }));
+  fireEvent.click(await screen.findByRole('button', { name: 'Add to cart' }));
   await waitFor(() => expect(purchaseOrderService.addCartItem).toHaveBeenCalledWith('offer-2', 2, {
     storeProductId: 'product-1', confirmSelection: true
   }));
@@ -54,7 +56,7 @@ test('selects a reviewed service-supply offer without changing an existing Store
   }));
   purchaseOrderService.compareOffers.mockResolvedValue(response({ ...candidate,
     name: 'Supplier shampoo', unitOfMeasure: 'bottle', matchType: 'exact' }));
-  render(<SupplierOfferComparison {...props} />);
+  renderComparison();
   fireEvent.change(screen.getByRole('combobox', { name: 'Inventory destination' }),
     { target: { value: 'service_supply' } });
   await screen.findByRole('option', { name: 'Shampoo (SHAMPOO)' });
@@ -62,6 +64,7 @@ test('selects a reviewed service-supply offer without changing an existing Store
     { target: { value: 'supply-1' } });
   expect(await screen.findByText('exact match')).toBeInTheDocument();
   fireEvent.click(screen.getByRole('button', { name: 'Add this supplier' }));
+  fireEvent.click(await screen.findByRole('button', { name: 'Add to cart' }));
   await waitFor(() => expect(purchaseOrderService.addCartItem).toHaveBeenCalledWith('offer-2', 1, {
     serviceSupplyId: 'supply-1', confirmSelection: true
   }));
@@ -71,7 +74,7 @@ test('selects a reviewed service-supply offer without changing an existing Store
 test('shows unavailable stock and safe retry without placing an order', async () => {
   purchaseOrderService.compareOffers.mockRejectedValueOnce(new Error('network'))
     .mockResolvedValueOnce(response({ ...candidate, matchType: 'exact', availableStock: 0, available: false }));
-  render(<SupplierOfferComparison {...props} />);
+  renderComparison();
   expect(await screen.findByRole('alert')).toHaveTextContent('Unable to load supplier offers');
   fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
   expect(await screen.findByText(/cannot fulfill its minimum quantity/)).toBeInTheDocument();

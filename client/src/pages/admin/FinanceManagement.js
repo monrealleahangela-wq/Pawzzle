@@ -4,6 +4,7 @@ import { toast } from 'react-toastify';
 import { financeService, purchaseOrderService } from '../../services/apiService';
 import { formatPeso } from '../../utils/paymentSummary';
 import ProcurementEvidenceGallery, { ProcurementReinspectionEvidenceGallery } from '../../components/procurement/ProcurementEvidenceGallery';
+import { pawzzlePrompt } from '../../utils/pawzzleDialog';
 
 const money = formatPeso;
 const inputClass = 'w-full h-9 px-3 rounded-lg border border-slate-200 bg-white text-xs outline-none focus:border-emerald-500';
@@ -36,14 +37,22 @@ export default function FinanceManagement() {
   };
 
   const setStatus = async (id, status) => { try { await financeService.updateExpenseStatus(id, { status }); await load(); } catch (e) { toast.error(e.response?.data?.message || 'Status update failed'); } };
-  const voidPayment = async id => { const reason = window.prompt('Reason for voiding this payment:'); if (!reason) return; try { await financeService.voidProcurementPayment(id, { reason }); await load(); } catch (e) { toast.error(e.response?.data?.message || 'Unable to void payment'); } };
+  const voidPayment = async id => {
+    const reason = await pawzzlePrompt('Explain why this procurement payment is being voided.', { title: 'Void payment?', inputLabel: 'Reason', required: true, multiline: true, confirmLabel: 'Void payment', tone: 'danger' });
+    if (reason === null) return;
+    try { await financeService.voidProcurementPayment(id, { reason }); await load(); }
+    catch (e) { toast.error(e.response?.data?.message || 'Unable to void payment'); }
+  };
   const reviewAdjustment = async (adjustment, action) => {
     let amount;
     if (action === 'approve') {
-      amount = Number(window.prompt('Approved adjustment amount:', adjustment.resolution?.financialProposal?.proposedAmount || ''));
+      const amountInput = await pawzzlePrompt('Enter the approved adjustment amount.', { title: 'Approve financial adjustment', inputLabel: 'Approved amount', inputType: 'number', step: '0.01', required: true, defaultValue: adjustment.resolution?.financialProposal?.proposedAmount || '' });
+      if (amountInput === null) return;
+      amount = Number(amountInput);
       if (!Number.isFinite(amount) || amount <= 0) return;
     }
-    const notes = window.prompt(`${action === 'approve' ? 'Approval' : 'Rejection'} notes (optional):`) || '';
+    const notes = await pawzzlePrompt(`Add ${action === 'approve' ? 'approval' : 'rejection'} notes, if needed.`, { title: `${action === 'approve' ? 'Approve' : 'Reject'} adjustment?`, inputLabel: 'Notes (optional)', multiline: true, confirmLabel: action === 'approve' ? 'Approve adjustment' : 'Reject adjustment', tone: action === 'approve' ? 'warning' : 'danger' });
+    if (notes === null) return;
     try {
       await financeService.reviewProcurementAdjustment(adjustment.receivingReport, adjustment.resolution._id, { action, amount, notes });
       toast.success(`Financial adjustment ${action}d.`);

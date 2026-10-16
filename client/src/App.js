@@ -15,6 +15,7 @@ import Notifications from './pages/Notifications';
 import DeliveryTracking from './pages/DeliveryTracking';
 import RiderDeliveryPage from './pages/RiderDeliveryPage';
 import PawCursor from './components/PawCursor';
+import PawzzleDialogHost from './components/ui/PawzzleDialogHost';
 import { useTheme } from './contexts/ThemeContext';
 import ChatManagement from './pages/shared/ChatManagement';
 import ChatWindow from './pages/shared/ChatWindow';
@@ -139,6 +140,7 @@ function App() {
           <Router {...routerConfig}>
             <div className="App">
               <PawCursor />
+              <PawzzleDialogHost />
               <Routes>
                 {/* Public Routes */}
                 <Route path="/login" element={<Login />} />

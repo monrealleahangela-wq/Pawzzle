@@ -5,6 +5,7 @@ import { MemoryRouter } from 'react-router-dom';
 import AdminPets from './Pets';
 import { adminPetService } from '../../services/apiService';
 import { toast } from 'react-toastify';
+import PawzzleDialogHost from '../../components/ui/PawzzleDialogHost';
 
 jest.mock('../../contexts/AuthContext', () => ({
   useAuth: () => ({ user: { role: 'admin' } })
@@ -59,8 +60,7 @@ beforeEach(() => {
 });
 
 test('seller Pet cards expose only Edit and Delete actions', async () => {
-  const confirm = jest.spyOn(window, 'confirm').mockReturnValue(true);
-  render(<MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}><AdminPets /></MemoryRouter>);
+  render(<MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}><PawzzleDialogHost /><AdminPets /></MemoryRouter>);
 
   await screen.findByText('Milo');
   expect(screen.queryByTitle('Duplicate shared listing details')).not.toBeInTheDocument();
@@ -85,8 +85,8 @@ test('seller Pet cards expose only Edit and Delete actions', async () => {
   await waitFor(() => expect(adminPetService.getPetById).toHaveBeenCalledWith(pet._id));
 
   fireEvent.click(screen.getByTitle('Delete Pet'));
+  fireEvent.click(await screen.findByRole('button', { name: 'Delete pet' }));
   await waitFor(() => expect(adminPetService.deletePet).toHaveBeenCalledWith(pet._id));
 
   expect(toast.info).not.toHaveBeenCalled();
-  confirm.mockRestore();
 });

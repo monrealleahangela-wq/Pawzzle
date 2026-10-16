@@ -5,6 +5,7 @@ import { chatService } from '../../services/chatService';
 import { useAuth } from '../../contexts/AuthContext';
 import { toast } from 'react-toastify';
 import { format } from 'date-fns';
+import { pawzzleConfirm } from '../../utils/pawzzleDialog';
 
 const ChatManagement = ({ initialView = 'active' }) => {
   const [view, setView] = useState(initialView); // 'active' or 'archived'
@@ -70,7 +71,7 @@ const ChatManagement = ({ initialView = 'active' }) => {
   const handleDelete = async () => {
     if (selectedIds.length === 0) return;
     
-    if (!window.confirm(`Are you sure you want to permanently delete ${selectedIds.length} conversation(s)?`)) {
+    if (!await pawzzleConfirm(`Permanently delete ${selectedIds.length} selected conversation(s)?`, { title: 'Delete conversations?', confirmLabel: 'Delete conversations', tone: 'danger' })) {
       return;
     }
 

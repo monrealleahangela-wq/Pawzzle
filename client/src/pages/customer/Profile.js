@@ -12,6 +12,7 @@ import { Heart as HeartIcon, Globe, ShieldCheck, Users } from 'lucide-react';
 import MapPicker from '../../components/MapPicker';
 import LogoutModal from '../../components/auth/LogoutModal';
 import PetProfileFormModal from '../../components/pets/PetProfileFormModal';
+import { pawzzleConfirm, pawzzlePrompt } from '../../utils/pawzzleDialog';
 import { FavoritesPanel, FollowingPanel } from '../../components/profile/SavedProfileLists';
 import { formatPeso } from '../../utils/paymentSummary';
 import { isCareProfessional } from '../../utils/authorization';
@@ -774,7 +775,7 @@ const Profile = () => {
   };
 
   const handleDeletePet = async (petId) => {
-    if (!window.confirm('Are you sure you want to remove this pet profile?')) return;
+    if (!await pawzzleConfirm('This pet profile will be removed from your account.', { title: 'Remove pet profile?', confirmLabel: 'Remove pet', tone: 'danger' })) return;
     try {
       await petProfileService.deletePet(petId);
       setMyPets(myPets.filter(p => p._id !== petId));
@@ -1018,15 +1019,17 @@ const Profile = () => {
   }
 
   const handleDeleteAccount = async () => {
-    const confirmDelete = window.confirm(
-      "CRITICAL: Are you sure you want to delete your account? This action is irreversible, but your email and information will be cleared so they can be reused for a new account."
+    const confirmDelete = await pawzzleConfirm(
+      'This action is irreversible. Your email and personal information will be cleared so they can be reused for a new account.',
+      { title: 'Permanently delete account?', confirmLabel: 'Continue', tone: 'danger' }
     );
 
     if (!confirmDelete) return;
 
     // Second confirmation for such a destructive action
-    const secondConfirm = window.prompt(
-      "FINAL CONFIRMATION: Please type 'DELETE' to permanently close your account."
+    const secondConfirm = await pawzzlePrompt(
+      "Type DELETE to permanently close your account.",
+      { title: 'Final confirmation', inputLabel: 'Confirmation', required: true, confirmLabel: 'Delete account', tone: 'danger' }
     );
     if (secondConfirm !== 'DELETE') {
       if (secondConfirm !== null) toast.error('Please type DELETE exactly to confirm.');

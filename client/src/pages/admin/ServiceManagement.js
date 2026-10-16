@@ -6,6 +6,7 @@ import { Plus, Edit2, Trash2, Clock, Home, Package, Users, Shield, Activity, Che
 import { adminServiceService, uploadService, getImageUrl, staffService, dssService } from '../../services/apiService';
 import { useAuth } from '../../contexts/AuthContext';
 import { useRealTimeUpdates } from '../../hooks/useRealTimeUpdates';
+import { pawzzleConfirm } from '../../utils/pawzzleDialog';
 import { SERVICE_CATEGORIES } from '../../constants/serviceCategories';
 import {
   PET_TYPE_OPTIONS,
@@ -159,7 +160,7 @@ const ServiceManagement = () => {
   const saveDSSConfig = async () => {
     const total = Object.values(dssConfig.weights || {}).reduce((sum, value) => sum + Number(value || 0), 0);
     if (!total) return toast.error('At least one recommendation weight must be greater than zero.');
-    if (!window.confirm('Save these recommendation weights? Future customer scores will use this configuration.')) return;
+    if (!await pawzzleConfirm('Future customer recommendation scores will use this configuration.', { title: 'Save recommendation weights?', confirmLabel: 'Save weights', tone: 'warning' })) return;
     try {
       const { data } = await dssService.updateServiceConfig(dssConfig);
       setDssConfig(data.configuration);

@@ -7,6 +7,7 @@ import UserReportModal from './UserReportModal';
 import socket from '../utils/socket';
 import { formatChatTime } from '../utils/timeFormatters';
 import { formatPeso } from '../utils/paymentSummary';
+import { pawzzleConfirm } from '../utils/pawzzleDialog';
 
 const EnhancedChatMessenger = ({
   isOpen,
@@ -394,7 +395,11 @@ const EnhancedChatMessenger = ({
   };
 
   const handleCancelRequest = async () => {
-    if (!window.confirm('Are you sure you want to cancel your reservation request?')) return;
+    if (!await pawzzleConfirm('Are you sure you want to cancel your reservation request?', {
+      title: 'Cancel reservation request?',
+      confirmLabel: 'Cancel request',
+      tone: 'danger'
+    })) return;
     try {
       setIsLoading(true);
       await adoptionService.cancelAdoptionRequest(transactionRequest._id);

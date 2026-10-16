@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
 import { userService } from '../../services/apiService';
 import { Users, Search, Download, Key, Mail, Calendar, X, Shield, Zap, Target, Globe, ChevronDown, Lock } from 'lucide-react';
+import { pawzzleConfirm, pawzzlePrompt } from '../../utils/pawzzleDialog';
 
 const AccountManagement = () => {
   const [accounts, setAccounts] = useState([]);
@@ -118,10 +119,14 @@ const AccountManagement = () => {
     try {
       let reason = null;
       if (user.isActive) {
-        reason = window.prompt(
-          'Reason for deactivation (optional):',
-          'Account disabled by administrator for security or policy review.'
-        );
+        reason = await pawzzlePrompt('Add the reason recorded for this account deactivation.', {
+          title: 'Deactivate account?',
+          inputLabel: 'Reason (optional)',
+          multiline: true,
+          defaultValue: 'Account disabled by administrator for security or policy review.',
+          confirmLabel: 'Continue',
+          tone: 'warning'
+        });
         if (reason === null) return; // User cancelled prompt
       }
 
@@ -134,7 +139,7 @@ const AccountManagement = () => {
   };
 
   const handleDeleteAccount = async (userId, username) => {
-    if (window.confirm(`Delete user "${username}"? This cannot be undone.`)) {
+    if (await pawzzleConfirm(`Delete user "${username}"? This cannot be undone.`, { title: 'Delete user account?', confirmLabel: 'Delete account', tone: 'danger' })) {
       try {
         await userService.deleteUser(userId);
         toast.success('User deleted successfully');

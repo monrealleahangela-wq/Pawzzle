@@ -3,6 +3,7 @@ import { Calendar, CheckCircle2, Clock3, ExternalLink, FileBadge, ShieldCheck, U
 import { toast } from 'react-toastify';
 import { getImageUrl, staffService } from '../../services/apiService';
 import { useAuth } from '../../contexts/AuthContext';
+import { pawzzleConfirm } from '../../utils/pawzzleDialog';
 
 const roleLabel = value => String(value || '').replace(/_/g, ' ').replace(/\b\w/g, character => character.toUpperCase());
 const list = value => (value || []).map(item => item?.name || item).filter(Boolean).join(', ') || 'Not provided';
@@ -46,7 +47,11 @@ export default function SpecializedStaffProfileModal({ data, onClose }) {
     finally { setSubmitting(false); }
   };
   const setVerification = async (documentId, status) => {
-    if (!window.confirm(`Mark this credential ${status.replaceAll('_', ' ')}?`)) return;
+    if (!await pawzzleConfirm(`Mark this credential ${status.replaceAll('_', ' ')}?`, {
+      title: 'Update credential status?',
+      confirmLabel: 'Update status',
+      tone: 'warning'
+    })) return;
     try {
       await staffService.updateCredentialVerification(staff._id, documentId, { status });
       toast.success('Verification status updated.');

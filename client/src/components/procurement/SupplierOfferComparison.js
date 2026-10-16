@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { purchaseOrderService } from '../../services/apiService';
 import { formatPeso } from '../../utils/paymentSummary';
+import { pawzzleConfirm } from '../../utils/pawzzleDialog';
 
 const SupplierOfferComparison = ({ storeProducts, initialStoreProductId, onCartUpdated, onClose }) => {
   const [targetType, setTargetType] = useState('product');
@@ -47,7 +48,11 @@ const SupplierOfferComparison = ({ storeProducts, initialStoreProductId, onCartU
 
   const confirmMatch = async offer => {
     const matchType = matchTypes[offer.supplierProductId] || 'equivalent';
-    if (!window.confirm(`Confirm that ${offer.supplier.businessName}'s ${offer.name} is an ${matchType} match for this Store product? This classification will be audited.`)) return;
+    if (!await pawzzleConfirm(`Confirm that ${offer.supplier.businessName}'s ${offer.name} is an ${matchType} match for this Store product? This classification will be audited.`, {
+      title: 'Confirm supplier match',
+      confirmLabel: 'Confirm match',
+      tone: 'warning'
+    })) return;
     setBusyId(offer.supplierProductId);
     setError('');
     try {
@@ -67,7 +72,10 @@ const SupplierOfferComparison = ({ storeProducts, initialStoreProductId, onCartU
       setError(`Enter a whole quantity between ${offer.minimumOrderQuantity} and ${offer.availableStock}.`);
       return;
     }
-    if (!window.confirm(`Add ${quantity} ${offer.unitOfMeasure} from ${offer.supplier.businessName} at ${formatPeso(offer.unitPrice)} each? This will not replace any other supplier's cart line.`)) return;
+    if (!await pawzzleConfirm(`Add ${quantity} ${offer.unitOfMeasure} from ${offer.supplier.businessName} at ${formatPeso(offer.unitPrice)} each? This will not replace any other supplier's cart line.`, {
+      title: 'Add supplier offer?',
+      confirmLabel: 'Add to cart'
+    })) return;
     setBusyId(offer.supplierProductId);
     setError('');
     try {

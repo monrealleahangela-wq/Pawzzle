@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { ExternalLink, Loader2 } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { hrService } from '../../services/apiService';
+import { pawzzleConfirm, pawzzlePrompt } from '../../utils/pawzzleDialog';
 
 const formatDateTime = value => value ? new Date(value).toLocaleString('en-PH') : '—';
 
@@ -18,11 +19,23 @@ const AttendanceCorrectionReviewPanel = ({ requests = [], canReview, onChanged }
   };
 
   const review = async (request, action) => {
-    const reviewerNote = window.prompt(action === 'reject'
-      ? 'Enter the required rejection reason:'
-      : 'Enter the review basis for approval:');
-    if (!reviewerNote?.trim()) return;
-    if (action === 'approve' && !window.confirm(`Apply ${formatDateTime(request.proposedTimeOut)} as the employee's clock-out? This may invalidate draft payroll calculations.`)) return;
+    const reviewerNote = await pawzzlePrompt(action === 'reject'
+      ? 'Explain why this attendance correction is being rejected.'
+      : 'Enter the review basis for approving this attendance correction.', {
+      title: action === 'reject' ? 'Reject attendance correction' : 'Approve attendance correction',
+      inputLabel: action === 'reject' ? 'Rejection reason' : 'Review basis',
+      required: true,
+      minLength: 3,
+      multiline: true,
+      confirmLabel: 'Continue',
+      tone: action === 'reject' ? 'danger' : 'warning'
+    });
+    if (reviewerNote === null) return;
+    if (action === 'approve' && !await pawzzleConfirm(`Apply ${formatDateTime(request.proposedTimeOut)} as the employee's clock-out? This may invalidate draft payroll calculations.`, {
+      title: 'Apply corrected clock-out?',
+      confirmLabel: 'Approve and apply',
+      tone: 'warning'
+    })) return;
     setBusyId(request._id);
     try {
       const { data } = await hrService.reviewAttendanceCorrection(request._id, { action, reviewerNote: reviewerNote.trim() });

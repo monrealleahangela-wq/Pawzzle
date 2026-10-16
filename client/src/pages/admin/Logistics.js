@@ -6,6 +6,7 @@ import { toast } from 'react-toastify';
 import { formatPeso } from '../../utils/paymentSummary';
 import { useRealTimeUpdates } from '../../hooks/useRealTimeUpdates';
 import ManualDeliveryForm from '../../components/delivery/ManualDeliveryForm';
+import { pawzzlePrompt } from '../../utils/pawzzleDialog';
 
 const statusStyle = status => ({
   delivered: 'bg-emerald-50 text-emerald-700 border-emerald-100',
@@ -98,8 +99,14 @@ export default function Logistics() {
 
   const clearFilters = () => { const empty = { search: '', status: '', riderType: '', rider: '', from: '', to: '' }; setFilters(empty); setPage(1); setAppliedFilters({}); };
   const resolveIssue = async issue => {
-    const notes = window.prompt('Resolution notes:');
-    if (!notes?.trim()) return;
+    const notes = await pawzzlePrompt('Describe how this delivery issue was resolved.', {
+      title: 'Resolve delivery issue',
+      inputLabel: 'Resolution notes',
+      required: true,
+      multiline: true,
+      confirmLabel: 'Mark resolved'
+    });
+    if (notes === null) return;
     try {
       await logisticsService.resolveIssue(issue.deliveryId, issue.type, issue._id, { notes });
       toast.success('Delivery issue resolved.'); await load();

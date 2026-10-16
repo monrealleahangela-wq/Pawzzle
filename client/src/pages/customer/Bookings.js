@@ -12,6 +12,7 @@ import { formatTime12h } from '../../utils/timeFormatters';
 import { normalizeRefundPolicy, refundPolicyLabel, requiresRefundAcknowledgment } from '../../utils/refundPolicy';
 import PaymentBreakdown from '../../components/payments/PaymentBreakdown';
 import { bookingPaymentSummary, formatPeso } from '../../utils/paymentSummary';
+import { pawzzleConfirm } from '../../utils/pawzzleDialog';
 import ServiceSpecificBookingFields, { ServiceIntakeSummary } from '../../components/booking/ServiceSpecificBookingFields';
 import { buildServiceIntake, createEmptyServiceDetails, resolveServiceBookingKind, validateServiceDetails } from '../../utils/serviceBookingForm';
 import { formatRecordId, formatSafeDate, normalizeBookingCollection, normalizeBookingRecord, normalizeServiceDetail } from '../../utils/customerServiceData';
@@ -489,7 +490,7 @@ const Bookings = ({ isSubcomponent = false }) => {
   };
 
   const handleCancelBooking = async (bookingId) => {
-    if (!window.confirm('Cancel this booking request?')) return;
+    if (!await pawzzleConfirm('Your booking request will be cancelled.', { title: 'Cancel booking request?', confirmLabel: 'Cancel request', tone: 'danger' })) return;
     try {
       await bookingService.cancelBooking(bookingId);
       toast.success('Booking request cancelled');
@@ -524,7 +525,7 @@ const Bookings = ({ isSubcomponent = false }) => {
       toast.error('Acknowledge this store\'s No Refund policy before continuing to PayMongo.');
       return;
     }
-    if (!window.confirm(`Accept this proposal and continue to secure payment?\n\nProposed service price: ₱${total}\nFinal tax and payment details will be calculated before PayMongo opens.`)) return;
+    if (!await pawzzleConfirm(`Proposed service price: ₱${total}\n\nFinal tax and payment details will be calculated before PayMongo opens.`, { title: 'Accept proposal and pay?', confirmLabel: 'Continue to payment', tone: 'warning' })) return;
     setBookingActionLoading(true);
     try {
       const confirmation = await bookingService.confirmForPayment(bookingId, { refundPolicyAcknowledged: selectedAcknowledgmentRequired ? agreedToPolicy : false });

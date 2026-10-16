@@ -6,6 +6,7 @@ import { adoptionService } from '../../services/apiService';
 import { formatTime12h } from '../../utils/timeFormatters';
 import { useAuth } from '../../contexts/AuthContext';
 import EnhancedChatMessenger from '../../components/EnhancedChatMessenger';
+import { pawzzleConfirm } from '../../utils/pawzzleDialog';
 
 const Adoptions = ({ isSubcomponent = false }) => {
     const { user } = useAuth();
@@ -60,7 +61,7 @@ const Adoptions = ({ isSubcomponent = false }) => {
     };
 
     const handleCancel = async (requestId) => {
-        if (!window.confirm('Are you sure you want to cancel this purchase inquiry?')) return;
+        if (!await pawzzleConfirm('The seller will be notified that this purchase inquiry was cancelled.', { title: 'Cancel purchase inquiry?', confirmLabel: 'Cancel inquiry', tone: 'danger' })) return;
         try {
             await adoptionService.cancelAdoptionRequest(requestId);
             toast.success('Inquiry cancelled');

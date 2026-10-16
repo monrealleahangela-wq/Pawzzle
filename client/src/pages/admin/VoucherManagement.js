@@ -3,6 +3,7 @@ import { Ticket, Plus, Search, Edit2, Trash2, ToggleLeft, ToggleRight, Calendar,
 
 import { toast } from 'react-toastify';
 import { adminVoucherService } from '../../services/apiService';
+import { pawzzleConfirm } from '../../utils/pawzzleDialog';
 
 const PhilippinePeso = ({ className }) => (
   <svg 
@@ -91,7 +92,7 @@ const VoucherManagement = () => {
     };
 
     const handleDelete = async (id) => {
-        if (window.confirm('Are you sure you want to delete this voucher?')) {
+        if (await pawzzleConfirm('This voucher will no longer be available.', { title: 'Delete this voucher?', confirmLabel: 'Delete voucher', tone: 'danger' })) {
             try {
                 await adminVoucherService.deleteVoucher(id);
                 toast.success('Voucher deleted');

@@ -7,6 +7,7 @@ import { useRealTimeUpdates } from '../../hooks/useRealTimeUpdates';
 import ProductFormModal from '../../components/forms/ProductFormModal';
 import { PRODUCT_CATEGORIES, normalizeProductCategory } from '../../constants/productCategories';
 import { Package, AlertTriangle, TrendingDown, Plus, Minus, RefreshCw, Edit, Trash2, Search, Box, X, Activity, Image as ImageIcon, ChevronRight, Shield, Zap, Layers, Tag, Star, Info, ChevronDown, ChevronUp, Video, FileText, MapPin, Clock } from 'lucide-react';
+import { pawzzleConfirm } from '../../utils/pawzzleDialog';
 
 const PhilippinePeso = ({ className }) => (
   <svg 
@@ -568,7 +569,7 @@ const ProductInventory = () => {
                           </button>
                         )}
                         {canDelete && (
-                          <button aria-label={`Delete ${product.name}`} title="Delete Product" onClick={() => { if (window.confirm(`Delete “${product.name}”?\n\nThis product will be removed from the store's active product list.`)) adminProductService.deleteProduct(product._id).then(() => { toast.success('Product deleted successfully.'); fetchProducts(); }).catch(() => toast.error('Unable to delete this product. Please try again.')); }}
+                          <button aria-label={`Delete ${product.name}`} title="Delete Product" onClick={async () => { if (await pawzzleConfirm(`This product will be removed from the store's active product list.`, { title: `Delete “${product.name}”?`, confirmLabel: 'Delete product', tone: 'danger' })) adminProductService.deleteProduct(product._id).then(() => { toast.success('Product deleted successfully.'); fetchProducts(); }).catch(() => toast.error('Unable to delete this product. Please try again.')); }}
                             className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-50 text-slate-500 shadow-sm transition-all hover:bg-rose-500 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500">
                             <Trash2 className="h-4 w-4" />
                           </button>

@@ -3,6 +3,7 @@ import { toast } from 'react-toastify';
 import { Truck, CheckCircle, XCircle, Clock, Search, ChevronDown, Shield, Eye, Package, Star, TrendingUp, Users, Ban, X } from 'lucide-react';
 import { supplierService, getImageUrl } from '../../services/apiService';
 import { formatPeso } from '../../utils/paymentSummary';
+import { pawzzlePrompt } from '../../utils/pawzzleDialog';
 
 const SupplierManagement = () => {
   const [suppliers, setSuppliers] = useState([]);
@@ -55,12 +56,14 @@ const SupplierManagement = () => {
 
   const editSupplier = async () => {
     const current = supplierDetails.supplier;
-    const businessName = window.prompt('Business name', current.businessName);
-    if (!businessName) return;
-    const contactPerson = window.prompt('Contact person', current.contactPerson);
-    const email = window.prompt('Email', current.email);
-    const phone = window.prompt('Phone', current.phone);
-    if (!contactPerson || !email || !phone) return toast.error('Name, contact, email, and phone are required');
+    const businessName = await pawzzlePrompt('Update the supplier business name.', { title: 'Edit supplier', inputLabel: 'Business name', defaultValue: current.businessName, required: true });
+    if (businessName === null) return;
+    const contactPerson = await pawzzlePrompt('Update the primary contact person.', { title: 'Edit supplier', inputLabel: 'Contact person', defaultValue: current.contactPerson, required: true });
+    if (contactPerson === null) return;
+    const email = await pawzzlePrompt('Update the supplier email address.', { title: 'Edit supplier', inputLabel: 'Email', inputType: 'email', defaultValue: current.email, required: true });
+    if (email === null) return;
+    const phone = await pawzzlePrompt('Update the supplier phone number.', { title: 'Edit supplier', inputLabel: 'Phone', inputType: 'tel', defaultValue: current.phone, required: true });
+    if (phone === null) return;
     try {
       await supplierService.adminUpdate(current._id, { businessName, contactPerson, email, phone });
       toast.success('Supplier updated'); await viewDetails(current._id); await fetchSuppliers();
@@ -68,8 +71,15 @@ const SupplierManagement = () => {
   };
 
   const deactivateSupplier = async () => {
-    const reason = window.prompt('Reason for deactivation:');
-    if (!reason) return;
+    const reason = await pawzzlePrompt('Explain why this supplier account is being deactivated.', {
+      title: 'Deactivate supplier?',
+      inputLabel: 'Reason for deactivation',
+      required: true,
+      multiline: true,
+      confirmLabel: 'Deactivate supplier',
+      tone: 'danger'
+    });
+    if (reason === null) return;
     try {
       await supplierService.adminDeactivate(supplierDetails.supplier._id, { reason });
       toast.success('Supplier deactivated'); setShowDetailModal(false); await fetchSuppliers();

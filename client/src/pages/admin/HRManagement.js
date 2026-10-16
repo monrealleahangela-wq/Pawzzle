@@ -9,6 +9,7 @@ import { formatPeso } from '../../utils/paymentSummary';
 import { formatDurationMinutes } from '../../utils/durationFormat';
 import PayrollPaymentWorkflow from '../../components/hr/PayrollPaymentWorkflow';
 import AttendanceCorrectionReviewPanel from '../../components/hr/AttendanceCorrectionReviewPanel';
+import { pawzzleConfirm, pawzzlePrompt } from '../../utils/pawzzleDialog';
 
 const money = formatPeso;
 const date = value => value ? new Date(value).toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: 'numeric' }) : '—';
@@ -128,8 +129,15 @@ const HRManagement = () => {
     catch (error) { toast.error(error.response?.data?.message || 'Unable to review leave.'); }
   };
   const reviewLocation = async (record, punchType, status) => {
-    const reviewerNote = window.prompt(`Reason for ${status === 'approved' ? 'approving' : 'rejecting'} this ${punchType.replace('_', ' ')} location:`);
-    if (!reviewerNote) return;
+    const reviewerNote = await pawzzlePrompt(`Explain the basis for ${status === 'approved' ? 'approving' : 'rejecting'} this ${punchType.replace('_', ' ')} location.`, {
+      title: 'Review attendance location',
+      inputLabel: 'Review reason',
+      required: true,
+      multiline: true,
+      confirmLabel: 'Submit review',
+      tone: status === 'approved' ? 'warning' : 'danger'
+    });
+    if (reviewerNote === null) return;
     try { const response = await hrService.reviewAttendanceLocation(record._id, { punchType, status, reviewerNote }); toast.success(response.data.message); await loadTab(); }
     catch (error) { toast.error(error.response?.data?.message || 'Unable to review attendance location.'); }
   };
@@ -159,7 +167,7 @@ const HRManagement = () => {
       if (selected?.isDerived) {
         await hrService.createManualAttendance({ reason: correction.reason, status: correction.status || 'absent', workedMinutes: Number(correction.workedMinutes || 0), employeeId: selected.employee?._id, workDate: selected.workDate });
       } else {
-        if (!window.confirm('Confirm the displayed before and proposed values. This will invalidate affected draft payroll calculations.')) return;
+        if (!await pawzzleConfirm('Confirm the displayed before and proposed values. This will invalidate affected draft payroll calculations.', { title: 'Correct attendance record?', confirmLabel: 'Apply correction', tone: 'warning' })) return;
         const data = { reason: correction.reason, confirmed: true, expectedVersion: selected.__v };
         if (correction.timeIn) data.timeIn = new Date(correction.timeIn).toISOString();
         data.timeOut = correction.timeOut ? new Date(correction.timeOut).toISOString() : null;

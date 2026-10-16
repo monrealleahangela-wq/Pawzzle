@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { Upload, X, Image as ImageIcon, Loader } from 'lucide-react';
 import { uploadService, getImageUrl } from '../services/apiService';
+import { pawzzleAlert } from '../utils/pawzzleDialog';
 
 const ImageUpload = ({ 
   images = [], 
@@ -45,12 +46,12 @@ const ImageUpload = ({
     const filesArray = Array.from(files);
     
     if (!multiple && filesArray.length > 1) {
-      alert('Please upload only one image');
+      await pawzzleAlert('Please upload only one image.', { title: 'One image only', tone: 'warning' });
       return;
     }
 
     if (images.length + filesArray.length > maxFiles) {
-      alert(`Maximum ${maxFiles} images allowed`);
+      await pawzzleAlert(`You can upload a maximum of ${maxFiles} images.`, { title: 'Upload limit reached', tone: 'warning' });
       return;
     }
 
@@ -71,7 +72,7 @@ const ImageUpload = ({
       onImagesChange(newImages);
     } catch (error) {
       console.error('Upload error:', error);
-      alert('Failed to upload image. Please try again.');
+      await pawzzleAlert('Failed to upload the image. Please try again.', { title: 'Upload failed', tone: 'danger' });
     } finally {
       setUploading(false);
     }

@@ -7,6 +7,7 @@ import { Heart, Plus, Edit, Trash2, Filter, X, Search, ChevronLeft, ChevronRight
 import { formatTime12h } from '../../utils/timeFormatters';
 import { PLATFORM_ADMIN_ROLES, STORE_ADMIN_ROLES, hasUiActionPermission } from '../../utils/authorization';
 import PetListingFormModal from '../../components/pets/PetListingFormModal';
+import { pawzzleConfirm } from '../../utils/pawzzleDialog';
 
 const AdminPets = () => {
   const { user } = useAuth();
@@ -141,7 +142,7 @@ const AdminPets = () => {
   };
 
   const handleDeletePet = async (petId) => {
-    if (window.confirm('Delete this pet?\n\nThis pet will be removed from the store’s active pet list.')) {
+    if (await pawzzleConfirm('This pet will be removed from the store’s active pet list.', { title: 'Delete this pet?', confirmLabel: 'Delete pet', tone: 'danger' })) {
       try {
         await adminPetService.deletePet(petId);
         toast.success('Pet deleted successfully.');

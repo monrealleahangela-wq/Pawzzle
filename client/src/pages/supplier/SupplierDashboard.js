@@ -9,6 +9,7 @@ import { supplierService, uploadService, getImageUrl } from '../../services/apiS
 import PaymentBreakdown from '../../components/payments/PaymentBreakdown';
 import ProcurementEvidenceGallery, { ProcurementReinspectionEvidenceGallery } from '../../components/procurement/ProcurementEvidenceGallery';
 import { formatPeso, purchaseOrderPaymentSummary } from '../../utils/paymentSummary';
+import { pawzzleConfirm } from '../../utils/pawzzleDialog';
 
 const SupplierDashboard = () => {
   const [loading, setLoading] = useState(true);
@@ -123,7 +124,11 @@ const SupplierDashboard = () => {
   };
 
   const handleDeleteProduct = async (id) => {
-    if (!window.confirm('Delete this product?')) return;
+    if (!await pawzzleConfirm('This product will be removed from your supplier catalog.', {
+      title: 'Delete this product?',
+      confirmLabel: 'Delete product',
+      tone: 'danger'
+    })) return;
     try {
       await supplierService.deleteProduct(id);
       toast.success('Product removed');

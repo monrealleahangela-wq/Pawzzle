@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { MessageSquare, Trash2, CheckCircle, Search, Star, Smartphone, Monitor, Layout, User, ChevronLeft, ChevronRight, Smile, Bug, Zap, Sparkles, ChevronDown } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { reviewService } from '../../services/apiService';
+import { pawzzleConfirm } from '../../utils/pawzzleDialog';
 
 const FeedbackManagement = () => {
     const [feedbacks, setFeedbacks] = useState([]);
@@ -68,7 +69,7 @@ const FeedbackManagement = () => {
     };
 
     const handleDelete = async (id) => {
-        if (window.confirm('Delete this feedback mission?')) {
+        if (await pawzzleConfirm('This feedback entry will be permanently removed.', { title: 'Delete this feedback?', confirmLabel: 'Delete feedback', tone: 'danger' })) {
             try {
                 await reviewService.deletePlatformFeedback(id);
                 toast.success('Deleted successfully');

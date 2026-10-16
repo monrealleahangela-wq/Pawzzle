@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { generatePayoutReceipt } from '../../utils/payoutReceiptGenerator';
 import { formatPeso } from '../../utils/paymentSummary';
+import { pawzzleConfirm } from '../../utils/pawzzleDialog';
 
 const METHOD_ICONS = { gcash: Smartphone, maya: Smartphone, bank_transfer: Landmark };
 const METHOD_COLORS = { gcash: 'text-primary-600', maya: 'text-primary-600', bank_transfer: 'text-slate-600' };
@@ -88,7 +89,7 @@ const StorePayout = () => {
     };
 
     const handleRemoveMethod = async (idx) => {
-        if (!window.confirm('Remove this payout method?')) return;
+        if (!await pawzzleConfirm('Future payouts will no longer use this saved method.', { title: 'Remove payout method?', confirmLabel: 'Remove method', tone: 'danger' })) return;
         try {
             const updated = (stats?.payoutMethods || []).filter((_, i) => i !== idx);
             const res = await payoutService.updateMethods(updated);

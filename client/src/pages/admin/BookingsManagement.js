@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { adminBookingService, deliveryService, staffService, getImageUrl } from '../../services/apiService';
+import { pawzzleConfirm } from '../../utils/pawzzleDialog';
 import {
   Calendar,
   Clock,
@@ -953,8 +954,8 @@ const BookingsManagement = () => {
               )}
               {bookingModalStep === 'details' && canDelete && ['pending', 'awaiting_customer_confirmation', 'awaiting_payment', 'confirmed'].includes(selectedBooking.status) && (
                 <button
-                  onClick={() => {
-                    if (window.confirm('Are you sure you want to cancel this booking?')) {
+                  onClick={async () => {
+                    if (await pawzzleConfirm('The customer will be notified that this booking was cancelled.', { title: 'Cancel this booking?', confirmLabel: 'Cancel booking', tone: 'danger' })) {
                       updateBookingStatus(selectedBooking._id, 'cancelled');
                     }
                   }}

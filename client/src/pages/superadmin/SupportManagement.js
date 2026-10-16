@@ -3,6 +3,7 @@ import { CheckCircle, Clock, Filter, Search, User, ChevronLeft, ChevronRight, He
 import { toast } from 'react-toastify';
 import { supportService, userService, getImageUrl } from '../../services/apiService';
 import { Zap } from 'lucide-react';
+import { pawzzlePrompt } from '../../utils/pawzzleDialog';
 
 const SupportManagement = () => {
     const [messages, setMessages] = useState([]);
@@ -68,7 +69,13 @@ const SupportManagement = () => {
 
     const handleUpdateStatus = async (messageId, status) => {
         try {
-            const adminNotes = prompt('Add admin notes (optional):');
+            const adminNotes = await pawzzlePrompt('Add internal notes for this support status update, if needed.', {
+                title: 'Update support message',
+                inputLabel: 'Admin notes (optional)',
+                multiline: true,
+                confirmLabel: 'Update status'
+            });
+            if (adminNotes === null) return;
             await supportService.updateMessageStatus(messageId, { status, adminNotes });
             toast.success(`Message marked as ${status}`);
             fetchMessages();

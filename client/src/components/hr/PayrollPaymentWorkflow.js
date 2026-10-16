@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { toast } from 'react-toastify';
 import { hrService } from '../../services/apiService';
 import { formatPeso } from '../../utils/paymentSummary';
+import { pawzzlePrompt } from '../../utils/pawzzleDialog';
 
 const money = formatPeso;
 const statusLabel = value => String(value || 'pending').replaceAll('_', ' ');
@@ -58,8 +59,15 @@ const PayrollPaymentWorkflow = ({ period, actorId, canPrepare, canConfirm, allow
     finally { setBusy(false); }
   };
   const changeStatus = async (attempt, nextStatus) => {
-    let reason = window.prompt(`Reason for moving this payment to ${statusLabel(nextStatus)}:`) || '';
-    if (reason.trim().length < 5) return;
+    const reason = await pawzzlePrompt(`Explain why this payment is being moved to ${statusLabel(nextStatus)}.`, {
+      title: 'Update payment status',
+      inputLabel: 'Reason',
+      required: true,
+      minLength: 5,
+      multiline: true,
+      confirmLabel: 'Continue'
+    });
+    if (reason === null) return;
     setBusy(true);
     try {
       const payload = { status: nextStatus, reason };
@@ -75,8 +83,16 @@ const PayrollPaymentWorkflow = ({ period, actorId, canPrepare, canConfirm, allow
     finally { setBusy(false); }
   };
   const confirm = async attempt => {
-    const reason = window.prompt('Independent confirmation reason (verify the external bank/payment record):') || '';
-    if (reason.trim().length < 5) return;
+    const reason = await pawzzlePrompt('Confirm that you independently verified the external bank or payment record.', {
+      title: 'Confirm external payment',
+      inputLabel: 'Verification basis',
+      required: true,
+      minLength: 5,
+      multiline: true,
+      confirmLabel: 'Confirm payment',
+      tone: 'warning'
+    });
+    if (reason === null) return;
     setBusy(true);
     try {
       const response = await hrService.confirmPayrollPayment(attempt._id, { reason });

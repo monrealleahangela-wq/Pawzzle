@@ -3,6 +3,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import PayrollPaymentWorkflow from './PayrollPaymentWorkflow';
 import { hrService } from '../../services/apiService';
+import PawzzleDialogHost from '../ui/PawzzleDialogHost';
 
 jest.mock('../../services/apiService', () => ({
   hrService: {
@@ -54,15 +55,15 @@ describe('PayrollPaymentWorkflow', () => {
 
   test('independent confirmer can confirm another user’s submitted proof, but the preparer cannot', async () => {
     hrService.getPayrollPayments.mockReset().mockResolvedValue({ data: { payments: [awaiting], summary: { requiredEmployeeCount: 1, confirmedEmployeeCount: 0, outstandingAmount: 12000 } } });
-    const prompt = jest.spyOn(window, 'prompt').mockReturnValue('Checked bank statement independently.');
-    const { rerender } = render(<PayrollPaymentWorkflow period={period} actorId="finance-1" canPrepare canConfirm />);
+    const { rerender } = render(<><PawzzleDialogHost /><PayrollPaymentWorkflow period={period} actorId="finance-1" canPrepare canConfirm /></>);
     expect(await screen.findByText('Rider One')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Confirm external payment' })).not.toBeInTheDocument();
-    rerender(<PayrollPaymentWorkflow period={period} actorId="owner-1" canPrepare canConfirm />);
+    rerender(<><PawzzleDialogHost /><PayrollPaymentWorkflow period={period} actorId="owner-1" canPrepare canConfirm /></>);
     expect(await screen.findByRole('button', { name: 'Confirm external payment' })).toBeInTheDocument();
     hrService.confirmPayrollPayment.mockResolvedValue({ data: { message: 'Payment independently confirmed.' } });
     fireEvent.click(screen.getByRole('button', { name: 'Confirm external payment' }));
+    fireEvent.change(await screen.findByLabelText('Verification basis'), { target: { value: 'Checked bank statement independently.' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm payment' }));
     await waitFor(() => expect(hrService.confirmPayrollPayment).toHaveBeenCalledWith('attempt-1', { reason: 'Checked bank statement independently.' }));
-    prompt.mockRestore();
   });
 });

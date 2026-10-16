@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { Package, Plus, Edit2, Trash2, X, AlertTriangle, RefreshCw, TrendingDown, Clock, Droplets, CheckCircle, Activity } from 'lucide-react';
 import { serviceSupplyService } from '../../services/apiService';
+import { pawzzleConfirm } from '../../utils/pawzzleDialog';
 
 const SupplyManagement = () => {
   const [supplies, setSupplies] = useState([]);
@@ -66,7 +67,7 @@ const SupplyManagement = () => {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Delete this supply?')) return;
+    if (!await pawzzleConfirm('This supply will be removed from active inventory management.', { title: 'Delete this supply?', confirmLabel: 'Delete supply', tone: 'danger' })) return;
     try {
       await serviceSupplyService.delete(id);
       toast.success('Supply deleted');

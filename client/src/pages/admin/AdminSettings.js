@@ -8,6 +8,7 @@ import { formatTime12h } from '../../utils/timeFormatters';
 import { useRealTimeUpdates } from '../../hooks/useRealTimeUpdates';
 import DeliveryPricingSettings from '../../components/settings/DeliveryPricingSettings';
 import BusinessTaxComplianceSettings from '../../components/settings/BusinessTaxComplianceSettings';
+import { pawzzleConfirm } from '../../utils/pawzzleDialog';
 
 const emptyDeliveryPricing = {
   enabled: false,
@@ -237,7 +238,7 @@ const AdminSettings = () => {
 
   const handleSaveRefundPolicy = async () => {
     if (refundPolicy.type === 'conditional_refund' && !refundPolicy.conditions.trim()) return toast.error('Describe the conditions used for refund review.');
-    if (!window.confirm('Apply this refund policy to new orders and booking confirmations? Existing records will retain their saved policy.')) return;
+    if (!await pawzzleConfirm('Apply this refund policy to new orders and booking confirmations? Existing records will retain their saved policy.', { title: 'Update refund policy?', confirmLabel: 'Apply policy', tone: 'warning' })) return;
     setLoading(true);
     try {
       const response = await storeService.updateRefundPolicy(refundPolicy);

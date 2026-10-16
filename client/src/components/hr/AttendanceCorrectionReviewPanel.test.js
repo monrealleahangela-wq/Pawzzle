@@ -3,6 +3,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import AttendanceCorrectionReviewPanel from './AttendanceCorrectionReviewPanel';
 import { hrService } from '../../services/apiService';
+import PawzzleDialogHost from '../ui/PawzzleDialogHost';
 
 jest.mock('../../services/apiService', () => ({
   hrService: { getAttendanceCorrectionEvidence: jest.fn(), reviewAttendanceCorrection: jest.fn() }
@@ -18,8 +19,6 @@ const request = {
 
 beforeEach(() => {
   jest.clearAllMocks();
-  window.prompt = jest.fn(() => 'Manager verified the supporting evidence.');
-  window.confirm = jest.fn(() => true);
   window.open = jest.fn();
 });
 
@@ -27,15 +26,17 @@ test('authorized reviewer opens private evidence and explicitly confirms approva
   const onChanged = jest.fn();
   hrService.getAttendanceCorrectionEvidence.mockResolvedValue({ data: { url: 'signed-private-url', expiresAt: '2026-10-16T01:05:00Z' } });
   hrService.reviewAttendanceCorrection.mockResolvedValue({ data: { message: 'Approved.' } });
-  render(<AttendanceCorrectionReviewPanel requests={[request]} canReview onChanged={onChanged} />);
+  render(<><PawzzleDialogHost /><AttendanceCorrectionReviewPanel requests={[request]} canReview onChanged={onChanged} /></>);
 
   fireEvent.click(screen.getByRole('button', { name: /View evidence/i }));
   await waitFor(() => expect(window.open).toHaveBeenCalledWith('signed-private-url', '_blank', 'noopener,noreferrer'));
   fireEvent.click(screen.getByRole('button', { name: 'Approve' }));
+  fireEvent.change(await screen.findByLabelText('Review basis'), { target: { value: 'Manager verified the supporting evidence.' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+  fireEvent.click(await screen.findByRole('button', { name: 'Approve and apply' }));
   await waitFor(() => expect(hrService.reviewAttendanceCorrection).toHaveBeenCalledWith('request-a', {
     action: 'approve', reviewerNote: 'Manager verified the supporting evidence.'
   }));
-  expect(window.confirm).toHaveBeenCalled();
   await waitFor(() => expect(onChanged).toHaveBeenCalled());
 });
 

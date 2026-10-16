@@ -8,6 +8,7 @@ import ProcurementEvidenceGallery, { ProcurementReinspectionEvidenceGallery } fr
 import ReceivingInspectionModal from '../../components/procurement/ReceivingInspectionModal';
 import SupplierOfferComparison from '../../components/procurement/SupplierOfferComparison';
 import { formatPeso, purchaseOrderPaymentSummary } from '../../utils/paymentSummary';
+import { pawzzleConfirm, pawzzlePrompt } from '../../utils/pawzzleDialog';
 
 const PurchaseOrders = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -170,7 +171,7 @@ const PurchaseOrders = () => {
   };
 
   const clearProcurementCart = async () => {
-    if (!window.confirm('Clear every supply from this procurement cart?')) return;
+    if (!await pawzzleConfirm('Every supply currently in this procurement cart will be removed.', { title: 'Clear procurement cart?', confirmLabel: 'Clear cart', tone: 'danger' })) return;
     try {
       const response = await purchaseOrderService.clearCart();
       setProcurementCart(response.data);
@@ -187,7 +188,7 @@ const PurchaseOrders = () => {
       return counts;
     }, {});
     const split = Object.values(mappedCounts).some(count => count > 1);
-    if (split && !window.confirm('This purchase request splits a Store product or service supply across multiple suppliers. Confirm the quantities, prices, and separate supplier orders?')) return;
+    if (split && !await pawzzleConfirm('This purchase request splits a Store product or service supply across multiple suppliers. Confirm the quantities, prices, and separate supplier orders.', { title: 'Confirm split purchase', confirmLabel: 'Submit orders', tone: 'warning' })) return;
     setSubmittingCart(true);
     try {
       const response = await purchaseOrderService.submitCart({ paymentTiming, paymentMethod: 'paymongo', confirmSplit: split });
@@ -206,7 +207,7 @@ const PurchaseOrders = () => {
   };
 
   const cancelOrder = async (id) => {
-    if (!window.confirm('Cancel this purchase order?')) return;
+    if (!await pawzzleConfirm('The supplier will be notified that this purchase order was cancelled.', { title: 'Cancel purchase order?', confirmLabel: 'Cancel order', tone: 'danger' })) return;
     try {
       await purchaseOrderService.cancel(id, { reason: 'Cancelled by seller' });
       toast.success('Order cancelled');
@@ -232,7 +233,14 @@ const PurchaseOrders = () => {
   };
 
   const reviewResolution = async (order, resolution, decision) => {
-    const notes = window.prompt(`${decision === 'accept' ? 'Acceptance' : 'Rejection'} notes (optional)`) || '';
+    const notes = await pawzzlePrompt(`Add ${decision === 'accept' ? 'acceptance' : 'rejection'} notes for this resolution, if needed.`, {
+      title: `${decision === 'accept' ? 'Accept' : 'Reject'} resolution?`,
+      inputLabel: 'Notes (optional)',
+      multiline: true,
+      confirmLabel: decision === 'accept' ? 'Accept resolution' : 'Reject resolution',
+      tone: decision === 'accept' ? 'info' : 'danger'
+    });
+    if (notes === null) return;
     try {
       await purchaseOrderService.reviewResolution(order._id, resolution._id, { decision, notes });
       toast.success(`Resolution ${decision}ed.`);
