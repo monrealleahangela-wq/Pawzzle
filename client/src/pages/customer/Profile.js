@@ -17,6 +17,7 @@ import { formatPeso } from '../../utils/paymentSummary';
 import { isCareProfessional } from '../../utils/authorization';
 import ProfessionalProfileWorkspace from '../../components/staff/ProfessionalProfileWorkspace';
 import { normalizePetProfileType } from '../../constants/serviceAdvisorPetContract';
+import StoreApplicationProfileDetails from '../../components/stores/StoreApplicationProfileDetails';
 
 import { useTheme } from '../../contexts/ThemeContext';
 
@@ -1530,6 +1531,7 @@ const Profile = () => {
                       </div>
                     )}
                   </div>
+                  {application && <StoreApplicationProfileDetails application={application} />}
                 </div>
               )}
 
@@ -1982,10 +1984,11 @@ const Profile = () => {
                                  <p className="text-[7px] font-bold text-slate-400 tracking-tight">Complete your application details to help us review it.</p>
                                </div>
                              )}
-                            {application.status === 'rejected' && (
-                              <button onClick={() => setShowUpgradeForm(true)} className="px-8 py-3 bg-slate-900 text-white rounded-xl font-black uppercase tracking-widest text-xs">
-                                Edit & Re-submit
-                              </button>
+                            <StoreApplicationProfileDetails application={application} compact />
+                            {(['draft', 'rejected', 'requires_more_info'].includes(application.status)) && (
+                              <Link to="/account-upgrade" className="mt-5 inline-flex px-8 py-3 bg-slate-900 text-white rounded-xl font-black uppercase tracking-widest text-xs">
+                                Edit &amp; Re-submit
+                              </Link>
                             )}
                           </div>
                         </div>
@@ -2000,9 +2003,9 @@ const Profile = () => {
                             <p className="text-slate-400 font-medium text-[10px] sm:text-lg leading-relaxed max-w-xl mb-8 sm:mb-10 opacity-70">
                               To apply as a store owner, prepare your business documents for verification. Once approved, you'll gain access to your Store Owner Dashboard.
                             </p>
-                            <button onClick={() => setShowUpgradeForm(true)} className="px-6 py-3 sm:px-12 sm:py-5 bg-white text-slate-900 rounded-xl sm:rounded-[2rem] font-black uppercase tracking-[0.2em] text-[10px] sm:text-sm hover:bg-primary-50 transition-all active:scale-95 shadow-2xl shadow-black/20">
+                            <Link to="/account-upgrade" className="px-6 py-3 sm:px-12 sm:py-5 bg-white text-slate-900 rounded-xl sm:rounded-[2rem] font-black uppercase tracking-[0.2em] text-[10px] sm:text-sm hover:bg-primary-50 transition-all active:scale-95 shadow-2xl shadow-black/20">
                               Apply to become a seller
-                            </button>
+                            </Link>
                           </div>
                         </div>
                       )}
