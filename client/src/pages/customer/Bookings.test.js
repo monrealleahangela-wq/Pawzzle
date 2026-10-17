@@ -89,6 +89,50 @@ describe('customer booking history', () => {
     expect(bookingService.getVerificationCredential).toHaveBeenCalledWith(bookingId);
   });
 
+  test('shows the QR before the appointment while labeling it Awaiting Schedule', async () => {
+    const bookingId = 'booking-awaiting-schedule';
+    bookingService.getCustomerBookings.mockResolvedValue({ data: { bookings: [{
+      _id: bookingId, bookingDate: '2026-10-20', startTime: '17:00', endTime: '17:45',
+      status: 'confirmed', paymentStatus: 'paid', totalPrice: 650,
+      pet: { name: 'Eugene', type: 'Cat' }, service: { name: 'Grooming', duration: 45 },
+      store: { _id: 'store-1', name: 'Pawzzle' }, staff: { firstName: 'Rhaine', lastName: 'Rivera' }
+    }] } });
+    bookingService.getVerificationCredential.mockResolvedValue({ data: {
+      state: 'too_early', rotated: false,
+      credential: { qrToken: `PZQ1.${'a'.repeat(43)}`, backupCode: 'ABCD-EFGH-JKLM-NPQR' }
+    } });
+
+    renderBookings();
+    fireEvent.click(await screen.findByText('View Details'));
+
+    expect(await screen.findByText('Awaiting Schedule')).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: 'Reservation verification QR code' })).toBeInTheDocument();
+    expect(screen.getByText('Your QR is ready. Check-in will open at the scheduled appointment time.')).toBeInTheDocument();
+    expect(screen.getByText('Present this QR code to your assigned staff during your scheduled appointment.')).toBeInTheDocument();
+  });
+
+  test('offers a focused retry after a temporary credential service failure', async () => {
+    const bookingId = 'booking-retry-credential';
+    bookingService.getCustomerBookings.mockResolvedValue({ data: { bookings: [{
+      _id: bookingId, bookingDate: '2026-10-20', startTime: '17:00', endTime: '17:45',
+      status: 'confirmed', paymentStatus: 'paid', totalPrice: 650,
+      pet: { name: 'Eugene', type: 'Cat' }, service: { name: 'Grooming' },
+      store: { _id: 'store-1', name: 'Pawzzle' }, staff: { firstName: 'Rhaine', lastName: 'Rivera' }
+    }] } });
+    bookingService.getVerificationCredential
+      .mockRejectedValueOnce({ response: { data: { message: 'Reservation verification is temporarily unavailable.' } } })
+      .mockResolvedValueOnce({ data: {
+        state: 'too_early', credential: { qrToken: `PZQ1.${'b'.repeat(43)}`, backupCode: 'QRST-UVWX-YZ23-4567' }
+      } });
+
+    renderBookings();
+    fireEvent.click(await screen.findByText('View Details'));
+    fireEvent.click(await screen.findByRole('button', { name: 'Retry secure QR' }));
+
+    expect(await screen.findByRole('img', { name: 'Reservation verification QR code' })).toBeInTheDocument();
+    expect(bookingService.getVerificationCredential).toHaveBeenCalledTimes(2);
+  });
+
   test('renders active, completed, cancelled, and legacy records without optional references', async () => {
     bookingService.getCustomerBookings.mockResolvedValue({ data: { bookings: [
       { _id: 'booking-pending', bookingDate: '2026-10-15', startTime: '09:00', status: 'pending', paymentStatus: 'pending', totalPrice: 500, pet: { name: 'Mochi', type: 'Dog' }, service: { name: 'Grooming' }, store: { name: 'Pawzzle' } },

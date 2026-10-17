@@ -65,11 +65,11 @@ test('Store-local conversion handles offsets, daylight-saving gaps, and ambiguou
   assert.equal(zonedLocalTimeToUtc('2026-11-01', '03:30', 'America/New_York').toISOString(), '2026-11-01T08:30:00.000Z');
 });
 
-test('the default check-in window is inclusive at 30 minutes early and 15 minutes after appointment start', () => {
+test('check-in opens at the appointment start and remains inclusive through its scheduled end', () => {
   const booking = paidBooking();
   const window = getCheckInWindow(booking, 'Asia/Manila');
-  assert.equal(window.opensAt.toISOString(), '2026-10-16T05:30:00.000Z');
-  assert.equal(window.closesAt.toISOString(), '2026-10-16T06:15:00.000Z');
+  assert.equal(window.opensAt.toISOString(), '2026-10-16T06:00:00.000Z');
+  assert.equal(window.closesAt.toISOString(), '2026-10-16T07:00:00.000Z');
   assert.equal(getWindowState(booking, window.opensAt, 'Asia/Manila').state, 'available');
   assert.equal(getWindowState(booking, window.closesAt, 'Asia/Manila').state, 'available');
   assert.equal(getWindowState(booking, new Date(window.opensAt.getTime() - 1), 'Asia/Manila').state, 'too_early');

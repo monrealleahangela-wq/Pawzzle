@@ -20,6 +20,39 @@ const unavailable = () => Object.assign(new Error('Reservation verification is t
 
 const objectId = value => String(value?._id || value || '');
 
+const scheduledStartMessage = (booking, window) => {
+  if (!window?.start) return 'Check-in is not yet available. Please return during your scheduled appointment.';
+  const timeZone = booking.store?.hrSettings?.timezone || 'Asia/Manila';
+  try {
+    const date = new Intl.DateTimeFormat('en-US', {
+      timeZone, month: 'long', day: 'numeric', year: 'numeric'
+    }).format(window.start);
+    const time = new Intl.DateTimeFormat('en-US', {
+      timeZone, hour: 'numeric', minute: '2-digit', hour12: true
+    }).format(window.start);
+    return `Check-in is not yet available. Your appointment is scheduled for ${date}, at ${time}. Please return during your scheduled appointment.`;
+  } catch (error) {
+    return 'Check-in is not yet available. Please return during your scheduled appointment.';
+  }
+};
+
+const windowFailure = (booking, windowState) => {
+  const messages = {
+    too_early: scheduledStartMessage(booking, windowState.window),
+    window_expired: 'The reservation check-in window has expired. Contact the Store for assistance.',
+    cancelled: 'This reservation is no longer active.',
+    unconfirmed: 'This reservation is not confirmed.',
+    payment_required: 'Payment has not been confirmed for this reservation.',
+    already_checked_in: 'This reservation has already been checked in.',
+    ineligible: 'This reservation verification is no longer valid.'
+  };
+  return Object.assign(new Error(messages[windowState.reason] || 'This reservation is not eligible for check-in.'), {
+    statusCode: 409,
+    code: windowState.reason,
+    state: windowState.state
+  });
+};
+
 const mayManageBooking = (user, booking) => {
   const storeId = objectId(booking.store);
   if (isPlatformAdmin(user)) return hasPermission(user, 'bookings.manage') || hasPermission(user, 'bookings.update');
@@ -159,22 +192,7 @@ const validateCredential = async ({ secret, method, actor, now = new Date(), wri
     outcome: windowState.state === 'available' ? 'verified' : 'rejected',
     ...(windowState.reason ? { reason: windowState.reason } : {}), occurredAt: now
   });
-  if (windowState.state !== 'available') {
-    const messages = {
-      too_early: 'This reservation is not in its check-in window yet.',
-      window_expired: 'The reservation check-in window has expired.',
-      cancelled: 'This reservation is no longer active.',
-      unconfirmed: 'This reservation is not confirmed.',
-      payment_required: 'Payment has not been confirmed for this reservation.',
-      already_checked_in: 'This reservation has already been checked in.',
-      ineligible: 'This reservation verification is no longer valid.'
-    };
-    throw Object.assign(new Error(messages[windowState.reason] || 'This reservation is not eligible for check-in.'), {
-      statusCode: windowState.reason === 'too_early' || windowState.reason === 'window_expired' ? 409 : 409,
-      code: windowState.reason,
-      state: windowState.state
-    });
-  }
+  if (windowState.state !== 'available') throw windowFailure(booking, windowState);
   return { record, booking, window: windowState.window, method };
 };
 
@@ -189,7 +207,13 @@ const getCustomerCredential = async (bookingId, customerId) => {
   }
   const issued = await issueForBooking(booking._id);
   const windowState = getWindowState(booking, new Date(), booking.store?.hrSettings?.timezone || 'Asia/Manila');
-  return { state: issued.eligible ? windowState.state : 'temporarily_unavailable', credential: issued.credential || null, issuedAt: issued.issuedAt || null, rotated: Boolean(issued.rotated) };
+  return {
+    state: issued.eligible ? windowState.state : 'temporarily_unavailable',
+    credential: issued.credential || null,
+    issuedAt: issued.issuedAt || null,
+    rotated: Boolean(issued.rotated),
+    window: windowState.window || null
+  };
 };
 
 const verifyCredential = async input => validateCredential({ ...input, writeAudit: true });
@@ -213,9 +237,7 @@ const confirmCheckIn = async ({ secret, method, actor, expectedBookingId }) => {
         throw Object.assign(new Error('This reservation is no longer eligible for check-in.'), { statusCode: 409 });
       }
       const state = getWindowState(fresh, now, fresh.store?.hrSettings?.timezone || 'Asia/Manila');
-      if (state.state !== 'available') throw Object.assign(new Error(state.state === 'too_early'
-        ? 'This reservation is not in its check-in window yet.' : state.state === 'expired'
-          ? 'The reservation check-in window has expired.' : 'This reservation is no longer eligible for check-in.'), { statusCode: 409 });
+      if (state.state !== 'available') throw windowFailure(fresh, state);
 
       checkedIn = await Booking.findOneAndUpdate({
         _id: fresh._id, status: { $in: ['confirmed', 'approved'] }, paymentStatus: 'paid',

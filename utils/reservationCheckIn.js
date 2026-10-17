@@ -2,8 +2,10 @@ const crypto = require('crypto');
 
 const QR_PREFIX = 'PZQ1.';
 const BACKUP_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // 32 symbols, 5 bits each
-const EARLY_MINUTES = 30;
-const LATE_MINUTES = 15;
+// The credential is visible before the appointment, but check-in itself opens
+// at the scheduled start and closes at the scheduled end.
+const EARLY_MINUTES = 0;
+const LATE_MINUTES = 0;
 
 const getMasterKey = (value = process.env.RESERVATION_CREDENTIAL_ENCRYPTION_KEY) => {
   if (typeof value !== 'string' || !/^[a-f\d]{64}$/i.test(value)) {
@@ -108,7 +110,7 @@ const getCheckInWindow = (booking, timeZone = 'Asia/Manila') => {
     endDate = nextDate.toISOString().slice(0, 10);
   }
   const end = zonedLocalTimeToUtc(endDate, booking.endTime, timeZone);
-  return end && end > start ? { start, end, opensAt: new Date(start.getTime() - EARLY_MINUTES * 60000), closesAt: new Date(start.getTime() + LATE_MINUTES * 60000) } : null;
+  return end && end > start ? { start, end, opensAt: start, closesAt: end } : null;
 };
 
 const getWindowState = (booking, now, timeZone) => {

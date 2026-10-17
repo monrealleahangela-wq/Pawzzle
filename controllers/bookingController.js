@@ -1283,7 +1283,11 @@ const checkInBooking = async (req, res) => {
     }
     res.json({ message: 'Reservation verified and check-in recorded.', checkedInAt: booking.checkedInAt, bookingId: String(booking._id) });
   } catch (error) {
-    res.status(error.statusCode || (error.name === 'CastError' ? 404 : 500)).json({ message: error.statusCode ? error.message : 'Unable to complete check-in.' });
+    res.status(error.statusCode || (error.name === 'CastError' ? 404 : 500)).json({
+      message: error.statusCode ? error.message : 'Unable to complete check-in.',
+      ...(error.code ? { code: error.code } : {}),
+      ...(error.state ? { state: error.state } : {})
+    });
   }
 };
 
@@ -1316,7 +1320,11 @@ const validateBookingQR = async (req, res) => {
       }
     });
   } catch (error) {
-    res.status(error.statusCode || 500).json({ message: error.statusCode ? error.message : 'Unable to verify this reservation.' });
+    res.status(error.statusCode || 500).json({
+      message: error.statusCode ? error.message : 'Unable to verify this reservation.',
+      ...(error.code ? { code: error.code } : {}),
+      ...(error.state ? { state: error.state } : {})
+    });
   }
 };
 
@@ -1327,7 +1335,10 @@ const getReservationCredential = async (req, res) => {
     const result = await reservationCheckInService.getCustomerCredential(req.params.id, req.user._id);
     return res.json(result);
   } catch (error) {
-    return res.status(error.statusCode || 500).json({ message: error.statusCode ? error.message : 'Reservation verification is temporarily unavailable.' });
+    return res.status(error.statusCode || 500).json({
+      message: error.statusCode ? error.message : 'Reservation verification is temporarily unavailable.',
+      ...(error.code ? { code: error.code } : {})
+    });
   }
 };
 

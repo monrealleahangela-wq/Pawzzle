@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { bookingService, serviceService, voucherService, getImageUrl, petProfileService, paymentService } from '../../services/apiService';
 import { calculateServicePrice } from '../../utils/pricingEngine';
 import { toast } from 'react-toastify';
-import { Clock, User, MapPin, Phone, DollarSign, CheckCircle, XCircle, AlertCircle, Filter, Search, Calendar, ArrowLeft, ChevronLeft, ChevronRight, Store, X, Activity, ShieldCheck, TrendingUp, Tag, Ticket, Bell, Heart, PawPrint, Star, CreditCard, Navigation, Receipt, Layers } from 'lucide-react';
+import { Clock, User, MapPin, Phone, DollarSign, CheckCircle, XCircle, AlertCircle, Filter, Search, Calendar, ArrowLeft, ChevronLeft, ChevronRight, Store, X, Activity, ShieldCheck, TrendingUp, Tag, Ticket, Bell, Heart, PawPrint, Star, CreditCard, Navigation, Receipt, Layers, RefreshCw } from 'lucide-react';
 import ReviewModal from '../../components/ReviewModal';
 import ServiceCommunicationPanel from '../../components/booking/ServiceCommunicationPanel';
 import StaffProfileModal from '../../components/booking/StaffProfileModal';
@@ -33,6 +33,19 @@ const createInitialBookingForm = () => ({
   selectedAddOns: [],
   selectedConditions: []
 });
+
+const RESERVATION_STATUS_LABELS = {
+  too_early: 'Awaiting Schedule',
+  available: 'Ready for Check-In',
+  checked_in: 'Checked In',
+  expired: 'Expired',
+  cancelled: 'Cancelled',
+  loading: 'Loading',
+  temporarily_unavailable: 'Temporarily Unavailable',
+  unconfirmed: 'Not Yet Available'
+};
+
+const reservationStatusLabel = state => RESERVATION_STATUS_LABELS[state] || 'Not Yet Available';
 
 const StoreHoursHint = ({ bookingDate, businessHours }) => {
   const dayNames = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
@@ -81,6 +94,7 @@ const Bookings = ({ isSubcomponent = false }) => {
   const [showMobileFilters, setShowMobileFilters] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [reservationCredential, setReservationCredential] = useState(null);
+  const reservationCredentialRequestRef = useRef(0);
   const [showBookingForm, setShowBookingForm] = useState(false);
   const [selectedService, setSelectedService] = useState(null);
   const [ratingBooking, setRatingBooking] = useState(null);
@@ -118,23 +132,37 @@ const Bookings = ({ isSubcomponent = false }) => {
   const [staffProfileId, setStaffProfileId] = useState(null);
   const [bookingActionLoading, setBookingActionLoading] = useState(false);
 
-  useEffect(() => {
-    let active = true;
+  const loadReservationCredential = useCallback(async () => {
+    const requestId = reservationCredentialRequestRef.current + 1;
+    reservationCredentialRequestRef.current = requestId;
     if (!selectedBooking?._id) {
       setReservationCredential(null);
-      return undefined;
+      return;
     }
     if (!['confirmed', 'approved', 'processing', 'finished', 'completed'].includes(selectedBooking.status)
         || selectedBooking.paymentStatus !== 'paid') {
       setReservationCredential({ state: 'unconfirmed', credential: null });
-      return undefined;
+      return;
     }
     setReservationCredential({ state: 'loading', credential: null });
-    Promise.resolve(bookingService.getVerificationCredential(selectedBooking._id))
-      .then(response => { if (active) setReservationCredential(response.data); })
-      .catch(() => { if (active) setReservationCredential({ state: 'temporarily_unavailable', credential: null }); });
-    return () => { active = false; };
+    try {
+      const response = await bookingService.getVerificationCredential(selectedBooking._id);
+      if (reservationCredentialRequestRef.current === requestId) setReservationCredential(response.data);
+    } catch (error) {
+      if (reservationCredentialRequestRef.current === requestId) {
+        setReservationCredential({
+          state: 'temporarily_unavailable',
+          credential: null,
+          errorMessage: error.response?.data?.message || 'Secure verification is temporarily unavailable.'
+        });
+      }
+    }
   }, [selectedBooking?._id, selectedBooking?.status, selectedBooking?.paymentStatus]);
+
+  useEffect(() => {
+    loadReservationCredential();
+    return () => { reservationCredentialRequestRef.current += 1; };
+  }, [loadReservationCredential]);
 
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -2471,13 +2499,15 @@ const Bookings = ({ isSubcomponent = false }) => {
                     <p className="mt-1 text-xs text-slate-600">{formatSafeDate(selectedBooking.bookingDate, { month: 'long', day: 'numeric', year: 'numeric' })} · {formatTime12h(selectedBooking.startTime)}–{formatTime12h(selectedBooking.endTime)}</p>
                     {selectedBooking.staff && <p className="mt-1 text-xs text-slate-600">Assigned staff: {`${selectedBooking.staff.firstName || ''} ${selectedBooking.staff.lastName || ''}`.trim() || 'Assigned'}</p>}
                   </div>
-                  <span className="rounded-full bg-white px-3 py-1 text-[10px] font-bold capitalize text-slate-700">{(reservationCredential?.state || 'loading').replaceAll('_', ' ')}</span>
+                  <span className="rounded-full bg-white px-3 py-1 text-[10px] font-bold text-slate-700">{reservationStatusLabel(reservationCredential?.state || 'loading')}</span>
                 </div>
                 {reservationCredential?.credential?.qrToken ? (
                   <div className="mt-4 flex flex-col items-center gap-3 rounded-xl border border-slate-200 bg-white p-4 sm:flex-row sm:items-center">
                     <ReservationQrCode value={reservationCredential.credential.qrToken} className="h-40 w-40 shrink-0" />
                     <div className="min-w-0 text-center sm:text-left">
-                      <p className="text-xs font-bold text-slate-800">Show this QR code to authorized Store staff during the check-in window.</p>
+                      <p className="text-xs font-bold text-slate-800">Present this QR code to your assigned staff during your scheduled appointment.</p>
+                      {reservationCredential.state === 'too_early' && <p role="status" className="mt-2 text-xs text-amber-700">Your QR is ready. Check-in will open at the scheduled appointment time.</p>}
+                      {reservationCredential.state === 'available' && <p role="status" className="mt-2 text-xs text-emerald-700">Your appointment is ready for check-in.</p>}
                       <p className="mt-3 text-[10px] font-black uppercase tracking-widest text-slate-500">Backup code</p>
                       <code className="mt-1 block select-all rounded-lg bg-slate-100 px-3 py-2 font-mono text-lg font-black tracking-widest text-slate-900" aria-label="Reservation backup code">{reservationCredential.credential.backupCode}</code>
                       <p className="mt-2 text-[10px] text-slate-500">Keep this code private. It can be used instead of the QR code.</p>
@@ -2491,9 +2521,14 @@ const Bookings = ({ isSubcomponent = false }) => {
                         : reservationCredential?.state === 'too_early' ? 'Your check-in window has not opened yet. Your QR and backup code will remain available here.'
                           : reservationCredential?.state === 'expired' ? 'The check-in window has expired. Contact the Store for assistance.'
                             : reservationCredential?.state === 'loading' ? 'Loading your secure reservation credential…'
-                              : reservationCredential?.state === 'temporarily_unavailable' ? 'Secure verification is temporarily unavailable. Refresh later or contact the Store.'
+                              : reservationCredential?.state === 'temporarily_unavailable' ? (reservationCredential.errorMessage || 'Secure verification is temporarily unavailable. Refresh later or contact the Store.')
                                 : 'A check-in QR code and backup code become available after the booking is confirmed and payment is verified.'}
                   </p>
+                )}
+                {reservationCredential?.state === 'temporarily_unavailable' && (
+                  <button type="button" onClick={loadReservationCredential} className="mt-3 inline-flex items-center gap-2 rounded-xl border border-primary-200 bg-white px-4 py-2 text-xs font-black text-primary-700 transition hover:bg-primary-50">
+                    <RefreshCw className="h-4 w-4" /> Retry secure QR
+                  </button>
                 )}
               </section>
 

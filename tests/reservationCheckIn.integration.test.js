@@ -33,6 +33,7 @@ test('reservation credential persistence, verify/confirm, and concurrent replay 
   const ReservationCheckInEvent = require('../models/ReservationCheckInEvent');
   const bookingController = require('../controllers/bookingController');
   const service = require('../services/reservationCheckInService');
+  const { getCheckInWindow } = require('../utils/reservationCheckIn');
   const invokeController = async (handler, req) => {
     const response = { statusCode: 200, headers: {}, body: null };
     const res = {
@@ -72,6 +73,7 @@ test('reservation credential persistence, verify/confirm, and concurrent replay 
     const bookingId = new ObjectId();
     const otherStoreId = new ObjectId();
     const otherStaffId = new ObjectId();
+    const unassignedStaffId = new ObjectId();
     const localParts = Object.fromEntries(new Intl.DateTimeFormat('en-CA', {
       timeZone: 'Asia/Manila', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23'
     }).formatToParts(new Date()).map(part => [part.type, part.value]));
@@ -84,6 +86,7 @@ test('reservation credential persistence, verify/confirm, and concurrent replay 
     await User.collection.insertMany([
       { _id: ownerId, username: `owner-${ownerId}`, firstName: 'Synthetic', lastName: 'Owner', email: `owner-${ownerId}@test.invalid`, role: 'store_owner', store: storeId, isActive: true, isDeleted: false },
       { _id: staffId, username: `staff-${staffId}`, firstName: 'Synthetic', lastName: 'Staff', email: `staff-${staffId}@test.invalid`, role: 'service_staff', store: storeId, isActive: true, isDeleted: false },
+      { _id: unassignedStaffId, username: `unassigned-${unassignedStaffId}`, firstName: 'Unassigned', lastName: 'Staff', email: `unassigned-${unassignedStaffId}@test.invalid`, role: 'service_staff', store: storeId, isActive: true, isDeleted: false },
       { _id: customerId, username: `customer-${customerId}`, firstName: 'Synthetic', lastName: 'Customer', email: `customer-${customerId}@test.invalid`, role: 'customer', isActive: true, isDeleted: false },
       { _id: otherStaffId, username: `other-${otherStaffId}`, firstName: 'Other', lastName: 'Store', email: `other-${otherStaffId}@test.invalid`, role: 'service_staff', store: otherStoreId, isActive: true, isDeleted: false }
     ]);
@@ -138,6 +141,25 @@ test('reservation credential persistence, verify/confirm, and concurrent replay 
     assert.equal(unauthorizedCustomer.statusCode, 403);
 
     const staff = { _id: staffId, role: 'service_staff', store: storeId };
+    const bookingWindow = getCheckInWindow(await Booking.findById(bookingId).lean(), 'Asia/Manila');
+    await assert.rejects(() => service.verifyCredential({
+      secret: first.credential.qrToken,
+      method: 'qr',
+      actor: staff,
+      now: new Date(bookingWindow.opensAt.getTime() - 1)
+    }), error => error.code === 'too_early'
+      && /Check-in is not yet available\. Your appointment is scheduled for .+ at .+\. Please return during your scheduled appointment\./.test(error.message));
+    await assert.rejects(() => service.verifyCredential({
+      secret: first.credential.qrToken,
+      method: 'qr',
+      actor: staff,
+      now: new Date(bookingWindow.closesAt.getTime() + 1)
+    }), error => error.code === 'window_expired');
+    await assert.rejects(() => service.verifyCredential({
+      secret: first.credential.qrToken,
+      method: 'qr',
+      actor: { _id: unassignedStaffId, role: 'service_staff', store: storeId }
+    }), error => error.statusCode === 404, 'same-store unassigned staff cannot verify the reservation');
     const verified = await invokeController(bookingController.validateBookingQR, {
       body: { credential: first.credential.qrToken, method: 'qr' }, user: staff
     });
