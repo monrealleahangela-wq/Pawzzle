@@ -4,6 +4,7 @@ import { toast } from 'react-toastify';
 import { getImageUrl, staffService } from '../../services/apiService';
 import { useAuth } from '../../contexts/AuthContext';
 import { pawzzleConfirm } from '../../utils/pawzzleDialog';
+import ModalViewport from '../ui/ModalViewport';
 
 const roleLabel = value => String(value || '').replace(/_/g, ' ').replace(/\b\w/g, character => character.toUpperCase());
 const list = value => (value || []).map(item => item?.name || item).filter(Boolean).join(', ') || 'Not provided';
@@ -16,11 +17,6 @@ export default function SpecializedStaffProfileModal({ data, onClose }) {
   const [submitting, setSubmitting] = useState(false);
   const [credential, setCredential] = useState({ documentType: 'professional_license', name: '', issuingBody: '', credentialNumber: '', expiresAt: '', file: null, replacesDocumentId: '' });
   useEffect(() => setDetails(data), [data]);
-  useEffect(() => {
-    const close = event => { if (event.key === 'Escape' && !submitting) onClose(); };
-    window.addEventListener('keydown', close);
-    return () => window.removeEventListener('keydown', close);
-  }, [onClose, submitting]);
   if (!details) return null;
   const { staff, activity = {}, performance = {}, recentReviews = [], activityTimeline = [] } = details;
   const profile = staff.professionalProfile || {};
@@ -59,8 +55,8 @@ export default function SpecializedStaffProfileModal({ data, onClose }) {
     } catch (error) { toast.error(error.response?.data?.message || 'Unable to update verification.'); }
   };
 
-  return <div className="fixed inset-0 z-[60] bg-black/50 p-3 flex items-center justify-center"><div className="bg-white rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto shadow-2xl">
-    <header className="sticky top-0 bg-white border-b p-4 flex justify-between gap-3 z-10"><div className="flex items-center gap-3">{staff.avatar?<img src={getImageUrl(staff.avatar)} alt="" className="w-11 h-11 rounded-xl object-cover border"/>:<div className="w-11 h-11 rounded-xl bg-slate-100 flex items-center justify-center text-xs font-black">{staff.firstName?.[0]}{staff.lastName?.[0]}</div>}<div><div className="flex items-center gap-2"><p className="text-[9px] uppercase tracking-widest font-black text-emerald-600">Staff Profile</p>{staff.professionalVerificationStatus==='verified'&&<span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[8px] font-black uppercase text-emerald-700"><ShieldCheck size={10}/>Verified</span>}</div><h2 className="text-lg font-black">{staff.firstName} {staff.lastName}</h2><p className="text-[10px] text-slate-500">{profile.staffId} · {roleLabel(staff.staffType)} · {staff.store?.name} · {staff.staffStatus || (staff.isActive?'active':'inactive')}</p></div></div><button onClick={onClose} className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center"><X size={14}/></button></header>
+  return <ModalViewport onClose={()=>!submitting&&onClose()} closeOnBackdrop={!submitting} closeOnEscape={!submitting}><section role="dialog" aria-modal="true" aria-labelledby="specialized-staff-profile-title" className="max-h-[calc(100dvh-1.5rem)] w-full max-w-4xl overflow-y-auto rounded-2xl bg-white shadow-2xl sm:max-h-[calc(100dvh-2rem)]">
+    <header className="sticky top-0 z-10 flex justify-between gap-3 border-b bg-white p-4"><div className="flex items-center gap-3">{staff.avatar?<img src={getImageUrl(staff.avatar)} alt="" className="w-11 h-11 rounded-xl object-cover border"/>:<div className="w-11 h-11 rounded-xl bg-slate-100 flex items-center justify-center text-xs font-black">{staff.firstName?.[0]}{staff.lastName?.[0]}</div>}<div><div className="flex items-center gap-2"><p className="text-[9px] uppercase tracking-widest font-black text-emerald-600">Staff Profile</p>{staff.professionalVerificationStatus==='verified'&&<span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[8px] font-black uppercase text-emerald-700"><ShieldCheck size={10}/>Verified</span>}</div><h2 id="specialized-staff-profile-title" className="text-lg font-black">{staff.firstName} {staff.lastName}</h2><p className="text-[10px] text-slate-500">{profile.staffId} · {roleLabel(staff.staffType)} · {staff.store?.name} · {staff.staffStatus || (staff.isActive?'active':'inactive')}</p></div></div><button type="button" aria-label="Close staff profile" disabled={submitting} onClick={onClose} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:opacity-40"><X size={18}/></button></header>
     <div className="p-4 space-y-5">
       <section className="grid sm:grid-cols-2 gap-3 text-xs">{[['Professional title',profile.professionalTitle],['Specialty / area',profile.specialty],['Experience',`${profile.experienceYears || 0} years`],['Qualifications',list(profile.qualifications)],['Certifications',list(profile.certifications)],['Training',list(profile.training)],['Areas of expertise',list(profile.areasOfExpertise)],['Languages',list(profile.languages)],['Registration information',profile.registration?.number ? `${profile.registration.type || 'Registration'}: ${profile.registration.number}${profile.registration.issuingBody ? ` · ${profile.registration.issuingBody}` : ''}` : 'Not provided']].map(([label,value])=><div key={label} className="border rounded-xl p-3"><p className="text-[8px] uppercase font-black text-slate-400 mb-1">{label}</p><p className="font-bold text-slate-700">{value || 'Not provided'}</p></div>)}</section>
       {profile.bio&&<section className="rounded-xl border p-3"><p className="text-[8px] uppercase font-black text-slate-400 mb-1">Professional biography</p><p className="text-xs leading-relaxed text-slate-600">{profile.bio}</p></section>}
@@ -80,5 +76,5 @@ export default function SpecializedStaffProfileModal({ data, onClose }) {
       <section><h3 className="text-[10px] uppercase tracking-widest font-black mb-2">Staff Activity Timeline</h3><div className="border rounded-xl divide-y">{activityTimeline.length?activityTimeline.map(item=><div key={item._id} className="p-3 flex items-start justify-between gap-3"><div><p className="text-[10px] font-black text-slate-800">{item.action}</p><p className="text-[10px] text-slate-500">{item.details}</p></div><time className="shrink-0 text-[9px] text-slate-400">{new Date(item.createdAt).toLocaleString()}</time></div>):<p className="p-4 text-center text-xs text-slate-400">No recorded staff activity yet.</p>}</div></section>
       {recentReviews.length>0&&<section><h3 className="text-[10px] uppercase tracking-widest font-black mb-2">Recent Customer Reviews</h3><div className="grid sm:grid-cols-2 gap-2">{recentReviews.map(review=><article key={review._id} className="rounded-xl border bg-slate-50 p-3"><div className="flex justify-between text-[10px] font-black"><span>{review.user?`${review.user.firstName} ${review.user.lastName}`:'Anonymous customer'}</span><span className="text-amber-600">{review.rating}/5</span></div>{review.comment&&<p className="text-xs text-slate-600 mt-1">{review.comment}</p>}</article>)}</div></section>}
     </div>
-  </div></div>;
+  </section></ModalViewport>;
 }
