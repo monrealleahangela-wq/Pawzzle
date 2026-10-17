@@ -502,7 +502,10 @@ const getCustomerBookings = async (req, res) => {
       .populate('store', 'name contactInfo.address')
       .populate('staff', 'firstName lastName avatar staffType professionalProfile.professionalTitle professionalProfile.specialty professionalProfile.experienceYears professionalProfile.rating professionalProfile.reviewCount')
       .populate('serviceProvider', 'firstName lastName avatar staffType professionalProfile.professionalTitle professionalProfile.specialty professionalProfile.rating professionalProfile.reviewCount')
-      .sort({ bookingDate: -1, startTime: -1 })
+      // This endpoint powers the customer's booking transaction history.
+      // Sort by creation time (not the scheduled appointment) before
+      // pagination so the newest transaction is always shown first.
+      .sort({ createdAt: -1, _id: -1 })
       .skip(skip)
       .limit(parseInt(limit));
 
