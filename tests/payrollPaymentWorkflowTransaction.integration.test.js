@@ -80,7 +80,11 @@ test('per-employee payments confirm independently, isolate Stores, deny self-dea
     const rollbackSlip = new mongoose.Types.ObjectId();
     const rollbackEmployee = new mongoose.Types.ObjectId();
     const missingEarning = new mongoose.Types.ObjectId();
-    await PayrollPeriod.collection.insertOne(periodDocument(rollbackPeriod, store, owner));
+    const rollbackPeriodDocument = periodDocument(rollbackPeriod, store, owner);
+    rollbackPeriodDocument.periodStart = new Date('2026-10-01');
+    rollbackPeriodDocument.periodEnd = new Date('2026-10-31');
+    rollbackPeriodDocument.payDate = new Date('2026-11-05');
+    await PayrollPeriod.collection.insertOne(rollbackPeriodDocument);
     await Payslip.collection.insertOne(slipDocument({ id: rollbackSlip, period: rollbackPeriod, store, employee: rollbackEmployee, additions: [{ _id: new mongoose.Types.ObjectId(), type: 'Delivery Incentive', amount: 100, reason: 'Test', source: 'rider_earning', sourceId: missingEarning, createdBy: rollbackEmployee, createdAt: new Date() }] }));
     const rollbackAttempt = await createPaymentAttempt(request({ periodId: rollbackPeriod, slipId: rollbackSlip, storeId: store, actorId: finance, key: 'pay-rollback-1', reference: 'XFER-4001' }));
     await assert.rejects(() => confirmPaymentAttempt({ attemptId: rollbackAttempt.attempt._id, storeId: store, actor: { _id: owner }, reason: 'Independent transfer record was checked.', ipAddress: '127.0.0.1' }), /Rider earning changed/);
@@ -92,7 +96,11 @@ test('per-employee payments confirm independently, isolate Stores, deny self-dea
 
     const ownerPeriod = new mongoose.Types.ObjectId();
     const ownerSlip = new mongoose.Types.ObjectId();
-    await PayrollPeriod.collection.insertOne(periodDocument(ownerPeriod, store, owner));
+    const ownerPeriodDocument = periodDocument(ownerPeriod, store, owner);
+    ownerPeriodDocument.periodStart = new Date('2026-11-01');
+    ownerPeriodDocument.periodEnd = new Date('2026-11-30');
+    ownerPeriodDocument.payDate = new Date('2026-12-05');
+    await PayrollPeriod.collection.insertOne(ownerPeriodDocument);
     await Payslip.collection.insertOne(slipDocument({ id: ownerSlip, period: ownerPeriod, store, employee: owner }));
     const ownerAttempt = await createPaymentAttempt(request({ periodId: ownerPeriod, slipId: ownerSlip, storeId: store, actorId: owner, actorRole: 'store_owner', key: 'owner-own-pay-1', reference: 'XFER-5001' }));
     assert.equal(ownerAttempt.attempt.status, 'for_confirmation');

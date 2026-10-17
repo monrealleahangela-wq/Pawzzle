@@ -218,6 +218,8 @@ const userSchema = new mongoose.Schema({
   },
   employmentProfile: {
     staffId: { type: String, trim: true, uppercase: true },
+    position: { type: String, trim: true, maxlength: 120, default: '' },
+    department: { type: String, trim: true, maxlength: 120, default: '' },
     employmentStatus: {
       type: String,
       enum: ['active', 'probationary', 'part_time', 'contract', 'inactive', 'terminated'],
@@ -226,6 +228,21 @@ const userSchema = new mongoose.Schema({
     dateHired: Date,
     employmentEndDate: Date,
     branchName: { type: String, trim: true, maxlength: 160, default: '' },
+    statutoryIdentifiers: {
+      sssMask: { type: String, trim: true, default: '' },
+      philHealthMask: { type: String, trim: true, default: '' },
+      pagIbigMask: { type: String, trim: true, default: '' },
+      tinMask: { type: String, trim: true, default: '' }
+    },
+    payrollDestination: {
+      type: { type: String, enum: ['bank_transfer', 'gcash', 'maya', 'cash', ''], default: '' },
+      bankName: { type: String, trim: true, maxlength: 120, default: '' },
+      accountName: { type: String, trim: true, maxlength: 160, default: '' },
+      accountMask: { type: String, trim: true, default: '' }
+    },
+    protectedPayrollData: { type: String, select: false },
+    payrollDataUpdatedAt: Date,
+    payrollDataUpdatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     compensation: {
       type: {
         compensationType: { type: String, enum: ['salary', 'daily', 'hourly'], default: 'salary' },

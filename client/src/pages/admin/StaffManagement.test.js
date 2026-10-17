@@ -60,3 +60,22 @@ test('staff form closes with Escape through the shared modal behavior', () => {
   fireEvent.keyDown(document, { key: 'Escape' });
   expect(screen.queryByRole('dialog', { name: /Add Staff/ })).not.toBeInTheDocument();
 });
+
+test('staff onboarding exposes employment, statutory, salary, and payment fields', () => {
+  renderPage();
+  fireEvent.click(screen.getByRole('button', { name: 'Add Staff' }));
+  fireEvent.change(screen.getByLabelText('First Name'), { target: { value: 'Ana' } });
+  fireEvent.change(screen.getByLabelText('Last Name'), { target: { value: 'Santos' } });
+  fireEvent.change(screen.getByLabelText('Mobile Number'), { target: { value: '09171234567' } });
+  fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'ana@example.test' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+
+  expect(screen.getByLabelText('Position')).toBeVisible();
+  expect(screen.getByLabelText('Department')).toBeVisible();
+  expect(screen.getByLabelText('Monthly Salary')).toBeVisible();
+  expect(screen.getByLabelText(/^SSS Number/)).toBeVisible();
+  expect(screen.getByLabelText(/^PhilHealth Number/)).toBeVisible();
+  expect(screen.getByLabelText(/^Pag-IBIG Number/)).toBeVisible();
+  expect(screen.getByLabelText('Salary Payment Method')).toBeVisible();
+  expect(screen.getByLabelText(/^Account Number/)).toBeVisible();
+});

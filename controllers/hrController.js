@@ -3,6 +3,7 @@ const Attendance = require('../models/Attendance');
 const LeaveRequest = require('../models/LeaveRequest');
 const PayrollPeriod = require('../models/PayrollPeriod');
 const Payslip = require('../models/Payslip');
+const GovernmentRemittance = require('../models/GovernmentRemittance');
 const RiderEarning = require('../models/RiderEarning');
 const Store = require('../models/Store');
 const User = require('../models/User');
@@ -27,6 +28,9 @@ const {
   findEmployeePaymentStatuses, getProtectedProof, retryFailedAttempt, transitionPaymentAttempt
 } = require('../services/payrollPaymentWorkflowService');
 const { computePayrollPeriodAtomically } = require('../services/payrollComputationService');
+const { leaveBalances, scheduledDays } = require('../services/leaveBalanceService');
+const { calculateStatutoryPayroll, payPeriodsPerMonth, validatePhilippinePayrollConfig } = require('../utils/philippinePayroll');
+const { deterministicRemittanceId } = require('../utils/governmentRemittance');
 const activeStaffFilter = activePayrollEmployeeFilter;
 const fail = (message, statusCode = 400) => Object.assign(new Error(message), { statusCode });
 const safeError = (res, error) => {
@@ -68,6 +72,28 @@ const notifyStoreRoles = async (req, storeId, roles, staffTypes, type, title, me
   await Promise.all(recipients.filter(item => String(item._id) !== String(req.user._id)).map(item => notify(req, item._id, type, title, message, relatedId, relatedModel, targetUrl)));
 };
 const snapshot = value => JSON.parse(JSON.stringify(value || {}));
+const recalculatePayslipTotals = ({ payslip, period, actorId }) => {
+  const additions = payslip.additions.reduce((sum, item) => sum + Number(item.amount || 0), 0);
+  payslip.grossPay = roundMoney(payslip.basePay + additions);
+  const monthlyCompensation = Number(payslip.statutoryBreakdown?.monthlyCompensation)
+    || (payslip.employeeSnapshot?.compensationBasis === 'monthly'
+      ? Number(payslip.employeeSnapshot?.baseRate || 0)
+      : roundMoney(payslip.grossPay * payPeriodsPerMonth(period.frequency)));
+  const statutory = calculateStatutoryPayroll({ grossPay: payslip.grossPay, monthlyCompensation, frequency: period.frequency, configured: period.policySnapshot?.statutoryContributions });
+  payslip.deductions = payslip.deductions.filter(item => item.source !== 'statutory');
+  if (statutory.enabled) {
+    for (const [type, amount] of [['SSS', statutory.employeeDeductions.sss], ['PhilHealth', statutory.employeeDeductions.philHealth], ['Pag-IBIG', statutory.employeeDeductions.pagIbig], ['Withholding Tax', statutory.employeeDeductions.withholdingTax]]) {
+      if (amount > 0) payslip.deductions.push({ type, amount, reason: `Computed using ${statutory.policy.version}; see the itemized statutory breakdown.`, source: 'statutory', createdBy: actorId });
+    }
+  }
+  payslip.taxableCompensation = statutory.taxableCompensation;
+  payslip.statutoryDeductions = statutory.employeeDeductions;
+  payslip.employerContributions = statutory.employerContributions;
+  payslip.statutoryBreakdown = { monthlyCompensation, ...statutory.breakdown };
+  payslip.statutoryPolicySnapshot = statutory.policy;
+  payslip.totalDeductions = roundMoney(payslip.deductions.reduce((sum, item) => sum + Number(item.amount || 0), 0));
+  payslip.netPay = roundMoney(Math.max(0, payslip.grossPay - payslip.totalDeductions));
+};
 
 const getSettings = async (req, res) => {
   try {
@@ -86,14 +112,19 @@ const updateSettings = async (req, res) => {
     if (req.body.leaveTypes) {
       const keys = req.body.leaveTypes.map(type => String(type.key || '').trim().toLowerCase());
       if (keys.some(key => !key) || new Set(keys).size !== keys.length) throw fail('Leave types must have unique non-empty keys.');
+      for (const type of req.body.leaveTypes) {
+        if (type.annualCredits !== null && type.annualCredits !== undefined && (!Number.isFinite(Number(type.annualCredits)) || Number(type.annualCredits) < 0)) throw fail('Annual leave credits must be zero or a positive number.');
+        if (!Number.isFinite(Number(type.carryOverLimit || 0)) || Number(type.carryOverLimit || 0) < 0) throw fail('Leave carry-over limits cannot be negative.');
+      }
     }
+    if (req.body.statutoryContributions) req.body.statutoryContributions = validatePhilippinePayrollConfig(req.body.statutoryContributions);
     if (req.body.timeInWindow) {
       for (const key of ['earlyMinutes', 'lateMinutes']) {
         const value = Number(req.body.timeInWindow[key]);
         if (!Number.isFinite(value) || value < 0 || value > 720) throw fail('Time-in window values must be between 0 and 720 minutes.');
       }
     }
-    const editable = ['payrollFrequency', 'weekly', 'semiMonthly', 'monthly', 'defaultWorkDays', 'defaultShift', 'gracePeriodMinutes', 'timeInWindow', 'lateDeductionEnabled', 'undertimeDeductionEnabled', 'overtime', 'attendanceRadiusMeters', 'maximumLocationAccuracyMeters', 'outsideGeofencePolicy', 'payrollApprovalRequired', 'leaveTypes'];
+    const editable = ['payrollFrequency', 'weekly', 'semiMonthly', 'monthly', 'defaultWorkDays', 'defaultShift', 'gracePeriodMinutes', 'timeInWindow', 'lateDeductionEnabled', 'undertimeDeductionEnabled', 'overtime', 'attendanceRadiusMeters', 'maximumLocationAccuracyMeters', 'outsideGeofencePolicy', 'payrollApprovalRequired', 'leaveTypes', 'statutoryContributions'];
     editable.forEach(key => { if (req.body[key] !== undefined) store.hrSettings[key] = req.body[key]; });
     store.hrSettings.updatedAt = new Date(); store.hrSettings.updatedBy = req.user._id;
     await store.save();
@@ -106,7 +137,7 @@ const listEmployees = async (req, res) => {
   try {
     const store = await storeFor(req);
     const records = await User.find(payrollEmployeeQuery(store._id, { includeInactive: true }))
-      .select('firstName lastName role staffType isActive staffStatus professionalProfile.staffId riderProfile.staffId employmentProfile.staffId employmentProfile.employmentStatus employmentProfile.dateHired employmentProfile.employmentEndDate employmentProfile.branchName +employmentProfile.compensation +employmentProfile.compensationHistory +employmentProfile.employmentHistory')
+      .select('firstName lastName role staffType isActive staffStatus professionalProfile.staffId riderProfile.staffId employmentProfile.staffId employmentProfile.position employmentProfile.department employmentProfile.employmentStatus employmentProfile.dateHired employmentProfile.employmentEndDate employmentProfile.branchName employmentProfile.statutoryIdentifiers employmentProfile.payrollDestination +employmentProfile.compensation +employmentProfile.compensationHistory +employmentProfile.employmentHistory')
       .sort({ firstName: 1 }).lean();
     const employees = records.map(employee => ({
       _id: employee._id,
@@ -120,10 +151,14 @@ const listEmployees = async (req, res) => {
       riderProfile: employee.riderProfile,
       employmentProfile: {
         staffId: employee.employmentProfile?.staffId,
+        position: employee.employmentProfile?.position,
+        department: employee.employmentProfile?.department,
         employmentStatus: employee.employmentProfile?.employmentStatus,
         dateHired: employee.employmentProfile?.dateHired,
         employmentEndDate: employee.employmentProfile?.employmentEndDate,
-        branchName: employee.employmentProfile?.branchName
+        branchName: employee.employmentProfile?.branchName,
+        statutoryIdentifiers: employee.employmentProfile?.statutoryIdentifiers,
+        payrollDestination: employee.employmentProfile?.payrollDestination
       },
       compensationSummary: currentCompensationSummary(employee.employmentProfile),
       payrollEligibility: payrollEligibility(employee)
@@ -493,11 +528,17 @@ const createLeave = async (req, res) => {
     const reason = String(req.body.reason || '').trim(); if (reason.length < 5) throw fail('Please provide a brief leave reason.');
     const policy = (store.hrSettings?.leaveTypes || []).find(type => type.active && type.key === req.body.leaveTypeKey);
     if (!policy) throw fail('Select an active Store leave type.');
+    const chargeableDays = scheduledDays({ startDate, endDate, workDays: store.hrSettings?.defaultWorkDays });
+    if (!chargeableDays) throw fail('The requested dates do not include a scheduled workday.');
+    const balances = await leaveBalances({ store, employee: req.user._id, year: startDate.getUTCFullYear() });
+    const balance = balances.find(item => item.key === policy.key);
+    if (balance?.availableAfterPending !== null && chargeableDays > balance.availableAfterPending) throw fail(`Insufficient ${policy.name} balance. ${balance.availableAfterPending} day(s) remain after pending requests.`, 409);
     const overlap = await LeaveRequest.exists({ store: store._id, employee: req.user._id, status: { $in: ['pending', 'approved'] }, startDate: { $lte: endDate }, endDate: { $gte: startDate } });
     if (overlap) throw fail('A pending or approved leave request already covers these dates.', 409);
     const leave = await LeaveRequest.create({
       store: store._id, employee: req.user._id, leaveTypeKey: policy.key, leaveTypeName: policy.name,
-      isPaid: policy.isPaid, startDate, endDate, reason,
+      isPaid: policy.isPaid, startDate, endDate, reason, chargeableDays,
+      policySnapshot: { key: policy.key, name: policy.name, isPaid: policy.isPaid, annualCredits: policy.annualCredits ?? null, carryOverLimit: policy.carryOverLimit || 0 },
       attachmentUrl: String(req.body.attachmentUrl || '').trim(), history: [{ action: 'submitted', actor: req.user._id }]
     });
     const recipients = await User.find({ store: store._id, isActive: true, isDeleted: false, $or: [
@@ -517,7 +558,8 @@ const myLeaves = async (req, res) => {
       Store.findById(req.user.store).select('hrSettings.leaveTypes'),
       LeaveRequest.find({ store: req.user.store, employee: req.user._id }).populate('reviewedBy', 'firstName lastName').sort({ createdAt: -1 })
     ]);
-    res.json({ leaves, leaveTypes: (store?.hrSettings?.leaveTypes || []).filter(type => type.active) });
+    const balances = store ? await leaveBalances({ store, employee: req.user._id }) : [];
+    res.json({ leaves, leaveTypes: (store?.hrSettings?.leaveTypes || []).filter(type => type.active), balances });
   } catch (error) { safeError(res, error); }
 };
 
@@ -549,6 +591,10 @@ const reviewLeave = async (req, res) => {
     if (leave.status !== 'pending') throw fail('This leave request has already been reviewed.', 409);
     if (!['approved', 'rejected'].includes(req.body.status)) throw fail('Leave status must be approved or rejected.');
     if (req.body.status === 'approved') {
+      const balances = await leaveBalances({ store, employee: leave.employee, year: leave.startDate.getUTCFullYear() });
+      const balance = balances.find(item => item.key === leave.leaveTypeKey);
+      const availableExcludingThisPending = balance?.entitlement == null ? null : balance.entitlement - balance.approvedUsed - Math.max(0, balance.pending - Number(leave.chargeableDays || 0));
+      if (availableExcludingThisPending !== null && Number(leave.chargeableDays || 0) > availableExcludingThisPending) throw fail(`The employee no longer has enough ${leave.leaveTypeName} credits.`, 409);
       const recordedAttendance = await Attendance.exists({ store: store._id, employee: leave.employee, workDate: { $gte: leave.startDate.toISOString().slice(0, 10), $lte: leave.endDate.toISOString().slice(0, 10) }, 'timeIn.at': { $exists: true } });
       if (recordedAttendance) throw fail('This leave overlaps recorded attendance. Correct the attendance first or reject the leave request.', 409);
     }
@@ -709,16 +755,33 @@ const computePeriod = async (req, res) => {
         ...(pay.overtimePay > 0 ? [{ type: 'Overtime Pay', amount: pay.overtimePay, reason: 'Computed from attendance under the Store overtime policy.', source: 'attendance', createdBy: req.user._id }] : []),
         ...riderEarnings.map(item => ({ type: 'Delivery Incentive', amount: item.amount, reason: 'Internal rider earning included once in payroll.', source: 'rider_earning', sourceId: item._id, createdBy: req.user._id }))
       ];
-      const deductions = [
+      const preStatutoryDeductions = [
         ...manualDeductions,
         ...[['Absence', pay.absenceDeduction], ['Unpaid Leave', pay.unpaidLeaveDeduction], ['Late', pay.lateDeduction], ['Undertime', pay.undertimeDeduction]]
           .filter(([, amount]) => amount > 0)
           .map(([type, amount]) => ({ type, amount, reason: `Computed from authoritative ${type.toLowerCase()} records.`, source: type === 'Unpaid Leave' ? 'leave' : 'attendance', createdBy: req.user._id }))
       ];
       const additionsTotal = additions.reduce((sum, item) => sum + Number(item.amount), 0);
-      const deductionsTotal = deductions.reduce((sum, item) => sum + Number(item.amount), 0);
-      const grossPay = roundMoney(pay.basePay + additionsTotal); const netPay = roundMoney(Math.max(0, grossPay - deductionsTotal));
       const currentSegment = compensationCoverage.segments.at(-1);
+      const grossPay = roundMoney(pay.basePay + additionsTotal);
+      const monthlyCompensation = currentSegment.compensation.compensationBasis === 'monthly'
+        ? Number(currentSegment.compensation.baseRate)
+        : roundMoney(grossPay * payPeriodsPerMonth(period.frequency));
+      const statutory = calculateStatutoryPayroll({
+        grossPay, monthlyCompensation, frequency: period.frequency,
+        configured: period.policySnapshot?.statutoryContributions
+      });
+      const statutoryRows = statutory.enabled ? [
+        ['SSS', statutory.employeeDeductions.sss],
+        ['PhilHealth', statutory.employeeDeductions.philHealth],
+        ['Pag-IBIG', statutory.employeeDeductions.pagIbig],
+        ['Withholding Tax', statutory.employeeDeductions.withholdingTax]
+      ].filter(([, amount]) => amount > 0).map(([type, amount]) => ({
+        type, amount, reason: `Computed using ${statutory.policy.version}; see the itemized statutory breakdown.`, source: 'statutory', createdBy: req.user._id
+      })) : [];
+      const deductions = [...preStatutoryDeductions, ...statutoryRows];
+      const deductionsTotal = deductions.reduce((sum, item) => sum + Number(item.amount), 0);
+      const netPay = roundMoney(Math.max(0, grossPay - deductionsTotal));
       await Payslip.findOneAndUpdate({ payrollPeriod: period._id, employee: employee._id }, {
         store: store._id,
         employeeSnapshot: {
@@ -737,12 +800,24 @@ const computePeriod = async (req, res) => {
             segmentEnd: segment.end
           }))
         },
-        attendanceSummary, additions, deductions, basePay: pay.basePay, grossPay, netPay,
+        attendanceSummary, additions, deductions, basePay: pay.basePay, grossPay,
+        taxableCompensation: statutory.taxableCompensation,
+        statutoryDeductions: statutory.employeeDeductions,
+        employerContributions: statutory.employerContributions,
+        statutoryBreakdown: { monthlyCompensation, ...statutory.breakdown },
+        statutoryPolicySnapshot: statutory.policy,
+        totalDeductions: deductionsTotal,
+        netPay,
         paymentStatus: existing?.paymentStatus || 'unpaid'
       }, { upsert: true, new: true, runValidators: true, setDefaultsOnInsert: true, session });
         }
         await Payslip.deleteMany({ payrollPeriod: period._id, employee: { $nin: includedEmployeeIds } }, { session });
-        const [totals] = await Payslip.aggregate([{ $match: { payrollPeriod: period._id } }, { $group: { _id: null, employeeCount: { $sum: 1 }, grossPay: { $sum: '$grossPay' }, netPay: { $sum: '$netPay' }, deductions: { $sum: { $sum: '$deductions.amount' } } } }]).session(session);
+        const [totals] = await Payslip.aggregate([{ $match: { payrollPeriod: period._id } }, { $group: {
+          _id: null, employeeCount: { $sum: 1 }, grossPay: { $sum: '$grossPay' }, netPay: { $sum: '$netPay' },
+          deductions: { $sum: '$totalDeductions' },
+          employeeContributions: { $sum: { $add: ['$statutoryDeductions.sss', '$statutoryDeductions.philHealth', '$statutoryDeductions.pagIbig'] } },
+          employerContributions: { $sum: '$employerContributions.total' }, withholdingTax: { $sum: '$statutoryDeductions.withholdingTax' }
+        } }]).session(session);
         period.computedBy = req.user._id; period.computedAt = new Date(); period.totals = totals || {}; period.reviewIssues = issues;
         return { issues };
       }
@@ -767,10 +842,13 @@ const addAdjustment = async (req, res) => {
     if (!Number.isFinite(amount) || amount <= 0 || reason.length < 5) throw fail('A positive amount and clear reason are required.');
     const target = req.body.kind === 'deduction' ? payslip.deductions : payslip.additions;
     target.push({ type: String(req.body.type || 'Manual Adjustment'), amount, reason, source: 'manual', createdBy: req.user._id });
-    const additions = payslip.additions.reduce((sum, item) => sum + item.amount, 0); const deductions = payslip.deductions.reduce((sum, item) => sum + item.amount, 0);
-    payslip.grossPay = roundMoney(payslip.basePay + additions); payslip.netPay = roundMoney(Math.max(0, payslip.grossPay - deductions));
+    recalculatePayslipTotals({ payslip, period, actorId: req.user._id });
     await payslip.save();
-    const [totals] = await Payslip.aggregate([{ $match: { payrollPeriod: period._id } }, { $group: { _id: null, employeeCount: { $sum: 1 }, grossPay: { $sum: '$grossPay' }, netPay: { $sum: '$netPay' }, deductions: { $sum: { $sum: '$deductions.amount' } } } }]);
+    const [totals] = await Payslip.aggregate([{ $match: { payrollPeriod: period._id } }, { $group: {
+      _id: null, employeeCount: { $sum: 1 }, grossPay: { $sum: '$grossPay' }, netPay: { $sum: '$netPay' }, deductions: { $sum: '$totalDeductions' },
+      employeeContributions: { $sum: { $add: ['$statutoryDeductions.sss', '$statutoryDeductions.philHealth', '$statutoryDeductions.pagIbig'] } },
+      employerContributions: { $sum: '$employerContributions.total' }, withholdingTax: { $sum: '$statutoryDeductions.withholdingTax' }
+    } }]);
     period.totals = totals || {}; await period.save();
     await audit(req, 'Payroll Adjustment Added', `${req.body.kind === 'deduction' ? 'Deduction' : 'Addition'} added to payslip ${payslip._id}: ${reason}`);
     res.json({ message: 'Manual adjustment recorded with audit details.', payslip });
@@ -900,6 +978,119 @@ const myPayslip = async (req, res) => {
   } catch (error) { safeError(res, error); }
 };
 
+const payrollReports = async (req, res) => {
+  try {
+    const store = await storeFor(req);
+    const filter = { store: store._id };
+    if (req.query.from || req.query.to) {
+      filter.periodStart = {};
+      if (req.query.from) filter.periodStart.$gte = parseDate(req.query.from);
+      if (req.query.to) filter.periodStart.$lte = dateEnd(req.query.to);
+    }
+    if (req.query.status) filter.status = req.query.status;
+    const periods = await PayrollPeriod.find(filter).sort({ periodStart: -1 }).lean();
+    const periodIds = periods.map(item => item._id);
+    const [payslips, remittances] = await Promise.all([
+      Payslip.find({ store: store._id, payrollPeriod: { $in: periodIds } })
+        .populate('employee', 'firstName lastName').populate('payrollPeriod', 'periodStart periodEnd payDate status').lean(),
+      GovernmentRemittance.find({ store: store._id, payrollPeriod: { $in: periodIds } })
+        .populate('payrollPeriod', 'periodStart periodEnd payDate status').sort({ contributionMonth: -1, agency: 1 }).lean()
+    ]);
+    const totals = payslips.reduce((sum, slip) => {
+      sum.grossPay += Number(slip.grossPay || 0);
+      sum.employeeDeductions += Number(slip.totalDeductions || (slip.deductions || []).reduce((value, item) => value + Number(item.amount || 0), 0));
+      sum.employerContributions += Number(slip.employerContributions?.total || 0);
+      sum.netPay += Number(slip.netPay || 0);
+      for (const key of ['sss', 'philHealth', 'pagIbig', 'withholdingTax']) sum[key] += Number(slip.statutoryDeductions?.[key] || 0);
+      return sum;
+    }, { grossPay: 0, employeeDeductions: 0, employerContributions: 0, netPay: 0, sss: 0, philHealth: 0, pagIbig: 0, withholdingTax: 0 });
+    Object.keys(totals).forEach(key => { totals[key] = roundMoney(totals[key]); });
+    res.json({ periods, payslips, remittances, totals });
+  } catch (error) { safeError(res, error); }
+};
+
+const prepareRemittances = async (req, res) => {
+  try {
+    const store = await storeFor(req);
+    const period = await PayrollPeriod.findOne({ _id: req.params.id, store: store._id });
+    if (!period) throw fail('Payroll period not found.', 404);
+    if (!['approved', 'paid'].includes(period.status)) throw fail('Payroll must be approved before remittance records are prepared.', 409);
+    const slips = await Payslip.find({ store: store._id, payrollPeriod: period._id }).lean();
+    if (!slips.length) throw fail('This payroll has no payslips.', 409);
+    const contributionMonth = period.periodEnd.toISOString().slice(0, 7);
+    const amounts = {
+      SSS: { employee: 'sss', employer: 'sss' },
+      PhilHealth: { employee: 'philHealth', employer: 'philHealth' },
+      'Pag-IBIG': { employee: 'pagIbig', employer: 'pagIbig' },
+      BIR: { employee: 'withholdingTax', employer: null }
+    };
+    const records = [];
+    for (const [agency, fields] of Object.entries(amounts)) {
+      const employeeAmount = roundMoney(slips.reduce((sum, slip) => sum + Number(slip.statutoryDeductions?.[fields.employee] || 0), 0));
+      const employerAmount = fields.employer ? roundMoney(slips.reduce((sum, slip) => sum + Number(slip.employerContributions?.[fields.employer] || 0), 0)) : 0;
+      const remittanceId = deterministicRemittanceId({ store: store._id, payrollPeriod: period._id, agency });
+      let record;
+      try {
+        record = await GovernmentRemittance.findOneAndUpdate(
+          { _id: remittanceId },
+          { $setOnInsert: { _id: remittanceId, store: store._id, payrollPeriod: period._id, agency, contributionMonth, employeeAmount, employerAmount, totalAmount: roundMoney(employeeAmount + employerAmount), status: 'pending', preparedBy: req.user._id, history: [{ status: 'pending', actor: req.user._id, note: 'Prepared from an approved payroll snapshot.' }] } },
+          { new: true, upsert: true, runValidators: true }
+        );
+      } catch (error) {
+        if (error.code !== 11000) throw error;
+        record = await GovernmentRemittance.findById(remittanceId);
+      }
+      records.push(record);
+    }
+    await audit(req, 'Government Remittances Prepared', `Government remittance records prepared for payroll ${period._id}.`);
+    res.status(201).json({ message: 'Government remittance records prepared from the approved payroll snapshot.', remittances: records });
+  } catch (error) { safeError(res, error); }
+};
+
+const updateRemittance = async (req, res) => {
+  try {
+    const store = await storeFor(req);
+    const record = await GovernmentRemittance.findOne({ _id: req.params.id, store: store._id });
+    if (!record) throw fail('Remittance record not found.', 404);
+    const requested = String(req.body.status || '');
+    const transitions = {
+      pending: ['for_confirmation', 'on_hold'],
+      for_confirmation: ['processing', 'failed', 'on_hold'],
+      processing: ['for_confirmation', 'failed', 'on_hold'],
+      failed: ['processing', 'on_hold'],
+      on_hold: ['pending', 'processing']
+    };
+    if (requested === 'paid') throw fail('Use independent remittance confirmation to mark a payment Paid.', 409);
+    if (!(transitions[record.status] || []).includes(requested)) throw fail(`A remittance cannot move from ${record.status} to ${requested}.`, 409);
+    const note = String(req.body.note || '').trim();
+    if (note.length < 5) throw fail('Provide a clear status-change note.');
+    record.status = requested;
+    if (req.body.paymentReference !== undefined) record.paymentReference = String(req.body.paymentReference || '').trim();
+    record.history.push({ status: requested, actor: req.user._id, note });
+    await record.save();
+    await audit(req, 'Government Remittance Updated', `${record.agency} remittance ${record._id} changed to ${requested}.`);
+    res.json({ message: 'Remittance status updated.', remittance: record });
+  } catch (error) { safeError(res, error); }
+};
+
+const confirmRemittance = async (req, res) => {
+  try {
+    const store = await storeFor(req);
+    const record = await GovernmentRemittance.findOne({ _id: req.params.id, store: store._id });
+    if (!record) throw fail('Remittance record not found.', 404);
+    if (!['for_confirmation', 'processing'].includes(record.status)) throw fail('Only a submitted remittance can be confirmed Paid.', 409);
+    if (String(record.preparedBy) === String(req.user._id)) throw fail('The person who prepared a remittance cannot independently confirm it.', 403);
+    const paymentReference = String(req.body.paymentReference || record.paymentReference || '').trim();
+    const note = String(req.body.note || '').trim();
+    if (paymentReference.length < 4 || note.length < 5) throw fail('A payment reference and confirmation note are required.');
+    record.status = 'paid'; record.paymentReference = paymentReference; record.paymentDate = req.body.paymentDate ? new Date(req.body.paymentDate) : new Date();
+    record.confirmedBy = req.user._id; record.confirmedAt = new Date(); record.history.push({ status: 'paid', actor: req.user._id, note });
+    await record.save();
+    await audit(req, 'Government Remittance Confirmed', `${record.agency} remittance ${record._id} independently confirmed Paid.`);
+    res.json({ message: 'Government remittance independently confirmed Paid.', remittance: record });
+  } catch (error) { safeError(res, error); }
+};
+
 module.exports = {
   getSettings, updateSettings, listEmployees, getCompensation, updateCompensation,
   timeIn, timeOut, myAttendance, managementAttendance, createManualAttendance,
@@ -908,5 +1099,6 @@ module.exports = {
   generatePeriod, listPeriods, periodDetails, computePeriod, addAdjustment,
   reviewPeriod, approvePeriod, payPeriod, paymentObligations, createEmployeePaymentAttempt,
   retryEmployeePaymentAttempt, updateEmployeePaymentAttempt, confirmEmployeePaymentAttempt,
-  getEmployeePaymentProof, myPayslips, myPayslip, summarizeAttendance
+  getEmployeePaymentProof, myPayslips, myPayslip, summarizeAttendance,
+  payrollReports, prepareRemittances, updateRemittance, confirmRemittance
 };

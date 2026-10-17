@@ -6,6 +6,8 @@ const leaveRequestSchema = new mongoose.Schema({
   leaveTypeKey: { type: String, required: true, trim: true, lowercase: true },
   leaveTypeName: { type: String, required: true, trim: true },
   isPaid: { type: Boolean, required: true },
+  chargeableDays: { type: Number, min: 0, default: 0 },
+  policySnapshot: { type: mongoose.Schema.Types.Mixed, default: () => ({}) },
   startDate: { type: Date, required: true, index: true },
   endDate: { type: Date, required: true, index: true },
   reason: { type: String, required: true, trim: true, maxlength: 1500 },

@@ -4,7 +4,7 @@ const adjustmentSchema = new mongoose.Schema({
   type: { type: String, required: true, trim: true, maxlength: 100 },
   amount: { type: Number, min: 0, required: true },
   reason: { type: String, required: true, trim: true, maxlength: 500 },
-  source: { type: String, enum: ['manual', 'attendance', 'leave', 'rider_earning'], default: 'manual' },
+  source: { type: String, enum: ['manual', 'attendance', 'leave', 'rider_earning', 'statutory'], default: 'manual' },
   sourceId: { type: mongoose.Schema.Types.ObjectId },
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   createdAt: { type: Date, default: Date.now }
@@ -47,6 +47,12 @@ const payslipSchema = new mongoose.Schema({
   additions: [adjustmentSchema],
   deductions: [adjustmentSchema],
   grossPay: { type: Number, min: 0, required: true },
+  taxableCompensation: { type: Number, min: 0, default: 0 },
+  statutoryDeductions: { type: mongoose.Schema.Types.Mixed, default: () => ({}) },
+  employerContributions: { type: mongoose.Schema.Types.Mixed, default: () => ({}) },
+  statutoryBreakdown: { type: mongoose.Schema.Types.Mixed, default: () => ({}) },
+  statutoryPolicySnapshot: { type: mongoose.Schema.Types.Mixed, default: () => ({}) },
+  totalDeductions: { type: Number, min: 0, default: 0 },
   netPay: { type: Number, min: 0, required: true },
   paymentStatus: { type: String, enum: ['unpaid', 'pending', 'processing', 'for_confirmation', 'failed', 'on_hold', 'recorded_paid'], default: 'unpaid', index: true },
   paymentRecord: {

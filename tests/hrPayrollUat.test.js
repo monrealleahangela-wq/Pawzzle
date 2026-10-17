@@ -259,8 +259,15 @@ test('frontend exposes compact employee and authorized management workflows', ()
   assert.match(management, /Record as Paid/);
 });
 
-test('no statutory tax or government contribution values are fabricated', () => {
+test('statutory contributions use a configurable versioned calculation service', () => {
   const management = read('client/src/pages/admin/HRManagement.js');
-  assert.match(management, /Government contributions and statutory tax calculations are not generated/);
-  assert.doesNotMatch(read('controllers/hrController.js'), /SSS|PhilHealth|Pag-IBIG/);
+  const controller = read('controllers/hrController.js');
+  const statutory = read('utils/philippinePayroll.js');
+  assert.match(management, /Every payroll stores its policy version and calculation breakdown/);
+  assert.match(controller, /calculateStatutoryPayroll/);
+  assert.match(statutory, /DEFAULT_PHILIPPINE_PAYROLL_CONFIG/);
+  assert.match(statutory, /calculateSss/);
+  assert.match(statutory, /calculatePhilHealth/);
+  assert.match(statutory, /calculatePagIbig/);
+  assert.match(statutory, /calculateWithholdingTax/);
 });

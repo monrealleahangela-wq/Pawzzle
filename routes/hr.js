@@ -38,6 +38,7 @@ router.patch('/leaves/:id/review', requirePermission('leave.approve'), hr.review
 
 router.get('/payroll', requirePermission('payroll.view', 'payroll.prepare', 'payroll.manage'), hr.listPeriods);
 router.post('/payroll', requirePermission('payroll.prepare', 'payroll.manage'), hr.generatePeriod);
+router.get('/reports/payroll', requirePermission('payroll.view', 'payroll.prepare', 'payroll.manage'), hr.payrollReports);
 router.get('/payroll/:id', requirePermission('payroll.view', 'payroll.prepare', 'payroll.manage'), hr.periodDetails);
 router.post('/payroll/:id/compute', requirePermission('payroll.prepare', 'payroll.manage'), hr.computePeriod);
 router.post('/payslips/:payslipId/adjustments', requirePermission('payroll.prepare', 'payroll.manage'), hr.addAdjustment);
@@ -50,5 +51,8 @@ router.post('/payroll/payments/:attemptId/retry', requirePermission('payroll_pay
 router.patch('/payroll/payments/:attemptId', requirePermission('payroll_payment.prepare'), hr.updateEmployeePaymentAttempt);
 router.post('/payroll/payments/:attemptId/confirm', requirePermission('payroll_payment.confirm'), hr.confirmEmployeePaymentAttempt);
 router.get('/payroll/payments/:attemptId/proof', requirePermission('payroll_payment.view', 'payroll_payment.prepare', 'payroll_payment.confirm'), hr.getEmployeePaymentProof);
+router.post('/payroll/:id/remittances', requirePermission('payroll_payment.prepare'), hr.prepareRemittances);
+router.patch('/remittances/:id', requirePermission('payroll_payment.prepare'), hr.updateRemittance);
+router.post('/remittances/:id/confirm', requirePermission('payroll_payment.confirm'), hr.confirmRemittance);
 
 module.exports = router;

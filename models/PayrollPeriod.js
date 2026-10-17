@@ -19,6 +19,9 @@ const payrollPeriodSchema = new mongoose.Schema({
     employeeCount: { type: Number, min: 0, default: 0 },
     grossPay: { type: Number, min: 0, default: 0 },
     deductions: { type: Number, min: 0, default: 0 },
+    employeeContributions: { type: Number, min: 0, default: 0 },
+    employerContributions: { type: Number, min: 0, default: 0 },
+    withholdingTax: { type: Number, min: 0, default: 0 },
     netPay: { type: Number, min: 0, default: 0 }
   },
   reviewIssues: [{

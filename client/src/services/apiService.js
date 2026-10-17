@@ -532,7 +532,11 @@ export const hrService = {
   retryPayrollPayment: (attemptId, data) => api.post(`/hr/payroll/payments/${attemptId}/retry`, data),
   updatePayrollPayment: (attemptId, data) => api.patch(`/hr/payroll/payments/${attemptId}`, data),
   confirmPayrollPayment: (attemptId, data) => api.post(`/hr/payroll/payments/${attemptId}/confirm`, data),
-  getPayrollPaymentProof: attemptId => api.get(`/hr/payroll/payments/${attemptId}/proof`, { responseType: 'blob' })
+  getPayrollPaymentProof: attemptId => api.get(`/hr/payroll/payments/${attemptId}/proof`, { responseType: 'blob' }),
+  getPayrollReports: (params) => api.get('/hr/reports/payroll', { params }),
+  prepareGovernmentRemittances: periodId => api.post(`/hr/payroll/${periodId}/remittances`),
+  updateGovernmentRemittance: (id, data) => api.patch(`/hr/remittances/${id}`, data),
+  confirmGovernmentRemittance: (id, data) => api.post(`/hr/remittances/${id}/confirm`, data)
 };
 
 // Delivery services

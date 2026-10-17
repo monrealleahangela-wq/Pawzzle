@@ -18,7 +18,8 @@ jest.mock('../../services/apiService', () => ({
     getCompensation: jest.fn(),
     updateCompensation: jest.fn(),
     getPayrollPeriods: jest.fn(),
-    getPayrollPeriod: jest.fn()
+    getPayrollPeriod: jest.fn(),
+    getPayrollReports: jest.fn()
   }
 }));
 
@@ -151,5 +152,24 @@ describe('HRManagement Rider payroll setup', () => {
 
     expect(await screen.findByRole('alert')).toHaveTextContent('includes your salary');
     expect(screen.queryByRole('button', { name: 'Record as Paid' })).not.toBeInTheDocument();
+  });
+
+  test('Finance reports separate employee deductions from employer contributions', async () => {
+    hrService.getPayrollReports.mockResolvedValue({ data: {
+      periods: [], remittances: [],
+      totals: { grossPay: 30000, employeeDeductions: 3500, employerContributions: 2800, netPay: 26500 },
+      payslips: [{
+        _id: 'slip-report', employeeSnapshot: { name: 'Rina Rider' },
+        payrollPeriod: { periodStart: '2026-09-01', periodEnd: '2026-09-30' },
+        statutoryDeductions: { sss: 750, philHealth: 750, pagIbig: 200, withholdingTax: 300 },
+        employerContributions: { total: 2800 }, netPay: 26500, paymentStatus: 'processing'
+      }]
+    } });
+
+    render(<MemoryRouter initialEntries={['/admin/hr?tab=reports']}><HRManagement /></MemoryRouter>);
+    expect(await screen.findByText('Employee deductions')).toBeInTheDocument();
+    expect(screen.getByText('Employer contributions')).toBeInTheDocument();
+    expect(screen.getByText('Government Remittances')).toBeInTheDocument();
+    expect(screen.getByText('Rina Rider')).toBeInTheDocument();
   });
 });

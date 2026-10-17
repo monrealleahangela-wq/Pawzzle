@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { cloneDefaultConfig } = require('../utils/philippinePayroll');
 
 const storeSchema = new mongoose.Schema({
   owner: {
@@ -173,15 +174,21 @@ const storeSchema = new mongoose.Schema({
         key: { type: String, required: true, trim: true, lowercase: true },
         name: { type: String, required: true, trim: true, maxlength: 100 },
         isPaid: { type: Boolean, default: false },
+        annualCredits: { type: Number, min: 0, default: null },
+        carryOverLimit: { type: Number, min: 0, default: 0 },
         active: { type: Boolean, default: true }
       }],
       default: () => [
-        { key: 'vacation', name: 'Vacation Leave', isPaid: true, active: true },
-        { key: 'sick', name: 'Sick Leave', isPaid: true, active: true },
+        { key: 'vacation', name: 'Vacation Leave', isPaid: true, annualCredits: null, carryOverLimit: 0, active: true },
+        { key: 'sick', name: 'Sick Leave', isPaid: true, annualCredits: null, carryOverLimit: 0, active: true },
         { key: 'emergency', name: 'Emergency Leave', isPaid: false, active: true },
         { key: 'unpaid', name: 'Unpaid Leave', isPaid: false, active: true },
         { key: 'other', name: 'Other', isPaid: false, active: true }
       ]
+    },
+    statutoryContributions: {
+      type: mongoose.Schema.Types.Mixed,
+      default: cloneDefaultConfig
     },
     updatedAt: Date,
     updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }

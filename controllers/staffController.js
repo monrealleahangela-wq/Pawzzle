@@ -25,6 +25,7 @@ const { getRiderCapacitySummary, capacityCanContainReservedLoad } = require('../
 const { RIDER_VEHICLE_TYPES } = require('../config/riderVehicles');
 const { calculateParcelWeight } = require('../services/parcelWeightService');
 const { currentCompensationSummary } = require('../utils/payrollCompensation');
+const { hasProtectedPayrollInput, mergeProtectedPayrollProfile } = require('../utils/staffPayrollProfile');
 const {
     SPECIALIZED_STAFF_ROLES,
     getEnabledSpecializedRoles,
@@ -61,6 +62,33 @@ const cleanLeaveSchedule = value => (Array.isArray(value) ? value : []).slice(0,
     endDate: item?.endDate,
     reason: String(item?.reason || '').trim().slice(0, 500)
 })).filter(item => item.startDate && item.endDate && new Date(item.startDate) <= new Date(item.endDate));
+const cleanEmploymentProfileInput = (profile = {}, existing = {}) => {
+    const employmentStatus = profile.employmentStatus || existing.employmentStatus || 'active';
+    if (!['active', 'probationary', 'part_time', 'contract', 'inactive', 'terminated'].includes(employmentStatus)) {
+        throw Object.assign(new Error('Select a valid employment status.'), { statusCode: 400 });
+    }
+    const result = {
+        position: String(profile.position ?? existing.position ?? '').trim().slice(0, 120),
+        department: String(profile.department ?? existing.department ?? '').trim().slice(0, 120),
+        employmentStatus,
+        dateHired: profile.dateHired || existing.dateHired || new Date(),
+        employmentEndDate: profile.employmentEndDate || existing.employmentEndDate || undefined
+    };
+    if (profile.compensation?.baseRate !== undefined && profile.compensation?.baseRate !== '') {
+        const baseRate = Number(profile.compensation.baseRate);
+        if (!Number.isFinite(baseRate) || baseRate <= 0) throw Object.assign(new Error('Monthly salary or compensation rate must be greater than zero.'), { statusCode: 400 });
+        const compensationBasis = profile.compensation.compensationBasis || 'monthly';
+        if (!['monthly', 'daily', 'hourly', 'legacy_period'].includes(compensationBasis)) throw Object.assign(new Error('Select a valid compensation basis.'), { statusCode: 400 });
+        result.compensation = {
+            compensationType: ['daily', 'hourly'].includes(compensationBasis) ? compensationBasis : 'salary',
+            compensationBasis,
+            baseRate,
+            effectiveDate: profile.compensation.effectiveDate || result.dateHired,
+            reason: String(profile.compensation.reason || 'Initial staff payroll setup').trim().slice(0, 500)
+        };
+    }
+    return result;
+};
 const cleanUnavailable = (value = {}, existing = {}, emergency = false) => ({
     active: Boolean(value.active ?? existing.active),
     ...(emergency
@@ -295,7 +323,7 @@ const createStaff = async (req, res) => {
     console.log('--- 🚀 INITIATING STAFF ONBOARDING 🚀 ---');
     try {
         const { firstName, lastName, email, username, phone, address, avatar, staffType, targetStoreId, riderProfile,
-            professionalProfile, assignedServices = [], staffStatus = 'active', temporaryPassword } = req.body;
+            professionalProfile, employmentProfile = {}, assignedServices = [], staffStatus = 'active', temporaryPassword } = req.body;
 
         // Standardize inputs
         const cleanEmail = email?.trim().toLowerCase();
@@ -372,6 +400,7 @@ const createStaff = async (req, res) => {
                 country: 'PH'
             };
         }
+        if (address && typeof address === 'object') staffAddress = cleanStaffAddress(address, staffAddress);
 
         const staff = new User({
             firstName: cleanFirstName,
@@ -393,12 +422,24 @@ const createStaff = async (req, res) => {
         });
         if (normalizedRiderProfile) staff.riderProfile = normalizedRiderProfile;
         staff.professionalProfile = normalizedProfessionalProfile;
+        const normalizedEmployment = cleanEmploymentProfileInput(employmentProfile, { employmentStatus: staffStatus === 'active' ? 'active' : 'inactive' });
         staff.employmentProfile = {
             staffId: generatedStaffId,
-            employmentStatus: staffStatus === 'active' ? 'active' : 'inactive',
-            dateHired: new Date(),
-            branchName: store.name
+            ...normalizedEmployment,
+            branchName: store.name,
+            ...(normalizedEmployment.compensation ? {
+                compensation: { ...normalizedEmployment.compensation, recordedBy: req.user._id, recordedAt: new Date() },
+                compensationHistory: [{ ...normalizedEmployment.compensation, recordedBy: req.user._id, recordedAt: new Date() }]
+            } : {})
         };
+        if (hasProtectedPayrollInput(employmentProfile)) {
+            const protectedProfile = mergeProtectedPayrollProfile({ input: employmentProfile, actorId: req.user._id });
+            staff.employmentProfile.statutoryIdentifiers = protectedProfile.statutoryIdentifiers;
+            staff.employmentProfile.payrollDestination = protectedProfile.payrollDestination;
+            staff.employmentProfile.protectedPayrollData = protectedProfile.encrypted;
+            staff.employmentProfile.payrollDataUpdatedAt = new Date();
+            staff.employmentProfile.payrollDataUpdatedBy = req.user._id;
+        }
 
         await staff.save();
         await syncAssignedServices(staff._id, targetStoreId, validatedServices.map(service => service._id));
@@ -418,6 +459,7 @@ const createStaff = async (req, res) => {
         const emailSent = emailResult.success;
         const staffObj = staff.toObject();
         delete staffObj.password;
+        if (staffObj.employmentProfile) delete staffObj.employmentProfile.protectedPayrollData;
 
         let message = emailSent 
             ? 'Staff account created and invitation sent successfully.' 
@@ -452,11 +494,11 @@ const updateStaff = async (req, res) => {
         const { id } = req.params;
         const { firstName, lastName, phone, address, avatar, staffType, isActive, riderProfile,
             professionalProfile, assignedServices, staffStatus, confirmRoleChange, confirmUpcoming,
-            targetStoreId, confirmBranchChange } = req.body;
+            targetStoreId, confirmBranchChange, employmentProfile } = req.body;
 
         const query = staffAccountFilter({ _id: id });
 
-        const staff = await User.findOne(query);
+        const staff = await User.findOne(query).select('+employmentProfile.compensation +employmentProfile.compensationHistory +employmentProfile.employmentHistory +employmentProfile.protectedPayrollData');
         if (!staff) {
             return res.status(404).json({ message: 'Staff member not found or access denied' });
         }
@@ -558,6 +600,33 @@ const updateStaff = async (req, res) => {
         // Scheduling and availability belong to the shared staff profile for
         // every operational role; credentials remain conditionally displayed.
         staff.professionalProfile = normalizedProfessional;
+        if (employmentProfile && typeof employmentProfile === 'object') {
+            const normalizedEmployment = cleanEmploymentProfileInput(employmentProfile, staff.employmentProfile || {});
+            staff.employmentProfile.position = normalizedEmployment.position;
+            staff.employmentProfile.department = normalizedEmployment.department;
+            staff.employmentProfile.employmentStatus = normalizedEmployment.employmentStatus;
+            staff.employmentProfile.dateHired = normalizedEmployment.dateHired;
+            staff.employmentProfile.employmentEndDate = normalizedEmployment.employmentEndDate;
+            if (normalizedEmployment.compensation) {
+                const current = staff.employmentProfile.compensation;
+                const changed = !current || current.compensationBasis !== normalizedEmployment.compensation.compensationBasis
+                    || Number(current.baseRate) !== Number(normalizedEmployment.compensation.baseRate)
+                    || new Date(current.effectiveDate || 0).getTime() !== new Date(normalizedEmployment.compensation.effectiveDate).getTime();
+                if (changed) {
+                    const revision = { ...normalizedEmployment.compensation, recordedBy: req.user._id, recordedAt: new Date(), reason: normalizedEmployment.compensation.reason || 'Staff profile compensation updated' };
+                    staff.employmentProfile.compensation = revision;
+                    staff.employmentProfile.compensationHistory = [...(staff.employmentProfile.compensationHistory || []), revision];
+                }
+            }
+            if (hasProtectedPayrollInput(employmentProfile)) {
+                const protectedProfile = mergeProtectedPayrollProfile({ input: employmentProfile, encrypted: staff.employmentProfile.protectedPayrollData, actorId: req.user._id });
+                staff.employmentProfile.statutoryIdentifiers = protectedProfile.statutoryIdentifiers;
+                staff.employmentProfile.payrollDestination = protectedProfile.payrollDestination;
+                staff.employmentProfile.protectedPayrollData = protectedProfile.encrypted;
+                staff.employmentProfile.payrollDataUpdatedAt = new Date();
+                staff.employmentProfile.payrollDataUpdatedBy = req.user._id;
+            }
+        }
 
         await staff.save();
         if (branchChanged) await syncAssignedServices(staff._id, originalStoreId, []);
@@ -577,6 +646,7 @@ const updateStaff = async (req, res) => {
 
         const staffObj = staff.toObject();
         delete staffObj.password;
+        if (staffObj.employmentProfile) delete staffObj.employmentProfile.protectedPayrollData;
 
         res.json({ message: 'Staff updated successfully', staff: staffObj });
     } catch (error) {

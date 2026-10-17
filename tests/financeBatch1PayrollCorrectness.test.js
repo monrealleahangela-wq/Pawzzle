@@ -145,7 +145,7 @@ test('compensation updates cannot target an employee from another Store', async 
 });
 
 test('Finance cannot adjust or review a payroll containing its own salary', async () => {
-  const originals = { store: Store.findById, slip: Payslip.findOne, period: PayrollPeriod.findOne, exists: Payslip.exists, error: console.error };
+  const originals = { transaction: mongoose.connection.transaction, store: Store.findById, slip: Payslip.findOne, period: PayrollPeriod.findOne, exists: Payslip.exists, error: console.error };
   try {
     Store.findById = async id => ({ _id: id });
     Payslip.findOne = async () => ({ _id: 'slip-a', employee: 'finance-a' });
@@ -156,12 +156,15 @@ test('Finance cannot adjust or review a payroll containing its own salary', asyn
     await addAdjustment({ params: { payslipId: 'slip-a' }, body: { amount: 100, reason: 'Self adjustment' }, user: { _id: 'finance-a', role: 'finance_staff', store: 'store-a' } }, adjustment.res);
     assert.equal(adjustment.status, 403);
     assert.match(adjustment.body.message, /own payslip/);
+    mongoose.connection.transaction = async callback => callback({ id: 'session-review' });
+    PayrollPeriod.findOne = () => ({ session: async () => ({ _id: 'period-a', status: 'computed' }) });
+    Payslip.exists = () => ({ session: async () => ({ _id: 'slip-a' }) });
     const review = responseRecorder();
     await reviewPeriod({ params: { id: 'period-a' }, body: {}, user: { _id: 'finance-a', role: 'finance_staff', store: 'store-a' } }, review.res);
     assert.equal(review.status, 403);
     assert.match(review.body.message, /includes their own salary/);
   } finally {
-    Store.findById = originals.store; Payslip.findOne = originals.slip; PayrollPeriod.findOne = originals.period; Payslip.exists = originals.exists; console.error = originals.error;
+    mongoose.connection.transaction = originals.transaction; Store.findById = originals.store; Payslip.findOne = originals.slip; PayrollPeriod.findOne = originals.period; Payslip.exists = originals.exists; console.error = originals.error;
   }
 });
 
