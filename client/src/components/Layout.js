@@ -3,7 +3,7 @@ import { Link, useLocation, Outlet, Navigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useCart } from '../contexts/CartContext';
 import { getImageUrl } from '../services/apiService';
-import { Heart, Package, Calendar, ShoppingCart, User, LogOut, Menu, X, Settings, Home as House, Activity, Users, Building, DollarSign, TrendingUp, FileText, ChevronDown, MessageSquare, ShoppingBag, Archive, Ticket, Star, Wallet, Brain, Moon, Sun, MapPin, AlertCircle, HelpCircle, History, ShieldCheck, Truck, Layers, ChevronsLeft, ChevronsRight, Store, Clock, CalendarOff, ReceiptText } from 'lucide-react';
+import { Heart, Package, Calendar, ShoppingCart, User, LogOut, LogIn, Menu, X, Settings, Home as House, Activity, Users, Building, DollarSign, TrendingUp, FileText, ChevronDown, MessageSquare, ShoppingBag, Archive, Ticket, Star, Wallet, Brain, Moon, Sun, MapPin, AlertCircle, HelpCircle, History, ShieldCheck, Truck, Layers, ChevronsLeft, ChevronsRight, Store, Clock, CalendarOff, ReceiptText } from 'lucide-react';
 import FloatingChatManager from './FloatingChatManager';
 import NotificationBell from './NotificationBell';
 import PasswordChangeModal from './auth/PasswordChangeModal';
@@ -671,7 +671,17 @@ const Layout = () => {
                 </>
               )}
               {!user && (
-                <Link to="/login" className="btn-primary">Access Portal</Link>
+                <Link
+                  to="/login"
+                  aria-label="Sign in to the Pawzzle access portal"
+                  className="group inline-flex items-center gap-2 rounded-2xl border border-primary-100 bg-white/90 p-1.5 pr-3 text-primary-900 shadow-[0_8px_24px_rgba(81,42,18,0.10)] backdrop-blur-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-primary-200 hover:bg-primary-50 hover:shadow-[0_12px_28px_rgba(81,42,18,0.16)] active:translate-y-0 dark:border-slate-700 dark:bg-slate-900 dark:text-white dark:hover:bg-slate-800 sm:gap-3 sm:pr-4"
+                >
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary-600 to-primary-900 text-white shadow-md shadow-primary-900/20 transition-transform duration-300 group-hover:rotate-[-4deg] group-hover:scale-105">
+                    <ShieldCheck className="h-[18px] w-[18px]" strokeWidth={2.25} />
+                  </span>
+                  <span className="text-[11px] font-black uppercase tracking-[0.14em] sm:text-xs">Access Portal</span>
+                  <LogIn className="h-4 w-4 text-primary-400 transition-transform duration-300 group-hover:translate-x-0.5 group-hover:text-primary-700 dark:text-primary-300" strokeWidth={2.25} />
+                </Link>
               )}
             </div>
           </header>
