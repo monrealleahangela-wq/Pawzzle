@@ -77,6 +77,9 @@ export const isUsableCheckoutQuote = (quote, requestedMethod, hasPet = false) =>
     && Number.isFinite(Number(value)) && Number(value) >= 0;
   if (!breakdown?.calculationVersion || !amount(breakdown.subtotal)
       || !amount(breakdown.finalTotal) || !amount(breakdown.deliveryFee)) return false;
+  if (Array.isArray(quote.orders) && quote.orders.length > 1) {
+    return quote.orders.every(order => isUsableCheckoutQuote(order, requestedMethod, hasPet));
+  }
   if (quote.deliveryMethod !== requestedMethod
       && !(requestedMethod === 'delivery' && hasPet && quote.deliveryMethod === 'pickup')) return false;
   if (quote.deliveryMethod === 'delivery') {

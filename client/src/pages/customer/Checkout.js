@@ -128,8 +128,14 @@ const Checkout = () => {
   ]);
   const currentPricingQuote = quotedInputKey === quoteInputKey ? pricingQuote : null;
   const hasPetInCart = checkoutItems.some(item => item.itemType === 'pet');
-  const refundPolicy = normalizeRefundPolicy(currentPricingQuote?.refundPolicy);
-  const refundAcknowledgmentRequired = requiresRefundAcknowledgment(refundPolicy);
+  const refundPolicyEntries = currentPricingQuote?.refundPolicies?.length
+    ? currentPricingQuote.refundPolicies
+    : currentPricingQuote?.refundPolicy
+      ? [{ store: currentPricingQuote.store, policy: currentPricingQuote.refundPolicy }]
+      : [];
+  const refundPolicy = normalizeRefundPolicy(refundPolicyEntries[0]?.policy);
+  const refundAcknowledgmentRequired = refundPolicyEntries
+    .some(entry => requiresRefundAcknowledgment(normalizeRefundPolicy(entry.policy)));
 
   useEffect(() => {
     if (!quoteItemsSignature) {
@@ -419,7 +425,7 @@ const Checkout = () => {
       if (response.data && response.data.order) {
         const orderId = response.data.order._id;
         const quotedTotal = Number(currentPricingQuote.pricingBreakdown.finalTotal);
-        const savedTotal = Number(response.data.order.totalAmount);
+        const savedTotal = Number(response.data.checkoutBatch?.totalAmount ?? response.data.order.totalAmount);
         if (Number.isFinite(quotedTotal) && Math.abs(quotedTotal - savedTotal) > 0.009) {
           toast.warning('The price changed during checkout. Review the updated order total before paying.');
           clearSelectedItems();
@@ -432,13 +438,17 @@ const Checkout = () => {
         if (paymentMethod === 'paymongo') {
           try {
             toast.info('Opening PayMongo payment...');
-            const paymentResponse = await paymentService.createCheckoutSession(orderId);
+            const paymentResponse = response.data.checkoutBatch?._id
+              ? await paymentService.createOrderBatchCheckoutSession(response.data.checkoutBatch._id)
+              : await paymentService.createCheckoutSession(orderId);
             if (paymentResponse.data && paymentResponse.data.checkoutUrl) {
               clearSelectedItems();
               window.location.href = paymentResponse.data.checkoutUrl;
               return;
             } else {
-              toast.success('Order created. Continue payment from the order details.');
+              toast.success(response.data.checkoutBatch
+                ? 'Store orders created. Continue the combined payment from your orders.'
+                : 'Order created. Continue payment from the order details.');
               clearSelectedItems();
               navigate(`/orders/${orderId}`);
               return;
@@ -598,6 +608,16 @@ const Checkout = () => {
         <h1 className="text-3xl font-bold text-gray-900">Checkout</h1>
         <p className="text-gray-600">Review your order and complete your purchase</p>
       </div>
+
+      {currentPricingQuote?.storeCount > 1 && (
+        <div className="flex items-start gap-3 rounded-2xl border border-primary-100 bg-primary-50 p-4 text-primary-900">
+          <Store className="mt-0.5 h-5 w-5 shrink-0" />
+          <div>
+            <p className="text-sm font-black">One payment, {currentPricingQuote.storeCount} Store orders</p>
+            <p className="text-xs text-primary-700">Each Store receives its own order and delivery fee, while you complete one secure PayMongo checkout.</p>
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Order Items */}
@@ -1208,9 +1228,18 @@ const Checkout = () => {
                   />
                 </div>}
                 <div className="space-y-0.5">
-                  <p className={`text-[10px] font-black uppercase tracking-wider ${refundAcknowledgmentRequired ? 'text-rose-900' : 'text-slate-900'}`}>{refundPolicyLabel(refundPolicy.type)} Policy</p>
-                  <p className={`text-[9px] font-medium leading-relaxed ${refundAcknowledgmentRequired ? 'text-rose-700' : 'text-slate-600'}`}>{refundPolicy.summary}</p>
-                  {refundPolicy.conditions && <p className="text-[9px] text-slate-500">Conditions: {refundPolicy.conditions}</p>}
+                  <p className={`text-[10px] font-black uppercase tracking-wider ${refundAcknowledgmentRequired ? 'text-rose-900' : 'text-slate-900'}`}>
+                    {refundPolicyEntries.length > 1 ? `${refundPolicyEntries.length} Store refund policies` : `${refundPolicyLabel(refundPolicy.type)} Policy`}
+                  </p>
+                  {refundPolicyEntries.length > 1 ? refundPolicyEntries.map(entry => {
+                    const policy = normalizeRefundPolicy(entry.policy);
+                    return <p key={entry.store?._id || entry.store?.name} className={`text-[9px] font-medium leading-relaxed ${requiresRefundAcknowledgment(policy) ? 'text-rose-700' : 'text-slate-600'}`}>
+                      <span className="font-black">{entry.store?.name || 'Store'}:</span> {refundPolicyLabel(policy.type)} — {policy.summary}
+                    </p>;
+                  }) : <>
+                    <p className={`text-[9px] font-medium leading-relaxed ${refundAcknowledgmentRequired ? 'text-rose-700' : 'text-slate-600'}`}>{refundPolicy.summary}</p>
+                    {refundPolicy.conditions && <p className="text-[9px] text-slate-500">Conditions: {refundPolicy.conditions}</p>}
+                  </>}
                   {refundAcknowledgmentRequired && <p className="text-[9px] font-bold text-rose-700">Check the box to acknowledge this policy before PayMongo payment.</p>}
                 </div>
               </div>

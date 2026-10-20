@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const Order = require('../models/Order');
+const OrderCheckoutBatch = require('../models/OrderCheckoutBatch');
 const Booking = require('../models/Booking');
 const reservationCheckInService = require('./reservationCheckInService');
 const AdoptionRequest = require('../models/AdoptionRequest');
@@ -31,6 +32,7 @@ const amountCentavos = (record, type) => {
       : Math.max(0, Number(pricing.totalPrice) - paid);
     return Math.round(due * 100);
   }
+  if (type === 'order_batch') return Math.round(Number(record.totalAmount) * 100);
   return Math.round(Number(record.totalAmount) * 100);
 };
 
@@ -375,6 +377,64 @@ const finalizeOrder = async (order, payment) => {
   return fulfillOrderOnce(order._id);
 };
 
+const finalizeOrderBatch = async (batch, payment) => {
+  if (!paymentMatches(batch, 'order_batch', payment)) {
+    await Promise.all([
+      OrderCheckoutBatch.findByIdAndUpdate(batch._id, {
+        $set: {
+          paymentStatus: 'failed',
+          status: 'payment_failed',
+          'paymentDetails.failureReason': 'PayMongo amount did not match the authoritative combined checkout total.'
+        }
+      }),
+      Order.updateMany(
+        { _id: { $in: batch.orders }, paymentStatus: { $ne: 'paid' } },
+        { $set: { paymentStatus: 'failed', status: 'payment_failed', 'paymentDetails.failureReason': 'Combined checkout amount mismatch.' } }
+      )
+    ]);
+    throw Object.assign(new Error('PayMongo amount does not match the combined checkout total.'), { statusCode: 409 });
+  }
+
+  const existingPaymentId = batch.paymentDetails?.paymentId;
+  if (existingPaymentId && existingPaymentId !== payment.id) {
+    throw Object.assign(new Error('This combined checkout is already linked to another payment.'), { statusCode: 409 });
+  }
+
+  const orders = await Order.find({ _id: { $in: batch.orders } });
+  if (orders.length !== batch.orders.length) {
+    throw Object.assign(new Error('A Store order is missing from this combined checkout.'), { statusCode: 409 });
+  }
+  const childTotal = Math.round(orders.reduce((total, order) => total + Number(order.totalAmount), 0) * 100);
+  if (childTotal !== amountCentavos(batch, 'order_batch')) {
+    throw Object.assign(new Error('The Store order totals no longer match the combined checkout.'), { statusCode: 409 });
+  }
+
+  for (const order of orders) {
+    await finalizeOrder(order, {
+      ...payment,
+      attributes: {
+        ...payment.attributes,
+        amount: amountCentavos(order, 'order')
+      }
+    });
+  }
+
+  return OrderCheckoutBatch.findOneAndUpdate({
+    _id: batch._id,
+    $or: [
+      { 'paymentDetails.paymentId': { $exists: false } },
+      { 'paymentDetails.paymentId': null },
+      { 'paymentDetails.paymentId': payment.id }
+    ]
+  }, {
+    $set: {
+      paymentStatus: 'paid',
+      status: 'paid',
+      ...getPaymentFields(payment)
+    }
+  }, { new: true });
+};
+
 const finalizeAdoption = async (adoption, payment) => {
   const alreadyRecorded = adoption.paymentDetails?.history?.some(row => row.paymentId === payment.id);
   if (alreadyRecorded) return adoption;
@@ -468,8 +528,9 @@ const finalizeAdoption = async (adoption, payment) => {
 
 const findBySession = async session => {
   const metadata = session?.attributes?.metadata || {};
-  if (metadata.record_id && ['order', 'booking', 'adoption', 'procurement'].includes(metadata.record_type)) {
+  if (metadata.record_id && ['order', 'order_batch', 'booking', 'adoption', 'procurement'].includes(metadata.record_type)) {
     const Model = metadata.record_type === 'order' ? Order
+      : metadata.record_type === 'order_batch' ? OrderCheckoutBatch
       : metadata.record_type === 'booking' ? Booking
         : metadata.record_type === 'procurement' ? PurchaseOrder : AdoptionRequest;
     const record = await Model.findById(metadata.record_id);
@@ -488,6 +549,8 @@ const findBySession = async session => {
   if (adoption) return { record: adoption, type: 'adoption' };
   const procurement = await PurchaseOrder.findOne(sessionFilter);
   if (procurement) return { record: procurement, type: 'procurement' };
+  const orderBatch = await OrderCheckoutBatch.findOne(sessionFilter);
+  if (orderBatch) return { record: orderBatch, type: 'order_batch' };
   const order = await Order.findOne({
     $or: [
       ...sessionFilter.$or,
@@ -507,6 +570,7 @@ const reconcilePaidSession = async session => {
     throw error;
   }
   if (target.type === 'order') return { type: target.type, record: await finalizeOrder(target.record, payment) };
+  if (target.type === 'order_batch') return { type: target.type, record: await finalizeOrderBatch(target.record, payment) };
   if (target.type === 'booking') return { type: target.type, record: await finalizeBooking(target.record, payment) };
   if (target.type === 'procurement') return { type: target.type, record: await finalizeProcurement(target.record, payment) };
   return { type: target.type, record: await finalizeAdoption(target.record, payment) };
@@ -516,7 +580,24 @@ const markSessionFailed = async session => {
   const target = await findBySession(session);
   if (!target) return null;
   let updated;
-  if (target.type === 'adoption') {
+  if (target.type === 'order_batch') {
+    updated = await OrderCheckoutBatch.findOneAndUpdate({
+      _id: target.record._id,
+      paymentStatus: { $nin: ['paid', 'failed'] }
+    }, {
+      $set: {
+        paymentStatus: 'failed',
+        status: 'payment_failed',
+        'paymentDetails.failureReason': 'PayMongo reported a failed payment.'
+      }
+    }, { new: true });
+    if (updated) {
+      await Order.updateMany(
+        { _id: { $in: updated.orders }, paymentStatus: { $ne: 'paid' } },
+        { $set: { paymentStatus: 'failed', status: 'payment_failed', 'paymentDetails.failureReason': 'The combined PayMongo payment failed.' } }
+      );
+    }
+  } else if (target.type === 'adoption') {
     updated = await AdoptionRequest.findOneAndUpdate({
       _id: target.record._id,
       'paymentDetails.method': 'paymongo',
@@ -564,6 +645,7 @@ module.exports = {
   reconcilePaidSession,
   markSessionFailed,
   finalizeOrder,
+  finalizeOrderBatch,
   finalizeBooking,
   finalizeAdoption,
   finalizeProcurement

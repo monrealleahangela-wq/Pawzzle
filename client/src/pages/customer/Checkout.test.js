@@ -4,7 +4,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import Checkout from './Checkout';
 import { useCart } from '../../contexts/CartContext';
-import { orderService, voucherService } from '../../services/apiService';
+import { orderService, paymentService, voucherService } from '../../services/apiService';
 
 const mockUser = {
   phone: '09990000000',
@@ -16,7 +16,7 @@ jest.mock('../../contexts/AuthContext', () => ({
 }));
 jest.mock('../../services/apiService', () => ({
   orderService: { quoteOrder: jest.fn(), createOrder: jest.fn() },
-  paymentService: { cancelPayment: jest.fn(), createCheckoutSession: jest.fn() },
+  paymentService: { cancelPayment: jest.fn(), createCheckoutSession: jest.fn(), createOrderBatchCheckoutSession: jest.fn() },
   storeService: { getStoreById: jest.fn(), getAllStores: jest.fn() },
   voucherService: { getMyVouchers: jest.fn(), verifyVoucher: jest.fn() },
   getImageUrl: value => value
@@ -109,4 +109,40 @@ test('an incomplete or manipulated quote never enables payment', async () => {
   expect(await screen.findByText("We couldn't calculate delivery right now. Please retry in a moment.")).toBeInTheDocument();
   expect(payButton()).toBeDisabled();
   expect(orderService.createOrder).not.toHaveBeenCalled();
+});
+
+test('products from different Stores create one combined PayMongo checkout', async () => {
+  const secondProduct = { ...product('product-2'), name: 'Other Supply', storeId: 'store-2', storeName: 'Other Store' };
+  const selectedItems = [product(), secondProduct];
+  useCart.mockReturnValue({ items: selectedItems, getSelectedItems: () => selectedItems, clearSelectedItems: jest.fn() });
+  const firstOrderQuote = quote(145);
+  const secondOrderQuote = {
+    ...quote(125),
+    store: { _id: 'store-2', name: 'Other Store' },
+    items: [{ itemType: 'product', itemId: 'product-2', quantity: 1, name: 'Other Supply', price: 80 }]
+  };
+  orderService.quoteOrder.mockResolvedValue({ data: {
+    deliveryMethod: 'delivery', storeCount: 2,
+    items: [...firstOrderQuote.items, ...secondOrderQuote.items],
+    orders: [firstOrderQuote, secondOrderQuote],
+    refundPolicies: [],
+    pricingBreakdown: { calculationVersion: 1, subtotal: 180, deliveryFee: 90, finalTotal: 270, taxStatus: 'mixed' }
+  } });
+  orderService.createOrder.mockResolvedValue({ data: {
+    order: { _id: 'order-1', totalAmount: 145 },
+    orders: [{ _id: 'order-1', totalAmount: 145 }, { _id: 'order-2', totalAmount: 125 }],
+    checkoutBatch: { _id: 'batch-1', totalAmount: 270 }
+  } });
+  paymentService.createOrderBatchCheckoutSession.mockResolvedValue({ data: {} });
+
+  renderCheckout();
+  fireEvent.click(screen.getByRole('button', { name: /use this address/i }));
+  await waitFor(() => expect(payButton()).toBeEnabled());
+  expect(screen.getByText('One payment, 2 Store orders')).toBeInTheDocument();
+  fireEvent.click(payButton());
+
+  await waitFor(() => expect(orderService.createOrder).toHaveBeenCalledTimes(1));
+  expect(orderService.createOrder.mock.calls[0][0].items).toHaveLength(2);
+  await waitFor(() => expect(paymentService.createOrderBatchCheckoutSession).toHaveBeenCalledWith('batch-1'));
+  expect(paymentService.createCheckoutSession).not.toHaveBeenCalled();
 });

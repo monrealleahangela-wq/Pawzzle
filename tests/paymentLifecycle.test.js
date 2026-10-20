@@ -17,6 +17,7 @@ const routePaths = router => router.stack.filter(layer => layer.route).map(layer
 
 test('uses the authoritative order and booking totals in centavos', () => {
   assert.equal(amountCentavos({ totalAmount: 1299.95 }, 'order'), 129995);
+  assert.equal(amountCentavos({ totalAmount: 1424.45 }, 'order_batch'), 142445);
   assert.equal(amountCentavos({ totalPrice: 749.5 }, 'booking'), 74950);
 });
 

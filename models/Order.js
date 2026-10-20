@@ -72,6 +72,11 @@ const orderSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Store'
   },
+  checkoutBatch: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'OrderCheckoutBatch',
+    index: true
+  },
   items: [orderItemSchema],
   parcelEstimate: {
     calculationVersion: Number,

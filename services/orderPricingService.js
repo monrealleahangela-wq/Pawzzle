@@ -172,6 +172,95 @@ const calculateOrderPricing = async ({ items, requestedDeliveryMethod, shippingA
   };
 };
 
+const resolveItemStoreId = async item => {
+  const Model = item.itemType === 'pet' ? Pet : item.itemType === 'product' ? Product : null;
+  if (!Model) throw new Error('Invalid item type.');
+  const itemQuery = Model.findById(item.itemId);
+  const itemDoc = typeof itemQuery?.select === 'function'
+    ? await itemQuery.select('store addedBy name')
+    : await itemQuery;
+  if (!itemDoc) throw new Error(`${item.itemType === 'pet' ? 'Pet' : 'Product'} "${item.itemId}" is unavailable.`);
+  if (itemDoc.store) return itemDoc.store;
+  if (itemDoc.addedBy) {
+    const fallbackStore = await Store.findOne({ owner: itemDoc.addedBy, isDeleted: { $ne: true } }).select('_id');
+    if (fallbackStore?._id) return fallbackStore._id;
+  }
+  throw new Error(`The store for "${itemDoc.name || item.itemId}" could not be resolved.`);
+};
+
+const sumPricingField = (orders, field) => roundMoney(orders.reduce(
+  (total, order) => total + Number(order.pricingBreakdown?.[field] || 0),
+  0
+));
+
+const commonPricingValue = (orders, field) => {
+  const values = [...new Set(orders.map(order => order.pricingBreakdown?.[field]).filter(value => value !== undefined))];
+  return values.length === 1 ? values[0] : 'mixed';
+};
+
+const aggregatePricingBreakdown = orders => ({
+  calculationVersion: Math.max(...orders.map(order => Number(order.pricingBreakdown?.calculationVersion || 1))),
+  subtotal: sumPricingField(orders, 'subtotal'),
+  discountAmount: sumPricingField(orders, 'discountAmount'),
+  discountedSubtotal: sumPricingField(orders, 'discountedSubtotal'),
+  deliveryFee: sumPricingField(orders, 'deliveryFee'),
+  deliveryFeeTaxable: orders.some(order => order.pricingBreakdown?.deliveryFeeTaxable),
+  taxStatus: commonPricingValue(orders, 'taxStatus'),
+  storeTaxStatus: commonPricingValue(orders, 'storeTaxStatus'),
+  taxTreatment: commonPricingValue(orders, 'taxTreatment'),
+  pricingMode: commonPricingValue(orders, 'pricingMode'),
+  vatRatePercent: commonPricingValue(orders, 'vatRatePercent'),
+  vatExclusiveAmount: sumPricingField(orders, 'vatExclusiveAmount'),
+  vatAmount: sumPricingField(orders, 'vatAmount'),
+  nonTaxableAmount: sumPricingField(orders, 'nonTaxableAmount'),
+  finalTotal: sumPricingField(orders, 'finalTotal'),
+  capturedAt: new Date()
+});
+
+// A customer checks out once, while each Store still receives an isolated order
+// with its own authoritative tax, voucher, refund, delivery, and inventory data.
+const calculateCheckoutPricing = async ({ items, requestedDeliveryMethod, shippingAddress, voucherCode }) => {
+  if (!Array.isArray(items) || items.length === 0) throw new Error('Order must contain at least one item.');
+
+  const groupedItems = new Map();
+  for (const item of items) {
+    const storeId = await resolveItemStoreId(item);
+    const key = String(storeId);
+    if (!groupedItems.has(key)) groupedItems.set(key, { storeId, items: [] });
+    groupedItems.get(key).items.push(item);
+  }
+
+  let voucherStoreId = null;
+  if (voucherCode) {
+    const voucherQuery = Voucher.findOne({
+      code: String(voucherCode).trim().toUpperCase(),
+      isActive: true
+    });
+    const voucher = typeof voucherQuery?.select === 'function'
+      ? await voucherQuery.select('store')
+      : await voucherQuery;
+    if (!voucher) throw new Error('Voucher is invalid for this checkout.');
+    voucherStoreId = String(voucher.store);
+  }
+
+  const orders = await Promise.all([...groupedItems.values()].map(group => calculateOrderPricing({
+    items: group.items,
+    requestedDeliveryMethod,
+    shippingAddress,
+    voucherCode: voucherStoreId === String(group.storeId) ? voucherCode : null
+  })));
+
+  return {
+    orders,
+    storeCount: orders.length,
+    items: orders.flatMap(order => order.processedItems),
+    deliveryMethod: orders.every(order => order.deliveryMethod === orders[0].deliveryMethod)
+      ? orders[0].deliveryMethod
+      : 'mixed',
+    pricingBreakdown: aggregatePricingBreakdown(orders)
+  };
+};
+
 const revalidatePendingOrderDelivery = async order => {
   if (order.deliveryMethod !== 'delivery') return;
   const itemQuantity = (order.items || []).reduce((total, item) => total + Number(item.quantity), 0);
@@ -190,4 +279,10 @@ const revalidatePendingOrderDelivery = async order => {
   }
 };
 
-module.exports = { calculateOrderPricing, revalidatePendingOrderDelivery, buildParcelEstimate, productWeightKg };
+module.exports = {
+  calculateOrderPricing,
+  calculateCheckoutPricing,
+  revalidatePendingOrderDelivery,
+  buildParcelEstimate,
+  productWeightKg
+};

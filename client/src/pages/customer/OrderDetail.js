@@ -121,7 +121,7 @@ const OrderDetail = () => {
     const queryParams = new URLSearchParams(location.search);
     if (queryParams.get('payment') === 'success') {
       toast.success('Payment received. Checking its status...');
-      paymentService.verifyPayment(id).then(res => {
+      paymentService.verifyPayment(queryParams.get('batch') || id).then(res => {
         if (res.data.status === 'paid') {
           toast.success('Payment successful.');
           fetchOrder(); // Reload the order fully
@@ -133,6 +133,9 @@ const OrderDetail = () => {
       });
     } else if (queryParams.get('payment') === 'cancelled') {
       toast.warning('Payment was cancelled.');
+      const paymentType = queryParams.get('type');
+      const paymentId = queryParams.get('id');
+      if (paymentType && paymentId) paymentService.cancelPayment(paymentType, paymentId).catch(() => {});
     }
   }, [location.search, id]);
 

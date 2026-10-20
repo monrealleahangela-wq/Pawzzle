@@ -1,6 +1,7 @@
 const crypto = require('crypto');
 const mongoose = require('mongoose');
 const Order = require('../models/Order');
+const OrderCheckoutBatch = require('../models/OrderCheckoutBatch');
 const Booking = require('../models/Booking');
 const Product = require('../models/Product');
 const Pet = require('../models/Pet');
@@ -15,6 +16,7 @@ const {
   reconcilePaidSession,
   markSessionFailed,
   finalizeOrder,
+  finalizeOrderBatch,
   finalizeBooking,
   finalizeAdoption,
   finalizeProcurement
@@ -175,6 +177,12 @@ const releaseTransactionPetReservations = async (type, record) => {
     await Promise.all((record.items || [])
       .filter(item => item.itemType === 'pet')
       .map(item => releasePetReservation({ petId: item.itemId, source: 'order', referenceId: record._id })));
+  }
+  if (type === 'order_batch') {
+    const orders = await Order.find({ _id: { $in: record.orders || [] } });
+    await Promise.all(orders.flatMap(order => (order.items || [])
+      .filter(item => item.itemType === 'pet')
+      .map(item => releasePetReservation({ petId: item.itemId, source: 'order', referenceId: order._id }))));
   }
 };
 
@@ -409,6 +417,142 @@ const createCheckoutSession = async (req, res) => {
       return res.status(error.statusCode || 400).json({ code: error.code, message: error.message });
     }
     res.status(error.statusCode || 500).json({ message: error.message || 'Failed to create payment session.' });
+  }
+};
+
+const createOrderBatchCheckoutSession = async (req, res) => {
+  try {
+    const batch = await OrderCheckoutBatch.findById(req.params.batchId).populate({
+      path: 'orders',
+      populate: [{ path: 'customer' }, { path: 'store' }]
+    });
+    if (!batch) return res.status(404).json({ message: 'Combined checkout not found.' });
+    if (String(batch.customer) !== String(req.user._id) && !isPlatformAdmin(req.user)) {
+      return res.status(403).json({ message: 'Access denied.' });
+    }
+    if (batch.paymentStatus === 'paid') return res.status(409).json({ message: 'This combined checkout is already paid.' });
+    if (!batch.orders?.length) return res.status(409).json({ message: 'This combined checkout has no Store orders.' });
+
+    const reserved = [];
+    try {
+      for (const order of batch.orders) {
+        if (order.status === 'cancelled') throw Object.assign(new Error('A cancelled Store order cannot be paid.'), { statusCode: 409 });
+        assertStoreTransactionEligible(order.store, { requireTax: true });
+        await revalidatePendingOrderDelivery(order);
+        if (requiresAcknowledgment(order.refundPolicySnapshot || order.store?.refundPolicy)
+            && !order.refundPolicyAcknowledgment?.acknowledged) {
+          throw Object.assign(new Error('Acknowledge every Store\'s No Refund policy before starting PayMongo.'), { statusCode: 409 });
+        }
+
+        for (const item of order.items) {
+          const current = item.itemType === 'product'
+            ? await Product.findById(item.itemId).select('price stockQuantity isActive visibility')
+            : await Pet.findById(item.itemId).select('price isAvailable status quantity reservation isDeleted name');
+          const reservedForThisOrder = item.itemType === 'pet'
+            && String(current?.reservation?.order || '') === String(order._id);
+          const petIssue = item.itemType === 'pet' && !reservedForThisOrder
+            ? getPetAvailabilityIssue(current, item.quantity)
+            : null;
+          const unavailable = !current
+            || Number(current.price) !== Number(item.price)
+            || (item.itemType === 'product' && (!current.isActive || ['draft', 'hidden'].includes(current.visibility) || current.stockQuantity < item.quantity))
+            || Boolean(petIssue);
+          if (unavailable) throw Object.assign(new Error('An item price or availability changed. Please recreate checkout.'), { statusCode: 409 });
+        }
+
+        for (const item of order.items.filter(row => row.itemType === 'pet')) {
+          const pet = await reservePetForOrder(item.itemId, order._id);
+          if (!pet) throw Object.assign(new Error(`Pet "${item.name}" is already reserved or unavailable.`), { statusCode: 409 });
+          reserved.push({ petId: item.itemId, orderId: order._id });
+        }
+
+        if (!order.invoiceSnapshot?.issuedAt) {
+          const address = order.store?.contactInfo?.address;
+          order.invoiceSnapshot = {
+            issuedAt: new Date(),
+            sellerName: order.store?.name || '',
+            sellerAddress: address ? [address.street, address.barangay, address.city, address.state, address.zipCode].filter(Boolean).join(', ') : '',
+            sellerTaxStatus: order.pricingBreakdown?.taxStatus || 'unrecorded',
+            pricingBreakdown: order.pricingBreakdown?.toObject?.() || order.pricingBreakdown || {},
+            deliveryFeeCalculation: order.deliveryFeeCalculation?.toObject?.() || order.deliveryFeeCalculation || null
+          };
+          await order.save();
+        }
+      }
+
+      const totalCentavos = batch.orders.reduce((total, order) => total + amountCentavos(order, 'order'), 0);
+      if (totalCentavos !== amountCentavos(batch, 'order_batch')) {
+        throw Object.assign(new Error('The Store order totals no longer match this combined checkout.'), { statusCode: 409 });
+      }
+
+      const firstOrder = batch.orders[0];
+      const session = await ensureCheckoutSession({
+        record: batch,
+        type: 'order_batch',
+        attributes: {
+          send_email_receipt: true,
+          show_description: true,
+          show_line_items: true,
+          description: `Combined payment for ${batch.orders.length} Store orders`,
+          line_items: batch.orders.map(order => ({
+            amount: amountCentavos(order, 'order'),
+            currency: 'PHP',
+            name: `${order.store?.name || 'Store'} — ${order.orderNumber}`,
+            quantity: 1
+          })),
+          payment_method_types: ['card', 'gcash', 'paymaya', 'dob', 'dob_ubp'],
+          success_url: `${FRONTEND_URL}/orders/${firstOrder._id}?payment=success&batch=${batch._id}`,
+          cancel_url: `${FRONTEND_URL}/orders/${firstOrder._id}?payment=cancelled&type=order_batch&id=${batch._id}`,
+          reference_number: `BATCH-${String(batch._id).slice(-12).toUpperCase()}`
+        }
+      });
+      const sessionCreatedAt = session.attributes?.created_at
+        ? new Date(session.attributes.created_at * 1000)
+        : new Date();
+      await Order.updateMany(
+        { _id: { $in: batch.orders.map(order => order._id) }, paymentStatus: { $ne: 'paid' } },
+        {
+          $set: {
+            paymentMethod: 'paymongo',
+            paymentStatus: 'pending',
+            'paymentDetails.sessionId': session.id,
+            'paymentDetails.checkoutUrl': session.attributes.checkout_url,
+            'paymentDetails.sessionStatus': session.attributes.status || 'active',
+            'paymentDetails.sessionCreatedAt': sessionCreatedAt
+          },
+          $addToSet: {
+            'paymentDetails.sessionHistory': {
+              sessionId: session.id,
+              checkoutUrl: session.attributes.checkout_url,
+              status: session.attributes.status || 'active',
+              createdAt: sessionCreatedAt
+            }
+          }
+        }
+      );
+      res.json({ checkoutUrl: session.attributes.checkout_url, batchId: batch._id });
+    } catch (error) {
+      const refreshed = await OrderCheckoutBatch.findById(batch._id);
+      if (refreshed?.paymentDetails?.sessionStatus !== 'active') {
+        await Promise.all(reserved.map(row => releasePetReservation({
+          petId: row.petId,
+          source: 'order',
+          referenceId: row.orderId
+        })));
+      }
+      throw error;
+    }
+  } catch (error) {
+    console.error('PayMongo combined order checkout error:', error.response?.data || error.message);
+    const deliveryCodes = new Set([
+      'INVALID_DELIVERY_ADDRESS', 'CUSTOMER_LOCATION_REQUIRED', 'STORE_LOCATION_REQUIRED',
+      'DELIVERY_RULE_REQUIRED', 'HOME_DELIVERY_DISABLED', 'OUTSIDE_DELIVERY_RANGE',
+      'DELIVERY_PRICING_UNAVAILABLE', 'DELIVERY_SERVICE_UNAVAILABLE', 'DELIVERY_QUOTE_CHANGED'
+    ]);
+    res.status(error.statusCode || (deliveryCodes.has(error.code) ? 400 : 500)).json({
+      code: error.code,
+      message: error.message || 'Failed to create the combined payment session.'
+    });
   }
 };
 
@@ -665,6 +809,8 @@ const handleWebhook = async (req, res) => {
 const findTargetById = async id => {
   const order = await Order.findById(id);
   if (order) return { type: 'order', record: order };
+  const orderBatch = await OrderCheckoutBatch.findById(id);
+  if (orderBatch) return { type: 'order_batch', record: orderBatch };
   const booking = await Booking.findById(id);
   if (booking) return { type: 'booking', record: booking };
   const adoption = await AdoptionRequest.findById(id);
@@ -694,6 +840,7 @@ const verifyPayment = async (req, res) => {
     if (payment) {
       let record;
       if (target.type === 'order') record = await finalizeOrder(target.record, payment);
+      else if (target.type === 'order_batch') record = await finalizeOrderBatch(target.record, payment);
       else if (target.type === 'booking') record = await finalizeBooking(target.record, payment);
       else if (target.type === 'adoption') record = await finalizeAdoption(target.record, payment);
       else record = await finalizeProcurement(target.record, payment);
@@ -736,6 +883,7 @@ const cancelPayment = async (req, res) => {
     const paidPayment = PayMongo.getPaidPayment(session);
     if (paidPayment) {
       if (target.type === 'order') await finalizeOrder(target.record, paidPayment);
+      else if (target.type === 'order_batch') await finalizeOrderBatch(target.record, paidPayment);
       else if (target.type === 'booking') await finalizeBooking(target.record, paidPayment);
       else if (target.type === 'adoption') await finalizeAdoption(target.record, paidPayment);
       else await finalizeProcurement(target.record, paidPayment);
@@ -746,6 +894,7 @@ const cancelPayment = async (req, res) => {
     const paidDuringExpiration = PayMongo.getPaidPayment(expiredSession);
     if (paidDuringExpiration) {
       if (target.type === 'order') await finalizeOrder(target.record, paidDuringExpiration);
+      else if (target.type === 'order_batch') await finalizeOrderBatch(target.record, paidDuringExpiration);
       else if (target.type === 'booking') await finalizeBooking(target.record, paidDuringExpiration);
       else if (target.type === 'adoption') await finalizeAdoption(target.record, paidDuringExpiration);
       else await finalizeProcurement(target.record, paidDuringExpiration);
@@ -774,6 +923,22 @@ const cancelPayment = async (req, res) => {
         await current.save({ session: databaseSession });
         cancelledRecord = current;
       });
+    } else if (target.type === 'order_batch') {
+      target.record.paymentDetails.sessionStatus = 'expired';
+      const historyRow = sessionHistory(target.record).find(row => row.sessionId === sessionId);
+      if (historyRow) historyRow.status = 'expired';
+      target.record.paymentStatus = 'cancelled';
+      target.record.status = 'cancelled';
+      await target.record.save();
+      await Order.updateMany(
+        { _id: { $in: target.record.orders }, paymentStatus: { $ne: 'paid' } },
+        {
+          $set: {
+            paymentStatus: 'cancelled',
+            'paymentDetails.sessionStatus': 'expired'
+          }
+        }
+      );
     } else if (target.type === 'adoption') {
       target.record.paymentDetails.sessionStatus = 'expired';
       const historyRow = sessionHistory(target.record).find(row => row.sessionId === sessionId);
@@ -803,6 +968,7 @@ const cancelPayment = async (req, res) => {
 
 module.exports = {
   createCheckoutSession,
+  createOrderBatchCheckoutSession,
   createBookingCheckoutSession,
   createAdoptionCheckoutSession,
   createProcurementCheckoutSession,

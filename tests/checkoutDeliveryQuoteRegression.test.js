@@ -5,7 +5,7 @@ const path = require('node:path');
 const Product = require('../models/Product');
 const Store = require('../models/Store');
 const DeliveryFeeRule = require('../models/DeliveryFeeRule');
-const { calculateOrderPricing, revalidatePendingOrderDelivery } = require('../services/orderPricingService');
+const { calculateOrderPricing, calculateCheckoutPricing, revalidatePendingOrderDelivery } = require('../services/orderPricingService');
 const DeliveryFeeService = require('../services/deliveryFeeService');
 const { quoteOrder } = require('../controllers/orderController');
 
@@ -127,6 +127,39 @@ test('cart spanning Stores is rejected before one Store can price the other Stor
   }, { item: [product, other] });
 });
 
+test('combined checkout prices each Store independently and aggregates one customer total', async () => {
+  const secondStore = { ...store, _id: 'store-other', owner: 'owner-other', name: 'Other Synthetic Store' };
+  const other = { ...product, _id: 'product-other-store', store: secondStore._id, name: 'Other Store Supply', price: 75 };
+  const originals = {
+    productFindById: Product.findById,
+    storeFindById: Store.findById,
+    ruleFindOne: DeliveryFeeRule.findOne,
+    ruleExists: DeliveryFeeRule.exists
+  };
+  Product.findById = async id => [product, other].find(entry => entry._id === id);
+  Store.findById = async id => [store, secondStore].find(entry => entry._id === String(id));
+  DeliveryFeeRule.findOne = () => ({ sort: async () => rule });
+  DeliveryFeeRule.exists = async () => true;
+  try {
+    const result = await calculateCheckoutPricing({ ...request, items: [
+      { itemType: 'product', itemId: product._id, quantity: 1 },
+      { itemType: 'product', itemId: other._id, quantity: 2 }
+    ] });
+    assert.equal(result.storeCount, 2);
+    assert.equal(result.orders.length, 2);
+    assert.deepEqual(result.orders.map(order => String(order.storeId)).sort(), [secondStore._id, store._id].sort());
+    assert.equal(
+      result.pricingBreakdown.finalTotal,
+      result.orders.reduce((total, order) => total + order.pricingBreakdown.finalTotal, 0)
+    );
+  } finally {
+    Product.findById = originals.productFindById;
+    Store.findById = originals.storeFindById;
+    DeliveryFeeRule.findOne = originals.ruleFindOne;
+    DeliveryFeeRule.exists = originals.ruleExists;
+  }
+});
+
 test('quote API returns safe configuration and temporary failure codes, never a raw backend exception', async () => {
   const response = () => ({
     statusCode: 200,
@@ -156,7 +189,7 @@ test('checkout creation recomputes the delivery fee and never trusts a submitted
   });
   const source = fs.readFileSync(path.join(__dirname, '../controllers/orderController.js'), 'utf8');
   const activeCreate = source.slice(source.indexOf('const createOrder = async'), source.indexOf('const quoteOrder = async'));
-  assert.match(activeCreate, /const pricing = await calculateOrderPricing\(/);
+  assert.match(activeCreate, /const checkoutPricing = await calculateCheckoutPricing\(/);
   assert.match(activeCreate, /shippingFee: breakdown\.deliveryFee/);
   assert.match(activeCreate, /totalAmount: breakdown\.finalTotal/);
   assert.doesNotMatch(activeCreate, /req\.body\.shippingFee|req\.body\.totalAmount/);

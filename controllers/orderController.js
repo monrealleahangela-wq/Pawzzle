@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 const { validationResult } = require('express-validator');
 const Order = require('../models/Order');
+const OrderCheckoutBatch = require('../models/OrderCheckoutBatch');
 const Delivery = require('../models/Delivery');
 const Pet = require('../models/Pet');
 const Product = require('../models/Product');
@@ -12,7 +13,7 @@ const Voucher = require('../models/Voucher');
 const { internalCreateDelivery } = require('./deliveryController');
 const { cancelOrderDelivery, completePickupOrder } = require('../services/deliveryAssignmentService');
 const { emitAuthorizedDeliveryEvent, revokeDeliveryRoomForUser } = require('../services/socketAuthorization');
-const { calculateOrderPricing } = require('../services/orderPricingService');
+const { calculateCheckoutPricing } = require('../services/orderPricingService');
 const { isPlatformAdmin, isStoreAdmin, isOperationalStaff, hasPermission } = require('../config/permissions');
 const { getAuthorizedStoreIds, canOperateStore, idsEqual } = require('../utils/authorizationPolicy');
 const { normalizeRefundPolicy, snapshotRefundPolicy, requiresAcknowledgment } = require('../utils/refundPolicy');
@@ -358,64 +359,117 @@ const createOrder = async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
 
-    const pricing = await calculateOrderPricing({
+    const checkoutPricing = await calculateCheckoutPricing({
       items: req.body.items,
       requestedDeliveryMethod: req.body.deliveryMethod,
       shippingAddress: req.body.shippingAddress,
       voucherCode: req.body.voucherCode
     });
-    const breakdown = pricing.pricingBreakdown;
-    const refundPolicy = normalizeRefundPolicy(pricing.store.refundPolicy);
-    const acknowledgmentRequired = requiresAcknowledgment(refundPolicy);
-    if (acknowledgmentRequired && req.body.refundPolicyAcknowledged !== true) {
-      return res.status(400).json({ message: 'Acknowledge this store\'s No Refund policy before creating the order.' });
+    const pricedOrders = checkoutPricing.orders;
+    const policies = pricedOrders.map(pricing => normalizeRefundPolicy(pricing.store.refundPolicy));
+    if (policies.some(requiresAcknowledgment) && req.body.refundPolicyAcknowledged !== true) {
+      return res.status(400).json({ message: 'Acknowledge every Store\'s No Refund policy before creating these orders.' });
     }
-    const order = await Order.create({
-      customer: req.user._id,
-      addedBy: pricing.ownerId,
-      store: pricing.storeId,
-      items: pricing.processedItems,
-      parcelEstimate: pricing.parcelEstimate,
-      totalAmount: breakdown.finalTotal,
-      voucher: pricing.voucher?._id || null,
-      discountAmount: breakdown.discountAmount,
-      shippingFee: breakdown.deliveryFee,
-      pricingBreakdown: breakdown,
-      deliveryFeeCalculation: pricing.deliveryFeeCalculation,
-      deliveryMethod: pricing.deliveryMethod,
-      shippingAddress: pricing.deliveryMethod === 'delivery' ? req.body.shippingAddress : {},
-      phoneNumber: req.body.phoneNumber,
-      paymentMethod: 'paymongo',
-      notes: req.body.notes,
-      status: 'pending_payment',
-      refundPolicySnapshot: snapshotRefundPolicy(refundPolicy),
-      refundPolicyAcknowledgment: {
-        required: acknowledgmentRequired,
-        acknowledged: acknowledgmentRequired ? true : Boolean(req.body.refundPolicyAcknowledged),
-        acknowledgedAt: req.body.refundPolicyAcknowledged ? new Date() : undefined,
-        acknowledgedBy: req.body.refundPolicyAcknowledged ? req.user._id : undefined
-      }
-    });
-    if (pricing.voucher) await Voucher.findByIdAndUpdate(pricing.voucher._id, { $inc: { usedCount: 1 } });
 
-    const populatedOrder = await Order.findById(order._id)
+    const createdOrders = [];
+    try {
+      for (let index = 0; index < pricedOrders.length; index += 1) {
+        const pricing = pricedOrders[index];
+        const breakdown = pricing.pricingBreakdown;
+        const refundPolicy = policies[index];
+        const acknowledgmentRequired = requiresAcknowledgment(refundPolicy);
+        const order = await Order.create({
+          customer: req.user._id,
+          addedBy: pricing.ownerId,
+          store: pricing.storeId,
+          items: pricing.processedItems,
+          parcelEstimate: pricing.parcelEstimate,
+          totalAmount: breakdown.finalTotal,
+          voucher: pricing.voucher?._id || null,
+          discountAmount: breakdown.discountAmount,
+          shippingFee: breakdown.deliveryFee,
+          pricingBreakdown: breakdown,
+          deliveryFeeCalculation: pricing.deliveryFeeCalculation,
+          deliveryMethod: pricing.deliveryMethod,
+          shippingAddress: pricing.deliveryMethod === 'delivery' ? req.body.shippingAddress : {},
+          phoneNumber: req.body.phoneNumber,
+          paymentMethod: 'paymongo',
+          notes: req.body.notes,
+          status: 'pending_payment',
+          refundPolicySnapshot: snapshotRefundPolicy(refundPolicy),
+          refundPolicyAcknowledgment: {
+            required: acknowledgmentRequired,
+            acknowledged: acknowledgmentRequired ? true : Boolean(req.body.refundPolicyAcknowledged),
+            acknowledgedAt: req.body.refundPolicyAcknowledged ? new Date() : undefined,
+            acknowledgedBy: req.body.refundPolicyAcknowledged ? req.user._id : undefined
+          }
+        });
+        createdOrders.push(order);
+      }
+    } catch (creationError) {
+      if (createdOrders.length) await Order.deleteMany({ _id: { $in: createdOrders.map(order => order._id) } });
+      throw creationError;
+    }
+
+    let checkoutBatch = null;
+    if (createdOrders.length > 1) {
+      try {
+        checkoutBatch = await OrderCheckoutBatch.create({
+          customer: req.user._id,
+          orders: createdOrders.map(order => order._id),
+          totalAmount: checkoutPricing.pricingBreakdown.finalTotal
+        });
+        await Order.updateMany(
+          { _id: { $in: createdOrders.map(order => order._id) } },
+          { $set: { checkoutBatch: checkoutBatch._id } }
+        );
+      } catch (batchError) {
+        if (checkoutBatch?._id) await OrderCheckoutBatch.findByIdAndDelete(checkoutBatch._id);
+        await Order.deleteMany({ _id: { $in: createdOrders.map(order => order._id) } });
+        throw batchError;
+      }
+    }
+
+    await Promise.all(pricedOrders
+      .filter(pricing => pricing.voucher)
+      .map(pricing => Voucher.findByIdAndUpdate(pricing.voucher._id, { $inc: { usedCount: 1 } })));
+
+    const populatedOrders = await Order.find({ _id: { $in: createdOrders.map(order => order._id) } })
       .populate('customer', 'username firstName lastName email')
       .populate('store');
-    res.status(201).json({ message: 'Order created successfully', order: populatedOrder });
+    const byId = new Map(populatedOrders.map(order => [String(order._id), order]));
+    const orderedResults = createdOrders.map(order => byId.get(String(order._id))).filter(Boolean);
+    res.status(201).json({
+      message: createdOrders.length > 1
+        ? `${createdOrders.length} Store orders created successfully`
+        : 'Order created successfully',
+      order: orderedResults[0],
+      orders: orderedResults,
+      ...(checkoutBatch ? {
+        checkoutBatch: {
+          _id: checkoutBatch._id,
+          totalAmount: checkoutBatch.totalAmount,
+          orderIds: checkoutBatch.orders
+        }
+      } : {})
+    });
 
     const io = req.app.get('socketio');
-    if (io) {
-      io.to(`store_${pricing.storeId}`).emit('newOrder', populatedOrder);
-      io.to('admin_global').emit('newOrder', populatedOrder);
-    }
-    await notifyStoreStaff(pricing.storeId, 'order_staff', {
-      sender: req.user._id,
-      type: 'new_order',
-      title: 'New Order Received',
-      message: `You have received a new order for ${pricing.processedItems.length} item(s).`,
-      relatedId: order._id,
-      relatedModel: 'Order'
-    });
+    await Promise.allSettled(pricedOrders.map(async (pricing, index) => {
+      const populatedOrder = orderedResults[index];
+      if (io) {
+        io.to(`store_${pricing.storeId}`).emit('newOrder', populatedOrder);
+        io.to('admin_global').emit('newOrder', populatedOrder);
+      }
+      await notifyStoreStaff(pricing.storeId, 'order_staff', {
+        sender: req.user._id,
+        type: 'new_order',
+        title: 'New Order Received',
+        message: `You have received a new order for ${pricing.processedItems.length} item(s).`,
+        relatedId: populatedOrder._id,
+        relatedModel: 'Order'
+      });
+    }));
   } catch (error) {
     console.error('Create order pricing error:', error);
     if (error.name === 'ValidationError') {
@@ -451,19 +505,31 @@ const createOrder = async (req, res) => {
 
 const quoteOrder = async (req, res) => {
   try {
-    const pricing = await calculateOrderPricing({
+    const checkoutPricing = await calculateCheckoutPricing({
       items: req.body.items,
       requestedDeliveryMethod: req.body.deliveryMethod,
       shippingAddress: req.body.shippingAddress,
       voucherCode: req.body.voucherCode
     });
-    res.json({
+    const orders = checkoutPricing.orders.map(pricing => ({
       items: pricing.processedItems,
       deliveryMethod: pricing.deliveryMethod,
       pricingBreakdown: pricing.pricingBreakdown,
       deliveryFeeCalculation: pricing.deliveryFeeCalculation,
       store: { _id: pricing.store._id, name: pricing.store.name },
       refundPolicy: normalizeRefundPolicy(pricing.store.refundPolicy)
+    }));
+    const refundPolicies = orders.map(order => ({ store: order.store, policy: order.refundPolicy }));
+    res.json({
+      items: checkoutPricing.items,
+      deliveryMethod: checkoutPricing.deliveryMethod,
+      pricingBreakdown: checkoutPricing.pricingBreakdown,
+      deliveryFeeCalculation: orders.length === 1 ? orders[0].deliveryFeeCalculation : null,
+      store: orders.length === 1 ? orders[0].store : null,
+      refundPolicy: orders.length === 1 ? orders[0].refundPolicy : null,
+      refundPolicies,
+      storeCount: orders.length,
+      orders
     });
   } catch (error) {
     const safeCodes = new Set([
