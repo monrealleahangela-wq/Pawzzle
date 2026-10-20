@@ -536,15 +536,18 @@ const AttendanceReviewCell = ({ row, canReview, onLocationReview }) => {
       {actionable.map((review) => (
         <div
           key={review._id || review.punchType}
-          className="rounded-lg bg-amber-50 p-2 text-amber-900"
+          className="rounded-xl bg-amber-50 p-3 text-amber-900 dark:bg-amber-950/30 dark:text-amber-200"
         >
-          <p>
+          <p className="font-medium">
             {review.punchType.replace("_", " ")}: {review.employeeReason}
           </p>
-          <LocationEvidence row={row} punchType={review.punchType} />
-          {review.reviewerNote && (
-            <p className="mt-1">Last decision: {review.reviewerNote}</p>
-          )}
+          <details className="mt-2 rounded-lg bg-white/70 px-2.5 py-2 dark:bg-slate-900/50">
+            <summary className="cursor-pointer font-bold">View GPS evidence</summary>
+            <LocationEvidence row={row} punchType={review.punchType} />
+            {review.reviewerNote && (
+              <p className="mt-2">Last decision: {review.reviewerNote}</p>
+            )}
+          </details>
           {canReview && (
             <div className="mt-2 flex gap-1">
               <Button
@@ -571,11 +574,14 @@ const AttendanceReviewCell = ({ row, canReview, onLocationReview }) => {
         </div>
       ))}
       {row.locationFlagged && !reviews.length && canReview && (
-        <div className="rounded-lg bg-amber-50 p-2 text-amber-900">
-          <LocationEvidence
-            row={row}
-            punchType={row.timeOut?.at ? "time_out" : "time_in"}
-          />
+        <div className="rounded-xl bg-amber-50 p-3 text-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
+          <details className="rounded-lg bg-white/70 px-2.5 py-2 dark:bg-slate-900/50">
+            <summary className="cursor-pointer font-bold">View GPS evidence</summary>
+            <LocationEvidence
+              row={row}
+              punchType={row.timeOut?.at ? "time_out" : "time_in"}
+            />
+          </details>
           <div className="mt-2 flex gap-1">
             <Button
               onClick={() =>
@@ -604,6 +610,87 @@ const AttendanceReviewCell = ({ row, canReview, onLocationReview }) => {
         </div>
       )}
     </div>
+  );
+};
+
+export const LocationExceptionReviewPanel = ({
+  records = [],
+  selectedDate,
+  canReview,
+  onLocationReview,
+}) => {
+  const exceptionRows = records.filter(
+    (row) => row.locationFlagged || row.locationReviews?.length,
+  );
+  if (!exceptionRows.length) return null;
+
+  const isActionable = (row) => {
+    const reviews = row.locationReviews || [];
+    return (
+      reviews.some((review) => ["pending", "rejected"].includes(review.status)) ||
+      (row.locationFlagged && !reviews.length)
+    );
+  };
+  const actionableRows = exceptionRows.filter(isActionable);
+  const reviewedRows = exceptionRows.filter((row) => !isActionable(row));
+  const selectedLabel = calendarDateLabel(parseWorkDate(selectedDate), true);
+
+  return (
+    <section className="mb-4 overflow-hidden rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-100 px-4 py-3 dark:border-slate-800">
+        <div>
+          <h2 className="font-bold text-slate-950 dark:text-white">Location exception review</h2>
+          <p className="text-xs text-slate-500">GPS exceptions for {selectedLabel}.</p>
+        </div>
+        <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${actionableRows.length ? "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300" : "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300"}`}>
+          {actionableRows.length} pending
+        </span>
+      </div>
+
+      {!!actionableRows.length && (
+        <div className="divide-y divide-slate-100 dark:divide-slate-800">
+          {actionableRows.map((row) => (
+            <article key={`review-${row._id}`} className="grid gap-2 px-4 py-3 sm:grid-cols-[minmax(0,0.45fr)_minmax(16rem,1fr)] sm:items-start">
+              <div>
+                <p className="text-sm font-bold text-slate-900 dark:text-white">{row.employee?.firstName} {row.employee?.lastName}</p>
+                <p className="text-[11px] text-slate-500">{row.workDate}</p>
+              </div>
+              <AttendanceReviewCell row={row} canReview={canReview} onLocationReview={onLocationReview} />
+            </article>
+          ))}
+        </div>
+      )}
+
+      {!actionableRows.length && <p className="px-4 py-3 text-sm text-slate-500">No location exceptions are waiting for review.</p>}
+
+      {!!reviewedRows.length && (
+        <details className="border-t border-slate-100 dark:border-slate-800">
+          <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-3 text-sm font-bold text-slate-700 dark:text-slate-200">
+            <span>Reviewed location history</span>
+            <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs text-slate-500 dark:bg-slate-800 dark:text-slate-300">{reviewedRows.length}</span>
+          </summary>
+          <div className="max-h-72 divide-y divide-slate-100 overflow-y-auto border-t border-slate-100 dark:divide-slate-800 dark:border-slate-800">
+            {reviewedRows.map((row) => {
+              const reviews = row.locationReviews || [];
+              const latest = reviews[reviews.length - 1];
+              const punchType = latest?.punchType || (row.timeOut?.at ? "time_out" : "time_in");
+              return (
+                <details key={`reviewed-location-${row._id}`} className="px-4 py-3">
+                  <summary className="flex cursor-pointer list-none items-center justify-between gap-3">
+                    <span className="min-w-0 truncate text-sm font-bold">{row.employee?.firstName} {row.employee?.lastName}</span>
+                    <span className={`rounded-full px-2.5 py-1 text-[11px] font-bold capitalize ${badge(latest?.status || "approved")}`}>Location {latest?.status || "approved"}</span>
+                  </summary>
+                  <div className="mt-2 rounded-xl bg-slate-50 p-3 text-xs dark:bg-slate-800/60">
+                    <LocationEvidence row={row} punchType={punchType} />
+                    {latest?.reviewerNote && <p className="mt-2 text-slate-600 dark:text-slate-300">Review note: {latest.reviewerNote}</p>}
+                  </div>
+                </details>
+              );
+            })}
+          </div>
+        </details>
+      )}
+    </section>
   );
 };
 
@@ -1422,43 +1509,14 @@ const HRManagement = () => {
           onChanged={loadTab}
         />
       )}
-      {!loading &&
-        tab === "attendance" &&
-        attendance.some(
-          (row) => row.locationFlagged || row.locationReviews?.length,
-        ) && (
-          <section className="mb-4 space-y-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-900 dark:bg-amber-950/20">
-            <div>
-              <h2 className="font-bold text-amber-950 dark:text-amber-100">
-                Location exception review
-              </h2>
-              <p className="text-xs text-amber-800 dark:text-amber-200">
-                Employee reasons and captured GPS evidence remain attached to
-                the attendance record.
-              </p>
-            </div>
-            {attendance
-              .filter(
-                (row) => row.locationFlagged || row.locationReviews?.length,
-              )
-              .map((row) => (
-                <article
-                  key={`review-${row._id}`}
-                  className="rounded-xl bg-white p-3 dark:bg-slate-900"
-                >
-                  <p className="mb-2 text-xs font-bold">
-                    {row.employee?.firstName} {row.employee?.lastName} ·{" "}
-                    {row.workDate}
-                  </p>
-                  <AttendanceReviewCell
-                    row={row}
-                    canReview={canReviewAttendance}
-                    onLocationReview={reviewLocation}
-                  />
-                </article>
-              ))}
-          </section>
-        )}
+      {!loading && tab === "attendance" && (
+        <LocationExceptionReviewPanel
+          records={attendanceForSelectedDate}
+          selectedDate={selectedAttendanceDate}
+          canReview={canReviewAttendance}
+          onLocationReview={reviewLocation}
+        />
+      )}
 
       {!loading && tab === "attendance" && (
         <section

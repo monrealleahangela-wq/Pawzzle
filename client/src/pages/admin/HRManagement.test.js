@@ -2,7 +2,7 @@ import React from 'react';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { MemoryRouter } from 'react-router-dom';
-import HRManagement, { ManagementAttendanceCalendar } from './HRManagement';
+import HRManagement, { LocationExceptionReviewPanel, ManagementAttendanceCalendar } from './HRManagement';
 import { hrService } from '../../services/apiService';
 
 let mockUser = { _id: 'owner-a', role: 'store_owner' };
@@ -98,6 +98,35 @@ describe('ManagementAttendanceCalendar', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Select October 18, 2026, 0 attendance records' }));
     const emptyDetails = screen.getByRole('region', { name: 'Attendance for Sunday, October 18, 2026' });
     expect(within(emptyDetails).getByText('No attendance entries')).toBeInTheDocument();
+  });
+});
+
+describe('LocationExceptionReviewPanel', () => {
+  test('shows selected-date pending exceptions and collapses reviewed history', () => {
+    const onLocationReview = jest.fn();
+    const records = [
+      {
+        _id: 'pending-location', workDate: '2026-10-20', locationFlagged: true,
+        employee: { firstName: 'Rina', lastName: 'Rider' },
+        timeIn: { at: '2026-10-20T08:00:00+08:00', distanceMeters: 1250, accuracyMeters: 12, coordinates: { lat: 14.3, lng: 120.9 } },
+        locationReviews: [{ _id: 'review-pending', punchType: 'time_in', status: 'pending', employeeReason: 'Delivery started off site.' }]
+      },
+      {
+        _id: 'approved-location', workDate: '2026-10-20', locationFlagged: false,
+        employee: { firstName: 'Dex', lastName: 'Dispatcher' },
+        timeIn: { at: '2026-10-20T08:00:00+08:00', distanceMeters: 5, accuracyMeters: 8, coordinates: { lat: 14.3, lng: 120.9 } },
+        locationReviews: [{ _id: 'review-approved', punchType: 'time_in', status: 'approved', reviewerNote: 'Verified delivery assignment.' }]
+      }
+    ];
+
+    render(<LocationExceptionReviewPanel records={records} selectedDate="2026-10-20" canReview onLocationReview={onLocationReview} />);
+
+    expect(screen.getByText('1 pending')).toBeInTheDocument();
+    expect(screen.getByText('Rina Rider')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Approve' })).toBeInTheDocument();
+    const history = screen.getByText('Reviewed location history').closest('details');
+    expect(history).not.toHaveAttribute('open');
+    expect(within(history).getByText('1')).toBeInTheDocument();
   });
 });
 

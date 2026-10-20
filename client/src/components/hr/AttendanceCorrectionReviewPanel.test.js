@@ -51,3 +51,19 @@ test('empty state is clear', () => {
   render(<AttendanceCorrectionReviewPanel requests={[]} canReview />);
   expect(screen.getByText('No attendance correction requests.')).toBeInTheDocument();
 });
+
+test('reviewed corrections are collapsed into bounded history', () => {
+  const reviewedRequest = {
+    ...request,
+    _id: 'request-reviewed',
+    status: 'approved',
+    reviewedAt: '2026-10-17T01:00:00Z',
+    reviewedBy: { firstName: 'Mara', lastName: 'Manager' }
+  };
+  render(<AttendanceCorrectionReviewPanel requests={[reviewedRequest]} canReview />);
+
+  expect(screen.getByText('No corrections are waiting for approval.')).toBeInTheDocument();
+  const history = screen.getByText('Reviewed history').closest('details');
+  expect(history).not.toHaveAttribute('open');
+  expect(screen.queryByRole('button', { name: 'Approve' })).not.toBeInTheDocument();
+});
