@@ -14,10 +14,21 @@ import { hasUiPermission, hasUiActionPermission, isCareProfessional, isProfessio
 import { getStaffWorkspaceConfig } from '../utils/staffWorkspace';
 import '../styles/CustomerMarketplace.css';
 
-const navigationPathname = (path = '') => path.split(/[?#]/)[0];
+const navigationLocation = (path = '') => {
+  const [withoutHash] = String(path).split('#');
+  const [pathname, search = ''] = withoutHash.split('?');
+  return { pathname, searchParams: new URLSearchParams(search) };
+};
 const isNavigationPathActive = (currentPath, targetPath) => {
-  const target = navigationPathname(targetPath);
-  return currentPath === target || currentPath.startsWith(`${target}/`);
+  const current = navigationLocation(currentPath);
+  const target = navigationLocation(targetPath);
+  const pathnameMatches = current.pathname === target.pathname
+    || current.pathname.startsWith(`${target.pathname}/`);
+  if (!pathnameMatches) return false;
+
+  const targetQuery = [...target.searchParams.entries()];
+  return targetQuery.length === 0
+    || targetQuery.every(([key, value]) => current.searchParams.get(key) === value);
 };
 
 // ═══════════════════════════════════════════════════════════════
@@ -473,7 +484,7 @@ const Layout = () => {
   }, [user]);
 
   useEffect(() => {
-    const currentPath = location.pathname;
+    const currentPath = `${location.pathname}${location.search}`;
     menuItems.forEach(item => {
       if (item.children) {
         const hasActive = item.children.some(c => isNavigationPathActive(currentPath, c.path));
@@ -487,9 +498,10 @@ const Layout = () => {
         }
       }
     });
-  }, [location.pathname, menuItems]);
+  }, [location.pathname, location.search, menuItems]);
 
-  const isActivePath = (path) => isNavigationPathActive(location.pathname, path);
+  const currentNavigationPath = `${location.pathname}${location.search}`;
+  const isActivePath = (path) => isNavigationPathActive(currentNavigationPath, path);
   const isGroupActive = (group) => group.children?.some(c => isActivePath(c.path));
   const isLandingPage = location.pathname === '/' && !isAuthenticated;
   const isCustomerUI = user?.role === 'customer';
@@ -546,7 +558,7 @@ const Layout = () => {
             isActive={isGroupActive(item)}
             collapsed={collapsed}
             onNavigate={onNav}
-            currentPath={location.pathname}
+            currentPath={currentNavigationPath}
           />
         ) : (
           <NavLink
@@ -738,4 +750,4 @@ const Layout = () => {
 };
 
 export default Layout;
-export { getStaffMenu };
+export { getStaffMenu, isNavigationPathActive };

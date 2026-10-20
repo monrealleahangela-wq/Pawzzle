@@ -1,4 +1,4 @@
-import { getStaffMenu } from './Layout';
+import { getStaffMenu, isNavigationPathActive } from './Layout';
 
 const permissionMap = permissions => Object.fromEntries(permissions.map(permission => [permission, true]));
 const labels = menu => menu.flatMap(item => [item.label, ...(item.children || []).map(child => child.label)]);
@@ -49,5 +49,24 @@ describe('role-specific staff navigation', () => {
     }));
     expect(menu).toContain('Orders');
     for (const label of ['Pets', 'Products', 'Services', 'Finance Records', 'Payroll']) expect(menu).not.toContain(label);
+  });
+});
+
+describe('sidebar route selection', () => {
+  test('only the matching Staff & Payroll tab is active', () => {
+    const tabs = ['attendance', 'leave', 'payroll', 'settings'];
+
+    for (const selected of tabs) {
+      const activeTabs = tabs.filter(tab => isNavigationPathActive(
+        `/admin/hr?tab=${selected}`,
+        `/admin/hr?tab=${tab}`
+      ));
+      expect(activeTabs).toEqual([selected]);
+    }
+  });
+
+  test('links without tab parameters remain active on their subpages', () => {
+    expect(isNavigationPathActive('/products/product-1', '/products')).toBe(true);
+    expect(isNavigationPathActive('/orders?status=pending', '/orders')).toBe(true);
   });
 });
