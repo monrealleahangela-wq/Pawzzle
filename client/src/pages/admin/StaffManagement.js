@@ -404,6 +404,7 @@ export default function StaffManagement() {
       return "Select a role and assigned store.";
     if (
       wizard.step === 2 &&
+      !wizard.editing &&
       (!form.employmentProfile.position.trim() ||
         !form.employmentProfile.department.trim())
     )
@@ -463,6 +464,10 @@ export default function StaffManagement() {
       const payload = { ...wizard.form, avatar };
       delete payload.avatarFile;
       if (wizard.editing) {
+        const employmentProfile = { ...payload.employmentProfile };
+        delete employmentProfile.position;
+        delete employmentProfile.department;
+        payload.employmentProfile = employmentProfile;
         delete payload.email;
         delete payload.username;
         delete payload.temporaryPassword;
@@ -1499,12 +1504,16 @@ function StaffWizard({
                     }
                   />
                 </Field>
-                <Field label="Position">
-                  <input required className={input} value={form.employmentProfile.position} onChange={(event) => setEmployment({ position: event.target.value })} />
-                </Field>
-                <Field label="Department">
-                  <input required className={input} value={form.employmentProfile.department} onChange={(event) => setEmployment({ department: event.target.value })} />
-                </Field>
+                {!editing && (
+                  <>
+                    <Field label="Position">
+                      <input required className={input} value={form.employmentProfile.position} onChange={(event) => setEmployment({ position: event.target.value })} />
+                    </Field>
+                    <Field label="Department">
+                      <input required className={input} value={form.employmentProfile.department} onChange={(event) => setEmployment({ department: event.target.value })} />
+                    </Field>
+                  </>
+                )}
                 <Field label="Employment Status">
                   <select className={input} value={form.employmentProfile.employmentStatus} onChange={(event) => setEmployment({ employmentStatus: event.target.value })}>
                     {['active','probationary','part_time','contract','inactive','terminated'].map((value) => <option key={value} value={value}>{roleLabel(value)}</option>)}
