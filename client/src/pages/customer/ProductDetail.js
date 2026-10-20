@@ -9,6 +9,7 @@ import LoginModal from '../../components/LoginModal';
 import ReviewSection from '../../components/ReviewSection';
 import { socialService } from '../../services/apiService';
 import { formatPeso } from '../../utils/paymentSummary';
+import productSuitabilityLabel from '../../utils/productSuitability';
 
 const ProductDetail = () => {
   const { id } = useParams();
@@ -213,7 +214,7 @@ const ProductDetail = () => {
               { label: 'Category', value: product.category },
               { label: 'Brand', value: product.brand || 'Premium' },
               product.weight ? { label: 'Package weight', value: `${product.weight} ${product.weightUnit || 'kg'}` } : null,
-              { label: 'Good for', value: product.suitableFor?.[0] || 'All pets' }
+              { label: 'Good for', value: productSuitabilityLabel(product) }
             ].filter(Boolean).map((stat, i) => (
               <div key={i} className="rounded-2xl border border-slate-100 bg-slate-50 px-3 py-2.5">
                 <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-0.5">{stat.label}</p>
