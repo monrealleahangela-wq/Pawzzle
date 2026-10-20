@@ -50,6 +50,7 @@ beforeEach(() => {
   mockRefreshUserRole.mockResolvedValue();
   storeService.getMyStore.mockReset();
   storeService.updateStore.mockReset();
+  storeService.submitVerification.mockReset();
   storeService.getMyStore.mockResolvedValue({ data: { store } });
   storeService.updateStore.mockResolvedValue({ data: { store } });
 });
@@ -88,4 +89,53 @@ test('Business Hours keeps every day and saves labelled non-overlapping time con
     })
   ));
   await waitFor(() => expect(saveButton).not.toBeDisabled());
+});
+
+test('approved verification is read-only while payout details remain editable', async () => {
+  const verifiedStore = {
+    ...store,
+    verificationStatus: 'verified',
+    verification: {},
+    payoutAccount: { method: 'gcash', number: '' }
+  };
+  storeService.getMyStore.mockResolvedValue({ data: { store: verifiedStore } });
+  storeService.updateStore.mockResolvedValue({ data: { store: verifiedStore } });
+
+  render(<StoreManagement />);
+
+  fireEvent.click(await screen.findByRole('button', { name: 'Trust & Verification' }));
+
+  expect(screen.getByRole('status')).toHaveTextContent('Identity verification approved');
+  expect(screen.getAllByText('Approved by Super Admin')).toHaveLength(2);
+  expect(screen.queryByLabelText('Upload government ID')).not.toBeInTheDocument();
+  expect(screen.queryByLabelText('Upload identity selfie')).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'Submit Verification Bundle' })).not.toBeInTheDocument();
+
+  const payoutDetails = screen.getByPlaceholderText('Enter Account Details...');
+  fireEvent.change(payoutDetails, { target: { value: '09171234567 - Pawzzle Care' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Save Changes' }));
+
+  await waitFor(() => expect(storeService.updateStore).toHaveBeenCalledWith(
+    'store-1',
+    expect.objectContaining({
+      verificationStatus: 'verified',
+      payoutAccount: expect.objectContaining({ number: '09171234567 - Pawzzle Care' })
+    })
+  ));
+  expect(storeService.submitVerification).not.toHaveBeenCalled();
+});
+
+test('pending verification still offers identity uploads and submission', async () => {
+  storeService.getMyStore.mockResolvedValue({
+    data: { store: { ...store, verificationStatus: 'pending', verification: {} } }
+  });
+
+  render(<StoreManagement />);
+
+  fireEvent.click(await screen.findByRole('button', { name: 'Trust & Verification' }));
+
+  expect(screen.getByLabelText('Upload government ID')).toBeInTheDocument();
+  expect(screen.getByLabelText('Upload identity selfie')).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Submit Verification Bundle' })).toBeInTheDocument();
+  expect(screen.queryByRole('status')).not.toBeInTheDocument();
 });

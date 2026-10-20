@@ -447,6 +447,11 @@ const submitVerification = async (req, res) => {
 
     const store = await Store.findOne({ owner: req.user.id });
     if (!store) return res.status(404).json({ message: 'Store not found' });
+    if (store.verificationStatus === 'verified') {
+      return res.status(409).json({
+        message: 'This store is already verified. Contact a Super Admin before replacing identity documents.'
+      });
+    }
 
     store.verification = {
       idImage: idImage || store.verification.idImage,

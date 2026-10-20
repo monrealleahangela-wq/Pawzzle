@@ -232,6 +232,8 @@ const StoreManagement = () => {
     );
   }
 
+  const isStoreVerified = store.verificationStatus === 'verified';
+
   return (
     <div className="min-h-screen bg-[#F8FAFC] pb-20">
       <div className="relative h-48 w-full overflow-hidden">
@@ -430,50 +432,78 @@ const StoreManagement = () => {
                   <div className="bg-slate-900 border border-white/5 rounded-[3rem] p-10 text-white relative overflow-hidden">
                     <Shield className="absolute top-10 right-10 w-32 h-32 opacity-10 pointer-events-none" />
                     <h4 className="text-[12px] font-black text-indigo-400 uppercase tracking-[0.4em] mb-8">Identity Audit</h4>
+                    {isStoreVerified && (
+                      <div role="status" className="relative mb-8 flex items-start gap-4 rounded-2xl border border-emerald-400/20 bg-emerald-400/10 p-5">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-400 text-slate-950">
+                          <Shield className="h-5 w-5" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-black uppercase tracking-wider text-emerald-300">Identity verification approved</p>
+                          <p className="mt-1 text-xs font-medium leading-relaxed text-white/60">No further identity documents are required. Contact a Super Admin if they need to be replaced.</p>
+                        </div>
+                      </div>
+                    )}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                        <div className="space-y-4">
                           <label className="text-[10px] font-black text-white/30 uppercase tracking-widest px-2 transition-colors">Valid Govt ID Photo</label>
-                          <div className="relative group cursor-pointer border-2 border-dashed border-white/10 rounded-2xl p-4 hover:border-indigo-500 transition-all flex flex-col items-center justify-center h-48 bg-white/5">
+                          <div className={`relative group border-2 border-dashed rounded-2xl p-4 transition-all flex flex-col items-center justify-center h-48 bg-white/5 ${isStoreVerified ? 'cursor-default border-emerald-400/20' : 'cursor-pointer border-white/10 hover:border-indigo-500'}`}>
                             {store.verification?.idImage ? (
-                               <img src={getImageUrl(store.verification.idImage)} alt="ID" className="w-full h-full object-contain rounded-xl" />
+                               <img src={getImageUrl(store.verification.idImage)} alt="Approved government ID" className="w-full h-full object-contain rounded-xl" />
+                            ) : isStoreVerified ? (
+                               <>
+                                 <Shield className="mb-2 h-8 w-8 text-emerald-400" />
+                                 <span className="text-[9px] font-black uppercase tracking-widest text-emerald-300">Approved by Super Admin</span>
+                               </>
                             ) : (
                                <>
                                  <Plus className="h-8 w-8 text-white/20 group-hover:text-indigo-500 transition-all mb-2" />
                                  <span className="text-[9px] font-black uppercase tracking-widest text-white/20">Upload Govt ID</span>
                                </>
                             )}
-                            <input type="file" className="absolute inset-0 opacity-0 cursor-pointer" onChange={async (e) => {
-                               const formData = new FormData();
-                               formData.append('image', e.target.files[0]);
-                               const res = await uploadService.uploadImage(formData);
-                               setStore(p => ({ ...p, verification: { ...p.verification, idImage: res.data.imageUrl } }));
-                            }} />
+                            {!isStoreVerified && (
+                              <input type="file" aria-label="Upload government ID" className="absolute inset-0 opacity-0 cursor-pointer" onChange={async (e) => {
+                                 const formData = new FormData();
+                                 formData.append('image', e.target.files[0]);
+                                 const res = await uploadService.uploadImage(formData);
+                                 setStore(p => ({ ...p, verification: { ...p.verification, idImage: res.data.imageUrl } }));
+                              }} />
+                            )}
                           </div>
                        </div>
                        <div className="space-y-4">
                           <label className="text-[10px] font-black text-white/30 uppercase tracking-widest px-2">Selfie with ID</label>
-                          <div className="relative group cursor-pointer border-2 border-dashed border-white/10 rounded-2xl p-4 hover:border-emerald-500 transition-all flex flex-col items-center justify-center h-48 bg-white/5">
+                          <div className={`relative group border-2 border-dashed rounded-2xl p-4 transition-all flex flex-col items-center justify-center h-48 bg-white/5 ${isStoreVerified ? 'cursor-default border-emerald-400/20' : 'cursor-pointer border-white/10 hover:border-emerald-500'}`}>
                              {store.verification?.selfieImage ? (
-                               <img src={getImageUrl(store.verification.selfieImage)} alt="Selfie" className="w-full h-full object-contain rounded-xl" />
+                               <img src={getImageUrl(store.verification.selfieImage)} alt="Approved identity selfie" className="w-full h-full object-contain rounded-xl" />
+                             ) : isStoreVerified ? (
+                               <>
+                                 <Shield className="mb-2 h-8 w-8 text-emerald-400" />
+                                 <span className="text-[9px] font-black uppercase tracking-widest text-emerald-300">Approved by Super Admin</span>
+                               </>
                              ) : (
                                <>
                                  <Plus className="h-8 w-8 text-white/20 group-hover:text-emerald-500 transition-all mb-2" />
                                  <span className="text-[9px] font-black uppercase tracking-widest text-white/20">Upload Selfie</span>
                                </>
                              )}
-                             <input type="file" className="absolute inset-0 opacity-0 cursor-pointer" onChange={async (e) => {
-                               const formData = new FormData();
-                               formData.append('image', e.target.files[0]);
-                               const res = await uploadService.uploadImage(formData);
-                               setStore(p => ({ ...p, verification: { ...p.verification, selfieImage: res.data.imageUrl } }));
-                            }} />
+                             {!isStoreVerified && (
+                               <input type="file" aria-label="Upload identity selfie" className="absolute inset-0 opacity-0 cursor-pointer" onChange={async (e) => {
+                                 const formData = new FormData();
+                                 formData.append('image', e.target.files[0]);
+                                 const res = await uploadService.uploadImage(formData);
+                                 setStore(p => ({ ...p, verification: { ...p.verification, selfieImage: res.data.imageUrl } }));
+                              }} />
+                             )}
                           </div>
                        </div>
                     </div>
                   </div>
 
                   <div className="bg-white border border-slate-100 rounded-[3rem] p-10 shadow-xl overflow-hidden">
-                    <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.4em] mb-8">Payout Matrix</h4>
+                    <div className="mb-8">
+                      <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.4em]">Payout Matrix</h4>
+                      <p className="mt-3 text-xs font-medium text-slate-400">Payout details remain editable and are saved using Save Changes.</p>
+                    </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                        <div className="space-y-4">
                           <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Method</label>
@@ -492,7 +522,7 @@ const StoreManagement = () => {
                     </div>
                   </div>
 
-                  <div className="pt-6">
+                  {!isStoreVerified && <div className="pt-6">
                     <button onClick={async () => {
                        try {
                          setSaving(true);
@@ -505,7 +535,7 @@ const StoreManagement = () => {
                       <Shield className="h-4 w-4" />
                       Submit Verification Bundle
                     </button>
-                  </div>
+                  </div>}
                 </div>
               )}
 
