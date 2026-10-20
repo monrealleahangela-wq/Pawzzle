@@ -430,11 +430,11 @@ const Products = () => {
               </button>
             </div>
           ) : (
-            <div className="marketplace-result-grid responsive-card-grid [--card-min:17rem] sm:[--card-min:18rem] xl:[--card-min:19rem]">
+            <div className="marketplace-result-grid marketplace-product-grid responsive-card-grid [--card-min:17rem] sm:[--card-min:18rem] xl:[--card-min:19rem]">
               {products.map((product, idx) => (
                 <div
                   key={product._id}
-                  className="marketplace-listing-card group w-full min-w-0 max-w-full bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 p-2 flex flex-col transition-all hover:shadow-2xl hover:shadow-primary-100/10 relative overflow-hidden animate-slide-up"
+                  className="marketplace-listing-card marketplace-product-card group w-full min-w-0 max-w-full bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 p-2 flex flex-col transition-all hover:shadow-2xl hover:shadow-primary-100/10 relative overflow-hidden animate-slide-up"
                   style={{ animationDelay: `${idx * 0.1}s` }}
                 >
                   <div className="absolute top-0 right-0 w-24 h-24 bg-slate-50 rounded-bl-[3rem] -translate-y-12 translate-x-12 group-hover:bg-primary-50 transition-colors duration-500" />
@@ -451,7 +451,7 @@ const Products = () => {
                       <Package className="h-8 w-8 text-slate-200" />
                     )}
 
-                    <div className="absolute top-3 right-3 flex flex-col gap-1.5">
+                    <div className="marketplace-product-badges absolute top-3 right-3 flex flex-col gap-1.5">
                       <span className={`px-2.5 py-1 rounded-xl text-[8px] font-black uppercase tracking-wider shadow-sm backdrop-blur-md border border-white/20 ${product.stockQuantity > 5 ? 'bg-emerald-500/90 text-white' : 'bg-rose-500/90 text-white'}`}>
                         {product.stockQuantity > 5 ? 'IN STOCK' : 'LOW STOCK'}
                       </span>
@@ -462,7 +462,7 @@ const Products = () => {
                   </div>
 
                   <div className="marketplace-listing-copy min-w-0 p-3 sm:p-4 flex-1 flex flex-col relative z-10">
-                    <div className="mb-3">
+                    <div className="marketplace-product-summary mb-3">
                       <p className="mb-1.5 truncate text-[10px] font-black uppercase leading-tight tracking-wide text-slate-400" title={product.brand || 'Product'}>
                         {product.brand || 'Product'}
                       </p>
@@ -479,15 +479,15 @@ const Products = () => {
                       )}
                     </div>
 
-                    <div className="flex flex-col mt-auto gap-3">
-                      <div className="flex min-w-0 items-end justify-between gap-2">
+                    <div className="marketplace-product-commerce flex flex-col mt-auto gap-3">
+                      <div className="marketplace-product-pricing flex min-w-0 items-end justify-between gap-2">
                         <div className="flex min-w-0 flex-col">
                           <span className="text-[10px] font-black uppercase leading-tight tracking-wide text-primary-600 break-words">{product.category}</span>
                           <span className="text-base font-black tracking-tighter text-slate-900 sm:text-xl">{formatPeso(product.price)}</span>
                         </div>
                       </div>
 
-                      <div className="grid min-w-0 grid-cols-[2.5rem_2.5rem_minmax(0,1fr)] gap-1.5">
+                      <div className="marketplace-product-actions grid min-w-0 grid-cols-[2.5rem_2.5rem_minmax(0,1fr)] gap-1.5">
                         <Link
                           to={`/products/${product._id}`}
                            className="w-10 h-10 flex items-center justify-center bg-slate-50 hover:bg-slate-200 rounded-lg sm:rounded-xl transition-colors shadow-sm"
@@ -515,7 +515,7 @@ const Products = () => {
                     {/* Store Node */}
                     <Link 
                       to={`/stores/${product.store?._id || product.store}`}
-                      className="mt-4 pt-3 border-t border-slate-50 flex items-center justify-between group/store hover:bg-slate-50/50 transition-colors -mx-4 px-4"
+                      className="marketplace-product-store mt-4 pt-3 border-t border-slate-50 flex items-center justify-between group/store hover:bg-slate-50/50 transition-colors -mx-4 px-4"
                     >
                       <div className="flex items-center gap-2 min-w-0">
                         <div className="w-5 h-5 rounded-lg bg-slate-50 overflow-hidden flex items-center justify-center shrink-0 group-hover/store:bg-primary-50 transition-colors border border-slate-100">

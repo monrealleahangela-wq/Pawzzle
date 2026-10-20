@@ -86,6 +86,17 @@ test('Marketplace presentation is compact, responsive, accessible, and dark-mode
   assert.doesNotMatch(styles, /overflow-x:\s*hidden/);
 });
 
+test('mobile customer products use a compact two-column shopping grid without changing pet cards', () => {
+  assert.match(products, /marketplace-product-grid/);
+  assert.match(products, /marketplace-product-card/);
+  assert.match(products, /marketplace-product-actions/);
+  assert.match(styles, /\.marketplace-products \.marketplace-product-grid \{/);
+  assert.match(styles, /grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\) !important/);
+  assert.match(styles, /\.marketplace-products \.marketplace-listing-image \{/);
+  assert.match(styles, /aspect-ratio:\s*1/);
+  assert.doesNotMatch(pets, /marketplace-product-grid|marketplace-product-card|marketplace-product-actions/);
+});
+
 test('finalized Landing and Customer Home do not consume Marketplace styling', () => {
   assert.doesNotMatch(landing, /CustomerMarketplace\.css|customer-marketplace-/);
   assert.doesNotMatch(home, /CustomerMarketplace\.css|customer-marketplace-/);
