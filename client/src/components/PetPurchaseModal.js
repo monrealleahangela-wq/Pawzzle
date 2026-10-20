@@ -3,6 +3,7 @@ import { Calendar, CheckCircle2, MapPin, Phone, ShieldCheck, Store, User, Wallet
 import { toast } from 'react-toastify';
 import { formatPeso } from '../utils/paymentSummary';
 import { normalizeRefundPolicy, refundPolicyLabel, requiresRefundAcknowledgment } from '../utils/refundPolicy';
+import './PetPurchaseModal.css';
 
 const createPurchaseRequestId = () => {
   if (typeof window !== 'undefined' && window.crypto?.randomUUID) return window.crypto.randomUUID();
@@ -81,13 +82,13 @@ const PetPurchaseModal = ({ isOpen, onClose, pet, store, buyer, onSubmit, submit
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 p-3 backdrop-blur-md sm:p-5" role="dialog" aria-modal="true" aria-labelledby="pet-checkout-title">
+    <div className="pet-purchase-modal fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 p-3 backdrop-blur-md sm:p-5" role="dialog" aria-modal="true" aria-labelledby="pet-checkout-title">
       <div className="flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-3xl border border-slate-100 bg-white shadow-2xl">
         <header className="relative flex shrink-0 items-start justify-between overflow-hidden bg-slate-950 p-5 text-white sm:p-6">
           <div className="absolute right-0 top-0 h-32 w-32 -translate-y-1/2 translate-x-1/2 rounded-full bg-primary-500/20 blur-3xl" />
           <div className="relative">
             <p className="text-[9px] font-black uppercase tracking-[.2em] text-primary-300">Secure PayMongo checkout</p>
-            <h2 id="pet-checkout-title" className="mt-1 text-xl font-black tracking-tight sm:text-2xl">
+            <h2 id="pet-checkout-title" className="pet-purchase-modal__hero-title mt-1 text-xl font-black tracking-tight sm:text-2xl">
               {isReservation ? 'Reserve Pet' : 'Pet Purchase Checkout'}
             </h2>
             <p className="mt-1 text-xs font-semibold text-slate-300">{pet.name} · {pet.breed || pet.species}</p>
@@ -106,7 +107,7 @@ const PetPurchaseModal = ({ isOpen, onClose, pet, store, buyer, onSubmit, submit
               </section>
 
               <section>
-                <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-500">Buyer information</h3>
+                <h3 className="pet-purchase-modal__section-title pet-purchase-modal__section-title--light text-[10px] font-black uppercase tracking-widest text-slate-500">Buyer information</h3>
                 <div className="mt-2 grid gap-3 sm:grid-cols-2">
                   <label className="text-[9px] font-black uppercase tracking-wider text-slate-500"><span className="flex items-center gap-1.5"><User className="h-3 w-3" />Full name</span><input required name="fullName" autoComplete="name" maxLength="160" value={formData.fullName} onChange={handleChange} className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs font-semibold text-slate-900 outline-none focus:border-primary-500" /></label>
                   <label className="text-[9px] font-black uppercase tracking-wider text-slate-500"><span className="flex items-center gap-1.5"><Phone className="h-3 w-3" />Contact number</span><input required name="contactNumber" autoComplete="tel" maxLength="40" value={formData.contactNumber} onChange={handleChange} className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs font-semibold text-slate-900 outline-none focus:border-primary-500" /></label>
@@ -123,7 +124,7 @@ const PetPurchaseModal = ({ isOpen, onClose, pet, store, buyer, onSubmit, submit
 
             <div className="space-y-4">
               <section className="rounded-2xl bg-slate-950 p-4 text-white">
-                <div className="flex items-center gap-2"><Wallet className="h-4 w-4 text-primary-300" /><h3 className="text-[10px] font-black uppercase tracking-[.18em]">Payment summary</h3></div>
+                <div className="flex items-center gap-2"><Wallet className="h-4 w-4 text-primary-300" /><h3 className="pet-purchase-modal__section-title pet-purchase-modal__section-title--dark text-[10px] font-black uppercase tracking-[.18em]">Payment summary</h3></div>
                 <dl className="mt-4 space-y-2 text-[10px]">
                   <div className="flex justify-between gap-3 text-slate-300"><dt>Listed price</dt><dd className="font-bold text-white">{formatPeso(price)}</dd></div>
                   <div className="flex justify-between gap-3 text-slate-300"><dt>Additional charges</dt><dd className="font-bold text-white">{formatPeso(0)}</dd></div>
@@ -131,11 +132,11 @@ const PetPurchaseModal = ({ isOpen, onClose, pet, store, buyer, onSubmit, submit
                   <div className="flex justify-between gap-3 rounded-xl bg-white/10 p-2.5"><dt className="font-black text-primary-200">Due now</dt><dd className="font-black text-primary-200">{formatPeso(dueNow)}</dd></div>
                   {isReservation && <div className="flex justify-between gap-3 text-slate-300"><dt>Balance due at pickup</dt><dd className="font-bold text-white">{formatPeso(balanceAtPickup)}</dd></div>}
                 </dl>
-                <p className="mt-3 flex items-center gap-1.5 text-[9px] text-slate-400"><CheckCircle2 className="h-3 w-3 text-emerald-400" />Payment method: PayMongo</p>
+                <p className="mt-3 flex items-center gap-1.5 text-[9px] text-slate-300"><CheckCircle2 className="h-3 w-3 text-emerald-400" />Payment method: PayMongo</p>
               </section>
 
               <section className="rounded-2xl border border-slate-200 p-4">
-                <div className="flex items-center gap-2"><ShieldCheck className="h-4 w-4 text-primary-700" /><h3 className="text-[10px] font-black uppercase tracking-widest text-slate-900">{refundPolicyLabel(refundPolicy.type)} policy</h3></div>
+                <div className="flex items-center gap-2"><ShieldCheck className="h-4 w-4 text-primary-700" /><h3 className="pet-purchase-modal__section-title pet-purchase-modal__section-title--light text-[10px] font-black uppercase tracking-widest text-slate-900">{refundPolicyLabel(refundPolicy.type)} policy</h3></div>
                 <p className="mt-2 text-[10px] leading-4 text-slate-600">{refundPolicy.summary}</p>
                 {refundPolicy.conditions && <p className="mt-2 text-[9px] leading-4 text-slate-500">Conditions: {refundPolicy.conditions}</p>}
                 {acknowledgmentRequired && <label className="mt-3 flex cursor-pointer items-start gap-2 rounded-xl bg-rose-50 p-2.5 text-[9px] font-semibold leading-4 text-rose-800"><input required type="checkbox" name="refundPolicyAcknowledged" checked={formData.refundPolicyAcknowledged} onChange={handleChange} className="mt-0.5 h-4 w-4 rounded border-rose-300 text-rose-600 focus:ring-rose-500" /><span>I have read and acknowledge this Store's no-refund policy.</span></label>}

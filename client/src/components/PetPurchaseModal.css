@@ -1,0 +1,24 @@
+.pet-purchase-modal .pet-purchase-modal__hero-title {
+  color: #ffffff !important;
+  font-size: 1.5rem !important;
+  line-height: 1.2 !important;
+}
+
+.pet-purchase-modal .pet-purchase-modal__section-title {
+  font-size: 0.75rem !important;
+  line-height: 1.25rem !important;
+}
+
+.pet-purchase-modal .pet-purchase-modal__section-title--dark {
+  color: #ffffff !important;
+}
+
+.pet-purchase-modal .pet-purchase-modal__section-title--light {
+  color: #334155 !important;
+}
+
+@media (max-width: 640px) {
+  .pet-purchase-modal .pet-purchase-modal__hero-title {
+    font-size: 1.25rem !important;
+  }
+}

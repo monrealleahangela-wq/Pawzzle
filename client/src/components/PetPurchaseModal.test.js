@@ -16,7 +16,10 @@ const store = {
 test('pet checkout shows authoritative listing context without inquiry screening fields', () => {
   render(<PetPurchaseModal isOpen pet={pet} store={store} buyer={{ firstName: 'Ari', lastName: 'Buyer' }} onClose={jest.fn()} onSubmit={jest.fn()} />);
 
-  expect(screen.getByRole('heading', { name: 'Pet Purchase Checkout' })).toBeInTheDocument();
+  const checkoutHeading = screen.getByRole('heading', { name: 'Pet Purchase Checkout' });
+  const paymentHeading = screen.getByRole('heading', { name: 'Payment summary' });
+  expect(checkoutHeading).toHaveClass('pet-purchase-modal__hero-title');
+  expect(paymentHeading).toHaveClass('pet-purchase-modal__section-title--dark');
   expect(screen.getByText(/Pochi · Fancy Mouse/)).toBeInTheDocument();
   expect(screen.getByText('Pawzzle South')).toBeInTheDocument();
   expect(screen.getAllByText('₱2,800.00').length).toBeGreaterThanOrEqual(1);
