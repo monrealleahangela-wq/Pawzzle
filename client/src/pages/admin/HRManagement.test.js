@@ -17,6 +17,8 @@ jest.mock('../../services/apiService', () => ({
     getEmployees: jest.fn(),
     getCompensation: jest.fn(),
     updateCompensation: jest.fn(),
+    getAttendance: jest.fn(),
+    getAttendanceCorrections: jest.fn(),
     getPayrollPeriods: jest.fn(),
     getPayrollPeriod: jest.fn(),
     getPayrollReports: jest.fn()
@@ -117,6 +119,8 @@ describe('HRManagement Rider payroll setup', () => {
       }
     });
     hrService.updateCompensation.mockResolvedValue({ data: { message: 'Employee compensation saved.' } });
+    hrService.getAttendance.mockResolvedValue({ data: { records: [] } });
+    hrService.getAttendanceCorrections.mockResolvedValue({ data: { requests: [] } });
   });
 
   test('shows an active Rider and the exact missing payroll setup requirement', async () => {
@@ -218,5 +222,39 @@ describe('HRManagement Rider payroll setup', () => {
     expect(screen.getByText('Employer contributions')).toBeInTheDocument();
     expect(screen.getByText('Government Remittances')).toBeInTheDocument();
     expect(screen.getByText('Rina Rider')).toBeInTheDocument();
+  });
+
+  test('filters the detailed attendance table with the calendar date selection', async () => {
+    hrService.getAttendance.mockResolvedValue({ data: { records: [
+      {
+        _id: 'attendance-20', workDate: '2026-10-20', status: 'incomplete', workedMinutes: 0, lateMinutes: 0,
+        employee: { _id: 'rider-a', firstName: 'Rina', lastName: 'Rider', staffType: 'delivery_rider' },
+        schedule: { start: '08:00', end: '17:00' }, timeIn: { at: '2026-10-20T08:00:00+08:00' }
+      },
+      {
+        _id: 'attendance-19-a', workDate: '2026-10-19', status: 'present', workedMinutes: 540, lateMinutes: 0,
+        employee: { _id: 'rider-a', firstName: 'Rina', lastName: 'Rider', staffType: 'delivery_rider' },
+        schedule: { start: '08:00', end: '17:00' }, timeIn: { at: '2026-10-19T08:00:00+08:00' }, timeOut: { at: '2026-10-19T17:00:00+08:00' }
+      },
+      {
+        _id: 'attendance-19-b', workDate: '2026-10-19', status: 'absent', workedMinutes: 0, lateMinutes: 0,
+        employee: { _id: 'dispatcher-a', firstName: 'Dex', lastName: 'Dispatcher', staffType: 'delivery_dispatcher' },
+        schedule: { start: '08:00', end: '17:00' }
+      }
+    ] } });
+
+    render(<MemoryRouter initialEntries={['/admin/hr?tab=attendance']}><HRManagement /></MemoryRouter>);
+
+    const october20Table = await screen.findByRole('region', { name: 'Detailed attendance records for Tuesday, October 20, 2026' });
+    expect(within(october20Table).getByText('Rina Rider')).toBeInTheDocument();
+    expect(within(october20Table).queryByText('Dex Dispatcher')).not.toBeInTheDocument();
+    expect(within(october20Table).getByText('1 record')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Select October 19, 2026, 2 attendance records' }));
+
+    const october19Table = screen.getByRole('region', { name: 'Detailed attendance records for Monday, October 19, 2026' });
+    expect(within(october19Table).getByText('Rina Rider')).toBeInTheDocument();
+    expect(within(october19Table).getByText('Dex Dispatcher')).toBeInTheDocument();
+    expect(within(october19Table).getByText('2 records')).toBeInTheDocument();
   });
 });

@@ -631,7 +631,11 @@ const attendanceDot = (status) =>
         ? "bg-sky-500"
         : "bg-amber-500";
 
-export const ManagementAttendanceCalendar = ({ records = [] }) => {
+export const ManagementAttendanceCalendar = ({
+  records = [],
+  selectedDate: controlledSelectedDate,
+  onSelectedDateChange,
+}) => {
   const recordsByDate = useMemo(() => {
     const grouped = new Map();
     records.forEach((record) => {
@@ -645,7 +649,8 @@ export const ManagementAttendanceCalendar = ({ records = [] }) => {
     [recordsByDate],
   );
   const initialDate = latestWorkDate || workDateKey(new Date());
-  const [selectedDate, setSelectedDate] = useState(initialDate);
+  const [internalSelectedDate, setInternalSelectedDate] = useState(initialDate);
+  const selectedDate = controlledSelectedDate || internalSelectedDate;
   const [visibleMonth, setVisibleMonth] = useState(() => {
     const selected = parseWorkDate(initialDate);
     return new Date(selected.getFullYear(), selected.getMonth(), 1);
@@ -665,8 +670,12 @@ export const ManagementAttendanceCalendar = ({ records = [] }) => {
   const selectedRecords = recordsByDate.get(selectedDate) || [];
   const selectedDateObject = parseWorkDate(selectedDate);
   const todayKey = workDateKey(new Date());
+  const updateSelectedDate = (value) => {
+    setInternalSelectedDate(value);
+    onSelectedDateChange?.(value);
+  };
   const selectDate = (calendarDay) => {
-    setSelectedDate(workDateKey(calendarDay));
+    updateSelectedDate(workDateKey(calendarDay));
     if (
       calendarDay.getMonth() !== visibleMonth.getMonth() ||
       calendarDay.getFullYear() !== visibleMonth.getFullYear()
@@ -691,11 +700,11 @@ export const ManagementAttendanceCalendar = ({ records = [] }) => {
       Math.min(selectedDateObject.getDate(), lastDayOfNextMonth),
     );
     setVisibleMonth(nextMonth);
-    setSelectedDate(workDateKey(nextSelectedDate));
+    updateSelectedDate(workDateKey(nextSelectedDate));
   };
   const selectToday = () => {
     const today = new Date();
-    setSelectedDate(todayKey);
+    updateSelectedDate(todayKey);
     setVisibleMonth(new Date(today.getFullYear(), today.getMonth(), 1));
   };
 
@@ -925,6 +934,7 @@ const HRManagement = () => {
   const [settings, setSettings] = useState(null);
   const [workplace, setWorkplace] = useState(null);
   const [attendance, setAttendance] = useState([]);
+  const [selectedAttendanceDate, setSelectedAttendanceDate] = useState("");
   const [attendanceCorrections, setAttendanceCorrections] = useState([]);
   const [leaves, setLeaves] = useState([]);
   const [periods, setPeriods] = useState([]);
@@ -991,7 +1001,21 @@ const HRManagement = () => {
           hrService.getAttendance(),
           hrService.getAttendanceCorrections(),
         ]);
-        setAttendance(attendanceResponse.data.records || []);
+        const attendanceRecords = attendanceResponse.data.records || [];
+        setAttendance(attendanceRecords);
+        setSelectedAttendanceDate((current) => {
+          if (
+            current &&
+            attendanceRecords.some((record) => record.workDate === current)
+          ) {
+            return current;
+          }
+          return (
+            [...new Set(attendanceRecords.map((record) => record.workDate))]
+              .sort((left, right) => right.localeCompare(left))[0] ||
+            workDateKey(new Date())
+          );
+        });
         setAttendanceCorrections(correctionResponse.data.requests || []);
       }
       if (tab === "leave")
@@ -1014,6 +1038,14 @@ const HRManagement = () => {
   useEffect(() => {
     loadTab();
   }, [loadTab]);
+
+  const attendanceForSelectedDate = useMemo(
+    () =>
+      attendance.filter(
+        (record) => record.workDate === selectedAttendanceDate,
+      ),
+    [attendance, selectedAttendanceDate],
+  );
 
   const reviewLeave = async (id, status) => {
     try {
@@ -1376,7 +1408,11 @@ const HRManagement = () => {
       )}
 
       {!loading && tab === "attendance" && (
-        <ManagementAttendanceCalendar records={attendance} />
+        <ManagementAttendanceCalendar
+          records={attendance}
+          selectedDate={selectedAttendanceDate}
+          onSelectedDateChange={setSelectedAttendanceDate}
+        />
       )}
 
       {!loading && tab === "attendance" && (
@@ -1425,16 +1461,21 @@ const HRManagement = () => {
         )}
 
       {!loading && tab === "attendance" && (
-        <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+        <section
+          role="region"
+          aria-label={`Detailed attendance records for ${calendarDateLabel(parseWorkDate(selectedAttendanceDate), true)}`}
+          className="overflow-hidden rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900"
+        >
           <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 px-4 py-3 dark:border-slate-800">
             <div>
               <h2 className="font-bold">Attendance Records</h2>
               <p className="text-xs text-slate-500">
-                Location validation and schedule results for this Store only.
+                Detailed results for {calendarDateLabel(parseWorkDate(selectedAttendanceDate), true)}.
               </p>
             </div>
             <span className="text-xs text-slate-500">
-              {attendance.length} records
+              {attendanceForSelectedDate.length}{" "}
+              {attendanceForSelectedDate.length === 1 ? "record" : "records"}
             </span>
           </div>
           <div className="overflow-x-auto">
@@ -1459,7 +1500,7 @@ const HRManagement = () => {
                 </tr>
               </thead>
               <tbody>
-                {attendance.map((row) => (
+                {attendanceForSelectedDate.map((row) => (
                   <tr
                     key={row._id}
                     className="border-t border-slate-100 dark:border-slate-800"
@@ -1501,9 +1542,9 @@ const HRManagement = () => {
               </tbody>
             </table>
           </div>
-          {!attendance.length && (
+          {!attendanceForSelectedDate.length && (
             <p className="p-8 text-center text-sm text-slate-500">
-              No attendance records for this period.
+              No attendance records for the selected date.
             </p>
           )}
         </section>
