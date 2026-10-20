@@ -104,6 +104,39 @@ test('preserves Product selection, quantity, removal, cart actions, Store link, 
   expect(screen.getByText('Checkout destination')).toBeInTheDocument();
 });
 
+test('groups cart items by Store and shows a subtotal for each Store', () => {
+  const groupedItems = [
+    product,
+    { ...pet, itemId: 'pet-2', name: 'Coco' },
+    {
+      ...product,
+      itemId: 'product-2',
+      name: 'Cat Treats',
+      price: 250,
+      quantity: 2,
+      selected: false,
+      storeId: 'store-2',
+      storeName: 'Happy Paws'
+    }
+  ];
+  useCart.mockReturnValue(cartState(groupedItems));
+  petService.getPetById.mockResolvedValue({ data: { pet: { isAvailable: true } } });
+
+  renderCart();
+
+  const storeGroups = screen.getAllByTestId('cart-store-group');
+  expect(storeGroups).toHaveLength(2);
+  expect(within(storeGroups[0]).getByRole('link', { name: 'View Pawzzle Store store' }))
+    .toHaveAttribute('href', '/stores/store-1');
+  expect(within(storeGroups[0]).getByText('Dog Food')).toBeInTheDocument();
+  expect(within(storeGroups[0]).getByText('Coco')).toBeInTheDocument();
+  expect(within(storeGroups[0]).getByTestId('store-subtotal')).toHaveTextContent('₱8,000.00');
+  expect(within(storeGroups[1]).getByRole('link', { name: 'View Happy Paws store' }))
+    .toHaveAttribute('href', '/stores/store-2');
+  expect(within(storeGroups[1]).getByText('Cat Treats')).toBeInTheDocument();
+  expect(within(storeGroups[1]).getByTestId('store-subtotal')).toHaveTextContent('₱500.00');
+});
+
 test('keeps Pet cart rows compact and quantity-locked to one', async () => {
   let resolveAvailability;
   petService.getPetById.mockImplementation(() => new Promise(resolve => { resolveAvailability = resolve; }));

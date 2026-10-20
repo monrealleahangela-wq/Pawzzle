@@ -4,7 +4,7 @@ import { toast } from 'react-toastify';
 import { useCart } from '../../contexts/CartContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { petService, getImageUrl } from '../../services/apiService';
-import { Heart, Package, Plus, Minus, Trash2, ShoppingBag, AlertCircle } from 'lucide-react';
+import { Heart, Package, Plus, Minus, Trash2, ShoppingBag, AlertCircle, Store } from 'lucide-react';
 import { formatPeso } from '../../utils/paymentSummary';
 
 const Cart = () => {
@@ -67,6 +67,18 @@ const Cart = () => {
 
   const totalPrice = getTotalPrice();
   const selectedItems = getSelectedItems();
+  const cartGroups = Array.from(items.reduce((groups, item) => {
+    const storeId = String(item.storeId?._id || item.storeId || '');
+    const storeName = item.storeName || 'Store unavailable';
+    const storeKey = storeId || `legacy-${storeName.trim().toLowerCase()}`;
+
+    if (!groups.has(storeKey)) {
+      groups.set(storeKey, { storeKey, storeId, storeName, items: [] });
+    }
+
+    groups.get(storeKey).items.push(item);
+    return groups;
+  }, new Map()).values());
 
   const handleSelectAll = () => {
     selectAllItems();
@@ -155,10 +167,56 @@ const Cart = () => {
       </div>
 
       <div className="mx-auto grid max-w-7xl grid-cols-1 items-start gap-4 px-3 sm:px-6 lg:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)] lg:gap-6 lg:px-8" data-testid="cart-layout">
-        {/* Cart Items - High Density 'Thin' Rows */}
+        {/* Cart items grouped by Store */}
         <div className="min-w-0 space-y-3" data-testid="cart-items-list">
-          {items.map((item, idx) => (
-            <article key={`${item.itemType}-${item.itemId}`} className="group rounded-2xl border border-slate-100 bg-white p-3 shadow-sm transition hover:border-primary-100 hover:shadow-md sm:p-4 animate-slide-up" style={{ animationDelay: `${idx * 0.03}s` }} data-testid={`cart-item-${item.itemType}`}>
+          {cartGroups.map((storeGroup, groupIndex) => {
+            const storeSubtotal = storeGroup.items.reduce(
+              (sum, item) => sum + (Number(item.price) * Number(item.quantity)),
+              0
+            );
+            const selectedCount = storeGroup.items.filter(item => item.selected).length;
+
+            return (
+              <section
+                key={storeGroup.storeKey}
+                className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
+                data-testid="cart-store-group"
+              >
+                <header className="flex flex-col gap-3 border-b border-slate-100 bg-slate-50/80 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary-100 text-primary-700">
+                      <Store className="h-4 w-4" aria-hidden="true" />
+                    </span>
+                    <div className="min-w-0">
+                      <p className="text-[9px] font-black uppercase tracking-[0.16em] text-slate-400">Sold by</p>
+                      {storeGroup.storeId ? (
+                        <Link
+                          to={`/stores/${storeGroup.storeId}`}
+                          className="block truncate text-sm font-black text-slate-900 transition-colors hover:text-primary-700 hover:underline focus-visible:rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+                          aria-label={`View ${storeGroup.storeName} store`}
+                        >
+                          {storeGroup.storeName}
+                        </Link>
+                      ) : (
+                        <p className="truncate text-sm font-black text-slate-900">{storeGroup.storeName}</p>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between gap-4 sm:justify-end">
+                    <p className="text-[10px] font-bold text-slate-500">
+                      {storeGroup.items.length} {storeGroup.items.length === 1 ? 'item' : 'items'}
+                      {selectedCount > 0 && <span className="text-primary-700"> · {selectedCount} selected</span>}
+                    </p>
+                    <div className="text-right">
+                      <p className="text-[8px] font-black uppercase tracking-wider text-slate-400">Store subtotal</p>
+                      <p className="text-sm font-black text-slate-900" data-testid="store-subtotal">{formatPeso(storeSubtotal)}</p>
+                    </div>
+                  </div>
+                </header>
+
+                <div className="divide-y divide-slate-100">
+                  {storeGroup.items.map((item, itemIndex) => (
+            <article key={`${item.itemType}-${item.itemId}`} className="group bg-white p-3 transition hover:bg-slate-50/70 sm:p-4 animate-slide-up" style={{ animationDelay: `${(groupIndex + itemIndex) * 0.03}s` }} data-testid={`cart-item-${item.itemType}`}>
               <div className="flex min-w-0 items-center gap-2.5 sm:gap-4">
                 <label className="flex h-11 w-9 shrink-0 cursor-pointer items-center justify-center rounded-lg focus-within:ring-2 focus-within:ring-primary-500 sm:w-10">
                   <input
@@ -191,21 +249,7 @@ const Cart = () => {
                         {item.itemType}
                       </span>
                     </div>
-                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] font-semibold leading-relaxed text-slate-500">
-                      <span>{formatPeso(item.price)}</span>
-                      <span aria-hidden="true">•</span>
-                      {item.storeId && item.storeName ? (
-                        <Link
-                          to={`/stores/${item.storeId}`}
-                          className="truncate transition-colors hover:text-primary-600 hover:underline focus-visible:rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
-                          aria-label={`View ${item.storeName} store`}
-                        >
-                          {item.storeName}
-                        </Link>
-                      ) : (
-                        <span>{item.storeName || 'Store unavailable'}</span>
-                      )}
-                    </div>
+                    <p className="text-[11px] font-semibold leading-relaxed text-slate-500">{formatPeso(item.price)} each</p>
                   </div>
 
                   <div className="flex min-w-0 flex-wrap items-center justify-between gap-2 sm:shrink-0 sm:justify-end sm:gap-4">
@@ -226,7 +270,11 @@ const Cart = () => {
                 </div>
               </div>
             </article>
-          ))}
+                  ))}
+                </div>
+              </section>
+            );
+          })}
         </div>
 
         {/* Content-driven summary stacks below items on mobile. */}
