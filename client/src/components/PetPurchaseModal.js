@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Calendar, CheckCircle2, MapPin, Phone, ShieldCheck, Store, User, Wallet, X } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { formatPeso } from '../utils/paymentSummary';
@@ -37,6 +38,23 @@ const PetPurchaseModal = ({ isOpen, onClose, pet, store, buyer, onSubmit, submit
       purchaseRequestId: createPurchaseRequestId()
     });
   }, [isOpen, pet?._id, buyer?.firstName, buyer?.lastName, buyer?.phone, buyer?.contactNumber, buyer?.address?.city]);
+
+  useEffect(() => {
+    if (!isOpen) return undefined;
+
+    const previousOverflow = document.body.style.overflow;
+    const handleKeyDown = event => {
+      if (event.key === 'Escape' && !submitting) onClose();
+    };
+
+    document.body.style.overflow = 'hidden';
+    document.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isOpen, onClose, submitting]);
 
   const refundPolicy = useMemo(() => normalizeRefundPolicy(store?.refundPolicy), [store?.refundPolicy]);
   const acknowledgmentRequired = requiresRefundAcknowledgment(refundPolicy);
@@ -81,10 +99,10 @@ const PetPurchaseModal = ({ isOpen, onClose, pet, store, buyer, onSubmit, submit
     });
   };
 
-  return (
-    <div className="pet-purchase-modal fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 p-3 backdrop-blur-md sm:p-5" role="dialog" aria-modal="true" aria-labelledby="pet-checkout-title">
-      <div className="flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-3xl border border-slate-100 bg-white shadow-2xl">
-        <header className="relative flex shrink-0 items-start justify-between overflow-hidden bg-slate-950 p-5 text-white sm:p-6">
+  return createPortal(
+    <div className="pet-purchase-modal fixed inset-0 z-[10000] flex items-center justify-center bg-slate-900/60 backdrop-blur-md sm:p-5" role="dialog" aria-modal="true" aria-labelledby="pet-checkout-title">
+      <div className="pet-purchase-modal__panel flex w-full max-w-2xl flex-col overflow-hidden border-slate-100 bg-white shadow-2xl sm:border">
+        <header className="pet-purchase-modal__header relative flex shrink-0 items-start justify-between overflow-hidden bg-slate-950 px-5 pb-4 text-white sm:p-6">
           <div className="absolute right-0 top-0 h-32 w-32 -translate-y-1/2 translate-x-1/2 rounded-full bg-primary-500/20 blur-3xl" />
           <div className="relative">
             <p className="text-[9px] font-black uppercase tracking-[.2em] text-primary-300">Secure PayMongo checkout</p>
@@ -93,10 +111,10 @@ const PetPurchaseModal = ({ isOpen, onClose, pet, store, buyer, onSubmit, submit
             </h2>
             <p className="mt-1 text-xs font-semibold text-slate-300">{pet.name} · {pet.breed || pet.species}</p>
           </div>
-          <button type="button" onClick={onClose} disabled={submitting} aria-label="Close pet checkout" className="relative rounded-full p-2 text-white transition hover:bg-white/10 disabled:opacity-50"><X className="h-5 w-5" /></button>
+          <button type="button" onClick={onClose} disabled={submitting} aria-label="Close pet checkout" className="pet-purchase-modal__close relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-white/20 bg-white/10 text-white transition hover:bg-white/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white disabled:opacity-50"><X className="h-5 w-5" /></button>
         </header>
 
-        <form id="pet-purchase-form" onSubmit={handleSubmit} className="overflow-y-auto p-4 sm:p-6">
+        <form id="pet-purchase-form" onSubmit={handleSubmit} className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 sm:p-6">
           <div className="grid gap-4 lg:grid-cols-[1fr_.82fr]">
             <div className="space-y-4">
               <section className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
@@ -147,14 +165,15 @@ const PetPurchaseModal = ({ isOpen, onClose, pet, store, buyer, onSubmit, submit
           </div>
         </form>
 
-        <footer className="shrink-0 border-t border-slate-100 bg-slate-50 p-4 sm:px-6">
+        <footer className="pet-purchase-modal__footer shrink-0 border-t border-slate-200 bg-white px-4 pt-3 shadow-[0_-8px_24px_rgba(15,23,42,0.08)] sm:px-6 sm:pt-4">
           <button form="pet-purchase-form" type="submit" disabled={submitting} className="flex h-11 w-full items-center justify-center rounded-xl bg-primary-600 px-4 text-[10px] font-black uppercase tracking-[.16em] text-white shadow-lg transition hover:bg-primary-700 disabled:cursor-wait disabled:bg-slate-400">
             {submitting ? 'Preparing secure checkout…' : 'Proceed to Payment'}
           </button>
           <p className="mt-2 text-center text-[8px] font-semibold text-slate-400">Availability, seller, Store, and price are rechecked by Pawzzle before payment.</p>
         </footer>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 

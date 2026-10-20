@@ -29,6 +29,24 @@ test('pet checkout shows authoritative listing context without inquiry screening
   expect(screen.queryByRole('checkbox', { name: /refund/i })).not.toBeInTheDocument();
 });
 
+test('keeps close and payment actions available outside the scrolling form', () => {
+  const onClose = jest.fn();
+  render(<PetPurchaseModal isOpen pet={pet} store={store} buyer={{ firstName: 'Ari', lastName: 'Buyer' }} onClose={onClose} onSubmit={jest.fn()} />);
+
+  const dialog = screen.getByRole('dialog', { name: 'Pet Purchase Checkout' });
+  const form = document.getElementById('pet-purchase-form');
+  const closeButton = screen.getByRole('button', { name: 'Close pet checkout' });
+  const paymentButton = screen.getByRole('button', { name: 'Proceed to Payment' });
+
+  expect(dialog.parentElement).toBe(document.body);
+  expect(form).toHaveClass('min-h-0', 'flex-1', 'overflow-y-auto');
+  expect(closeButton).not.toBeDisabled();
+  expect(paymentButton.closest('footer')).toHaveClass('pet-purchase-modal__footer');
+
+  fireEvent.keyDown(document, { key: 'Escape' });
+  expect(onClose).toHaveBeenCalledTimes(1);
+});
+
 test('no-refund policy is acknowledged only when applicable and submitted with a stable request key', () => {
   const onSubmit = jest.fn();
   render(<PetPurchaseModal

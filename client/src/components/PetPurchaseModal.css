@@ -1,3 +1,18 @@
+.pet-purchase-modal__panel {
+  height: 100vh;
+  height: 100dvh;
+  max-height: 100vh;
+  max-height: 100dvh;
+}
+
+.pet-purchase-modal__header {
+  padding-top: max(1rem, env(safe-area-inset-top));
+}
+
+.pet-purchase-modal__footer {
+  padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+}
+
 .pet-purchase-modal .pet-purchase-modal__hero-title {
   color: #ffffff !important;
   font-size: 1.5rem !important;
@@ -20,5 +35,22 @@
 @media (max-width: 640px) {
   .pet-purchase-modal .pet-purchase-modal__hero-title {
     font-size: 1.25rem !important;
+  }
+}
+
+@media (min-width: 640px) {
+  .pet-purchase-modal__panel {
+    height: auto;
+    max-height: 92vh;
+    max-height: 92dvh;
+    border-radius: 1.5rem;
+  }
+
+  .pet-purchase-modal__header {
+    padding-top: 1.5rem;
+  }
+
+  .pet-purchase-modal__footer {
+    padding-bottom: 1rem;
   }
 }
