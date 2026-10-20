@@ -116,12 +116,13 @@ const compensationSegmentsForPeriod = (profile, periodStart, periodEnd) => {
   };
 };
 
-const currentCompensationSummary = profile => {
+const currentCompensationSummary = (profile, { includeBaseRate = false } = {}) => {
   const value = normalizeCompensation(profile?.compensation, profile?.dateHired || new Date());
   if (!value) return null;
   return {
     compensationType: value.compensationType,
     compensationBasis: value.compensationBasis,
+    ...(includeBaseRate ? { baseRate: value.baseRate } : {}),
     effectiveDate: value.effectiveDate,
     reviewRequired: value.compensationBasis === 'legacy_period'
   };

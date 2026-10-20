@@ -52,6 +52,13 @@ test('daily, hourly, and legacy per-period bases retain their established meanin
   assert.deepEqual(currentCompensationSummary({ compensation: { compensationType: 'salary', baseRate: 18000, effectiveDate: new Date('2025-01-01') } }), {
     compensationType: 'salary', compensationBasis: 'legacy_period', effectiveDate: new Date('2025-01-01'), reviewRequired: true
   });
+  assert.deepEqual(currentCompensationSummary(
+    { compensation: { compensationType: 'salary', compensationBasis: 'monthly', baseRate: 18000, effectiveDate: new Date('2025-01-01') } },
+    { includeBaseRate: true }
+  ), {
+    compensationType: 'salary', compensationBasis: 'monthly', baseRate: 18000,
+    effectiveDate: new Date('2025-01-01'), reviewRequired: false
+  });
 });
 
 test('monthly salary is prorated by eligible scheduled workdays for partial employment', () => {

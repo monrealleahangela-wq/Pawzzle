@@ -134,6 +134,10 @@ test('editing staff hides department and position and preserves them by omission
   expect(screen.queryByLabelText('Department')).not.toBeInTheDocument();
   expect(screen.getByLabelText('Employment Status')).toBeVisible();
   expect(screen.getByLabelText('Monthly Salary')).toBeVisible();
+  expect(screen.getByLabelText('Monthly Salary')).toHaveValue(18000);
+  fireEvent.change(screen.getByLabelText('Monthly Salary'), {
+    target: { value: '22500' }
+  });
 
   fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
   fireEvent.click(screen.getByRole('button', { name: 'Save Changes' }));
@@ -144,6 +148,7 @@ test('editing staff hides department and position and preserves them by omission
   });
   const [, payload] = staffService.update.mock.calls[0];
   expect(payload.firstName).toBe('Anne');
+  expect(payload.employmentProfile.compensation.baseRate).toBe('22500');
   expect(payload.employmentProfile).not.toHaveProperty('position');
   expect(payload.employmentProfile).not.toHaveProperty('department');
 });

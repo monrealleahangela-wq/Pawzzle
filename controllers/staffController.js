@@ -18,7 +18,7 @@ const Booking = require('../models/Booking');
 const Review = require('../models/Review');
 const ActivityLog = require('../models/ActivityLog');
 const { createNotification } = require('./notificationController');
-const { normalizeRole, getEffectivePermissions } = require('../config/permissions');
+const { normalizeRole, getEffectivePermissions, hasPermission } = require('../config/permissions');
 const { riderDeliveryView, riderFeedbackView } = require('../utils/deliveryViews');
 const { policyForRole } = require('../services/rolePermissionService');
 const { getRiderCapacitySummary, capacityCanContainReservedLoad } = require('../utils/riderCapacity');
@@ -292,8 +292,11 @@ const getMyStaff = async (req, res) => {
             ]) : []
         ]);
         const workloadMap = new Map(workloads.map(row => [String(row._id), row.count]));
+        const canManageCompensation = hasPermission(req.user, 'staff.manage');
         const withServices = staff.map(member => {
-            const payrollProfile = currentCompensationSummary(member.employmentProfile);
+            const payrollProfile = currentCompensationSummary(member.employmentProfile, {
+                includeBaseRate: canManageCompensation
+            });
             const employmentProfile = { ...(member.employmentProfile || {}) };
             delete employmentProfile.compensation;
             delete employmentProfile.compensationHistory;
