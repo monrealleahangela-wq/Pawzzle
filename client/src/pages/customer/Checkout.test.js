@@ -114,7 +114,8 @@ test('an incomplete or manipulated quote never enables payment', async () => {
 test('products from different Stores create one combined PayMongo checkout', async () => {
   const secondProduct = { ...product('product-2'), name: 'Other Supply', storeId: 'store-2', storeName: 'Other Store' };
   const selectedItems = [product(), secondProduct];
-  useCart.mockReturnValue({ items: selectedItems, getSelectedItems: () => selectedItems, clearSelectedItems: jest.fn() });
+  const clearSelectedItems = jest.fn();
+  useCart.mockReturnValue({ items: selectedItems, getSelectedItems: () => selectedItems, clearSelectedItems });
   const firstOrderQuote = quote(145);
   const secondOrderQuote = {
     ...quote(125),
@@ -143,6 +144,36 @@ test('products from different Stores create one combined PayMongo checkout', asy
 
   await waitFor(() => expect(orderService.createOrder).toHaveBeenCalledTimes(1));
   expect(orderService.createOrder.mock.calls[0][0].items).toHaveLength(2);
+  expect(orderService.createOrder.mock.calls[0][0].checkoutRequestId).toBeTruthy();
   await waitFor(() => expect(paymentService.createOrderBatchCheckoutSession).toHaveBeenCalledWith('batch-1'));
   expect(paymentService.createCheckoutSession).not.toHaveBeenCalled();
+  expect(clearSelectedItems).not.toHaveBeenCalled();
+});
+
+test('a failed combined payment session preserves every cart item', async () => {
+  const secondProduct = { ...product('product-2'), storeId: 'store-2', storeName: 'Other Store' };
+  const selectedItems = [product(), secondProduct];
+  const clearSelectedItems = jest.fn();
+  useCart.mockReturnValue({ items: selectedItems, getSelectedItems: () => selectedItems, clearSelectedItems });
+  orderService.quoteOrder.mockResolvedValue({ data: {
+    deliveryMethod: 'delivery', storeCount: 2,
+    items: [quote().items[0], { ...quote().items[0], itemId: 'product-2' }],
+    orders: [quote(145), { ...quote(145), store: { _id: 'store-2', name: 'Other Store' } }],
+    refundPolicies: [],
+    pricingBreakdown: { calculationVersion: 1, subtotal: 200, deliveryFee: 90, finalTotal: 290, taxStatus: 'mixed' }
+  } });
+  orderService.createOrder.mockResolvedValue({ data: {
+    order: { _id: 'order-1', totalAmount: 145 },
+    orders: [{ _id: 'order-1', totalAmount: 145 }, { _id: 'order-2', totalAmount: 145 }],
+    checkoutBatch: { _id: 'batch-1', totalAmount: 290 }
+  } });
+  paymentService.createOrderBatchCheckoutSession.mockRejectedValue(new Error('PayMongo unavailable'));
+
+  renderCheckout();
+  fireEvent.click(screen.getByRole('button', { name: /use this address/i }));
+  await waitFor(() => expect(payButton()).toBeEnabled());
+  fireEvent.click(payButton());
+
+  await waitFor(() => expect(paymentService.createOrderBatchCheckoutSession).toHaveBeenCalledWith('batch-1'));
+  expect(clearSelectedItems).not.toHaveBeenCalled();
 });

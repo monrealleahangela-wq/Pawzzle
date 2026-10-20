@@ -40,7 +40,7 @@ const cartItemSchema = new mongoose.Schema({
     },
     storeId: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'User'
+        ref: 'Store'
     },
     storeAddress: {
         type: mongoose.Schema.Types.Mixed,
@@ -60,6 +60,10 @@ const cartSchema = new mongoose.Schema({
         unique: true
     },
     items: [cartItemSchema],
+    processedCheckoutKeys: [{
+        key: { type: String, required: true },
+        processedAt: { type: Date, default: Date.now }
+    }],
     updatedAt: {
         type: Date,
         default: Date.now

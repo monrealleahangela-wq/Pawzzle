@@ -117,13 +117,13 @@ test('invalid pricing configuration and temporary rule storage failure cannot pr
   );
 });
 
-test('cart spanning Stores is rejected before one Store can price the other Store item', async () => {
+test('a Store group is rejected if an item changes sellers while pricing is in flight', async () => {
   const other = { ...product, _id: 'product-other-store', store: 'store-other', name: 'Other Store Supply' };
   await withPricingFixtures(async () => {
     await rejectsCode({ ...request, items: [
       { itemType: 'product', itemId: product._id, quantity: 1 },
       { itemType: 'product', itemId: other._id, quantity: 1 }
-    ] }, 'MULTI_STORE_DELIVERY_UNSUPPORTED');
+    ] }, 'CHECKOUT_STORE_CHANGED');
   }, { item: [product, other] });
 });
 

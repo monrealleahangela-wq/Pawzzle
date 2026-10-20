@@ -55,8 +55,8 @@ test('cart reuses the Product store relationship and links to the existing publi
   assert.match(landing, /populate\('store', 'name contactInfo\.address'\)/);
   assert.match(home, /storeName: product\.store\?\.name/);
   assert.match(home, /storeId: product\.store\?\._id/);
-  assert.match(cart, /to=\{`\/stores\/\$\{item\.storeId\}`\}/);
-  assert.match(cart, /aria-label=\{`View \$\{item\.storeName\} store`\}/);
+  assert.match(cart, /to=\{`\/stores\/\$\{storeGroup\.storeId\}`\}/);
+  assert.match(cart, /aria-label=\{`View \$\{storeGroup\.storeName\} store`\}/);
   assert.match(routes, /path="stores\/:storeId" element=\{<StoreDetail \/>\}/);
 });
 

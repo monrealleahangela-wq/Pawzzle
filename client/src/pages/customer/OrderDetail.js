@@ -3,6 +3,7 @@ import { useNavigate, useParams, Link, useLocation } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { orderService, adminOrderService, paymentService, deliveryService, reviewService, staffService, getImageUrl } from '../../services/apiService';
 import { useAuth } from '../../contexts/AuthContext';
+import { useCart } from '../../contexts/CartContext';
 import { Heart, Package, ArrowLeft, Truck, CreditCard, MapPin, Store, Star, CheckCircle, AlertCircle, Navigation, Phone, Activity, ChevronDown, ChevronUp, MessageSquare, FileText, ClipboardCheck } from 'lucide-react';
 import OrderReviewModal from '../../components/OrderReviewModal';
 import ReviewModal from '../../components/ReviewModal';
@@ -20,6 +21,7 @@ const OrderDetail = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { refreshCart } = useCart();
   const canManageOrders = ['admin', 'store_owner', 'super_admin', 'platform_admin'].includes(user?.role)
     || hasUiActionPermission(user, 'sales', 'manage', false);
   const [order, setOrder] = useState(null);
@@ -44,6 +46,7 @@ const OrderDetail = () => {
   const [concernSubmitting, setConcernSubmitting] = useState(false);
   const [riderReviewEligibility, setRiderReviewEligibility] = useState({ checked: false, isEligible: false, reason: null });
   const orderRefundPolicy = normalizeRefundPolicy(order?.refundPolicySnapshot || order?.store?.refundPolicy);
+  const checkoutBatchId = order?.checkoutBatch?._id || order?.checkoutBatch;
   const authoritativePaymentSummary = order ? orderPaymentSummary(order) : null;
   const orderLineItems = useMemo(() => orderLineItemRows(order?.items), [order?.items]);
   const unreviewedProductItems = useMemo(
@@ -121,9 +124,12 @@ const OrderDetail = () => {
     const queryParams = new URLSearchParams(location.search);
     if (queryParams.get('payment') === 'success') {
       toast.success('Payment received. Checking its status...');
-      paymentService.verifyPayment(queryParams.get('batch') || id).then(res => {
+      paymentService.verifyPayment(queryParams.get('batch') || id).then(async res => {
         if (res.data.status === 'paid') {
           toast.success('Payment successful.');
+          if (typeof refreshCart === 'function') {
+            await refreshCart().catch(error => console.error('Cart refresh after payment failed', error));
+          }
           fetchOrder(); // Reload the order fully
         } else {
           toast.info('Payment is still processing. Check back soon.');
@@ -678,7 +684,9 @@ const OrderDetail = () => {
                   <button
                     onClick={async () => {
                       try {
-                        const response = await paymentService.createCheckoutSession(order._id);
+                        const response = checkoutBatchId
+                          ? await paymentService.createOrderBatchCheckoutSession(checkoutBatchId)
+                          : await paymentService.createCheckoutSession(order._id);
                         if (response.data.checkoutUrl) {
                           window.location.href = response.data.checkoutUrl;
                         }
@@ -698,9 +706,12 @@ const OrderDetail = () => {
                   onClick={async () => {
                     const toastId = toast.loading('Checking payment...');
                     try {
-                      const res = await paymentService.verifyPayment(order._id);
+                      const res = await paymentService.verifyPayment(checkoutBatchId || order._id);
                       if (res.data.status === 'paid') {
                         toast.update(toastId, { render: 'Payment successful.', type: 'success', isLoading: false, autoClose: 3000 });
+                        if (typeof refreshCart === 'function') {
+                          await refreshCart().catch(error => console.error('Cart refresh after payment failed', error));
+                        }
                         fetchOrder();
                       } else {
                         toast.update(toastId, { render: 'Payment is still pending on PayMongo.', type: 'info', isLoading: false, autoClose: 3000 });

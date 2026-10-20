@@ -157,9 +157,11 @@ test('checkout error semantics, pickup behavior, server authority, and historica
   assert.doesNotMatch(checkout.slice(checkout.indexOf('const orderData = {'), checkout.indexOf('const response = await orderService.createOrder')), /shippingFee|finalTotal|distanceCharge/);
 });
 
-test('one-store-per-checkout remains enforced so another Store rule cannot price the order', () => {
+test('checkout groups Stores before applying each Store delivery rule', () => {
   const pricing = read('services/orderPricingService.js');
-  assert.match(pricing, /Items from different stores must be checked out separately/);
+  assert.match(pricing, /const calculateCheckoutPricing = async/);
+  assert.match(pricing, /groupedItems = new Map\(\)/);
+  assert.doesNotMatch(pricing, /Items from different stores must be checked out separately/);
   assert.match(pricing, /store: store\._id/);
   assert.match(pricing, /const store = await Store\.findById\(storeId\)/);
 });

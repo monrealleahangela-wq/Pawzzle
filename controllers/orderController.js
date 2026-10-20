@@ -1,3 +1,4 @@
+const crypto = require('crypto');
 const mongoose = require('mongoose');
 const { validationResult } = require('express-validator');
 const Order = require('../models/Order');
@@ -353,11 +354,89 @@ const createOrderLegacy = async (req, res) => {
   }
 };
 
+const checkoutFingerprint = body => {
+  const items = (body.items || []).map(item => ({
+    itemType: item.itemType,
+    itemId: String(item.itemId),
+    variantId: item.variantId ? String(item.variantId) : '',
+    quantity: Number(item.quantity)
+  })).sort((left, right) => JSON.stringify(left).localeCompare(JSON.stringify(right)));
+  const address = body.deliveryMethod === 'delivery' ? body.shippingAddress || {} : {};
+  const canonical = {
+    items,
+    deliveryMethod: body.deliveryMethod,
+    shippingAddress: {
+      street: address.street || '', barangay: address.barangay || '', city: address.city || '',
+      province: address.province || address.state || '', zipCode: address.zipCode || '', country: address.country || '',
+      coordinates: {
+        lat: Number(address.coordinates?.lat),
+        lng: Number(address.coordinates?.lng)
+      }
+    },
+    phoneNumber: String(body.phoneNumber || '').trim(),
+    voucherCode: String(body.voucherCode || '').trim().toUpperCase(),
+    notes: String(body.notes || '').trim(),
+    refundPolicyAcknowledged: body.refundPolicyAcknowledged === true
+  };
+  return crypto.createHash('sha256').update(JSON.stringify(canonical)).digest('hex');
+};
+
+const loadExistingCheckout = async (customerId, checkoutRequestId) => {
+  if (!checkoutRequestId) return null;
+  const batch = await OrderCheckoutBatch.findOne({ customer: customerId, checkoutRequestId });
+  const query = batch
+    ? { _id: { $in: batch.orders } }
+    : { customer: customerId, checkoutRequestId };
+  const orders = await Order.find(query)
+    .populate('customer', 'username firstName lastName email')
+    .populate('store');
+  if (!orders.length) return null;
+  if (!batch) return { batch: null, orders };
+  const byId = new Map(orders.map(order => [String(order._id), order]));
+  return { batch, orders: batch.orders.map(id => byId.get(String(id))).filter(Boolean) };
+};
+
+const sendCheckoutResponse = (res, { orders, batch }, { status = 201, idempotent = false } = {}) => res.status(status).json({
+  message: idempotent
+    ? 'This checkout was already created. Returning the existing Store orders.'
+    : orders.length > 1 ? `${orders.length} Store orders created successfully` : 'Order created successfully',
+  order: orders[0],
+  orders,
+  idempotent,
+  ...(batch ? {
+    checkoutBatch: {
+      _id: batch._id,
+      totalAmount: batch.totalAmount,
+      orderIds: batch.orders
+    }
+  } : {})
+});
+
+const assertMatchingCheckoutFingerprint = (checkout, fingerprint) => {
+  const stored = checkout.batch?.checkoutFingerprint || checkout.orders[0]?.checkoutFingerprint;
+  if (stored && stored !== fingerprint) {
+    const error = new Error('This checkout request was already used with different cart or delivery details.');
+    error.code = 'CHECKOUT_IDEMPOTENCY_CONFLICT';
+    error.statusCode = 409;
+    throw error;
+  }
+};
+
 // Creates an order only from current database prices and server-side delivery/tax rules.
 const createOrder = async (req, res) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+
+    const checkoutRequestId = String(req.body.checkoutRequestId || '').trim() || null;
+    const fingerprint = checkoutFingerprint(req.body);
+    if (checkoutRequestId) {
+      const existingCheckout = await loadExistingCheckout(req.user._id, checkoutRequestId);
+      if (existingCheckout) {
+        assertMatchingCheckoutFingerprint(existingCheckout, fingerprint);
+        return sendCheckoutResponse(res, existingCheckout, { status: 200, idempotent: true });
+      }
+    }
 
     const checkoutPricing = await calculateCheckoutPricing({
       items: req.body.items,
@@ -371,88 +450,91 @@ const createOrder = async (req, res) => {
       return res.status(400).json({ message: 'Acknowledge every Store\'s No Refund policy before creating these orders.' });
     }
 
-    const createdOrders = [];
+    let createdOrders = [];
+    let checkoutBatch = null;
     try {
-      for (let index = 0; index < pricedOrders.length; index += 1) {
-        const pricing = pricedOrders[index];
-        const breakdown = pricing.pricingBreakdown;
-        const refundPolicy = policies[index];
-        const acknowledgmentRequired = requiresAcknowledgment(refundPolicy);
-        const order = await Order.create({
-          customer: req.user._id,
-          addedBy: pricing.ownerId,
-          store: pricing.storeId,
-          items: pricing.processedItems,
-          parcelEstimate: pricing.parcelEstimate,
-          totalAmount: breakdown.finalTotal,
-          voucher: pricing.voucher?._id || null,
-          discountAmount: breakdown.discountAmount,
-          shippingFee: breakdown.deliveryFee,
-          pricingBreakdown: breakdown,
-          deliveryFeeCalculation: pricing.deliveryFeeCalculation,
-          deliveryMethod: pricing.deliveryMethod,
-          shippingAddress: pricing.deliveryMethod === 'delivery' ? req.body.shippingAddress : {},
-          phoneNumber: req.body.phoneNumber,
-          paymentMethod: 'paymongo',
-          notes: req.body.notes,
-          status: 'pending_payment',
-          refundPolicySnapshot: snapshotRefundPolicy(refundPolicy),
-          refundPolicyAcknowledgment: {
-            required: acknowledgmentRequired,
-            acknowledged: acknowledgmentRequired ? true : Boolean(req.body.refundPolicyAcknowledged),
-            acknowledgedAt: req.body.refundPolicyAcknowledged ? new Date() : undefined,
-            acknowledgedBy: req.body.refundPolicyAcknowledged ? req.user._id : undefined
-          }
-        });
-        createdOrders.push(order);
-      }
+      await mongoose.connection.transaction(async session => {
+        const transactionOrders = [];
+        for (let index = 0; index < pricedOrders.length; index += 1) {
+          const pricing = pricedOrders[index];
+          const breakdown = pricing.pricingBreakdown;
+          const refundPolicy = policies[index];
+          const acknowledgmentRequired = requiresAcknowledgment(refundPolicy);
+          const [order] = await Order.create([{
+            customer: req.user._id,
+            addedBy: pricing.ownerId,
+            store: pricing.storeId,
+            checkoutRequestId,
+            checkoutFingerprint: fingerprint,
+            items: pricing.processedItems,
+            parcelEstimate: pricing.parcelEstimate,
+            totalAmount: breakdown.finalTotal,
+            voucher: pricing.voucher?._id || null,
+            discountAmount: breakdown.discountAmount,
+            shippingFee: breakdown.deliveryFee,
+            pricingBreakdown: breakdown,
+            deliveryFeeCalculation: pricing.deliveryFeeCalculation,
+            deliveryMethod: pricing.deliveryMethod,
+            shippingAddress: pricing.deliveryMethod === 'delivery' ? req.body.shippingAddress : {},
+            phoneNumber: req.body.phoneNumber,
+            paymentMethod: 'paymongo',
+            notes: req.body.notes,
+            status: 'pending_payment',
+            refundPolicySnapshot: snapshotRefundPolicy(refundPolicy),
+            refundPolicyAcknowledgment: {
+              required: acknowledgmentRequired,
+              acknowledged: acknowledgmentRequired ? true : Boolean(req.body.refundPolicyAcknowledged),
+              acknowledgedAt: req.body.refundPolicyAcknowledged ? new Date() : undefined,
+              acknowledgedBy: req.body.refundPolicyAcknowledged ? req.user._id : undefined
+            }
+          }], { session });
+          transactionOrders.push(order);
+        }
+
+        let transactionBatch = null;
+        if (transactionOrders.length > 1) {
+          [transactionBatch] = await OrderCheckoutBatch.create([{
+            customer: req.user._id,
+            orders: transactionOrders.map(order => order._id),
+            checkoutRequestId,
+            checkoutFingerprint: fingerprint,
+            totalAmount: checkoutPricing.pricingBreakdown.finalTotal
+          }], { session });
+          await Order.updateMany(
+            { _id: { $in: transactionOrders.map(order => order._id) } },
+            { $set: { checkoutBatch: transactionBatch._id } },
+            { session }
+          );
+        }
+
+        for (const pricing of pricedOrders.filter(row => row.voucher)) {
+          await Voucher.findByIdAndUpdate(
+            pricing.voucher._id,
+            { $inc: { usedCount: 1 } },
+            { session }
+          );
+        }
+
+        createdOrders = transactionOrders;
+        checkoutBatch = transactionBatch;
+      });
     } catch (creationError) {
-      if (createdOrders.length) await Order.deleteMany({ _id: { $in: createdOrders.map(order => order._id) } });
+      if (creationError?.code === 11000 && checkoutRequestId) {
+        const existingCheckout = await loadExistingCheckout(req.user._id, checkoutRequestId);
+        if (existingCheckout) {
+          assertMatchingCheckoutFingerprint(existingCheckout, fingerprint);
+          return sendCheckoutResponse(res, existingCheckout, { status: 200, idempotent: true });
+        }
+      }
       throw creationError;
     }
-
-    let checkoutBatch = null;
-    if (createdOrders.length > 1) {
-      try {
-        checkoutBatch = await OrderCheckoutBatch.create({
-          customer: req.user._id,
-          orders: createdOrders.map(order => order._id),
-          totalAmount: checkoutPricing.pricingBreakdown.finalTotal
-        });
-        await Order.updateMany(
-          { _id: { $in: createdOrders.map(order => order._id) } },
-          { $set: { checkoutBatch: checkoutBatch._id } }
-        );
-      } catch (batchError) {
-        if (checkoutBatch?._id) await OrderCheckoutBatch.findByIdAndDelete(checkoutBatch._id);
-        await Order.deleteMany({ _id: { $in: createdOrders.map(order => order._id) } });
-        throw batchError;
-      }
-    }
-
-    await Promise.all(pricedOrders
-      .filter(pricing => pricing.voucher)
-      .map(pricing => Voucher.findByIdAndUpdate(pricing.voucher._id, { $inc: { usedCount: 1 } })));
 
     const populatedOrders = await Order.find({ _id: { $in: createdOrders.map(order => order._id) } })
       .populate('customer', 'username firstName lastName email')
       .populate('store');
     const byId = new Map(populatedOrders.map(order => [String(order._id), order]));
     const orderedResults = createdOrders.map(order => byId.get(String(order._id))).filter(Boolean);
-    res.status(201).json({
-      message: createdOrders.length > 1
-        ? `${createdOrders.length} Store orders created successfully`
-        : 'Order created successfully',
-      order: orderedResults[0],
-      orders: orderedResults,
-      ...(checkoutBatch ? {
-        checkoutBatch: {
-          _id: checkoutBatch._id,
-          totalAmount: checkoutBatch.totalAmount,
-          orderIds: checkoutBatch.orders
-        }
-      } : {})
-    });
+    sendCheckoutResponse(res, { orders: orderedResults, batch: checkoutBatch });
 
     const io = req.app.get('socketio');
     await Promise.allSettled(pricedOrders.map(async (pricing, index) => {
@@ -478,6 +560,9 @@ const createOrder = async (req, res) => {
     if (error.code === 'STORE_TAX_VERIFICATION_REQUIRED') {
       return res.status(409).json({ code: error.code, message: error.message });
     }
+    if (error.code === 'CHECKOUT_IDEMPOTENCY_CONFLICT') {
+      return res.status(409).json({ code: error.code, message: error.message });
+    }
     const deliveryErrorCodes = new Set([
       'INVALID_DELIVERY_ADDRESS',
       'CUSTOMER_LOCATION_REQUIRED',
@@ -487,14 +572,14 @@ const createOrder = async (req, res) => {
       'OUTSIDE_DELIVERY_RANGE',
       'DELIVERY_PRICING_UNAVAILABLE',
       'DELIVERY_SERVICE_UNAVAILABLE',
-      'MULTI_STORE_DELIVERY_UNSUPPORTED'
+      'CHECKOUT_STORE_CHANGED'
     ]);
     if (deliveryErrorCodes.has(error.code)) {
       return res.status(error.statusCode || 400).json({ code: error.code, message: error.message });
     }
     const expected = [
       'Order must', 'Item quantity', 'Each pet', 'This legacy', 'Pet "', 'Product "', 'Invalid item', 'The store',
-      'Items from different', 'Store is unavailable', 'Store tax configuration', 'Invalid delivery', 'Voucher',
+      'An item changed sellers', 'Store is unavailable', 'Store tax configuration', 'Invalid delivery', 'Voucher',
       'A minimum purchase', 'Store and delivery', 'This store must add', 'Select your delivery',
       'No active delivery fee rule', 'Destination is outside'
     ];
@@ -536,7 +621,7 @@ const quoteOrder = async (req, res) => {
       'INVALID_DELIVERY_ADDRESS', 'CUSTOMER_LOCATION_REQUIRED', 'STORE_LOCATION_REQUIRED',
       'DELIVERY_RULE_REQUIRED', 'HOME_DELIVERY_DISABLED', 'OUTSIDE_DELIVERY_RANGE',
       'DELIVERY_PRICING_UNAVAILABLE', 'DELIVERY_SERVICE_UNAVAILABLE',
-      'MULTI_STORE_DELIVERY_UNSUPPORTED', 'STORE_UNAVAILABLE',
+      'CHECKOUT_STORE_CHANGED', 'STORE_UNAVAILABLE',
       'STORE_COMPLIANCE_RESTRICTED', 'STORE_COMPLIANCE_DOCUMENT_EXPIRED',
       'STORE_TAX_VERIFICATION_REQUIRED'
     ]);

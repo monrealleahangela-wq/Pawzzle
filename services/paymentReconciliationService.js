@@ -10,6 +10,7 @@ const StockSyncService = require('./stockSyncService');
 const RevenueService = require('./revenueService');
 const { createNotification } = require('../controllers/notificationController');
 const { internalCreateDelivery } = require('../controllers/deliveryController');
+const { removePurchasedItemsFromCart } = require('./checkoutCartService');
 const {
   releasePetReservation,
   reservePetForAdoption,
@@ -332,7 +333,7 @@ const fulfillOrderOnce = async (orderId) => {
   }
 };
 
-const finalizeOrder = async (order, payment) => {
+const finalizeOrder = async (order, payment, { skipCartCleanup = false } = {}) => {
   if (!paymentMatches(order, 'order', payment)) {
     await Order.findByIdAndUpdate(order._id, {
       $set: {
@@ -374,7 +375,15 @@ const finalizeOrder = async (order, payment) => {
 
   if (cancelled) return Order.findById(order._id);
   await RevenueService.recordPayment('order', order._id);
-  return fulfillOrderOnce(order._id);
+  const fulfilled = await fulfillOrderOnce(order._id);
+  if (!skipCartCleanup) {
+    await removePurchasedItemsFromCart({
+      customerId: order.customer?._id || order.customer,
+      orders: [order],
+      paymentId: payment.id
+    });
+  }
+  return fulfilled;
 };
 
 const finalizeOrderBatch = async (batch, payment) => {
@@ -416,10 +425,10 @@ const finalizeOrderBatch = async (batch, payment) => {
         ...payment.attributes,
         amount: amountCentavos(order, 'order')
       }
-    });
+    }, { skipCartCleanup: true });
   }
 
-  return OrderCheckoutBatch.findOneAndUpdate({
+  const updatedBatch = await OrderCheckoutBatch.findOneAndUpdate({
     _id: batch._id,
     $or: [
       { 'paymentDetails.paymentId': { $exists: false } },
@@ -433,6 +442,12 @@ const finalizeOrderBatch = async (batch, payment) => {
       ...getPaymentFields(payment)
     }
   }, { new: true });
+  await removePurchasedItemsFromCart({
+    customerId: batch.customer?._id || batch.customer,
+    orders,
+    paymentId: payment.id
+  });
+  return updatedBatch;
 };
 
 const finalizeAdoption = async (adoption, payment) => {

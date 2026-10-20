@@ -21,7 +21,7 @@ import {
 } from '../../utils/deliveryAddress';
 
 const Checkout = () => {
-  const { items, clearSelectedItems, getSelectedItems } = useCart();
+  const { items, getSelectedItems } = useCart();
   const { isAuthenticated, user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -63,6 +63,7 @@ const Checkout = () => {
   const [quoteRetry, setQuoteRetry] = useState(0);
   const [destinationConfirmed, setDestinationConfirmed] = useState(false);
   const quoteRequestIdRef = React.useRef(0);
+  const checkoutRequestRef = React.useRef({ inputKey: null, requestId: null });
 
   // Payment options - Online Only consistent with minimalist design
   const getPaymentOptions = () => {
@@ -110,6 +111,10 @@ const Checkout = () => {
     .map(item => `${item.itemType}:${item.itemId}:${item.quantity}`)
     .sort()
     .join('|');
+  const checkoutItemsIdentity = checkoutItems
+    .map(item => `${item._id || item.addedAt || `${item.itemType}:${item.itemId}`}:${item.quantity}`)
+    .sort()
+    .join('|');
 
   const quoteItems = React.useMemo(() => checkoutItems.map(item => ({
     itemType: item.itemType,
@@ -136,6 +141,12 @@ const Checkout = () => {
   const refundPolicy = normalizeRefundPolicy(refundPolicyEntries[0]?.policy);
   const refundAcknowledgmentRequired = refundPolicyEntries
     .some(entry => requiresRefundAcknowledgment(normalizeRefundPolicy(entry.policy)));
+  const checkoutInputKey = JSON.stringify([
+    quoteInputKey, checkoutItemsIdentity,
+    phoneNumber.trim(),
+    notes.trim(),
+    refundAcknowledgmentRequired ? agreedToPolicy : false
+  ]);
 
   useEffect(() => {
     if (!quoteItemsSignature) {
@@ -373,6 +384,31 @@ const Checkout = () => {
     }
   };
 
+  const getCheckoutRequestId = () => {
+    if (checkoutRequestRef.current.inputKey === checkoutInputKey
+        && checkoutRequestRef.current.requestId) {
+      return checkoutRequestRef.current.requestId;
+    }
+
+    const storageKey = `pawzzle_checkout_request_${user?._id || user?.id || 'customer'}`;
+    let stored = null;
+    try {
+      stored = JSON.parse(sessionStorage.getItem(storageKey) || 'null');
+    } catch (error) {
+      stored = null;
+    }
+    const requestId = stored?.inputKey === checkoutInputKey && stored?.requestId
+      ? stored.requestId
+      : (window.crypto?.randomUUID?.() || `checkout-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+    checkoutRequestRef.current = { inputKey: checkoutInputKey, requestId };
+    try {
+      sessionStorage.setItem(storageKey, JSON.stringify(checkoutRequestRef.current));
+    } catch (error) {
+      // The in-memory key still prevents duplicate submissions when storage is unavailable.
+    }
+    return requestId;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!currentPricingQuote || pricingQuoteError || isPricingQuoteLoading) {
@@ -417,7 +453,8 @@ const Checkout = () => {
         paymentMethod,
         notes: notes.trim(),
         voucherCode: appliedVoucher ? voucherCode : null,
-        refundPolicyAcknowledged: refundAcknowledgmentRequired ? agreedToPolicy : false
+        refundPolicyAcknowledged: refundAcknowledgmentRequired ? agreedToPolicy : false,
+        checkoutRequestId: getCheckoutRequestId()
       };
 
       const response = await orderService.createOrder(orderData);
@@ -428,7 +465,6 @@ const Checkout = () => {
         const savedTotal = Number(response.data.checkoutBatch?.totalAmount ?? response.data.order.totalAmount);
         if (Number.isFinite(quotedTotal) && Math.abs(quotedTotal - savedTotal) > 0.009) {
           toast.warning('The price changed during checkout. Review the updated order total before paying.');
-          clearSelectedItems();
           navigate(`/orders/${orderId}`);
           return;
         }
@@ -442,14 +478,12 @@ const Checkout = () => {
               ? await paymentService.createOrderBatchCheckoutSession(response.data.checkoutBatch._id)
               : await paymentService.createCheckoutSession(orderId);
             if (paymentResponse.data && paymentResponse.data.checkoutUrl) {
-              clearSelectedItems();
               window.location.href = paymentResponse.data.checkoutUrl;
               return;
             } else {
               toast.success(response.data.checkoutBatch
                 ? 'Store orders created. Continue the combined payment from your orders.'
                 : 'Order created. Continue payment from the order details.');
-              clearSelectedItems();
               navigate(`/orders/${orderId}`);
               return;
             }
@@ -464,7 +498,6 @@ const Checkout = () => {
         }
 
         toast.success('Order placed! Waiting for store confirmation.');
-        clearSelectedItems();
         navigate('/orders');
       } else {
         toast.error('We could not place your order. Please try again.');

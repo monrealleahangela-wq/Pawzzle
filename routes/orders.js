@@ -24,6 +24,7 @@ const createOrderValidation = [
   body('deliveryMethod').isIn(['delivery', 'pickup']).withMessage('Invalid delivery method'),
   body('phoneNumber').notEmpty().withMessage('Phone number is required'),
   body('paymentMethod').equals('paymongo').withMessage('PayMongo is the only supported payment method'),
+  body('checkoutRequestId').optional().isLength({ min: 8, max: 120 }).withMessage('Checkout request ID is invalid'),
   body('refundPolicyAcknowledged').optional().isBoolean().withMessage('Refund-policy acknowledgment must be true or false'),
   body('notes').optional().trim()
 ];

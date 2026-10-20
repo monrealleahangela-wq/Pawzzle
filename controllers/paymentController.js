@@ -324,6 +324,10 @@ const createCheckoutSession = async (req, res) => {
   try {
     const order = await Order.findById(req.params.orderId).populate('customer').populate('store');
     if (!order) return res.status(404).json({ message: 'Order not found.' });
+    if (order.checkoutBatch) {
+      req.params.batchId = String(order.checkoutBatch);
+      return createOrderBatchCheckoutSession(req, res);
+    }
     if (order.status === 'cancelled') return res.status(400).json({ message: 'Cannot pay for a cancelled order.' });
     if (order.paymentStatus === 'paid') return res.status(409).json({ message: 'This order is already paid.' });
     if (String(order.customer._id) !== String(req.user._id) && !isPlatformAdmin(req.user)) {
@@ -808,6 +812,10 @@ const handleWebhook = async (req, res) => {
 
 const findTargetById = async id => {
   const order = await Order.findById(id);
+  if (order?.checkoutBatch) {
+    const checkoutBatch = await OrderCheckoutBatch.findById(order.checkoutBatch);
+    if (checkoutBatch) return { type: 'order_batch', record: checkoutBatch };
+  }
   if (order) return { type: 'order', record: order };
   const orderBatch = await OrderCheckoutBatch.findById(id);
   if (orderBatch) return { type: 'order_batch', record: orderBatch };

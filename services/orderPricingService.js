@@ -114,7 +114,7 @@ const calculateOrderPricing = async ({ items, requestedDeliveryMethod, shippingA
     }
     if (!itemStoreId) throw new Error(`The store for "${itemDoc.name}" could not be resolved.`);
     if (storeId && !idsEqual(storeId, itemStoreId)) {
-      throw pricingError('MULTI_STORE_DELIVERY_UNSUPPORTED', 'Items from different stores must be checked out separately.');
+      throw pricingError('CHECKOUT_STORE_CHANGED', 'An item changed sellers while checkout was being calculated. Refresh your cart and try again.');
     }
     storeId = itemStoreId;
 

@@ -10,6 +10,8 @@ const sessionHistorySchema = new mongoose.Schema({
 const orderCheckoutBatchSchema = new mongoose.Schema({
   customer: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
   orders: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Order', required: true }],
+  checkoutRequestId: { type: String, trim: true, maxlength: 120 },
+  checkoutFingerprint: { type: String, trim: true },
   totalAmount: { type: Number, required: true, min: 0 },
   status: {
     type: String,
@@ -37,5 +39,14 @@ const orderCheckoutBatchSchema = new mongoose.Schema({
     failureReason: String
   }
 }, { timestamps: true });
+
+orderCheckoutBatchSchema.index(
+  { customer: 1, checkoutRequestId: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { checkoutRequestId: { $type: 'string' } },
+    name: 'customer_checkout_request_unique'
+  }
+);
 
 module.exports = mongoose.model('OrderCheckoutBatch', orderCheckoutBatchSchema);

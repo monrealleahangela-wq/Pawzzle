@@ -58,6 +58,7 @@ const SHIPPING_ERROR_MESSAGES = Object.freeze({
   DELIVERY_PRICING_UNAVAILABLE: 'Delivery pricing is temporarily unavailable. Please try again shortly.',
   DELIVERY_SERVICE_UNAVAILABLE: "We couldn't calculate delivery right now. Please retry in a moment.",
   DELIVERY_QUOTE_CHANGED: 'Delivery pricing changed. Please recreate checkout before paying.',
+  CHECKOUT_STORE_CHANGED: 'An item changed sellers. Refresh your cart and try again.',
   MULTI_STORE_DELIVERY_UNSUPPORTED: 'Some items cannot be delivered together. Please review your cart.',
   INVALID_CHECKOUT_ITEMS: 'Please review your cart items and try again.',
   STORE_UNAVAILABLE: 'This Store is not accepting new orders right now.',

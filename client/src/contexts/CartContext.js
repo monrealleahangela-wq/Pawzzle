@@ -246,6 +246,14 @@ export const CartProvider = ({ children }) => {
     dispatch({ type: 'CLEAR_SELECTED_ITEMS' });
   };
 
+  const refreshCart = async () => {
+    if (!user) return state.items;
+    const response = await cartService.getCart();
+    const dbItems = response.data.items || [];
+    dispatch({ type: 'SET_CART', payload: dbItems });
+    return dbItems;
+  };
+
   const buyNow = (item) => {
     dispatch({ type: 'BUY_NOW', payload: item });
   };
@@ -271,6 +279,7 @@ export const CartProvider = ({ children }) => {
     updateQuantity,
     clearCart,
     clearSelectedItems,
+    refreshCart,
     toggleItemSelection,
     selectAllItems,
     deselectAllItems,

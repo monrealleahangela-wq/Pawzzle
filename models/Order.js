@@ -77,6 +77,8 @@ const orderSchema = new mongoose.Schema({
     ref: 'OrderCheckoutBatch',
     index: true
   },
+  checkoutRequestId: { type: String, trim: true, maxlength: 120 },
+  checkoutFingerprint: { type: String, trim: true },
   items: [orderItemSchema],
   parcelEstimate: {
     calculationVersion: Number,
@@ -302,6 +304,15 @@ const orderSchema = new mongoose.Schema({
     default: false
   }
 });
+
+orderSchema.index(
+  { customer: 1, checkoutRequestId: 1, store: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { checkoutRequestId: { $type: 'string' } },
+    name: 'customer_checkout_request_store_unique'
+  }
+);
 
 // Generate unique order number
 orderSchema.pre('save', async function (next) {
