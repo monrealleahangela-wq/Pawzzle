@@ -9,6 +9,9 @@ import {
   Loader2,
   AlertCircle,
   BarChart3,
+  CalendarDays,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { toast } from "react-toastify";
 import { hrService } from "../../services/apiService";
@@ -604,59 +607,266 @@ const AttendanceReviewCell = ({ row, canReview, onLocationReview }) => {
   );
 };
 
-const ManagementAttendanceCalendar = ({ records = [] }) => {
-  const byDate = useMemo(() => {
+const parseWorkDate = (value) => {
+  const [year, month, day] = String(value || "")
+    .split("-")
+    .map(Number);
+  return year && month && day ? new Date(year, month - 1, day) : new Date();
+};
+const workDateKey = (value) =>
+  [value.getFullYear(), String(value.getMonth() + 1).padStart(2, "0"), String(value.getDate()).padStart(2, "0")].join("-");
+const calendarDateLabel = (value, includeWeekday = false) =>
+  value.toLocaleDateString("en-US", {
+    ...(includeWeekday ? { weekday: "long" } : {}),
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+const attendanceDot = (status) =>
+  status === "present"
+    ? "bg-emerald-500"
+    : status === "absent"
+      ? "bg-red-500"
+      : status === "approved_leave" || status === "on_leave"
+        ? "bg-sky-500"
+        : "bg-amber-500";
+
+export const ManagementAttendanceCalendar = ({ records = [] }) => {
+  const recordsByDate = useMemo(() => {
     const grouped = new Map();
     records.forEach((record) => {
       if (!grouped.has(record.workDate)) grouped.set(record.workDate, []);
       grouped.get(record.workDate).push(record);
     });
-    return [...grouped.entries()].sort(([left], [right]) =>
-      right.localeCompare(left),
-    );
+    return grouped;
   }, [records]);
+  const latestWorkDate = useMemo(
+    () => [...recordsByDate.keys()].sort((left, right) => right.localeCompare(left))[0],
+    [recordsByDate],
+  );
+  const initialDate = latestWorkDate || workDateKey(new Date());
+  const [selectedDate, setSelectedDate] = useState(initialDate);
+  const [visibleMonth, setVisibleMonth] = useState(() => {
+    const selected = parseWorkDate(initialDate);
+    return new Date(selected.getFullYear(), selected.getMonth(), 1);
+  });
+
+  const calendarDays = useMemo(() => {
+    const firstDay = new Date(visibleMonth.getFullYear(), visibleMonth.getMonth(), 1);
+    const gridStart = new Date(firstDay);
+    gridStart.setDate(firstDay.getDate() - firstDay.getDay());
+    return Array.from({ length: 42 }, (_, index) => {
+      const calendarDay = new Date(gridStart);
+      calendarDay.setDate(gridStart.getDate() + index);
+      return calendarDay;
+    });
+  }, [visibleMonth]);
+
+  const selectedRecords = recordsByDate.get(selectedDate) || [];
+  const selectedDateObject = parseWorkDate(selectedDate);
+  const todayKey = workDateKey(new Date());
+  const selectDate = (calendarDay) => {
+    setSelectedDate(workDateKey(calendarDay));
+    if (
+      calendarDay.getMonth() !== visibleMonth.getMonth() ||
+      calendarDay.getFullYear() !== visibleMonth.getFullYear()
+    ) {
+      setVisibleMonth(new Date(calendarDay.getFullYear(), calendarDay.getMonth(), 1));
+    }
+  };
+  const moveMonth = (amount) => {
+    const nextMonth = new Date(
+      visibleMonth.getFullYear(),
+      visibleMonth.getMonth() + amount,
+      1,
+    );
+    const lastDayOfNextMonth = new Date(
+      nextMonth.getFullYear(),
+      nextMonth.getMonth() + 1,
+      0,
+    ).getDate();
+    const nextSelectedDate = new Date(
+      nextMonth.getFullYear(),
+      nextMonth.getMonth(),
+      Math.min(selectedDateObject.getDate(), lastDayOfNextMonth),
+    );
+    setVisibleMonth(nextMonth);
+    setSelectedDate(workDateKey(nextSelectedDate));
+  };
+  const selectToday = () => {
+    const today = new Date();
+    setSelectedDate(todayKey);
+    setVisibleMonth(new Date(today.getFullYear(), today.getMonth(), 1));
+  };
 
   return (
-    <section className="mb-4 rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
-      <div className="mb-3">
-        <h2 className="font-bold">Attendance Calendar</h2>
-        <p className="text-xs text-slate-500">
-          Daily attendance for the selected Store, including derived absences,
-          approved leave, late arrivals, and undertime.
-        </p>
-      </div>
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-        {byDate.map(([workDate, dayRecords]) => (
-          <article
-            key={`attendance-calendar-${workDate}`}
-            className="rounded-xl border border-slate-200 p-3 dark:border-slate-700"
-          >
-            <p className="mb-2 text-sm font-bold">{date(workDate)}</p>
-            <div className="space-y-2">
-              {dayRecords.map((record) => (
-                <div
-                  key={`${workDate}-${record._id || record.employee?._id}`}
-                  className="flex items-center justify-between gap-2 text-xs"
-                >
-                  <span className="min-w-0 truncate font-semibold">
-                    {record.employee?.firstName} {record.employee?.lastName}
-                  </span>
-                  <span
-                    className={`shrink-0 rounded-full px-2 py-1 font-bold capitalize ${badge(record.status)}`}
-                  >
-                    {String(record.status || "incomplete").replaceAll("_", " ")}
-                  </span>
-                </div>
-              ))}
+    <section className="mb-4 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+      <div className="flex flex-col gap-4 border-b border-slate-100 px-5 py-5 dark:border-slate-800 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+        <div>
+          <div className="flex items-center gap-3">
+            <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary-50 text-primary dark:bg-primary/10">
+              <CalendarDays className="h-5 w-5" aria-hidden="true" />
+            </span>
+            <div>
+              <h2 className="text-lg font-black text-slate-950 dark:text-white">Attendance Calendar</h2>
+              <p className="text-xs text-slate-500">Select a date to view that day&apos;s attendance.</p>
             </div>
-          </article>
-        ))}
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={selectToday}
+          className="self-start rounded-xl border border-slate-200 px-4 py-2 text-xs font-bold text-slate-600 transition hover:border-primary hover:text-primary dark:border-slate-700 dark:text-slate-300 sm:self-auto"
+        >
+          Today
+        </button>
       </div>
-      {!byDate.length && (
-        <p className="py-6 text-center text-sm text-slate-500">
-          No attendance calendar entries are available for this period.
-        </p>
-      )}
+
+      <div className="grid lg:grid-cols-[minmax(0,1.35fr)_minmax(19rem,0.65fr)]">
+        <div className="p-4 sm:p-6">
+          <div className="mb-5 flex items-center justify-between gap-3">
+            <button
+              type="button"
+              onClick={() => moveMonth(-1)}
+              aria-label="Previous month"
+              className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 text-slate-500 transition hover:border-primary hover:bg-primary-50 hover:text-primary dark:border-slate-700 dark:hover:bg-primary/10"
+            >
+              <ChevronLeft className="h-5 w-5" aria-hidden="true" />
+            </button>
+            <h3 className="text-center text-base font-black text-slate-950 dark:text-white sm:text-lg">
+              {visibleMonth.toLocaleDateString("en-US", { month: "long", year: "numeric" })}
+            </h3>
+            <button
+              type="button"
+              onClick={() => moveMonth(1)}
+              aria-label="Next month"
+              className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 text-slate-500 transition hover:border-primary hover:bg-primary-50 hover:text-primary dark:border-slate-700 dark:hover:bg-primary/10"
+            >
+              <ChevronRight className="h-5 w-5" aria-hidden="true" />
+            </button>
+          </div>
+
+          <div className="grid grid-cols-7 border-b border-slate-100 pb-2 text-center text-[10px] font-black uppercase tracking-widest text-slate-400 dark:border-slate-800">
+            {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((weekday) => (
+              <span key={weekday}>{weekday}</span>
+            ))}
+          </div>
+
+          <div className="mt-2 grid grid-cols-7 gap-1 sm:gap-2">
+            {calendarDays.map((calendarDay) => {
+              const dayKey = workDateKey(calendarDay);
+              const dayRecords = recordsByDate.get(dayKey) || [];
+              const isSelected = dayKey === selectedDate;
+              const isToday = dayKey === todayKey;
+              const isCurrentMonth =
+                calendarDay.getMonth() === visibleMonth.getMonth() &&
+                calendarDay.getFullYear() === visibleMonth.getFullYear();
+              const statuses = [...new Set(dayRecords.map((record) => record.status || "incomplete"))].slice(0, 3);
+              const attendanceCount = dayRecords.length;
+              return (
+                <button
+                  type="button"
+                  key={dayKey}
+                  onClick={() => selectDate(calendarDay)}
+                  aria-label={`Select ${calendarDateLabel(calendarDay)}, ${attendanceCount} attendance ${attendanceCount === 1 ? "record" : "records"}`}
+                  aria-pressed={isSelected}
+                  className={`group relative flex min-h-14 flex-col items-center justify-center rounded-2xl border text-sm font-bold transition sm:min-h-20 ${
+                    isSelected
+                      ? "border-primary bg-primary text-white shadow-lg shadow-primary/20"
+                      : isToday
+                        ? "border-primary/40 bg-primary-50 text-primary hover:border-primary dark:bg-primary/10"
+                        : isCurrentMonth
+                          ? "border-transparent text-slate-800 hover:border-slate-200 hover:bg-slate-50 dark:text-slate-100 dark:hover:border-slate-700 dark:hover:bg-slate-800"
+                          : "border-transparent text-slate-300 hover:bg-slate-50 dark:text-slate-600 dark:hover:bg-slate-800/60"
+                  }`}
+                >
+                  <span>{calendarDay.getDate()}</span>
+                  <span className="mt-1.5 flex h-2 items-center justify-center gap-1" aria-hidden="true">
+                    {statuses.map((status) => (
+                      <span
+                        key={status}
+                        className={`h-1.5 w-1.5 rounded-full ${isSelected ? "bg-white" : attendanceDot(status)}`}
+                      />
+                    ))}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-slate-100 pt-4 text-[10px] font-bold text-slate-500 dark:border-slate-800">
+            {[
+              ["bg-emerald-500", "Present"],
+              ["bg-amber-500", "Incomplete / late"],
+              ["bg-red-500", "Absent"],
+              ["bg-sky-500", "Approved leave"],
+            ].map(([tone, label]) => (
+              <span key={label} className="flex items-center gap-1.5">
+                <span className={`h-2 w-2 rounded-full ${tone}`} />
+                {label}
+              </span>
+            ))}
+          </div>
+        </div>
+
+        <aside
+          role="region"
+          aria-label={`Attendance for ${calendarDateLabel(selectedDateObject, true)}`}
+          className="border-t border-slate-100 bg-slate-50/80 p-5 dark:border-slate-800 dark:bg-slate-950/40 sm:p-6 lg:border-l lg:border-t-0"
+        >
+          <div className="mb-5 flex items-start justify-between gap-3">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">Selected date</p>
+              <h3 className="mt-1 text-lg font-black text-slate-950 dark:text-white">
+                {calendarDateLabel(selectedDateObject, true)}
+              </h3>
+            </div>
+            <span className="shrink-0 rounded-full bg-white px-3 py-1.5 text-xs font-bold text-slate-500 shadow-sm dark:bg-slate-800 dark:text-slate-300">
+              {selectedRecords.length} {selectedRecords.length === 1 ? "record" : "records"}
+            </span>
+          </div>
+
+          <div className="space-y-3">
+            {selectedRecords.map((record) => {
+              const firstName = record.employee?.firstName || "Staff";
+              const lastName = record.employee?.lastName || "member";
+              const employeeRole = (record.employee?.staffType || record.employee?.role || "Staff")
+                .replaceAll("_", " ");
+              const status = String(record.status || "incomplete").replaceAll("_", " ");
+              return (
+                <div
+                  key={`${selectedDate}-${record._id || record.employee?._id}`}
+                  className="rounded-2xl border border-slate-200 bg-white p-3.5 shadow-sm dark:border-slate-800 dark:bg-slate-900"
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-xs font-black uppercase text-slate-600 dark:bg-slate-800 dark:text-slate-200">
+                      {firstName.charAt(0)}{lastName.charAt(0)}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-bold text-slate-900 dark:text-white">{firstName} {lastName}</p>
+                      <p className="truncate text-[10px] font-semibold capitalize text-slate-400">{employeeRole}</p>
+                    </div>
+                    <span className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] font-bold capitalize ${badge(record.status)}`}>
+                      {status}
+                    </span>
+                  </div>
+                  <div className="mt-3 grid grid-cols-2 gap-2 border-t border-slate-100 pt-3 text-[10px] dark:border-slate-800">
+                    <p className="text-slate-500">Time in <span className="block font-bold text-slate-800 dark:text-slate-200">{record.timeIn?.at ? time(record.timeIn.at) : "Not recorded"}</span></p>
+                    <p className="text-slate-500">Time out <span className="block font-bold text-slate-800 dark:text-slate-200">{record.timeOut?.at ? time(record.timeOut.at) : "Not recorded"}</span></p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          {!selectedRecords.length && (
+            <div className="rounded-2xl border border-dashed border-slate-300 bg-white/70 px-5 py-10 text-center dark:border-slate-700 dark:bg-slate-900/60">
+              <CalendarDays className="mx-auto h-8 w-8 text-slate-300 dark:text-slate-600" aria-hidden="true" />
+              <p className="mt-3 text-sm font-bold text-slate-700 dark:text-slate-200">No attendance entries</p>
+              <p className="mt-1 text-xs text-slate-500">There are no attendance records for this date.</p>
+            </div>
+          )}
+        </aside>
+      </div>
     </section>
   );
 };

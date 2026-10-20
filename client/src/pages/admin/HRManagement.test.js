@@ -1,8 +1,8 @@
 import React from 'react';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { MemoryRouter } from 'react-router-dom';
-import HRManagement from './HRManagement';
+import HRManagement, { ManagementAttendanceCalendar } from './HRManagement';
 import { hrService } from '../../services/apiService';
 
 let mockUser = { _id: 'owner-a', role: 'store_owner' };
@@ -51,6 +51,53 @@ const dispatcher = {
     message: 'Dispatcher is a retired role and is excluded from new payroll. Reassign an active staff role if this person is still employed.'
   }
 };
+
+describe('ManagementAttendanceCalendar', () => {
+  const records = [
+    {
+      _id: 'attendance-20', workDate: '2026-10-20', status: 'incomplete',
+      employee: { _id: 'rider-a', firstName: 'Rina', lastName: 'Rider', staffType: 'delivery_rider' },
+      timeIn: { at: '2026-10-20T08:00:00+08:00' }
+    },
+    {
+      _id: 'attendance-19-a', workDate: '2026-10-19', status: 'present',
+      employee: { _id: 'rider-a', firstName: 'Rina', lastName: 'Rider', staffType: 'delivery_rider' },
+      timeIn: { at: '2026-10-19T08:00:00+08:00' }, timeOut: { at: '2026-10-19T17:00:00+08:00' }
+    },
+    {
+      _id: 'attendance-19-b', workDate: '2026-10-19', status: 'absent',
+      employee: { _id: 'dispatcher-a', firstName: 'Dex', lastName: 'Dispatcher', staffType: 'delivery_dispatcher' }
+    }
+  ];
+
+  test('selects one date and shows only that day attendance', () => {
+    render(<ManagementAttendanceCalendar records={records} />);
+
+    const initialDetails = screen.getByRole('region', { name: 'Attendance for Tuesday, October 20, 2026' });
+    expect(within(initialDetails).getByText('Rina Rider')).toBeInTheDocument();
+    expect(within(initialDetails).queryByText('Dex Dispatcher')).not.toBeInTheDocument();
+
+    const october19 = screen.getByRole('button', { name: 'Select October 19, 2026, 2 attendance records' });
+    fireEvent.click(october19);
+
+    const selectedDetails = screen.getByRole('region', { name: 'Attendance for Monday, October 19, 2026' });
+    expect(within(selectedDetails).getByText('Rina Rider')).toBeInTheDocument();
+    expect(within(selectedDetails).getByText('Dex Dispatcher')).toBeInTheDocument();
+    expect(october19).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  test('supports month navigation and a clear empty-day state', () => {
+    render(<ManagementAttendanceCalendar records={records} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Next month' }));
+    expect(screen.getByRole('heading', { name: 'November 2026' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Previous month' }));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Select October 18, 2026, 0 attendance records' }));
+    const emptyDetails = screen.getByRole('region', { name: 'Attendance for Sunday, October 18, 2026' });
+    expect(within(emptyDetails).getByText('No attendance entries')).toBeInTheDocument();
+  });
+});
 
 describe('HRManagement Rider payroll setup', () => {
   beforeEach(() => {
