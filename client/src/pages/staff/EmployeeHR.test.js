@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { MemoryRouter } from 'react-router-dom';
 import EmployeeHR from './EmployeeHR';
@@ -7,11 +7,49 @@ import { hrService } from '../../services/apiService';
 
 jest.mock('../../services/apiService', () => ({
   hrService: {
+    getMyAttendance: jest.fn(),
+    getMyAttendanceCorrections: jest.fn(),
     getMyPayslips: jest.fn(),
-    getMyLeaves: jest.fn()
+    getMyLeaves: jest.fn(),
+    timeIn: jest.fn(),
+    timeOut: jest.fn()
   }
 }));
 jest.mock('react-toastify', () => ({ toast: { success: jest.fn(), error: jest.fn() } }));
+
+test('workplace check has a visible submit action and sends the off-site reason', async () => {
+  hrService.getMyAttendance.mockResolvedValue({ data: {
+    today: null,
+    schedule: { isWorkDay: true, start: '09:00', end: '18:00' },
+    records: [],
+    correctionRequests: [],
+    timeInWindow: { allowed: true, message: 'You can time in now.' },
+    locationPolicy: { outsideGeofencePolicy: 'flag' }
+  } });
+  hrService.timeIn.mockResolvedValue({ data: { message: 'Time in recorded.' } });
+  hrService.getMyAttendanceCorrections.mockResolvedValue({ data: { requests: [] } });
+  Object.defineProperty(navigator, 'geolocation', {
+    configurable: true,
+    value: {
+      getCurrentPosition: success => success({
+        coords: { latitude: 14.5995, longitude: 120.9842, accuracy: 12 }
+      })
+    }
+  });
+
+  render(<MemoryRouter><EmployeeHR initialTab="attendance" /></MemoryRouter>);
+  fireEvent.change(await screen.findByPlaceholderText('Explain the remote or off-site work reason'), {
+    target: { value: 'Assigned to an off-site delivery.' }
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Submit Time In' }));
+
+  await waitFor(() => expect(hrService.timeIn).toHaveBeenCalledWith({
+    latitude: 14.5995,
+    longitude: 120.9842,
+    accuracy: 12,
+    offsiteReason: 'Assigned to an off-site delivery.'
+  }));
+});
 
 test('staff sees only own approved salary payment status and masked reference before payslip finalization', async () => {
   hrService.getMyPayslips.mockResolvedValue({ data: {

@@ -319,6 +319,22 @@ const EmployeeHR = ({ initialTab = "attendance" }) => {
       setBusy(false);
     }
   };
+  const attendanceAction = !attendance.today?.timeIn?.at
+    ? "in"
+    : !attendance.today?.timeOut?.at
+      ? "out"
+      : null;
+  const attendanceSubmitDisabled =
+    busy ||
+    !attendanceAction ||
+    (attendanceAction === "in" &&
+      attendance.timeInWindow?.allowed === false);
+  const attendanceSubmitLabel =
+    attendanceAction === "in"
+      ? "Submit Time In"
+      : attendanceAction === "out"
+        ? "Submit Time Out"
+        : "Attendance Complete";
 
   return (
     <main className="mx-auto w-full max-w-6xl p-4 sm:p-6 text-slate-900 dark:text-slate-100">
@@ -394,30 +410,6 @@ const EmployeeHR = ({ initialTab = "attendance" }) => {
                   </p>
                 </div>
               </div>
-              <div className="mt-5 flex gap-3">
-                <button
-                  disabled={
-                    busy ||
-                    !!attendance.today?.timeIn?.at ||
-                    attendance.timeInWindow?.allowed === false
-                  }
-                  onClick={() => recordAttendance("in")}
-                  className="rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-white disabled:opacity-40"
-                >
-                  Time In
-                </button>
-                <button
-                  disabled={
-                    busy ||
-                    !attendance.today?.timeIn?.at ||
-                    !!attendance.today?.timeOut?.at
-                  }
-                  onClick={() => recordAttendance("out")}
-                  className="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-bold dark:border-slate-700 disabled:opacity-40"
-                >
-                  Time Out
-                </button>
-              </div>
               {!attendance.today?.timeIn?.at && attendance.timeInWindow && (
                 <p
                   className={`mt-3 text-xs ${attendance.timeInWindow.allowed ? "text-emerald-700" : "text-amber-700"}`}
@@ -457,6 +449,23 @@ const EmployeeHR = ({ initialTab = "attendance" }) => {
                   />
                 </label>
               )}
+              <button
+                type="button"
+                disabled={attendanceSubmitDisabled}
+                onClick={() =>
+                  attendanceAction && recordAttendance(attendanceAction)
+                }
+                className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-bold text-white shadow-sm transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                {busy && (
+                  <Loader2
+                    aria-hidden="true"
+                    className="animate-spin"
+                    size={16}
+                  />
+                )}
+                {attendanceSubmitLabel}
+              </button>
             </div>
           </section>
           <AttendanceCorrectionRequestPanel
