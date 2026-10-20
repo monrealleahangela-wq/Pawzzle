@@ -382,7 +382,7 @@ export const paymentService = {
   createCheckoutSession: (orderId) => api.post(`/payment/create-checkout-session/${orderId}`),
   createOrderBatchCheckoutSession: (batchId) => api.post(`/payment/create-order-batch-checkout-session/${batchId}`),
   createBookingCheckoutSession: (bookingId) => api.post(`/payment/create-booking-checkout-session/${bookingId}`),
-  createAdoptionCheckoutSession: (requestId) => api.post(`/payment/create-adoption-checkout-session/${requestId}`),
+  createAdoptionCheckoutSession: (requestId, data = {}) => api.post(`/payment/create-adoption-checkout-session/${requestId}`, data),
   createProcurementCheckoutSession: (purchaseOrderId) => api.post(`/payment/create-procurement-checkout-session/${purchaseOrderId}`),
   verifyPayment: (orderId) => api.get(`/payment/verify/${orderId}`),
   verifyBookingPayment: (bookingId) => api.get(`/payment/verify/${bookingId}`),

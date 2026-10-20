@@ -59,7 +59,7 @@ test('customer surfaces no longer expose the known internal-style wording', () =
     'client/src/pages/customer/Home.js',
     'client/src/pages/customer/FindShops.js',
     'client/src/components/EnhancedChatMessenger.js',
-    'client/src/components/InquiryModal.js',
+    'client/src/components/PetPurchaseModal.js',
     'client/src/components/ReviewModal.js',
     'client/src/components/MapPicker.js'
   ];

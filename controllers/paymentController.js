@@ -23,7 +23,7 @@ const {
 } = require('../services/paymentReconciliationService');
 const { isPlatformAdmin, isStoreAdmin, isOperationalStaff, hasPermission } = require('../config/permissions');
 const { canAccessStore, canOperateStore } = require('../utils/authorizationPolicy');
-const { requiresAcknowledgment } = require('../utils/refundPolicy');
+const { requiresAcknowledgment, snapshotRefundPolicy } = require('../utils/refundPolicy');
 const { assertStoreTransactionEligible } = require('../services/storeComplianceService');
 const { revalidatePendingOrderDelivery } = require('../services/orderPricingService');
 const {
@@ -636,15 +636,40 @@ const createBookingCheckoutSession = async (req, res) => {
 
 const createAdoptionCheckoutSession = async (req, res) => {
   try {
-    const adoption = await AdoptionRequest.findById(req.params.requestId).populate('customer').populate('pet');
+    const adoption = await AdoptionRequest.findById(req.params.requestId)
+      .populate('customer')
+      .populate('pet')
+      .populate('store', 'name refundPolicy isActive isDeleted');
     if (!adoption) return res.status(404).json({ message: 'Adoption request not found.' });
     if (['cancelled', 'declined', 'expired', 'completed'].includes(adoption.status)) {
-      return res.status(400).json({ message: `Cannot pay for an inquiry that is ${adoption.status}.` });
+      return res.status(400).json({ message: `Cannot pay for a purchase or reservation that is ${adoption.status}.` });
     }
-    const authorized = String(adoption.customer._id) === String(req.user._id)
-      || String(adoption.seller) === String(req.user._id)
-      || isPlatformAdmin(req.user);
-    if (!authorized) return res.status(403).json({ message: 'Access denied.' });
+    if (String(adoption.customer?._id || adoption.customer) !== String(req.user._id)
+        || req.user?.role !== 'customer') {
+      return res.status(403).json({ message: 'Only the authenticated buyer can start this payment.' });
+    }
+    if (!adoption.pet || !adoption.store || adoption.store.isActive === false || adoption.store.isDeleted === true
+        || String(adoption.seller) !== String(adoption.pet.addedBy)
+        || String(adoption.store?._id || adoption.store || '') !== String(adoption.pet.store || '')) {
+      return res.status(409).json({ message: 'The pet seller or Store no longer matches this purchase record.' });
+    }
+    const effectiveRefundPolicy = adoption.refundPolicySnapshot || snapshotRefundPolicy(adoption.store?.refundPolicy);
+    if (!adoption.refundPolicySnapshot?.type) adoption.refundPolicySnapshot = effectiveRefundPolicy;
+    if (requiresAcknowledgment(effectiveRefundPolicy)
+        && !adoption.refundPolicyAcknowledgment?.acknowledged
+        && req.body?.refundPolicyAcknowledged === true) {
+      adoption.refundPolicyAcknowledgment = {
+        required: true,
+        acknowledged: true,
+        acknowledgedAt: new Date(),
+        acknowledgedBy: req.user._id
+      };
+    }
+    if (requiresAcknowledgment(effectiveRefundPolicy)
+        && !adoption.refundPolicyAcknowledgment?.acknowledged) {
+      return res.status(409).json({ message: 'The Store refund policy must be acknowledged before payment.' });
+    }
+    await adoption.save();
 
     const reservedForThisRequest = String(adoption.pet?.reservation?.adoptionRequest || '') === String(adoption._id);
     const availabilityIssue = reservedForThisRequest ? null : getPetAvailabilityIssue(adoption.pet, 1);
@@ -665,8 +690,8 @@ const createAdoptionCheckoutSession = async (req, res) => {
         send_email_receipt: true,
         show_description: true,
         show_line_items: true,
-        description: `Adoption fee for ${adoption.pet.name}`,
-        line_items: [{ amount: dueCentavos, currency: 'PHP', name: `Pet purchase: ${adoption.pet.name}`, quantity: 1 }],
+        description: `${adoption.pet.paymentConfig === 'deposit_first' ? 'Reservation deposit' : 'Pet purchase'} for ${adoption.pet.name}`,
+        line_items: [{ amount: dueCentavos, currency: 'PHP', name: `${adoption.pet.paymentConfig === 'deposit_first' ? 'Pet reservation' : 'Pet purchase'}: ${adoption.pet.name}`, quantity: 1 }],
         payment_method_types: ['card', 'gcash', 'paymaya', 'dob', 'dob_ubp'],
         success_url: `${FRONTEND_URL}/pets/${adoption.pet._id}?payment=success&id=${adoption._id}`,
         cancel_url: `${FRONTEND_URL}/pets/${adoption.pet._id}?payment=cancelled&type=adoption&id=${adoption._id}`,
@@ -791,6 +816,9 @@ const handleWebhook = async (req, res) => {
       if (reconciled) emitPaymentDashboardUpdate(req, reconciled.type, reconciled.record, 'paid');
     } else if (eventType === 'checkout_session.payment.failed' || eventType === 'payment.failed') {
       const failed = await markSessionFailed(resource);
+      if (failed?.type === 'adoption') {
+        await releaseTransactionPetReservations('adoption', failed.record);
+      }
       if (failed) emitPaymentDashboardUpdate(req, failed.type, failed.record, 'failed');
     }
     receipt.status = 'completed';

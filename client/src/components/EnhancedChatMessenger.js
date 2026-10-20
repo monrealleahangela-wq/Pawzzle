@@ -8,6 +8,7 @@ import socket from '../utils/socket';
 import { formatChatTime } from '../utils/timeFormatters';
 import { formatPeso } from '../utils/paymentSummary';
 import { pawzzleConfirm } from '../utils/pawzzleDialog';
+import { normalizeRefundPolicy, refundPolicyLabel, requiresRefundAcknowledgment } from '../utils/refundPolicy';
 
 const EnhancedChatMessenger = ({
   isOpen,
@@ -148,6 +149,7 @@ const EnhancedChatMessenger = ({
       const response = await adoptionService.getAdoptionByConversation(convId);
       if (response.data.request) {
         setTransactionRequest(response.data.request);
+        setAgreedToPolicy(Boolean(response.data.request.refundPolicyAcknowledgment?.acknowledged));
         const currentUserId = currentUser?._id || currentUser?.id;
         const sellerId = seller?._id || seller?.id;
         const adminId = response.data.request.seller?._id || response.data.request.seller;
@@ -302,25 +304,6 @@ const EnhancedChatMessenger = ({
     }
   };
 
-  const handlePurchaseRequest = async () => {
-    try {
-      setIsLoading(true);
-      const response = await adoptionService.requestAdoption({
-        petId: pet._id,
-        conversationId: conversationId,
-        notes: `Interest in purchasing ${pet.name}`
-      });
-      setTransactionRequest(response.data.request);
-      toast.success('Inquiry submitted!');
-      loadMessages(conversationId);
-    } catch (error) {
-      console.error('Error requesting purchase:', error);
-      toast.error(error.response?.data?.message || 'We could not send your request. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   const handleStatusUpdate = async (status) => {
     try {
       setIsLoading(true);
@@ -354,14 +337,18 @@ const EnhancedChatMessenger = ({
   };
 
   const handlePaymongoCheckout = async () => {
-    if (!agreedToPolicy) {
-      toast.error('Please agree to the No Refund Policy first');
+    const refundPolicy = normalizeRefundPolicy(transactionRequest?.refundPolicySnapshot);
+    const acknowledgmentRequired = requiresRefundAcknowledgment(refundPolicy);
+    if (acknowledgmentRequired && !agreedToPolicy) {
+      toast.error(`Please acknowledge the ${refundPolicyLabel(refundPolicy.type)} policy first.`);
       return;
     }
     try {
       setIsLoading(true);
       toast.info('Opening PayMongo payment...');
-      const response = await paymentService.createAdoptionCheckoutSession(transactionRequest._id);
+      const response = await paymentService.createAdoptionCheckoutSession(transactionRequest._id, {
+        refundPolicyAcknowledged: acknowledgmentRequired ? agreedToPolicy : false
+      });
       if (response.data?.checkoutUrl) {
         window.location.href = response.data.checkoutUrl;
       } else {
@@ -418,21 +405,23 @@ const EnhancedChatMessenger = ({
     if (!transactionRequest) return null;
 
     const statusConfig = {
-      inquiry_submitted: { color: 'bg-primary-50 text-primary-800', icon: <Clock className="h-4 w-4" />, label: 'Inquiry Submitted' },
+      inquiry_submitted: { color: 'bg-primary-50 text-primary-800', icon: <Clock className="h-4 w-4" />, label: 'Purchase Started' },
       under_review: { color: 'bg-indigo-50 text-indigo-800', icon: <Clock className="h-4 w-4" />, label: 'Under Review' },
       reserved: { color: 'bg-amber-50 text-amber-800', icon: <Shield className="h-4 w-4" />, label: 'Reserved for You' },
-      approved: { color: 'bg-emerald-50 text-emerald-800', icon: <CheckCircle className="h-4 w-4" />, label: 'Inquiry Approved' },
+      approved: { color: 'bg-emerald-50 text-emerald-800', icon: <CheckCircle className="h-4 w-4" />, label: 'Buyer Approved' },
       pickup_scheduling: { color: 'bg-secondary-50 text-primary-800', icon: <Calendar className="h-4 w-4" />, label: 'Scheduling Pickup' },
       pickup_confirmed: { color: 'bg-secondary-100 text-primary-900', icon: <MapPin className="h-4 w-4" />, label: 'Pickup Confirmed' },
       completed: { color: 'bg-emerald-600 text-white', icon: <Heart className="h-4 w-4" />, label: 'Pet Handed Over' },
       cancelled: { color: 'bg-slate-100 text-slate-500', icon: <X className="h-4 w-4" />, label: 'Cancelled' },
-      declined: { color: 'bg-rose-50 text-rose-800', icon: <X className="h-4 w-4" />, label: 'Inquiry Declined' },
+      declined: { color: 'bg-rose-50 text-rose-800', icon: <X className="h-4 w-4" />, label: 'Purchase Declined' },
       expired: { color: 'bg-slate-100 text-slate-400', icon: <Clock className="h-4 w-4" />, label: 'Reservation Expired' }
     };
 
     const config = statusConfig[transactionRequest.status] || statusConfig.inquiry_submitted;
     const payment = transactionRequest.paymentDetails || {};
     const pricing = payment.pricingBreakdown || {};
+    const refundPolicy = normalizeRefundPolicy(transactionRequest.refundPolicySnapshot);
+    const acknowledgmentRequired = requiresRefundAcknowledgment(refundPolicy);
 
     return (
       <div className="flex-shrink-0 z-10">
@@ -478,20 +467,20 @@ const EnhancedChatMessenger = ({
               <>
                 {['payment_pending', 'payment_cancelled', 'payment_failed'].includes(payment.paymentStatus) && (
                   <div className="flex flex-col items-end gap-2">
-                    <label className="flex items-center gap-2 cursor-pointer group">
+                    {acknowledgmentRequired && <label className="flex items-center gap-2 cursor-pointer group">
                       <input 
                         type="checkbox" 
                         checked={agreedToPolicy} 
                         onChange={(e) => setAgreedToPolicy(e.target.checked)}
                         className="w-3.5 h-3.5 rounded border-rose-300 text-rose-600 focus:ring-rose-500 cursor-pointer"
                       />
-                      <span className="text-[8px] font-black text-rose-900/60 uppercase tracking-widest group-hover:text-rose-600 transition-colors">I agree to No Refund Policy</span>
-                    </label>
+                      <span className="text-[8px] font-black text-rose-900/60 uppercase tracking-widest group-hover:text-rose-600 transition-colors">I acknowledge the {refundPolicyLabel(refundPolicy.type)} policy</span>
+                    </label>}
                     <button 
                       onClick={handlePaymongoCheckout} 
-                      disabled={!agreedToPolicy}
+                      disabled={acknowledgmentRequired && !agreedToPolicy}
                       className={`text-[9px] font-black uppercase tracking-widest px-3 py-1.5 rounded-lg shadow-sm flex items-center gap-2 transition-all ${
-                        agreedToPolicy ? 'bg-emerald-600 text-white hover:bg-emerald-700 active:scale-95' : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                        !acknowledgmentRequired || agreedToPolicy ? 'bg-emerald-600 text-white hover:bg-emerald-700 active:scale-95' : 'bg-slate-200 text-slate-400 cursor-not-allowed'
                       }`}
                     >
                       <CheckCircle2 className="h-3 w-3" /> Secure Payment
@@ -499,7 +488,7 @@ const EnhancedChatMessenger = ({
                   </div>
                 )}
                 {['inquiry_submitted', 'reserved', 'approved'].includes(transactionRequest.status) && (
-                  <button onClick={handleCancelRequest} className="text-[9px] font-black uppercase tracking-widest bg-white/20 border border-current px-3 py-1.5 rounded-lg hover:bg-white/10 transition-colors">Cancel Inquiry</button>
+                  <button onClick={handleCancelRequest} className="text-[9px] font-black uppercase tracking-widest bg-white/20 border border-current px-3 py-1.5 rounded-lg hover:bg-white/10 transition-colors">Cancel purchase</button>
                 )}
                 {['pickup_scheduling', 'pickup_confirmed'].includes(transactionRequest.status) && (
                   <button onClick={handleCancelRequest} className="text-[9px] font-black uppercase tracking-widest bg-rose-600 text-white px-3 py-1.5 rounded-lg shadow-sm">Cancel request</button>
@@ -669,20 +658,6 @@ const EnhancedChatMessenger = ({
           >
             <ChevronDown className="h-5 w-5" />
           </button>
-        )}
-        {!transactionRequest && !isSeller && !isAdmin && conversationId && pet && (
-          <div className="bg-white border border-secondary-100 p-4 rounded-3xl text-center space-y-3 mx-2 shadow-sm mb-4">
-            <div className="w-12 h-12 bg-secondary-50 rounded-full flex items-center justify-center mx-auto">
-              <Heart className="h-6 w-6 text-primary-500" />
-            </div>
-            <div className="space-y-0.5">
-              <h3 className="text-sm font-black text-slate-800 uppercase tracking-tight">Serious Inquiry?</h3>
-              <p className="text-[10px] text-slate-500 font-medium">Ask the store about this pet.</p>
-            </div>
-            <button disabled={pet.status !== 'available' || pet.isAvailable !== true} onClick={handlePurchaseRequest} className="btn btn-primary w-full py-2.5 text-[9px] font-black uppercase tracking-[0.2em] shadow-lg shadow-primary-100 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:shadow-none">
-              {pet.status === 'available' && pet.isAvailable === true ? 'Buy this Pet' : 'Pet Unavailable'}
-            </button>
-          </div>
         )}
         {messages.map(renderMessage)}
         <div ref={messagesEndRef} className="h-6" />

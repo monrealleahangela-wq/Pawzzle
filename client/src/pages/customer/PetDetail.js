@@ -8,8 +8,7 @@ import LoginModal from '../../components/LoginModal';
 import EnhancedChatMessenger from '../../components/EnhancedChatMessenger';
 import { useAuth } from '../../contexts/AuthContext';
 import ReviewSection from '../../components/ReviewSection';
-import InquiryModal from '../../components/InquiryModal';
-import PetInquiryBoard from '../../components/pets/PetInquiryBoard';
+import PetPurchaseModal from '../../components/PetPurchaseModal';
 import { formatPeso } from '../../utils/paymentSummary';
 
 const statusStyles = {
@@ -56,7 +55,8 @@ const PetDetail = () => {
   const [loadError, setLoadError] = useState(null);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [showChat, setShowChat] = useState(false);
-  const [showInquiryModal, setShowInquiryModal] = useState(false);
+  const [showPurchaseModal, setShowPurchaseModal] = useState(false);
+  const [purchaseSubmitting, setPurchaseSubmitting] = useState(false);
   const [mainImage, setMainImage] = useState(null);
   const [storeDetails, setStoreDetails] = useState(null);
   const [descriptionExpanded, setDescriptionExpanded] = useState(false);
@@ -88,12 +88,12 @@ const PetDetail = () => {
     if (payment === 'success') {
       toast.info('Payment received. Checking its status...');
       paymentService.verifyPayment(adoptionId).then(response => {
-        if (['paid_in_full', 'deposit_paid', 'partially_paid'].includes(response.data.status)) toast.success('PayMongo payment confirmed.');
-        else toast.info('Payment is still pending confirmation.');
+        if (['paid_in_full', 'deposit_paid', 'partially_paid'].includes(response.data.status)) toast.success('PayMongo payment confirmed. Your pickup or seller steps are shown in My Pet Purchases.');
+        else toast.info('Payment is pending PayMongo confirmation. The pet has not been marked sold.');
       }).catch(() => toast.info('Payment confirmation is still pending.'));
     } else if (payment === 'cancelled') {
       paymentService.cancelPayment('adoption', adoptionId).catch(() => {});
-      toast.warning('Payment was cancelled. You can try again from your inquiry.');
+      toast.warning('Payment was cancelled. You can retry from your pet purchase record.');
     }
   }, [location.search]);
 
@@ -131,15 +131,15 @@ const PetDetail = () => {
     else setShowLoginModal(true);
   };
 
-  const openInquiry = () => {
+  const openPurchase = () => {
     if (pet.status !== 'available' || pet.isAvailable !== true) return;
-    if (isAuthenticated) setShowInquiryModal(true);
+    if (isAuthenticated) setShowPurchaseModal(true);
     else setShowLoginModal(true);
   };
 
-  const handleInquirySubmit = async formData => {
+  const handlePurchaseSubmit = async formData => {
     try {
-      setLoading(true);
+      setPurchaseSubmitting(true);
       let conversationId;
       try {
         const response = await chatService.getConversationByPet(id);
@@ -152,28 +152,27 @@ const PetDetail = () => {
         conversationId = response.data.conversation._id;
       }
 
-      const response = await adoptionService.requestAdoption({ petId: id, conversationId, ...formData });
-      const adoptionRequest = response.data.request;
-      if (formData.paymentMethod === 'paymongo' && pet.price > 0) {
-        toast.info('Opening PayMongo payment...');
-        try {
-          const checkout = await paymentService.createAdoptionCheckoutSession(adoptionRequest._id);
-          if (checkout.data.checkoutUrl) {
-            window.location.href = checkout.data.checkoutUrl;
-            return;
-          }
-        } catch (error) {
-          console.error('Payment preparation failed:', error);
-          toast.warning('Your inquiry was sent, but payment could not start. You can pay from the chat later.');
+      let adoptionRequest;
+      try {
+        const response = await adoptionService.requestAdoption({ petId: id, conversationId, ...formData });
+        adoptionRequest = response.data.request;
+      } catch (error) {
+        if (error.response?.status === 409 && error.response?.data?.request?._id) {
+          adoptionRequest = error.response.data.request;
+        } else {
+          throw error;
         }
       }
-      toast.success(`Active inquiry started for ${pet.name}!`);
-      setShowInquiryModal(false);
-      setShowChat(true);
+
+      toast.info('Opening secure PayMongo checkout…');
+      const checkout = await paymentService.createAdoptionCheckoutSession(adoptionRequest._id);
+      if (!checkout.data.checkoutUrl) throw new Error('PayMongo did not return a checkout URL.');
+      window.location.assign(checkout.data.checkoutUrl);
     } catch (error) {
-      toast.error(error.response?.data?.message || 'We could not start this inquiry. Please try again.');
+      console.error('Pet purchase checkout failed:', error);
+      toast.error(error.response?.data?.message || error.message || 'We could not start the pet checkout. Nothing was charged.');
     } finally {
-      setLoading(false);
+      setPurchaseSubmitting(false);
     }
   };
 
@@ -181,8 +180,9 @@ const PetDetail = () => {
   const storeId = store?._id || pet?.store?._id || pet?.store;
   const storeAddress = store?.contactInfo?.address || {};
   const branch = [storeAddress.barangay, storeAddress.city].filter(Boolean).join(', ') || 'Branch details available from the store';
-  const hasServices = Boolean(storeDetails?.services?.length);
   const isPurchasable = pet?.status === 'available' && pet?.isAvailable === true;
+  const purchaseReady = isPurchasable && Boolean(storeDetails?.store);
+  const purchaseActionLabel = pet?.paymentConfig === 'deposit_first' ? 'Reserve Pet' : 'Buy Now';
   const pcciProvided = Boolean(pet?.pcciRegistration?.certificateAvailable);
   const pcciInformationProvided = pcciProvided || pet?.pcciRegistration?.status === 'yes' || Boolean(pet?.pcciRegistration?.registrationNumber);
   const temperament = useMemo(() => {
@@ -236,8 +236,7 @@ const PetDetail = () => {
             {pet.availabilityNotes && <p className="mt-3 rounded-xl bg-emerald-50 px-3 py-2 text-[11px] font-semibold text-emerald-800">{pet.availabilityNotes}</p>}
             <div className="mt-auto hidden gap-2 pt-6 sm:grid sm:grid-cols-2">
               <button type="button" onClick={handleChatSeller} className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 text-[10px] font-black uppercase text-slate-700 hover:bg-slate-50"><MessageSquare className="h-4 w-4" />Chat Store</button>
-              <button type="button" disabled={!isPurchasable} onClick={openInquiry} className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-primary-600 text-[10px] font-black uppercase text-white disabled:cursor-not-allowed disabled:bg-slate-300"><Package className="h-4 w-4" />{isPurchasable ? (pet.listingType === 'adoption' ? 'Adopt / Inquire' : 'Buy / Inquire') : (pet.status || 'Unavailable')}</button>
-              {hasServices && <button type="button" onClick={() => navigate(`/services?store=${storeId}`)} className="col-span-2 inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-slate-900 text-[10px] font-black uppercase text-white"><CalendarDays className="h-4 w-4" />Book a Service</button>}
+              <button type="button" disabled={!purchaseReady} onClick={openPurchase} className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-primary-600 text-[10px] font-black uppercase text-white disabled:cursor-not-allowed disabled:bg-slate-300"><Package className="h-4 w-4" />{isPurchasable ? purchaseActionLabel : (pet.status || 'Unavailable')}</button>
             </div>
           </div>
         </div>
@@ -266,13 +265,11 @@ const PetDetail = () => {
       {relatedPets.length > 0 && <section><div className="mb-3 flex items-end justify-between"><div><h2 className="text-base font-black text-slate-900">More from this store</h2><p className="text-[10px] text-slate-500">Similar available pets</p></div><Link to={`/stores/${storeId}`} className="text-[10px] font-black uppercase text-primary-700">View store</Link></div><div className="grid grid-cols-2 gap-3 sm:grid-cols-4">{relatedPets.map(item => <Link key={item._id} to={`/pets/${item._id}`} className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"><div className="aspect-square bg-slate-50">{item.images?.[0] ? <img src={getImageUrl(item.images[0])} alt={item.name} className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center"><PawPrint className="h-8 w-8 text-slate-200" /></div>}</div><div className="p-3"><p className="line-clamp-2 text-xs font-black text-slate-900">{item.name}</p><p className="truncate text-[9px] font-semibold text-slate-500">{item.breed}</p><p className="mt-2 text-xs font-black text-primary-700">{formatPeso(item.price)}</p></div></Link>)}</div></section>}
 
       <ReviewSection targetType="Pet" targetId={id} />
-      {user?.role === 'customer' ? <PetInquiryBoard petId={id} petAvailable={isPurchasable} petName={pet.name} />
-        : !isAuthenticated && isPurchasable ? <section className="rounded-2xl border bg-white p-4"><button type="button" onClick={() => setShowLoginModal(true)} className="font-semibold text-primary-700">Ask About This Pet</button><p className="text-xs text-slate-500">Sign in to ask the Store a question.</p></section> : null}
-      <div className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-2 gap-2 border-t border-slate-200 bg-white/95 p-3 pb-[calc(.75rem+env(safe-area-inset-bottom))] shadow-[0_-8px_30px_rgba(15,23,42,.12)] backdrop-blur sm:hidden"><button type="button" onClick={handleChatSeller} className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 text-[10px] font-black uppercase text-slate-700"><MessageSquare className="h-4 w-4" />Chat</button><button type="button" disabled={!isPurchasable} onClick={openInquiry} className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-primary-600 text-[10px] font-black uppercase text-white disabled:bg-slate-300"><Package className="h-4 w-4" />{isPurchasable ? (pet.listingType === 'adoption' ? 'Adopt' : 'Inquire') : 'Unavailable'}</button></div>
+      <div className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-2 gap-2 border-t border-slate-200 bg-white/95 p-3 pb-[calc(.75rem+env(safe-area-inset-bottom))] shadow-[0_-8px_30px_rgba(15,23,42,.12)] backdrop-blur sm:hidden"><button type="button" onClick={handleChatSeller} className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-slate-200 text-[10px] font-black uppercase text-slate-700"><MessageSquare className="h-4 w-4" />Chat Store</button><button type="button" disabled={!purchaseReady} onClick={openPurchase} className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-primary-600 text-[10px] font-black uppercase text-white disabled:bg-slate-300"><Package className="h-4 w-4" />{isPurchasable ? purchaseActionLabel : 'Unavailable'}</button></div>
 
       <LoginModal isOpen={showLoginModal} onClose={() => setShowLoginModal(false)} onLogin={() => navigate('/login')} />
       <EnhancedChatMessenger isOpen={showChat} onClose={() => setShowChat(false)} pet={pet} seller={pet.addedBy ? { _id: pet.addedBy._id, firstName: pet.addedBy.firstName || pet.addedBy.username } : null} currentUser={user} />
-      <InquiryModal isOpen={showInquiryModal} onClose={() => setShowInquiryModal(false)} pet={pet} onSubmit={handleInquirySubmit} />
+      <PetPurchaseModal isOpen={showPurchaseModal} onClose={() => setShowPurchaseModal(false)} pet={pet} store={store} buyer={user} onSubmit={handlePurchaseSubmit} submitting={purchaseSubmitting} />
     </div>
   );
 };

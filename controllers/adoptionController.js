@@ -1,11 +1,14 @@
+const crypto = require('crypto');
 const AdoptionRequest = require('../models/AdoptionRequest');
 const Conversation = require('../models/Conversation');
 const Message = require('../models/Message');
 const Pet = require('../models/Pet');
+const Store = require('../models/Store');
 const PayMongo = require('../services/paymongoService');
 const { isPlatformAdmin, isOperationalStaff } = require('../config/permissions');
 const { canOperateStore, idsEqual } = require('../utils/authorizationPolicy');
 const { canAccessConversation } = require('../utils/conversationAuthorization');
+const { requiresAcknowledgment, snapshotRefundPolicy } = require('../utils/refundPolicy');
 const {
     finalizePetReservation,
     getPetAvailabilityIssue,
@@ -17,6 +20,9 @@ const ADOPTION_STATUSES = [
     'inquiry_submitted', 'under_review', 'reserved', 'approved', 'pickup_scheduling',
     'pickup_confirmed', 'completed', 'cancelled', 'declined', 'expired'
 ];
+const ACTIVE_PURCHASE_STATUSES = ['inquiry_submitted', 'under_review', 'reserved', 'approved', 'pickup_scheduling', 'pickup_confirmed'];
+
+const buildPurchaseFingerprint = data => crypto.createHash('sha256').update(JSON.stringify(data)).digest('hex');
 
 const expireUnpaidCheckoutSession = async request => {
     const sessionId = request.paymentDetails?.sessionId;
@@ -42,69 +48,131 @@ const expireUnpaidCheckoutSession = async request => {
     if (historyRow) historyRow.status = 'expired';
 };
 
-// Create a structured pet purchase inquiry
+// Server-authoritative purchase/reservation checkout.
 const createAdoptionRequest = async (req, res) => {
     try {
-        const { 
-            petId, 
-            conversationId, 
-            notes,
-            fullName,
-            contactNumber,
-            cityArea,
-            preferredPickupDate,
-            interestReason,
-            previousExperience,
-            pickupConfirmation,
-            paymentMethod 
+        const {
+            petId, conversationId, purchaseRequestId, notes, fullName,
+            contactNumber, cityArea, preferredPickupDate,
+            pickupConfirmation, refundPolicyAcknowledged
         } = req.body;
 
-        // Validate that the preferred pickup date is not in the past
+        if (req.user?.role !== 'customer') {
+            return res.status(403).json({ message: 'Only authenticated customer accounts can purchase a pet.' });
+        }
+        if (!petId || !conversationId) {
+            return res.status(400).json({ message: 'Pet and seller conversation are required.' });
+        }
+        if (![fullName, contactNumber, cityArea].every(value => typeof value === 'string' && value.trim())) {
+            return res.status(400).json({ message: 'Buyer name, contact number, and city or area are required.' });
+        }
+        if (fullName.trim().length > 160 || contactNumber.trim().length > 40 || cityArea.trim().length > 200) {
+            return res.status(400).json({ message: 'Buyer contact information is too long.' });
+        }
+        if (pickupConfirmation !== true) {
+            return res.status(400).json({ message: 'Pickup-only acknowledgment is required.' });
+        }
+        if (purchaseRequestId !== undefined
+            && (typeof purchaseRequestId !== 'string' || !/^[A-Za-z0-9_-]{8,120}$/.test(purchaseRequestId))) {
+            return res.status(400).json({ message: 'Invalid purchase request identifier.' });
+        }
+
         const selectedDate = new Date(preferredPickupDate);
         const today = new Date();
         today.setHours(0, 0, 0, 0);
-
-        if (selectedDate < today) {
+        if (!preferredPickupDate || Number.isNaN(selectedDate.getTime()) || selectedDate < today) {
             return res.status(400).json({ message: 'Preferred pick-up date cannot be in the past. Please select today or a future date.' });
         }
 
-        // Verify pet and conversation
-        const pet = await Pet.findById(petId);
-        if (!pet) {
-            return res.status(404).json({ message: 'Pet not found' });
+        const normalizedRequestId = purchaseRequestId?.trim();
+        const fingerprint = buildPurchaseFingerprint({
+            petId: String(petId),
+            fullName: fullName.trim(),
+            contactNumber: contactNumber.trim(),
+            cityArea: cityArea.trim(),
+            preferredPickupDate: selectedDate.toISOString().slice(0, 10),
+            pickupConfirmation: true,
+            refundPolicyAcknowledged: refundPolicyAcknowledged === true
+        });
+        if (normalizedRequestId) {
+            const replay = await AdoptionRequest.findOne({
+                customer: req.user._id,
+                purchaseRequestId: normalizedRequestId
+            }).select('+purchaseFingerprint');
+            if (replay) {
+                if (replay.purchaseFingerprint !== fingerprint) {
+                    return res.status(409).json({ message: 'This checkout request was already used for different purchase details.' });
+                }
+                replay.purchaseFingerprint = undefined;
+                return res.json({ message: 'Purchase checkout already started.', request: replay, replayed: true });
+            }
         }
 
+        const pet = await Pet.findById(petId);
+        if (!pet) return res.status(404).json({ message: 'Pet not found.' });
         const availabilityIssue = getPetAvailabilityIssue(pet, 1);
         if (availabilityIssue) return res.status(409).json({ message: availabilityIssue });
-
-        const conversation = await Conversation.findById(conversationId).populate('participants');
-        if (!conversation) {
-            return res.status(404).json({ message: 'Conversation not found' });
+        if (idsEqual(pet.addedBy, req.user._id) || await canOperateStore(req.user, pet.store)) {
+            return res.status(403).json({ message: 'You cannot purchase a pet from your own listing.' });
         }
-        if (!idsEqual(conversation.pet, petId) || !(await canAccessConversation(req.user, conversation))) {
+
+        const store = pet.store ? await Store.findOne({
+            _id: pet.store,
+            isActive: { $ne: false },
+            isDeleted: { $ne: true }
+        }).select('name refundPolicy') : null;
+        if (!store) return res.status(409).json({ message: 'This pet Store is no longer available for checkout.' });
+        const refundPolicy = snapshotRefundPolicy(store?.refundPolicy);
+        const policyAcknowledgmentRequired = requiresAcknowledgment(refundPolicy);
+        if (policyAcknowledgmentRequired && refundPolicyAcknowledged !== true) {
+            return res.status(400).json({ message: 'You must acknowledge the Store refund policy before payment.' });
+        }
+
+        const conversation = await Conversation.findById(conversationId).populate('participants.user');
+        if (!conversation) return res.status(404).json({ message: 'Conversation not found.' });
+        const participantIds = (conversation.participants || [])
+            .map(participant => participant?.user?._id || participant?.user || participant?._id || participant);
+        const hasBuyer = participantIds.some(participant => idsEqual(participant, req.user._id));
+        const hasSeller = participantIds.some(participant => idsEqual(participant, pet.addedBy));
+        if (!idsEqual(conversation.pet, petId) || !hasBuyer || !hasSeller
+            || !(await canAccessConversation(req.user, conversation))) {
             return res.status(403).json({ message: 'This conversation is not authorized for the selected pet.' });
         }
 
-        // Check if an inquiry already exists
-        const existingRequest = await AdoptionRequest.findOne({ pet: petId, customer: req.user._id, status: { $nin: ['cancelled', 'declined', 'expired'] } });
+        const existingRequest = await AdoptionRequest.findOne({
+            pet: petId,
+            customer: req.user._id,
+            status: { $in: ACTIVE_PURCHASE_STATUSES }
+        });
         if (existingRequest) {
-            return res.status(400).json({ message: 'You already have an active inquiry for this pet', request: existingRequest });
+            return res.status(409).json({
+                message: 'You already have an active purchase or reservation for this pet.',
+                request: existingRequest
+            });
         }
 
         const adoptionRequest = new AdoptionRequest({
+            purchaseRequestId: normalizedRequestId,
+            purchaseFingerprint: fingerprint,
+            isActivePurchase: true,
             pet: petId,
             customer: req.user._id,
             seller: pet.addedBy,
             store: pet.store,
             conversation: conversationId,
             inquiryData: {
-                fullName,
-                contactNumber,
-                cityArea,
-                preferredPickupDate,
-                interestReason,
-                previousExperience,
-                pickupConfirmation
+                fullName: fullName.trim(),
+                contactNumber: contactNumber.trim(),
+                cityArea: cityArea.trim(),
+                preferredPickupDate: selectedDate,
+                pickupConfirmation: true
+            },
+            refundPolicySnapshot: refundPolicy,
+            refundPolicyAcknowledgment: {
+                required: policyAcknowledgmentRequired,
+                acknowledged: policyAcknowledgmentRequired ? true : refundPolicyAcknowledged === true,
+                acknowledgedAt: refundPolicyAcknowledged === true ? new Date() : undefined,
+                acknowledgedBy: refundPolicyAcknowledged === true ? req.user._id : undefined
             },
             paymentDetails: {
                 method: 'paymongo',
@@ -121,57 +189,40 @@ const createAdoptionRequest = async (req, res) => {
             history: [{
                 status: 'inquiry_submitted',
                 updatedBy: req.user._id,
-                description: `Initial purchase inquiry started for ${pet.name}. Payment provider: PAYMONGO`,
-                reason: 'Inquiry Submitted'
+                description: `Purchase checkout started for ${pet.name}. Payment provider: PayMongo.`,
+                reason: 'Purchase Checkout Started'
             }]
         });
-
-        console.log(`[AdoptionDebug] Inquiry data prepared for pet: ${pet.name}. Saving...`);
         await adoptionRequest.save();
-        console.log(`✅ [AdoptionDebug] Inquiry saved. ID: ${adoptionRequest._id}`);
 
-        // Link inquiry to conversation
         conversation.adoptionRequest = adoptionRequest._id;
         await conversation.save();
-
-        // Step 1: Send high-level system header
         try {
-            const systemHeader = new Message({
-                conversation: conversationId,
-                sender: req.user._id, // System usually acts on behalf of action-taker
-                content: `📢 Purchase inquiry started for ${pet.name}`,
-                type: 'system'
-            });
-            await systemHeader.save();
-        } catch (msgErr) {
-            console.warn('[AdoptionDebug] Failed to send system header:', msgErr.message);
-        }
-
-        // Step 2: Send structured inquiry summary into chat
-        try {
-            const inquirySummary = new Message({
+            await new Message({
                 conversation: conversationId,
                 sender: req.user._id,
-                content: `📋 **INQUIRY DETAILS**\n**Buyer:** ${fullName || 'N/A'}\n**Area:** ${cityArea || 'N/A'}\n**Experience:** ${previousExperience || 'N/A'}\n**Reason:** ${interestReason || 'N/A'}\n**Preferred Pickup:** ${preferredPickupDate ? new Date(preferredPickupDate).toLocaleDateString() : 'TBD'}`,
-                type: 'text' // Sent as text so it's readable in chat history
-            });
-            await inquirySummary.save();
-        } catch (msgErr) {
-            console.warn('[AdoptionDebug] Failed to send inquiry summary:', msgErr.message);
+                content: `Purchase checkout started for ${pet.name}. Buyer: ${fullName.trim()}. Preferred pickup: ${selectedDate.toLocaleDateString()}. Payment is confirmed only after PayMongo verification.`,
+                type: 'system'
+            }).save();
+        } catch (messageError) {
+            console.warn('Purchase record saved, but chat notification could not be sent:', messageError.message);
         }
 
-        res.status(201).json({ message: 'Inquiry submitted successfully', request: adoptionRequest });
+        return res.status(201).json({ message: 'Purchase checkout started successfully.', request: adoptionRequest });
     } catch (error) {
-        console.error('Create inquiry error:', error);
-        
+        console.error('Create pet purchase error:', error);
         if (error.code === 11000) {
-            return res.status(409).json({ message: 'You already have a record for this pet. Please check your existing inquiries.' });
+            if (req.body.purchaseRequestId) {
+                const replay = await AdoptionRequest.findOne({
+                    customer: req.user._id,
+                    purchaseRequestId: req.body.purchaseRequestId
+                });
+                if (replay) return res.json({ message: 'Purchase checkout already started.', request: replay, replayed: true });
+            }
+            return res.status(409).json({ message: 'You already have an active purchase or reservation for this pet.' });
         }
-        
-        res.status(500).json({ 
-            message: 'Internal server error during inquiry submission',
-            error: error.message 
-        });
+        if (error.name === 'CastError') return res.status(400).json({ message: 'Invalid pet or conversation identifier.' });
+        return res.status(500).json({ message: 'Internal server error while starting the purchase checkout.' });
     }
 };
 
@@ -203,6 +254,10 @@ const updateAdoptionStatus = async (req, res) => {
         const reservingStatuses = ['reserved', 'approved', 'pickup_scheduling', 'pickup_confirmed'];
 
         if (request.status === status) {
+            if ([...closingStatuses, 'completed'].includes(status) && request.isActivePurchase !== false) {
+                request.isActivePurchase = false;
+                await request.save();
+            }
             if (closingStatuses.includes(status)) {
                 await expireUnpaidCheckoutSession(request);
                 await request.save();
@@ -242,6 +297,7 @@ const updateAdoptionStatus = async (req, res) => {
         }
 
         request.status = status;
+        request.isActivePurchase = ![...closingStatuses, 'completed'].includes(status);
         request.history.push({
             status,
             updatedBy: req.user._id,
@@ -359,6 +415,7 @@ const cancelAdoptionRequest = async (req, res) => {
         await expireUnpaidCheckoutSession(request);
 
         request.status = 'cancelled';
+        request.isActivePurchase = false;
         request.history.push({
             status: 'cancelled',
             updatedBy: req.user._id,
@@ -375,12 +432,12 @@ const cancelAdoptionRequest = async (req, res) => {
         const systemMsg = new Message({
             conversation: request.conversation,
             sender: req.user._id,
-            content: 'Inquiry has been cancelled by the customer.',
+            content: 'The purchase or reservation was cancelled by the customer.',
             type: 'system'
         });
         await systemMsg.save();
 
-        res.json({ message: 'Inquiry cancelled successfully', request });
+        res.json({ message: 'Purchase or reservation cancelled successfully', request });
     } catch (error) {
         console.error('Cancel adoption request error:', error);
         res.status(error.statusCode || 500).json({ message: error.message || 'Server error' });

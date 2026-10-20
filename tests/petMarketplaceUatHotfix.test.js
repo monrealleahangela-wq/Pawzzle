@@ -48,7 +48,9 @@ test('customer marketplace pet details provide safe listing, store, and action s
   }
   assert.match(detail, /certificateAvailable/);
   assert.match(detail, /favoritePets/);
-  assert.match(detail, /Book a Service/);
+  assert.match(detail, /Chat Store/);
+  assert.match(detail, /Buy Now/);
+  assert.doesNotMatch(detail, /Book a Service|Buy \/ Inquire|Adopt \/ Inquire/);
   assert.doesNotMatch(detail, /certificateUrl/);
   assert.doesNotMatch(detail, /supportingDocuments|proofOfOwnership|pickupInstructions|vetRecords/);
 });

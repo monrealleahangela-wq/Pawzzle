@@ -1,6 +1,19 @@
 const mongoose = require('mongoose');
 
 const adoptionRequestSchema = new mongoose.Schema({
+    purchaseRequestId: {
+        type: String,
+        trim: true,
+        maxlength: 120
+    },
+    purchaseFingerprint: {
+        type: String,
+        select: false
+    },
+    isActivePurchase: {
+        type: Boolean,
+        default: true
+    },
     pet: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Pet',
@@ -73,6 +86,21 @@ const adoptionRequestSchema = new mongoose.Schema({
         previousExperience: String,
         pickupConfirmation: { type: Boolean, default: false }
     },
+    refundPolicySnapshot: {
+        type: {
+            type: String,
+            enum: ['full_refund', 'conditional_refund', 'no_refund']
+        },
+        summary: String,
+        conditions: String,
+        capturedAt: Date
+    },
+    refundPolicyAcknowledgment: {
+        required: { type: Boolean, default: false },
+        acknowledged: { type: Boolean, default: false },
+        acknowledgedAt: Date,
+        acknowledgedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
+    },
     // Scheduling
     scheduling: {
         confirmedDate: Date,
@@ -124,6 +152,14 @@ const adoptionRequestSchema = new mongoose.Schema({
 // Index for performance
 // Index for performance (Removed unique constraint to allow re-inquiring after cancellation)
 adoptionRequestSchema.index({ pet: 1, customer: 1 });
+adoptionRequestSchema.index(
+    { customer: 1, purchaseRequestId: 1 },
+    { unique: true, partialFilterExpression: { purchaseRequestId: { $type: 'string' } } }
+);
+adoptionRequestSchema.index(
+    { pet: 1, customer: 1, isActivePurchase: 1 },
+    { unique: true, partialFilterExpression: { isActivePurchase: true } }
+);
 adoptionRequestSchema.index({ seller: 1, status: 1 });
 adoptionRequestSchema.index({ customer: 1, status: 1 });
 

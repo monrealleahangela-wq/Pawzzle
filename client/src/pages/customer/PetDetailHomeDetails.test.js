@@ -14,7 +14,7 @@ jest.mock('../../services/chatService', () => ({ chatService: {} }));
 jest.mock('../../contexts/AuthContext', () => ({ useAuth: () => ({ isAuthenticated: false, user: null }) }));
 jest.mock('../../components/LoginModal', () => () => null);
 jest.mock('../../components/EnhancedChatMessenger', () => () => null);
-jest.mock('../../components/InquiryModal', () => () => null);
+jest.mock('../../components/PetPurchaseModal', () => () => null);
 jest.mock('../../components/ReviewSection', () => () => null);
 
 const pet = homeDetails => ({
